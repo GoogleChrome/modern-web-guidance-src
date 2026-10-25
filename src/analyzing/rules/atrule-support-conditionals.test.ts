@@ -25,8 +25,8 @@ void test('atrule-support-conditionals: rule metadata', () => {
   );
 
   assert.equal(atruleSupportConditionalsRules.length, 1);
-  assert.ok(atruleSupportConditionalsJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(atruleSupportConditionalsJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(atruleSupportConditionalsJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(atruleSupportConditionalsJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('atrule-support-conditionals JS matcher', async (t) => {

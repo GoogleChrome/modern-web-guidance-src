@@ -161,7 +161,7 @@ export const contrastColorJsRule: AnalyzerRule = {
   summary:
     'Use native CSS contrast-color() instead of manual JavaScript luminance/YIQ contrast calculations to determine readable text colors.',
   matcher: contrastColorJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript luminance or YIQ contrast helper function calculating black vs white text color based on background color',
     ],
@@ -179,7 +179,7 @@ export const contrastColorCssRule: AnalyzerRule = {
   summary:
     'Use native CSS contrast-color() instead of complex Relative Color Syntax luminance threshold hacks with sign() and max().',
   matcher: contrastColorCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'CSS Relative Color Syntax luminance threshold hack with sign() used to flip foreground color based on background',
     ],

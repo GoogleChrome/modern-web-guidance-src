@@ -23,8 +23,8 @@ void test('scroll-snap-realtime-feedback: rule metadata', () => {
   );
   assert.equal(SCROLL_SNAP_REALTIME_FEEDBACK_GUIDE_HASH.length, 12);
   assert.equal(scrollSnapRealtimeFeedbackRules.length, 1);
-  assert.ok(scrollSnapRealtimeFeedbackRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(scrollSnapRealtimeFeedbackRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(scrollSnapRealtimeFeedbackRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(scrollSnapRealtimeFeedbackRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('scroll-snap-realtime-feedback JS matcher', async (t) => {

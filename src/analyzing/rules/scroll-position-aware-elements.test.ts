@@ -25,8 +25,8 @@ describe('scroll-position-aware-elements rule', () => {
       SCROLL_POSITION_AWARE_ELEMENTS_GUIDE_HASH,
     );
     assert.equal(scrollPositionAwareElementsRule.guideHash.length, 12);
-    assert.ok(scrollPositionAwareElementsRule.phase2Rubric.keepWhen.length >= 1);
-    assert.ok(scrollPositionAwareElementsRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(scrollPositionAwareElementsRule.verifierRubric.keepWhen.length >= 1);
+    assert.ok(scrollPositionAwareElementsRule.verifierRubric.dropWhen.length >= 2);
     assert.equal(scrollPositionAwareElementsRules.length, 1);
   });
 

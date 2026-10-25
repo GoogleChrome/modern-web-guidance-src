@@ -182,7 +182,7 @@ export const menuJsRule: AnalyzerRule = {
   summary:
     'Use native focusgroup="menu nomemory" with popover and commandfor instead of manual roving-tabindex arrow navigation.',
   matcher: menuJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Manual keydown roving-tabindex cycling focus across menu items using ArrowDown/ArrowUp or Home/End',
     ],
@@ -200,7 +200,7 @@ export const menuDomRule: AnalyzerRule = {
   summary:
     'Use native <div focusgroup="menu nomemory"> inside a popover instead of custom role="menu" containers.',
   matcher: menuDomMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Custom div or ul menu container with role="menu" lacking focusgroup',
     ],

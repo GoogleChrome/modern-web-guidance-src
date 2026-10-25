@@ -305,7 +305,7 @@ export const dragPackageRule: AnalyzerRule = {
   summary:
     'Flag dependencies on legacy drag packages (interactjs, draggabilly, react-draggable, dragula) that should be replaced with Pointer Events and setPointerCapture.',
   matcher: dragDependencyMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Projects depending on legacy drag packages like interactjs, draggabilly, react-draggable, or dragula for element dragging.',
     ],
@@ -324,7 +324,7 @@ export const dragJsRule: AnalyzerRule = {
   summary:
     'Flag legacy mousedown/mousemove or touchstart/touchmove drag loops updating style.left/top/transform instead of using modern Pointer Events and setPointerCapture.',
   matcher: dragJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Draggable floating panels, palettes, toolbars, inspectors, or dialogs using imperative mousedown/mousemove/mouseup or touchstart/touchmove listeners to update style.left/top/transform.',
     ],

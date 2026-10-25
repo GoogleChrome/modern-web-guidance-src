@@ -145,7 +145,7 @@ export interface AnalyzerRule {
   readonly guideHash: string;
   readonly summary: string;
   readonly matcher: RuleMatcher;
-  readonly phase2Rubric: Phase2Rubric;
+  readonly verifierRubric: VerifierRubric;
 }
 ```
 
@@ -184,7 +184,7 @@ export const autofillSignInFormRule: AnalyzerRule = {
   guideHash: 'a1b2c3d4e5f6',
   summary: 'Add standard autocomplete attributes to sign-in and registration form inputs.',
   matcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Input element has type="password" without an autocomplete attribute.',
       'Input element accepts credential data inside an authentication or registration form.',
@@ -201,7 +201,7 @@ export const autofillSignInFormRule: AnalyzerRule = {
 
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
 - **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`, currently `[]` — all 4 previously qualified guides (`autofill-highlight-inputs`, `complex-shapes`, `deliver-optimized-decorative-images`, `individual-transform-properties`) are suspended pending `D-041`/`D-042` re-validation and `R35` 20-card blind human spot-checks). While the default qualified set is empty, the CLI reports plainly that default guides are suspended pending re-validation and points to `--all-rules`.
-- **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` (currently `[]` pending `D-041`/`D-042` re-validation) and emits complete `phase2Rubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
+- **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` (currently `[]` pending `D-041`/`D-042` re-validation) and emits complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
 - **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 35 landed feature guides across 49 rules, enabling research and broader scanning.
 
 ### Registered Feature Guides (35 Guides, 49 Rules in `ALL_RULES`)
@@ -335,7 +335,7 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 3. **Add unit test suite in `src/analyzing/rules/<guide-id>.test.ts`**: Test positive examples, negative examples, and edge cases.
 
 ### Step 3: LLM Verifier Rubric
-1. **Define `phase2Rubric` in the rule definition**:
+1. **Define `verifierRubric` in the rule definition**:
    - `keepWhen`: Precise criteria matching genuine legacy workarounds.
    - `dropWhen`: Immediate exclusions (feature detection guards, shadowed variables, out-of-domain contexts).
 2. **Agentic verification**: Ensure that `--json` output emits the complete rubric so AI coding agents can verify findings before proposing modernizations.

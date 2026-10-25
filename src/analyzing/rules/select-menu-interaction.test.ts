@@ -40,10 +40,10 @@ void test('select-menu-interaction: rule metadata', () => {
   );
 
   assert.equal(selectMenuInteractionRules.length, 2);
-  assert.ok(selectMenuInteractionCssRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(selectMenuInteractionCssRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(selectMenuInteractionJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(selectMenuInteractionJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(selectMenuInteractionCssRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(selectMenuInteractionCssRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(selectMenuInteractionJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(selectMenuInteractionJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('select-menu-interaction CSS matcher', async (t) => {

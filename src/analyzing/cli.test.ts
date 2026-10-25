@@ -107,7 +107,7 @@ describe('runAnalyzeCli', () => {
     );
     assert.match(
       reducedFindingsOutput,
-      /1 guide is currently suspended pending re-validation \(individual-transform-properties\); pass --all-rules for experimental findings/,
+      /1 guide is currently suspended pending re-validation \(individual-transform-properties\); pass --experimental \(or --all-rules\) for experimental findings/,
     );
   });
 
@@ -187,9 +187,9 @@ describe('runAnalyzeCli', () => {
 
       const guide = parsed.guides.find((g) => g.guideId === 'autofill-sign-in-form');
       assert.ok(guide, 'Expected autofill-sign-in-form guide in JSON output');
-      assert.ok(guide.phase2Rubric, 'Expected phase2Rubric in guide JSON output (R17)');
-      assert.ok(guide.phase2Rubric.keepWhen.length >= 1);
-      assert.ok(guide.phase2Rubric.dropWhen.length >= 1);
+      assert.ok(guide.verifierRubric, 'Expected verifierRubric in guide JSON output (R17)');
+      assert.ok(guide.verifierRubric.keepWhen.length >= 1);
+      assert.ok(guide.verifierRubric.dropWhen.length >= 1);
       assert.equal(guide.tier, 'qualified');
       assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve autofill-sign-in-form');
       assert.ok(guide.summary.length > 0);

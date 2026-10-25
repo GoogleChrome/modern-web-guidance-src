@@ -465,7 +465,7 @@ export const scrollPositionAwareElementsRule: AnalyzerRule = {
   summary:
     'Flag window/container scroll listeners reading scrollY or scrollTop to toggle CSS visibility or sticky state classes, which can be replaced by @container scroll-state(scrollable: top).',
   matcher: scrollPositionAwareElementsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Window or container scroll event listeners that read scrollY, pageYOffset, or scrollTop to toggle visibility or sticky state classes (.scrolled, .sticky, .is-stuck, .show-back-to-top) on floating buttons, back-to-top buttons, or headers.',
     ],

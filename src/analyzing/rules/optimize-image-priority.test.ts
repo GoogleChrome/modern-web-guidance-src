@@ -18,8 +18,8 @@ void test('optimize-image-priority: rule metadata', () => {
   );
   assert.equal(OPTIMIZE_IMAGE_PRIORITY_GUIDE_HASH.length, 12);
   assert.equal(optimizeImagePriorityRules.length, 1);
-  assert.ok(optimizeImagePriorityRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(optimizeImagePriorityRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(optimizeImagePriorityRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(optimizeImagePriorityRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('optimize-image-priority DOM matcher', async (t) => {

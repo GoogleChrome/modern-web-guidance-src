@@ -162,7 +162,7 @@ export const requiredFieldFeedbackCssRule: AnalyzerRule = {
   summary:
     'CSS :required:invalid, [required]:invalid, and touched/dirty :invalid selectors without :user-invalid should be modernized with :user-invalid so form fields only show error styles after user interaction.',
   matcher: requiredFieldFeedbackCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule uses :required:invalid, [required]:invalid, or pairs :invalid with a touched/dirty class (.was-validated, .touched, .dirty) without :user-invalid to style form fields.',
     ],
@@ -180,7 +180,7 @@ export const requiredFieldFeedbackJsRule: AnalyzerRule = {
   summary:
     'JavaScript blur and invalid listeners toggling .touched / .dirty / .interacted / .was-validated classes to gate :invalid styling should be modernized with CSS :user-invalid.',
   matcher: requiredFieldFeedbackJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A blur or invalid event listener on form inputs toggles .touched, .is-touched, .dirty, .interacted, or .was-validated classes to defer :invalid styling until after user interaction.',
     ],

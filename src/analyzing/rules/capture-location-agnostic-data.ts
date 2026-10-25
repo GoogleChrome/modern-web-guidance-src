@@ -395,7 +395,7 @@ export const captureLocationAgnosticDataPackageRule: AnalyzerRule = {
   summary:
     'Legacy ISO region/language dictionary packages (i18n-iso-countries, country-list, iso-639-1) used for display-name translation can be modernized with Intl.DisplayNames and location-agnostic Temporal types.',
   matcher: captureLocationAgnosticDataPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares i18n-iso-countries, country-list, or iso-639-1 in package.json dependencies solely to translate ISO country or language codes into localized display names.',
     ],
@@ -414,7 +414,7 @@ export const captureLocationAgnosticDataJsRule: AnalyzerRule = {
   summary:
     'JavaScript calls to countries.getName(), countryList.getName(), or ISO6391.getName() used solely for single-code display-name translation can be modernized with native Intl.DisplayNames.',
   matcher: captureLocationAgnosticDataJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls countries.getName(...), countryList.getName(...), or ISO6391.getName(...) exclusively for translating a single ISO country or language code into a localized display name.',
     ],
@@ -638,7 +638,7 @@ export const manageRecurringIntervalsRule: AnalyzerRule = {
   summary:
     'Flag legacy mutable Date monthly/annual calendar-period mutation (d.setMonth(d.getMonth() + 1), d.setFullYear(d.getFullYear() + 1)) or moment/dayjs month/year .add()/.subtract() calls instead of Temporal.PlainDate.prototype.add().',
   matcher: manageRecurringIntervalsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Legacy mutable Date calendar-period mutation (such as d.setMonth(d.getMonth() + 1) or d.setFullYear(d.getFullYear() + 1)) used to compute recurring monthly or annual billing/payroll cycles instead of Temporal.PlainDate.prototype.add({ months: 1 }, { overflow: "constrain" }).',
       'Third-party date library recurring month/year interval arithmetic (such as moment(...).add(..., "months") or dayjs(...).add(..., "years")) used for recurring schedule calculation.',

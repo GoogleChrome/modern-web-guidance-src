@@ -156,7 +156,7 @@ export const highlightTextRangesPackageRule: AnalyzerRule = {
   summary:
     'Legacy mark.js / markjs packages in package.json dependencies can be modernized with the native CSS Custom Highlight API (CSS.highlights and ::highlight()).',
   matcher: highlightTextRangesPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares mark.js or markjs in package.json dependencies to highlight search results or text ranges in the DOM.',
     ],
@@ -174,7 +174,7 @@ export const highlightTextRangesJsRule: AnalyzerRule = {
   summary:
     'JavaScript calls to new Mark(...).mark(...) or new Mark(...).markRegExp(...) should be modernized with the CSS Custom Highlight API (CSS.highlights).',
   matcher: highlightTextRangesJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript instantiates new Mark(...) and invokes .mark(...) or .markRegExp(...) to highlight text ranges by wrapping DOM nodes without a "highlights" in CSS guard.',
     ],

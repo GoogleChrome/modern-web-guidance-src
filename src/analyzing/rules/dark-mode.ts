@@ -166,7 +166,7 @@ export const darkModeCssRule: AnalyzerRule = {
   summary:
     'Stylesheets overriding colors in @media (prefers-color-scheme: dark) without color-scheme should use color-scheme: light dark and light-dark().',
   matcher: darkModeCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'CSS rules duplicate theme properties inside @media (prefers-color-scheme: dark) without declaring color-scheme: light dark or using light-dark() CSS color tokens.',
       'Component styles override foreground, background, or border colors within prefers-color-scheme media blocks without root color-scheme enablement.',
@@ -186,7 +186,7 @@ export const darkModeJsMatchMediaRule: AnalyzerRule = {
   summary:
     'JavaScript matchMedia reading dark mode without dynamic listeners or to toggle theme classes should use declarative CSS color-scheme.',
   matcher: darkModeJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript uses matchMedia("(prefers-color-scheme: dark)") to read system theme state once at load without registering a change listener for dynamic theme updates.',
       'JavaScript imperatively toggles .dark or data-theme="dark" classes on documentElement or body based on system preference instead of declarative color-scheme: light dark.',

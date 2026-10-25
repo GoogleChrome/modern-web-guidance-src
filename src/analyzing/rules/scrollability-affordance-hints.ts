@@ -153,7 +153,7 @@ export const scrollabilityAffordanceHintsRule: AnalyzerRule = {
   summary:
     'Scroll and ResizeObserver listeners comparing scrollLeft/scrollWidth/clientWidth or scrollTop/scrollHeight/clientHeight to toggle overflow shadow classes should be modernized with @container scroll-state(scrollable: ...).',
   matcher: scrollabilityAffordanceHintsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A scroll or ResizeObserver listener compares scrollLeft, scrollWidth, and clientWidth (or scrollTop, scrollHeight, and clientHeight) to toggle overflow shadow or scrollability affordance classes such as has-scroll-left, has-scroll-right, is-scrollable, can-scroll, or has-overflow.',
       'Dynamic CSS mask or shadow fade classes are toggled by scroll boundary checks.',

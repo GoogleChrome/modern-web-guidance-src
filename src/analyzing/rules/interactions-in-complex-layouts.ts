@@ -364,7 +364,7 @@ export const interactionsInComplexLayoutsPackageRule: AnalyzerRule = {
   summary:
     'FastDom dependency (fastdom) for read/write layout batching can be modernized with CSS content-visibility: auto and contain-intrinsic-size.',
   matcher: interactionsInComplexLayoutsPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares fastdom in package.json dependencies to batch DOM read/write operations and prevent whole-page layout thrashing.',
     ],
@@ -382,7 +382,7 @@ export const interactionsInComplexLayoutsJsRule: AnalyzerRule = {
   summary:
     'JavaScript fastdom.measure() and fastdom.mutate() calls mitigating whole-page layout thrashing should be modernized with CSS content-visibility: auto.',
   matcher: interactionsInComplexLayoutsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls fastdom.measure(...) or fastdom.mutate(...) to queue DOM geometry reads and writes and avoid whole-page layout reflow.',
       'JavaScript detaches elements or toggles display: none during bulk DOM updates solely to prevent whole-page layout thrashing.',

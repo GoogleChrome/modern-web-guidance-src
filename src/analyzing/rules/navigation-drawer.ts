@@ -176,7 +176,7 @@ export const navigationDrawerRule: AnalyzerRule = {
   summary:
     'Custom navigation drawer/off-canvas controller manually toggles visibility classes, backdrop clicks, or body scroll locking; replace with HTML popover="manual" or <dialog>.',
   matcher: navigationDrawerJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The component implements a slide-in navigation drawer, sidenav, or off-canvas menu overlaid on top of page content.',
       'The implementation manually toggles open/closed classes, listens for backdrop/overlay clicks, locks body scroll (overflow: hidden), or listens for Escape keypresses.',
@@ -197,7 +197,7 @@ export const navigationDrawerDomRule: AnalyzerRule = {
   summary:
     'Navigation drawer/off-canvas container implemented as a standard element without popover; modernize using popover="manual" with scroll-driven backdrop animations.',
   matcher: navigationDrawerDomMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The container element represents an off-canvas navigation drawer, sidenav, or slide-in overlay menu.',
       'The markup uses standard div, nav, or aside tags without the popover attribute or native <dialog>.',

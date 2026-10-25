@@ -22,11 +22,11 @@ const singleFunctionStateRules: readonly CssRuleMatcher[] = [
 ];
 
 describe('individualTransformPropertiesRule', () => {
-  it('has valid rule metadata and non-empty phase2Rubric', () => {
+  it('has valid rule metadata and non-empty verifierRubric', () => {
     assert.equal(individualTransformPropertiesRule.id, 'individual-transform-properties');
     assert.equal(individualTransformPropertiesRule.guideId, 'individual-transform-properties');
-    assert.ok(individualTransformPropertiesRule.phase2Rubric.keepWhen.length > 0);
-    assert.ok(individualTransformPropertiesRule.phase2Rubric.dropWhen.length > 0);
+    assert.ok(individualTransformPropertiesRule.verifierRubric.keepWhen.length > 0);
+    assert.ok(individualTransformPropertiesRule.verifierRubric.dropWhen.length > 0);
 
     assert.equal(
       individualTransformPropertiesStandaloneChainRule.id,

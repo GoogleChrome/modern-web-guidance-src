@@ -429,28 +429,28 @@ export function extractCompactSnippet(
 }
 
 /**
- * Generates both the compact `codeSnippet` and the AST/structured `astSlice`.
+ * Generates both the compact `codeSnippet` and the structured `contextSlice`.
  */
 export function sliceStructuredContext(
   filePath: string,
   fileContent: string,
   targetLine: number,
   sourceFile?: SourceFile,
-): { codeSnippet: string; astSlice: string } {
+): { codeSnippet: string; contextSlice: string; astSlice: string } {
   const codeSnippet = extractCompactSnippet(fileContent, targetLine);
   const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase();
   const isPackageJson =
     normalizedPath === 'package.json' ||
     normalizedPath.endsWith('/package.json');
 
-  let astSlice: string;
+  let contextSlice: string;
   if (isPackageJson) {
-    astSlice = slicePackageJsonContext(fileContent, targetLine);
+    contextSlice = slicePackageJsonContext(fileContent, targetLine);
   } else if (sourceFile) {
-    astSlice = sliceJsAstContext(sourceFile, targetLine, fileContent);
+    contextSlice = sliceJsAstContext(sourceFile, targetLine, fileContent);
   } else {
-    astSlice = sliceStructuredBlock(fileContent, targetLine);
+    contextSlice = sliceStructuredBlock(fileContent, targetLine);
   }
 
-  return { codeSnippet, astSlice };
+  return { codeSnippet, contextSlice, astSlice: contextSlice };
 }

@@ -63,7 +63,7 @@ export const autofillHighlightInputsRule: AnalyzerRule = {
   summary:
     'Form field autofill styling using :-webkit-autofill without standard :autofill should be modernized with native CSS :autofill pseudo-class.',
   matcher: autofillHighlightInputsCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule targets :-webkit-autofill to style autofilled inputs, textareas, or selects without providing standard :autofill.',
       'A CSS rule overrides default autofill background using inset box-shadow and -webkit-text-fill-color on :-webkit-autofill without standard :autofill.',

@@ -215,7 +215,7 @@ export const stateAwareStickyHeadersRule: AnalyzerRule = {
   summary:
     'IntersectionObserver and scroll listeners toggling .is-stuck / .is-pinned / .stuck / .sticky-active classes on sticky headers should be modernized with @container scroll-state(stuck: top).',
   matcher: stateAwareStickyHeadersMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'An IntersectionObserver with threshold: [1] or checking intersectionRatio < 1 (or a 1px sentinel element) toggles .is-stuck, .is-pinned, .stuck, or .sticky-active when a sticky header docks.',
       'A scroll event listener compares header.getBoundingClientRect().top or scroll offset to toggle stuck/pinned styling classes on a sticky header.',

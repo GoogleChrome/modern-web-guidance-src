@@ -40,10 +40,10 @@ void test('interactions-in-complex-layouts: rule metadata', () => {
   );
 
   assert.equal(interactionsInComplexLayoutsRules.length, 2);
-  assert.ok(interactionsInComplexLayoutsPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(interactionsInComplexLayoutsPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(interactionsInComplexLayoutsJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(interactionsInComplexLayoutsJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(interactionsInComplexLayoutsPackageRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(interactionsInComplexLayoutsPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(interactionsInComplexLayoutsJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(interactionsInComplexLayoutsJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('interactions-in-complex-layouts dependency matcher', async (t) => {

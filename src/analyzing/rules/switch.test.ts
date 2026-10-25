@@ -15,8 +15,8 @@ void test('switch: rule metadata', () => {
   assert.equal(switchRule.guideHash, SWITCH_GUIDE_HASH);
   assert.equal(SWITCH_GUIDE_HASH.length, 12);
   assert.equal(switchRules.length, 1);
-  assert.ok(switchRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(switchRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(switchRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(switchRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('switch DOM matcher', async (t) => {

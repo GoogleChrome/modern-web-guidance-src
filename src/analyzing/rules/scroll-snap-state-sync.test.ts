@@ -17,8 +17,8 @@ void test('scroll-snap-state-sync: rule metadata', () => {
   );
   assert.equal(SCROLL_SNAP_STATE_SYNC_GUIDE_HASH.length, 12);
   assert.equal(scrollSnapStateSyncRules.length, 1);
-  assert.ok(scrollSnapStateSyncRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(scrollSnapStateSyncRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(scrollSnapStateSyncRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(scrollSnapStateSyncRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('scroll-snap-state-sync JS matcher', async (t) => {

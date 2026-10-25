@@ -434,7 +434,7 @@ export const detectInitialVisibilityStateRule: AnalyzerRule = {
   summary:
     'Flag vendor-prefixed Page Visibility API usage or capturing initial background state via document.visibilityState/hidden variables alongside visibilitychange listeners without VisibilityStateEntry.',
   matcher: detectInitialVisibilityStateMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Legacy vendor-prefixed Page Visibility properties (document.webkitHidden, document.mozHidden, document.msHidden, document.webkitVisibilityState) or events (webkitvisibilitychange, mozvisibilitychange, msvisibilitychange) used without an unprefixed standard Page Visibility primary check.',
       'Assigning document.visibilityState or document.hidden to an initial/load-time variable (e.g. wasHidden, initialVisibility, hiddenAtLoad) combined with a visibilitychange event listener to detect initial background tab state.',

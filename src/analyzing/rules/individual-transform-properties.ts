@@ -628,7 +628,7 @@ export const individualTransformPropertiesStandaloneChainRule: AnalyzerRule = {
   summary:
     'Detect standalone CSS rules combining >= 2 transform functions in canonical order when no paired state selectors or keyframes exist.',
   matcher: individualTransformPropertiesStandaloneChainMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A standalone CSS rule combines multiple `translate*()`, `rotate*()`, and/or `scale*()` functions in canonical `translate -> rotate -> scale` order with no paired state selectors or keyframes.',
     ],
@@ -654,7 +654,7 @@ export const individualTransformPropertiesSingleFunctionStateRule: AnalyzerRule 
   summary:
     'Detect isolated single-function :hover/:focus/:active transform state rules when no paired rule shares the base selector.',
   matcher: individualTransformPropertiesSingleFunctionStateMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS state rule (:hover, :focus, :active) sets a single-function transform when no base rule or keyframe shares the base selector.',
     ],
@@ -672,7 +672,7 @@ export const individualTransformPropertiesRule: AnalyzerRule = {
   summary:
     'Detect CSS `transform` declarations that compose independent translate/rotate/scale operations across multi-function rules, paired state selectors, or @keyframes steps.',
   matcher: individualTransformPropertiesMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule combines multiple `translate*()`, `rotate*()`, and/or `scale*()` functions in canonical `translate -> rotate -> scale` order without `transition: transform`.',
       'A CSS rule pairs a base transform with a `:hover`/`:focus`/state rule or `@keyframes` animation where individual `translate`, `rotate`, and `scale` properties avoid repeating static transform components.',

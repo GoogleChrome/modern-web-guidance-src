@@ -17,8 +17,8 @@ void test('custom-text-decorations: rule metadata', () => {
   );
   assert.equal(CUSTOM_TEXT_DECORATIONS_GUIDE_HASH.length, 12);
   assert.equal(customTextDecorationsRules.length, 1);
-  assert.ok(customTextDecorationsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(customTextDecorationsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(customTextDecorationsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(customTextDecorationsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('custom-text-decorations: positive brownfield matches', async (t) => {

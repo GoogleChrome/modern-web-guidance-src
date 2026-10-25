@@ -123,7 +123,7 @@ export const brandConsistentFormsRule: AnalyzerRule = {
   summary:
     'Custom checkbox, radio, range, or progress styling stripping appearance: none should use accent-color for brand-consistent form controls.',
   matcher: brandConsistentFormsCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule applies appearance: none, -webkit-appearance: none, or -moz-appearance: none to input[type="checkbox"], input[type="radio"], input[type="range"], or progress to restyle native control colors.',
       'A CSS rule styles vendor range slider or progress bar pseudo-elements (e.g. ::-webkit-slider-thumb, ::-moz-range-track, ::-webkit-progress-value) with custom background or border colors without using accent-color.',

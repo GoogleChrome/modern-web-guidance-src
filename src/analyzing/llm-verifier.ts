@@ -1,5 +1,5 @@
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
-import { getGeminiApiKey, loadRawGuideMarkdown } from './judge.ts';
+import { getGeminiApiKey, loadRawGuideMarkdown } from './detection-eval.ts';
 
 export const PHASE2_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -254,5 +254,6 @@ export async function simulateSingleShotPhase2Filter(
   };
 }
 
-export const runPhase2Filter = simulateSingleShotPhase2Filter;
+export const runLlmVerifier = simulateSingleShotPhase2Filter;
+export const runPhase2Filter = runLlmVerifier;
 export const phase2Filter = simulateSingleShotPhase2Filter;

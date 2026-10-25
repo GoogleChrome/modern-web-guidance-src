@@ -240,7 +240,7 @@ export const scrollCompletionEffectsRule: AnalyzerRule = {
   summary:
     'Await the Promise returned by programmatic scroll methods (scrollIntoView, scrollTo, scrollBy) instead of guessing completion durations with setTimeout.',
   matcher: scrollCompletionEffectsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Programmatic smooth scroll (scrollTo, scrollIntoView, scrollBy) sequenced with setTimeout guessing scroll completion duration',
       'One-off scrollend or scroll debounce listener registered specifically to execute post-scroll effects after programmatic smooth scrolling',

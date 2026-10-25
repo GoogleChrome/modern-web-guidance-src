@@ -28,10 +28,10 @@ void test('language-detection: rule metadata', () => {
   assert.equal(languageDetectionJsRule.guideHash, LANGUAGE_DETECTION_GUIDE_HASH);
 
   assert.equal(languageDetectionRules.length, 2);
-  assert.ok(languageDetectionPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(languageDetectionPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(languageDetectionJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(languageDetectionJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(languageDetectionPackageRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(languageDetectionPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(languageDetectionJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(languageDetectionJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('language-detection dependency matcher', async (t) => {

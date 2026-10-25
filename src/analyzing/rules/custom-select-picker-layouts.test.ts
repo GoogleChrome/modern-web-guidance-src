@@ -25,8 +25,8 @@ void test('custom-select-picker-layouts: rule metadata', () => {
   );
 
   assert.equal(customSelectPickerLayoutsRules.length, 1);
-  assert.ok(customSelectPickerLayoutsJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(customSelectPickerLayoutsJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(customSelectPickerLayoutsJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(customSelectPickerLayoutsJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('custom-select-picker-layouts JS matcher', async (t) => {

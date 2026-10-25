@@ -91,7 +91,7 @@ export const scheduleTasksByPriorityRule: AnalyzerRule = {
   summary:
     'Flag requestIdleCallback calls used to schedule low-priority background work instead of modern prioritized task scheduling via scheduler.postTask(callback, { priority: "background" }).',
   matcher: scheduleTasksByPriorityMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Scheduling low-priority background work or idle tasks using requestIdleCallback(...) or window.requestIdleCallback(...) instead of scheduler.postTask(..., { priority: "background" }).',
       'Utility wrappers or deferred queues (e.g. callWhenIdle, runOnIdle) delegating task execution to requestIdleCallback without scheduler priority controls.',

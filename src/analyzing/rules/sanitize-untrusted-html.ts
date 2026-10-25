@@ -182,7 +182,7 @@ export const sanitizeUntrustedHtmlJsRule: AnalyzerRule = {
   summary:
     'Sanitized untrusted markup assigned to DOM insertion sinks (.innerHTML = DOMPurify.sanitize(...)) can be modernized with native setHTML().',
   matcher: sanitizerJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Assigning sanitized untrusted markup to DOM insertion sinks via element.innerHTML = DOMPurify.sanitize(...) or insertAdjacentHTML.',
     ],

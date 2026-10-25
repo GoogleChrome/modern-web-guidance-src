@@ -17,8 +17,8 @@ void test('scroll-target-on-load: rule metadata', () => {
   );
   assert.equal(SCROLL_TARGET_ON_LOAD_GUIDE_HASH.length, 12);
   assert.equal(scrollTargetOnLoadRules.length, 1);
-  assert.ok(scrollTargetOnLoadRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(scrollTargetOnLoadRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(scrollTargetOnLoadRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(scrollTargetOnLoadRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('scroll-target-on-load JS matcher', async (t) => {

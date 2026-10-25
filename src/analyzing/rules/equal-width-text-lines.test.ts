@@ -22,10 +22,10 @@ void test('equal-width-text-lines: rule metadata', () => {
   assert.equal(equalWidthTextLinesJsRule.guideHash, EQUAL_WIDTH_TEXT_LINES_GUIDE_HASH);
 
   assert.equal(equalWidthTextLinesRules.length, 2);
-  assert.ok(equalWidthTextLinesPackageRule.phase2Rubric.keepWhen.length > 0);
-  assert.ok(equalWidthTextLinesPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(equalWidthTextLinesJsRule.phase2Rubric.keepWhen.length > 0);
-  assert.ok(equalWidthTextLinesJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(equalWidthTextLinesPackageRule.verifierRubric.keepWhen.length > 0);
+  assert.ok(equalWidthTextLinesPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(equalWidthTextLinesJsRule.verifierRubric.keepWhen.length > 0);
+  assert.ok(equalWidthTextLinesJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('equal-width-text-lines dependency matcher', async (t) => {

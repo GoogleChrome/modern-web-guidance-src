@@ -41,16 +41,16 @@ void test('improve-text-layout-and-legibility: rule metadata', () => {
 
   assert.equal(improveTextLayoutAndLegibilityRules.length, 2);
   assert.ok(
-    improveTextLayoutAndLegibilityPackageRule.phase2Rubric.keepWhen.length >= 1,
+    improveTextLayoutAndLegibilityPackageRule.verifierRubric.keepWhen.length >= 1,
   );
   assert.ok(
-    improveTextLayoutAndLegibilityPackageRule.phase2Rubric.dropWhen.length >= 2,
+    improveTextLayoutAndLegibilityPackageRule.verifierRubric.dropWhen.length >= 2,
   );
   assert.ok(
-    improveTextLayoutAndLegibilityJsRule.phase2Rubric.keepWhen.length >= 1,
+    improveTextLayoutAndLegibilityJsRule.verifierRubric.keepWhen.length >= 1,
   );
   assert.ok(
-    improveTextLayoutAndLegibilityJsRule.phase2Rubric.dropWhen.length >= 2,
+    improveTextLayoutAndLegibilityJsRule.verifierRubric.dropWhen.length >= 2,
   );
 });
 

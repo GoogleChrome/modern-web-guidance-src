@@ -16,8 +16,8 @@ describe('manage-recurring-intervals rule', () => {
     assert.equal(manageRecurringIntervalsRule.guideId, 'capture-location-agnostic-data');
     assert.equal(manageRecurringIntervalsRule.guideHash, MANAGE_RECURRING_INTERVALS_GUIDE_HASH);
     assert.equal(manageRecurringIntervalsRule.guideHash.length, 12);
-    assert.ok(manageRecurringIntervalsRule.phase2Rubric.keepWhen.length >= 2);
-    assert.ok(manageRecurringIntervalsRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(manageRecurringIntervalsRule.verifierRubric.keepWhen.length >= 2);
+    assert.ok(manageRecurringIntervalsRule.verifierRubric.dropWhen.length >= 2);
     assert.equal(manageRecurringIntervalsRules.length, 0);
   });
 

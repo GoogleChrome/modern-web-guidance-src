@@ -422,7 +422,7 @@ export const conditionalAsyncDependenciesPackageRule: AnalyzerRule = {
   summary:
     'Async script loader dependencies (loadjs, scriptjs) for conditional dependency loading can be modernized with dynamic import() and top-level await.',
   matcher: conditionalAsyncDependenciesPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares loadjs or scriptjs in package.json dependencies to load conditional polyfills or asynchronous module dependencies.',
     ],
@@ -440,7 +440,7 @@ export const conditionalAsyncDependenciesJsRule: AnalyzerRule = {
   summary:
     'JavaScript loadjs(), $script(), and conditional document.createElement("script") dependency loaders should be modernized with dynamic import() and top-level await.',
   matcher: conditionalAsyncDependenciesJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls loadjs(...) or $script(...) to load conditional polyfills or local/module dependencies.',
       'Helper functions or feature-detection blocks dynamically create <script> elements with .src and .onload / addEventListener("load", ...) to load conditional modules.',

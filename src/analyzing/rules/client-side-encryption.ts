@@ -327,7 +327,7 @@ export const clientSideEncryptionJsRule: AnalyzerRule = {
   summary:
     'JavaScript encryption calls (CryptoJS.AES.encrypt/decrypt, sjcl.encrypt/decrypt) should be modernized with Web Cryptography API (crypto.subtle).',
   matcher: clientSideEncryptionJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls CryptoJS.AES.encrypt(), CryptoJS.AES.decrypt(), sjcl.encrypt(), or sjcl.decrypt() to encrypt or decrypt data in browser code without a crypto.subtle feature guard.',
     ],

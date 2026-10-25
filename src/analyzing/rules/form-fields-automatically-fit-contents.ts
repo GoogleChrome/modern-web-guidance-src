@@ -299,7 +299,7 @@ export const formFieldsAutomaticallyFitContentsRule: AnalyzerRule = {
   summary:
     'Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.',
   matcher: formFieldsAutomaticallyFitContentsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/width using scrollHeight or scrollWidth to auto-expand the field as the user types.',
       'A helper function resets .style.height to "auto", "0px", or "1px" and sets it to scrollHeight to fit contents.',

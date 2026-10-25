@@ -34,10 +34,10 @@ void test('highlight-text-ranges: rule metadata', () => {
   );
 
   assert.equal(highlightTextRangesRules.length, 2);
-  assert.ok(highlightTextRangesPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(highlightTextRangesPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(highlightTextRangesJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(highlightTextRangesJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(highlightTextRangesPackageRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(highlightTextRangesPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(highlightTextRangesJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(highlightTextRangesJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('highlight-text-ranges dependency matcher', async (t) => {

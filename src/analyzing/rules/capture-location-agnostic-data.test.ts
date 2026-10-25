@@ -41,16 +41,16 @@ void test('capture-location-agnostic-data: rule metadata', () => {
 
   assert.equal(captureLocationAgnosticDataRules.length, 3);
   assert.ok(
-    captureLocationAgnosticDataPackageRule.phase2Rubric.keepWhen.length >= 1,
+    captureLocationAgnosticDataPackageRule.verifierRubric.keepWhen.length >= 1,
   );
   assert.ok(
-    captureLocationAgnosticDataPackageRule.phase2Rubric.dropWhen.length >= 2,
+    captureLocationAgnosticDataPackageRule.verifierRubric.dropWhen.length >= 2,
   );
   assert.ok(
-    captureLocationAgnosticDataJsRule.phase2Rubric.keepWhen.length >= 1,
+    captureLocationAgnosticDataJsRule.verifierRubric.keepWhen.length >= 1,
   );
   assert.ok(
-    captureLocationAgnosticDataJsRule.phase2Rubric.dropWhen.length >= 2,
+    captureLocationAgnosticDataJsRule.verifierRubric.dropWhen.length >= 2,
   );
 });
 

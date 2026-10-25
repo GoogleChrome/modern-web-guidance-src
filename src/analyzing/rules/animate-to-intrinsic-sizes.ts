@@ -133,7 +133,7 @@ export const animateToIntrinsicSizesRule: AnalyzerRule = {
   summary:
     'CSS transition on max-height simulates intrinsic size animation; modernize with interpolate-size: allow-keywords or calc-size().',
   matcher: animateToIntrinsicSizesCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The CSS rule animates or transitions max-height (or transitions all alongside a max-height declaration) to simulate accordion, dropdown, drawer, or modal expansion/collapse.',
       'The element uses max-height as a proxy for natural content height because pure height cannot transition to auto without interpolate-size.',

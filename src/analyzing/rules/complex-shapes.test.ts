@@ -16,8 +16,8 @@ void test('complex-shapes: rule metadata', () => {
   assert.equal(complexShapesRule.guideHash, COMPLEX_SHAPES_GUIDE_HASH);
   assert.equal(COMPLEX_SHAPES_GUIDE_HASH.length, 12);
   assert.equal(complexShapesRules.length, 1);
-  assert.ok(complexShapesRule.phase2Rubric.keepWhen.length > 0);
-  assert.ok(complexShapesRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(complexShapesRule.verifierRubric.keepWhen.length > 0);
+  assert.ok(complexShapesRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('complex-shapes: positive brownfield matches', async (t) => {

@@ -233,7 +233,7 @@ export const languageDetectionPackageRule: AnalyzerRule = {
   summary:
     'Client-side language detection packages (franc, franc-min, franc-all, languagedetect, tinyld) in dependencies can be modernized with the built-in browser LanguageDetector API.',
   matcher: languageDetectionPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A client-side web application declares franc, franc-min, franc-all, languagedetect, or tinyld in package.json dependencies to classify text language in the browser.',
     ],
@@ -251,7 +251,7 @@ export const languageDetectionJsRule: AnalyzerRule = {
   summary:
     'JavaScript calls to franc(), francAll(), or new LanguageDetect().detect() can be modernized with the built-in browser LanguageDetector API.',
   matcher: languageDetectionJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Client-side JavaScript invokes franc(), francAll(), or new LanguageDetect().detect() to identify the natural language of user-provided or page text without a "LanguageDetector" in self guard.',
     ],

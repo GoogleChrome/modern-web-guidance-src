@@ -42,7 +42,7 @@ describe('context-slicer R47 fixes', () => {
       overwrite: true,
     });
 
-    const { astSlice } = sliceStructuredContext(
+    const { contextSlice } = sliceStructuredContext(
       'src/components/Header.vue',
       vueContent,
       11,
@@ -50,13 +50,13 @@ describe('context-slicer R47 fixes', () => {
     );
 
     // Must contain the enclosing mounted() method and target line marker
-    assert.match(astSlice, /mounted\(\)/);
-    assert.match(astSlice, />   11 \|       header\.classList\.toggle\("is-stuck", window\.scrollY > 0\);/);
+    assert.match(contextSlice, /mounted\(\)/);
+    assert.match(contextSlice, />   11 \|       header\.classList\.toggle\("is-stuck", window\.scrollY > 0\);/);
 
     // Must also include the unblanked <template> and <style> context
-    assert.match(astSlice, /\/\/ --- Template \/ Style Context ---/);
-    assert.match(astSlice, /<header id="site-header" class="sticky-top">/);
-    assert.match(astSlice, /#site-header\.is-stuck \{/);
+    assert.match(contextSlice, /\/\/ --- Template \/ Style Context ---/);
+    assert.match(contextSlice, /<header id="site-header" class="sticky-top">/);
+    assert.match(contextSlice, /#site-header\.is-stuck \{/);
   });
 
   it('Bug 2: walks past inner callback ArrowFunctions/FunctionExpressions to the enclosing function or top-level statement', () => {
@@ -174,10 +174,10 @@ describe('context-slicer R47 fixes', () => {
     const smallPkg = smallPkgLines.join('\n');
     const smallSliced = sliceStructuredContext('frontend/package.json', smallPkg, 8);
 
-    assert.match(smallSliced.astSlice, /"name": "express-pug-server"/);
-    assert.match(smallSliced.astSlice, /"bin": "\.\/bin\/server\.js"/);
-    assert.match(smallSliced.astSlice, /"express": "\^4\.18\.2"/);
-    assert.match(smallSliced.astSlice, />    8 \|     "sanitize-html": "\^2\.11\.0"/);
+    assert.match(smallSliced.contextSlice, /"name": "express-pug-server"/);
+    assert.match(smallSliced.contextSlice, /"bin": "\.\/bin\/server\.js"/);
+    assert.match(smallSliced.contextSlice, /"express": "\^4\.18\.2"/);
+    assert.match(smallSliced.contextSlice, />    8 \|     "sanitize-html": "\^2\.11\.0"/);
 
     // Build a > 200 line package.json where targetLine is at line 180
     const largePkgLines: string[] = [
@@ -201,14 +201,14 @@ describe('context-slicer R47 fixes', () => {
 
     const largeSliced = sliceStructuredContext('package.json', largePkg, 180);
     // Must include first 35 lines (name, bin, scripts, dependencies, express)
-    assert.match(largeSliced.astSlice, /"name": "large-monorepo-pkg"/);
-    assert.match(largeSliced.astSlice, /"bin": "\.\/cli\.js"/);
-    assert.match(largeSliced.astSlice, /"express": "\^4\.18\.2"/);
-    assert.match(largeSliced.astSlice, /   35 \|/);
+    assert.match(largeSliced.contextSlice, /"name": "large-monorepo-pkg"/);
+    assert.match(largeSliced.contextSlice, /"bin": "\.\/cli\.js"/);
+    assert.match(largeSliced.contextSlice, /"express": "\^4\.18\.2"/);
+    assert.match(largeSliced.contextSlice, /   35 \|/);
     // Must include ellipsis separator and +-30 window around line 180
-    assert.match(largeSliced.astSlice, /\.\.\./);
-    assert.match(largeSliced.astSlice, />  180 \|     "sanitize-html": "\^2\.11\.0",/);
-    assert.match(largeSliced.astSlice, /  150 \|/);
-    assert.match(largeSliced.astSlice, /  210 \|/);
+    assert.match(largeSliced.contextSlice, /\.\.\./);
+    assert.match(largeSliced.contextSlice, />  180 \|     "sanitize-html": "\^2\.11\.0",/);
+    assert.match(largeSliced.contextSlice, /  150 \|/);
+    assert.match(largeSliced.contextSlice, /  210 \|/);
   });
 });

@@ -176,7 +176,7 @@ export const sizeAwareStylingRule: AnalyzerRule = {
   summary:
     'ResizeObserver callbacks and window resize handlers that measure element dimensions to toggle classes or styles should be replaced with CSS container queries (@container).',
   matcher: sizeAwareStylingJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A ResizeObserver callback reads element dimensions (contentRect.width, borderBoxSize, offsetWidth, clientWidth) to toggle CSS classes (classList.add/remove/toggle, className =) or inline styles for responsive container breakpoints.',
       'A window resize event listener measures a container element offsetWidth, clientWidth, or getBoundingClientRect() to toggle responsive layout classes (addClass, removeClass, classList).',

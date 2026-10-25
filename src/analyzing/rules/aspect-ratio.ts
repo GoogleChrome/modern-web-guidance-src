@@ -130,7 +130,7 @@ export const aspectRatioCssRule: AnalyzerRule = {
   summary:
     'Detect CSS percentage padding-top/padding-bottom aspect-ratio box hacks that can be replaced with the CSS aspect-ratio property.',
   matcher: aspectRatioCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule uses the percentage `padding-top` or `padding-bottom` box hack (paired with `height: 0`, `position: relative` + absolutely positioned child, or a `::before`/`::after` pseudo-element) to maintain a fixed aspect ratio.',
     ],
@@ -197,7 +197,7 @@ export const aspectRatioDomRule: AnalyzerRule = {
   summary:
     'Detect <img> or <video> elements with width and height attributes paired with responsive width: 100%; height: auto CSS in the same file.',
   matcher: aspectRatioDomMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'An `<img>` or `<video>` element specifies static `width` and `height` attributes alongside responsive `width: 100%; height: auto` CSS where an explicit CSS `aspect-ratio` rule clarifies layout sizing.',
     ],

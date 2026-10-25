@@ -198,7 +198,7 @@ export const scrollTargetOnLoadRule: AnalyzerRule = {
   summary:
     'DOMContentLoaded and load listeners manually scrolling to an initial target via location.hash or scrollIntoView / window.scrollTo should be modernized with CSS scroll-initial-target: nearest.',
   matcher: scrollTargetOnLoadMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A DOMContentLoaded or load event listener reads location.hash or queries an initial target element and calls scrollIntoView() or window.scrollTo() on initial page load.',
       'useEffect / componentDidMount / DOMContentLoaded scrollIntoView() calls centering an initial tab, card, or chat item.',

@@ -17,8 +17,8 @@ void test('soft-edge-content-fade: rule metadata', () => {
   );
   assert.equal(SOFT_EDGE_CONTENT_FADE_GUIDE_HASH.length, 12);
   assert.equal(softEdgeContentFadeRules.length, 1);
-  assert.ok(softEdgeContentFadeRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(softEdgeContentFadeRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(softEdgeContentFadeRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(softEdgeContentFadeRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('soft-edge-content-fade: positive matches', async (t) => {

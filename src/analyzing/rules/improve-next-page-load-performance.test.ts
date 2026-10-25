@@ -41,16 +41,16 @@ void test('improve-next-page-load-performance: rule metadata', () => {
 
   assert.equal(improveNextPageLoadPerformanceRules.length, 2);
   assert.ok(
-    improveNextPageLoadPerformancePackageRule.phase2Rubric.keepWhen.length >= 1,
+    improveNextPageLoadPerformancePackageRule.verifierRubric.keepWhen.length >= 1,
   );
   assert.ok(
-    improveNextPageLoadPerformancePackageRule.phase2Rubric.dropWhen.length >= 2,
+    improveNextPageLoadPerformancePackageRule.verifierRubric.dropWhen.length >= 2,
   );
   assert.ok(
-    improveNextPageLoadPerformanceJsRule.phase2Rubric.keepWhen.length >= 1,
+    improveNextPageLoadPerformanceJsRule.verifierRubric.keepWhen.length >= 1,
   );
   assert.ok(
-    improveNextPageLoadPerformanceJsRule.phase2Rubric.dropWhen.length >= 2,
+    improveNextPageLoadPerformanceJsRule.verifierRubric.dropWhen.length >= 2,
   );
 });
 

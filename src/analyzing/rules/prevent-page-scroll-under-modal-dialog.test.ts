@@ -23,8 +23,8 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
       PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
     );
     assert.equal(preventPageScrollUnderModalDialogRule.guideHash.length, 12);
-    assert.ok(preventPageScrollUnderModalDialogRule.phase2Rubric.keepWhen.length >= 2);
-    assert.ok(preventPageScrollUnderModalDialogRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(preventPageScrollUnderModalDialogRule.verifierRubric.keepWhen.length >= 2);
+    assert.ok(preventPageScrollUnderModalDialogRule.verifierRubric.dropWhen.length >= 2);
 
     assert.equal(preventPageScrollUnderModalDialogCssRule.id, 'prevent-page-scroll-under-modal-dialog/css');
     assert.equal(preventPageScrollUnderModalDialogCssRule.guideId, 'prevent-page-scroll-under-modal-dialog');
@@ -32,7 +32,7 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
       preventPageScrollUnderModalDialogCssRule.guideHash,
       PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
     );
-    assert.ok(preventPageScrollUnderModalDialogCssRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(preventPageScrollUnderModalDialogCssRule.verifierRubric.dropWhen.length >= 2);
 
     assert.equal(
       preventPageScrollUnderModalDialogDependencyRule.id,
@@ -46,7 +46,7 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
       preventPageScrollUnderModalDialogDependencyRule.guideHash,
       PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
     );
-    assert.ok(preventPageScrollUnderModalDialogDependencyRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(preventPageScrollUnderModalDialogDependencyRule.verifierRubric.dropWhen.length >= 2);
     assert.equal(preventPageScrollUnderModalDialogRules.length, 2);
   });
 

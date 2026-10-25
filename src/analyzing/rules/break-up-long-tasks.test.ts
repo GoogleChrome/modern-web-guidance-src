@@ -16,8 +16,8 @@ describe('break-up-long-tasks rule', () => {
     assert.equal(breakUpLongTasksRule.guideId, 'break-up-long-tasks');
     assert.equal(breakUpLongTasksRule.guideHash, BREAK_UP_LONG_TASKS_GUIDE_HASH);
     assert.equal(breakUpLongTasksRule.guideHash.length, 12);
-    assert.ok(breakUpLongTasksRule.phase2Rubric.keepWhen.length >= 2);
-    assert.ok(breakUpLongTasksRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(breakUpLongTasksRule.verifierRubric.keepWhen.length >= 2);
+    assert.ok(breakUpLongTasksRule.verifierRubric.dropWhen.length >= 2);
     assert.equal(breakUpLongTasksRules.length, 1);
   });
 

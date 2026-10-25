@@ -303,7 +303,7 @@ export const exportHtmlMediaFromCanvasPackageRule: AnalyzerRule = {
   summary:
     'Legacy client-side canvas video/GIF encoder packages (ccapture.js, gifshot, whammy) should be modernized with HTMLCanvasElement.captureStream() and MediaRecorder.',
   matcher: exportHtmlMediaFromCanvasPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares ccapture.js, gifshot, or whammy in package.json dependencies to record or export video/frames from a canvas.',
     ],
@@ -321,7 +321,7 @@ export const exportHtmlMediaFromCanvasJsRule: AnalyzerRule = {
   summary:
     'JavaScript canvas recording calls (new CCapture, gifshot.createGIF, new Whammy.Video) should be modernized with canvas.captureStream() and MediaRecorder.',
   matcher: exportHtmlMediaFromCanvasJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript instantiates new CCapture(...), calls gifshot.createGIF(...), or invokes new Whammy.Video(...) to encode canvas frames in the browser.',
       'Manual frame-by-frame canvas extraction loops dump toDataURL frames into client-side encoders.',

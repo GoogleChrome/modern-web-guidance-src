@@ -23,8 +23,8 @@ void test('resolution-optimized-pseudo-elements: rule metadata', () => {
   );
   assert.equal(RESOLUTION_OPTIMIZED_PSEUDO_ELEMENTS_GUIDE_HASH.length, 12);
   assert.equal(resolutionOptimizedPseudoElementsRules.length, 1);
-  assert.ok(resolutionOptimizedPseudoElementsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(resolutionOptimizedPseudoElementsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(resolutionOptimizedPseudoElementsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(resolutionOptimizedPseudoElementsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('resolution-optimized-pseudo-elements: positive matches', async (t) => {

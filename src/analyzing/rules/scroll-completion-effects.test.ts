@@ -17,8 +17,8 @@ void test('scroll-completion-effects: rule metadata', () => {
   );
   assert.equal(SCROLL_COMPLETION_EFFECTS_GUIDE_HASH.length, 12);
   assert.equal(scrollCompletionEffectsRules.length, 1);
-  assert.ok(scrollCompletionEffectsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(scrollCompletionEffectsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(scrollCompletionEffectsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(scrollCompletionEffectsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('scroll-completion-effects: positive brownfield matches', async (t) => {

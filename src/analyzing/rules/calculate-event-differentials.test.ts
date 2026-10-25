@@ -16,8 +16,8 @@ describe('calculate-event-differentials rule', () => {
     assert.equal(calculateEventDifferentialsRule.guideId, 'calculate-event-differentials');
     assert.equal(calculateEventDifferentialsRule.guideHash, CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH);
     assert.equal(calculateEventDifferentialsRule.guideHash.length, 12);
-    assert.ok(calculateEventDifferentialsRule.phase2Rubric.keepWhen.length >= 2);
-    assert.ok(calculateEventDifferentialsRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(calculateEventDifferentialsRule.verifierRubric.keepWhen.length >= 2);
+    assert.ok(calculateEventDifferentialsRule.verifierRubric.dropWhen.length >= 2);
     assert.equal(calculateEventDifferentialsRules.length, 3);
   });
 

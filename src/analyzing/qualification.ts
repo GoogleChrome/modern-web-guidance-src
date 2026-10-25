@@ -7,6 +7,14 @@
  */
 import { wilsonInterval, type BinomialInterval } from './stats.ts';
 
+/**
+ * Authoritative three-tier qualification classification for shipping analyzer rules (D-048).
+ * - `'A'`: Human-verified precision >= 90% on blind held-out spot-checks or blind side-by-side replication decks (R35, R43/R49).
+ * - `'B'`: Eval Judge consensus >= 90% legit-modernize-target votes at n >= 35 (<= 2 cards per repo per D-047) on held-out split.
+ * - `'C'`: Low matcher misfire rate (not-old-pattern / n) <= 10% (and <= 3 misfires) on held-out samples with >= 1 legit finding, or deterministic single-purpose package/vendored replacement.
+ */
+export type QualificationTier = 'A' | 'B' | 'C';
+
 export interface GuideScorecardSummary {
   readonly guideId: string;
   readonly totalFindings: number;
@@ -733,10 +741,7 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
  * - Terminal qualification requires phase-1-only lower bound >= 0.90 at n >= 35 (R37).
  * - JSON qualification requires phase-1+2 lower bound >= 0.90 at n >= 35.
  */
-export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
-  readonly terminalQualified: readonly string[];
-  readonly jsonQualified: readonly string[];
-} {
+export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): readonly string[] {
   if (
     !scorecard ||
     scorecard.judgeAdmitted !== true ||
@@ -744,27 +749,17 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
       scorecard.judgeAlpha < 0.70 &&
       (scorecard.judgeAc1 === undefined || scorecard.judgeAc1 < 0.70))
   ) {
-    return { terminalQualified: [], jsonQualified: [] };
+    return [];
   }
 
   const guides = scorecard.guides ?? [];
-  const terminal = guides
+  return guides
     .filter((g) => {
-      const p1Lb = g.phase1Wilson95?.lower ?? 0;
-      const p1N = g.phase1Findings ?? 0;
+      const p1Lb = g.phase1Wilson95?.lower ?? g.wilson95.lower;
+      const p1N = g.phase1Findings ?? g.totalFindings;
       return p1Lb >= 0.90 && p1N >= 35;
     })
     .map((g) => g.guideId);
-
-  const json = guides
-    .filter((g) => {
-      const lb = g.wilson95.lower;
-      const n = g.totalFindings;
-      return lb >= 0.90 && n >= 35;
-    })
-    .map((g) => g.guideId);
-
-  return { terminalQualified: terminal, jsonQualified: json };
 }
 
 /**
@@ -773,7 +768,7 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
  * Criterion B (7-verdict Judge votes >= 90% at n=35), or Criterion C (low matcher misfire rate <= 10%
  * or deterministic single-purpose package/vendored replacement).
  */
-export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [
+export const QUALIFIED_GUIDE_IDS: readonly string[] = [
   'animate-element-entry-exit',
   'animate-to-intrinsic-sizes',
   'atrule-support-conditionals',
@@ -812,5 +807,4 @@ export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [
   'support-global-calendar-systems',
   'switch',
 ];
-export const JSON_QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;
-export const QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;
+

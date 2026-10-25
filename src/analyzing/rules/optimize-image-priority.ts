@@ -107,7 +107,7 @@ export const optimizeImagePriorityRule: AnalyzerRule = {
   summary:
     'LCP and hero images using <link rel="preload" as="image"> without fetchpriority/imagesrcset or <img loading="eager"> without fetchpriority="high" should use fetchpriority="high".',
   matcher: optimizeImagePriorityMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'An HTML or JSX template uses <link rel="preload" as="image"> without fetchpriority or imagesrcset to boost a statically discoverable hero image.',
       'A hero or LCP candidate <img loading="eager"> with an explicit hero/LCP class or id lacks fetchpriority="high", or uses the deprecated importance attribute.',

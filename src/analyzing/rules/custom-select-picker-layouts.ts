@@ -528,7 +528,7 @@ export const customSelectPickerLayoutsJsRule: AnalyzerRule = {
   summary:
     'JavaScript new Choices(), new TomSelect(), new SlimSelect(), and $(...).select2() calls configuring custom single-select option templates should be modernized with CSS appearance: base-select.',
   matcher: customSelectPickerLayoutsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript initializes new Choices(), new TomSelect(), new SlimSelect(), or $(...).select2() with custom option templates (callbackOnCreateTemplates, render.option, templateResult, templateSelection) on a single-select element.',
       'Custom div-based select option menus render rich option cards or grid layouts mirroring a single-select value.',

@@ -128,13 +128,13 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
         file: 'src/main.ts',
         line: 12,
         message: 'Legacy text balancing',
-        astSlice: 'const balanced = balanceText(el);',
+        contextSlice: 'const balanced = balanceText(el);',
       },
       {
         id: 'improve-text-layout-and-legibility',
         guideId: 'improve-text-layout-and-legibility',
         summary: 'Replace JS balancing with text-wrap: balance',
-        phase2Rubric: {
+        verifierRubric: {
           keepWhen: ['JS library balancing headings'],
           dropWhen: ['Canvas/WebGL rendering'],
         },

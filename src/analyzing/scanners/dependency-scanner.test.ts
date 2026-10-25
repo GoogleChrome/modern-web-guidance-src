@@ -188,7 +188,7 @@ describe('dependency-scanner R46 runtime & client-side filtering', () => {
     );
     assert.equal(fittextMatches.length, 1);
     assert.equal(fittextMatches[0]?.line, 1);
-    assert.equal(fittextMatches[0]?.kind, 'vendored-library');
+    assert.equal(fittextMatches[0]?.isVendoredLibrary, true);
     assert.match(fittextMatches[0]?.message ?? '', /jquery\.fittext\.js/);
 
     const bodyScrollRule: DependencyRuleMatcher = {

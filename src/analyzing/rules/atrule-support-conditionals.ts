@@ -274,7 +274,7 @@ export const atruleSupportConditionalsJsRule: AnalyzerRule = {
   summary:
     'JavaScript CSS at-rule support probes (Modernizr.atRule, Modernizr.keyframes, Modernizr.fontface, CSSRule.*_RULE, or stylesheet insertRule("@...") try/catch probes) should be modernized with native CSS @supports at-rule(@...).',
   matcher: atruleSupportConditionalsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls Modernizr.atRule() or reads Modernizr.keyframes / Modernizr.fontface to test whether a CSS at-rule is supported.',
       'JavaScript probes CSSRule.*_RULE constants or executes stylesheet.insertRule("@...") inside a try/catch block to detect CSS at-rule support.',

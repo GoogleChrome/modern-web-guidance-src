@@ -124,7 +124,7 @@ export const animateToFromTopLayerRule: AnalyzerRule = {
   summary:
     'animationend and transitionend listeners on <dialog> or popover elements that call .close() or .hidePopover() after a closing class animation should be modernized with @starting-style, transition-behavior: allow-discrete, and overlay.',
   matcher: animateToFromTopLayerMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'An animationend or transitionend listener on a <dialog> or popover element calls .close() or .hidePopover() after a closing animation finishes.',
       'Double requestAnimationFrame or setTimeout(0) handlers toggle open/closing classes on top-layer dialog or popover elements.',

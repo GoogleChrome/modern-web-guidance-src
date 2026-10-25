@@ -16,7 +16,7 @@ import {
   type CanaryCard,
   type JudgeRunOptions,
   type JudgeVerdict,
-} from './judge.ts';
+} from './detection-eval.ts';
 import {
   ANALYZER_INTERNAL_DIR,
   CARDS_DIR,

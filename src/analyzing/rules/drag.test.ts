@@ -18,14 +18,14 @@ describe('drag rules', () => {
     assert.equal(dragPackageRule.guideId, 'drag');
     assert.equal(dragPackageRule.guideHash, DRAG_GUIDE_HASH);
     assert.equal(dragPackageRule.guideHash.length, 12);
-    assert.ok(dragPackageRule.phase2Rubric.keepWhen.length >= 1);
-    assert.ok(dragPackageRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(dragPackageRule.verifierRubric.keepWhen.length >= 1);
+    assert.ok(dragPackageRule.verifierRubric.dropWhen.length >= 2);
 
     assert.equal(dragJsRule.id, 'drag/js-mouse-touch-drag');
     assert.equal(dragJsRule.guideId, 'drag');
     assert.equal(dragJsRule.guideHash, DRAG_GUIDE_HASH);
-    assert.ok(dragJsRule.phase2Rubric.keepWhen.length >= 1);
-    assert.ok(dragJsRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(dragJsRule.verifierRubric.keepWhen.length >= 1);
+    assert.ok(dragJsRule.verifierRubric.dropWhen.length >= 2);
 
     assert.equal(dragRules.length, 1);
   });

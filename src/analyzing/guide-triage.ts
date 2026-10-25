@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Gate0Classification, Gate0Entry, Gate0EvidenceSource } from './schema.ts';
-import { getGeminiApiKey } from './judge.ts';
+import { getGeminiApiKey } from './detection-eval.ts';
 import { ANALYZER_INTERNAL_DIR } from './paths.ts';
 
 export {
@@ -314,6 +314,8 @@ async function fetchWithRetry(
  * Classifies a single published guide via Gemini LLM using full markdown content.
  * Evaluates 1 guide per LLM call and fails loudly on API or schema errors.
  */
+export const triageGuide = classifyGuideGate0;
+
 export async function classifyGuideGate0(
   guide: Gate0GuideInput,
   options?: Gate0Options,

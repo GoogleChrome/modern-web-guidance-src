@@ -292,7 +292,7 @@ export const autofillPaymentFormRule: AnalyzerRule = {
   summary:
     'Payment card input in checkout form should specify standard autocomplete="cc-*" attributes and avoid type="password" or type="number".',
   matcher: autofillPaymentFormMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The input is part of a payment, checkout, or billing form collecting payment card details (card number, expiration, security code, or cardholder name).',
       'The payment card input lacks an autocomplete attribute (e.g. autocomplete="cc-number", "cc-exp", "cc-csc", "cc-name") or specifies autocomplete="off", preventing browser payment autofill.',

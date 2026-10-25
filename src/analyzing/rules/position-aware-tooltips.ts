@@ -371,7 +371,7 @@ export const positionAwareTooltipsJsRule: AnalyzerRule = {
   summary:
     'JavaScript createPopper() and computePosition() calls positioning tooltip elements should be modernized with CSS Anchor Positioning, position-try-fallbacks, and @container anchored(fallback: ...).',
   matcher: positionAwareTooltipsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls createPopper() or computePosition() to position a tooltip element (with flip() middleware or viewport boundary adjustments).',
       'Custom JS viewport collision detection flips tooltip placement classes when overflowing the viewport.',

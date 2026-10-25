@@ -47,7 +47,7 @@ export const stylingWebComponentsRule: AnalyzerRule = {
   summary:
     'Avoid non-standard :host-context() pseudo-classes in web component styles; modernize theming using inherited CSS custom properties or container style queries.',
   matcher: stylingWebComponentsCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The component stylesheet uses non-standard :host-context(...) to style based on ancestor Light DOM state instead of standard inherited CSS custom properties or ::part().',
       'The stylesheet attempts ancestor-based theme matching via :host-context([theme="dark"]) or :host-context([dir="rtl"]) inside shadow DOM stylesheets.',

@@ -20,8 +20,8 @@ void test('scroll-progress-indicator: rule metadata', () => {
   );
   assert.equal(SCROLL_PROGRESS_INDICATOR_GUIDE_HASH.length, 12);
   assert.equal(scrollProgressIndicatorRules.length, 1);
-  assert.ok(scrollProgressIndicatorRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(scrollProgressIndicatorRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(scrollProgressIndicatorRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(scrollProgressIndicatorRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('scroll-progress-indicator JS matcher', async (t) => {

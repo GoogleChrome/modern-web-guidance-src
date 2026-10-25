@@ -148,7 +148,7 @@ export const batchAnalyticsEventsRule: AnalyzerRule = {
   summary:
     'unload and beforeunload event listeners dispatching analytics via navigator.sendBeacon(), fetch(), or synchronous XMLHttpRequest should be modernized with visibilitychange or pagehide listeners and navigator.sendBeacon() or fetch({ keepalive: true }).',
   matcher: batchAnalyticsEventsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'An unload or beforeunload event listener dispatches analytics or telemetry via navigator.sendBeacon(), fetch(), or synchronous XMLHttpRequest (xhr.open("POST", url, false)).',
     ],

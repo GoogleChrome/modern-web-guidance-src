@@ -40,10 +40,10 @@ void test('interest-triggered-action-previews: rule metadata', () => {
   );
 
   assert.equal(interestTriggeredActionPreviewsRules.length, 2);
-  assert.ok(interestTriggeredActionPreviewsPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(interestTriggeredActionPreviewsPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(interestTriggeredActionPreviewsJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(interestTriggeredActionPreviewsJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(interestTriggeredActionPreviewsPackageRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(interestTriggeredActionPreviewsPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(interestTriggeredActionPreviewsJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(interestTriggeredActionPreviewsJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('interest-triggered-action-previews dependency matcher', async (t) => {

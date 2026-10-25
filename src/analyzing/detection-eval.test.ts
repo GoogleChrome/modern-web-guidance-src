@@ -28,7 +28,7 @@ import {
   type CanaryCard,
   type GuideSummaryInfo,
   type JudgeResult,
-} from './judge.ts';
+} from './detection-eval.ts';
 
 const SAMPLE_GUIDE_SUMMARY: GuideSummaryInfo = {
   guideId: 'calculate-event-differentials',

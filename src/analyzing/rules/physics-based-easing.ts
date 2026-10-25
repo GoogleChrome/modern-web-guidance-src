@@ -326,7 +326,7 @@ export const physicsBasedEasingJsRule: AnalyzerRule = {
   summary:
     'JavaScript spring({ stiffness, damping }) calls in popmotion or react-motion should be modernized with the CSS linear() easing function.',
   matcher: physicsBasedEasingJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls spring({ stiffness, damping, ... }) from popmotion or react-motion to interpolate UI element transitions without a CSS.supports("animation-timing-function", "linear(0, 1)") fallback guard.',
     ],

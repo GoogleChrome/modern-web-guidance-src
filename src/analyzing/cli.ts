@@ -6,12 +6,11 @@ import { parseArgs } from 'node:util';
 import { SUSPENDED_QUALIFIED_GUIDE_IDS } from './qualification.ts';
 import {
   ALL_RULES,
-  JSON_QUALIFIED_RULES,
   QUALIFIED_GUIDE_IDS,
-  TERMINAL_QUALIFIED_RULES,
+  QUALIFIED_RULES,
 } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
-import type { AnalyzerFinding, AnalyzerRule, Phase2Rubric } from './schema.ts';
+import type { AnalyzerFinding, AnalyzerRule, VerifierRubric } from './schema.ts';
 
 export type GuideConfidenceTier = 'qualified' | 'experimental';
 
@@ -33,7 +32,7 @@ export interface AnalyzeCliGuideGroup {
   readonly tier: GuideConfidenceTier;
   readonly summary: string;
   readonly retrieveCommand: string;
-  readonly phase2Rubric?: Phase2Rubric;
+  readonly verifierRubric?: VerifierRubric;
   readonly count: number;
   readonly findings: readonly AnalyzeCliFinding[];
 }
@@ -79,8 +78,7 @@ Arguments:
 Options:
   --json             Output findings as structured JSON for coding agents
   --guide <guideId>  Filter analysis to a specific guide ID
-  --all-rules        Include all experimental rules (pass to scan all available rules)
-  --experimental     Alias for --all-rules
+  --experimental     Include all experimental rules (alias: --all-rules)
   -h, --help         Show this help message
 `.trim();
 
@@ -93,10 +91,10 @@ export function buildQualificationStatusNotice(
     const suspendedCount = suspendedGuides.length;
     const countPhrase =
       suspendedCount > 0 ? ` (${suspendedCount} previously qualified guides)` : '';
-    return `Default qualified guides${countPhrase} are currently suspended pending re-validation (D-041 / D-042). 0 rules were run; pass --all-rules (or --experimental) for experimental findings.`;
+    return `Default qualified guides${countPhrase} are currently suspended pending re-validation (D-041 / D-042). 0 rules were run; pass --experimental (or --all-rules) for experimental findings.`;
   }
   if (suspendedGuides.length > 0) {
-    return `${suspendedGuides.length} previously qualified ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} currently suspended pending re-validation (D-041 / D-042); only ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide was' : 'guides were'} scanned. Pass --all-rules (or --experimental) for experimental findings.`;
+    return `${suspendedGuides.length} previously qualified ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} currently suspended pending re-validation (D-041 / D-042); only ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide was' : 'guides were'} scanned. Pass --experimental (or --all-rules) for experimental findings.`;
   }
   return undefined;
 }
@@ -126,7 +124,7 @@ export function formatHumanReadable(
       return [
         `Modern Web Guidance Analyzer: ${targetDir}`,
         `Default qualified guides are currently suspended pending re-validation (D-041 / D-042); 0 rules were run.`,
-        `Pass --all-rules (or --experimental) for experimental findings across ${ALL_RULES.length} rules.`,
+        `Pass --experimental (or --all-rules) for experimental findings across ${ALL_RULES.length} rules.`,
         '',
       ].join('\n');
     }
@@ -147,7 +145,7 @@ export function formatHumanReadable(
   ];
   if (isDefaultMode && suspendedGuides.length > 0) {
     lines.push(
-      `Note: ${suspendedGuides.length} ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} currently suspended pending re-validation (${suspendedGuides.join(', ')}); pass --all-rules for experimental findings.`,
+      `Note: ${suspendedGuides.length} ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} currently suspended pending re-validation (${suspendedGuides.join(', ')}); pass --experimental (or --all-rules) for experimental findings.`,
     );
   }
   lines.push(
@@ -161,13 +159,13 @@ export function formatHumanReadable(
     const badge = g.tier === 'qualified' ? '[qualified]' : '[experimental]';
     lines.push(`* ${badge} ${g.guideId} (${g.count} ${g.count === 1 ? 'finding' : 'findings'})`);
     lines.push(`  Summary: ${g.summary}`);
-    if (g.phase2Rubric) {
-      const keepText = Array.isArray(g.phase2Rubric.keepWhen)
-        ? g.phase2Rubric.keepWhen.join('; ')
-        : String(g.phase2Rubric.keepWhen);
-      const dropText = Array.isArray(g.phase2Rubric.dropWhen)
-        ? g.phase2Rubric.dropWhen.join('; ')
-        : String(g.phase2Rubric.dropWhen);
+    if (g.verifierRubric) {
+      const keepText = Array.isArray(g.verifierRubric.keepWhen)
+        ? g.verifierRubric.keepWhen.join('; ')
+        : String(g.verifierRubric.keepWhen);
+      const dropText = Array.isArray(g.verifierRubric.dropWhen)
+        ? g.verifierRubric.dropWhen.join('; ')
+        : String(g.verifierRubric.dropWhen);
       lines.push(`  Keep when: ${keepText}`);
       lines.push(`  Drop when: ${dropText}`);
     }
@@ -256,9 +254,7 @@ export async function runAnalyzeCli(
   const defaultRules =
     useAllRules || Boolean(guideFilter)
       ? ALL_RULES
-      : isJson
-        ? JSON_QUALIFIED_RULES
-        : TERMINAL_QUALIFIED_RULES;
+      : QUALIFIED_RULES;
   const activeRulesList = options?.rules ?? defaultRules;
   const activeRules = guideFilter
     ? activeRulesList.filter((r) => r.guideId === guideFilter)
@@ -289,13 +285,13 @@ export async function runAnalyzeCli(
   }
 
   const summaryMap = new Map<string, string>();
-  const rubricMap = new Map<string, Phase2Rubric>();
+  const rubricMap = new Map<string, VerifierRubric>();
   for (const r of ALL_RULES) {
     if (!summaryMap.has(r.guideId)) {
       summaryMap.set(r.guideId, r.summary);
     }
     if (!rubricMap.has(r.guideId)) {
-      rubricMap.set(r.guideId, r.phase2Rubric);
+      rubricMap.set(r.guideId, r.verifierRubric);
     }
   }
 
@@ -311,21 +307,21 @@ export async function runAnalyzeCli(
     });
 
     const summary = summaryMap.get(gid) ?? `Modernize legacy web pattern for ${gid}`;
-    const phase2Rubric = rubricMap.get(gid);
+    const verifierRubric = rubricMap.get(gid);
     const tier = getGuideConfidenceTier(gid);
     return {
       guideId: gid,
       tier,
       summary,
       retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
-      ...(phase2Rubric ? { phase2Rubric } : {}),
+      ...(verifierRubric ? { verifierRubric } : {}),
       count: guideFindings.length,
       findings: guideFindings.map((f) => ({
         ruleId: f.ruleId,
         file: f.file,
         line: f.line,
         message: f.message,
-        codeSnippet: f.codeSnippet || f.astSlice,
+        codeSnippet: f.codeSnippet || f.contextSlice,
       })),
     };
   });

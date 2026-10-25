@@ -23,8 +23,8 @@ void test('scrollability-affordance-hints: rule metadata', () => {
   );
   assert.equal(SCROLLABILITY_AFFORDANCE_HINTS_GUIDE_HASH.length, 12);
   assert.equal(scrollabilityAffordanceHintsRules.length, 1);
-  assert.ok(scrollabilityAffordanceHintsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(scrollabilityAffordanceHintsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(scrollabilityAffordanceHintsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(scrollabilityAffordanceHintsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('scrollability-affordance-hints JS matcher', async (t) => {

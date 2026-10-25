@@ -18,10 +18,10 @@ void test('contrast-color: rule metadata', () => {
   assert.equal(contrastColorRule.guideHash, CONTRAST_COLOR_GUIDE_HASH);
   assert.equal(CONTRAST_COLOR_GUIDE_HASH.length, 12);
   assert.equal(contrastColorRules.length, 2);
-  assert.ok(contrastColorJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(contrastColorJsRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(contrastColorCssRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(contrastColorCssRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(contrastColorJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(contrastColorJsRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(contrastColorCssRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(contrastColorCssRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('contrast-color: positive brownfield matches', async (t) => {

@@ -130,7 +130,7 @@ export const checkboxRule: AnalyzerRule = {
   summary:
     'Hiding or stripping native checkboxes with opacity: 0, appearance: none, or custom sibling pseudo-elements should be replaced with native accent-color.',
   matcher: checkboxCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The CSS rule targets checkboxes (input[type="checkbox"], .custom-checkbox, .custom-control-input) and hides or strips native appearance (opacity: 0, appearance: none) alongside sibling custom-box selectors (+ label, ~ label, + span, ::before, ::after) or custom checkbox styling.',
       'The CSS rule styles custom checkbox checkmark icons on sibling pseudo-elements (:checked + label::before / :checked + span::before) without using accent-color.',

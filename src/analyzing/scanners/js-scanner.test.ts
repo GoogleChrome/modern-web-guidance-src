@@ -10,7 +10,7 @@ function createCallExpressionRule(id: string, guideId: string, targetCallee: str
     guideId,
     guideHash: '0123456789ab',
     summary: `Detects calls to ${targetCallee}`,
-    phase2Rubric: {
+    verifierRubric: {
       keepWhen: [`Calls ${targetCallee}`],
       dropWhen: ['Already migrated'],
     },

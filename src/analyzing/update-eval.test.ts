@@ -9,7 +9,7 @@ import {
   runBadPatchSensitivitySuite,
   validateFixPatch,
   type FixPatch,
-} from './fix-harness.ts';
+} from './update-eval.ts';
 import { ALL_RULES } from './rules/index.ts';
 
 describe('locateFindingLineInContent', () => {

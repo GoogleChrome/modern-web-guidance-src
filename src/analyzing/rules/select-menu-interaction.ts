@@ -157,7 +157,7 @@ export const selectMenuInteractionCssRule: AnalyzerRule = {
   summary:
     'CSS select:invalid selectors without :user-invalid should be modernized with select:user-invalid so required dropdowns only show error styles after interaction.',
   matcher: selectMenuInteractionCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule uses select:invalid without :user-invalid to apply error styling to a required <select> menu.',
     ],
@@ -175,7 +175,7 @@ export const selectMenuInteractionJsRule: AnalyzerRule = {
   summary:
     'JavaScript blur/change listeners checking select.value === "" to toggle invalid classes should be modernized with CSS select:user-invalid and <select required>.',
   matcher: selectMenuInteractionJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A change or blur event listener on a <select> element checks select.value === "" or !select.value and toggles an invalid, error, or touched class or aria-invalid attribute.',
     ],

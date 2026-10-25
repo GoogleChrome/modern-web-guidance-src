@@ -371,7 +371,7 @@ export function scanVendoredLibraryFile(
     matches.push({
       line: 1,
       message: messageText,
-      kind: 'vendored-library',
+      isVendoredLibrary: true,
     });
   }
 

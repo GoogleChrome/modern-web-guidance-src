@@ -193,7 +193,7 @@ export const autofillSignInFormRule: AnalyzerRule = {
   summary:
     'Password input in sign-in or credential form should specify autocomplete="current-password" or autocomplete="new-password".',
   matcher: autofillSignInFormMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The password input is part of a user-facing authentication, registration, password change, or sign-in form.',
       'The password input lacks an autocomplete attribute or specifies autocomplete="off" on credentials, preventing browser password manager autofill.',

@@ -17,8 +17,8 @@ void test('custom-button-actions: rule metadata', () => {
   );
   assert.equal(CUSTOM_BUTTON_ACTIONS_GUIDE_HASH.length, 12);
   assert.equal(customButtonActionsRules.length, 1);
-  assert.ok(customButtonActionsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(customButtonActionsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(customButtonActionsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(customButtonActionsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('custom-button-actions: positive brownfield matches', async (t) => {

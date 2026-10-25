@@ -1,6 +1,43 @@
 import type { SourceFile } from 'ts-morph';
 
 /**
+ * Axis 1 of Guide Triage: How easy it is to spot the guide's cleanest legacy sub-pattern statically without false alarms.
+ * - `'direct-token'`: A dedicated vendor prefix (`::-webkit-scrollbar`, `-webkit-mask-image`), deprecated attribute (`importance="high"`), single-purpose package (`autosize`), or dedicated idiom (`.fadeOut()`) identifies the pattern directly (0–3% static misfire).
+ * - `'structural-ast'`: Standard HTML, CSS, or JS combined in a 2–3 clause AST shape that proves intent (`<dialog>` backdrop click listener checking `e.target === dialog` and calling `.close()`, or a boolean `.is-stuck` class toggle on a `position: sticky` header; 3–10% static misfire).
+ * - `'needs-verifier'`: A real legacy pattern written with an everyday general-purpose API (`setTimeout`, `ResizeObserver`, `document.visibilityState`, continuous `getBoundingClientRect` coordinate math) where static syntax looks identical to normal code (>50% static misfire; requires LLM Verifier or deferral).
+ * - `'no-legacy-pattern'`: No client-side legacy code pattern to find — either a greenfield platform capability (`passkey-registration`, `agentic-forms`) or a guide whose applicability depends on human visual/semantic judgment (`adapt-scrollbar-to-contrast-preferences`, `accessible-generated-content`).
+ */
+export type Detection =
+  | 'direct-token'
+  | 'structural-ast'
+  | 'needs-verifier'
+  | 'no-legacy-pattern';
+
+/**
+ * Axis 2 of Guide Triage: What kind of code change the guide asks for (`'n/a'` when `Detection` is `'no-legacy-pattern'`).
+ * - `'local-swap'`: Replacing or adding a property, selector, attribute, or call at the same site in the same language (including adding `autocomplete` attributes to form inputs or replacing `::-webkit-scrollbar` with `scrollbar-width` / `scrollbar-color`).
+ * - `'cross-layer-refactor'`: Deleting imperative JS listeners, observers, or helper libraries and moving behavior into declarative CSS or HTML (`@starting-style`, `animation-timeline`, `:has()`, `field-sizing`, `closedby="any"`).
+ * - `'widget-recipe'`: Coordinating HTML structure, CSS layout/styling, and JS behavior across multiple parts of a composite UI widget (`navigation-drawer`, `anchor-positioning-tab-underline`, `menu`).
+ * - `'n/a'`: Applicable when `detection === 'no-legacy-pattern'`.
+ */
+export type UpdateScope =
+  | 'local-swap'
+  | 'cross-layer-refactor'
+  | 'widget-recipe'
+  | 'n/a';
+
+export interface GuideTriage {
+  readonly guideId: string;
+  readonly guideHash: string;
+  readonly detection: Detection;
+  readonly updateScope: UpdateScope;
+  readonly targetSubPattern: string;
+  readonly replaces: readonly string[];
+  readonly doesNotReplace: readonly string[];
+  readonly reason: string;
+}
+
+/**
  * Gate 0 triage bucket classifying whether a published feature guide has a statically detectable brownfield target (`D-005`):
  * - `'detectable'`: The guide replaces a concrete, statically identifiable legacy browser API, CSS property/selector workaround, DOM markup pattern, or third-party package in brownfield code.
  * - `'ui-recipe-multi-part'`: The guide teaches a multi-element UI component or architectural recipe (e.g. carousel, tabs, navigation drawer) where legacy implementations vary wildly and lack a single high-precision static code hook.
@@ -36,16 +73,19 @@ export interface Gate0Entry {
   readonly groundingSources?: readonly string[];
 }
 
-export interface Phase2Rubric {
+export interface VerifierRubric {
   readonly keepWhen: readonly string[];
   readonly dropWhen: readonly string[];
 }
+
+export type Phase2Rubric = VerifierRubric;
 
 export interface AnalyzerMatch {
   readonly line: number;
   readonly column?: number;
   readonly message: string;
-  readonly kind?: 'vendored-library';
+  readonly isVendoredLibrary?: boolean;
+  readonly subPattern?: string;
 }
 
 export interface DomElementView {
@@ -141,7 +181,7 @@ export interface AnalyzerRule {
   readonly guideHash: string;
   readonly summary: string;
   readonly matcher: RuleMatcher;
-  readonly phase2Rubric: Phase2Rubric;
+  readonly verifierRubric: VerifierRubric;
 }
 
 export interface AnalyzerFinding {
@@ -155,6 +195,7 @@ export interface AnalyzerFinding {
   readonly line: number;
   readonly message: string;
   readonly codeSnippet: string;
-  readonly astSlice: string;
-  readonly kind?: 'vendored-library';
+  readonly contextSlice: string;
+  readonly isVendoredLibrary?: boolean;
+  readonly subPattern?: string;
 }

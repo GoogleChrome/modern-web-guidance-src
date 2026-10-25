@@ -129,7 +129,7 @@ export const scrollSnapStateSyncRule: AnalyzerRule = {
   summary:
     'Debounced scroll listeners (with setTimeout/clearTimeout) and scrollend listeners computing snapped index via Math.round(el.scrollLeft / ...) or Math.round(el.scrollTop / ...) should be modernized with the scrollsnapchange event.',
   matcher: scrollSnapStateSyncMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A scroll listener with setTimeout / clearTimeout debounce or a scrollend listener without scrollsnapchange computes the settled snap index via Math.round(el.scrollLeft / width) or Math.round(el.scrollTop / height) to sync state after snapping finishes.',
     ],

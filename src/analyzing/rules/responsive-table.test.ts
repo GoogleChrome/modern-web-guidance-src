@@ -22,10 +22,10 @@ void test('responsive-table: rule metadata', () => {
   assert.equal(responsiveTableCssRule.guideHash, RESPONSIVE_TABLE_GUIDE_HASH);
 
   assert.equal(responsiveTableRules.length, 2);
-  assert.ok(responsiveTablePackageRule.phase2Rubric.keepWhen.length > 0);
-  assert.ok(responsiveTablePackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(responsiveTableCssRule.phase2Rubric.keepWhen.length > 0);
-  assert.ok(responsiveTableCssRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(responsiveTablePackageRule.verifierRubric.keepWhen.length > 0);
+  assert.ok(responsiveTablePackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(responsiveTableCssRule.verifierRubric.keepWhen.length > 0);
+  assert.ok(responsiveTableCssRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('responsive-table dependency matcher', async (t) => {

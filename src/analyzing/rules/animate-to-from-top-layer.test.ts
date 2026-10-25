@@ -17,8 +17,8 @@ void test('animate-to-from-top-layer: rule metadata', () => {
   );
   assert.equal(ANIMATE_TO_FROM_TOP_LAYER_GUIDE_HASH.length, 12);
   assert.equal(animateToFromTopLayerRules.length, 1);
-  assert.ok(animateToFromTopLayerRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(animateToFromTopLayerRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(animateToFromTopLayerRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(animateToFromTopLayerRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('animate-to-from-top-layer JS matcher', async (t) => {

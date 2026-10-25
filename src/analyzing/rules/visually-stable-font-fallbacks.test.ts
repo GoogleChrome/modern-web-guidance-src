@@ -40,10 +40,10 @@ void test('visually-stable-font-fallbacks: rule metadata', () => {
   );
 
   assert.equal(visuallyStableFontFallbacksRules.length, 2);
-  assert.ok(visuallyStableFontFallbacksPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(visuallyStableFontFallbacksPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(visuallyStableFontFallbacksJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(visuallyStableFontFallbacksJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(visuallyStableFontFallbacksPackageRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(visuallyStableFontFallbacksPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(visuallyStableFontFallbacksJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(visuallyStableFontFallbacksJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('visually-stable-font-fallbacks dependency matcher', async (t) => {

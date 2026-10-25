@@ -17,8 +17,8 @@ void test('detect-initial-visibility-state: rule metadata', () => {
   );
   assert.equal(DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH.length, 12);
   assert.equal(detectInitialVisibilityStateRules.length, 1);
-  assert.ok(detectInitialVisibilityStateRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(detectInitialVisibilityStateRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(detectInitialVisibilityStateRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(detectInitialVisibilityStateRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('detect-initial-visibility-state: positive matches', async (t) => {

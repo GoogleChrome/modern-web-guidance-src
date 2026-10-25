@@ -20,8 +20,8 @@ void test('state-aware-sticky-headers: rule metadata', () => {
   );
   assert.equal(STATE_AWARE_STICKY_HEADERS_GUIDE_HASH.length, 12);
   assert.equal(stateAwareStickyHeadersRules.length, 1);
-  assert.ok(stateAwareStickyHeadersRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(stateAwareStickyHeadersRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(stateAwareStickyHeadersRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(stateAwareStickyHeadersRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('state-aware-sticky-headers JS matcher', async (t) => {

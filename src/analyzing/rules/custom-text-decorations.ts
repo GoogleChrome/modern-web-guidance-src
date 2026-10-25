@@ -120,7 +120,7 @@ export const customTextDecorationsRule: AnalyzerRule = {
   summary:
     'Use native CSS text-decoration shorthand, text-decoration-thickness, and text-underline-offset instead of border-bottom and padding-bottom underline hacks.',
   matcher: customTextDecorationsCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'CSS border-bottom and padding-bottom underline simulation on inline text or link selectors paired with text-decoration: none',
       'CSS linear-gradient underline background hacks on inline text or link elements paired with text-decoration: none',

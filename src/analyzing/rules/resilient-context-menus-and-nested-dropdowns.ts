@@ -290,7 +290,7 @@ export const resilientContextMenusAndNestedDropdownsRule: AnalyzerRule = {
   summary:
     'Legacy Bootstrap dropdown triggers should be modernized with native popover and CSS Anchor Positioning.',
   matcher: resilientContextMenusDomMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'An HTML or JSX element uses Bootstrap legacy data-toggle="dropdown" or data-bs-toggle="dropdown" to toggle a dropdown menu or contextual action list.',
       'A dropdown, menu, or context menu is positioned using Popper.js, Floating UI computePosition(), or jQuery .dropdown("toggle").',
@@ -311,7 +311,7 @@ export const resilientContextMenusAndNestedDropdownsPositioningRule: AnalyzerRul
   summary:
     'Imperative dropdown/context-menu positioning via Popper.js, Floating UI, jQuery .dropdown(), or manual getBoundingClientRect clamping should be replaced with native popover and CSS Anchor Positioning.',
   matcher: resilientContextMenusJsMatcher,
-  phase2Rubric: resilientContextMenusAndNestedDropdownsRule.phase2Rubric,
+  verifierRubric: resilientContextMenusAndNestedDropdownsRule.verifierRubric,
 };
 
 // Retired default array per O8 slice 3 audit and critical rules

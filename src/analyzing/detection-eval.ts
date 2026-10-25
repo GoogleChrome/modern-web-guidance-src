@@ -30,6 +30,16 @@ import {
 export const JUDGE_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+/**
+ * Canonical 7-verdict evaluation taxonomy for grading detected findings (D-040, D-045, D-048).
+ * - `'legit-modernize-target'`: Genuine legacy pattern where applying the guide is a clean win (the code matches the legacy/"Before" pattern or library workaround replaced by this guide, is not an intentional fallback, covers needed capabilities, and has meaningful payoff).
+ * - `'not-old-pattern'`: Matcher misfired — this code isn't even doing the legacy pattern the guide replaces (detector mistake / token collision).
+ * - `'fallback-or-guard'`: Intentional fallback, `@supports` check, feature guard, ponyfill, or polyfill.
+ * - `'loses-behavior'`: Old pattern, but modern feature lacks capabilities used here (non-1:1 library component migration, custom side effects, order-dependent geometry, incompatible API contract, or unsupported library feature).
+ * - `'no-payoff'`: Matches old syntax and modern feature applies, but rewriting here changes nothing meaningful (no-op syntax swap / zero-payoff syntax swap).
+ * - `'guide-wrong'`: The guide's advice is bad or overstates what the feature does for this case (the guide itself is wrong to call this pattern a problem).
+ * - `'unsure'`: Insufficient context in snippet/file to tell.
+ */
 export type CanonicalJudgeVerdict =
   | 'legit-modernize-target'
   | 'not-old-pattern'

@@ -16,8 +16,8 @@ describe('schedule-tasks-by-priority rule', () => {
     assert.equal(scheduleTasksByPriorityRule.guideId, 'schedule-tasks-by-priority');
     assert.equal(scheduleTasksByPriorityRule.guideHash, SCHEDULE_TASKS_BY_PRIORITY_GUIDE_HASH);
     assert.equal(scheduleTasksByPriorityRule.guideHash.length, 12);
-    assert.ok(scheduleTasksByPriorityRule.phase2Rubric.keepWhen.length >= 2);
-    assert.ok(scheduleTasksByPriorityRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(scheduleTasksByPriorityRule.verifierRubric.keepWhen.length >= 2);
+    assert.ok(scheduleTasksByPriorityRule.verifierRubric.dropWhen.length >= 2);
     assert.equal(scheduleTasksByPriorityRules.length, 0);
   });
 

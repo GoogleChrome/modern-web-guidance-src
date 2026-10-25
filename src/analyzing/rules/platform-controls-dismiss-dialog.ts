@@ -379,7 +379,7 @@ export const platformControlsDismissDialogRule: AnalyzerRule = {
   summary:
     'Dismiss modal dialogs via standard platform controls (<dialog closedby="any"> or CloseWatcher) instead of manual Escape key or popstate event listeners.',
   matcher: platformControlsDismissDialogJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Manual keydown listener checks Escape key to close dialog, modal, drawer, or popover',
       'Manual popstate listener handles back-button navigation to dismiss open dialog, drawer, or modal',

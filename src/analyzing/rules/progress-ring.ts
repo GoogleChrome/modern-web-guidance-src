@@ -193,7 +193,7 @@ export const progressRingRule: AnalyzerRule = {
   summary:
     'Imperative SVG circle strokeDashoffset calculation for circular progress indicators; replace with native <progress> and CSS conic-gradient() or SVG pathLength="100".',
   matcher: progressRingJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The component implements a circular progress bar, progress ring, or completion meter using an SVG <circle> and dynamically computed strokeDashoffset or strokeDasharray.',
       'The script calculates circle circumference using 2 * Math.PI * radius and offsets the stroke based on progress percentage.',
@@ -214,7 +214,7 @@ export const progressRingDomRule: AnalyzerRule = {
   summary:
     'Static SVG circular progress indicator using stroke-dashoffset; modernize using native <progress> with conic-gradient() or SVG pathLength="100".',
   matcher: progressRingDomMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The SVG circle element visually represents a circular progress bar or gauge using stroke-dashoffset.',
       'The element lacks pathLength="100" and can be refactored to native <progress> with CSS conic-gradient().',

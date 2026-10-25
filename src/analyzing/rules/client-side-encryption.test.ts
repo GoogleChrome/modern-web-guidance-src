@@ -25,8 +25,8 @@ void test('client-side-encryption: rule metadata', () => {
   );
 
   assert.equal(clientSideEncryptionRules.length, 1);
-  assert.ok(clientSideEncryptionJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(clientSideEncryptionJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(clientSideEncryptionJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(clientSideEncryptionJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('client-side-encryption JS matcher', async (t) => {

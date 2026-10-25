@@ -15,8 +15,8 @@ describe('ime-safe-enter-submit rule', () => {
     assert.equal(imeSafeEnterSubmitRule.guideId, 'ime-safe-enter-submit');
     assert.equal(imeSafeEnterSubmitRule.guideHash, IME_SAFE_ENTER_SUBMIT_GUIDE_HASH);
     assert.equal(imeSafeEnterSubmitRule.guideHash.length, 12);
-    assert.ok(imeSafeEnterSubmitRule.phase2Rubric.keepWhen.length >= 2);
-    assert.ok(imeSafeEnterSubmitRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(imeSafeEnterSubmitRule.verifierRubric.keepWhen.length >= 2);
+    assert.ok(imeSafeEnterSubmitRule.verifierRubric.dropWhen.length >= 2);
   });
 
   test('flags addEventListener keydown checking event.key === "Enter"', () => {

@@ -371,7 +371,7 @@ export const digitalSignaturesJsRule: AnalyzerRule = {
   summary:
     'JavaScript digital signature calls (KJUR.crypto.Signature, nacl.sign, nacl.sign.detached.verify, elliptic) should be modernized with crypto.subtle.sign and crypto.subtle.verify.',
   matcher: digitalSignaturesJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript instantiates KJUR.crypto.Signature or elliptic.ec/eddsa or invokes nacl.sign / nacl.sign.detached.verify to sign or verify messages in browser code.',
     ],

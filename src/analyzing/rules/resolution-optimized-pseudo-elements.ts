@@ -88,7 +88,7 @@ export const resolutionOptimizedPseudoElementsRule: AnalyzerRule = {
   summary:
     'CSS ::before and ::after pseudo-elements using -webkit-image-set() on content or background properties without standard image-set() should be modernized with standard CSS image-set().',
   matcher: resolutionOptimizedPseudoElementsCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule targeting ::before, :before, ::after, or :after uses vendor-prefixed -webkit-image-set() in content, background, or background-image without providing standard unprefixed image-set().',
       'Pseudo-element decorative icons or graphics supply multi-resolution images only through legacy -webkit-image-set() declarations.',

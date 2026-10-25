@@ -387,7 +387,7 @@ export const interestTriggeredActionPreviewsPackageRule: AnalyzerRule = {
   summary:
     'Hover-intent dependencies (hoverintent, jquery-hoverintent) for triggering action previews can be modernized with HTML interestfor and interest / loseinterest events.',
   matcher: interestTriggeredActionPreviewsPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares hoverintent or jquery-hoverintent in package.json dependencies to trigger action previews or hovercards after a hover delay.',
     ],
@@ -405,7 +405,7 @@ export const interestTriggeredActionPreviewsJsRule: AnalyzerRule = {
   summary:
     'JavaScript hoverintent(), .hoverIntent(), and mouseenter/focusin + setTimeout hover-intent delays triggering action previews should be modernized with HTML interestfor.',
   matcher: interestTriggeredActionPreviewsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript uses hoverintent() or $(...).hoverIntent() to trigger a preview card, popover, or action preview effect.',
       'Manual mouseenter/mouseleave or focusin debounce timers (setTimeout) trigger action preview popovers or preview dataset states.',

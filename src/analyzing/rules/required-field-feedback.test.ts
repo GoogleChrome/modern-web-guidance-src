@@ -40,10 +40,10 @@ void test('required-field-feedback: rule metadata', () => {
   );
 
   assert.equal(requiredFieldFeedbackRules.length, 2);
-  assert.ok(requiredFieldFeedbackCssRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(requiredFieldFeedbackCssRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(requiredFieldFeedbackJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(requiredFieldFeedbackJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(requiredFieldFeedbackCssRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(requiredFieldFeedbackCssRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(requiredFieldFeedbackJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(requiredFieldFeedbackJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('required-field-feedback CSS matcher', async (t) => {

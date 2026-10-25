@@ -18,10 +18,10 @@ void test('menu: rule metadata', () => {
   assert.equal(menuRule.guideHash, MENU_GUIDE_HASH);
   assert.equal(MENU_GUIDE_HASH.length, 12);
   assert.equal(menuRules.length, 2);
-  assert.ok(menuJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(menuJsRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(menuDomRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(menuDomRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(menuJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(menuJsRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(menuDomRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(menuDomRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('menu: positive brownfield matches', async (t) => {

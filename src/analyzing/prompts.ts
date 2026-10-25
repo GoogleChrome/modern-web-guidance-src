@@ -243,6 +243,7 @@ export interface Phase2PromptFindingInput {
   readonly file: string;
   readonly line: number;
   readonly message: string;
+  readonly contextSlice?: string;
   readonly astSlice?: string;
   readonly codeSnippet?: string;
 }
@@ -251,7 +252,7 @@ export interface Phase2PromptRuleInput {
   readonly id: string;
   readonly guideId?: string;
   readonly summary: string;
-  readonly phase2Rubric: {
+  readonly verifierRubric: {
     readonly keepWhen: readonly string[];
     readonly dropWhen: readonly string[];
   };
@@ -262,9 +263,9 @@ export function formatPhase2Prompt(
   rule: Phase2PromptRuleInput,
   guideMarkdown?: string,
 ): string {
-  const keepList = rule.phase2Rubric.keepWhen.map((item) => `- ${item}`).join('\n');
-  const dropList = rule.phase2Rubric.dropWhen.map((item) => `- ${item}`).join('\n');
-  const contextSnippet = (finding.astSlice || finding.codeSnippet || '').trim();
+  const keepList = rule.verifierRubric.keepWhen.map((item) => `- ${item}`).join('\n');
+  const dropList = rule.verifierRubric.dropWhen.map((item) => `- ${item}`).join('\n');
+  const contextSnippet = (finding.contextSlice || finding.astSlice || finding.codeSnippet || '').trim();
 
   if (!guideMarkdown || !guideMarkdown.trim()) {
     throw new Error(
@@ -386,7 +387,7 @@ export interface BlindCardGuideSummaryInput {
   readonly guideId?: string;
   readonly markdownBody?: string;
   readonly summary?: string;
-  readonly phase2Rubric?: unknown;
+  readonly verifierRubric?: unknown;
   readonly problem?: string;
   readonly before?: string;
   readonly now?: string;

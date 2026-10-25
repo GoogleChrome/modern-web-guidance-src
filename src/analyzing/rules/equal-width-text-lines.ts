@@ -148,7 +148,7 @@ export const equalWidthTextLinesPackageRule: AnalyzerRule = {
   summary:
     'Legacy text-fitting packages (fitty, fittext, jquery-fittext, react-fitty) in dependencies should be modernized with native CSS text-fit: grow per-line-all.',
   matcher: equalWidthTextLinesPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares fitty, fittext, jquery-fittext, or react-fitty in package.json dependencies to resize text lines to equal width.',
     ],
@@ -166,7 +166,7 @@ export const equalWidthTextLinesJsRule: AnalyzerRule = {
   summary:
     'Imperative text-fitting script calls (fitty, fitText, $.fitText) should be modernized with native CSS text-fit: grow per-line-all.',
   matcher: equalWidthTextLinesJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Imperative JavaScript invokes fitty(), fitText(), or jQuery .fitText() to scale headline text lines to uniform container width without a CSS.supports("text-fit", ...) guard.',
       'A script dynamically computes font-size scaling factors across heading lines using clientWidth or offsetWidth measurements.',

@@ -385,7 +385,7 @@ export const scrollspyRule: AnalyzerRule = {
   summary:
     'Legacy Bootstrap data-spy="scroll" or data-bs-spy="scroll" attributes should be modernized with CSS scroll-target-group: auto and :target-current.',
   matcher: scrollspyDomMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'DOM element specifies legacy Bootstrap data-spy="scroll" or data-bs-spy="scroll" attribute (or scrollspy classes with data-target/data-bs-target) to highlight active navigation links based on scroll position.',
       'JavaScript initializes a scrollspy plugin via $(...).scrollspy(...) or new bootstrap.ScrollSpy(...).',
@@ -408,7 +408,7 @@ export const scrollspyJsRule: AnalyzerRule = {
   summary:
     'Imperative scrollspy plugin calls, IntersectionObserver section watchers, and manual position scroll listeners should be modernized with CSS scroll-target-group: auto and :target-current.',
   matcher: scrollspyJsMatcher,
-  phase2Rubric: scrollspyRule.phase2Rubric,
+  verifierRubric: scrollspyRule.verifierRubric,
 };
 
 /**

@@ -17,8 +17,8 @@ void test('batch-analytics-events: rule metadata', () => {
   );
   assert.equal(BATCH_ANALYTICS_EVENTS_GUIDE_HASH.length, 12);
   assert.equal(batchAnalyticsEventsRules.length, 1);
-  assert.ok(batchAnalyticsEventsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(batchAnalyticsEventsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(batchAnalyticsEventsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(batchAnalyticsEventsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('batch-analytics-events JS matcher', async (t) => {

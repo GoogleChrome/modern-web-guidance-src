@@ -124,7 +124,7 @@ export const scrollSnapRealtimeFeedbackRule: AnalyzerRule = {
   summary:
     'Non-debounced scroll event listeners computing active snap index via Math.round(el.scrollLeft / ...) or Math.round(el.scrollTop / ...) during scrolling should be modernized with the scrollsnapchanging event.',
   matcher: scrollSnapRealtimeFeedbackMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A non-debounced scroll event listener computes the active snap index via Math.round(el.scrollLeft / width), Math.round(el.scrollTop / height), or Math.abs(childLeft - scrollLeft) to update active snap UI during scrolling.',
     ],

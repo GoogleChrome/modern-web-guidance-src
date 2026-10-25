@@ -15,8 +15,8 @@ describe('animate-element-entry-exit rule', () => {
     assert.equal(animateElementEntryExitRule.guideId, 'animate-element-entry-exit');
     assert.equal(animateElementEntryExitRule.guideHash, ANIMATE_ELEMENT_ENTRY_EXIT_GUIDE_HASH);
     assert.equal(animateElementEntryExitRule.guideHash.length, 12);
-    assert.ok(animateElementEntryExitRule.phase2Rubric.keepWhen.length >= 2);
-    assert.ok(animateElementEntryExitRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(animateElementEntryExitRule.verifierRubric.keepWhen.length >= 2);
+    assert.ok(animateElementEntryExitRule.verifierRubric.dropWhen.length >= 2);
   });
 
   test('flags imperative jQuery fadeIn/fadeOut and slideUp/slideDown', () => {

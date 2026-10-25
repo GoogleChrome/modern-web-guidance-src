@@ -156,7 +156,7 @@ export * from './styling-web-components.ts';
 export * from './support-global-calendar-systems.ts';
 export * from './switch.ts';
 
-export const PILOT_RULES: readonly AnalyzerRule[] = [
+export const ALL_RULES: readonly AnalyzerRule[] = [
   // Pilot Batch 1 & Earlier (spread *Rules arrays consistently):
   ...autofillSignInFormRules,
   ...animateToIntrinsicSizesRules,
@@ -253,39 +253,23 @@ export const PILOT_RULES: readonly AnalyzerRule[] = [
   ...menuRules,
 ];
 
-export const ALL_RULES: readonly AnalyzerRule[] = PILOT_RULES;
 
 export {
-  TERMINAL_QUALIFIED_GUIDE_IDS,
-  JSON_QUALIFIED_GUIDE_IDS,
   QUALIFIED_GUIDE_IDS,
   deriveQualifiedGuideIds,
 } from '../qualification.ts';
 
 import {
-  TERMINAL_QUALIFIED_GUIDE_IDS,
-  JSON_QUALIFIED_GUIDE_IDS,
+  QUALIFIED_GUIDE_IDS,
 } from '../qualification.ts';
-
-/**
- * Production rules gated to terminal qualified guides only.
- */
-export const TERMINAL_QUALIFIED_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
-  TERMINAL_QUALIFIED_GUIDE_IDS.includes(r.guideId),
-);
-
-/**
- * Production rules gated to JSON qualified guides only.
- */
-export const JSON_QUALIFIED_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
-  JSON_QUALIFIED_GUIDE_IDS.includes(r.guideId),
-);
 
 /**
  * Production rules gated to qualified guides only (clearing wilson95.lower >= 0.90 on admitted split).
  * All landed guides remain available via ALL_RULES (--experimental / --all-rules).
  */
-export const QUALIFIED_RULES: readonly AnalyzerRule[] = TERMINAL_QUALIFIED_RULES;
+export const QUALIFIED_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
+  QUALIFIED_GUIDE_IDS.includes(r.guideId),
+);
 
 /**
  * Guides that were tuned after initial held-out inspection (G10 disclosure, R32.4).

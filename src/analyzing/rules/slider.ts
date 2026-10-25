@@ -316,7 +316,7 @@ export const sliderJsRule: AnalyzerRule = {
   summary:
     'Single-handle noUiSlider.create() calls should be modernized with native HTML <input type="range"> and CSS accent-color.',
   matcher: sliderJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls noUiSlider.create() with a single numeric start value (e.g., start: 50 or start: [50]) to build a basic single-thumb range slider.',
       'Custom drag handle divs calculate percentage left offsets on mousemove for a single numeric value.',

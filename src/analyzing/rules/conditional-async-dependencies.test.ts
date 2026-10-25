@@ -40,10 +40,10 @@ void test('conditional-async-dependencies: rule metadata', () => {
   );
 
   assert.equal(conditionalAsyncDependenciesRules.length, 2);
-  assert.ok(conditionalAsyncDependenciesPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(conditionalAsyncDependenciesPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(conditionalAsyncDependenciesJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(conditionalAsyncDependenciesJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(conditionalAsyncDependenciesPackageRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(conditionalAsyncDependenciesPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(conditionalAsyncDependenciesJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(conditionalAsyncDependenciesJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('conditional-async-dependencies dependency matcher', async (t) => {

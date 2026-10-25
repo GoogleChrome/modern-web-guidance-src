@@ -20,14 +20,14 @@ function runJsxScan(filePath: string, code: string) {
 }
 
 describe('declarativeDialogPopoverControlRule (DOM)', () => {
-  it('has valid rule metadata and non-empty phase2Rubric', () => {
+  it('has valid rule metadata and non-empty verifierRubric', () => {
     assert.equal(declarativeDialogPopoverControlRule.id, 'declarative-dialog-popover-control');
     assert.equal(
       declarativeDialogPopoverControlClickListenerRule.id,
       'declarative-dialog-popover-control/click-listener',
     );
-    assert.ok(declarativeDialogPopoverControlRule.phase2Rubric.keepWhen.length > 0);
-    assert.ok(declarativeDialogPopoverControlRule.phase2Rubric.dropWhen.length > 0);
+    assert.ok(declarativeDialogPopoverControlRule.verifierRubric.keepWhen.length > 0);
+    assert.ok(declarativeDialogPopoverControlRule.verifierRubric.dropWhen.length > 0);
   });
 
   it('flags button with onclick calling showModal()', () => {

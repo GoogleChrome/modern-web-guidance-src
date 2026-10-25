@@ -87,12 +87,13 @@ interface FindingParams {
   readonly line: number;
   readonly message: string;
   readonly codeSnippet: string;
-  readonly astSlice: string;
-  readonly kind?: 'vendored-library';
+  readonly contextSlice: string;
+  readonly isVendoredLibrary?: boolean;
+  readonly subPattern?: string;
 }
 
 function createFinding(params: FindingParams): AnalyzerFinding {
-  const { rule, ctx, line, message, codeSnippet, astSlice, kind } = params;
+  const { rule, ctx, line, message, codeSnippet, contextSlice, isVendoredLibrary, subPattern } = params;
   const cardId = computeCardId(ctx.repo, ctx.commit, rule.guideId, ctx.relPath, line);
   return {
     cardId,
@@ -105,8 +106,9 @@ function createFinding(params: FindingParams): AnalyzerFinding {
     line,
     message,
     codeSnippet,
-    astSlice,
-    ...(kind ? { kind } : {}),
+    contextSlice,
+    ...(isVendoredLibrary ? { isVendoredLibrary } : {}),
+    ...(subPattern ? { subPattern } : {}),
   };
 }
 
@@ -118,7 +120,7 @@ function processVendoredLibraryFile(
   for (const rule of rules) {
     const matches = scanVendoredLibraryFile(ctx.relPath, ctx.content, [rule.matcher]);
     for (const match of matches) {
-      const { codeSnippet, astSlice } = sliceStructuredContext(
+      const { codeSnippet, contextSlice } = sliceStructuredContext(
         ctx.relPath,
         ctx.content,
         match.line,
@@ -130,8 +132,9 @@ function processVendoredLibraryFile(
           line: match.line,
           message: match.message,
           codeSnippet,
-          astSlice,
-          kind: 'vendored-library',
+          contextSlice,
+          isVendoredLibrary: true,
+          subPattern: match.subPattern,
         }),
       );
     }
@@ -147,7 +150,7 @@ function processPackageJsonFile(
   for (const rule of rules) {
     const matches = scanPackageJson(ctx.relPath, ctx.content, [rule.matcher]);
     for (const match of matches) {
-      const { codeSnippet, astSlice } = sliceStructuredContext(
+      const { codeSnippet, contextSlice } = sliceStructuredContext(
         ctx.relPath,
         ctx.content,
         match.line,
@@ -159,7 +162,8 @@ function processPackageJsonFile(
           line: match.line,
           message: match.message,
           codeSnippet,
-          astSlice,
+          contextSlice,
+        subPattern: match.subPattern,
         }),
       );
     }
@@ -181,7 +185,7 @@ function processCssFile(
   const findings: AnalyzerFinding[] = [];
   const results = scanCssRules(ctx.relPath, ctx.content, activeRules);
   for (const { rule, match } of results) {
-    const { codeSnippet, astSlice } = sliceStructuredContext(
+    const { codeSnippet, contextSlice } = sliceStructuredContext(
       ctx.relPath,
       ctx.content,
       match.line,
@@ -193,7 +197,8 @@ function processCssFile(
         line: match.line,
         message: match.message,
         codeSnippet,
-        astSlice,
+        contextSlice,
+      subPattern: match.subPattern,
       }),
     );
   }
@@ -210,7 +215,7 @@ function processHtmlFile(
   for (const rule of rules) {
     const matches = scanHtml(ctx.relPath, preparedHtml, [rule.matcher]);
     for (const match of matches) {
-      const { codeSnippet, astSlice } = sliceStructuredContext(
+      const { codeSnippet, contextSlice } = sliceStructuredContext(
         ctx.relPath,
         ctx.content,
         match.line,
@@ -222,7 +227,8 @@ function processHtmlFile(
           line: match.line,
           message: match.message,
           codeSnippet,
-          astSlice,
+          contextSlice,
+        subPattern: match.subPattern,
         }),
       );
     }
@@ -239,7 +245,7 @@ function processJsxFile(
   for (const rule of rules) {
     const matches = scanJsx(ctx.relPath, sourceFile, [rule.matcher]);
     for (const match of matches) {
-      const { codeSnippet, astSlice } = sliceStructuredContext(
+      const { codeSnippet, contextSlice } = sliceStructuredContext(
         ctx.relPath,
         ctx.content,
         match.line,
@@ -252,7 +258,8 @@ function processJsxFile(
           line: match.line,
           message: match.message,
           codeSnippet,
-          astSlice,
+          contextSlice,
+        subPattern: match.subPattern,
         }),
       );
     }
@@ -342,7 +349,7 @@ function processJsFile(
     for (const rule of activeRules) {
       const matches = rule.matcher.matchFile(sourceFile, matcherCtx);
       for (const match of matches) {
-        const { codeSnippet, astSlice } = sliceStructuredContext(
+        const { codeSnippet, contextSlice } = sliceStructuredContext(
           ctx.relPath,
           ctx.content,
           match.line,
@@ -355,7 +362,8 @@ function processJsFile(
             line: match.line,
             message: match.message,
             codeSnippet,
-            astSlice,
+            contextSlice,
+          subPattern: match.subPattern,
           }),
         );
       }
@@ -399,7 +407,7 @@ function processScriptBlock(
     for (const rule of activeRules) {
       const matches = rule.matcher.matchFile(sourceFile, matcherCtx);
       for (const match of matches) {
-        const { codeSnippet, astSlice } = sliceStructuredContext(
+        const { codeSnippet, contextSlice } = sliceStructuredContext(
           ctx.relPath,
           ctx.content,
           match.line,
@@ -412,7 +420,8 @@ function processScriptBlock(
             line: match.line,
             message: match.message,
             codeSnippet,
-            astSlice,
+            contextSlice,
+          subPattern: match.subPattern,
           }),
         );
       }
@@ -441,7 +450,7 @@ function processStyleBlock(
   const findings: AnalyzerFinding[] = [];
   const results = scanCssRules(ctx.relPath, blankedCss, activeRules);
   for (const { rule, match } of results) {
-    const { codeSnippet, astSlice } = sliceStructuredContext(
+    const { codeSnippet, contextSlice } = sliceStructuredContext(
       ctx.relPath,
       ctx.content,
       match.line,
@@ -453,7 +462,8 @@ function processStyleBlock(
         line: match.line,
         message: match.message,
         codeSnippet,
-        astSlice,
+        contextSlice,
+      subPattern: match.subPattern,
       }),
     );
   }

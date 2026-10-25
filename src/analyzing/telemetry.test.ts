@@ -18,7 +18,7 @@ describe('telemetry ledger (P2)', () => {
       guideId: 'test-guide',
       guideHash: '1234567890ab',
       summary: 'Test summary',
-      phase2Rubric: {
+      verifierRubric: {
         keepWhen: ['a', 'b'],
         dropWhen: ['c'],
       },

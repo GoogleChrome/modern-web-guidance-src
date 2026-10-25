@@ -366,7 +366,7 @@ export const preciseTextAlignmentPackageRule: AnalyzerRule = {
   summary:
     'Capsize leading-trim package (capsize) should be modernized with CSS text-box-trim and text-box-edge.',
   matcher: preciseTextAlignmentPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares capsize in package.json dependencies to trim font leading above cap-height and below the alphabetic baseline.',
     ],
@@ -384,7 +384,7 @@ export const preciseTextAlignmentJsRule: AnalyzerRule = {
   summary:
     'Capsize createStyleObject / capsize() calls generating negative-margin leading-trim workarounds should be modernized with CSS text-box-trim and text-box-edge.',
   matcher: preciseTextAlignmentJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls createStyleObject(), createStyleString(), precomputeValues(), or capsize() with fontMetrics / capHeight to generate negative-margin leading-trim styles.',
     ],
@@ -402,7 +402,7 @@ export const preciseTextAlignmentCssRule: AnalyzerRule = {
   summary:
     'Legacy draft CSS leading-trim and text-edge declarations should be modernized with standard CSS text-box-trim and text-box-edge.',
   matcher: preciseTextAlignmentCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule declares legacy draft leading-trim or text-edge without standard text-box or text-box-trim.',
     ],

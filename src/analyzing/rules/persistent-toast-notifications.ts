@@ -423,7 +423,7 @@ export const persistentToastNotificationsJsRule: AnalyzerRule = {
   summary:
     'JavaScript toast notification calls (Toastify().showToast, new Notyf().success/error, toastr.info/success/warning/error) should be modernized with HTML popover="manual".',
   matcher: persistentToastNotificationsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript invokes Toastify(...).showToast(), new Notyf().success/error(...), or toastr.info/success/warning/error(...) to display persistent floating toast notifications without native popover="manual".',
       'Custom notification container managers create fixed z-index: 99999 overlays for persistent toast messages.',

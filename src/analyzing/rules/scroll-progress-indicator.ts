@@ -131,7 +131,7 @@ export const scrollProgressIndicatorRule: AnalyzerRule = {
   summary:
     'Scroll listeners computing (scrollTop / (scrollHeight - clientHeight)) to update progress bar width, scaleX(), or --scroll-progress should be modernized with CSS animation-timeline: scroll().',
   matcher: scrollProgressIndicatorMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A scroll event listener calculates the scroll progress ratio (e.g. scrollTop / (scrollHeight - clientHeight) or scrollY / (scrollHeight - innerHeight)) and updates a progress bar element via style.width, style.transform = scaleX(...), or a --scroll-progress CSS custom property.',
     ],

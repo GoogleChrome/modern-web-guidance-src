@@ -230,7 +230,7 @@ export const autofillAddressFormRule: AnalyzerRule = {
   summary:
     'Postal address form fields (<input> or <textarea>) inside a <form> should specify standard autocomplete attributes (e.g. street-address, postal-code).',
   matcher: autofillAddressFormMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The input or textarea is part of an address, billing, checkout, or shipping form collecting postal street address or postal code data.',
       'The field lacks a standard autocomplete attribute or specifies autocomplete="off", preventing browser and password-manager address autofill.',

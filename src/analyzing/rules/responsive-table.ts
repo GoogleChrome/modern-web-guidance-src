@@ -89,7 +89,7 @@ export const responsiveTablePackageRule: AnalyzerRule = {
   summary:
     'Legacy responsive table packages (tablesaw, footable, basictable, jquery-basictable) should be modernized with native CSS Container Queries and stacked/scroll-snap mobile table layouts.',
   matcher: responsiveTablePackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares tablesaw, footable, basictable, or jquery-basictable in package.json dependencies to implement responsive stacked or scrollable mobile tables.',
     ],
@@ -107,7 +107,7 @@ export const responsiveTableCssRule: AnalyzerRule = {
   summary:
     'Table cell stacking using td::before content: attr(data-*) without @container queries should be modernized with CSS Container Queries.',
   matcher: responsiveTableCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule uses td::before or td:before with content: attr(data-label), attr(data-th), or attr(data-title) to generate mobile stacked table card headers without container queries.',
       'A responsive table stylesheet uses viewport media queries to flatten table cells and display data-* attributes as pseudo-element labels.',

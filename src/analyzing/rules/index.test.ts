@@ -1,23 +1,17 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PILOT_RULES,
   ALL_RULES,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
-  TERMINAL_QUALIFIED_GUIDE_IDS,
-  TERMINAL_QUALIFIED_RULES,
-  JSON_QUALIFIED_GUIDE_IDS,
-  JSON_QUALIFIED_RULES,
   POST_SELECTION_TUNED_GUIDE_IDS,
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports PILOT_RULES containing 98 rules across the 71 active feature guides', async (t) => {
-    assert.strictEqual(PILOT_RULES.length, 98);
+  it('exports ALL_RULES containing 98 rules across the 71 active feature guides', async (t) => {
     assert.strictEqual(ALL_RULES.length, 98);
 
-    const guideIds = new Set(PILOT_RULES.map((r) => r.guideId));
+    const guideIds = new Set(ALL_RULES.map((r) => r.guideId));
     assert.strictEqual(guideIds.size, 71);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
@@ -96,7 +90,7 @@ describe('rules/index export registry', () => {
       ].sort(),
     );
 
-    for (const rule of PILOT_RULES) {
+    for (const rule of ALL_RULES) {
       await t.test(`validates rule ${rule.id}`, () => {
         assert.ok(rule.id, 'rule has id');
         assert.ok(rule.guideId, 'rule has guideId');
@@ -104,8 +98,8 @@ describe('rules/index export registry', () => {
         assert.strictEqual(rule.guideHash.length, 12, 'guideHash is 12 chars');
         assert.ok(rule.summary, 'rule has summary');
         assert.ok(rule.matcher, 'rule has matcher');
-        assert.ok(rule.phase2Rubric.keepWhen.length > 0, 'has keepWhen');
-        assert.ok(rule.phase2Rubric.dropWhen.length > 0, 'has dropWhen');
+        assert.ok(rule.verifierRubric.keepWhen.length > 0, 'has keepWhen');
+        assert.ok(rule.verifierRubric.dropWhen.length > 0, 'has dropWhen');
       });
     }
   });
@@ -113,10 +107,7 @@ describe('rules/index export registry', () => {
   it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 37 qualified guides and 53 rules (D-048)', async () => {
     assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 37);
     assert.strictEqual(QUALIFIED_RULES.length, 53);
-    assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
-    assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
-    assert.deepStrictEqual(TERMINAL_QUALIFIED_RULES, QUALIFIED_RULES);
-    assert.deepStrictEqual(JSON_QUALIFIED_RULES, QUALIFIED_RULES);
+    assert.ok(QUALIFIED_RULES.length > 0);
 
     const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
     assert.strictEqual(qualifiedGuideSet.size, 37);

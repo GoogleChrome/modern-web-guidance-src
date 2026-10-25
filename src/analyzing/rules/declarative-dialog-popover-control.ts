@@ -258,7 +258,7 @@ export const declarativeDialogPopoverControlRule: AnalyzerRule = {
   summary:
     'Detect buttons with pure inline showModal/close/togglePopover handlers or verified aria-controls/data-dialog-target attributes that can use commandfor/popovertarget.',
   matcher: declarativeDialogPopoverControlMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A `<button>` or `<input type="button">` opens, closes, or toggles a native `<dialog>` or `[popover]` element via a pure 0-argument `.showModal()`, `.close()`, `.showPopover()`, `.hidePopover()`, or `.togglePopover()` inline click handler.',
       'A `<button>` references an actual `<dialog id="...">` or `<... id="..." popover>` in the same document via `aria-controls`, `data-dialog-target`, or `data-modal-target` without `commandfor` or `popovertarget`.',
@@ -550,7 +550,7 @@ export const declarativeDialogPopoverControlClickListenerRule: AnalyzerRule = {
   summary:
     'Detect pure JS click event listeners that only call showModal(), close(), showPopover(), hidePopover(), or togglePopover().',
   matcher: declarativeDialogPopoverControlClickListenerMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A click event listener is attached to a button solely to call 0-argument `.showModal()`, `.close()`, `.showPopover()`, `.hidePopover()`, or `.togglePopover()` on a static `<dialog>` or `[popover]` element without other side effects.',
     ],

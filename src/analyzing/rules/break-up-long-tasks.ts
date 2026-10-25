@@ -472,7 +472,7 @@ export const breakUpLongTasksRule: AnalyzerRule = {
   summary:
     'Flag explicit main-thread yielding workarounds (such as new Promise(resolve => setTimeout(resolve, 0)), setImmediate, or MessageChannel) used to break up heavy computational tasks or long loops instead of await scheduler.yield().',
   matcher: breakUpLongTasksMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Explicit main-thread yielding using new Promise(resolve => setTimeout(resolve, 0)) or setImmediate(resolve) during batch processing, loops, or long computational tasks instead of scheduler.yield().',
       'Task yielding helpers (e.g. yieldToMain, nextTask, sleep(0)) returning a Promise resolved via zero-delay setTimeout or setImmediate.',

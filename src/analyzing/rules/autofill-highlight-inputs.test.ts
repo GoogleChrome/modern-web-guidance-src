@@ -16,8 +16,8 @@ void test('autofill-highlight-inputs: rule metadata', () => {
   assert.equal(autofillHighlightInputsRule.guideHash, AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH);
   assert.equal(AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH.length, 12);
   assert.equal(autofillHighlightInputsRules.length, 0);
-  assert.ok(autofillHighlightInputsRule.phase2Rubric.keepWhen.length > 0);
-  assert.ok(autofillHighlightInputsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(autofillHighlightInputsRule.verifierRubric.keepWhen.length > 0);
+  assert.ok(autofillHighlightInputsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('autofill-highlight-inputs: positive brownfield matches', async (t) => {

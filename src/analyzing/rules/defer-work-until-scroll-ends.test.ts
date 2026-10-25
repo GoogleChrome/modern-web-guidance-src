@@ -16,8 +16,8 @@ describe('defer-work-until-scroll-ends rule', () => {
     assert.equal(deferWorkUntilScrollEndsRule.guideId, 'defer-work-until-scroll-ends');
     assert.equal(deferWorkUntilScrollEndsRule.guideHash, DEFER_WORK_UNTIL_SCROLL_ENDS_GUIDE_HASH);
     assert.equal(deferWorkUntilScrollEndsRule.guideHash.length, 12);
-    assert.ok(deferWorkUntilScrollEndsRule.phase2Rubric.keepWhen.length >= 2);
-    assert.ok(deferWorkUntilScrollEndsRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(deferWorkUntilScrollEndsRule.verifierRubric.keepWhen.length >= 2);
+    assert.ok(deferWorkUntilScrollEndsRule.verifierRubric.dropWhen.length >= 2);
     assert.equal(deferWorkUntilScrollEndsRules.length, 1);
   });
 

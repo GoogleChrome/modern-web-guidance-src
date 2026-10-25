@@ -16,8 +16,8 @@ describe('coordinate-global-events rule', () => {
     assert.equal(coordinateGlobalEventsRule.guideId, 'coordinate-global-events');
     assert.equal(coordinateGlobalEventsRule.guideHash, COORDINATE_GLOBAL_EVENTS_GUIDE_HASH);
     assert.equal(coordinateGlobalEventsRule.guideHash.length, 12);
-    assert.ok(coordinateGlobalEventsRule.phase2Rubric.keepWhen.length >= 2);
-    assert.ok(coordinateGlobalEventsRule.phase2Rubric.dropWhen.length >= 2);
+    assert.ok(coordinateGlobalEventsRule.verifierRubric.keepWhen.length >= 2);
+    assert.ok(coordinateGlobalEventsRule.verifierRubric.dropWhen.length >= 2);
     assert.equal(coordinateGlobalEventsRules.length, 1);
   });
 

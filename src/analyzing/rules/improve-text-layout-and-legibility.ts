@@ -318,7 +318,7 @@ export const improveTextLayoutAndLegibilityPackageRule: AnalyzerRule = {
   summary:
     'Client-side text-balancing packages (react-wrap-balancer, balance-text) should be modernized with CSS text-wrap: balance and text-wrap: pretty.',
   matcher: improveTextLayoutAndLegibilityPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares react-wrap-balancer, balance-text, or vue-wrap-balancer in package.json dependencies to balance heading or paragraph line lengths.',
     ],
@@ -336,7 +336,7 @@ export const improveTextLayoutAndLegibilityJsRule: AnalyzerRule = {
   summary:
     'JavaScript balanceText() calls and <Balancer> components should be modernized with native CSS text-wrap: balance and text-wrap: pretty.',
   matcher: improveTextLayoutAndLegibilityJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls balanceText(...) or renders <Balancer> from react-wrap-balancer to balance heading or text line breaks in the browser.',
     ],

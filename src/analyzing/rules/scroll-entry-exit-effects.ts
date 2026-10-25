@@ -177,7 +177,7 @@ export const scrollEntryExitEffectsPackageRule: AnalyzerRule = {
   summary:
     'Legacy scroll-reveal packages (aos, scrollreveal, sal.js, wowjs) should be modernized with CSS Scroll-Driven Animations (animation-timeline: view() and animation-range: entry, exit).',
   matcher: scrollEntryExitEffectsPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares aos, scrollreveal, sal.js, or wowjs in package.json dependencies to animate elements as they enter or exit the viewport during scrolling.',
     ],
@@ -195,7 +195,7 @@ export const scrollEntryExitEffectsJsRule: AnalyzerRule = {
   summary:
     'JavaScript scroll-reveal calls (AOS.init, ScrollReveal().reveal, new WOW().init) should be modernized with CSS Scroll-Driven Animations (animation-timeline: view() and animation-range: entry, exit).',
   matcher: scrollEntryExitEffectsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript initializes AOS.init(), calls ScrollReveal().reveal(), or invokes new WOW().init() to trigger element entry/exit animations on scroll without a CSS.supports("animation-timeline", "view()") fallback guard.',
       'Scroll listeners or IntersectionObserver callbacks toggle reveal classes solely to fade or slide elements entering or leaving the viewport.',

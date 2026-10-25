@@ -14,8 +14,8 @@ void test('light-dismiss-a-dialog: rule metadata', () => {
   assert.equal(lightDismissADialogRule.guideHash, LIGHT_DISMISS_A_DIALOG_GUIDE_HASH);
   assert.equal(LIGHT_DISMISS_A_DIALOG_GUIDE_HASH.length, 12);
   assert.equal(lightDismissADialogRules.length, 1);
-  assert.ok(lightDismissADialogRule.phase2Rubric.keepWhen.length > 0);
-  assert.ok(lightDismissADialogRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(lightDismissADialogRule.verifierRubric.keepWhen.length > 0);
+  assert.ok(lightDismissADialogRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {

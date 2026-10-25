@@ -323,7 +323,7 @@ export const lightDismissADialogRule: AnalyzerRule = {
   summary:
     'Manual backdrop click listeners dismissing <dialog> should be modernized with declarative <dialog closedby="any">.',
   matcher: lightDismissADialogJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A click event listener attached to a <dialog> or modal checks event.target === dialog, event.target === event.currentTarget, or bounding box coordinates to dismiss the dialog via .close().',
       'A script implements manual light-dismiss for an HTML <dialog> element when clicking outside the content area on the backdrop.',

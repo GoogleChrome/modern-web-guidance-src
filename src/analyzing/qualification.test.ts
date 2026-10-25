@@ -6,13 +6,11 @@ import {
   evaluateJudgeAdmission,
   evaluateRuleQualification,
   evaluateTwoStageHumanQualification,
-  JSON_QUALIFIED_GUIDE_IDS,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_JUDGE_METADATA,
   QUALIFIED_RULE_MANIFEST,
   SUSPENDED_QUALIFIED_GUIDE_IDS,
   SUSPENDED_QUALIFIED_RULE_HISTORY,
-  TERMINAL_QUALIFIED_GUIDE_IDS,
   wilsonLowerBound,
 } from './qualification.ts';
 
@@ -20,11 +18,9 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
   it('maintains 37 default shipping guides under D-048 graduation criteria', () => {
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, false);
     assert.strictEqual(evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA).admitted, false);
-    assert.strictEqual(TERMINAL_QUALIFIED_GUIDE_IDS.length, 37);
-    assert.strictEqual(JSON_QUALIFIED_GUIDE_IDS.length, 37);
     assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 37);
     assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 37);
-    assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, [
+    assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, [
       'animate-element-entry-exit',
       'animate-to-intrinsic-sizes',
       'atrule-support-conditionals',
@@ -99,14 +95,9 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
     ];
     for (const gid of nonGraduated) {
       assert.strictEqual(
-        TERMINAL_QUALIFIED_GUIDE_IDS.includes(gid),
+        QUALIFIED_GUIDE_IDS.includes(gid),
         false,
-        `Non-graduated guide "${gid}" must NOT be in TERMINAL_QUALIFIED_GUIDE_IDS`,
-      );
-      assert.strictEqual(
-        JSON_QUALIFIED_GUIDE_IDS.includes(gid),
-        false,
-        `Non-graduated guide "${gid}" must NOT be in JSON_QUALIFIED_GUIDE_IDS`,
+        `Non-graduated guide "${gid}" must NOT be in QUALIFIED_GUIDE_IDS`,
       );
     }
   });
@@ -127,8 +118,7 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
         },
       ],
     });
-    assert.deepStrictEqual(derived.terminalQualified, []);
-    assert.deepStrictEqual(derived.jsonQualified, []);
+    assert.deepStrictEqual(derived, []);
   });
 
   it('deriveQualifiedGuideIds qualifies only guides clearing 0.90 LB at n>=35 when judge is admitted', () => {
@@ -156,8 +146,7 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
         },
       ],
     });
-    assert.deepStrictEqual(derived.terminalQualified, ['individual-transform-properties']);
-    assert.deepStrictEqual(derived.jsonQualified, ['individual-transform-properties']);
+    assert.deepStrictEqual(derived, ['individual-transform-properties']);
   });
 });
 

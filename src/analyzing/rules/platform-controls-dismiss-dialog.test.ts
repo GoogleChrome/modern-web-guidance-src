@@ -17,8 +17,8 @@ void test('platform-controls-dismiss-dialog: rule metadata', () => {
   );
   assert.equal(PLATFORM_CONTROLS_DISMISS_DIALOG_GUIDE_HASH.length, 12);
   assert.equal(platformControlsDismissDialogRules.length, 1);
-  assert.ok(platformControlsDismissDialogRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(platformControlsDismissDialogRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(platformControlsDismissDialogRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(platformControlsDismissDialogRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('platform-controls-dismiss-dialog: positive brownfield matches', async (t) => {

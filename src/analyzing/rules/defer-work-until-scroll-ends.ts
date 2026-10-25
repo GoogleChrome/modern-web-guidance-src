@@ -414,7 +414,7 @@ export const deferWorkUntilScrollEndsRule: AnalyzerRule = {
   summary:
     'Flag debounced scroll event listeners using clearTimeout and setTimeout or debounce() helpers to detect when scrolling stops instead of listening for the native scrollend event.',
   matcher: deferWorkUntilScrollEndsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Scroll event listener (addEventListener("scroll", ...), $(...).on("scroll", ...), or onscroll) using clearTimeout followed by setTimeout or a debounce helper to detect when scrolling ends instead of native scrollend event.',
       'Custom scroll-end timer tracking where setTimeout dispatches a synthetic scrollend event or runs deferred work after scroll stops.',

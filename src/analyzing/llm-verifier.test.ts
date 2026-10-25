@@ -5,9 +5,9 @@ import {
   buildPhase2RequestBody,
   formatPhase2Prompt,
   parsePhase2Response,
-  runPhase2Filter,
+  runLlmVerifier,
   type Phase2Options,
-} from './phase2.ts';
+} from './llm-verifier.ts';
 
 const mockRule: AnalyzerRule = {
   id: 'test-rule',
@@ -18,7 +18,7 @@ const mockRule: AnalyzerRule = {
     kind: 'js',
     matchFile: () => [],
   },
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Imperative widget manipulation on standard DOM nodes.',
       'Custom event listeners used to simulate declarative behaviors.',
@@ -42,7 +42,7 @@ const mockFindings: AnalyzerFinding[] = [
     line: 42,
     message: 'Legacy imperative modal handling',
     codeSnippet: '42 | $(modal).fadeIn();',
-    astSlice: '40 | function showModal(modal) {\n41 |   // show it\n42 |   $(modal).fadeIn();\n43 | }',
+    contextSlice: '40 | function showModal(modal) {\n41 |   // show it\n42 |   $(modal).fadeIn();\n43 | }',
   },
   {
     cardId: 'card-2',
@@ -55,7 +55,7 @@ const mockFindings: AnalyzerFinding[] = [
     line: 88,
     message: 'Canvas camera fade',
     codeSnippet: '88 | camera.fadeIn();',
-    astSlice: '87 | function renderScene(camera) {\n88 |   camera.fadeIn();\n89 | }',
+    contextSlice: '87 | function renderScene(camera) {\n88 |   camera.fadeIn();\n89 | }',
   },
 ];
 
@@ -122,7 +122,7 @@ describe('phase2 LLM verifier', () => {
     );
   });
 
-  test('runPhase2Filter returns kept findings and verdicts via mock fetch', async () => {
+  test('runLlmVerifier returns kept findings and verdicts via mock fetch', async () => {
     const rulesById = new Map<string, AnalyzerRule>([['test-rule', mockRule]]);
 
     const mockFetch: typeof fetch = async (_url, options) => {
@@ -166,7 +166,7 @@ describe('phase2 LLM verifier', () => {
       concurrency: 2,
     };
 
-    const result = await runPhase2Filter(mockFindings, rulesById, options);
+    const result = await runLlmVerifier(mockFindings, rulesById, options);
     assert.equal(result.verdicts.length, 2);
     assert.equal(result.results.length, 2);
     assert.equal(result.verdicts[0].keep, true);
@@ -175,14 +175,14 @@ describe('phase2 LLM verifier', () => {
     assert.equal(result.keptFindings[0].cardId, 'card-1');
   });
 
-  test('runPhase2Filter handles empty findings array without network requests', async () => {
+  test('runLlmVerifier handles empty findings array without network requests', async () => {
     let called = false;
     const mockFetch: typeof fetch = async () => {
       called = true;
       return new Response('', { status: 200 });
     };
 
-    const result = await runPhase2Filter([], new Map(), {
+    const result = await runLlmVerifier([], new Map(), {
       apiKey: 'test-key',
       fetchFn: mockFetch,
     });
@@ -191,7 +191,7 @@ describe('phase2 LLM verifier', () => {
     assert.equal(result.keptFindings.length, 0);
   });
 
-  test('runPhase2Filter retries on transient 429 and succeeds', async () => {
+  test('runLlmVerifier retries on transient 429 and succeeds', async () => {
     const rulesById = new Map<string, AnalyzerRule>([['test-rule', mockRule]]);
     let attempts = 0;
 
@@ -222,7 +222,7 @@ describe('phase2 LLM verifier', () => {
       );
     };
 
-    const result = await runPhase2Filter([mockFindings[0]], rulesById, {
+    const result = await runLlmVerifier([mockFindings[0]], rulesById, {
       apiKey: 'test-key',
       fetchFn: mockFetch,
       maxRetries: 2,
@@ -232,7 +232,7 @@ describe('phase2 LLM verifier', () => {
     assert.equal(result.keptFindings.length, 1);
   });
 
-  test('runPhase2Filter fails fast and throws when error persists', async () => {
+  test('runLlmVerifier fails fast and throws when error persists', async () => {
     const rulesById = new Map<string, AnalyzerRule>([['test-rule', mockRule]]);
 
     const mockFetch: typeof fetch = async () => {
@@ -241,7 +241,7 @@ describe('phase2 LLM verifier', () => {
 
     await assert.rejects(
       async () => {
-        await runPhase2Filter([mockFindings[0]], rulesById, {
+        await runLlmVerifier([mockFindings[0]], rulesById, {
           apiKey: 'test-key',
           fetchFn: mockFetch,
           maxRetries: 1,
@@ -251,10 +251,10 @@ describe('phase2 LLM verifier', () => {
     );
   });
 
-  test('runPhase2Filter throws explicit error if rule is not found', async () => {
+  test('runLlmVerifier throws explicit error if rule is not found', async () => {
     await assert.rejects(
       async () => {
-        await runPhase2Filter([mockFindings[0]], new Map(), { apiKey: 'test-key' });
+        await runLlmVerifier([mockFindings[0]], new Map(), { apiKey: 'test-key' });
       },
       /Rule not found for finding with ruleId='test-rule'/,
     );

@@ -246,7 +246,7 @@ export const childStateBasedStylingRule: AnalyzerRule = {
   summary:
     'Sibling combinators (+ or ~) following form control state pseudo-classes simulate container state styling; replace with container :has() selectors.',
   matcher: childStateBasedStylingCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The CSS rule uses sibling combinators (+ or ~) following input state pseudo-classes (:checked, :focus, :valid, :invalid) such as input:checked + label or :focus ~ .element to simulate parent or container state styling.',
       'The styling coordinates visual states between a form control and an adjacent element that can be refactored into a parent container styled with :has().',
@@ -266,7 +266,7 @@ export const childStateBasedStylingJsParentClassRule: AnalyzerRule = {
   summary:
     'JavaScript form control event listeners toggle classes on parent/closest containers to simulate container state styling; replace with CSS container :has() selectors.',
   matcher: childStateBasedStylingJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A JavaScript event listener on a form input (focus, blur, change, or input) toggles state classes (focus, active, checked, valid, invalid, empty, filled, has-value) on parentElement, parentNode, or closest(...) to visually style the parent container.',
       'The parent state synchronization can be replaced by the native CSS :has() selector on the container (e.g. .field:has(:focus) or .field:has(:checked)).',

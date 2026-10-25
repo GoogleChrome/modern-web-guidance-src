@@ -19,8 +19,8 @@ void test('digital-signatures: rule metadata', () => {
   );
 
   assert.equal(digitalSignaturesRules.length, 1);
-  assert.ok(digitalSignaturesJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(digitalSignaturesJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(digitalSignaturesJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(digitalSignaturesJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('digital-signatures JS matcher', async (t) => {

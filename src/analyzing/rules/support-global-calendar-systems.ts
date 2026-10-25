@@ -325,7 +325,7 @@ export const supportGlobalCalendarSystemsPackageRule: AnalyzerRule = {
   summary:
     'Legacy non-Gregorian calendar packages (moment-hijri, moment-jalaali, jalaali-js, hijri-moment, persian-date) can be modernized with native Temporal calendar support.',
   matcher: supportGlobalCalendarSystemsPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares moment-hijri, moment-jalaali, jalaali-js, hijri-moment, or persian-date in package.json dependencies to convert or format non-Gregorian calendar dates.',
     ],
@@ -343,7 +343,7 @@ export const supportGlobalCalendarSystemsJsRule: AnalyzerRule = {
   summary:
     'JavaScript calls to jalaali.toJalaali(), jalaali.toGregorian(), or new PersianDate() can be modernized with native Temporal calendar systems (withCalendar()).',
   matcher: supportGlobalCalendarSystemsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls jalaali.toJalaali(), jalaali.toGregorian(), or instantiates new PersianDate() to convert or manipulate non-Gregorian calendar dates.',
     ],

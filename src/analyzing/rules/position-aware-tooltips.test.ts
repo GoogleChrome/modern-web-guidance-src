@@ -25,8 +25,8 @@ void test('position-aware-tooltips: rule metadata', () => {
   );
 
   assert.equal(positionAwareTooltipsRules.length, 1);
-  assert.ok(positionAwareTooltipsJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(positionAwareTooltipsJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(positionAwareTooltipsJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(positionAwareTooltipsJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('position-aware-tooltips JS matcher', async (t) => {

@@ -360,7 +360,7 @@ export const animateElementEntryExitRule: AnalyzerRule = {
   summary:
     'Flag imperative jQuery entry/exit animations (.fadeIn, .fadeOut, .slideDown, .slideUp, .slideToggle, .fadeToggle) or transitionend/animationend listeners that remove or hide elements instead of CSS @starting-style and transition-behavior: allow-discrete.',
   matcher: animateElementEntryExitMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Imperative jQuery visibility animations (.fadeIn, .fadeOut, .slideDown, .slideUp, .slideToggle, .fadeToggle) used to show, hide, expand, or collapse DOM elements.',
       'DOM event listeners on transitionend or animationend that remove an element from the DOM or set display: none / hidden to simulate discrete exit transitions.',

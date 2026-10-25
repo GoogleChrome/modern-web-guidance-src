@@ -9,7 +9,7 @@ import {
   classifyGuideGate0,
   formatGate0Prompt,
   parseGate0Response,
-} from './gate0.ts';
+} from './guide-triage.ts';
 
 void test('gate0: prompt formatting and request body construction', async (t) => {
   await t.test('formatGate0Prompt includes guideId, category, and full markdown', () => {

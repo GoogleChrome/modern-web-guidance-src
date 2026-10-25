@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { DetectiveFactCheck, JudgeVerdict } from './judge.ts';
+import type { DetectiveFactCheck, JudgeVerdict } from './detection-eval.ts';
 import { WORKTREE_ROOT } from './paths.ts';
-import type { Phase2Confidence } from './phase2.ts';
+import type { Phase2Confidence } from './llm-verifier.ts';
 import type { AnalyzerRule } from './schema.ts';
 
 export const CARD_TELEMETRY_PATH = join(
@@ -109,7 +109,7 @@ export function computeRuleHash(rule: AnalyzerRule): string {
   return createHash('sha256')
     .update(rule.id)
     .update(':')
-    .update(JSON.stringify(rule.phase2Rubric))
+    .update(JSON.stringify(rule.verifierRubric))
     .digest('hex')
     .slice(0, 12);
 }

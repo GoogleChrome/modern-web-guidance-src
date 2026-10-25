@@ -384,7 +384,7 @@ export const imeSafeEnterSubmitRule: AnalyzerRule = {
   summary:
     'Flag keydown event listeners on inputs or textareas intercepting Enter (keyCode 13 or key "Enter") to submit forms, send messages, or trigger actions without checking event.isComposing or event.keyCode === 229, breaking IME input in CJK languages.',
   matcher: imeSafeEnterSubmitMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Keydown event listeners on inputs or textareas checking event.key === "Enter" or event.keyCode === 13 to trigger submission, search, or message sending without checking event.isComposing or event.keyCode === 229.',
       'Custom enter-to-submit implementations intercepting Enter to call form.submit(), form.requestSubmit(), or trigger a click on a submit button without IME composition gating.',

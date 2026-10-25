@@ -650,7 +650,7 @@ void test('context-slicer: AST and structured context slicing', async (t) => {
 
     const context = sliceStructuredContext('test.html', html, 2);
     assert.ok(context.codeSnippet);
-    assert.ok(context.astSlice);
+    assert.ok(context.contextSlice);
   });
 });
 
@@ -920,7 +920,7 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
       guideId: 'rule-1',
       guideHash: '111111111111',
       summary: 'Rule 1',
-      phase2Rubric: { keepWhen: [], dropWhen: [] },
+      verifierRubric: { keepWhen: [], dropWhen: [] },
       matcher: {
         kind: 'css',
         fastTokens: ['color'],
@@ -938,7 +938,7 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
       guideId: 'rule-2',
       guideHash: '222222222222',
       summary: 'Rule 2',
-      phase2Rubric: { keepWhen: [], dropWhen: [] },
+      verifierRubric: { keepWhen: [], dropWhen: [] },
       matcher: {
         kind: 'css',
         fastTokens: ['max-height'],
@@ -1022,7 +1022,7 @@ void test('scanFiles and computeGuideHash: end-to-end integration', () => {
     guideId: 'autofill-sign-in-form',
     guideHash: hash,
     summary: 'Flag password inputs lacking autocomplete',
-    phase2Rubric: {
+    verifierRubric: {
       keepWhen: ['Real sign-in or registration password input without autocomplete'],
       dropWhen: ['Custom password component with spread props'],
     },
@@ -1062,7 +1062,7 @@ void test('scanFiles and computeGuideHash: end-to-end integration', () => {
   assert.equal(finding.guideHash, hash);
   assert.equal(finding.cardId.length, 12);
   assert.ok(finding.codeSnippet.includes('>    3 |   <input type="password" name="pwd">'));
-  assert.ok(finding.astSlice);
+  assert.ok(finding.contextSlice);
 });
 
 void test('sfc-extractor: newline-preserving blanking and block extraction', async (t) => {
@@ -1158,7 +1158,7 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     guideId: 'dialog-guide',
     guideHash: '123456789012',
     summary: 'Find dialog elements',
-    phase2Rubric: { keepWhen: ['dialog tag'], dropWhen: [] },
+    verifierRubric: { keepWhen: ['dialog tag'], dropWhen: [] },
     matcher: {
       kind: 'dom',
       selector: 'dialog',
@@ -1172,7 +1172,7 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     guideId: 'temporal-guide',
     guideHash: '123456789012',
     summary: 'Find Temporal usage',
-    phase2Rubric: { keepWhen: ['Temporal identifier'], dropWhen: [] },
+    verifierRubric: { keepWhen: ['Temporal identifier'], dropWhen: [] },
     matcher: {
       kind: 'js',
       fastTokens: ['Temporal'],
@@ -1197,7 +1197,7 @@ void test('sfc and multi-block scanning: Vue, Svelte, Astro, inline HTML, and Li
     guideId: 'anchor-guide',
     guideHash: '123456789012',
     summary: 'Find anchor-name declarations',
-    phase2Rubric: { keepWhen: ['anchor-name property'], dropWhen: [] },
+    verifierRubric: { keepWhen: ['anchor-name property'], dropWhen: [] },
     matcher: {
       kind: 'css',
       fastTokens: ['anchor-name'],
@@ -1385,7 +1385,7 @@ void test('slice-c: vendored library whole-file detection & AST matcher suppress
     guideId: 'fittext-modernization',
     guideHash: 'abcdef123456',
     summary: 'Replace jQuery FitText with CSS clamp()',
-    phase2Rubric: { keepWhen: ['FitText usage'], dropWhen: [] },
+    verifierRubric: { keepWhen: ['FitText usage'], dropWhen: [] },
     matcher: {
       kind: 'dependency',
       packages: ['jquery-fittext', 'fittext'],
@@ -1400,7 +1400,7 @@ void test('slice-c: vendored library whole-file detection & AST matcher suppress
     guideId: 'body-scroll-lock-modernization',
     guideHash: 'abcdef123456',
     summary: 'Replace body-scroll-lock with CSS overscroll-behavior',
-    phase2Rubric: { keepWhen: ['body-scroll-lock usage'], dropWhen: [] },
+    verifierRubric: { keepWhen: ['body-scroll-lock usage'], dropWhen: [] },
     matcher: {
       kind: 'dependency',
       packages: ['body-scroll-lock'],
@@ -1412,7 +1412,7 @@ void test('slice-c: vendored library whole-file detection & AST matcher suppress
     guideId: 'measurement-guide',
     guideHash: 'abcdef123456',
     summary: 'Flag getBoundingClientRect calls',
-    phase2Rubric: { keepWhen: ['measurement calls'], dropWhen: [] },
+    verifierRubric: { keepWhen: ['measurement calls'], dropWhen: [] },
     matcher: {
       kind: 'js',
       fastTokens: ['getBoundingClientRect'],
@@ -1458,7 +1458,7 @@ void test('slice-c: vendored library whole-file detection & AST matcher suppress
     assert.ok(fittextFinding);
     assert.equal(fittextFinding.line, 1);
     assert.equal(fittextFinding.ruleId, 'dependency-jquery-fittext');
-    assert.equal(fittextFinding.kind, 'vendored-library');
+    assert.equal(fittextFinding.isVendoredLibrary, true);
     assert.match(fittextFinding.message, /jquery\.fittext\.js/);
     assert.match(fittextFinding.message, /targeted for CSS clamp\(\) migration/);
 
@@ -1466,7 +1466,7 @@ void test('slice-c: vendored library whole-file detection & AST matcher suppress
     assert.ok(bslFinding);
     assert.equal(bslFinding.line, 1);
     assert.equal(bslFinding.ruleId, 'dependency-body-scroll-lock');
-    assert.equal(bslFinding.kind, 'vendored-library');
+    assert.equal(bslFinding.isVendoredLibrary, true);
     assert.match(bslFinding.message, /body-scroll-lock/);
   });
 
@@ -1551,7 +1551,7 @@ void test('slice-c: vendored library whole-file detection & AST matcher suppress
       const vendoredFinding = findings.find((finding) => finding.file === 'vendor/jquery.fittext.js');
       assert.ok(vendoredFinding);
       assert.equal(vendoredFinding.line, 1);
-      assert.equal(vendoredFinding.kind, 'vendored-library');
+      assert.equal(vendoredFinding.isVendoredLibrary, true);
       assert.equal(vendoredFinding.ruleId, 'dependency-jquery-fittext');
 
       const appFinding = findings.find((finding) => finding.file === 'src/app.js');

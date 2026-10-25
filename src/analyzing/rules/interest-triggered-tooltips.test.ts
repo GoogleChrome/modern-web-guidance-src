@@ -25,8 +25,8 @@ void test('interest-triggered-tooltips: rule metadata', () => {
   );
 
   assert.equal(interestTriggeredTooltipsRules.length, 1);
-  assert.ok(interestTriggeredTooltipsJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(interestTriggeredTooltipsJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(interestTriggeredTooltipsJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(interestTriggeredTooltipsJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('interest-triggered-tooltips JS matcher', async (t) => {

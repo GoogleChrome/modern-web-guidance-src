@@ -45,7 +45,7 @@ export const switchRule: AnalyzerRule = {
   summary:
     '<input type="checkbox" role="switch"> elements should use the native HTML switch attribute (<input type="checkbox" switch>).',
   matcher: switchMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'An HTML or JSX <input type="checkbox" role="switch"> element implements a binary toggle switch without the native switch attribute.',
     ],

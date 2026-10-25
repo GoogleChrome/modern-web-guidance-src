@@ -68,7 +68,7 @@ export const complexShapesRule: AnalyzerRule = {
   summary:
     'CSS masking using -webkit-mask properties without standard mask/mask-image should be modernized with standard CSS Masking Module Level 1.',
   matcher: complexShapesCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule declares -webkit-mask, -webkit-mask-image, -webkit-mask-size, or other -webkit-mask-* properties without declaring the corresponding standard unprefixed mask or mask-image property.',
       'An element is clipped to an image, gradient, or SVG mask using only legacy WebKit mask properties.',

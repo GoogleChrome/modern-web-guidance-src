@@ -155,7 +155,7 @@ export const anchorPositioningTabUnderlineRule: AnalyzerRule = {
   summary:
     'Imperative JavaScript measurement (offsetLeft, offsetWidth, getBoundingClientRect) calculating active tab indicator positions and setting inline styles; replace with CSS Anchor Positioning.',
   matcher: anchorPositioningTabUnderlineMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A tab bar, navigation menu, or segmented control calculates the position or size of an active indicator (underline, glider, slider, or active bar) using offsetLeft, offsetWidth, or getBoundingClientRect().',
       'The script imperatively updates the indicator position via style.left, style.width, style.transform (translateX), or style.setProperty(--indicator-...).',

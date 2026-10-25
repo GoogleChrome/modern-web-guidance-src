@@ -59,7 +59,7 @@ export const deliverOptimizedDecorativeImagesRule: AnalyzerRule = {
   summary:
     'CSS background or mask images using -webkit-image-set() without standard image-set() should be modernized with CSS image-set() format and resolution negotiation.',
   matcher: deliverOptimizedDecorativeImagesCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule uses vendor-prefixed -webkit-image-set() on background, background-image, content, or mask properties without providing standard image-set().',
       'A CSS declaration delivers resolution-dependent background or mask images solely through -webkit-image-set(...).',

@@ -61,7 +61,7 @@ export const adaptScrollbarToContrastPreferencesRule: AnalyzerRule = {
   summary:
     'Legacy Microsoft scrollbar properties (-ms-scrollbar-*, -ms-overflow-style) should be replaced with standard scrollbar-color, scrollbar-width, and prefers-contrast queries.',
   matcher: adaptScrollbarToContrastPreferencesCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The CSS rule declares legacy IE/Edge proprietary scrollbar properties (-ms-scrollbar-* or -ms-overflow-style) without declaring standard scrollbar-color or scrollbar-width.',
       'The custom scrollbar styling lacks standard adaptation for contrast preferences or modern cross-browser scrollbar controls.',

@@ -19,8 +19,8 @@ import {
 } from './scorecard.ts';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import { scanFiles } from './scanners/index.ts';
-import type { Phase2Verdict } from './phase2.ts';
-import { checkCanaries, isPositiveVerdict, type JudgeResult, JUDGE_VERSION } from './judge.ts';
+import type { Phase2Verdict } from './llm-verifier.ts';
+import { checkCanaries, isPositiveVerdict, type JudgeResult, JUDGE_VERSION } from './detection-eval.ts';
 import { resolveGitMirrorCacheDir } from './paths.ts';
 import { PHASE2_PROMPT_VERSION } from './prompts.ts';
 import { computeTelemetryCacheKey, type CardTelemetryRecord } from './telemetry.ts';
@@ -48,7 +48,7 @@ describe('stratifiedSampleFindings', () => {
       line,
       message: 'test message',
       codeSnippet: 'const x = 1;',
-      astSlice: 'const x = 1;',
+      contextSlice: 'const x = 1;',
     };
   }
 
@@ -447,7 +447,7 @@ describe('sampleM3SpotcheckDeck', () => {
       line: 42,
       message: 'test message',
       codeSnippet: 'const x = 1;',
-      astSlice: 'const x = 1;',
+      contextSlice: 'const x = 1;',
     };
   }
 
@@ -501,7 +501,7 @@ describe('buildRulesByIdMap (multi-rule collision prevention)', () => {
         kind: 'css',
         matchRule: () => null,
       },
-      phase2Rubric: {
+      verifierRubric: {
         keepWhen: [`Keep for ${id}`],
         dropWhen: [`Drop for ${id}`],
       },
@@ -538,7 +538,7 @@ describe('buildRulesByIdMap (multi-rule collision prevention)', () => {
     assert.strictEqual(rulesById.get('child-state-based-styling'), cssRule);
     assert.strictEqual(rulesById.get('child-state-based-styling/js-parent-class'), jsRule);
     assert.deepStrictEqual(
-      rulesById.get('child-state-based-styling')?.phase2Rubric.keepWhen,
+      rulesById.get('child-state-based-styling')?.verifierRubric.keepWhen,
       ['Keep for child-state-based-styling'],
     );
   });
@@ -578,7 +578,7 @@ describe('samplePhase2DropsDeck (R18, R28)', () => {
         guideHash: '123456789012',
         message: 'msg1',
         codeSnippet: 'code1',
-        astSlice: '',
+        contextSlice: '',
       },
       {
         cardId: 'card-medium-1',
@@ -591,7 +591,7 @@ describe('samplePhase2DropsDeck (R18, R28)', () => {
         guideHash: '123456789012',
         message: 'msg2',
         codeSnippet: 'code2',
-        astSlice: '',
+        contextSlice: '',
       },
       {
         cardId: 'card-low-1',
@@ -604,7 +604,7 @@ describe('samplePhase2DropsDeck (R18, R28)', () => {
         guideHash: '123456789012',
         message: 'msg3',
         codeSnippet: 'code3',
-        astSlice: '',
+        contextSlice: '',
       },
     ];
 
@@ -748,7 +748,7 @@ describe('3-way split infrastructure and sequential sampling (R23, O32, O60)', (
           line: i + 1,
           message: 'msg',
           codeSnippet: 'code',
-          astSlice: 'ast',
+          contextSlice: 'ast',
         });
       }
     }
@@ -789,7 +789,7 @@ describe('excludeCorpusNonAppDirs scorecard scan filter (R24, O68)', () => {
       guideId: 'test-guide',
       guideHash: '123456789012',
       summary: 'test',
-      phase2Rubric: { keepWhen: ['test'], dropWhen: ['test'] },
+      verifierRubric: { keepWhen: ['test'], dropWhen: ['test'] },
       matcher: {
         kind: 'js',
         fastTokens: ['const'],
@@ -821,7 +821,7 @@ describe('7-verdict taxonomy scoring and positive verdict counting', () => {
       line,
       message: 'test message',
       codeSnippet: 'const x = 1;',
-      astSlice: 'const x = 1;',
+      contextSlice: 'const x = 1;',
     };
   }
 

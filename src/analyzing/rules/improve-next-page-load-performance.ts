@@ -279,7 +279,7 @@ export const improveNextPageLoadPerformancePackageRule: AnalyzerRule = {
   summary:
     'Legacy link-prefetching packages (instant.page, quicklink, flying-pages) can be modernized with the declarative Speculation Rules API (<script type="speculationrules">).',
   matcher: improveNextPageLoadPerformancePackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A multi-page web application declares instant.page, quicklink, or flying-pages in package.json dependencies to prefetch next-page navigation links on hover or viewport entry.',
     ],
@@ -297,7 +297,7 @@ export const improveNextPageLoadPerformanceJsRule: AnalyzerRule = {
   summary:
     'JavaScript calls to quicklink.listen() or quicklink.prefetch() should be modernized with the declarative Speculation Rules API (<script type="speculationrules">).',
   matcher: improveNextPageLoadPerformanceJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls quicklink.listen() or quicklink.prefetch() to speculatively prefetch navigation URLs without an HTMLScriptElement.supports?.("speculationrules") guard.',
     ],

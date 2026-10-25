@@ -44,7 +44,7 @@ export const softEdgeContentFadeRule: AnalyzerRule = {
   summary:
     'CSS rules with -webkit-mask-image: linear-gradient(...) without standard mask-image should include unprefixed mask-image: linear-gradient(...).',
   matcher: softEdgeContentFadeCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A CSS rule declares -webkit-mask-image or -webkit-mask with linear-gradient(...) or -webkit-gradient(linear, ...) without declaring standard unprefixed mask-image or mask.',
       'Absolute positioned overlay divs with linear-gradient backgrounds and pointer-events: none fade out scroll container edges.',

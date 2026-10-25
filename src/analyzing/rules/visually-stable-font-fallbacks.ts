@@ -399,7 +399,7 @@ export const visuallyStableFontFallbacksPackageRule: AnalyzerRule = {
   summary:
     'Font-loading observer dependencies (fontfaceobserver, webfontloader) used to mitigate fallback font layout shifts can be modernized with CSS font-size-adjust.',
   matcher: visuallyStableFontFallbacksPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares fontfaceobserver or webfontloader in package.json dependencies to toggle font-loaded classes and mitigate fallback font layout shifts.',
     ],
@@ -417,7 +417,7 @@ export const visuallyStableFontFallbacksJsRule: AnalyzerRule = {
   summary:
     'JavaScript FontFaceObserver(...).load() and WebFont.load() calls toggling font-loaded classes should be modernized with CSS font-size-adjust and @font-face metric overrides.',
   matcher: visuallyStableFontFallbacksJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls new FontFaceObserver(...).load() or WebFont.load(...) to toggle .fonts-loaded / .wf-active classes and swap fallback font styles.',
       'Manual line-height or letter-spacing adjustments are applied in JS font-loading callbacks to prevent layout shift.',

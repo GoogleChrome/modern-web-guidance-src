@@ -202,7 +202,7 @@ export const customButtonActionsRule: AnalyzerRule = {
   summary:
     'Declaratively trigger custom element actions using HTML commandfor and custom command="--action" instead of imperative button click listeners.',
   matcher: customButtonActionsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Imperative button click listener querying external target element to trigger custom action or toggle state',
       'Event delegation handling button clicks matching data-command or data-action to dispatch command on target element',

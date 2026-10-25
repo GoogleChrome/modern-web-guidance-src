@@ -41,16 +41,16 @@ void test('support-global-calendar-systems: rule metadata', () => {
 
   assert.equal(supportGlobalCalendarSystemsRules.length, 2);
   assert.ok(
-    supportGlobalCalendarSystemsPackageRule.phase2Rubric.keepWhen.length >= 1,
+    supportGlobalCalendarSystemsPackageRule.verifierRubric.keepWhen.length >= 1,
   );
   assert.ok(
-    supportGlobalCalendarSystemsPackageRule.phase2Rubric.dropWhen.length >= 2,
+    supportGlobalCalendarSystemsPackageRule.verifierRubric.dropWhen.length >= 2,
   );
   assert.ok(
-    supportGlobalCalendarSystemsJsRule.phase2Rubric.keepWhen.length >= 1,
+    supportGlobalCalendarSystemsJsRule.verifierRubric.keepWhen.length >= 1,
   );
   assert.ok(
-    supportGlobalCalendarSystemsJsRule.phase2Rubric.dropWhen.length >= 2,
+    supportGlobalCalendarSystemsJsRule.verifierRubric.dropWhen.length >= 2,
   );
 });
 

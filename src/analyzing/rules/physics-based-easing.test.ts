@@ -19,8 +19,8 @@ void test('physics-based-easing: rule metadata', () => {
   );
 
   assert.equal(physicsBasedEasingRules.length, 1);
-  assert.ok(physicsBasedEasingJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(physicsBasedEasingJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(physicsBasedEasingJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(physicsBasedEasingJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('physics-based-easing JS matcher', async (t) => {

@@ -40,10 +40,10 @@ void test('export-html-media-from-canvas: rule metadata', () => {
   );
 
   assert.equal(exportHtmlMediaFromCanvasRules.length, 2);
-  assert.ok(exportHtmlMediaFromCanvasPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(exportHtmlMediaFromCanvasPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(exportHtmlMediaFromCanvasJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(exportHtmlMediaFromCanvasJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(exportHtmlMediaFromCanvasPackageRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(exportHtmlMediaFromCanvasPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(exportHtmlMediaFromCanvasJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(exportHtmlMediaFromCanvasJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('export-html-media-from-canvas dependency matcher', async (t) => {

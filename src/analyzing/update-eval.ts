@@ -27,7 +27,7 @@ import {
   fetchWithRetry,
   getGeminiApiKey,
   loadGuideSummaryFromMarkdown,
-} from './judge.ts';
+} from './detection-eval.ts';
 import type { AnalyzerFinding } from './schema.ts';
 
 export {
@@ -117,7 +117,7 @@ export function stripComments(content: string): string {
 // Load extracted test fixtures and modern feature patterns from external JSON.
 // Code contains 0 hardcoded LLM fixture strings or pattern maps.
 const fixHarnessData = JSON.parse(
-  readFileSync(new URL('./fix-harness-data.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('./update-eval-data.json', import.meta.url), 'utf8'),
 ) as {
   readonly seededFixtures: SeededFixture[];
   readonly modernFeaturePatterns: Record<string, string>;
@@ -404,6 +404,9 @@ export function checkStructuralIntegrity(
 /**
  * Evaluates a candidate fix patch through the 3-Gate Fix Grader pipeline.
  */
+export const evaluateAgentUpdate = validateFixPatch;
+export const evaluateAgentFix = evaluateAgentUpdate;
+
 export async function validateFixPatch(
   patch: FixPatch,
   options?: FixValidationOptions,
@@ -1073,7 +1076,7 @@ export async function runFixEvaluationCli(): Promise<void> {
             line: 2,
             message: `Legacy pattern detected for ${gid}`,
             codeSnippet: fix.originalContent,
-            astSlice: fix.originalContent,
+            contextSlice: fix.originalContent,
           },
         ]);
       }
@@ -1302,7 +1305,7 @@ export async function runFixEvaluationCli(): Promise<void> {
 }
 
 // Run CLI directly if invoked from command line
-if (process.argv[1]?.endsWith('fix-harness.ts') || process.argv[1]?.endsWith('fix-harness.js')) {
+if (process.argv[1]?.endsWith('update-eval.ts') || process.argv[1]?.endsWith('update-eval.js')) {
   runFixEvaluationCli().catch((err) => {
     console.error('Fix harness CLI error:', err);
     process.exit(1);

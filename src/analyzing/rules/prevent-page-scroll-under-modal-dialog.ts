@@ -385,7 +385,7 @@ export const preventPageScrollUnderModalDialogRule: AnalyzerRule = {
   summary:
     'Flag imperative body scroll locks (document.body.style.overflow = "hidden", document.body.classList.add("modal-open")) inside modal or overlay handlers instead of using native <dialog> with CSS overscroll-behavior: contain.',
   matcher: preventPageScrollUnderModalDialogMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Imperatively locking background page scroll via document.body.style.overflow = "hidden" or document.documentElement.style.overflow = "hidden" when presenting modal dialogs or overlays.',
       'Adding body scroll-lock classes (such as document.body.classList.add("modal-open") or "no-scroll") to freeze underlying page scroll.',
@@ -405,7 +405,7 @@ export const preventPageScrollUnderModalDialogCssRule: AnalyzerRule = {
   summary:
     'Flag CSS modal scroll-lock rules (such as body.modal-open { overflow: hidden }) that disable page scroll without overscroll-behavior.',
   matcher: preventPageScrollUnderModalDialogCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'CSS rules applying overflow: hidden or overflow-y: hidden to body or html via modal/dialog classes (such as .modal-open, .dialog-open, .no-scroll) to prevent background page scroll.',
     ],
@@ -438,7 +438,7 @@ export const preventPageScrollUnderModalDialogDependencyRule: AnalyzerRule = {
   summary:
     'Flag dependencies on legacy body scroll lock packages (body-scroll-lock, scroll-lock, no-scroll) that freeze viewport scroll during modal dialogs.',
   matcher: preventPageScrollUnderModalDialogDependencyMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Projects depending on legacy body scroll lock packages (body-scroll-lock, scroll-lock, no-scroll) to prevent background page scrolling during modal dialogs or overlays.',
     ],

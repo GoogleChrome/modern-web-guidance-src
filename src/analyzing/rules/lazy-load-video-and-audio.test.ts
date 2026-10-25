@@ -41,10 +41,10 @@ void test('lazy-load-video-and-audio: rule metadata', () => {
 
   assert.equal(lazyLoadVideoAndAudioRules.length, 1);
   assert.deepEqual(lazyLoadVideoAndAudioRules, [lazyLoadVideoAndAudioJsRule]);
-  assert.ok(lazyLoadVideoAndAudioPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(lazyLoadVideoAndAudioPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(lazyLoadVideoAndAudioJsRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(lazyLoadVideoAndAudioJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(lazyLoadVideoAndAudioPackageRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(lazyLoadVideoAndAudioPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(lazyLoadVideoAndAudioJsRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(lazyLoadVideoAndAudioJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('lazy-load-video-and-audio dependency matcher', async (t) => {

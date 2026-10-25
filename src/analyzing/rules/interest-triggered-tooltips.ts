@@ -384,7 +384,7 @@ export const interestTriggeredTooltipsJsRule: AnalyzerRule = {
   summary:
     'JavaScript tippy() hover tooltip calls should be modernized with declarative HTML interestfor, popover="hint", and CSS Anchor Positioning.',
   matcher: interestTriggeredTooltipsJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'JavaScript calls tippy(target, options) to attach hover/focus tooltips without interactive click menus.',
       'Custom mouseenter hover delay timeouts position tooltip div elements.',

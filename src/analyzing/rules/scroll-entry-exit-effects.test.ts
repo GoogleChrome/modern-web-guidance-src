@@ -40,10 +40,10 @@ void test('scroll-entry-exit-effects: rule metadata', () => {
   );
 
   assert.equal(scrollEntryExitEffectsRules.length, 2);
-  assert.ok(scrollEntryExitEffectsPackageRule.phase2Rubric.keepWhen.length >= 1);
-  assert.ok(scrollEntryExitEffectsPackageRule.phase2Rubric.dropWhen.length >= 2);
-  assert.ok(scrollEntryExitEffectsJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(scrollEntryExitEffectsJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(scrollEntryExitEffectsPackageRule.verifierRubric.keepWhen.length >= 1);
+  assert.ok(scrollEntryExitEffectsPackageRule.verifierRubric.dropWhen.length >= 2);
+  assert.ok(scrollEntryExitEffectsJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(scrollEntryExitEffectsJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('scroll-entry-exit-effects dependency matcher', async (t) => {

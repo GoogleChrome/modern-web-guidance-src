@@ -287,7 +287,7 @@ export const calculateEventDifferentialsRule: AnalyzerRule = {
   summary:
     'Flag legacy arithmetic date differential math ((a.getTime() - b.getTime()) / 86400000) or moment.diff() / dayjs.diff() with calendar units instead of Temporal.Duration or Temporal.PlainDate/ZonedDateTime.',
   matcher: calculateEventDifferentialsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Dividing the difference between two Date instances ((a.getTime() - b.getTime()) / 86400000) to compute elapsed days instead of Temporal.Duration or Temporal.PlainDate.since()/.until().',
       'Calling moment(...).diff(..., calendarUnit) or dayjs(...).diff(..., calendarUnit) with days, weeks, months, or years instead of Temporal.',
@@ -588,7 +588,7 @@ export const formatHumanReadableDurationsPackageRule: AnalyzerRule = {
   summary:
     'Legacy duration formatting packages (humanize-duration, pretty-ms, moment-duration-format) can be modernized with native Temporal.Duration and Intl.DurationFormat.',
   matcher: durationDependencyMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Using third-party duration formatting packages (such as humanize-duration, pretty-ms, or moment-duration-format) to format time spans.',
       'Calling duration methods like humanizeDuration(...), prettyMs(...), moment.duration(...).humanize(), or moment.duration(...).format(...).',
@@ -609,7 +609,7 @@ export const formatHumanReadableDurationsJsRule: AnalyzerRule = {
   summary:
     'Custom duration formatting logic or libraries (humanizeDuration, prettyMs, moment.duration().humanize()) can be modernized with native Temporal.Duration and Intl.DurationFormat.',
   matcher: durationJsMatcher,
-  phase2Rubric: formatHumanReadableDurationsPackageRule.phase2Rubric,
+  verifierRubric: formatHumanReadableDurationsPackageRule.verifierRubric,
 };
 
 export const calculateEventDifferentialsRules: readonly AnalyzerRule[] = [

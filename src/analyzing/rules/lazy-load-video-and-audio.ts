@@ -164,7 +164,7 @@ export const lazyLoadVideoAndAudioPackageRule: AnalyzerRule = {
   summary:
     'Legacy lazy-loading packages (vanilla-lazyload, lozad) used for media elements should be modernized with HTMLMediaElement loading="lazy".',
   matcher: lazyLoadVideoAndAudioPackageMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'A project declares vanilla-lazyload or lozad in package.json dependencies to lazy-load <video> or <audio> media elements.',
     ],
@@ -182,7 +182,7 @@ export const lazyLoadVideoAndAudioJsRule: AnalyzerRule = {
   summary:
     'IntersectionObserver callbacks swapping data-src onto <video>, <audio>, or <source> and calling load() should be modernized with <video loading="lazy"> and <audio loading="lazy" controls>.',
   matcher: lazyLoadVideoAndAudioJsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'An IntersectionObserver callback swaps dataset.src / data-src or data-poster onto <video>, <audio>, or <source> elements and calls media.load() without an HTMLMediaElement.prototype.loading feature guard.',
     ],

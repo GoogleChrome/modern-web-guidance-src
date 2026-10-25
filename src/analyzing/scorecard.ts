@@ -23,7 +23,7 @@ import {
   type JudgeRunOptions,
   type JudgeVerdict,
   type StabilityEvaluationResult,
-} from './judge.ts';
+} from './detection-eval.ts';
 import {
   ANALYZER_INTERNAL_DIR,
   GRADES_PATH,
@@ -35,7 +35,7 @@ import {
   resolveGitMirrorCacheDir,
   type RepoConfigEntry,
 } from './paths.ts';
-import { runPhase2Filter, type Phase2Options, type Phase2Verdict } from './phase2.ts';
+import { runPhase2Filter, type Phase2Options, type Phase2Verdict } from './llm-verifier.ts';
 import { PHASE2_PROMPT_VERSION } from './prompts.ts';
 import {
   computeFileHash,
@@ -46,7 +46,6 @@ import {
 } from './progress-log.ts';
 import {
   ALL_RULES,
-  PILOT_RULES,
   POST_SELECTION_TUNED_GUIDE_IDS,
 } from './rules/index.ts';
 import { scanFiles, scanRepoFiles } from './scanners/index.ts';
@@ -527,7 +526,7 @@ export function samplePhase2DropsDeck(
       sourceId: f.ruleId,
       file: f.file,
       line: f.line,
-      code: f.astSlice || f.codeSnippet,
+      code: f.contextSlice || f.codeSnippet,
       phase2Decision: 'drop',
       phase2Reason: verdict?.reason ?? 'Phase 2 drop reason missing',
       phase2Confidence: verdict?.confidence ?? 'unknown',
@@ -626,11 +625,11 @@ export function stratifiedSampleFindings(
 }
 
 /**
- * Scans all eligible grading-only repos on disk using PILOT_RULES.
+ * Scans all eligible grading-only repos on disk using ALL_RULES.
  */
 export async function scanGradingRepos(
   gradingRepos: readonly RepoConfigEntry[],
-  rules: readonly AnalyzerRule[] = PILOT_RULES,
+  rules: readonly AnalyzerRule[] = ALL_RULES,
 ): Promise<AnalyzerFinding[]> {
   const allFindings: AnalyzerFinding[] = [];
   const sharedProject = createInMemoryProject();
@@ -683,7 +682,7 @@ export function sampleM3SpotcheckDeck(
     sourceId: f.ruleId,
     file: f.file,
     line: f.line,
-    code: f.astSlice || f.codeSnippet,
+    code: f.contextSlice || f.codeSnippet,
     phase2Decision: 'keep',
     phase2Reason: 'Phase 2 filter approved finding',
     findings: [
@@ -746,7 +745,7 @@ function createBlindCardPayloads(
       guideId: finding.guideId,
       ruleId: finding.ruleId,
       guideSummary: summary,
-      codeSnippet: finding.astSlice || finding.codeSnippet,
+      codeSnippet: finding.contextSlice || finding.codeSnippet,
       ruleHash: rHash,
       guideHash: finding.guideHash,
     };
@@ -1188,7 +1187,7 @@ export async function runPilotScorecard(
   const scoredBlindCards = await prepareBlindCards(scoredCards, summaries, reposPath);
 
   // Combine cards: scored human cards + initial sampled Phase 1 findings + 3 synthetic canaries
-  const allRulesById = buildRulesByIdMap(PILOT_RULES);
+  const allRulesById = buildRulesByIdMap(ALL_RULES);
   const initialCardsMap = new Map<string, BlindCardPayload>();
   for (const c of scoredBlindCards) {
     const rule = allRulesById.get(c.ruleId ?? '') ?? allRulesById.get(c.guideId);

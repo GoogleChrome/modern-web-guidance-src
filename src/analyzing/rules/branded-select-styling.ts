@@ -129,7 +129,7 @@ export const brandedSelectStylingRule: AnalyzerRule = {
   summary:
     'Legacy select styling libraries (select2, chosen-js, bootstrap-select, nice-select) can be modernized using native customizable <select> with appearance: base-select.',
   matcher: brandedSelectStylingDependencyMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Project dependencies (package.json) include select2, chosen-js, bootstrap-select, or nice-select to style and brand dropdown select menus.',
       'JavaScript invokes $(...).select2(), $(...).chosen(), $(...).selectpicker(), or $(...).niceSelect() on select elements to replace default browser select styling with custom UI menus.',
@@ -149,7 +149,7 @@ export const brandedSelectStylingJsRule: AnalyzerRule = {
   summary:
     'Imperative custom select initializations (.select2(), .chosen(), .selectpicker(), .niceSelect()) should be replaced with native customizable <select>.',
   matcher: brandedSelectStylingJsMatcher,
-  phase2Rubric: brandedSelectStylingRule.phase2Rubric,
+  verifierRubric: brandedSelectStylingRule.verifierRubric,
 };
 
 export const brandedSelectStylingDependencyRule = brandedSelectStylingRule;

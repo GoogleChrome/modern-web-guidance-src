@@ -117,7 +117,7 @@ export const customizeScrollbarColorAndThicknessRule: AnalyzerRule = {
   summary:
     'Vendor ::-webkit-scrollbar pseudo-elements customize scrollbar appearance; use standard scrollbar-color and scrollbar-width instead.',
   matcher: customizeScrollbarColorAndThicknessCssMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'The CSS rule uses vendor pseudo-elements (::-webkit-scrollbar or ::-webkit-scrollbar-thumb) declaring non-zero width/height or background colors to customize visible scrollbar dimensions or thumb colors.',
       'The custom scrollbar appearance is implemented without declaring standard scrollbar-color or scrollbar-width CSS properties.',

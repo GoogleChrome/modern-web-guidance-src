@@ -25,8 +25,8 @@ void test('persistent-toast-notifications: rule metadata', () => {
   );
 
   assert.equal(persistentToastNotificationsRules.length, 1);
-  assert.ok(persistentToastNotificationsJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(persistentToastNotificationsJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(persistentToastNotificationsJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(persistentToastNotificationsJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('persistent-toast-notifications JS matcher', async (t) => {

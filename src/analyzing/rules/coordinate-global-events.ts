@@ -320,7 +320,7 @@ export const coordinateGlobalEventsRule: AnalyzerRule = {
   summary:
     'Flag legacy timezone libraries and manual offset math (moment.tz, moment().tz, moment.utc().local(), or getTimezoneOffset()) used to coordinate dates across time zones instead of Temporal.ZonedDateTime or Intl.DateTimeFormat.',
   matcher: coordinateGlobalEventsMatcher,
-  phase2Rubric: {
+  verifierRubric: {
     keepWhen: [
       'Manual timezone offset math using Date.prototype.getTimezoneOffset() specifically to convert timestamps across different geographical time zones or against target IANA time zones.',
       'Legacy timezone library calls (such as moment.tz, moment().tz, or moment.utc().local()) used to coordinate, convert, or format dates in specific IANA time zones.',

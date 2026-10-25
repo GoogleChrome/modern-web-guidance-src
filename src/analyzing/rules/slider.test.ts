@@ -16,8 +16,8 @@ void test('slider: rule metadata', () => {
   assert.equal(sliderJsRule.guideHash, SLIDER_GUIDE_HASH);
 
   assert.equal(sliderRules.length, 1);
-  assert.ok(sliderJsRule.phase2Rubric.keepWhen.length >= 2);
-  assert.ok(sliderJsRule.phase2Rubric.dropWhen.length >= 2);
+  assert.ok(sliderJsRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(sliderJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('slider JS matcher', async (t) => {
