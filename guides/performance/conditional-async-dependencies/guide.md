@@ -47,24 +47,27 @@ if (myPopover) {
 }
 ```
 
-### Avoiding the Safari top-level `await` bug
+### Avoiding the Safari top-level `await` bug and sibling import pitfalls
 
-**MANDATORY:** You must structure your imports carefully to avoid a bug where top-level await doesn't behave as expected in Webkit, which occurs when multiple modules *simultaneously* import a module that contains a top-level `await`:
+**MANDATORY:** You must structure your module graph so the top-level `await` module is imported from a single entry point and completes before downstream modules evaluate:
+
+* **DO NOT import the top-level `await` module from multiple sibling modules simultaneously** (for example, having both `a.js` and `b.js` statically import `./conditionally-load-polyfill.js`). Doing so triggers a WebKit bug that crashes in Safari.
+* **DO NOT place sibling static imports in an entry file** (for example, `import './conditionally-load-polyfill.js'; import './app.js';`). Per the ECMAScript module evaluation specification, top-level `await` only suspends the parent module that imports it—not sibling static imports—so `./app.js` will evaluate concurrently before the polyfill finishes loading.
+
+Instead, choose one of two patterns depending on your module structure:
+
+1. **Single entry module (shown in `main.js` above):** If your entry module runs the dependent initialization logic directly, statically import `./conditionally-load-polyfill.js` at the top of that module and run your code in its body.
+2. **Bootstrapping separate application modules:** If your entry module delegates to downstream application modules (such as `./app.js`), chain dynamic `import()` calls with top-level `await` so `./app.js` is only fetched and evaluated after the polyfill module resolves:
 
 ```javascript
-// DO NOT do this: importing the top-level await module from multiple sibling modules
-// simultaneously will crash in Safari.
-// 
-// a.js: import './conditionally-load-polyfill.js';
-// b.js: import './conditionally-load-polyfill.js';
-// main.js: import './a.js'; import './b.js'; // CRASH!
+// main.js
 
-// INSTEAD, guarantee a single entry point:
-// Import the top-level await module ONCE at the very top of your application tree.
-import './conditionally-load-polyfill.js';
-
-// Then import the rest of your application code, ensuring the await resolves first.
-import './app.js';
+// MANDATORY: Chain dynamic imports with top-level await when bootstrapping separate
+// application modules so './app.js' waits for the polyfill to finish loading.
+// DO NOT use sibling static imports (`import './conditionally-load-polyfill.js'; import './app.js';`),
+// which evaluate concurrently and execute './app.js' before the polyfill is ready.
+await import('./conditionally-load-polyfill.js');
+await import('./app.js');
 ```
 
 ### Fallback strategies
