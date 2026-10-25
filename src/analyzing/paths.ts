@@ -11,6 +11,8 @@ export const WORKTREE_ROOT = resolve(import.meta.dirname, '../..');
 export const ANALYZER_INTERNAL_DIR = join(WORKTREE_ROOT, 'analyzer-internal');
 
 export const REPOS_CONFIG_PATH = join(ANALYZER_INTERNAL_DIR, 'repos.json');
+export const GUIDE_TRIAGE_PATH = join(ANALYZER_INTERNAL_DIR, 'guide-triage.json');
+export const LEGACY_PATTERN_SPECS_PATH = join(ANALYZER_INTERNAL_DIR, 'legacy', 'legacy-pattern-specs.json');
 export const LABELS_DIR = join(ANALYZER_INTERNAL_DIR, 'labels');
 export const CARDS_DIR = join(LABELS_DIR, 'cards');
 export const GRADES_PATH = join(LABELS_DIR, 'grades.paulirish.jsonl');

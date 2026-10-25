@@ -17,7 +17,7 @@ import {
   JUDGE_THINKING_BUDGET,
   formatBlindCardPrompt,
 } from './prompts.ts';
-import { CALIBRATION_DECK_PATH, CARDS_DIR, GRADES_PATH, GUIDES_DIR, M3_SPOTCHECK_DECK_PATH, REPOS_CONFIG_PATH, WORKTREE_ROOT, repoDir, type RepoConfigEntry, ANALYZER_INTERNAL_DIR } from './paths.ts';
+import { CALIBRATION_DECK_PATH, CARDS_DIR, GRADES_PATH, GUIDES_DIR, M3_SPOTCHECK_DECK_PATH, REPOS_CONFIG_PATH, WORKTREE_ROOT, repoDir, type RepoConfigEntry, ANALYZER_INTERNAL_DIR, GUIDE_TRIAGE_PATH, LEGACY_PATTERN_SPECS_PATH } from './paths.ts';
 import {
   gwetAc1Nominal,
   krippendorffAlphaNominal,
@@ -1309,10 +1309,14 @@ export async function loadGuideSummariesMap(
     /* ignore missing or unreadable explainers file */
   }
 
-  // Also inject Technical Reference Dossier from analyzer-internal/legacy-pattern-specs.json (R45)
-  const specsJsonPath = join(ANALYZER_INTERNAL_DIR, 'legacy-pattern-specs.json');
+  // Also inject Technical Reference Dossier from analyzer-internal/guide-triage.json (or legacy specs) (R45)
   try {
-    const specsContent = await readFile(specsJsonPath, 'utf8');
+    let specsContent: string;
+    try {
+      specsContent = await readFile(GUIDE_TRIAGE_PATH, 'utf8');
+    } catch {
+      specsContent = await readFile(LEGACY_PATTERN_SPECS_PATH, 'utf8');
+    }
     const parsedSpecs = JSON.parse(specsContent) as unknown;
     if (Array.isArray(parsedSpecs)) {
       for (const item of parsedSpecs) {
@@ -1332,7 +1336,7 @@ export async function loadGuideSummariesMap(
       }
     }
   } catch {
-    /* ignore missing or unreadable legacy-pattern-specs.json */
+    /* ignore missing or unreadable guide-triage.json */
   }
 
   return map;

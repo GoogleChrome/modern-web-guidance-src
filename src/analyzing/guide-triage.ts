@@ -1,9 +1,44 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { Gate0Classification, Gate0Entry, Gate0EvidenceSource } from './schema.ts';
 import { getGeminiApiKey } from './detection-eval.ts';
 import { ANALYZER_INTERNAL_DIR } from './paths.ts';
+
+/**
+ * Gate 0 triage bucket classifying whether a published feature guide has a statically detectable brownfield target (`D-005`):
+ * - `'detectable'`: The guide replaces a concrete, statically identifiable legacy browser API, CSS property/selector workaround, DOM markup pattern, or third-party package in brownfield code.
+ * - `'ui-recipe-multi-part'`: The guide teaches a multi-element UI component or architectural recipe (e.g. carousel, tabs, navigation drawer) where legacy implementations vary wildly and lack a single high-precision static code hook.
+ * - `'skip-no-old-way'`: The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API) with no direct legacy browser workaround to migrate from.
+ */
+export type Gate0Classification =
+  | 'detectable'
+  | 'ui-recipe-multi-part'
+  | 'skip-no-old-way';
+
+export type Gate0EvidenceSource =
+  | 'guide'
+  | 'explainer'
+  | 'search'
+  | 'ecosystem-knowledge'
+  | 'none';
+
+export interface Gate0Entry {
+  readonly guideId: string;
+  readonly guideHash: string;
+  readonly classification: Gate0Classification;
+  readonly brownfieldTarget: string;
+  readonly candidateTechniques?: readonly string[];
+  readonly replaces?: readonly string[];
+  readonly doesNotReplace?: readonly string[];
+  readonly borderline?: boolean;
+  readonly evidenceFromGuide?: string;
+  readonly reason: string;
+  readonly gate0PromptVersion?: string;
+  readonly evidenceSource?: Gate0EvidenceSource;
+  readonly explainerContextHash?: string;
+  readonly webSearchQueries?: readonly string[];
+  readonly groundingSources?: readonly string[];
+}
 
 export {
   GATE0_PROMPT_VERSION,
