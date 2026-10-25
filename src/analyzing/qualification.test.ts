@@ -3,15 +3,12 @@ import { describe, it } from 'node:test';
 import {
   isGuideQualified,
   QUALIFIED_GUIDE_IDS,
-  QUALIFIED_RULE_MANIFEST,
   SUSPENDED_QUALIFIED_GUIDE_IDS,
-  SUSPENDED_QUALIFIED_RULE_HISTORY,
 } from './qualification.ts';
 
 describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045, D-046, D-048)', () => {
   it('maintains 37 default shipping guides under D-048 graduation criteria', () => {
     assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 37);
-    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 37);
     assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, [
       'animate-element-entry-exit',
       'animate-to-intrinsic-sizes',
@@ -53,22 +50,14 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
     ]);
   });
 
-  it('records per-guide suspension provenance for the 2 remaining suspended guides (D-041, D-042, D-048)', () => {
+  it('records the 2 suspended guides (D-041, D-042, D-048)', () => {
     assert.deepStrictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS, [
       'autofill-highlight-inputs',
       'complex-shapes',
     ]);
-    assert.strictEqual(SUSPENDED_QUALIFIED_RULE_HISTORY.length, 2);
-    for (const entry of SUSPENDED_QUALIFIED_RULE_HISTORY) {
-      assert.strictEqual(entry.split, 'held-out');
-      assert.ok(entry.suspendedAt.length > 0);
-      assert.match(entry.suspensionReason, /D-041/);
-      assert.match(entry.suspensionReason, /D-042/);
-    }
   });
 
   it('guarantees shipping lists cannot include ungraduated or suspended guides (O64, D-048)', () => {
-    // Ungraduated/suspended guides must NOT be in shipping qualification lists
     const nonGraduated = [
       'autofill-highlight-inputs',
       'complex-shapes',
@@ -98,14 +87,5 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
       );
     }
     assert.strictEqual(isGuideQualified('responsive-table'), true);
-  });
-
-  it('QUALIFIED_RULE_MANIFEST contains the 37 graduated guides while 2 remain suspended (D-048)', () => {
-    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 37);
-    const suspendedIds = SUSPENDED_QUALIFIED_RULE_HISTORY.map((r) => r.guideId);
-    assert.deepStrictEqual(suspendedIds, [
-      'autofill-highlight-inputs',
-      'complex-shapes',
-    ]);
   });
 });

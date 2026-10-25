@@ -266,11 +266,11 @@ The evaluation corpus is divided into two strictly isolated splits:
 - **`rule-writing` (208 local repos in `analyzer-internal/repos.json` + 7,048 GitMirror files across 5,320 repos):** Used freely by engineers and agents to discover legacy patterns, author Static Matcher AST patterns, and tune LLM Verifier rubrics.
 - **`held-out` (7,137 remote GitMirror files across 5,258 repos, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`):** Reserved strictly for out-of-sample precision and recall validation (`scorecard.ts`). Never inspected when authoring or debugging rules, guaranteeing zero tuning leakage.
 
-Cross-split boundary isolation is statically verified by [`audit-transcripts.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/audit-transcripts.ts).
+Cross-split boundary isolation is statically verified by the internal audit tooling in `analyzer-internal/src/audit-transcripts.ts`.
 
 ### Detection Eval Protocol & Honest Calibration (`D-031`, `D-041`, `D-042`)
 
-Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Detection Eval Judge** ([`detection-eval.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/eval/detection-eval.ts)) operating under a de-primed, explainer-grounded prompt:
+Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Detection Eval Judge** ([`detection-eval.ts`](./eval/detection-eval.ts)) operating under a de-primed, explainer-grounded prompt:
 - **Current Admission Status:** **`not admitted` (`QUALIFIED_JUDGE_METADATA.admitted = false` in [`qualification.ts`](./qualification.ts) per `D-041` & `D-042`).**
 - **Why De-Admitted (`R34`, `R48`, `O6`):** Although `gemini-3.8-flash:detective-v6-spec22-c3f54b90` cleared in-sample calibration on Paul's 95 active kept cards ($\mathrm{AC}_1 = 0.703$, 3-pass stability $96.5\%$, Canary TNR $100.0\%$ [`2/2`]), it failed the pre-registered `R34` out-of-sample blind specificity check (`_false-positives-check-deck`: $\mathrm{AC}_1 = 0.258 < 0.70$, stability $85.0\% < 95.0\%$), contained a bug in `deriveJudgeVerdictFromFacts` (`R48`) that overwrote `leave-it` and `guide-wrong` to `right`, and was superseded by prompt/code changes in `29b403d05` and `7c6f1a18b`.
 
@@ -288,7 +288,7 @@ Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Detection Eval Judge*
    - **Historical `individual-transform-properties` (Suspended per `R39`/`D-042`):** **98.9%** (`94/95`, 95% CI `[94.3% - 99.8%]`).
    - **Static Matcher Precision:** **53.1%** (`721/1359`). The **LLM Verifier** retained **966** findings.
 
-### Update Eval ([`update-eval.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/eval/update-eval.ts))
+### Update Eval ([`update-eval.ts`](./eval/update-eval.ts))
 
 To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), **Update Eval** (`update-eval.ts`) enforces three static checks on every candidate modernization update:
 - **Check 1 (Finding Eliminated Check):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
@@ -305,8 +305,8 @@ node --test "src/analyzing/**/*.test.ts"
 # Run preflight verification (typecheck, lint, ast-grep):
 pnpm run check:analyze
 
-# Generate held-out detection scorecard across the corpus:
-node --env-file=.env src/analyzing/scorecard.ts
+# Run Detection Eval Judge benchmark on evaluation decks:
+node --env-file=.env src/analyzing/eval/detection-eval.ts
 
 # Run 75-patch sensitivity suite & end-to-end agentic update evaluation:
 node --env-file=.env src/analyzing/eval/update-eval.ts
@@ -341,7 +341,7 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 
 ### Step 4: Held-Out Qualification
 1. **Run preflight checks**: `pnpm run check:analyze` and `node --test "src/analyzing/**/*.test.ts"`.
-2. **Run held-out evaluation**: `node --env-file=.env src/analyzing/scorecard.ts --mode=gitmirror --split=held-out`.
+2. **Run detection and update evaluation**: `node --env-file=.env src/analyzing/eval/update-eval.ts` and `node --env-file=.env src/analyzing/eval/detection-eval.ts`.
 3. **Qualification criteria**:
    - **Experimental Rule**: Active in `ALL_RULES`, available under `--experimental` / `--all-rules`.
    - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it reaches $n \ge 35$ evaluated findings on the untuned `held-out` split and clears Wilson 95% CI lower bound $\ge 0.90$.
