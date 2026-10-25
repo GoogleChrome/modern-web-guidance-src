@@ -20,19 +20,21 @@ The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for leg
 
 ## Pipeline Steps
 
-### Guide Triage
-
-Single-shot LLM classification of a published feature guide (`guide.md` plus upstream explainer context) into `detectable`, `ui-recipe-multi-part`, or `skip-no-old-way` before any rule is written. Not to be confused with **LLM Verifier** or **Eval Judge**, which evaluate code findings rather than guides.
-
-* _Reference_: `src/analyzing/gate0.ts#classifyGuideGate0`
-* _Avoid_: `Gate 0`, `Stage 0`
-
 ### Legacy Pattern Spec
 
-Explicit specification per detectable guide defining **`replaces`** (the concrete 1-to-1 legacy APIs, CSS workarounds, or npm packages the guide's modern feature replaces) and **`doesNotReplace`** (lookalike patterns that are out of scope for the modern feature). Verified before authoring a **Static Matcher** so that rule authors, the **LLM Verifier**, and the **Eval Judge** share a single ground-truth scope boundary.
+Explicit specification per guide (`guideId`) defining **`replaces`** (the concrete legacy APIs, CSS workarounds, DOM idioms, or npm packages the guide's modern feature replaces) and **`doesNotReplace`** (lookalike patterns that are out of scope), and scoring the guide's cleanest legacy **Sub-Pattern** on two orthogonal axes before any **Static Matcher** is authored:
+1. **`Detection` (`'direct-token' | 'structural-ast' | 'needs-verifier' | 'no-legacy-pattern'`)** — How easy it is to spot the legacy pattern statically without false alarms:
+   - `direct-token`: A dedicated vendor prefix (`::-webkit-scrollbar`, `-webkit-mask-image`), deprecated attribute (`importance="high"`), single-purpose package (`autosize`), or dedicated idiom (`.fadeOut()`) identifies the pattern directly (0–3% static misfire).
+   - `structural-ast`: Standard HTML, CSS, or JS combined in a 2–3 clause AST shape that proves intent (`<dialog>` backdrop click listener checking `e.target === dialog` and calling `.close()`, or a boolean `.is-stuck` class toggle on a `position: sticky` header; 3–10% static misfire).
+   - `needs-verifier`: A real legacy pattern written with an everyday general-purpose API (`setTimeout`, `ResizeObserver`, `document.visibilityState`, continuous `getBoundingClientRect` coordinate math) where static syntax looks identical to normal code (>50% static misfire; requires **LLM Verifier** or deferral).
+   - `no-legacy-pattern`: No client-side legacy code pattern to find — either a greenfield platform capability (`passkey-registration`, `agentic-forms`) or a guide whose applicability depends on human visual/semantic judgment (`adapt-scrollbar-to-contrast-preferences`, `accessible-generated-content`).
+2. **`Rewrite Scope` (`'local-swap' | 'cross-layer-refactor' | 'widget-recipe' | 'n/a'`)** — What kind of code change the guide asks for (`'n/a'` when `Detection` is `'no-legacy-pattern'`):
+   - `local-swap`: Replacing or adding a property, selector, attribute, or call at the same site in the same language (including adding `autocomplete` attributes to form inputs or replacing `::-webkit-scrollbar` with `scrollbar-width` / `scrollbar-color`).
+   - `cross-layer-refactor`: Deleting imperative JS listeners, observers, or helper libraries and moving behavior into declarative CSS or HTML (`@starting-style`, `animation-timeline`, `:has()`, `field-sizing`, `closedby="any"`).
+   - `widget-recipe`: Coordinating HTML structure, CSS layout/styling, and JS behavior across multiple parts of a composite UI widget (`navigation-drawer`, `anchor-positioning-tab-underline`, `menu`).
 
-* _Reference_: `analyzer-internal/findings/2026-10-19-legacy-pattern-specs.md`
-* _Avoid_: `Brownfield Rubric`, `Candidate Techniques`
+* _Reference_: `analyzer-internal/findings/2026-10-19-legacy-pattern-specs.md`, `src/analyzing/schema.ts`
+* _Avoid_: `Gate 0`, `Stage 0`, `Guide Triage`, `Brownfield Rubric`, `Candidate Techniques`, `clean-1-to-1`, `needs-care`, `ui-recipe-multi-part`, `skip-no-old-way`
 
 ### Static Matcher
 
@@ -170,7 +172,7 @@ A rule module in `src/analyzing/rules/*.ts` with unit tests on disk that is not 
 
 ### Retired Guide
 
-A guide for which a rule was prototyped and subsequently removed or emptied from `ALL_RULES` because **Guide Triage**, **Legacy Pattern Spec**, or human review determined it is a multi-part UI recipe, has no 1-to-1 legacy equivalent, or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding, or a **Suspended Rule**.
+A guide for which a rule was prototyped and subsequently removed or emptied from `ALL_RULES` because **Legacy Pattern Spec** or human review determined it has `no-legacy-pattern` or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding, or a **Suspended Rule**.
 
 * _Reference_: `src/analyzing/README.md`
 * _Avoid_: `Dropped Rule`
