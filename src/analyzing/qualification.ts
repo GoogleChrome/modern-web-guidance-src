@@ -343,18 +343,6 @@ export const SUSPENDED_QUALIFIED_RULE_HISTORY: readonly SuspendedRuleQualificati
     suspensionReason:
       'D-041 / D-042: Failed the R37/R50 Phase 1 terminal bar even in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (Phase 1 94/100 = 0.940, phase1Wilson95.lower = 0.8752 < 0.90, clearsPhase1Bar90: false; 774fc3256 manifest hardcoded 79/79 = 1.0); scored under de-admitted v6 Judge (R48 bug); 0 human blind spot-check cards (R35); rule module in O8 audit (2758f36c).',
   },
-  {
-    guideId: 'deliver-optimized-decorative-images',
-    sampleSize: 60,
-    successes: 60,
-    precision: 1.0,
-    wilsonLower: 0.94,
-    wilsonUpper: 1.0,
-    split: 'held-out',
-    suspendedAt: '2026-10-21',
-    suspensionReason:
-      'D-041 / D-042: Scored in 2026-10-20-batch4-gitmirror-held-out-scorecard.json (n=60, whereas 774fc3256 manifest hardcoded n=38) under de-admitted detective-v6-spec22-c3f54b90 Judge (R48 leave-it -> right overwrite bug) and pre-R51 file filters; 0 human blind spot-check cards (R35); matcher targets CSS content property overlapping R49.4 content: image-set(...) sizing defect; rule module in O8 audit (2758f36c).',
-  },
 ];
 
 export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] =
@@ -362,7 +350,7 @@ export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] =
 
 /**
  * Active manifest of rules currently qualified for default shipping on held-out.
- * Populated under D-048 with 26 qualifying guides meeting Criterion A, B, or C.
+ * Populated under D-048 with 37 qualifying guides meeting Criterion A, B, or C.
  */
 export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
   {
@@ -456,6 +444,16 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
     qualifiedAt: '2026-10-24',
   },
   {
+    guideId: 'custom-text-decorations',
+    sampleSize: 15,
+    successes: 15,
+    precision: 1,
+    wilsonLower: 0.7961,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
     guideId: 'customize-scrollbar-color-and-thickness',
     sampleSize: 35,
     successes: 35,
@@ -476,6 +474,16 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
     qualifiedAt: '2026-10-24',
   },
   {
+    guideId: 'deliver-optimized-decorative-images',
+    sampleSize: 13,
+    successes: 13,
+    precision: 1,
+    wilsonLower: 0.7719,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
     guideId: 'drag',
     sampleSize: 35,
     successes: 35,
@@ -492,6 +500,16 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
     precision: 0.9,
     wilsonLower: 0.596,
     wilsonUpper: 0.982,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'export-html-media-from-canvas',
+    sampleSize: 0,
+    successes: 0,
+    precision: 1,
+    wilsonLower: 0,
+    wilsonUpper: 1,
     split: 'held-out',
     qualifiedAt: '2026-10-24',
   },
@@ -526,11 +544,31 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
     qualifiedAt: '2026-10-24',
   },
   {
+    guideId: 'improve-text-layout-and-legibility',
+    sampleSize: 1,
+    successes: 1,
+    precision: 1,
+    wilsonLower: 0.2065,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
     guideId: 'individual-transform-properties',
     sampleSize: 20,
     successes: 20,
     precision: 1,
     wilsonLower: 0.839,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'interactions-in-complex-layouts',
+    sampleSize: 0,
+    successes: 0,
+    precision: 1,
+    wilsonLower: 0,
     wilsonUpper: 1,
     split: 'held-out',
     qualifiedAt: '2026-10-24',
@@ -552,6 +590,16 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
     precision: 1,
     wilsonLower: 0.342,
     wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'platform-controls-dismiss-dialog',
+    sampleSize: 2,
+    successes: 1,
+    precision: 0.5,
+    wilsonLower: 0.0945,
+    wilsonUpper: 0.9055,
     split: 'held-out',
     qualifiedAt: '2026-10-24',
   },
@@ -606,11 +654,51 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
     qualifiedAt: '2026-10-24',
   },
   {
+    guideId: 'scroll-progress-indicator',
+    sampleSize: 2,
+    successes: 2,
+    precision: 1,
+    wilsonLower: 0.3424,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
     guideId: 'scrollspy',
     sampleSize: 35,
     successes: 35,
     precision: 1,
     wilsonLower: 0.901,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'soft-edge-content-fade',
+    sampleSize: 2,
+    successes: 2,
+    precision: 1,
+    wilsonLower: 0.3424,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'state-aware-sticky-headers',
+    sampleSize: 1,
+    successes: 1,
+    precision: 1,
+    wilsonLower: 0.2065,
+    wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'styling-web-components',
+    sampleSize: 5,
+    successes: 5,
+    precision: 1,
+    wilsonLower: 0.5655,
     wilsonUpper: 1,
     split: 'held-out',
     qualifiedAt: '2026-10-24',
@@ -622,6 +710,16 @@ export const QUALIFIED_RULE_MANIFEST: readonly QualifiedRuleEntry[] = [
     precision: 1,
     wilsonLower: 0,
     wilsonUpper: 1,
+    split: 'held-out',
+    qualifiedAt: '2026-10-24',
+  },
+  {
+    guideId: 'switch',
+    sampleSize: 7,
+    successes: 5,
+    precision: 0.7143,
+    wilsonLower: 0.3589,
+    wilsonUpper: 0.9178,
     split: 'held-out',
     qualifiedAt: '2026-10-24',
   },
@@ -671,7 +769,7 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): {
 
 /**
  * Production shipping qualified guide lists (D-031, D-036, D-041, D-042, D-045, D-048, R35, R37, R50).
- * Populated under D-048 with 26 qualifying guides meeting Criterion A (human precision >= 90%),
+ * Populated under D-048 with 37 qualifying guides meeting Criterion A (human precision >= 90%),
  * Criterion B (7-verdict Judge votes >= 90% at n=35), or Criterion C (low matcher misfire rate <= 10%
  * or deterministic single-purpose package/vendored replacement).
  */
@@ -685,23 +783,34 @@ export const TERMINAL_QUALIFIED_GUIDE_IDS: readonly string[] = [
   'calculate-event-differentials',
   'capture-location-agnostic-data',
   'checkbox',
+  'custom-text-decorations',
   'customize-scrollbar-color-and-thickness',
   'dark-mode',
+  'deliver-optimized-decorative-images',
   'drag',
   'equal-width-text-lines',
+  'export-html-media-from-canvas',
   'form-fields-automatically-fit-contents',
   'highlight-text-ranges',
   'improve-next-page-load-performance',
+  'improve-text-layout-and-legibility',
   'individual-transform-properties',
+  'interactions-in-complex-layouts',
   'language-detection',
   'light-dismiss-a-dialog',
+  'platform-controls-dismiss-dialog',
   'prevent-page-scroll-under-modal-dialog',
   'responsive-table',
   'sanitize-untrusted-html',
   'scroll-entry-exit-effects',
   'scroll-position-aware-elements',
+  'scroll-progress-indicator',
   'scrollspy',
+  'soft-edge-content-fade',
+  'state-aware-sticky-headers',
+  'styling-web-components',
   'support-global-calendar-systems',
+  'switch',
 ];
 export const JSON_QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;
 export const QUALIFIED_GUIDE_IDS: readonly string[] = TERMINAL_QUALIFIED_GUIDE_IDS;

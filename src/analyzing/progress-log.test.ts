@@ -504,7 +504,7 @@ describe('file operations and hashes', () => {
       const markdown = formatProgressLogMarkdown(funnelRows);
       assert.ok(markdown.includes('## Current Verified Benchmark: No verified benchmark under D-046 (0 human-qualified rules; Judge de-admitted)'));
       assert.ok(markdown.includes('> **Notice (2026-10-24 / D-048 / R50):**'));
-      assert.ok(markdown.includes('26 qualifying guides (39 of 49 active rules) graduated into default shipping'));
+      assert.ok(markdown.includes('37 qualifying guides (53 of 98 active rules) graduated into default shipping'));
       assert.ok(markdown.includes('Pre-remediation `Batch 4` (`5653484`) rule qualifications were suspended in `D-042` (`O6`)'));
       assert.ok(markdown.includes('human blind spot-checks'));
       assert.ok(markdown.includes('5 guides achieved 35/35 judge votes'));

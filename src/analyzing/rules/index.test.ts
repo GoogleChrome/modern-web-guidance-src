@@ -110,16 +110,16 @@ describe('rules/index export registry', () => {
     }
   });
 
-  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 26 qualified guides and 39 rules (D-048)', async () => {
-    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 26);
-    assert.strictEqual(QUALIFIED_RULES.length, 39);
+  it('exports QUALIFIED_GUIDE_IDS and QUALIFIED_RULES with 37 qualified guides and 53 rules (D-048)', async () => {
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 37);
+    assert.strictEqual(QUALIFIED_RULES.length, 53);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(JSON_QUALIFIED_GUIDE_IDS, QUALIFIED_GUIDE_IDS);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_RULES, QUALIFIED_RULES);
     assert.deepStrictEqual(JSON_QUALIFIED_RULES, QUALIFIED_RULES);
 
     const qualifiedGuideSet = new Set(QUALIFIED_GUIDE_IDS);
-    assert.strictEqual(qualifiedGuideSet.size, 26);
+    assert.strictEqual(qualifiedGuideSet.size, 37);
   });
 
   it('exports POST_SELECTION_TUNED_GUIDE_IDS', () => {

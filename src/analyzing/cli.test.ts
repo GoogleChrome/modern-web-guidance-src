@@ -33,11 +33,11 @@ describe('runAnalyzeCli', () => {
   it('reports suspended default guides honestly when default qualified set is active alongside suspended guides (O6, D-042, D-048)', async () => {
     const emptyDir = await mkdtemp(join(tmpdir(), 'analyzer-empty-test-'));
     try {
-      // Default mode with 26 qualified guides and 3 suspended guides
+      // Default mode with 37 qualified guides and 2 suspended guides
       const resDefault = await runAnalyzeCli([emptyDir]);
       assert.equal(resDefault.exitCode, 0);
-      assert.match(resDefault.output, /0 findings from 26 active qualified guides/);
-      assert.match(resDefault.output, /3 guides are suspended pending re-validation/);
+      assert.match(resDefault.output, /0 findings from 37 active qualified guides/);
+      assert.match(resDefault.output, /2 guides are suspended pending re-validation/);
       assert.match(resDefault.output, /--all-rules/);
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
@@ -46,12 +46,12 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.targetDir, emptyDir);
-      assert.equal(parsedDefault.activeRuleCount, 39);
-      assert.equal(parsedDefault.activeGuideCount, 26);
+      assert.equal(parsedDefault.activeRuleCount, 53);
+      assert.equal(parsedDefault.activeGuideCount, 37);
       assert.ok(Array.isArray(parsedDefault.suspendedGuides));
-      assert.equal(parsedDefault.suspendedGuides.length, 3);
-      assert.match(parsedDefault.statusNotice ?? '', /3 previously qualified guides are currently suspended/);
-      assert.match(parsedDefault.statusNotice ?? '', /only 26 qualified guides were scanned/);
+      assert.equal(parsedDefault.suspendedGuides.length, 2);
+      assert.match(parsedDefault.statusNotice ?? '', /2 previously qualified guides are currently suspended/);
+      assert.match(parsedDefault.statusNotice ?? '', /only 37 qualified guides were scanned/);
       assert.match(parsedDefault.statusNotice ?? '', /--all-rules/);
 
       // With --all-rules on an actually empty directory, reports no modernization opportunities found
@@ -284,17 +284,16 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'timezone.js'), timezoneJs, 'utf8');
 
-      // Default run (QUALIFIED_RULES only - 26 guides active under D-048; neither suspended nor experimental patterns match default)
+      // Default run (QUALIFIED_RULES only - 37 guides active under D-048; neither suspended nor experimental patterns match default)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
-      assert.equal(parsedDefault.activeRuleCount, 39);
+      assert.equal(parsedDefault.activeRuleCount, 53);
       assert.deepEqual(parsedDefault.suspendedGuides, [
         'autofill-highlight-inputs',
         'complex-shapes',
-        'deliver-optimized-decorative-images',
       ]);
       assert.match(parsedDefault.statusNotice ?? '', /--all-rules/);
 

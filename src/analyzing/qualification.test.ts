@@ -17,13 +17,13 @@ import {
 } from './qualification.ts';
 
 describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045, D-046, D-048)', () => {
-  it('maintains 26 default shipping guides under D-048 graduation criteria', () => {
+  it('maintains 37 default shipping guides under D-048 graduation criteria', () => {
     assert.strictEqual(QUALIFIED_JUDGE_METADATA.admitted, false);
     assert.strictEqual(evaluateJudgeAdmission(QUALIFIED_JUDGE_METADATA).admitted, false);
-    assert.strictEqual(TERMINAL_QUALIFIED_GUIDE_IDS.length, 26);
-    assert.strictEqual(JSON_QUALIFIED_GUIDE_IDS.length, 26);
-    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 26);
-    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 26);
+    assert.strictEqual(TERMINAL_QUALIFIED_GUIDE_IDS.length, 37);
+    assert.strictEqual(JSON_QUALIFIED_GUIDE_IDS.length, 37);
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 37);
+    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 37);
     assert.deepStrictEqual(TERMINAL_QUALIFIED_GUIDE_IDS, [
       'animate-element-entry-exit',
       'animate-to-intrinsic-sizes',
@@ -34,33 +34,43 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
       'calculate-event-differentials',
       'capture-location-agnostic-data',
       'checkbox',
+      'custom-text-decorations',
       'customize-scrollbar-color-and-thickness',
       'dark-mode',
+      'deliver-optimized-decorative-images',
       'drag',
       'equal-width-text-lines',
+      'export-html-media-from-canvas',
       'form-fields-automatically-fit-contents',
       'highlight-text-ranges',
       'improve-next-page-load-performance',
+      'improve-text-layout-and-legibility',
       'individual-transform-properties',
+      'interactions-in-complex-layouts',
       'language-detection',
       'light-dismiss-a-dialog',
+      'platform-controls-dismiss-dialog',
       'prevent-page-scroll-under-modal-dialog',
       'responsive-table',
       'sanitize-untrusted-html',
       'scroll-entry-exit-effects',
       'scroll-position-aware-elements',
+      'scroll-progress-indicator',
       'scrollspy',
+      'soft-edge-content-fade',
+      'state-aware-sticky-headers',
+      'styling-web-components',
       'support-global-calendar-systems',
+      'switch',
     ]);
   });
 
-  it('records per-guide suspension provenance for the 3 remaining suspended guides (D-041, D-042, D-048)', () => {
+  it('records per-guide suspension provenance for the 2 remaining suspended guides (D-041, D-042, D-048)', () => {
     assert.deepStrictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS, [
       'autofill-highlight-inputs',
       'complex-shapes',
-      'deliver-optimized-decorative-images',
     ]);
-    assert.strictEqual(SUSPENDED_QUALIFIED_RULE_HISTORY.length, 3);
+    assert.strictEqual(SUSPENDED_QUALIFIED_RULE_HISTORY.length, 2);
     for (const entry of SUSPENDED_QUALIFIED_RULE_HISTORY) {
       assert.strictEqual(entry.split, 'held-out');
       assert.ok(entry.suspendedAt.length > 0);
@@ -74,7 +84,6 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
     const nonGraduated = [
       'autofill-highlight-inputs',
       'complex-shapes',
-      'deliver-optimized-decorative-images',
       'coordinate-global-events',
       'break-up-long-tasks',
       'detect-initial-visibility-state',
@@ -84,8 +93,6 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
       'declarative-dialog-popover-control',
       'size-aware-styling',
       'resolution-optimized-pseudo-elements',
-      'soft-edge-content-fade',
-      'switch',
       'optimize-image-priority',
       'select-menu-interaction',
       'lazy-load-video-and-audio',
@@ -285,13 +292,12 @@ describe('Rule Qualification and Manifest (D-031, D-036, D-041, D-042)', () => {
     );
   });
 
-  it('QUALIFIED_RULE_MANIFEST contains the 26 graduated guides while 3 remain suspended (D-048)', () => {
-    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 26);
+  it('QUALIFIED_RULE_MANIFEST contains the 37 graduated guides while 2 remain suspended (D-048)', () => {
+    assert.strictEqual(QUALIFIED_RULE_MANIFEST.length, 37);
     const suspendedIds = SUSPENDED_QUALIFIED_RULE_HISTORY.map((r) => r.guideId);
     assert.deepStrictEqual(suspendedIds, [
       'autofill-highlight-inputs',
       'complex-shapes',
-      'deliver-optimized-decorative-images',
     ]);
   });
 });
