@@ -38,21 +38,21 @@ Fast, deterministic CPU scan (JavaScript/TypeScript AST via `ts-morph`, HTML/JSX
 
 Runtime LLM filter (`gemini-3.8-flash`) that reads a **Static Matcher** candidate finding, `guide.md`, and the rule's `verifierRubric` (`keepWhen`/`dropWhen`) to decide `keep` vs `drop` before reporting findings. Not to be confused with **Detection Eval Judge**, which is an offline evaluation rater that never sees the rule's `verifierRubric`.
 
-* _Reference_: `analyzer-internal/llm-verifier.ts#runLlmVerifier`, `src/analyzing/schema.ts#VerifierRubric`
+* _Reference_: `src/analyzing/llm-verifier.ts#runLlmVerifier`, `src/analyzing/schema.ts#VerifierRubric`
 * _Avoid_: `Phase 2`, `Phase 2 Filter`, `Stage 3`, `phase2Rubric`
 
 ### Detection Eval (`Detection Eval Judge`)
 
 Offline evaluation pass that grades **Blind Card** findings on the **`held-out` split** to measure whether detected code is a valid modernization target. The **Detection Eval Judge** (`3`-pass majority vote LLM) grades each card into the 7 canonical `JudgeVerdict` values (`legit-modernize-target`, `not-old-pattern`, `fallback-or-guard`, `loses-behavior`, `no-payoff`, `guide-wrong`, `unsure`) using only `guide.md` and upstream explainer context (never the rule's `verifierRubric`). Never invoked during user-facing CLI runs.
 
-* _Reference_: `analyzer-internal/detection-eval.ts#JudgeVerdict`, `analyzer-internal/detection-eval.ts#judgeBlindCardsDirect`
+* _Reference_: `src/analyzing/detection-eval.ts#JudgeVerdict`, `src/analyzing/detection-eval.ts#judgeBlindCardsDirect`
 * _Avoid_: `Detective`, `Phase 2 Judge`, `Eval Judge` (unscoped)
 
 ### Update Eval
 
 Offline evaluation pass that gives an LLM a flagged code window and `guide.md`, asks it to update the code to the modern standard, and verifies three static invariants: (1) legacy finding eliminated, (2) modern syntax present and parses cleanly without gutting exports, and (3) seeded broken updates rejected. Pairs with **Detection Eval** to cover both ends of the **Modernize** workflow.
 
-* _Reference_: `analyzer-internal/update-eval.ts#evaluateAgentUpdate`
+* _Reference_: `src/analyzing/update-eval.ts#evaluateAgentUpdate`
 * _Avoid_: `Fix Smoke Test`, `Fix Harness`, `Milestone 4`, `Gate 1 / Gate 2 / Gate 3`
 
 ## Detection Hierarchy
@@ -100,7 +100,7 @@ The partition of repositories reserved strictly for offline precision and recall
 
 An evaluation finding packaged for unbiased grading (enclosing `contextSlice`, file location, and guide context), presented to human raters and the **Detection Eval Judge** stripped of rule rubrics, author commentary, and prior labels.
 
-* _Reference_: `analyzer-internal/detection-eval.ts#BlindCardPayload`, `analyzer-internal/prompts.ts#formatBlindCardPrompt`
+* _Reference_: `src/analyzing/detection-eval.ts#BlindCardPayload`, `src/analyzing/prompts.ts#formatBlindCardPrompt`
 * _Avoid_: `Test Case`, `Evaluation Finding`
 
 ### Blind Replication
