@@ -8,7 +8,7 @@ web-feature-ids:
   - invoker-commands
 ---
 
-## Context Menu
+# Context Menu
 
 A context menu provides quick access to actions related to a specific element or region. As a secondary interaction triggered by right-clicking or long-pressing, they allow the primary click or touch action to remain dedicated to tasks like selection, navigation, or drag-and-drop.
 
