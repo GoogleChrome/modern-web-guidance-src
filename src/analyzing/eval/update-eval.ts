@@ -1,25 +1,19 @@
 /* oxlint-disable max-lines-per-function, max-depth */
 import { readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
+import { homedir } from 'node:os';
+import { basename, dirname, join, resolve } from 'node:path';
 import { parseHTML } from 'linkedom';
 import { parse as parseCss } from 'cssomnom';
-import {
-  ANALYZER_INTERNAL_DIR,
-  CACHE_ROOT,
-  GUIDES_DIR,
-  repoDir,
-  type RepoConfigEntry,
-} from './paths.ts';
 import {
   ALL_RULES,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
-} from './rules/index.ts';
+} from '../rules/index.ts';
 import {
   createInMemoryProject,
   scanFiles,
-} from './scanners/index.ts';
+} from '../scanners/index.ts';
 import { wilsonInterval, type BinomialInterval } from './stats.ts';
 import {
   GEMINI_API_BASE,
@@ -27,8 +21,15 @@ import {
   fetchWithRetry,
   getGeminiApiKey,
   loadGuideSummaryFromMarkdown,
+  repoDir,
+  type RepoConfigEntry,
 } from './detection-eval.ts';
-import type { AnalyzerFinding } from './schema.ts';
+import type { AnalyzerFinding } from '../schema.ts';
+
+const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
+const ANALYZER_INTERNAL_DIR = join(WORKTREE_ROOT, 'analyzer-internal');
+const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
+const CACHE_ROOT = join(homedir(), '.cache', 'repos');
 
 export {
   SYNTHETIC_FIX_PROMPT_VERSION,

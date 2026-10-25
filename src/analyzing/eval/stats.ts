@@ -32,21 +32,7 @@ export interface PpiPlusPlusResult {
   nJudge: number;
 }
 
-/**
- * Computes a card ID matching Spec §2.1:
- * First 12 hex characters of SHA-256 of `${repo}:${commit}:${guideId}:${file}:${line}`.
- */
-// eslint-disable-next-line max-params
-export function computeCardId(
-  repo: string,
-  commit: string,
-  guideId: string,
-  file: string,
-  line: number,
-): string {
-  const payload = `${repo}:${commit}:${guideId}:${file}:${line}`;
-  return createHash('sha256').update(payload).digest('hex').slice(0, CARD_ID_HEX_LENGTH);
-}
+export { computeCardId } from '../scanners/index.ts';
 
 /**
  * Calculates the Wilson score interval for a binomial proportion.

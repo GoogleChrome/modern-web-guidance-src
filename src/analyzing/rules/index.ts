@@ -256,7 +256,6 @@ export const ALL_RULES: readonly AnalyzerRule[] = [
 
 export {
   QUALIFIED_GUIDE_IDS,
-  deriveQualifiedGuideIds,
 } from '../qualification.ts';
 
 import {

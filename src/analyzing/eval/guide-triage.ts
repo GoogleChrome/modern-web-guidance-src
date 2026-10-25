@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { getGeminiApiKey } from './detection-eval.ts';
-import { ANALYZER_INTERNAL_DIR } from './paths.ts';
+
+const ANALYZER_INTERNAL_DIR = resolve(import.meta.dirname, '../../../analyzer-internal');
 
 /**
  * Gate 0 triage bucket classifying whether a published feature guide has a statically detectable brownfield target (`D-005`):

@@ -1,9 +1,238 @@
+import { createHash } from 'node:crypto';
+import { readdir, readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
-import { getGeminiApiKey, loadRawGuideMarkdown } from './detection-eval.ts';
+
+const WORKTREE_ROOT = resolve(import.meta.dirname, '../..');
+const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 
 export const LLM_VERIFIER_MODEL = 'gemini-3.8-flash';
 export const PHASE2_MODEL = LLM_VERIFIER_MODEL;
+export const PROMPT_MODEL = LLM_VERIFIER_MODEL;
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+
+export const PHASE2_THINKING_BUDGET = 1024;
+export const VERIFIER_THINKING_BUDGET = PHASE2_THINKING_BUDGET;
+
+/**
+ * Computes a deterministic 8-character SHA-256 hash across prompt model, system prompt,
+ * user prompt template source, response schema, and thinking budget per R31.
+ */
+export function computePromptContentHash(params: {
+  readonly model: string;
+  readonly systemPrompt: string;
+  readonly userPromptTemplateSource: string;
+  readonly schema: unknown;
+  readonly thinkingBudget: number;
+  readonly temperature?: number;
+  readonly enableSearchGrounding?: boolean;
+}): string {
+  const payload = [
+    params.model,
+    params.systemPrompt,
+    params.userPromptTemplateSource,
+    JSON.stringify(params.schema),
+    String(params.thinkingBudget),
+    String(params.temperature ?? 0.0),
+    String(params.enableSearchGrounding ?? false),
+  ].join('\n---\n');
+  return createHash('sha256').update(payload).digest('hex').slice(0, 8);
+}
+
+export const PHASE2_SYSTEM_PROMPT = `You are an expert static analysis Phase 2 verifier for Modern Web Guidance.
+Your task is to verify whether candidate static analysis matches from Phase 1 represent genuine targets for web platform modernization according to the rule's summary, Phase 2 rubric, and the accompanying guide.md, or whether they should be dropped as false positives.
+
+Follow these verification principles:
+1. Examine the AST slice and surrounding context carefully alongside the full guide.md markdown.
+2. Check against the rule's keepWhen criteria: if the code implements an old workaround or library pattern that should be modernized with standard web platform features taught in guide.md, mark keep = true.
+3. Check against the rule's dropWhen criteria: if the match is a false positive (e.g. non-DOM domain such as audio/canvas/gaming when checking DOM, unrelated business logic, or code already protected by modern feature detection guards), mark keep = false.
+4. DEFAULT TO KEEP: When unsure, KEEP the finding (keep = true). Only drop (keep = false) when a dropWhen item or the guide's scope in guide.md clearly rules it out.
+5. Output concise, objective reasoning explaining why this finding should be kept or dropped.
+6. Provide your confidence level ('high', 'medium', or 'low').`;
+
+export const VERIFIER_SYSTEM_PROMPT = PHASE2_SYSTEM_PROMPT;
+
+export const PHASE2_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    keep: { type: 'BOOLEAN' },
+    reason: { type: 'STRING' },
+    confidence: {
+      type: 'STRING',
+      enum: ['high', 'medium', 'low'],
+    },
+  },
+  required: ['keep', 'reason', 'confidence'],
+};
+
+export const VERIFIER_RESPONSE_SCHEMA = PHASE2_RESPONSE_SCHEMA;
+
+export const PHASE2_USER_PROMPT_TEMPLATE = `## Modern Web Guidance Guide (\${rule.guideId})
+\`\`\`markdown
+\${guideMarkdown}
+\`\`\`
+
+## Rule: \${rule.id}
+Summary: \${rule.summary}
+
+### Keep When:
+\${keepList}
+
+### Drop When:
+\${dropList}
+
+## Finding Location
+- File: \${finding.file}
+- Line: \${finding.line}
+- Matcher Message: \${finding.message}
+
+## Code Context (AST Slice)
+\`\`\`
+\${contextSnippet}
+\`\`\``;
+
+export interface VerifierPromptFindingInput {
+  readonly file: string;
+  readonly line: number;
+  readonly message: string;
+  readonly contextSlice?: string;
+  readonly codeSnippet?: string;
+}
+
+export type Phase2PromptFindingInput = VerifierPromptFindingInput;
+
+export interface VerifierPromptRuleInput {
+  readonly id: string;
+  readonly guideId?: string;
+  readonly summary: string;
+  readonly verifierRubric: {
+    readonly keepWhen: readonly string[];
+    readonly dropWhen: readonly string[];
+  };
+}
+
+export type Phase2PromptRuleInput = VerifierPromptRuleInput;
+
+export function formatVerifierPrompt(
+  finding: VerifierPromptFindingInput,
+  rule: VerifierPromptRuleInput,
+  guideMarkdown?: string,
+): string {
+  const keepList = rule.verifierRubric.keepWhen.map((item) => `- ${item}`).join('\n');
+  const dropList = rule.verifierRubric.dropWhen.map((item) => `- ${item}`).join('\n');
+  const contextSnippet = (finding.contextSlice || finding.codeSnippet || '').trim();
+
+  if (!guideMarkdown || !guideMarkdown.trim()) {
+    throw new Error(
+      `formatVerifierPrompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast per R28/O55a.`,
+    );
+  }
+
+  const guideSection = `## Modern Web Guidance Guide (${rule.guideId || rule.id})\n\`\`\`markdown\n${guideMarkdown.trim()}\n\`\`\`\n\n`;
+
+  return `${guideSection}## Rule: ${rule.id}
+Summary: ${rule.summary}
+
+### Keep When:
+${keepList}
+
+### Drop When:
+${dropList}
+
+## Finding Location
+- File: ${finding.file}
+- Line: ${finding.line}
+- Matcher Message: ${finding.message}
+
+## Code Context (AST Slice)
+\`\`\`
+${contextSnippet}
+\`\`\``;
+}
+
+export const formatPhase2Prompt = formatVerifierPrompt;
+export const buildVerifierPrompt = formatVerifierPrompt;
+export const buildPhase2Prompt = formatVerifierPrompt;
+
+export function computePhase2PromptVersion(): string {
+  const hash = computePromptContentHash({
+    model: PROMPT_MODEL,
+    systemPrompt: PHASE2_SYSTEM_PROMPT,
+    userPromptTemplateSource: formatVerifierPrompt.toString(),
+    schema: PHASE2_RESPONSE_SCHEMA,
+    thinkingBudget: PHASE2_THINKING_BUDGET,
+    temperature: 0.0,
+    enableSearchGrounding: false,
+  });
+  return `${PROMPT_MODEL}:phase2-v2-guide-${hash}`;
+}
+
+export const PHASE2_PROMPT_VERSION = computePhase2PromptVersion();
+export const VERIFIER_PROMPT_VERSION = PHASE2_PROMPT_VERSION;
+
+/**
+ * Resolves the Gemini API key from options, environment, or the workspace .env file.
+ */
+export function getGeminiApiKey(options?: { apiKey?: string }): string {
+  if (options?.apiKey) {
+    return options.apiKey;
+  }
+  if (!process.env.GEMINI_API_KEY) {
+    try {
+      process.loadEnvFile?.(join(WORKTREE_ROOT, '.env'));
+    } catch {
+      /* ignore missing .env */
+    }
+  }
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error('GEMINI_API_KEY is not defined in environment, options, or .env file');
+  }
+  return key;
+}
+
+export async function findGuideMarkdownPath(
+  guideId: string,
+  guidesRootDir: string = GUIDES_DIR,
+): Promise<string> {
+  async function search(dir: string): Promise<string | null> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === guideId) {
+          const guideFile = join(fullPath, 'guide.md');
+          try {
+            await readFile(guideFile, 'utf8');
+            return guideFile;
+          } catch {
+            /* ignore unreadable guide file */
+          }
+        }
+        const found = await search(fullPath);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  const foundPath = await search(guidesRootDir);
+  if (!foundPath) {
+    throw new Error(`guide.md for guideId "${guideId}" not found under ${guidesRootDir}`);
+  }
+  return foundPath;
+}
+
+/**
+ * Loads the raw markdown string of guide.md deterministically for a given guideId.
+ */
+export async function loadRawGuideMarkdown(
+  guideId: string,
+  guidesRootDir: string = GUIDES_DIR,
+): Promise<string> {
+  const guidePath = await findGuideMarkdownPath(guideId, guidesRootDir);
+  return readFile(guidePath, 'utf8');
+}
 
 export type VerifierConfidence = 'high' | 'medium' | 'low';
 export type Phase2Confidence = VerifierConfidence;
@@ -31,27 +260,6 @@ export interface LlmVerifierResult {
   readonly keptFindings: readonly AnalyzerFinding[];
 }
 export type Phase2FilterResult = LlmVerifierResult;
-
-export {
-  PHASE2_PROMPT_VERSION,
-  PHASE2_RESPONSE_SCHEMA,
-  PHASE2_SYSTEM_PROMPT,
-  PHASE2_THINKING_BUDGET,
-  formatPhase2Prompt,
-  VERIFIER_PROMPT_VERSION,
-  VERIFIER_RESPONSE_SCHEMA,
-  VERIFIER_SYSTEM_PROMPT,
-  VERIFIER_THINKING_BUDGET,
-  formatVerifierPrompt,
-  buildVerifierPrompt,
-  buildPhase2Prompt,
-} from './prompts.ts';
-import {
-  PHASE2_RESPONSE_SCHEMA,
-  PHASE2_SYSTEM_PROMPT,
-  PHASE2_THINKING_BUDGET,
-  formatPhase2Prompt,
-} from './prompts.ts';
 
 export function buildVerifierRequestBody(
   finding: AnalyzerFinding,

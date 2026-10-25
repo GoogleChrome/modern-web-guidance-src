@@ -1,7 +1,8 @@
 /* oxlint-disable max-lines-per-function, max-depth */
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 
 export {
   JUDGE_VERSION,
@@ -17,7 +18,6 @@ import {
   JUDGE_THINKING_BUDGET,
   formatBlindCardPrompt,
 } from './prompts.ts';
-import { CALIBRATION_DECK_PATH, CARDS_DIR, GRADES_PATH, GUIDES_DIR, M3_SPOTCHECK_DECK_PATH, REPOS_CONFIG_PATH, WORKTREE_ROOT, repoDir, type RepoConfigEntry, ANALYZER_INTERNAL_DIR, GUIDE_TRIAGE_PATH, LEGACY_PATTERN_SPECS_PATH } from './paths.ts';
 import {
   gwetAc1Nominal,
   krippendorffAlphaNominal,
@@ -26,6 +26,36 @@ import {
   type PpiPlusPlusResult,
   type SensitivitySpecificityResult,
 } from './stats.ts';
+import type { JudgeVerdict, CanonicalJudgeVerdict } from '../schema.ts';
+export { type JudgeVerdict, type CanonicalJudgeVerdict, CANONICAL_VERDICTS } from '../schema.ts';
+export { getGeminiApiKey, findGuideMarkdownPath, loadRawGuideMarkdown } from '../llm-verifier.ts';
+import { getGeminiApiKey, findGuideMarkdownPath, loadRawGuideMarkdown } from '../llm-verifier.ts';
+
+const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
+const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
+const ANALYZER_INTERNAL_DIR = join(WORKTREE_ROOT, 'analyzer-internal');
+const LABELS_DIR = join(ANALYZER_INTERNAL_DIR, 'labels');
+const CARDS_DIR = join(LABELS_DIR, 'cards');
+const GRADES_PATH = join(LABELS_DIR, 'grades.paulirish.jsonl');
+const GUIDE_TRIAGE_PATH = join(ANALYZER_INTERNAL_DIR, 'guide-triage.json');
+const LEGACY_PATTERN_SPECS_PATH = join(ANALYZER_INTERNAL_DIR, 'legacy', 'legacy-pattern-specs.json');
+const CALIBRATION_DECK_PATH = join(CARDS_DIR, 'calibration-deck.json');
+const M3_SPOTCHECK_DECK_PATH = join(CARDS_DIR, 'm3-spotcheck-deck.json');
+const REPOS_CONFIG_PATH = join(ANALYZER_INTERNAL_DIR, 'repos.json');
+
+export interface RepoConfigEntry {
+  readonly repo: string;
+  readonly split: string;
+  readonly localPath?: string;
+  readonly commit?: string;
+}
+
+export function repoDir(entry: RepoConfigEntry, root: string = join(homedir(), '.cache', 'repos')): string {
+  if (entry.localPath) {
+    return resolve(entry.localPath.replace(/^~(?=\/)/, homedir()));
+  }
+  return join(root, entry.repo);
+}
 
 export const JUDGE_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -40,29 +70,7 @@ export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta
  * - `'guide-wrong'`: The guide's advice is bad or overstates what the feature does for this case (the guide itself is wrong to call this pattern a problem).
  * - `'unsure'`: Insufficient context in snippet/file to tell.
  */
-export type CanonicalJudgeVerdict =
-  | 'legit-modernize-target'
-  | 'not-old-pattern'
-  | 'fallback-or-guard'
-  | 'loses-behavior'
-  | 'no-payoff'
-  | 'guide-wrong'
-  | 'unsure';
 
-export type JudgeVerdict =
-  | CanonicalJudgeVerdict
-  | 'right'
-  | 'leave-it';
-
-export const CANONICAL_VERDICTS: ReadonlySet<string> = new Set([
-  'legit-modernize-target',
-  'not-old-pattern',
-  'fallback-or-guard',
-  'loses-behavior',
-  'no-payoff',
-  'guide-wrong',
-  'unsure',
-]);
 
 export const VALID_VERDICTS: ReadonlySet<string> = new Set([
   'legit-modernize-target',
@@ -433,26 +441,7 @@ interface BatchStatusResponse {
   };
 }
 
-/**
- * Resolves the Gemini API key from options, environment, or the workspace .env file.
- */
-export function getGeminiApiKey(options?: JudgeRunOptions): string {
-  if (options?.apiKey) {
-    return options.apiKey;
-  }
-  if (!process.env.GEMINI_API_KEY) {
-    try {
-      process.loadEnvFile?.(join(WORKTREE_ROOT, '.env'));
-    } catch {
-      /* ignore missing .env */
-    }
-  }
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    throw new Error('GEMINI_API_KEY is not defined in environment, options, or .env file');
-  }
-  return key;
-}
+
 
 export async function fetchWithRetry(
   url: string,
@@ -907,48 +896,7 @@ export async function loadHumanGrades(
 /**
  * Deterministically locates the guide.md file for a given guideId under guidesRootDir.
  */
-export async function findGuideMarkdownPath(
-  guideId: string,
-  guidesRootDir: string = GUIDES_DIR,
-): Promise<string> {
-  async function search(dir: string): Promise<string | null> {
-    const entries = await readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === guideId) {
-          const guideFile = join(fullPath, 'guide.md');
-          try {
-            await readFile(guideFile, 'utf8');
-            return guideFile;
-          } catch {
-            /* ignore unreadable guide file */
-          }
-        }
-        const found = await search(fullPath);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
 
-  const foundPath = await search(guidesRootDir);
-  if (!foundPath) {
-    throw new Error(`guide.md for guideId "${guideId}" not found under ${guidesRootDir}`);
-  }
-  return foundPath;
-}
-
-/**
- * Loads the raw markdown string of guide.md deterministically for a given guideId.
- */
-export async function loadRawGuideMarkdown(
-  guideId: string,
-  guidesRootDir: string = GUIDES_DIR,
-): Promise<string> {
-  const guidePath = await findGuideMarkdownPath(guideId, guidesRootDir);
-  return readFile(guidePath, 'utf8');
-}
 
 /**
  * Parses raw guide.md text into a GuideSummaryInfo directly from frontmatter and markdown sections.

@@ -11,7 +11,23 @@ import type {
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
-import { computeCardId } from '../stats.ts';
+
+export const CARD_ID_HEX_LENGTH = 12;
+
+/**
+ * Computes a card ID matching Spec §2.1:
+ * First 12 hex characters of SHA-256 of `${repo}:${commit}:${guideId}:${file}:${line}`.
+ */
+export function computeCardId(
+  repo: string,
+  commit: string,
+  guideId: string,
+  file: string,
+  line: number,
+): string {
+  const payload = `${repo}:${commit}:${guideId}:${file}:${line}`;
+  return createHash('sha256').update(payload).digest('hex').slice(0, CARD_ID_HEX_LENGTH);
+}
 import { sliceStructuredContext } from './context-slicer.ts';
 import { scanCssRules } from './css-scanner.ts';
 import {

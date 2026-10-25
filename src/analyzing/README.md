@@ -270,7 +270,7 @@ Cross-split boundary isolation is statically verified by [`audit-transcripts.ts`
 
 ### Detection Eval Protocol & Honest Calibration (`D-031`, `D-041`, `D-042`)
 
-Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Detection Eval Judge** ([`detection-eval.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/detection-eval.ts)) operating under a de-primed, explainer-grounded prompt:
+Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Detection Eval Judge** ([`detection-eval.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/eval/detection-eval.ts)) operating under a de-primed, explainer-grounded prompt:
 - **Current Admission Status:** **`not admitted` (`QUALIFIED_JUDGE_METADATA.admitted = false` in [`qualification.ts`](./qualification.ts) per `D-041` & `D-042`).**
 - **Why De-Admitted (`R34`, `R48`, `O6`):** Although `gemini-3.8-flash:detective-v6-spec22-c3f54b90` cleared in-sample calibration on Paul's 95 active kept cards ($\mathrm{AC}_1 = 0.703$, 3-pass stability $96.5\%$, Canary TNR $100.0\%$ [`2/2`]), it failed the pre-registered `R34` out-of-sample blind specificity check (`_false-positives-check-deck`: $\mathrm{AC}_1 = 0.258 < 0.70$, stability $85.0\% < 95.0\%$), contained a bug in `deriveJudgeVerdictFromFacts` (`R48`) that overwrote `leave-it` and `guide-wrong` to `right`, and was superseded by prompt/code changes in `29b403d05` and `7c6f1a18b`.
 
@@ -288,7 +288,7 @@ Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Detection Eval Judge*
    - **Historical `individual-transform-properties` (Suspended per `R39`/`D-042`):** **98.9%** (`94/95`, 95% CI `[94.3% - 99.8%]`).
    - **Static Matcher Precision:** **53.1%** (`721/1359`). The **LLM Verifier** retained **966** findings.
 
-### Update Eval ([`update-eval.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/update-eval.ts))
+### Update Eval ([`update-eval.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/eval/update-eval.ts))
 
 To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), **Update Eval** (`update-eval.ts`) enforces three static checks on every candidate modernization update:
 - **Check 1 (Finding Eliminated Check):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
@@ -309,7 +309,7 @@ pnpm run check:analyze
 node --env-file=.env src/analyzing/scorecard.ts
 
 # Run 75-patch sensitivity suite & end-to-end agentic update evaluation:
-node --env-file=.env src/analyzing/update-eval.ts
+node --env-file=.env src/analyzing/eval/update-eval.ts
 ```
 
 All scorecard results and audit trails are logged to `PROGRESS.md` and serialized in `analyzer-internal/findings/`.

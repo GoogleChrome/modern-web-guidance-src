@@ -13,7 +13,7 @@ import {
   type FixPatch,
   type UpdatePatch,
 } from './update-eval.ts';
-import { ALL_RULES } from './rules/index.ts';
+import { ALL_RULES } from '../rules/index.ts';
 
 describe('locateFindingLineInContent', () => {
   it('extracts line number from cursor marker in codeSnippet', () => {

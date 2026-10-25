@@ -12,36 +12,12 @@
 
 import { createHash } from 'node:crypto';
 
+import { computePromptContentHash } from '../llm-verifier.ts';
+
 export const PROMPT_MODEL = 'gemini-3.8-flash';
 export const GATE0_THINKING_BUDGET = 2048;
-export const PHASE2_THINKING_BUDGET = 1024;
 export const JUDGE_THINKING_BUDGET = 2048;
 export const FIX_SIMULATION_THINKING_BUDGET = 1024;
-
-/**
- * Computes a deterministic 8-character SHA-256 hash across prompt model, system prompt,
- * user prompt template source, response schema, and thinking budget per R31.
- */
-export function computePromptContentHash(params: {
-  readonly model: string;
-  readonly systemPrompt: string;
-  readonly userPromptTemplateSource: string;
-  readonly schema: unknown;
-  readonly thinkingBudget: number;
-  readonly temperature?: number;
-  readonly enableSearchGrounding?: boolean;
-}): string {
-  const payload = [
-    params.model,
-    params.systemPrompt,
-    params.userPromptTemplateSource,
-    JSON.stringify(params.schema),
-    String(params.thinkingBudget),
-    String(params.temperature ?? 0.0),
-    String(params.enableSearchGrounding ?? false),
-  ].join('\n---\n');
-  return createHash('sha256').update(payload).digest('hex').slice(0, 8);
-}
 
 // ============================================================================
 // 1. Gate 0 Catalog Triage (R27, R31)
@@ -191,134 +167,27 @@ export const GATE0_PROMPT_VERSION = computeGate0PromptVersion();
 // 2. Phase 2 Verification (R28, R31)
 // ============================================================================
 
-export const PHASE2_SYSTEM_PROMPT = `You are an expert static analysis Phase 2 verifier for Modern Web Guidance.
-Your task is to verify whether candidate static analysis matches from Phase 1 represent genuine targets for web platform modernization according to the rule's summary, Phase 2 rubric, and the accompanying guide.md, or whether they should be dropped as false positives.
-
-Follow these verification principles:
-1. Examine the AST slice and surrounding context carefully alongside the full guide.md markdown.
-2. Check against the rule's keepWhen criteria: if the code implements an old workaround or library pattern that should be modernized with standard web platform features taught in guide.md, mark keep = true.
-3. Check against the rule's dropWhen criteria: if the match is a false positive (e.g. non-DOM domain such as audio/canvas/gaming when checking DOM, unrelated business logic, or code already protected by modern feature detection guards), mark keep = false.
-4. DEFAULT TO KEEP: When unsure, KEEP the finding (keep = true). Only drop (keep = false) when a dropWhen item or the guide's scope in guide.md clearly rules it out.
-5. Output concise, objective reasoning explaining why this finding should be kept or dropped.
-6. Provide your confidence level ('high', 'medium', or 'low').`;
-
-export const PHASE2_RESPONSE_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    keep: { type: 'BOOLEAN' },
-    reason: { type: 'STRING' },
-    confidence: {
-      type: 'STRING',
-      enum: ['high', 'medium', 'low'],
-    },
-  },
-  required: ['keep', 'reason', 'confidence'],
-};
-
-export const PHASE2_USER_PROMPT_TEMPLATE = `## Modern Web Guidance Guide (\${rule.guideId})
-\`\`\`markdown
-\${guideMarkdown}
-\`\`\`
-
-## Rule: \${rule.id}
-Summary: \${rule.summary}
-
-### Keep When:
-\${keepList}
-
-### Drop When:
-\${dropList}
-
-## Finding Location
-- File: \${finding.file}
-- Line: \${finding.line}
-- Matcher Message: \${finding.message}
-
-## Code Context (AST Slice)
-\`\`\`
-\${contextSnippet}
-\`\`\``;
-
-export interface VerifierPromptFindingInput {
-  readonly file: string;
-  readonly line: number;
-  readonly message: string;
-  readonly contextSlice?: string;
-  readonly codeSnippet?: string;
-}
-
-export type Phase2PromptFindingInput = VerifierPromptFindingInput;
-
-export interface VerifierPromptRuleInput {
-  readonly id: string;
-  readonly guideId?: string;
-  readonly summary: string;
-  readonly verifierRubric: {
-    readonly keepWhen: readonly string[];
-    readonly dropWhen: readonly string[];
-  };
-}
-
-export type Phase2PromptRuleInput = VerifierPromptRuleInput;
-
-export function formatVerifierPrompt(
-  finding: VerifierPromptFindingInput,
-  rule: VerifierPromptRuleInput,
-  guideMarkdown?: string,
-): string {
-  const keepList = rule.verifierRubric.keepWhen.map((item) => `- ${item}`).join('\n');
-  const dropList = rule.verifierRubric.dropWhen.map((item) => `- ${item}`).join('\n');
-  const contextSnippet = (finding.contextSlice || finding.codeSnippet || '').trim();
-
-  if (!guideMarkdown || !guideMarkdown.trim()) {
-    throw new Error(
-      `formatVerifierPrompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast per R28/O55a.`,
-    );
-  }
-
-  const guideSection = `## Modern Web Guidance Guide (${rule.guideId || rule.id})\n\`\`\`markdown\n${guideMarkdown.trim()}\n\`\`\`\n\n`;
-
-  return `${guideSection}## Rule: ${rule.id}
-Summary: ${rule.summary}
-
-### Keep When:
-${keepList}
-
-### Drop When:
-${dropList}
-
-## Finding Location
-- File: ${finding.file}
-- Line: ${finding.line}
-- Matcher Message: ${finding.message}
-
-## Code Context (AST Slice)
-\`\`\`
-${contextSnippet}
-\`\`\``;
-}
-
-export function computePhase2PromptVersion(): string {
-  const hash = computePromptContentHash({
-    model: PROMPT_MODEL,
-    systemPrompt: PHASE2_SYSTEM_PROMPT,
-    userPromptTemplateSource: formatVerifierPrompt.toString(),
-    schema: PHASE2_RESPONSE_SCHEMA,
-    thinkingBudget: PHASE2_THINKING_BUDGET,
-    temperature: 0.0,
-    enableSearchGrounding: false,
-  });
-  return `${PROMPT_MODEL}:phase2-v2-guide-${hash}`;
-}
-
-export const PHASE2_PROMPT_VERSION = computePhase2PromptVersion();
-export const VERIFIER_PROMPT_VERSION = PHASE2_PROMPT_VERSION;
-export const formatPhase2Prompt = formatVerifierPrompt;
-export const buildVerifierPrompt = formatVerifierPrompt;
-export const buildPhase2Prompt = formatVerifierPrompt;
-export const VERIFIER_SYSTEM_PROMPT = PHASE2_SYSTEM_PROMPT;
-export const VERIFIER_RESPONSE_SCHEMA = PHASE2_RESPONSE_SCHEMA;
-export const VERIFIER_THINKING_BUDGET = PHASE2_THINKING_BUDGET;
+export {
+  computePromptContentHash,
+  PHASE2_THINKING_BUDGET,
+  VERIFIER_THINKING_BUDGET,
+  PHASE2_SYSTEM_PROMPT,
+  VERIFIER_SYSTEM_PROMPT,
+  PHASE2_RESPONSE_SCHEMA,
+  VERIFIER_RESPONSE_SCHEMA,
+  PHASE2_USER_PROMPT_TEMPLATE,
+  type VerifierPromptFindingInput,
+  type Phase2PromptFindingInput,
+  type VerifierPromptRuleInput,
+  type Phase2PromptRuleInput,
+  formatVerifierPrompt,
+  formatPhase2Prompt,
+  buildVerifierPrompt,
+  buildPhase2Prompt,
+  computePhase2PromptVersion,
+  PHASE2_PROMPT_VERSION,
+  VERIFIER_PROMPT_VERSION,
+} from '../llm-verifier.ts';
 
 // ============================================================================
 // 3. Evaluation Judge (R29, R31)
