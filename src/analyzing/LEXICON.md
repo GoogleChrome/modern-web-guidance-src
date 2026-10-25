@@ -25,7 +25,7 @@ The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for leg
 Upfront classification and scoping of a published feature guide (`guideId`) before any **Static Matcher** is authored. Defines **`replaces`** (the concrete legacy APIs, CSS workarounds, DOM idioms, or npm packages the guide's modern feature replaces), **`doesNotReplace`** (lookalike patterns that are out of scope), and scores the guide's cleanest legacy **Sub-Pattern** on two orthogonal axes: **`Detection`** (`'direct-token' | 'structural-ast' | 'needs-verifier' | 'no-legacy-pattern'`) and **`Update Scope`** (`'local-swap' | 'cross-layer-refactor' | 'widget-recipe' | 'n/a'`). The authoritative definitions of each `Detection` and `UpdateScope` value live on the TypeScript types in `src/analyzing/schema.ts`.
 
 * _Reference_: `src/analyzing/schema.ts#Detection`, `src/analyzing/schema.ts#UpdateScope`, `src/analyzing/schema.ts#GuideTriage`, `src/analyzing/guide-triage.ts#triageGuide`
-* _Avoid_: `Gate 0`, `Stage 0`, `Legacy Pattern Spec`, `Rewrite Scope`, `Brownfield Rubric`, `Candidate Techniques`, `clean-1-to-1`, `needs-care`, `ui-recipe-multi-part`, `skip-no-old-way`
+* _Avoid_: `DetectionKind`, `Gate 0`, `Stage 0`, `Legacy Pattern Spec`, `Rewrite Scope`, `Brownfield Rubric`, `Candidate Techniques`, `clean-1-to-1`, `needs-care`, `ui-recipe-multi-part`, `skip-no-old-way`
 
 ### Static Matcher
 
@@ -45,7 +45,7 @@ Runtime LLM filter (`gemini-3.8-flash`) that reads a **Static Matcher** candidat
 
 Offline evaluation pass that grades **Blind Card** findings on the **`held-out` split** to measure whether detected code is a valid modernization target. The **Detection Eval Judge** (`3`-pass majority vote LLM) grades each card into the 7 canonical `JudgeVerdict` values (`legit-modernize-target`, `not-old-pattern`, `fallback-or-guard`, `loses-behavior`, `no-payoff`, `guide-wrong`, `unsure`) using only `guide.md` and upstream explainer context (never the rule's `verifierRubric`). Never invoked during user-facing CLI runs.
 
-* _Reference_: `src/analyzing/detection-eval.ts#JudgeVerdict`, `src/analyzing/detection-eval.ts#judgeBlindCardsDirect`
+* _Reference_: `src/analyzing/schema.ts#JudgeVerdict`, `src/analyzing/detection-eval.ts#runJudgeDirect`
 * _Avoid_: `Detective`, `Phase 2 Judge`, `Eval Judge` (unscoped)
 
 ### Update Eval
@@ -103,6 +103,13 @@ An evaluation finding packaged for unbiased grading (enclosing `contextSlice`, f
 * _Reference_: `src/analyzing/detection-eval.ts#BlindCardPayload`, `src/analyzing/prompts.ts#formatBlindCardPrompt`
 * _Avoid_: `Test Case`, `Evaluation Finding`
 
+### Grading Deck
+
+A curated or sampled collection of **Blind Cards** packaged together for human spot-checking, judge benchmarking, or calibration. Grading decks are stored as JSON in `analyzer-internal/labels/` and graded blind without showing rule rubrics or prior labels.
+
+* _Reference_: `analyzer-internal/labels/`, `analyzer-internal/ui/`
+* _Avoid_: `Evaluation Suite`, `Test Deck`, `Test Suite`, `Calibration Deck`, `FP Check Deck`, `Gate 0 Deck`
+
 ### Blind Replication
 
 Independent authoring of a **Static Matcher** from `guide.md` and upstream explainers alone without inspecting existing rule code, used to discover author blind spots and benchmark recall overlap on **`held-out` split** code.
@@ -122,7 +129,7 @@ The proportion of evaluated findings graded `legit-modernize-target` ($\text{leg
 The proportion of evaluated findings graded `not-old-pattern` ($\text{not-old-pattern} / n$), measuring how often a **Static Matcher** fires on code that is not attempting the legacy pattern. Its complement ($1 - \text{Matcher Misfire Rate}$, or **Non-Misfire Rate**) is used only when plotting alongside **Precision** on a `0–100%` chart axis.
 
 * _Reference_: `analyzer-internal/DECISIONS.md#d-048`, `src/analyzing/qualification.ts`
-* _Avoid_: `False Positive Rate`, `Error Rate`
+* _Avoid_: `False Positive Rate`, `Error Rate`, `Non-Misfire Rate (as an evaluation metric)`
 
 ## Rule Lifecycle States
 

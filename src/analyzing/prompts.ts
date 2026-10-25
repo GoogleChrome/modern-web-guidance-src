@@ -2,10 +2,10 @@
  * Centralized LLM prompts, formatters, response schemas, and content-hashed version constants across the analyzing pipeline.
  *
  * Provides a single place to inspect, audit, and evolve prompts for:
- * - Gate 0 catalog triage (gate0.ts)
- * - Phase 2 candidate verification (phase2.ts)
- * - Evaluation judge fact-checking (judge.ts)
- * - Synthetic single-shot fix generation simulation (fix-harness.ts)
+ * - Guide Triage (guide-triage.ts)
+ * - LLM Verifier candidate verification (llm-verifier.ts)
+ * - Detection Eval judge fact-checking (detection-eval.ts)
+ * - Synthetic single-shot update generation simulation (update-eval.ts)
  *
  * Implements R27, R28, R29, R30, and R31 with deterministic content hashing and thinking budget configuration.
  */
@@ -244,9 +244,11 @@ export interface Phase2PromptFindingInput {
   readonly line: number;
   readonly message: string;
   readonly contextSlice?: string;
-  readonly astSlice?: string;
   readonly codeSnippet?: string;
 }
+
+export type FindingContextSnippetInput = Phase2PromptFindingInput;
+export type VerifierPromptFindingInput = Phase2PromptFindingInput;
 
 export interface Phase2PromptRuleInput {
   readonly id: string;
@@ -258,6 +260,8 @@ export interface Phase2PromptRuleInput {
   };
 }
 
+export type VerifierPromptRuleInput = Phase2PromptRuleInput;
+
 export function formatPhase2Prompt(
   finding: Phase2PromptFindingInput,
   rule: Phase2PromptRuleInput,
@@ -265,7 +269,7 @@ export function formatPhase2Prompt(
 ): string {
   const keepList = rule.verifierRubric.keepWhen.map((item) => `- ${item}`).join('\n');
   const dropList = rule.verifierRubric.dropWhen.map((item) => `- ${item}`).join('\n');
-  const contextSnippet = (finding.contextSlice || finding.astSlice || finding.codeSnippet || '').trim();
+  const contextSnippet = (finding.contextSlice || finding.codeSnippet || '').trim();
 
   if (!guideMarkdown || !guideMarkdown.trim()) {
     throw new Error(
@@ -309,6 +313,13 @@ export function computePhase2PromptVersion(): string {
 }
 
 export const PHASE2_PROMPT_VERSION = computePhase2PromptVersion();
+export const VERIFIER_PROMPT_VERSION = PHASE2_PROMPT_VERSION;
+export const formatVerifierPrompt = formatPhase2Prompt;
+export const buildVerifierPrompt = formatPhase2Prompt;
+export const buildPhase2Prompt = formatPhase2Prompt;
+export const VERIFIER_SYSTEM_PROMPT = PHASE2_SYSTEM_PROMPT;
+export const VERIFIER_RESPONSE_SCHEMA = PHASE2_RESPONSE_SCHEMA;
+export const VERIFIER_THINKING_BUDGET = PHASE2_THINKING_BUDGET;
 
 // ============================================================================
 // 3. Evaluation Judge (R29, R31)

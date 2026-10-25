@@ -55,7 +55,7 @@ The infographic is a **living visual narrative, not a static schema**. Each time
 - **Admitted Evaluation Rater:**
   - Highlight that the **`Eval Judge`** (`gemini-3.8-flash:detective-v6-spec22-c3f54b90`) is officially **ADMITTED** on Paul Irish's 95 active scored calibration cards (**Gwet's $\text{AC}_1 = 0.703 \ge 0.70$**, **3-Pass Stability = `96.5%` $\ge 95\%$**, **Canary TNR = `100.0%`**).
 - **Zero-API-Key Runtime Verification:**
-  - Emphasize how `phase2Rubric.keepWhen` and `phase2Rubric.dropWhen` emitted in CLI and `--json` turn the developer's existing coding agent (Claude, Gemini, Cursor) into the runtime `LLM Verifier` at zero additional API key, quota, or latency cost.
+  - Emphasize how `verifierRubric.keepWhen` and `verifierRubric.dropWhen` emitted in CLI and `--json` turn the developer's existing coding agent (Claude, Gemini, Cursor) into the runtime `LLM Verifier` at zero additional API key, quota, or latency cost.
 - **Active Bottlenecks & Next Priorities:**
   - Scaling GitMirror sampling from 800 to 8,000+ shards to lift sample-constrained high-precision guides (like `responsive-table` at 33/33 100%, `autofill-address-form`, `branded-select-styling`) past the $n \ge 35$ qualification threshold.
 

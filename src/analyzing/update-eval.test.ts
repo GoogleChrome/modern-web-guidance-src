@@ -8,7 +8,9 @@ import {
   locateFindingLineInContent,
   runBadPatchSensitivitySuite,
   validateFixPatch,
+  validateUpdatePatch,
   type FixPatch,
+  type UpdatePatch,
 } from './update-eval.ts';
 import { ALL_RULES } from './rules/index.ts';
 
@@ -567,7 +569,8 @@ describe('validateFixPatch (3-Gate Grader)', () => {
   const testFixture = foundFixture;
 
   it('Gate 1 fails on no-op patch (legacy finding remains)', async () => {
-    const patch: FixPatch = {
+    assert.equal(validateUpdatePatch, validateFixPatch);
+    const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
       patchedContent: testFixture.noOpPatch,
@@ -577,6 +580,10 @@ describe('validateFixPatch (3-Gate Grader)', () => {
     const res = await validateFixPatch(patch);
     assert.strictEqual(res.resolved, false);
     assert.strictEqual(res.gate1.passed, false);
+    assert.strictEqual(res.findingEliminatedCheck.passed, false);
+    assert.equal(res.findingEliminatedCheck, res.gate1);
+    assert.equal(res.modernSyntaxCheck, res.gate2);
+    assert.equal(res.behavioralCheck, res.gate3);
     assert.ok(res.gate1.findingsRemaining > 0);
   });
 

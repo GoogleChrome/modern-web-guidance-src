@@ -393,7 +393,12 @@ export function scanHtml(
 
       const result = rule.matchElement(view, ctx);
       if (result) {
-        matches.push({ line, column, message: result.message });
+        matches.push({
+          line,
+          column,
+          message: result.message,
+          ...(result.subPattern ? { subPattern: result.subPattern } : {}),
+        });
       }
     }
   }
@@ -518,7 +523,12 @@ export function scanJsx(
 
       const result = rule.matchElement(view, ctx);
       if (result) {
-        matches.push({ line, column, message: result.message });
+        matches.push({
+          line,
+          column,
+          message: result.message,
+          ...(result.subPattern ? { subPattern: result.subPattern } : {}),
+        });
       }
     }
   }

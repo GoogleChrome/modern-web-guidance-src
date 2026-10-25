@@ -436,7 +436,7 @@ export function sliceStructuredContext(
   fileContent: string,
   targetLine: number,
   sourceFile?: SourceFile,
-): { codeSnippet: string; contextSlice: string; astSlice: string } {
+): { codeSnippet: string; contextSlice: string } {
   const codeSnippet = extractCompactSnippet(fileContent, targetLine);
   const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase();
   const isPackageJson =
@@ -452,5 +452,5 @@ export function sliceStructuredContext(
     contextSlice = sliceStructuredBlock(fileContent, targetLine);
   }
 
-  return { codeSnippet, contextSlice, astSlice: contextSlice };
+  return { codeSnippet, contextSlice };
 }

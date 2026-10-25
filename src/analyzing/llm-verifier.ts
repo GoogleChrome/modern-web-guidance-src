@@ -1,31 +1,36 @@
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import { getGeminiApiKey, loadRawGuideMarkdown } from './detection-eval.ts';
 
-export const PHASE2_MODEL = 'gemini-3.8-flash';
+export const LLM_VERIFIER_MODEL = 'gemini-3.8-flash';
+export const PHASE2_MODEL = LLM_VERIFIER_MODEL;
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-export type Phase2Confidence = 'high' | 'medium' | 'low';
+export type VerifierConfidence = 'high' | 'medium' | 'low';
+export type Phase2Confidence = VerifierConfidence;
 
-export interface Phase2Verdict {
+export interface VerifierVerdict {
   readonly cardId: string;
   readonly keep: boolean;
   readonly reason: string;
-  readonly confidence: Phase2Confidence;
+  readonly confidence: VerifierConfidence;
 }
+export type Phase2Verdict = VerifierVerdict;
 
-export interface Phase2Options {
+export interface VerifierOptions {
   readonly apiKey?: string;
   readonly fetchFn?: typeof fetch;
   readonly concurrency?: number;
   readonly maxRetries?: number;
   readonly model?: string;
 }
+export type Phase2Options = VerifierOptions;
 
-export interface Phase2FilterResult {
-  readonly results: readonly Phase2Verdict[];
-  readonly verdicts: readonly Phase2Verdict[];
+export interface LlmVerifierResult {
+  readonly results: readonly VerifierVerdict[];
+  readonly verdicts: readonly VerifierVerdict[];
   readonly keptFindings: readonly AnalyzerFinding[];
 }
+export type Phase2FilterResult = LlmVerifierResult;
 
 export {
   PHASE2_PROMPT_VERSION,
@@ -33,16 +38,22 @@ export {
   PHASE2_SYSTEM_PROMPT,
   PHASE2_THINKING_BUDGET,
   formatPhase2Prompt,
+  VERIFIER_PROMPT_VERSION,
+  VERIFIER_RESPONSE_SCHEMA,
+  VERIFIER_SYSTEM_PROMPT,
+  VERIFIER_THINKING_BUDGET,
+  formatVerifierPrompt,
+  buildVerifierPrompt,
+  buildPhase2Prompt,
 } from './prompts.ts';
 import {
-  PHASE2_PROMPT_VERSION,
   PHASE2_RESPONSE_SCHEMA,
   PHASE2_SYSTEM_PROMPT,
   PHASE2_THINKING_BUDGET,
   formatPhase2Prompt,
 } from './prompts.ts';
 
-export function buildPhase2RequestBody(
+export function buildVerifierRequestBody(
   finding: AnalyzerFinding,
   rule: AnalyzerRule,
   guideMarkdown?: string,
@@ -65,30 +76,31 @@ export function buildPhase2RequestBody(
     },
   };
 }
+export const buildPhase2RequestBody = buildVerifierRequestBody;
 
-export function parsePhase2Response(rawText: string, cardId: string): Phase2Verdict {
+export function parseVerifierResponse(rawText: string, cardId: string): VerifierVerdict {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawText.trim());
   } catch (err: unknown) {
-    throw new Error(`Phase 2 response JSON parse error for card ${cardId}: ${String(err)}`);
+    throw new Error(`Verifier response JSON parse error for card ${cardId}: ${String(err)}`);
   }
 
   if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error(`Phase 2 invalid response shape for card ${cardId}: expected object`);
+    throw new Error(`Verifier invalid response shape for card ${cardId}: expected object`);
   }
 
   const rec = parsed as Record<string, unknown>;
   if (typeof rec.keep !== 'boolean') {
-    throw new Error(`Phase 2 response missing boolean 'keep' property for card ${cardId}`);
+    throw new Error(`Verifier response missing boolean 'keep' property for card ${cardId}`);
   }
   if (typeof rec.reason !== 'string') {
-    throw new Error(`Phase 2 response missing string 'reason' property for card ${cardId}`);
+    throw new Error(`Verifier response missing string 'reason' property for card ${cardId}`);
   }
   const confidence = rec.confidence;
   if (confidence !== 'high' && confidence !== 'medium' && confidence !== 'low') {
     throw new Error(
-      `Phase 2 response invalid confidence '${String(confidence)}' for card ${cardId}`,
+      `Verifier response invalid confidence '${String(confidence)}' for card ${cardId}`,
     );
   }
 
@@ -99,6 +111,7 @@ export function parsePhase2Response(rawText: string, cardId: string): Phase2Verd
     confidence,
   };
 }
+export const parsePhase2Response = parseVerifierResponse;
 
 async function fetchWithRetry(
   url: string,
@@ -254,6 +267,7 @@ export async function simulateSingleShotPhase2Filter(
   };
 }
 
+export const simulateSingleShotVerifier = simulateSingleShotPhase2Filter;
 export const runLlmVerifier = simulateSingleShotPhase2Filter;
 export const runPhase2Filter = runLlmVerifier;
 export const phase2Filter = simulateSingleShotPhase2Filter;

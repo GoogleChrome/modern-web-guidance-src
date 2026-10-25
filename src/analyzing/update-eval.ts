@@ -47,7 +47,7 @@ import {
   formatFixSimulationPrompt,
 } from './prompts.ts';
 
-export interface FixPatch {
+export interface UpdatePatch {
   /** Relative or absolute path to the file being patched */
   readonly filePath: string;
   /** Original file content before refactoring */
@@ -65,14 +65,16 @@ export interface FixPatch {
   /** Patched window content produced by the refactor agent (if windowed evaluation) */
   readonly patchedWindow?: string;
 }
+export type FixPatch = UpdatePatch;
 
-export interface Gate1Result {
+export interface FindingEliminatedCheckResult {
   readonly passed: boolean;
   readonly findingsRemaining: number;
   readonly failureReason?: string;
 }
+export type Gate1Result = FindingEliminatedCheckResult;
 
-export interface Gate2Result {
+export interface ModernSyntaxCheckResult {
   readonly passed: boolean;
   readonly syntaxClean: boolean;
   readonly structuralIntegrityPassed: boolean;
@@ -80,28 +82,35 @@ export interface Gate2Result {
   readonly diagnostics: readonly string[];
   readonly failureReason?: string;
 }
+export type Gate2Result = ModernSyntaxCheckResult;
 
-export interface Gate3Result {
+export interface BehavioralCheckResult {
   readonly passed: boolean;
   readonly status: 'PASSED' | 'FAILED' | 'SKIPPED_NO_TEST_HARNESS';
   readonly failureReason?: string;
 }
+export type Gate3Result = BehavioralCheckResult;
 
-export interface FixValidationResult {
+export interface UpdateValidationResult {
   readonly resolved: boolean;
   readonly staticResolved: boolean;
   readonly guideId: string;
   readonly ruleId?: string;
   readonly filePath: string;
-  readonly gate1: Gate1Result;
-  readonly gate2: Gate2Result;
-  readonly gate3: Gate3Result;
+  readonly findingEliminatedCheck: FindingEliminatedCheckResult;
+  readonly modernSyntaxCheck: ModernSyntaxCheckResult;
+  readonly behavioralCheck: BehavioralCheckResult;
+  readonly gate1: FindingEliminatedCheckResult;
+  readonly gate2: ModernSyntaxCheckResult;
+  readonly gate3: BehavioralCheckResult;
   readonly summary: string;
 }
+export type FixValidationResult = UpdateValidationResult;
 
-export interface FixValidationOptions {
-  readonly behavioralCheck?: (patch: FixPatch) => Promise<boolean> | boolean;
+export interface UpdateValidationOptions {
+  readonly behavioralCheck?: (patch: UpdatePatch) => Promise<boolean> | boolean;
 }
+export type FixValidationOptions = UpdateValidationOptions;
 
 /**
  * Checks whether the modern platform feature prescribed by guide.md
@@ -510,26 +519,31 @@ export async function validateFixPatch(
   };
 
   if (!gate1.passed) {
+    const gate2: ModernSyntaxCheckResult = {
+      passed: false,
+      syntaxClean: false,
+      structuralIntegrityPassed: false,
+      modernFeatureVerified: false,
+      diagnostics: [],
+      failureReason: 'Gate 2 skipped because Gate 1 failed',
+    };
+    const gate3: BehavioralCheckResult = {
+      passed: false,
+      status: 'SKIPPED_NO_TEST_HARNESS',
+      failureReason: 'Gate 3 skipped because Gate 1 failed',
+    };
     return {
       resolved: false,
       staticResolved: false,
       guideId: patch.guideId,
       ruleId: patch.ruleId,
       filePath: patch.filePath,
+      findingEliminatedCheck: gate1,
+      modernSyntaxCheck: gate2,
+      behavioralCheck: gate3,
       gate1,
-      gate2: {
-        passed: false,
-        syntaxClean: false,
-        structuralIntegrityPassed: false,
-        modernFeatureVerified: false,
-        diagnostics: [],
-        failureReason: 'Gate 2 skipped because Gate 1 failed',
-      },
-      gate3: {
-        passed: false,
-        status: 'SKIPPED_NO_TEST_HARNESS',
-        failureReason: 'Gate 3 skipped because Gate 1 failed',
-      },
+      gate2,
+      gate3,
       summary: `GATE_1_FAILED: ${gate1.failureReason}`,
     };
   }
@@ -589,19 +603,23 @@ export async function validateFixPatch(
   };
 
   if (!gate2.passed) {
+    const gate3: BehavioralCheckResult = {
+      passed: false,
+      status: 'SKIPPED_NO_TEST_HARNESS',
+      failureReason: 'Gate 3 skipped because Gate 2 failed',
+    };
     return {
       resolved: false,
       staticResolved: false,
       guideId: patch.guideId,
       ruleId: patch.ruleId,
       filePath: patch.filePath,
+      findingEliminatedCheck: gate1,
+      modernSyntaxCheck: gate2,
+      behavioralCheck: gate3,
       gate1,
       gate2,
-      gate3: {
-        passed: false,
-        status: 'SKIPPED_NO_TEST_HARNESS',
-        failureReason: 'Gate 3 skipped because Gate 2 failed',
-      },
+      gate3,
       summary: `GATE_2_FAILED: ${gate2.failureReason}`,
     };
   }
@@ -655,12 +673,17 @@ export async function validateFixPatch(
     guideId: patch.guideId,
     ruleId: patch.ruleId,
     filePath: patch.filePath,
+    findingEliminatedCheck: gate1,
+    modernSyntaxCheck: gate2,
+    behavioralCheck: gate3,
     gate1,
     gate2,
     gate3,
     summary,
   };
 }
+
+export const validateUpdatePatch = validateFixPatch;
 
 export interface SeededFixture {
   readonly guideId: string;

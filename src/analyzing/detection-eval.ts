@@ -143,7 +143,7 @@ export function verdictsAgree(humanVerdict: string, judgeVerdict: string): boole
   return false;
 }
 
-export interface DetectiveFactCheck {
+export interface DetectionEvalFactCheck {
   matches_before_syntax: boolean;
   has_fallback_or_feature_guard: boolean;
   modern_feature_applies_here: boolean;
@@ -153,7 +153,9 @@ export interface DetectiveFactCheck {
   rawVerdict?: JudgeVerdict;
 }
 
-export function isDetectiveFactCheck(obj: unknown): obj is DetectiveFactCheck {
+export type DetectiveFactCheck = DetectionEvalFactCheck;
+
+export function isDetectionEvalFactCheck(obj: unknown): obj is DetectionEvalFactCheck {
   if (typeof obj !== 'object' || obj === null) {
     return false;
   }
@@ -172,6 +174,8 @@ export function isDetectiveFactCheck(obj: unknown): obj is DetectiveFactCheck {
     (!('rawVerdict' in obj) || obj.rawVerdict === undefined || isJudgeVerdict(obj.rawVerdict))
   );
 }
+
+export const isDetectiveFactCheck = isDetectionEvalFactCheck;
 
 export interface GuideSummaryInfo {
   guideId: string;
@@ -1153,7 +1157,7 @@ export function hasValidSpecProvenance(spec: Record<string, unknown>): boolean {
  * Returns `''` when the entry does not carry valid provenance, preventing unverified
  * or circular R41 text from biasing the Judge.
  */
-export function formatLegacyPatternSpecDossier(spec: Record<string, unknown>): string {
+export function formatGuideTriageDossier(spec: Record<string, unknown>): string {
   if (!hasValidSpecProvenance(spec)) {
     return '';
   }
@@ -1201,6 +1205,7 @@ export function formatLegacyPatternSpecDossier(spec: Record<string, unknown>): s
   }
   return lines.join('\n');
 }
+export const formatLegacyPatternSpecDossier = formatGuideTriageDossier;
 
 /**
  * Loads guide summaries directly from markdown files into a map indexed by guideId.

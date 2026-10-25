@@ -288,4 +288,35 @@ describe('individualTransformPropertiesRule', () => {
     const distinctMatches = scanCss('src/card-hover.css', distinctGroupCss, rules);
     assert.equal(distinctMatches.length, 2);
   });
+
+  it('emits subPattern on matches for single-function-state, repeating-keyframe-step, paired-state-composition, and multi-function-chain', () => {
+    // single-function-state
+    const stateMatches = scanCss('src/state.css', '.btn:hover { transform: scale(1.05); }', rules);
+    assert.equal(stateMatches[0]?.subPattern, 'single-function-state');
+
+    // repeating-keyframe-step
+    const keyframeMatches = scanCss(
+      'src/kf.css',
+      '@keyframes pop { 0% { transform: translateX(-50%) scale(0.8); } 100% { transform: translateX(-50%) scale(1); } }',
+      rules,
+    );
+    assert.equal(keyframeMatches[0]?.subPattern, 'repeating-keyframe-step');
+
+    // paired-state-composition
+    const pairedMatches = scanCss(
+      'src/pair.css',
+      '.tooltip { transform: translateX(-50%); } .tooltip:hover { transform: translateX(-50%) scale(1.05); }',
+      rules,
+    );
+    assert.equal(pairedMatches[0]?.subPattern, 'paired-state-composition');
+    assert.equal(pairedMatches[1]?.subPattern, 'paired-state-composition');
+
+    // multi-function-chain (opt-in standalone chain rule)
+    const chainMatches = scanCss(
+      'src/chain.css',
+      '.icon { transform: translate(10px, 20px) rotate(45deg); }',
+      standaloneChainRules,
+    );
+    assert.equal(chainMatches[0]?.subPattern, 'multi-function-chain');
+  });
 });

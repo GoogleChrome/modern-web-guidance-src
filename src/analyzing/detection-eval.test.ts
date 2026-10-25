@@ -8,6 +8,7 @@ import {
   evaluateJudgeStability,
   extractCodeSnippet,
   formatBlindCardPrompt,
+  formatGuideTriageDossier,
   formatLegacyPatternSpecDossier,
   hasValidSpecProvenance,
   isJudgeVerdict,
@@ -125,6 +126,7 @@ describe('blind card formatting & request construction', () => {
   });
 
   it('formats legacy-pattern-specs.json Technical Reference Dossier only when valid provenance is present and blocks unverified injection (R45)', async () => {
+    assert.equal(formatGuideTriageDossier, formatLegacyPatternSpecDossier);
     const unverifiedSpec = {
       guideId: 'individual-transform-properties',
       changesSomethingForDeveloper: 'Yes for multi-function chains.',

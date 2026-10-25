@@ -2,7 +2,7 @@
 
 The Modern Web Guidance Analyzer scans brownfield web codebases for legacy idioms, obsolete polyfills, and userland workarounds, mapping every finding directly to a corresponding [Modern Web Guidance](../../guides) standard. It is designed for dual operation: fast, human-readable terminal reports for developers and structured machine-readable JSON for autonomous coding agents.
 
-See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Modernize`, `analyze`, `Guide Triage`, `Legacy Pattern Spec`, `Static Matcher`, `LLM Verifier`, `Eval Judge`, `Fix Smoke Test`, and the `rule-writing` and `held-out` splits).
+See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Modernize`, `analyze`, `Guide Triage`, `Static Matcher`, `LLM Verifier`, `Detection Eval Judge`, `Update Eval`, and the `rule-writing` and `held-out` splits).
 
 ---
 
@@ -28,7 +28,7 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--tier <tier>` | String | Restrict analysis to a confidence tier (`qualified` or `experimental`). |
-| `--all-rules`, `--experimental` | Flag | Run all 35 landed feature guides (49 rules total in `ALL_RULES`), including experimental and unmeasured rules. |
+| `--experimental`, `--all-rules` | Flag | Run all 71 active feature guides (98 rules total in `ALL_RULES` across 85 rule modules on disk), including experimental and unmeasured rules. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
@@ -197,16 +197,15 @@ export const autofillSignInFormRule: AnalyzerRule = {
 };
 ```
 
-### Qualified Rules & Gated Execution (`R33`, `D-041`, `D-042`)
+### Qualified Rules & Gated Execution (`R33`, `D-041`, `D-042`, `D-048`)
 
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
-- **`TERMINAL_QUALIFIED_RULES`:** In standard terminal CLI mode, the analyzer runs **deterministic Phase 1 only** for guides that clear the statistical held-out qualification bar (`TERMINAL_QUALIFIED_GUIDE_IDS`, currently `[]` — all 4 previously qualified guides (`autofill-highlight-inputs`, `complex-shapes`, `deliver-optimized-decorative-images`, `individual-transform-properties`) are suspended pending `D-041`/`D-042` re-validation and `R35` 20-card blind human spot-checks). While the default qualified set is empty, the CLI reports plainly that default guides are suspended pending re-validation and points to `--all-rules`.
-- **`JSON_QUALIFIED_RULES`:** In `--json` mode for AI coding agents, the analyzer runs `JSON_QUALIFIED_GUIDE_IDS` (currently `[]` pending `D-041`/`D-042` re-validation) and emits complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) so autonomous agents can verify candidate findings before proposing edits.
-- **`ALL_RULES` (`--all-rules` / `--experimental`):** Executes all 35 landed feature guides across 49 rules, enabling research and broader scanning.
+- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear objective qualification criteria (71 active guides, 37 qualified across Tier A, B, and C, and 34 experimental across 98 rules in `ALL_RULES`, backed by 85 rule modules on disk). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
+- **`ALL_RULES` (`--experimental` / `--all-rules`):** Executes all 71 active feature guides across 98 rules in `ALL_RULES`, including experimental and unmeasured rules.
 
-### Registered Feature Guides (35 Guides, 49 Rules in `ALL_RULES`)
+### Registered Feature Guides (71 Active Guides, 98 Rules in `ALL_RULES`, 85 Rule Modules on Disk)
 
-> **Note:** `accessible-error-announcement`, `stack-drill-down`, `shadow-dom`, and `shrinking-header-on-scroll` were retired per Gate 0 / Legacy Pattern Spec review (`D-027`). All pre-`R39`–`R53` held-out precision numbers below are historical (`D-041`) and suspended pending `O7`–`O9` re-validation (`D-042`).
+> **Note:** `accessible-error-announcement`, `stack-drill-down`, `shadow-dom`, and `shrinking-header-on-scroll` were retired per Guide Triage review (`D-027`). All pre-`R39`–`R53` held-out precision numbers below are historical (`D-041`) and suspended pending `O7`–`O9` re-validation (`D-042`).
 
 | # | Guide ID | Tier | Held-Out Tune Prec (`local-93`) | Untuned Final Prec (`gitmirror`) | Modern Platform Target |
 | :- | :--- | :--- | :--- | :--- | :--- |
@@ -257,7 +256,7 @@ To guarantee zero hallucinated false alarms when run in interactive developer te
 
 ---
 
-## 5. Evaluation, Fix Smoke Test & Measurement Framework
+## 5. Evaluation, Update Eval & Measurement Framework
 
 The analyzer adheres to strict statistical rigor to guarantee production accuracy before any rule is published in `QUALIFIED_RULES`.
 
@@ -269,9 +268,9 @@ The evaluation corpus is divided into two strictly isolated splits:
 
 Cross-split boundary isolation is statically verified by [`audit-transcripts.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/audit-transcripts.ts).
 
-### Eval Judge Protocol & Honest Calibration (`D-031`, `D-041`, `D-042`)
+### Detection Eval Protocol & Honest Calibration (`D-031`, `D-041`, `D-042`)
 
-Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Eval Judge** ([`judge.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/judge.ts)) operating under a de-primed, explainer-grounded prompt:
+Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Detection Eval Judge** ([`detection-eval.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/detection-eval.ts)) operating under a de-primed, explainer-grounded prompt:
 - **Current Admission Status:** **`not admitted` (`QUALIFIED_JUDGE_METADATA.admitted = false` in [`qualification.ts`](./qualification.ts) per `D-041` & `D-042`).**
 - **Why De-Admitted (`R34`, `R48`, `O6`):** Although `gemini-3.8-flash:detective-v6-spec22-c3f54b90` cleared in-sample calibration on Paul's 95 active kept cards ($\mathrm{AC}_1 = 0.703$, 3-pass stability $96.5\%$, Canary TNR $100.0\%$ [`2/2`]), it failed the pre-registered `R34` out-of-sample blind specificity check (`_false-positives-check-deck`: $\mathrm{AC}_1 = 0.258 < 0.70$, stability $85.0\% < 95.0\%$), contained a bug in `deriveJudgeVerdictFromFacts` (`R48`) that overwrote `leave-it` and `guide-wrong` to `right`, and was superseded by prompt/code changes in `29b403d05` and `7c6f1a18b`.
 
@@ -289,28 +288,28 @@ Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Eval Judge** ([`judge
    - **Historical `individual-transform-properties` (Suspended per `R39`/`D-042`):** **98.9%** (`94/95`, 95% CI `[94.3% - 99.8%]`).
    - **Static Matcher Precision:** **53.1%** (`721/1359`). The **LLM Verifier** retained **966** findings.
 
-### Fix Smoke Test ([`fix-harness.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/fix-harness.ts))
+### Update Eval ([`update-eval.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/update-eval.ts))
 
-To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), the **Fix Smoke Test** (`fix-harness.ts`) enforces three static checks on every candidate modernization fix:
-- **Check 1 (Legacy Finding Eliminated):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
-- **Check 2 (Syntax, Anti-Gutting & Comment-Stripped Modern Feature Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
-- **Check 3 (Behavioral Invariants):** Runs behavioral/test assertions when available.
+To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), **Update Eval** (`update-eval.ts`) enforces three static checks on every candidate modernization update:
+- **Check 1 (Finding Eliminated Check):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
+- **Check 2 (Modern Syntax & Anti-Gutting Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
+- **Check 3 (Behavioral Check):** Runs behavioral/test assertions when available.
 - **Verified Benchmarks:** **100.0% (`75/75`) rejection** on the 3-class seeded bad-patch sensitivity suite (`no-op`, `deletion-gutting`, `broken/evasion`), **100.0% (`25/25`) acceptance** on reference good fixes, and **90.0% (`36/40`, 95% CI `[76.9% – 96.0%]`)** static pass rate across findings from 25 guides.
 
 ### Running Evaluation Benchmarks
 
 ```bash
-# Run unit tests across analyzing subsystem (565 tests across 58 suites):
+# Run unit tests across analyzing subsystem:
 node --test "src/analyzing/**/*.test.ts"
 
 # Run preflight verification (typecheck, lint, ast-grep):
 pnpm run check:analyze
 
-# Generate held-out detection scorecard across the 93-repo corpus:
+# Generate held-out detection scorecard across the corpus:
 node --env-file=.env src/analyzing/scorecard.ts
 
-# Run 75-patch sensitivity suite & end-to-end agentic fix evaluation:
-node --env-file=.env src/analyzing/fix-harness.ts
+# Run 75-patch sensitivity suite & end-to-end agentic update evaluation:
+node --env-file=.env src/analyzing/update-eval.ts
 ```
 
 All scorecard results and audit trails are logged to `PROGRESS.md` and serialized in `analyzer-internal/findings/`.

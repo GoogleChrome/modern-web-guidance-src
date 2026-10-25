@@ -2,11 +2,16 @@ import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import {
+  LLM_VERIFIER_MODEL,
+  PHASE2_MODEL,
   buildPhase2RequestBody,
+  buildVerifierRequestBody,
   formatPhase2Prompt,
   parsePhase2Response,
+  parseVerifierResponse,
   runLlmVerifier,
   type Phase2Options,
+  type VerifierOptions,
 } from './llm-verifier.ts';
 
 const mockRule: AnalyzerRule = {
@@ -60,6 +65,13 @@ const mockFindings: AnalyzerFinding[] = [
 ];
 
 describe('phase2 LLM verifier', () => {
+  test('exports updated canonical verifier names alongside backward-compatible aliases', () => {
+    assert.equal(LLM_VERIFIER_MODEL, 'gemini-3.8-flash');
+    assert.equal(PHASE2_MODEL, LLM_VERIFIER_MODEL);
+    assert.equal(buildVerifierRequestBody, buildPhase2RequestBody);
+    assert.equal(parseVerifierResponse, parsePhase2Response);
+  });
+
   test('formats prompt with rule summary, rubrics, and AST slice', () => {
     const prompt = formatPhase2Prompt(mockFindings[0], mockRule, '# Test Guide Markdown');
     assert.match(prompt, /Rule: test-rule/);

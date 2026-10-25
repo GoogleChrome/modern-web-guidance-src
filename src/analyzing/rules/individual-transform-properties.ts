@@ -402,7 +402,7 @@ function referencesTransformKeyframes(
 function matchSingleFunctionStateRule(
   styleRule: CssRuleView,
   ctx: CssMatcherContext,
-): { message: string } | null {
+): { message: string; subPattern?: string } | null {
   if (
     ctx.stylesheetHasProperty('scale') ||
     ctx.stylesheetHasProperty('rotate') ||
@@ -462,13 +462,14 @@ function matchSingleFunctionStateRule(
 
   return {
     message: `CSS rule \`${styleRule.selectorText}\` sets an isolated single-function \`transform: ${transformVal}\` on a state selector; consider using the individual property directly.`,
+    subPattern: 'single-function-state',
   };
 }
 
 export const individualTransformPropertiesMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['transform'],
-  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
+  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string; subPattern?: string } | null {
     // a) Keep skipping if stylesheet already declares `scale`, `rotate`, or `translate` properties.
     if (
       ctx.stylesheetHasProperty('scale') ||
@@ -496,6 +497,7 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
       if (firstLine !== null && styleRule.line === firstLine) {
         return {
           message: `CSS \`${styleRule.parentAtRule ?? '@keyframes'}\` repeats static transform functions across keyframe steps (\`transform: ${transformVal}\`); extract static \`translate\`/\`rotate\`/\`scale\` properties to the element rule.`,
+          subPattern: 'repeating-keyframe-step',
         };
       }
       return null;
@@ -535,6 +537,7 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
       ) {
         return {
           message: `CSS rule \`${styleRule.selectorText}\` composes \`transform: ${transformVal}\` across paired state selectors; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
+          subPattern: 'paired-state-composition',
         };
       }
     }
@@ -544,6 +547,7 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
     if (referencesTransformKeyframes(ownAnimation, analysis.keyframeNamesWithTransform)) {
       return {
         message: `CSS rule \`${styleRule.selectorText}\` pairs \`transform: ${transformVal}\` with a transform keyframe animation; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
+        subPattern: 'paired-state-composition',
       };
     }
 
@@ -561,7 +565,7 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
 export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['transform'],
-  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
+  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string; subPattern?: string } | null {
     if (
       ctx.stylesheetHasProperty('scale') ||
       ctx.stylesheetHasProperty('rotate') ||
@@ -617,6 +621,7 @@ export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher
 
     return {
       message: `CSS rule \`${styleRule.selectorText}\` combines multiple transform functions (\`transform: ${transformVal}\`) in canonical order without paired state selectors; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
+      subPattern: 'multi-function-chain',
     };
   },
 };

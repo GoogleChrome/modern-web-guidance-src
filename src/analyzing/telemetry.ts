@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { DetectiveFactCheck, JudgeVerdict } from './detection-eval.ts';
+import type { DetectionEvalFactCheck, DetectiveFactCheck, JudgeVerdict } from './detection-eval.ts';
 import { WORKTREE_ROOT } from './paths.ts';
-import type { Phase2Confidence } from './llm-verifier.ts';
+import type { Phase2Confidence, VerifierConfidence } from './llm-verifier.ts';
 import type { AnalyzerRule } from './schema.ts';
 
 export const CARD_TELEMETRY_PATH = join(
@@ -29,14 +29,14 @@ export interface CardTelemetryRecord {
   readonly source: 'live';
   readonly phase2?: {
     readonly keep: boolean;
-    readonly confidence?: Phase2Confidence;
+    readonly confidence?: VerifierConfidence;
     readonly reason?: string;
   };
   readonly judge?: {
     readonly runVotes: readonly JudgeVerdict[];
     readonly majorityVerdict: JudgeVerdict;
     readonly rationale?: string;
-    readonly facts?: DetectiveFactCheck;
+    readonly facts?: DetectionEvalFactCheck;
   };
 }
 

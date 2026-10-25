@@ -104,6 +104,7 @@ export function scanCssRules(
             line: view.line,
             column: view.column,
             message: result.message,
+            ...(result.subPattern ? { subPattern: result.subPattern } : {}),
           },
         });
       }
@@ -144,6 +145,7 @@ export function scanCss(
           line: view.line,
           column: view.column,
           message: result.message,
+          ...(result.subPattern ? { subPattern: result.subPattern } : {}),
         });
       }
     }

@@ -5,11 +5,23 @@ import {
   GATE0_PROMPT_VERSION,
   GATE0_RESPONSE_SCHEMA,
   GATE0_SYSTEM_PROMPT,
+  GUIDE_TRIAGE_MODEL,
   buildGate0RequestBody,
+  buildGuideTriageRequestBody,
   classifyGuideGate0,
   formatGate0Prompt,
   parseGate0Response,
+  parseGuideTriageResponse,
 } from './guide-triage.ts';
+
+void test('guide-triage: canonical symbol renames and aliases', async (t) => {
+  await t.test('exports GUIDE_TRIAGE_MODEL alongside GATE0_MODEL', () => {
+    assert.equal(GUIDE_TRIAGE_MODEL, 'gemini-3.8-flash');
+    assert.equal(GATE0_MODEL, GUIDE_TRIAGE_MODEL);
+    assert.equal(buildGuideTriageRequestBody, buildGate0RequestBody);
+    assert.equal(parseGuideTriageResponse, parseGate0Response);
+  });
+});
 
 void test('gate0: prompt formatting and request body construction', async (t) => {
   await t.test('formatGate0Prompt includes guideId, category, and full markdown', () => {

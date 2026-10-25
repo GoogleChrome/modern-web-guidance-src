@@ -78,8 +78,6 @@ export interface VerifierRubric {
   readonly dropWhen: readonly string[];
 }
 
-export type Phase2Rubric = VerifierRubric;
-
 export interface AnalyzerMatch {
   readonly line: number;
   readonly column?: number;
@@ -150,13 +148,13 @@ export interface DomRuleMatcher {
   readonly fastTokens?: readonly string[];
   readonly skipIfHasSpread?: boolean;
   readonly skipIfDynamicAttributes?: readonly string[];
-  matchElement(element: DomElementView, ctx: DomMatcherContext): { message: string } | null;
+  matchElement(element: DomElementView, ctx: DomMatcherContext): { message: string; subPattern?: string } | null;
 }
 
 export interface CssRuleMatcher {
   readonly kind: 'css';
   readonly fastTokens?: readonly string[];
-  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null;
+  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string; subPattern?: string } | null;
 }
 
 export interface DependencyRuleMatcher {

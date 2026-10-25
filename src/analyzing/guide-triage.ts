@@ -22,7 +22,8 @@ import {
   formatGate0Prompt,
 } from './prompts.ts';
 
-export const GATE0_MODEL = 'gemini-3.8-flash';
+export const GUIDE_TRIAGE_MODEL = 'gemini-3.8-flash';
+export const GATE0_MODEL = GUIDE_TRIAGE_MODEL;
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 export const DEFAULT_EXPLAINERS_JSON_PATH = join(
@@ -114,7 +115,7 @@ export async function loadExplainerContextMap(
   return map;
 }
 
-export interface Gate0GuideInput {
+export interface GuideTriageInput {
   readonly guideId: string;
   readonly category: string;
   readonly guideHash: string;
@@ -123,9 +124,10 @@ export interface Gate0GuideInput {
   readonly explainerContextHash?: string;
 }
 
-export type Gate0Input = Gate0GuideInput;
+export type Gate0GuideInput = GuideTriageInput;
+export type Gate0Input = GuideTriageInput;
 
-export interface Gate0Options {
+export interface GuideTriageOptions {
   readonly apiKey?: string;
   readonly fetchFn?: typeof fetch;
   readonly maxRetries?: number;
@@ -133,7 +135,9 @@ export interface Gate0Options {
   readonly enableSearchGrounding?: boolean;
 }
 
-export function buildGate0RequestBody(guide: Gate0GuideInput, options?: Gate0Options): unknown {
+export type Gate0Options = GuideTriageOptions;
+
+export function buildGuideTriageRequestBody(guide: GuideTriageInput, options?: GuideTriageOptions): unknown {
   const enableSearchGrounding = options?.enableSearchGrounding ?? true;
   const guidePromptInput = {
     guideId: guide.guideId,
@@ -166,8 +170,9 @@ export function buildGate0RequestBody(guide: Gate0GuideInput, options?: Gate0Opt
 
   return body;
 }
+export const buildGate0RequestBody = buildGuideTriageRequestBody;
 
-export function parseGate0Response(
+export function parseGuideTriageResponse(
   rawText: string,
   guideId: string,
 ): {
@@ -272,6 +277,7 @@ export function parseGate0Response(
     ...(evidenceSource ? { evidenceSource } : {}),
   };
 }
+export const parseGate0Response = parseGuideTriageResponse;
 
 async function fetchWithRetry(
   url: string,
