@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Processing Instruction Markers: Position Hydration &amp; Range Updates</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+    body {
+      max-inline-size: 48rem;
+      margin-inline: auto;
+      padding: 1.5rem;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-block-end: 1.5rem;
+    }
+    /* :first-child selector on the button inside .toolbar works because the preceding
+       <?hydrate ...> processing instruction is not an Element node. */
+    .toolbar > button:first-child {
+      font-weight: 600;
+    }
+    button {
+      min-block-size: 2.25rem;
+      padding-inline: 0.875rem;
+      border-radius: 0.375rem;
+      border: 1px solid currentColor;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+    }
+    button:focus-visible {
+      outline: 3px solid #005fcc;
+      outline-offset: 2px;
+    }
+    button[aria-pressed="true"] {
+      background: #005fcc;
+      color: #ffffff;
+      border-color: #005fcc;
+    }
+    table {
+      inline-size: 100%;
+      border-collapse: collapse;
+      margin-block-end: 1rem;
+    }
+    th, td {
+      text-align: start;
+      padding: 0.625rem 0.75rem;
+      border-block-end: 1px solid #8884;
+    }
+    .pinned-row {
+      font-style: italic;
+    }
+    .inspector {
+      padding: 0.875rem 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid #8886;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.875rem;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Server-Rendered HTML Markers Demo</h1>
+    <p>
+      Positions and ranges below are marked with HTML processing instructions
+      (<code>&lt;?hydrate ...&gt;</code>, <code>&lt;?range-start ...&gt;</code>, and
+      <code>&lt;?range-end&gt;</code>) without wrapper elements.
+    </p>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <!-- Position marker preceding an interactive button: attaches hydration data
+           without breaking .toolbar > button:first-child or flex layout. -->
+      <?hydrate id="upvote-btn" component="counter" step="1" label="Upvotes &gt; 0" hydrated="false">
+      <button type="button" id="upvote-button">Upvotes: <span id="upvote-count">12</span> (+1)</button>
+
+      <!-- Filter controls that update the marked table range in place -->
+      <button type="button" class="filter-btn" data-filter="all" aria-pressed="true">All tasks</button>
+      <button type="button" class="filter-btn" data-filter="active" aria-pressed="false">Active only</button>
+      <button type="button" class="filter-btn" data-filter="completed" aria-pressed="false">Completed only</button>
+    </div>
+
+    <table>
+      <caption>Deployment tasks</caption>
+      <thead>
+        <tr>
+          <th scope="col">Task</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody id="task-tbody" aria-live="polite">
+        <tr class="pinned-row">
+          <td>Verify environment configuration (pinned)</td>
+          <td>Pinned</td>
+        </tr>
+        <?range-start name="task-rows" filter="all" renders="1">
+        <tr data-status="active">
+          <td>Stream initial HTML response</td>
+          <td>Active</td>
+        </tr>
+        <tr data-status="completed">
+          <td>Parse processing instruction markers</td>
+          <td>Completed</td>
+        </tr>
+        <tr data-status="active">
+          <td>Hydrate interactive islands in place</td>
+          <td>Active</td>
+        </tr>
+        <?range-end>
+      </tbody>
+    </table>
+
+    <section aria-labelledby="inspector-heading">
+      <h2 id="inspector-heading">Live Marker Attribute Inspector</h2>
+      <pre id="marker-inspector" class="inspector" tabindex="0"></pre>
+    </section>
+  </main>
+
+  <script type="module">
+    // 1. Cross-browser fallback for browsers without native html-processing-instructions support
+    const supportsHtmlPI = Object.hasOwn(ProcessingInstruction.prototype, 'getAttribute');
+
+    if (!supportsHtmlPI) {
+      const unescapeXml = (str) => str
+        .replaceAll('&quot;', '"')
+        .replaceAll('&apos;', "'")
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&amp;', '&');
+      const escapeXml = (str) => String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
+      const parseAttrs = (data) => {
+        const map = new Map();
+        const trimmed = data.trim();
+        if (!trimmed) return map;
+        const tokenRe = /([^\s=]+)\s*=\s*(?:"([^"<&]*(?:&(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);[^"<&]*)*)"|'([^'<&]*(?:&(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);[^'<&]*)*)')\s*/y;
+        let pos = 0;
+        while (pos < trimmed.length) {
+          tokenRe.lastIndex = pos;
+          const match = tokenRe.exec(trimmed);
+          if (!match || map.has(match[1])) return new Map();
+          map.set(match[1], unescapeXml(match[2] ?? match[3] ?? ''));
+          pos = tokenRe.lastIndex;
+        }
+        return map;
+      };
+      const writeAttrs = (pi, map) => {
+        pi.data = Array.from(map, ([k, v]) => `${k}="${escapeXml(v)}"`).join(' ');
+      };
+
+      Object.assign(ProcessingInstruction.prototype, {
+        hasAttributes() { return parseAttrs(this.data).size > 0; },
+        getAttributeNames() { return [...parseAttrs(this.data).keys()]; },
+        getAttribute(name) { return parseAttrs(this.data).get(name) ?? null; },
+        hasAttribute(name) { return parseAttrs(this.data).has(name); },
+        setAttribute(name, value) {
+          const map = parseAttrs(this.data).set(name, String(value));
+          writeAttrs(this, map);
+        },
+        removeAttribute(name) {
+          const map = parseAttrs(this.data);
+          map.delete(name);
+          writeAttrs(this, map);
+        },
+        toggleAttribute(name, force) {
+          const map = parseAttrs(this.data);
+          const keep = force ?? !map.has(name);
+          if (keep && !map.has(name)) map.set(name, '');
+          else if (!keep) map.delete(name);
+          writeAttrs(this, map);
+          return keep;
+        },
+      });
+    }
+
+    function upgradeFallbackMarkers(root = document) {
+      if (supportsHtmlPI) return;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+      const comments = [];
+      while (walker.nextNode()) comments.push(walker.currentNode);
+      for (const comment of comments) {
+        const match = /^\?([a-zA-Z_][a-zA-Z0-9_-]*)(?:\s+([\s\S]*?))?\??$/.exec(comment.data);
+        if (match && !/^(?:xml|xml-stylesheet)$/i.test(match[1])) {
+          comment.replaceWith(document.createProcessingInstruction(match[1], match[2] ?? ''));
+        }
+      }
+    }
+
+    upgradeFallbackMarkers(document);
+
+    // 2. Discover ProcessingInstruction nodes with TreeWalker
+    function findMarkers(root = document.body) {
+      const walker = document.createTreeWalker(
+        root,
+        NodeFilter.SHOW_PROCESSING_INSTRUCTION
+      );
+      const markers = [];
+      while (walker.nextNode()) {
+        markers.push(walker.currentNode);
+      }
+      return markers;
+    }
+
+    function findRangeEnd(startMarker, startTarget = 'range-start', endTarget = 'range-end') {
+      let nestingLevel = 0;
+      let sibling = startMarker.nextSibling;
+
+      while (sibling) {
+        if (sibling.nodeType === Node.PROCESSING_INSTRUCTION_NODE) {
+          if (sibling.target === startTarget) {
+            nestingLevel += 1;
+          } else if (sibling.target === endTarget) {
+            if (nestingLevel === 0) return sibling;
+            nestingLevel -= 1;
+          }
+        }
+        sibling = sibling.nextSibling;
+      }
+      return null;
+    }
+
+    function replaceMarkedRange(startMarker, endMarker, newNodes) {
+      const range = document.createRange();
+      range.setStartAfter(startMarker);
+      range.setEndBefore(endMarker);
+      range.deleteContents();
+
+      const fragment = document.createDocumentFragment();
+      fragment.append(...newNodes);
+      range.insertNode(fragment);
+    }
+
+    const TASKS = [
+      { title: 'Stream initial HTML response', status: 'active', label: 'Active' },
+      { title: 'Parse processing instruction markers', status: 'completed', label: 'Completed' },
+      { title: 'Hydrate interactive islands in place', status: 'active', label: 'Active' },
+    ];
+
+    const inspectorEl = document.getElementById('marker-inspector');
+
+    function renderInspector() {
+      const lines = findMarkers().map((pi) => {
+        const attrs = pi.getAttributeNames()
+          .map((name) => `${name}=${JSON.stringify(pi.getAttribute(name))}`)
+          .join(' ');
+        return `<?${pi.target}${attrs ? ' ' + attrs : ''}>`;
+      });
+      inspectorEl.textContent = lines.join('\n');
+    }
+
+    // 3. Hydrate position markers and bind range controls
+    let taskRangeStart = null;
+    let taskRangeEnd = null;
+
+    for (const pi of findMarkers()) {
+      if (pi.target === 'hydrate' && pi.getAttribute('hydrated') !== 'true') {
+        const step = Number(pi.getAttribute('step') ?? 1);
+        const button = pi.nextElementSibling;
+        if (button) {
+          button.addEventListener('click', () => {
+            const countSpan = button.querySelector('#upvote-count');
+            const nextValue = Number(countSpan.textContent) + step;
+            countSpan.textContent = String(nextValue);
+            pi.setAttribute('last-count', String(nextValue));
+            renderInspector();
+          });
+          pi.setAttribute('hydrated', 'true');
+        }
+      } else if (pi.target === 'range-start' && pi.getAttribute('name') === 'task-rows') {
+        taskRangeStart = pi;
+        taskRangeEnd = findRangeEnd(pi);
+      }
+    }
+
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    for (const btn of filterButtons) {
+      btn.addEventListener('click', () => {
+        const filter = btn.dataset.filter;
+        for (const other of filterButtons) {
+          other.setAttribute('aria-pressed', String(other === btn));
+        }
+
+        if (taskRangeStart && taskRangeEnd) {
+          const matchingTasks = TASKS.filter(
+            (task) => filter === 'all' || task.status === filter
+          );
+          const rows = matchingTasks.map((task) => {
+            const tr = document.createElement('tr');
+            tr.dataset.status = task.status;
+            const titleTd = document.createElement('td');
+            titleTd.textContent = task.title;
+            const statusTd = document.createElement('td');
+            statusTd.textContent = task.label;
+            tr.append(titleTd, statusTd);
+            return tr;
+          });
+
+          replaceMarkedRange(taskRangeStart, taskRangeEnd, rows);
+          taskRangeStart.setAttribute('filter', filter);
+          const nextRenders = Number(taskRangeStart.getAttribute('renders') ?? 1) + 1;
+          taskRangeStart.setAttribute('renders', String(nextRenders));
+          renderInspector();
+        }
+      });
+    }
+
+    renderInspector();
+  </script>
+</body>
+</html>
