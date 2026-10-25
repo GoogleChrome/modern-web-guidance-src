@@ -4,7 +4,6 @@ import zlib from "zlib";
 import matter from "@11ty/gray-matter";
 import { marked } from "marked";
 import { parseArgs } from "node:util";
-import { fileURLToPath } from "node:url";
 
 export interface StoreUseCase {
   id: string;
