@@ -5,7 +5,6 @@ import {
   computeCardId,
   gwetAc1Nominal,
   krippendorffAlphaNominal,
-  ppiPlusPlusPrecision,
   sensitivitySpecificity,
   wilsonInterval,
   Z_95,
@@ -229,52 +228,5 @@ describe('sensitivitySpecificity', () => {
     assert.strictEqual(res.negatives, 3);
     assert.ok(Math.abs(res.tnr - 2 / 3) < 0.0001);
     assert.strictEqual(res.tpr, 1);
-  });
-});
-
-describe('ppiPlusPlusPrecision', () => {
-  it('throws an error when human paired sample is empty', () => {
-    assert.throws(
-      () => ppiPlusPlusPrecision([], []),
-      /ppiPlusPlusPrecision requires at least 1 human-labeled paired item/,
-    );
-  });
-
-  it('recovers population mean when judge is perfectly correlated', () => {
-    // Unlabeled judge ratings: 80% positive over 100 items
-    const judgeAll = [
-      ...Array.from({ length: 80 }, () => true),
-      ...Array.from({ length: 20 }, () => false),
-    ];
-    // Paired sample: perfect agreement between human and judge
-    const paired = [
-      { humanRight: true, judgeRight: true },
-      { humanRight: true, judgeRight: true },
-      { humanRight: false, judgeRight: false },
-      { humanRight: false, judgeRight: false },
-    ];
-
-    const res = ppiPlusPlusPrecision(judgeAll, paired);
-    assert.ok(Math.abs(res.lambda - 1) < 0.001, `Expected lambda ~1, got ${res.lambda}`);
-    assert.ok(Math.abs(res.estimate - 0.8) < 0.001, `Expected estimate ~0.8, got ${res.estimate}`);
-    assert.strictEqual(res.nHuman, 4);
-    assert.strictEqual(res.nJudge, 100);
-    assert.ok(res.lower < res.estimate);
-    assert.ok(res.upper > res.estimate);
-  });
-
-  it('falls back to human sample mean when judge is uncorrelated noise', () => {
-    const judgeAll = Array.from({ length: 50 }, (_, i) => i % 2 === 0);
-    // Paired sample where judge is independent of human
-    const paired = [
-      { humanRight: true, judgeRight: true },
-      { humanRight: true, judgeRight: false },
-      { humanRight: false, judgeRight: true },
-      { humanRight: false, judgeRight: false },
-    ];
-
-    const res = ppiPlusPlusPrecision(judgeAll, paired);
-    assert.ok(Math.abs(res.lambda) < 0.001, `Expected lambda ~0, got ${res.lambda}`);
-    assert.ok(Math.abs(res.estimate - 0.5) < 0.001, `Expected estimate 0.5, got ${res.estimate}`);
   });
 });

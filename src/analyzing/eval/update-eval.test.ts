@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  checkAgentModernizationInvariants,
   checkModernFeaturePresent,
   checkStructuralIntegrity,
   checkSyntaxCleanliness,
   evaluateAgentUpdate,
+  getSeededAgentFailureTestCases,
   getSeededSensitivityTestCases,
   locateFindingLineInContent,
   runBadPatchSensitivitySuite,
@@ -716,5 +718,103 @@ describe('runBadPatchSensitivitySuite', () => {
     assert.strictEqual(report.goodPatchesPassed, 25);
     assert.strictEqual(report.goodPatchesTotal, 25);
     assert.strictEqual(report.violations.length, 0);
+  });
+});
+
+describe('checkAgentModernizationInvariants (R61)', () => {
+  it('rejects unrequested @supports dual-path fallback bloat', () => {
+    const orig = '.sidebar { scrollbar-width: auto; }';
+    const bad = '.sidebar { scrollbar-width: auto; }\n@supports (scrollbar-width: thin) { .sidebar { scrollbar-width: thin; } }';
+    const res = checkAgentModernizationInvariants(
+      'customize-scrollbar-color-and-thickness',
+      orig,
+      bad,
+      'src/scrollbar.css',
+    );
+    assert.strictEqual(res.passed, false);
+    assert.match(res.failureReason ?? '', /Unrequested fallback bloat/);
+
+    // Allowed when guide is atrule-support-conditionals
+    const resAllowed = checkAgentModernizationInvariants(
+      'atrule-support-conditionals',
+      orig,
+      bad,
+      'src/grid.css',
+    );
+    assert.strictEqual(resAllowed.passed, true);
+  });
+
+  it('rejects coupled-property breakage when transform is replaced but transition/will-change remains', () => {
+    const orig = '.box {\n  transition: transform 0.3s ease;\n  transform: scale(1.2);\n}';
+    const bad = '.box {\n  transition: transform 0.3s ease;\n  scale: 1.2;\n}';
+    const good = '.box {\n  transition: scale 0.3s ease;\n  scale: 1.2;\n}';
+
+    const resBad = checkAgentModernizationInvariants(
+      'individual-transform-properties',
+      orig,
+      bad,
+      'src/box.css',
+    );
+    assert.strictEqual(resBad.passed, false);
+    assert.match(resBad.failureReason ?? '', /Coupled-property breakage/);
+
+    const resGood = checkAgentModernizationInvariants(
+      'individual-transform-properties',
+      orig,
+      good,
+      'src/box.css',
+    );
+    assert.strictEqual(resGood.passed, true);
+  });
+
+  it('rejects cross-layer contract mismatch when commandfor targets a <div> without popover', () => {
+    const orig = '<button data-toggle="modal" data-target="#my-modal">Open</button>\n<div id="my-modal" class="modal">Content</div>';
+    const bad = '<button commandfor="my-modal" command="show-modal">Open</button>\n<div id="my-modal" class="modal">Content</div>';
+    const goodDialog = '<button commandfor="my-modal" command="show-modal">Open</button>\n<dialog id="my-modal">Content</dialog>';
+    const goodPopover = '<button commandfor="my-modal" command="show-modal">Open</button>\n<div id="my-modal" popover="auto">Content</div>';
+
+    const resBad = checkAgentModernizationInvariants(
+      'declarative-dialog-popover-control',
+      orig,
+      bad,
+      'src/modal.html',
+    );
+    assert.strictEqual(resBad.passed, false);
+    assert.match(resBad.failureReason ?? '', /Cross-layer contract mismatch/);
+
+    const resGood1 = checkAgentModernizationInvariants(
+      'declarative-dialog-popover-control',
+      orig,
+      goodDialog,
+      'src/modal.html',
+    );
+    assert.strictEqual(resGood1.passed, true);
+
+    const resGood2 = checkAgentModernizationInvariants(
+      'declarative-dialog-popover-control',
+      orig,
+      goodPopover,
+      'src/modal.html',
+    );
+    assert.strictEqual(resGood2.passed, true);
+  });
+
+  it('evaluates seeded agent failure cases in evaluateAgentUpdate', async () => {
+    const failureCases = getSeededAgentFailureTestCases();
+    assert.strictEqual(failureCases.length, 3);
+
+    for (const fc of failureCases) {
+      const res = await evaluateAgentUpdate({
+        filePath: fc.filePath,
+        originalContent: fc.originalContent,
+        patchedContent: fc.badPatch,
+        guideId: fc.guideId,
+      });
+
+      assert.strictEqual(res.resolved, false, `Expected failure case "${fc.id}" to fail Gate 2`);
+      assert.strictEqual(res.gate2.passed, false, `Expected gate2 to fail for "${fc.id}"`);
+      assert.strictEqual(res.gate2.invariantPassed, false, `Expected invariant check to fail for "${fc.id}"`);
+      assert.strictEqual(res.gate2.failureReason, fc.expectedFailureReason);
+    }
   });
 });

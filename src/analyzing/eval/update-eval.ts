@@ -80,6 +80,7 @@ export interface ModernSyntaxCheckResult {
   readonly syntaxClean: boolean;
   readonly structuralIntegrityPassed: boolean;
   readonly modernFeatureVerified: boolean;
+  readonly invariantPassed?: boolean;
   readonly diagnostics: readonly string[];
   readonly failureReason?: string;
 }
@@ -124,14 +125,28 @@ export function stripComments(content: string): string {
     .replace(/<!--[\s\S]*?-->/g, '');
 }
 
+export interface SeededAgentFailureFixture {
+  readonly id: string;
+  readonly guideId: string;
+  readonly filePath: string;
+  readonly originalContent: string;
+  readonly badPatch: string;
+  readonly expectedFailureReason: string;
+}
+
 // Load extracted test fixtures and modern feature patterns from external JSON.
 // Code contains 0 hardcoded LLM fixture strings or pattern maps.
 const fixHarnessData = JSON.parse(
   readFileSync(new URL('./update-eval-data.json', import.meta.url), 'utf8'),
 ) as {
   readonly seededFixtures: SeededFixture[];
+  readonly seededAgentFailureFixtures?: SeededAgentFailureFixture[];
   readonly modernFeaturePatterns: Record<string, string>;
 };
+
+export function getSeededAgentFailureTestCases(): SeededAgentFailureFixture[] {
+  return fixHarnessData.seededAgentFailureFixtures ?? [];
+}
 
 /**
  * Checks whether the modern platform feature prescribed by guide.md
@@ -412,6 +427,83 @@ export function checkStructuralIntegrity(
 }
 
 /**
+ * R61: Verifies that modernized code does not introduce the 3 agent failure modes:
+ * 1. Unrequested dual-path fallback bloat (@supports / typeof fallback when original had none).
+ * 2. Coupled-property breakage (e.g., migrating transform -> scale/translate/rotate, but leaving transition/will-change on transform).
+ * 3. Cross-layer contract mismatch (e.g., using commandfor targeting a <div> without popover attribute).
+ */
+export function checkAgentModernizationInvariants(
+  guideId: string,
+  originalContent: string,
+  patchedContent: string,
+  _filePath: string = '',
+): { passed: boolean; failureReason?: string } {
+  // 1. Unrequested dual-path fallback bloat
+  if (guideId !== 'atrule-support-conditionals') {
+    const origHasSupports = /@supports\b/i.test(originalContent);
+    const patchedHasSupports = /@supports\b/i.test(patchedContent);
+    if (!origHasSupports && patchedHasSupports) {
+      return {
+        passed: false,
+        failureReason:
+          'Unrequested fallback bloat: patch introduced @supports dual-path fallback where original had none',
+      };
+    }
+  }
+
+  // 2. Coupled-property breakage
+  if (guideId === 'individual-transform-properties') {
+    const patchedHasCoupledTransition =
+      /transition\s*:[^;}]*\btransform\b/i.test(patchedContent) ||
+      /will-change\s*:[^;}]*\btransform\b/i.test(patchedContent);
+    const patchedHasIndividualTransform =
+      /(?:^|[^-\w])(?:scale|translate|rotate)\s*:/i.test(patchedContent);
+    const patchedHasTransformProperty =
+      /(?:^|[^-\w])transform\s*:/i.test(patchedContent);
+
+    if (
+      patchedHasCoupledTransition &&
+      patchedHasIndividualTransform &&
+      !patchedHasTransformProperty
+    ) {
+      return {
+        passed: false,
+        failureReason:
+          'Coupled-property breakage: replaced transform with individual transform properties but retained transition/will-change on transform',
+      };
+    }
+  }
+
+  // 3. Cross-layer contract mismatch
+  if (guideId === 'declarative-dialog-popover-control') {
+    const commandForMatch = patchedContent.match(
+      /\bcommandfor\s*=\s*["']([^"']+)["']/i,
+    );
+    if (commandForMatch) {
+      const targetId = commandForMatch[1];
+      // Check if target element exists in patchedContent as a <div with that id
+      const divRegex = new RegExp(
+        `<div\\b[^>]*\\bid\\s*=\\s*["']${targetId}["'][^>]*>`,
+        'i',
+      );
+      const divMatch = patchedContent.match(divRegex);
+      if (divMatch) {
+        const openingTag = divMatch[0];
+        // If it's a div and does not have the popover attribute
+        if (!/\bpopover\b/i.test(openingTag)) {
+          return {
+            passed: false,
+            failureReason: `Cross-layer contract mismatch: commandfor targets element with id "${targetId}" which is a <div> without a popover attribute`,
+          };
+        }
+      }
+    }
+  }
+
+  return { passed: true };
+}
+
+/**
  * Evaluates a candidate update patch through the 3-Gate Update Grader pipeline.
  */
 export async function evaluateAgentUpdate(
@@ -577,10 +669,18 @@ export async function evaluateAgentUpdate(
         )
       : false);
 
+  const invariantCheck = checkAgentModernizationInvariants(
+    patch.guideId,
+    patch.originalContent,
+    patch.patchedContent,
+    patch.filePath,
+  );
+
   const gate2Passed =
     syntaxCheck.clean &&
     structuralCheck.passed &&
-    modernFeaturePresent;
+    modernFeaturePresent &&
+    invariantCheck.passed;
 
   let gate2Reason: string | undefined;
   if (!syntaxCheck.clean) {
@@ -589,6 +689,8 @@ export async function evaluateAgentUpdate(
     gate2Reason = structuralCheck.failureReason;
   } else if (!modernFeaturePresent) {
     gate2Reason = `Missing required modern platform feature for guide "${patch.guideId}"`;
+  } else if (!invariantCheck.passed) {
+    gate2Reason = invariantCheck.failureReason;
   }
 
   const gate2: Gate2Result = {
@@ -596,6 +698,7 @@ export async function evaluateAgentUpdate(
     syntaxClean: syntaxCheck.clean,
     structuralIntegrityPassed: structuralCheck.passed,
     modernFeatureVerified: modernFeaturePresent,
+    invariantPassed: invariantCheck.passed,
     diagnostics: syntaxCheck.diagnostics,
     failureReason: gate2Reason,
   };

@@ -309,5 +309,31 @@
     "contrast-color": "contrast-color\\s*\\(",
     "custom-button-actions": "\\bcommandfor\\b|\\bcommand\\s*=|popovertarget",
     "menu": "\\bfocusgroup\\b|<\\s*menu\\b|popover"
-  }
+  },
+  "seededAgentFailureFixtures": [
+    {
+      "id": "unrequested-supports-fallback-bloat",
+      "guideId": "customize-scrollbar-color-and-thickness",
+      "filePath": "src/styles/scrollbar.css",
+      "originalContent": ".sidebar::-webkit-scrollbar {\n  width: 8px;\n}\n.sidebar::-webkit-scrollbar-thumb {\n  background: #888;\n}",
+      "badPatch": ".sidebar::-webkit-scrollbar {\n  width: 8px;\n}\n.sidebar::-webkit-scrollbar-thumb {\n  background: #888;\n}\n@supports (scrollbar-width: thin) {\n  .sidebar {\n    scrollbar-width: thin;\n    scrollbar-color: #888 transparent;\n  }\n}",
+      "expectedFailureReason": "Unrequested fallback bloat: patch introduced @supports dual-path fallback where original had none"
+    },
+    {
+      "id": "coupled-property-breakage",
+      "guideId": "individual-transform-properties",
+      "filePath": "src/styles/card.css",
+      "originalContent": ".card {\n  transition: transform 0.2s ease;\n  transform: scale(1.1);\n}",
+      "badPatch": ".card {\n  transition: transform 0.2s ease;\n  scale: 1.1;\n}",
+      "expectedFailureReason": "Coupled-property breakage: replaced transform with individual transform properties but retained transition/will-change on transform"
+    },
+    {
+      "id": "cross-layer-contract-mismatch",
+      "guideId": "declarative-dialog-popover-control",
+      "filePath": "src/components/toolbar.html",
+      "originalContent": "<div class=\"toolbar\">\n  <button id=\"open-btn\" data-bs-toggle=\"modal\" data-bs-target=\"#my-modal\">Open</button>\n  <div class=\"modal\" id=\"my-modal\">\n    <div class=\"modal-dialog\">Modal content</div>\n  </div>\n</div>",
+      "badPatch": "<div class=\"toolbar\">\n  <button id=\"open-btn\" commandfor=\"my-modal\" command=\"show-modal\">Open</button>\n  <div class=\"modal\" id=\"my-modal\">\n    <div class=\"modal-dialog\">Modal content</div>\n  </div>\n</div>",
+      "expectedFailureReason": "Cross-layer contract mismatch: commandfor targets element with id \"my-modal\" which is a <div> without a popover attribute"
+    }
+  ]
 }

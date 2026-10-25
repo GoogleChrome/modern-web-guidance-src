@@ -21,9 +21,7 @@ import {
 import {
   gwetAc1Nominal,
   krippendorffAlphaNominal,
-  ppiPlusPlusPrecision,
   sensitivitySpecificity,
-  type PpiPlusPlusResult,
   type SensitivitySpecificityResult,
 } from './stats.ts';
 import type { JudgeVerdict, CanonicalJudgeVerdict } from '../schema.ts';
@@ -249,7 +247,8 @@ export interface JudgeEvaluationMetrics {
   krippendorffAlpha: number;
   gwetAc1: number;
   sensitivitySpecificity: SensitivitySpecificityResult;
-  ppiPrecision: PpiPlusPlusResult;
+  misfireAgreement?: number | null;
+  actionabilityAgreement?: number | null;
   retainedDroppedRate: number | null;
   nPaired: number;
   unsureCount?: number;
@@ -321,20 +320,11 @@ export function deriveJudgeVerdictFromFacts(
   if (!facts.modern_feature_applies_here) {
     return 'loses-behavior';
   }
-  if (facts.has_meaningful_payoff === false || llmVerdict === 'no-payoff') {
+  if (facts.has_meaningful_payoff === false) {
     return 'no-payoff';
-  }
-  if (llmVerdict === 'loses-behavior') {
-    return 'loses-behavior';
-  }
-  if (llmVerdict === 'fallback-or-guard') {
-    return 'fallback-or-guard';
   }
   if (llmVerdict === 'unsure') {
     return 'unsure';
-  }
-  if (llmVerdict === 'leave-it') {
-    return 'no-payoff';
   }
   return 'legit-modernize-target';
 }
@@ -816,6 +806,16 @@ export function evaluateJudgeStability(
   };
 }
 
+function collapseToLeaveItFamily(v: string): string {
+  if (v === 'fallback-or-guard' || v === 'loses-behavior' || v === 'no-payoff' || v === 'leave-it') {
+    return 'leave-it';
+  }
+  if (v === 'right' || v === 'legit-modernize-target') {
+    return 'legit-modernize-target';
+  }
+  return v;
+}
+
 /**
  * Computes all admission guard metrics between judge results and reference human labels.
  */
@@ -826,16 +826,17 @@ export function evaluateJudgeMetrics(
 ): JudgeEvaluationMetrics {
   const nominalPairs: Array<readonly [string, string]> = [];
   const binaryPairs: Array<{ humanRight: boolean; judgeRight: boolean }> = [];
-  const judgeAllBools: boolean[] = judgeResults.map((j) => isPositiveVerdict(j.verdict));
 
   let retainedDroppedCount = 0;
   let totalDroppedEvaluated = 0;
   let unsureCount = 0;
+  let misfireAgreementCount = 0;
+  let actionabilityAgreementCount = 0;
 
   for (const j of judgeResults) {
     const humanLabel = humanGrades.get(j.cardId);
     if (humanLabel) {
-      nominalPairs.push([humanLabel, j.verdict]);
+      nominalPairs.push([collapseToLeaveItFamily(humanLabel), collapseToLeaveItFamily(j.verdict)]);
       if (humanLabel === 'unsure') {
         unsureCount++;
       } else {
@@ -843,6 +844,18 @@ export function evaluateJudgeMetrics(
           humanRight: isPositiveVerdict(humanLabel),
           judgeRight: isPositiveVerdict(j.verdict),
         });
+      }
+
+      const humanIsMisfire = humanLabel === 'not-old-pattern';
+      const judgeIsMisfire = j.verdict === 'not-old-pattern';
+      if (humanIsMisfire === judgeIsMisfire) {
+        misfireAgreementCount++;
+      }
+
+      const humanIsActionable = isPositiveVerdict(humanLabel);
+      const judgeIsActionable = isPositiveVerdict(j.verdict);
+      if (humanIsActionable === judgeIsActionable) {
+        actionabilityAgreementCount++;
       }
     }
 
@@ -857,7 +870,8 @@ export function evaluateJudgeMetrics(
   const alpha = krippendorffAlphaNominal(nominalPairs);
   const ac1 = gwetAc1Nominal(nominalPairs);
   const sensSpec = sensitivitySpecificity(binaryPairs);
-  const ppiPrecision = ppiPlusPlusPrecision(judgeAllBools, binaryPairs);
+  const misfireAgreement = nominalPairs.length > 0 ? misfireAgreementCount / nominalPairs.length : null;
+  const actionabilityAgreement = nominalPairs.length > 0 ? actionabilityAgreementCount / nominalPairs.length : null;
 
   const retainedDroppedRate =
     totalDroppedEvaluated > 0 ? retainedDroppedCount / totalDroppedEvaluated : null;
@@ -866,7 +880,8 @@ export function evaluateJudgeMetrics(
     krippendorffAlpha: alpha,
     gwetAc1: ac1,
     sensitivitySpecificity: sensSpec,
-    ppiPrecision,
+    misfireAgreement,
+    actionabilityAgreement,
     retainedDroppedRate,
     nPaired: nominalPairs.length,
     unsureCount,
@@ -1137,6 +1152,18 @@ export function formatGuideTriageDossier(spec: Record<string, unknown>): string 
   const lines: string[] = [
     '### Technical Reference Dossier (Legacy Pattern & Modern API Boundaries)',
   ];
+  if (typeof spec.detection === 'string' && spec.detection.trim().length > 0) {
+    lines.push(`- Detection: ${spec.detection.trim()}`);
+  }
+  if (typeof spec.updateScope === 'string' && spec.updateScope.trim().length > 0) {
+    const scope = spec.updateScope.trim();
+    lines.push(`- Update Scope: ${scope}`);
+    if (scope === 'cross-layer-refactor' || scope === 'widget-recipe') {
+      lines.push(
+        '- Note: When updateScope is cross-layer-refactor or widget-recipe, requiring coordinated HTML/CSS/JS changes across the component is expected and is NOT a reason to mark modern_feature_applies_here = false or has_meaningful_payoff = false.',
+      );
+    }
+  }
   if (payoff) {
     lines.push(`- Payoff (changesSomethingForDeveloper): ${payoff}`);
   }

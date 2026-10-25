@@ -429,31 +429,30 @@ describe('parseJudgeJsonContent', () => {
       'no-payoff',
     );
 
-    // rawVerdict === 'no-payoff' -> 'no-payoff'
+    // R60: When all 4 booleans pass, 4 binary criteria are authoritative
+    // and cannot be overridden by contradictory string verdicts like 'no-payoff', 'loses-behavior', 'fallback-or-guard'
     assert.equal(
       deriveJudgeVerdictFromFacts(
         { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
         'no-payoff',
       ),
-      'no-payoff',
+      'legit-modernize-target',
     );
 
-    // rawVerdict === 'loses-behavior' -> 'loses-behavior'
     assert.equal(
       deriveJudgeVerdictFromFacts(
         { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
         'loses-behavior',
       ),
-      'loses-behavior',
+      'legit-modernize-target',
     );
 
-    // rawVerdict === 'fallback-or-guard' -> 'fallback-or-guard'
     assert.equal(
       deriveJudgeVerdictFromFacts(
         { matches_before_syntax: true, has_fallback_or_feature_guard: false, modern_feature_applies_here: true, has_meaningful_payoff: true },
         'fallback-or-guard',
       ),
-      'fallback-or-guard',
+      'legit-modernize-target',
     );
 
     // rawVerdict === 'unsure' -> 'unsure'
@@ -786,7 +785,8 @@ describe('evaluateJudgeMetrics', () => {
     assert.equal(metrics.sensitivitySpecificity.tpr, 1.0);
     assert.equal(metrics.sensitivitySpecificity.tnr, 1.0);
     assert.equal(metrics.retainedDroppedRate, 1.0);
-    assert.equal(metrics.ppiPrecision.estimate, 0.5);
+    assert.equal(metrics.misfireAgreement, 1.0);
+    assert.equal(metrics.actionabilityAgreement, 1.0);
   });
 });
 
