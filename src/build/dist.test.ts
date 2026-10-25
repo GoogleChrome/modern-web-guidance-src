@@ -134,6 +134,26 @@ test('Kimi plugin manifest', async () => {
   }
 });
 
+test('Agent Plugins manifest (plugin.json)', async () => {
+  const pluginJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'plugin.json'), 'utf8'));
+  assert.strictEqual(pluginJson.$schema, 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json');
+  assert.strictEqual(pluginJson.name, 'modern-web-guidance');
+  assert.strictEqual(pluginJson.author.name, 'Google Chrome');
+  assert.strictEqual(pluginJson.license, 'Apache-2.0');
+
+  // updateVersionsInDir must keep the manifest version in sync with the rest of the distribution
+  const pkgJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8'));
+  assert.strictEqual(pluginJson.version, pkgJson.version, 'plugin.json version should match package.json version');
+
+  // Agent Plugins 1.0 discovers skills at ./skills/<skill>/SKILL.md relative to plugin.json
+  const skillsDir = path.join(STAGING_DIR, 'skills');
+  await assert.doesNotReject(fs.access(skillsDir), 'Agent Plugins skills/ directory must exist at root');
+  for (const skillName of ['modern-web-guidance', 'chrome-extensions']) {
+    const skillMdPath = path.join(skillsDir, skillName, 'SKILL.md');
+    await assert.doesNotReject(fs.access(skillMdPath), `skills/${skillName}/SKILL.md must exist`);
+  }
+});
+
 test('SKILL.md validations', async () => {
   const skillPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/SKILL.md');
   await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in modern-web-guidance`);
