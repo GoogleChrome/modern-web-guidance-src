@@ -7,8 +7,9 @@
     <style>
       body {
         margin: 0;
-        height: 100vh;
+        min-height: 100vh;
         display: flex;
+        flex-wrap: wrap;
         gap: 1em;
         align-items: center;
         justify-content: center;
@@ -17,6 +18,15 @@
           system-ui,
           -apple-system,
           sans-serif;
+        padding: 1rem;
+        box-sizing: border-box;
+      }
+
+      @media (max-width: 600px) {
+        body {
+          flex-direction: column;
+          align-items: center;
+        }
       }
 
       .card {
@@ -40,29 +50,69 @@
         margin: 1rem 0 0.5rem;
         font-size: 1.25rem;
       }
+
+      /* Anchor Positioning */
       .menu-anchor {
         position: absolute;
-        block-size: 0px;
-        inline-size: 0px;
+        inline-size: 0;
+        block-size: 0;
       }
-      .card [popover] {
+
+      [popover] {
         position-area: block-end span-inline-end;
-        position-try: flip-inline, flip-block, flip-start;
+        position-try-fallbacks: flip-inline, flip-block, --below;
+        inset: auto;
         margin: 0;
         padding: 0.25rem;
         border: 1px solid #ccc;
         border-radius: 6px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         background: white;
-        min-width: 120px;
-        &[source="button" i] {
-          position-area: block-end span-inline-start;
+        min-width: 160px;
+      }
+
+      [popover][source="button" i] {
+        position-area: block-end span-inline-start;
+      }
+
+      @position-try --below {
+        position-area: block-end span-inline-end;
+        margin-inline-start: 1rem;
+        min-inline-size: 0;
+        max-inline-size: calc(100% - 1rem);
+      }
+
+      /* Submenu Positioning */
+      [popover] [popover] {
+        position-area: inline-end span-block-end;
+        position-try-fallbacks: flip-inline, flip-block, --below;
+      }
+
+      /* Animation */
+      @media (prefers-reduced-motion: no-preference) {
+        [popover] {
+          opacity: 0;
+          translate: 0 -0.25rem;
+          transition:
+            opacity 0.15s,
+            translate 0.15s,
+            display 0.15s allow-discrete,
+            overlay 0.15s allow-discrete;
+        }
+        [popover]:popover-open {
+          opacity: 1;
+          translate: 0 0;
+          transition-duration: 0.1s;
+          @starting-style {
+            opacity: 0;
+            translate: 0 -0.25rem;
+          }
         }
       }
 
-      .card > button {
+      /* Trigger Styles */
+      .trigger {
         position: absolute;
-        appearance: none;
         inset-inline-end: 12px;
         inset-block-start: 12px;
         width: 32px;
@@ -83,15 +133,16 @@
         z-index: 10;
       }
 
-      .card > button:hover {
+      .trigger:hover,
+      .trigger:focus-visible {
         background-color: #f8f9fa;
       }
 
-      .card > button:active {
+      .trigger:active {
         background-color: #c0c0c0;
       }
 
-      .card > button svg {
+      .trigger svg {
         width: 20px;
         height: 20px;
         fill: #444;
@@ -99,25 +150,20 @@
       }
 
       @media (hover: hover) {
-        .card > button {
+        .trigger {
           opacity: 0;
         }
-        .card:is(:hover, :focus-within, :has(:popover-open)) > button {
+        .card:is(:hover, :focus-within, :has(:popover-open)) .trigger {
           opacity: 1;
         }
       }
 
-      .card [popover] menu {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-      }
-
-      .card [popover] button {
-        /* Reset button styles */
-        position: static;
+      /* Menu Item Alignment */
+      [focusgroup~="menu"] button {
         appearance: none;
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         width: 100%;
         padding: 0.5rem 1rem;
         border: none;
@@ -128,25 +174,37 @@
         border-radius: 4px;
       }
 
-      .card [popover] button:hover {
+      [focusgroup~="menu"] button:hover,
+      [focusgroup~="menu"] button:focus-visible {
         background-color: #f0f0f0;
+        outline: none;
       }
 
-      .card [popover] li + li {
+      [focusgroup~="menu"] hr {
+        margin: 0.25rem 0;
+        border: none;
         border-top: 1px solid #eee;
       }
 
+      /* Submenu indicator fallback (not used in this demo yet) */
+      [focusgroup~="menu"] .hint {
+        margin-inline-start: auto;
+        color: #888;
+      }
     </style>
   </head>
   <body>
     <div class="card">
       <span class="menu-anchor"></span>
       <button
+        id="trigger1"
+        class="trigger"
         type="button"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        commandfor="menu1"
         command="toggle-popover"
-        commandfor="popover"
         aria-label="Open context menu"
-        id="context-menu-trigger"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -154,10 +212,11 @@
           />
         </svg>
       </button>
-      <div popover id="popover">
-        <div focusgroup="menu nomemory" aria-labelledby="context-menu-trigger">
-          <button type="button" autofocus>Edit</button>
+      <div id="menu1" popover="auto">
+        <div focusgroup="menu nomemory" aria-labelledby="trigger1">
+          <button type="button">Edit</button>
           <button type="button">Share</button>
+          <hr />
           <button type="button">Delete</button>
         </div>
       </div>
@@ -165,18 +224,20 @@
         src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=300"
         alt="Card Image"
       />
-      <h2>Card Title</h2>
+      <h2>Card with Button</h2>
     </div>
+
     <div class="card">
       <span class="menu-anchor"></span>
       <button
+        id="trigger2"
+        class="trigger"
         type="button"
+        aria-haspopup="menu"
+        aria-expanded="false"
+        commandfor="menu2"
         command="toggle-popover"
-        commandfor="popover2"
-        popovertargetaction="toggle-popover"
-        popovertarget="popover2"
         aria-label="Open context menu"
-        id="context-menu-trigger-2"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -184,14 +245,27 @@
           />
         </svg>
       </button>
-      <div popover id="popover2">
-        <div
-          focusgroup="menu nomemory"
-          aria-labelledby="context-menu-trigger-2"
-        >
-          <button type="button" autofocus>Edit</button>
-          <button type="button">Share</button>
-          <button type="button">Delete</button>
+      <div id="menu2" popover="auto">
+        <div focusgroup="menu nomemory" aria-labelledby="trigger2">
+          <button type="button">Download</button>
+          <button type="button">Copy Link</button>
+          <hr />
+          <button
+            id="trigger2-submenu"
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            commandfor="menu2-submenu"
+            command="toggle-popover"
+          >
+            More Options <span class="hint" aria-hidden="true">›</span>
+          </button>
+          <div id="menu2-submenu" popover="auto">
+            <div focusgroup="menu nomemory" aria-labelledby="trigger2-submenu">
+              <button type="button">Report</button>
+              <button type="button">Block User</button>
+            </div>
+          </div>
         </div>
       </div>
       <img
@@ -200,65 +274,265 @@
       />
       <h2>Second Card</h2>
     </div>
-    <div class="card">
-      <span class="menu-anchor"></span>
-      <div popover id="popover3">
-        <div focusgroup="menu nomemory" aria-labelledby="context-menu-trigger">
-          <button type="button" autofocus>Edit</button>
-          <button type="button">Share</button>
-          <button type="button">Delete</button>
+
+    <div class="card" id="right-click-only">
+      <span class="menu-anchor" id="anchor3"></span>
+      <div id="menu3" popover="auto">
+        <div focusgroup="menu nomemory" aria-label="Context actions">
+          <button type="button">Open</button>
+          <button type="button">Favorite</button>
+          <hr />
+          <button type="button">Archive</button>
         </div>
       </div>
       <img
         src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=300"
         alt="Card Image"
       />
-      <h2>No button</h2>
+      <h2>Right-click Only, actions on subsequent page</h2>
     </div>
+
     <script type="module">
+      const enterOnOpen = new WeakSet();
+      let lastFocused = null;
+
+      // Helpers
+      const menuFor = (trigger) => {
+        const id = trigger.getAttribute("commandfor");
+        return id ? document.getElementById(id) : null;
+      };
+
+      const closeAndRestore = (menu, { fromPointer = false } = {}) => {
+        const triggerId = menu
+          .querySelector("[aria-labelledby]")
+          ?.getAttribute("aria-labelledby");
+        const trigger = triggerId ? document.getElementById(triggerId) : lastFocused;
+        if (trigger) {
+          trigger.focus({ focusVisible: !fromPointer });
+        }
+        menu.hidePopover();
+      };
+
+      // 1. Focusgroup Fallback
+      if (!("focusGroup" in HTMLElement.prototype)) {
+        document.querySelectorAll('[focusgroup~="menu"]').forEach((group) => {
+          group.setAttribute("role", "menu");
+          group.querySelectorAll("button:not([role])").forEach((item) => {
+            item.setAttribute("role", "menuitem");
+          });
+          group.addEventListener(
+            "keydown",
+            (event) => {
+              if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key))
+                return;
+              const items = [...group.querySelectorAll("button")]
+                .filter((item) => item.closest("[focusgroup]") === group)
+                .filter(
+                  (item) =>
+                    !item.disabled &&
+                    item.getAttribute("aria-disabled") !== "true",
+                );
+              const current = items.indexOf(document.activeElement);
+              if (current < 0) return;
+              const next =
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? items.length - 1
+                    : (current +
+                        (event.key === "ArrowUp" ? -1 : 1) +
+                        items.length) %
+                      items.length;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              items[next].focus({ preventScroll: true });
+            },
+            true,
+          );
+        });
+      }
+
+      // 2. Toggle Handler (Focus & ARIA)
+      document.querySelectorAll("[popover]").forEach((menu) => {
+        menu.addEventListener("toggle", (event) => {
+          const triggerId = menu
+            .querySelector("[aria-labelledby]")
+            ?.getAttribute("aria-labelledby");
+          const trigger = triggerId
+            ? document.getElementById(triggerId)
+            : lastFocused;
+
+          if (event.newState === "open") {
+            if (trigger && trigger.setAttribute)
+              trigger.setAttribute("aria-expanded", "true");
+
+            if (enterOnOpen.has(menu)) {
+              const firstItem = menu.querySelector("button:not([disabled])");
+              if (firstItem) {
+                firstItem.focus();
+              }
+              enterOnOpen.delete(menu);
+            }
+          } else {
+            if (trigger && trigger.setAttribute)
+              trigger.setAttribute("aria-expanded", "false");
+          }
+          });
+
+          // Differentiate between sources, and make it styleable
+          menu.addEventListener("beforetoggle", (event) => {
+          if (event.newState === "open" && event.source?.tagName) {
+            menu.setAttribute("source", event.source.tagName);
+          }
+          });
+          });
+
+
+      // 3. Invoker Logic (Fallback & Keyboard detection)
+      const hasInvokers = "commandForElement" in HTMLButtonElement.prototype;
+
+      document.addEventListener("click", (event) => {
+        const trigger = event.target.closest("button[commandfor]");
+        if (!trigger) return;
+
+        const menu = menuFor(trigger);
+        if (!menu) return;
+
+        // Set 'enter' flag for keyboard clicks (Enter/Space)
+        if (event.detail === 0) {
+          enterOnOpen.add(menu);
+        }
+
+        if (hasInvokers) return;
+
+        // Fallback for non-invoker browsers
+        event.preventDefault();
+        if (menu.matches(":popover-open")) {
+          closeAndRestore(menu, { fromPointer: event.detail !== 0 });
+        } else {
+          menu.showPopover({ source: trigger });
+        }
+      });
+
+      // ArrowDown on trigger opens and enters the menu
+      // ArrowRight on submenu trigger enters the submenu
+      // ArrowLeft/Escape in submenu closes only that level
+      document.addEventListener("keydown", (event) => {
+        const trigger = event.target.closest("button[commandfor]");
+        const currentMenu = event.target.closest("[popover]");
+
+        if (event.key === "ArrowDown" && trigger && !currentMenu) {
+          const menu = menuFor(trigger);
+          if (menu && !menu.matches(":popover-open")) {
+            event.preventDefault();
+            enterOnOpen.add(menu);
+            menu.showPopover({ source: trigger });
+          }
+        }
+
+        if (event.key === "ArrowRight" && trigger && currentMenu) {
+          const menu = menuFor(trigger);
+          if (menu && !menu.matches(":popover-open")) {
+            event.preventDefault();
+            enterOnOpen.add(menu);
+            menu.showPopover({ source: trigger });
+          }
+        }
+
+        if (event.key === "ArrowLeft" && currentMenu) {
+          const parentMenu = currentMenu.parentElement?.closest("[popover]");
+          if (parentMenu) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeAndRestore(currentMenu);
+          }
+        }
+
+        if (event.key === "Escape" && currentMenu) {
+          event.preventDefault();
+          event.stopPropagation();
+          closeAndRestore(currentMenu);
+        }
+      });
+
+      // 5. Outside Focus closure & Tracking
+      document.addEventListener("focusin", (event) => {
+        if (!event.target.closest("[popover]")) {
+          lastFocused = event.target;
+        }
+
+        document.querySelectorAll("[popover]:popover-open").forEach((menu) => {
+          if (!menu.contains(event.target)) {
+            const triggerId = menu
+              .querySelector("[aria-labelledby]")
+              ?.getAttribute("aria-labelledby");
+            const trigger = document.getElementById(triggerId);
+            if (trigger && trigger.contains(event.target)) return;
+            menu.hidePopover();
+          }
+        });
+      });
+
+      // 6. Right-click Context Menu Logic
       const cards = document.querySelectorAll(".card");
       cards.forEach((card) => {
         const popover = card.querySelector("[popover]");
-        popover.addEventListener("beforetoggle", (event) => {
-          if (event.newValue === "open") {
-            popover.setAttribute("source", event.source.tagName ?? "");
-          } else {
-            if ("positionArea" in document.documentElement.style) return;
+        const anchor = card.querySelector(".menu-anchor");
 
-            const isClosing = getComputedStyle(popover).display === "block";
-
-            if (isClosing) {
-              // Reset popover position
-              // TODO: Should reset to button's location, if set
-              popover.style.left = "";
-              popover.style.top = "";
-            }
-          }
-        });
-        // Mouseup on the `contextmenu` event closes the popover, so the popover must be handled in `mouseup`.
-        // This is a spec issue, and fixed in Chromium 153.
         card.addEventListener("contextmenu", (event) => {
           event.preventDefault();
         });
+
         card.addEventListener("mouseup", (event) => {
           if (!(event.button === 2 || event.ctrlKey)) return;
+
           const rect = card.getBoundingClientRect();
           const x = event.clientX - rect.left;
           const y = event.clientY - rect.top;
 
-          const menuAnchor = card.querySelector(".menu-anchor");
-          menuAnchor.style.left = `${x}px`;
-          menuAnchor.style.top = `${y}px`;
+          anchor.style.left = `${x}px`;
+          anchor.style.top = `${y}px`;
 
+          // Non-anchor-positioning fallback
           if (!("positionArea" in document.documentElement.style)) {
-            // Position relative to the viewport or container
             popover.style.left = `${event.clientX}px`;
             popover.style.top = `${event.clientY}px`;
           }
 
-          popover.togglePopover({ force: true, source: menuAnchor });
+          popover.showPopover({ source: anchor });
         });
       });
+
+      // 7. Command Activation
+      document
+        .querySelectorAll("[focusgroup~='menu'] button")
+        .forEach((btn) => {
+          btn.addEventListener("click", (event) => {
+            // If this button has a commandfor, it's a submenu trigger, not an action
+            if (btn.hasAttribute("commandfor")) return;
+
+            const menu = btn.closest("[popover]");
+            if (menu) {
+              const fromPointer = event.detail !== 0;
+
+              // Close all popovers in the chain
+              let current = menu;
+              while (current) {
+                const root = current.parentElement?.closest("[popover]");
+                if (!root) {
+                  closeAndRestore(current, { fromPointer });
+                  break;
+                }
+                current.hidePopover();
+                current = root;
+              }
+
+              console.log(
+                `Activated: ${btn.textContent.replace("›", "").trim()}`,
+              );
+            }
+          });
+        });
     </script>
   </body>
 </html>

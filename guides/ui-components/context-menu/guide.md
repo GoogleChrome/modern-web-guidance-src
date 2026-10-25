@@ -5,6 +5,7 @@ web-feature-ids:
   - popover
   - anchor-positioning
   - focusgroup
+  - invoker-commands
 ---
 
 ## Context Menu
@@ -15,7 +16,7 @@ A context menu provides quick access to actions related to a specific element or
 
 ### 1. Define the Menu Structure
 
-Use the `popover` attribute to create a container that can be promoted to the top layer. Refer to {{ GUIDE_REF("menu") }} for the full menu structure and keyboard navigation requirements.
+Use the `popover` attribute to create a container that can be promoted to the top layer. Refer to the separate menu button variant in {{ GUIDE_REF("menu") }} for the full menu structure and keyboard navigation requirements.
 
 ```html
 <!-- The menu container -->
@@ -66,7 +67,7 @@ card.addEventListener('contextmenu', (e) => {
 
 card.addEventListener('mouseup', (e) => {
   // button 2 = right mouse click
-  if (!(event.button === 2 || event.ctrlKey)) return;
+  if (!(e.button === 2 || e.ctrlKey)) return;
 
   // Calculate relative coordinates
   const rect = card.getBoundingClientRect();
@@ -74,12 +75,13 @@ card.addEventListener('mouseup', (e) => {
   const y = e.clientY - rect.top;
 
   // Move the anchor element to the cursor position
-  menuAnchor.style.insetInlineStart = `${x}px`;
-  menuAnchor.style.insetBlockStart = `${y}px`;
+  // Use physical rather than logical to match `getBoundingClientRect()`.
+  menuAnchor.style.left = `${x}px`;
+  menuAnchor.style.top = `${y}px`;
 
   // Open the popover and associate it with the anchor source
-  // MANDATORY: Use togglePopover({source}) to establish the implicit anchor
-  popover.togglePopover({ force: true, source: menuAnchor });
+  // MANDATORY: Use showPopover({source}) to establish the implicit anchor
+  popover.showPopover({ source: menuAnchor });
 });
 ```
 
@@ -96,14 +98,14 @@ Actions in a context menu MUST be accessible in another way for users who cannot
 </button>
 ```
 
-The `command` attribute sets the popover's implicit anchor position, in the same way as the source in `togglePopover({source})`. It can be used as an anchor without setting an `anchor-name` or `position-anchor`. To differentiate between the source, for instance to adjust the positioning, check `event.source` in the popover's `beforetoggle` event, and set an attribute that can be used for styling.
+The `command` attribute sets the popover's implicit anchor position, in the same way as the source in `showPopover({source})`. It can be used as an anchor without setting an `anchor-name` or `position-anchor`. To differentiate between the source, for instance to adjust the positioning, check `event.source` in the popover's `beforetoggle` event, and set an attribute that can be used for styling.
 
 ```js
 popover.addEventListener('beforetoggle', (event)=>{
-  if(event.newValue = 'open'){
-    popover.setAttribute('source', event.source?.tagName ?? '')
+  if (event.newState === "open") {
+    popover.setAttribute("source", event.source?.tagName ?? "");
   }
-})
+});
 ```
 
 ```css
@@ -115,6 +117,12 @@ popover.addEventListener('beforetoggle', (event)=>{
 ## Fallbacks
 
 {{ FEATURE_FALLBACKS("popover") }}
+
+{{ FEATURE_FALLBACKS("anchor-positioning") }}
+
+{{ FEATURE_FALLBACKS("focusgroup") }}
+
+{{ FEATURE_FALLBACKS("invoker-commands") }}
 
 ### Fallback for Anchor Positioning
 

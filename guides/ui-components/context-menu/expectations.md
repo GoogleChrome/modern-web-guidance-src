@@ -1,9 +1,9 @@
 - The context menu container uses the `popover` attribute.
-- The context menu uses the `<menu>` element for semantic grouping of actions.
+- The context menu uses a container with `focusgroup="menu"` for keyboard navigation.
 - The browser's default context menu is suppressed via `preventDefault()` on the `contextmenu` event.
 - The context menu is opened on right-click (or equivalent long-press if supported).
 - The context menu is positioned at the cursor coordinates using CSS Anchor Positioning.
-- An implicit anchor relationship is established using `togglePopover({source})`.
+- An implicit anchor relationship is established using `showPopover({source})`.
 - The context menu can be dismissed by clicking outside or pressing Escape (native Popover behavior).
 - A visible discovery button is provided that toggles the same context menu.
 - A manual fallback for positioning is provided for browsers that do not support CSS Anchor Positioning.
