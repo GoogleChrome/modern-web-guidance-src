@@ -239,7 +239,7 @@ Summary: \${rule.summary}
 \${contextSnippet}
 \`\`\``;
 
-export interface Phase2PromptFindingInput {
+export interface VerifierPromptFindingInput {
   readonly file: string;
   readonly line: number;
   readonly message: string;
@@ -247,10 +247,9 @@ export interface Phase2PromptFindingInput {
   readonly codeSnippet?: string;
 }
 
-export type FindingContextSnippetInput = Phase2PromptFindingInput;
-export type VerifierPromptFindingInput = Phase2PromptFindingInput;
+export type Phase2PromptFindingInput = VerifierPromptFindingInput;
 
-export interface Phase2PromptRuleInput {
+export interface VerifierPromptRuleInput {
   readonly id: string;
   readonly guideId?: string;
   readonly summary: string;
@@ -260,11 +259,11 @@ export interface Phase2PromptRuleInput {
   };
 }
 
-export type VerifierPromptRuleInput = Phase2PromptRuleInput;
+export type Phase2PromptRuleInput = VerifierPromptRuleInput;
 
-export function formatPhase2Prompt(
-  finding: Phase2PromptFindingInput,
-  rule: Phase2PromptRuleInput,
+export function formatVerifierPrompt(
+  finding: VerifierPromptFindingInput,
+  rule: VerifierPromptRuleInput,
   guideMarkdown?: string,
 ): string {
   const keepList = rule.verifierRubric.keepWhen.map((item) => `- ${item}`).join('\n');
@@ -273,7 +272,7 @@ export function formatPhase2Prompt(
 
   if (!guideMarkdown || !guideMarkdown.trim()) {
     throw new Error(
-      `formatPhase2Prompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast per R28/O55a.`,
+      `formatVerifierPrompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast per R28/O55a.`,
     );
   }
 
@@ -303,7 +302,7 @@ export function computePhase2PromptVersion(): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
     systemPrompt: PHASE2_SYSTEM_PROMPT,
-    userPromptTemplateSource: formatPhase2Prompt.toString(),
+    userPromptTemplateSource: formatVerifierPrompt.toString(),
     schema: PHASE2_RESPONSE_SCHEMA,
     thinkingBudget: PHASE2_THINKING_BUDGET,
     temperature: 0.0,
@@ -314,9 +313,9 @@ export function computePhase2PromptVersion(): string {
 
 export const PHASE2_PROMPT_VERSION = computePhase2PromptVersion();
 export const VERIFIER_PROMPT_VERSION = PHASE2_PROMPT_VERSION;
-export const formatVerifierPrompt = formatPhase2Prompt;
-export const buildVerifierPrompt = formatPhase2Prompt;
-export const buildPhase2Prompt = formatPhase2Prompt;
+export const formatPhase2Prompt = formatVerifierPrompt;
+export const buildVerifierPrompt = formatVerifierPrompt;
+export const buildPhase2Prompt = formatVerifierPrompt;
 export const VERIFIER_SYSTEM_PROMPT = PHASE2_SYSTEM_PROMPT;
 export const VERIFIER_RESPONSE_SCHEMA = PHASE2_RESPONSE_SCHEMA;
 export const VERIFIER_THINKING_BUDGET = PHASE2_THINKING_BUDGET;
@@ -415,6 +414,9 @@ export interface BlindCardPromptInput {
   readonly guideSummary: BlindCardGuideSummaryInput;
 }
 
+/**
+ * Formats a blind card finding for unbiased evaluation by human raters and the Detection Eval Judge.
+ */
 export function formatBlindCardPrompt(card: BlindCardPromptInput): string {
   const markdownBody = card.guideSummary.markdownBody?.trim();
   if (!markdownBody) {
@@ -455,7 +457,6 @@ export function computeJudgePromptVersion(
   return `${PROMPT_MODEL}:detective-v6-spec22-${hash}`;
 }
 
-export const computeJudgeVersion = computeJudgePromptVersion;
 export const JUDGE_VERSION = computeJudgePromptVersion();
 
 // ============================================================================

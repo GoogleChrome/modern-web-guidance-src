@@ -35,7 +35,7 @@ import {
   resolveGitMirrorCacheDir,
   type RepoConfigEntry,
 } from './paths.ts';
-import { runPhase2Filter, type Phase2Options, type Phase2Verdict } from './llm-verifier.ts';
+import { runLlmVerifier, type VerifierOptions, type VerifierVerdict } from './llm-verifier.ts';
 import { PHASE2_PROMPT_VERSION } from './prompts.ts';
 import {
   computeFileHash,
@@ -464,7 +464,7 @@ export interface PilotScorecardOptions {
 export function samplePhase2DropsDeck(
   droppedFindings: readonly AnalyzerFinding[],
   targetCount = 25,
-  verdictsMap?: ReadonlyMap<string, Phase2Verdict>,
+  verdictsMap?: ReadonlyMap<string, VerifierVerdict>,
 ): CalibrationDeckItem[] {
   if (droppedFindings.length === 0) {
     return [];
@@ -753,7 +753,7 @@ function createBlindCardPayloads(
 }
 
 interface Phase2BatchResult {
-  readonly verdictsMap: Map<string, Phase2Verdict>;
+  readonly verdictsMap: Map<string, VerifierVerdict>;
   readonly telemetryRecords: CardTelemetryRecord[];
 }
 
@@ -768,7 +768,7 @@ async function runPhase2ForBatch(
     readonly runId?: string;
   },
 ): Promise<Phase2BatchResult> {
-  const verdictsMap = new Map<string, Phase2Verdict>();
+  const verdictsMap = new Map<string, VerifierVerdict>();
   const telemetryRecords: CardTelemetryRecord[] = [];
   const phase2StartMs = Date.now();
 
@@ -818,12 +818,12 @@ async function runPhase2ForBatch(
     }
 
     if (uncached.length > 0) {
-      const phase2Opts: Phase2Options = {
+      const phase2Opts: VerifierOptions = {
         apiKey: options.apiKey,
         fetchFn: options.fetchFn,
         concurrency: options.concurrency,
       };
-      const phase2Live = await runPhase2Filter(uncached, rulesById, phase2Opts);
+      const phase2Live = await runLlmVerifier(uncached, rulesById, phase2Opts);
       for (const v of phase2Live.verdicts) {
         verdictsMap.set(v.cardId, v);
         const finding = uncached.find((f) => f.cardId === v.cardId);

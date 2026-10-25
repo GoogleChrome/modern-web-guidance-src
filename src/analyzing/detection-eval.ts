@@ -188,6 +188,9 @@ export interface GuideSummaryInfo {
   readonly explainerContext?: string;
 }
 
+/**
+ * Unbiased evaluation finding payload stripped of internal analyzer metadata, presenting only code context and guide specification to human raters and the Detection Eval Judge.
+ */
 export interface BlindCardPayload {
   cardId: string;
   repo: string;
@@ -205,7 +208,7 @@ export interface BlindCardPayload {
 export interface JudgeResult {
   cardId: string;
   verdict: JudgeVerdict;
-  facts: DetectiveFactCheck;
+  facts: DetectionEvalFactCheck;
   rawResponse?: string;
   error?: string;
 }
@@ -329,7 +332,7 @@ export function deriveJudgeVerdictFromFacts(
 }
 
 /**
- * Parses Gemini candidate content into DetectiveFactCheck.
+ * Parses Gemini candidate content into DetectionEvalFactCheck.
  * Fails fast with an explicit Error on invalid JSON or schema violations per Global Rules and R22.
  * Cross-checks and derives unambiguous verdicts from structured facts per R29.
  */
@@ -344,7 +347,7 @@ export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeRes
     );
   }
 
-  if (!isDetectiveFactCheck(parsed)) {
+  if (!isDetectionEvalFactCheck(parsed)) {
     throw new Error(
       `Judge response for card ${cardId} does not match schema: ${JSON.stringify(parsed)}\nRaw response: ${rawText}`,
     );
@@ -489,7 +492,7 @@ export async function fetchWithRetry(
 }
 
 /**
- * Runs judge evaluation directly via generateContent with concurrency control.
+ * Direct execution of the Detection Eval Judge across blind card finding payloads via Gemini LLM with concurrency control and retry backoff.
  * Never turns API, network, or rate-limit errors into dummy verdicts: retries with
  * exponential backoff and fails fast with an explicit Error.
  */

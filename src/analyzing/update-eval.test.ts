@@ -4,6 +4,7 @@ import {
   checkModernFeaturePresent,
   checkStructuralIntegrity,
   checkSyntaxCleanliness,
+  evaluateAgentUpdate,
   getSeededSensitivityTestCases,
   locateFindingLineInContent,
   runBadPatchSensitivitySuite,
@@ -559,7 +560,7 @@ describe('checkStructuralIntegrity', () => {
   });
 });
 
-describe('validateFixPatch (3-Gate Grader)', () => {
+describe('evaluateAgentUpdate (3-Gate Grader)', () => {
   const foundFixture = getSeededSensitivityTestCases().find(
     (fx) => fx.guideId === 'autofill-sign-in-form',
   );
@@ -569,7 +570,8 @@ describe('validateFixPatch (3-Gate Grader)', () => {
   const testFixture = foundFixture;
 
   it('Gate 1 fails on no-op patch (legacy finding remains)', async () => {
-    assert.equal(validateUpdatePatch, validateFixPatch);
+    assert.equal(validateUpdatePatch, evaluateAgentUpdate);
+    assert.equal(validateFixPatch, evaluateAgentUpdate);
     const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
@@ -577,7 +579,7 @@ describe('validateFixPatch (3-Gate Grader)', () => {
       guideId: testFixture.guideId,
     };
 
-    const res = await validateFixPatch(patch);
+    const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.resolved, false);
     assert.strictEqual(res.gate1.passed, false);
     assert.strictEqual(res.findingEliminatedCheck.passed, false);
@@ -588,56 +590,56 @@ describe('validateFixPatch (3-Gate Grader)', () => {
   });
 
   it('Gate 2a fails on syntax error', async () => {
-    const patch: FixPatch = {
+    const patch: UpdatePatch = {
       filePath: 'src/scheduler.ts',
       originalContent: testFixture.originalContent,
       patchedContent: 'export function broken() { scheduler.yield(; }',
       guideId: testFixture.guideId,
     };
 
-    const res = await validateFixPatch(patch);
+    const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.resolved, false);
     assert.strictEqual(res.gate2.passed, false);
     assert.strictEqual(res.gate2.syntaxClean, false);
   });
 
   it('Gate 2b fails on gutting / deletion', async () => {
-    const patch: FixPatch = {
+    const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
       patchedContent: '',
       guideId: testFixture.guideId,
     };
 
-    const res = await validateFixPatch(patch);
+    const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.resolved, false);
     assert.strictEqual(res.gate2.passed, false);
     assert.strictEqual(res.gate2.structuralIntegrityPassed, false);
   });
 
   it('Gate 2c fails on evasion without modern feature', async () => {
-    const patch: FixPatch = {
+    const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
       patchedContent: testFixture.brokenSyntaxOrEvasionPatch,
       guideId: testFixture.guideId,
     };
 
-    const res = await validateFixPatch(patch);
+    const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.resolved, false);
     assert.strictEqual(res.gate2.passed, false);
     assert.strictEqual(res.gate2.modernFeatureVerified, false);
   });
 
   it('Gate 3 fails when behavioralCheck callback fails', async () => {
-    const patch: FixPatch = {
+    const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
       patchedContent: testFixture.goodPatch,
       guideId: testFixture.guideId,
     };
 
-    const res = await validateFixPatch(patch, {
+    const res = await evaluateAgentUpdate(patch, {
       behavioralCheck: () => false,
     });
     assert.strictEqual(res.resolved, false);
@@ -648,14 +650,14 @@ describe('validateFixPatch (3-Gate Grader)', () => {
   });
 
   it('passes all 3 gates on reference good patch', async () => {
-    const patch: FixPatch = {
+    const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
       patchedContent: testFixture.goodPatch,
       guideId: testFixture.guideId,
     };
 
-    const res = await validateFixPatch(patch, {
+    const res = await evaluateAgentUpdate(patch, {
       behavioralCheck: () => true,
     });
     assert.strictEqual(res.resolved, true);
@@ -666,7 +668,7 @@ describe('validateFixPatch (3-Gate Grader)', () => {
   });
 
   it('evaluates Gate 1 on patchedWindow when provided for windowed refactoring', async () => {
-    const patch: FixPatch = {
+    const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
       patchedContent: testFixture.goodPatch,
@@ -675,7 +677,7 @@ describe('validateFixPatch (3-Gate Grader)', () => {
       patchedWindow: testFixture.goodPatch,
     };
 
-    const res = await validateFixPatch(patch);
+    const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.staticResolved, true);
     assert.strictEqual(res.resolved, false);
     assert.strictEqual(res.gate1.passed, true);

@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { DetectionEvalFactCheck, DetectiveFactCheck, JudgeVerdict } from './detection-eval.ts';
+import type { DetectionEvalFactCheck, JudgeVerdict } from './detection-eval.ts';
 import { WORKTREE_ROOT } from './paths.ts';
-import type { Phase2Confidence, VerifierConfidence } from './llm-verifier.ts';
+import type { VerifierConfidence } from './llm-verifier.ts';
 import type { AnalyzerRule } from './schema.ts';
 
 export const CARD_TELEMETRY_PATH = join(

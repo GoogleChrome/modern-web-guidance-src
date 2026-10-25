@@ -12,11 +12,11 @@ This skill maintains and updates the visual Modern Web Guidance Analyzer pipelin
 1. **100% Terminology Parity with `src/analyzing/LEXICON.md`:**
    - **Canonical 6-Step Pipeline Names:**
      1. `Guide Triage` (single-shot LLM triage of catalog guides into `detectable`, `ui-recipe-multi-part`, or `skip-no-old-way`; never "Gate 0" or "Stage 0").
-     2. `Legacy Pattern Spec` (explicit `replaces` vs. `doesNotReplace` scope definition + 4,000-shard GitMirror screening before rule authoring; never "Brownfield Rubric").
+     2. `Guide Triage` (explicit `replaces` vs. `doesNotReplace` scope definition + 4,000-shard GitMirror screening before rule authoring; never "Brownfield Rubric" or "Legacy Pattern Spec").
      3. `Static Matcher` (deterministic AST, DOM, CSS, or `package.json` pattern scanner; never "Phase 1" or "Detector").
      4. `LLM Verifier` (runtime contextual verification filter via `keepWhen` / `dropWhen`; never "Phase 2" or "Phase 2 Filter").
-     5. `Eval Judge` (offline evaluation rater grading blind finding cards using 3-pass consensus; never "Detective" or "Phase 2 Judge").
-     6. `Fix Smoke Test` (offline modernization simulation with bad-patch rejection; never "Milestone 4" or "Gate 1/2/3").
+     5. `Detection Eval Judge` (offline evaluation rater grading blind finding cards using 3-pass consensus; never "Detective" or "Phase 2 Judge").
+     6. `Update Eval` (offline modernization simulation with bad-patch rejection; never "Milestone 4" or "Gate 1/2/3" or "Fix Smoke Test").
    - **Corpus Splits:**
      - Must strictly use the two hyphenated splits: **`rule-writing`** and **`held-out`**.
      - Never use deprecated split names (`grading-only`, `tune`, `final`, `local-93`, `gitmirror-grading-only`).
@@ -49,11 +49,11 @@ Read `analyzer-internal/PROGRESS.md` and `analyzer-internal/PLAN.md` to identify
 
 The infographic is a **living visual narrative, not a static schema**. Each time it is updated, adapt the visual emphasis, charts, and callouts to highlight:
 - **Recent Architectural Breakthroughs:**
-  - For example: How introducing the **`Legacy Pattern Spec`** + 4,000-shard GitMirror screen eliminated dead-on-arrival rules upfront and propelled held-out precision on `CLEAN 1-TO-1` rules to **`99.2%` (242/244)** (compared to `72.0%` on pre-spec Batches 1–3).
+  - For example: How introducing **`Guide Triage`** + 4,000-shard GitMirror screen eliminated dead-on-arrival rules upfront and propelled held-out precision on `DIRECT-TOKEN / STRUCTURAL-AST` rules to **`99.2%` (242/244)** (compared to `72.0%` on pre-spec Batches 1–3).
 - **Corpus Consolidation:**
   - Highlight the two unified hyphenated splits: **`rule-writing`** (`115` local repos + `7,048` GitMirror files across `5,320` repos, `MOD = 0`) and **`held-out`** (`93` local repos + `7,137` GitMirror files across `5,258` repos, `MOD = 1`).
 - **Admitted Evaluation Rater:**
-  - Highlight that the **`Eval Judge`** (`gemini-3.8-flash:detective-v6-spec22-c3f54b90`) is officially **ADMITTED** on Paul Irish's 95 active scored calibration cards (**Gwet's $\text{AC}_1 = 0.703 \ge 0.70$**, **3-Pass Stability = `96.5%` $\ge 95\%$**, **Canary TNR = `100.0%`**).
+  - Highlight that the **`Detection Eval Judge`** (`gemini-3.8-flash:detective-v6-spec22-c3f54b90`) is officially **ADMITTED** on Paul Irish's 95 active scored calibration cards (**Gwet's $\text{AC}_1 = 0.703 \ge 0.70$**, **3-Pass Stability = `96.5%` $\ge 95\%$**, **Canary TNR = `100.0%`**).
 - **Zero-API-Key Runtime Verification:**
   - Emphasize how `verifierRubric.keepWhen` and `verifierRubric.dropWhen` emitted in CLI and `--json` turn the developer's existing coding agent (Claude, Gemini, Cursor) into the runtime `LLM Verifier` at zero additional API key, quota, or latency cost.
 - **Active Bottlenecks & Next Priorities:**

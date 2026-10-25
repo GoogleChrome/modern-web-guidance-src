@@ -411,15 +411,12 @@ export function checkStructuralIntegrity(
 }
 
 /**
- * Evaluates a candidate fix patch through the 3-Gate Fix Grader pipeline.
+ * Evaluates a candidate update patch through the 3-Gate Update Grader pipeline.
  */
-export const evaluateAgentUpdate = validateFixPatch;
-export const evaluateAgentFix = evaluateAgentUpdate;
-
-export async function validateFixPatch(
-  patch: FixPatch,
-  options?: FixValidationOptions,
-): Promise<FixValidationResult> {
+export async function evaluateAgentUpdate(
+  patch: UpdatePatch,
+  options?: UpdateValidationOptions,
+): Promise<UpdateValidationResult> {
   // Gate 1: Legacy Finding Eliminated (Negative Guard)
   const rulesToRun = ALL_RULES.filter(
     (r) =>
@@ -683,7 +680,8 @@ export async function validateFixPatch(
   };
 }
 
-export const validateUpdatePatch = validateFixPatch;
+export const validateFixPatch = evaluateAgentUpdate;
+export const validateUpdatePatch = evaluateAgentUpdate;
 
 export interface SeededFixture {
   readonly guideId: string;
@@ -974,7 +972,6 @@ export async function simulateSingleShotWindowFix(params: {
  * Aliases for simulateSingleShotWindowFix
  */
 export const promptAgentFix = simulateSingleShotWindowFix;
-export const generateFixPatch = simulateSingleShotWindowFix;
 
 /**
  * End-to-End Agentic Fix Runner for Milestone 4.

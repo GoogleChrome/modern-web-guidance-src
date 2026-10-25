@@ -320,9 +320,9 @@ All scorecard results and audit trails are logged to `PROGRESS.md` and serialize
 
 Follow this 4-step workflow to author, test, and qualify a rule for modern web guidance:
 
-### Step 1: Guide Triage & Legacy Pattern Spec
+### Step 1: Guide Triage
 1. **Verify Guide Triage status**: Ensure the feature guide is categorized as `detectable` (not `ui-recipe-multi-part` or `skip-no-old-way`).
-2. **Draft the Legacy Pattern Spec**: Identify concrete 1-to-1 legacy APIs, CSS workarounds, or npm packages that the modern platform feature directly replaces (`replaces`), alongside lookalike patterns that are out of scope (`doesNotReplace`).
+2. **Record the Guide Triage entry**: Identify concrete 1-to-1 legacy APIs, CSS workarounds, or npm packages that the modern platform feature directly replaces (`replaces`), alongside lookalike patterns that are out of scope (`doesNotReplace`).
 3. **Ground in real code**: Inspect only the `rule-writing` corpus (`208` local repos + `7,048` GitMirror files). Never inspect held-out code.
 
 ### Step 2: Static Matcher Authoring

@@ -65,6 +65,9 @@ export const ITP_ACTIVE_SUB_PATTERNS: readonly IndividualTransformSubPattern[] =
   'single-function-state',
 ];
 
+/**
+ * Deferred sub-patterns for the individual-transform-properties rule currently excluded from matcher execution.
+ */
 export const ITP_DEFERRED_SUB_PATTERNS: readonly IndividualTransformSubPattern[] = [];
 
 const STATE_PSEUDO_TEST_RE =

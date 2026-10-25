@@ -12,6 +12,7 @@ import {
   formatGate0Prompt,
   parseGate0Response,
   parseGuideTriageResponse,
+  triageGuide,
 } from './guide-triage.ts';
 
 void test('guide-triage: canonical symbol renames and aliases', async (t) => {
@@ -20,6 +21,7 @@ void test('guide-triage: canonical symbol renames and aliases', async (t) => {
     assert.equal(GATE0_MODEL, GUIDE_TRIAGE_MODEL);
     assert.equal(buildGuideTriageRequestBody, buildGate0RequestBody);
     assert.equal(parseGuideTriageResponse, parseGate0Response);
+    assert.equal(classifyGuideGate0, triageGuide);
   });
 });
 
@@ -156,7 +158,7 @@ void test('gate0: parseGate0Response validation', async (t) => {
   });
 });
 
-void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
+void test('guide-triage: triageGuide with mock fetch', async (t) => {
   await t.test('classifies a guide end-to-end and returns Gate0Entry with grounding sources and evidenceSource', async () => {
     let capturedUrl = '';
     let capturedBody = '';
@@ -200,7 +202,7 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
       });
     };
 
-    const entry = await classifyGuideGate0(
+    const entry = await triageGuide(
       {
         guideId: 'scrollend-event',
         category: 'javascript',
@@ -269,7 +271,7 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
       });
     };
 
-    const entry = await classifyGuideGate0(
+    const entry = await triageGuide(
       {
         guideId: 'webgpu-compute',
         category: 'graphics',
@@ -294,7 +296,7 @@ void test('gate0: classifyGuideGate0 with mock fetch', async (t) => {
 
     await assert.rejects(
       async () =>
-        classifyGuideGate0(
+        triageGuide(
           {
             guideId: 'failing-guide',
             category: 'css',

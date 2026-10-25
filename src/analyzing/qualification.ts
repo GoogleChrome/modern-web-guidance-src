@@ -10,7 +10,7 @@ import { wilsonInterval, type BinomialInterval } from './stats.ts';
 /**
  * Authoritative three-tier qualification classification for shipping analyzer rules (D-048).
  * - `'A'`: Human-verified precision >= 90% on blind held-out spot-checks or blind side-by-side replication decks (R35, R43/R49).
- * - `'B'`: Eval Judge consensus >= 90% legit-modernize-target votes at n >= 35 (<= 2 cards per repo per D-047) on held-out split.
+ * - `'B'`: Detection Eval Judge consensus >= 90% legit-modernize-target votes at n >= 35 (<= 2 cards per repo per D-047) on held-out split.
  * - `'C'`: Low matcher misfire rate (not-old-pattern / n) <= 10% (and <= 3 misfires) on held-out samples with >= 1 legit finding, or deterministic single-purpose package/vendored replacement.
  */
 export type QualificationTier = 'A' | 'B' | 'C';
@@ -353,6 +353,9 @@ export const SUSPENDED_QUALIFIED_RULE_HISTORY: readonly SuspendedRuleQualificati
   },
 ];
 
+/**
+ * List of candidate guides temporarily suspended from default shipping qualification pending human spot-checks or rule audit remediations.
+ */
 export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] =
   SUSPENDED_QUALIFIED_RULE_HISTORY.map((entry) => entry.guideId);
 
@@ -763,9 +766,9 @@ export function deriveQualifiedGuideIds(scorecard?: ScorecardReportLike): readon
 }
 
 /**
- * Production shipping qualified guide lists (D-031, D-036, D-041, D-042, D-045, D-048, R35, R37, R50).
- * Populated under D-048 with 37 qualifying guides meeting Criterion A (human precision >= 90%),
- * Criterion B (7-verdict Judge votes >= 90% at n=35), or Criterion C (low matcher misfire rate <= 10%
+ * Production shipping qualified guide list representing default terminal shipped guides (D-031, D-036, D-041, D-042, D-045, D-048, R35, R37, R50).
+ * Populated under D-048 with qualifying guides meeting Criterion A (human precision >= 90%),
+ * Criterion B (Detection Eval Judge votes >= 90% at n=35), or Criterion C (low matcher misfire rate <= 10%
  * or deterministic single-purpose package/vendored replacement).
  */
 export const QUALIFIED_GUIDE_IDS: readonly string[] = [

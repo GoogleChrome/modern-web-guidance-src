@@ -151,17 +151,16 @@ async function fetchWithRetry(
 }
 
 /**
- * Synthetic single-shot LLM simulation of Phase 2 candidate verification.
+ * Runtime LLM filter (`gemini-3.8-flash`) that evaluates a candidate finding against the
+ * rule's `verifierRubric` (`keepWhen` / `dropWhen`) and canonical `guide.md` in a single shot prompt.
  *
- * NOTE: This is a synthetic single-shot Gemini API simulation of a verification step,
- * NOT a real autonomous coding agent. It evaluates finding context against the
- * rule's keepWhen/dropWhen rubric in a single shot prompt.
+ * Emits keep vs drop verdicts and filtered findings before presenting modernization opportunities.
  */
-export async function simulateSingleShotPhase2Filter(
+export async function runLlmVerifier(
   findings: readonly AnalyzerFinding[],
   rulesById: ReadonlyMap<string, AnalyzerRule>,
-  options?: Phase2Options,
-): Promise<Phase2FilterResult> {
+  options?: VerifierOptions,
+): Promise<LlmVerifierResult> {
   if (findings.length === 0) {
     return {
       results: [],
@@ -182,11 +181,11 @@ export async function simulateSingleShotPhase2Filter(
 
   const apiKey = getGeminiApiKey(options);
   const customFetch = options?.fetchFn ?? fetch;
-  const model = options?.model ?? PHASE2_MODEL;
+  const model = options?.model ?? LLM_VERIFIER_MODEL;
   const maxRetries = options?.maxRetries ?? 8;
   const concurrency = Math.max(1, options?.concurrency ?? 5);
 
-  const verdicts: Phase2Verdict[] = Array.from({ length: findings.length });
+  const verdicts: VerifierVerdict[] = Array.from({ length: findings.length });
 
   // Pre-load guide markdown for all involved rules per R28
   const guideMarkdownCache = new Map<string, string>();
@@ -220,7 +219,7 @@ export async function simulateSingleShotPhase2Filter(
           `Phase 2 verifier requires loaded guide markdown for rule ${rule.id} (guide ${rule.guideId}). Failing fast per R28/O55a.`,
         );
       }
-      const body = buildPhase2RequestBody(finding, rule, guideMarkdown);
+      const body = buildVerifierRequestBody(finding, rule, guideMarkdown);
       const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
 
       const res = await fetchWithRetry(
@@ -251,7 +250,7 @@ export async function simulateSingleShotPhase2Filter(
         );
       }
 
-      verdicts[idx] = parsePhase2Response(text, finding.cardId);
+      verdicts[idx] = parseVerifierResponse(text, finding.cardId);
     }
   }
 
@@ -267,7 +266,6 @@ export async function simulateSingleShotPhase2Filter(
   };
 }
 
-export const simulateSingleShotVerifier = simulateSingleShotPhase2Filter;
-export const runLlmVerifier = simulateSingleShotPhase2Filter;
+export const simulateSingleShotPhase2Filter = runLlmVerifier;
+export const simulateSingleShotVerifier = runLlmVerifier;
 export const runPhase2Filter = runLlmVerifier;
-export const phase2Filter = simulateSingleShotPhase2Filter;

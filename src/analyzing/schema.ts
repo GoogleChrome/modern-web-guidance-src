@@ -26,6 +26,9 @@ export type UpdateScope =
   | 'widget-recipe'
   | 'n/a';
 
+/**
+ * Upfront classification and scoping of a published feature guide, recording whether a static matcher is feasible, the migration update scope, and exact replaces / doesNotReplace bounds.
+ */
 export interface GuideTriage {
   readonly guideId: string;
   readonly guideHash: string;
@@ -73,6 +76,9 @@ export interface Gate0Entry {
   readonly groundingSources?: readonly string[];
 }
 
+/**
+ * Pairing of unambiguous keepWhen and dropWhen rules used by the LLM Verifier to filter static matcher candidates down to true legacy workarounds.
+ */
 export interface VerifierRubric {
   readonly keepWhen: readonly string[];
   readonly dropWhen: readonly string[];
@@ -173,6 +179,9 @@ export type RuleMatcher =
   | CssRuleMatcher
   | DependencyRuleMatcher;
 
+/**
+ * Static Matcher rule contract binding a pattern id, guide hash, high-recall matcher (JS, CSS, DOM, or dependency), and VerifierRubric.
+ */
 export interface AnalyzerRule {
   readonly id: string;
   readonly guideId: string;

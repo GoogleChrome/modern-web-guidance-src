@@ -45,7 +45,7 @@ Runtime LLM filter (`gemini-3.8-flash`) that reads a **Static Matcher** candidat
 
 Offline evaluation pass that grades **Blind Card** findings on the **`held-out` split** to measure whether detected code is a valid modernization target. The **Detection Eval Judge** (`3`-pass majority vote LLM) grades each card into the 7 canonical `JudgeVerdict` values (`legit-modernize-target`, `not-old-pattern`, `fallback-or-guard`, `loses-behavior`, `no-payoff`, `guide-wrong`, `unsure`) using only `guide.md` and upstream explainer context (never the rule's `verifierRubric`). Never invoked during user-facing CLI runs.
 
-* _Reference_: `src/analyzing/schema.ts#JudgeVerdict`, `src/analyzing/detection-eval.ts#runJudgeDirect`
+* _Reference_: `src/analyzing/detection-eval.ts#JudgeVerdict`, `src/analyzing/detection-eval.ts#runJudgeDirect`
 * _Avoid_: `Detective`, `Phase 2 Judge`, `Eval Judge` (unscoped)
 
 ### Update Eval

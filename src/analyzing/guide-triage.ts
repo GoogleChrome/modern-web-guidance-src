@@ -125,7 +125,6 @@ export interface GuideTriageInput {
 }
 
 export type Gate0GuideInput = GuideTriageInput;
-export type Gate0Input = GuideTriageInput;
 
 export interface GuideTriageOptions {
   readonly apiKey?: string;
@@ -317,14 +316,12 @@ async function fetchWithRetry(
 }
 
 /**
- * Classifies a single published guide via Gemini LLM using full markdown content.
+ * Upfront classification and scoping of a published feature guide via Gemini LLM using full markdown content.
  * Evaluates 1 guide per LLM call and fails loudly on API or schema errors.
  */
-export const triageGuide = classifyGuideGate0;
-
-export async function classifyGuideGate0(
-  guide: Gate0GuideInput,
-  options?: Gate0Options,
+export async function triageGuide(
+  guide: GuideTriageInput,
+  options?: GuideTriageOptions,
 ): Promise<Gate0Entry> {
   const apiKey = getGeminiApiKey(options);
   const customFetch = options?.fetchFn ?? fetch;
@@ -415,3 +412,5 @@ export async function classifyGuideGate0(
     ...(groundingSources.length > 0 ? { groundingSources } : {}),
   };
 }
+
+export const classifyGuideGate0 = triageGuide;
