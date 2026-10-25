@@ -58,6 +58,13 @@ void test('file-filter: path and content classification', async (t) => {
     assert.equal(isVendoredOrGeneratedPath('vendor/assets/app.js'), true);
     assert.equal(isVendoredOrGeneratedPath('src/utils/math.min.js'), true);
     assert.equal(isVendoredOrGeneratedPath('src/types/index.d.ts'), true);
+    assert.equal(isVendoredOrGeneratedPath('.worktrees/feature/index.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('.worktree/test.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('.venv/lib/python.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('venv/lib/python.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('.nyc_output/coverage.json'), true);
+    assert.equal(isVendoredOrGeneratedPath('test-results/report.html'), true);
+    assert.equal(isVendoredOrGeneratedPath('playwright-report/index.html'), true);
     assert.equal(isVendoredOrGeneratedPath('src/components/Dialog.tsx'), false);
     assert.equal(isVendoredOrGeneratedPath('views/login.blade.php'), false);
     // By default, user project docs/site/website are NOT excluded (O46)
@@ -105,6 +112,15 @@ void test('file-filter: path and content classification', async (t) => {
     const minifiedLine = `const x = "${'a'.repeat(6000)}";`;
     assert.equal(isMinifiedContent(normalCode), false);
     assert.equal(isMinifiedContent(minifiedLine), true);
+
+    // Normal multi-line file with one long data: URI line or SVG template is not minified
+    const fileWithDataUri = Array.from({ length: 30 }, (_, i) => `.class-${i} { color: red; }`).join('\n') +
+      `\n.icon { background-image: url('data:image/svg+xml;utf8,${'a'.repeat(2000)}'); }\n`;
+    assert.equal(isMinifiedContent(fileWithDataUri), false);
+
+    const fileWithSvg = Array.from({ length: 30 }, (_, i) => `// line ${i}`).join('\n') +
+      `\nconst icon = '<svg viewBox="0 0 100 100">${'path '.repeat(500)}</svg>';\n`;
+    assert.equal(isMinifiedContent(fileWithSvg), false);
   });
 
   await t.test('detects third-party license headers with semver', () => {
@@ -118,6 +134,15 @@ void test('file-filter: path and content classification', async (t) => {
 (function() { return 1; })();`;
 
     assert.equal(hasVendoredLicenseHeader(thirdPartyHeader), true);
+
+    // First-party Google/Apache SPDX header is NOT flagged as vendored
+    const apacheSpdxHeader = `/**
+ * @license
+ * Copyright 2017 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ */
+const foo = 1;`;
+    assert.equal(hasVendoredLicenseHeader(apacheSpdxHeader), false);
 
     // Protected first-party code
     assert.equal(

@@ -84,17 +84,11 @@ Options:
 
 export function buildQualificationStatusNotice(
   activeRuleCount: number,
-  activeGuideCount: number,
-  suspendedGuides: readonly string[],
+  _activeGuideCount?: number,
+  _suspendedGuides: readonly string[] = [],
 ): string | undefined {
   if (activeRuleCount === 0) {
-    const suspendedCount = suspendedGuides.length;
-    const countPhrase =
-      suspendedCount > 0 ? ` (${suspendedCount} previously qualified guides)` : '';
-    return `Default qualified guides${countPhrase} are currently suspended pending re-validation (D-041 / D-042). 0 rules were run; pass --experimental (or --all-rules) for experimental findings.`;
-  }
-  if (suspendedGuides.length > 0) {
-    return `${suspendedGuides.length} previously qualified ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} currently suspended pending re-validation (D-041 / D-042); only ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide was' : 'guides were'} scanned. Pass --experimental (or --all-rules) for experimental findings.`;
+    return `Default qualified guides are currently suspended pending re-validation. 0 rules were run; pass --experimental (or --all-rules) for experimental findings.`;
   }
   return undefined;
 }
@@ -103,9 +97,6 @@ export function buildQualificationStatusNotice(
  * Formats findings into human-readable terminal output.
  * Renders provisional verification notice, visible keepWhen / dropWhen rubric lines,
  * and caps displayed findings at 5 per guide with an overflow summary line (D-032, D-033).
- * When the default qualified set is empty or reduced, states plainly that guides are
- * suspended pending re-validation and points to --all-rules rather than claiming no
- * legacy patterns were found (O6, D-042).
  */
 export function formatHumanReadable(
   targetDir: string,
@@ -117,22 +108,20 @@ export function formatHumanReadable(
   const isDefaultMode = formatOptions?.isDefaultQualifiedMode ?? false;
   const activeRuleCount = formatOptions?.activeRuleCount;
   const activeGuideCount = formatOptions?.activeGuideCount ?? 0;
-  const suspendedGuides = formatOptions?.suspendedGuides ?? [];
 
   if (totalFindings === 0) {
     if (isDefaultMode && activeRuleCount === 0) {
       return [
         `Modern Web Guidance Analyzer: ${targetDir}`,
-        `Default qualified guides are currently suspended pending re-validation (D-041 / D-042); 0 rules were run.`,
+        `Default qualified guides are currently suspended pending re-validation; 0 rules were run.`,
         `Pass --experimental (or --all-rules) for experimental findings across ${ALL_RULES.length} rules.`,
         '',
       ].join('\n');
     }
-    if (isDefaultMode && suspendedGuides.length > 0) {
+    if (isDefaultMode) {
       return [
         `Modern Web Guidance Analyzer: ${targetDir}`,
-        `0 findings from ${activeGuideCount} active qualified ${activeGuideCount === 1 ? 'guide' : 'guides'}.`,
-        `Note: ${suspendedGuides.length} ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} suspended pending re-validation (${suspendedGuides.join(', ')}); pass --all-rules (or --experimental) for experimental findings.`,
+        `0 findings from ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide' : 'guides'} (pass --experimental to include experimental guides).`,
         '',
       ].join('\n');
     }
@@ -143,11 +132,6 @@ export function formatHumanReadable(
   const lines: string[] = [
     'Note: Static analysis results are provisional and need verification with an agent.',
   ];
-  if (isDefaultMode && suspendedGuides.length > 0) {
-    lines.push(
-      `Note: ${suspendedGuides.length} ${suspendedGuides.length === 1 ? 'guide is' : 'guides are'} currently suspended pending re-validation (${suspendedGuides.join(', ')}); pass --experimental (or --all-rules) for experimental findings.`,
-    );
-  }
   lines.push(
     '',
     `Modern Web Guidance Analyzer: ${targetDir}`,

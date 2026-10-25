@@ -30,15 +30,14 @@ describe('runAnalyzeCli', () => {
     assert.match(parsed.error ?? '', /Target directory not found/);
   });
 
-  it('reports suspended default guides honestly when default qualified set is active alongside suspended guides (O6, D-042, D-048)', async () => {
+  it('reports zero findings cleanly in default qualified mode', async () => {
     const emptyDir = await mkdtemp(join(tmpdir(), 'analyzer-empty-test-'));
     try {
-      // Default mode with 37 qualified guides and 2 suspended guides
+      // Default mode with 37 qualified guides
       const resDefault = await runAnalyzeCli([emptyDir]);
       assert.equal(resDefault.exitCode, 0);
-      assert.match(resDefault.output, /0 findings from 37 active qualified guides/);
-      assert.match(resDefault.output, /2 guides are suspended pending re-validation/);
-      assert.match(resDefault.output, /--all-rules/);
+      assert.match(resDefault.output, /0 findings from 37 qualified guides \(pass --experimental to include experimental guides\)\./);
+      assert.doesNotMatch(resDefault.output, /suspended pending re-validation/);
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
       assert.equal(resDefaultJson.exitCode, 0);
@@ -48,11 +47,6 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.targetDir, emptyDir);
       assert.equal(parsedDefault.activeRuleCount, 53);
       assert.equal(parsedDefault.activeGuideCount, 37);
-      assert.ok(Array.isArray(parsedDefault.suspendedGuides));
-      assert.equal(parsedDefault.suspendedGuides.length, 2);
-      assert.match(parsedDefault.statusNotice ?? '', /2 previously qualified guides are currently suspended/);
-      assert.match(parsedDefault.statusNotice ?? '', /only 37 qualified guides were scanned/);
-      assert.match(parsedDefault.statusNotice ?? '', /--all-rules/);
 
       // With --all-rules on an actually empty directory, reports no modernization opportunities found
       const resAllEmpty = await runAnalyzeCli([emptyDir, '--all-rules']);
@@ -64,51 +58,14 @@ describe('runAnalyzeCli', () => {
     }
   });
 
-  it('reports suspended guides in human-readable output when default qualified set is reduced', () => {
+  it('reports zero findings in human-readable output in default mode', () => {
     const reducedZeroOutput = formatHumanReadable('/tmp/project', 0, [], undefined, {
       activeRuleCount: 1,
       activeGuideCount: 1,
-      suspendedGuides: ['complex-shapes', 'individual-transform-properties'],
       isDefaultQualifiedMode: true,
     });
-    assert.match(reducedZeroOutput, /0 findings from 1 active qualified guide/);
-    assert.match(reducedZeroOutput, /2 guides are suspended pending re-validation/);
-    assert.match(reducedZeroOutput, /--all-rules/);
-    assert.doesNotMatch(reducedZeroOutput, /No modernization opportunities found/);
-
-    const reducedFindingsOutput = formatHumanReadable(
-      '/tmp/project',
-      1,
-      [
-        {
-          guideId: 'autofill-highlight-inputs',
-          tier: 'qualified',
-          summary: 'Use standard :autofill.',
-          retrieveCommand: 'npx modern-web-guidance retrieve autofill-highlight-inputs',
-          count: 1,
-          findings: [
-            {
-              ruleId: 'autofill-highlight-inputs',
-              file: 'form.css',
-              line: 3,
-              message: 'Use :autofill',
-              codeSnippet: 'input:-webkit-autofill {}',
-            },
-          ],
-        },
-      ],
-      undefined,
-      {
-        activeRuleCount: 1,
-        activeGuideCount: 1,
-        suspendedGuides: ['individual-transform-properties'],
-        isDefaultQualifiedMode: true,
-      },
-    );
-    assert.match(
-      reducedFindingsOutput,
-      /1 guide is currently suspended pending re-validation \(individual-transform-properties\); pass --experimental \(or --all-rules\) for experimental findings/,
-    );
+    assert.match(reducedZeroOutput, /0 findings from 1 qualified guide \(pass --experimental to include experimental guides\)\./);
+    assert.doesNotMatch(reducedZeroOutput, /suspended pending re-validation/);
   });
 
   it('outputs human-readable grouped summary with retrieveCommand and file:line', async () => {
@@ -295,7 +252,7 @@ describe('runAnalyzeCli', () => {
         'autofill-highlight-inputs',
         'complex-shapes',
       ]);
-      assert.match(parsedDefault.statusNotice ?? '', /--all-rules/);
+      assert.equal(parsedDefault.statusNotice, undefined);
 
       // Opt-in run with --all-rules (or --experimental)
       const resAll = await runAnalyzeCli([testDir, '--all-rules', '--json']);

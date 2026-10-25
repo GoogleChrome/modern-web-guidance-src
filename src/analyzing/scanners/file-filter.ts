@@ -10,6 +10,13 @@ export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   '.nuxt',
   '.output',
   'coverage',
+  '.worktrees',
+  '.worktree',
+  '.venv',
+  'venv',
+  '.nyc_output',
+  'test-results',
+  'playwright-report',
   'tmp',
   'temp',
   'gen',
@@ -130,6 +137,10 @@ const HASHED_ASSET_DIR_RE = /\/assets\/[0-9a-f]{7,16}\//i;
 export const MAX_UNMINIFIED_LINE_LENGTH = 1200;
 const LICENSE_HEADER_SCAN_BYTES = 1500;
 const VENDOR_VERSION_REGEX = /(?:\bv?\d+\.\d+(?:\.\d+)?\b|@version\s*:?\s*\d+\.\d+)/i;
+const LICENSE_NAME_VERSION_REGEX =
+  /(?:apache|mpl|gpl|lgpl|agpl|bsd|mit|isc|epl|cddl|cc(?:-by(?:-[a-z]+)*)?)(?:\s+license,?\s*(?:version)?)?[\s-]*v?\d+\.\d+(?:\.\d+)?/gi;
+const SPDX_LICENSE_REGEX = /spdx-license-identifier:[^\n]*/gi;
+const INLINE_ASSET_LINE_REGEX = /data:(?:image|application|font)\/|<svg\b/i;
 const VENDOR_LICENSE_REGEX =
   /(?:\/\*!|@license|@preserve|@copyright|all rights reserved|licensed under (?:the )?(?:mit|bsd|apache|gpl|mpl|isc))/i;
 
@@ -241,32 +252,60 @@ export function isIgnoredPath(
 
 /**
  * Detects whether file content is minified based on maximum line length threshold.
+ * Ignores isolated data URI or SVG template lines, and verifies line-count/length heuristics.
  */
 export function isMinifiedContent(
   content: string,
   maxLineLength: number = MAX_UNMINIFIED_LINE_LENGTH,
 ): boolean {
-  const newline = content.indexOf('\n');
-  if (newline === -1) {
-    return content.length > maxLineLength;
-  }
-
-  let lineStart = 0;
-  while (lineStart < content.length) {
-    const nextNewline = content.indexOf('\n', lineStart);
-    const lineEnd = nextNewline === -1 ? content.length : nextNewline;
-    if (lineEnd - lineStart > maxLineLength) {
-      return true;
+  const lines = content.split('\n');
+  if (lines.length <= 1) {
+    const singleLine = lines[0] ?? '';
+    if (INLINE_ASSET_LINE_REGEX.test(singleLine)) {
+      return false;
     }
-    lineStart = lineEnd + 1;
+    return singleLine.length > maxLineLength;
   }
 
-  return false;
+  const nonEmptyLines: string[] = [];
+  let longLineCount = 0;
+  let totalLength = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    nonEmptyLines.push(line);
+    totalLength += line.length;
+
+    if (line.length > maxLineLength) {
+      if (!INLINE_ASSET_LINE_REGEX.test(line)) {
+        longLineCount++;
+      }
+    }
+  }
+
+  if (longLineCount === 0) {
+    return false;
+  }
+
+  // Multi-line file heuristic:
+  // If the file has >= 20 lines, and long lines are < 5% of non-empty lines,
+  // and the average line length is < 120, this is normal authored code with an isolated long line.
+  if (nonEmptyLines.length >= 20) {
+    const longLineFraction = longLineCount / nonEmptyLines.length;
+    const avgLineLength = totalLength / nonEmptyLines.length;
+    if (longLineFraction < 0.05 && avgLineLength < 120) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
  * Checks if the opening bytes contain a third-party versioned license banner.
  * First-party headers matching `ownNames` are protected and will not be treated as vendored.
+ * Strips license-name version identifiers (e.g. Apache-2.0, MPL-2.0) before testing version regex.
  */
 export function hasVendoredLicenseHeader(
   content: string,
@@ -280,7 +319,10 @@ export function hasVendoredLicenseHeader(
     return false;
   }
 
-  const hasVersion = VENDOR_VERSION_REGEX.test(headerSlice);
+  const sanitizedForVersion = headerSlice
+    .replace(SPDX_LICENSE_REGEX, '')
+    .replace(LICENSE_NAME_VERSION_REGEX, '');
+  const hasVersion = VENDOR_VERSION_REGEX.test(sanitizedForVersion);
   if (!hasVersion) {
     return false;
   }
