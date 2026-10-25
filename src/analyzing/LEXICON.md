@@ -20,12 +20,12 @@ The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for leg
 
 ## Pipeline Steps
 
-### Legacy Pattern Spec
+### Guide Triage
 
-Explicit specification per guide (`guideId`) defining **`replaces`** (the concrete legacy APIs, CSS workarounds, DOM idioms, or npm packages the guide's modern feature replaces), **`doesNotReplace`** (lookalike patterns that are out of scope), and the two-axis classification of its cleanest legacy **Sub-Pattern** — **`Detection`** (`'direct-token' | 'structural-ast' | 'needs-verifier' | 'no-legacy-pattern'`) and **`Update Scope`** (`'local-swap' | 'cross-layer-refactor' | 'widget-recipe' | 'n/a'`) — before any **Static Matcher** is authored. The authoritative definitions of each `Detection` and `UpdateScope` value live on the TypeScript types in `src/analyzing/schema.ts`.
+Upfront classification and scoping of a published feature guide (`guideId`) before any **Static Matcher** is authored. Defines **`replaces`** (the concrete legacy APIs, CSS workarounds, DOM idioms, or npm packages the guide's modern feature replaces), **`doesNotReplace`** (lookalike patterns that are out of scope), and scores the guide's cleanest legacy **Sub-Pattern** on two orthogonal axes: **`Detection`** (`'direct-token' | 'structural-ast' | 'needs-verifier' | 'no-legacy-pattern'`) and **`Update Scope`** (`'local-swap' | 'cross-layer-refactor' | 'widget-recipe' | 'n/a'`). The authoritative definitions of each `Detection` and `UpdateScope` value live on the TypeScript types in `src/analyzing/schema.ts`.
 
-* _Reference_: `src/analyzing/schema.ts#Detection`, `src/analyzing/schema.ts#UpdateScope`, `src/analyzing/schema.ts#LegacyPatternSpec`
-* _Avoid_: `Gate 0`, `Stage 0`, `Guide Triage`, `Rewrite Scope`, `Brownfield Rubric`, `Candidate Techniques`, `clean-1-to-1`, `needs-care`, `ui-recipe-multi-part`, `skip-no-old-way`
+* _Reference_: `src/analyzing/schema.ts#Detection`, `src/analyzing/schema.ts#UpdateScope`, `src/analyzing/schema.ts#GuideTriage`, `src/analyzing/guide-triage.ts#triageGuide`
+* _Avoid_: `Gate 0`, `Stage 0`, `Legacy Pattern Spec`, `Rewrite Scope`, `Brownfield Rubric`, `Candidate Techniques`, `clean-1-to-1`, `needs-care`, `ui-recipe-multi-part`, `skip-no-old-way`
 
 ### Static Matcher
 
@@ -156,7 +156,7 @@ A rule module in `src/analyzing/rules/*.ts` with unit tests on disk that is not 
 
 ### Retired Guide
 
-A guide for which a rule was prototyped and subsequently removed or emptied from `ALL_RULES` because **Legacy Pattern Spec** or human review determined it has `no-legacy-pattern` or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding, or a **Suspended Rule**.
+A guide for which a rule was prototyped and subsequently removed or emptied from `ALL_RULES` because **Guide Triage** or human review determined it has `no-legacy-pattern` or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding, or a **Suspended Rule**.
 
 * _Reference_: `src/analyzing/README.md`
 * _Avoid_: `Dropped Rule`
