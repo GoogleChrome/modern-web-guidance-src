@@ -33,6 +33,7 @@ Build a button that copies the text of another element (code block, inline value
 ```
 
 - Use `type="button"` so the button never submits a form.
+- Size the button at least 24×24 CSS px with `min-inline-size`/`min-block-size` (not `inline-size`/`block-size`), so content can grow the target but never shrink it.
 - Name an icon-only button with `aria-label`. If the button shows visible text, that text is the name; do not add an `aria-label` that differs from it.
 - Render the icon with whatever the codebase uses for icons (see {{ GUIDE_REF("icons") }}) and mark it decorative; the button's accessible name comes from `aria-label`, not the icon.
 
@@ -66,7 +67,7 @@ document.addEventListener('command', (event) => {
 
 - **One element for sighted and screen reader users:** `report()` sets `data-copied` (or `data-failed`) on the button and writes the message into the bubble, which is both the visible feedback and the live region. Sighted and screen reader users then get the same message for both outcomes. Keep messages short ("Copied", "Copy failed").
 - **Show and hide the bubble with `opacity`,** not `display: none` or `visibility: hidden`, which take it out of the accessibility tree so the text is not announced.
-- **Announce repeats:** VoiceOver skips a message identical to the previous one, even if the region was emptied in between and even if it comes from a different region. Track the last message once for the whole page (not per button, and not by reading the bubble, which is cleared) and, when a message repeats, append a no-break space (`\u00A0`) so it differs. It is not read aloud. Do not use `ariaNotify()` for this; it is not reliable across screen readers yet.
+- **Announce repeats:** VoiceOver skips a message identical to the previous one, even if the region was emptied in between and even if it comes from a different region. Track the last message once for the whole page (not per button, and not by reading the bubble, which is cleared) and, when a message repeats, append a no-break space (`\u00A0`) so it differs. It is not read aloud. Do not use `ariaNotify()` for this.
 - **Clean up:** after a short timeout, remove the state attributes and clear the bubble's text, so no stale "Copied" is left for screen reader browse mode.
 - **Not color alone:** swap the icon (copy to check) on success and use the bubble text for both outcomes.
 - **Repeat clicks:** clear the pending timeout and restart the animation instead of stacking timers. DO NOT disable the button while showing feedback: copying is idempotent, and disabling drops keyboard focus, announces a misleading unavailable state, and blocks retrying after a failure.
@@ -122,7 +123,9 @@ if (!('CommandEvent' in window)) {
   // Resolve the target from commandfor, as the browser does for command events
   document.addEventListener('click', (event) => {
     const button = event.target.closest('button[command^="--copy"]');
-    if (button) copy(button, document.getElementById(button.getAttribute('commandfor')), button.getAttribute('command'));
+    if (!button) return;
+    const target = document.getElementById(button.getAttribute('commandfor'));
+    if (target) copy(button, target, button.getAttribute('command')); // a missing target would throw inside copy()
   });
 }
 ```
@@ -131,10 +134,10 @@ Register only one of the two paths so a click never copies twice.
 
 ### Async Clipboard
 
-{{ BASELINE_STATUS("async-clipboard") }}
+{{ BASELINE_STATUS("async-clipboard", "api.Clipboard.writeText") }}
 
 `navigator.clipboard` is only available in secure contexts (`https:` or `localhost`), and the write is rejected when permission is denied. `copy()` already covers both: a missing `navigator.clipboard` throws inside the `try`, so the failure message is shown and announced. DO NOT add a `document.execCommand('copy')` fallback: it is deprecated, and serving the page over HTTPS removes the cause.
 
-### Popover (optional selection button only)
+Only the optional selection button (step 3) uses Popover.
 
-{{ BASELINE_STATUS("popover") }}
+{{ FEATURE_FALLBACKS("popover") }}
