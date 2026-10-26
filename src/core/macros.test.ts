@@ -82,16 +82,16 @@ describe('replaceMacros (Functional with real data)', () => {
       );
     });
 
-    it('preserves macro syntax for static-site target', () => {
+    it('formats BaselineStatus macro for devsite target', () => {
       const content = '{{ BASELINE_STATUS("grid") }}';
-      const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-      assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}');
+      const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+      assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}");
     });
 
-    it('preserves macro syntax with BCD key for static-site target', () => {
+    it('formats BaselineStatus macro with BCD key for devsite target', () => {
       const content = '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}';
-      const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-      assert.strictEqual(result, '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}');
+      const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+      assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}");
     });
 
     it('throws error for non-existent feature', () => {
@@ -191,7 +191,7 @@ describe('replaceMacros (Functional with real data)', () => {
 
     it('strips comments for all build targets', () => {
       const content = 'Visible {# secret #} text';
-      assert.strictEqual(replaceMacros(content, 'test.md', { target: 'static-site' }), 'Visible text');
+      assert.strictEqual(replaceMacros(content, 'test.md', { target: 'devsite' }), 'Visible text');
       assert.strictEqual(replaceMacros(content, 'test.md', { target: 'skills-cli' }), 'Visible text');
     });
 
@@ -344,29 +344,29 @@ describe('replaceMacros (Functional with real data)', () => {
     });
 
     describe('build targets', () => {
-      describe('static-site', () => {
+      describe('devsite', () => {
         it('normalizes consecutive BASELINE_STATUS with 0 blank lines', () => {
           const content = '{{ BASELINE_STATUS("grid") }}\n{{ BASELINE_STATUS("popover") }}';
-          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
+          const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+          assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}\n\n{{ macros.BaselineStatus('popover') }}");
         });
 
         it('normalizes consecutive BASELINE_STATUS with 1 blank line', () => {
           const content = '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}';
-          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
+          const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+          assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}\n\n{{ macros.BaselineStatus('popover') }}");
         });
 
         it('normalizes consecutive BASELINE_STATUS with multiple blank lines', () => {
           const content = '{{ BASELINE_STATUS("grid") }}\n\n\n{{ BASELINE_STATUS("popover") }}';
-          const result = replaceMacros(content, 'test.md', { target: 'static-site' });
-          assert.strictEqual(result, '{{ BASELINE_STATUS("grid") }}\n\n{{ BASELINE_STATUS("popover") }}');
+          const result = replaceMacros(content, 'test.md', { target: 'devsite' });
+          assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}\n\n{{ macros.BaselineStatus('popover') }}");
         });
 
         it('normalizes consecutive GUIDE_REF calls', () => {
           const content = '{{ GUIDE_REF("break-up-long-tasks") }}\n{{ GUIDE_REF("forms") }}';
-          const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
-          assert.strictEqual(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)\n\n[Forms](../forms/forms.md)');
+          const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'devsite' });
+          assert.strictEqual(result, '[Break Up Long Tasks](/docs/modern-web-guidance/guides/performance/break-up-long-tasks)\n\n[Forms](/docs/modern-web-guidance/guides/forms/forms)');
         });
       });
 
@@ -671,16 +671,16 @@ describe('INCLUDE', () => {
       assert.equal(result, '`forms` (via `npx -y modern-web-guidance@latest retrieve "forms"`)');
     });
 
-    it('replaces macro with relative markdown link for static-site target', () => {
+    it('replaces macro with DevSite link for devsite target', () => {
       const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
-      const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
-      assert.equal(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)');
+      const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'devsite' });
+      assert.equal(result, '[Break Up Long Tasks](/docs/modern-web-guidance/guides/performance/break-up-long-tasks)');
     });
 
-    it('throws for unpublished guides on the static-site target', () => {
+    it('throws for unpublished guides on the devsite target', () => {
       const content = '{{ GUIDE_REF("slider-tooltip") }}';
       assert.throws(
-        () => replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' }),
+        () => replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'devsite' }),
         /links to an unpublished guide/,
       );
     });
