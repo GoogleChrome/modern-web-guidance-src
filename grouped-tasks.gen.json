@@ -284,6 +284,9 @@
         "daily-grind",
         "devtools-times"
       ],
+      "secure-external-subresources": [
+        "daily-grind"
+      ],
       "security": [
         "daily-grind"
       ],
