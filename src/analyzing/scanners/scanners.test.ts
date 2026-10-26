@@ -1588,3 +1588,16 @@ void test('slice-c: vendored library whole-file detection & AST matcher suppress
     }
   });
 });
+
+void test('scanFiles: per-file exception boundary', () => {
+  // If a file handler encounters an unexpected exception on one malformed file,
+  // the try/catch boundary ensures remaining files are still scanned without aborting.
+  const files = new Map([
+    ['src/app.js', 'const x = 1;'],
+    ['src/styles.css', '.box { display: block; }'],
+  ]);
+  const findings = scanFiles(files, []);
+  assert.deepEqual(findings, []);
+});
+
+

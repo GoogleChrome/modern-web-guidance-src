@@ -152,7 +152,7 @@ export function extractScriptBlocks(
     if (fmMatch && fmMatch[1]) {
       const firstNewline = content.indexOf('\n');
       const startOffset = firstNewline !== -1 ? firstNewline + 1 : 4;
-      const endOffset = content.indexOf('---', startOffset);
+      const endOffset = startOffset + fmMatch[1].length;
       if (endOffset > startOffset) {
         blocks.push({
           virtualPath: `${relPath}.ts`,

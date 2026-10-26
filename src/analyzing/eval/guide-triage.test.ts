@@ -154,7 +154,7 @@ void test('guide-triage: parseGuideTriageResponse validation', async (t) => {
 });
 
 void test('guide-triage: triageGuide with mock fetch', async (t) => {
-  await t.test('classifies a guide end-to-end and returns Gate0Entry with grounding sources and evidenceSource', async () => {
+  await t.test('classifies a guide end-to-end and returns GuideTriageEntry with grounding sources and evidenceSource', async () => {
     let capturedUrl = '';
     let capturedBody = '';
 

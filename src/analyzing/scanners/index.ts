@@ -622,55 +622,60 @@ export function scanFiles(
   const filterOpts = resolveFileFilterOptions(options);
 
   for (const [relPath, content] of files) {
-    if (!shouldScanFile(relPath, content, filterOpts)) {
-      if (
-        depRules.length > 0 &&
-        !isBuildOrInstallPath(relPath) &&
-        !(filterOpts?.excludeCorpusNonAppDirs && isCorpusNonAppPath(relPath))
-      ) {
-        findings.push(...processVendoredLibraryFile(ctxForVendored(relPath, content, repo, commit), depRules));
+    try {
+      if (!shouldScanFile(relPath, content, filterOpts)) {
+        if (
+          depRules.length > 0 &&
+          !isBuildOrInstallPath(relPath) &&
+          !(filterOpts?.excludeCorpusNonAppDirs && isCorpusNonAppPath(relPath))
+        ) {
+          findings.push(...processVendoredLibraryFile(ctxForVendored(relPath, content, repo, commit), depRules));
+        }
+        continue;
       }
-      continue;
-    }
 
-    const ctx: FileContext = { relPath, content, repo, commit };
-    const lowerPath = relPath.toLowerCase();
+      const ctx: FileContext = { relPath, content, repo, commit };
+      const lowerPath = relPath.toLowerCase();
 
-    if (lowerPath.endsWith('package.json') && depRules.length > 0) {
-      findings.push(...processPackageJsonFile(ctx, depRules));
-      continue;
-    }
+      if (lowerPath.endsWith('package.json') && depRules.length > 0) {
+        findings.push(...processPackageJsonFile(ctx, depRules));
+        continue;
+      }
 
-    if (lowerPath.endsWith('.css') && cssRules.length > 0) {
-      findings.push(...processCssFile(ctx, cssRules));
-      continue;
-    }
+      if (lowerPath.endsWith('.css') && cssRules.length > 0) {
+        findings.push(...processCssFile(ctx, cssRules));
+        continue;
+      }
 
-    const isMultiBlock =
-      lowerPath.endsWith('.html') ||
-      lowerPath.endsWith('.htm') ||
-      lowerPath.endsWith('.php') ||
-      lowerPath.endsWith('.vue') ||
-      lowerPath.endsWith('.svelte') ||
-      lowerPath.endsWith('.astro');
+      const isMultiBlock =
+        lowerPath.endsWith('.html') ||
+        lowerPath.endsWith('.htm') ||
+        lowerPath.endsWith('.php') ||
+        lowerPath.endsWith('.vue') ||
+        lowerPath.endsWith('.svelte') ||
+        lowerPath.endsWith('.astro');
 
-    if (isMultiBlock) {
-      findings.push(...processMultiBlockFile(ctx, ruleBundle, project));
-      continue;
-    }
+      if (isMultiBlock) {
+        findings.push(...processMultiBlockFile(ctx, ruleBundle, project));
+        continue;
+      }
 
-    const isJsLike =
-      lowerPath.endsWith('.js') ||
-      lowerPath.endsWith('.mjs') ||
-      lowerPath.endsWith('.cjs') ||
-      lowerPath.endsWith('.ts') ||
-      lowerPath.endsWith('.mts') ||
-      lowerPath.endsWith('.cts') ||
-      lowerPath.endsWith('.jsx') ||
-      lowerPath.endsWith('.tsx');
+      const isJsLike =
+        lowerPath.endsWith('.js') ||
+        lowerPath.endsWith('.mjs') ||
+        lowerPath.endsWith('.cjs') ||
+        lowerPath.endsWith('.ts') ||
+        lowerPath.endsWith('.mts') ||
+        lowerPath.endsWith('.cts') ||
+        lowerPath.endsWith('.jsx') ||
+        lowerPath.endsWith('.tsx');
 
-    if (isJsLike) {
-      findings.push(...processJavaScriptFile(ctx, ruleBundle, project));
+      if (isJsLike) {
+        findings.push(...processJavaScriptFile(ctx, ruleBundle, project));
+      }
+    } catch {
+      // Per-file exception boundary: an unexpected parser/AST exception on one malformed
+      // file must not abort the entire repository scan.
     }
   }
 

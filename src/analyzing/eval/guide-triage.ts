@@ -11,22 +11,22 @@ const ANALYZER_INTERNAL_DIR = resolve(import.meta.dirname, '../../../analyzer-in
  * - `'ui-recipe-multi-part'`: The guide teaches a multi-element UI component or architectural recipe (e.g. carousel, tabs, navigation drawer) where legacy implementations vary wildly and lack a single high-precision static code hook.
  * - `'skip-no-old-way'`: The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API) with no direct legacy browser workaround to migrate from.
  */
-export type Gate0Classification =
+export type GuideTriageClassification =
   | 'detectable'
   | 'ui-recipe-multi-part'
   | 'skip-no-old-way';
 
-export type Gate0EvidenceSource =
+export type GuideTriageEvidenceSource =
   | 'guide'
   | 'explainer'
   | 'search'
   | 'ecosystem-knowledge'
   | 'none';
 
-export interface Gate0Entry {
+export interface GuideTriageEntry {
   readonly guideId: string;
   readonly guideHash: string;
-  readonly classification: Gate0Classification;
+  readonly classification: GuideTriageClassification;
   readonly brownfieldTarget: string;
   readonly candidateTechniques?: readonly string[];
   readonly replaces?: readonly string[];
@@ -35,7 +35,7 @@ export interface Gate0Entry {
   readonly evidenceFromGuide?: string;
   readonly reason: string;
   readonly gate0PromptVersion?: string;
-  readonly evidenceSource?: Gate0EvidenceSource;
+  readonly evidenceSource?: GuideTriageEvidenceSource;
   readonly explainerContextHash?: string;
   readonly webSearchQueries?: readonly string[];
   readonly groundingSources?: readonly string[];
@@ -206,7 +206,7 @@ export function parseGuideTriageResponse(
   rawText: string,
   guideId: string,
 ): {
-  classification: Gate0Classification;
+  classification: GuideTriageClassification;
   candidateTechniques: string[];
   replaces?: string[];
   doesNotReplace?: string[];
@@ -214,7 +214,7 @@ export function parseGuideTriageResponse(
   brownfieldTarget: string;
   evidenceFromGuide: string;
   reason: string;
-  evidenceSource?: Gate0EvidenceSource;
+  evidenceSource?: GuideTriageEvidenceSource;
 } {
   let parsed: unknown;
   try {
@@ -287,11 +287,11 @@ export function parseGuideTriageResponse(
     throw new Error(`Gate 0 response missing string 'reason' for guide ${guideId}`);
   }
 
-  let evidenceSource: Gate0EvidenceSource | undefined;
+  let evidenceSource: GuideTriageEvidenceSource | undefined;
   if (typeof rec.evidenceSource === 'string') {
     const validSources = ['guide', 'explainer', 'search', 'ecosystem-knowledge', 'none'] as const;
-    if (validSources.includes(rec.evidenceSource as Gate0EvidenceSource)) {
-      evidenceSource = rec.evidenceSource as Gate0EvidenceSource;
+    if (validSources.includes(rec.evidenceSource as GuideTriageEvidenceSource)) {
+      evidenceSource = rec.evidenceSource as GuideTriageEvidenceSource;
     }
   }
 
@@ -352,7 +352,7 @@ async function fetchWithRetry(
 export async function triageGuide(
   guide: GuideTriageInput,
   options?: GuideTriageOptions,
-): Promise<Gate0Entry> {
+): Promise<GuideTriageEntry> {
   const apiKey = getGeminiApiKey(options);
   const customFetch = options?.fetchFn ?? fetch;
   const model = options?.model ?? GUIDE_TRIAGE_MODEL;
