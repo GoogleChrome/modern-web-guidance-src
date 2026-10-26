@@ -61,17 +61,16 @@
   .bc-slash > ol > li > a:not([aria-current]):hover,
   .bc-chevron > ol > li > a:not([aria-current]):hover { text-decoration: underline; }
 
-  /* ===== 3. Text only ===== */
-  .bc-text { --gap: 1.25rem; }
-  .bc-text > ol > li + li::before { content: none; }
-  .bc-text a:not([aria-current]) { text-decoration: underline; }
-  .bc-text a:not([aria-current]):hover { text-decoration-thickness: .2em; color: var(--text); }
+  /* ===== 3. Underlined links (keep the divider: order alone does not read as a hierarchy) ===== */
+  .bc-underline a:not([aria-current]) { text-decoration: underline; }
+  .bc-underline a:not([aria-current]):hover { text-decoration-thickness: .2em; color: var(--text); }
 
   /* ===== 4. Bar ===== */
   .bc-bar ol { gap: 0; display: inline-flex; border: 1px solid var(--border); border-radius: .5rem; overflow: clip; background: var(--surface-2); }
   .bc-bar li { gap: 0; }
   .bc-bar li + li { border-inline-start: 1px solid var(--border); }
-  .bc-bar > ol > li + li::before { content: none; }
+  /* The chevron divider (data-sep) sits inside each segment after the first, so the bar still reads as a path */
+  .bc-bar > ol > li + li::before { margin-inline: .9rem 0; }
   .bc-bar a { display: block; padding: .6rem 1.1rem; text-decoration: none; }
   .bc-bar a:not([aria-current]):hover { background: var(--accent-soft); }
   .bc-bar a[aria-current="page"] { background: var(--surface); }
@@ -139,7 +138,6 @@
 
   /* ===== 7. Pills ===== */
   .bc-pills { --pill-r: 999px; }
-  .bc-pills > ol > li + li::before { content: none; }
   .bc-pills > ol > li > a,
   .bc-pills > ol > li > button {
     display: block; padding: .35rem .9rem;
@@ -319,9 +317,9 @@
   </section>
 
   <section>
-    <h2>3. Text only</h2>
-    <p>No dividers. Links stay underlined so they don't rely on color alone.</p>
-    <nav class="breadcrumb bc-text" aria-label="Breadcrumbs, text only">
+    <h2>3. Underlined links</h2>
+    <p>Links stay underlined so they don't rely on color alone, and the slash divider keeps the trail reading as a path.</p>
+    <nav class="breadcrumb bc-underline" aria-label="Breadcrumbs, underlined">
       <ol>
         <li><a href="/">Index</a></li>
         <li><a href="/pg2">Second Page</a></li>
@@ -332,8 +330,8 @@
 
   <section>
     <h2>4. Bar</h2>
-    <p>One segmented control; each segment is a clear target.</p>
-    <nav class="breadcrumb bc-bar" aria-label="Breadcrumbs, bar">
+    <p>One bordered container; each segment is a clear target, and a chevron between segments keeps it reading as a path.</p>
+    <nav class="breadcrumb bc-bar" data-sep="chevron" aria-label="Breadcrumbs, bar">
       <ol>
         <li><a href="/">Index</a></li>
         <li><a href="/pg2">Second Page</a></li>
@@ -346,14 +344,14 @@
     <h2>4b. Joined pill</h2>
     <p>Segments share one rounded container, separated by a 1px border with no gap. Bottom: <code>corner-shape: squircle</code> where supported.</p>
     <div class="stack">
-      <nav class="breadcrumb bc-bar bc-joined" aria-label="Breadcrumbs, joined pill">
+      <nav class="breadcrumb bc-bar bc-joined" data-sep="chevron" aria-label="Breadcrumbs, joined pill">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/pg2">Second Page</a></li>
           <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
         </ol>
       </nav>
-      <nav class="breadcrumb bc-bar bc-joined bc-squircle" aria-label="Breadcrumbs, joined squircle">
+      <nav class="breadcrumb bc-bar bc-joined bc-squircle" data-sep="chevron" aria-label="Breadcrumbs, joined squircle">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/pg2">Second Page</a></li>
@@ -421,14 +419,14 @@
     <h2>7. Pills and squircle pills (<code>corner-shape</code>)</h2>
     <p>Top: <code>border-radius: 999px</code>. Bottom: <code>corner-shape: squircle</code> where supported.</p>
     <div class="stack">
-      <nav class="breadcrumb bc-pills" aria-label="Breadcrumbs, pills">
+      <nav class="breadcrumb bc-pills" data-sep="chevron" aria-label="Breadcrumbs, pills">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/pg2">Second Page</a></li>
           <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
         </ol>
       </nav>
-      <nav class="breadcrumb bc-pills bc-squircle" aria-label="Breadcrumbs, squircle pills">
+      <nav class="breadcrumb bc-pills bc-squircle" data-sep="chevron" aria-label="Breadcrumbs, squircle pills">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/pg2">Second Page</a></li>
@@ -501,7 +499,7 @@
         </ol>
       </nav>
 
-      <nav class="breadcrumb bc-pills bc-squircle" aria-label="Breadcrumbs, siblings (pills)">
+      <nav class="breadcrumb bc-pills bc-squircle" data-sep="chevron" aria-label="Breadcrumbs, siblings (pills)">
         <ol>
           <li><a href="/">Index</a></li>
           <li>
@@ -536,7 +534,7 @@
           <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
         </ol>
       </nav>
-      <nav class="breadcrumb bc-pills bc-squircle" data-collapse aria-label="Breadcrumbs, deep (pills)">
+      <nav class="breadcrumb bc-pills bc-squircle" data-collapse data-sep="chevron" aria-label="Breadcrumbs, deep (pills)">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/docs">Docs</a></li>
@@ -582,7 +580,7 @@
     </div>
 
     <div class="resizer">
-      <nav class="breadcrumb bc-pills bc-squircle" data-collapse aria-label="Breadcrumbs, resizable (pills)">
+      <nav class="breadcrumb bc-pills bc-squircle" data-collapse data-sep="chevron" aria-label="Breadcrumbs, resizable (pills)">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/docs">Docs</a></li>

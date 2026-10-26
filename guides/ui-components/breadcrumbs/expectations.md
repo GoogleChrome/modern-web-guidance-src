@@ -2,6 +2,7 @@
 - The `<nav>` contains an ordered list (`<ol>`) whose breadcrumb trail `<li>` items (excluding any collapsed overflow `<li>`) each contain an `<a>`.
 - The last item's link has `aria-current="page"`, and no other trail link has it.
 - Divider characters are not present as text nodes in the DOM; when dividers are rendered between items, they are generated via CSS (`::before` content with empty alt text `/ ""`, a CSS mask, or segment borders/shapes) so the accessible names of the list items contain no divider characters.
+- Each trail item after the first has a visible separator before it: a generated `::before` or `::after` divider (text with empty alt text, or a CSS mask), or an arrow or slant segment shape.
 - Links in the trail show a visible focus indicator (non-zero outline or distinct style) when focused with the keyboard.
 - When sibling dropdown triggers are present, each trigger is a `<button type="button">` with a `popovertarget` attribute and a non-empty `aria-label`, placed outside the ancestor's `<a>`.
 - When sibling dropdown triggers are present, each trigger's target is an element with the `popover` attribute containing `<a>` links, activating the trigger opens the popover, pressing Escape closes it, and the adjacent ancestor link remains a navigable `<a>` with an `href`.
