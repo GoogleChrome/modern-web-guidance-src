@@ -119,10 +119,12 @@ Independent authoring of a **Static Matcher** from `guide.md` and upstream expla
 
 ### Precision
 
-The proportion of evaluated findings graded `legit-modernize-target` ($\text{legit-modernize-target} / n$), measuring whether applying the guide to the flagged code is a genuine win.
+The proportion of evaluated findings graded `legit-modernize-target` ($\text{legit-modernize-target} / n$), measuring whether applying the guide to the flagged code is a genuine win. Because the analyzer operates in two distinct stages (deterministic static analysis vs runtime LLM verification), precision is always stage-qualified:
+- **Static Matcher Precision**: Precision of findings emitted by the **Static Matcher** alone, before any **LLM Verifier** pass. This is the sole precision metric that gates default CLI rule shipping (**Qualified Rule**).
+- **Post-Verifier Precision**: Precision of findings retained after the **LLM Verifier** filter. Used to evaluate agentic **Modernize** workflows; never used to gate default CLI rules.
 
-* _Reference_: `src/analyzing/qualification.ts`
-* _Avoid_: `Strict Precision`, `Raw Precision`, `Detector Accuracy`
+* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`, `analyzer-internal/src/scorecard.ts`
+* _Avoid_: `P1 Precision`, `P2 Precision`, `p1Precision`, `p2Precision`, `Strict Precision`, `Raw Precision`, `Detector Accuracy`, `Verified Precision`, `Final Precision`
 
 ### Matcher Misfire Rate
 
@@ -142,10 +144,10 @@ An active rule in `ALL_RULES` available behind `--experimental` (`--all-rules`) 
 
 ### Qualified Rule
 
-A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing one of the project's three **Qualification Tiers** (`Tier A`, `Tier B`, or `Tier C` defined on `QualificationTier` in `src/analyzing/qualification.ts`).
+A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing the **Static Matcher Precision** qualification threshold on the **`held-out` split**. Distinct from an **Experimental Rule**, which runs only under `--experimental` (`--all-rules`).
 
-* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/qualification.ts#QualificationTier`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
-* _Avoid_: `Default Rule`, `Tier 1 Rule`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`
+* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
+* _Avoid_: `Default Rule`, `Tier 1 Rule`, `Tier A / Tier B / Tier C`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`
 
 ### Suspended Rule
 

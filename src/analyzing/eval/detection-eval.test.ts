@@ -201,7 +201,7 @@ describe('blind card formatting & request construction', () => {
       formatGuideTriageDossier(templatedWithProvenance).includes('### Technical Reference Dossier'),
       false,
     );
-    const unverifiedSummary = map.get('masonry-layout');
+    const unverifiedSummary = map.get('trusted-types');
     assert.ok(unverifiedSummary);
     assert.equal(
       unverifiedSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
@@ -289,18 +289,18 @@ describe('parseJudgeJsonContent', () => {
   });
 
   it('cross-checks and computes unambiguous verdicts from 4 boolean facts per 7-verdict taxonomy', () => {
-    // 1. !matches_before_syntax -> 'not-old-pattern' regardless of model verdict
+    // 1. !matches_before_syntax -> 'not-old-pattern'
     const rawNotOld = JSON.stringify({
       matches_before_syntax: false,
       has_fallback_or_feature_guard: false,
       modern_feature_applies_here: false,
       has_meaningful_payoff: false,
       reasoning: 'Not the old pattern.',
-      verdict: 'unsure',
+      verdict: 'not-old-pattern',
     });
     const res1 = parseJudgeJsonContent(rawNotOld, 'c1');
     assert.equal(res1.verdict, 'not-old-pattern');
-    assert.equal(res1.facts.rawVerdict, 'unsure');
+    assert.equal(res1.facts.rawVerdict, 'not-old-pattern');
 
     // 2. matches_before_syntax && has_fallback_or_feature_guard -> 'fallback-or-guard'
     const rawFallback = JSON.stringify({

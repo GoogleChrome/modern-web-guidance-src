@@ -47,12 +47,12 @@ Note: Static analysis results are provisional — verify against the Keep/Drop c
   - src/views/Register.vue:18
     <input type="password" id="pass">
 
-* ime-safe-enter-submit [qualified] (1 finding)
-  Guard Enter-key form submission handlers with !event.isComposing to prevent premature submit during CJK IME composition.
-  Keep when: Keydown handler checks for Enter and triggers submission without checking event.isComposing
-  Drop when: Handler already checks event.isComposing or event.keyCode === 229
-  - src/components/ChatInput.tsx:75
-    if (e.key === 'Enter' && !e.shiftKey) submitMessage();
+* responsive-table [qualified] (1 finding)
+  Replace layout-breaking table structures or script-based horizontal scrolling with modern CSS responsive table patterns.
+  Keep when: Table relies on script-based scroll wrappers or unstyled overflow
+  Drop when: Table is wrapped in standard CSS container with overflow-x: auto
+  - src/components/DataGrid.tsx:12
+    <div className="table-scroll-container"><table>...</table></div>
 
 Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
 ```
@@ -206,15 +206,14 @@ export const autofillSignInFormRule: AnalyzerRule = {
 ### Qualified Rules & Gated Execution
 
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
-- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear objective qualification criteria (71 active guides: 15 qualified across 20 rules, and 56 experimental across 78 rules, totaling 98 rules in `ALL_RULES`). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
+- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear objective qualification criteria (71 active guides: 6 qualified across 8 rules, and 65 experimental across 90 rules, totaling 98 rules in `ALL_RULES`). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
 - **`ALL_RULES` (`--experimental` / `--all-rules`):** Executes all 71 active feature guides across 98 rules in `ALL_RULES`, including experimental rules.
 
-### 3-Tier Qualification Criteria
+### Qualification Criteria
 
-Rules qualify for default terminal shipping under a 3-tier hierarchy:
-- **Tier A (Human Ground Truth $\ge 90\%$):** Rules validated by direct blind human spot-check decks on the `held-out` split achieving $\ge 90\%$ precision at $n \ge 35$, Wilson LB $\ge 0.90$.
-- **Tier B (Detection Eval Consensus $\ge 90\%$ at $n \ge 30$):** Rules where 7-verdict Detection Eval Judge consensus reaches $\ge 90\%$ across at least 30 candidate findings on the `held-out` split.
-- **Tier C (Deterministic AST / Low Misfire $\ge 85\%$ at $n \ge 10$):** Rules with deterministic structural AST/DOM/CSS/dependency matchers exhibiting $\ge 85\%$ precision with low structural misfire rates.
+Rules qualify for default terminal shipping under the **Static Matcher precision standard**:
+- **Static Matcher Precision $\ge 90.0\%$ at $n \ge 20$:** Evaluated on held-out GitMirror out-of-sample repositories (`precision` before LLM Verifier). When `gd analyze` runs in a developer terminal without an LLM, $\ge 90\%$ of findings are genuine modernization opportunities.
+- Rules requiring runtime LLM Verifier evaluation (`needs-verifier`) or with static matcher precision below 90% remain in the experimental tier until their static matchers reach the standard.
 
 ### 2-Axis Triage Taxonomy
 

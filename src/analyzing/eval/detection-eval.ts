@@ -307,6 +307,9 @@ export function deriveJudgeVerdictFromFacts(
   if (llmVerdict === 'guide-wrong') {
     return 'guide-wrong';
   }
+  if (llmVerdict === 'unsure') {
+    return 'unsure';
+  }
   if (!facts.matches_before_syntax) {
     return 'not-old-pattern';
   }
@@ -318,9 +321,6 @@ export function deriveJudgeVerdictFromFacts(
   }
   if (facts.has_meaningful_payoff === false) {
     return 'no-payoff';
-  }
-  if (llmVerdict === 'unsure') {
-    return 'unsure';
   }
   return 'legit-modernize-target';
 }
@@ -1407,8 +1407,6 @@ export async function loadPaulIrishScoredCards(
       card.guideId === 'accessible-error-announcement' ||
       card.guideId === 'stack-drill-down' ||
       card.guideId === 'shadow-dom' ||
-      card.guideId === 'detect-initial-visibility-state' ||
-      card.guideId === 'custom-select-picker-layouts' ||
       card.guideId === 'model-partial-time-concepts';
     if (!isCanaryCard && (isStubOrRetiredGuide || card.phase2Decision === 'drop')) {
       continue;

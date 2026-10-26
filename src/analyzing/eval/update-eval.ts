@@ -1359,10 +1359,11 @@ export async function runFixEvaluationCli(): Promise<void> {
     results,
   };
 
+  const dateStr = report.timestamp.slice(0, 10);
   const outPath = join(
     ANALYZER_INTERNAL_DIR,
     'findings',
-    '2026-10-14-fix-scorecard.json',
+    `${dateStr}-fix-scorecard.json`,
   );
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, JSON.stringify(report, null, 2), 'utf8');
@@ -1389,10 +1390,14 @@ export async function runFixEvaluationCli(): Promise<void> {
   const progressPath = join(ANALYZER_INTERNAL_DIR, 'PROGRESS.md');
   try {
     let progressContent = await readFile(progressPath, 'utf8');
-    const dateStr = report.timestamp.slice(0, 10);
-    const resPercent = `${(resolutionRate * 100).toFixed(1)}% [${(wilson.lower * 100).toFixed(1)}% - ${(wilson.upper * 100).toFixed(1)}%] (n=${allSampledFindings.length})`;
-    const row = `| \`${commitHash}\` | ${dateStr} | \`fix-harness-m4\` | \`grading-only\` | \`25-guides\` | gemini-3.8-flash | 78.1% (n=32) | 99.2% (qualified) | 60.3% (recall) | - | - | 100.0% | Milestone 4 agentic fix evaluation: resolution=${resPercent}, badPatchRejectionRate=100.0% (${sensitivity.badPatchesRejected}/${sensitivity.badPatchesTotal}), 25 qualified guides |`;
-    if (!progressContent.includes('Milestone 4 agentic fix evaluation')) {
+    const n = allSampledFindings.length;
+    const guideCount = QUALIFIED_GUIDE_IDS.length;
+    const resPercent = `${(resolutionRate * 100).toFixed(1)}% [${(wilson.lower * 100).toFixed(1)}% - ${(wilson.upper * 100).toFixed(1)}%] (n=${n})`;
+    const staticResPercent = `${(staticResolutionRate * 100).toFixed(1)}% (n=${n})`;
+    const qualifiedResPercent = `${(resolutionRate * 100).toFixed(1)}% (qualified)`;
+    const badPatchRejPercent = `${(sensitivity.badPatchRejectionRate * 100).toFixed(1)}% (${sensitivity.badPatchesRejected}/${sensitivity.badPatchesTotal})`;
+    const row = `| \`${commitHash}\` | ${dateStr} | \`fix-harness-m4\` | \`grading-only\` | \`${guideCount}-guides\` | gemini-3.8-flash | ${staticResPercent} | ${qualifiedResPercent} | - | - | - | ${(sensitivity.badPatchRejectionRate * 100).toFixed(1)}% | Milestone 4 agentic fix evaluation: resolution=${resPercent}, badPatchRejectionRate=${badPatchRejPercent}, ${guideCount} qualified guides |`;
+    if (!progressContent.includes(`Milestone 4 agentic fix evaluation: resolution=${resPercent}`)) {
       progressContent = progressContent.trimEnd() + '\n' + row + '\n';
       await writeFile(progressPath, progressContent, 'utf8');
       console.log('Appended Milestone 4 row to PROGRESS.md');

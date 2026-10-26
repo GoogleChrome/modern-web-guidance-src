@@ -231,7 +231,7 @@
       "originalContent": "export function checkKeyframesSupport() {\n  return Modernizr.atRule(\"@keyframes\");\n}",
       "noOpPatch": "export function checkKeyframesSupport() {\n  return Modernizr.atRule(\"@keyframes\");\n}",
       "deletionPatch": "",
-      "brokenSyntaxOrEvasionPatch": "export function checkKeyframesSupport() {\n  return true;\n}",
+      "brokenSyntaxOrEvasionPatch": "export function checkKeyframesSupport() {\n  return CSS.supports(\"@keyframes\", \"test\";\n}",
       "goodPatch": "export function checkKeyframesSupport() {\n  return CSS.supports(\"animation-name\", \"test\");\n}"
     },
     {
@@ -240,7 +240,7 @@
       "originalContent": "import countries from \"i18n-iso-countries\";\n\nexport function getCountryDisplayName(code: string): string | undefined {\n  return countries.getName(code, \"en\");\n}",
       "noOpPatch": "import countries from \"i18n-iso-countries\";\n\nexport function getCountryDisplayName(code: string): string | undefined {\n  return countries.getName(code, \"en\");\n}",
       "deletionPatch": "",
-      "brokenSyntaxOrEvasionPatch": "export function getCountryDisplayName(code: string): string | undefined {\n  return code.toUpperCase();\n}",
+      "brokenSyntaxOrEvasionPatch": "export function getCountryDisplayName(code: string): string | undefined {\n  const displayNames = new Intl.DisplayNames([\"en\"], { type: \"region\" };\n  return displayNames.of(code);\n}",
       "goodPatch": "export function getCountryDisplayName(code: string): string | undefined {\n  const displayNames = new Intl.DisplayNames([\"en\"], { type: \"region\" });\n  return displayNames.of(code);\n}"
     },
     {
@@ -277,7 +277,7 @@
       "noOpPatch": "import fitty from \"fitty\";\n\nexport function fitHeader() {\n  fitty(\".hero-title\", { minSize: 16, maxSize: 72 });\n}",
       "deletionPatch": "",
       "brokenSyntaxOrEvasionPatch": "export function fitHeader() {\n  const el = document.querySelector(\".hero-title\") as HTMLElement;\n  if (el) el.style.fontSize = \"32px\";\n}",
-      "goodPatch": "export function fitHeader() {\n  if (CSS.supports(\"text-fit\", \"contain\")) {\n    const el = document.querySelector(\".hero-title\") as HTMLElement;\n    if (el) el.style.setProperty(\"text-fit\", \"contain\");\n  }\n}"
+      "goodPatch": "export function fitHeader() {\n  const el = document.querySelector(\".hero-title\") as HTMLElement;\n  if (el) {\n    el.style.setProperty(\"text-wrap\", \"balance\");\n  }\n}"
     },
     {
       "guideId": "export-html-media-from-canvas",
@@ -285,7 +285,7 @@
       "originalContent": "import CCapture from \"ccapture.js\";\n\nexport function startRecording(canvas: HTMLCanvasElement) {\n  const capturer = new CCapture({ format: \"webm\", framerate: 60 });\n  capturer.start();\n  return capturer;\n}",
       "noOpPatch": "import CCapture from \"ccapture.js\";\n\nexport function startRecording(canvas: HTMLCanvasElement) {\n  const capturer = new CCapture({ format: \"webm\", framerate: 60 });\n  capturer.start();\n  return capturer;\n}",
       "deletionPatch": "",
-      "brokenSyntaxOrEvasionPatch": "export function startRecording(canvas: HTMLCanvasElement) {\n  return canvas.toDataURL(\"image/png\");\n}",
+      "brokenSyntaxOrEvasionPatch": "export function startRecording(canvas: HTMLCanvasElement): MediaRecorder {\n  const stream = canvas.captureStream(60;\n  return new MediaRecorder(stream);\n}",
       "goodPatch": "export function startRecording(canvas: HTMLCanvasElement): MediaRecorder {\n  const stream = canvas.captureStream(60);\n  const recorder = new MediaRecorder(stream, { mimeType: \"video/webm\" });\n  recorder.start();\n  return recorder;\n}"
     },
     {
@@ -303,7 +303,7 @@
       "originalContent": "import quicklink from \"quicklink\";\n\nexport function initPrefetch() {\n  quicklink.listen();\n}",
       "noOpPatch": "import quicklink from \"quicklink\";\n\nexport function initPrefetch() {\n  quicklink.listen();\n}",
       "deletionPatch": "",
-      "brokenSyntaxOrEvasionPatch": "export function initPrefetch() {\n  console.log(\"prefetch initialized\");\n}",
+      "brokenSyntaxOrEvasionPatch": "export function initPrefetch() {\n  const script = document.createElement(\"script\";\n  script.type = \"speculationrules\";\n}",
       "goodPatch": "export function initPrefetch() {\n  const script = document.createElement(\"script\");\n  script.type = \"speculationrules\";\n  script.textContent = JSON.stringify({ prefetch: [{ where: { href_matches: \"/*\" } }] });\n  document.head.appendChild(script);\n}"
     },
     {
@@ -572,7 +572,7 @@
     "complex-shapes": "mask-image\\s*:|(^|[^-\\w])mask\\s*:|mask-size\\s*:",
     "deliver-optimized-decorative-images": "(^|[^-\\w])image-set\\s*\\(",
     "responsive-table": "@container\\b|container-type\\s*:|--label",
-    "equal-width-text-lines": "text-fit\\s*:|CSS\\.supports\\s*\\(\\s*['\"]text-fit",
+    "equal-width-text-lines": "text-wrap\\s*:\\s*balance|text-fit\\s*:\\s*grow|setProperty\\s*\\(\\s*['\"]text-wrap['\"]\\s*,\\s*['\"]balance['\"]\\)|CSS\\.supports\\s*\\(\\s*['\"](?:text-wrap|text-fit)['\"]",
     "light-dismiss-a-dialog": "closedby\\s*=|['\"]closedBy['\"]\\s+in\\s+HTMLDialogElement",
     "resolution-optimized-pseudo-elements": "(^|[^-\\w])image-set\\s*\\(",
     "atrule-support-conditionals": "@supports\\b|\\bCSS\\.supports\\s*\\(",

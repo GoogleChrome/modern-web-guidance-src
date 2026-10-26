@@ -1,10 +1,9 @@
 /**
  * Authoritative qualification and shipping lists for analyzer rules.
  *
- * Rules qualify for default terminal shipping under D-048 criteria:
- * - Criterion A: Human precision >= 90% on held-out spot-checks.
- * - Criterion B: Detection Eval Judge consensus >= 90% at n >= 35.
- * - Criterion C: Low matcher misfire rate <= 10% or deterministic package/vendored replacement.
+ * Rules qualify for default terminal shipping under the Static Matcher precision standard:
+ * - Static Matcher precision >= 90.0% at n >= 20 findings on held-out GitMirror (precision before LLM Verifier).
+ * When `gd analyze` runs in a terminal without an LLM, >= 90% of findings are legit.
  */
 
 export type QualificationTier = 'A' | 'B' | 'C';
@@ -20,25 +19,17 @@ export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] = [
 ];
 
 /**
- * Production shipping qualified guide list representing default terminal shipped guides (D-048).
- * Contains the 15 guides currently active for default terminal shipping based on post-expansion held-out evaluation.
+ * Production shipping qualified guide list representing default terminal shipped guides.
+ * Contains the 6 guides currently meeting Static Matcher precision >= 90.0% at n >= 20
+ * on held-out GitMirror evaluation.
  */
 export const QUALIFIED_GUIDE_IDS: readonly string[] = [
   'autofill-address-form',
-  'autofill-payment-form',
   'autofill-sign-in-form',
-  'branded-select-styling',
-  'checkbox',
-  'custom-text-decorations',
-  'equal-width-text-lines',
   'form-fields-automatically-fit-contents',
-  'ime-safe-enter-submit',
-  'prevent-page-scroll-under-modal-dialog',
   'responsive-table',
   'scroll-entry-exit-effects',
   'scrollspy',
-  'select-menu-interaction',
-  'styling-web-components',
 ];
 
 /**

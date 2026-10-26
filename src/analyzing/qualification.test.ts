@@ -7,24 +7,15 @@ import {
 } from './qualification.ts';
 
 describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045, D-046, D-048)', () => {
-  it('maintains 15 default shipping guides under D-048 graduation criteria', () => {
-    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 15);
+  it('maintains 6 default shipping guides under Raw P1 precision >= 90.0% at n >= 20', () => {
+    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 6);
     assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, [
       'autofill-address-form',
-      'autofill-payment-form',
       'autofill-sign-in-form',
-      'branded-select-styling',
-      'checkbox',
-      'custom-text-decorations',
-      'equal-width-text-lines',
       'form-fields-automatically-fit-contents',
-      'ime-safe-enter-submit',
-      'prevent-page-scroll-under-modal-dialog',
       'responsive-table',
       'scroll-entry-exit-effects',
       'scrollspy',
-      'select-menu-interaction',
-      'styling-web-components',
     ]);
   });
 
@@ -56,6 +47,15 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
       'individual-transform-properties',
       'dark-mode',
       'calculate-event-differentials',
+      'styling-web-components',
+      'custom-text-decorations',
+      'checkbox',
+      'equal-width-text-lines',
+      'prevent-page-scroll-under-modal-dialog',
+      'autofill-payment-form',
+      'select-menu-interaction',
+      'branded-select-styling',
+      'ime-safe-enter-submit',
     ];
     for (const gid of nonGraduated) {
       assert.strictEqual(

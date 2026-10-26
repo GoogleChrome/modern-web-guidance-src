@@ -41,10 +41,10 @@ describe('runAnalyzeCli', () => {
   it('reports zero findings cleanly in default qualified mode', async () => {
     const emptyDir = await mkdtemp(join(tmpdir(), 'analyzer-empty-test-'));
     try {
-      // Default mode with 15 qualified guides
+      // Default mode with 6 qualified guides
       const resDefault = await runAnalyzeCli([emptyDir]);
       assert.equal(resDefault.exitCode, 0);
-      assert.match(resDefault.output, /0 findings from 15 qualified guides \(pass --experimental to include experimental guides\)\./);
+      assert.match(resDefault.output, /0 findings from 6 qualified guides \(pass --experimental to include experimental guides\)\./);
       assert.doesNotMatch(resDefault.output, /suspended pending re-validation/);
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
@@ -53,8 +53,8 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.targetDir, emptyDir);
-      assert.equal(parsedDefault.activeRuleCount, 20);
-      assert.equal(parsedDefault.activeGuideCount, 15);
+      assert.equal(parsedDefault.activeRuleCount, 8);
+      assert.equal(parsedDefault.activeGuideCount, 6);
 
       // With --all-rules on an actually empty directory, reports no modernization opportunities found
       const resAllEmpty = await runAnalyzeCli([emptyDir, '--all-rules']);
@@ -252,13 +252,13 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'timezone.js'), timezoneJs, 'utf8');
 
-      // Default run (QUALIFIED_RULES only - 15 guides active under D-048; neither suspended nor experimental patterns match default)
+      // Default run (QUALIFIED_RULES only - 6 guides active; neither suspended nor experimental patterns match default)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
-      assert.equal(parsedDefault.activeRuleCount, 20);
+      assert.equal(parsedDefault.activeRuleCount, 8);
       assert.deepEqual(parsedDefault.suspendedGuides, [
         'autofill-highlight-inputs',
         'complex-shapes',
