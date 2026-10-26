@@ -7,6 +7,7 @@ web-feature-ids:
   - prefers-reduced-motion
   - inert
   - cap
+  - function
   - lh
   - line-clamp
   - user-select
@@ -50,16 +51,31 @@ Skeleton colors belong to the surface. Define `--skeleton-tone` on the container
 
 ## 3. Text
 
-Text, standalone links and list items share one rule: hide the content, fill with the tone, and shape with `border-shape`. Links inside a paragraph, list item or heading are not styled separately: they are hidden along with the surrounding text, so the selector excludes them. `:where()` keeps its specificity unchanged.
+Text, standalone links and list items share one rule that hides the content and applies the fill. Each element then sets its own bars in a `--bars` custom property, built from a small `--bar()` CSS function, so headings, paragraphs and links differ in bar count and length and not in the rule. Links inside a paragraph, list item or heading are not styled separately: they are hidden along with the surrounding text, so the selector excludes them. `:where()` keeps its specificity unchanged.
 
 ```css
+/* One rounded bar. --i is the line index, --end is where the bar ends, --start offsets it.
+   Reads --bar-height, --bar-gap and --bar-radius from the element it is used on. */
+@function --bar(--i <number>, --end <length-percentage>, --start <length>: 0px) {
+  --y: calc(var(--i) * (var(--bar-height) + var(--bar-gap)));
+  result: move to calc(var(--start) + var(--bar-radius)) var(--y),
+    hline to calc(var(--end) - var(--bar-radius)),
+    arc to var(--end) calc(var(--y) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(var(--y) + var(--bar-height) - var(--bar-radius)),
+    arc to calc(var(--end) - var(--bar-radius)) calc(var(--y) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+    hline to calc(var(--start) + var(--bar-radius)),
+    arc to var(--start) calc(var(--y) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(var(--y) + var(--bar-radius)),
+    arc to calc(var(--start) + var(--bar-radius)) var(--y) of var(--bar-radius) var(--bar-radius) cw,
+    close;
+}
+
 .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
   /* Bar height follows the element's own glyphs, and the gap fills the rest of the line,
      so bars sit on the real line pitch for any font size or leading. No per-element overrides. */
   --bar-height: 1cap;
   --bar-radius: calc(var(--bar-height) / 4); /* Half the height gives fully round ends */
   --bar-gap: calc(1lh - var(--bar-height));
-  --line-one: 78%;      /* Per-bar widths are overridable custom properties */
   display: block;
   min-block-size: calc(var(--lines, 1) * 1lh); /* Reserves the height of the real text lines */
   line-clamp: var(--lines, 1); /* Limits real text to the bar count (see Fallbacks) */
@@ -68,34 +84,63 @@ Text, standalone links and list items share one rule: hide the content, fill wit
   color: transparent;
   text-decoration: none; /* Link underlines would otherwise show through */
   background-color: var(--skeleton-tone);
-  /* One bar: a closed rounded rectangle, width --line-one */
-  border-shape: shape(from var(--bar-radius) 0,
-    hline to calc(var(--line-one) - var(--bar-radius)),
-    arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
-    vline to calc(var(--bar-height) - var(--bar-radius)),
-    arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
-    hline to var(--bar-radius),
-    arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-    vline to var(--bar-radius),
-    arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
-    close);
+  border-shape: var(--bars); /* Each element below sets its own --bars */
+}
+
+/* Each bar is --bar(line index, end position); --lines is the bar count */
+.skeleton[aria-busy="true"] h2 {
+  --lines: 2;
+  --bars: shape(from 0 0, --bar(0, 88%), --bar(1, 64%));
+}
+
+.skeleton[aria-busy="true"] p {
+  --lines: 3;
+  --bars: shape(from 0 0, --bar(0, 100%), --bar(1, 92%), --bar(2, 68%));
+}
+
+.skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
+  --bars: shape(from 0 0, --bar(0, 42%));
 }
 ```
 
+Set the shape on `--bars` and read it with `border-shape: var(--bars)`. Do not call `--bar()` directly inside a `border-shape: shape()` declaration: some browsers then discard the rules that follow it.
+
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
-Draw the bullet as a subpath, not with `::marker`: the `overflow: hidden` above clips an outside marker, and a marker cannot take the shimmer background. Remove the list's own padding and marker, and draw the dot inside the `li` box. This applies to bulleted lists; do not use the dot for a numbered list.
+Draw the bullet as a shape, not with `::marker`: the `overflow: hidden` above clips an outside marker, and a marker cannot take the shimmer background. Remove the list's own padding and marker, and draw the dot inside the `li` box with a second function that draws a circle with two arcs, then start the bar at the real list's indent. This applies to bulleted lists; do not use the dot for a numbered list.
+
+```css
+@function --dot(--size <length>) {
+  result: move to 0 calc(var(--bar-height) / 2),
+    arc to var(--size) calc(var(--bar-height) / 2) of calc(var(--size) / 2) calc(var(--size) / 2) cw,
+    arc to 0 calc(var(--bar-height) / 2) of calc(var(--size) / 2) calc(var(--size) / 2) cw,
+    close;
+}
+
+.skeleton[aria-busy="true"] ul {
+  padding: 0;
+  list-style: none;
+}
+
+.skeleton[aria-busy="true"] li {
+  --text-start: 1.25em; /* Same indent as the real list, so the text does not shift */
+  --line-one: 72%;      /* Vary this per item */
+  --bars: shape(from 0 0,
+    --dot(calc(var(--bar-height) * .8)),
+    --bar(0, var(--line-one), var(--text-start)));
+}
+```
 
 Set `--lines` to the bar count (default `1`). `line-clamp` limits the real text to that many lines, and the `lh`-based `min-block-size` reserves their height, because `line-clamp` alone does not reserve height. A `min-block-size` does not stop surplus text from growing the box, so where `line-clamp` is unsupported, use the fallback below.
 
-For more than one bar, append a `move to` and another closed rounded rectangle to the same `shape()` for each extra bar, offset vertically by `n × (--bar-height + --bar-gap)` (which is `n × 1lh`) and sized by its own `--line-two`, `--line-three` and so on. `shape()` cannot repeat a path from a count, so each bar is written out. Set `--lines` to the bar count so `min-block-size` reserves the total height.
+For more than one bar, call `--bar()` once per bar with its index and end position. `shape()` cannot repeat a path from a count, so each call is written out. Bars are offset by `n × 1lh`, and `--lines` is the bar count so `min-block-size` reserves the total height.
 
 | Element | Treatment |
 |---|---|
 | `h1`–`h3` | 1–2 bars, sized by the heading's own font size so hierarchy matches the real template |
 | `p` | 3 bars (2 in compact cards), last one shorter like a real paragraph |
-| `li` | 1 bar each, with a small circle subpath for the bullet; vary widths. Start the bar at the real list's indent so the text does not shift when content arrives |
-| `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (`--line-one: 42%`). Inline links are hidden with the surrounding text |
+| `li` | 1 bar each, with a small circle for the bullet; vary widths. Start the bar at the real list's indent so the text does not shift when content arrives |
+| `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
 
 ## 4. Media and avatars
 
@@ -156,7 +201,7 @@ Put a representative label in the skeleton markup (as in the example above) so t
 
 A skeleton is a simplification, not a copy. Keep what defines the silhouette (media, title, a few lines of body, the primary action) and hide the rest.
 
-- Cap long text at 2–4 bars by defining that many subpaths in the `shape()`. `line-clamp` (or its fallback) and `overflow: hidden` keep surplus text from adding lines. Cap collections at a few items as described below.
+- Cap long text at 2–4 bars by calling `--bar()` that many times. `line-clamp` (or its fallback) and `overflow: hidden` keep surplus text from adding lines. Cap collections at a few items as described below.
 - To cap items, use a fixed `:nth-child(n + N)` selector with `display: none`. If the count must come from a custom property, read it in a small script, because CSS cannot use a custom property inside `:nth-child()`.
 - Remove whole cards or rows with `display: none`. For items inside a card, use `visibility: hidden` so the card height does not change when the real content arrives.
 - Decide what to hide by asking whether removing it changes the container's height. If it does, keep or reserve it.
@@ -180,6 +225,29 @@ MANDATORY: Apply the shimmer (gradient and animation) only under `@media (prefer
 {{ BASELINE_STATUS("border-shape") }}
 
 If your Baseline target does not support `border-shape`, use `@supports (border-shape: shape(from 0 0, close))` to scope the bar shapes, and let other browsers show a solid `--skeleton-tone` fill with `border-radius` on the same elements, sized by `min-block-size` in `lh` units. Multi-line bars and variable lengths are the progressive enhancement. The layout reservation still prevents shift.
+
+### @function
+
+{{ BASELINE_STATUS("function") }}
+
+If your Baseline target does not support `@function`, do not use CSS functions at all: write each bar out as a `shape()` subpath in `--bars`, and the same for the bullet's two arcs. Browsers without `@function` otherwise drop the `--bars` value and show a solid `--skeleton-tone` fill without bars. A single bar ending at 42%:
+
+```css
+.skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
+  --bars: shape(from var(--bar-radius) 0,
+    hline to calc(42% - var(--bar-radius)),
+    arc to 42% var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
+    vline to calc(var(--bar-height) - var(--bar-radius)),
+    arc to calc(42% - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
+    hline to var(--bar-radius),
+    arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+    vline to var(--bar-radius),
+    arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
+    close);
+}
+```
+
+For each further bar, add a `move to` and another closed rounded rectangle to the same `shape()`, adding `n × (--bar-height + --bar-gap)` to every y coordinate and giving it its own end position.
 
 ### line-clamp
 

@@ -162,6 +162,32 @@
         --skeleton-highlight: color-mix(in oklch, var(--surface) 70%, white);
       }
 
+      /* One text bar as a closed rounded rectangle, ending at --end. --i is the
+         bar's line index; the bar sits on the line pitch (--bar-height +
+         --bar-gap, which is 1lh). It reads --bar-height, --bar-gap and
+         --bar-radius from the element it is used on. */
+      @function --bar(--i <number>, --end <length-percentage>, --start <length>: 0px) {
+        --y: calc(var(--i) * (var(--bar-height) + var(--bar-gap)));
+        result: move to calc(var(--start) + var(--bar-radius)) var(--y),
+          hline to calc(var(--end) - var(--bar-radius)),
+          arc to var(--end) calc(var(--y) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+          vline to calc(var(--y) + var(--bar-height) - var(--bar-radius)),
+          arc to calc(var(--end) - var(--bar-radius)) calc(var(--y) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+          hline to calc(var(--start) + var(--bar-radius)),
+          arc to var(--start) calc(var(--y) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+          vline to calc(var(--y) + var(--bar-radius)),
+          arc to calc(var(--start) + var(--bar-radius)) var(--y) of var(--bar-radius) var(--bar-radius) cw,
+          close;
+      }
+
+      /* A list bullet: a circle drawn with two arcs, centered on the first bar. */
+      @function --dot(--size <length>) {
+        result: move to 0 calc(var(--bar-height) / 2),
+          arc to var(--size) calc(var(--bar-height) / 2) of calc(var(--size) / 2) calc(var(--size) / 2) cw,
+          arc to 0 calc(var(--bar-height) / 2) of calc(var(--size) / 2) calc(var(--size) / 2) cw,
+          close;
+      }
+
       /* Configure the number of visible cards here. JavaScript reads this
          value because CSS cannot use a custom property in :nth-child(). Whole
          cards can be removed; in-card items may need visibility to reserve space. */
@@ -213,14 +239,16 @@
         background-color: var(--skeleton-tone);
       }
 
-      /* Text bars: background fill, border-shape defines the bar outlines. */
+      /* Text: hide the content and fill with the tone. Each element below sets
+         --bars to its own shape(). The shape lives in a custom property, not
+         directly in border-shape, because a function call as a shape() command
+         can make some Chrome versions discard the rules that follow. */
       .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
         /* Bar size follows the glyphs (cap height) and the gap fills the rest of
            the line, so bars sit on the real line pitch at any size and leading. */
         --bar-height: 1cap;
         --bar-radius: calc(var(--bar-height) / 4);
         --bar-gap: calc(1lh - var(--bar-height));
-        --line-one: 78%;
         --block: calc(var(--lines, 1) * 1lh);
         display: block;
         inline-size: 100%;
@@ -229,16 +257,7 @@
         overflow: hidden;
         user-select: none;
         background-color: var(--skeleton-tone);
-        border-shape: shape(from var(--bar-radius) 0,
-            hline to calc(var(--line-one) - var(--bar-radius)),
-            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(var(--bar-height) - var(--bar-radius)),
-            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
-            hline to var(--bar-radius),
-            arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to var(--bar-radius),
-            arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
-            close);
+        border-shape: var(--bars);
         color: transparent;
         /* Underlines would otherwise show through transparent link text */
         text-decoration: none;
@@ -256,7 +275,7 @@
          hidden with their parent, so they are excluded; :where() keeps the
          selector's specificity unchanged. */
       .skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
-        --line-one: 42%;
+        --bars: shape(from 0 0, --bar(0, 42%));
       }
 
 
@@ -269,23 +288,11 @@
       }
 
       .skeleton[aria-busy="true"] li {
-        --dot: calc(var(--bar-height) * .8);
         --text-start: 1.25em; /* Same indent as the real list, so bars start where the real text does */
         --line-one: 72%;
-        border-shape: shape(from 0 calc(var(--bar-height) / 2),
-            arc to var(--dot) calc(var(--bar-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
-            arc to 0 calc(var(--bar-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
-            close,
-            move to calc(var(--text-start) + var(--bar-radius)) 0,
-            hline to calc(var(--line-one) - var(--bar-radius)),
-            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(var(--bar-height) - var(--bar-radius)),
-            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
-            hline to calc(var(--text-start) + var(--bar-radius)),
-            arc to var(--text-start) calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to var(--bar-radius),
-            arc to calc(var(--text-start) + var(--bar-radius)) 0 of var(--bar-radius) var(--bar-radius) cw,
-            close);
+        --bars: shape(from 0 0,
+            --dot(calc(var(--bar-height) * .8)),
+            --bar(0, var(--line-one), var(--text-start)));
       }
 
       .skeleton[aria-busy="true"] li:nth-child(2) {
@@ -314,95 +321,21 @@
         visibility: hidden;
       }
 
-      /* Line count is selected by element/layout rules, not a --lines variable:
-         border-shape has to enumerate every bar path explicitly. */
+      /* Each element lists its own bars (index, end position), because shape()
+         cannot repeat a path from a count. --lines sets the reserved height. */
       .skeleton[aria-busy="true"] h2 {
-        --line-one: 88%;
-        --line-two: 64%;
         --lines: 2;
-        border-shape: shape(from var(--bar-radius) 0,
-            hline to calc(var(--line-one) - var(--bar-radius)),
-            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(var(--bar-height) - var(--bar-radius)),
-            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
-            hline to var(--bar-radius),
-            arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to var(--bar-radius),
-            arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
-            close,
-            move to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)),
-            hline to calc(var(--line-two) - var(--bar-radius)),
-            arc to var(--line-two) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)),
-            arc to calc(var(--line-two) - var(--bar-radius)) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
-            hline to var(--bar-radius),
-            arc to 0 calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)),
-            arc to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)) of var(--bar-radius) var(--bar-radius) cw,
-            close);
+        --bars: shape(from 0 0, --bar(0, 88%), --bar(1, 64%));
       }
 
       .skeleton[aria-busy="true"] p {
-        --line-one: 100%;
-        --line-two: 92%;
-        --line-three: 68%;
         --lines: 3;
-        border-shape: shape(from var(--bar-radius) 0,
-            hline to calc(var(--line-one) - var(--bar-radius)),
-            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(var(--bar-height) - var(--bar-radius)),
-            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
-            hline to var(--bar-radius),
-            arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to var(--bar-radius),
-            arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
-            close,
-            move to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)),
-            hline to calc(var(--line-two) - var(--bar-radius)),
-            arc to var(--line-two) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)),
-            arc to calc(var(--line-two) - var(--bar-radius)) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
-            hline to var(--bar-radius),
-            arc to 0 calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)),
-            arc to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)) of var(--bar-radius) var(--bar-radius) cw,
-            close,
-            move to var(--bar-radius) calc(2 * (var(--bar-height) + var(--bar-gap))),
-            hline to calc(var(--line-three) - var(--bar-radius)),
-            arc to var(--line-three) calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-height) - var(--bar-radius)),
-            arc to calc(var(--line-three) - var(--bar-radius)) calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
-            hline to var(--bar-radius),
-            arc to 0 calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(calc(2 * (var(--bar-height) + var(--bar-gap))) + var(--bar-radius)),
-            arc to var(--bar-radius) calc(2 * (var(--bar-height) + var(--bar-gap))) of var(--bar-radius) var(--bar-radius) cw,
-            close);
+        --bars: shape(from 0 0, --bar(0, 100%), --bar(1, 92%), --bar(2, 68%));
       }
 
       .skeleton[aria-busy="true"] article:where(:not(:has(> .media)), :has(.content > .media)) p {
-        --line-one: 92%;
-        --line-two: 62%;
         --lines: 2;
-        border-shape: shape(from var(--bar-radius) 0,
-            hline to calc(var(--line-one) - var(--bar-radius)),
-            arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(var(--bar-height) - var(--bar-radius)),
-            arc to calc(var(--line-one) - var(--bar-radius)) var(--bar-height) of var(--bar-radius) var(--bar-radius) cw,
-            hline to var(--bar-radius),
-            arc to 0 calc(var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to var(--bar-radius),
-            arc to var(--bar-radius) 0 of var(--bar-radius) var(--bar-radius) cw,
-            close,
-            move to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)),
-            hline to calc(var(--line-two) - var(--bar-radius)),
-            arc to var(--line-two) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)),
-            arc to calc(var(--line-two) - var(--bar-radius)) calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
-            hline to var(--bar-radius),
-            arc to 0 calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-            vline to calc(calc(var(--bar-height) + var(--bar-gap)) + var(--bar-radius)),
-            arc to var(--bar-radius) calc(var(--bar-height) + var(--bar-gap)) of var(--bar-radius) var(--bar-radius) cw,
-            close);
+        --bars: shape(from 0 0, --bar(0, 92%), --bar(1, 62%));
       }
 
       @keyframes sweep {
