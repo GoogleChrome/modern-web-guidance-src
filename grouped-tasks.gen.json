@@ -448,6 +448,9 @@
       ]
     },
     "ui-components": {
+      "menu": [
+        "daily-grind"
+      ],
       "navigation-drawer": [
         "task"
       ],
