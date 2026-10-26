@@ -16,6 +16,7 @@ Search and retrieve standardized modern web best practices at the **start** of i
 
 Run `modern-web-guidance` directly with `npx` using a **2–5 word action-oriented query** for a **single web platform capability or UI pattern**:
 - **Keep queries focused and generic**: Describe the user-visible capability (`<verb> + <UI/platform object>`, optionally paired with the target HTML/CSS/JS feature name if known). Omit framework/library names (`React`, `Vue`, `Tailwind`, etc.) and app/domain nouns (product, route, or component/file names). Split multi-feature tasks into separate `search` calls.
+- **Name implied UI primitives**: When the user's prompt expresses intent without naming the UI primitive (e.g. "confirm first", "delete with confirmation", "pick a date"), translate the domain intent into the implied UI component or platform mechanism (e.g. search `"confirmation modal dialog"` or `"confirm dialog"` rather than `"confirm destructive action"`, or `"date picker input"` rather than `"pick a date"`).
 - **Example**: Search `"light dismiss dialog"` or `"responsive data table"`, **not** `"dialog"` (too terse), `"responsive table dark mode"` (compound — split into two searches), or `"close React settings modal on outside click"` (framework/app noise).
 
 ```sh
@@ -24,8 +25,8 @@ npx -y modern-web-guidance@latest search "<query>" --skill-version SKILL_VERSION
 
 > **Note**: Returns `[{ "id", "description" }, ...]`. Judge results by their `description` fields:
 > - **Match found**: Call `retrieve` directly—do not also run `list`.
-> - **No match on a web UI/CSS/DOM behavior (or broad UI audit)**: If `search` returns `[]` or unrelated descriptions because your phrasing differed from the catalog (or your task spans multiple categories), run `npx -y modern-web-guidance@latest list` once to check if the pattern is covered under more general terminology.
-> - **Topic not covered**: If no guide `description` directly matches your task, proceed with your implementation without retry loops or retrieving unrelated guides.
+> - **Weak or empty results**: If `search` returns `[]` or unrelated descriptions, **rephrase `search` once** using the concrete HTML/CSS/UI component noun or synonym (e.g., `dialog`, `modal`, `popover`, `table`, `form`) before falling back to `list`. A second focused search is fast and low-token, whereas `list` is a last resort if your task clearly involves web UI/CSS/DOM behavior (or a broad UI audit) and you need to check if the pattern is covered under more general terminology.
+> - **Topic not covered**: If no guide `description` directly matches your task after rephrasing, proceed with your implementation without further retry loops or retrieving unrelated guides.
 
 ### Step 2. Retrieve Best Practices
 
