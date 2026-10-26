@@ -83,6 +83,8 @@ Text, links and list items share one rule: hide the content, fill with the tone,
 
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
+Draw the bullet as a subpath, not with `::marker`: the `overflow: hidden` above clips an outside marker, and a marker cannot take the shimmer background. Remove the list's own padding and marker, and draw the dot inside the `li` box. This applies to bulleted lists; do not use the dot for a numbered list.
+
 Optionally clamp the real text to the bar count as an enhancement, with a `--lines` custom property (default `1`). `overflow: hidden` and the `lh`-based `min-block-size` stay as the baseline, because `line-clamp` alone does not reserve height.
 
 ```css
@@ -99,7 +101,7 @@ For more than one bar, append a `move to` and another closed rounded rectangle t
 |---|---|
 | `h1`–`h3` | 1–2 bars, sized by the heading's own font size so hierarchy matches the real template |
 | `p` | 3 bars (2 in compact cards), last one shorter like a real paragraph |
-| `li` | 1 bar each, with a small circle subpath for the bullet; vary widths |
+| `li` | 1 bar each, with a small circle subpath for the bullet; vary widths. Start the bar at the real list's indent so the text does not shift when content arrives |
 | `a` | 1 short bar (`--line-one: 42%`) |
 
 ## 4. Media and avatars

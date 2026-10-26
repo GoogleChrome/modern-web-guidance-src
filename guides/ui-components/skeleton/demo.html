@@ -258,7 +258,8 @@
 
 
       /* Lists: a dot plus a bar per item. The dot is a circle drawn with two
-         arcs; the bar starts after it. */
+         arcs; the bar starts after it. A real ::marker is not used because
+         overflow: hidden clips it and it cannot take the shimmer background. */
       .skeleton[aria-busy="true"] ul {
         padding: 0;
         list-style: none;
@@ -266,8 +267,7 @@
 
       .skeleton[aria-busy="true"] li {
         --dot: calc(var(--bar-height) * .8);
-        --dot-gap: .5em;
-        --text-start: calc(var(--dot) + var(--dot-gap));
+        --text-start: 1.25em; /* Same indent as the real list, so bars start where the real text does */
         --line-one: 72%;
         border-shape: shape(from 0 calc(var(--bar-height) / 2),
             arc to var(--dot) calc(var(--bar-height) / 2) of calc(var(--dot) / 2) calc(var(--dot) / 2) cw,
