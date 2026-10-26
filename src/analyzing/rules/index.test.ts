@@ -8,11 +8,11 @@ import {
 } from './index.ts';
 
 describe('rules/index export registry', () => {
-  it('exports ALL_RULES containing 101 rules across the 73 active feature guides', async (t) => {
-    assert.strictEqual(ALL_RULES.length, 101);
+  it('exports ALL_RULES containing 98 rules across the 71 active feature guides', async (t) => {
+    assert.strictEqual(ALL_RULES.length, 98);
 
     const guideIds = new Set(ALL_RULES.map((r) => r.guideId));
-    assert.strictEqual(guideIds.size, 73);
+    assert.strictEqual(guideIds.size, 71);
     assert.deepStrictEqual(
       Array.from(guideIds).sort(),
       [
@@ -28,7 +28,6 @@ describe('rules/index export registry', () => {
         'branded-select-styling',
         'break-up-long-tasks',
         'calculate-event-differentials',
-        'camera-and-microphone-capture',
         'capture-location-agnostic-data',
         'checkbox',
         'child-state-based-styling',
@@ -36,7 +35,6 @@ describe('rules/index export registry', () => {
         'conditional-async-dependencies',
         'contrast-color',
         'coordinate-global-events',
-        'copy-button',
         'custom-button-actions',
         'custom-select-picker-layouts',
         'custom-text-decorations',
