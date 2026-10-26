@@ -284,6 +284,9 @@
       "security": [
         "daily-grind"
       ],
+      "validate-origins": [
+        "daily-grind"
+      ],
       "verify-email-ownership": [
         "daily-grind"
       ]
