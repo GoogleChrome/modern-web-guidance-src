@@ -8,6 +8,7 @@ import {
   checkCanaries,
   computeExplainerContextHash,
   computeJudgeInputProvenance,
+  computePromptGuideHash,
   deriveJudgeVerdictFromFacts,
   evaluateJudgeMetrics,
   evaluateJudgeStability,
@@ -784,6 +785,96 @@ describe('evaluateJudgeStability', () => {
     assert.equal(stability.stabilityRate, 0.0); // 0 out of 1 had all 3 identical
     assert.equal(stability.consensusResults[0].verdict, 'legit-modernize-target'); // majority 2/3 voted legit
   });
+
+  it('sets facts.verdict and facts.rawVerdict to unsure on a 3-way split', () => {
+    const baseProv = computeJudgeInputProvenance(SAMPLE_BLIND_CARD);
+    const makePass = (verdict: JudgeResult['verdict']): JudgeResult[] => [
+      {
+        cardId: SAMPLE_BLIND_CARD.cardId,
+        verdict,
+        facts: {
+          matches_before_syntax: verdict !== 'not-old-pattern',
+          has_fallback_or_feature_guard: verdict === 'fallback-or-guard',
+          modern_feature_applies_here: true,
+          has_meaningful_payoff: verdict === 'legit-modernize-target',
+          reasoning: `vote ${verdict}`,
+          verdict,
+          rawVerdict: verdict,
+          provenance: baseProv,
+        },
+        judgeVersion: baseProv.judgeVersion,
+        promptGuideHash: baseProv.promptGuideHash,
+        explainerContextHash: baseProv.explainerContextHash,
+        dossierHash: baseProv.dossierHash,
+        ruleId: baseProv.ruleId,
+        ruleGuideHash: baseProv.ruleGuideHash,
+        ruleHash: baseProv.ruleHash,
+        provenance: baseProv,
+      },
+    ];
+
+    const split = evaluateJudgeStability([
+      makePass('legit-modernize-target'),
+      makePass('not-old-pattern'),
+      makePass('no-payoff'),
+    ]);
+    assert.equal(split.consensusResults[0].verdict, 'unsure');
+    assert.equal(split.consensusResults[0].facts.verdict, 'unsure');
+    assert.equal(split.consensusResults[0].facts.rawVerdict, 'unsure');
+    assert.equal(split.consensusResults[0].promptGuideHash, baseProv.promptGuideHash);
+    assert.equal(split.consensusResults[0].ruleHash, baseProv.ruleHash);
+  });
+
+  it('throws when the 3 stability runs disagree on input provenance or cardId', () => {
+    const baseProv = computeJudgeInputProvenance(SAMPLE_BLIND_CARD);
+    const makePass = (overrides: Partial<JudgeResult> = {}): JudgeResult[] => [
+      {
+        cardId: SAMPLE_BLIND_CARD.cardId,
+        verdict: 'legit-modernize-target',
+        facts: {
+          matches_before_syntax: true,
+          has_fallback_or_feature_guard: false,
+          modern_feature_applies_here: true,
+          has_meaningful_payoff: true,
+          reasoning: 'ok',
+          verdict: 'legit-modernize-target',
+          provenance: baseProv,
+        },
+        judgeVersion: baseProv.judgeVersion,
+        promptGuideHash: baseProv.promptGuideHash,
+        explainerContextHash: baseProv.explainerContextHash,
+        dossierHash: baseProv.dossierHash,
+        ruleId: baseProv.ruleId,
+        ruleGuideHash: baseProv.ruleGuideHash,
+        ruleHash: baseProv.ruleHash,
+        provenance: baseProv,
+        ...overrides,
+      },
+    ];
+
+    assert.throws(
+      () =>
+        evaluateJudgeStability([
+          makePass(),
+          makePass({ explainerContextHash: 'deadbeef1234' }),
+          makePass(),
+        ]),
+      /Stability run provenance mismatch.*explainerContextHash/,
+    );
+    assert.throws(
+      () =>
+        evaluateJudgeStability([
+          makePass(),
+          makePass(),
+          makePass({ promptGuideHash: 'cafebabe5678' }),
+        ]),
+      /Stability run provenance mismatch.*promptGuideHash/,
+    );
+    assert.throws(
+      () => evaluateJudgeStability([makePass(), makePass({ cardId: 'other-card' }), makePass()]),
+      /Stability run cardId mismatch/,
+    );
+  });
 });
 
 describe('evaluateJudgeMetrics', () => {
@@ -939,11 +1030,16 @@ describe('mocked direct and batch judge runners', () => {
     assert.equal(results[0].verdict, 'legit-modernize-target');
     assert.equal(results[0].facts.matches_before_syntax, true);
     assert.equal(results[0].judgeVersion, JUDGE_VERSION);
-    assert.match(results[0].guideHash ?? '', /^[0-9a-f]{12}$/);
+    assert.match(results[0].promptGuideHash ?? '', /^[0-9a-f]{12}$/);
+    assert.equal(
+      results[0].promptGuideHash,
+      computePromptGuideHash(SAMPLE_BLIND_CARD.guideSummary.markdownBody),
+    );
     assert.equal(results[0].explainerContextHash, 'none');
     assert.equal(results[0].dossierHash, 'none');
     assert.equal(results[0].ruleId, 'calculate-event-differentials');
     assert.match(results[0].ruleGuideHash ?? '', /^[0-9a-f]{12}$/);
+    assert.match(results[0].ruleHash ?? '', /^[0-9a-f]{12}$/);
     assert.deepStrictEqual(results[0].provenance, results[0].facts.provenance);
   });
 
@@ -961,6 +1057,10 @@ describe('mocked direct and batch judge runners', () => {
 
     const expectedProvenance = computeJudgeInputProvenance(cardWithExplainer);
     assert.equal(expectedProvenance.judgeVersion, JUDGE_VERSION);
+    assert.equal(
+      expectedProvenance.promptGuideHash,
+      computePromptGuideHash(SAMPLE_GUIDE_SUMMARY.markdownBody),
+    );
     assert.equal(
       expectedProvenance.explainerContextHash,
       computeExplainerContextHash('TC39 Temporal explainer excerpt.'),
@@ -1063,11 +1163,12 @@ describe('mocked direct and batch judge runners', () => {
     const stability = evaluateJudgeStability([run0, run1, run2]);
     const consensusRow = stability.consensusResults[0];
     assert.equal(consensusRow.judgeVersion, JUDGE_VERSION);
-    assert.equal(consensusRow.guideHash, expectedProvenance.guideHash);
+    assert.equal(consensusRow.promptGuideHash, expectedProvenance.promptGuideHash);
     assert.equal(consensusRow.explainerContextHash, expectedProvenance.explainerContextHash);
     assert.equal(consensusRow.dossierHash, 'none');
     assert.equal(consensusRow.ruleId, 'calculate-event-differentials');
     assert.equal(consensusRow.ruleGuideHash, expectedProvenance.ruleGuideHash);
+    assert.equal(consensusRow.ruleHash, 'rulehash1234');
     assert.deepStrictEqual(consensusRow.provenance, expectedProvenance);
     assert.deepStrictEqual(consensusRow.facts.provenance, expectedProvenance);
   });
@@ -1171,6 +1272,149 @@ Use the sample-feature property on the root element.
       );
     } finally {
       if (orig) process.env.ANALYZER_EVAL_DATA_DIR = orig;
+    }
+  });
+
+  it('hashes exact prompt markdownBody bytes in promptGuideHash and rejects sentinels or missing markdownBody', () => {
+    const rawWithFrontmatter = `---\nname: sample\ndescription: Frontmatter desc\n---\n\n# Sample Title\n\n{{macro_token}}\n\nBody text sent to model.\n`;
+    const parsed = parseGuideSummaryMarkdown(rawWithFrontmatter, 'sample');
+    assert.ok(parsed.guideHash);
+    assert.ok(parsed.promptGuideHash);
+    assert.notEqual(parsed.promptGuideHash, parsed.guideHash);
+    assert.equal(parsed.promptGuideHash, computePromptGuideHash(parsed.markdownBody));
+
+    // Even if card.guideHash or card.guideSummary.guideHash has a different raw hash, promptGuideHash hashes exact markdownBody.trim()
+    const card: BlindCardPayload = {
+      ...SAMPLE_BLIND_CARD,
+      guideHash: 'aaaaaaaaaaaa',
+      guideSummary: {
+        ...parsed,
+        guideHash: 'bbbbbbbbbbbb',
+      },
+    };
+    const prov = computeJudgeInputProvenance(card);
+    assert.equal(prov.promptGuideHash, computePromptGuideHash(parsed.markdownBody));
+    assert.notEqual(prov.promptGuideHash, 'aaaaaaaaaaaa');
+    assert.notEqual(prov.promptGuideHash, 'bbbbbbbbbbbb');
+
+    // Missing markdownBody throws instead of falling back
+    assert.throws(
+      () =>
+        computeJudgeInputProvenance({
+          ...SAMPLE_BLIND_CARD,
+          guideHash: 'aaaaaaaaaaaa',
+          guideSummary: { ...SAMPLE_GUIDE_SUMMARY, markdownBody: '   ' },
+        }),
+      /missing required guideSummary\.markdownBody/,
+    );
+
+    // Sentinel strings on ruleHash or guideHash throw immediately
+    for (const sentinel of ['canary', 'calibration', '', 'none']) {
+      assert.throws(
+        () => computeJudgeInputProvenance({ ...SAMPLE_BLIND_CARD, ruleHash: sentinel }),
+        /invalid\/sentinel ruleHash/,
+      );
+      assert.throws(
+        () => computeJudgeInputProvenance({ ...SAMPLE_BLIND_CARD, guideHash: sentinel }),
+        /invalid\/sentinel guideHash/,
+      );
+    }
+  });
+
+  it('fails fast on missing/corrupt explainers, empty guide dirs, and corrupt summary JSON unless allowMissingExplainers is set', async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), 'guide-summaries-failfast-'));
+    try {
+      const guidesDir = join(tempRoot, 'guides');
+      const guideFolder = join(guidesDir, 'css', 'sample-guide');
+      await mkdir(guideFolder, { recursive: true });
+      await writeFile(
+        join(guideFolder, 'guide.md'),
+        '# Sample Guide\n\nBody for sample guide.\n',
+        'utf8',
+      );
+
+      // 1. Missing explainers file throws by default
+      const missingExplainersPath = join(tempRoot, 'missing-explainers.json');
+      await assert.rejects(
+        () => loadGuideSummariesMap(guidesDir, { explainersPath: missingExplainersPath }),
+        /Failed to read required guide explainers file/,
+      );
+
+      // 2. Explicit allowMissingExplainers succeeds ONLY when explainers file is ENOENT
+      const allowedMap = await loadGuideSummariesMap(guidesDir, {
+        explainersPath: missingExplainersPath,
+        allowMissingExplainers: true,
+      });
+      assert.equal(allowedMap.size, 1);
+      assert.ok(allowedMap.get('sample-guide')?.promptGuideHash);
+
+      // 3. Corrupt explainers JSON throws even when allowMissingExplainers is true
+      const corruptExplainersPath = join(tempRoot, 'corrupt-explainers.json');
+      await writeFile(corruptExplainersPath, '{not valid json', 'utf8');
+      await assert.rejects(
+        () =>
+          loadGuideSummariesMap(guidesDir, {
+            explainersPath: corruptExplainersPath,
+            allowMissingExplainers: true,
+          }),
+        /Failed to parse guide explainers JSON/,
+      );
+
+      // 4. Empty explainers array throws
+      const emptyExplainersPath = join(tempRoot, 'empty-explainers.json');
+      await writeFile(emptyExplainersPath, '[]', 'utf8');
+      await assert.rejects(
+        () => loadGuideSummariesMap(guidesDir, { explainersPath: emptyExplainersPath }),
+        /expected a non-empty array/,
+      );
+
+      // 5. Valid explainers file populates explainerContext and explainerContextHash deterministically
+      const validExplainersPath = join(tempRoot, 'valid-explainers.json');
+      await writeFile(
+        validExplainersPath,
+        JSON.stringify([
+          { guideId: 'sample-guide', combinedExcerpt: 'W3C CSSWG specification motivation.' },
+        ]),
+        'utf8',
+      );
+      const enrichedMap = await loadGuideSummariesMap(guidesDir, {
+        explainersPath: validExplainersPath,
+      });
+      assert.equal(
+        enrichedMap.get('sample-guide')?.explainerContext,
+        'W3C CSSWG specification motivation.',
+      );
+      assert.equal(
+        enrichedMap.get('sample-guide')?.explainerContextHash,
+        computeExplainerContextHash('W3C CSSWG specification motivation.'),
+      );
+
+      // 6. Empty guides directory throws
+      const emptyGuidesDir = join(tempRoot, 'empty-guides');
+      await mkdir(emptyGuidesDir, { recursive: true });
+      await assert.rejects(
+        () => loadGuideSummariesMap(emptyGuidesDir, { allowMissingExplainers: true }),
+        /loaded 0 guides/,
+      );
+
+      // 7. Missing guides directory throws
+      await assert.rejects(
+        () =>
+          loadGuideSummariesMap(join(tempRoot, 'does-not-exist'), {
+            allowMissingExplainers: true,
+          }),
+        /ENOENT/,
+      );
+
+      // 8. Corrupt .json summary file throws instead of returning empty map
+      const corruptSummariesJson = join(tempRoot, 'summaries.json');
+      await writeFile(corruptSummariesJson, '{corrupt', 'utf8');
+      await assert.rejects(
+        () => loadGuideSummariesMap(corruptSummariesJson, { allowMissingExplainers: true }),
+        /SyntaxError|JSON/,
+      );
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true });
     }
   });
 });

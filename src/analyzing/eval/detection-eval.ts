@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 export {
   JUDGE_VERSION,
@@ -173,12 +173,12 @@ export function verdictsAgree(humanVerdict: string, judgeVerdict: string): boole
 
 export interface JudgeInputProvenance {
   readonly judgeVersion: string;
-  readonly guideHash: string;
+  readonly promptGuideHash: string;
   readonly explainerContextHash: string;
   readonly dossierHash: 'none';
   readonly ruleId: string;
   readonly ruleGuideHash: string;
-  readonly ruleHash?: string;
+  readonly ruleHash: string;
 }
 
 export interface DetectionEvalFactCheck {
@@ -216,12 +216,13 @@ export function isDetectionEvalFactCheck(obj: unknown): obj is DetectionEvalFact
 export interface GuideSummaryInfo {
   guideId: string;
   guideHash?: string;
+  promptGuideHash?: string;
   problem: string;
   before: string;
   now: string;
   markdownBody?: string;
   oldWayExamples?: string[];
-  ruleSummary?: string;
+  readonly ruleSummary?: undefined;
   readonly explainerContext?: string;
   readonly explainerContextHash?: string;
 }
@@ -248,14 +249,51 @@ export interface JudgeResult {
   verdict: JudgeVerdict;
   facts: DetectionEvalFactCheck;
   judgeVersion?: string;
-  guideHash?: string;
+  promptGuideHash?: string;
   explainerContextHash?: string;
   dossierHash?: 'none';
   ruleId?: string;
   ruleGuideHash?: string;
+  ruleHash?: string;
   provenance?: JudgeInputProvenance;
   rawResponse?: string;
   error?: string;
+}
+
+const INVALID_SENTINEL_HASHES: ReadonlySet<string> = new Set([
+  '',
+  'canary',
+  'calibration',
+  'none',
+  'unknown',
+]);
+
+export function computeRuleHash(rule: AnalyzerRule): string {
+  return createHash('sha256')
+    .update(rule.id)
+    .update(':')
+    .update(JSON.stringify(rule.verifierRubric))
+    .digest('hex')
+    .slice(0, 12);
+}
+
+/**
+ * Hashes the exact guide markdown body bytes interpolated into formatBlindCardPrompt(card)
+ * (`card.guideSummary.markdownBody.trim()`). Fails fast if missing or empty; never falls back
+ * to raw `guide.md` hash, `card.guideHash`, `rule.guideHash`, or sentinels.
+ */
+export function computePromptGuideHash(
+  markdownBody?: string,
+  cardId = 'unknown',
+  guideId = 'unknown',
+): string {
+  const trimmed = markdownBody?.trim() ?? '';
+  if (!trimmed) {
+    throw new Error(
+      `computePromptGuideHash failed: card ${cardId} (guideId: "${guideId}") is missing required guideSummary.markdownBody. Failing fast.`,
+    );
+  }
+  return createHash('sha256').update(trimmed).digest('hex').slice(0, 12);
 }
 
 export function computeExplainerContextHash(explainerContext?: string): string {
@@ -270,26 +308,50 @@ export function computeJudgeInputProvenance(
   card: BlindCardPayload,
   judgeVersion: string = JUDGE_VERSION,
 ): JudgeInputProvenance {
-  const guideHash =
-    card.guideSummary.guideHash ??
-    card.guideHash ??
-    computeGuideHash(card.guideSummary.markdownBody ?? '');
-  const explainerContextHash = computeExplainerContextHash(card.guideSummary.explainerContext);
+  const trimmedJudgeVersion = judgeVersion.trim();
+  if (!trimmedJudgeVersion) {
+    throw new Error(
+      `computeJudgeInputProvenance failed: card ${card.cardId} has empty judgeVersion. Failing fast.`,
+    );
+  }
+  if (card.ruleHash !== undefined && INVALID_SENTINEL_HASHES.has(card.ruleHash.trim())) {
+    throw new Error(
+      `computeJudgeInputProvenance failed: card ${card.cardId} has invalid/sentinel ruleHash "${card.ruleHash}". Failing fast.`,
+    );
+  }
+  if (card.guideHash !== undefined && INVALID_SENTINEL_HASHES.has(card.guideHash.trim())) {
+    throw new Error(
+      `computeJudgeInputProvenance failed: card ${card.cardId} has invalid/sentinel guideHash "${card.guideHash}". Failing fast.`,
+    );
+  }
+
+  const promptGuideHash = computePromptGuideHash(
+    card.guideSummary?.markdownBody,
+    card.cardId,
+    card.guideId,
+  );
+  const explainerContextHash = computeExplainerContextHash(card.guideSummary?.explainerContext);
   const matchedRule =
     (card.ruleId ? RULES_BY_ID.get(card.ruleId) : undefined) ??
     RULES_BY_ID.get(card.guideId) ??
     RULES_BY_GUIDE_ID.get(card.guideId);
-  const ruleId = card.ruleId || matchedRule?.id || card.guideId;
-  const ruleGuideHash = matchedRule?.guideHash ?? card.guideHash ?? guideHash;
+  const ruleId = (card.ruleId || matchedRule?.id || card.guideId || '').trim();
+  if (!ruleId) {
+    throw new Error(
+      `computeJudgeInputProvenance failed: card ${card.cardId} is missing ruleId/guideId. Failing fast.`,
+    );
+  }
+  const ruleGuideHash = matchedRule ? matchedRule.guideHash : 'unregistered';
+  const ruleHash = card.ruleHash?.trim() || (matchedRule ? computeRuleHash(matchedRule) : 'unregistered');
 
   return {
-    judgeVersion,
-    guideHash,
+    judgeVersion: trimmedJudgeVersion,
+    promptGuideHash,
     explainerContextHash,
     dossierHash: 'none',
     ruleId,
     ruleGuideHash,
-    ...(card.ruleHash ? { ruleHash: card.ruleHash } : {}),
+    ruleHash,
   };
 }
 
@@ -302,11 +364,12 @@ export function attachJudgeInputProvenance(
   return {
     ...result,
     judgeVersion: provenance.judgeVersion,
-    guideHash: provenance.guideHash,
+    promptGuideHash: provenance.promptGuideHash,
     explainerContextHash: provenance.explainerContextHash,
     dossierHash: provenance.dossierHash,
     ruleId: provenance.ruleId,
     ruleGuideHash: provenance.ruleGuideHash,
+    ruleHash: provenance.ruleHash,
     provenance,
     facts: {
       ...result.facts,
@@ -866,10 +929,49 @@ export function evaluateJudgeStability(
   let exactMatchCount = 0;
   const consensusResults: JudgeResult[] = [];
 
+  const extractProvenanceIdentity = (r: JudgeResult) => ({
+    judgeVersion: r.judgeVersion ?? r.provenance?.judgeVersion,
+    promptGuideHash: r.promptGuideHash ?? r.provenance?.promptGuideHash,
+    explainerContextHash: r.explainerContextHash ?? r.provenance?.explainerContextHash,
+    dossierHash: r.dossierHash ?? r.provenance?.dossierHash,
+    ruleId: r.ruleId ?? r.provenance?.ruleId,
+    ruleGuideHash: r.ruleGuideHash ?? r.provenance?.ruleGuideHash,
+    ruleHash: r.ruleHash ?? r.provenance?.ruleHash,
+  });
+
   for (let i = 0; i < n; i++) {
-    const v0 = run0[i].verdict;
-    const v1 = run1[i].verdict;
-    const v2 = run2[i].verdict;
+    const r0 = run0[i];
+    const r1 = run1[i];
+    const r2 = run2[i];
+
+    if (r0.cardId !== r1.cardId || r0.cardId !== r2.cardId) {
+      throw new Error(
+        `Stability run cardId mismatch at index ${i}: ${r0.cardId}, ${r1.cardId}, ${r2.cardId}`,
+      );
+    }
+
+    const p0 = extractProvenanceIdentity(r0);
+    const p1 = extractProvenanceIdentity(r1);
+    const p2 = extractProvenanceIdentity(r2);
+    for (const key of [
+      'judgeVersion',
+      'promptGuideHash',
+      'explainerContextHash',
+      'dossierHash',
+      'ruleId',
+      'ruleGuideHash',
+      'ruleHash',
+    ] as const) {
+      if (p0[key] !== p1[key] || p0[key] !== p2[key]) {
+        throw new Error(
+          `Stability run provenance mismatch on card ${r0.cardId} field "${key}": run0=${String(p0[key])}, run1=${String(p1[key])}, run2=${String(p2[key])}`,
+        );
+      }
+    }
+
+    const v0 = r0.verdict;
+    const v1 = r1.verdict;
+    const v2 = r2.verdict;
 
     pairs01.push([v0, v1]);
     pairs12.push([v1, v2]);
@@ -881,30 +983,35 @@ export function evaluateJudgeStability(
 
     // Determine majority verdict
     let consensusVerdict: JudgeVerdict;
-    let chosenFacts = run0[i].facts;
+    let chosenFacts: DetectionEvalFactCheck;
 
     if (v0 === v1 || v0 === v2) {
       consensusVerdict = v0;
-      chosenFacts = run0[i].facts;
+      chosenFacts = r0.facts;
     } else if (v1 === v2) {
       consensusVerdict = v1;
-      chosenFacts = run1[i].facts;
+      chosenFacts = r1.facts;
     } else {
       consensusVerdict = 'unsure';
+      chosenFacts = {
+        ...r0.facts,
+        verdict: 'unsure',
+        rawVerdict: 'unsure',
+      };
     }
 
     const provenanceSource =
-      consensusVerdict === v1 && v0 !== v1 ? run1[i] : run0[i];
+      consensusVerdict === v1 && v0 !== v1 ? r1 : r0;
 
     consensusResults.push({
-      cardId: run0[i].cardId,
+      cardId: r0.cardId,
       verdict: consensusVerdict,
       facts: chosenFacts,
       ...(provenanceSource.judgeVersion !== undefined
         ? { judgeVersion: provenanceSource.judgeVersion }
         : {}),
-      ...(provenanceSource.guideHash !== undefined
-        ? { guideHash: provenanceSource.guideHash }
+      ...(provenanceSource.promptGuideHash !== undefined
+        ? { promptGuideHash: provenanceSource.promptGuideHash }
         : {}),
       ...(provenanceSource.explainerContextHash !== undefined
         ? { explainerContextHash: provenanceSource.explainerContextHash }
@@ -917,6 +1024,9 @@ export function evaluateJudgeStability(
         : {}),
       ...(provenanceSource.ruleGuideHash !== undefined
         ? { ruleGuideHash: provenanceSource.ruleGuideHash }
+        : {}),
+      ...(provenanceSource.ruleHash !== undefined
+        ? { ruleHash: provenanceSource.ruleHash }
         : {}),
       ...(provenanceSource.provenance !== undefined
         ? { provenance: provenanceSource.provenance }
@@ -1185,10 +1295,14 @@ export function parseGuideSummaryMarkdown(
   const cleanedBefore = clean(before);
   const cleanedNow = clean(now);
   const finalMarkdownBody = markdownBody.trim().length > 0 ? markdownBody : undefined;
+  const promptGuideHash = finalMarkdownBody
+    ? computePromptGuideHash(finalMarkdownBody, 'summary-parse', guideId)
+    : undefined;
 
   return {
     guideId,
     guideHash: computeGuideHash(markdown),
+    ...(promptGuideHash ? { promptGuideHash } : {}),
     problem: cleanedProblem,
     before: cleanedBefore,
     now: cleanedNow,
@@ -1208,25 +1322,87 @@ export async function loadGuideSummaryFromMarkdown(
   return parseGuideSummaryMarkdown(content, guideId);
 }
 
+export interface LoadGuideSummariesOptions {
+  /**
+   * Explicit escape hatch for isolated unit tests that construct synthetic temporary
+   * guide directories without an explainers dataset. Never set in production scripts.
+   */
+  readonly allowMissingExplainers?: boolean;
+  readonly explainersPath?: string;
+}
+
+function extractExplainerEntries(
+  parsed: unknown,
+  explainersJsonPath: string,
+): ReadonlyArray<Record<string, unknown>> {
+  const list = Array.isArray(parsed)
+    ? parsed
+    : typeof parsed === 'object' &&
+        parsed !== null &&
+        Array.isArray((parsed as { guides?: unknown }).guides)
+      ? (parsed as { guides: unknown[] }).guides
+      : null;
+
+  if (!list || list.length === 0) {
+    throw new Error(
+      `Invalid explainers file ${explainersJsonPath}: expected a non-empty array of guide explainer records.`,
+    );
+  }
+
+  return list.map((item, idx) => {
+    if (
+      typeof item !== 'object' ||
+      item === null ||
+      typeof (item as { guideId?: unknown }).guideId !== 'string' ||
+      !(item as { guideId: string }).guideId.trim()
+    ) {
+      throw new Error(
+        `Invalid explainer entry at index ${idx} in ${explainersJsonPath}: missing non-empty string guideId.`,
+      );
+    }
+    return item as Record<string, unknown>;
+  });
+}
+
 /**
  * Loads guide summaries directly from markdown files into a map indexed by guideId,
  * enriched only with external upstream feature explainers (never rule-writer triage text).
+ * Fails fast on missing/unreadable guide directories, malformed JSON, empty guide sets,
+ * or missing/corrupt explainer datasets.
  */
 export async function loadGuideSummariesMap(
   guidesRootDirOrFile: string = GUIDES_DIR,
+  options: LoadGuideSummariesOptions = {},
 ): Promise<Map<string, GuideSummaryInfo>> {
   const map = new Map<string, GuideSummaryInfo>();
 
   if (guidesRootDirOrFile.endsWith('.json')) {
-    try {
-      const content = await readFile(guidesRootDirOrFile, 'utf8');
-      const list = JSON.parse(content) as GuideSummaryInfo[];
-      for (const item of list) {
-        map.set(item.guideId, item);
+    const content = await readFile(guidesRootDirOrFile, 'utf8');
+    const parsedJson = JSON.parse(content) as unknown;
+    if (!Array.isArray(parsedJson)) {
+      throw new Error(
+        `Invalid guide summaries JSON in ${guidesRootDirOrFile}: expected a JSON array.`,
+      );
+    }
+    for (const item of parsedJson) {
+      if (
+        typeof item !== 'object' ||
+        item === null ||
+        typeof (item as { guideId?: unknown }).guideId !== 'string' ||
+        !(item as { guideId: string }).guideId.trim()
+      ) {
+        throw new Error(
+          `Invalid guide summary entry in ${guidesRootDirOrFile}: missing non-empty guideId.`,
+        );
       }
-    } catch {
-      /* ignore invalid JSON */
-      return map;
+      const typedItem = item as GuideSummaryInfo;
+      const promptGuideHash = typedItem.markdownBody?.trim()
+        ? computePromptGuideHash(typedItem.markdownBody, 'summary-map', typedItem.guideId)
+        : undefined;
+      map.set(typedItem.guideId, {
+        ...typedItem,
+        ...(promptGuideHash ? { promptGuideHash } : {}),
+      });
     }
   } else {
     async function walk(dir: string): Promise<void> {
@@ -1234,15 +1410,12 @@ export async function loadGuideSummariesMap(
       for (const entry of entries) {
         const fullPath = join(dir, entry.name);
         if (entry.isDirectory()) {
-          const guidePath = join(fullPath, 'guide.md');
-          try {
-            const content = await readFile(guidePath, 'utf8');
-            const summary = parseGuideSummaryMarkdown(content, entry.name);
-            map.set(entry.name, summary);
-          } catch {
-            /* ignore unreadable guide */
-          }
           await walk(fullPath);
+        } else if (entry.isFile() && entry.name === 'guide.md') {
+          const guideId = basename(dir);
+          const content = await readFile(fullPath, 'utf8');
+          const summary = parseGuideSummaryMarkdown(content, guideId);
+          map.set(guideId, summary);
         }
       }
     }
@@ -1250,73 +1423,82 @@ export async function loadGuideSummariesMap(
     await walk(guidesRootDirOrFile);
   }
 
-  const evalDataDir = getAnalyzerEvalDataDir();
+  if (map.size === 0) {
+    throw new Error(
+      `loadGuideSummariesMap loaded 0 guides from ${guidesRootDirOrFile}. Failing fast.`,
+    );
+  }
 
-  // Check if explainers JSON exists on disk, and if so, populate explainerContext on each guide
-  const explainersJsonPath = join(
-    evalDataDir,
-    'findings',
-    '2026-10-19-guide-explainers-171.json',
-  );
+  let explainersJsonPath: string;
+  if (options.explainersPath) {
+    explainersJsonPath = options.explainersPath;
+  } else if (options.allowMissingExplainers && !process.env.ANALYZER_EVAL_DATA_DIR) {
+    return map;
+  } else {
+    const evalDataDir = getAnalyzerEvalDataDir();
+    explainersJsonPath = join(
+      evalDataDir,
+      'findings',
+      '2026-10-19-guide-explainers-171.json',
+    );
+  }
+
+  let explainersContent: string;
   try {
-    const explainersContent = await readFile(explainersJsonPath, 'utf8');
-    const parsed = JSON.parse(explainersContent) as unknown;
-    if (Array.isArray(parsed)) {
-      for (const item of parsed) {
-        if (typeof item === 'object' && item !== null) {
-          const rec = item as Record<string, unknown>;
-          const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
-          const excerpt =
-            typeof rec.combinedExcerpt === 'string'
-              ? rec.combinedExcerpt
-              : typeof rec.explainerContext === 'string'
-                ? rec.explainerContext
-                : typeof rec.excerpt === 'string'
-                  ? rec.excerpt
-                  : '';
-          if (guideId && excerpt.trim()) {
-            const existing = map.get(guideId);
-            if (existing) {
-              const trimmedExcerpt = excerpt.trim();
-              map.set(guideId, {
-                ...existing,
-                explainerContext: trimmedExcerpt,
-                explainerContextHash: computeExplainerContextHash(trimmedExcerpt),
-              });
-            }
-          }
-        }
-      }
-    } else if (typeof parsed === 'object' && parsed !== null) {
-      for (const [guideId, val] of Object.entries(parsed as Record<string, unknown>)) {
-        let excerpt = '';
-        if (typeof val === 'string') {
-          excerpt = val.trim();
-        } else if (typeof val === 'object' && val !== null) {
-          const rec = val as Record<string, unknown>;
-          excerpt =
-            typeof rec.combinedExcerpt === 'string'
-              ? rec.combinedExcerpt.trim()
-              : typeof rec.explainerContext === 'string'
-                ? rec.explainerContext.trim()
-                : typeof rec.excerpt === 'string'
-                  ? rec.excerpt.trim()
-                  : '';
-        }
-        if (excerpt) {
-          const existing = map.get(guideId);
-          if (existing) {
-            map.set(guideId, {
-              ...existing,
-              explainerContext: excerpt,
-              explainerContextHash: computeExplainerContextHash(excerpt),
-            });
-          }
-        }
-      }
+    explainersContent = await readFile(explainersJsonPath, 'utf8');
+  } catch (err: unknown) {
+    if (
+      options.allowMissingExplainers &&
+      typeof err === 'object' &&
+      err !== null &&
+      (err as NodeJS.ErrnoException).code === 'ENOENT'
+    ) {
+      return map;
     }
-  } catch {
-    /* ignore missing or unreadable explainers file */
+    throw new Error(
+      `Failed to read required guide explainers file at ${explainersJsonPath}: ${String(err)}`,
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(explainersContent) as unknown;
+  } catch (err: unknown) {
+    throw new Error(
+      `Failed to parse guide explainers JSON at ${explainersJsonPath}: ${String(err)}`,
+    );
+  }
+
+  const explainerEntries = extractExplainerEntries(parsed, explainersJsonPath);
+  for (const rec of explainerEntries) {
+    const guideId = (rec.guideId as string).trim();
+    const excerpt =
+      typeof rec.combinedExcerpt === 'string'
+        ? rec.combinedExcerpt
+        : typeof rec.explainerContext === 'string'
+          ? rec.explainerContext
+          : typeof rec.excerpt === 'string'
+            ? rec.excerpt
+            : '';
+    const existing = map.get(guideId);
+    if (existing) {
+      const trimmedExcerpt = excerpt.trim();
+      map.set(guideId, {
+        ...existing,
+        ...(trimmedExcerpt ? { explainerContext: trimmedExcerpt } : {}),
+        explainerContextHash: computeExplainerContextHash(trimmedExcerpt),
+      });
+    }
+  }
+
+  // Ensure every loaded guide has deterministic explainerContextHash once explainers loaded cleanly
+  for (const [guideId, existing] of map.entries()) {
+    if (existing.explainerContextHash === undefined) {
+      map.set(guideId, {
+        ...existing,
+        explainerContextHash: computeExplainerContextHash(existing.explainerContext),
+      });
+    }
   }
 
   return map;
@@ -1530,8 +1712,17 @@ export async function prepareBlindCards(
       }
     }
 
-    const computedGuideHash =
-      summary.guideHash ?? computeGuideHash(summary.markdownBody);
+    const promptGuideHash = computePromptGuideHash(
+      summary.markdownBody,
+      item.cardId,
+      item.guideId,
+    );
+    const effectiveRuleId = item.sourceId || item.guideId;
+    const matchedRule =
+      RULES_BY_ID.get(effectiveRuleId) ??
+      RULES_BY_ID.get(item.guideId) ??
+      RULES_BY_GUIDE_ID.get(item.guideId);
+    const computedRuleHash = matchedRule ? computeRuleHash(matchedRule) : 'unregistered';
     blindCards.push({
       cardId: item.cardId,
       repo: item.repo,
@@ -1539,9 +1730,9 @@ export async function prepareBlindCards(
       file: item.file,
       line: item.line,
       guideId: item.guideId,
-      ruleId: item.sourceId || item.guideId,
-      ruleHash: computedGuideHash,
-      guideHash: computedGuideHash,
+      ruleId: effectiveRuleId,
+      ruleHash: computedRuleHash,
+      guideHash: promptGuideHash,
       guideSummary: summary,
       codeSnippet: snippet,
     });
