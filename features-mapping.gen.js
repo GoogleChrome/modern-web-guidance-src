@@ -346,6 +346,7 @@ window.__featuresMapping = {
   ],
   "identify-inp-causes": [
     "long-animation-frames",
+    "tmp-long-animation-frames-style-layout",
     "event-timing"
   ],
   "improve-next-page-load-performance": [

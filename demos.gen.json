@@ -1210,6 +1210,7 @@
       "description": "Identify slow-running JavaScript and other causes of poor Interaction to Next Paint (INP) responsiveness.",
       "features": [
         "long-animation-frames",
+        "tmp-long-animation-frames-style-layout",
         "event-timing"
       ],
       "demos": [
@@ -3492,6 +3493,7 @@
     "tmp-cross-origin-storage",
     "tmp-customizable-select-listbox",
     "tmp-email-verification",
+    "tmp-long-animation-frames-style-layout",
     "tmp-text-decoration-inset",
     "tmp-webcrypto-modern-algos",
     "top-level-await",
