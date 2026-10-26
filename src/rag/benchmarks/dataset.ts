@@ -14,6 +14,7 @@ export interface QueryRecord {
   qid: string;
   query: string;
   stratum?: QueryStratum;
+  split?: "dev" | "test";
   freq?: number;
   words?: number;
   expectedGuide?: string;
@@ -58,9 +59,10 @@ export interface LoadedDataset {
   name: string;
   queries: QueryRecord[];
   qrels: Map<string, QrelRecord>;
+  manifest?: DatasetManifest;
 }
 
-export const DEFAULT_WILD_VERSION = "v1";
+export const DEFAULT_WILD_VERSION = "v2";
 export const DEFAULT_RAG_EVALS_BUCKET = process.env.RAG_EVALS_BUCKET || "guidance-rag-evals";
 export const DEFAULT_GCP_PROJECT = process.env.RAG_EVALS_GCP_PROJECT || "chrome-kiwi-air-force-dev";
 export const DEFAULT_PUBLIC_DATA_DIR = path.join(rootDir, "src/rag/benchmarks/data");
@@ -100,10 +102,12 @@ export function normalizeQuery(query: string): string {
 export function createQueryRecord(
   fields: Omit<QueryRecord, "words"> & { words?: number }
 ): QueryRecord {
-  return {
+  const rec: QueryRecord = {
     ...fields,
     words: fields.words ?? countWords(fields.query),
   };
+  if (fields.split !== undefined) rec.split = fields.split;
+  return rec;
 }
 
 /** Deterministic Mulberry32 PRNG returning values in [0, 1). */
@@ -129,6 +133,9 @@ export function validateQueryRecord(
   if (raw.agent !== undefined && !isAgent(raw.agent)) {
     throw new Error(`Invalid agent "${String(raw.agent)}" at ${loc}`);
   }
+  if (raw.split !== undefined && raw.split !== "dev" && raw.split !== "test") {
+    throw new Error(`Invalid split "${String(raw.split)}" at ${loc}: expected "dev" or "test"`);
+  }
   if (raw.calledList !== undefined && typeof raw.calledList !== "boolean") {
     throw new Error(`Invalid calledList at ${loc}: expected boolean`);
   }
@@ -152,6 +159,7 @@ export function validateQueryRecord(
     expectedGuide: typeof raw.expectedGuide === "string" ? raw.expectedGuide : undefined,
     agent: raw.agent,
     runDate: typeof raw.runDate === "string" ? raw.runDate : undefined,
+    split: raw.split === "dev" || raw.split === "test" ? raw.split : undefined,
   };
   if (typeof raw.calledList === "boolean") fields.calledList = raw.calledList;
   if (typeof raw.retriedSearch === "boolean") fields.retriedSearch = raw.retriedSearch;
@@ -315,6 +323,22 @@ function verifyAndLoadWildCache(versionDir: string, version: string): LoadedData
     name: `wild-${version}`,
     queries: parseQueriesJsonl(queriesContent, queriesPath),
     qrels: parseQrelsJsonl(qrelsContent, qrelsPath),
+    manifest,
+  };
+}
+
+export function filterDatasetBySplit(dataset: LoadedDataset, split: "dev" | "test"): LoadedDataset {
+  const queries = dataset.queries.filter((q) => q.split === split);
+  const qids = new Set(queries.map((q) => q.qid));
+  const qrels = new Map<string, QrelRecord>();
+  for (const [qid, r] of dataset.qrels) {
+    if (qids.has(qid)) qrels.set(qid, r);
+  }
+  return {
+    name: `${dataset.name}-${split}`,
+    queries,
+    qrels,
+    manifest: dataset.manifest,
   };
 }
 

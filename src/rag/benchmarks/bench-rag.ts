@@ -8,6 +8,7 @@ import { parseArgs } from "node:util";
 import { guidesDir, outDir, rootDir } from "../../core/paths.ts";
 import {
   ensureWildDataset,
+  filterDatasetBySplit,
   isRecord,
   loadPublicDataset,
   type LoadedDataset,
@@ -316,9 +317,25 @@ function fmtBootstrapDelta(d: BootstrapDelta, fmtVal: (v: number) => string, suf
   return `${main} [${low}, ${high}]${d.significant ? " *" : ""}`;
 }
 
-export function renderSingleMarkdown(label: string, summaries: DatasetSummary[]): string {
+export function renderSingleMarkdown(
+  label: string,
+  summaries: DatasetSummary[],
+  datasets?: LoadedDataset[]
+): string {
   const lines: string[] = [];
   lines.push(`### RAG Benchmark — \`${label}\``);
+  if (datasets && datasets.length > 0) {
+    const provLines = datasets
+      .filter((d) => d.manifest)
+      .map((d) => {
+        const qrelsSha = d.manifest?.files["wild-qrels.jsonl"]?.sha256;
+        return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}`;
+      });
+    if (provLines.length > 0) {
+      lines.push("");
+      lines.push(...provLines);
+    }
+  }
   lines.push("");
   lines.push(
     "| Dataset | Queries (Ans / OOS) | nDCG@5 | Success@1 | Hit@1 (g=2) | MRR@5 | Recall@5 | LeafRecall@5 | Disc@1 | Expected@1 | Avg Guides | Avg Tokens (Ans) | Empty% (Ans) | OOS Admit% (Near / Far) | Avg OOS Tokens | Unjudged% |"
@@ -344,10 +361,23 @@ export function renderSingleMarkdown(label: string, summaries: DatasetSummary[])
 export function renderComparisonMarkdown(
   baseLabel: string,
   headLabel: string,
-  comparisons: DatasetComparison[]
+  comparisons: DatasetComparison[],
+  datasets?: LoadedDataset[]
 ): string {
   const lines: string[] = [];
   lines.push(`### RAG Benchmark A/B — \`${baseLabel}\` → \`${headLabel}\``);
+  if (datasets && datasets.length > 0) {
+    const provLines = datasets
+      .filter((d) => d.manifest)
+      .map((d) => {
+        const qrelsSha = d.manifest?.files["wild-qrels.jsonl"]?.sha256;
+        return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}`;
+      });
+    if (provLines.length > 0) {
+      lines.push("");
+      lines.push(...provLines);
+    }
+  }
   lines.push("");
 
   const ppFmt = (v: number) => (v * 100).toFixed(1);
@@ -418,14 +448,25 @@ export function renderComparisonMarkdown(
   return lines.join("\n");
 }
 
-async function loadRequestedDatasets(names: string[], explicitWild: boolean): Promise<LoadedDataset[]> {
+async function loadRequestedDatasets(
+  names: string[],
+  explicitWild: boolean,
+  options: { wildVersion?: string; split?: string } = {}
+): Promise<LoadedDataset[]> {
   const loaded: LoadedDataset[] = [];
   for (const name of names) {
     if (name === "harness" || name === "oos") {
       loaded.push(loadPublicDataset(name));
     } else if (name === "wild") {
       try {
-        loaded.push(await ensureWildDataset());
+        let wild = await ensureWildDataset(options.wildVersion);
+        if (options.split && options.split !== "all") {
+          if (options.split !== "dev" && options.split !== "test") {
+            throw new Error(`Invalid --split "${options.split}". Expected "dev", "test", or "all".`);
+          }
+          wild = filterDatasetBySplit(wild, options.split);
+        }
+        loaded.push(wild);
       } catch (err) {
         if (explicitWild) throw err;
         console.warn(
@@ -452,6 +493,8 @@ async function main(): Promise<void> {
       "use-current-guides": { type: "boolean", default: false },
       json: { type: "string" },
       markdown: { type: "string" },
+      split: { type: "string", default: "all" },
+      "wild-version": { type: "string" },
     },
   });
 
@@ -467,7 +510,10 @@ async function main(): Promise<void> {
   const datasetNames = explicitDatasets ?? (isPublicOnly ? ["harness", "oos"] : ["wild", "harness", "oos"]);
   const explicitWild = Boolean(explicitDatasets?.includes("wild"));
 
-  const datasets = await loadRequestedDatasets(datasetNames, explicitWild);
+  const datasets = await loadRequestedDatasets(datasetNames, explicitWild, {
+    wildVersion: values["wild-version"],
+    split: values.split,
+  });
   if (datasets.length === 0) {
     throw new Error("No benchmark datasets loaded.");
   }
@@ -502,7 +548,7 @@ async function runSingleBenchmark(
     return s;
   });
 
-  const md = renderSingleMarkdown(headEval.label, summaries);
+  const md = renderSingleMarkdown(headEval.label, summaries, datasets);
   console.log(`\n${md}\n`);
 
   if (values.markdown) {
@@ -555,7 +601,7 @@ async function runComparisonBenchmark(
     comparisons.push(compareDatasetSummaries(b, h));
   }
 
-  const md = renderComparisonMarkdown(baseEval.label, headEval.label, comparisons);
+  const md = renderComparisonMarkdown(baseEval.label, headEval.label, comparisons, datasets);
   console.log(`\n${md}\n`);
 
   if (values.markdown) {

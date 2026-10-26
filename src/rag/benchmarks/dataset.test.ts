@@ -7,7 +7,10 @@ import { outDir } from "../../core/paths.ts";
 import { Agents } from "../../harness/config.ts";
 import { buildBm25Index } from "../bm25.ts";
 import {
+  DEFAULT_WILD_VERSION,
+  createQueryRecord,
   ensureWildDataset,
+  filterDatasetBySplit,
   loadPublicDataset,
   parseManifestJson,
   parseQrelsJsonl,
@@ -108,6 +111,18 @@ describe("dataset parsers and serializers", () => {
         /Invalid retrievedGuides.*expected array of non-empty strings/
       );
     });
+    await t.test("invalid split", () => {
+      assert.throws(
+        () => validateQueryRecord({ qid: "q1", query: "a", split: "other" }),
+        /Invalid split.*expected "dev" or "test"/
+      );
+    });
+    await t.test("valid split", () => {
+      const qDev = validateQueryRecord({ qid: "q1", query: "a", split: "dev" });
+      assert.strictEqual(qDev.split, "dev");
+      const qTest = validateQueryRecord({ qid: "q2", query: "b", split: "test" });
+      assert.strictEqual(qTest.split, "test");
+    });
   });
 });
 
@@ -187,6 +202,34 @@ describe("ensureWildDataset cache verification", () => {
       () => ensureWildDataset("v99", { cacheDir: tmpDir, allowDownload: false }),
       /SHA-256 mismatch/
     );
+  });
+
+  it("exports DEFAULT_WILD_VERSION as v2 and filters datasets by split", () => {
+    assert.strictEqual(DEFAULT_WILD_VERSION, "v2");
+    const mockDataset = {
+      name: "wild-v2",
+      queries: [
+        createQueryRecord({ qid: "w1", query: "popover", split: "dev" }),
+        createQueryRecord({ qid: "w2", query: "dialog", split: "test" }),
+      ],
+      qrels: new Map([
+        ["w1", { qid: "w1", query: "popover", scope: "in_domain" as const, needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }],
+        ["w2", { qid: "w2", query: "dialog", scope: "in_domain" as const, needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }],
+      ]),
+    };
+    const devSplit = filterDatasetBySplit(mockDataset, "dev");
+    assert.strictEqual(devSplit.name, "wild-v2-dev");
+    assert.strictEqual(devSplit.queries.length, 1);
+    assert.strictEqual(devSplit.queries[0].qid, "w1");
+    assert.strictEqual(devSplit.qrels.size, 1);
+    assert.strictEqual(devSplit.qrels.has("w1"), true);
+
+    const testSplit = filterDatasetBySplit(mockDataset, "test");
+    assert.strictEqual(testSplit.name, "wild-v2-test");
+    assert.strictEqual(testSplit.queries.length, 1);
+    assert.strictEqual(testSplit.queries[0].qid, "w2");
+    assert.strictEqual(testSplit.qrels.size, 1);
+    assert.strictEqual(testSplit.qrels.has("w2"), true);
   });
 });
 

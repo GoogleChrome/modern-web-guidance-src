@@ -10,7 +10,7 @@ Retrieval is evaluated against three complementary query sets paired with pooled
 
 | Dataset | Location | Size | Description |
 | :--- | :--- | :---: | :--- |
-| **`wild`** | GCS (`out/benchmarks/wild/v1/`, gitignored) | 1,000 | Anonymized real-world search queries sampled from 90-day CLI telemetry (stratified across head/tail traffic and near-threshold `0.30..0.42` similarity). Downloaded and SHA-256-verified automatically via `ensureWildDataset()`. |
+| **`wild`** | GCS (`out/benchmarks/wild/v2/`, gitignored) | 4,000 | Anonymized real-world search queries sampled from post-#1850 CLI telemetry with a fixed 50/50 dev/test split (2,000 dev / 2,000 test, stratified by query word count). Downloaded and SHA-256-verified automatically via `ensureWildDataset()`. Historical `v1` (1,000 pre-#1850 queries) remains archived in GCS and accessible via `--wild-version v1`. |
 | **`harness`** | `data/harness-{queries,qrels}.jsonl` | 160 | Real `skill_search` queries mined from nightly evaluation trajectories across Antigravity CLI, Claude Code, Codex CLI, and Jetski CLI, paired with `expectedGuide` task targets and pooled multi-label qrels. |
 | **`oos`** | `data/oos-{queries,qrels}.jsonl` | 90 | Curated out-of-scope queries (`50` far out-of-domain like Python/Kubernetes/SQL, `40` near-miss web topics outside our corpus like React hooks, Next.js App Router, Tailwind, WebGL) to measure false-positive admission and wasted context tokens. |
 
@@ -37,8 +37,14 @@ In blind validation against 69 human judgments across wild and harness queries, 
 # Run full benchmark (wild + harness + oos) on the current working tree:
 pnpm benchmark:rag
 
+# Run benchmark specifically on the held-out test split of the wild dataset:
+pnpm benchmark:rag --split test
+
 # Run only checked-in public datasets (no GCS credentials required; runs in CI):
 pnpm benchmark:rag --public-only
+
+# Run against historical wild-v1 dataset:
+pnpm benchmark:rag --wild-version v1
 
 # A/B compare a branch or commit against origin/main (with paired 95% bootstrap CIs):
 pnpm benchmark:rag --base origin/main --head HEAD
