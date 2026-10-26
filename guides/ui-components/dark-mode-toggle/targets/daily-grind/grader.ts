@@ -8,7 +8,6 @@ import {
 } from '../../../../../src/grading/test-fixture.ts';
 import { SyntaxKind, type Project } from 'ts-morph';
 import {
-  getCascadedStyle,
   CSSStyleRule,
   CSSGroupingRule,
   type CSSRule,
