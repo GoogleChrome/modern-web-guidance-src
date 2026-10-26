@@ -27,11 +27,11 @@ Make every control at least 24×24 CSS pixels (WCAG 2.5.8), and at least 44×44 
 @media (pointer: coarse) {
   :root { --target-size: 44px; }
 }
-:where(button, select, textarea, input:not([type="checkbox"], [type="radio"]), [role="button"], nav a, label:has(> :is([type="checkbox"], [type="radio"]))) {
+:where(button, select, textarea, input:not([type="checkbox"], [type="radio"]), [role="button"], nav a, label:has(input[type="checkbox"], input[type="radio"])) {
   min-block-size: var(--target-size);
   min-inline-size: var(--target-size);
 }
-:where([role="button"], nav a, label:has(> :is([type="checkbox"], [type="radio"]))) { display: inline-flex; align-items: center; }
+:where([role="button"], nav a, label:has(input[type="checkbox"], input[type="radio"])) { display: inline-flex; align-items: center; }
 .icon-button { position: relative; }
 .icon-button::after {
   content: "";
@@ -97,8 +97,9 @@ img, video { max-inline-size: 100%; block-size: auto; }
 body { overflow-wrap: anywhere; }
 /* Flex and grid items don't shrink below their content by default. Let non-control items shrink so controls keep their minimum size. */
 :where(.toolbar > :not(button, input, select, textarea, a, [role="button"], label)) { min-inline-size: 0; }
-/* The target-size minimum lets controls in a crowded row shrink below their text, so let the row wrap. */
-.toolbar { display: flex; flex-wrap: wrap; }
+.toolbar { display: flex; }
+/* The target-size minimum lets controls in a crowded row shrink below their text, so let nav bars and toolbars that are already rows wrap. */
+:where(nav, nav ul, .toolbar) { flex-wrap: wrap; }
 ```
 
 - Use `min-block-size` instead of a fixed `height` on anything that contains text.

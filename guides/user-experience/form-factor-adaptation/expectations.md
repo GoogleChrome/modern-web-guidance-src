@@ -1,5 +1,5 @@
 - On viewports matching `pointer: coarse`, every visible `button`, `select`, `textarea`, `input` other than checkboxes and radios, `[role="button"]`, and link inside `nav` has a hit area of at least 44×44 CSS pixels, counting any absolutely positioned pseudo-element that extends it.
-- On viewports matching `pointer: fine`, every visible `button`, `select`, `textarea`, `input` other than checkboxes and radios, `[role="button"]`, and link inside `nav` has a hit area of at least 24×24 CSS pixels.
+- On viewports matching `pointer: fine`, every visible `button`, `select`, `textarea`, `input` other than checkboxes and radios, `[role="button"]`, and link inside `nav` has a hit area of at least 24×24 CSS pixels, counting any absolutely positioned pseudo-element that extends it.
 - For visible checkboxes and radios, the hit area of the input and its associated `label` combined is at least 44×44 CSS pixels on coarse pointers and at least 24×24 CSS pixels on fine pointers.
 - Resizing an element whose computed `container-type` isn't `normal` across one of its container query conditions, with the viewport unchanged, changes at least one descendant's computed style in a way that isn't only a size change (for example its `display`, `grid-template-columns`, or `flex-direction`).
 - Visible `h1`, `h2`, and `h3` headings compute a `text-wrap-style` of `balance`.
