@@ -167,7 +167,7 @@ const foo = 1;`;
     assert.equal(shouldScanFile('src/app.js', 'console.log("hello");'), true);
   });
 
-  await t.test('rejects files exceeding 1 MB source cap (D-025, O26)', () => {
+  await t.test('rejects files exceeding 1 MB source cap', () => {
     const smallContent = 'const x = 1;\n'.repeat(100);
     assert.equal(shouldScanFile('src/small.js', smallContent), true);
 

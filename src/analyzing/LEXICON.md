@@ -8,7 +8,7 @@ The canonical domain language for the Modern Web Guidance Analyzer (`src/analyzi
 
 The people-facing name for the end-to-end workflow of finding legacy web platform code in an existing project and changing it to modern platform standards across three steps: **Detection** (via `analyze`), **Verification** (reviewing findings against `verifierRubric`), and **Update** (retrieving `guide.md`, updating the code, and verifying the result). Distinct from **`analyze`**, which is the detection step only.
 
-* _Reference_: `guides/modern-web-guidance/SKILL.md#step-3-modernize-existing-code-analyze`, `src/analyzing/README.md#2-modernize-workflow-d-013`
+* _Reference_: `guides/modern-web-guidance/SKILL.md#step-3-modernize-existing-code-analyze`, `src/analyzing/README.md#2-modernize-workflow`
 * _Avoid_: `Modern Web Refactor`, `Refactor` (as a feature or workflow name), `Uplift`, `Modern Web Uplift`
 
 ### `analyze`
@@ -82,17 +82,17 @@ A distinct syntactic or payoff variant within a single `Rule` (for example, indi
 
 ### `rule-writing` split
 
-The partition of repositories that engineers and agents freely inspect to discover legacy patterns, author rules, and debug matchers. Distinct from the **`held-out` split**, which is never inspected during rule development.
+The partition of repositories that engineers and agents inspect to discover legacy patterns, author rules, and debug matchers. Kept distinct from the **`held-out` split** to prevent tuning matchers directly against the evaluation sample.
 
-* _Reference_: `analyzer-internal/repos.json`, `analyzer-internal/scripts/sample-gitmirror.ts`
+* _Reference_: `src/analyzing/README.md#2-split-corpus-architecture-rule-writing-vs-held-out`
 * _Avoid_: `build` split, `dev` split
 
 ### `held-out` split
 
-The partition of repositories reserved strictly for offline precision and recall evaluation. Never inspected when authoring or debugging rules, ensuring zero tuning leakage.
+The partition of repositories reserved strictly for offline precision and recall evaluation. Kept separate from repositories used during rule authoring and debugging so performance reflects out-of-sample code.
 
-* _Reference_: `analyzer-internal/scripts/sample-gitmirror.ts`
-* _Avoid_: `grading-only` split, `tune` split, `final` split, `local-93`, `gitmirror-grading-only`
+* _Reference_: `src/analyzing/qualification.ts`, `src/analyzing/README.md#2-split-corpus-architecture-rule-writing-vs-held-out`
+* _Avoid_: `grading-only` split, `tune` split, `final` split, `local-93`
 
 ## Evaluation & Calibration
 
@@ -105,16 +105,15 @@ An evaluation finding packaged for unbiased grading (enclosing `contextSlice`, f
 
 ### Grading Deck
 
-A curated or sampled collection of **Blind Cards** packaged together for human spot-checking, judge benchmarking, or calibration. Grading decks are stored as JSON in `analyzer-internal/labels/` and graded blind without showing rule rubrics or prior labels.
+A curated or sampled collection of **Blind Cards** packaged together for human spot-checking, judge benchmarking, or calibration. Graded blind without showing rule rubrics or prior labels.
 
-* _Reference_: `analyzer-internal/labels/`, `analyzer-internal/ui/`
+* _Reference_: `src/analyzing/eval/detection-eval.ts#loadCalibrationDeck`
 * _Avoid_: `Evaluation Suite`, `Test Deck`, `Test Suite`, `Calibration Deck`, `FP Check Deck`, `Gate 0 Deck`
 
 ### Blind Replication
 
 Independent authoring of a **Static Matcher** from `guide.md` and upstream explainers alone without inspecting existing rule code, used to discover author blind spots and benchmark recall overlap on **`held-out` split** code.
 
-* _Reference_: `analyzer-internal/DECISIONS.md#d-040`, `analyzer-internal/DECISIONS.md#d-047`
 * _Avoid_: `Dual Coding`, `Parallel Implementation`
 
 ### Precision
@@ -123,14 +122,14 @@ The proportion of evaluated findings graded `legit-modernize-target` ($\text{leg
 - **Static Matcher Precision**: Precision of findings emitted by the **Static Matcher** alone, before any **LLM Verifier** pass. This is the sole precision metric that gates default CLI rule shipping (**Qualified Rule**).
 - **Post-Verifier Precision**: Precision of findings retained after the **LLM Verifier** filter. Used to evaluate agentic **Modernize** workflows; never used to gate default CLI rules.
 
-* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`, `analyzer-internal/src/scorecard.ts`
+* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/README.md#qualification-criteria`
 * _Avoid_: `P1 Precision`, `P2 Precision`, `p1Precision`, `p2Precision`, `Strict Precision`, `Raw Precision`, `Detector Accuracy`, `Verified Precision`, `Final Precision`
 
 ### Matcher Misfire Rate
 
 The proportion of evaluated findings graded `not-old-pattern` ($\text{not-old-pattern} / n$), measuring how often a **Static Matcher** fires on code that is not attempting the legacy pattern. Its complement ($1 - \text{Matcher Misfire Rate}$, or **Non-Misfire Rate**) is used only when plotting alongside **Precision** on a `0–100%` chart axis.
 
-* _Reference_: `analyzer-internal/DECISIONS.md#d-048`, `src/analyzing/qualification.ts`
+* _Reference_: `src/analyzing/qualification.ts`, `src/analyzing/eval/detection-eval.ts#JudgeVerdict`
 * _Avoid_: `False Positive Rate`, `Error Rate`, `Non-Misfire Rate (as an evaluation metric)`
 
 ## Rule Lifecycle States
@@ -153,14 +152,13 @@ A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx m
 
 A previously qualified rule in `SUSPENDED_QUALIFIED_GUIDE_IDS` whose default shipping was temporarily halted pending evaluation-harness remediation or fresh **`held-out` split** re-verification. Distinct from an **Experimental Rule** (never qualified) and a **Retired Guide** (permanently removed from active scanning).
 
-* _Reference_: `analyzer-internal/src/qualification-audit.ts#SUSPENDED_QUALIFIED_GUIDE_IDS`
+* _Reference_: `src/analyzing/qualification.ts#SUSPENDED_QUALIFIED_GUIDE_IDS`
 * _Avoid_: `Quarantined Rule`, `Disabled Rule`
 
 ### Unwired Module
 
 A rule module in `src/analyzing/rules/*.ts` with unit tests on disk that is not yet imported into `src/analyzing/rules/index.ts`. Distinct from a registered **Experimental Rule** or **Qualified Rule**.
 
-* _Reference_: `analyzer-internal/scripts/rule-inventory.ts`
 * _Avoid_: `Orphaned Rule`, `Unreferenced File`
 
 ### Retired Guide

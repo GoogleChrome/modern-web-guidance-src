@@ -27,32 +27,25 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `[dir]` | Positional | Directory to analyze (defaults to current working directory). |
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
-| `--tier <tier>` | String | Restrict analysis to a confidence tier (`qualified` or `experimental`). |
-| `--experimental`, `--all-rules` | Flag | Run all 71 active feature guides (98 rules total in `ALL_RULES`), including experimental rules. |
+| `--experimental`, `--all-rules` | Flag | Run all active feature guides across `ALL_RULES`, including experimental rules. |
+| `--include-docs-and-tests` | Flag | Include documentation, example, demo, and test files (skipped by default). |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
 
 ```text
-Modern Web Guidance Analyzer — /workspace/my-app
-Found 3 modernization opportunities across 2 guides:
+Modern Web Guidance Analyzer — /workspace/elFinder
+Found 2 modernization opportunities across 1 guide:
 Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.
 
-* autofill-sign-in-form [qualified] (2 findings)
-  Use standard autocomplete attributes on username and password inputs instead of custom credentials handling.
-  Keep when: The form manages credentials without standard browser autofill hints
-  Drop when: Input already specifies standard autocomplete="username" or autocomplete="current-password"
-  - src/components/Login.tsx:42
-    <input type="password" name="password">
-  - src/views/Register.vue:18
-    <input type="password" id="pass">
-
-* responsive-table [qualified] (1 finding)
-  Replace layout-breaking table structures or script-based horizontal scrolling with modern CSS responsive table patterns.
-  Keep when: Table relies on script-based scroll wrappers or unstyled overflow
-  Drop when: Table is wrapped in standard CSS container with overflow-x: auto
-  - src/components/DataGrid.tsx:12
-    <div className="table-scroll-container"><table>...</table></div>
+* form-fields-automatically-fit-contents [qualified] (2 findings)
+  Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.
+  Keep when: A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/wi…
+  Drop when: The code is guarded by a feature query checking CSS.supports("field-sizing", "content") or field-sizing suppo…
+  - js/commands/rename.js:454
+    this.style.height = this.scrollHeight + 'px';
+  - js/elFinder.resources.js:174
+    this.style.height = this.scrollHeight + 'px';
 
 Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
 ```
@@ -63,22 +56,22 @@ Coding agents receive structured JSON containing exact file coordinates, confide
 
 ```json
 {
-  "targetDir": "/workspace/my-app",
-  "totalFindings": 1,
+  "targetDir": "/workspace/elFinder",
+  "totalFindings": 2,
   "guides": [
     {
-      "guideId": "autofill-sign-in-form",
+      "guideId": "form-fields-automatically-fit-contents",
       "tier": "qualified",
-      "summary": "Use standard autocomplete attributes on username and password inputs.",
-      "retrieveCommand": "npx -y modern-web-guidance@latest retrieve \"autofill-sign-in-form\"",
-      "count": 1,
+      "summary": "Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.",
+      "retrieveCommand": "npx -y modern-web-guidance@latest retrieve \"form-fields-automatically-fit-contents\"",
+      "count": 2,
       "findings": [
         {
-          "ruleId": "autofill-sign-in-form",
-          "file": "src/components/Login.tsx",
-          "line": 42,
-          "message": "Missing autocomplete on login form credentials input",
-          "codeSnippet": "<input type=\"password\" name=\"pass\" />"
+          "ruleId": "form-fields-automatically-fit-contents",
+          "file": "js/commands/rename.js",
+          "line": 454,
+          "message": "JavaScript dynamic scrollHeight calculation resizes form field; replace with declarative CSS field-sizing: content.",
+          "codeSnippet": "this.style.height = this.scrollHeight + 'px';"
         }
       ]
     }
@@ -88,9 +81,9 @@ Coding agents receive structured JSON containing exact file coordinates, confide
 
 ---
 
-## 2. Modernize Workflow (`D-013`)
+## 2. Modernize Workflow
 
-For autonomous AI coding agents (Claude Code, Jetski, Codex), modernizing existing code follows the **Modernize** workflow. The `analyze` subcommand serves as the detection step—finding legacy patterns and stopping there—while the agent carries out the planning, guidance retrieval, modern standard application, and verification:
+For autonomous AI coding agents (such as Claude Code or Codex), modernizing existing code follows the **Modernize** workflow. The `analyze` subcommand serves as the detection step—finding legacy patterns and stopping there—while the agent carries out the planning, guidance retrieval, modern standard application, and verification:
 
 ```mermaid
 flowchart TD
@@ -110,7 +103,7 @@ flowchart TD
 
 ## 3. Architecture: Static Matcher + LLM Verifier
 
-High-precision static analysis requires balancing high recall against near-zero matcher misfire rates across diverse real-world frameworks. The analyzer achieves this through a two-step runtime architecture:
+High-precision static analysis requires balancing high recall against low matcher misfire rates across diverse real-world frameworks. The analyzer achieves this through a two-step runtime architecture:
 
 ```mermaid
 flowchart LR
@@ -127,7 +120,7 @@ flowchart LR
 - **Multi-Modal Matchers**: Evaluates JavaScript/TypeScript syntax trees via `ts-morph`, DOM elements and JSX props via custom AST visitors, CSS stylesheets via declaration parsing, and package dependencies via `package.json`.
 - **Finding Identity**: Every finding receives a deterministic 12-character hex ID:
   $$\text{CardID} = \text{SHA256}(\text{repo} : \text{commit} : \text{guideId} : \text{file} : \text{line})[0..12]$$
-  This guarantees stable tracking across repeat runs and evaluation datasets.
+  This provides stable tracking across repeat runs and evaluation datasets.
 
 ### LLM Verifier (Contextual Rubric Filter)
 
@@ -205,19 +198,19 @@ export const autofillSignInFormRule: AnalyzerRule = {
 
 ### Qualified Rules & Gated Execution
 
-To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
-- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear objective qualification criteria (71 active guides: 6 qualified across 8 rules, and 65 experimental across 90 rules, totaling 98 rules in `ALL_RULES`). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
-- **`ALL_RULES` (`--experimental` / `--all-rules`):** Executes all 71 active feature guides across 98 rules in `ALL_RULES`, including experimental rules.
+To keep terminal false alarms low when run in developer environments, the analyzer enforces qualification gating:
+- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that meet the qualification standard: static matcher precision ≥ 90% at n ≥ 20 on held-out repositories, as scored by an LLM judge (not human-graded). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
+- **`ALL_RULES` (`--experimental` / `--all-rules`):** Executes all active feature guides across all rules in `ALL_RULES`, including experimental rules.
 
 ### Qualification Criteria
 
 Rules qualify for default terminal shipping under the **Static Matcher precision standard**:
-- **Static Matcher Precision $\ge 90.0\%$ at $n \ge 20$:** Evaluated on held-out GitMirror out-of-sample repositories (`precision` before LLM Verifier). When `gd analyze` runs in a developer terminal without an LLM, $\ge 90\%$ of findings are genuine modernization opportunities.
+- **Static Matcher Precision $\ge 90.0\%$ at $n \ge 20$:** Evaluated on held-out out-of-sample repositories (`precision` before LLM Verifier), as scored by an LLM judge (not human-graded).
 - Rules requiring runtime LLM Verifier evaluation (`needs-verifier`) or with static matcher precision below 90% remain in the experimental tier until their static matchers reach the standard.
 
 ### 2-Axis Triage Taxonomy
 
-Every web platform standard in the catalog is classified across two orthogonal axes in `analyzer-internal/guide-triage.json` (covering all **249 catalog guides**):
+Every web platform standard in the catalog is classified across two orthogonal axes (covering all **249 catalog guides**):
 - **Axis 1: Detection (`detection`):**
   - `direct-token` (47 guides) & `structural-ast` (61 guides): Deterministic token, AST, DOM, CSS, or `package.json` patterns with high signal-to-noise ratio requiring no LLM runtime verification.
   - `needs-verifier` (34 guides): Pattern detectable by static matchers but requiring runtime LLM Verifier evaluation against a `verifierRubric` (`keepWhen` / `dropWhen`) to reject subtle false alarms.
@@ -229,6 +222,8 @@ Every web platform standard in the catalog is classified across two orthogonal a
   - `n/a` (107 guides): Applicable when detection is `no-legacy-pattern`.
 
 ### Qualified Feature Guides (6 Qualified Guides across 8 Rules)
+
+*Scores are LLM judge estimates on held-out repositories (not human-graded).*
 
 | # | Guide ID | Matcher Kind | Static Matcher Precision | Post-Verifier Precision | Sample Size ($n$) | Modern Platform Target |
 | :- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -243,7 +238,7 @@ Every web platform standard in the catalog is classified across two orthogonal a
 
 ## 5. Evaluation, Update Eval & Measurement Framework
 
-The analyzer adheres to statistical rigor to guarantee production accuracy before any rule is published in `QUALIFIED_RULES`.
+The analyzer gates rules on evaluation against held-out repositories before any rule is published in `QUALIFIED_RULES`.
 
 ### Evaluation Subsystem (`src/analyzing/eval/`)
 
@@ -256,9 +251,9 @@ The analyzer adheres to statistical rigor to guarantee production accuracy befor
 
 ### 2-Split Corpus Architecture (`rule-writing` vs `held-out`)
 
-The evaluation corpus is divided into two strictly isolated splits across 26,426 files and 8,508 repositories covering 71/71 active feature guides:
-- **`rule-writing` (13,215 files across 208 local repos in `analyzer-internal/repos.json` and remote GitMirror repos):** Used freely by engineers and agents to discover legacy patterns, author Static Matcher AST patterns, and tune LLM Verifier rubrics.
-- **`held-out` (13,211 files across 8,508 repositories, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`):** Reserved strictly for out-of-sample precision and recall validation (`scorecard.ts`). Never inspected when authoring or debugging rules, guaranteeing zero tuning leakage.
+The evaluation corpus is divided into two isolated splits across 26,426 files and 8,508 repositories covering active feature guides:
+- **`rule-writing`:** Used by engineers and agents to discover legacy patterns, author Static Matcher AST patterns, and tune LLM Verifier rubrics.
+- **`held-out`:** Reserved strictly for out-of-sample precision and recall validation. Kept separate when authoring or debugging rules to evaluate generalization on unseen code.
 
 Cross-split boundary isolation is statically verified by internal audit tooling.
 
@@ -286,7 +281,7 @@ node --env-file=.env src/analyzing/eval/detection-eval.ts
 node --env-file=.env src/analyzing/eval/update-eval.ts
 ```
 
-All scorecard results and audit trails are logged to `PROGRESS.md` and serialized in `analyzer-internal/findings/`.
+All scorecard results and audit trails are logged to `PROGRESS.md`.
 
 ---
 
@@ -297,7 +292,7 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 ### Step 1: Guide Triage
 1. **Verify Guide Triage status**: Ensure the feature guide is triaged with `detection: 'direct-token'`, `'structural-ast'`, or `'needs-verifier'` (never `'no-legacy-pattern'`).
 2. **Record the Guide Triage entry**: Identify concrete 1-to-1 legacy APIs, CSS workarounds, or npm packages that the modern platform feature directly replaces (`replaces`), alongside lookalike patterns that are out of scope (`doesNotReplace`).
-3. **Ground in real code**: Inspect only the `rule-writing` corpus (13,215 files across local and GitMirror repositories). Never inspect held-out code.
+3. **Ground in real code**: Inspect only the `rule-writing` corpus. Do not inspect held-out code.
 
 ### Step 2: Static Matcher Authoring
 1. **Choose matcher kind**: `JsRuleMatcher` (AST via `ts-morph`), `DomRuleMatcher` (HTML/JSX DOM via `linkedom`), `CssRuleMatcher` (CSS via `cssomnom`), or `DependencyRuleMatcher` (`package.json`).
