@@ -158,7 +158,7 @@ For more than one bar, call `--bar()` once per bar with its index and end positi
 | Element | Treatment |
 |---|---|
 | `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--bar()` and set `--lines: 2` |
-| `p` | 3 bars, last one shorter like a real paragraph |
+| `p` | 3 bars, last one shorter like a real paragraph. A paragraph that is one line in the real template (a byline or metadata row, for example `p:has(> time)`) gets 1 short bar and `--lines: 1`, so the card does not read as extra paragraphs |
 | `li` | 1 bar each, with a small circle for the bullet; vary widths. Start the bar at the real list's indent so the text does not shift when content arrives |
 | `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
 
