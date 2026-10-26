@@ -3,6 +3,10 @@ name: layout-dividers
 description: Draw visual dividers and separator lines between rows and columns in multi-column, flex, or grid layouts without adding extra border elements or outer container borders.
 web-feature-ids:
   - gap-decorations
+  - light-dark
+  - has
+  - nesting
+  - prefers-reduced-motion
 ---
 
 # Layout dividers
@@ -66,6 +70,8 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 
 ## Fallback strategies
 
+### Gap decorations
+
 {{ BASELINE_STATUS("gap-decorations") }}
 
 Gap decorations are decorative, so the modern approach needs no fallback by default: unsupported browsers render plain gaps and all content stays usable (graceful degradation).
@@ -82,3 +88,9 @@ If your Baseline target requires visible dividers, a fallback is only robust for
 ```
 
 Wrapping grids have no clean fallback; accept plain gaps there. A polyfill is in development, but do not recommend one.
+
+### light-dark()
+
+{{ BASELINE_STATUS("light-dark") }}
+
+If your Baseline target does not support `light-dark()`, use `currentColor` for the rule color, or a custom property that a `prefers-color-scheme` media query overrides.
