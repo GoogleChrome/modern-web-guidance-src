@@ -66,7 +66,7 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("gap-decorations") }}
+{{ BASELINE_STATUS("gap-decorations") }}
 
 Gap decorations are decorative, so the modern approach needs no fallback by default: unsupported browsers render plain gaps and all content stays usable (graceful degradation).
 
