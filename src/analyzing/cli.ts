@@ -25,6 +25,16 @@ export interface AnalyzeCliFinding {
   readonly line: number;
   readonly message: string;
   readonly codeSnippet: string;
+  readonly summary?: string;
+  readonly verifierRubric?: VerifierRubric;
+}
+
+export interface AnalyzeCliRuleGroup {
+  readonly ruleId: string;
+  readonly summary: string;
+  readonly verifierRubric?: VerifierRubric;
+  readonly count: number;
+  readonly findings: readonly AnalyzeCliFinding[];
 }
 
 export interface AnalyzeCliGuideGroup {
@@ -35,6 +45,7 @@ export interface AnalyzeCliGuideGroup {
   readonly verifierRubric?: VerifierRubric;
   readonly count: number;
   readonly findings: readonly AnalyzeCliFinding[];
+  readonly rules?: readonly AnalyzeCliRuleGroup[];
 }
 
 export interface AnalyzeJsonOutput {
@@ -263,41 +274,85 @@ export function formatHumanReadable(
     lines.push('');
 
     for (const g of guides) {
+      const hasMultipleRules = Boolean(g.rules && g.rules.length > 1);
       const tierBadge =
         g.tier === 'experimental'
           ? ` ${fmt('yellow', '[experimental]')}`
           : ` ${fmt('dim', '[qualified]')}`;
-      lines.push(
-        `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'})`)}`,
-      );
-      lines.push(`  ${g.summary}`);
 
-      if (g.verifierRubric) {
-        const keepRaw = Array.isArray(g.verifierRubric.keepWhen)
-          ? g.verifierRubric.keepWhen.join('; ')
-          : String(g.verifierRubric.keepWhen);
-        const dropRaw = Array.isArray(g.verifierRubric.dropWhen)
-          ? g.verifierRubric.dropWhen.join('; ')
-          : String(g.verifierRubric.dropWhen);
-        lines.push(`  ${fmt('dim', `Keep when: ${elideText(keepRaw, 110)}`)}`);
-        lines.push(`  ${fmt('dim', `Drop when: ${elideText(dropRaw, 110)}`)}`);
-      }
+      if (!hasMultipleRules) {
+        lines.push(
+          `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'})`)}`,
+        );
+        lines.push(`  ${g.summary}`);
 
-      const displayedFindings = sampleDiversifiedFindings(g.findings, 5, 2);
-      for (const f of displayedFindings) {
-        lines.push(`  - ${f.file}:${f.line}`);
-        const codePreview = extractTargetCodeLine(f.codeSnippet, 80);
-        if (codePreview) {
-          lines.push(`    ${fmt('dim', codePreview)}`);
+        if (g.verifierRubric) {
+          const keepRaw = Array.isArray(g.verifierRubric.keepWhen)
+            ? g.verifierRubric.keepWhen.join('; ')
+            : String(g.verifierRubric.keepWhen);
+          const dropRaw = Array.isArray(g.verifierRubric.dropWhen)
+            ? g.verifierRubric.dropWhen.join('; ')
+            : String(g.verifierRubric.dropWhen);
+          lines.push(`  ${fmt('dim', `Keep when: ${elideText(keepRaw, 110)}`)}`);
+          lines.push(`  ${fmt('dim', `Drop when: ${elideText(dropRaw, 110)}`)}`);
         }
-      }
 
-      if (g.findings.length > displayedFindings.length) {
-        const remaining = g.findings.length - displayedFindings.length;
-        lines.push(`  ... and ${remaining} more finding${remaining === 1 ? '' : 's'}`);
-      }
+        const displayedFindings = sampleDiversifiedFindings(g.findings, 5, 2);
+        for (const f of displayedFindings) {
+          lines.push(`  - ${f.file}:${f.line}`);
+          const codePreview = extractTargetCodeLine(f.codeSnippet, 80);
+          if (codePreview) {
+            lines.push(`    ${fmt('dim', codePreview)}`);
+          }
+        }
 
-      lines.push('');
+        if (g.findings.length > displayedFindings.length) {
+          const remaining = g.findings.length - displayedFindings.length;
+          lines.push(`  ... and ${remaining} more finding${remaining === 1 ? '' : 's'}`);
+        }
+
+        lines.push('');
+      } else {
+        const ruleCount = g.rules!.length;
+        lines.push(
+          `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'} across ${ruleCount} rules)`)}`,
+        );
+
+        for (const rg of g.rules!) {
+          lines.push('');
+          lines.push(
+            `  ${fmt('bold', rg.ruleId)} ${fmt('dim', `(${rg.count} finding${rg.count === 1 ? '' : 's'})`)}`,
+          );
+          lines.push(`    ${rg.summary}`);
+
+          if (rg.verifierRubric) {
+            const keepRaw = Array.isArray(rg.verifierRubric.keepWhen)
+              ? rg.verifierRubric.keepWhen.join('; ')
+              : String(rg.verifierRubric.keepWhen);
+            const dropRaw = Array.isArray(rg.verifierRubric.dropWhen)
+              ? rg.verifierRubric.dropWhen.join('; ')
+              : String(rg.verifierRubric.dropWhen);
+            lines.push(`    ${fmt('dim', `Keep when: ${elideText(keepRaw, 110)}`)}`);
+            lines.push(`    ${fmt('dim', `Drop when: ${elideText(dropRaw, 110)}`)}`);
+          }
+
+          const displayedFindings = sampleDiversifiedFindings(rg.findings, 5, 2);
+          for (const f of displayedFindings) {
+            lines.push(`    - ${f.file}:${f.line}`);
+            const codePreview = extractTargetCodeLine(f.codeSnippet, 80);
+            if (codePreview) {
+              lines.push(`      ${fmt('dim', codePreview)}`);
+            }
+          }
+
+          if (rg.findings.length > displayedFindings.length) {
+            const remaining = rg.findings.length - displayedFindings.length;
+            lines.push(`    ... and ${remaining} more finding${remaining === 1 ? '' : 's'}`);
+          }
+        }
+
+        lines.push('');
+      }
     }
 
     lines.push(
@@ -413,14 +468,13 @@ export async function runAnalyzeCli(
     findingsByGuide.set(f.guideId, list);
   }
 
-  const summaryMap = new Map<string, string>();
-  const rubricMap = new Map<string, VerifierRubric>();
+  const ruleMap = new Map<string, AnalyzerRule>();
   for (const r of ALL_RULES) {
-    if (!summaryMap.has(r.guideId)) {
-      summaryMap.set(r.guideId, r.summary);
-    }
-    if (!rubricMap.has(r.guideId)) {
-      rubricMap.set(r.guideId, r.verifierRubric);
+    ruleMap.set(r.id, r);
+  }
+  if (options?.rules) {
+    for (const r of options.rules) {
+      ruleMap.set(r.id, r);
     }
   }
 
@@ -435,9 +489,46 @@ export async function runAnalyzeCli(
       return a.ruleId.localeCompare(b.ruleId);
     });
 
-    const summary = summaryMap.get(gid) ?? `Modernize legacy web pattern for ${gid}`;
-    const verifierRubric = rubricMap.get(gid);
+    const ruleIdsInFindings = Array.from(new Set(guideFindings.map((f) => f.ruleId))).sort();
+
+    const ruleGroups: AnalyzeCliRuleGroup[] = ruleIdsInFindings.map((rid) => {
+      const rule = ruleMap.get(rid);
+      if (!rule) {
+        throw new Error(`Rule definition not found for ruleId "${rid}" (guide "${gid}")`);
+      }
+      if (!rule.summary || !rule.summary.trim()) {
+        throw new Error(`Rule "${rule.id}" is missing a required summary string`);
+      }
+      const rf = guideFindings.filter((f) => f.ruleId === rid);
+      return {
+        ruleId: rid,
+        summary: rule.summary,
+        ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
+        count: rf.length,
+        findings: rf.map((f) => ({
+          ruleId: f.ruleId,
+          file: f.file,
+          line: f.line,
+          message: f.message,
+          codeSnippet: f.codeSnippet || f.contextSlice,
+          summary: rule.summary,
+          ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
+        })),
+      };
+    });
+
     const tier = getGuideConfidenceTier(gid);
+    const isSingleRule = ruleGroups.length === 1;
+    const primaryRule = ruleGroups[0];
+    if (!primaryRule) {
+      throw new Error(`No rules with findings found for guide "${gid}"`);
+    }
+
+    const summary = isSingleRule
+      ? primaryRule.summary
+      : ruleGroups.map((rg) => rg.summary).join('; ');
+    const verifierRubric = isSingleRule ? primaryRule.verifierRubric : undefined;
+
     return {
       guideId: gid,
       tier,
@@ -445,13 +536,25 @@ export async function runAnalyzeCli(
       retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
       ...(verifierRubric ? { verifierRubric } : {}),
       count: guideFindings.length,
-      findings: guideFindings.map((f) => ({
-        ruleId: f.ruleId,
-        file: f.file,
-        line: f.line,
-        message: f.message,
-        codeSnippet: f.codeSnippet || f.contextSlice,
-      })),
+      findings: guideFindings.map((f) => {
+        const rule = ruleMap.get(f.ruleId);
+        if (!rule) {
+          throw new Error(`Rule definition not found for ruleId "${f.ruleId}" (guide "${gid}")`);
+        }
+        if (!rule.summary || !rule.summary.trim()) {
+          throw new Error(`Rule "${rule.id}" is missing a required summary string`);
+        }
+        return {
+          ruleId: f.ruleId,
+          file: f.file,
+          line: f.line,
+          message: f.message,
+          codeSnippet: f.codeSnippet || f.contextSlice,
+          summary: rule.summary,
+          ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
+        };
+      }),
+      ...(ruleGroups.length > 1 ? { rules: ruleGroups } : {}),
     };
   });
 

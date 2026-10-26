@@ -13,6 +13,7 @@ import {
   type AnalyzeJsonOutput,
 } from './cli.ts';
 import { ALL_RULES } from './rules/index.ts';
+import type { AnalyzerRule } from './schema.ts';
 
 describe('runAnalyzeCli', () => {
   it('handles help flags (-h, --help)', async () => {
@@ -500,6 +501,126 @@ describe('runAnalyzeCli', () => {
         const parsedDocs = JSON.parse(resDocs.output) as AnalyzeJsonOutput;
         assert.equal(parsedDocs.totalFindings, 1);
         assert.equal(parsedDocs.guides[0]?.findings[0]?.file, 'sample.html');
+      } finally {
+        await rm(testDir, { recursive: true, force: true });
+      }
+    });
+
+    it('accurately associates each finding with its own rule summary and rubric in multi-rule guides', async () => {
+      const testDir = await mkdtemp(join(tmpdir(), 'analyzer-multirule-test-'));
+      try {
+        const ruleA: AnalyzerRule = {
+          id: 'test-multirule/package-rule',
+          guideId: 'test-multirule',
+          guideHash: '111122223333',
+          summary: 'Summary for Rule A (package dependency replacement)',
+          matcher: {
+            kind: 'dependency',
+            packages: ['mock-pkg-a'],
+            matchPackage: (pkg) => ({ message: `Replace ${pkg} with native feature` }),
+          },
+          verifierRubric: {
+            keepWhen: ['A project declares mock-pkg-a in package.json dependencies'],
+            dropWhen: ['The package is unreferenced or unused'],
+          },
+        };
+
+        const ruleB: AnalyzerRule = {
+          id: 'test-multirule/css-rule',
+          guideId: 'test-multirule',
+          guideHash: '111122223333',
+          summary: 'Summary for Rule B (CSS style workaround)',
+          matcher: {
+            kind: 'css',
+            fastTokens: ['.custom-style'],
+            matchRule: (rule) => {
+              if (rule.selectorText.includes('.custom-style')) {
+                return { message: 'Replace .custom-style with modern CSS container queries' };
+              }
+              return null;
+            },
+          },
+          verifierRubric: {
+            keepWhen: ['CSS rule uses .custom-style to simulate responsive tables'],
+            dropWhen: ['Stylesheet already uses @container queries'],
+          },
+        };
+
+        // 1. Only Rule B matches (CSS file present, no package.json dependency)
+        await writeFile(join(testDir, 'style.css'), '.custom-style { color: red; }', 'utf8');
+
+        const resBOnly = await runAnalyzeCli([testDir, '--json'], { rules: [ruleA, ruleB] });
+        assert.equal(resBOnly.exitCode, 0);
+        const parsedBOnly = JSON.parse(resBOnly.output) as AnalyzeJsonOutput;
+        assert.equal(parsedBOnly.totalFindings, 1);
+
+        const guideBOnly = parsedBOnly.guides[0];
+        assert.ok(guideBOnly);
+        assert.equal(guideBOnly.guideId, 'test-multirule');
+        // Must show Rule B's summary and rubric, NOT Rule A's!
+        assert.equal(guideBOnly.summary, 'Summary for Rule B (CSS style workaround)');
+        assert.deepEqual(guideBOnly.verifierRubric, ruleB.verifierRubric);
+        assert.equal(guideBOnly.findings[0]?.summary, 'Summary for Rule B (CSS style workaround)');
+        assert.deepEqual(guideBOnly.findings[0]?.verifierRubric, ruleB.verifierRubric);
+
+        const resHumanBOnly = await runAnalyzeCli([testDir], { rules: [ruleA, ruleB] });
+        assert.ok(resHumanBOnly.output.includes('Summary for Rule B (CSS style workaround)'));
+        assert.ok(!resHumanBOnly.output.includes('Summary for Rule A'));
+        assert.ok(resHumanBOnly.output.includes('CSS rule uses .custom-style'));
+
+        // 2. Both Rule A and Rule B match (add package.json with mock-pkg-a)
+        await writeFile(
+          join(testDir, 'package.json'),
+          JSON.stringify({ dependencies: { 'mock-pkg-a': '^1.0.0' } }),
+          'utf8',
+        );
+
+        const resBoth = await runAnalyzeCli([testDir, '--json'], { rules: [ruleA, ruleB] });
+        assert.equal(resBoth.exitCode, 0);
+        const parsedBoth = JSON.parse(resBoth.output) as AnalyzeJsonOutput;
+        assert.equal(parsedBoth.totalFindings, 2);
+
+        const guideBoth = parsedBoth.guides[0];
+        assert.ok(guideBoth);
+        assert.ok(guideBoth.rules && guideBoth.rules.length === 2);
+
+        const ruleGroupA = guideBoth.rules.find((r) => r.ruleId === 'test-multirule/package-rule');
+        const ruleGroupB = guideBoth.rules.find((r) => r.ruleId === 'test-multirule/css-rule');
+        assert.ok(ruleGroupA && ruleGroupB);
+        assert.equal(ruleGroupA.summary, ruleA.summary);
+        assert.deepEqual(ruleGroupA.verifierRubric, ruleA.verifierRubric);
+        assert.equal(ruleGroupB.summary, ruleB.summary);
+        assert.deepEqual(ruleGroupB.verifierRubric, ruleB.verifierRubric);
+
+        // Every finding in findings array has its own rule's summary and rubric
+        const findingA = guideBoth.findings.find((f) => f.ruleId === 'test-multirule/package-rule');
+        const findingB = guideBoth.findings.find((f) => f.ruleId === 'test-multirule/css-rule');
+        assert.ok(findingA && findingB);
+        assert.equal(findingA.summary, ruleA.summary);
+        assert.deepEqual(findingA.verifierRubric, ruleA.verifierRubric);
+        assert.equal(findingB.summary, ruleB.summary);
+        assert.deepEqual(findingB.verifierRubric, ruleB.verifierRubric);
+
+        // Human output renders multi-rule guide with distinct rule blocks
+        const resHumanBoth = await runAnalyzeCli([testDir], { rules: [ruleA, ruleB] });
+        assert.ok(resHumanBoth.output.includes('2 findings across 2 rules'));
+        assert.ok(resHumanBoth.output.includes('test-multirule/package-rule (1 finding)'));
+        assert.ok(resHumanBoth.output.includes('test-multirule/css-rule (1 finding)'));
+        assert.ok(resHumanBoth.output.includes('Summary for Rule A'));
+        assert.ok(resHumanBoth.output.includes('Summary for Rule B'));
+
+        // 3. Fail fast: a rule without a summary throws an error rather than silent fallback
+        const brokenRule: AnalyzerRule = {
+          ...ruleA,
+          id: 'test-multirule/broken-rule',
+          summary: '   ', // whitespace / empty
+        };
+        await assert.rejects(
+          async () => {
+            await runAnalyzeCli([testDir, '--json'], { rules: [brokenRule] });
+          },
+          /Rule "test-multirule\/broken-rule" is missing a required summary string/,
+        );
       } finally {
         await rm(testDir, { recursive: true, force: true });
       }

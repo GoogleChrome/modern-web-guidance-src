@@ -47,9 +47,9 @@ Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
     $('.settings').autosize();
 
 * responsive-table [qualified] (1 finding)
-  Legacy responsive table packages (tablesaw, footable, basictable, jquery-basictable) should be modernized with native CSS Container Queries and stacked/scroll-snap mobile table layouts.
-  Keep when: A project declares tablesaw, footable, basictable, or jquery-basictable in package.json dependencies to imple…
-  Drop when: The package is unreferenced or unused in the build output.; The application uses standard modern container qu…
+  Table cell stacking using td::before content: attr(data-*) without @container queries should be modernized with CSS Container Queries.
+  Keep when: A CSS rule uses td::before or td:before with content: attr(data-label), attr(data-th), or attr(data-title) to…
+  Drop when: The stylesheet already uses @container queries to adapt the table layout based on container width.; The conte…
   - src/static/css/admin.css:269
     td:before {
 
@@ -84,7 +84,7 @@ Coding agents receive structured JSON containing exact file coordinates, confide
     {
       "guideId": "responsive-table",
       "tier": "qualified",
-      "summary": "Legacy responsive table packages (tablesaw, footable, basictable, jquery-basictable) should be modernized with native CSS Container Queries and stacked/scroll-snap mobile table layouts.",
+      "summary": "Table cell stacking using td::before content: attr(data-*) without @container queries should be modernized with CSS Container Queries.",
       "retrieveCommand": "npx modern-web-guidance retrieve responsive-table",
       "count": 1,
       "findings": [
