@@ -612,6 +612,38 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     lifecycle: { status: 'retired', reason: "Web Crypto signatures need exact key and encoding alignment (DER vs raw), so this isn't a safe in-place change." },
     rules: [],
   },
+  {
+    guideId: 'resilient-context-menus-and-nested-dropdowns',
+    lifecycle: {
+      status: 'retired',
+      reason: 'Guide renamed to viewport-aware-dropdowns; the old Bootstrap dropdown-toggle rule was removed.',
+    },
+    rules: [],
+  },
+  {
+    guideId: 'shadow-dom',
+    lifecycle: {
+      status: 'retired',
+      reason: "Removed: string templates in script tags aren't Shadow DOM targets.",
+    },
+    rules: [],
+  },
+  {
+    guideId: 'copy-button',
+    lifecycle: {
+      status: 'retired',
+      reason: "Guide is still a stub on this branch; restore the rule once the guide's content merges.",
+    },
+    rules: [],
+  },
+  {
+    guideId: 'accessible-error-announcement',
+    lifecycle: {
+      status: 'retired',
+      reason: "Removed: static CSS selectors can't detect missing live-region announcements.",
+    },
+    rules: [],
+  },
 ];
 
 export const RULE_REGISTRY_BY_GUIDE_ID: ReadonlyMap<string, RuleRegistryEntry> = new Map(
