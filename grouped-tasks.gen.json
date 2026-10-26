@@ -465,6 +465,9 @@
       "checkbox": [
         "daily-grind"
       ],
+      "dark-mode-toggle": [
+        "daily-grind"
+      ],
       "hovercard": [
         "daily-grind"
       ],
