@@ -110,23 +110,30 @@ export async function searchUseCases(
     }
   }
   const dense = [...best.values()].sort((a, b) => b.similarity - a.similarity);
-  if (dense.length === 0 || dense[0].similarity < minSimilarity) {
+  const bm25Matches = rankBm25(cachedCorpus.bm25, query);
+
+  const topDenseSim = dense.length > 0 ? dense[0].similarity : 0;
+  if (topDenseSim < minSimilarity && bm25Matches.length === 0) {
     logToolResult("search_use_cases", []);
     return [];
   }
 
-  const fused = reciprocalRankFusion([dense.map((r) => r.item.id), rankBm25(cachedCorpus.bm25, query).map((r) => r.id)]);
+  const fused = reciprocalRankFusion([
+    dense.map((r) => r.item.id),
+    bm25Matches.map((r) => r.id),
+  ]);
 
   const limitedResults = fused.slice(0, limit).map(({ id }) => {
     const r = best.get(id);
-    if (!r) throw new Error(`BM25 returned guide "${id}" that has no vectors`);
+    const item = r ? r.item : cachedCorpus!.vectors.find((v) => v.id === id)!;
+    const similarity = r ? r.similarity : 0;
     return {
-      id: r.item.id,
-      description: r.item.description,
-      category: r.item.category,
-      featuresUsed: r.item.featuresUsed.length > 0 ? r.item.featuresUsed : undefined,
-      tokenCount: r.item.tokenCount,
-      similarity: parseFloat(r.similarity.toFixed(4))
+      id: item.id,
+      description: item.description,
+      category: item.category,
+      featuresUsed: item.featuresUsed.length > 0 ? item.featuresUsed : undefined,
+      tokenCount: item.tokenCount,
+      similarity: parseFloat(similarity.toFixed(4)),
     };
   });
 
