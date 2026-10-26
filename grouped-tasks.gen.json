@@ -416,6 +416,9 @@
       "same-document-transitions": [
         "task"
       ],
+      "scoped-component-transitions": [
+        "daily-grind"
+      ],
       "scroll-completion-effects": [
         "daily-grind"
       ],
