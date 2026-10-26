@@ -1,1 +1,1 @@
-- Build a data table that presents tabular data with proper header semantics, and remains readable and navigable on small screens and with assistive technologies.
+- Add a drink comparison table under Seasonal Favorites on the Daily Grind homepage that lists each drink (Maple Oat Latte, Dark Roast Espresso, Cold Brew) with its small, medium, and large prices plus calories and caffeine, and make sure it stays readable on phones and navigable with assistive technologies even when it's too wide to fit on screen.
