@@ -9,20 +9,15 @@ web-feature-ids:
   - container-queries
 guides:
   - menu
-  - element-shape
-  - overflow-popup
-  - responsive-disclosure
-  - tabs
-  - navbar
 ---
 
 # Build breadcrumbs
 
 Breadcrumbs show where the user is in a site hierarchy and link to each ancestor page. Optionally, each ancestor can expose a dropdown of sibling pages, and long trails can collapse on narrow containers.
 
-To switch between views of the same page use the `tabs` guide ({{ GUIDE_REF("tabs") }}); for site-wide navigation use {{ GUIDE_REF("navbar") }}.
+This is not for switching between views of the same page (tabs) or for site-wide navigation (a navbar). For the dropdown's menu mechanics, see {{ GUIDE_REF("menu") }}.
 
-For the dropdown menu mechanics, see {{ GUIDE_REF("menu") }}. For custom segment shapes beyond the snippets below, see {{ GUIDE_REF("element-shape") }}. For the collapsed "…" overflow list, see {{ GUIDE_REF("overflow-popup") }} and {{ GUIDE_REF("responsive-disclosure") }}.
+{# Maintainer note: the tabs, navbar, element-shape, overflow-popup and responsive-disclosure guides are still empty shells, so they are not linked. When they are written, link tabs and navbar from the first sentence, element-shape from "Shaped segments" and "Corner treatments", and overflow-popup and responsive-disclosure from "Collapsing long trails". #}
 
 ## 1. Semantics (MANDATORY)
 
@@ -54,7 +49,7 @@ For the dropdown menu mechanics, see {{ GUIDE_REF("menu") }}. For custom segment
 
 Pick **one** shape per trail: slant or arrow. The snippets below are alternatives, not meant to be combined.
 
-- Define each segment's polygon in a custom property (`--shape`) and apply it with `border-shape` so borders and focus outlines follow the shape. See {{ GUIDE_REF("element-shape") }}.
+- Define each segment's polygon in a custom property (`--shape`) and apply it with `border-shape` so borders and focus outlines follow the shape.
 - Selectors are illustrative; use your own hook (`.breadcrumb` here). Scope to `> ol > li > a` so dropdown menu links aren't shaped. Only add per-variant classes if one page really shows several variants.
 - Make the slant or point size responsive with `clamp()` and container units (`cqi`).
 - Pair state colors with the shape: hover and current-page styles must use background or text color, not border color, so they still show under the `clip-path` fallback. Keep the focus style visually distinct from hover.
@@ -108,7 +103,7 @@ Each segment points forward; the first item has a flat leading edge. Overlap nei
 
 ### Corner treatments (pills, tags)
 
-- Use `corner-shape` (`squircle`, `bevel`, `scoop`, `notch`) together with `border-radius`; the radius controls the size and `corner-shape` the form. See {{ GUIDE_REF("element-shape") }}.
+- Use `corner-shape` (`squircle`, `bevel`, `scoop`, `notch`) together with `border-radius`; the radius controls the size and `corner-shape` the form.
 
 ## 3. Sibling dropdowns (optional)
 
@@ -124,7 +119,7 @@ Add when ancestors have meaningful siblings (e.g. docs sections); skip for simpl
 
 ## 4. Collapsing long trails (optional)
 
-Use for trails with more than ~4 items. See {{ GUIDE_REF("overflow-popup") }}.
+Use for trails with more than ~4 items.
 
 - Make the `<nav>` a size container (`container-type: inline-size`) so it responds to its own width, not the viewport.
 - Keep first item, last two items; mark the middle items with a class and hide them in a container query. Add a "…" `<li>` containing a `[popover]` button that lists the hidden links (copy the middle links into the popover). Give the button `aria-label="Show N more breadcrumbs"`.
