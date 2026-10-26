@@ -425,9 +425,8 @@
     /* ---------- Helpers ---------- */
 
     function getText(el) {
-      if (el.matches('input, textarea, select')) return el.value;
-      // optional override: <div data-copy-value="...">
-      if (el.dataset.copyValue) return el.dataset.copyValue;
+      // Form controls expose their text through .value
+      if (el.matches('input, textarea')) return el.value;
       // innerText preserves line breaks as rendered
       return el.innerText.trim();
     }
