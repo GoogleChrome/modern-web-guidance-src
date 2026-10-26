@@ -52,7 +52,7 @@ Build a button that copies the text of another element (code block, inline value
 }
 ```
 
-### 2. Handler (MANDATORY)
+### 2. Copying logic
 
 Put the copy logic in one function so the native and fallback paths share it.
 
