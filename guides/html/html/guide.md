@@ -282,7 +282,7 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 
 - **DON'T** nest other interactive elements (links, buttons) directly inside `<summary>` text as it may break expected focus behaviour and screen reader announcements.
 - **DON'T** hide visible triangles via `list-style: none` without providing explicit directional cues (via `::before`/`::after` pseudo-elements).
-- **DON'T** use the `title` attribute to create tooltip effects.
+- **DON'T** use the `title` attribute to create tooltip effects, as these cannot be accessed using a keyboard. Instead, use accessible tooltip patterns that can be triggered using a keyboard, and are consistently announced by screen readers.
 - **DON'T** provide text alternatives for custom state indicator icons (implemented using `<img>` or `<svg>` elements), as state should be communicated by the `<summary>` element, and a text alternative would duplicate this information
 
 ### Code Example
