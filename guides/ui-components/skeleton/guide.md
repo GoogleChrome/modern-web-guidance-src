@@ -58,6 +58,18 @@ const finishLoading = () => { status.textContent = ''; };
 
 Skeleton colors belong to the surface. Define `--skeleton-tone` on the container and derive it from the surface with `color-mix(in oklab, …)`, mixing a little of the text color into the surface color, so a darker surface gets a darker skeleton. Derive a lighter `--skeleton-highlight` the same way for the shimmer. Mix in `oklab`, not `srgb`, which blends unevenly. Use the container's real background and text tokens.
 
+MANDATORY: Handle forced colors. It replaces text and background colors, so the transparent text would show and the bar and block fills would disappear. Opt the skeleton out with `forced-color-adjust: none` on the container (the property inherits to everything inside it) and use a system color for the tone, so the placeholders follow the user's theme.
+
+```css
+@media (forced-colors: active) {
+  .skeleton[aria-busy="true"] {
+    forced-color-adjust: none;
+    --skeleton-tone: GrayText;
+    --skeleton-highlight: GrayText; /* Same as the tone, so there is no shimmer */
+  }
+}
+```
+
 ## 3. Text
 
 Text, standalone links and list items share one rule that hides the content and applies the fill. Each element then sets its own bars in a `--bars` custom property, built from a small `--bar()` CSS function, so headings, paragraphs and links differ in bar count and length and not in the rule. Links inside a paragraph, list item or heading are not styled separately: they are hidden along with the surrounding text, so the selector excludes them. `:where()` keeps its specificity unchanged.

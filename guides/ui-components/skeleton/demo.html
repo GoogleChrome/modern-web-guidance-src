@@ -166,6 +166,17 @@
         --skeleton-highlight: color-mix(in oklab, var(--surface) 70%, white);
       }
 
+      /* Forced colors replaces text and background colors, which would show the
+         real text and drop the fills. Opt the skeleton out and use a system
+         color, so the placeholders follow the user's theme. */
+      @media (forced-colors: active) {
+        .skeleton[aria-busy="true"] {
+          forced-color-adjust: none;
+          --skeleton-tone: GrayText;
+          --skeleton-highlight: GrayText; /* Same as the tone: no shimmer */
+        }
+      }
+
       /* One text bar as a closed rounded rectangle, ending at --end. --i is the
          bar's line index; the bar sits on the line pitch (--bar-height +
          --bar-gap, which is 1lh). It reads --bar-height, --bar-gap and
