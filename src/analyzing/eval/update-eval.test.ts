@@ -195,7 +195,7 @@ describe('checkModernFeaturePresent', () => {
     );
   });
 
-  it('rejects comment-only feature spoofs in Gate 2c (G15)', () => {
+  it('rejects comment-only feature spoofs in Check 2c (G15)', () => {
     assert.strictEqual(
       checkModernFeaturePresent('brand-consistent-forms', '/* accent-color: #0070f3; */ input { margin: 0; }'),
       false,
@@ -269,11 +269,11 @@ describe('checkModernFeaturePresent', () => {
   it('throws an error for unknown / unconstrained guide IDs per Fail Fast', () => {
     assert.throws(
       () => checkModernFeaturePresent('unconstrained-guide-xyz', 'const foo = 1;'),
-      /Missing Gate 2c modern feature validator for guideId: unconstrained-guide-xyz/,
+      /Missing Check 2c modern feature validator for guideId: unconstrained-guide-xyz/,
     );
   });
 
-  it('has explicit Gate 2c validators for all guides in ALL_RULES', () => {
+  it('has explicit Check 2c validators for all guides in ALL_RULES', () => {
     const allGuideIds = [...new Set(ALL_RULES.map((r) => r.guideId))];
     assert.strictEqual(allGuideIds.length, 71);
     for (const guideId of allGuideIds) {
@@ -568,7 +568,7 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
   }
   const testFixture = foundFixture;
 
-  it('Gate 1 fails on no-op patch (legacy finding remains)', async () => {
+  it('Check 1 (Finding Eliminated) fails on no-op patch (legacy finding remains)', async () => {
     const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
@@ -582,7 +582,7 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
     assert.ok(res.findingEliminatedCheck.findingsRemaining > 0);
   });
 
-  it('Gate 2a fails on syntax error', async () => {
+  it('Check 2a fails on syntax error', async () => {
     const patch: UpdatePatch = {
       filePath: 'src/scheduler.ts',
       originalContent: testFixture.originalContent,
@@ -596,7 +596,7 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
     assert.strictEqual(res.modernSyntaxCheck.syntaxClean, false);
   });
 
-  it('Gate 2b fails on gutting / deletion', async () => {
+  it('Check 2b fails on gutting / deletion', async () => {
     const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
@@ -610,7 +610,7 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
     assert.strictEqual(res.modernSyntaxCheck.structuralIntegrityPassed, false);
   });
 
-  it('Gate 2c fails on evasion without modern feature', async () => {
+  it('Check 2c fails on evasion without modern feature', async () => {
     const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
@@ -624,7 +624,7 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
     assert.strictEqual(res.modernSyntaxCheck.modernFeatureVerified, false);
   });
 
-  it('Gate 3 fails when behavioralCheck callback fails', async () => {
+  it('Check 3 (Behavioral) fails when behavioralCheck callback fails', async () => {
     const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
@@ -642,7 +642,7 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
     assert.strictEqual(res.behavioralCheck.status, 'FAILED');
   });
 
-  it('passes all 3 gates on reference good patch', async () => {
+  it('passes all 3 checks on reference good patch', async () => {
     const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
@@ -660,7 +660,7 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
     assert.strictEqual(res.behavioralCheck.status, 'PASSED');
   });
 
-  it('evaluates Gate 1 on patchedWindow when provided for windowed refactoring', async () => {
+  it('evaluates Check 1 on patchedWindow when provided for windowed updating', async () => {
     const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
@@ -802,7 +802,7 @@ describe('checkAgentModernizationInvariants (R61)', () => {
         guideId: fc.guideId,
       });
 
-      assert.strictEqual(res.resolved, false, `Expected failure case "${fc.id}" to fail Gate 2`);
+      assert.strictEqual(res.resolved, false, `Expected failure case "${fc.id}" to fail Check 2`);
       assert.strictEqual(res.modernSyntaxCheck.passed, false, `Expected modernSyntaxCheck to fail for "${fc.id}"`);
       assert.strictEqual(res.modernSyntaxCheck.invariantPassed, false, `Expected invariant check to fail for "${fc.id}"`);
       assert.strictEqual(res.modernSyntaxCheck.failureReason, fc.expectedFailureReason);

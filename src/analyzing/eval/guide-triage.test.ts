@@ -120,7 +120,7 @@ void test('guide-triage: parseGuideTriageResponse validation', async (t) => {
   await t.test('throws on malformed JSON', () => {
     assert.throws(
       () => parseGuideTriageResponse('{ invalid json', 'test-guide'),
-      /Gate 0 response JSON parse error for guide test-guide/,
+      /Guide Triage response JSON parse error for guide test-guide/,
     );
   });
 
@@ -133,7 +133,7 @@ void test('guide-triage: parseGuideTriageResponse validation', async (t) => {
     });
     assert.throws(
       () => parseGuideTriageResponse(raw, 'test-guide'),
-      /Gate 0 response invalid classification 'invalid-bucket' for guide test-guide/,
+      /Guide Triage response invalid classification 'invalid-bucket' for guide test-guide/,
     );
   });
 
@@ -148,7 +148,7 @@ void test('guide-triage: parseGuideTriageResponse validation', async (t) => {
     });
     assert.throws(
       () => parseGuideTriageResponse(raw, 'test-guide'),
-      /Gate 0 response missing string 'brownfieldTarget' for guide test-guide/,
+      /Guide Triage response missing string 'brownfieldTarget' for guide test-guide/,
     );
   });
 });
@@ -304,7 +304,7 @@ void test('guide-triage: triageGuide with mock fetch', async (t) => {
             maxRetries: 1,
           },
         ),
-      /Gate 0 triageGuide failed for failing-guide with HTTP 502/,
+      /Guide Triage failed for failing-guide with HTTP 502/,
     );
   });
 });

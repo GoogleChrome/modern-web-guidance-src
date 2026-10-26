@@ -6,8 +6,6 @@
  * When `gd analyze` runs in a terminal without an LLM, >= 90% of findings are legit.
  */
 
-export type QualificationTier = 'A' | 'B' | 'C';
-
 /**
  * Candidate guides temporarily suspended from default shipping qualification pending human spot-checks.
  */

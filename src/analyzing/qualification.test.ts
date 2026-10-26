@@ -7,7 +7,7 @@ import {
 } from './qualification.ts';
 
 describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045, D-046, D-048)', () => {
-  it('maintains 6 default shipping guides under Raw P1 precision >= 90.0% at n >= 20', () => {
+  it('maintains 6 default shipping guides under Static Matcher Precision >= 90.0% at n >= 20', () => {
     assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 6);
     assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, [
       'autofill-address-form',
@@ -28,8 +28,8 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
     ]);
   });
 
-  it('guarantees shipping lists cannot include ungraduated or suspended guides (O64, D-048)', () => {
-    const nonGraduated = [
+  it('guarantees shipping lists cannot include experimental or suspended guides (O64, D-048)', () => {
+    const nonQualified = [
       'autofill-highlight-inputs',
       'complex-shapes',
       'coordinate-global-events',
@@ -57,16 +57,16 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
       'branded-select-styling',
       'ime-safe-enter-submit',
     ];
-    for (const gid of nonGraduated) {
+    for (const gid of nonQualified) {
       assert.strictEqual(
         QUALIFIED_GUIDE_IDS.includes(gid),
         false,
-        `Non-graduated guide "${gid}" must NOT be in QUALIFIED_GUIDE_IDS`,
+        `Experimental guide "${gid}" must NOT be in QUALIFIED_GUIDE_IDS`,
       );
       assert.strictEqual(
         isGuideQualified(gid),
         false,
-        `Non-graduated guide "${gid}" must NOT be isGuideQualified`,
+        `Experimental guide "${gid}" must NOT be isGuideQualified`,
       );
     }
     assert.strictEqual(isGuideQualified('responsive-table'), true);

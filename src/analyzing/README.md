@@ -110,15 +110,15 @@ flowchart TD
 
 ## 3. Architecture: Static Matcher + LLM Verifier
 
-High-precision static analysis requires balancing high recall against near-zero false positive rates across diverse real-world frameworks. The analyzer achieves this through a two-step runtime architecture:
+High-precision static analysis requires balancing high recall against near-zero matcher misfire rates across diverse real-world frameworks. The analyzer achieves this through a two-step runtime architecture:
 
 ```mermaid
 flowchart LR
-    Source["Codebase Source Files<br/>(TS/JS, JSX/HTML, CSS, JSON)"] --> P1["Static Matcher<br/>AST & Token Pattern Matching<br/>(High Recall, Fast)"]
-    P1 --> RawCards["Candidate Findings<br/>(Card ID: SHA-256 slice)"]
-    RawCards --> P2["LLM Verifier<br/>Rubric Check: keepWhen / dropWhen<br/>(High Precision)"]
-    P2 --> Kept["Kept Modernization Findings"]
-    P2 -.-> Dropped["Dropped False Positives<br/>(Guarded, Shadowed, Non-DOM)"]
+    Source["Codebase Source Files<br/>(TS/JS, JSX/HTML, CSS, JSON)"] --> StaticMatcher["Static Matcher<br/>AST & Token Pattern Matching<br/>(High Recall, Fast)"]
+    StaticMatcher --> RawCards["Candidate Findings<br/>(Card ID: SHA-256 slice)"]
+    RawCards --> LlmVerifier["LLM Verifier<br/>Rubric Check: keepWhen / dropWhen<br/>(High Precision)"]
+    LlmVerifier --> Kept["Kept Modernization Findings"]
+    LlmVerifier -.-> Dropped["Dropped False Positives<br/>(Guarded, Shadowed, Non-DOM)"]
 ```
 
 ### Static Matcher (High-Recall Deterministic Scanner)
@@ -219,34 +219,25 @@ Rules qualify for default terminal shipping under the **Static Matcher precision
 
 Every web platform standard in the catalog is classified across two orthogonal axes in `analyzer-internal/guide-triage.json` (covering all **249 catalog guides**):
 - **Axis 1: Detection (`detection`):**
-  - `direct-token` (47 guides) & `structural-ast` (61 guides): Deterministic token, AST, DOM, CSS, or `package.json` patterns (`ast-only` in `LEXICON.md`) with high signal-to-noise ratio requiring no LLM runtime verification.
+  - `direct-token` (47 guides) & `structural-ast` (61 guides): Deterministic token, AST, DOM, CSS, or `package.json` patterns with high signal-to-noise ratio requiring no LLM runtime verification.
   - `needs-verifier` (34 guides): Pattern detectable by static matchers but requiring runtime LLM Verifier evaluation against a `verifierRubric` (`keepWhen` / `dropWhen`) to reject subtle false alarms.
   - `no-legacy-pattern` (107 guides): Visual, behavioral, or greenfield capability without a distinguishable brownfield syntax footprint to replace.
 - **Axis 2: Update Scope (`updateScope`):**
-  - `local-swap` (72 guides): Replacing or adding a property, selector, attribute, or call at the same site (`call-site-swap` in `LEXICON.md`; e.g., standard `autocomplete` attributes, `text-wrap: balance`, `field-sizing: content`).
+  - `local-swap` (72 guides): Replacing or adding a property, selector, attribute, or call at the same site (e.g., standard `autocomplete` attributes, `text-wrap: balance`, `field-sizing: content`).
   - `cross-layer-refactor` (44 guides): Deleting imperative JS listeners, observers, or helper libraries and moving behavior into declarative CSS or HTML (`@starting-style`, `animation-timeline`, `:has()`).
   - `widget-recipe` (26 guides): Coordinating HTML structure, CSS layout/styling, and JS behavior across multiple parts of a composite UI widget.
   - `n/a` (107 guides): Applicable when detection is `no-legacy-pattern`.
 
-### Qualified Feature Guides (15 Qualified Guides across 20 Rules)
+### Qualified Feature Guides (6 Qualified Guides across 8 Rules)
 
-| # | Guide ID | Matcher Kind | Qualification Tier | Held-Out Precision | Sample Size ($n$) | Modern Platform Target |
+| # | Guide ID | Matcher Kind | Static Matcher Precision | Post-Verifier Precision | Sample Size ($n$) | Modern Platform Target |
 | :- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `autofill-address-form` | DOM | Tier C | 100.0% | 20 | Standard `autocomplete` attributes on address form inputs |
-| 2 | `autofill-payment-form` | DOM | Tier C | 100.0% | 11 | Standard `autocomplete` attributes on payment and credit card inputs |
-| 3 | `autofill-sign-in-form` | DOM | Tier B | 100.0% | 31 | Standard `autocomplete="username"` and `autocomplete="current-password"` |
-| 4 | `branded-select-styling` | JS | Tier C | 85.2% | 27 | Customizable native `<select>` with `appearance: base-select` |
-| 5 | `checkbox` | CSS | Tier C | 89.7% | 29 | CSS `accent-color` for styled checkboxes |
-| 6 | `custom-text-decorations` | CSS | Tier C | 100.0% | 24 | CSS `text-decoration-thickness`, `text-underline-offset`, `text-decoration-color` |
-| 7 | `equal-width-text-lines` | Dependency & JS | Tier C | 91.7% | 12 | CSS `text-wrap: balance` replacing FitText libraries |
-| 8 | `form-fields-automatically-fit-contents` | CSS | Tier C | 100.0% | 26 | CSS `field-sizing: content` |
-| 9 | `ime-safe-enter-submit` | JS | Tier C | 100.0% | 17 | IME-safe Enter submission gating on `isComposing` / `keyCode === 229` |
-| 10 | `prevent-page-scroll-under-modal-dialog` | Dependency & CSS | Tier C | 91.7% | 12 | Native `<dialog>` and CSS `overscroll-behavior: contain` |
-| 11 | `responsive-table` | Dependency & CSS | Tier B | 100.0% | 35 | CSS Container Queries (`@container`) and sticky headers |
-| 12 | `scroll-entry-exit-effects` | Dependency & JS | Tier B | 97.1% | 35 | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
-| 13 | `scrollspy` | CSS | Tier B | 94.3% | 35 | CSS `scroll-target-group: auto` and `:target-current` |
-| 14 | `select-menu-interaction` | CSS & JS | Tier C | 96.2% | 26 | Native `<select>` custom picker interactions and `:user-invalid` |
-| 15 | `styling-web-components` | CSS | Tier C | 100.0% | 10 | CSS `::part()`, `adoptedStyleSheets`, and modern shadow DOM styling |
+| 1 | `responsive-table` | Dependency & CSS | 100.0% (35/35) | 100.0% (35/35) | 35 | CSS Container Queries (`@container`) and sticky headers |
+| 2 | `scroll-entry-exit-effects` | Dependency & JS | 97.1% (34/35) | 97.1% (34/35) | 35 | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
+| 3 | `form-fields-automatically-fit-contents` | CSS | 96.3% (26/27) | 100.0% (26/26) | 27 | CSS `field-sizing: content` |
+| 4 | `scrollspy` | CSS | 94.3% (33/35) | 94.3% (33/35) | 35 | CSS `scroll-target-group: auto` and `:target-current` |
+| 5 | `autofill-address-form` | DOM | 91.7% (22/24) | 100.0% (20/20) | 24 | Standard `autocomplete` attributes on address form inputs |
+| 6 | `autofill-sign-in-form` | DOM | 91.4% (32/35) | 100.0% (31/31) | 35 | Standard `autocomplete="username"` and `autocomplete="current-password"` |
 
 ---
 
@@ -256,8 +247,8 @@ The analyzer adheres to statistical rigor to guarantee production accuracy befor
 
 ### Evaluation Subsystem (`src/analyzing/eval/`)
 
-- **`guide-triage.ts`**: Implements the 2-axis triage taxonomy (`detectable`, `1-to-1-replacement`, etc.) and maintains canonical metadata for all web platform guides.
-- **`detection-eval.ts`**: Runs multi-pass LLM judge evaluation (`gemini-3.8-flash`) against human-graded cards (`grades.jsonl`) to measure true-positive and false-positive rates with majority voting.
+- **`guide-triage.ts`**: Implements the 2-axis triage taxonomy (`Detection` and `Update Scope`) and maintains canonical metadata for all web platform guides.
+- **`detection-eval.ts`**: Runs multi-pass LLM judge evaluation (`gemini-3.8-flash`) against human-graded cards (`grades.jsonl`) to measure true-positive and matcher misfire rates with majority voting.
 - **`llm-verifier.ts`**: Implements the runtime and eval-time LLM verifier evaluating candidate matches against `verifierRubric` (`keepWhen` / `dropWhen`) specifications.
 - **`update-eval.ts`**: Automated patch validation harness testing candidate modernization updates across 3 classes of bad patches (`no-op`, `deletion-gutting`, `broken/evasion`) and reference good fixes.
 - **`stats.ts`**: Statistical foundations implementing Wilson binomial confidence intervals, sequential stopping decisions, and TPR/TNR metrics.
@@ -327,4 +318,4 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 2. **Run detection and update evaluation**: `node --env-file=.env src/analyzing/eval/update-eval.ts` and `node --env-file=.env src/analyzing/eval/detection-eval.ts`.
 3. **Qualification criteria**:
    - **Experimental Rule**: Active in `ALL_RULES`, available under `--experimental` / `--all-rules`.
-   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it meets Tier A, B, or C qualification criteria on the untuned `held-out` split.
+   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it meets the Static Matcher Precision qualification standard (>= 90% at n >= 20) on the untuned `held-out` split.

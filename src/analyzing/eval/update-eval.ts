@@ -50,9 +50,9 @@ export {
 export interface UpdatePatch {
   /** Relative or absolute path to the file being patched */
   readonly filePath: string;
-  /** Original file content before refactoring */
+  /** Original file content before updating */
   readonly originalContent: string;
-  /** Patched file content produced by the refactor agent */
+  /** Patched file content produced by the modernization agent */
   readonly patchedContent: string;
   /** Target guide ID being addressed */
   readonly guideId: string;
@@ -60,9 +60,9 @@ export interface UpdatePatch {
   readonly ruleId?: string;
   /** Working directory containing repo context (optional) */
   readonly cwd?: string;
-  /** Original window content before refactoring (if windowed evaluation) */
+  /** Original window content before updating (if windowed evaluation) */
   readonly originalWindow?: string;
-  /** Patched window content produced by the refactor agent (if windowed evaluation) */
+  /** Patched window content produced by the modernization agent (if windowed evaluation) */
   readonly patchedWindow?: string;
 }
 
@@ -126,7 +126,7 @@ export interface SeededAgentFailureFixture {
 
 // Load extracted test fixtures and modern feature patterns from external JSON.
 // Code contains 0 hardcoded LLM fixture strings or pattern maps.
-const fixHarnessData = JSON.parse(
+const updateEvalData = JSON.parse(
   readFileSync(new URL('./update-eval-data.json', import.meta.url), 'utf8'),
 ) as {
   readonly seededFixtures: SeededFixture[];
@@ -135,7 +135,7 @@ const fixHarnessData = JSON.parse(
 };
 
 export function getSeededAgentFailureTestCases(): SeededAgentFailureFixture[] {
-  return fixHarnessData.seededAgentFailureFixtures ?? [];
+  return updateEvalData.seededAgentFailureFixtures ?? [];
 }
 
 /**
@@ -160,9 +160,9 @@ export function checkModernFeaturePresent(
     if (isBaseSelect || isCleanPackageJson) return true;
   }
 
-  const patternStr = fixHarnessData.modernFeaturePatterns[guideId];
+  const patternStr = updateEvalData.modernFeaturePatterns[guideId];
   if (!patternStr) {
-    throw new Error(`Missing Gate 2c modern feature validator for guideId: ${guideId}`);
+    throw new Error(`Missing Check 2c modern feature validator for guideId: ${guideId}`);
   }
 
   const regex = new RegExp(patternStr, 'i');
@@ -170,7 +170,7 @@ export function checkModernFeaturePresent(
 }
 
 /**
- * Gate 2a: Checks syntax and parse validity across JS/TS, HTML, CSS, and JSON.
+ * Check 2a: Checks syntax and parse validity across JS/TS, HTML, CSS, and JSON.
  */
 export function checkSyntaxCleanliness(
   filePath: string,
@@ -280,7 +280,7 @@ export function checkSyntaxCleanliness(
 }
 
 /**
- * Gate 2b: Anti-Gutting & Structural Integrity Guard per Decision G12, G14, G17.
+ * Check 2b: Anti-Gutting & Structural Integrity Guard per Decision G12, G14, G17.
  * Verifies that the patch does not delete all executable code or exported declarations.
  * Eliminates the legacy 40% line-count threshold so that replacing a 43-line workaround
  * with a concise 5-line standard platform feature is properly recognized as success.
@@ -361,7 +361,7 @@ export function checkStructuralIntegrity(
         };
       }
     } catch {
-      // Malformed CSS will be caught by Gate 2a syntax check
+      // Malformed CSS will be caught by Check 2a syntax check
     }
     return { passed: true };
   }
@@ -501,15 +501,15 @@ export async function evaluateAgentUpdate(
   patch: UpdatePatch,
   options?: UpdateValidationOptions,
 ): Promise<UpdateValidationResult> {
-  // Gate 1: Legacy Finding Eliminated (Negative Guard)
+  // Check 1: Finding Eliminated (Negative Guard)
   const rulesToRun = ALL_RULES.filter(
     (r) =>
       r.guideId === patch.guideId &&
       (!patch.ruleId || r.id === patch.ruleId),
   );
 
-  // Gate 1: Legacy Finding Eliminated (Negative Guard)
-  let gate1Passed = false;
+  // Check 1: Finding Eliminated (Negative Guard)
+  let check1Passed = false;
   let findingsRemaining = 0;
   let failureReason: string | undefined;
 
@@ -562,13 +562,13 @@ export async function evaluateAgentUpdate(
     const expectedReduction = Math.max(1, targetOrigWindowFindings.length);
 
     findingsRemaining = targetWindowFindings.length;
-    gate1Passed =
+    check1Passed =
       targetWindowFindings.length === 0 &&
       (targetOrigFullFindings.length === 0 ||
         reduction >= expectedReduction ||
         targetSplicedFindings.length === 0);
 
-    if (!gate1Passed) {
+    if (!check1Passed) {
       if (targetWindowFindings.length > 0) {
         failureReason = `Legacy finding still present in patched window (${targetWindowFindings.length} remaining)`;
       } else {
@@ -587,14 +587,14 @@ export async function evaluateAgentUpdate(
       : findings.filter((f) => f.guideId === patch.guideId);
 
     findingsRemaining = targetFindings.length;
-    gate1Passed = targetFindings.length === 0;
-    if (!gate1Passed) {
+    check1Passed = targetFindings.length === 0;
+    if (!check1Passed) {
       failureReason = `Legacy finding still present in patched file (${targetFindings.length} remaining)`;
     }
   }
 
   const findingEliminatedCheck: FindingEliminatedCheckResult = {
-    passed: gate1Passed,
+    passed: check1Passed,
     findingsRemaining,
     failureReason,
   };
@@ -606,12 +606,12 @@ export async function evaluateAgentUpdate(
       structuralIntegrityPassed: false,
       modernFeatureVerified: false,
       diagnostics: [],
-      failureReason: 'Gate 2 skipped because Gate 1 failed',
+      failureReason: 'Check 2 skipped because Check 1 failed',
     };
     const behavioralCheck: BehavioralCheckResult = {
       passed: false,
       status: 'SKIPPED_NO_TEST_HARNESS',
-      failureReason: 'Gate 3 skipped because Gate 1 failed',
+      failureReason: 'Check 3 skipped because Check 1 failed',
     };
     return {
       resolved: false,
@@ -622,11 +622,11 @@ export async function evaluateAgentUpdate(
       findingEliminatedCheck,
       modernSyntaxCheck,
       behavioralCheck,
-      summary: `GATE_1_FAILED: ${findingEliminatedCheck.failureReason}`,
+      summary: `CHECK_1_FAILED: ${findingEliminatedCheck.failureReason}`,
     };
   }
 
-  // Gate 2: Modern Replacement Verified (Anti-Deletion & Positive Feature Guard per G12)
+  // Check 2: Modern Replacement Verified (Anti-Deletion & Positive Feature Guard per G12)
   const syntaxCheck = checkSyntaxCleanliness(
     patch.filePath,
     patch.patchedContent,
@@ -664,38 +664,38 @@ export async function evaluateAgentUpdate(
     patch.filePath,
   );
 
-  const gate2Passed =
+  const check2Passed =
     syntaxCheck.clean &&
     structuralCheck.passed &&
     modernFeaturePresent &&
     invariantCheck.passed;
 
-  let gate2Reason: string | undefined;
+  let check2Reason: string | undefined;
   if (!syntaxCheck.clean) {
-    gate2Reason = `Syntax/Parse errors: ${syntaxCheck.diagnostics.join('; ')}`;
+    check2Reason = `Syntax/Parse errors: ${syntaxCheck.diagnostics.join('; ')}`;
   } else if (!structuralCheck.passed) {
-    gate2Reason = structuralCheck.failureReason;
+    check2Reason = structuralCheck.failureReason;
   } else if (!modernFeaturePresent) {
-    gate2Reason = `Missing required modern platform feature for guide "${patch.guideId}"`;
+    check2Reason = `Missing required modern platform feature for guide "${patch.guideId}"`;
   } else if (!invariantCheck.passed) {
-    gate2Reason = invariantCheck.failureReason;
+    check2Reason = invariantCheck.failureReason;
   }
 
   const modernSyntaxCheck: ModernSyntaxCheckResult = {
-    passed: gate2Passed,
+    passed: check2Passed,
     syntaxClean: syntaxCheck.clean,
     structuralIntegrityPassed: structuralCheck.passed,
     modernFeatureVerified: modernFeaturePresent,
     invariantPassed: invariantCheck.passed,
     diagnostics: syntaxCheck.diagnostics,
-    failureReason: gate2Reason,
+    failureReason: check2Reason,
   };
 
   if (!modernSyntaxCheck.passed) {
     const behavioralCheck: BehavioralCheckResult = {
       passed: false,
       status: 'SKIPPED_NO_TEST_HARNESS',
-      failureReason: 'Gate 3 skipped because Gate 2 failed',
+      failureReason: 'Check 3 skipped because Check 2 failed',
     };
     return {
       resolved: false,
@@ -706,39 +706,39 @@ export async function evaluateAgentUpdate(
       findingEliminatedCheck,
       modernSyntaxCheck,
       behavioralCheck,
-      summary: `GATE_2_FAILED: ${modernSyntaxCheck.failureReason}`,
+      summary: `CHECK_2_FAILED: ${modernSyntaxCheck.failureReason}`,
     };
   }
 
-  // Gate 3: Behavioral & Invariant Check (R15: fails closed / skipped when no test harness)
-  let gate3Passed = false;
-  let gate3Status: 'PASSED' | 'FAILED' | 'SKIPPED_NO_TEST_HARNESS' = 'SKIPPED_NO_TEST_HARNESS';
-  let gate3Reason: string | undefined = 'Gate 3 skipped: no test harness or behavioral check provided';
+  // Check 3: Behavioral & Invariant Check (R15: fails closed / skipped when no test harness)
+  let check3Passed = false;
+  let check3Status: 'PASSED' | 'FAILED' | 'SKIPPED_NO_TEST_HARNESS' = 'SKIPPED_NO_TEST_HARNESS';
+  let check3Reason: string | undefined = 'Check 3 skipped: no test harness or behavioral check provided';
 
   if (options?.behavioralCheck) {
     try {
       const ok = await options.behavioralCheck(patch);
       if (!ok) {
-        gate3Passed = false;
-        gate3Status = 'FAILED';
-        gate3Reason = 'Custom behavioral assertion failed on patched code';
+        check3Passed = false;
+        check3Status = 'FAILED';
+        check3Reason = 'Custom behavioral assertion failed on patched code';
       } else {
-        gate3Passed = true;
-        gate3Status = 'PASSED';
-        gate3Reason = undefined;
+        check3Passed = true;
+        check3Status = 'PASSED';
+        check3Reason = undefined;
       }
     } catch (err: unknown) {
-      gate3Passed = false;
-      gate3Status = 'FAILED';
-      gate3Reason =
+      check3Passed = false;
+      check3Status = 'FAILED';
+      check3Reason =
         err instanceof Error ? err.message : String(err);
     }
   }
 
   const behavioralCheck: BehavioralCheckResult = {
-    passed: gate3Passed,
-    status: gate3Status,
-    failureReason: gate3Reason,
+    passed: check3Passed,
+    status: check3Status,
+    failureReason: check3Reason,
   };
 
   const staticResolved = findingEliminatedCheck.passed && modernSyntaxCheck.passed;
@@ -746,11 +746,11 @@ export async function evaluateAgentUpdate(
 
   let summary: string;
   if (resolved) {
-    summary = 'RESOLVED: All 3 gates passed';
+    summary = 'RESOLVED: All 3 checks passed';
   } else if (staticResolved) {
-    summary = 'STATIC_RESOLVED: Gates 1 & 2 passed (Gate 3 skipped: no test harness)';
+    summary = 'STATIC_RESOLVED: Checks 1 & 2 passed (Check 3 skipped: no test harness)';
   } else {
-    summary = `GATE_3_FAILED: ${behavioralCheck.failureReason}`;
+    summary = `CHECK_3_FAILED: ${behavioralCheck.failureReason}`;
   }
 
   return {
@@ -781,7 +781,7 @@ export interface SeededFixture {
  * Fixtures are stored externally in update-eval-data.json (code has 0 hardcoded test fixture prose).
  */
 export function getSeededSensitivityTestCases(): SeededFixture[] {
-  return fixHarnessData.seededFixtures;
+  return updateEvalData.seededFixtures;
 }
 
 export interface BadPatchSensitivityReport {
@@ -809,7 +809,7 @@ export async function runBadPatchSensitivitySuite(
   let goodPatchesPassed = 0;
 
   for (const f of fixtures) {
-    // 1. Test No-Op Patch (should fail Gate 1)
+    // 1. Test No-Op Patch (should fail Check 1)
     badPatchesTotal++;
     const noOpRes = await evaluateAgentUpdate({
       filePath: f.filePath,
@@ -825,7 +825,7 @@ export async function runBadPatchSensitivitySuite(
       badPatchesRejected++;
     }
 
-    // 2. Test Deletion / Gutting Patch (should fail Gate 2b / 2c per G12)
+    // 2. Test Deletion / Gutting Patch (should fail Check 2b / 2c per G12)
     badPatchesTotal++;
     const delRes = await evaluateAgentUpdate({
       filePath: f.filePath,
@@ -841,7 +841,7 @@ export async function runBadPatchSensitivitySuite(
       badPatchesRejected++;
     }
 
-    // 3. Test Broken-Syntax / Evasion Patch (should fail Gate 2a or 2c)
+    // 3. Test Broken-Syntax / Evasion Patch (should fail Check 2a or 2c)
     badPatchesTotal++;
     const brokenRes = await evaluateAgentUpdate({
       filePath: f.filePath,
@@ -903,9 +903,12 @@ export interface FixScorecardItem {
   readonly resolved: boolean;
   readonly staticResolved?: boolean;
   readonly explanation?: string;
-  readonly gate1Passed: boolean;
-  readonly gate2Passed: boolean;
-  readonly gate3Passed: boolean;
+  readonly check1Passed: boolean;
+  readonly check2Passed: boolean;
+  readonly check3Passed: boolean;
+  readonly gate1Passed?: boolean;
+  readonly gate2Passed?: boolean;
+  readonly gate3Passed?: boolean;
   readonly summary: string;
 }
 
@@ -1052,11 +1055,11 @@ export async function simulateSingleShotWindowFix(params: {
 }
 
 /**
- * End-to-End Agentic Fix Runner for Milestone 4.
+ * End-to-End Agentic Modernization Runner for Update Eval.
  */
 export async function runFixEvaluationCli(): Promise<void> {
   console.log('============================================================');
-  console.log('    MILESTONE 4: 3-GATE FIX VALIDATION & AGENTIC FIX RUN    ');
+  console.log('       UPDATE EVAL: 3-CHECK MODERNIZATION VALIDATION        ');
   console.log('============================================================');
 
   // 1. Run Preflight Seeded Bad-Patch Sensitivity Suite
@@ -1077,11 +1080,11 @@ export async function runFixEvaluationCli(): Promise<void> {
     process.exit(1);
   }
 
-  // 2. Sample held-out findings from the 25 qualified guides
-  console.log('\n[2/3] Sampling held-out findings across 25 qualified guides...');
+  // 2. Sample held-out findings from the qualified guides
+  console.log(`\n[2/3] Sampling held-out findings across ${QUALIFIED_GUIDE_IDS.length} qualified guides...`);
   const reposPath = join(ANALYZER_INTERNAL_DIR, 'repos.json');
   const reposRaw = JSON.parse(await readFile(reposPath, 'utf8')) as RepoConfigEntry[];
-  const gradingRepos = reposRaw.filter((r) => r.split === 'grading-only');
+  const gradingRepos = reposRaw.filter((r) => r.split === 'held-out');
 
   const filesByRepo = new Map<string, Map<string, string>>();
   // Scan grading repos to collect candidate findings for the 25 qualified guides
@@ -1310,6 +1313,9 @@ export async function runFixEvaluationCli(): Promise<void> {
       resolved: isResolved,
       staticResolved: val.staticResolved,
       explanation,
+      check1Passed: val.findingEliminatedCheck.passed,
+      check2Passed: val.modernSyntaxCheck.passed,
+      check3Passed: val.behavioralCheck.passed,
       gate1Passed: val.findingEliminatedCheck.passed,
       gate2Passed: val.modernSyntaxCheck.passed,
       gate3Passed: val.behavioralCheck.passed,
@@ -1396,11 +1402,11 @@ export async function runFixEvaluationCli(): Promise<void> {
     const staticResPercent = `${(staticResolutionRate * 100).toFixed(1)}% (n=${n})`;
     const qualifiedResPercent = `${(resolutionRate * 100).toFixed(1)}% (qualified)`;
     const badPatchRejPercent = `${(sensitivity.badPatchRejectionRate * 100).toFixed(1)}% (${sensitivity.badPatchesRejected}/${sensitivity.badPatchesTotal})`;
-    const row = `| \`${commitHash}\` | ${dateStr} | \`fix-harness-m4\` | \`grading-only\` | \`${guideCount}-guides\` | gemini-3.8-flash | ${staticResPercent} | ${qualifiedResPercent} | - | - | - | ${(sensitivity.badPatchRejectionRate * 100).toFixed(1)}% | Milestone 4 agentic fix evaluation: resolution=${resPercent}, badPatchRejectionRate=${badPatchRejPercent}, ${guideCount} qualified guides |`;
-    if (!progressContent.includes(`Milestone 4 agentic fix evaluation: resolution=${resPercent}`)) {
+    const row = `| \`${commitHash}\` | ${dateStr} | \`update-eval\` | \`held-out\` | \`${guideCount}-guides\` | gemini-3.8-flash | ${staticResPercent} | ${qualifiedResPercent} | - | - | - | ${(sensitivity.badPatchRejectionRate * 100).toFixed(1)}% | Update Eval agentic modernization evaluation: resolution=${resPercent}, badPatchRejectionRate=${badPatchRejPercent}, ${guideCount} qualified guides |`;
+    if (!progressContent.includes(`Update Eval agentic modernization evaluation: resolution=${resPercent}`)) {
       progressContent = progressContent.trimEnd() + '\n' + row + '\n';
       await writeFile(progressPath, progressContent, 'utf8');
-      console.log('Appended Milestone 4 row to PROGRESS.md');
+      console.log('Appended Update Eval row to PROGRESS.md');
     }
   } catch (err: unknown) {
     console.error('Failed to append to PROGRESS.md:', err);
@@ -1410,7 +1416,7 @@ export async function runFixEvaluationCli(): Promise<void> {
 // Run CLI directly if invoked from command line
 if (process.argv[1]?.endsWith('update-eval.ts') || process.argv[1]?.endsWith('update-eval.js')) {
   runFixEvaluationCli().catch((err) => {
-    console.error('Fix harness CLI error:', err);
+    console.error('Update eval CLI error:', err);
     process.exit(1);
   });
 }

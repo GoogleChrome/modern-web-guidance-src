@@ -31,7 +31,7 @@ import {
 
 describe('prompts: content-hashed versions (R31)', () => {
   it('includes model name in all 4 prompt version strings', () => {
-    assert.ok(GUIDE_TRIAGE_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Gate 0 version includes model');
+    assert.ok(GUIDE_TRIAGE_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Guide Triage version includes model');
     assert.ok(VERIFIER_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Verifier version includes model');
     assert.ok(JUDGE_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Judge version includes model');
     assert.ok(UPDATE_SIMULATION_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Update version includes model');

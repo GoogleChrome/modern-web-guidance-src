@@ -361,7 +361,7 @@ export async function runLlmVerifier(
     const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
     if (!rule) {
       throw new Error(
-        `Phase 2 error: Rule not found for finding with ruleId='${finding.ruleId}' / guideId='${finding.guideId}' on ${finding.file}:${finding.line}`,
+        `LLM Verifier error: Rule not found for finding with ruleId='${finding.ruleId}' / guideId='${finding.guideId}' on ${finding.file}:${finding.line}`,
       );
     }
   }
@@ -403,7 +403,7 @@ export async function runLlmVerifier(
       const guideMarkdown = guideMarkdownCache.get(rule.guideId);
       if (!guideMarkdown || !guideMarkdown.trim()) {
         throw new Error(
-          `Phase 2 verifier requires loaded guide markdown for rule ${rule.id} (guide ${rule.guideId}). Failing fast per R28/O55a.`,
+          `LLM Verifier requires loaded guide markdown for rule ${rule.id} (guide ${rule.guideId}). Failing fast per R28/O55a.`,
         );
       }
       const body = buildVerifierRequestBody(finding, rule, guideMarkdown);

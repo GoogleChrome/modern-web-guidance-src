@@ -36,9 +36,9 @@ const LABELS_DIR = join(ANALYZER_INTERNAL_DIR, 'labels');
 const CARDS_DIR = join(LABELS_DIR, 'cards');
 const GRADES_PATH = process.env.GRADES_PATH ?? join(LABELS_DIR, 'grades.jsonl');
 const GUIDE_TRIAGE_PATH = join(ANALYZER_INTERNAL_DIR, 'guide-triage.json');
-const LEGACY_PATTERN_SPECS_PATH = join(ANALYZER_INTERNAL_DIR, 'legacy', 'legacy-pattern-specs.json');
+const GUIDE_TRIAGE_JSON_PATH = GUIDE_TRIAGE_PATH;
 const CALIBRATION_DECK_PATH = join(CARDS_DIR, 'calibration-deck.json');
-const M3_SPOTCHECK_DECK_PATH = join(CARDS_DIR, 'm3-spotcheck-deck.json');
+const SPOTCHECK_DECK_PATH = join(CARDS_DIR, 'm3-spotcheck-deck.json');
 const REPOS_CONFIG_PATH = join(ANALYZER_INTERNAL_DIR, 'repos.json');
 
 export interface RepoConfigEntry {
@@ -61,7 +61,7 @@ export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta
 /**
  * Canonical 7-verdict evaluation taxonomy for grading detected findings (D-040, D-045, D-048).
  * - `'legit-modernize-target'`: Genuine legacy pattern where applying the guide is a clean win (the code matches the legacy/"Before" pattern or library workaround replaced by this guide, is not an intentional fallback, covers needed capabilities, and has meaningful payoff).
- * - `'not-old-pattern'`: Matcher misfired — this code isn't even doing the legacy pattern the guide replaces (detector mistake / token collision).
+ * - `'not-old-pattern'`: Matcher misfired — this code isn't even doing the legacy pattern the guide replaces (matcher misfire / token collision).
  * - `'fallback-or-guard'`: Intentional fallback, `@supports` check, feature guard, ponyfill, or polyfill.
  * - `'loses-behavior'`: Old pattern, but modern feature lacks capabilities used here (non-1:1 library component migration, custom side effects, order-dependent geometry, incompatible API contract, or unsupported library feature).
  * - `'no-payoff'`: Matches old syntax and modern feature applies, but rewriting here changes nothing meaningful (no-op syntax swap / zero-payoff syntax swap).
@@ -1065,9 +1065,9 @@ export const CIRCULAR_R41_TEMPLATE_PATTERNS: readonly RegExp[] = [
   /^Yes: replaces .+ with native .+, removing third-party library weight, manual event\/DOM synchronization, or vendor-prefixed duplication while excluding .+\.$/,
   /^Yes: .+ directly replaces the matched call site or declaration \(.+\) without migrating unrelated components; cases requiring broader architectural changes \(.+\) are excluded in doesNotReplace\.$/,
   /^Yes when scoped to .+: adopting .+ eliminates manual workaround state or library overhead, whereas lookalikes such as .+ gain nothing and must be left alone\.$/,
-  /^Conditional \(needs-care\): only a like-for-like swap when the matched code is an isolated instance of .+; requires LLM Verifier \/ AST context to exclude .+ where migrating would alter surrounding component contracts\.$/,
+  /^Conditional \((?:needs-care|needs-verifier)\): only a like-for-like swap when the matched code is an isolated instance of .+; requires LLM Verifier \/ AST context to exclude .+ where migrating would alter surrounding component contracts\.$/,
   /^No reliable static win across general matches: while .+ addresses .+ in greenfield designs, wild matches overlap heavily with .+ where rewriting is either a no-op or alters intended behavior\.$/,
-  /^No \(do-not-write-a-rule\): replacing .+ with .+ requires broader component, markup, or server\/runtime restructuring rather than a localized call-site swap\.$/,
+  /^No \(do-not-write-a-rule\): replacing .+ with .+ requires broader component, markup, or server\/runtime restructuring rather than a localized (?:call-site swap|local-swap)\.$/,
 ];
 
 export function hasCircularTemplatedR41Text(value: string): boolean {
@@ -1168,7 +1168,7 @@ export function formatGuideTriageDossier(spec: Record<string, unknown>): string 
     lines.push(`- Payoff (changesSomethingForDeveloper): ${payoff}`);
   }
   if (callSiteSwap) {
-    lines.push(`- Call-Site Swap (isLikeForLikeSwapAtSite): ${callSiteSwap}`);
+    lines.push(`- Local Swap (isLikeForLikeSwapAtSite): ${callSiteSwap}`);
   }
   if (replaces.length > 0) {
     lines.push(`- Replaces: ${replaces.join('; ')}`);
@@ -1285,12 +1285,7 @@ export async function loadGuideSummariesMap(
 
   // Also inject Technical Reference Dossier from analyzer-internal/guide-triage.json (or legacy specs) (R45)
   try {
-    let specsContent: string;
-    try {
-      specsContent = await readFile(GUIDE_TRIAGE_PATH, 'utf8');
-    } catch {
-      specsContent = await readFile(LEGACY_PATTERN_SPECS_PATH, 'utf8');
-    }
+    const specsContent = await readFile(GUIDE_TRIAGE_JSON_PATH, 'utf8');
     const parsedSpecs = JSON.parse(specsContent) as unknown;
     if (Array.isArray(parsedSpecs)) {
       for (const item of parsedSpecs) {
@@ -1363,7 +1358,7 @@ export async function loadPaulIrishScoredCards(
 
   // Load known deck paths if they exist
   await ingestJsonFile(CALIBRATION_DECK_PATH);
-  await ingestJsonFile(M3_SPOTCHECK_DECK_PATH);
+  await ingestJsonFile(SPOTCHECK_DECK_PATH);
   await ingestJsonFile(join(cardsDir, '_calibration-deck.json'));
   await ingestJsonFile(join(cardsDir, '_m3-spotcheck-deck.json'));
 
@@ -1408,7 +1403,7 @@ export async function loadPaulIrishScoredCards(
       card.guideId === 'stack-drill-down' ||
       card.guideId === 'shadow-dom' ||
       card.guideId === 'model-partial-time-concepts';
-    if (!isCanaryCard && (isStubOrRetiredGuide || card.phase2Decision === 'drop')) {
+    if (!isCanaryCard && (isStubOrRetiredGuide || (card.verifierDecision ?? card.phase2Decision) === 'drop')) {
       continue;
     }
     scoredCards.push(card);
@@ -1439,6 +1434,9 @@ export interface CalibrationDeckItem {
   file: string;
   line: number;
   code?: string;
+  verifierDecision?: string;
+  verifierReason?: string | null;
+  verifierConfidence?: string;
   phase2Decision?: string;
   phase2Reason?: string | null;
   phase2Confidence?: string;

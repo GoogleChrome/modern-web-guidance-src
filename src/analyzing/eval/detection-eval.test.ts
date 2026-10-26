@@ -172,7 +172,7 @@ describe('blind card formatting & request construction', () => {
     assert.match(dossier, /Payoff \(changesSomethingForDeveloper\): Yes for multi-function chains\./);
     assert.match(
       dossier,
-      /Call-Site Swap \(isLikeForLikeSwapAtSite\): Yes when in canonical translate -> rotate -> scale order\./,
+      /Local Swap \(isLikeForLikeSwapAtSite\): Yes when in canonical translate -> rotate -> scale order\./,
     );
     assert.match(dossier, /Replaces: Multi-function transform chains/);
     assert.match(

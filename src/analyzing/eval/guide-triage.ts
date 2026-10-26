@@ -6,7 +6,7 @@ import { getGeminiApiKey } from './detection-eval.ts';
 const ANALYZER_INTERNAL_DIR = resolve(import.meta.dirname, '../../../analyzer-internal');
 
 /**
- * Gate 0 triage bucket classifying whether a published feature guide has a statically detectable brownfield target (`D-005`):
+ * Guide Triage bucket classifying whether a published feature guide has a statically detectable brownfield target (`D-005`):
  * - `'detectable'`: The guide replaces a concrete, statically identifiable legacy browser API, CSS property/selector workaround, DOM markup pattern, or third-party package in brownfield code.
  * - `'ui-recipe-multi-part'`: The guide teaches a multi-element UI component or architectural recipe (e.g. carousel, tabs, navigation drawer) where legacy implementations vary wildly and lack a single high-precision static code hook.
  * - `'skip-no-old-way'`: The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API) with no direct legacy browser workaround to migrate from.
@@ -34,6 +34,7 @@ export interface GuideTriageEntry {
   readonly borderline?: boolean;
   readonly evidenceFromGuide?: string;
   readonly reason: string;
+  readonly triagePromptVersion?: string;
   readonly gate0PromptVersion?: string;
   readonly evidenceSource?: GuideTriageEvidenceSource;
   readonly explainerContextHash?: string;
@@ -220,11 +221,11 @@ export function parseGuideTriageResponse(
   try {
     parsed = JSON.parse(rawText.trim());
   } catch (err: unknown) {
-    throw new Error(`Gate 0 response JSON parse error for guide ${guideId}: ${String(err)}`);
+    throw new Error(`Guide Triage response JSON parse error for guide ${guideId}: ${String(err)}`);
   }
 
   if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error(`Gate 0 invalid response shape for guide ${guideId}: expected object`);
+    throw new Error(`Guide Triage invalid response shape for guide ${guideId}: expected object`);
   }
 
   const rec = parsed as Record<string, unknown>;
@@ -235,16 +236,16 @@ export function parseGuideTriageResponse(
     classification !== 'skip-no-old-way'
   ) {
     throw new Error(
-      `Gate 0 response invalid classification '${String(classification)}' for guide ${guideId}`,
+      `Guide Triage response invalid classification '${String(classification)}' for guide ${guideId}`,
     );
   }
 
   if (!Array.isArray(rec.candidateTechniques)) {
-    throw new Error(`Gate 0 response missing array 'candidateTechniques' for guide ${guideId}`);
+    throw new Error(`Guide Triage response missing array 'candidateTechniques' for guide ${guideId}`);
   }
   const candidateTechniques = rec.candidateTechniques.map((t) => {
     if (typeof t !== 'string') {
-      throw new Error(`Gate 0 candidateTechnique must be string for guide ${guideId}`);
+      throw new Error(`Guide Triage candidateTechnique must be string for guide ${guideId}`);
     }
     return t.trim();
   });
@@ -253,7 +254,7 @@ export function parseGuideTriageResponse(
   if (Array.isArray(rec.replaces)) {
     replaces = rec.replaces.map((t) => {
       if (typeof t !== 'string') {
-        throw new Error(`Gate 0 replaces must be string for guide ${guideId}`);
+        throw new Error(`Guide Triage replaces must be string for guide ${guideId}`);
       }
       return t.trim();
     });
@@ -263,28 +264,28 @@ export function parseGuideTriageResponse(
   if (Array.isArray(rec.doesNotReplace)) {
     doesNotReplace = rec.doesNotReplace.map((t) => {
       if (typeof t !== 'string') {
-        throw new Error(`Gate 0 doesNotReplace must be string for guide ${guideId}`);
+        throw new Error(`Guide Triage doesNotReplace must be string for guide ${guideId}`);
       }
       return t.trim();
     });
   }
 
   if (typeof rec.borderline !== 'boolean') {
-    throw new Error(`Gate 0 response missing boolean 'borderline' for guide ${guideId}`);
+    throw new Error(`Guide Triage response missing boolean 'borderline' for guide ${guideId}`);
   }
   const borderline = rec.borderline;
 
   if (typeof rec.brownfieldTarget !== 'string' || !rec.brownfieldTarget.trim()) {
-    throw new Error(`Gate 0 response missing string 'brownfieldTarget' for guide ${guideId}`);
+    throw new Error(`Guide Triage response missing string 'brownfieldTarget' for guide ${guideId}`);
   }
   const brownfieldTarget = rec.brownfieldTarget.trim();
 
   if (typeof rec.evidenceFromGuide !== 'string') {
-    throw new Error(`Gate 0 response missing string 'evidenceFromGuide' for guide ${guideId}`);
+    throw new Error(`Guide Triage response missing string 'evidenceFromGuide' for guide ${guideId}`);
   }
 
   if (typeof rec.reason !== 'string' || !rec.reason.trim()) {
-    throw new Error(`Gate 0 response missing string 'reason' for guide ${guideId}`);
+    throw new Error(`Guide Triage response missing string 'reason' for guide ${guideId}`);
   }
 
   let evidenceSource: GuideTriageEvidenceSource | undefined;
@@ -375,7 +376,7 @@ export async function triageGuide(
   if (!res.ok) {
     const errText = await res.text();
     throw new Error(
-      `Gate 0 triageGuide failed for ${guide.guideId} with HTTP ${res.status}: ${errText}`,
+      `Guide Triage failed for ${guide.guideId} with HTTP ${res.status}: ${errText}`,
     );
   }
 
@@ -397,7 +398,7 @@ export async function triageGuide(
   const text = candidate?.content?.parts?.[0]?.text;
   if (!text) {
     throw new Error(
-      `Gate 0 triageGuide returned empty candidate text for guide ${guide.guideId}`,
+      `Guide Triage returned empty candidate text for guide ${guide.guideId}`,
     );
   }
 
@@ -435,6 +436,7 @@ export async function triageGuide(
     brownfieldTarget: parsed.brownfieldTarget,
     evidenceFromGuide: parsed.evidenceFromGuide,
     reason: parsed.reason,
+    triagePromptVersion: computeGuideTriagePromptVersion(0.0, enableSearchGrounding),
     gate0PromptVersion: computeGuideTriagePromptVersion(0.0, enableSearchGrounding),
     ...(parsed.evidenceSource ? { evidenceSource: parsed.evidenceSource } : {}),
     ...(explainerContextHash ? { explainerContextHash } : {}),
