@@ -284,47 +284,150 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
   return tokens;
 }
 
+interface LinkedomQueryableNode {
+  querySelector(selector: string): unknown;
+  querySelectorAll(selector: string): Iterable<unknown>;
+  readonly children?: Iterable<unknown>;
+}
+
+interface LinkedomElementNode extends LinkedomQueryableNode {
+  readonly tagName?: string;
+  readonly attributes?: ReadonlyArray<{ readonly name: string; readonly value: unknown }>;
+  readonly content?: unknown;
+  hasAttribute(name: string): boolean;
+  getAttribute(name: string): string | null;
+}
+
+function isLinkedomQueryableNode(val: unknown): val is LinkedomQueryableNode {
+  return (
+    typeof val === 'object' &&
+    val !== null &&
+    'querySelectorAll' in val &&
+    typeof val.querySelectorAll === 'function' &&
+    'querySelector' in val &&
+    typeof val.querySelector === 'function'
+  );
+}
+
+function isLinkedomElementNode(val: unknown): val is LinkedomElementNode {
+  return (
+    isLinkedomQueryableNode(val) &&
+    'hasAttribute' in val &&
+    typeof val.hasAttribute === 'function' &&
+    'getAttribute' in val &&
+    typeof val.getAttribute === 'function'
+  );
+}
+
 /**
  * Extracts attributes map from a linkedom Element.
  */
-function getLinkedomAttributes(el: unknown): Record<string, string> {
+function getLinkedomAttributes(el: LinkedomElementNode): Record<string, string> {
   const attrs: Record<string, string> = {};
-  if (
-    typeof el === 'object' &&
-    el !== null &&
-    'attributes' in el &&
-    Array.isArray((el as { attributes: unknown[] }).attributes)
-  ) {
-    const list = (el as { attributes: Array<{ name: string; value: string }> })
-      .attributes;
-    for (const a of list) {
-      attrs[a.name.toLowerCase()] = a.value;
+  if (Array.isArray(el.attributes)) {
+    for (const a of el.attributes) {
+      attrs[a.name.toLowerCase()] = typeof a.value === 'string' ? a.value : '';
     }
   }
   return attrs;
 }
 
+function decodeBasicEntities(val: string): string {
+  if (!val.includes('&')) {
+    return val;
+  }
+  return val
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'");
+}
+
 /**
- * Finds the corresponding token for an element from the sequential token list.
+ * Finds the corresponding token for an element from the sequential token list,
+ * requiring bidirectional attribute matching so earlier bare/subset tags do not collide.
  */
 function findMatchingToken(
   tokens: readonly HtmlTagToken[],
   startIndex: number,
   tagLower: string,
-  el: { hasAttribute(name: string): boolean; getAttribute(name: string): string | null },
+  el: LinkedomElementNode,
+  elAttrs: Readonly<Record<string, string>>,
 ): { token?: HtmlTagToken; nextIndex: number } {
+  const elAttrCount = Object.keys(elAttrs).length;
   for (let t = startIndex; t < tokens.length; t++) {
     const tok = tokens[t];
-    if (tok && tok.tagName === tagLower) {
-      const tokenMatches = Object.entries(tok.attributes).every(
-        ([k, v]) => el.getAttribute(k) === v || (v === '' && el.hasAttribute(k)),
-      );
-      if (tokenMatches) {
-        return { token: tok, nextIndex: t + 1 };
+    if (!tok || tok.tagName !== tagLower) {
+      continue;
+    }
+    const tokEntries = Object.entries(tok.attributes);
+    if (tokEntries.length !== elAttrCount) {
+      continue;
+    }
+    const tokenMatches = tokEntries.every(([k, v]) => {
+      if (!Object.hasOwn(elAttrs, k)) {
+        return false;
       }
+      const actual = el.getAttribute(k);
+      return (
+        actual === v ||
+        (v === '' && el.hasAttribute(k)) ||
+        (actual !== null && decodeBasicEntities(v) === actual)
+      );
+    });
+    if (tokenMatches) {
+      return { token: tok, nextIndex: t + 1 };
     }
   }
   return { nextIndex: startIndex };
+}
+
+/**
+ * Queries matching elements in document pre-order, descending into `<template>`
+ * `DocumentFragment` content (including nested `<template>` elements).
+ */
+function querySelectorAllIncludingTemplates(
+  root: LinkedomQueryableNode,
+  selector: string,
+): LinkedomElementNode[] {
+  const directMatches: LinkedomElementNode[] = [];
+  for (const item of root.querySelectorAll(selector)) {
+    if (isLinkedomElementNode(item)) {
+      directMatches.push(item);
+    }
+  }
+  if (!root.querySelector('template')) {
+    return directMatches;
+  }
+
+  const directSet = new Set<unknown>(directMatches);
+  const results: LinkedomElementNode[] = [];
+
+  const walk = (parent: LinkedomQueryableNode): void => {
+    if (!parent.children) {
+      return;
+    }
+    for (const child of parent.children) {
+      if (!isLinkedomElementNode(child)) {
+        continue;
+      }
+      if (directSet.has(child)) {
+        results.push(child);
+      }
+      if (
+        child.tagName?.toLowerCase() === 'template' &&
+        isLinkedomQueryableNode(child.content)
+      ) {
+        results.push(...querySelectorAllIncludingTemplates(child.content, selector));
+      } else {
+        walk(child);
+      }
+    }
+  };
+
+  walk(root);
+  return results;
 }
 
 /**
@@ -344,6 +447,9 @@ export function scanHtml(
 
   const tokens = tokenizeHtmlTags(htmlContent);
   const { document } = parseHTML(htmlContent);
+  if (!isLinkedomQueryableNode(document)) {
+    return [];
+  }
   const ctx: DomMatcherContext = {
     filePath,
     documentText: htmlContent,
@@ -352,29 +458,23 @@ export function scanHtml(
   const matches: AnalyzerMatch[] = [];
 
   for (const rule of activeRules) {
-    let elements: unknown[];
+    let elements: LinkedomElementNode[];
     try {
-      elements = Array.from(document.querySelectorAll(rule.selector));
+      elements = querySelectorAllIncludingTemplates(document, rule.selector);
     } catch {
       continue;
     }
 
     let tokenIndex = 0;
 
-    for (const rawEl of elements) {
-      const el = rawEl as {
-        tagName?: string;
-        hasAttribute(name: string): boolean;
-        getAttribute(name: string): string | null;
-      };
-
+    for (const el of elements) {
       if (!el.tagName) {
         continue;
       }
       const tagLower = el.tagName.toLowerCase();
       const elAttrs = getLinkedomAttributes(el);
 
-      const matchRes = findMatchingToken(tokens, tokenIndex, tagLower, el);
+      const matchRes = findMatchingToken(tokens, tokenIndex, tagLower, el, elAttrs);
       tokenIndex = matchRes.nextIndex;
 
       const line = matchRes.token ? matchRes.token.line : 1;

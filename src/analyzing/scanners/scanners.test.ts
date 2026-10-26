@@ -768,6 +768,85 @@ void test('dom-scanner: HTML bare-attributes and JSX-DOM bridge', async (t) => {
     assert.match(matches[0]?.message ?? '', /missing autocomplete/);
   });
 
+  await t.test('scanHtml descends into <template> and nested <template> fragments with exact line numbers', () => {
+    const html = `<div class=""></div>
+<form class="direct-login">
+  <input name="password" type="password">
+</form>
+<template name="ldapLoginForm">
+  <form class="ldap">
+    <input name="username" type="text" value="{{loginId}}">
+    <input name="password" type="password">
+    <template id="nested-step">
+      <div id="lh-tools-dropdown" role="menu" class="lh-tools__dropdown"></div>
+    </template>
+  </form>
+</template>
+<form class="after-template">
+  <input name="password" type="password">
+</form>`;
+
+    const passwordRule: DomRuleMatcher = {
+      kind: 'dom',
+      selector: 'form input[type="password"]',
+      fastTokens: ['type="password"'],
+      matchElement: (el) =>
+        el.hasAttribute('autocomplete') ? null : { message: 'missing autocomplete' },
+    };
+
+    const menuRule: DomRuleMatcher = {
+      kind: 'dom',
+      selector: '[role="menu"]',
+      fastTokens: ['role="menu"'],
+      matchElement: () => ({ message: 'legacy role=menu' }),
+    };
+
+    const matches = scanHtml('accounts/login-buttons.html', html, [passwordRule, menuRule]);
+    const byLine = matches.map((m) => ({ line: m.line, message: m.message }));
+    assert.deepEqual(byLine, [
+      { line: 3, message: 'missing autocomplete' },
+      { line: 8, message: 'missing autocomplete' },
+      { line: 15, message: 'missing autocomplete' },
+      { line: 10, message: 'legacy role=menu' },
+    ]);
+  });
+
+  await t.test('scanFiles descends into nested <template> blocks inside .vue SFCs with exact line numbers', () => {
+    const vue = `<script setup lang="ts">
+const showMenu = true;
+</script>
+<template>
+  <div class="wrapper">
+    <template v-if="showMenu">
+      <ul class="dropdown__list" role="menu">
+        <li role="menuitem">Edit</li>
+      </ul>
+    </template>
+  </div>
+</template>`;
+
+    const menuRule: AnalyzerRule = {
+      id: 'test/vue-nested-template-menu',
+      guideId: 'menu',
+      guideHash: '000000000000',
+      summary: 'test rule',
+      matcher: {
+        kind: 'dom',
+        selector: '[role="menu"]',
+        fastTokens: ['role="menu"'],
+        matchElement: () => ({ message: 'nested vue menu' }),
+      },
+      verifierRubric: { keepWhen: ['a'], dropWhen: ['b', 'c'] },
+    };
+
+    const findings = scanFiles(new Map([['src/Table.vue', vue]]), [menuRule], {
+      repo: 'test',
+      commit: 'HEAD',
+    });
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0]?.line, 7);
+  });
+
   await t.test('scanJsx matches JSX elements and respects skipIfHasSpread', () => {
     const project = createInMemoryProject();
     const code = `
