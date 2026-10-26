@@ -19,9 +19,8 @@ describe('qualification shipping lists', () => {
     ]);
   });
 
-  it('records the 4 suspended guides', () => {
+  it('records the suspended guides', () => {
     assert.deepStrictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS, [
-      'autofill-highlight-inputs',
       'complex-shapes',
       'interactions-in-complex-layouts',
       'language-detection',

@@ -6,9 +6,9 @@ import { animateToFromTopLayerRules } from './animate-to-from-top-layer.ts';
 import { animateToIntrinsicSizesRules } from './animate-to-intrinsic-sizes.ts';
 import { atruleSupportConditionalsRules } from './atrule-support-conditionals.ts';
 import { autofillAddressFormRules } from './autofill-address-form.ts';
-import { autofillHighlightInputsRules } from './autofill-highlight-inputs.ts';
 import { autofillPaymentFormRules } from './autofill-payment-form.ts';
 import { autofillSignInFormRules } from './autofill-sign-in-form.ts';
+import { autofillSignUpFormRules } from './autofill-sign-up-form.ts';
 import { batchAnalyticsEventsRules } from './batch-analytics-events.ts';
 import { brandedSelectStylingRules } from './branded-select-styling.ts';
 import { breakUpLongTasksRules } from './break-up-long-tasks.ts';
@@ -81,9 +81,9 @@ export * from './animate-to-from-top-layer.ts';
 export * from './animate-to-intrinsic-sizes.ts';
 export * from './atrule-support-conditionals.ts';
 export * from './autofill-address-form.ts';
-export * from './autofill-highlight-inputs.ts';
 export * from './autofill-payment-form.ts';
 export * from './autofill-sign-in-form.ts';
+export * from './autofill-sign-up-form.ts';
 export * from './batch-analytics-events.ts';
 export * from './branded-select-styling.ts';
 export * from './break-up-long-tasks.ts';
@@ -143,6 +143,7 @@ export * from './scrollability-affordance-hints.ts';
 export * from './scrollspy.ts';
 export * from './select-menu-interaction.ts';
 export * from './size-aware-styling.ts';
+export * from './sms-otp-form.ts';
 export * from './soft-edge-content-fade.ts';
 export * from './state-aware-sticky-headers.ts';
 export * from './styling-web-components.ts';
@@ -199,11 +200,6 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     rules: autofillAddressFormRules,
   },
   {
-    guideId: 'autofill-highlight-inputs',
-    lifecycle: { status: 'suspended', reason: "Scored under de-admitted judge; 0 human spot-check cards; low-prevalence no-op swap" },
-    rules: autofillHighlightInputsRules,
-  },
-  {
     guideId: 'autofill-payment-form',
     lifecycle: { status: 'experimental' },
     rules: autofillPaymentFormRules,
@@ -213,6 +209,12 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     guideId: 'autofill-sign-in-form',
     lifecycle: { status: 'qualified' },
     rules: autofillSignInFormRules,
+    postSelectionTuned: true,
+  },
+  {
+    guideId: 'autofill-sign-up-form',
+    lifecycle: { status: 'experimental' },
+    rules: autofillSignUpFormRules,
   },
   {
     guideId: 'batch-analytics-events',
@@ -517,6 +519,11 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     rules: sizeAwareStylingRules,
   },
   {
+    guideId: 'sms-otp-form',
+    lifecycle: { status: 'experimental' },
+    rules: smsOtpFormRules,
+  },
+  {
     guideId: 'soft-edge-content-fade',
     lifecycle: { status: 'experimental' },
     rules: softEdgeContentFadeRules,
@@ -545,6 +552,14 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   {
     guideId: 'adapt-scrollbar-to-contrast-preferences',
     lifecycle: { status: 'retired', reason: "No client-side legacy pattern; applicability depends on visual/semantic judgment" },
+    rules: [],
+  },
+  {
+    guideId: 'autofill-highlight-inputs',
+    lifecycle: {
+      status: 'retired',
+      reason: 'Swapping :-webkit-autofill for :autofill is a no-op in all current browser engines',
+    },
     rules: [],
   },
   {
