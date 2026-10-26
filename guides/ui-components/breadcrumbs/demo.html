@@ -270,6 +270,16 @@
     }
   }
 
+  /* A bar that wraps breaks apart (and a 999px radius turns into an oval), so stack it as one column when its
+     segments no longer fit on a row. 26rem is an example breakpoint; the chevron turns to point down. */
+  @container bc (inline-size < 26rem) {
+    .bc-bar > ol { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+    .bc-bar > ol > li + li { border-inline-start: 0; border-block-start: 1px solid var(--border); }
+    .bc-bar a { flex: 1; }
+    .bc-joined > ol { border-radius: 1.4rem; }
+    .breadcrumb.bc-bar[data-sep="chevron"] > ol > li + li::before { rotate: 90deg; scale: none; }
+  }
+
   /* ===== Resizable playground ===== */
   .resizer {
     resize: inline; overflow: auto;
