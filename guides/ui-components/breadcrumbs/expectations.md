@@ -10,6 +10,6 @@
 - The `<nav>` (or an ancestor wrapper) has `container-type: inline-size`, and a container query hides middle trail items at narrow widths.
 - In a trail with more than four items at a narrow container width, a "…" `<button>` with `popovertarget` and an `aria-label` is visible and hidden items are not displayed.
 - Hidden middle items are not focusable at narrow container widths (`display: none`).
-- Hovering a non-current trail link changes its computed color or background color.
+- Hovering a non-current trail link changes its computed color, background color, or text decoration.
 - The current-page link has a computed color or font weight different from the other trail links.
 - When a trail uses shaped (arrow or slant) polygon segments, inside an `rtl` container the segment polygon differs from the `ltr` one and is mirrored horizontally.
