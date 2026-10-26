@@ -50,10 +50,10 @@ Skeleton colors belong to the surface. Define `--skeleton-tone` on the container
 
 ## 3. Text
 
-Text, links and list items share one rule: hide the content, fill with the tone, and shape with `border-shape`.
+Text, standalone links and list items share one rule: hide the content, fill with the tone, and shape with `border-shape`. Links inside a paragraph, list item or heading are not styled separately: they are hidden along with the surrounding text, so the selector excludes them. `:where()` keeps its specificity unchanged.
 
 ```css
-.skeleton[aria-busy="true"] :is(p, h2, li, a) {
+.skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
   /* Bar height follows the element's own glyphs, and the gap fills the rest of the line,
      so bars sit on the real line pitch for any font size or leading. No per-element overrides. */
   --bar-height: 1cap;
@@ -89,7 +89,7 @@ Optionally clamp the real text to the bar count as an enhancement, with a `--lin
 
 ```css
 @supports (line-clamp: 1) {
-  .skeleton[aria-busy="true"] :is(p, h2, li, a) {
+  .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
     line-clamp: var(--lines, 1);
   }
 }
@@ -102,7 +102,7 @@ For more than one bar, append a `move to` and another closed rounded rectangle t
 | `h1`–`h3` | 1–2 bars, sized by the heading's own font size so hierarchy matches the real template |
 | `p` | 3 bars (2 in compact cards), last one shorter like a real paragraph |
 | `li` | 1 bar each, with a small circle subpath for the bullet; vary widths. Start the bar at the real list's indent so the text does not shift when content arrives |
-| `a` | 1 short bar (`--line-one: 42%`) |
+| `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (`--line-one: 42%`). Inline links are hidden with the surrounding text |
 
 ## 4. Media and avatars
 
