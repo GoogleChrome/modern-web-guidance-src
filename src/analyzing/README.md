@@ -305,7 +305,6 @@ Every web platform standard in the catalog is classified across two orthogonal a
 | 3 | `form-fields-automatically-fit-contents` | CSS | 96.3% (26/27) | 100.0% (26/26) | 27 | CSS `field-sizing: content` |
 | 4 | `scrollspy` | CSS | 94.3% (33/35) | 94.3% (33/35) | 35 | CSS `scroll-target-group: auto` and `:target-current` |
 | 5 | `autofill-address-form` | DOM | 91.7% (22/24) | 100.0% (20/20) | 24 | Standard `autocomplete` attributes on address form inputs |
-| 6 | `autofill-sign-in-form` | DOM | 91.4% (32/35) | 100.0% (31/31) | 35 | Standard `autocomplete="username"` and `autocomplete="current-password"` |
 
 ---
 
