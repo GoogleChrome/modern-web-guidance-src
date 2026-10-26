@@ -135,6 +135,9 @@
       ]
     },
     "html": {
+      "custom-elements": [
+        "daily-grind"
+      ],
       "form-associated-custom-elements": [
         "daily-grind"
       ],
