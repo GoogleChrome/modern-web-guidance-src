@@ -16,7 +16,7 @@ web-feature-ids:
 
 A skeleton is a simplified placeholder shown while content loads. It reduces perceived wait time and layout shift.
 
-Style the real semantic elements in place instead of inserting placeholder `<div>`s. One hook on the container (`aria-busy="true"`, scoped by a class such as `.skeleton`) applies a different treatment per element type: text becomes rounded bars, media and avatars become solid blocks, and buttons and inputs become a single pill. The markup does not change to suit the skeleton, and items can be empty or contain real text.
+Style the real semantic elements in place instead of inserting placeholder `<div>`s. One hook on the container (`aria-busy="true"`, scoped by a class such as `.skeleton`) applies a different treatment per element type: text becomes rounded bars, media and avatars become solid blocks, and buttons, inputs and chips keep their own shape and take the fill. The markup does not change to suit the skeleton, and items can be empty or contain real text.
 
 `border-shape` draws the text bars. Each bar is one closed subpath of a single `shape()`, so bars can have rounded ends and variable lengths, which `text-decoration` and gradient tricks cannot do.
 
@@ -35,7 +35,7 @@ MANDATORY: Put `aria-busy="true"` on the container and scope every skeleton styl
     <h2></h2>
     <p></p>
     <a href="/more"></a>
-    <button type="button"></button>
+    <button type="button">Subscribe</button>
   </article>
 </section>
 ```
@@ -128,13 +128,34 @@ Style the real `<img>`, `<video>` or `<canvas>` in place. Do not swap in a place
 
 ## 5. Other surfaces
 
-Anything else that defines the layout but is not text or media (buttons, inputs, badges, chips and similar) becomes a single fixed-height shape with no visible content. Reuse the text `border-shape` with one bar, or use a plain fill with `border-radius`.
+Controls and other surfaces that are not text or media (buttons, inputs, badges, chips and similar) already have a shape: keep their own size, padding, border width and `border-radius`, and only hide the content and apply the skeleton fill. DO NOT replace them with text bars or give them a fixed block size, which would shift the layout when the real control arrives.
+
+```css
+.skeleton[aria-busy="true"] :is(button, input) { /* Add badge and chip selectors here */
+  color: transparent;
+  border-color: transparent; /* Keeps the border width, so the box does not change size */
+  caret-color: transparent;
+  background-image: none;    /* Drop a real gradient; the shimmer sets its own */
+  user-select: none;
+  background-color: var(--skeleton-tone);
+}
+
+.skeleton[aria-busy="true"] input::placeholder {
+  color: transparent;
+}
+
+.skeleton[aria-busy="true"] button > * { /* Add badge and chip selectors here too */
+  visibility: hidden; /* Icons and nested elements keep their space but disappear */
+}
+```
+
+Put a representative label in the skeleton markup (as in the example above) so the control gets its natural size. If the label is unknown, give an empty button a line box with `::before { content: "\200b" }` and size its inline axis with `ch` or `em`, not a fixed length.
 
 | Element | Treatment |
 |---|---|
-| `button` | One fully rounded pill, fixed block size (for example `2.4em`) and inline size, no padding or border, no text |
-| `input` | One pill with a small radius, full width, fixed block size, no padding or border |
-| Badge, chip | One small pill or rectangle with a fixed block size and no text |
+| `button` | Own padding, border and radius, with the tone as its fill and the label hidden |
+| `input` | Own size, padding, border and radius, with the tone as its fill; value and placeholder hidden |
+| Badge, chip | Own padding and radius, with the tone as its fill and the text hidden |
 
 ## 6. Simplify
 

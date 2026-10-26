@@ -214,7 +214,7 @@
       }
 
       /* Text bars: background fill, border-shape defines the bar outlines. */
-      .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a)), input, button) {
+      .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
         /* Bar size follows the glyphs (cap height) and the gap fills the rest of
            the line, so bars sit on the real line pitch at any size and leading. */
         --bar-height: 1cap;
@@ -295,19 +295,22 @@
         --line-one: 64%;
       }
 
-      /* Inputs and buttons: one full-width pill with fixed sizes, same path as text. */
+      /* Controls keep their real box (size, padding, border width and radius)
+         and only take the tone: hide the content and let the border blend in. */
       .skeleton[aria-busy="true"] :is(input, button) {
-        --bar-height: 2.4em;
-        --bar-radius: .4em;
-        --block: var(--bar-height);
-        --line-one: 100%;
-        padding: 0;
-        border-style: none;
+        color: transparent;
+        border-color: transparent;
+        caret-color: transparent;
+        background-image: none;
+        user-select: none;
       }
 
-      .skeleton[aria-busy="true"] button {
-        inline-size: 8rem;
-        --bar-radius: 1.2em;
+      .skeleton[aria-busy="true"] input::placeholder {
+        color: transparent;
+      }
+
+      .skeleton[aria-busy="true"] button > * {
+        visibility: hidden;
       }
 
       /* Line count is selected by element/layout rules, not a --lines variable:
@@ -448,8 +451,8 @@
           <li></li>
           <li></li>
         </ul>
-        <input type="text">
-        <button type="button"></button>
+        <input type="text" placeholder="Email address">
+        <button type="button">Subscribe</button>
       </article>
 
       <article aria-hidden="true">
@@ -480,8 +483,8 @@
           <li></li>
           <li></li>
         </ul>
-        <input type="text">
-        <button type="button"></button>
+        <input type="text" placeholder="Email address">
+        <button type="button">Subscribe</button>
       </article>
 
       <article aria-hidden="true">
@@ -501,8 +504,8 @@
           <li></li>
           <li></li>
         </ul>
-        <input type="text">
-        <button type="button"></button>
+        <input type="text" placeholder="Email address">
+        <button type="button">Subscribe</button>
       </article>
 
     </section>
