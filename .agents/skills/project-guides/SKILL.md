@@ -59,6 +59,7 @@ web-feature-ids:
   * **Actionable rationale for coding agents:** Put concise "why" explanations directly in `guide.md` prose or inline code comments whenever an agent might otherwise doubt or misapply a non-obvious pattern.
 * **Self-Contained:** DO NOT include any external links in the markdown body (`[link text](url)`), and DO NOT rely on internal `{{ GUIDE_REF("...") }}` cross-references to supply required implementation details. All required knowledge to use the feature MUST be fully synthesized into the markdown body (or transcluded at build time via `INCLUDE`/`FEATURE`). Agents must not be slowed down or require additional retrievals to implement the guidance.
 * **American English:** Always author guidance in American English (`behavior`, `color`, `synchronize`, `center`, `optimize`, etc.) for consistency across documentation, RAG tokens, and search embeddings.
+* **Callouts:** Use GitHub alert syntax (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`), with the body on the following `>` lines. Validation rejects bold-label callouts (`> **Note:** …`) and other alert types; the static-site build converts alerts to DevSite notices.
 
 ### 3. Code Snippets
 
@@ -128,6 +129,7 @@ If the primary implementation uses features that are not Baseline Widely Availab
 Coding agents mostly discover and batch-retrieve guides upfront (`retrieve "a,b"`) from `search` or `list` results, and rarely follow cross-references after reading a guide.
 
 * **Never rely on `GUIDE_REF` for requirements of the current guide:** Anything needed to implement *this* guide's use case — core rules, shared prerequisites, accessibility requirements, or fallbacks — must be inlined in `guide.md` or transcluded at build time via `INCLUDE`/`FEATURE`.
+* **Only reference published guides:** A published guide that uses `GUIDE_REF` on a stub or draft fails validation, because the link would be dead. To plan a link to a guide that isn't written yet, park it in a maintainer comment: `{# Once <slug> is authored, restore: … {{ GUIDE_REF("<slug>") }} #}`. Drafts may reference unpublished guides.
 * **Use `GUIDE_REF` to point to a separate use case that is out of scope for the current guide:**
   * **Router / orientation hubs** routing to specialized sub-guides (e.g., `passkeys` or `web-components` routing to specific use-case guides).
   * **Disambiguating closely related sibling guides (place upfront before Section 1):** Place disambiguation notes in the introductory overview *before* Section 1 and before any code snippets (e.g., `progress-ring` vs. `spinner` for determinate vs. indeterminate loading, or `hovercard` vs. `interest-triggered-tooltips`). Coding agents anchor heavily on the first code block they see; an upfront fork lets an agent that retrieved the wrong primitive pivot immediately without wasting context.
