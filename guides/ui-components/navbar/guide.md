@@ -70,11 +70,16 @@ The button declaratively controls the menu with `popovertarget` and `aria-contro
 
 On narrow containers, keep `popover="auto"` on the navigation list. Anchor the fixed popover to the menu button and constrain its height so a long navigation can scroll without exceeding the viewport.
 
+The breakpoint is the container width at which the inline row (brand, actions and every link) stops fitting. `45rem` is an example value: measure your own widest inline row and round up, in `rem` so text zoom scales it. A short navigation can collapse at a narrower width. When items are added, raise it: too low causes horizontal scrolling, too high collapses a navigation that would have fit.
+
+{# Maintainer note: @container conditions cannot use var(), so the breakpoint is repeated by hand in each query and in the script. #}
+
 ```css
 .site-header {
   container-type: inline-size;
 }
 
+/* Example value: use the width at which your inline row stops fitting */
 @container (inline-size < 45rem) {
   .menu-button {
     anchor-name: --menu-button;
@@ -103,6 +108,7 @@ The `anchor()` declaration places the menu below the button; see Fallbacks for b
 On wide containers, hide the narrow-layout trigger and reset the popover presentation so the same list participates in the header as an inline navigation.
 
 ```css
+/* Same value as the narrow query */
 @container (inline-size >= 45rem) {
   .menu-button {
     display: none;
@@ -162,7 +168,7 @@ submenu.addEventListener("toggle", (event) => {
 
 function syncLayoutState(width) {
   const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
-  const isWide = width >= 45 * rootFontSize;
+  const isWide = width >= 45 * rootFontSize; // Keep equal to the container query width
 
   if (isWide && menu.hasAttribute("popover")) {
     menu.removeAttribute("popover");
@@ -189,6 +195,7 @@ As well as click and keyboard opening, preview the submenu on hover in the wide 
 Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_REF("menu") }}, including its viewport-overflow fallbacks. For collision-aware positioning of a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. This submenu opens below its summary, so use the top-level `position-area` there, not the menu guide's side-by-side submenu placement. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 
 ```css
+/* Same value as the narrow query */
 @container (inline-size >= 45rem) {
   .dropdown-list {
     position: absolute;
@@ -237,6 +244,7 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 For the mobile menu, put an absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid. Without Anchor Positioning the menu still opens as a popover at a fixed offset from the top of the viewport.
 
 ```css
+/* Same value as the narrow query above */
 @container (inline-size < 45rem) {
   .site-menu {
     /* Example-only offset: use roughly your header height. Browsers without anchor() keep this one. */
