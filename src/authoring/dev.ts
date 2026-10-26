@@ -7,6 +7,7 @@ import { testGrader, runPlaywright, type CalibrationResult } from '../grading/ru
 import { generateTargetGrader } from '../grading/generate-grader.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
 import { Agents, type SuiteConfig } from '../harness/config.ts';
+import { ensureFreshHostCodexAuth } from '../harness/agents/codex-cli-agent.ts';
 import { collectGuidesUsed } from '../harness/lib/guide-usage.ts';
 import { setupGuideDevWorkDir, runAgent, copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
 import {
@@ -282,6 +283,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
   const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
+  if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
   const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-${patchType}`, undefined, agent);
   try {
     await copyBaseAppToWorkspace(baseApp, workDir);
