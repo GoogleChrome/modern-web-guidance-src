@@ -815,7 +815,8 @@ window.__featuresMapping = {
     "dialog",
     "dialog-closedby",
     "invoker-commands",
-    "popover"
+    "popover",
+    "overscroll-behavior"
   ],
   "hovercard": [
     "popover",

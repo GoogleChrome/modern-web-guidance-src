@@ -2724,6 +2724,25 @@
       ]
     },
     {
+      "id": "dialog",
+      "category": "ui-components",
+      "title": "Dialog",
+      "description": "Build a modal or non-modal dialog component that is accessible, manages focus appropriately, and can be dismissed the way users expect on each platform.",
+      "features": [
+        "dialog",
+        "dialog-closedby",
+        "invoker-commands",
+        "popover",
+        "overscroll-behavior"
+      ],
+      "demos": [
+        {
+          "id": "demo",
+          "path": "guides/ui-components/dialog/demo.html"
+        }
+      ]
+    },
+    {
       "id": "hovercard",
       "category": "ui-components",
       "title": "Build an interactive hovercard",
