@@ -61,6 +61,98 @@ export function selectSuites(allowlist: PublicAllowlist, candidates: readonly st
     .sort();
 }
 
+/** The result of applying a command to the allowlist, before anything is written. */
+export interface AllowlistChange {
+  allowlist: PublicAllowlist;
+  /** Human-readable description of each edit; empty means the allowlist already reflects the command. */
+  edits: string[];
+}
+
+/** Makes `suiteId` eligible: drops it from `exclude`, drops any override, and adds it to `include` if no pattern admits it. */
+export function applyPromote(current: PublicAllowlist, suiteId: string): AllowlistChange {
+  const edits: string[] = [];
+  const allowlist = structuredClone(current);
+
+  if (allowlist.exclude.includes(suiteId)) {
+    allowlist.exclude = allowlist.exclude.filter(id => id !== suiteId);
+    edits.push(`remove ${suiteId} from exclude`);
+  }
+  if (allowlist.overrides.some(override => override.id === suiteId)) {
+    allowlist.overrides = allowlist.overrides.filter(override => override.id !== suiteId);
+    edits.push(`remove overrides for ${suiteId}`);
+  }
+  if (!allowlist.include.some(pattern => globToRegExp(pattern).test(suiteId))) {
+    allowlist.include = [...allowlist.include, suiteId];
+    edits.push(`add ${suiteId} to include`);
+  }
+  return { allowlist, edits };
+}
+
+/** Hides `suiteId` entirely, or only the given guides within it. */
+export function applyUnpublish(current: PublicAllowlist, suiteId: string, guides: readonly string[]): AllowlistChange {
+  const edits: string[] = [];
+  const allowlist = structuredClone(current);
+
+  if (guides.length === 0) {
+    if (!allowlist.exclude.includes(suiteId)) {
+      allowlist.exclude = [...allowlist.exclude, suiteId];
+      edits.push(`add ${suiteId} to exclude`);
+    }
+    return { allowlist, edits };
+  }
+
+  const existing = allowlist.overrides.find(override => override.id === suiteId);
+  const already = new Set(existing?.excludeGuides ?? []);
+  const added = guides.filter(guide => !already.has(guide));
+  if (added.length > 0) {
+    const excludeGuides = [...already, ...added];
+    allowlist.overrides = [
+      ...allowlist.overrides.filter(override => override.id !== suiteId),
+      { id: suiteId, excludeGuides },
+    ];
+    edits.push(`exclude guide(s) ${added.join(', ')} from ${suiteId}`);
+  }
+  return { allowlist, edits };
+}
+
+/**
+ * A `gd promote --now` / `gd unpublish --now` whose allowlist PR has not merged
+ * yet. Recorded in the published build state so the scheduled job, still on
+ * the old allowlist, applies the same change instead of undoing it.
+ */
+export interface PendingChange {
+  command: 'promote' | 'unpublish';
+  suiteId: string;
+  /** For `unpublish`: hide only these guides. Empty hides the whole suite. */
+  guides: string[];
+}
+
+export function applyPendingChange(allowlist: PublicAllowlist, change: PendingChange): AllowlistChange {
+  return change.command === 'promote'
+    ? applyPromote(allowlist, change.suiteId)
+    : applyUnpublish(allowlist, change.suiteId, change.guides);
+}
+
+/**
+ * Layers pending changes over the checked-in allowlist. A change the allowlist
+ * already reflects (its PR merged) has done its job and is dropped.
+ */
+export function applyPendingChanges(
+  allowlist: PublicAllowlist,
+  pending: readonly PendingChange[],
+): { allowlist: PublicAllowlist; pending: PendingChange[] } {
+  const stillPending: PendingChange[] = [];
+  let effective = allowlist;
+  for (const change of pending) {
+    const applied = applyPendingChange(effective, change);
+    if (applied.edits.length > 0) {
+      stillPending.push(change);
+      effective = applied.allowlist;
+    }
+  }
+  return { allowlist: effective, pending: stillPending };
+}
+
 /**
  * Applies `retention` to already-selected suites: drops suites older than
  * `maxAgeDays` and keeps at most the `maxSuites` newest. Keeps the public site
@@ -81,6 +173,23 @@ export function applyRetention(
     kept = kept.slice(0, maxSuites);
   }
   return kept.map(suite => suite.id).sort();
+}
+
+/**
+ * When a suite was run, for retention. Nightly ids embed the run time
+ * (`nightly-2026-10-20_20-43-48-codex_cli`), which is stable; the bucket's
+ * `timeCreated` resets if a suite is re-uploaded, so it is only a fallback.
+ * The id's time is read as UTC; the runner's zone may differ by hours, which
+ * does not matter at day granularity.
+ */
+export function suiteCreatedAt(suiteId: string, fallback: Date): Date {
+  const match = /(\d{4})-(\d{2})-(\d{2})[_T](\d{2})-(\d{2})-(\d{2})/.exec(suiteId);
+  if (!match) {
+    return fallback;
+  }
+  const [, y, mo, d, h, mi, s] = match;
+  const parsed = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
 }
 
 /**

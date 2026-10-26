@@ -12,6 +12,7 @@ Everything lives under one directory on the same origin as the dashboard
 ```
 public-evals/
   suites.gen.json                                  index of every published suite
+  build-state.json                                 builder bookkeeping; front-ends ignore it
   <suiteId>/
     evals.json                                     one suite's results
     <run>/<guide>/<task>/<guided|unguided>/
@@ -23,6 +24,9 @@ public-evals/
 - `<run>` is the 1-based run number; `<guide>`, `<task>`, and the mode come from the
   result key (see below). Example: `1/security/daily-grind/guided/agent.patch`.
 - `suites.gen.json` is the only index. Do not list the directory.
+- `build-state.json` lets the next build skip suites whose inputs have not
+  changed. It holds suite ids, bucket generations, and machine-readable skip
+  codes only, never error text or model names, because it is published too.
 - Fetch with plain relative URLs: `fetch('public-evals/suites.gen.json')`. Add a
   cache-buster (`?t=<now>`) to the manifest; GitHub Pages caches for ~10 min.
 
@@ -115,9 +119,29 @@ So nothing needs UI for it:
   and the builder runs (scheduled job, or `gd promote --now`).
 - A suite disappears when it is added to `exclude` (or no longer matches) and
   the builder runs again; its directory is removed and the manifest rewritten.
-- Retention: `evals.json` and the manifest entry are kept indefinitely;
-  `agent.patch` and `modern-web.log` are pruned after 90 days (then absent from
-  `run.files`). The site stays under GitHub Pages' 1 GB cap.
+- `gd promote --now` / `gd unpublish --now` update the site immediately and
+  record the change as *pending* in `build-state.json`. Every later build
+  layers pending changes over the checked-in allowlist, so the scheduled job
+  (still on the old allowlist) neither undoes a takedown nor removes a fresh
+  promotion. A pending change clears itself once the allowlist PR merges; to
+  undo an `unpublish --now` whose PR was abandoned, run `promote --now`.
+  `pnpm build:public` lists pending changes at the end of its output.
+- Retention (`retention.maxAgeDays` / `retention.maxSuites` in the allowlist)
+  drops whole suites, oldest first by the run time in the suite id, to keep the
+  site under GitHub Pages' 1 GB cap. A dropped suite is treated like an
+  excluded one.
+- Builds are incremental: a suite is rebuilt only when its raw `evals.json`
+  changes, its override changes, the builder's field lists or scrub patterns
+  change, or `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` is bumped. `--force`
+  rebuilds everything.
+
+## Environment
+
+| variable | purpose |
+|---|---|
+| `PUBLIC_EVALS_FORBIDDEN_TOKENS` | comma-separated operator LDAPs that must not appear in output; required when `CI` is set and for `--now` |
+| `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` | integer; bump after changing the list so already-built suites are rescanned |
+| `CI` | when set, the OS user is not added to the token list (on a runner it is just `runner`) |
 
 ## Developing against it offline
 

@@ -12,7 +12,7 @@ import { generateUnifiedDiff } from '../../core/patch-utils.ts';
 export const MAX_PATCH_BYTES = 1024 * 1024;
 
 /** Files whose hunks are dropped: generated or vendored content that bloats patches and never helps a reader. */
-const EXCLUDED_PATH_RE = /(?:^|\/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|node_modules\/|dist\/|build\/|\.next\/)/;
+export const EXCLUDED_PATH_RE = /(?:^|\/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|node_modules\/|dist\/|build\/|\.next\/)/;
 
 export interface PreparedPatch {
   text: string;

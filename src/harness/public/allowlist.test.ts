@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { applyRetention, globToRegExp, loadAllowlist, loadValidatedAllowlist, overrideFor, selectSuites, validateAllowlistPolicy } from './allowlist.ts';
+import { applyPendingChanges, applyRetention, globToRegExp, loadAllowlist, loadValidatedAllowlist, overrideFor, selectSuites, suiteCreatedAt, validateAllowlistPolicy } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
 
 const allowlist: PublicAllowlist = {
@@ -145,5 +145,41 @@ describe('applyRetention', () => {
 
   test('applies both limits', () => {
     assert.deepEqual(applyRetention({ ...allowlist, retention: { maxAgeDays: 30, maxSuites: 1 } }, suites, now), ['c']);
+  });
+});
+
+describe('applyPendingChanges', () => {
+  const base: PublicAllowlist = { ...allowlist, include: ['nightly-*'], exclude: [], overrides: [] };
+
+  test('layers changes the allowlist does not yet reflect and keeps them pending', () => {
+    const result = applyPendingChanges(base, [
+      { command: 'unpublish', suiteId: 'nightly-1', guides: [] },
+      { command: 'unpublish', suiteId: 'nightly-2', guides: ['security'] },
+    ]);
+    assert.deepEqual(result.allowlist.exclude, ['nightly-1']);
+    assert.deepEqual(result.allowlist.overrides, [{ id: 'nightly-2', excludeGuides: ['security'] }]);
+    assert.equal(result.pending.length, 2);
+  });
+
+  test('drops changes the allowlist already reflects', () => {
+    const merged = { ...base, exclude: ['nightly-1'] };
+    const result = applyPendingChanges(merged, [
+      { command: 'unpublish', suiteId: 'nightly-1', guides: [] },
+      { command: 'promote', suiteId: 'nightly-3', guides: [] },
+    ]);
+    assert.deepEqual(result.pending, []);
+    assert.deepEqual(result.allowlist, merged);
+  });
+});
+
+describe('suiteCreatedAt', () => {
+  const fallback = new Date('2000-01-01T00:00:00Z');
+
+  test('reads the run time out of a nightly id', () => {
+    assert.equal(suiteCreatedAt('nightly-2026-10-20_20-43-48-codex_cli', fallback).toISOString(), '2026-10-20T20:43:48.000Z');
+  });
+
+  test('falls back for ids without a timestamp', () => {
+    assert.equal(suiteCreatedAt('one-off-exact-id', fallback), fallback);
   });
 });

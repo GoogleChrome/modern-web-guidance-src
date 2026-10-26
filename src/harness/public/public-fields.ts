@@ -48,11 +48,21 @@ export const PUBLIC_ASSERTION_FIELDS = [
   'browserErrors',
 ] as const;
 
+/**
+ * Why a suite was not published. Safe to persist and publish; the message is
+ * not. `suite-id` means the id itself failed the leak check, so it must not be
+ * recorded anywhere either.
+ */
+export type SkipCode = 'non-public-agent' | 'unreleased-model' | 'leak' | 'suite-id' | 'override' | 'no-evals';
+
 /** Thrown when a suite must not be published at all (wrong agent or unreleased model). */
 export class NotPublishableError extends Error {
-  constructor(reason: string) {
+  readonly code: SkipCode;
+
+  constructor(code: SkipCode, reason: string) {
     super(reason);
     this.name = 'NotPublishableError';
+    this.code = code;
   }
 }
 
@@ -66,9 +76,9 @@ export function assertPublishable(
   releasedModels: readonly string[],
 ): void {
   if (suite.agent === undefined || !PUBLIC_AGENTS.has(suite.agent)) {
-    throw new NotPublishableError(`agent ${JSON.stringify(suite.agent)} is not public`);
+    throw new NotPublishableError('non-public-agent', `agent ${JSON.stringify(suite.agent)} is not public`);
   }
   if (suite.model === undefined || !releasedModels.includes(suite.model)) {
-    throw new NotPublishableError(`model ${JSON.stringify(suite.model)} is not on the released-models list`);
+    throw new NotPublishableError('unreleased-model', `model ${JSON.stringify(suite.model)} is not on the released-models list`);
   }
 }

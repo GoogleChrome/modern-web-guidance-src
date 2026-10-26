@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { loadAllowlist, validateAllowlistPolicy } from './allowlist.ts';
+import { applyPromote, applyUnpublish, loadAllowlist, validateAllowlistPolicy } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
-import { applyPromote, applyUnpublish, writeAllowlist } from './promote.ts';
+import { writeAllowlist } from './promote.ts';
 
 const NIGHTLY = 'nightly-2026-10-20_20-43-48-codex_cli';
 const ONE_OFF = 'opus-4.8-2026-06-10_17-23-16';

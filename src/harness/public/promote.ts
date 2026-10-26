@@ -4,11 +4,12 @@ import { execFileSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { cBold, cCyan, cGreen, cRed, cYellow } from '../../core/colors.ts';
 import { outDir as defaultOutRoot, rootDir } from '../../core/paths.ts';
-import { DEFAULT_ALLOWLIST_PATH, globToRegExp, loadValidatedAllowlist, validateAllowlistPolicy } from './allowlist.ts';
-import type { PublicAllowlist } from './allowlist.ts';
-import { buildSuite, PUBLIC_EVALS_DIR, writeManifest } from './builder.ts';
-import { forbiddenTokens } from './forbidden-tokens.ts';
+import { applyPromote, applyUnpublish, DEFAULT_ALLOWLIST_PATH, loadValidatedAllowlist, validateAllowlistPolicy } from './allowlist.ts';
+import type { PendingChange, PublicAllowlist } from './allowlist.ts';
+import { addPendingChange, buildSelectedSuites } from './builder.ts';
+import { forbiddenTokens, forbiddenTokensVersion } from './forbidden-tokens.ts';
 import { checkoutPublished, publishPublicEvals } from './publish.ts';
+import { assertClean } from './scrub.ts';
 import { GcsSuiteStore } from './suite-store.ts';
 
 /**
@@ -20,69 +21,19 @@ import { GcsSuiteStore } from './suite-store.ts';
  *
  * Flags:
  *   --now        also update gh-pages immediately using local gcloud credentials,
- *                instead of waiting for the scheduled job
+ *                instead of waiting for the scheduled job. Requires
+ *                PUBLIC_EVALS_FORBIDDEN_TOKENS so the suite is scrubbed with the
+ *                same operator list the job uses.
  *   --no-pr      edit the allowlist in place; do not branch, commit, or open a PR
  *   --dry-run    print what would change and stop
  *
  * The allowlist is the source of truth, so every change still goes through a
- * pull request even when `--now` has already updated the site.
+ * pull request even when `--now` has already updated the site. Until that PR
+ * merges, the change is remembered in the published build state so the
+ * scheduled job keeps applying it.
  */
 
 const ALLOWLIST_PATH = DEFAULT_ALLOWLIST_PATH;
-
-/** The result of applying a command to the allowlist, before anything is written. */
-export interface AllowlistChange {
-  allowlist: PublicAllowlist;
-  /** Human-readable description of each edit; empty means nothing needed to change. */
-  edits: string[];
-}
-
-/** Makes `suiteId` eligible: drops it from `exclude`, drops any override, and adds it to `include` if no pattern admits it. */
-export function applyPromote(current: PublicAllowlist, suiteId: string): AllowlistChange {
-  const edits: string[] = [];
-  const allowlist = clone(current);
-
-  if (allowlist.exclude.includes(suiteId)) {
-    allowlist.exclude = allowlist.exclude.filter(id => id !== suiteId);
-    edits.push(`remove ${suiteId} from exclude`);
-  }
-  if (allowlist.overrides.some(override => override.id === suiteId)) {
-    allowlist.overrides = allowlist.overrides.filter(override => override.id !== suiteId);
-    edits.push(`remove overrides for ${suiteId}`);
-  }
-  if (!allowlist.include.some(pattern => globToRegExp(pattern).test(suiteId))) {
-    allowlist.include = [...allowlist.include, suiteId];
-    edits.push(`add ${suiteId} to include`);
-  }
-  return { allowlist, edits };
-}
-
-/** Hides `suiteId` entirely, or only the given guides within it. */
-export function applyUnpublish(current: PublicAllowlist, suiteId: string, guides: readonly string[]): AllowlistChange {
-  const edits: string[] = [];
-  const allowlist = clone(current);
-
-  if (guides.length === 0) {
-    if (!allowlist.exclude.includes(suiteId)) {
-      allowlist.exclude = [...allowlist.exclude, suiteId];
-      edits.push(`add ${suiteId} to exclude`);
-    }
-    return { allowlist, edits };
-  }
-
-  const existing = allowlist.overrides.find(override => override.id === suiteId);
-  const already = new Set(existing?.excludeGuides ?? []);
-  const added = guides.filter(guide => !already.has(guide));
-  if (added.length > 0) {
-    const excludeGuides = [...already, ...added];
-    allowlist.overrides = [
-      ...allowlist.overrides.filter(override => override.id !== suiteId),
-      { id: suiteId, excludeGuides },
-    ];
-    edits.push(`exclude guide(s) ${added.join(', ')} from ${suiteId}`);
-  }
-  return { allowlist, edits };
-}
 
 /** Writes the allowlist with stable formatting so diffs stay one line per change. */
 export function writeAllowlist(filePath: string, allowlist: PublicAllowlist): void {
@@ -95,10 +46,6 @@ export function writeAllowlist(filePath: string, allowlist: PublicAllowlist): vo
     ...(allowlist.retention ? { retention: allowlist.retention } : {}),
   };
   fs.writeFileSync(filePath, JSON.stringify(ordered, null, 2) + '\n');
-}
-
-function clone(allowlist: PublicAllowlist): PublicAllowlist {
-  return structuredClone(allowlist);
 }
 
 async function main(): Promise<number> {
@@ -122,6 +69,8 @@ async function main(): Promise<number> {
     console.error(cRed('--guide only applies to unpublish'));
     return 1;
   }
+  // The id ends up in a public branch name, PR title, and build state.
+  assertClean(suiteId, 'suite id', { forbiddenTokens: forbiddenTokens() });
 
   const current = loadValidatedAllowlist(ALLOWLIST_PATH);
   const change = command === 'promote'
@@ -158,8 +107,7 @@ async function main(): Promise<number> {
   }
 
   if (values.now) {
-    const removeWholeSuite = command === 'unpublish' && values.guide.length === 0;
-    await updateSiteNow(command, suiteId, change.allowlist, removeWholeSuite);
+    await updateSiteNow(current, { command, suiteId, guides: values.guide });
   }
   return 0;
 }
@@ -188,32 +136,40 @@ function openPullRequest(command: string, suiteId: string, guides: readonly stri
   console.log(`${cGreen('pull request')} ${url}`);
 }
 
-/** Updates the live site for one suite without waiting for the scheduled job. */
-async function updateSiteNow(command: string, suiteId: string, allowlist: PublicAllowlist, removeWholeSuite: boolean): Promise<void> {
+/**
+ * Updates the live site without waiting for the scheduled job. Records the
+ * change as pending in the published build state and runs the same
+ * incremental build the job runs against the checked-in allowlist, so the job
+ * (still on that allowlist until the PR merges) reaches the same result
+ * instead of undoing this one. The pending change clears itself once the
+ * allowlist reflects it.
+ */
+async function updateSiteNow(allowlist: PublicAllowlist, change: PendingChange): Promise<void> {
+  const tokens = forbiddenTokens([], process.env, { requireList: true });
   const outDir = fs.mkdtempSync(path.join(defaultOutRoot, 'public-evals-now-'));
   try {
-    checkoutPublished(outDir);
-    const suiteDir = path.join(outDir, PUBLIC_EVALS_DIR, suiteId);
+    const publishedHead = checkoutPublished(outDir);
+    addPendingChange(outDir, change);
 
-    if (removeWholeSuite) {
-      fs.rmSync(suiteDir, { recursive: true, force: true });
-      console.log(`${cCyan('site')} removed ${suiteId}`);
-    } else {
-      const result = await buildSuite(suiteId, {
-        store: new GcsSuiteStore(),
-        outDir,
-        allowlist,
-        forbiddenTokens: forbiddenTokens(),
-      });
-      if (result.status === 'skipped') {
-        throw new Error(`${suiteId} was not published: ${result.reason}`);
-      }
-      console.log(`${cCyan('site')} built ${suiteId} (${result.files} files)`);
+    const results = await buildSelectedSuites({
+      store: new GcsSuiteStore(),
+      outDir,
+      allowlist,
+      forbiddenTokens: tokens,
+      forbiddenTokensVersion: forbiddenTokensVersion(),
+    });
+
+    const mine = results.find(result => result.suiteId === change.suiteId);
+    const hidesWholeSuite = change.command === 'unpublish' && change.guides.length === 0;
+    if (!hidesWholeSuite && mine?.status !== 'built' && mine?.status !== 'unchanged') {
+      throw new Error(`${change.suiteId} was not published: ${mine?.reason ?? 'not selected by the allowlist'}`);
+    }
+    for (const result of results.filter(r => r.status === 'built' || r.status === 'removed')) {
+      console.log(`${cCyan('site')} ${result.status} ${result.suiteId}`);
     }
 
-    const count = writeManifest(outDir, []);
-    await publishPublicEvals(outDir, { message: `public-evals: ${command} ${suiteId}` });
-    console.log(cGreen(`published ${count} suite(s) to gh-pages`));
+    await publishPublicEvals(outDir, { message: `public-evals: ${change.command} ${change.suiteId}`, expectedHead: publishedHead });
+    console.log(cGreen('published to gh-pages'));
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
   }
