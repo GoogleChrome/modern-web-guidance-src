@@ -33,6 +33,9 @@
       "animate-to-intrinsic-sizes": [
         "task"
       ],
+      "atrule-support-conditionals": [
+        "daily-grind"
+      ],
       "calculate-with-intrinsic-sizes": [
         "task"
       ],
