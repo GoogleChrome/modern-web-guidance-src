@@ -15,50 +15,30 @@ export type QualificationTier = 'A' | 'B' | 'C';
 export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] = [
   'autofill-highlight-inputs',
   'complex-shapes',
+  'interactions-in-complex-layouts',
+  'language-detection',
 ];
 
 /**
  * Production shipping qualified guide list representing default terminal shipped guides (D-048).
- * Contains the 37 guides currently active for default terminal shipping.
+ * Contains the 15 guides currently active for default terminal shipping based on post-expansion held-out evaluation.
  */
 export const QUALIFIED_GUIDE_IDS: readonly string[] = [
-  'animate-element-entry-exit',
-  'animate-to-intrinsic-sizes',
-  'atrule-support-conditionals',
   'autofill-address-form',
+  'autofill-payment-form',
   'autofill-sign-in-form',
   'branded-select-styling',
-  'calculate-event-differentials',
-  'capture-location-agnostic-data',
   'checkbox',
   'custom-text-decorations',
-  'customize-scrollbar-color-and-thickness',
-  'dark-mode',
-  'deliver-optimized-decorative-images',
-  'drag',
   'equal-width-text-lines',
-  'export-html-media-from-canvas',
   'form-fields-automatically-fit-contents',
-  'highlight-text-ranges',
-  'improve-next-page-load-performance',
-  'improve-text-layout-and-legibility',
-  'individual-transform-properties',
-  'interactions-in-complex-layouts',
-  'language-detection',
-  'light-dismiss-a-dialog',
-  'platform-controls-dismiss-dialog',
+  'ime-safe-enter-submit',
   'prevent-page-scroll-under-modal-dialog',
   'responsive-table',
-  'sanitize-untrusted-html',
   'scroll-entry-exit-effects',
-  'scroll-position-aware-elements',
-  'scroll-progress-indicator',
   'scrollspy',
-  'soft-edge-content-fade',
-  'state-aware-sticky-headers',
+  'select-menu-interaction',
   'styling-web-components',
-  'support-global-calendar-systems',
-  'switch',
 ];
 
 /**
