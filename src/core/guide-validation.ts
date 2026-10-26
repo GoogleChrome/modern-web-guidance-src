@@ -1169,7 +1169,7 @@ export function validateCategory(filePath: string, relativePath: string): string
     if (parts.length >= 2) {
       const category = parts[0];
       if (!isKnownCategory(category)) {
-        errors.push(`Unknown category "${category}" for guide ${relativePath}. Registered categories: ${CATEGORIES.join(', ')}.`);
+        errors.push(`Unknown category "${category}" for guide ${relativePath}. Registered categories: ${CATEGORIES.map(c => c.slug).join(', ')}.`);
       }
     }
   }

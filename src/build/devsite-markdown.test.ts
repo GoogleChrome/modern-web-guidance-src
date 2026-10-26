@@ -253,6 +253,36 @@ describe('closing code fence indentation normalization (T10)', () => {
       ].join('\n')
     );
   });
+
+  it('does not prematurely close outer 4-backtick fence on embedded 3-backtick fences', () => {
+    const input = [
+      '# Title',
+      '',
+      '  ````markdown',
+      '  ```js',
+      '  const x = 1;',
+      '  ```',
+      '   ````',
+      '',
+      'Paragraph after code.',
+    ].join('\n');
+
+    const res = toDevsiteMarkdown(input);
+    assert.strictEqual(
+      res.markdown,
+      [
+        '# Title',
+        '',
+        '  ````markdown',
+        '  ```js',
+        '  const x = 1;',
+        '  ```',
+        '  ````',
+        '',
+        'Paragraph after code.',
+      ].join('\n')
+    );
+  });
 });
 
 describe('block spacing (T6)', () => {

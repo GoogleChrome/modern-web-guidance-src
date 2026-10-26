@@ -77,6 +77,7 @@ function normalizeCodeFenceIndentation(text: string): string {
   const lines = text.split("\n");
   let openIndent: string | null = null;
   let openFenceChar: string | null = null;
+  let openFenceLength = 0;
   const result: string[] = [];
 
   for (const line of lines) {
@@ -89,11 +90,17 @@ function normalizeCodeFenceIndentation(text: string): string {
     if (openIndent === null) {
       openIndent = fenceMatch[1];
       openFenceChar = fenceMatch[2][0];
+      openFenceLength = fenceMatch[2].length;
       result.push(line);
-    } else if (fenceMatch[2][0] === openFenceChar && fenceMatch[3].trim() === "") {
+    } else if (
+      fenceMatch[2][0] === openFenceChar &&
+      fenceMatch[2].length >= openFenceLength &&
+      fenceMatch[3].trim() === ""
+    ) {
       result.push(`${openIndent}${fenceMatch[2]}`);
       openIndent = null;
       openFenceChar = null;
+      openFenceLength = 0;
     } else {
       result.push(line);
     }

@@ -1153,6 +1153,8 @@ describe('validateCategory', () => {
     const errors = validateCategory(unknownGuide, 'guides/unknown-cat/sub/guide.md');
     assert.strictEqual(errors.length, 1);
     assert.match(errors[0], /Unknown category "unknown-cat"/);
+    assert.doesNotMatch(errors[0], /\[object Object\]/);
+    assert.match(errors[0], /Registered categories: .*\bcss\b/);
   });
 });
 
