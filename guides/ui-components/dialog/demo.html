@@ -103,6 +103,9 @@
       }
     }
 
+    /* visibility (not display) keeps the space reserved so showing the message shifts nothing */
+    #unsaved-note:not([data-show]) { visibility: hidden; }
+
     :focus-visible {
       outline: 2px solid var(--focus-ring-color);
       outline-offset: 2px;
@@ -266,18 +269,20 @@
       <h2>4. <code>closedby="none"</code> with unsaved changes</h2>
       <p class="note">Cancel uses <code>request-close</code>, so the <code>cancel</code> handler can ask for
         confirmation: it shows a message and focuses Discard, which references the message with
-        <code>aria-describedby</code> so a screen reader reads it. Only the developer-controlled Discard button
-        force-closes.</p>
+        <code>aria-describedby</code> so a screen reader reads it. Discard appears where no button moves, so a second
+        click on Cancel cannot discard. Only the developer-controlled Discard button force-closes.</p>
       <button type="button" command="show-modal" commandfor="none-dlg">Edit the journal</button>
       <dialog id="none-dlg" closedby="none" aria-labelledby="none-title">
         <form method="dialog" id="journal-form">
           <h2 id="none-title">Captain's journal</h2>
           <label for="journal">Entry</label>
           <textarea id="journal" rows="3">I have no friend, Margaret.</textarea>
-          <p class="note" id="unsaved-note" hidden>You have unsaved changes. Discard them, or keep editing.</p>
+          <!-- Space for this message is always reserved, so showing it does not resize the dialog -->
+          <p class="note" id="unsaved-note">You have unsaved changes. Discard them, or keep editing.</p>
           <div class="actions">
-            <button type="button" command="request-close" commandfor="none-dlg">Cancel</button>
+            <!-- First in a right-aligned row, so revealing it moves neither Cancel nor Save -->
             <button type="button" class="danger" command="close" commandfor="none-dlg" id="discard" aria-describedby="unsaved-note" hidden>Discard</button>
+            <button type="button" command="request-close" commandfor="none-dlg">Cancel</button>
             <button value="save" class="primary">Save</button>
           </div>
         </form>
@@ -363,13 +368,13 @@
         e.preventDefault();
         // Say why it stayed open: the message is visible, and Discard's aria-describedby makes a
         // screen reader read it when focus moves there (focus alone would announce only "Discard, button")
-        unsavedNote.hidden = false;
+        unsavedNote.toggleAttribute('data-show', true);
         discard.hidden = false;
         discard.focus();
       }
     });
     noneDlg.addEventListener('close', () => {
-      unsavedNote.hidden = true;
+      unsavedNote.toggleAttribute('data-show', false);
       discard.hidden = true;
       journal.value = initial;
     });
