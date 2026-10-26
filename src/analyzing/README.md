@@ -34,21 +34,27 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 ### Human-Readable Output Example
 
 ```text
-Modern Web Guidance Analyzer: /workspace/my-app
+Modern Web Guidance Analyzer — /workspace/my-app
 Found 3 modernization opportunities across 2 guides:
+Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.
 
 * autofill-sign-in-form [qualified] (2 findings)
-  Summary: Use standard autocomplete attributes on username and password inputs instead of custom credentials handling.
-  Retrieve: npx -y modern-web-guidance@latest retrieve "autofill-sign-in-form"
-  Findings:
-    - src/components/Login.tsx:42: Missing autocomplete="username" or autocomplete="current-password" on credential input
-    - src/views/Register.vue:18: Input with type="password" lacks autocomplete attribute
+  Use standard autocomplete attributes on username and password inputs instead of custom credentials handling.
+  Keep when: The form manages credentials without standard browser autofill hints
+  Drop when: Input already specifies standard autocomplete="username" or autocomplete="current-password"
+  - src/components/Login.tsx:42
+    <input type="password" name="password">
+  - src/views/Register.vue:18
+    <input type="password" id="pass">
 
 * animate-element-entry-exit [qualified] (1 finding)
-  Summary: Modernize imperative animation toggles and display none timing with CSS @starting-style and transition-behavior: allow-discrete.
-  Retrieve: npx -y modern-web-guidance@latest retrieve "animate-element-entry-exit"
-  Findings:
-    - src/components/Toast.tsx:75: Imperative transitionend listener setting display none; replace with @starting-style
+  Modernize imperative animation toggles and display none timing with CSS @starting-style and transition-behavior: allow-discrete.
+  Keep when: Imperative transitionend listener or animation frame loop coordinates entry/exit
+  Drop when: Transition already uses @starting-style
+  - src/components/Toast.tsx:75
+    el.addEventListener('transitionend', () => el.style.display = 'none');
+
+Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
 ```
 
 ### Structured JSON Output (`--json`)

@@ -3,7 +3,15 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { formatHumanReadable, runAnalyzeCli, type AnalyzeJsonOutput } from './cli.ts';
+import {
+  elideText,
+  extractTargetCodeLine,
+  formatHumanReadable,
+  runAnalyzeCli,
+  sampleDiversifiedFindings,
+  type AnalyzeCliFinding,
+  type AnalyzeJsonOutput,
+} from './cli.ts';
 
 describe('runAnalyzeCli', () => {
   it('handles help flags (-h, --help)', async () => {
@@ -95,30 +103,33 @@ describe('runAnalyzeCli', () => {
       const res = await runAnalyzeCli(['analyze', testDir, '--all-rules']);
       assert.equal(res.exitCode, 0);
 
-      // Check provisional notice (D-032, D-033)
+      // Check header and provisional notice
+      assert.match(res.output, /Modern Web Guidance Analyzer —/);
+      assert.match(res.output, /Found \d+ modernization opportunities across \d+ guides:/);
       assert.match(
         res.output,
-        /^Note: Static analysis results are provisional and need verification with an agent\./,
+        /Note: Static analysis results are provisional — verify against the Keep\/Drop criteria below\./,
       );
 
-      // Check header
-      assert.match(res.output, /Modern Web Guidance Analyzer:/);
-      assert.match(res.output, /Found \d+ modernization opportunities across \d+ guides:/);
-
-      // Check guide grouping, retrieve command, and keepWhen/dropWhen (D-032)
-      assert.match(res.output, /\* \[qualified\] autofill-sign-in-form \(\d+ finding[s]?\)/);
-      assert.match(res.output, /Retrieve: npx modern-web-guidance retrieve autofill-sign-in-form/);
-      assert.match(res.output, /Summary:/);
+      // Check guide grouping, title line, rubric lines, and code preview
+      assert.match(res.output, /\* autofill-sign-in-form \[qualified\] \(\d+ findings?\)/);
       assert.match(res.output, /Keep when:/);
       assert.match(res.output, /Drop when:/);
-      assert.match(res.output, /- login\.html:\d+:/);
+      assert.match(res.output, /- login\.html:\d+/);
+      assert.match(res.output, /<input type="password"/);
 
       assert.match(
         res.output,
-        /\* \[qualified\] animate-to-intrinsic-sizes \(\d+ finding[s]?\)/,
+        /\* animate-to-intrinsic-sizes \[qualified\] \(\d+ findings?\)/,
       );
-      assert.match(res.output, /Retrieve: npx modern-web-guidance retrieve animate-to-intrinsic-sizes/);
-      assert.match(res.output, /- accordion\.css:\d+:/);
+      assert.match(res.output, /- accordion\.css:\d+/);
+      assert.match(res.output, /\.accordion-panel \{/);
+
+      // Check single bottom footer
+      assert.match(
+        res.output,
+        /Retrieve a guide: npx modern-web-guidance retrieve <guide-id> \(or pass --json for coding agents\)/,
+      );
     } finally {
       await rm(testDir, { recursive: true, force: true });
     }
@@ -299,7 +310,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(res.exitCode, 0);
 
       // Terminal output should cap findings at 5 and print overflow line
-      assert.match(res.output, /\.\.\.and 3 more in 3 files/);
+      assert.match(res.output, /\.\.\. and 3 more findings/);
 
       // Verify JSON output still has all 8 findings un-truncated
       const resJson = await runAnalyzeCli([testDir, '--all-rules', '--json']);
@@ -310,5 +321,123 @@ describe('runAnalyzeCli', () => {
     } finally {
       await rm(testDir, { recursive: true, force: true });
     }
+  });
+
+  describe('helper utilities and formatting', () => {
+    it('elideText truncates and elides long lines gracefully', () => {
+      assert.equal(elideText('short text', 20), 'short text');
+      assert.equal(
+        elideText('a'.repeat(30), 10),
+        'aaaaaaaaa…',
+      );
+      assert.equal(elideText('  multiple   whitespace   chars  ', 50), 'multiple whitespace chars');
+    });
+
+    it('extractTargetCodeLine extracts marked target lines and cleans up formatting', () => {
+      const snippetWithMarker = `   1 | line 1\n>  2 |   <input type="password" name="pwd">   \n   3 | line 3`;
+      assert.equal(
+        extractTargetCodeLine(snippetWithMarker, 80),
+        '<input type="password" name="pwd">',
+      );
+
+      const snippetWithoutMarker = `  42 |    .class { display: none; }   `;
+      assert.equal(
+        extractTargetCodeLine(snippetWithoutMarker, 80),
+        '.class { display: none; }',
+      );
+
+      assert.equal(extractTargetCodeLine(''), '');
+    });
+
+    it('sampleDiversifiedFindings diversifies max 2 findings per file first up to cap', () => {
+      const makeFinding = (file: string, id: string): AnalyzeCliFinding => ({
+        ruleId: 'r1',
+        file,
+        line: 1,
+        message: id,
+        codeSnippet: '> 1 | line',
+      });
+
+      // 3 files with 3 findings each (9 findings total)
+      const findings: AnalyzeCliFinding[] = [
+        makeFinding('a.ts', 'a1'),
+        makeFinding('a.ts', 'a2'),
+        makeFinding('a.ts', 'a3'),
+        makeFinding('b.ts', 'b1'),
+        makeFinding('b.ts', 'b2'),
+        makeFinding('b.ts', 'b3'),
+        makeFinding('c.ts', 'c1'),
+        makeFinding('c.ts', 'c2'),
+        makeFinding('c.ts', 'c3'),
+      ];
+
+      const sampled = sampleDiversifiedFindings(findings, 5, 2);
+      assert.equal(sampled.length, 5);
+
+      // Round 0 takes a1, b1, c1; Round 1 takes a2, b2 -> total 5
+      assert.deepEqual(
+        sampled.map((f) => f.message),
+        ['a1', 'b1', 'c1', 'a2', 'b2'],
+      );
+    });
+
+    it('formatHumanReadable emits ANSI styling when color option is enabled', () => {
+      const outputColor = formatHumanReadable(
+        '/workspace',
+        1,
+        [
+          {
+            guideId: 'autofill-sign-in-form',
+            tier: 'qualified',
+            summary: 'Autocomplete guidance summary',
+            retrieveCommand: 'npx retrieve autofill-sign-in-form',
+            count: 1,
+            findings: [
+              {
+                ruleId: 'autofill-sign-in-form',
+                file: 'src/login.html',
+                line: 10,
+                message: 'Missing autocomplete',
+                codeSnippet: '> 10 | <input type="password">',
+              },
+            ],
+          },
+        ],
+        undefined,
+        { color: true },
+      );
+
+      // Should contain ANSI escape codes \u001b[
+      assert.ok(outputColor.includes('\u001b['), 'Expected ANSI styling codes in colored output');
+      assert.ok(outputColor.includes('autofill-sign-in-form'));
+      assert.ok(outputColor.includes('[qualified]'));
+
+      const outputNoColor = formatHumanReadable(
+        '/workspace',
+        1,
+        [
+          {
+            guideId: 'autofill-sign-in-form',
+            tier: 'qualified',
+            summary: 'Autocomplete guidance summary',
+            retrieveCommand: 'npx retrieve autofill-sign-in-form',
+            count: 1,
+            findings: [
+              {
+                ruleId: 'autofill-sign-in-form',
+                file: 'src/login.html',
+                line: 10,
+                message: 'Missing autocomplete',
+                codeSnippet: '> 10 | <input type="password">',
+              },
+            ],
+          },
+        ],
+        undefined,
+        { color: false },
+      );
+
+      assert.ok(!outputNoColor.includes('\u001b['), 'Expected no ANSI escape codes when color=false');
+    });
   });
 });

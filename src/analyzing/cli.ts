@@ -2,7 +2,7 @@
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseArgs } from 'node:util';
+import { parseArgs, styleText } from 'node:util';
 import { SUSPENDED_QUALIFIED_GUIDE_IDS } from './qualification.ts';
 import {
   ALL_RULES,
@@ -65,6 +65,85 @@ export interface FormatHumanReadableOptions {
   readonly activeGuideCount?: number;
   readonly suspendedGuides?: readonly string[];
   readonly isDefaultQualifiedMode?: boolean;
+  readonly color?: boolean;
+}
+
+export type TextStyle = Parameters<typeof styleText>[0];
+
+export function shouldEnableColor(optionsColor?: boolean): boolean {
+  if (optionsColor !== undefined) return optionsColor;
+  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '') return false;
+  if (process.env.FORCE_COLOR !== undefined && process.env.FORCE_COLOR !== '0') return true;
+  return Boolean(process.stdout?.isTTY);
+}
+
+export function elideText(text: string, maxLen = 110): string {
+  const normalized = text.trim().replace(/\s+/g, ' ');
+  if (normalized.length <= maxLen) {
+    return normalized;
+  }
+  return normalized.slice(0, maxLen - 1).trimEnd() + '…';
+}
+
+export function extractTargetCodeLine(codeSnippet: string, maxLen = 80): string {
+  if (!codeSnippet) return '';
+  const lines = codeSnippet.split('\n');
+  const markedLine = lines.find((l) => l.trimStart().startsWith('>'));
+  let target = markedLine ?? lines.find((l) => l.trim().length > 0) ?? '';
+  target = target.replace(/^\s*>\s*(?:\d+\s*\|\s*)?/, '');
+  if (!markedLine) {
+    target = target.replace(/^\s*\d+\s*\|\s*/, '');
+  }
+  target = target.trim().replace(/\s+/g, ' ');
+  return elideText(target, maxLen);
+}
+
+export function sampleDiversifiedFindings(
+  findings: readonly AnalyzeCliFinding[],
+  maxTotal = 5,
+  maxPerFileInitial = 2,
+): AnalyzeCliFinding[] {
+  if (findings.length <= maxTotal) {
+    return [...findings];
+  }
+  const byFile = new Map<string, AnalyzeCliFinding[]>();
+  for (const f of findings) {
+    const list = byFile.get(f.file) ?? [];
+    list.push(f);
+    byFile.set(f.file, list);
+  }
+  const sampled: AnalyzeCliFinding[] = [];
+  const fileEntries = Array.from(byFile.values());
+  const fileIndices = new Map<AnalyzeCliFinding[], number>();
+
+  // Pass 1: Round-robin up to maxPerFileInitial per file
+  for (let round = 0; round < maxPerFileInitial; round++) {
+    for (const list of fileEntries) {
+      const idx = fileIndices.get(list) ?? 0;
+      if (idx < list.length) {
+        sampled.push(list[idx]);
+        fileIndices.set(list, idx + 1);
+        if (sampled.length >= maxTotal) return sampled;
+      }
+    }
+  }
+
+  // Pass 2: If still under maxTotal, fill from remaining findings
+  while (sampled.length < maxTotal) {
+    let addedAny = false;
+    for (const list of fileEntries) {
+      const idx = fileIndices.get(list) ?? 0;
+      if (idx < list.length) {
+        sampled.push(list[idx]);
+        fileIndices.set(list, idx + 1);
+        addedAny = true;
+        if (sampled.length >= maxTotal) return sampled;
+      }
+    }
+    if (!addedAny) break;
+  }
+
+  return sampled;
 }
 
 export const ANALYZE_CLI_HELP = `
@@ -95,8 +174,9 @@ export function buildQualificationStatusNotice(
 
 /**
  * Formats findings into human-readable terminal output.
- * Renders provisional verification notice, visible keepWhen / dropWhen rubric lines,
- * and caps displayed findings at 5 per guide with an overflow summary line (D-032, D-033).
+ * Renders modern styled header, provisional verification notice, visible keepWhen / dropWhen rubric lines,
+ * file-diversified findings list with code preview (up to 5 findings per guide, max 2 per file first),
+ * and single bottom footer (D-032, D-033).
  */
 export function formatHumanReadable(
   targetDir: string,
@@ -108,71 +188,98 @@ export function formatHumanReadable(
   const isDefaultMode = formatOptions?.isDefaultQualifiedMode ?? false;
   const activeRuleCount = formatOptions?.activeRuleCount;
   const activeGuideCount = formatOptions?.activeGuideCount ?? 0;
+  const colorEnabled = shouldEnableColor(formatOptions?.color);
 
-  if (totalFindings === 0) {
-    if (isDefaultMode && activeRuleCount === 0) {
-      return [
-        `Modern Web Guidance Analyzer: ${targetDir}`,
-        `Default qualified guides are currently suspended pending re-validation; 0 rules were run.`,
-        `Pass --experimental (or --all-rules) for experimental findings across ${ALL_RULES.length} rules.`,
-        '',
-      ].join('\n');
-    }
-    if (isDefaultMode) {
-      return [
-        `Modern Web Guidance Analyzer: ${targetDir}`,
-        `0 findings from ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide' : 'guides'} (pass --experimental to include experimental guides).`,
-        '',
-      ].join('\n');
-    }
-    const filterNote = guideFilter ? ` for guide "${guideFilter}"` : '';
-    return `No modernization opportunities found in ${targetDir}${filterNote}.\n`;
+  const prevForce = process.env.FORCE_COLOR;
+  const prevNoColor = process.env.NO_COLOR;
+  if (colorEnabled) {
+    delete process.env.NO_COLOR;
+    process.env.FORCE_COLOR = '1';
   }
 
-  const lines: string[] = [
-    'Note: Static analysis results are provisional and need verification with an agent.',
-  ];
-  lines.push(
-    '',
-    `Modern Web Guidance Analyzer: ${targetDir}`,
-    `Found ${totalFindings} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${guides.length} ${guides.length === 1 ? 'guide' : 'guides'}:`,
-    '',
-  );
+  const fmt = (style: TextStyle, text: string): string => {
+    if (!colorEnabled) return text;
+    return styleText(style, text);
+  };
 
-  for (const g of guides) {
-    const badge = g.tier === 'qualified' ? '[qualified]' : '[experimental]';
-    lines.push(`* ${badge} ${g.guideId} (${g.count} ${g.count === 1 ? 'finding' : 'findings'})`);
-    lines.push(`  Summary: ${g.summary}`);
-    if (g.verifierRubric) {
-      const keepText = Array.isArray(g.verifierRubric.keepWhen)
-        ? g.verifierRubric.keepWhen.join('; ')
-        : String(g.verifierRubric.keepWhen);
-      const dropText = Array.isArray(g.verifierRubric.dropWhen)
-        ? g.verifierRubric.dropWhen.join('; ')
-        : String(g.verifierRubric.dropWhen);
-      lines.push(`  Keep when: ${keepText}`);
-      lines.push(`  Drop when: ${dropText}`);
-    }
-    lines.push(`  Retrieve: ${g.retrieveCommand}`);
-    lines.push('  Findings:');
-
-    const displayedFindings = g.findings.slice(0, 5);
-    for (const f of displayedFindings) {
-      lines.push(`    - ${f.file}:${f.line}: ${f.message}`);
+  try {
+    if (totalFindings === 0) {
+      if (isDefaultMode && activeRuleCount === 0) {
+        return [
+          `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
+          `Default qualified guides are currently suspended pending re-validation; 0 rules were run.`,
+          `Pass --experimental (or --all-rules) for experimental findings across ${ALL_RULES.length} rules.`,
+          '',
+        ].join('\n');
+      }
+      if (isDefaultMode) {
+        return [
+          `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
+          `0 findings from ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide' : 'guides'} (pass --experimental to include experimental guides).`,
+          '',
+        ].join('\n');
+      }
+      const filterNote = guideFilter ? ` for guide "${guideFilter}"` : '';
+      return `No modernization opportunities found in ${targetDir}${filterNote}.\n`;
     }
 
-    if (g.findings.length > 5) {
-      const remainingFindings = g.findings.slice(5);
-      const remainingCount = remainingFindings.length;
-      const remainingFilesCount = new Set(remainingFindings.map((f) => f.file)).size;
-      const fileWord = remainingFilesCount === 1 ? 'file' : 'files';
-      lines.push(`  ...and ${remainingCount} more in ${remainingFilesCount} ${fileWord}`);
+    const lines: string[] = [
+      `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
+      `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}:`,
+      fmt('dim', 'Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.'),
+      '',
+    ];
+
+    for (const g of guides) {
+      const tierBadge =
+        g.tier === 'experimental'
+          ? ` ${fmt('yellow', '[experimental]')}`
+          : ` ${fmt('dim', '[qualified]')}`;
+      lines.push(
+        `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'})`)}`,
+      );
+      lines.push(`  ${g.summary}`);
+
+      if (g.verifierRubric) {
+        const keepRaw = Array.isArray(g.verifierRubric.keepWhen)
+          ? g.verifierRubric.keepWhen.join('; ')
+          : String(g.verifierRubric.keepWhen);
+        const dropRaw = Array.isArray(g.verifierRubric.dropWhen)
+          ? g.verifierRubric.dropWhen.join('; ')
+          : String(g.verifierRubric.dropWhen);
+        lines.push(`  ${fmt('dim', `Keep when: ${elideText(keepRaw, 110)}`)}`);
+        lines.push(`  ${fmt('dim', `Drop when: ${elideText(dropRaw, 110)}`)}`);
+      }
+
+      const displayedFindings = sampleDiversifiedFindings(g.findings, 5, 2);
+      for (const f of displayedFindings) {
+        lines.push(`  - ${f.file}:${f.line}`);
+        const codePreview = extractTargetCodeLine(f.codeSnippet, 80);
+        if (codePreview) {
+          lines.push(`    ${fmt('dim', codePreview)}`);
+        }
+      }
+
+      if (g.findings.length > displayedFindings.length) {
+        const remaining = g.findings.length - displayedFindings.length;
+        lines.push(`  ... and ${remaining} more finding${remaining === 1 ? '' : 's'}`);
+      }
+
+      lines.push('');
     }
 
-    lines.push('');
+    lines.push(
+      `Retrieve a guide: ${fmt('cyan', 'npx modern-web-guidance retrieve <guide-id>')} (or pass ${fmt('cyan', '--json')} for coding agents)`,
+    );
+
+    return lines.join('\n').trimEnd() + '\n';
+  } finally {
+    if (colorEnabled) {
+      if (prevForce === undefined) delete process.env.FORCE_COLOR;
+      else process.env.FORCE_COLOR = prevForce;
+      if (prevNoColor !== undefined) process.env.NO_COLOR = prevNoColor;
+    }
   }
-
-  return lines.join('\n').trimEnd() + '\n';
 }
 
 /**

@@ -254,7 +254,7 @@ export const declarativeDialogPopoverControlMatcher: DomRuleMatcher = {
 export const declarativeDialogPopoverControlRule: AnalyzerRule = {
   id: 'declarative-dialog-popover-control',
   guideId: 'declarative-dialog-popover-control',
-  guideHash: 'ba26218df261',
+  guideHash: '87f6a7ad8849',
   summary:
     'Detect buttons with pure inline showModal/close/togglePopover handlers or verified aria-controls/data-dialog-target attributes that can use commandfor/popovertarget.',
   matcher: declarativeDialogPopoverControlMatcher,
@@ -546,7 +546,7 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
 export const declarativeDialogPopoverControlClickListenerRule: AnalyzerRule = {
   id: 'declarative-dialog-popover-control/click-listener',
   guideId: 'declarative-dialog-popover-control',
-  guideHash: 'ba26218df261',
+  guideHash: '87f6a7ad8849',
   summary:
     'Detect pure JS click event listeners that only call showModal(), close(), showPopover(), hidePopover(), or togglePopover().',
   matcher: declarativeDialogPopoverControlClickListenerMatcher,

@@ -34,7 +34,6 @@ import { dragRules } from './drag.ts';
 import { equalWidthTextLinesRules } from './equal-width-text-lines.ts';
 import { exportHtmlMediaFromCanvasRules } from './export-html-media-from-canvas.ts';
 import { formFieldsAutomaticallyFitContentsRules } from './form-fields-automatically-fit-contents.ts';
-import { formatHumanReadableDurationsRules } from './format-human-readable-durations.ts';
 import { highlightTextRangesRules } from './highlight-text-ranges.ts';
 import { imeSafeEnterSubmitRules } from './ime-safe-enter-submit.ts';
 import { improveNextPageLoadPerformanceRules } from './improve-next-page-load-performance.ts';
@@ -46,7 +45,6 @@ import { interestTriggeredTooltipsRules } from './interest-triggered-tooltips.ts
 import { languageDetectionRules } from './language-detection.ts';
 import { lazyLoadVideoAndAudioRules } from './lazy-load-video-and-audio.ts';
 import { lightDismissADialogRules } from './light-dismiss-a-dialog.ts';
-import { manageRecurringIntervalsRules } from './manage-recurring-intervals.ts';
 import { menuRules } from './menu.ts';
 import { navigationDrawerRules } from './navigation-drawer.ts';
 import { optimizeImagePriorityRules } from './optimize-image-priority.ts';
@@ -56,7 +54,6 @@ import { preciseTextAlignmentRules } from './precise-text-alignment.ts';
 import { preventPageScrollUnderModalDialogRules } from './prevent-page-scroll-under-modal-dialog.ts';
 import { progressRingRules } from './progress-ring.ts';
 import { requiredFieldFeedbackRules } from './required-field-feedback.ts';
-import { resilientContextMenusAndNestedDropdownsRules } from './resilient-context-menus-and-nested-dropdowns.ts';
 import { resolutionOptimizedPseudoElementsRules } from './resolution-optimized-pseudo-elements.ts';
 import { responsiveTableRules } from './responsive-table.ts';
 import { sanitizeUntrustedHtmlRules } from './sanitize-untrusted-html.ts';
@@ -169,7 +166,6 @@ export const ALL_RULES: readonly AnalyzerRule[] = [
   ...breakUpLongTasksRules,
   ...imeSafeEnterSubmitRules,
   ...calculateEventDifferentialsRules,
-  ...resilientContextMenusAndNestedDropdownsRules,
   ...formFieldsAutomaticallyFitContentsRules,
   ...brandConsistentFormsRules,
 
@@ -184,12 +180,10 @@ export const ALL_RULES: readonly AnalyzerRule[] = [
   ...scheduleTasksByPriorityRules,
   ...preventPageScrollUnderModalDialogRules,
   ...darkModeRules,
-  ...manageRecurringIntervalsRules,
 
   // Batch 3 Wild-Verified Guides (4 active guides, 6 rules -> 39 rules across 29 feature guides total;
   // model-partial-time-concepts and custom-select-picker-layouts removed per O69 guide mismatch):
   ...dragRules,
-  ...formatHumanReadableDurationsRules,
   ...sanitizeUntrustedHtmlRules,
   ...scrollPositionAwareElementsRules,
 
