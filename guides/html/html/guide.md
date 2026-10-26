@@ -272,9 +272,7 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 ### Guidelines
 
 - **DO** use `<details>` and `<summary>` for a native disclosure pattern without JS.
-- **DO** use `<details>` and `<summary>` for native accordion patterns without JS.
-- If using multiple `<details>` and `<summary>` for a native accordion, then use the `name` attribute on the `<details>` elements to create exclusive accordions (opening one closes others).
-- If using multiple `<details>` and `<summary>` for a native accordion, then wrap it in a `<section>` element with an accessible name provided using either `aria-labelledby` (referencing the `id` attribute of the element that names this accordion) or `aria-label`
+- **DO** use `<details>` and `<summary>` for native accordion patterns without JS. For exclusive accordions, use the `name` attribute on the `<details>` elements. Wrap the entire accordion in a `<section>` element with an accessible name provided using either `aria-labelledby` (referencing the `id` attribute of the element that names this accordion) or `aria-label`
 - **DO** place `<summary>` as the *first* child of `<details>`.
 - If headings must be used within a `<summary>`, consider if the heading is essential for understanding or navigating the document structure. If it is, use a more robust disclosure approach that allows wrapping the disclosure trigger with the heading (e.g. `<h2><button type="button" aria-expanded="false" aria-controls="significant-section-content">Significant section</button></h2>`). This ensures the heading semantics aren’t lost, and the button and its state are announced.
 - **DO** use `details[open]` attribute for styling expanded states.
@@ -309,8 +307,8 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 - **DO** pair `[inert]` with CSS (`opacity: 0.5`) to visually signify inactivity.
 - **DO** rely on natural DOM order for sequential navigation.
 - **DO** ensure that focusable elements aren't obscured by anything when they receive focus (for example, focus should move to modal dialogs and be constrained in them, rather than being able to access obscured content behind the modal).
-- **DO** maintain focus, and move it to an adjacent element or return it to a trigger control, when the currently focused element is hidden, or removed
-- **DO** move focus to the start of the new content, when dynamically injecting new content
+- **DO** maintain focus—moving it to a logical adjacent element or returning it to the trigger control—when the currently focused element is hidden or removed.
+- **DO** move focus to the start of newly injected content when it is added in direct response to a user action that shifts the workflow into that content (e.g., opening a dialog or navigating to a new view), rather than for background or live-region updates.
 
 - **DON'T** use positive `tabindex` values (e.g., `1`, `2`). Use `0` to add element to tab flow, or `-1` for JS program focus.
 - **DON'T** alter focus flow using CSS properties (`flex-flow: row-reverse`, `order`) without aligning the DOM structure.
