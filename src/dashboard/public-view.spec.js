@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { buildSuite, writeManifest } from '../harness/public/builder.ts';
 import { LocalSuiteStore } from '../harness/public/suite-store.ts';
+import { FIXTURE_MODEL, FIXTURE_SUITE, makeFixtureStore } from '../harness/public/fixtures/make-store.ts';
 
 /**
  * The public, unauthenticated view must render entirely from `public-evals/`
@@ -12,9 +13,7 @@ import { LocalSuiteStore } from '../harness/public/suite-store.ts';
  * Google storage or console host, including from popups.
  */
 
-const SUITE = 'nightly-2026-10-20_20-43-48-codex_cli';
-const RUN = '1/security/daily-grind/guided';
-const FIXTURE = path.join(import.meta.dirname, '..', 'harness', 'public', 'fixtures', 'nightly-sample.evals.json');
+const SUITE = FIXTURE_SUITE;
 const GOOGLE_HOSTS = /https:\/\/[^/]*(googleapis\.com|cloud\.google\.com)\//;
 
 /** @type {string} */
@@ -23,22 +22,18 @@ let publicDir;
 let rawEvalsJson;
 
 test.beforeAll(async () => {
-  const store = fs.mkdtempSync(path.join(os.tmpdir(), 'public-view-store-'));
-  const suiteDir = path.join(store, SUITE);
-  fs.mkdirSync(path.join(suiteDir, RUN), { recursive: true });
-  fs.copyFileSync(FIXTURE, path.join(suiteDir, 'evals.json'));
-  fs.writeFileSync(path.join(suiteDir, RUN, 'agent.patch'), 'diff --git a/src/app.ts b/src/app.ts\n--- a/src/app.ts\n+++ b/src/app.ts\n@@ -0,0 +1 @@\n+ok\n');
-  fs.writeFileSync(path.join(suiteDir, RUN, 'modern-web.log'), 'GET /guides/security\n');
-  rawEvalsJson = fs.readFileSync(FIXTURE, 'utf8');
+  const { root, baseApps } = makeFixtureStore();
+  rawEvalsJson = fs.readFileSync(path.join(root, SUITE, 'evals.json'), 'utf8');
 
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'public-view-out-'));
   const result = await buildSuite(SUITE, {
-    store: new LocalSuiteStore(store),
+    store: new LocalSuiteStore(root),
     outDir,
-    allowlist: { include: ['nightly-*'], exclude: [], overrides: [], releasedModels: ['example-model'] },
+    baseAppsDir: baseApps,
+    allowlist: { include: ['nightly-*'], exclude: [], overrides: [], releasedModels: [FIXTURE_MODEL] },
   });
   if (result.status !== 'built') throw new Error(`fixture build failed: ${result.reason}`);
-  writeManifest(outDir);
+  writeManifest(outDir, [result]);
   publicDir = path.join(outDir, 'public-evals');
 });
 

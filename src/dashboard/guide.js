@@ -1,6 +1,5 @@
-import { initGoogleAuth, getAccessToken, escapeHtml, $ } from './utils.js';
-import { ApiClient } from './api.js';
-import { isLocalServer, resolveDataSource } from './data-source.js';
+import { initGoogleAuth, escapeHtml, $ } from './utils.js';
+import { forgetSuitesFrom, loadManifest, manifestSourceFor, resolveDataSource } from './data-source.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -20,18 +19,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         initGoogleAuth(async () => {
-            forgetSuitesFrom('public');
-            await loadManifestTests('remote');
+            forgetSuitesFrom(allTestData, 'public');
+            await loadManifest('remote', registerSuiteSummary);
             setupNavigationControls(guideName);
             renderGraphs(guideName);
         });
 
-        await loadLocalTests();
-        if (getAccessToken() && resolveDataSource() !== 'public') {
-            await loadManifestTests('remote');
-        } else {
-            await loadManifestTests('public');
+        if (resolveDataSource() !== 'public') {
+            await loadLocalTests();
         }
+        await loadManifest(manifestSourceFor(), registerSuiteSummary);
         setupNavigationControls(guideName);
         renderGraphs(guideName);
 
@@ -129,39 +126,6 @@ async function loadLocalTests() {
         }
     } catch {
         console.warn('Local proxy not available');
-    }
-}
-
-/**
- * Loads the precomputed suites manifest from the bucket (signed in) or the public copy.
- * @param {'remote' | 'public'} source
- */
-async function loadManifestTests(source) {
-    try {
-        const manifest = await new ApiClient(source).getSuitesManifest();
-        for (const item of manifest) {
-            if (item && item.testId) {
-                registerSuiteSummary(item, source);
-            }
-        }
-    } catch (error) {
-        console.error(`Error loading ${source} suites:`, error);
-        // A rejected token has been cleared by authenticatedFetch; show the public copy instead of nothing.
-        if (source === 'remote' && !getAccessToken() && !isLocalServer()) {
-            await loadManifestTests('public');
-        }
-    }
-}
-
-/**
- * Drops suites registered from one source so a suite is not listed twice after sign-in.
- * @param {string} source
- */
-function forgetSuitesFrom(source) {
-    for (const key of Object.keys(allTestData)) {
-        if (key.endsWith(`|||${source}`)) {
-            delete allTestData[key];
-        }
     }
 }
 

@@ -158,7 +158,9 @@ export class ApiClient {
         if (this.source !== 'remote' && this.source !== 'public') {
             throw new Error(`No suites manifest for source "${this.source}"`);
         }
-        const res = await this._fetch(`suites.gen.json?t=${Date.now()}`);
+        // Bucketed to 10 minutes: fresh enough for an hourly publish, cacheable by the Pages CDN.
+        const cacheBucket = Math.floor(Date.now() / 600_000);
+        const res = await this._fetch(`suites.gen.json?t=${cacheBucket}`);
         if (res.status === 404 && this.source === 'public') return []; // nothing published yet
         if (!res.ok) throw new Error(`Failed to fetch ${this.source} suites manifest (${res.status})`);
         const manifest = await res.json();

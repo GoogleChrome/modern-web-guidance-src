@@ -1,6 +1,5 @@
-import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
-import { ApiClient } from './api.js';
-import { isLocalServer, isPublicView, resolveDataSource } from './data-source.js';
+import { initGoogleAuth, escapeHtml, timeAgo, calculateChartData, $ } from './utils.js';
+import { forgetSuitesFrom, isLocalServer, isPublicView, loadManifest, manifestSourceFor, resolveDataSource } from './data-source.js';
 import { DumbbellChart } from './dumbbell-chart.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
@@ -56,18 +55,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd,
         // and the public copy when there is no sign-in at all.
         initGoogleAuth(async () => {
-             forgetSuitesFrom('public');
+             for (const key of forgetSuitesFrom(allTestData, 'public')) selectedTestIds.delete(key);
              await loadManifestTests('remote');
         });
 
-        await loadLocalTests();
-        // Anyone not signed in sees the published public copy, on the dev server too (if one
-        // has been built). Signed-in Googlers see the private bucket instead.
-        if (getAccessToken() && resolveDataSource(params) !== 'public') {
-             await loadManifestTests('remote');
-        } else {
-             await loadManifestTests('public');
+        // On the dev server, local results sit alongside the manifest; an explicit ?source=public
+        // previews the public view on its own.
+        if (resolveDataSource(params) !== 'public') {
+             await loadLocalTests();
         }
+        // Anyone not signed in sees the published public copy; signed-in Googlers see the bucket.
+        await loadManifestTests(manifestSourceFor(params));
 
         // Initialize with default states relative to compoundKeys instead of simple testIDs
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -379,52 +377,24 @@ async function loadLocalTests() {
 }
 
 /**
- * Loads the precomputed suites manifest from the bucket (signed in) or the public copy.
+ * Loads the suites manifest for `source`, then re-renders.
  * @param {'remote' | 'public'} source
  */
 async function loadManifestTests(source) {
-    try {
-        const manifest = await new ApiClient(source).getSuitesManifest();
-        if (manifest.length > 0) {
-            const emptyState = document.getElementById('empty-state');
-            if (emptyState) emptyState.style.display = 'none';
-            for (const item of manifest) {
-                if (item && item.testId) {
-                    registerSuiteSummary(item, source);
-                }
-            }
-        }
-
-        // Re-render UI now that we have manifest data
-        const params = new URLSearchParams(window.location.search);
-        let initialTests = params.get('tests');
-        if (!initialTests || initialTests.trim() === '') {
-            selectedTestIds = new Set(Object.keys(allTestData));
-        }
-        renderFilterMenuItems();
-        renderAll();
-
-    } catch (error) {
-        console.error(`Error loading ${source} suites:`, error);
-        // A rejected token has been cleared by authenticatedFetch; show the public copy instead of nothing.
-        if (source === 'remote' && !getAccessToken() && !isLocalServer()) {
-            await loadManifestTests('public');
-        }
+    const loaded = await loadManifest(source, registerSuiteSummary);
+    if (loaded && Object.keys(allTestData).length > 0) {
+        const emptyState = document.getElementById('empty-state');
+        if (emptyState) emptyState.style.display = 'none';
     }
-}
 
-/**
- * Drops suites registered from one source, e.g. the public copy once a Googler signs in,
- * so the same suite is not listed twice.
- * @param {import('./api.js').DataSource} source
- */
-function forgetSuitesFrom(source) {
-    for (const key of Object.keys(allTestData)) {
-        if (key.endsWith(`|||${source}`)) {
-            delete allTestData[key];
-            selectedTestIds.delete(key);
-        }
+    // Re-render UI now that we have manifest data
+    const params = new URLSearchParams(window.location.search);
+    let initialTests = params.get('tests');
+    if (!initialTests || initialTests.trim() === '') {
+        selectedTestIds = new Set(Object.keys(allTestData));
     }
+    renderFilterMenuItems();
+    renderAll();
 }
 
 /**
