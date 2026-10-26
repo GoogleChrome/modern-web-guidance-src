@@ -19,6 +19,7 @@ import { getTranscludedFeatureIds, parseArguments } from '../core/macro-parsing.
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import child_process from 'node:child_process';
 
 // Override GitHub tokens with dummy credentials so unmocked tests cannot mutate production resources
 process.env.GH_TOKEN = 'fake-test-token';
@@ -637,41 +638,55 @@ describe('handlePR', () => {
   };
 
   let addReviewersMock: any;
+  let removeReviewersMock: any;
   let addPrLabelsMock: any;
   let removePrLabelsMock: any;
   let getPrUnlabeledMock: any;
   let getPrRemovedReviewersMock: any;
+  let getPrBotRequestedReviewersMock: any;
+  let getPrFileContentMock: any;
   let getPrIsDraftMock: any;
   let getPrBodyMock: any;
 
   before(() => {
     addReviewersMock = mock.method(githubApi, 'addPrReviewers', () => {});
+    removeReviewersMock = mock.method(githubApi, 'removePrReviewers', () => {});
     addPrLabelsMock = mock.method(githubApi, 'addPrLabels', () => {});
     removePrLabelsMock = mock.method(githubApi, 'removePrLabels', () => {});
     getPrUnlabeledMock = mock.method(githubApi, 'getPrUnlabeledEvents', () => []);
     getPrRemovedReviewersMock = mock.method(githubApi, 'getPrRemovedReviewers', () => []);
+    getPrBotRequestedReviewersMock = mock.method(githubApi, 'getPrBotRequestedReviewers', () => []);
+    getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', () => null);
     getPrIsDraftMock = mock.method(githubApi, 'getPrIsDraft', () => false);
     getPrBodyMock = mock.method(githubApi, 'getPrBody', () => '');
   });
 
   beforeEach(() => {
     addReviewersMock.mock.resetCalls();
+    removeReviewersMock.mock.resetCalls();
     addPrLabelsMock.mock.resetCalls();
     removePrLabelsMock.mock.resetCalls();
     getPrIsDraftMock.mock.resetCalls();
     getPrBodyMock.mock.resetCalls();
+    getPrBotRequestedReviewersMock.mock.resetCalls();
+    getPrFileContentMock.mock.resetCalls();
     getPrUnlabeledMock.mock.mockImplementation(() => []);
     getPrRemovedReviewersMock.mock.mockImplementation(() => []);
+    getPrBotRequestedReviewersMock.mock.mockImplementation(() => []);
+    getPrFileContentMock.mock.mockImplementation(() => null);
     getPrIsDraftMock.mock.mockImplementation(() => false);
     getPrBodyMock.mock.mockImplementation(() => '');
   });
 
   after(() => {
     addReviewersMock.mock.restore();
+    removeReviewersMock.mock.restore();
     addPrLabelsMock.mock.restore();
     removePrLabelsMock.mock.restore();
     getPrUnlabeledMock.mock.restore();
     getPrRemovedReviewersMock.mock.restore();
+    getPrBotRequestedReviewersMock.mock.restore();
+    getPrFileContentMock.mock.restore();
     getPrIsDraftMock.mock.restore();
     getPrBodyMock.mock.restore();
   });
@@ -1161,7 +1176,7 @@ describe('handlePR', () => {
       'guides/custom-fork-category/new-guide/guide.md'
     ]);
     const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
-    const getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', (_prNumber: number, filePath: string) => {
+    getPrFileContentMock.mock.mockImplementation((_prNumber: number, filePath: string) => {
       if (filePath === 'guides/custom-fork-category/new-guide/guide.md') {
         return `---
 name: new-guide
@@ -1195,7 +1210,6 @@ web-feature-ids:
     } finally {
       filesMock.mock.restore();
       reviewStateMock.mock.restore();
-      getPrFileContentMock.mock.restore();
     }
   });
 
@@ -1242,7 +1256,6 @@ web-feature-ids:
       'guides/modern-web-guidance/SKILL.md'
     ]);
     const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
-    const getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', () => null);
 
     try {
       const result = handlePR(99999, 'some-contributor', mockConfig);
@@ -1255,7 +1268,6 @@ web-feature-ids:
     } finally {
       filesMock.mock.restore();
       reviewStateMock.mock.restore();
-      getPrFileContentMock.mock.restore();
     }
   });
 
@@ -1266,7 +1278,6 @@ web-feature-ids:
       'src/core/guide-validation.ts'
     ]);
     const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
-    const getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', () => null);
 
     try {
       const result = handlePR(99999, 'some-contributor', mockConfig, undefined, undefined, ['content']);
@@ -1276,7 +1287,6 @@ web-feature-ids:
     } finally {
       filesMock.mock.restore();
       reviewStateMock.mock.restore();
-      getPrFileContentMock.mock.restore();
     }
   });
 
@@ -1349,6 +1359,44 @@ web-feature-ids:
       assert.strictEqual(addReviewersMock.mock.callCount(), 0);
     } finally {
       filesMock.mock.restore();
+    }
+  });
+
+  it('removes stale bot-requested ATL reviewers while keeping active ATLs, human-requested reviewers, and respecting dryRun', () => {
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'guides/css-layout/grid-layout/guide.md'
+    ]);
+    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({
+      reviewRequests: ['LeaVerou', 'malchata', 'TravenReese'],
+      reviews: []
+    }));
+    getPrBotRequestedReviewersMock.mock.mockImplementation(() => ['leaverou', 'malchata']);
+
+    try {
+      // dryRun should not call removePrReviewers
+      handlePR(1862, 'some-contributor', mockConfig, undefined, undefined, [], { dryRun: true });
+      assert.strictEqual(removeReviewersMock.mock.callCount(), 0);
+
+      // Live run removes stale bot-requested LeaVerou, keeps active ATL malchata and human-requested TravenReese
+      assert.deepStrictEqual(handlePR(1862, 'some-contributor', mockConfig), []);
+      assert.strictEqual(removeReviewersMock.mock.callCount(), 1);
+      assert.deepStrictEqual(removeReviewersMock.mock.calls[0].arguments, [1862, ['LeaVerou']]);
+    } finally {
+      filesMock.mock.restore();
+      reviewStateMock.mock.restore();
+    }
+  });
+});
+
+describe('githubApi.getPrBotRequestedReviewers', () => {
+  it('returns only reviewers whose latest review_requested event came from a bot', () => {
+    const execMock = mock.method(child_process, 'execFileSync', () =>
+      'leaverou\ttrue\ntravenreese\tfalse\nbramus\ttrue\nbramus\tfalse\nrviscomi\tfalse\nrviscomi\ttrue\n'
+    );
+    try {
+      assert.deepStrictEqual(githubApi.getPrBotRequestedReviewers(1862), ['leaverou', 'rviscomi']);
+    } finally {
+      execMock.mock.restore();
     }
   });
 });

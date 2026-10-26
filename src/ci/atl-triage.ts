@@ -324,41 +324,33 @@ export function getAtlsFromDescription(description: string, atlConfig: AtlConfig
   return Array.from(resolvedAtls);
 }
 
+const JQ_ACTOR_IS_BOT = '(.actor != null and (.actor.type == "Bot" or ((.actor.login // "") | endswith("[bot]"))))';
+
+function queryIssueEvents(issueOrPrNumber: number, jqFilter: string): string[] {
+  return child_process
+    .execFileSync(
+      'gh',
+      ['api', `repos/{owner}/{repo}/issues/${issueOrPrNumber}/events`, '--paginate', '--jq', jqFilter],
+      { encoding: 'utf8' }
+    )
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean);
+}
+
 export const githubApi = {
   getIssueUnassignedLogins(issueNumber: number): string[] {
-    const eventsOutput = child_process.execFileSync(
-      'gh',
-      [
-        'api',
-        `repos/{owner}/{repo}/issues/${issueNumber}/events`,
-        '--paginate',
-        '--jq',
-        '.[] | select(.event == "unassigned" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .assignee.login'
-      ],
-      { encoding: 'utf8' }
+    return queryIssueEvents(
+      issueNumber,
+      `.[] | select(.event == "unassigned" and (${JQ_ACTOR_IS_BOT} | not)) | .assignee.login`
     );
-    return eventsOutput
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
   },
 
   getIssueUnlabeledEvents(issueNumber: number): string[] {
-    const eventsOutput = child_process.execFileSync(
-      'gh',
-      [
-        'api',
-        `repos/{owner}/{repo}/issues/${issueNumber}/events`,
-        '--paginate',
-        '--jq',
-        '.[] | select(.event == "unlabeled" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .label.name'
-      ],
-      { encoding: 'utf8' }
+    return queryIssueEvents(
+      issueNumber,
+      `.[] | select(.event == "unlabeled" and (${JQ_ACTOR_IS_BOT} | not)) | .label.name`
     );
-    return eventsOutput
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
   },
 
   getIssueCurrentAssignees(issueNumber: number): string[] {
@@ -470,6 +462,29 @@ export const githubApi = {
     );
   },
 
+  removePrReviewers(prNumber: number, reviewers: string[]): void {
+    if (reviewers.length === 0) return;
+    child_process.execFileSync(
+      'gh',
+      ['pr', 'edit', String(prNumber), '--remove-reviewer', reviewers.join(',')],
+      { stdio: 'inherit' }
+    );
+  },
+
+  getPrBotRequestedReviewers(prNumber: number): string[] {
+    const botRequested = new Set<string>();
+    const lines = queryIssueEvents(
+      prNumber,
+      `.[] | select(.event == "review_requested" and .requested_reviewer.login != null) | [(.requested_reviewer.login | ascii_downcase), (${JQ_ACTOR_IS_BOT} | tostring)] | @tsv`
+    );
+    for (const line of lines) {
+      const [login, isBot] = line.split('\t');
+      if (isBot === 'true') botRequested.add(login);
+      else botRequested.delete(login);
+    }
+    return Array.from(botRequested);
+  },
+
   addPrLabels(prNumber: number, labels: string[]): void {
     if (labels.length === 0) return;
     child_process.execFileSync(
@@ -489,39 +504,17 @@ export const githubApi = {
   },
 
   getPrUnlabeledEvents(prNumber: number): string[] {
-    const eventsOutput = child_process.execFileSync(
-      'gh',
-      [
-        'api',
-        `repos/{owner}/{repo}/issues/${prNumber}/events`,
-        '--paginate',
-        '--jq',
-        '.[] | select(.event == "unlabeled" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .label.name'
-      ],
-      { encoding: 'utf8' }
+    return queryIssueEvents(
+      prNumber,
+      `.[] | select(.event == "unlabeled" and (${JQ_ACTOR_IS_BOT} | not)) | .label.name`
     );
-    return eventsOutput
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
   },
 
   getPrRemovedReviewers(prNumber: number): string[] {
-    const eventsOutput = child_process.execFileSync(
-      'gh',
-      [
-        'api',
-        `repos/{owner}/{repo}/issues/${prNumber}/events`,
-        '--paginate',
-        '--jq',
-        '.[] | select(.event == "review_request_removed" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .requested_reviewer.login'
-      ],
-      { encoding: 'utf8' }
+    return queryIssueEvents(
+      prNumber,
+      `.[] | select(.event == "review_request_removed" and (${JQ_ACTOR_IS_BOT} | not)) | .requested_reviewer.login`
     );
-    return eventsOutput
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
   },
 
   getPrFileContent(prNumber: number, filePath: string): string | null {
@@ -1076,11 +1069,21 @@ export function handlePR(
 
   // Remove the PR author, already requested/reviewed users, and any reviewers whose review request was previously removed
   const excludeLogins = [prAuthor];
+  const reviewersToRemove: string[] = [];
 
   if (!mockFiles) {
     try {
       const prData = githubApi.getPrReviewState(prNumber);
       excludeLogins.push(...prData.reviewRequests, ...prData.reviews);
+
+      const resolvedLower = new Set(Array.from(allResolvedAtls, a => a.toLowerCase()));
+      const staleCandidates = prData.reviewRequests.filter(r => !resolvedLower.has(r.toLowerCase()));
+      if (staleCandidates.length > 0) {
+        const botRequested = new Set(
+          githubApi.getPrBotRequestedReviewers(prNumber).map(r => r.toLowerCase())
+        );
+        reviewersToRemove.push(...staleCandidates.filter(c => botRequested.has(c.toLowerCase())));
+      }
     } catch (err) {
       console.error(`Failed to fetch existing review state for PR #${prNumber}:`, err);
     }
@@ -1113,6 +1116,9 @@ export function handlePR(
     if (prLabelsToRemove.length > 0) {
       console.log(`[DRY RUN] Would remove label(s) from PR #${prNumber}: ${prLabelsToRemove.join(', ')}`);
     }
+    if (reviewersToRemove.length > 0) {
+      console.log(`[DRY RUN] Would remove stale ATL review request(s) from PR #${prNumber}: ${reviewersToRemove.join(',')}`);
+    }
     if (reviewers.length > 0) {
       console.log(`[DRY RUN] Would request review on PR #${prNumber} from: ${reviewers.join(',')}`);
     } else {
@@ -1137,6 +1143,15 @@ export function handlePR(
         console.log(`Successfully removed label(s) from PR #${prNumber}: ${prLabelsToRemove.join(', ')}`);
       } catch (err) {
         console.error(`Failed to remove labels from PR #${prNumber}:`, err);
+      }
+    }
+
+    if (reviewersToRemove.length > 0) {
+      try {
+        githubApi.removePrReviewers(prNumber, reviewersToRemove);
+        console.log(`Successfully removed stale ATL review request(s) from PR #${prNumber}: ${reviewersToRemove.join(',')}`);
+      } catch (err) {
+        console.error(`Failed to remove stale review requests from PR #${prNumber}:`, err);
       }
     }
   }
