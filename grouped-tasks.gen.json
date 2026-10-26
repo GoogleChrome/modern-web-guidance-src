@@ -298,6 +298,9 @@
         "daily-grind",
         "devtools-times"
       ],
+      "quick-sign-ins": [
+        "daily-grind"
+      ],
       "secure-external-subresources": [
         "daily-grind"
       ],
