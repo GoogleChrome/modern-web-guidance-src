@@ -148,7 +148,7 @@ describe('animate-element-entry-exit rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('flags toast and alert notifications using jQuery animations (no artificial auto-dismiss exclusion)', () => {
+  test('ignores temporary toast auto-dismiss notifications (chained .delay or setTimeout)', () => {
     const codeA = `
       function showCopied() {
         $('#copied').fadeIn(100);
@@ -156,7 +156,7 @@ describe('animate-element-entry-exit rule', () => {
       }
     `;
     const resA = scanJsSource('ui/toastA.js', codeA, [animateElementEntryExitMatcher], project);
-    assert.equal(resA.matches.length, 2);
+    assert.equal(resA.matches.length, 0);
 
     const codeB = `
       function showToast() {
@@ -164,7 +164,7 @@ describe('animate-element-entry-exit rule', () => {
       }
     `;
     const resB = scanJsSource('ui/toastB.js', codeB, [animateElementEntryExitMatcher], project);
-    assert.equal(resB.matches.length, 2);
+    assert.equal(resB.matches.length, 0);
 
     const codeC = `
       function showModal() {
@@ -174,5 +174,14 @@ describe('animate-element-entry-exit rule', () => {
     `;
     const resC = scanJsSource('ui/modal.js', codeC, [animateElementEntryExitMatcher], project);
     assert.equal(resC.matches.length, 2);
+  });
+
+  test('flags DOM jQuery caller whose name contains scene as a substring (e.g. scene_controls)', () => {
+    const code = `
+      var scene_controls = $('#scene_controls');
+      scene_controls.fadeIn(100);
+    `;
+    const res = scanJsSource('ui/interface.js', code, [animateElementEntryExitMatcher], project);
+    assert.equal(res.matches.length, 1);
   });
 });

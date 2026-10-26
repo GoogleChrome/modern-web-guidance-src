@@ -62,13 +62,14 @@ export const ITP_ACTIVE_SUB_PATTERNS: readonly IndividualTransformSubPattern[] =
   'multi-function-chain',
   'paired-state-composition',
   'repeating-keyframe-step',
-  'single-function-state',
 ];
 
 /**
  * Deferred sub-patterns for the individual-transform-properties rule currently excluded from matcher execution.
  */
-export const ITP_DEFERRED_SUB_PATTERNS: readonly IndividualTransformSubPattern[] = [];
+export const ITP_DEFERRED_SUB_PATTERNS: readonly IndividualTransformSubPattern[] = [
+  'single-function-state',
+];
 
 const STATE_PSEUDO_TEST_RE =
   /:(?:hover|focus-visible|focus-within|focus|active|visited|checked|disabled|target|open|popover-open|modal)\b/i;
@@ -697,13 +698,12 @@ export const individualTransformPropertiesRule: AnalyzerRule = {
       'A CSS rule combines multiple `translate*()`, `rotate*()`, and/or `scale*()` functions in canonical `translate -> rotate -> scale` order without `transition: transform`.',
       'A CSS rule pairs a base transform with a `:hover`/`:focus`/state rule or `@keyframes` animation where individual `translate`, `rotate`, and `scale` properties avoid repeating static transform components.',
       'An `@keyframes` block repeats a static `translate*()`, `rotate*()`, or `scale*()` function across multiple keyframe steps while animating another transform property.',
-      'An isolated CSS state rule (:hover, :focus, :active) sets a single-function transform when no paired base rule sets transform or transition: transform.',
     ],
     dropWhen: [
       'The `transform` list applies `rotate` or `scale` before `translate` (e.g. `rotate(45deg) translateX(20px)` where rewriting changes geometry).',
       'The `transform` value uses `skew*()`, `matrix*()`, `perspective()`, or `var()`.',
       'The rule or a paired base selector declares `transition: transform` or `transition-property: transform` (where changing properties breaks the transition).',
-      'The rule is an isolated multi-function transform without paired state selectors or keyframes (covered by opt-in standalone-chain rule).',
+      'The rule is an isolated single-function transform (e.g. `.btn:hover { transform: scale(1.05) }`) with no independent composition across states or keyframes.',
     ],
   },
 };

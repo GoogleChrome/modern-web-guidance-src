@@ -36,8 +36,8 @@ describe('individualTransformPropertiesRule', () => {
       individualTransformPropertiesSingleFunctionStateRule.id,
       'individual-transform-properties/single-function-state',
     );
-    assert.ok(ITP_ACTIVE_SUB_PATTERNS.includes('single-function-state'));
-    assert.equal(ITP_DEFERRED_SUB_PATTERNS.length, 0);
+    assert.ok(ITP_DEFERRED_SUB_PATTERNS.includes('single-function-state'));
+    assert.ok(!ITP_ACTIVE_SUB_PATTERNS.includes('single-function-state'));
   });
 
   it('ignores standalone multi-function transform in default rule (Pattern C), flagged by opt-in standalone rule', () => {
@@ -68,19 +68,46 @@ describe('individualTransformPropertiesRule', () => {
     assert.equal(optInMatches[0]?.line, 2);
   });
 
-  it('flags isolated :hover single-function transform in default rule (Pattern D is active by default)', () => {
+  it('ignores isolated :hover single-function transform in default rule (Pattern D), flagged by opt-in state rule', () => {
     const css = `
       .btn:hover {
         transform: scale(1.05);
       }
     `;
     const defaultMatches = scanCss('src/btn.css', css, rules);
-    assert.equal(defaultMatches.length, 1);
-    assert.equal(defaultMatches[0]?.line, 2);
+    assert.equal(defaultMatches.length, 0);
 
     const optInMatches = scanCss('src/btn.css', css, singleFunctionStateRules);
     assert.equal(optInMatches.length, 1);
     assert.equal(optInMatches[0]?.line, 2);
+  });
+
+  it('keeps single-function state override silent when base also sets single-function transform with transition: transform', () => {
+    // hitbloq new_main.css:67 shape
+    const cssA = `
+      .white-link::after {
+        transform: scaleX(0);
+        transition: transform 250ms;
+      }
+      .white-link:hover::after {
+        transform: scaleX(1);
+      }
+    `;
+    const matchesA = scanCss('hitbloq.css', cssA, rules);
+    assert.equal(matchesA.length, 0);
+
+    // Sodium dark.css:288 shape
+    const cssB = `
+      .grid-item {
+        transform: scale(1);
+        transition: transform 0.3s ease;
+      }
+      .grid-item:hover {
+        transform: scale(1.1);
+      }
+    `;
+    const matchesB = scanCss('sodium.css', cssB, rules);
+    assert.equal(matchesB.length, 0);
   });
 
   it('skips isolated :hover single-function transform when coupled with transition: transform in stylesheet', () => {
@@ -290,8 +317,8 @@ describe('individualTransformPropertiesRule', () => {
   });
 
   it('emits subPattern on matches for single-function-state, repeating-keyframe-step, paired-state-composition, and multi-function-chain', () => {
-    // single-function-state
-    const stateMatches = scanCss('src/state.css', '.btn:hover { transform: scale(1.05); }', rules);
+    // single-function-state (opt-in rule)
+    const stateMatches = scanCss('src/state.css', '.btn:hover { transform: scale(1.05); }', singleFunctionStateRules);
     assert.equal(stateMatches[0]?.subPattern, 'single-function-state');
 
     // repeating-keyframe-step
