@@ -54,6 +54,8 @@ Toast notifications must be used to provide non-critical, supplemental informati
 
 {{ FEATURE_FALLBACKS("popover") }}
 
+{{ FEATURE_FALLBACKS("aria-notify") }}
+
 ### sibling-index()
 
 * **Guidance:** If sibling-index() is not supported, use the `+` operator to add margin manually. I.e. `popover + popover { margin-top: 1rem }`
