@@ -66,3 +66,6 @@ skills/modern-web/
 **/.cache/
 .agents/skills/nightly-eval-investigation/artifacts/
 
+
+# Built public eval copies belong in out/ (served by the dev server); never commit them.
+src/dashboard/public-evals/
