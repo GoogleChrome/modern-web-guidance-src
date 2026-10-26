@@ -271,6 +271,11 @@
       top: var(--y, 0);
       translate: -50% calc(-100% - .625rem);
 
+      /* Touch: the OS opens its own selection menu above the selection, so sit below it instead */
+      @media (pointer: coarse) {
+        translate: -50% 0;
+      }
+
       /* entry/exit animation */
       opacity: 0;
       scale: .9;
@@ -497,7 +502,11 @@
       const rect = sel.getRangeAt(0).getBoundingClientRect();
       const x = Math.min(Math.max(rect.left + rect.width / 2, 32), innerWidth - 32);
       popover.style.setProperty('--x', `${x}px`);
-      popover.style.setProperty('--y', `${Math.max(rect.top, 48)}px`);
+      // Below the selection on touch (clear of the OS menu and selection handles), above it otherwise
+      const y = matchMedia('(pointer: coarse)').matches
+        ? Math.min(rect.bottom + 32, innerHeight - 56)
+        : Math.max(rect.top, 48);
+      popover.style.setProperty('--y', `${y}px`);
 
       if (!popover.matches(':popover-open')) popover.showPopover();
     }
