@@ -5,14 +5,7 @@ import type {
   CssRuleView,
 } from '../schema.ts';
 
-const RESET_OR_ZERO_DIMENSIONS = new Set([
-  '0',
-  '0px',
-  '0em',
-  '0rem',
-  '0%',
-  '0vw',
-  '0vh',
+const RESET_DIMENSIONS = new Set([
   'none',
   'auto',
   'inherit',
@@ -21,6 +14,8 @@ const RESET_OR_ZERO_DIMENSIONS = new Set([
   'revert',
   'normal',
 ]);
+
+const ZERO_DIMENSION_REGEX = /^0(?:[a-z%]+)?$/i;
 
 const TRANSPARENT_VALUES = new Set([
   'transparent',
@@ -40,9 +35,14 @@ const TRANSPARENT_VALUES = new Set([
 const WEBKIT_SCROLLBAR_REGEX = /::-webkit-scrollbar(?![-\w])/i;
 const WEBKIT_THUMB_REGEX = /::-webkit-scrollbar-thumb\b/i;
 
+function isZeroDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
+  const val = styleRule.getPropertyValue(prop)?.trim().toLowerCase();
+  return Boolean(val && ZERO_DIMENSION_REGEX.test(val));
+}
+
 function hasNonZeroDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
   const val = styleRule.getPropertyValue(prop)?.trim().toLowerCase();
-  if (!val || RESET_OR_ZERO_DIMENSIONS.has(val)) {
+  if (!val || RESET_DIMENSIONS.has(val) || ZERO_DIMENSION_REGEX.test(val)) {
     return false;
   }
   const pxMatch = val.match(/^(\d+(?:\.\d+)?)px$/);
@@ -99,12 +99,6 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       }
     }
 
-    // 4. Skip rules used purely to hide scrollbars (display: none)
-    const displayValue = (styleRule.getPropertyValue('display') ?? '').toLowerCase();
-    if (displayValue === 'none') {
-      return null;
-    }
-
     const isThumb = WEBKIT_THUMB_REGEX.test(styleRule.selectorText);
     const isScrollbar = WEBKIT_SCROLLBAR_REGEX.test(styleRule.selectorText);
 
@@ -114,12 +108,22 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
         return null;
       }
     } else if (isScrollbar) {
-      // Must set non-zero width or height in a stylesheet that also styles -webkit-scrollbar-thumb
-      const hasDim = hasNonZeroDimension(styleRule, 'width') || hasNonZeroDimension(styleRule, 'height');
-      if (!hasDim) {
-        return null;
+      const displayValue = styleRule.getPropertyValue('display')?.trim().toLowerCase() ?? '';
+      const hasPositiveDim =
+        hasNonZeroDimension(styleRule, 'width') || hasNonZeroDimension(styleRule, 'height');
+      const hasZeroDim =
+        isZeroDimension(styleRule, 'width') || isZeroDimension(styleRule, 'height');
+      const hidesScrollbar = displayValue === 'none' || (hasZeroDim && !hasPositiveDim);
+
+      if (hidesScrollbar) {
+        return {
+          message:
+            'CSS rule uses vendor ::-webkit-scrollbar to hide the scrollbar; use standard scrollbar-width: none on the scrollable container instead (and wrap ::-webkit-scrollbar in @supports not (scrollbar-width: none)).',
+        };
       }
-      if (!ctx.stylesheetText.includes('-webkit-scrollbar-thumb')) {
+
+      // Non-zero thickness customization requires accompanying -webkit-scrollbar-thumb styling
+      if (!hasPositiveDim || !ctx.stylesheetText.includes('-webkit-scrollbar-thumb')) {
         return null;
       }
     } else {
@@ -138,18 +142,18 @@ export const customizeScrollbarColorAndThicknessRule: AnalyzerRule = {
   guideId: 'customize-scrollbar-color-and-thickness',
   guideHash: '6797d5c85622',
   summary:
-    'Vendor ::-webkit-scrollbar pseudo-elements customize scrollbar appearance; use standard scrollbar-color and scrollbar-width instead.',
+    'Vendor ::-webkit-scrollbar pseudo-elements customize or hide scrollbars; use standard scrollbar-color and scrollbar-width (including scrollbar-width: none) instead.',
   matcher: customizeScrollbarColorAndThicknessCssMatcher,
   verifierRubric: {
     keepWhen: [
-      'The CSS rule uses vendor pseudo-elements (::-webkit-scrollbar or ::-webkit-scrollbar-thumb) declaring non-zero width/height or background colors to customize visible scrollbar dimensions or thumb colors.',
-      'The custom scrollbar appearance is implemented without declaring standard scrollbar-color or scrollbar-width CSS properties.',
+      'The CSS rule uses vendor pseudo-elements (::-webkit-scrollbar or ::-webkit-scrollbar-thumb) to customize scrollbar dimensions/thumb colors or to hide scrollbars (display: none, width: 0, height: 0).',
+      'The custom or hidden scrollbar styling is implemented without declaring standard scrollbar-color or scrollbar-width (such as scrollbar-width: none) CSS properties.',
     ],
     dropWhen: [
       'The stylesheet already defines standard scrollbar-width or scrollbar-color properties.',
-      'The rule exclusively hides scrollbars using display: none, width: 0, height: 0, or transparent backgrounds.',
-      'The rule targets ::-webkit-scrollbar without custom thumb styling or only sets border-radius without color/thickness.',
-      'The rule is inside a CSS reset stylesheet or an @supports not (scrollbar-width: ...) fallback block.',
+      'The rule only resets scrollbar properties using CSS cascade keywords (auto, inherit, initial, unset, revert) or sets transparent thumb backgrounds without hiding ::-webkit-scrollbar.',
+      'The rule targets ::-webkit-scrollbar for non-zero sizing without custom thumb styling, or only sets border-radius without color, thickness, or hiding.',
+      'The rule is inside a CSS reset stylesheet or an @supports not (scrollbar-width: ...) / @supports not (scrollbar-color: ...) fallback block.',
     ],
   },
 };

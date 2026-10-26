@@ -66,6 +66,39 @@ void test('customize-scrollbar-color-and-thickness: positive brownfield matches'
     const matches = scanCss('global.css', css, [matcher]);
     assert.equal(matches.length, 2);
   });
+
+  await t.test('flags ::-webkit-scrollbar { display: none } and points to scrollbar-width: none', () => {
+    const css = `
+      .text-prompt {
+        cursor: text;
+        overflow-x: visible;
+      }
+
+      .text-prompt::-webkit-scrollbar {
+        display: none;
+      }
+    `;
+    const matches = scanCss('front_end/ui/textPrompt.css', css, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 7);
+    assert.match(matches[0]?.message ?? '', /scrollbar-width:\s*none/);
+  });
+
+  await t.test('flags ::-webkit-scrollbar hiding via zero width or height and points to scrollbar-width: none', () => {
+    const css = `
+      .hide-scroll::-webkit-scrollbar {
+        width: 0;
+        height: 0px;
+      }
+      .hide-scroll::-webkit-scrollbar-thumb {
+        background: transparent;
+      }
+    `;
+    const matches = scanCss('hide-dimensions.css', css, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+    assert.match(matches[0]?.message ?? '', /scrollbar-width:\s*none/);
+  });
 });
 
 void test('customize-scrollbar-color-and-thickness: negative / exempt cases', async (t) => {
@@ -85,6 +118,20 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts stylesheets already using scrollbar-width: none alongside ::-webkit-scrollbar { display: none }', () => {
+    const css = `
+      .no-scrollbar {
+        scrollbar-width: none;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+        width: 0;
+      }
+    `;
+    const matches = scanCss('modern-none.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts stylesheets already using scrollbar-color', () => {
     const css = `
       :root {
@@ -98,30 +145,6 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
       }
     `;
     const matches = scanCss('modern-color.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('exempts rules that only hide scrollbars via display: none', () => {
-    const css = `
-      .hide-scroll::-webkit-scrollbar {
-        display: none;
-      }
-    `;
-    const matches = scanCss('hide.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('exempts rules that set width: 0 or height: 0 to hide scrollbars', () => {
-    const css = `
-      .hide-scroll::-webkit-scrollbar {
-        width: 0;
-        height: 0px;
-      }
-      .hide-scroll::-webkit-scrollbar-thumb {
-        background: transparent;
-      }
-    `;
-    const matches = scanCss('hide-dimensions.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
 
