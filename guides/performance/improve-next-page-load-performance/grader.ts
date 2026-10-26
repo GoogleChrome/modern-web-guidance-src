@@ -24,11 +24,14 @@ function getSpeculationRules(html: string) {
   }
 }
 
-// Collect the patterns a rule set can positively match, walking the `where` clause
-// and tracking `not` nesting. Each `not` flips the polarity, so a doubly negated
-// matcher (e.g. {"not": {"not": {"href_matches": "/logout"}}}) still matches the
-// URL and must be reported as positive.
-function getPositiveMatchers(clause: unknown, negated = false, matchers: string[] = []): string[] {
+// Collect the URL and selector patterns a `where` clause matches, split by polarity.
+// Each `not` flips the polarity, so a doubly negated matcher still counts as a
+// positive match (e.g. {"not": {"not": {"href_matches": "/logout"}}}).
+function getWhereMatchers(
+  clause: unknown,
+  negated = false,
+  matchers: { positive: string[]; negated: string[] } = { positive: [], negated: [] }
+): { positive: string[]; negated: string[] } {
   if (!clause || typeof clause !== 'object') {
     return matchers;
   }
@@ -36,26 +39,28 @@ function getPositiveMatchers(clause: unknown, negated = false, matchers: string[
   const record = clause as Record<string, unknown>;
 
   if ('not' in record) {
-    getPositiveMatchers(record.not, !negated, matchers);
+    getWhereMatchers(record.not, !negated, matchers);
   }
 
   for (const key of ['and', 'or']) {
     const subclauses = record[key];
     if (Array.isArray(subclauses)) {
       for (const subclause of subclauses) {
-        getPositiveMatchers(subclause, negated, matchers);
+        getWhereMatchers(subclause, negated, matchers);
       }
     }
   }
 
-  if (!negated) {
-    for (const key of ['href_matches', 'selector_matches']) {
-      const value = record[key];
-      if (typeof value === 'string') {
-        matchers.push(value);
-      } else if (Array.isArray(value)) {
-        matchers.push(...value.filter((item): item is string => typeof item === 'string'));
-      }
+  for (const key of ['href_matches', 'selector_matches']) {
+    const value = record[key];
+    const patterns = typeof value === 'string'
+      ? [value]
+      : Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === 'string')
+        : [];
+    for (const pattern of patterns) {
+      const bucket = negated ? matchers.negated : matchers.positive;
+      bucket.push(pattern.toLowerCase());
     }
   }
 
@@ -164,13 +169,19 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
       expect(ruleSets.length).toBeGreaterThan(0);
+      // A catch-all pattern only leaks a logout link if the page actually has one.
+      const pageLinksToLogout = /<a\b[^>]*\bhref\s*=\s*["'][^"']*logout/i.test(html);
       for (const set of ruleSets) {
         if (set.urls) {
           expect(set.urls.some((url: string) => url.toLowerCase().includes('logout'))).toBe(false);
         }
         if (set.where) {
-          const positiveMatchers = getPositiveMatchers(set.where).map((matcher) => matcher.toLowerCase());
-          expect(positiveMatchers.some((matcher) => matcher.includes('logout'))).toBe(false);
+          const { positive, negated } = getWhereMatchers(set.where);
+          expect(positive.some((matcher) => matcher.includes('logout'))).toBe(false);
+          const isCatchAll = positive.some((matcher) => matcher === '*' || matcher === '/*' || matcher === '/**');
+          if (pageLinksToLogout && isCatchAll) {
+            expect(negated.some((matcher) => matcher.includes('logout'))).toBe(true);
+          }
         }
       }
     } else {
