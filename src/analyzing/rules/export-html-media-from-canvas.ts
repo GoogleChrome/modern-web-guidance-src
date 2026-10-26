@@ -279,12 +279,8 @@ export const exportHtmlMediaFromCanvasJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, CANVAS_MEDIA_GUARD_TOKENS)) {
-        return;
-      }
-
       const msg = matchCanvasMediaRecorderNode(node);
-      if (msg) {
+      if (msg && !isProtectedByFeatureGuard(node, CANVAS_MEDIA_GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message: msg,

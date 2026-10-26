@@ -399,12 +399,8 @@ export const persistentToastNotificationsJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, TOAST_GUARD_TOKENS)) {
-        return;
-      }
-
       const msg = matchToastCall(node);
-      if (msg) {
+      if (msg && !isProtectedByFeatureGuard(node, TOAST_GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message: msg,

@@ -292,12 +292,8 @@ export const sliderJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, SLIDER_GUARD_TOKENS)) {
-        return;
-      }
-
       const msg = matchNoUiSliderCreate(node);
-      if (msg) {
+      if (msg && !isProtectedByFeatureGuard(node, SLIDER_GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message: msg,

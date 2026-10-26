@@ -140,7 +140,7 @@ function matchDomInsertionSink(callExpr: CallExpression): AnalyzerMatch | null {
 
 export const sanitizerJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['DOMPurify', 'sanitize', 'sanitizeHtml', 'xss', 'insane', 'innerHTML', 'outerHTML'],
+  fastTokens: ['DOMPurify', 'sanitize', 'sanitizeHtml', 'xss', 'insane'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
@@ -157,17 +157,19 @@ export const sanitizerJsMatcher: JsRuleMatcher = {
     };
 
     sourceFile.forEachDescendant((node) => {
-      if (isProtectedByFeatureGuard(node, SANITIZER_FEATURE_TOKENS)) {
-        return;
-      }
-
       if (Node.isBinaryExpression(node)) {
-        recordMatch(matchHtmlPropertyAssignment(node));
+        const match = matchHtmlPropertyAssignment(node);
+        if (match && !isProtectedByFeatureGuard(node, SANITIZER_FEATURE_TOKENS)) {
+          recordMatch(match);
+        }
         return;
       }
 
       if (Node.isCallExpression(node)) {
-        recordMatch(matchDomInsertionSink(node));
+        const match = matchDomInsertionSink(node);
+        if (match && !isProtectedByFeatureGuard(node, SANITIZER_FEATURE_TOKENS)) {
+          recordMatch(match);
+        }
       }
     });
 

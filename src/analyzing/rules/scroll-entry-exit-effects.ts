@@ -153,12 +153,8 @@ export const scrollEntryExitEffectsJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, SCROLL_TIMELINE_GUARD_TOKENS)) {
-        return;
-      }
-
       const msg = matchScrollRevealCall(node);
-      if (msg) {
+      if (msg && !isProtectedByFeatureGuard(node, SCROLL_TIMELINE_GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message: msg,

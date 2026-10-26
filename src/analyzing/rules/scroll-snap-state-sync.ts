@@ -105,12 +105,8 @@ export const scrollSnapStateSyncMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isGuardedBySnapChange(node, sourceFile)) {
-        return;
-      }
-
       const message = matchSnapStateSyncListener(node);
-      if (message) {
+      if (message && !isGuardedBySnapChange(node, sourceFile)) {
         matches.push({
           line: node.getStartLineNumber(),
           message,

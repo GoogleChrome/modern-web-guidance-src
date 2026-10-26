@@ -317,12 +317,8 @@ export const preciseTextAlignmentJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, TEXT_BOX_GUARD_TOKENS)) {
-        return;
-      }
-
       const msg = matchCapsizeCall(node);
-      if (msg) {
+      if (msg && !isProtectedByFeatureGuard(node, TEXT_BOX_GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message: msg,

@@ -107,12 +107,8 @@ export const scrollProgressIndicatorMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isGuardedByScrollTimelineSupport(node)) {
-        return;
-      }
-
       const message = matchScrollProgressListener(node);
-      if (message) {
+      if (message && !isGuardedByScrollTimelineSupport(node)) {
         matches.push({
           line: node.getStartLineNumber(),
           message,

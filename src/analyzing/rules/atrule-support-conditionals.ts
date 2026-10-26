@@ -223,20 +223,13 @@ export const atruleSupportConditionalsJsMatcher: JsRuleMatcher = {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
 
-    sourceFile.forEachDescendant((node) => {
-      if (
-        isProtectedByFeatureGuard(node, [
-          'at-rule(',
-          'CSSFunctionRule',
-        ])
-      ) {
-        return;
-      }
+    const AT_RULE_FEATURE_TOKENS = ['at-rule(', 'CSSFunctionRule'] as const;
 
+    sourceFile.forEachDescendant((node) => {
       if (Node.isCallExpression(node)) {
         const msg = matchAtRuleCallExpression(node);
         const line = node.getStartLineNumber();
-        if (msg && !visitedLines.has(line)) {
+        if (msg && !visitedLines.has(line) && !isProtectedByFeatureGuard(node, AT_RULE_FEATURE_TOKENS)) {
           visitedLines.add(line);
           matches.push({ line, message: msg });
         }
@@ -246,7 +239,7 @@ export const atruleSupportConditionalsJsMatcher: JsRuleMatcher = {
       if (Node.isPropertyAccessExpression(node)) {
         const msg = matchAtRulePropertyAccess(node);
         const line = node.getStartLineNumber();
-        if (msg && !visitedLines.has(line)) {
+        if (msg && !visitedLines.has(line) && !isProtectedByFeatureGuard(node, AT_RULE_FEATURE_TOKENS)) {
           visitedLines.add(line);
           matches.push({ line, message: msg });
         }
@@ -256,7 +249,7 @@ export const atruleSupportConditionalsJsMatcher: JsRuleMatcher = {
       if (Node.isBinaryExpression(node)) {
         const msg = matchCssRuleInOperator(node);
         const line = node.getStartLineNumber();
-        if (msg && !visitedLines.has(line)) {
+        if (msg && !visitedLines.has(line) && !isProtectedByFeatureGuard(node, AT_RULE_FEATURE_TOKENS)) {
           visitedLines.add(line);
           matches.push({ line, message: msg });
         }

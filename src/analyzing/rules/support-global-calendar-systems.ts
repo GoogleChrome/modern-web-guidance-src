@@ -288,13 +288,9 @@ export const supportGlobalCalendarSystemsJsMatcher: JsRuleMatcher = {
     const matches: AnalyzerMatch[] = [];
 
     sourceFile.forEachDescendant((node) => {
-      if (isProtectedByFeatureGuard(node, CALENDAR_GUARD_TOKENS)) {
-        return;
-      }
-
       if (Node.isCallExpression(node)) {
         const msg = matchJalaaliCall(node);
-        if (msg) {
+        if (msg && !isProtectedByFeatureGuard(node, CALENDAR_GUARD_TOKENS)) {
           matches.push({
             line: node.getStartLineNumber(),
             message: msg,
@@ -305,7 +301,7 @@ export const supportGlobalCalendarSystemsJsMatcher: JsRuleMatcher = {
 
       if (Node.isNewExpression(node)) {
         const msg = matchPersianDateNew(node);
-        if (msg) {
+        if (msg && !isProtectedByFeatureGuard(node, CALENDAR_GUARD_TOKENS)) {
           matches.push({
             line: node.getStartLineNumber(),
             message: msg,

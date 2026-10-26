@@ -174,12 +174,8 @@ export const scrollTargetOnLoadMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isGuardedByScrollInitialTarget(node)) {
-        return;
-      }
-
       const message = matchScrollTargetOnLoadListener(node);
-      if (message) {
+      if (message && !isGuardedByScrollInitialTarget(node)) {
         matches.push({
           line: node.getStartLineNumber(),
           message,

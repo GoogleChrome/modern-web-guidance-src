@@ -100,12 +100,8 @@ export const animateToFromTopLayerMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isGuardedByTopLayerSupport(node)) {
-        return;
-      }
-
       const message = matchTopLayerExitListener(node);
-      if (message) {
+      if (message && !isGuardedByTopLayerSupport(node)) {
         matches.push({
           line: node.getStartLineNumber(),
           message,

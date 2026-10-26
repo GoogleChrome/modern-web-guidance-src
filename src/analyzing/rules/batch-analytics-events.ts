@@ -110,11 +110,8 @@ export const batchAnalyticsEventsMatcher: JsRuleMatcher = {
 
     sourceFile.forEachDescendant((node) => {
       if (Node.isCallExpression(node)) {
-        if (isProtectedByFeatureGuard(node, MODERN_BEACON_GUARD_TOKENS)) {
-          return;
-        }
         const message = matchUnloadBeaconListener(node);
-        if (message) {
+        if (message && !isProtectedByFeatureGuard(node, MODERN_BEACON_GUARD_TOKENS)) {
           matches.push({
             line: node.getStartLineNumber(),
             message,
@@ -124,11 +121,8 @@ export const batchAnalyticsEventsMatcher: JsRuleMatcher = {
       }
 
       if (Node.isBinaryExpression(node)) {
-        if (isProtectedByFeatureGuard(node, MODERN_BEACON_GUARD_TOKENS)) {
-          return;
-        }
         const message = matchOnUnloadAssignment(node);
-        if (message) {
+        if (message && !isProtectedByFeatureGuard(node, MODERN_BEACON_GUARD_TOKENS)) {
           matches.push({
             line: node.getStartLineNumber(),
             message,

@@ -132,12 +132,8 @@ export const highlightTextRangesJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, HIGHLIGHT_GUARD_TOKENS)) {
-        return;
-      }
-
       const msg = matchMarkJsCall(node);
-      if (msg) {
+      if (msg && !isProtectedByFeatureGuard(node, HIGHLIGHT_GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message: msg,

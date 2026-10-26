@@ -100,12 +100,8 @@ export const scrollSnapRealtimeFeedbackMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isGuardedBySnapChanging(node, sourceFile)) {
-        return;
-      }
-
       const message = matchRealtimeSnapScrollListener(node);
-      if (message) {
+      if (message && !isGuardedBySnapChanging(node, sourceFile)) {
         matches.push({
           line: node.getStartLineNumber(),
           message,

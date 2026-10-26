@@ -209,12 +209,8 @@ export const languageDetectionJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, LANGUAGE_DETECTOR_GUARD_TOKENS)) {
-        return;
-      }
-
       const msg = matchLanguageDetectionCall(node);
-      if (msg) {
+      if (msg && !isProtectedByFeatureGuard(node, LANGUAGE_DETECTOR_GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message: msg,

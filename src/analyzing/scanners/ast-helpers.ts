@@ -583,6 +583,35 @@ function isGuardedByLogicalFallback(
   return conditionCheckPolarity(parent.getLeft(), featureTokens) === 'positive';
 }
 
+const sourceFileTokenCache = new WeakMap<SourceFile, Map<string, boolean>>();
+
+export function sourceFileContainsAnyToken(
+  sf: SourceFile,
+  tokens: readonly string[],
+): boolean {
+  let cache = sourceFileTokenCache.get(sf);
+  if (!cache) {
+    cache = new Map<string, boolean>();
+    sourceFileTokenCache.set(sf, cache);
+  }
+
+  let sfText: string | undefined;
+  for (const token of tokens) {
+    let hasToken = cache.get(token);
+    if (hasToken === undefined) {
+      if (sfText === undefined) {
+        sfText = sf.getFullText();
+      }
+      hasToken = sfText.includes(token);
+      cache.set(token, hasToken);
+    }
+    if (hasToken) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Checks whether `node` is guarded by a branch-aware feature guard checking any of `featureTokens`.
  * Recognizes positive checks guarding `else` branches, negative checks guarding `then` branches,
@@ -592,8 +621,7 @@ export function isProtectedByFeatureGuard(
   node: Node,
   featureTokens: readonly string[],
 ): boolean {
-  const sfText = node.getSourceFile().getFullText();
-  if (!featureTokens.some((token) => sfText.includes(token))) {
+  if (!sourceFileContainsAnyToken(node.getSourceFile(), featureTokens)) {
     return false;
   }
 

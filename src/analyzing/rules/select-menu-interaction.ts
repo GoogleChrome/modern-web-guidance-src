@@ -133,12 +133,8 @@ export const selectMenuInteractionJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, USER_INVALID_GUARD_TOKENS)) {
-        return;
-      }
-
       const msg = matchSelectValidationListener(node);
-      if (msg) {
+      if (msg && !isProtectedByFeatureGuard(node, USER_INVALID_GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message: msg,

@@ -357,12 +357,8 @@ export const captureLocationAgnosticDataJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, GUARD_TOKENS)) {
-        return;
-      }
-
       const msg = matchIsoDisplayNameCall(node);
-      if (msg) {
+      if (msg && !isProtectedByFeatureGuard(node, GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message: msg,

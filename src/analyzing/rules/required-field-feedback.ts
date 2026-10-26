@@ -138,12 +138,8 @@ export const requiredFieldFeedbackJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, USER_INVALID_GUARD_TOKENS)) {
-        return;
-      }
-
       const message = matchDirtyClassBlurListener(node);
-      if (message) {
+      if (message && !isProtectedByFeatureGuard(node, USER_INVALID_GUARD_TOKENS)) {
         matches.push({
           line: node.getStartLineNumber(),
           message,

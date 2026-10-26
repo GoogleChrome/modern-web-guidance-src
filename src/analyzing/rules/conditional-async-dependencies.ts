@@ -348,17 +348,16 @@ function matchScriptLoaderCall(callExpr: CallExpression): string | null {
     return null;
   }
 
-  const callText = callExpr.getText();
-  if (
-    THIRD_PARTY_SCRIPT_REGEX.test(callText) ||
-    JSONP_SCRIPT_REGEX.test(callText)
-  ) {
-    return null;
-  }
-
   const callee = unwrapExpression(callExpr.getExpression());
 
   if (isLibraryReference(callee, 'loadjs', ['loadjs'])) {
+    const callText = callExpr.getText();
+    if (
+      THIRD_PARTY_SCRIPT_REGEX.test(callText) ||
+      JSONP_SCRIPT_REGEX.test(callText)
+    ) {
+      return null;
+    }
     return 'loadjs() async dependency loader can be modernized with dynamic import() and top-level await.';
   }
 
@@ -366,10 +365,28 @@ function matchScriptLoaderCall(callExpr: CallExpression): string | null {
     isLibraryReference(callee, '$script', ['scriptjs']) ||
     isLibraryReference(callee, 'scriptjs', ['scriptjs'])
   ) {
+    const callText = callExpr.getText();
+    if (
+      THIRD_PARTY_SCRIPT_REGEX.test(callText) ||
+      JSONP_SCRIPT_REGEX.test(callText)
+    ) {
+      return null;
+    }
     return '$script() async dependency loader can be modernized with dynamic import() and top-level await.';
   }
 
-  return matchCreateScriptInjection(callExpr);
+  if (isDocumentCreateScriptCall(callExpr)) {
+    const callText = callExpr.getText();
+    if (
+      THIRD_PARTY_SCRIPT_REGEX.test(callText) ||
+      JSONP_SCRIPT_REGEX.test(callText)
+    ) {
+      return null;
+    }
+    return matchCreateScriptInjection(callExpr);
+  }
+
+  return null;
 }
 
 export const conditionalAsyncDependenciesPackageMatcher: DependencyRuleMatcher = {
