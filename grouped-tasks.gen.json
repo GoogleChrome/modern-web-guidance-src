@@ -448,9 +448,6 @@
       "apply-webgl-shaders": [
         "task"
       ],
-      "browser-ui-theming": [
-        "daily-grind"
-      ],
       "complex-shapes": [
         "task"
       ],
