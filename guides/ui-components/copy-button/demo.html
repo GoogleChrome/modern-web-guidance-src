@@ -159,9 +159,13 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .copy-button[data-copied] .icon { animation: none; }
+      /* Fade the new icon in instead of popping and rotating it */
+      .copy-button[data-copied] .icon { animation: icon-fade .2s ease; }
       .copy-button[data-copied] ~ .tip,
       .copy-button[data-failed] ~ .tip { animation-name: tip-reduced; }
+      @keyframes icon-fade {
+        from { opacity: 0; }
+      }
       @keyframes tip-reduced {
         0%, 80% { opacity: 1; }
         100%    { opacity: 0; }
