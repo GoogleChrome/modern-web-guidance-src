@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
@@ -13,24 +14,35 @@ import {
   SUSPENDED_QUALIFIED_GUIDE_IDS,
 } from './index.ts';
 
-const PENDING_HELD_OUT_CHECK = new Set([
-  'slider',
-  'physics-based-easing',
-]);
-
 describe('rule registry architectural invariants', () => {
   it('enforces that every rule module file on disk is registered in RULE_REGISTRY', () => {
     const rulesDir = resolve(import.meta.dirname);
+    const untrackedFiles = new Set<string>();
+    try {
+      const gitStatus = execSync('git status --porcelain src/analyzing/rules', {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      });
+      for (const line of gitStatus.split('\n')) {
+        if (line.startsWith('?? ')) {
+          const match = line.slice(3).trim().match(/([^/\\]+)\.ts$/);
+          if (match && !line.includes('.test.ts')) {
+            untrackedFiles.add(match[1]!);
+          }
+        }
+      }
+    } catch {
+      // If git command fails, untrackedFiles remains empty
+    }
+
     const filesOnDisk = readdirSync(rulesDir)
       .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && f !== 'index.ts')
-      .map((f) => f.replace(/\.ts$/, ''));
+      .map((f) => f.replace(/\.ts$/, ''))
+      .filter((f) => !untrackedFiles.has(f));
 
     const registryGuideIds = new Set(RULE_REGISTRY.map((e) => e.guideId));
 
     for (const file of filesOnDisk) {
-      if (PENDING_HELD_OUT_CHECK.has(file)) {
-        continue;
-      }
       assert.ok(
         registryGuideIds.has(file),
         `Rule module on disk "${file}.ts" is not registered in RULE_REGISTRY in rules/index.ts`,

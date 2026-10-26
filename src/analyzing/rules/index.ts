@@ -68,6 +68,7 @@ import { scrollabilityAffordanceHintsRules } from './scrollability-affordance-hi
 import { scrollspyRules } from './scrollspy.ts';
 import { selectMenuInteractionRules } from './select-menu-interaction.ts';
 import { sizeAwareStylingRules } from './size-aware-styling.ts';
+import { smsOtpFormRules } from './sms-otp-form.ts';
 import { softEdgeContentFadeRules } from './soft-edge-content-fade.ts';
 import { stateAwareStickyHeadersRules } from './state-aware-sticky-headers.ts';
 import { stylingWebComponentsRules } from './styling-web-components.ts';
@@ -580,6 +581,24 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   {
     guideId: 'digital-signatures',
     lifecycle: { status: 'retired', reason: "Web Crypto signatures need exact key and encoding alignment (DER vs raw), so this isn't a safe in-place change." },
+    rules: [],
+  },
+  {
+    guideId: 'slider',
+    lifecycle: {
+      status: 'retired',
+      reason:
+        "The guide teaches styling native range inputs; it doesn't cover replacing slider libraries, and most noUiSlider/ionRangeSlider use needs features native range lacks (multiple handles, ranges).",
+    },
+    rules: [],
+  },
+  {
+    guideId: 'physics-based-easing',
+    lifecycle: {
+      status: 'retired',
+      reason:
+        "Spring libraries in real code mostly drive interruptible, velocity-preserving motion that a fixed CSS linear() curve can't reproduce; revisit for non-interactive springs.",
+    },
     rules: [],
   },
 ];
