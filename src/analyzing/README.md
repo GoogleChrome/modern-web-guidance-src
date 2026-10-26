@@ -56,9 +56,9 @@ Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
 Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
 ```
 
-### Structured JSON Output (`--json`)
+### Structured JSON Output (`--json`, abridged)
 
-Coding agents receive structured JSON containing exact file coordinates, confidence tiers, message descriptions, and copy-paste retrieval commands:
+Coding agents receive structured JSON containing exact file coordinates, confidence tiers, message descriptions, verification rubrics, and copy-paste retrieval commands:
 
 ```json
 {
@@ -70,6 +70,16 @@ Coding agents receive structured JSON containing exact file coordinates, confide
       "tier": "qualified",
       "summary": "Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.",
       "retrieveCommand": "npx modern-web-guidance retrieve form-fields-automatically-fit-contents",
+      "verifierRubric": {
+        "keepWhen": [
+          "A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/width using scrollHeight or scrollWidth to auto-expand the field as the user types.",
+          "…"
+        ],
+        "dropWhen": [
+          "The code is guarded by a feature query checking CSS.supports(\"field-sizing\", \"content\") or field-sizing support.",
+          "…"
+        ]
+      },
       "count": 1,
       "findings": [
         {
@@ -77,7 +87,18 @@ Coding agents receive structured JSON containing exact file coordinates, confide
           "file": "src/static/js/admin/settings.js",
           "line": 30,
           "message": "Library autosize() call auto-expands textarea/input fields; modernize with CSS field-sizing: content.",
-          "codeSnippet": "$('.settings').autosize();"
+          "codeSnippet": "   28 |       $('.settings').append(settings.results);\n   29 |       $('.settings').focus();\n>  30 |       $('.settings').autosize();\n   31 |     }\n   32 |     else{…",
+          "summary": "Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.",
+          "verifierRubric": {
+            "keepWhen": [
+              "A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/width using scrollHeight or scrollWidth to auto-expand the field as the user types.",
+              "…"
+            ],
+            "dropWhen": [
+              "The code is guarded by a feature query checking CSS.supports(\"field-sizing\", \"content\") or field-sizing support.",
+              "…"
+            ]
+          }
         }
       ]
     },
@@ -86,6 +107,16 @@ Coding agents receive structured JSON containing exact file coordinates, confide
       "tier": "qualified",
       "summary": "Table cell stacking using td::before content: attr(data-*) without @container queries should be modernized with CSS Container Queries.",
       "retrieveCommand": "npx modern-web-guidance retrieve responsive-table",
+      "verifierRubric": {
+        "keepWhen": [
+          "A CSS rule uses td::before or td:before with content: attr(data-label), attr(data-th), or attr(data-title) to generate mobile stacked table card headers without container queries.",
+          "…"
+        ],
+        "dropWhen": [
+          "The stylesheet already uses @container queries to adapt the table layout based on container width.",
+          "…"
+        ]
+      },
       "count": 1,
       "findings": [
         {
@@ -93,10 +124,29 @@ Coding agents receive structured JSON containing exact file coordinates, confide
           "file": "src/static/css/admin.css",
           "line": 269,
           "message": "CSS rule injects table cell headers via td::before content: attr(data-*); modernize with CSS Container Queries and accessible pseudo-element headers.",
-          "codeSnippet": "td:before {"
+          "codeSnippet": "   267 |   }\n   268 | \n>  269 |   td:before {\n   270 |     position: absolute;\n   271 |     top: 6px;…",
+          "summary": "Table cell stacking using td::before content: attr(data-*) without @container queries should be modernized with CSS Container Queries.",
+          "verifierRubric": {
+            "keepWhen": [
+              "A CSS rule uses td::before or td:before with content: attr(data-label), attr(data-th), or attr(data-title) to generate mobile stacked table card headers without container queries.",
+              "…"
+            ],
+            "dropWhen": [
+              "The stylesheet already uses @container queries to adapt the table layout based on container width.",
+              "…"
+            ]
+          }
         }
       ]
     }
+  ],
+  "activeRuleCount": 8,
+  "activeGuideCount": 6,
+  "suspendedGuides": [
+    "autofill-highlight-inputs",
+    "complex-shapes",
+    "interactions-in-complex-layouts",
+    "language-detection"
   ],
   "skippedDocsAndTestsCount": 53
 }
