@@ -3,6 +3,7 @@ name: identify-inp-causes
 description: Identify slow-running JavaScript and other causes of poor Interaction to Next Paint (INP) responsiveness.
 web-feature-ids:
   - long-animation-frames
+  - tmp-long-animation-frames-style-layout
   - event-timing
 ---
 
@@ -12,9 +13,14 @@ Poor responsiveness to interactions leads to a poor impression of a page being s
 
 Identifying root causes of an unresponsive web page can be tricky especially as it depends on user interactions and environmental conditions such as device capabilities and network conditions. This makes it even more difficult to diagnose compared to a more repeatable and predictable scenario like page load. Lab data only replicates a small subset of real user scenarios so measuring the causes of slow INP in the field is essential.
 
-The Event Timing API allows for splitting the INP duration into three subparts: Input Delay (processing that is already happing when the interaction happens), Processing Duration (delays due as a direct result of the interaction), and Presentation Delay (delays that are due to rendering the next frame after the interaction). This helps identify if the issue is in other code, the interaction JavaScript code, or browser processing rendering updates respectively rather than jumping straight to the interaction code.
+The Event Timing API allows for splitting the INP duration into three subparts: Input Delay (processing that is already happening when the interaction happens), Processing Duration (delays due as a direct result of the interaction), and Presentation Delay (delays that are due to rendering the next frame after the interaction). This helps identify if the issue is in other code, the interaction JavaScript code, or browser processing rendering updates respectively rather than jumping straight to the interaction code.
 
-It is possible to gather further insights for JavaScript code delaying an interaction. A full performance trace using the JS Self-Profiling API is a heavyweight solution that is liable to cause performance problems. The Long Animation Frames API is a lightweight API that can be used to identify slow running JavaScript in the field for INP interactions.
+It is possible to gather further insights into JavaScript, style recalculation, and layout work delaying an interaction. A full performance trace using the JS Self-Profiling API is a heavyweight solution that is liable to cause performance problems. The Long Animation Frames API is a lightweight API that can be used in the field to identify slow-running JavaScript and distinguish between style recalculation and layout costs during INP interactions:
+
+- **Script-level forced style and layout (`forcedStyleDuration` and `forcedLayoutDuration`):** Reports synchronous style recalculations (such as calling `getComputedStyle()` after DOM mutations) and forced layouts/reflows (such as reading `getBoundingClientRect()` or `offsetWidth` after mutations) inside a running script during **Input Delay** or **Processing Duration**.
+- **Frame-level rendering style and layout (`styleDuration` and `layoutDuration`):** Reports time spent recalculating styles versus updating layout during the frame's rendering update, helping explain high **Presentation Delay**.
+
+Distinguishing style recalculation from layout is critical because they have different root causes and fixes: high style duration points to expensive CSS selector matching or broad style invalidation (remediated by simplifying selectors or reducing rule scope), whereas high layout duration points to expensive geometry calculations or synchronous layout thrashing (remediated by batching DOM reads before writes, simplifying DOM structure, or using CSS containment).
 
 ## How to implement
 
@@ -24,7 +30,7 @@ Calculating INP from the raw Event Timing API is complicated and has several nua
 
 ## Get attributions for INP interactions using web-vitals library
 
-The `web-vitals` library is a tiny library used to measure Core Web Vitals and other performance metrics. The `onINP()` function can be used to identify the slowest interaction and includes information about the INP subparts and scripts that were executed during the interaction using the Long Animation Frames API.
+The `web-vitals` library is a tiny library used to measure Core Web Vitals and other performance metrics. The `onINP()` function can be used to identify the slowest interaction and includes information about the INP subparts, scripts that were executed during the interaction, and style and layout durations using the Long Animation Frames API.
 
 ```javascript
 // Use the attribution build to get Long Animation Frame data
@@ -32,28 +38,50 @@ The `web-vitals` library is a tiny library used to measure Core Web Vitals and o
 import { onINP } from 'web-vitals/attribution';
 
 onINP((metric) => {
-  // Beacon script attribution for the longest script during the INP
-  // interaction, so you can identify the root cause in production.
+  const { attribution } = metric;
+  const longestScript = attribution.longestScript;
+
+  // Sum rendering-phase style and layout durations across all LoAF entries
+  // intersecting the INP interaction (primarily explains presentationDelay).
+  let renderStyleDuration = 0;
+  let renderLayoutDuration = 0;
+  for (const entry of attribution.longAnimationFrameEntries) {
+    renderStyleDuration += entry.styleDuration ?? 0;
+    renderLayoutDuration += entry.layoutDuration ?? 0;
+  }
+
+  // Beacon script, style, and layout attribution for the INP interaction,
+  // so you can identify the root cause in production.
   navigator.sendBeacon(
     '/analytics',
     JSON.stringify({
       name: 'INP',
       value: metric.value,
       // These fields give the INP subparts:
-      inputDelay: metric.attribution.inputDelay,
-      presentationDelay: metric.attribution.presentationDelay,
-      processingDuration: metric.attribution.processingDuration,
-      interactionTarget: metric.attribution.interactionTarget,
+      inputDelay: attribution.inputDelay,
+      presentationDelay: attribution.presentationDelay,
+      processingDuration: attribution.processingDuration,
+      interactionTarget: attribution.interactionTarget,
       // These fields identify which script function was responsible
       // for the longest processing during the INP interaction.
-      invokerType: metric.attribution.longestScript.entry?.invokerType,
-      sourceURL: metric.attribution.longestScript.entry?.sourceURL,
-      sourceFunctionName: metric.attribution.longestScript.entry?.sourceFunctionName,
-      sourceCharPosition: metric.attribution.longestScript.entry?.sourceCharPosition,
+      invokerType: longestScript?.entry?.invokerType,
+      sourceURL: longestScript?.entry?.sourceURL,
+      sourceFunctionName: longestScript?.entry?.sourceFunctionName,
+      sourceCharPosition: longestScript?.entry?.sourceCharPosition,
       // subpart indicates which phase (input delay, processing, or
       // presentation delay) the longest script overlapped with most.
-      subpart: metric.attribution.longestScript.subpart,
-      intersectingDuration: metric.attribution.longestScript.intersectingDuration
+      subpart: longestScript?.subpart,
+      intersectingDuration: longestScript?.intersectingDuration,
+      // Synchronous style and layout work forced inside the longest script
+      // (with forcedStyleAndLayoutDuration as a combined fallback):
+      forcedStyleDuration: longestScript?.entry?.forcedStyleDuration,
+      forcedLayoutDuration: longestScript?.entry?.forcedLayoutDuration,
+      forcedStyleAndLayoutDuration: longestScript?.entry?.forcedStyleAndLayoutDuration,
+      // Rendering-phase style and layout work across the interaction's frames
+      // (with totalStyleAndLayoutDuration as a combined fallback):
+      renderStyleDuration,
+      renderLayoutDuration,
+      totalStyleAndLayoutDuration: attribution.totalStyleAndLayoutDuration
     })
   );
 });
@@ -63,6 +91,7 @@ onINP((metric) => {
 
 - **DO** use INP subparts initially to identify whether the delay is already running JavaScript (input delay), the event handlers JavaScript for the interaction (processing duration), or the subsequent rendering (presentation delay).
 - **DO** attempt to identify the biggest blocking JavaScript as additional detail, particularly for input delay, and processing duration.
+- **DO** distinguish between style recalculation (`styleDuration`, `forcedStyleDuration`) and layout (`layoutDuration`, `forcedLayoutDuration`) when diagnosing high processing duration or presentation delay: high style times indicate expensive CSS selectors or broad invalidations, while high layout times indicate DOM geometry bottlenecks or synchronous layout thrashing.
 - **DO** prefer the Long Animation Frames API for providing this further detail over alternatives like the JS Self-Profiling API, which carries higher runtime overhead.
 - **DO** use the `web-vitals` library if no other RUM solution is in place. It can identify the INP interaction and includes information about the subparts and the scripts that were executed during the interaction (using the Long Animation Frames API).
 - **DO** beacon back the required information to an analytics service rather than just log it locally.
@@ -76,3 +105,9 @@ The Event Timing API is available in most modern browsers and is necessary to ca
 {{ BASELINE_STATUS("long-animation-frames") }}
 
 The Long Animation Frames API provides optional, additional details. It can be safely used without fallbacks. In most cases the performance opportunities it identifies will apply to other browsers as well.
+
+{# {{ BASELINE_STATUS("tmp-long-animation-frames-style-layout") }} #}
+
+If your Baseline target supports the Long Animation Frames API (`long-animation-frames`) but does not support separate style and layout duration properties (`styleDuration` and `layoutDuration` on `PerformanceLongAnimationFrameTiming`, or `forcedStyleDuration` and `forcedLayoutDuration` on `PerformanceScriptTiming`), fall back to the combined style-and-layout timings:
+- Use `script.forcedStyleAndLayoutDuration` on `PerformanceScriptTiming` for synchronous forced style and layout work inside scripts.
+- Use `metric.attribution.totalStyleAndLayoutDuration` in `web-vitals/attribution` (or compute `(entry.paintTime || entry.startTime + entry.duration) - entry.styleAndLayoutStart` on each `PerformanceLongAnimationFrameTiming` entry) for combined style and layout work.
