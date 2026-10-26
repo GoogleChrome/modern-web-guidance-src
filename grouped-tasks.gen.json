@@ -430,6 +430,9 @@
       "persistent-toast-notifications": [
         "task"
       ],
+      "progress-ring": [
+        "daily-grind"
+      ],
       "scrollspy": [
         "daily-grind",
         "devtools-times"
@@ -444,6 +447,9 @@
       ],
       "apply-webgl-shaders": [
         "task"
+      ],
+      "browser-ui-theming": [
+        "daily-grind"
       ],
       "complex-shapes": [
         "task"
