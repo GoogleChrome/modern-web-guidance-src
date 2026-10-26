@@ -229,8 +229,9 @@
     <!-- 2 -->
     <section>
       <h2>2. Modal form with <code>returnValue</code></h2>
-      <p class="note">A <code>close</code> listener reads <code>dialog.returnValue</code>. Closing returns focus to the
-        trigger.</p>
+      <p class="note">A <code>close</code> listener reads <code>dialog.returnValue</code>, then resets it. Pressing
+        <kbd>Esc</kbd> sets no value, so it reads <code>""</code> (dismissed) instead of the previous button. Closing
+        returns focus to the trigger.</p>
       <button type="button" command="show-modal" commandfor="form-dlg">Write to Margaret</button>
       <dialog id="form-dlg" aria-labelledby="form-title">
         <form method="dialog">
@@ -329,6 +330,8 @@
     formDlg.addEventListener('close', () => {
       document.getElementById('form-out').textContent =
         `returnValue: "${formDlg.returnValue}"`;
+      // Esc sets no value and browsers differ on clearing the old one, so reset after reading
+      formDlg.returnValue = '';
     });
 
     // 3. Fallback light dismiss where closedby is unsupported

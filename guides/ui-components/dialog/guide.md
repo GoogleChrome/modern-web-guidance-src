@@ -117,7 +117,7 @@ The default depends on how the dialog is opened. If `closedby` is absent or inva
 
 ### Hooking into close
 
-- **DO** read `dialog.returnValue` in a `close` listener to learn which button was used.
+- **DO** read `dialog.returnValue` in a `close` listener to learn which button was used, then reset it with `dialog.returnValue = ''`. `Esc` and other close requests set no value, and browsers differ on whether they clear the previous one, so without the reset a stale value can leak. Treat `''` as "dismissed without choosing".
 - **DO** use `cancel` to intercept `Esc` and `request-close`, but do not rely on `preventDefault()` for repeated `Esc` presses without user activation.
 - **DO** use `closedby="none"` with an explicit confirmation step for dirty forms.
 
