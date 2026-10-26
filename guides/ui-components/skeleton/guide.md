@@ -249,10 +249,16 @@ If your Baseline target does not support `border-shape`, use `@supports (border-
 ```css
 @supports not (border-shape: shape(from 0 0, close)) {
   .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
-    border-radius: var(--bar-radius);
+    border-radius: .5lh; /* Large enough to read as rounded at any block height */
+  }
+
+  .skeleton[aria-busy="true"] li {
+    margin-inline-start: 1.25em; /* The real list's indent, so the text does not shift */
   }
 }
 ```
+
+Multi-line bars, variable lengths and list bullets belong to the `border-shape` enhancement: without it, each element is one solid rounded block, and each list item is one block starting at the real indent.
 
 ### @function
 
