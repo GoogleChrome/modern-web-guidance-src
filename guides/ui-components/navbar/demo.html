@@ -141,7 +141,9 @@
       background: rgb(0 0 0 / 30%);
     }
 
-    .menu-link {
+    /* :where() keeps the specificity of a single class, so later overrides still win. */
+
+    :where(.site-menu :is(a, button)) {
       position: relative;
       display: flex;
       align-items: center;
@@ -154,16 +156,16 @@
       text-decoration: none;
     }
 
-    .menu-link:is(:hover, :focus-visible) {
+    .site-menu :is(a, button):is(:hover, :focus-visible) {
       background: var(--surface);
       color: var(--text);
     }
 
-    .menu-link[aria-current="page"] {
+    :where(.site-menu a)[aria-current="page"] {
       color: var(--accent);
     }
 
-    .menu-link[aria-current="page"]::before {
+    :where(.site-menu a)[aria-current="page"]::before {
       position: absolute;
       inset-block: 0.75rem;
       inset-inline-start: 0.3rem;
@@ -327,12 +329,12 @@
         display: none;
       }
 
-      .menu-link {
+      :where(.site-menu :is(a, button)) {
         min-block-size: 2.75rem;
         padding-inline: 0.8rem;
       }
 
-      .menu-link[aria-current="page"]::before {
+      :where(.site-menu a)[aria-current="page"]::before {
         inset-block: auto 0.1rem;
         inset-inline: 0.8rem;
         inline-size: auto;
@@ -377,7 +379,7 @@
         block-size: 0.5rem;
       }
 
-      .dropdown-list .menu-link {
+      .dropdown-list a {
         min-block-size: 2.5rem;
         padding-inline: 0.75rem;
       }
@@ -447,7 +449,7 @@
         box-shadow: none;
       }
 
-      .menu-link[aria-current="page"]::before {
+      :where(.site-menu a)[aria-current="page"]::before {
         background: Highlight;
       }
 
@@ -484,13 +486,13 @@
 
         <ul id="site-menu" class="site-menu" popover="auto">
           <li>
-            <a class="menu-link" href="index.html" aria-current="page">
+            <a href="index.html" aria-current="page">
               Home
             </a>
           </li>
 
           <li>
-            <a class="menu-link" href="about.html">
+            <a href="about.html">
               About
             </a>
           </li>
@@ -498,7 +500,7 @@
           <li class="nav-dropdown">
               <button
                 type="button"
-                class="menu-link dropdown-trigger"
+                class="dropdown-trigger"
                 aria-expanded="false"
                 aria-controls="services-menu"
                 popovertarget="services-menu"
@@ -507,19 +509,19 @@
               </button>
               <ul id="services-menu" class="dropdown-list">
                 <li>
-                  <a class="menu-link" href="design.html">Design</a>
+                  <a href="design.html">Design</a>
                 </li>
                 <li>
-                  <a class="menu-link" href="development.html">Development</a>
+                  <a href="development.html">Development</a>
                 </li>
                 <li>
-                  <a class="menu-link" href="marketing.html">Marketing</a>
+                  <a href="marketing.html">Marketing</a>
                 </li>
               </ul>
           </li>
 
           <li>
-            <a class="menu-link" href="contact.html">
+            <a href="contact.html">
               Contact
             </a>
           </li>
