@@ -78,15 +78,12 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // 2. Skip rules inside CSS reset stylesheets or Chromium-only host paths (C-2, C-8)
+    // 2. Skip rules inside CSS reset stylesheets or user-agent style overrides
     const lowerFilePath = ctx.filePath.toLowerCase();
     if (
       /(?:^|[\\/._-])(?:reset|normalize|reboot)(?:[\\/._-]|$)/.test(lowerFilePath) ||
-      lowerFilePath.includes('.obsidian') ||
-      lowerFilePath.includes('betterdiscord') ||
       lowerFilePath.endsWith('userchrome.css') ||
-      lowerFilePath.endsWith('usercontent.css') ||
-      lowerFilePath.includes('steam')
+      lowerFilePath.endsWith('usercontent.css')
     ) {
       return null;
     }

@@ -95,13 +95,15 @@ void test('equal-width-text-lines JS matcher', async (t) => {
     const code = `
       $("#bigTitle").fitText(0.6);
       $("#underBigTitle").fitText(2.5);
+      $header.fitText();
+      $('.content').find('.headline').fitText();
     `;
     const sourceFile = project.createSourceFile('header.js', code);
     const matches = equalWidthTextLinesJsMatcher.matchFile(sourceFile, {
       filePath: 'header.js',
       fileContent: code,
     });
-    assert.equal(matches.length, 2);
+    assert.equal(matches.length, 4);
   });
 
   await t.test('exempts when guarded by CSS.supports for text-fit', () => {

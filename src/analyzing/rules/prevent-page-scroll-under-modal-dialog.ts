@@ -29,10 +29,6 @@ const FULLSCREEN_CANVAS_GAME_REGEX =
   /\b(?:fullscreen|canvas|game|slide|deck|threejs|pixi)\b/i;
 
 function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
-  if (MODAL_OR_OVERLAY_REGEX.test(ctx.filePath)) {
-    return true;
-  }
-
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
     if (
@@ -55,6 +51,13 @@ function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
       }
     }
     current = current.getParent();
+  }
+
+  if (
+    MODAL_OR_OVERLAY_REGEX.test(ctx.filePath) &&
+    !FULLSCREEN_CANVAS_GAME_REGEX.test(ctx.filePath)
+  ) {
+    return true;
   }
 
   return false;
@@ -464,4 +467,5 @@ export const preventPageScrollUnderModalDialogDependencyRule: AnalyzerRule = {
 export const preventPageScrollUnderModalDialogRules: readonly AnalyzerRule[] = [
   preventPageScrollUnderModalDialogDependencyRule,
   preventPageScrollUnderModalDialogRule,
+  preventPageScrollUnderModalDialogCssRule,
 ];

@@ -164,7 +164,7 @@ void test('custom-text-decorations: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts link with border-bottom but missing padding-bottom (standard border, not underline hack)', () => {
+  await t.test('flags link with border-bottom and text-decoration: none even without padding-bottom', () => {
     const css = `
       a.simple {
         text-decoration: none;
@@ -172,6 +172,7 @@ void test('custom-text-decorations: negative / exempt cases', async (t) => {
       }
     `;
     const matches = scanCss('simple.css', css, [customTextDecorationsCssMatcher]);
-    assert.equal(matches.length, 0);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
   });
 });

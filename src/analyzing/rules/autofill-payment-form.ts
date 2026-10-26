@@ -72,7 +72,7 @@ const CARD_NUMBER_REGEX =
   /(?:card[-_]?num(?:ber)?|cc[-_]?num(?:ber)?|credit[-_]?card|card[-_]?no|\bpan\b|(?:card|cc)[-_]?account[-_]?number)/i;
 
 const NON_CARD_IDENTIFIERS_REGEX =
-  /(?:bank|routing|iban|swift|gift[-_]?card|loyalty|phone|ssn|kanban|flashcard|deck|board|trello|profile|id[-_]?card|greeting|postcard|invitation|task[-_]?card)/i;
+  /\b(?:bank|routing|iban|swift|gift[-_]?card|loyalty|phone|ssn|id[-_]?card|task[-_]?card|kanban|flashcard|trello|greeting[-_]?card|postcard|invitation)\b/i;
 
 const NON_PAYMENT_SEARCH_FILTER_REGEX =
   /\b(?:search|filter|find|query|keyword|lookup|sort)\b/i;

@@ -17,7 +17,6 @@ const EXCLUDED_PATH_PATTERNS: readonly RegExp[] = [
   /(?:^|[\\/])(?:polyfills?|shims?)[\\/]/i,
   /\.min\.(?:css|scss|less)$/i,
   /(?:^|[\\/])(?:documentation|docs?|examples?|samples?|demos?)[\\/]/i,
-  /(?:^|[\\/._-])(?:bootstrap|tailwind|bulma|foundation|materialize|reset|normalize|reboot)(?:[\\/._-]|$)/i,
 ];
 
 const VALID_HOST_CONTEXT_ROOT_REGEX = /^\s*(?::host(?:\([^)]*\))?)?:host-context\s*\(/i;
@@ -38,8 +37,20 @@ export const stylingWebComponentsCssMatcher: CssRuleMatcher = {
     }
 
     // In Shadow DOM, :host-context() is only valid as the root/host-targeting selector
-    // Descendant usage like `.container :host-context(...)` indicates non-shadow light-DOM or mock usage
-    if (!VALID_HOST_CONTEXT_ROOT_REGEX.test(selector)) {
+    // Check each comma-separated selector branch to support compound selectors
+    const selectorParts = selector.split(',');
+    let hasValidHostContextRoot = false;
+    for (const rawPart of selectorParts) {
+      const part = rawPart.trim();
+      if (HOST_CONTEXT_REGEX.test(part)) {
+        if (VALID_HOST_CONTEXT_ROOT_REGEX.test(part)) {
+          hasValidHostContextRoot = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasValidHostContextRoot) {
       return null;
     }
 

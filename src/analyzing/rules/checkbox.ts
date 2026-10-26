@@ -19,7 +19,7 @@ const CHECKED_PSEUDO_ICON_REGEX =
   /:checked\s*[+~]\s*(?:label|span)::(?:before|after)\b/i;
 
 const NON_CHECKBOX_SELECTOR_REGEX =
-  /\b(?:radio|rating|rate|star|slider|switch|toggle|onoff|nav|menu|panel|accordion|drawer|collapse|collapsible|tab|tabs|btn-check|toggle-btn|toggle-button)\b/i;
+  /\b(?:radio|rating|rate|star|slider|switch|toggle|onoff|nav|menu|btn-check|toggle-btn|toggle-button)\b/i;
 
 const STAR_CONTENT_REGEX = /(?:★|☆|\\2605|\\2606|\\f005|\\f006)/i;
 const STAR_OR_RATING_SELECTOR_REGEX = /\b(?:star|rating|rate)\b/i;
@@ -32,24 +32,12 @@ function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
     return true;
   }
 
-  // appearance: none directly on an input is the modern technique recommended by the checkbox guide!
-  // Only flag appearance: none on explicit custom checkbox replacement class selectors (e.g. .custom-checkbox)
-  const isInputSelector = /\binput\b/i.test(styleRule.selectorText);
-  if (!isInputSelector) {
-    const isCustomCheckboxClass =
-      /\.(?:custom-checkbox|custom-control-input|checkbox-custom)\b/i.test(
-        styleRule.selectorText,
-      );
-    if (!isCustomCheckboxClass) {
-      return false;
-    }
-    const appearanceVal = (styleRule.getPropertyValue('appearance') ?? '').trim().toLowerCase();
-    const webkitAppearanceVal = (
-      styleRule.getPropertyValue('-webkit-appearance') ?? ''
-    ).trim().toLowerCase();
-    if (appearanceVal === 'none' || webkitAppearanceVal === 'none') {
-      return true;
-    }
+  const appearanceVal = (styleRule.getPropertyValue('appearance') ?? '').trim().toLowerCase();
+  const webkitAppearanceVal = (
+    styleRule.getPropertyValue('-webkit-appearance') ?? ''
+  ).trim().toLowerCase();
+  if (appearanceVal === 'none' || webkitAppearanceVal === 'none') {
+    return true;
   }
 
   return false;
@@ -92,11 +80,13 @@ export const checkboxCssMatcher: CssRuleMatcher = {
       return null;
     }
 
+    const selectorBranches = styleRule.selectorText.split(',').map((s) => s.trim());
+
     // 5. Case A: Custom checkmark icon on sibling pseudo-elements
-    if (CHECKED_PSEUDO_ICON_REGEX.test(styleRule.selectorText)) {
-      if (NON_CHECKBOX_SELECTOR_REGEX.test(styleRule.selectorText)) {
-        return null;
-      }
+    const hasCheckboxIconBranch = selectorBranches.some(
+      (b) => CHECKED_PSEUDO_ICON_REGEX.test(b) && !NON_CHECKBOX_SELECTOR_REGEX.test(b),
+    );
+    if (hasCheckboxIconBranch) {
       return {
         message:
           'CSS rule styles custom checkmark icons on sibling pseudo-elements; modernize using accent-color or appearance: none.',
@@ -104,14 +94,12 @@ export const checkboxCssMatcher: CssRuleMatcher = {
     }
 
     // 5. Case B: Hiding or stripping native checkbox controls
-    const matchesTarget = CHECKBOX_TARGET_PATTERNS.some((pattern) =>
-      pattern.test(styleRule.selectorText),
+    const matchesTarget = selectorBranches.some(
+      (b) =>
+        CHECKBOX_TARGET_PATTERNS.some((pattern) => pattern.test(b)) &&
+        !NON_CHECKBOX_SELECTOR_REGEX.test(b),
     );
     if (!matchesTarget) {
-      return null;
-    }
-
-    if (NON_CHECKBOX_SELECTOR_REGEX.test(styleRule.selectorText)) {
       return null;
     }
 

@@ -99,10 +99,9 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
 
     // Skip zero-arg calls on non-jQuery objects (e.g. this.fitText(), customScripts.fitText())
     const isJQueryCaller =
-      (Node.isIdentifier(target) && (target.getText() === '$' || target.getText() === 'jQuery')) ||
-      (Node.isCallExpression(target) &&
-        Node.isIdentifier(unwrapExpression(target.getExpression())) &&
-        ['$', 'jQuery'].includes(unwrapExpression(target.getExpression()).getText()));
+      (Node.isIdentifier(target) && (target.getText().startsWith('$') || target.getText() === 'jQuery')) ||
+      Node.isCallExpression(target) ||
+      (Node.isPropertyAccessExpression(target) && (target.getName().startsWith('$') || target.getName() === 'jQuery'));
 
     if (!isJQueryCaller && call.getArguments().length === 0) {
       return false;
@@ -112,7 +111,7 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
     if (
       call.getArguments().length === 0 &&
       Node.isIdentifier(target) &&
-      target.getText() !== '$' &&
+      !target.getText().startsWith('$') &&
       target.getText() !== 'jQuery' &&
       /\bfitText\s*[:(]/.test(sourceFile.getFullText())
     ) {

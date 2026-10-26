@@ -93,6 +93,29 @@ void test('autofill-payment-form: positive brownfield matches', async (suiteCont
     assert.match(matches[0]?.message ?? '', /cc-number/);
   });
 
+  await suiteContext.test('flags input with dashboard-card-number identifier inside form', () => {
+    const html = `
+      <form action="/billing" method="post">
+        <label for="dashboard-card-number">Card Number</label>
+        <input type="text" id="dashboard-card-number" name="dashboard_card_number" required>
+      </form>
+    `;
+    const matches = scanHtml('dashboard-billing.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /cc-number/);
+  });
+
+  await suiteContext.test('flags card number on user profile billing form', () => {
+    const html = `
+      <form action="/profile/billing" method="post">
+        <input type="text" id="profile_card_number" name="profile_card_number" placeholder="Card number">
+      </form>
+    `;
+    const matches = scanHtml('profile.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /cc-number/);
+  });
+
   await suiteContext.test('flags JSX cardholder name input in CheckoutForm component', () => {
     const project = createInMemoryProject();
     const code = `

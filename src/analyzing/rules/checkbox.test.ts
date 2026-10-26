@@ -49,6 +49,33 @@ void test('checkbox: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
+
+  await t.test('flags [type="checkbox"] with appearance: none alongside sibling replacement', () => {
+    const css = `
+      [type="checkbox"] {
+        appearance: none;
+      }
+      [type="checkbox"] + label::before {
+        content: "✓";
+      }
+    `;
+    const matches = scanCss('custom.css', css, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 2);
+  });
+
+  await t.test('flags checkboxes inside accordion, panel, or tab containers', () => {
+    const css = `
+      .accordion [type="checkbox"]:checked + label::before {
+        content: "✓";
+      }
+      .tab-panel input[type="checkbox"]:checked + label::before {
+        content: "✓";
+      }
+    `;
+    const matches = scanCss('containers.css', css, [matcher]);
+    assert.equal(matches.length, 2);
+  });
 });
 
 void test('checkbox: negative / exempt cases', async (t) => {

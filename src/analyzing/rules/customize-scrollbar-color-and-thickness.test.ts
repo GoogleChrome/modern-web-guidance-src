@@ -228,6 +228,19 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts userchrome.css user agent overrides', () => {
+    const css = `
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #999;
+      }
+    `;
+    const matches = scanCss('userchrome.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts unrelated CSS rules', () => {
     const css = `
       .card {

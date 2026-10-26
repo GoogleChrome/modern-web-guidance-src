@@ -60,6 +60,16 @@ void test('styling-web-components: positive brownfield matches', async (suiteCon
     const matches = scanCss('legacy.css', css, [cssMatcher]);
     assert.equal(matches.length, 2);
   });
+
+  await suiteContext.test('flags comma-separated selector containing :host-context branch', () => {
+    const css = `
+      .badge, :host-context(.dark) .badge {
+        color: #fff;
+      }
+    `;
+    const matches = scanCss('badge.css', css, [cssMatcher]);
+    assert.equal(matches.length, 1);
+  });
 });
 
 void test('styling-web-components: negative / exempt cases', async (suiteContext) => {
@@ -141,14 +151,6 @@ void test('styling-web-components: negative / exempt cases', async (suiteContext
     `;
     const matches = scanCss('my-element.css', css, [cssMatcher]);
     assert.equal(matches.length, 0);
-  });
-
-  await suiteContext.test('exempts third-party framework paths', () => {
-    const css = `
-      :host-context(.dark) .card { color: white; }
-    `;
-    assert.equal(scanCss('bootstrap/dist/theme.css', css, [cssMatcher]).length, 0);
-    assert.equal(scanCss('tailwind/utilities.css', css, [cssMatcher]).length, 0);
   });
 
   await suiteContext.test('exempts rules guarded by @supports', () => {

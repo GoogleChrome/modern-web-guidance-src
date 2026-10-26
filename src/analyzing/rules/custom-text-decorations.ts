@@ -11,9 +11,9 @@ const INLINE_OR_LINK_SELECTOR_REGEX =
   /(?:^|[\s>+~,])(?:a(?:\.[\w-]+|:[a-z-]+)*|\.link|\.underline|\.text-link|\.nav-link|\.content-link|span(?:\.[\w-]+)*|p\s+a|li\s+a)(?:$|[\s>+~,:])/i;
 
 const BLOCK_CONTAINER_SELECTOR_REGEX =
-  /\b(?:card|panel|modal|dialog|header|footer|table|tr|th|td|row|col|container|wrapper|sidebar|navbar|dropdown|tab|tabs|nav-tabs|btn|button|badge|box|section|chip|avatar|pill|menu|item|nav-item|list-item|toolbar|alert|toast|banner)\b/i;
+  /\b(?:card|panel|modal|dialog|header|footer|table|tr|th|td|row|col|container|wrapper|sidebar|navbar|dropdown|tabs|nav-tabs|alert|toast|banner)\b/i;
 
-const BUTTON_OR_BADGE_REGEX = /\b(?:btn|button|badge|pill|chip|tab|nav-link|menu-item)\b/i;
+const BUTTON_OR_BADGE_REGEX = /\b(?:btn(?!-link)|button|badge|pill|chip)\b/i;
 
 const MODERN_DECORATION_PROPERTIES = new Set([
   'text-underline-offset',
@@ -117,25 +117,16 @@ export const customTextDecorationsCssMatcher: CssRuleMatcher = {
       styleRule.getPropertyValue('text-decoration-line');
     const hasTextDecNone = textDecoration && textDecoration.toLowerCase().includes('none');
 
-    // And padding-bottom (used to create underline spacing offset)
-    const hasPaddingBottom =
-      styleRule.hasProperty('padding-bottom') ||
-      styleRule.hasProperty('padding');
-
     // Underline simulation requires removing standard underline (text-decoration: none)
-    // or having explicit .underline class naming, AND setting padding-bottom to offset the border
+    // or having explicit .underline class naming
     const isExplicitUnderline = /\.underline\b/i.test(selector);
     if (!hasTextDecNone && !isExplicitUnderline) {
       return null;
     }
 
-    if (!hasPaddingBottom && !isExplicitUnderline) {
-      return null;
-    }
-
     return {
       message:
-        'Simulating text underline with border-bottom and padding-bottom; native text-decoration with text-underline-offset and text-decoration-thickness avoids box-model side-effects and follows text wrapping.',
+        'Simulating text underline with border-bottom; native text-decoration with text-underline-offset and text-decoration-thickness avoids box-model side-effects and follows text wrapping.',
     };
   },
 };
