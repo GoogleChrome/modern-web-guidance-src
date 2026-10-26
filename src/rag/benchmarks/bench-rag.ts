@@ -22,6 +22,8 @@ import {
 } from "./metrics.ts";
 import type { EmbedderLike, UseCaseResult } from "../search.ts";
 
+/** Calibrated ~5pp below main's 0.849 to catch ranking regressions without tripping on minor token drift. */
+const AGENT_SANITY_NDCG_FLOOR = 0.80;
 const HARNESS_SANITY_NDCG_FLOOR = 0.80;
 
 interface TargetSpec {
@@ -601,6 +603,11 @@ async function runSingleBenchmark(
       if (s.answerableQueries > 0 && s.unjudgedRate > maxUnjudged) {
         failures.push(
           `Dataset '${s.dataset}' unjudged rate ${(s.unjudgedRate * 100).toFixed(1)}% exceeds max ${(maxUnjudged * 100).toFixed(1)}%. Run 'node src/rag/benchmarks/judge-fill.ts' to grade newly surfaced guides.`
+        );
+      }
+      if ((s.dataset === "agent" || s.dataset.startsWith("agent-")) && s.ndcg5 < AGENT_SANITY_NDCG_FLOOR) {
+        failures.push(
+          `Dataset '${s.dataset}' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${AGENT_SANITY_NDCG_FLOOR.toFixed(3)}.`
         );
       }
       if (s.dataset === "harness" && s.ndcg5 < HARNESS_SANITY_NDCG_FLOOR) {

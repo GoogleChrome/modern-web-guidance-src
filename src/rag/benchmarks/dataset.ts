@@ -315,19 +315,17 @@ export function loadPublicDataset(name: PublicDatasetName, dataDir = DEFAULT_PUB
   let manifest: DatasetManifest | undefined;
   if (name === "agent") {
     const manifestPath = path.join(dataDir, "agent-manifest.json");
-    if (fs.existsSync(manifestPath)) {
-      manifest = parseManifestJson(fs.readFileSync(manifestPath, "utf8"), manifestPath);
-      if (manifest.version !== "v1") {
-        throw new Error(`Manifest version mismatch in ${manifestPath}: expected "v1", got "${manifest.version}"`);
-      }
-      const expQueriesHash = manifest.files["agent-queries.jsonl"]?.sha256;
-      const expQrelsHash = manifest.files["agent-qrels.jsonl"]?.sha256;
-      if (expQueriesHash && sha256(queriesContent) !== expQueriesHash) {
-        throw new Error(`SHA-256 mismatch for ${queriesPath}`);
-      }
-      if (expQrelsHash && sha256(qrelsContent) !== expQrelsHash) {
-        throw new Error(`SHA-256 mismatch for ${qrelsPath}`);
-      }
+    manifest = parseManifestJson(fs.readFileSync(manifestPath, "utf8"), manifestPath);
+    if (manifest.version !== "v1") {
+      throw new Error(`Manifest version mismatch in ${manifestPath}: expected "v1", got "${manifest.version}"`);
+    }
+    const expQueriesHash = manifest.files["agent-queries.jsonl"]?.sha256;
+    const expQrelsHash = manifest.files["agent-qrels.jsonl"]?.sha256;
+    if (!expQueriesHash || sha256(queriesContent) !== expQueriesHash) {
+      throw new Error(`SHA-256 mismatch for ${queriesPath}`);
+    }
+    if (!expQrelsHash || sha256(qrelsContent) !== expQrelsHash) {
+      throw new Error(`SHA-256 mismatch for ${qrelsPath}`);
     }
     for (let i = 0; i < queries.length; i++) {
       if (queries[i].split !== "dev" && queries[i].split !== "test") {

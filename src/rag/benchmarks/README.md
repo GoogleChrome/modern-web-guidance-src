@@ -35,7 +35,7 @@ In blind validation against 69 human judgments across wild and harness queries, 
 ## Running the Benchmark
 
 ```bash
-# Run full benchmark (wild + harness + oos) on the current working tree:
+# Run full benchmark (wild + agent + oos) on the current working tree:
 pnpm benchmark:rag
 
 # Run benchmark specifically on the held-out test split of the wild dataset:

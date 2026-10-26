@@ -128,10 +128,10 @@ describe("dataset parsers and serializers", () => {
 });
 
 describe("checked-in public datasets (agent, harness & oos)", () => {
-  it("loads agent dataset with 1043 queries, matching qrels, manifest, and valid corpus expectedGuides", () => {
+  it("loads agent dataset with 1029 queries, matching qrels, manifest, and valid corpus expectedGuides", () => {
     const agent = loadPublicDataset("agent");
-    assert.strictEqual(agent.queries.length, 1043);
-    assert.strictEqual(agent.qrels.size, 1043);
+    assert.strictEqual(agent.queries.length, 1029);
+    assert.strictEqual(agent.qrels.size, 1029);
     assert.ok(agent.manifest);
     assert.strictEqual(agent.manifest.version, "v1");
 
@@ -148,18 +148,76 @@ describe("checked-in public datasets (agent, harness & oos)", () => {
       .map((q) => q.qid);
     assert.deepStrictEqual(orphanedExpectedGuides, []);
 
-    // Every query has valid split
+    // Every query has valid split and non-empty alphanumeric content
     for (const q of agent.queries) {
       assert.ok(q.split === "dev" || q.split === "test", `Query ${q.qid} missing valid split`);
+      assert.ok(/[a-z0-9]/i.test(q.query), `Query ${q.qid} missing alphanumeric tokens`);
     }
 
     // Split filtering
     const dev = filterDatasetBySplit(agent, "dev");
     const test = filterDatasetBySplit(agent, "test");
-    assert.strictEqual(dev.queries.length, 527);
-    assert.strictEqual(test.queries.length, 516);
-    assert.strictEqual(dev.qrels.size, 527);
-    assert.strictEqual(test.qrels.size, 516);
+    assert.strictEqual(dev.queries.length, 515);
+    assert.strictEqual(test.queries.length, 514);
+    assert.strictEqual(dev.qrels.size, 515);
+    assert.strictEqual(test.qrels.size, 514);
+
+    // Connected components verify 0 guide overlap
+    const devGuides = new Set(dev.queries.map((q) => q.expectedGuide));
+    const testGuides = new Set(test.queries.map((q) => q.expectedGuide));
+    const overlap = [...devGuides].filter((g) => testGuides.has(g));
+    assert.deepStrictEqual(overlap, []);
+  });
+
+  it("throws fail-fast when agent manifest is missing, version mismatched, or SHA tampered", (t) => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-agent-manifest-test-"));
+    t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+    const qContent = serializeQueriesJsonl([{ qid: "aq0001", query: "popover", split: "dev", words: 1 }]);
+    const rContent = serializeQrelsJsonl([{ qid: "aq0001", query: "popover", scope: "in_domain", needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }]);
+
+    fs.writeFileSync(path.join(tmpDir, "agent-queries.jsonl"), qContent);
+    fs.writeFileSync(path.join(tmpDir, "agent-qrels.jsonl"), rContent);
+
+    // Missing manifest throws
+    assert.throws(() => loadPublicDataset("agent", tmpDir), /ENOENT.*agent-manifest\.json/);
+
+    // Version mismatch throws
+    fs.writeFileSync(path.join(tmpDir, "agent-manifest.json"), JSON.stringify({
+      version: "v2",
+      createdAt: "2026-10-13T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {
+        "agent-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+        "agent-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+      },
+    }));
+    assert.throws(() => loadPublicDataset("agent", tmpDir), /Manifest version mismatch.*expected "v1"/);
+
+    // Missing SHA throws
+    fs.writeFileSync(path.join(tmpDir, "agent-manifest.json"), JSON.stringify({
+      version: "v1",
+      createdAt: "2026-10-13T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {},
+    }));
+    assert.throws(() => loadPublicDataset("agent", tmpDir), /SHA-256 mismatch/);
+
+    // Tampered query file throws
+    fs.writeFileSync(path.join(tmpDir, "agent-manifest.json"), JSON.stringify({
+      version: "v1",
+      createdAt: "2026-10-13T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {
+        "agent-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+        "agent-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+      },
+    }));
+    fs.writeFileSync(path.join(tmpDir, "agent-queries.jsonl"), qContent + "\n");
+    assert.throws(() => loadPublicDataset("agent", tmpDir), /SHA-256 mismatch/);
   });
 
   it("loads harness dataset with 160 queries, matching qrels, and valid corpus expectedGuides", () => {
