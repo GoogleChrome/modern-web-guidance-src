@@ -53,7 +53,8 @@
       /* Let items shrink and words break so the page reflows at 320px without sideways scroll. */
       overflow-wrap: anywhere;
 
-      > * { margin: 0; padding: 0; list-style: none; min-inline-size: 0; }
+      /* Hide markers with an empty string rather than list-style: none, which makes Safari drop list semantics. */
+      > * { margin: 0; padding: 0; list-style-type: ""; min-inline-size: 0; }
       b { display: block; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
       q { font-style: italic; }
     }
@@ -205,8 +206,6 @@
         > * + * { border-block-start: 1px solid var(--rule); padding-block-start: 0.5rem; }
       }
     }
-
-    .cell-grid { display: contents; }
   </style>
 </head>
 
@@ -283,19 +282,17 @@
 
     <h2>7. Spanning items: <code>normal</code> vs <code>intersection</code> vs <code>none</code></h2>
     <p class="note">The Creature's speech spans two columns. Watch where the rules start and stop.</p>
-    <div class="demo-set">
-      <div class="demo spans normal">
-        <p class="wide"><b>normal</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
-        <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
-      </div>
-      <div class="demo spans intersection" style="margin-block-start: 1rem">
-        <p class="wide"><b>intersection</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
-        <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
-      </div>
-      <div class="demo spans none" style="margin-block-start: 1rem">
-        <p class="wide"><b>none</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
-        <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
-      </div>
+    <div class="demo spans normal">
+      <p class="wide"><b>normal</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
+      <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
+    </div>
+    <div class="demo spans intersection" style="margin-block-start: 1rem">
+      <p class="wide"><b>intersection</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
+      <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
+    </div>
+    <div class="demo spans none" style="margin-block-start: 1rem">
+      <p class="wide"><b>none</b><q>Remember, that I am thy creature.</q></p><p><b>Victor</b>Begone!</p>
+      <p><b>Victor</b>Cursed be the day.</p><p><b>Victor</b>Leave me.</p><p><b>Victor</b>I am inexorable.</p>
     </div>
 
     <h2>8. Value lists and <code>repeat(auto, …)</code></h2>
@@ -333,7 +330,7 @@
     <div class="demo rtl" lang="en">
       <p>Victor</p><p>Elizabeth</p><p>Clerval</p><p>Justine</p><p>Walton</p><p>Creature</p>
     </div>
-    <div class="demo vertical" style="margin-block-start: 1rem">
+    <div class="demo vertical" style="margin-top: 1rem">
       <p>Victor</p><p>Elizabeth</p><p>Clerval</p><p>Justine</p><p>Walton</p><p>Creature</p>
     </div>
 
