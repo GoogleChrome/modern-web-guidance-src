@@ -265,16 +265,19 @@
     <section>
       <h2>4. <code>closedby="none"</code> with unsaved changes</h2>
       <p class="note">Cancel uses <code>request-close</code>, so the <code>cancel</code> handler can ask for
-        confirmation. Only the developer-controlled Discard button force-closes.</p>
+        confirmation: it shows a message and focuses Discard, which references the message with
+        <code>aria-describedby</code> so a screen reader reads it. Only the developer-controlled Discard button
+        force-closes.</p>
       <button type="button" command="show-modal" commandfor="none-dlg">Edit the journal</button>
       <dialog id="none-dlg" closedby="none" aria-labelledby="none-title">
         <form method="dialog" id="journal-form">
           <h2 id="none-title">Captain's journal</h2>
           <label for="journal">Entry</label>
           <textarea id="journal" rows="3">I have no friend, Margaret.</textarea>
+          <p class="note" id="unsaved-note" hidden>You have unsaved changes. Discard them, or keep editing.</p>
           <div class="actions">
             <button type="button" command="request-close" commandfor="none-dlg">Cancel</button>
-            <button type="button" class="danger" command="close" commandfor="none-dlg" id="discard" hidden>Discard</button>
+            <button type="button" class="danger" command="close" commandfor="none-dlg" id="discard" aria-describedby="unsaved-note" hidden>Discard</button>
             <button value="save" class="primary">Save</button>
           </div>
         </form>
@@ -353,15 +356,20 @@
     const noneDlg = document.getElementById('none-dlg');
     const journal = document.getElementById('journal');
     const discard = document.getElementById('discard');
+    const unsavedNote = document.getElementById('unsaved-note');
     const initial = journal.value;
     noneDlg.addEventListener('cancel', (e) => {
       if (journal.value !== initial) {
         e.preventDefault();
+        // Say why it stayed open: the message is visible, and Discard's aria-describedby makes a
+        // screen reader read it when focus moves there (focus alone would announce only "Discard, button")
+        unsavedNote.hidden = false;
         discard.hidden = false;
         discard.focus();
       }
     });
     noneDlg.addEventListener('close', () => {
+      unsavedNote.hidden = true;
       discard.hidden = true;
       journal.value = initial;
     });
