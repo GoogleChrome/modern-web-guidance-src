@@ -210,11 +210,16 @@ test('modern-web CLI search and retrieve', async () => {
   assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
 
   // 3. Validate list
-  const listOut = execSync(`node "${binaryPath}" list`, { encoding: 'utf8' });
+  const listOut = execSync(`node "${binaryPath}" list`, { encoding: 'utf8' }).trim();
   assert.ok(listOut.includes('accessible-error-announcement'), 'List output should contain known guide IDs');
   const catalog = JSON.parse(listOut);
   assert.ok(Array.isArray(catalog), 'List output should be a JSON array');
   assert.ok(catalog.length > 100, 'Catalog should contain all documented guidelines');
+  const firstItem = catalog[0];
+  assert.ok(firstItem.id, 'First item should have an id');
+  assert.ok(firstItem.description, 'First item should have a description');
+  assert.deepStrictEqual(Object.keys(firstItem).sort(), ['description', 'id'], 'List items should only contain id and description');
+  assert.strictEqual(listOut.split('\n').length, catalog.length, 'List output should be formatted as one compact JSON line per item');
 });
 
 test('modern-web CLI version flags', async () => {

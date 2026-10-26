@@ -94,12 +94,9 @@ async function main() {
   } else if (command === "list") {
     const startTime = Date.now();
     try {
-      const catalog = USE_CASES.map(u => ({
-        id: u.id,
-        category: u.category,
-        description: u.description,
-      }));
-      console.log(JSON.stringify(catalog, null, 2));
+      // Compact format: return only id and description to minimize token usage, one per line.
+      const jsonLines = USE_CASES.map(({ id, description }) => JSON.stringify({ id, description }));
+      console.log("[" + jsonLines.join(",\n") + "]");
       await getLogger().logToolCommand(Date.now() - startTime, true, CommandType.LIST);
     } catch (error) {
       await getLogger().logToolCommand(Date.now() - startTime, false, CommandType.LIST);
