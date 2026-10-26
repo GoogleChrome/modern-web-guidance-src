@@ -1,10 +1,12 @@
 - The toolbar container has `role="toolbar"`.
 - The toolbar container has a non-empty `aria-label`.
 - Related toolbar controls are wrapped in `role="group"` elements that each have a non-empty `aria-label`.
+- Adjacent `role="group"` elements in the toolbar are divided by an element with `role="separator"`.
 - Every icon-only toolbar button has a non-empty `aria-label`.
 - Initially, exactly one toolbar item has `tabindex="0"` and all other toolbar items have `tabindex="-1"`.
 - In a horizontal toolbar, pressing `ArrowRight` on an item moves focus to the next item.
 - Pressing `Home` on a toolbar item moves focus to the first item.
-- Clicking a toggle button flips its `aria-pressed` value between `true` and `false`.
+- Clicking a toggle button that is not part of a mutually exclusive set flips its `aria-pressed` value between `true` and `false`.
+- Action buttons that have no on/off state do not have an `aria-pressed` attribute.
 - Each icon-only toolbar button has an `interestfor` attribute whose value is the id of an element with `popover="hint"`.
 - No tooltip element or its invoker button sets `role="tooltip"`, `aria-describedby`, or `aria-details` manually.
