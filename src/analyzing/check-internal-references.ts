@@ -7,7 +7,6 @@ export interface Violation {
   readonly patternName: string;
   readonly matchedText: string;
   readonly outOfScope: boolean;
-  readonly hashedPrompt: boolean;
 }
 
 export const BANNED_PATTERNS: ReadonlyArray<{ readonly name: string; readonly regex: RegExp }> = [
@@ -43,20 +42,6 @@ export function isOutOfScope(relPath: string): boolean {
       return false;
     }
     return true;
-  }
-  return false;
-}
-
-/**
- * Checks if a hit in prompts.ts or llm-verifier.ts sits inside a content-hashed prompt string.
- */
-export function isHashedPromptString(relPath: string, lineIndex: number, lineText: string): boolean {
-  const normalized = relPath.replace(/\\/g, '/');
-  if (normalized === 'src/analyzing/eval/prompts.ts') {
-    // GUIDE_TRIAGE_SYSTEM_PROMPT is content-hashed (lines ~24-55)
-    if (lineText.includes('Empirical wild prevalence is evaluated downstream via GitMirror queries')) {
-      return true;
-    }
   }
   return false;
 }
@@ -99,14 +84,12 @@ export function scanDirectory(
         for (const pattern of BANNED_PATTERNS) {
           if (pattern.regex.test(line)) {
             const outOfScope = isOutOfScope(relPath);
-            const hashedPrompt = isHashedPromptString(relPath, i + 1, line);
             violations.push({
               file: relPath,
               line: i + 1,
               patternName: pattern.name,
               matchedText: line.trim(),
               outOfScope,
-              hashedPrompt,
             });
           }
         }
@@ -122,8 +105,8 @@ export function runCheck(): { inScopeViolations: Violation[]; pendingViolations:
   const root = resolve(analyzingDir, '../..');
   const allViolations = scanDirectory(analyzingDir, root);
 
-  const inScopeViolations = allViolations.filter((v) => !v.outOfScope && !v.hashedPrompt);
-  const pendingViolations = allViolations.filter((v) => v.outOfScope || v.hashedPrompt);
+  const inScopeViolations = allViolations.filter((v) => !v.outOfScope);
+  const pendingViolations = allViolations.filter((v) => v.outOfScope);
 
   return { inScopeViolations, pendingViolations };
 }
@@ -133,10 +116,9 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
   const { inScopeViolations, pendingViolations } = runCheck();
 
   if (pendingViolations.length > 0) {
-    console.log(`\n[check-internal-references] Found ${pendingViolations.length} allowed out-of-scope / hashed-prompt occurrences:`);
+    console.log(`\n[check-internal-references] Found ${pendingViolations.length} allowed out-of-scope occurrences:`);
     for (const v of pendingViolations) {
-      const tag = v.hashedPrompt ? 'HASHED PROMPT' : 'OUT OF SCOPE';
-      console.log(`  [${tag}] ${v.file}:${v.line} (${v.patternName}) -> ${v.matchedText}`);
+      console.log(`  [OUT OF SCOPE] ${v.file}:${v.line} (${v.patternName}) -> ${v.matchedText}`);
     }
   }
 

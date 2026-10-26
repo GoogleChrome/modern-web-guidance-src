@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   BANNED_PATTERNS,
-  isHashedPromptString,
   isOutOfScope,
   runCheck,
 } from './check-internal-references.ts';
@@ -59,26 +58,13 @@ describe('check-internal-references guard', () => {
     assert.strictEqual(isOutOfScope('src/analyzing/eval/update-eval.ts'), false);
     assert.strictEqual(isOutOfScope('src/analyzing/eval/guide-triage.ts'), false);
     assert.strictEqual(isOutOfScope('src/analyzing/qualification.ts'), false);
+    assert.strictEqual(isOutOfScope('src/analyzing/eval/prompts.ts'), false);
   });
 
-  it('identifies known content-hashed prompt strings', () => {
-    assert.strictEqual(
-      isHashedPromptString(
-        'src/analyzing/eval/prompts.ts',
-        48,
-        "Empirical wild prevalence is evaluated downstream via GitMirror queries rather than pre-judged at triage.",
-      ),
-      true,
-    );
-    assert.strictEqual(
-      isHashedPromptString('src/analyzing/eval/detection-eval.ts', 10, 'GitMirror query'),
-      false,
-    );
-  });
-
-  it('passes on current codebase with zero in-scope violations', () => {
+  it('passes on current codebase with zero in-scope violations and only schema.ts pending', () => {
     const { inScopeViolations, pendingViolations } = runCheck();
     assert.deepStrictEqual(inScopeViolations, [], 'Expected zero unexempted in-scope violations');
-    assert.ok(pendingViolations.length >= 1, 'Expected pending hits in schema.ts / prompts.ts');
+    assert.strictEqual(pendingViolations.length, 1, 'Expected only schema.ts:43 pending');
+    assert.strictEqual(pendingViolations[0]?.file, 'src/analyzing/schema.ts');
   });
 });
