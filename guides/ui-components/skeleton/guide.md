@@ -11,6 +11,11 @@ web-feature-ids:
   - lh
   - line-clamp
   - user-select
+  - forced-colors
+  - aspect-ratio
+  - object-position
+  - has
+  - where
 ---
 
 # Skeleton loading pattern
