@@ -45,21 +45,46 @@
       gap: 0.75rem;
       max-width: 32rem;
       max-height: 22rem;
+      margin: 0;
       padding: 1rem;
       overflow-y: auto;
       list-style: none;
     }
 
+    /* A row of cards: the same code reorders it along the inline axis. */
+    .task-list[data-axis="inline"] {
+      display: flex;
+      max-width: none;
+      max-height: none;
+      overflow: auto hidden;
+    }
+
+    .task-list[data-axis="inline"] .task {
+      flex: 0 0 12rem;
+    }
+
+    section + section {
+      margin-top: 2rem;
+    }
+
     .task {
       scroll-margin: 1rem;
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr);
       gap: 0.75rem;
       align-items: center;
       padding: 0.75rem;
       border: 1px solid var(--line);
       border-radius: 6px;
       background: var(--surface);
+    }
+
+    .task:has(> .drag-handle) {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .task:has(> .task-controls) {
+      grid-template-columns: minmax(0, 1fr) auto;
     }
 
     .task.pointer-dragging {
@@ -202,12 +227,38 @@
 <body>
   <main>
     <h1>Tasks</h1>
-    <p>Drag an item with its handle, press <kbd>Space</kbd> on a focused handle to grab it, move it with <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Escape</kbd> to cancel, or use the movement buttons.</p>
+    <p>Three ways to reorder, shown separately because a real implementation picks one keyboard interaction. Every move
+      is announced in one live region at the bottom.</p>
 
-    <ol class="task-list" id="taskList">
+    <section>
+      <h2>1. Drag handle, vertical</h2>
+      <p>Drag an item with its handle, or press <kbd>Space</kbd> on a focused handle to grab it, move it with
+        <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Esc</kbd> to cancel.</p>
+      <ol class="task-list" id="taskList" data-axis="block">
       <li class="task" data-reorder-item data-label="Outline project">
         <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project"
           style="--icon: var(--icon-grip);"></button>
+        <label>Outline project <input value="Write the first draft"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Review research">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Review research <input value="Collect source notes"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Schedule review">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Schedule review <input value="Invite the team"></label>
+      </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>2. Move buttons, vertical</h2>
+      <p>No handle and no dragging: visible buttons move an item up or down. This is the most discoverable option and
+        works in screen-reader browse modes.</p>
+      <ol class="task-list" id="buttonList" data-axis="block">
+      <li class="task" data-reorder-item data-label="Outline project">
         <label>Outline project <input value="Write the first draft"></label>
         <div class="task-controls">
           <button class="move-up-button" type="button" aria-label="Move Outline project up" title="Move up">
@@ -219,8 +270,6 @@
         </div>
       </li>
       <li class="task" data-reorder-item data-label="Review research">
-        <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research"
-          style="--icon: var(--icon-grip);"></button>
         <label>Review research <input value="Collect source notes"></label>
         <div class="task-controls">
           <button class="move-up-button" type="button" aria-label="Move Review research up" title="Move up">
@@ -232,8 +281,6 @@
         </div>
       </li>
       <li class="task" data-reorder-item data-label="Schedule review">
-        <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review"
-          style="--icon: var(--icon-grip);"></button>
         <label>Schedule review <input value="Invite the team"></label>
         <div class="task-controls">
           <button class="move-up-button" type="button" aria-label="Move Schedule review up" title="Move up">
@@ -244,27 +291,46 @@
           </button>
         </div>
       </li>
-    </ol>
+      </ol>
+    </section>
+
+    <section>
+      <h2>3. Drag handle, horizontal</h2>
+      <p>The same code along the inline axis. Drag a card, or grab it with <kbd>Space</kbd> and move it with
+        <kbd>ArrowLeft</kbd> or <kbd>ArrowRight</kbd>. The arrows follow the visual direction, so they flip in
+        right-to-left layouts.</p>
+      <ol class="task-list" id="rowList" data-axis="inline">
+      <li class="task" data-reorder-item data-label="Draft">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Draft" aria-pressed="false" title="Drag to reorder Draft"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Draft <input value="Outline"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Review">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Review" aria-pressed="false" title="Drag to reorder Review"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Review <input value="Sources"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Edit">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Edit" aria-pressed="false" title="Drag to reorder Edit"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Edit <input value="Tighten"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Design">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Design" aria-pressed="false" title="Drag to reorder Design"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Design <input value="Layout"></label>
+      </li>
+      </ol>
+    </section>
 
     <p class="status" id="reorderStatus" role="status" aria-live="polite" aria-atomic="true"></p>
   </main>
 
   <script>
-    const list = document.getElementById('taskList');
     const status = document.getElementById('reorderStatus');
-    let pointerItem = null;
-    let pointerPreview = null;
-    let pointerOffsetX = 0;
-    let pointerOffsetY = 0;
-    let activePointerId = null;
-    let pointerHandle = null;
-    let pointerStartNext = null;
-    let isMoving = false;
-    let pointerX = 0;
-    let pointerY = 0;
-    function getPosition(item) {
-      return [...list.children].indexOf(item) + 1;
-    }
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const EDGE_ZONE = 56;
+    const MAX_SPEED = 700; // px per second at the edge, up to 2x beyond it
 
     // Delay so the announcement isn't swallowed when the move blurs and refocuses the handle (the before() fallback).
     let announceTimer = 0;
@@ -274,302 +340,332 @@
       announceTimer = setTimeout(() => { status.textContent = message; }, 500);
     }
 
-    function updateDisabledStates() {
-      const items = [...list.children];
-      items.forEach((item, index) => {
-        const upBtn = item.querySelector('.move-up-button');
-        const downBtn = item.querySelector('.move-down-button');
-        if (upBtn) upBtn.disabled = (index === 0);
-        if (downBtn) downBtn.disabled = (index === items.length - 1);
+    // One reorderable list. `data-axis` is "block" (vertical) or "inline" (horizontal, reading direction aware).
+    function setupReorderable(list) {
+      const inline = list.dataset.axis === 'inline';
+      let pointerItem = null;
+      let pointerPreview = null;
+      let pointerOffsetX = 0;
+      let pointerOffsetY = 0;
+      let activePointerId = null;
+      let pointerHandle = null;
+      let pointerStartNext = null;
+      let isMoving = false;
+      let pointerX = 0;
+      let pointerY = 0;
+      let scrollFrame = 0;
+      let lastFrame = 0;
+      let grabbedHandle = null;
+      let grabbedNext = null;
+
+      const isRtl = () => getComputedStyle(list).direction === 'rtl';
+      const getPosition = (item) => [...list.children].indexOf(item) + 1;
+
+      function updateDisabledStates() {
+        const items = [...list.children];
+        items.forEach((item, index) => {
+          const upBtn = item.querySelector('.move-up-button');
+          const downBtn = item.querySelector('.move-down-button');
+          if (upBtn) upBtn.disabled = (index === 0);
+          if (downBtn) downBtn.disabled = (index === items.length - 1);
+        });
+      }
+
+      // FLIP: measure, move, then animate each sibling from its old position, on both axes.
+      function moveItem(item, before, reveal = false) {
+        const first = new Map([...list.children].map((el) => [el, el.getBoundingClientRect()]));
+        const scrollLeftBefore = list.scrollLeft;
+        const scrollTopBefore = list.scrollTop;
+        // The before() fallback can blur the moved handle; flag it so that blur isn't treated as leaving.
+        isMoving = true;
+        if ('moveBefore' in Element.prototype) {
+          list.moveBefore(item, before);
+        } else if (before) {
+          before.before(item);
+        } else {
+          list.append(item);
+        }
+        isMoving = false;
+        // before() clears pointer capture along with the removed handle, so re-establish it.
+        if (pointerHandle && !pointerHandle.hasPointerCapture(activePointerId)) {
+          pointerHandle.setPointerCapture(activePointerId);
+        }
+        // Scroll before animating so the item's layout position is used, not its animated offset.
+        if (reveal) item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        if (reduceMotion.matches) return;
+        const scrolledX = list.scrollLeft - scrollLeftBefore;
+        const scrolledY = list.scrollTop - scrollTopBefore;
+        for (const [el, rect] of first) {
+          const now = el.getBoundingClientRect();
+          const dx = rect.left - scrolledX - now.left;
+          const dy = rect.top - scrolledY - now.top;
+          if (dx || dy) el.animate({ translate: [`${dx}px ${dy}px`, '0 0'] }, { duration: 200, easing: 'ease-out' });
+        }
+      }
+
+      function finishPointerReorder(cancelled = false) {
+        if (!pointerItem) return;
+        updateDisabledStates();
+        const label = pointerItem.dataset.label;
+        const position = getPosition(pointerItem);
+        if (cancelled) {
+          announce(`Cancelled. ${label} returned to position ${position} of ${list.children.length}.`);
+        } else if (pointerItem.nextElementSibling !== pointerStartNext) {
+          announce(`Moved ${label} to position ${position}.`);
+        }
+        const item = pointerItem;
+        const preview = pointerPreview;
+        const from = preview.getBoundingClientRect();
+        // Finish the item's in-flight FLIP animation so the target is its real layout position.
+        item.getAnimations().forEach((animation) => animation.finish());
+        const to = item.getBoundingClientRect();
+        const done = () => {
+          // A new drag of this item may already be running; don't clear its placeholder state.
+          if (item !== pointerItem) item.classList.remove('pointer-dragging');
+          preview.remove();
+        };
+        if (reduceMotion.matches) {
+          done();
+        } else {
+          const snap = preview.animate(
+            { translate: [`0 0`, `${to.left - from.left}px ${to.top - from.top}px`] },
+            { duration: 200, easing: 'ease-out', fill: 'forwards' }
+          );
+          snap.finished.then(done, done);
+        }
+        pointerItem = null;
+        pointerPreview = null;
+        activePointerId = null;
+        pointerHandle?.removeEventListener('lostpointercapture', onLostPointerCapture);
+        pointerHandle = null;
+        document.documentElement.classList.remove('is-dragging');
+        cancelAnimationFrame(scrollFrame);
+        document.removeEventListener('pointermove', movePointerItem);
+        document.removeEventListener('pointerup', endPointerReorder);
+        document.removeEventListener('pointercancel', endPointerReorder);
+        document.removeEventListener('keydown', cancelPointerReorder);
+      }
+
+      // Only the pointer that started the drag may move or end it; a stray second touch is ignored.
+      function endPointerReorder(event) {
+        if (event.pointerId === activePointerId) finishPointerReorder();
+      }
+
+      // Capture lost for any reason other than the before() fallback (which re-captures) ends the drag.
+      function onLostPointerCapture(event) {
+        if (event.pointerId === activePointerId && !pointerHandle?.hasPointerCapture(event.pointerId)) {
+          finishPointerReorder();
+        }
+      }
+
+      function cancelPointerReorder(event) {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        moveItem(pointerItem, pointerStartNext, true);
+        finishPointerReorder(true);
+      }
+
+      function movePointerItem(event) {
+        if (event.pointerId !== activePointerId) return;
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        pointerPreview.style.left = `${pointerX - pointerOffsetX}px`;
+        pointerPreview.style.top = `${pointerY - pointerOffsetY}px`;
+        updateDropTarget();
+      }
+
+      // Compare the pointer, clamped to the list, with layout midpoints along the list's axis. Layout positions
+      // ignore in-flight FLIP translates, and a pointer past either edge still resolves to the first or last place.
+      function updateDropTarget() {
+        const bounds = list.getBoundingClientRect();
+        const siblings = [...list.querySelectorAll(':scope > .task')].filter((item) => item !== pointerItem);
+        let before;
+        if (inline) {
+          const rtl = isRtl();
+          const clamped = Math.min(Math.max(pointerX, bounds.left), bounds.right);
+          // offsetLeft and scrollLeft share one coordinate space in both directions (scrollLeft is negative once
+          // a right-to-left list is scrolled), so the same sum works for either.
+          const x = clamped - bounds.left - list.clientLeft + list.scrollLeft;
+          // DOM order runs right to left in RTL, so an item comes first when the pointer is past its midpoint.
+          before = siblings.find((item) => {
+            const middle = item.offsetLeft + item.offsetWidth / 2;
+            return rtl ? x > middle : x < middle;
+          }) ?? null;
+        } else {
+          const clamped = Math.min(Math.max(pointerY, bounds.top), bounds.bottom);
+          const y = clamped - bounds.top - list.clientTop + list.scrollTop;
+          before = siblings.find((item) => y < item.offsetTop + item.offsetHeight / 2) ?? null;
+        }
+        if (before === pointerItem.nextElementSibling) return;
+        moveItem(pointerItem, before);
+      }
+
+      function autoScroll(now) {
+        const bounds = list.getBoundingClientRect();
+        const pointer = inline ? pointerX : pointerY;
+        const start = inline ? bounds.left : bounds.top;
+        const end = inline ? bounds.right : bounds.bottom;
+        const into = pointer < start + EDGE_ZONE ? start + EDGE_ZONE - pointer
+          : pointer > end - EDGE_ZONE ? end - EDGE_ZONE - pointer : 0;
+        const speed = Math.min(Math.abs(into) / EDGE_ZONE, 2) * MAX_SPEED * Math.sign(-into);
+        if (speed && lastFrame) {
+          const property = inline ? 'scrollLeft' : 'scrollTop';
+          const before = list[property];
+          list[property] += speed * (now - lastFrame) / 1000;
+          if (list[property] !== before) updateDropTarget();
+        }
+        lastFrame = now;
+        scrollFrame = requestAnimationFrame(autoScroll);
+      }
+
+      list.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0 || activePointerId !== null) return;
+        const handle = event.target.closest('.drag-handle');
+        if (!handle) return;
+        event.preventDefault();
+        activePointerId = event.pointerId;
+        pointerHandle = handle;
+        handle.setPointerCapture(event.pointerId);
+        handle.addEventListener('lostpointercapture', onLostPointerCapture);
+        pointerItem = handle.closest('.task');
+        pointerStartNext = pointerItem.nextElementSibling;
+        const rect = pointerItem.getBoundingClientRect();
+        pointerOffsetX = event.clientX - rect.left;
+        pointerOffsetY = event.clientY - rect.top;
+
+        pointerPreview = pointerItem.cloneNode(true);
+        pointerPreview.classList.remove('pointer-dragging');
+        // A clone never matches :focus-visible, so carry the keyboard focus ring over to the preview.
+        pointerPreview.classList.toggle('has-focus', handle.matches(':focus-visible'));
+        pointerPreview.classList.add('drag-preview');
+        pointerPreview.setAttribute('aria-hidden', 'true');
+        pointerPreview.inert = true;
+        pointerPreview.style.width = `${rect.width}px`;
+        pointerPreview.style.left = `${rect.left}px`;
+        pointerPreview.style.top = `${rect.top}px`;
+        document.body.append(pointerPreview);
+        pointerItem.classList.add('pointer-dragging');
+        document.documentElement.classList.add('is-dragging');
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        lastFrame = 0;
+        scrollFrame = requestAnimationFrame(autoScroll);
+        document.addEventListener('pointermove', movePointerItem);
+        document.addEventListener('pointerup', endPointerReorder);
+        document.addEventListener('pointercancel', endPointerReorder);
+        document.addEventListener('keydown', cancelPointerReorder);
       });
-    }
 
-    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      // step is -1 (towards the start of the DOM order) or 1; word names the direction for the announcement.
+      function moveKeyboardItem(item, step, word) {
+        const sibling = step < 0 ? item.previousElementSibling : item.nextElementSibling;
+        if (!sibling) return;
 
-    // FLIP: measure, move, then animate each sibling from its old position.
-    function moveItem(item, before, reveal = false) {
-      const first = new Map([...list.children].map((el) => [el, el.getBoundingClientRect().top]));
-      const scrollBefore = list.scrollTop;
-      // The before() fallback can blur the moved handle; flag it so that blur isn't treated as leaving.
-      isMoving = true;
-      if ('moveBefore' in Element.prototype) {
-        list.moveBefore(item, before);
-      } else if (before) {
-        before.before(item);
-      } else {
+        const activeElement = document.activeElement;
+        const wasUpFocused = activeElement?.classList.contains('move-up-button');
+        const wasDownFocused = activeElement?.classList.contains('move-down-button');
+
+        moveItem(item, step < 0 ? sibling : sibling.nextElementSibling, true);
+        updateDisabledStates();
+
+        // Restore focus without scrolling: moveItem() already revealed the item. A button that became
+        // disabled at the end of the list hands focus to its partner so focus isn't lost.
+        if (wasUpFocused || wasDownFocused) {
+          const own = item.querySelector(wasUpFocused ? '.move-up-button' : '.move-down-button');
+          const partner = item.querySelector(wasUpFocused ? '.move-down-button' : '.move-up-button');
+          (own.disabled ? partner : own).focus({ preventScroll: true });
+        } else {
+          activeElement?.focus({ preventScroll: true });
+        }
+
+        announce(`${item.dataset.label} moved ${word}. Position ${getPosition(item)} of ${list.children.length}.`);
+      }
+
+      function releaseHandle() {
+        grabbedHandle.setAttribute('aria-pressed', 'false');
+        grabbedHandle = null;
+      }
+
+      // Arrow keys follow the visual direction, so horizontal keys flip in right-to-left lists.
+      const ARROWS = inline
+        ? { ArrowLeft: 'left', ArrowRight: 'right' }
+        : { ArrowUp: 'up', ArrowDown: 'down' };
+      const stepFor = (word) => (word === 'down' ? 1 : word === 'up' ? -1 : (word === 'right') === !isRtl() ? 1 : -1);
+
+      list.addEventListener('keydown', (event) => {
+        const handle = event.target.closest('.drag-handle');
+        if (!handle) return;
+        const item = handle.closest('.task');
+
+        if (event.key === ' ' || event.key === 'Enter') {
+          event.preventDefault();
+          if (grabbedHandle === handle) {
+            releaseHandle();
+            announce(`Dropped ${item.dataset.label} at position ${getPosition(item)} of ${list.children.length}.`);
+          } else {
+            grabbedHandle = handle;
+            grabbedNext = item.nextElementSibling;
+            handle.setAttribute('aria-pressed', 'true');
+            announce(`Grabbed ${item.dataset.label}, position ${getPosition(item)} of ${list.children.length}. Use arrow keys to move, Space to drop, Escape to cancel.`);
+          }
+        } else if (grabbedHandle !== handle) {
+          return;
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          moveItem(item, grabbedNext, true);
+          updateDisabledStates();
+          handle.focus({ preventScroll: true });
+          releaseHandle();
+          announce(`Cancelled. ${item.dataset.label} returned to position ${getPosition(item)} of ${list.children.length}.`);
+        } else if (event.key in ARROWS) {
+          event.preventDefault();
+          const word = ARROWS[event.key];
+          moveKeyboardItem(item, stepFor(word), word);
+        }
+      });
+
+      // Show the whole item (and its focus ring) when keyboard focus enters it. Skip mid-animation items:
+      // a move already revealed them, and an in-flight translate would skew the scroll position.
+      list.addEventListener('focusin', (event) => {
+        const item = event.target.closest('.task');
+        if (!item || !event.target.matches(':focus-visible') || item.getAnimations().length) return;
+        item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+
+      list.addEventListener('focusout', (event) => {
+        if (!isMoving && grabbedHandle && event.target === grabbedHandle) releaseHandle();
+      });
+
+      list.addEventListener('click', (event) => {
+        const upBtn = event.target.closest('.move-up-button');
+        const downBtn = event.target.closest('.move-down-button');
+        if (!upBtn && !downBtn) return;
+        moveKeyboardItem((upBtn || downBtn).closest('.task'), upBtn ? -1 : 1, upBtn ? 'up' : 'down');
+      });
+
+      // Add enough items for the list to scroll.
+      const extra = inline ? 6 : 7;
+      const first = list.firstElementChild;
+      const base = inline ? 5 : 4;
+      for (let i = 0; i < extra; i++) {
+        const item = first.cloneNode(true);
+        const label = inline ? `Card ${base + i}` : `Task ${base + i}`;
+        item.dataset.label = label;
+        const handle = item.querySelector('.drag-handle');
+        if (handle) {
+          handle.setAttribute('aria-label', `Reorder ${label}`);
+          handle.title = `Drag to reorder ${label}`;
+        }
+        item.querySelector('.move-up-button')?.setAttribute('aria-label', `Move ${label} up`);
+        item.querySelector('.move-down-button')?.setAttribute('aria-label', `Move ${label} down`);
+        item.querySelector('label').firstChild.textContent = `${label} `;
+        item.querySelector('input').value = '';
         list.append(item);
       }
-      isMoving = false;
-      // before() clears pointer capture along with the removed handle, so re-establish it.
-      if (pointerHandle && !pointerHandle.hasPointerCapture(activePointerId)) {
-        pointerHandle.setPointerCapture(activePointerId);
-      }
-      // Scroll before animating so the item's layout position is used, not its animated offset.
-      if (reveal) item.scrollIntoView({ block: 'nearest' });
-      if (reduceMotion.matches) return;
-      const scrolled = list.scrollTop - scrollBefore;
-      for (const [el, top] of first) {
-        const dy = top - scrolled - el.getBoundingClientRect().top;
-        if (dy) el.animate({ translate: [`0 ${dy}px`, '0 0'] }, { duration: 200, easing: 'ease-out' });
-      }
-    }
-
-    function finishPointerReorder(cancelled = false) {
-      if (!pointerItem) return;
       updateDisabledStates();
-      const label = pointerItem.dataset.label;
-      const position = getPosition(pointerItem);
-      if (cancelled) {
-        announce(`Cancelled. ${label} returned to position ${position} of ${list.children.length}.`);
-      } else if (pointerItem.nextElementSibling !== pointerStartNext) {
-        announce(`Moved ${label} to position ${position}.`);
-      }
-      const item = pointerItem;
-      const preview = pointerPreview;
-      const from = preview.getBoundingClientRect();
-      // Finish the item's in-flight FLIP animation so the target is its real layout position.
-      item.getAnimations().forEach((animation) => animation.finish());
-      const to = item.getBoundingClientRect();
-      const done = () => {
-        // A new drag of this item may already be running; don't clear its placeholder state.
-        if (item !== pointerItem) item.classList.remove('pointer-dragging');
-        preview.remove();
-      };
-      if (reduceMotion.matches) {
-        done();
-      } else {
-        const snap = preview.animate(
-          { translate: [`0 0`, `${to.left - from.left}px ${to.top - from.top}px`] },
-          { duration: 200, easing: 'ease-out', fill: 'forwards' }
-        );
-        snap.finished.then(done, done);
-      }
-      pointerItem = null;
-      pointerPreview = null;
-      activePointerId = null;
-      pointerHandle?.removeEventListener('lostpointercapture', onLostPointerCapture);
-      pointerHandle = null;
-      document.documentElement.classList.remove('is-dragging');
-      cancelAnimationFrame(scrollFrame);
-      document.removeEventListener('pointermove', movePointerItem);
-      document.removeEventListener('pointerup', endPointerReorder);
-      document.removeEventListener('pointercancel', endPointerReorder);
-      document.removeEventListener('keydown', cancelPointerReorder);
     }
 
-    // Only the pointer that started the drag may move or end it; a stray second touch is ignored.
-    function endPointerReorder(event) {
-      if (event.pointerId === activePointerId) finishPointerReorder();
-    }
-
-    // Capture lost for any reason other than the before() fallback (which re-captures) ends the drag.
-    function onLostPointerCapture(event) {
-      if (event.pointerId === activePointerId && !pointerHandle?.hasPointerCapture(event.pointerId)) {
-        finishPointerReorder();
-      }
-    }
-
-    function cancelPointerReorder(event) {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      moveItem(pointerItem, pointerStartNext, true);
-      finishPointerReorder(true);
-    }
-
-    function movePointerItem(event) {
-      if (event.pointerId !== activePointerId) return;
-      pointerX = event.clientX;
-      pointerY = event.clientY;
-      pointerPreview.style.left = `${pointerX - pointerOffsetX}px`;
-      pointerPreview.style.top = `${pointerY - pointerOffsetY}px`;
-      updateDropTarget();
-    }
-
-    // Compare the pointer, clamped to the list, with layout midpoints. Layout positions ignore
-    // in-flight FLIP translates, and a pointer past either edge still resolves to the first or last place.
-    function updateDropTarget() {
-      const bounds = list.getBoundingClientRect();
-      const clamped = Math.min(Math.max(pointerY, bounds.top), bounds.bottom);
-      const y = clamped - bounds.top - list.clientTop + list.scrollTop;
-      const before = [...list.querySelectorAll(':scope > .task')]
-        .find((item) => item !== pointerItem && y < item.offsetTop + item.offsetHeight / 2) ?? null;
-      if (before === pointerItem.nextElementSibling) return;
-      moveItem(pointerItem, before);
-    }
-
-    const EDGE_ZONE = 56;
-    const MAX_SPEED = 700; // px per second at the edge, up to 2x beyond it
-    let scrollFrame = 0;
-    let lastFrame = 0;
-
-    function autoScroll(now) {
-      const bounds = list.getBoundingClientRect();
-      const into = pointerY < bounds.top + EDGE_ZONE ? bounds.top + EDGE_ZONE - pointerY
-        : pointerY > bounds.bottom - EDGE_ZONE ? bounds.bottom - EDGE_ZONE - pointerY : 0;
-      const speed = Math.min(Math.abs(into) / EDGE_ZONE, 2) * MAX_SPEED * Math.sign(-into);
-      if (speed && lastFrame) {
-        const before = list.scrollTop;
-        list.scrollTop += speed * (now - lastFrame) / 1000;
-        if (list.scrollTop !== before) updateDropTarget();
-      }
-      lastFrame = now;
-      scrollFrame = requestAnimationFrame(autoScroll);
-    }
-
-    list.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0 || activePointerId !== null) return;
-      const handle = event.target.closest('.drag-handle');
-      if (!handle) return;
-      event.preventDefault();
-      activePointerId = event.pointerId;
-      pointerHandle = handle;
-      handle.setPointerCapture(event.pointerId);
-      handle.addEventListener('lostpointercapture', onLostPointerCapture);
-      pointerItem = handle.closest('.task');
-      pointerStartNext = pointerItem.nextElementSibling;
-      const rect = pointerItem.getBoundingClientRect();
-      pointerOffsetX = event.clientX - rect.left;
-      pointerOffsetY = event.clientY - rect.top;
-
-      pointerPreview = pointerItem.cloneNode(true);
-      pointerPreview.classList.remove('pointer-dragging');
-      // A clone never matches :focus-visible, so carry the keyboard focus ring over to the preview.
-      pointerPreview.classList.toggle('has-focus', handle.matches(':focus-visible'));
-      pointerPreview.classList.add('drag-preview');
-      pointerPreview.setAttribute('aria-hidden', 'true');
-      pointerPreview.inert = true;
-      pointerPreview.style.width = `${rect.width}px`;
-      pointerPreview.style.left = `${rect.left}px`;
-      pointerPreview.style.top = `${rect.top}px`;
-      document.body.append(pointerPreview);
-      pointerItem.classList.add('pointer-dragging');
-      document.documentElement.classList.add('is-dragging');
-      pointerX = event.clientX;
-      pointerY = event.clientY;
-      lastFrame = 0;
-      scrollFrame = requestAnimationFrame(autoScroll);
-      document.addEventListener('pointermove', movePointerItem);
-      document.addEventListener('pointerup', endPointerReorder);
-      document.addEventListener('pointercancel', endPointerReorder);
-      document.addEventListener('keydown', cancelPointerReorder);
-    });
-
-    function moveKeyboardItem(item, direction) {
-      const sibling = direction === 'up'
-        ? item.previousElementSibling
-        : item.nextElementSibling;
-      if (!sibling) return;
-
-      const activeElement = document.activeElement;
-      const wasUpFocused = activeElement?.classList.contains('move-up-button');
-      const wasDownFocused = activeElement?.classList.contains('move-down-button');
-
-      moveItem(item, direction === 'up' ? sibling : sibling.nextElementSibling, true);
-      updateDisabledStates();
-
-      // Restore focus without scrolling: moveItem() already revealed the item
-      if (direction === 'up' && wasUpFocused) {
-        const upBtn = item.querySelector('.move-up-button');
-        if (upBtn.disabled) {
-          item.querySelector('.move-down-button').focus({ preventScroll: true });
-        } else {
-          upBtn.focus({ preventScroll: true });
-        }
-      } else if (direction === 'down' && wasDownFocused) {
-        const downBtn = item.querySelector('.move-down-button');
-        if (downBtn.disabled) {
-          item.querySelector('.move-up-button').focus({ preventScroll: true });
-        } else {
-          downBtn.focus({ preventScroll: true });
-        }
-      } else {
-        activeElement?.focus({ preventScroll: true });
-      }
-
-      announce(`${item.dataset.label} moved ${direction}. Position ${getPosition(item)} of ${list.children.length}.`);
-    }
-
-    let grabbedHandle = null;
-    let grabbedNext = null;
-
-    function releaseHandle() {
-      grabbedHandle.setAttribute('aria-pressed', 'false');
-      grabbedHandle = null;
-    }
-
-    list.addEventListener('keydown', (event) => {
-      const handle = event.target.closest('.drag-handle');
-      if (!handle) return;
-      const item = handle.closest('.task');
-
-      if (event.key === ' ' || event.key === 'Enter') {
-        event.preventDefault();
-        if (grabbedHandle === handle) {
-          releaseHandle();
-          announce(`Dropped ${item.dataset.label} at position ${getPosition(item)} of ${list.children.length}.`);
-        } else {
-          grabbedHandle = handle;
-          grabbedNext = item.nextElementSibling;
-          handle.setAttribute('aria-pressed', 'true');
-          announce(`Grabbed ${item.dataset.label}, position ${getPosition(item)} of ${list.children.length}. Use arrow keys to move, Space to drop, Escape to cancel.`);
-        }
-      } else if (grabbedHandle !== handle) {
-        return;
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        moveItem(item, grabbedNext, true);
-        updateDisabledStates();
-        handle.focus({ preventScroll: true });
-        releaseHandle();
-        announce(`Cancelled. ${item.dataset.label} returned to position ${getPosition(item)} of ${list.children.length}.`);
-      } else if (['ArrowUp', 'ArrowDown'].includes(event.key)) {
-        event.preventDefault();
-        moveKeyboardItem(item, event.key === 'ArrowUp' ? 'up' : 'down');
-      }
-    });
-
-    // Show the whole item (and its focus ring) when keyboard focus enters it. Skip mid-animation items:
-    // a move already revealed them, and an in-flight translate would skew the scroll position.
-    list.addEventListener('focusin', (event) => {
-      const item = event.target.closest('.task');
-      if (!item || !event.target.matches(':focus-visible') || item.getAnimations().length) return;
-      item.scrollIntoView({ block: 'nearest' });
-    });
-
-    list.addEventListener('focusout', (event) => {
-      if (!isMoving && grabbedHandle && event.target === grabbedHandle) releaseHandle();
-    });
-
-    list.addEventListener('click', (event) => {
-      const upBtn = event.target.closest('.move-up-button');
-      const downBtn = event.target.closest('.move-down-button');
-      if (!upBtn && !downBtn) return;
-
-      const item = (upBtn || downBtn).closest('.task');
-      if (upBtn) {
-        moveKeyboardItem(item, 'up');
-      } else {
-        moveKeyboardItem(item, 'down');
-      }
-    });
-
-    // Add enough items for the list to scroll.
-    for (let i = 4; i <= 10; i++) {
-      const item = list.firstElementChild.cloneNode(true);
-      const label = `Task ${i}`;
-      item.dataset.label = label;
-      const handle = item.querySelector('.drag-handle');
-      handle.setAttribute('aria-label', `Reorder ${label}`);
-      handle.title = `Drag to reorder ${label}`;
-      item.querySelector('.move-up-button').setAttribute('aria-label', `Move ${label} up`);
-      item.querySelector('.move-down-button').setAttribute('aria-label', `Move ${label} down`);
-      item.querySelector('label').firstChild.textContent = `${label} `;
-      item.querySelector('input').value = '';
-      list.append(item);
-    }
-
-    // Initialize disabled states
-    updateDisabledStates();
+    document.querySelectorAll('.task-list').forEach(setupReorderable);
   </script>
 </body>
 
