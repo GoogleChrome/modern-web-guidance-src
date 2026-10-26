@@ -46,23 +46,25 @@ const HOME_DIR_RE = new RegExp(`${NOT_INSIDE_URL}/(?:usr/local/google/home|home|
 /**
  * Strings that must never appear in published output. Checked after rewriting.
  *
- * `linux home path` excludes `/usr/local/google/home/...` so a Cloudtop path is
- * reported once, not twice. `home-relative non-dotfile` catches checkouts that
- * are not named `modern-web-guidance-src` (e.g. `~/mwg/src/x`): after
- * rewriting, the only legitimate home-relative paths are dot-directories such
- * as `~/.npm` or `~/.cache`.
+ * `home path` is built from the same `HOME_ROOT` the rewrite uses, so what we
+ * rewrite and what we detect cannot drift apart. `home-relative non-dotfile`
+ * catches checkouts that are not named `modern-web-guidance-src` (e.g.
+ * `~/mwg/src/x`): after rewriting, the only legitimate home-relative paths are
+ * dot-directories such as `~/.npm` or `~/.cache`.
+ *
+ * Hostname and email patterns anchor on the literal domain and only then look
+ * back for the local part. Scanning forward from every word character instead
+ * (`[\w.-]*googlers\.com`) costs ~6x more on large page snapshots.
  */
 export const LEAK_PATTERNS: readonly { name: string; re: RegExp }[] = [
-  { name: 'cloudtop home path', re: new RegExp(String.raw`/usr/local/google/home/${SEGMENT}+`, 'g') },
-  { name: 'linux home path', re: new RegExp(String.raw`(?<!\w)/home/${SEGMENT}+`, 'g') },
-  { name: 'macos home path', re: new RegExp(String.raw`(?<![\w:])/Users/${SEGMENT}+`, 'g') },
+  { name: 'home path', re: new RegExp(`${NOT_INSIDE_URL}/(?:usr/local/google/home|home|Users)/${SEGMENT}+`, 'g') },
   { name: 'windows home path', re: /[A-Za-z]:\\Users\\[^\\\s"']+/g },
   { name: 'escaped home path', re: /(?:\\\/|%2F)(?:home|Users)(?:\\\/|%2F)/gi },
   { name: 'home-relative non-dotfile', re: new RegExp(String.raw`(?<![\w:])~/(?!\.)${SEGMENT}+`, 'g') },
   { name: 'citc path', re: new RegExp(String.raw`/google/src/cloud/${SEGMENT}+`, 'g') },
-  { name: 'googlers hostname', re: /[\w.-]*\bgooglers\.com\b/gi },
-  { name: 'corp hostname', re: /[\w.-]*\bcorp\.google\.com\b/gi },
-  { name: 'google email', re: /[\w.+-]+@google\.com\b/gi },
+  { name: 'googlers hostname', re: /\bgooglers\.com\b/gi },
+  { name: 'corp hostname', re: /\bcorp\.google\.com\b/gi },
+  { name: 'google email', re: /(?<=[\w.+-])@google\.com\b/gi },
 ];
 
 export interface Leak {
@@ -163,10 +165,19 @@ function findLeaksInString(text: string, path: string, patterns: readonly { name
   const leaks: Leak[] = [];
   for (const { name, re } of patterns) {
     for (const match of text.matchAll(re)) {
-      leaks.push({ name, match: match[0], path });
+      leaks.push({ name, match: widenToToken(text, match.index, match[0]), path });
     }
   }
   return leaks;
+}
+
+/** Extends a domain match backwards over the local part (`user@`, `host.`) so reports show the whole identifier. */
+function widenToToken(text: string, start: number, matched: string): string {
+  let from = start;
+  while (from > 0 && /[\w.+-]/.test(text[from - 1])) {
+    from--;
+  }
+  return text.slice(from, start) + matched;
 }
 
 function forbiddenTokenPatterns(tokens: readonly string[]): { name: string; re: RegExp }[] {

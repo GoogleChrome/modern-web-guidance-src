@@ -84,7 +84,7 @@ describe('findLeaks', () => {
     assert.deepEqual(
       leaks.map(l => [l.path, l.name]),
       [
-        ['$.results[0].error', 'cloudtop home path'],
+        ['$.results[0].error', 'home path'],
         ['$.results[1].browserErrors', 'googlers hostname'],
         ['$.email', 'google email'],
         ['$.citc', 'citc path'],
@@ -133,7 +133,7 @@ describe('findLeaks', () => {
     assert.equal(findLeaks({ [`${LINUX_HOME}/y`]: 1 }).length, 1);
   });
 
-  test('reports a cloudtop path once, not also as a linux home path', () => {
+  test('reports a cloudtop path once', () => {
     assert.equal(findLeaks(`${CLOUDTOP_HOME}/x`).length, 1);
   });
 
