@@ -48,4 +48,28 @@ void test('sfc-extractor: Vue and Svelte script & style extraction', async (t) =
     assert.equal(styleBlocks.length, 1);
     assert.equal(styleBlocks[0]?.includes('.btn { color: red; }'), true);
   });
+
+  await t.test('disambiguates virtual paths for multiple script blocks in one HTML file', () => {
+    const html = [
+      '<!DOCTYPE html>',
+      '<html><body>',
+      '<script>',
+      'const a = 1;',
+      '</script>',
+      '<div>middle</div>',
+      '<script lang="ts">',
+      'const b: number = 2;',
+      '</script>',
+      '<script>',
+      'const c = 3;',
+      '</script>',
+      '</body></html>',
+    ].join('\n');
+
+    const blocks = extractScriptBlocks('src/index.html', html);
+    assert.equal(blocks.length, 3);
+    assert.equal(blocks[0]?.virtualPath, 'src/index.html.js');
+    assert.equal(blocks[1]?.virtualPath, 'src/index.html.block1.ts');
+    assert.equal(blocks[2]?.virtualPath, 'src/index.html.block2.js');
+  });
 });

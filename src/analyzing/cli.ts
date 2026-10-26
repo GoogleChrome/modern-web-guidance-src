@@ -456,7 +456,7 @@ const isMainModule =
 if (isMainModule) {
   runAnalyzeCli(process.argv.slice(2))
     .then((result) => {
-      if (result.exitCode === 0) {
+      if (result.exitCode === 0 || result.data !== undefined) {
         process.stdout.write(result.output);
       } else {
         process.stderr.write(result.output);

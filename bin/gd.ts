@@ -258,7 +258,7 @@ async function main() {
   if (command === 'analyze') {
     const { runAnalyzeCli } = await import('../src/analyzing/cli.ts');
     const result = await runAnalyzeCli(process.argv.slice(3));
-    if (result.exitCode === 0) {
+    if (result.exitCode === 0 || result.data !== undefined) {
       process.stdout.write(result.output);
     } else {
       process.stderr.write(result.output);

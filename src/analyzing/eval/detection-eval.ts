@@ -1082,6 +1082,10 @@ export function hasCircularTemplatedR41Text(value: string): boolean {
  * Unverified or circular template entries without provenance must never be injected into the Judge.
  */
 export function hasValidSpecProvenance(spec: Record<string, unknown>): boolean {
+  if (spec.detection === 'no-legacy-pattern') {
+    return false;
+  }
+
   const changesForDev =
     typeof spec.changesSomethingForDeveloper === 'string'
       ? spec.changesSomethingForDeveloper.trim()

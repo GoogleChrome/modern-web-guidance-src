@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import type { Node, Project, SourceFile, SyntaxKind } from 'ts-morph';
 import type {
@@ -732,6 +732,10 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
 
       if (isScannableSource || isVendoredCandidate) {
         try {
+          const fileStat = await stat(fullPath);
+          if (fileStat.size > MAX_SOURCE_FILE_BYTES) {
+            continue;
+          }
           const content = await readFile(fullPath, 'utf8');
           if (Buffer.byteLength(content, 'utf8') <= MAX_SOURCE_FILE_BYTES) {
             if (

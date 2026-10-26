@@ -105,21 +105,23 @@ function parseTagAttributes(attrString: string): Record<string, string> {
 /**
  * Determines virtual TypeScript/JavaScript path based on script tag attributes.
  */
-function determineScriptVirtualPath(relPath: string, attrs: Record<string, string>): string {
+function determineScriptVirtualPath(
+  relPath: string,
+  attrs: Record<string, string>,
+  blockIndex = 0,
+): string {
   const lang = attrs.lang?.toLowerCase();
+  let ext = '.js';
   if (lang === 'ts' || lang === 'typescript') {
-    return `${relPath}.ts`;
+    ext = '.ts';
+  } else if (lang === 'tsx') {
+    ext = '.tsx';
+  } else if (lang === 'jsx') {
+    ext = '.jsx';
+  } else if (relPath.endsWith('.ts') || relPath.endsWith('.mts')) {
+    return blockIndex > 0 ? `${relPath}.block${blockIndex}.ts` : relPath;
   }
-  if (lang === 'tsx') {
-    return `${relPath}.tsx`;
-  }
-  if (lang === 'jsx') {
-    return `${relPath}.jsx`;
-  }
-  if (relPath.endsWith('.ts') || relPath.endsWith('.mts')) {
-    return relPath;
-  }
-  return `${relPath}.js`;
+  return blockIndex > 0 ? `${relPath}.block${blockIndex}${ext}` : `${relPath}${ext}`;
 }
 
 /**
@@ -175,7 +177,7 @@ export function extractScriptBlocks(
       const openTagLen = match[0].indexOf('>') + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
-      const virtualPath = determineScriptVirtualPath(relPath, attrs);
+      const virtualPath = determineScriptVirtualPath(relPath, attrs, blocks.length);
 
       blocks.push({
         virtualPath,
