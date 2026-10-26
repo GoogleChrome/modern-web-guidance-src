@@ -564,8 +564,32 @@ export const githubApi = {
       ['pr', 'view', String(prNumber), '--json', 'body', '--jq', '.body // ""'],
       { encoding: 'utf8' }
     ).trim();
+  },
+
+  updatePrBody(prNumber: number, body: string): void {
+    child_process.execFileSync(
+      'gh',
+      ['pr', 'edit', String(prNumber), '--body-file', '-'],
+      { input: body, stdio: ['pipe', 'ignore', 'inherit'] }
+    );
   }
 };
+
+const PREVIEW_START = '<!-- mwg-demo-preview:start -->';
+const PREVIEW_END = '<!-- mwg-demo-preview:end -->';
+const PREVIEW_BLOB_BASE = 'https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob';
+
+export function upsertDemoPreviewInBody(headRef: string, currentBody: string, files: string[]): string {
+  const links = files
+    .filter(f => /^guides\/[^/.][^/]*\/[^/.][^/]*\/demo(?:-.+)?\.html$/.test(f))
+    .sort()
+    .map(f => `[\`${f.replace(/^guides\/|\/demo\.html$/g, '')}\`](${PREVIEW_BLOB_BASE}/${headRef}/${f})`);
+
+  const list = links.length === 1 ? links[0] : links.map(l => `\n- ${l}`).join('');
+  const section = links.length ? `${PREVIEW_START}\n---\n🎨 **Demo preview:** ${list}\n${PREVIEW_END}` : '';
+  const stripped = currentBody.replace(/\s*<!-- mwg-demo-preview:start -->[\s\S]*?<!-- mwg-demo-preview:end -->/g, '').trimEnd();
+  return [stripped, section].filter(Boolean).join('\n\n');
+}
 
 export function hasNoAtlTriageDirective(body?: string | null): boolean {
   if (!body) return false;
@@ -827,6 +851,7 @@ export interface HandlePrOptions {
   dryRun?: boolean;
   isDraft?: boolean;
   prBody?: string;
+  headRef?: string;
 }
 
 export function handlePR(
@@ -890,6 +915,22 @@ export function handlePR(
   }
 
   console.log(`PR modified ${files.length} files.`);
+
+  if (!mockFiles && prBody !== undefined && options?.headRef) {
+    const nextBody = upsertDemoPreviewInBody(options.headRef, prBody, files);
+    if (nextBody !== prBody) {
+      if (isDryRun) {
+        console.log(`[DRY RUN] Would update demo preview links in PR #${prNumber} description.`);
+      } else {
+        try {
+          githubApi.updatePrBody(prNumber, nextBody);
+          console.log(`Updated demo preview links in PR #${prNumber} description.`);
+        } catch (err) {
+          console.error(`Failed to update description for PR #${prNumber}:`, err);
+        }
+      }
+    }
+  }
   
   const matchedAtls = new Set<string>();
   const allResolvedAtls = new Set<string>();
@@ -1140,7 +1181,9 @@ export function main() {
       const prLabels = (event.pull_request.labels || []).map((l: any) => l.name);
       const isDraft = Boolean(event.pull_request.draft);
       const prBody = event.pull_request.body || '';
-      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft, prBody });
+      const isSameRepo = event.pull_request.head?.repo?.full_name?.toLowerCase() === 'googlechrome/modern-web-guidance-src';
+      const headRef = (isSameRepo && event.pull_request.head?.ref) || event.pull_request.head?.sha || 'main';
+      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft, prBody, headRef });
     } 
     else {
       console.log('Event is neither an issue nor a pull request event. Skipping.');
