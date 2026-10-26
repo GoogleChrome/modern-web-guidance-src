@@ -644,7 +644,7 @@ export const RULE_REGISTRY_BY_GUIDE_ID: ReadonlyMap<string, RuleRegistryEntry> =
 );
 
 /**
- * Production shipping qualified guide IDs (5 guides clearing precision threshold).
+ * Production shipping qualified guide IDs clearing the qualification standard.
  */
 export const QUALIFIED_GUIDE_IDS: readonly string[] = RULE_REGISTRY
   .filter((e) => e.lifecycle.status === 'qualified')

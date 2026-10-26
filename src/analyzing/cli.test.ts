@@ -122,7 +122,7 @@ describe('runAnalyzeCli', () => {
       );
 
       // Check guide grouping, title line, rubric lines, and code preview
-      assert.match(res.output, /\* autofill-sign-in-form \[(?:qualified|experimental)\] \(\d+ findings?\)/);
+      assert.match(res.output, /\* autofill-sign-in-form \[experimental\] \(\d+ findings?\)/);
       assert.match(res.output, /Keep when:/);
       assert.match(res.output, /Drop when:/);
       assert.match(res.output, /- login\.html:\d+/);
@@ -168,7 +168,7 @@ describe('runAnalyzeCli', () => {
       assert.ok(guide.verifierRubric, 'Expected verifierRubric in guide JSON output');
       assert.ok(guide.verifierRubric.keepWhen.length >= 1);
       assert.ok(guide.verifierRubric.dropWhen.length >= 1);
-      assert.ok(guide.tier === 'qualified' || guide.tier === 'experimental');
+      assert.equal(guide.tier, 'experimental');
       assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve autofill-sign-in-form');
       assert.ok(guide.summary.length > 0);
       assert.equal(guide.count, guide.findings.length);
@@ -246,11 +246,15 @@ describe('runAnalyzeCli', () => {
   it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all-rules', async () => {
     const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
     try {
-      // 1. Create a pattern from a suspended guide: autofill-highlight-inputs
-      const autofillCss = `input:-webkit-autofill {
-  box-shadow: 0 0 0 1000px white inset;
-}`;
-      await writeFile(join(testDir, 'autofill.css'), autofillCss, 'utf8');
+      // 1. Create a pattern from a suspended guide: autofill-sign-in-form
+      const loginHtml = `<form action="/login" method="POST">
+  <label for="username">Username</label>
+  <input type="text" id="username" name="username">
+  <label for="password">Password</label>
+  <input type="password" id="password" name="password">
+  <button type="submit">Sign In</button>
+</form>`;
+      await writeFile(join(testDir, 'login.html'), loginHtml, 'utf8');
 
       // 2. Create experimental patterns: break-up-long-tasks, coordinate-global-events
       const yieldJs = `const yieldToMain = () => new Promise(r => setTimeout(r));`;
@@ -262,7 +266,7 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'timezone.js'), timezoneJs, 'utf8');
 
-      // Default run (QUALIFIED_RULES only - 6 guides active; neither suspended nor experimental patterns match default)
+      // Default run (QUALIFIED_RULES only; neither suspended nor experimental patterns match default)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
@@ -280,6 +284,10 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedAll.activeGuideCount, new Set(ALL_RULES.map((r) => r.guideId)).size);
       const allGuideIds = parsedAll.guides.map((g) => g.guideId);
 
+      assert.ok(
+        allGuideIds.includes('autofill-sign-in-form'),
+        'All-rules includes suspended rule autofill-sign-in-form',
+      );
       assert.ok(
         allGuideIds.includes('break-up-long-tasks'),
         'All-rules includes experimental rule break-up-long-tasks',

@@ -140,10 +140,10 @@ Coding agents receive structured JSON containing exact file coordinates, confide
       ]
     }
   ],
-  "activeRuleCount": 8,
-  "activeGuideCount": 6,
+  "activeRuleCount": 7,
+  "activeGuideCount": 5,
   "suspendedGuides": [
-    "autofill-highlight-inputs",
+    "autofill-sign-in-form",
     "complex-shapes",
     "interactions-in-complex-layouts",
     "language-detection"

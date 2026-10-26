@@ -76,7 +76,6 @@ export const autofillHighlightInputsRule: AnalyzerRule = {
   },
 };
 
-// Retired (no-op swap in all current browser engines)
 export const autofillHighlightInputsRules: readonly AnalyzerRule[] = [
   autofillHighlightInputsRule,
 ];

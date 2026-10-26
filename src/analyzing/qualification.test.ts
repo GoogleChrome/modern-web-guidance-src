@@ -5,81 +5,51 @@ import {
   QUALIFIED_GUIDE_IDS,
   SUSPENDED_QUALIFIED_GUIDE_IDS,
 } from './qualification.ts';
+import { RULE_REGISTRY } from './rules/index.ts';
 
-describe('qualification shipping lists', () => {
-  it('maintains default shipping guides clearing qualification standard', () => {
-    assert.ok(QUALIFIED_GUIDE_IDS.length > 0, 'Must have at least one qualified guide');
-    for (const gid of QUALIFIED_GUIDE_IDS) {
+describe('qualification shipping lists invariant over RULE_REGISTRY', () => {
+  it('enforces isGuideQualified and QUALIFIED_GUIDE_IDS match status === "qualified"', () => {
+    assert.ok(RULE_REGISTRY.length > 0, 'RULE_REGISTRY must not be empty');
+    for (const entry of RULE_REGISTRY) {
+      const isQualified = entry.lifecycle.status === 'qualified';
       assert.strictEqual(
-        isGuideQualified(gid),
-        true,
-        `Guide ${gid} in QUALIFIED_GUIDE_IDS must return true from isGuideQualified`,
+        isGuideQualified(entry.guideId),
+        isQualified,
+        `isGuideQualified("${entry.guideId}") must be ${isQualified}`,
       );
       assert.strictEqual(
-        SUSPENDED_QUALIFIED_GUIDE_IDS.includes(gid),
-        false,
-        `Qualified guide ${gid} must NOT be in SUSPENDED_QUALIFIED_GUIDE_IDS`,
+        QUALIFIED_GUIDE_IDS.includes(entry.guideId),
+        isQualified,
+        `QUALIFIED_GUIDE_IDS.includes("${entry.guideId}") must be ${isQualified}`,
       );
     }
   });
 
-  it('records suspended guides separately from qualified shipping list', () => {
-    assert.ok(SUSPENDED_QUALIFIED_GUIDE_IDS.length > 0, 'Must have suspended guides');
-    for (const gid of SUSPENDED_QUALIFIED_GUIDE_IDS) {
+  it('enforces SUSPENDED_QUALIFIED_GUIDE_IDS matches status === "suspended"', () => {
+    for (const entry of RULE_REGISTRY) {
+      const isSuspended = entry.lifecycle.status === 'suspended';
       assert.strictEqual(
-        QUALIFIED_GUIDE_IDS.includes(gid),
-        false,
-        `Suspended guide ${gid} must NOT be in QUALIFIED_GUIDE_IDS`,
+        SUSPENDED_QUALIFIED_GUIDE_IDS.includes(entry.guideId),
+        isSuspended,
+        `SUSPENDED_QUALIFIED_GUIDE_IDS.includes("${entry.guideId}") must be ${isSuspended}`,
       );
-      assert.strictEqual(
-        isGuideQualified(gid),
-        false,
-        `Suspended guide ${gid} must return false from isGuideQualified`,
-      );
+      if (isSuspended) {
+        assert.strictEqual(
+          isGuideQualified(entry.guideId),
+          false,
+          `Suspended guide "${entry.guideId}" must NOT be isGuideQualified`,
+        );
+      }
     }
   });
 
-  it('guarantees shipping lists cannot include experimental or suspended guides', () => {
-    const nonQualified = [
-      'autofill-highlight-inputs',
-      'complex-shapes',
-      'coordinate-global-events',
-      'break-up-long-tasks',
-      'detect-initial-visibility-state',
-      'defer-work-until-scroll-ends',
-      'child-state-based-styling',
-      'declarative-dialog-popover-control',
-      'size-aware-styling',
-      'resolution-optimized-pseudo-elements',
-      'optimize-image-priority',
-      'lazy-load-video-and-audio',
-      'interactions-in-complex-layouts',
-      'language-detection',
-      'individual-transform-properties',
-      'dark-mode',
-      'calculate-event-differentials',
-      'styling-web-components',
-      'custom-text-decorations',
-      'checkbox',
-      'equal-width-text-lines',
-      'prevent-page-scroll-under-modal-dialog',
-      'autofill-payment-form',
-      'select-menu-interaction',
-      'branded-select-styling',
-      'ime-safe-enter-submit',
-    ];
-    for (const gid of nonQualified) {
-      assert.strictEqual(
-        QUALIFIED_GUIDE_IDS.includes(gid),
-        false,
-        `Experimental guide "${gid}" must NOT be in QUALIFIED_GUIDE_IDS`,
-      );
-      assert.strictEqual(
-        isGuideQualified(gid),
-        false,
-        `Experimental guide "${gid}" must NOT be isGuideQualified`,
-      );
+  it('enforces retired entries are never qualified or suspended', () => {
+    const retiredEntries = RULE_REGISTRY.filter((e) => e.lifecycle.status === 'retired');
+    assert.ok(retiredEntries.length > 0, 'Must have registered retired entries');
+    for (const entry of retiredEntries) {
+      assert.strictEqual(isGuideQualified(entry.guideId), false);
+      assert.strictEqual(QUALIFIED_GUIDE_IDS.includes(entry.guideId), false);
+      assert.strictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS.includes(entry.guideId), false);
     }
-    assert.strictEqual(isGuideQualified('responsive-table'), true);
   });
 });
