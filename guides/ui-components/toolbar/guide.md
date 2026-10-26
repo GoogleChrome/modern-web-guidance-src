@@ -139,7 +139,7 @@ Add a trailing "More actions" menu when the toolbar has secondary actions or mus
 
 * The trigger has `aria-haspopup="menu"`, `aria-expanded`, and `popovertarget` pointing at a `popover` element with `role="menu"` and an `aria-label`.
 * Items are `role="menuitem"` (commands) or `role="menuitemcheckbox"` with `aria-checked` (toggles), each `tabindex="-1"`.
-* `popover` provides top layer, light dismiss, `Escape`, and focus return to the trigger. Do not reimplement them.
+* `popover` provides top layer, light dismiss, `Escape`, and focus return to the trigger. Do not reimplement them. Light dismiss does not cover focus leaving by keyboard, so close the menu on `Tab` yourself; do not trap focus or call `preventDefault()` for it.
 * Sync `aria-expanded` from the popover `toggle` event and focus the first item on open.
 * `ArrowDown`/`ArrowUp` move between items with wrapping; `Home`/`End` jump to the ends.
 * Close the menu after a `menuitem` is activated. For a `menuitemcheckbox`, `Enter` or a click toggles and closes, but `Space` toggles and keeps the menu open so several options can be changed in one visit (APG).
@@ -150,8 +150,10 @@ menu.addEventListener("toggle", ({ newState }) => {
   more.setAttribute("aria-expanded", String(newState === "open"));
   if (newState === "open") menuItems[0].focus();
 });
-// Space on a checkbox toggles without closing; preventDefault stops the button's click
 menu.addEventListener("keydown", (e) => {
+  // Tab leaves the menu: focus the trigger, close, and let Tab or Shift+Tab continue from the trigger
+  if (e.key === "Tab") { more.focus(); return menu.hidePopover(); }
+  // Space on a checkbox toggles without closing; preventDefault stops the button's click
   if (e.key !== " " || e.target.getAttribute("role") !== "menuitemcheckbox") return;
   e.preventDefault();
   e.target.setAttribute("aria-checked", String(e.target.getAttribute("aria-checked") !== "true"));

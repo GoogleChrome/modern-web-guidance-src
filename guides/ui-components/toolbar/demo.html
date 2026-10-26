@@ -469,6 +469,8 @@
       menu.style.left = `${Math.max(0, Math.min(t.right - m.width, innerWidth - m.width))}px`;
     }
     menu.addEventListener("keydown", (e) => {
+      // Tab leaves the menu: focus the trigger, close, and let Tab (or Shift+Tab) continue from the trigger
+      if (e.key === "Tab") { more.focus(); return menu.hidePopover(); }
       // Space on a checkbox toggles without closing (APG); Enter and click fall through to the click handler and close
       if (e.key === " " && e.target.getAttribute("role") === "menuitemcheckbox") {
         e.preventDefault();
