@@ -41,11 +41,12 @@ This is not for switching between views of the same page (tabs) or for site-wide
 - **DO NOT** drop the separator in chip-like styles. Pills, tags and a segmented bar without one look like tabs or filters (items on the same level), not a hierarchy. Plain text with no divider is also weak, since order is then the only cue; avoid it.
 - Choose a visual variant:
   - **Plain (slash or chevron):** use when the trail should stay visually quiet. Keep links underlined, or give them another non-color cue, so they don't rely on color alone.
-  - **Bar:** one bordered, segmented container with `overflow: clip`; use when segments need large, clear touch targets. Keep a separator in each segment after the first. A bar must not wrap: when its segments no longer fit on one row, stack it in a column in a container query (rows separated by a 1px `border-block-start`, the chevron turned to point down) and use a fixed `border-radius` for a joined pill, since `999px` becomes an oval once it grows tall. For a joined pill, round the container (`border-radius: 999px`, or `corner-shape: squircle` with a smaller radius) and separate segments with a 1px `border-inline-start` and no gap. Round the container, not the individual links, so the clip handles the end caps.
+  - **Bar:** one bordered, segmented container with `overflow: clip`; use when segments need large, clear touch targets. Keep a separator in each segment after the first. A bar must not wrap: when its segments no longer fit on one row, stack it in a column in a container query (rows separated by a 1px `border-block-start`, the chevron turned to point down) and use a fixed `border-radius` for a joined pill, since `999px` becomes an oval once it grows tall. For a joined pill, round the container (`border-radius: 999px`, or `corner-shape: squircle` with a smaller radius) and separate segments with a 1px `border-inline-start` and no gap. Round the container, not the individual links, so the clip handles the end caps, and give the end links the same end radius so an inset focus ring follows the rounded ends instead of being cut off.
   - **Pills / tags:** use rounded or shaped links when the trail is a prominent control, with a separator between them. Show backgrounds only on hover for tags.
 - Style the current page distinctly (weight, color) and non-current links with a hover state.
 - Custom palettes must meet WCAG AA contrast (4.5:1 for text) for links, hover, and the current page against their actual backgrounds (e.g. dark red on light gray). Keep a non-color cue on the current page, such as font weight.
 - Provide a clear `:focus-visible` outline. For shaped or clipped segments use a negative `outline-offset` or a background/color change, since outlines get clipped.
+- Lift the focused control above its neighbors (`position: relative; z-index: 1` on `a:focus-visible, button:focus-visible`). Neighbors that overlap it (shaped segments) or touch it (a joined dropdown trigger) are painted later and cover an outside ring.
 - In `forced-colors: active`, restore borders and an underline on `[aria-current="page"]` since backgrounds are removed.
 
 ### Shaped segments (slant or arrow)
@@ -56,6 +57,7 @@ Pick **one** shape per trail: slant or arrow. The snippets below are alternative
 - Selectors are illustrative; use your own hook (`.breadcrumb` here). Scope to `> ol > li > a` so dropdown menu links aren't shaped. Only add per-variant classes if one page really shows several variants.
 - Make the slant or point size responsive with `clamp()` and container units (`cqi`).
 - Pair state colors with the shape: hover and current-page styles must use background or text color, not border color, so they still show under the `clip-path` fallback. Keep the focus style visually distinct from hover.
+- The overlap margin applies to shaped segments only. A collapsed trail's "…" item is a plain button, so give it and the first visible item after it a normal gap (the hidden middle items sit between them in the DOM), or they overlap the button and cover its focus ring.
 - Polygons are physically directional and logical properties don't flip `polygon()` coordinates, so each shape needs an explicit `:dir(rtl)` mirror, included in the snippets.
 
 #### Slant (`/`)

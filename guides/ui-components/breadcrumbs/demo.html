@@ -47,6 +47,8 @@
   .breadcrumb a[aria-current="page"] { color: var(--current); font-weight: 600; text-decoration: none; }
   .breadcrumb a:focus-visible, .breadcrumb button:focus-visible {
     outline: 3px solid var(--focus); outline-offset: 2px;
+    /* Neighbors that overlap (shaped segments) or touch (a joined trigger) would cover an outside ring: lift this one */
+    position: relative; z-index: 1;
   }
 
   /* Decorative dividers: empty alt text keeps them out of the a11y tree */
@@ -77,11 +79,17 @@
   .bc-bar a:focus-visible { outline-offset: -3px; background: var(--accent-soft); }
 
   /* 4b. Joined pill: the bar's segments inside one fully rounded container */
-  .bc-joined > ol { border-radius: 999px; }
+  .bc-joined { --end-r: 999px; }
+  .bc-joined > ol { border-radius: var(--end-r); }
   .bc-joined > ol > li:first-child > a { padding-inline-start: 1.4rem; }
   .bc-joined > ol > li:last-child > a { padding-inline-end: 1.4rem; }
+  /* The end links share the container's end radius, so their inset focus ring follows the rounded ends */
+  .bc-joined > ol > li:first-child > a { border-start-start-radius: var(--end-r); border-end-start-radius: var(--end-r); }
+  .bc-joined > ol > li:last-child > a { border-start-end-radius: var(--end-r); border-end-end-radius: var(--end-r); }
   @supports (corner-shape: squircle) {
-    .bc-joined.bc-squircle > ol { border-radius: 1.4rem; corner-shape: squircle; }
+    .bc-joined.bc-squircle { --end-r: 1.4rem; }
+    .bc-joined.bc-squircle > ol { corner-shape: squircle; }
+    .bc-joined.bc-squircle > ol > li:is(:first-child, :last-child) > a { corner-shape: squircle; }
   }
 
   /* =========================================================
@@ -257,6 +265,9 @@
     /* Every item except the first, the last two and the "…" item; the :has() guard keeps a trail without "…" intact */
     .breadcrumb ol:has(> .bc-overflow) > li:not(:first-child, :nth-last-child(-n+2), .bc-overflow) { display: none; }
     .breadcrumb .bc-overflow { display: flex; }
+    /* The "…" item is a plain button, not a shape: give it and the first visible item after it (the hidden middle
+       items sit between them in the DOM) a normal gap, not the overlap */
+    .bc-shaped > ol > li.bc-overflow, .bc-shaped > ol:has(> .bc-overflow) > li:nth-last-child(2) { margin-inline-start: .25rem; }
   }
 
   @container bc (inline-size < 20rem) {
@@ -277,6 +288,8 @@
     .bc-bar > ol > li + li { border-inline-start: 0; border-block-start: 1px solid var(--border); }
     .bc-bar a { flex: 1; }
     .bc-joined > ol { border-radius: 1.4rem; }
+    .bc-joined > ol > li:first-child > a { border-radius: 1.4rem 1.4rem 0 0; }
+    .bc-joined > ol > li:last-child > a { border-radius: 0 0 1.4rem 1.4rem; }
     .breadcrumb.bc-bar[data-sep="chevron"] > ol > li + li::before { rotate: 90deg; scale: none; }
   }
 
