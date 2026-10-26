@@ -6,44 +6,40 @@ export interface Violation {
   readonly line: number;
   readonly patternName: string;
   readonly matchedText: string;
-  readonly outOfScope: boolean;
+  readonly pendingEc03a62f: boolean;
 }
 
 export const BANNED_PATTERNS: ReadonlyArray<{ readonly name: string; readonly regex: RegExp }> = [
-  { name: 'analyzer-internal', regex: /analyzer-internal/i },
+  { name: 'analyzer-internal', regex: /analyzer[-_ ]?internal/i },
   { name: 'gitmirror', regex: /git[-_ ]?mirror/i },
-  { name: 'farm_fingerprint', regex: /farm_fingerprint/i },
+  { name: 'farm_fingerprint', regex: /farm[-_ ]?fingerprint/i },
   { name: 'jetski', regex: /jetski/i },
-  { name: 'decision-id', regex: /\bD-[0-9]{3}\b/ },
+  { name: 'review-observation-decision-id', regex: /\b(?:[RO][0-9]{1,3}|G[0-9]{1,3}|D-[0-9]{2,3})\b/ },
 ];
 
 /**
- * Files currently owned by other agents during active refactoring.
- * Hits in these files are reported as pending work for their respective owners.
+ * Exactly one narrow, temporary exemption: gitMirrorFilter line in schema.ts,
+ * pending its coordinated move into analyzer-internal.
  */
-export function isOutOfScope(relPath: string): boolean {
+export function isExemptedLine(relPath: string, lineText: string): boolean {
   const normalized = relPath.replace(/\\/g, '/');
-  if (
-    normalized === 'src/analyzing/README.md' ||
-    normalized === 'src/analyzing/LEXICON.md' ||
-    normalized === 'src/analyzing/cli.ts' ||
-    normalized === 'src/analyzing/cli.test.ts' ||
-    normalized === 'src/analyzing/schema.ts' ||
-    normalized === 'src/analyzing/rules/index.ts'
-  ) {
-    return true;
-  }
-  if (normalized.startsWith('src/analyzing/scanners/')) {
-    return true;
-  }
-  if (normalized.startsWith('src/analyzing/rules/')) {
-    // lazy-load-video-and-audio is in-scope and owned by this task
-    if (normalized.includes('lazy-load-video-and-audio')) {
-      return false;
-    }
-    return true;
-  }
-  return false;
+  return normalized === 'src/analyzing/schema.ts' && lineText.includes('gitMirrorFilter');
+}
+
+/**
+ * Files currently actively edited/deleted by ec03a62f (rules/index.ts, rules/index.test.ts,
+ * update-eval-data.json, copy-button, and camera-and-microphone-capture).
+ * Hits in these files are reported as pending work for ec03a62f rather than failing.
+ */
+export function isPendingEc03a62f(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/');
+  return (
+    normalized === 'src/analyzing/rules/index.ts' ||
+    normalized === 'src/analyzing/rules/index.test.ts' ||
+    normalized === 'src/analyzing/eval/update-eval-data.json' ||
+    normalized.includes('copy-button') ||
+    normalized.includes('camera-and-microphone-capture')
+  );
 }
 
 export function scanDirectory(
@@ -81,16 +77,21 @@ export function scanDirectory(
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]!;
+        if (isExemptedLine(relPath, line)) {
+          continue;
+        }
+
         for (const pattern of BANNED_PATTERNS) {
           if (pattern.regex.test(line)) {
-            const outOfScope = isOutOfScope(relPath);
+            const pending = isPendingEc03a62f(relPath);
             violations.push({
               file: relPath,
               line: i + 1,
               patternName: pattern.name,
               matchedText: line.trim(),
-              outOfScope,
+              pendingEc03a62f: pending,
             });
+            break;
           }
         }
       }
@@ -105,8 +106,8 @@ export function runCheck(): { inScopeViolations: Violation[]; pendingViolations:
   const root = resolve(analyzingDir, '../..');
   const allViolations = scanDirectory(analyzingDir, root);
 
-  const inScopeViolations = allViolations.filter((v) => !v.outOfScope);
-  const pendingViolations = allViolations.filter((v) => v.outOfScope);
+  const inScopeViolations = allViolations.filter((v) => !v.pendingEc03a62f);
+  const pendingViolations = allViolations.filter((v) => v.pendingEc03a62f);
 
   return { inScopeViolations, pendingViolations };
 }
@@ -116,19 +117,19 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
   const { inScopeViolations, pendingViolations } = runCheck();
 
   if (pendingViolations.length > 0) {
-    console.log(`\n[check-internal-references] Found ${pendingViolations.length} allowed out-of-scope occurrences:`);
+    console.log(`\n[check-internal-references] Found ${pendingViolations.length} hits pending ec03a62f work:`);
     for (const v of pendingViolations) {
-      console.log(`  [OUT OF SCOPE] ${v.file}:${v.line} (${v.patternName}) -> ${v.matchedText}`);
+      console.log(`  [PENDING ec03a62f] ${v.file}:${v.line} (${v.patternName}) -> ${v.matchedText}`);
     }
   }
 
   if (inScopeViolations.length > 0) {
-    console.error(`\n❌ [check-internal-references] FAILED: Found ${inScopeViolations.length} internal reference violations in in-scope analyzer files:`);
+    console.error(`\n❌ [check-internal-references] FAILED: Found ${inScopeViolations.length} internal reference violations in public analyzer files:`);
     for (const v of inScopeViolations) {
       console.error(`  ${v.file}:${v.line} [${v.patternName}]: ${v.matchedText}`);
     }
     process.exit(1);
   }
 
-  console.log(`\n✔ [check-internal-references] PASSED: Zero internal references in public in-scope analyzer code.`);
+  console.log(`\n✔ [check-internal-references] PASSED: Zero internal references in public analyzer code.`);
 }

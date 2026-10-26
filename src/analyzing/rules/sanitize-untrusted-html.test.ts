@@ -8,7 +8,7 @@ import {
 
 const jsMatcher = sanitizerJsMatcher;
 
-void test('sanitize-untrusted-html default rules array excludes package-sanitizer (R46, R49)', () => {
+void test('sanitize-untrusted-html default rules array excludes package-sanitizer', () => {
   assert.equal(sanitizeUntrustedHtmlRules.length, 1);
   assert.equal(
     sanitizeUntrustedHtmlRules[0]?.id,
@@ -75,7 +75,7 @@ void test('sanitize-untrusted-html JS matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /html/);
   });
 
-  await t.test('exempts React dangerouslySetInnerHTML with DOMPurify.sanitize (R49)', () => {
+  await t.test('exempts React dangerouslySetInnerHTML with DOMPurify.sanitize', () => {
     const project = createInMemoryProject();
     const code = `
       function PostContent({ html }) {

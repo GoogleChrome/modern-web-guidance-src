@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   BANNED_PATTERNS,
-  isOutOfScope,
+  isExemptedLine,
+  isPendingEc03a62f,
   runCheck,
 } from './check-internal-references.ts';
 
@@ -14,19 +15,25 @@ describe('check-internal-references guard', () => {
       'gitmirror',
       'farm_fingerprint',
       'jetski',
-      'decision-id',
+      'review-observation-decision-id',
     ]);
 
-    const decisionId = BANNED_PATTERNS.find((p) => p.name === 'decision-id')!.regex;
-    assert.ok(decisionId.test('D-041'));
-    assert.ok(decisionId.test('ref (D-042)'));
+    const reviewObsId = BANNED_PATTERNS.find((p) => p.name === 'review-observation-decision-id')!.regex;
+    assert.ok(reviewObsId.test('D-041'));
+    assert.ok(reviewObsId.test('ref (D-042)'));
+    assert.ok(reviewObsId.test('per R45'));
+    assert.ok(reviewObsId.test('(O64)'));
+    assert.ok(reviewObsId.test('G10 disclosure'));
+    assert.ok(reviewObsId.test('R29 fail fast'));
     // Should NOT match card-001 or standard words
-    assert.ok(!decisionId.test('card-001'));
-    assert.ok(!decisionId.test('standard-001'));
+    assert.ok(!reviewObsId.test('card-001'));
+    assert.ok(!reviewObsId.test('standard-001'));
 
     const internalDir = BANNED_PATTERNS.find((p) => p.name === 'analyzer-internal')!.regex;
     assert.ok(internalDir.test('join(root, "analyzer-internal")'));
+    assert.ok(internalDir.test('join(root, "analyzer_internal")'));
     assert.ok(internalDir.test('ANALYZER-INTERNAL/labels'));
+    assert.ok(internalDir.test('analyzer internal'));
 
     const datasetPattern = BANNED_PATTERNS.find((p) => p.name === 'gitmirror')!.regex;
     assert.ok(datasetPattern.test('GitMirror'));
@@ -36,35 +43,47 @@ describe('check-internal-references guard', () => {
     const farmPattern = BANNED_PATTERNS.find((p) => p.name === 'farm_fingerprint')!.regex;
     assert.ok(farmPattern.test('FARM_FINGERPRINT(repo)'));
     assert.ok(farmPattern.test('farm_fingerprint'));
+    assert.ok(farmPattern.test('farm-fingerprint'));
+    assert.ok(farmPattern.test('farm fingerprint'));
 
     const agentPattern = BANNED_PATTERNS.find((p) => p.name === 'jetski')!.regex;
     assert.ok(agentPattern.test('Jetski'));
     assert.ok(agentPattern.test('jetski'));
   });
 
-  it('correctly classifies out-of-scope files owned by other agents', () => {
-    assert.strictEqual(isOutOfScope('src/analyzing/README.md'), true);
-    assert.strictEqual(isOutOfScope('src/analyzing/LEXICON.md'), true);
-    assert.strictEqual(isOutOfScope('src/analyzing/cli.ts'), true);
-    assert.strictEqual(isOutOfScope('src/analyzing/cli.test.ts'), true);
-    assert.strictEqual(isOutOfScope('src/analyzing/schema.ts'), true);
-    assert.strictEqual(isOutOfScope('src/analyzing/rules/index.ts'), true);
-    assert.strictEqual(isOutOfScope('src/analyzing/scanners/file-filter.ts'), true);
-    assert.strictEqual(isOutOfScope('src/analyzing/rules/checkbox.ts'), true);
-
-    // in-scope files owned by this task
-    assert.strictEqual(isOutOfScope('src/analyzing/rules/lazy-load-video-and-audio.ts'), false);
-    assert.strictEqual(isOutOfScope('src/analyzing/eval/detection-eval.ts'), false);
-    assert.strictEqual(isOutOfScope('src/analyzing/eval/update-eval.ts'), false);
-    assert.strictEqual(isOutOfScope('src/analyzing/eval/guide-triage.ts'), false);
-    assert.strictEqual(isOutOfScope('src/analyzing/qualification.ts'), false);
-    assert.strictEqual(isOutOfScope('src/analyzing/eval/prompts.ts'), false);
+  it('exempts exactly one line for gitMirrorFilter in schema.ts', () => {
+    assert.strictEqual(
+      isExemptedLine('src/analyzing/schema.ts', '  readonly gitMirrorFilter?: {'),
+      true,
+    );
+    assert.strictEqual(
+      isExemptedLine('src/analyzing/schema.ts', '  readonly otherField?: string;'),
+      false,
+    );
+    assert.strictEqual(
+      isExemptedLine('src/analyzing/eval/detection-eval.ts', '  gitMirrorFilter'),
+      false,
+    );
   });
 
-  it('passes on current codebase with zero in-scope violations and only schema.ts pending', () => {
-    const { inScopeViolations, pendingViolations } = runCheck();
+  it('identifies files actively edited by ec03a62f', () => {
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/index.ts'), true);
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/index.test.ts'), true);
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/eval/update-eval-data.json'), true);
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/copy-button.ts'), true);
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/camera-and-microphone-capture.ts'), true);
+
+    // Other files are NOT exempted
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/README.md'), false);
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/cli.ts'), false);
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/eval/detection-eval.ts'), false);
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/eval/update-eval.ts'), false);
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/checkbox.ts'), false);
+    assert.strictEqual(isPendingEc03a62f('src/analyzing/scanners/file-filter.ts'), false);
+  });
+
+  it('passes on current codebase with zero unexempted violations', () => {
+    const { inScopeViolations } = runCheck();
     assert.deepStrictEqual(inScopeViolations, [], 'Expected zero unexempted in-scope violations');
-    assert.strictEqual(pendingViolations.length, 1, 'Expected only schema.ts:43 pending');
-    assert.strictEqual(pendingViolations[0]?.file, 'src/analyzing/schema.ts');
   });
 });

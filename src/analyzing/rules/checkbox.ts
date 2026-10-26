@@ -103,7 +103,7 @@ export const checkboxCssMatcher: CssRuleMatcher = {
       };
     }
 
-    // 5. Case B: Hiding or stripping native checkbox controls (R32.4)
+    // 5. Case B: Hiding or stripping native checkbox controls
     const matchesTarget = CHECKBOX_TARGET_PATTERNS.some((pattern) =>
       pattern.test(styleRule.selectorText),
     );

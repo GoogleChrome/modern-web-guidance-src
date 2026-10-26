@@ -137,7 +137,7 @@ void test('select-menu-interaction JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts Choices, Select2, and TomSelect custom select initializations (R50)', () => {
+  await t.test('exempts Choices, Select2, and TomSelect custom select initializations', () => {
     const project = createInMemoryProject();
     const code = `
       import Choices from 'choices.js';

@@ -193,7 +193,7 @@ void test('branded-select-styling JS: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('flags chosen combobox initialization (R48)', () => {
+  await t.test('flags chosen combobox initialization', () => {
     const project = createInMemoryProject();
     const code = `
       $('.chzn-select').chosen({ disable_search_threshold: 10 });

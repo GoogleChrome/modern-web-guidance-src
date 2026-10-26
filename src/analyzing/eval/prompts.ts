@@ -7,7 +7,7 @@
  * - Detection Eval judge fact-checking (detection-eval.ts)
  * - Synthetic single-shot update generation simulation (update-eval.ts)
  *
- * Implements R27, R28, R29, R30, and R31 with deterministic content hashing and thinking budget configuration.
+ * Provides deterministic content hashing and thinking budget configuration.
  */
 
 import { computePromptContentHash } from '../llm-verifier.ts';
@@ -18,7 +18,7 @@ export const JUDGE_THINKING_BUDGET = 2048;
 export const UPDATE_SIMULATION_THINKING_BUDGET = 1024;
 
 // ============================================================================
-// 1. Guide Triage (R27, R31)
+// 1. Guide Triage
 // ============================================================================
 
 export const GUIDE_TRIAGE_SYSTEM_PROMPT = `You are an expert static analysis triage classifier for the Modern Web Guidance catalog.
@@ -162,7 +162,7 @@ export function computeGuideTriagePromptVersion(
 export const GUIDE_TRIAGE_PROMPT_VERSION = computeGuideTriagePromptVersion();
 
 // ============================================================================
-// 2. LLM Verifier (R28, R31)
+// 2. LLM Verifier
 // ============================================================================
 
 export {
@@ -179,7 +179,7 @@ export {
 } from '../llm-verifier.ts';
 
 // ============================================================================
-// 3. Evaluation Judge (R29, R31)
+// 3. Evaluation Judge
 // ============================================================================
 
 export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization judge evaluating whether a static code finding is a legitimate instance of legacy web platform code that should be modernized according to a Modern Web Guidance guide.
@@ -279,7 +279,7 @@ export function formatBlindCardPrompt(card: BlindCardPromptInput): string {
   const markdownBody = card.guideSummary.markdownBody?.trim();
   if (!markdownBody) {
     throw new Error(
-      `formatBlindCardPrompt failed: card ${card.cardId ?? 'unknown'} (guideId: "${card.guideId}") is missing required guideSummary.markdownBody. Failing fast per R29.`,
+      `formatBlindCardPrompt failed: card ${card.cardId ?? 'unknown'} (guideId: "${card.guideId}") is missing required guideSummary.markdownBody. Failing fast.`,
     );
   }
 
@@ -318,7 +318,7 @@ export function computeJudgePromptVersion(
 export const JUDGE_VERSION = computeJudgePromptVersion();
 
 // ============================================================================
-// 4. Update Simulation (R30, R31)
+// 4. Update Simulation
 // ============================================================================
 
 export const UPDATE_SIMULATION_PROMPT = `You are an expert web platform modernization engineer.

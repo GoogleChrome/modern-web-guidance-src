@@ -12,7 +12,7 @@ const SAMPLE_SANITIZER_RULE: DependencyRuleMatcher = {
   packages: ['sanitize-html', 'dompurify', 'moment'],
 };
 
-describe('dependency-scanner R46 runtime & client-side filtering', () => {
+describe('dependency-scanner runtime & client-side filtering', () => {
   it('ignores packages present only in devDependencies or optionalDependencies by default', () => {
     const pkgJson = JSON.stringify(
       {

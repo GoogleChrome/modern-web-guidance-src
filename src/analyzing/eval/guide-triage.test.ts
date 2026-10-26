@@ -7,6 +7,7 @@ import {
   GUIDE_TRIAGE_SYSTEM_PROMPT,
   buildGuideTriageRequestBody,
   formatGuideTriagePrompt,
+  loadExplainerContextMap,
   parseGuideTriageResponse,
   triageGuide,
 } from './guide-triage.ts';
@@ -305,6 +306,28 @@ void test('guide-triage: triageGuide with mock fetch', async (t) => {
           },
         ),
       /Guide Triage failed for failing-guide with HTTP 502/,
+    );
+  });
+});
+
+void test('guide-triage: loadExplainerContextMap fail fast', async (t) => {
+  await t.test('fails fast when ANALYZER_EVAL_DATA_DIR is unset and no path provided', async () => {
+    const orig = process.env.ANALYZER_EVAL_DATA_DIR;
+    delete process.env.ANALYZER_EVAL_DATA_DIR;
+    try {
+      await assert.rejects(
+        () => loadExplainerContextMap(),
+        /ANALYZER_EVAL_DATA_DIR environment variable is not set/,
+      );
+    } finally {
+      if (orig) process.env.ANALYZER_EVAL_DATA_DIR = orig;
+    }
+  });
+
+  await t.test('throws when explicit file path is missing', async () => {
+    await assert.rejects(
+      () => loadExplainerContextMap('nonexistent-explainers-file-12345.json'),
+      { code: 'ENOENT' },
     );
   });
 });

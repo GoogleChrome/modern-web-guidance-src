@@ -64,7 +64,7 @@ void test('atrule-support-conditionals JS matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /Modernizr\.atRule/);
   });
 
-  await t.test('exempts Modernizr CSS property checks (flexbox, cssgrid, testProp, testAllProps, prefixed) (R50)', () => {
+  await t.test('exempts Modernizr CSS property checks (flexbox, cssgrid, testProp, testAllProps, prefixed)', () => {
     const project = createInMemoryProject();
     const code = `
       const hasPointerEvents = Modernizr.testProp('pointerEvents');

@@ -457,7 +457,7 @@ function hasNonEmptyField(value: unknown): boolean {
 
 /**
  * Returns true if the parsed package.json represents a pure Node.js backend server
- * or CLI tool where browser modernization rules do not apply (R46):
+ * or CLI tool where browser modernization rules do not apply:
  * 1. `parsed.bin` is present without a `"browser"` field or frontend framework in
  *    `dependencies`/`devDependencies`/`peerDependencies`, OR
  * 2. `dependencies` contains a backend server framework (`express`, `fastify`, `koa`,
@@ -555,7 +555,7 @@ function findPackageLineInFields(
 /**
  * Finds the 1-based line number where a package name is defined in package.json text.
  * Strictly scopes the search inside dependency blocks to avoid false line matches in keywords,
- * descriptions, or script commands (O69).
+ * descriptions, or script commands.
  */
 function findPackageLine(packageJsonContent: string, pkgName: string): number {
   const lines = packageJsonContent.split('\n');
@@ -634,7 +634,7 @@ function ruleIncludesDevDependencies(rule: DependencyRuleMatcher): boolean {
 }
 
 /**
- * Scans package.json content against a list of DependencyRuleMatchers (R46).
+ * Scans package.json content against a list of DependencyRuleMatchers.
  * Scans only runtime `dependencies` and `peerDependencies` by default, and skips
  * pure Node.js backend server / CLI `package.json` files.
  */

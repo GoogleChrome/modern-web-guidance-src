@@ -37,7 +37,7 @@ void test('optimize-image-priority DOM matcher', async (t) => {
     assert.equal(matches[0]?.line, 3);
   });
 
-  await t.test('exempts <link rel="preload" as="image"> for CSS background-image or when no <img> exists in document (R50)', () => {
+  await t.test('exempts <link rel="preload" as="image"> for CSS background-image or when no <img> exists in document', () => {
     const bgHtml = `
       <head>
         <link rel="preload" as="image" href="/bg-hero.jpg">

@@ -3,7 +3,7 @@
  *
  * Rules qualify for default terminal shipping under the Static Matcher precision standard:
  * - Static Matcher precision >= 90.0% at n >= 20 findings on held-out evaluation (precision before LLM Verifier).
- * When `gd analyze` runs in a terminal without an LLM, >= 90% of findings are legit.
+ * When `gd analyze` runs in a terminal without an LLM, >= 90% of findings are legit (as scored by an LLM judge, not human-graded).
  */
 
 /**

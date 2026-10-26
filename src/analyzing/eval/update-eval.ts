@@ -140,7 +140,7 @@ export function getSeededAgentFailureTestCases(): SeededAgentFailureFixture[] {
 /**
  * Checks whether the modern platform feature prescribed by guide.md
  * is explicitly present in the patched content (Table 2.3 of research report).
- * All comments are stripped first to prevent comment-only spoofs (G15).
+ * All comments are stripped first to prevent comment-only spoofs.
  */
 export function checkModernFeaturePresent(
   guideId: string,
@@ -279,7 +279,7 @@ export function checkSyntaxCleanliness(
 }
 
 /**
- * Check 2b: Anti-Gutting & Structural Integrity Guard per Decision G12, G14, G17.
+ * Check 2b: Anti-Gutting & Structural Integrity Guard guarding against gutting or empty implementations.
  * Verifies that the patch does not delete all executable code or exported declarations.
  * Eliminates the legacy 40% line-count threshold so that replacing a 43-line workaround
  * with a concise 5-line standard platform feature is properly recognized as success.
@@ -416,7 +416,7 @@ export function checkStructuralIntegrity(
 }
 
 /**
- * R61: Verifies that modernized code does not introduce the 3 agent failure modes:
+ * Verifies that modernized code does not introduce the 3 agent failure modes:
  * 1. Unrequested dual-path fallback bloat (@supports / typeof fallback when original had none).
  * 2. Coupled-property breakage (e.g., migrating transform -> scale/translate/rotate, but leaving transition/will-change on transform).
  * 3. Cross-layer contract mismatch (e.g., using commandfor targeting a <div> without popover attribute).
@@ -625,7 +625,7 @@ export async function evaluateAgentUpdate(
     };
   }
 
-  // Check 2: Modern Replacement Verified (Anti-Deletion & Positive Feature Guard per G12)
+  // Check 2: Modern Replacement Verified (Anti-Deletion & Positive Feature Guard)
   const syntaxCheck = checkSyntaxCleanliness(
     patch.filePath,
     patch.patchedContent,
@@ -709,7 +709,7 @@ export async function evaluateAgentUpdate(
     };
   }
 
-  // Check 3: Behavioral & Invariant Check (R15: fails closed / skipped when no test harness)
+  // Check 3: Behavioral & Invariant Check (fails closed / skipped when no test harness)
   let check3Passed = false;
   let check3Status: 'PASSED' | 'FAILED' | 'SKIPPED_NO_TEST_HARNESS' = 'SKIPPED_NO_TEST_HARNESS';
   let check3Reason: string | undefined = 'Check 3 skipped: no test harness or behavioral check provided';
@@ -824,7 +824,7 @@ export async function runBadPatchSensitivitySuite(
       badPatchesRejected++;
     }
 
-    // 2. Test Deletion / Gutting Patch (should fail Check 2b / 2c per G12)
+    // 2. Test Deletion / Gutting Patch (should fail Check 2b / 2c )
     badPatchesTotal++;
     const delRes = await evaluateAgentUpdate({
       filePath: f.filePath,
@@ -1062,7 +1062,7 @@ export async function runFixEvaluationCli(): Promise<void> {
   console.log('============================================================');
 
   // 1. Run Preflight Seeded Bad-Patch Sensitivity Suite
-  console.log('\n[1/3] Running Seeded Bad-Patch Sensitivity Suite (G12 Guard)...');
+  console.log('\n[1/3] Running Seeded Bad-Patch Sensitivity Suite...');
   const sensitivity = await runBadPatchSensitivitySuite();
   console.log(
     `Seeded Bad Patches: ${sensitivity.badPatchesRejected}/${sensitivity.badPatchesTotal} rejected (${(sensitivity.badPatchRejectionRate * 100).toFixed(1)}%)`,

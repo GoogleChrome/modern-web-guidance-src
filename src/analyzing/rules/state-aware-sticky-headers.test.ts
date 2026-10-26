@@ -105,7 +105,7 @@ void test('state-aware-sticky-headers JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts arbitrary positive pixel scroll thresholds like scrollY > 100 or scrollTop > 200 (R50)', () => {
+  await t.test('exempts arbitrary positive pixel scroll thresholds like scrollY > 100 or scrollTop > 200', () => {
     const project = createInMemoryProject();
     const code = `
       const header = document.querySelector('header.sticky');

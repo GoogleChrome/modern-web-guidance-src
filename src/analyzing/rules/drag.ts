@@ -336,7 +336,7 @@ export const dragJsRule: AnalyzerRule = {
   },
 };
 
-// Retired dragPackageRule from default array (R46); JS rule retained
+// Retired dragPackageRule from default array; JS rule retained
 export const dragRules: readonly AnalyzerRule[] = [
   dragJsRule,
 ];

@@ -52,7 +52,7 @@ void test('checkbox: positive brownfield matches', async (t) => {
 });
 
 void test('checkbox: negative / exempt cases', async (t) => {
-  await t.test('exempts bare input[type="checkbox"] with display: none without visual replacement (R32.4)', () => {
+  await t.test('exempts bare input[type="checkbox"] with display: none without visual replacement', () => {
     const css = `
       input[type="checkbox"] {
         display: none;

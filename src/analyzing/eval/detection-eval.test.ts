@@ -124,7 +124,7 @@ describe('blind card formatting & request construction', () => {
     assert.match(prompt, /developers used moment/);
   });
 
-  it('formats legacy-pattern-specs.json Technical Reference Dossier only when valid provenance is present and blocks unverified injection (R45)', async () => {
+  it('formats legacy-pattern-specs.json Technical Reference Dossier only when valid provenance is present and blocks unverified injection', async () => {
     const unverifiedSpec = {
       guideId: 'individual-transform-properties',
       changesSomethingForDeveloper: 'Yes for multi-function chains.',
@@ -147,7 +147,7 @@ describe('blind card formatting & request construction', () => {
       doesNotReplace: ['Dialogs'],
       rationale: 'Toast replace',
       provenance: {
-        methodVersion: 'r41-blind-two-stage-v1',
+        methodVersion: 'spec-two-stage-v1',
         model: 'gemini-2.5-pro',
         evaluatedAt: '2026-10-20T20:00:00.000Z',
         sources: ['guides/ui-components/persistent-toast-notifications/guide.md'],
@@ -159,7 +159,7 @@ describe('blind card formatting & request construction', () => {
     const dossier = formatGuideTriageDossier({
       ...unverifiedSpec,
       provenance: {
-        methodVersion: 'r41-blind-two-stage-v1',
+        methodVersion: 'spec-two-stage-v1',
         model: 'gemini-2.5-pro',
         evaluatedAt: '2026-10-20T20:00:00.000Z',
         sources: ['guides/css/individual-transform-properties/guide.md'],
@@ -184,6 +184,17 @@ describe('blind card formatting & request construction', () => {
     assert.ok(JUDGE_SYSTEM_PROMPT.includes('no-op syntax swap'));
     assert.ok(JUDGE_SYSTEM_PROMPT.includes('non-1:1 library component migration'));
 
+    // Pure dossier formatting assertions run unconditionally in public CI
+    assert.equal(
+      formatGuideTriageDossier(unverifiedSpec).includes('### Technical Reference Dossier'),
+      false,
+    );
+    assert.equal(
+      formatGuideTriageDossier(templatedWithProvenance).includes('### Technical Reference Dossier'),
+      false,
+    );
+
+    // Only skip loading live eval data when the env var is unset
     if (process.env.ANALYZER_EVAL_DATA_DIR) {
       const map = await loadGuideSummariesMap();
       const itpSummary = map.get('individual-transform-properties');
@@ -191,16 +202,6 @@ describe('blind card formatting & request construction', () => {
       assert.equal(
         itpSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
         true,
-      );
-
-      // Negative assertion: unverified spec entries without provenance do not inject a Technical Reference Dossier
-      assert.equal(
-        formatGuideTriageDossier(unverifiedSpec).includes('### Technical Reference Dossier'),
-        false,
-      );
-      assert.equal(
-        formatGuideTriageDossier(templatedWithProvenance).includes('### Technical Reference Dossier'),
-        false,
       );
       const unverifiedSummary = map.get('trusted-types');
       assert.ok(unverifiedSummary);
@@ -223,7 +224,7 @@ describe('blind card formatting & request construction', () => {
     assert.match(body.contents[0].parts[0].text, /scripts\/analyze\.js/);
   });
 
-  it('throws an explicit error when markdownBody is missing (R29 fail fast)', () => {
+  it('throws an explicit error when markdownBody is missing (fail fast)', () => {
     const cardWithoutMarkdown = {
       cardId: 'card-novel-001',
       repo: 'test-repo',
@@ -246,7 +247,7 @@ describe('blind card formatting & request construction', () => {
     );
   });
 
-  it('only presents markdownBody when present and avoids injecting brownfield rubric (R11, R19)', () => {
+  it('only presents markdownBody when present and avoids injecting brownfield rubric', () => {
     const cardWithMarkdown = {
       cardId: 'card-pure-guide-001',
       repo: 'test-repo',
@@ -429,7 +430,7 @@ describe('parseJudgeJsonContent', () => {
       'no-payoff',
     );
 
-    // R60: When all 4 booleans pass, 4 binary criteria are authoritative
+    // When all 4 booleans pass, 4 binary criteria are authoritative
     // and cannot be overridden by contradictory string verdicts like 'no-payoff', 'loses-behavior', 'fallback-or-guard'
     assert.equal(
       deriveJudgeVerdictFromFacts(
@@ -474,14 +475,14 @@ describe('parseJudgeJsonContent', () => {
     );
   });
 
-  it('throws an error on malformed or non-JSON output per Fail Fast (R22)', () => {
+  it('throws an error on malformed or non-JSON output per Fail Fast', () => {
     assert.throws(
       () => parseJudgeJsonContent('Not valid JSON at all', 'card-002'),
       /not valid JSON/i,
     );
   });
 
-  it('throws an error on JSON output missing required schema fields per Fail Fast (R22)', () => {
+  it('throws an error on JSON output missing required schema fields per Fail Fast', () => {
     assert.throws(
       () => parseJudgeJsonContent(JSON.stringify({ verdict: 'right' }), 'card-003'),
       /does not match schema/i,
@@ -958,6 +959,19 @@ Use the sample-feature property on the root element.
     assert.ok(summary.before.length > 0);
     assert.ok(summary.now.length > 0);
     assert.equal(summary.oldWayExamples, undefined);
+  });
+
+  it('fails fast in loadGuideSummariesMap when ANALYZER_EVAL_DATA_DIR is unset', async () => {
+    const orig = process.env.ANALYZER_EVAL_DATA_DIR;
+    delete process.env.ANALYZER_EVAL_DATA_DIR;
+    try {
+      await assert.rejects(
+        () => loadGuideSummariesMap(),
+        /ANALYZER_EVAL_DATA_DIR environment variable is not set/,
+      );
+    } finally {
+      if (orig) process.env.ANALYZER_EVAL_DATA_DIR = orig;
+    }
   });
 });
 

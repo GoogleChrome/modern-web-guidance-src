@@ -34,7 +34,7 @@ function createCallExpressionRule(id: string, guideId: string, targetCallee: str
   };
 }
 
-test('scanFiles memoizes sourceFile.getDescendantsOfKind, getFullText, and getText across multiple JS rules (O2)', async (t) => {
+test('scanFiles memoizes sourceFile.getDescendantsOfKind, getFullText, and getText across multiple JS rules', async (t) => {
   const rules: readonly AnalyzerRule[] = [
     createCallExpressionRule('rule-alpha', 'guide-alpha', 'legacyAlpha'),
     createCallExpressionRule('rule-beta', 'guide-beta', 'legacyBeta'),

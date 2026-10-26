@@ -67,14 +67,14 @@ void test('file-filter: path and content classification', async (t) => {
     assert.equal(isVendoredOrGeneratedPath('playwright-report/index.html'), true);
     assert.equal(isVendoredOrGeneratedPath('src/components/Dialog.tsx'), false);
     assert.equal(isVendoredOrGeneratedPath('views/login.blade.php'), false);
-    // By default, user project docs/site/website are NOT excluded (O46)
+    // By default, user project docs/site/website are NOT excluded
     assert.equal(isVendoredOrGeneratedPath('docs/3.1/reference/index.html'), false);
     assert.equal(isVendoredOrGeneratedPath('content/zh-cn/docs/setup.html'), false);
     assert.equal(isVendoredOrGeneratedPath('website/docs/intro.md'), false);
     assert.equal(isVendoredOrGeneratedPath('site/pages/index.html'), false);
     assert.equal(isVendoredOrGeneratedPath('gh-pages/index.html'), false);
 
-    // Corpus non-app documentation paths per R24 / O46 when explicitly requested
+    // Corpus non-app documentation paths when explicitly requested
     assert.equal(
       isVendoredOrGeneratedPath('docs/3.1/reference/index.html', {
         excludeCorpusNonAppDirs: true,
@@ -720,7 +720,7 @@ void test('js-scanner: scanJsSource with fastTokens and AST matching', () => {
   assert.equal(skipped.matches.length, 0);
 });
 
-void test('js-scanner: createInMemoryProject generates fresh isolated instances (O33, O60)', () => {
+void test('js-scanner: createInMemoryProject generates fresh isolated instances', () => {
   const proj1 = createInMemoryProject();
   const proj2 = createInMemoryProject();
   assert.notEqual(proj1, proj2, 'createInMemoryProject creates independent project instances without module singleton');
@@ -1020,7 +1020,7 @@ void test('dependency-scanner: package.json dependency detection', () => {
   assert.match(matches[0]?.message ?? '', /moment-timezone/);
 });
 
-void test('dependency-scanner: findPackageLine skips keywords and finds dependencies line (O69)', () => {
+void test('dependency-scanner: findPackageLine skips keywords and finds dependencies line', () => {
   const pkgJson = JSON.stringify(
     {
       name: 'my-app',

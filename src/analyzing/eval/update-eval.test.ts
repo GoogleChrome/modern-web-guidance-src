@@ -195,7 +195,7 @@ describe('checkModernFeaturePresent', () => {
     );
   });
 
-  it('rejects comment-only feature spoofs in Check 2c (G15)', () => {
+  it('rejects comment-only feature spoofs in Check 2c', () => {
     assert.strictEqual(
       checkModernFeaturePresent('brand-consistent-forms', '/* accent-color: #0070f3; */ input { margin: 0; }'),
       false,
@@ -432,7 +432,7 @@ describe('checkSyntaxCleanliness', () => {
     assert.strictEqual(res.diagnostics.length, 0);
   });
 
-  it('passes on valid TSX React component without throwing TS17004 (G13)', () => {
+  it('passes on valid TSX React component without throwing TS17004', () => {
     const tsxCode = `
 import React from 'react';
 export function ModalButton({ label }: { label: string }) {
@@ -521,7 +521,7 @@ describe('checkStructuralIntegrity', () => {
     assert.strictEqual(res.passed, true);
   });
 
-  it('allows concise standard replacements (43 lines down to 5 lines per G14)', () => {
+  it('allows concise standard replacements (43 lines down to 5 lines)', () => {
     const original = Array.from({ length: 43 }, (_, i) => `<script type="text/template" id="tpl-${i}">line ${i}</script>`).join('\n');
     const patched = `<template shadowrootmode="open">\n  <div>Modern content</div>\n</template>`;
 
@@ -529,7 +529,7 @@ describe('checkStructuralIntegrity', () => {
     assert.strictEqual(res.passed, true);
   });
 
-  it('rejects patch when comments are stripped to empty content (G17)', () => {
+  it('rejects patch when comments are stripped to empty content', () => {
     const original = `export function calc() { return 42; }`;
     const patched = `// just a comment\n/* another comment */\n`;
 
@@ -538,7 +538,7 @@ describe('checkStructuralIntegrity', () => {
     assert.match(res.failureReason ?? '', /no executable code/i);
   });
 
-  it('rejects elimination of all exported module declarations (G17)', () => {
+  it('rejects elimination of all exported module declarations', () => {
     const original = [
       'export function setupNavigationModal() {',
       '  const modal = document.querySelector("#modal");',
@@ -712,7 +712,7 @@ describe('runBadPatchSensitivitySuite', () => {
   });
 });
 
-describe('checkAgentModernizationInvariants (R61)', () => {
+describe('checkAgentModernizationInvariants', () => {
   it('rejects unrequested @supports dual-path fallback bloat', () => {
     const orig = '.sidebar { scrollbar-width: auto; }';
     const bad = '.sidebar { scrollbar-width: auto; }\n@supports (scrollbar-width: thin) { .sidebar { scrollbar-width: thin; } }';

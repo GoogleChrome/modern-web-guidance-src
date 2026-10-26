@@ -49,7 +49,7 @@ export function scanJsSource(
     return { matches: [] };
   }
 
-  // 2. Parse AST using in-memory Project (creates a fresh project if none provided, O33/O60)
+  // 2. Parse AST using in-memory Project (creates a fresh project if none provided)
   const proj = project ?? createInMemoryProject();
   const sourceFile = proj.createSourceFile(filePath, fileContent, {
     overwrite: true,

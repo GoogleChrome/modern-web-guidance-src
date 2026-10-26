@@ -154,7 +154,7 @@ export const brandedSelectStylingJsRule: AnalyzerRule = {
 
 export const brandedSelectStylingDependencyRule = brandedSelectStylingRule;
 
-// Dependency rule retired (R46), JS rule made opt-in only per O8 slice 2 audit
+// Dependency rule retired, JS rule made opt-in only
 export const brandedSelectStylingRules: readonly AnalyzerRule[] = [
   brandedSelectStylingJsRule,
 ];

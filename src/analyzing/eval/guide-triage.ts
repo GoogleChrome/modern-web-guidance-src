@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { getGeminiApiKey } from './detection-eval.ts';
+import { getGeminiApiKey, getAnalyzerEvalDataDir } from './detection-eval.ts';
 
 /**
  * Guide Triage bucket classifying whether a published feature guide has a statically detectable brownfield target:
@@ -61,13 +61,13 @@ export {
 export const GUIDE_TRIAGE_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-export const DEFAULT_EXPLAINERS_JSON_PATH = process.env.ANALYZER_EVAL_DATA_DIR
-  ? join(
-      process.env.ANALYZER_EVAL_DATA_DIR,
-      'findings',
-      '2026-10-19-guide-explainers-171.json',
-    )
-  : '';
+export function getDefaultExplainersJsonPath(): string {
+  return join(
+    getAnalyzerEvalDataDir(),
+    'findings',
+    '2026-10-19-guide-explainers-171.json',
+  );
+}
 
 export interface ExplainerContextEntry {
   readonly combinedExcerpt: string;
@@ -75,33 +75,28 @@ export interface ExplainerContextEntry {
 }
 
 /**
- * Loads the guide explainer context map from disk if the file exists.
- * Returns an empty map if the file does not exist or has not been generated yet.
+ * Loads the guide explainer context map from disk.
+ * Resolves path lazily via getAnalyzerEvalDataDir() when not provided,
+ * failing fast if the evaluation data directory is not set or file cannot be read.
  */
 export async function loadExplainerContextMap(
-  explainersJsonPath: string = DEFAULT_EXPLAINERS_JSON_PATH,
+  explainersJsonPath?: string,
 ): Promise<Map<string, ExplainerContextEntry>> {
-  const map = new Map<string, ExplainerContextEntry>();
-  if (!explainersJsonPath) {
-    return map;
-  }
-  let content: string;
-  try {
-    content = await readFile(explainersJsonPath, 'utf8');
-  } catch {
-    return map;
-  }
+  const resolvedPath = explainersJsonPath ?? getDefaultExplainersJsonPath();
+  const content = await readFile(resolvedPath, 'utf8');
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
   } catch (err: unknown) {
-    throw new Error(`Failed to parse explainers JSON from ${explainersJsonPath}: ${String(err)}`);
+    throw new Error(`Failed to parse explainers JSON from ${resolvedPath}: ${String(err)}`);
   }
 
   if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error(`Invalid explainers JSON format at ${explainersJsonPath}: expected array or record`);
+    throw new Error(`Invalid explainers JSON format at ${resolvedPath}: expected array or record`);
   }
+
+  const map = new Map<string, ExplainerContextEntry>();
 
   // Support either an array of objects or an object map
   if (Array.isArray(parsed)) {

@@ -79,7 +79,7 @@ function resolveVariableStatementIfInitializer(fnNode: Node): Node {
 /**
  * Finds the enclosing structural scope (function, method, class, or statement) around target line.
  * Continues walking past inner callback ArrowFunctions/FunctionExpressions so enclosing functions,
- * components, or outer top-level statements are preserved (R47).
+ * components, or outer top-level statements are preserved.
  */
 function findEnclosingScopeNode(
   sourceFile: SourceFile,
@@ -136,7 +136,7 @@ function findEnclosingScopeNode(
 
 /**
  * Extracts up to MAX_SFC_CONTEXT_LINES of non-blank lines from `<template>` / HTML / `<style>`
- * regions that were blanked in `sourceFile` outside the sliced JS scope (R47).
+ * regions that were blanked in `sourceFile` outside the sliced JS scope.
  */
 function extractSfcTemplateAndStyleLines(
   allLines: readonly string[],
@@ -211,7 +211,7 @@ function isTopLevelImportOrRequireStatement(stmt: Node): boolean {
 /**
  * AST-aware context slicer for JS/TS: extracts enclosing function/method/class + top-level imports
  * (both ESM `import` and CommonJS `require()`), plus unblanked SFC `<template>`/`<style>` context,
- * capped cleanly with numbered lines and smart folding over 120 lines (R47).
+ * capped cleanly with numbered lines and smart folding over 120 lines.
  */
 export function sliceJsAstContext(
   sourceFile: SourceFile,
@@ -234,7 +234,7 @@ export function sliceJsAstContext(
     }
   }
 
-  // Expand short non-function top-level statements by +-15 lines within the script body (R47)
+  // Expand short non-function top-level statements by +-15 lines within the script body
   if (!isFunctionOrClassScopeNode(enclosingNode) && nodeEndLine - nodeStartLine + 1 < 25) {
     const firstStmtStart = statements[0]?.getStartLineNumber() ?? 1;
     const lastStmtEnd = statements[statements.length - 1]?.getEndLineNumber() ?? allLines.length;
@@ -342,7 +342,7 @@ export function sliceJsAstContext(
   sections.push('// --- Scope ---', ...scopeLines);
 
   // 3. When slicing an SFC (.vue, .svelte, .astro) or HTML <script> where non-script sections
-  // were blanked in sourceFile, append up to 40 lines of <template>/HTML/<style> context (R47).
+  // were blanked in sourceFile, append up to 40 lines of <template>/HTML/<style> context.
   if (fileContent !== undefined && fileContent !== sourceText) {
     const sourceLines = sourceText.split('\n');
     const sfcLines = extractSfcTemplateAndStyleLines(
@@ -362,7 +362,7 @@ export function sliceJsAstContext(
 /**
  * Slices `package.json` with full context when <= 200 lines, or the first 35 lines
  * (showing "name", "bin", "scripts", "dependencies") plus `...` plus a +-30 line window
- * around `targetLine` when > 200 lines (R47).
+ * around `targetLine` when > 200 lines.
  */
 export function slicePackageJsonContext(
   fileContent: string,

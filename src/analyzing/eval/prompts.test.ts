@@ -29,7 +29,7 @@ import {
   UPDATE_SIMULATION_PROMPT,
 } from './prompts.ts';
 
-describe('prompts: content-hashed versions (R31)', () => {
+describe('prompts: content-hashed versions', () => {
   it('includes model name in all 4 prompt version strings', () => {
     assert.ok(GUIDE_TRIAGE_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Guide Triage version includes model');
     assert.ok(VERIFIER_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Verifier version includes model');
@@ -98,7 +98,7 @@ describe('prompts: content-hashed versions (R31)', () => {
   });
 });
 
-describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
+describe('prompts: prompt formatters and schema validation', () => {
   it('formatGuideTriagePrompt formats guide with candidateTechniques and borderline instructions', () => {
     const formatted = formatGuideTriagePrompt({
       guideId: 'test-guide',
@@ -149,7 +149,7 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
     assert.match(formatted, /Drop When:\n- Canvas\/WebGL rendering/);
   });
 
-  it('formatBlindCardPrompt throws when markdownBody is missing (R29 fail fast)', () => {
+  it('formatBlindCardPrompt throws when markdownBody is missing (fail fast)', () => {
     assert.throws(
       () =>
         formatBlindCardPrompt({

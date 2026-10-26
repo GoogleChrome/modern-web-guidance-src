@@ -7,7 +7,7 @@ import {
   sliceStructuredContext,
 } from './context-slicer.ts';
 
-describe('context-slicer R47 fixes', () => {
+describe('context-slicer', () => {
   it('Bug 1: preserves unblanked <template> HTML and <style> CSS in Vue/Svelte/HTML script slices', () => {
     const vueContent = [
       '<template>',

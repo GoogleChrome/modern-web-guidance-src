@@ -58,7 +58,7 @@ void test('digital-signatures JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts native crypto.subtle.sign and verify, secp256k1 curves (R50), and unimported EC classes', () => {
+  await t.test('exempts native crypto.subtle.sign and verify, secp256k1 curves, and unimported EC classes', () => {
     const project = createInMemoryProject();
     const code = `
       import elliptic, { ec as ImportedEC } from 'elliptic';

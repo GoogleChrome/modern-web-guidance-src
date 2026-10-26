@@ -76,5 +76,5 @@ export const autofillHighlightInputsRule: AnalyzerRule = {
   },
 };
 
-// Retired per O8 audit (no-op swap in all current browser engines)
+// Retired (no-op swap in all current browser engines)
 export const autofillHighlightInputsRules: readonly AnalyzerRule[] = [];

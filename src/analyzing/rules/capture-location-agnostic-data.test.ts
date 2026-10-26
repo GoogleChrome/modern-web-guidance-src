@@ -109,7 +109,7 @@ void test('capture-location-agnostic-data JS matcher', async (t) => {
     assert.match(matches[0]?.message ?? '', /Intl\.DisplayNames/);
   });
 
-  await t.test('exempts countries.getNames() full-dictionary enumeration and unimported local objects (R50)', () => {
+  await t.test('exempts countries.getNames() full-dictionary enumeration and unimported local objects', () => {
     const project = createInMemoryProject();
     const code = `
       import countries from 'i18n-iso-countries';

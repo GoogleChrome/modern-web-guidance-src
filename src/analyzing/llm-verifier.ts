@@ -14,7 +14,7 @@ export const VERIFIER_THINKING_BUDGET = 1024;
 
 /**
  * Computes a deterministic 8-character SHA-256 hash across prompt model, system prompt,
- * user prompt template source, response schema, and thinking budget per R31.
+ * user prompt template source, response schema, and thinking budget.
  */
 export function computePromptContentHash(params: {
   readonly model: string;
@@ -114,7 +114,7 @@ export function formatVerifierPrompt(
 
   if (!guideMarkdown || !guideMarkdown.trim()) {
     throw new Error(
-      `formatVerifierPrompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast per R28/O55a.`,
+      `formatVerifierPrompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast.`,
     );
   }
 
@@ -374,7 +374,7 @@ export async function runLlmVerifier(
 
   const verdicts: VerifierVerdict[] = Array.from({ length: findings.length });
 
-  // Pre-load guide markdown for all involved rules per R28
+  // Pre-load guide markdown for all involved rules 
   const guideMarkdownCache = new Map<string, string>();
   for (const finding of findings) {
     const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
@@ -403,7 +403,7 @@ export async function runLlmVerifier(
       const guideMarkdown = guideMarkdownCache.get(rule.guideId);
       if (!guideMarkdown || !guideMarkdown.trim()) {
         throw new Error(
-          `LLM Verifier requires loaded guide markdown for rule ${rule.id} (guide ${rule.guideId}). Failing fast per R28/O55a.`,
+          `LLM Verifier requires loaded guide markdown for rule ${rule.id} (guide ${rule.guideId}). Failing fast.`,
         );
       }
       const body = buildVerifierRequestBody(finding, rule, guideMarkdown);

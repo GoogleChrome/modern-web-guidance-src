@@ -289,7 +289,7 @@ export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.2
 }
 
 /**
- * Cross-checks and computes unambiguous judge verdict from the 4 boolean facts per R29:
+ * Cross-checks and computes unambiguous judge verdict from the 4 boolean facts:
  * - llmVerdict === 'guide-wrong' -> 'guide-wrong'
  * - !matches_before_syntax -> 'not-old-pattern'
  * - has_fallback_or_feature_guard -> 'fallback-or-guard'
@@ -332,8 +332,8 @@ export function deriveJudgeVerdictFromFacts(
 
 /**
  * Parses Gemini candidate content into DetectionEvalFactCheck.
- * Fails fast with an explicit Error on invalid JSON or schema violations per Global Rules and R22.
- * Cross-checks and derives unambiguous verdicts from structured facts per R29.
+ * Fails fast with an explicit Error on invalid JSON or schema violations per Global Rules.
+ * Cross-checks and derives unambiguous verdicts from structured facts.
  */
 export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeResult {
   const trimmed = rawText.trim();
@@ -1070,7 +1070,7 @@ export async function loadGuideSummaryFromMarkdown(
   return parseGuideSummaryMarkdown(content, guideId);
 }
 
-export const CIRCULAR_R41_TEMPLATE_PATTERNS: readonly RegExp[] = [
+export const CIRCULAR_SPEC_TEMPLATE_PATTERNS: readonly RegExp[] = [
   /^Yes: replaces .+ with native .+, removing third-party library weight, manual event\/DOM synchronization, or vendor-prefixed duplication while excluding .+\.$/,
   /^Yes: .+ directly replaces the matched call site or declaration \(.+\) without migrating unrelated components; cases requiring broader architectural changes \(.+\) are excluded in doesNotReplace\.$/,
   /^Yes when scoped to .+: adopting .+ eliminates manual workaround state or library overhead, whereas lookalikes such as .+ gain nothing and must be left alone\.$/,
@@ -1079,15 +1079,15 @@ export const CIRCULAR_R41_TEMPLATE_PATTERNS: readonly RegExp[] = [
   /^No \(do-not-write-a-rule\): replacing .+ with .+ requires broader component, markup, or server\/runtime restructuring rather than a localized (?:call-site swap|local-swap)\.$/,
 ];
 
-export function hasCircularTemplatedR41Text(value: string): boolean {
+export function hasCircularTemplatedSpecText(value: string): boolean {
   const trimmed = value.trim();
-  return CIRCULAR_R41_TEMPLATE_PATTERNS.some((re) => re.test(trimmed));
+  return CIRCULAR_SPEC_TEMPLATE_PATTERNS.some((re) => re.test(trimmed));
 }
 
 /**
  * Returns true only when a `legacy-pattern-specs.json` entry carries valid,
  * non-empty provenance metadata (`methodVersion`, `model`, `evaluatedAt`, `sources`)
- * alongside non-empty, non-circular R41 answers (`changesSomethingForDeveloper`, `isLikeForLikeSwapAtSite`).
+ * alongside non-empty, non-circular answers (`changesSomethingForDeveloper`, `isLikeForLikeSwapAtSite`).
  * Unverified or circular template entries without provenance must never be injected into the Judge.
  */
 export function hasValidSpecProvenance(spec: Record<string, unknown>): boolean {
@@ -1106,7 +1106,7 @@ export function hasValidSpecProvenance(spec: Record<string, unknown>): boolean {
   if (!changesForDev || !likeForLike) {
     return false;
   }
-  if (hasCircularTemplatedR41Text(changesForDev) || hasCircularTemplatedR41Text(likeForLike)) {
+  if (hasCircularTemplatedSpecText(changesForDev) || hasCircularTemplatedSpecText(likeForLike)) {
     return false;
   }
 
@@ -1128,9 +1128,9 @@ export function hasValidSpecProvenance(spec: Record<string, unknown>): boolean {
 
 /**
  * Formats a `legacy-pattern-specs.json` entry into a Technical Reference Dossier block
- * for the Judge prompt (R45).
+ * for the Judge prompt.
  * Returns `''` when the entry does not carry valid provenance, preventing unverified
- * or circular R41 text from biasing the Judge.
+ * or circular template text from biasing the Judge.
  */
 export function formatGuideTriageDossier(spec: Record<string, unknown>): string {
   if (!hasValidSpecProvenance(spec)) {
@@ -1234,90 +1234,85 @@ export async function loadGuideSummariesMap(
     await walk(guidesRootDirOrFile);
   }
 
-  const evalDataDir = process.env.ANALYZER_EVAL_DATA_DIR;
-  if (evalDataDir) {
-    // Check if explainers JSON exists on disk, and if so, populate explainerContext on each guide
-    const explainersJsonPath = join(
-      evalDataDir,
-      'findings',
-      '2026-10-19-guide-explainers-171.json',
-    );
-    try {
-      const explainersContent = await readFile(explainersJsonPath, 'utf8');
-      const parsed = JSON.parse(explainersContent) as unknown;
-      if (Array.isArray(parsed)) {
-        for (const item of parsed) {
-          if (typeof item === 'object' && item !== null) {
-            const rec = item as Record<string, unknown>;
-            const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
-            const excerpt =
-              typeof rec.combinedExcerpt === 'string'
-                ? rec.combinedExcerpt
-                : typeof rec.explainerContext === 'string'
-                  ? rec.explainerContext
-                  : typeof rec.excerpt === 'string'
-                    ? rec.excerpt
-                    : '';
-            if (guideId && excerpt.trim()) {
-              const existing = map.get(guideId);
-              if (existing) {
-                map.set(guideId, { ...existing, explainerContext: excerpt.trim() });
-              }
-            }
-          }
-        }
-      } else if (typeof parsed === 'object' && parsed !== null) {
-        for (const [guideId, val] of Object.entries(parsed as Record<string, unknown>)) {
-          let excerpt = '';
-          if (typeof val === 'string') {
-            excerpt = val.trim();
-          } else if (typeof val === 'object' && val !== null) {
-            const rec = val as Record<string, unknown>;
-            excerpt =
-              typeof rec.combinedExcerpt === 'string'
-                ? rec.combinedExcerpt.trim()
-                : typeof rec.explainerContext === 'string'
-                  ? rec.explainerContext.trim()
-                  : typeof rec.excerpt === 'string'
-                    ? rec.excerpt.trim()
-                    : '';
-          }
-          if (excerpt) {
+  const evalDataDir = getAnalyzerEvalDataDir();
+
+  // Check if explainers JSON exists on disk, and if so, populate explainerContext on each guide
+  const explainersJsonPath = join(
+    evalDataDir,
+    'findings',
+    '2026-10-19-guide-explainers-171.json',
+  );
+  try {
+    const explainersContent = await readFile(explainersJsonPath, 'utf8');
+    const parsed = JSON.parse(explainersContent) as unknown;
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        if (typeof item === 'object' && item !== null) {
+          const rec = item as Record<string, unknown>;
+          const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
+          const excerpt =
+            typeof rec.combinedExcerpt === 'string'
+              ? rec.combinedExcerpt
+              : typeof rec.explainerContext === 'string'
+                ? rec.explainerContext
+                : typeof rec.excerpt === 'string'
+                  ? rec.excerpt
+                  : '';
+          if (guideId && excerpt.trim()) {
             const existing = map.get(guideId);
             if (existing) {
-              map.set(guideId, { ...existing, explainerContext: excerpt });
+              map.set(guideId, { ...existing, explainerContext: excerpt.trim() });
             }
           }
         }
       }
-    } catch {
-      /* ignore missing or unreadable explainers file */
-    }
-
-    // Also inject Technical Reference Dossier from guide-triage.json (or legacy specs) (R45)
-    try {
-      const guideTriageJsonPath = join(evalDataDir, 'guide-triage.json');
-      const specsContent = await readFile(guideTriageJsonPath, 'utf8');
-      const parsedSpecs = JSON.parse(specsContent) as unknown;
-      if (Array.isArray(parsedSpecs)) {
-        for (const item of parsedSpecs) {
-          if (typeof item === 'object' && item !== null) {
-            const rec = item as Record<string, unknown>;
-            const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
-            if (!guideId) continue;
-            const existing = map.get(guideId);
-            if (!existing) continue;
-            const dossier = formatGuideTriageDossier(rec);
-            if (!dossier) continue;
-            const mergedContext = existing.explainerContext
-              ? `${existing.explainerContext}\n\n${dossier}`
-              : dossier;
-            map.set(guideId, { ...existing, explainerContext: mergedContext });
+    } else if (typeof parsed === 'object' && parsed !== null) {
+      for (const [guideId, val] of Object.entries(parsed as Record<string, unknown>)) {
+        let excerpt = '';
+        if (typeof val === 'string') {
+          excerpt = val.trim();
+        } else if (typeof val === 'object' && val !== null) {
+          const rec = val as Record<string, unknown>;
+          excerpt =
+            typeof rec.combinedExcerpt === 'string'
+              ? rec.combinedExcerpt.trim()
+              : typeof rec.explainerContext === 'string'
+                ? rec.explainerContext.trim()
+                : typeof rec.excerpt === 'string'
+                  ? rec.excerpt.trim()
+                  : '';
+        }
+        if (excerpt) {
+          const existing = map.get(guideId);
+          if (existing) {
+            map.set(guideId, { ...existing, explainerContext: excerpt });
           }
         }
       }
-    } catch {
-      /* ignore missing or unreadable guide-triage.json */
+    }
+  } catch {
+    /* ignore missing or unreadable explainers file */
+  }
+
+  // Also inject Technical Reference Dossier from guide-triage.json (or legacy specs)
+  const guideTriageJsonPath = join(evalDataDir, 'guide-triage.json');
+  const specsContent = await readFile(guideTriageJsonPath, 'utf8');
+  const parsedSpecs = JSON.parse(specsContent) as unknown;
+  if (Array.isArray(parsedSpecs)) {
+    for (const item of parsedSpecs) {
+      if (typeof item === 'object' && item !== null) {
+        const rec = item as Record<string, unknown>;
+        const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
+        if (!guideId) continue;
+        const existing = map.get(guideId);
+        if (!existing) continue;
+        const dossier = formatGuideTriageDossier(rec);
+        if (!dossier) continue;
+        const mergedContext = existing.explainerContext
+          ? `${existing.explainerContext}\n\n${dossier}`
+          : dossier;
+        map.set(guideId, { ...existing, explainerContext: mergedContext });
+      }
     }
   }
 

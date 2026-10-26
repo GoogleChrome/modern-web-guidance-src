@@ -314,5 +314,5 @@ export const resilientContextMenusAndNestedDropdownsPositioningRule: AnalyzerRul
   verifierRubric: resilientContextMenusAndNestedDropdownsRule.verifierRubric,
 };
 
-// Retired default array per O8 slice 3 audit and critical rules
+// Retired default array
 export const resilientContextMenusAndNestedDropdownsRules: readonly AnalyzerRule[] = [];
