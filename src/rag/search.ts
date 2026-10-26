@@ -82,8 +82,8 @@ function loadVectors(): UseCaseVector[] {
 
 /**
  * Hybrid retrieval: guides are ranked by their best-matching chunk (dense cosine) and by per-chunk max-pooled BM25,
- * then merged with reciprocal rank fusion. `minSimilarity` gates the query, not individual guides: if no
- * chunk in the corpus reaches it, nothing is returned; otherwise lexical matches with weaker cosine can surface.
+ * then merged with reciprocal rank fusion. `minSimilarity` gates the query, not individual guides: `[]` is returned
+ * only when dense top-1 is below the floor AND BM25 has no matches; otherwise lexical matches with weaker cosine can surface.
  * The reported `similarity` is still the guide's best dense cosine.
  */
 export async function searchUseCases(
@@ -125,15 +125,14 @@ export async function searchUseCases(
 
   const limitedResults = fused.slice(0, limit).map(({ id }) => {
     const r = best.get(id);
-    const item = r ? r.item : cachedCorpus!.vectors.find((v) => v.id === id)!;
-    const similarity = r ? r.similarity : 0;
+    if (!r) throw new Error(`BM25 returned guide "${id}" that has no vectors`);
     return {
-      id: item.id,
-      description: item.description,
-      category: item.category,
-      featuresUsed: item.featuresUsed.length > 0 ? item.featuresUsed : undefined,
-      tokenCount: item.tokenCount,
-      similarity: parseFloat(similarity.toFixed(4)),
+      id: r.item.id,
+      description: r.item.description,
+      category: r.item.category,
+      featuresUsed: r.item.featuresUsed.length > 0 ? r.item.featuresUsed : undefined,
+      tokenCount: r.item.tokenCount,
+      similarity: parseFloat(r.similarity.toFixed(4)),
     };
   });
 

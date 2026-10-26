@@ -59,22 +59,14 @@ describe("searchUseCases", () => {
     const zeroEmbedder: EmbedderLike = {
       embed: async () => Array.from({ length: 384 }, () => 0),
     };
-    // Dense similarity is 0 (below 0.3 floor), but BM25 matches "autofill address form"
+    // Dense similarity is 0 (below 0.3 floor), but BM25 matches "autofill address form".
+    // With an all-zero embedder, all guides tie at dense cosine 0 (ranking by vector order in dense list),
+    // so we assert membership and zero-cosine retention rather than relying on exact rank.
     const results = await searchUseCases("autofill address form", 5, 0.3, zeroEmbedder);
     assert.ok(results.length > 0, "Should return BM25 matches even when dense similarity is 0");
-    assert.ok(
-      results.some((r) => r.id === "autofill-address-form"),
-      "BM25 should surface autofill-address-form"
-    );
-  });
-
-  it("returns results for queries matching uncached BM25-only guide entries with zero similarity", async () => {
-    const zeroEmbedder: EmbedderLike = {
-      embed: async () => Array.from({ length: 384 }, () => 0),
-    };
-    const results = await searchUseCases("payment card checkout", 5, 0.3, zeroEmbedder);
-    assert.ok(results.length > 0);
-    assert.strictEqual(results[0].similarity, 0, "Similarity for zero-dense match should be 0");
+    const match = results.find((r) => r.id === "autofill-address-form");
+    assert.ok(match, "BM25 should surface autofill-address-form");
+    assert.strictEqual(match.similarity, 0, "Zero dense similarity is preserved on BM25-surfaced result");
   });
 
   it("above-floor behavior is unchanged and preserves dense similarities", async () => {
