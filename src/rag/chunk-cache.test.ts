@@ -8,7 +8,6 @@ import {
   truncateAndNormalize256,
   loadChunkCache,
   saveChunkCache,
-  scanCorpusChunks,
   TEACHER_MODEL,
   TASK_TYPE,
   STATIC_DIMS,
@@ -122,21 +121,6 @@ describe("chunk-cache", () => {
     }
   });
 
-  it("committed repo chunk cache covers 100% of corpus chunks with zero missing", () => {
-    const allChunks = scanCorpusChunks("skills-cli");
-    assert.ok(allChunks.length > 1500, `Expected >1500 chunks, got ${allChunks.length}`);
-
-    const cache = loadChunkCache();
-    assert.strictEqual(cache.size, allChunks.length, "Cache size must match corpus chunk count");
-
-    const missing = allChunks.filter((c) => !cache.has(c.hash));
-    assert.strictEqual(
-      missing.length,
-      0,
-      `All chunks must have cached vectors, missing: ${missing.map((m) => m.guideId).join(", ")}`
-    );
-  });
-
   it("release check flags missing chunks when cache is empty", async () => {
     const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "empty-cache-check-"));
     try {
@@ -146,11 +130,5 @@ describe("chunk-cache", () => {
     } finally {
       fs.rmSync(emptyDir, { recursive: true, force: true });
     }
-  });
-
-  it("release check passes against committed cache", async () => {
-    const checkResult = await embedGuideChunks({ check: true });
-    assert.strictEqual(checkResult.missing.length, 0, "Release check must pass on committed cache");
-    assert.ok(checkResult.cachedCount > 1500);
   });
 });

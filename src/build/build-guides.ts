@@ -80,11 +80,12 @@ function resolveCachePaths(target: BuildTarget): CachePaths {
   };
 }
 
-async function computePipelineHash(
+export async function computePipelineHash(
   guides: GuideInventory[],
   target: string,
   noChunking: boolean,
-  modelName?: string
+  modelName?: string,
+  failOnMissingVectors?: boolean
 ): Promise<string> {
   const crypto = await import("node:crypto");
   const hash = crypto.createHash("sha256");
@@ -112,6 +113,7 @@ async function computePipelineHash(
 
   hash.update(target);
   hash.update(noChunking.toString());
+  hash.update(Boolean(failOnMissingVectors).toString());
 
   if (target !== 'static-site') {
     const rawModel = modelName || "static-tokenlearn-256d";
@@ -191,7 +193,13 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     const excluded = config.monoskill.excludeFromBundling || [];
     return inv.isPublished && !excluded.includes(inv.category) && !excluded.includes(inv.name);
   });
-  const currentHash = await computePipelineHash(readyGuides, TARGET, IS_NO_CHUNKING, modelName);
+  const currentHash = await computePipelineHash(
+    readyGuides,
+    TARGET,
+    IS_NO_CHUNKING,
+    modelName,
+    failOnMissingVectors
+  );
 
   // 3. Cache Evaluation
   const isHit = !force && !targetGuidePath && evaluateCacheHit(cachePaths, currentHash, readyGuides, TARGET);
@@ -291,7 +299,13 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     console.log(`Generated static-site manifest with ${staticSiteGuides.length} guides to ${path.relative(WORKSPACE_ROOT, manifestPath)}`);
   }
 
-  fs.writeFileSync(cachePaths.cachedManifest, JSON.stringify({ hash: currentHash }, null, 2));
+  if (missingChunks.length === 0) {
+    fs.writeFileSync(cachePaths.cachedManifest, JSON.stringify({ hash: currentHash }, null, 2));
+  } else {
+    console.warn(
+      `⚠️  Skipped writing build cache manifest due to ${missingChunks.length} missing teacher vector(s).`
+    );
+  }
 
   restoreFromCache(cachePaths, outputDir, TARGET);
   return false;

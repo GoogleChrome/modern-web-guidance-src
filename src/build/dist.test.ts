@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import matter from '@11ty/gray-matter';
@@ -267,7 +268,6 @@ test.skip('THIRD_PARTY_NOTICES validation', async () => {
   const content = await fs.readFile(noticesPath, 'utf8');
   
   // Check for some expected dependencies
-  assert.ok(content.includes('Name: @tensorflow/tfjs-core'), 'Should contain @tensorflow/tfjs-core');
   assert.ok(content.includes('Name: @huggingface/tokenizers'), 'Should contain @huggingface/tokenizers');
   
   // Check structure
@@ -359,6 +359,15 @@ test('packaged dist contains complete 256-d teacher vectors for all chunks', asy
       `Chunk "${item.id}" should have 256-d vector, got ${item.vector.length}`
     );
   }
+});
+
+test('release gate pipeline hash differs between dev and release builds', async () => {
+  const { computePipelineHash } = await import('./build-guides.ts');
+  const { scanAllGuides } = await import('../core/guide-validation.ts');
+  const readyGuides = scanAllGuides().filter(inv => inv.isPublished).slice(0, 5);
+  const hashDev = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, false);
+  const hashRelease = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, true);
+  assert.notStrictEqual(hashDev, hashRelease, 'Pipeline hash must differ when failOnMissingVectors differs');
 });
 
 

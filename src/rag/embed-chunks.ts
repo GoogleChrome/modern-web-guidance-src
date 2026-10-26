@@ -9,7 +9,6 @@
  *   node src/rag/embed-chunks.ts [--check] [--force] [--seed-from path/to/gemini-emb.json]
  */
 
-import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
@@ -70,7 +69,6 @@ async function postWithRetry(url: string, body: unknown): Promise<unknown> {
 export interface EmbedChunksOptions {
   check?: boolean;
   force?: boolean;
-  seedFrom?: string;
   cacheDir?: string;
 }
 
@@ -100,33 +98,7 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
 
   const workingCache = new Map<string, Float32Array>(existingCache);
 
-  // Optional seeding from ceiling cache if specified or available
-  const seedPath =
-    options.seedFrom ||
-    "/usr/local/google/home/paulirish/.gemini/jetski/brain/72a35306-54fe-4215-ab8a-e40f5a8340fa/scratch/ceiling-cache/gemini-emb.json";
-  if (fs.existsSync(seedPath)) {
-    try {
-      const seedData: Record<string, number[]> = JSON.parse(fs.readFileSync(seedPath, "utf8"));
-      let seeded = 0;
-      for (const chunk of allChunks) {
-        if (!workingCache.has(chunk.hash)) {
-          const seedKey = `D:${chunk.embeddedText}`;
-          const raw768 = seedData[seedKey];
-          if (raw768 && raw768.length === TEACHER_DIM) {
-            workingCache.set(chunk.hash, truncateAndNormalize256(raw768));
-            seeded++;
-          }
-        }
-      }
-      if (seeded > 0) {
-        console.log(`Seeded ${seeded} chunk vectors from ${path.basename(seedPath)}`);
-      }
-    } catch (err) {
-      console.warn(`Warning: Could not seed from ${seedPath}:`, err);
-    }
-  }
-
-  // Identify remaining missing chunks
+  // Identify missing chunks
   const missingChunks = allChunks.filter((c) => !workingCache.has(c.hash));
 
   let newEmbeds = 0;
@@ -218,7 +190,6 @@ async function main(): Promise<void> {
     options: {
       check: { type: "boolean", default: false },
       force: { type: "boolean", default: false },
-      "seed-from": { type: "string" },
       "cache-dir": { type: "string" },
     },
   });
@@ -226,7 +197,6 @@ async function main(): Promise<void> {
   const res = await embedGuideChunks({
     check: values.check,
     force: values.force,
-    seedFrom: values["seed-from"],
     cacheDir: values["cache-dir"],
   });
 
