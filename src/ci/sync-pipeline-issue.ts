@@ -824,7 +824,6 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
 }
 
 const PR_FETCH_LIMIT = 300;
-const ISSUE_FETCH_LIMIT = 500;
 
 function fetchOpenPrs(guides: GuideInventory[]): PrSummary[] {
   const raw = child_process.execFileSync(
@@ -920,46 +919,113 @@ function fetchOpenPrs(guides: GuideInventory[]): PrSummary[] {
   return prs;
 }
 
-function fetchOpenIssuesByLabel(label: string): IssueSummary[] {
-  const raw = child_process.execFileSync(
-    'gh',
-    [
-      'issue',
-      'list',
-      '--repo',
-      `${ORG}/${REPO}`,
-      '--label',
-      label,
-      '--state',
-      'open',
-      '--limit',
-      String(ISSUE_FETCH_LIMIT),
-      '--json',
-      'number,title,body,assignees,labels',
-    ],
-    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
-  );
-  const parsed = JSON.parse(raw) as Array<{
-    number: number;
-    title: string;
-    body?: string;
-    assignees?: Array<{ login?: string }>;
-    labels?: Array<{ name?: string }>;
-  }>;
+function fetchOpenIssuesByLabel(label: string, minExpected = 1): IssueSummary[] {
+  const query = `
+    query($owner: String!, $repo: String!, $label: String!, $cursor: String) {
+      repository(owner: $owner, name: $repo) {
+        issues(first: 100, after: $cursor, states: [OPEN], labels: [$label], orderBy: { field: CREATED_AT, direction: ASC }) {
+          totalCount
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            number
+            title
+            body
+            assignees(first: 10) {
+              nodes {
+                login
+              }
+            }
+            labels(first: 30) {
+              nodes {
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
 
-  if (parsed.length >= ISSUE_FETCH_LIMIT) {
+  const issues: IssueSummary[] = [];
+  let cursor: string | null = null;
+  let expectedTotal: number | null = null;
+
+  do {
+    const args = [
+      'api',
+      'graphql',
+      '-f',
+      `query=${query}`,
+      '-f',
+      `owner=${ORG}`,
+      '-f',
+      `repo=${REPO}`,
+      '-f',
+      `label=${label}`,
+    ];
+    if (cursor) {
+      args.push('-f', `cursor=${cursor}`);
+    }
+    const raw = child_process.execFileSync('gh', args, {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    const parsed = JSON.parse(raw) as {
+      data?: {
+        repository?: {
+          issues?: {
+            totalCount?: number;
+            pageInfo?: { hasNextPage?: boolean; endCursor?: string | null };
+            nodes?: Array<{
+              number: number;
+              title?: string;
+              body?: string;
+              assignees?: { nodes?: Array<{ login?: string } | null> };
+              labels?: { nodes?: Array<{ name?: string } | null> };
+            } | null>;
+          };
+        };
+      };
+    };
+
+    const conn = parsed.data?.repository?.issues;
+    if (!conn || !Array.isArray(conn.nodes)) {
+      throw new Error(`Invalid GraphQL response in fetchOpenIssuesByLabel(${label}).`);
+    }
+    if (expectedTotal === null && typeof conn.totalCount === 'number') {
+      expectedTotal = conn.totalCount;
+    }
+
+    for (const node of conn.nodes) {
+      if (!node) continue;
+      issues.push({
+        number: node.number,
+        title: node.title ?? '',
+        body: node.body ?? '',
+        assignees: (node.assignees?.nodes ?? []).map(a => a?.login ?? '').filter(Boolean),
+        labels: (node.labels?.nodes ?? []).map(l => l?.name ?? '').filter(Boolean),
+      });
+    }
+
+    const { hasNextPage, endCursor } = conn.pageInfo ?? {};
+    cursor = hasNextPage ? (endCursor ?? null) : null;
+  } while (cursor);
+
+  if (expectedTotal !== null && issues.length !== expectedTotal) {
     throw new Error(
-      `fetchOpenIssuesByLabel(${label}) hit limit of ${ISSUE_FETCH_LIMIT} issues; results may be truncated. Increase limit.`
+      `fetchOpenIssuesByLabel(${label}) count mismatch: expected ${expectedTotal} issues, received ${issues.length}.`
+    );
+  }
+  if (issues.length < minExpected) {
+    throw new Error(
+      `fetchOpenIssuesByLabel(${label}) returned only ${issues.length} open issues (expected at least ${minExpected}); refusing to overwrite tracker issue.`
     );
   }
 
-  return parsed.map(i => ({
-    number: i.number,
-    title: i.title,
-    body: i.body ?? '',
-    assignees: (i.assignees ?? []).map(a => a.login ?? '').filter(Boolean),
-    labels: (i.labels ?? []).map(l => l.name ?? '').filter(Boolean),
-  }));
+  return issues;
 }
 
 function fetchIssueBody(issueNumber: number): string {
