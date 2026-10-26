@@ -214,6 +214,38 @@ void test('autofill-payment-form: negative / exempt cases', async (suiteContext)
     assert.equal(matches.length, 0);
   });
 
+  await suiteContext.test('exempts search and filter inputs on cards', () => {
+    const html = `
+      <form action="/dashboard">
+        <input name="card_filter" placeholder="Filter cards by keyword" type="text" />
+        <input name="search_query" placeholder="Search cards" type="text" />
+      </form>
+    `;
+    const matches = scanHtml('dashboard.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await suiteContext.test('exempts non-payment expiration fields like session and coupon expiry', () => {
+    const html = `
+      <form action="/settings">
+        <input name="session_expiration" type="text" />
+        <input name="coupon_expiry" type="text" />
+      </form>
+    `;
+    const matches = scanHtml('settings.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await suiteContext.test('exempts kanban or flashcard name inputs without payment context', () => {
+    const html = `
+      <form action="/board/columns/1">
+        <input name="card_name" placeholder="Enter task card title" type="text" />
+      </form>
+    `;
+    const matches = scanHtml('board.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await suiteContext.test('exempts test and fixture files', () => {
     const html = `
       <form action="/checkout">

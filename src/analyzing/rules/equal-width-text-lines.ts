@@ -28,20 +28,34 @@ const FITTEXT_PACKAGES = [
   'react-fitty',
 ] as const;
 
+const NON_TEXT_FIT_TARGETS =
+  /\b(?:canvas|ctx|context|chart|video|audio|player|camera|scene|game|threejs)\b/i;
+
 function isSingleLineOption(call: CallExpression): boolean {
-  const optionsArg = call.getArguments()[1];
-  if (!optionsArg) {
-    return false;
-  }
-  const resolved = resolveLocalExpression(optionsArg, 2);
-  if (!Node.isObjectLiteralExpression(resolved)) {
-    return false;
-  }
-  const multiLineProp = resolved.getProperty('multiLine');
-  if (multiLineProp && Node.isPropertyAssignment(multiLineProp)) {
-    const init = multiLineProp.getInitializer();
-    if (init && unwrapExpression(init).getKind() === SyntaxKind.FalseKeyword) {
-      return true;
+  for (const arg of call.getArguments()) {
+    const resolved = resolveLocalExpression(arg, 2);
+    if (Node.isObjectLiteralExpression(resolved)) {
+      const multiLineProp = resolved.getProperty('multiLine');
+      if (multiLineProp && Node.isPropertyAssignment(multiLineProp)) {
+        const init = multiLineProp.getInitializer();
+        if (init && unwrapExpression(init).getKind() === SyntaxKind.FalseKeyword) {
+          return true;
+        }
+      }
+      const singleLineProp = resolved.getProperty('singleLine');
+      if (singleLineProp && Node.isPropertyAssignment(singleLineProp)) {
+        const init = singleLineProp.getInitializer();
+        if (init && unwrapExpression(init).getKind() === SyntaxKind.TrueKeyword) {
+          return true;
+        }
+      }
+      const maxLinesProp = resolved.getProperty('maxLines');
+      if (maxLinesProp && Node.isPropertyAssignment(maxLinesProp)) {
+        const init = maxLinesProp.getInitializer();
+        if (init && init.getText() === '1') {
+          return true;
+        }
+      }
     }
   }
   return false;
@@ -77,6 +91,23 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
       return false;
     }
     const target = unwrapExpression(expr.getExpression());
+
+    // Skip canvas, chart, video, audio, or non-text graphical contexts
+    if (Node.isIdentifier(target) && NON_TEXT_FIT_TARGETS.test(target.getText())) {
+      return false;
+    }
+
+    // Skip zero-arg calls on non-jQuery objects (e.g. this.fitText(), customScripts.fitText())
+    const isJQueryCaller =
+      (Node.isIdentifier(target) && (target.getText() === '$' || target.getText() === 'jQuery')) ||
+      (Node.isCallExpression(target) &&
+        Node.isIdentifier(unwrapExpression(target.getExpression())) &&
+        ['$', 'jQuery'].includes(unwrapExpression(target.getExpression()).getText()));
+
+    if (!isJQueryCaller && call.getArguments().length === 0) {
+      return false;
+    }
+
     // Skip zero-arg wrapper calls like `customScripts.fitText()` when the file defines its own `fitText` method wrapping `$(...).fitText(...)`
     if (
       call.getArguments().length === 0 &&
@@ -125,7 +156,7 @@ export const equalWidthTextLinesJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isProtectedByFeatureGuard(node, ['text-fit'])) {
+      if (isProtectedByFeatureGuard(node, ['text-fit', 'text-wrap'])) {
         return;
       }
 

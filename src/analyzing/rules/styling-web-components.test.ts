@@ -123,4 +123,41 @@ void test('styling-web-components: negative / exempt cases', async (suiteContext
     const matches = scanCss('test/fixtures/legacy.css', css, [cssMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await suiteContext.test('exempts vendor, polyfill, and minified paths', () => {
+    const css = `
+      :host-context(.dark) .card { color: white; }
+    `;
+    assert.equal(scanCss('vendor/theme.css', css, [cssMatcher]).length, 0);
+    assert.equal(scanCss('polyfills/host-context.css', css, [cssMatcher]).length, 0);
+    assert.equal(scanCss('dist/bundle.min.css', css, [cssMatcher]).length, 0);
+  });
+
+  await suiteContext.test('exempts descendant :host-context where Shadow DOM host is not root', () => {
+    const css = `
+      .sidebar :host-context(.dark) .title {
+        color: white;
+      }
+    `;
+    const matches = scanCss('my-element.css', css, [cssMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await suiteContext.test('exempts third-party framework paths', () => {
+    const css = `
+      :host-context(.dark) .card { color: white; }
+    `;
+    assert.equal(scanCss('bootstrap/dist/theme.css', css, [cssMatcher]).length, 0);
+    assert.equal(scanCss('tailwind/utilities.css', css, [cssMatcher]).length, 0);
+  });
+
+  await suiteContext.test('exempts rules guarded by @supports', () => {
+    const css = `
+      @supports selector(:host-context(.dark)) {
+        :host-context(.dark) .card { color: white; }
+      }
+    `;
+    const matches = scanCss('my-card.css', css, [cssMatcher]);
+    assert.equal(matches.length, 0);
+  });
 });

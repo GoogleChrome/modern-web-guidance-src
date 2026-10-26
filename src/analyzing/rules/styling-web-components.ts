@@ -11,32 +11,56 @@ const FAST_TOKENS: readonly string[] = [':host-context'] as const;
 
 const HOST_CONTEXT_REGEX = /::?host-context\s*\(/i;
 
+const EXCLUDED_PATH_PATTERNS: readonly RegExp[] = [
+  /(?:^|[\\/])(?:tests?|fixtures?|__tests__|__mocks__|spec|specs)[\\/]/i,
+  /(?:^|[\\/])(?:node_modules|vendor|bower_components|dist|build|out|\.next|\.nuxt|\.output)[\\/]/i,
+  /(?:^|[\\/])(?:polyfills?|shims?)[\\/]/i,
+  /\.min\.(?:css|scss|less)$/i,
+  /(?:^|[\\/])(?:documentation|docs?|examples?|samples?|demos?)[\\/]/i,
+  /(?:^|[\\/._-])(?:bootstrap|tailwind|bulma|foundation|materialize|reset|normalize|reboot)(?:[\\/._-]|$)/i,
+];
+
+const VALID_HOST_CONTEXT_ROOT_REGEX = /^\s*(?::host(?:\([^)]*\))?)?:host-context\s*\(/i;
+
 export const stylingWebComponentsCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: FAST_TOKENS,
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
-    const lowerPath = ctx.filePath.toLowerCase();
-    if (
-      lowerPath.includes('/test/') ||
-      lowerPath.includes('/tests/') ||
-      lowerPath.includes('/test/data/') ||
-      lowerPath.includes('/fixtures/') ||
-      lowerPath.includes('/fixture/') ||
-      lowerPath.includes('__tests__')
-    ) {
+    const filePath = ctx.filePath;
+    if (EXCLUDED_PATH_PATTERNS.some((p) => p.test(filePath))) {
       return null;
     }
 
-    const selector = styleRule.selectorText;
+    const selector = styleRule.selectorText.trim();
 
-    if (HOST_CONTEXT_REGEX.test(selector)) {
-      return {
-        message:
-          'CSS selector uses non-standard :host-context() pseudo-class (unsupported in Firefox and Safari); modernize theming using inherited CSS custom properties or container style queries.',
-      };
+    if (!HOST_CONTEXT_REGEX.test(selector)) {
+      return null;
     }
 
-    return null;
+    // In Shadow DOM, :host-context() is only valid as the root/host-targeting selector
+    // Descendant usage like `.container :host-context(...)` indicates non-shadow light-DOM or mock usage
+    if (!VALID_HOST_CONTEXT_ROOT_REGEX.test(selector)) {
+      return null;
+    }
+
+    // Skip if guarded by @supports or polyfill fallback block
+    if (styleRule.parentAtRule) {
+      const atRuleLower = styleRule.parentAtRule.toLowerCase();
+      if (
+        atRuleLower.includes('@supports') &&
+        (atRuleLower.includes(':host-context') || atRuleLower.includes('selector(:host-context'))
+      ) {
+        return null;
+      }
+      if (atRuleLower.includes('@container') && atRuleLower.includes('style(')) {
+        return null;
+      }
+    }
+
+    return {
+      message:
+        'CSS selector uses non-standard :host-context() pseudo-class (unsupported in Firefox and Safari); modernize theming using inherited CSS custom properties or container style queries.',
+    };
   },
 };
 

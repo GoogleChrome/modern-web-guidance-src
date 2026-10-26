@@ -5,17 +5,44 @@ import type {
   CssRuleView,
 } from '../schema.ts';
 
-const ZERO_DIMENSIONS = new Set(['0', '0px', '0em', '0rem', 'none']);
+const RESET_OR_ZERO_DIMENSIONS = new Set([
+  '0',
+  '0px',
+  '0em',
+  '0rem',
+  '0%',
+  '0vw',
+  '0vh',
+  'none',
+  'auto',
+  'inherit',
+  'initial',
+  'unset',
+  'revert',
+  'normal',
+]);
+
 const TRANSPARENT_VALUES = new Set([
   'transparent',
   'none',
   'rgba(0, 0, 0, 0)',
   'rgba(0,0,0,0)',
+  'hsla(0, 0%, 0%, 0)',
+  'hsla(0,0%,0%,0)',
+  '#00000000',
+  '#0000',
+  'inherit',
+  'initial',
+  'unset',
+  'revert',
 ]);
+
+const WEBKIT_SCROLLBAR_REGEX = /::-webkit-scrollbar(?![-\w])/i;
+const WEBKIT_THUMB_REGEX = /::-webkit-scrollbar-thumb\b/i;
 
 function hasNonZeroDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
   const val = styleRule.getPropertyValue(prop)?.trim().toLowerCase();
-  if (!val || ZERO_DIMENSIONS.has(val)) {
+  if (!val || RESET_OR_ZERO_DIMENSIONS.has(val)) {
     return false;
   }
   const pxMatch = val.match(/^(\d+(?:\.\d+)?)px$/);
@@ -31,6 +58,9 @@ function hasValidColor(
 ): boolean {
   const val = styleRule.getPropertyValue(prop)?.trim().toLowerCase();
   if (!val) {
+    return false;
+  }
+  if (val.includes('url(') || val.includes('image(')) {
     return false;
   }
   return !TRANSPARENT_VALUES.has(val);
@@ -78,12 +108,8 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    const sel = styleRule.selectorText.toLowerCase();
-    const isThumb = sel.includes('-webkit-scrollbar-thumb');
-    const isScrollbar =
-      sel.includes('-webkit-scrollbar') &&
-      !isThumb &&
-      !sel.includes('-webkit-scrollbar-track');
+    const isThumb = WEBKIT_THUMB_REGEX.test(styleRule.selectorText);
+    const isScrollbar = WEBKIT_SCROLLBAR_REGEX.test(styleRule.selectorText);
 
     if (isThumb) {
       // Must set visible background or background-color

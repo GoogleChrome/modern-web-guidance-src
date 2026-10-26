@@ -179,4 +179,33 @@ void test('checkbox: negative / exempt cases', async (t) => {
     const matches = scanCss('radio-star.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts general toggle buttons and non-checkbox appearance: none', () => {
+    const css = `
+      .toggle-button {
+        appearance: none;
+        border: 1px solid #ccc;
+      }
+      .btn-toggle input:checked + label::before {
+        content: "";
+      }
+      .select-box {
+        appearance: none;
+      }
+    `;
+    const matches = scanCss('toggles.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts rules inside @supports (accent-color: ...)', () => {
+    const css = `
+      @supports (accent-color: red) {
+        .custom-checkbox {
+          appearance: none;
+        }
+      }
+    `;
+    const matches = scanCss('fallback.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
 });

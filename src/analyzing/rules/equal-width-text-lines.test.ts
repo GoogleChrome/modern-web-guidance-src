@@ -119,12 +119,17 @@ void test('equal-width-text-lines JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts unrelated function calls', () => {
+  await t.test('exempts unrelated function calls and single line options', () => {
     const project = createInMemoryProject();
     const code = `
       const bounds = map.fitBounds(coords);
       const formatted = formatText(title);
       fitty('.single-line-badge', { multiLine: false });
+      fitty('.single-line-heading', { singleLine: true });
+      fitty('.one-liner', { maxLines: 1 });
+      canvas.fitText(ctx, 'heading');
+      chart.fitText();
+      this.fitText();
       function localHelper() {
         function fitText(str) { return str.trim(); }
         fitText('hello');
@@ -133,6 +138,21 @@ void test('equal-width-text-lines JS matcher', async (t) => {
     const sourceFile = project.createSourceFile('unrelated.js', code);
     const matches = equalWidthTextLinesJsMatcher.matchFile(sourceFile, {
       filePath: 'unrelated.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts when guarded by CSS.supports for text-wrap: balance', () => {
+    const project = createInMemoryProject();
+    const code = `
+      if (!CSS.supports('text-wrap', 'balance')) {
+        fitty('.lockup-line');
+      }
+    `;
+    const sourceFile = project.createSourceFile('guarded-wrap.js', code);
+    const matches = equalWidthTextLinesJsMatcher.matchFile(sourceFile, {
+      filePath: 'guarded-wrap.js',
       fileContent: code,
     });
     assert.equal(matches.length, 0);

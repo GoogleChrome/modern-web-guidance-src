@@ -72,7 +72,16 @@ const CARD_NUMBER_REGEX =
   /(?:card[-_]?num(?:ber)?|cc[-_]?num(?:ber)?|credit[-_]?card|card[-_]?no|\bpan\b|(?:card|cc)[-_]?account[-_]?number)/i;
 
 const NON_CARD_IDENTIFIERS_REGEX =
-  /(?:bank|routing|iban|swift|gift[-_]?card|loyalty|phone|ssn)/i;
+  /(?:bank|routing|iban|swift|gift[-_]?card|loyalty|phone|ssn|kanban|flashcard|deck|board|trello|profile|id[-_]?card|greeting|postcard|invitation|task[-_]?card)/i;
+
+const NON_PAYMENT_SEARCH_FILTER_REGEX =
+  /\b(?:search|filter|find|query|keyword|lookup|sort)\b/i;
+
+const NON_PAYMENT_EXPIRATION_REGEX =
+  /\b(?:session|token|cookie|password|coupon|promo|discount|voucher|auth|jwt|license|key|domain|ssl|cert|api[-_]?key)\b/i;
+
+const PAYMENT_CONTEXT_REGEX =
+  /\b(?:pay|payment|checkout|billing|credit[-_]?card|card[-_]?number|cvv|cvc|csc)\b/i;
 
 const CARD_EXPIRATION_REGEX =
   /(?:cc[-_]?exp(?:ir(?:y|ation))?|card[-_]?exp|exp[-_]?date|exp[-_]?month|exp[-_]?year|\bexpiry\b|\bexpiration\b)/i;
@@ -81,7 +90,7 @@ const CARD_CSC_REGEX =
   /(?:\bcc[-_]?csc\b|\bcc[-_]?cvv\b|\bcc[-_]?cvc\b|\bcvv2?\b|\bcvc2?\b|\bcsc\b|\bcard[-_]?code\b|\bsecurity[-_]?code\b)/i;
 
 const CARDHOLDER_NAME_REGEX =
-  /(?:cc[-_]?name|card[-_]?name|cardholder[-_]?name|name[-_]?on[-_]?card|\bcardholder\b)/i;
+  /(?:cc[-_]?name|cardholder[-_]?name|name[-_]?on[-_]?card|\bcardholder\b)/i;
 
 const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
   ':autocomplete',
@@ -212,7 +221,12 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
     const ariaLabel = element.getAttribute('aria-label') ?? '';
     const combinedIdentifiers = `${name} ${id} ${placeholder} ${ariaLabel}`.toLowerCase();
 
-    // Skip non-card numbers such as bank accounts, routing, IBAN, gift cards
+    // Skip search / filter inputs
+    if (NON_PAYMENT_SEARCH_FILTER_REGEX.test(combinedIdentifiers)) {
+      return null;
+    }
+
+    // Skip non-card numbers such as bank accounts, routing, IBAN, gift cards, flashcards, kanban
     if (NON_CARD_IDENTIFIERS_REGEX.test(combinedIdentifiers)) {
       return null;
     }
@@ -259,6 +273,18 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
     }
 
     if (CARD_EXPIRATION_REGEX.test(combinedIdentifiers)) {
+      if (NON_PAYMENT_EXPIRATION_REGEX.test(combinedIdentifiers)) {
+        return null;
+      }
+      // If it's a generic "expiry" or "expiration" without explicit exp date/month/year/card/cc pattern,
+      // require payment context in the document text
+      const isExplicitExpFormat =
+        /(?:cc[-_]?exp|card[-_]?exp|exp[-_]?date|exp[-_]?month|exp[-_]?year)\b/i.test(
+          combinedIdentifiers,
+        );
+      if (!isExplicitExpFormat && !PAYMENT_CONTEXT_REGEX.test(ctx.documentText)) {
+        return null;
+      }
       const isMonth = /month/i.test(combinedIdentifiers);
       const isYear = /year/i.test(combinedIdentifiers);
       const targetToken = isMonth ? 'cc-exp-month' : isYear ? 'cc-exp-year' : 'cc-exp';
@@ -274,7 +300,9 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
       };
     }
 
-    if (CARDHOLDER_NAME_REGEX.test(combinedIdentifiers)) {
+    const isExplicitCardholder = CARDHOLDER_NAME_REGEX.test(combinedIdentifiers);
+    const isGenericCardName = /(?:card[-_]?name)\b/i.test(combinedIdentifiers);
+    if (isExplicitCardholder || (isGenericCardName && PAYMENT_CONTEXT_REGEX.test(ctx.documentText))) {
       return {
         message:
           'Payment cardholder name input inside form lacks autocomplete="cc-name".',

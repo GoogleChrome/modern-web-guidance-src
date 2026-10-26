@@ -121,4 +121,57 @@ void test('custom-text-decorations: negative / exempt cases', async (t) => {
     const matches = scanCss('box.css', css, [customTextDecorationsCssMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts elements with box-shadow, border-radius, or dimensions', () => {
+    const css = `
+      a.card-action {
+        text-decoration: none;
+        border-bottom: 2px solid blue;
+        padding-bottom: 2px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      a.rounded-link {
+        text-decoration: none;
+        border-bottom: 2px solid blue;
+        padding-bottom: 2px;
+        border-radius: 4px;
+      }
+      a.sized-link {
+        text-decoration: none;
+        border-bottom: 2px solid blue;
+        padding-bottom: 2px;
+        width: 120px;
+      }
+    `;
+    const matches = scanCss('boxes.css', css, [customTextDecorationsCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts button-like links and badges with border-bottom', () => {
+    const css = `
+      a.btn {
+        text-decoration: none;
+        border-bottom: 2px solid #333;
+        padding-bottom: 2px;
+      }
+      a.badge {
+        text-decoration: none;
+        border-bottom: 1px solid #666;
+        padding-bottom: 1px;
+      }
+    `;
+    const matches = scanCss('buttons.css', css, [customTextDecorationsCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts link with border-bottom but missing padding-bottom (standard border, not underline hack)', () => {
+    const css = `
+      a.simple {
+        text-decoration: none;
+        border-bottom: 1px solid #ddd;
+      }
+    `;
+    const matches = scanCss('simple.css', css, [customTextDecorationsCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
 });

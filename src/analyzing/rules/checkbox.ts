@@ -19,7 +19,7 @@ const CHECKED_PSEUDO_ICON_REGEX =
   /:checked\s*[+~]\s*(?:label|span)::(?:before|after)\b/i;
 
 const NON_CHECKBOX_SELECTOR_REGEX =
-  /\b(?:radio|rating|rate|star|slider|switch|toggle|onoff|nav|menu|panel|accordion)\b/i;
+  /\b(?:radio|rating|rate|star|slider|switch|toggle|onoff|nav|menu|panel|accordion|drawer|collapse|collapsible|tab|tabs|btn-check|toggle-btn|toggle-button)\b/i;
 
 const STAR_CONTENT_REGEX = /(?:★|☆|\\2605|\\2606|\\f005|\\f006)/i;
 const STAR_OR_RATING_SELECTOR_REGEX = /\b(?:star|rating|rate)\b/i;
@@ -33,9 +33,16 @@ function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
   }
 
   // appearance: none directly on an input is the modern technique recommended by the checkbox guide!
-  // Only flag appearance: none on custom checkbox replacement class selectors (e.g. .custom-checkbox)
+  // Only flag appearance: none on explicit custom checkbox replacement class selectors (e.g. .custom-checkbox)
   const isInputSelector = /\binput\b/i.test(styleRule.selectorText);
   if (!isInputSelector) {
+    const isCustomCheckboxClass =
+      /\.(?:custom-checkbox|custom-control-input|checkbox-custom)\b/i.test(
+        styleRule.selectorText,
+      );
+    if (!isCustomCheckboxClass) {
+      return false;
+    }
     const appearanceVal = (styleRule.getPropertyValue('appearance') ?? '').trim().toLowerCase();
     const webkitAppearanceVal = (
       styleRule.getPropertyValue('-webkit-appearance') ?? ''
@@ -48,7 +55,7 @@ function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
   return false;
 }
 
-const TOGGLE_SWITCH_REGEX = /\b(?:switch|toggle)\b/i;
+const TOGGLE_SWITCH_REGEX = /\b(?:switch|toggle|onoff|slider|toggle-btn|btn-check|toggle-button)\b/i;
 
 const SIBLING_CUSTOM_BOX_REGEX =
   /(?:[+~]\s*(?:label|span)|::?(?:before|after)|\.custom-checkbox|\.custom-control|:indeterminate)/i;
@@ -59,6 +66,10 @@ export const checkboxCssMatcher: CssRuleMatcher = {
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     // 1. If stylesheet already defines accent-color, skip
     if (ctx.stylesheetHasProperty('accent-color')) {
+      return null;
+    }
+
+    if (styleRule.parentAtRule?.toLowerCase().includes('accent-color')) {
       return null;
     }
 

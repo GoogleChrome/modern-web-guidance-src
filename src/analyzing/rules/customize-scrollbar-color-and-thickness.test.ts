@@ -185,6 +185,49 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts scrollbar reset keywords like auto, inherit, and initial', () => {
+    const css = `
+      .panel::-webkit-scrollbar {
+        width: auto;
+        height: auto;
+      }
+      .panel::-webkit-scrollbar-thumb {
+        background: inherit;
+      }
+    `;
+    const matches = scanCss('panel.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts non-scrollbar pseudo-elements like button and corner', () => {
+    const css = `
+      ::-webkit-scrollbar-button {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-corner {
+        background: #333;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #888;
+      }
+    `;
+    const matches = scanCss('buttons.css', css, [matcher]);
+    // Only the thumb should match, not button or corner
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 9);
+  });
+
+  await t.test('exempts image backgrounds on scrollbar thumb', () => {
+    const css = `
+      .custom::-webkit-scrollbar-thumb {
+        background: url('thumb.png') no-repeat;
+      }
+    `;
+    const matches = scanCss('image.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts unrelated CSS rules', () => {
     const css = `
       .card {

@@ -179,6 +179,40 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.match(matches[1].message, /enableBodyScroll/);
   });
 
+  test('exempts generic .overflow-hidden utility classes without body/html prefix', () => {
+    const css = `
+      .overflow-hidden {
+        overflow: hidden;
+      }
+      .card .no-scroll {
+        overflow: hidden;
+      }
+    `;
+    const matches = scanCss('styles/utilities.css', css, [
+      preventPageScrollUnderModalDialogCssMatcher,
+    ]);
+    assert.equal(matches.length, 0);
+  });
+
+  test('exempts unrelated functions setting body overflow even if <dialog> exists elsewhere in file', () => {
+    const code = `
+      function renderDialogMarkup() {
+        return '<dialog id="feedback">Feedback</dialog>';
+      }
+
+      function handleWindowResize() {
+        document.body.style.overflow = 'hidden';
+      }
+    `;
+    const { matches } = scanJsSource(
+      'utils/layout.js',
+      code,
+      [preventPageScrollUnderModalDialogMatcher],
+      project,
+    );
+    assert.equal(matches.length, 0);
+  });
+
   test('flags package.json dependencies on scroll lock packages', () => {
     const pkgJson = JSON.stringify({
       dependencies: {

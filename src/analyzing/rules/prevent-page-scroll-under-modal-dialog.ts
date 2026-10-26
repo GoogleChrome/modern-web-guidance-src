@@ -29,7 +29,10 @@ const FULLSCREEN_CANVAS_GAME_REGEX =
   /\b(?:fullscreen|canvas|game|slide|deck|threejs|pixi)\b/i;
 
 function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
-  let enclosingFn: Node | undefined;
+  if (MODAL_OR_OVERLAY_REGEX.test(ctx.filePath)) {
+    return true;
+  }
+
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
     if (
@@ -39,24 +42,22 @@ function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
       Node.isFunctionExpression(current) ||
       Node.isArrowFunction(current)
     ) {
-      enclosingFn = current;
-      break;
+      const text = current.getText();
+      if (FULLSCREEN_CANVAS_GAME_REGEX.test(text) && !MODAL_OR_OVERLAY_REGEX.test(text)) {
+        return false;
+      }
+      if (
+        MODAL_OR_OVERLAY_REGEX.test(text) ||
+        text.includes('showModal') ||
+        text.includes('<dialog')
+      ) {
+        return true;
+      }
     }
     current = current.getParent();
   }
 
-  const fnText = enclosingFn ? enclosingFn.getText() : '';
-  if (FULLSCREEN_CANVAS_GAME_REGEX.test(fnText) && !MODAL_OR_OVERLAY_REGEX.test(fnText)) {
-    return false;
-  }
-
-  // Must have modal/dialog context and native dialog evidence
-  return (
-    MODAL_OR_OVERLAY_REGEX.test(fnText) ||
-    MODAL_OR_OVERLAY_REGEX.test(ctx.filePath) ||
-    ctx.fileContent.includes('showModal') ||
-    ctx.fileContent.includes('<dialog')
-  );
+  return false;
 }
 
 const MODAL_SCROLL_LOCK_CLASSES = new Set([
@@ -67,8 +68,19 @@ const MODAL_SCROLL_LOCK_CLASSES = new Set([
   'overflow-hidden',
 ]);
 
-const CSS_SCROLL_LOCK_SELECTOR_REGEX =
-  /(?:body|html)?\.(?:modal-open|dialog-open|no-scroll|scroll-lock|overflow-hidden)\b/i;
+function isScrollLockSelector(selectorText: string): boolean {
+  const parts = selectorText.split(',');
+  for (const rawPart of parts) {
+    const part = rawPart.trim();
+    if (
+      /^(?:body|html)?\.(?:modal-open|dialog-open|no-scroll|scroll-lock)\b/i.test(part) ||
+      /^(?:body|html)\.overflow-hidden\b/i.test(part)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 function isDocumentRootElement(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
@@ -360,7 +372,7 @@ export const preventPageScrollUnderModalDialogCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    if (!CSS_SCROLL_LOCK_SELECTOR_REGEX.test(styleRule.selectorText)) {
+    if (!isScrollLockSelector(styleRule.selectorText)) {
       return null;
     }
 
