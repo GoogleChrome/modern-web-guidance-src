@@ -144,9 +144,45 @@ void test('branded-select-styling JS: positive brownfield matches', async (t) =>
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /niceSelect/);
   });
+
+  await t.test('flags Backbone this.$el.find(...).chosen() and this.$(...).chosen() calls', () => {
+    const project = createInMemoryProject();
+    const code = `
+      var MetadataView = Backbone.View.extend({
+        render: function() {
+          this.$el.find('.chzn-select').chosen().change(this.updateModel);
+          this.$('select.branch-select').chosen();
+        }
+      });
+    `;
+    const sourceFile = project.createSourceFile('metadata.js', code);
+    const matches = jsMatcher.matchFile(sourceFile, {
+      filePath: 'metadata.js',
+      fileContent: code,
+    });
+    assert.deepEqual(
+      matches.map((m) => m.line),
+      [4, 5],
+    );
+  });
 });
 
 void test('branded-select-styling JS: negative / exempt cases', async (t) => {
+  await t.test('exempts non-jQuery .chosen() method calls', () => {
+    const project = createInMemoryProject();
+    const code = `
+      this.chosen();
+      this.model.chosen();
+      picker.getItem($index).chosen();
+    `;
+    const sourceFile = project.createSourceFile('non-jquery.js', code);
+    const matches = jsMatcher.matchFile(sourceFile, {
+      filePath: 'non-jquery.js',
+      fileContent: code,
+    });
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts select2 call guarded by CSS.supports for appearance: base-select', () => {
     const project = createInMemoryProject();
     const code = `

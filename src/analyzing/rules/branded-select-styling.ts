@@ -42,6 +42,31 @@ const TARGET_JS_METHODS: ReadonlySet<string> = new Set([
 const SEARCH_OR_COMPLEX_OPTIONS_REGEX =
   /\b(?:multiple\s*:\s*true|ajax\s*:|tags\s*:|query\s*:|matcher\s*:|minimumInputLength\s*:|liveSearch\s*:|search_contains\s*:)/i;
 
+function isJQueryIdentifierName(name: string): boolean {
+  return name.startsWith('$') || name === 'jQuery' || name === 'mQuery';
+}
+
+function isJQueryLikeReceiver(node: Node): boolean {
+  let current: Node = unwrapExpression(node);
+  while (true) {
+    if (Node.isIdentifier(current)) {
+      return isJQueryIdentifierName(current.getText());
+    }
+    if (Node.isPropertyAccessExpression(current)) {
+      if (isJQueryIdentifierName(current.getName())) {
+        return true;
+      }
+      current = unwrapExpression(current.getExpression());
+      continue;
+    }
+    if (Node.isCallExpression(current) || Node.isElementAccessExpression(current)) {
+      current = unwrapExpression(current.getExpression());
+      continue;
+    }
+    return false;
+  }
+}
+
 const brandedSelectStylingDependencyMatcher: DependencyRuleMatcher = {
   kind: 'dependency',
   packages: TARGET_SELECT_PACKAGES,
@@ -80,16 +105,8 @@ const brandedSelectStylingJsMatcher: JsRuleMatcher = {
       }
 
       // Check receiver: for chosen, require jQuery-like receiver (reject this.chosen())
-      if (methodName === 'chosen') {
-        const receiver = unwrapExpression(expr.getExpression());
-        const receiverText = receiver.getText();
-        if (
-          !receiverText.startsWith('$') &&
-          !receiverText.startsWith('jQuery') &&
-          !receiverText.startsWith('mQuery')
-        ) {
-          return;
-        }
+      if (methodName === 'chosen' && !isJQueryLikeReceiver(expr.getExpression())) {
+        return;
       }
 
       // Exclude multi-select, remote ajax search, or tag-creation options in AST
