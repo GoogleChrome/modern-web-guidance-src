@@ -15,7 +15,7 @@ Build a button that copies the text of another element (code block, inline value
 
 ## Implementation
 
-### 1. Markup (MANDATORY)
+### 1. Markup
 
 ```html
 <!-- Custom commands MUST start with "--". commandfor is the id of the element whose text is copied. -->
@@ -37,7 +37,7 @@ Build a button that copies the text of another element (code block, inline value
 - Name an icon-only button with `aria-label`. If the button shows visible text, that text is the name; do not add an `aria-label` that differs from it.
 - Render the icon with whatever the codebase uses for icons (see {{ GUIDE_REF("icons") }}) and mark it decorative; the button's accessible name comes from `aria-label`, not the icon.
 
-### 2. Handler (MANDATORY)
+### 2. Copying logic
 
 Put the copy logic in one function so the native and fallback paths share it.
 

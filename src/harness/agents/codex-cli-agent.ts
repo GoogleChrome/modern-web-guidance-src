@@ -17,6 +17,7 @@ import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
   extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
@@ -371,12 +372,10 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
             toolsUsed.add(match[1]);
           }
         }
-        if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
-          const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-          if (match) {
-            for (const g of match[1].split(',').map((s: string) => s.trim())) {
-              retrievedGuides.add(g);
-            }
+        const extractedGuides = extractRetrievedGuidesFromCommand(command);
+        if (extractedGuides.length > 0) {
+          for (const g of extractedGuides) {
+            retrievedGuides.add(g);
           }
         } else if (command.includes('.agents/skills/') && command.includes('guide.md')) {
           const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);

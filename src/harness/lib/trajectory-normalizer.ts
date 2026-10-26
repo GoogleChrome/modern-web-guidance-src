@@ -247,6 +247,29 @@ export function extractTimestamp(entry: any): string | undefined {
   return undefined;
 }
 
+/**
+ * Extracts retrieved guide IDs from a shell command string invoking `modern-web-guidance retrieve`.
+ * Strips trailing shell delimiters (such as `;` in chained commands) and supports comma-separated lists.
+ */
+export function extractRetrievedGuidesFromCommand(command: string): string[] {
+  if (!command.includes('modern-web-guidance') || !command.includes('retrieve')) {
+    return [];
+  }
+  const guides: string[] = [];
+  const regex = /(?:--)?retrieve\s+(?:\\*"([^"\\]+)\\*"|'([^']+)'|([^\s"';|&><)`\\]+))/gi;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(command)) !== null) {
+    const rawArg = match[1] ?? match[2] ?? match[3] ?? '';
+    for (const part of rawArg.split(',')) {
+      const cleaned = part.trim().replace(/^["'\\]+|["'\\;]+$/g, '');
+      if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned.toLowerCase() !== 'id') {
+        guides.push(cleaned);
+      }
+    }
+  }
+  return guides;
+}
+
 export function categorizeAction(
   name: string,
   params?: Record<string, any>,

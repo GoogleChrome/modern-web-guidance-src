@@ -6,12 +6,19 @@
  * type-safe parameter interpolation.
  */
 
-import { type SolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, REPORT_FILE } from '../core/guide-validation.ts';
+import { type SolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, REPORT_FILE, TASK_FILE } from '../core/guide-validation.ts';
 import { Agents } from '../harness/config.ts';
 import type { TargetEvalSummary } from './dev-report.ts';
 
 /** Shared discipline-guide preamble for the solution, zero-passrate, and grader prompts. */
 const DISCIPLINE_RELEVANCE_RULE = '\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation will be relevant to this application. An expectation is relevant only if it applies to any web application (such as document metadata or response headers) or the application already contains the kind of element or feature it governs (such as forms, credential inputs, images, overlays or flyouts, cookies or sessions, iframes, external scripts, or a logout flow). Judge relevance by whether that element or feature exists, not by whether the technique the expectation recommends is already used: an existing element that lacks the recommended technique is exactly what should be implemented and tested.';
+
+export interface SolutionPromptOptions {
+  guideFile: string;
+  taskFile?: string;
+  workDir: string;
+  isDisciplineGuide?: boolean;
+}
 
 export interface PatchPromptOptions {
   guideFile: string;
@@ -20,23 +27,24 @@ export interface PatchPromptOptions {
   isDisciplineGuide?: boolean;
 }
 
-export function buildSolutionPrompt(opts: PatchPromptOptions): string {
+export function buildSolutionPrompt(opts: SolutionPromptOptions): string {
+  const taskFile = opts.taskFile ?? TASK_FILE;
   const disciplineInstruction = opts.isDisciplineGuide
-    ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to satisfy every expectation. Implement the relevant expectations and skip expectations for patterns the application does not have. Do NOT add new features, pages, routes, servers, forms, scripts, or content just to satisfy an expectation.`
+    ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to implement every pattern in \`${opts.guideFile}\`. Implement only the patterns that are relevant to the task in \`${taskFile}\` and the elements already present in the application. Do NOT add new features, pages, routes, servers, forms, scripts, or content that are not requested by the task.`
     : '';
-  const scope = opts.isDisciplineGuide ? 'the relevant' : 'all';
 
   return `# GOAL
-Modify the web application codebase in the directory \`${opts.workDir}\` to perfectly implement the guidance and satisfy ${scope} must-pass expectations in \`${opts.expectationsFile}\`.${disciplineInstruction}
+Modify the web application codebase in the directory \`${opts.workDir}\` to complete the developer task in \`${taskFile}\` by faithfully following the guidance in \`${opts.guideFile}\`.${disciplineInstruction}
 
 # INPUTS
-1. **Standard Guidance**: \`${opts.guideFile}\`
-2. **Verification Requirements**: \`${opts.expectationsFile}\`
+1. **Developer Task**: \`${taskFile}\`
+2. **Standard Guidance**: \`${opts.guideFile}\`
 
 # RULES
-1. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
+1. Do NOT modify \`${opts.guideFile}\` or \`${taskFile}\`.
 2. Ensure your implementation is robust, complete, and type-safe.
 3. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
+4. Do NOT start dev servers, preview servers, or background processes (e.g., npm run dev, npm start, astro preview, or importing dist/server/entry.mjs). Only run npm run build to verify compilation.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
@@ -59,11 +67,13 @@ If the codebase already contains partial, complete, or conflicting implementatio
 2. **Requirements**: \`${opts.expectationsFile}\`
 
 # RULES
-1. **No-Op by Default**: If the clean codebase does not have the feature implemented, do NOT modify any files.
-2. **Realistic Baseline**: If you make modifications, make sure they resemble a realistic baseline state of the application where the feature is absent. Do NOT write buggy or obviously broken code, and do NOT add any comments, messages, or placeholders indicating that this is a simulated, test, or baseline state.
-3. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
-4. Ensure your modifications are robust, complete, and type-safe.
-5. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
+1. **No-Op by Default**: If the clean codebase does not already implement the feature, do NOT modify any files (leave the workspace completely unchanged so the resulting patch is empty). Do NOT add new HTML elements, images, components, or styles just to have something to fail.
+2. **Realistic Baseline**: If the codebase already contains partial or complete implementations of the feature that would cause expectations in \`${opts.expectationsFile}\` to pass, strip or revert only those specific implementations back to a natural, unoptimized baseline state. Do NOT write buggy or obviously broken code, and do NOT add any comments, messages, or placeholders indicating that this is a simulated, test, or baseline state.
+3. **Never Copy Guide Examples or Plant Anti-Patterns**: Because this patch is applied to the base application before evaluation runs, NEVER copy example markup, dummy filenames, class names, or code snippets from \`${opts.guideFile}\` or \`${opts.expectationsFile}\`, and NEVER plant synthetic or inverted anti-pattern attributes (such as deprecated attributes or backwards priority values) that would tip off an evaluated agent.
+4. Do NOT modify \`${opts.guideFile}\` or \`${opts.expectationsFile}\`.
+5. Ensure your modifications are robust, complete, and type-safe.
+6. Your changes MUST compile cleanly. You can run \`npm run build\` inside your workspace to verify.
+7. Do NOT start dev servers, preview servers, or background processes (e.g., npm run dev, npm start, astro preview, or importing dist/server/entry.mjs). Only run npm run build to verify compilation.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
@@ -92,6 +102,9 @@ export interface GraderPromptOptions {
   };
 }
 
+// `runAgent` passes the prompt via CLI argv (`-p <prompt>`); cap failure logs to stay well below Linux's 128 KB `MAX_ARG_STRLEN` (`spawn E2BIG`).
+const MAX_FAILURE_CONTEXT_CHARS = 16_000;
+
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
   let prReviewContextBlock = '';
   if (opts.prContext?.comments) {
@@ -101,11 +114,16 @@ export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
     prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
   }
 
-  const contextBlock = opts.failureContext
+  const truncatedFailure =
+    opts.failureContext && opts.failureContext.length > MAX_FAILURE_CONTEXT_CHARS
+      ? `${opts.failureContext.slice(0, MAX_FAILURE_CONTEXT_CHARS)}\n...[truncated ${opts.failureContext.length - MAX_FAILURE_CONTEXT_CHARS} chars]`
+      : opts.failureContext;
+
+  const contextBlock = truncatedFailure
     ? `### ⚠️ PREVIOUS FAILURE CONTEXT
 The previous grader failed calibration with this error:
 \`\`\`
-${opts.failureContext}
+${truncatedFailure}
 \`\`\`
 Analyze this failure and modify the existing grader file to fix these assertions while still adhering to all rules below.
 
@@ -126,7 +144,7 @@ Analyze this failure and modify the existing grader file to fix these assertions
     .join('\n');
 
   const patchInstruction = opts.failureContext
-    ? `\n\n> [!NOTE]\n> If you determine that the calibration is failing because any of the golden solution patches or the zero-passrate patch (\`${opts.zeroPassratePatchFile}\`) has a bug, is missing required code, or is not broken in the correct way, you have permission to edit them directly. Any changes you save to the patch files in your workspace will be saved and verified in the next calibration attempt.`
+    ? `\n\n> [!NOTE]\n> Golden solution patches (\`patches/*-solution.patch\`) are **LOCKED** and any edits to them will be discarded. If calibration is failing because a golden solution used a different valid selector, helper, or structure than your test assumed, update \`${opts.graderFile}\` to accept all valid implementations. You may only edit \`${opts.zeroPassratePatchFile}\` if the baseline app already satisfies an expectation and needs to be adjusted.`
     : '';
 
   const disciplineInstruction = opts.isDisciplineGuide
@@ -154,7 +172,7 @@ Base your grader's imports, workspace setup, helper function usage, and test str
   - Use **Linkedom** for HTML structure and DOM querying (\`getHtmlDocuments\`).
   - Use **CSSOMNom** for CSS rules, at-rules (@media, @supports, @container, @view-transition), and declarations (\`getCssStyleSheet\`).
   - Use **ts-morph** for JavaScript/TypeScript syntax, AST analysis, and function/variable querying (\`getJsProject\`).
-- **Browser Checks Only When Necessary**: Only write browser-based Playwright E2E tests when strictly necessary (for requirements that cannot be verified statically, such as runtime click events or dynamic state updates). Omit browser test blocks entirely if static checks are sufficient.
+- **Browser Checks Only When Necessary**: Only write browser-based Playwright E2E tests when strictly necessary for requirements that cannot be verified statically (such as computed layout geometry or animations on existing base-app elements). Never write browser E2E tests that depend on newly invented page routes, custom REST API endpoints/payloads, or DOM selectors/button labels that only exist in the golden solution patches and are not part of the base application. Omit browser test blocks entirely if static checks are sufficient.
 - **Reference Examples & API Definitions**: Before writing tests, use your file-viewing tools to inspect these reference pattern libraries and API type definitions for implementation patterns:
   - **Test Fixture Helper Signatures (Reference Only)**: [test-fixture.reference.ts](file://${opts.testFixtureReferencePath})
   - **Static Analysis Patterns (Linkedom, CSSOMNom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
@@ -168,8 +186,10 @@ Write only one assertion per \`test('...', ...)\` block across both static and b
 
 ## 4. Precision & Matching Rules
 - **Outcome-Based Assertions**: Verify structural and functional requirements in static checks rather than forcing a single narrow implementation when valid alternatives exist.
+- **No Patch-Specific Identifier Overfitting**: The golden solution patches are examples of valid implementations, not an exhaustive specification. Never hardcode helper function names, local variable/state names, custom class names, or newly created filenames that happen to appear in the solution patches. Match conceptual roles, standard web platform APIs, and DOM/CSS semantics instead.
 - **Utility CSS Flexibility**: In apps using utility-first CSS frameworks (e.g., Tailwind), accept either standard CSS declarations (\`getCssStyleSheet\`) or equivalent utility classes on elements in template markup (\`getHtmlDocuments\`).
 - **Flexible Pattern Matching**: Avoid exact-string equality for dynamic names or classes. Use loose matches, inclusion checks, and word boundaries (e.g., \`/\\bname\\b/\`) to avoid substring false positives.
+- **No Vacuous Guards or \`test.skip()\`**: Never use \`test.skip()\`. Never wrap \`expect(...)\` inside \`if (items.length > 0)\` without first asserting \`expect(items.length).toBeGreaterThan(0)\`. Every \`test()\` block must execute a real, non-trivial assertion that fails when the requirement is absent.
 - **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
 
 ## 5. Dependencies & Sandbox Constraints
@@ -182,8 +202,8 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 }
 
 export interface TaskPromptOptions {
-  guideFile: string;
-  taskFile: string;
+  guideDescription: string;
+  taskFile?: string;
   baseApp: string;
   isDisciplineGuide?: boolean;
   prContext?: {
@@ -195,32 +215,38 @@ export interface TaskPromptOptions {
 
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
   const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
+  const taskFile = opts.taskFile ?? TASK_FILE;
 
   let prReviewContextBlock = '';
   if (opts.prContext?.comments) {
     const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS TASK PROMPT / IMPLEMENTATION'];
     parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
-    parts.push(`Carefully address any reviewer suggestions regarding the developer prompt in \`${opts.taskFile}\`. If a reviewer requested specific phrasing, wording adjustments, or additions to the test prompt, incorporate their feedback directly while adhering to all rules below.`);
+    parts.push(`Carefully address any reviewer suggestions regarding the developer prompt in \`${taskFile}\`. If a reviewer requested specific phrasing, wording adjustments, or additions to the test prompt, incorporate their feedback directly while adhering to all rules below.`);
     prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
   }
 
   return `${prReviewContextBlock}# GOAL
-Examine the codebase files of the web application \`${opts.baseApp}\` and read the \`description\` in the frontmatter of \`${opts.guideFile}\` to understand the ${target}.
-Generate a \`${opts.taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
+Examine the codebase files of the web application \`${opts.baseApp}\` and understand the ${target} from the following description:
+
+**Guide Description**: "${opts.guideDescription}"
+
+Generate a \`${taskFile}\` file containing exactly one realistic, high-level test prompt that a web developer would send to an AI coding assistant to apply the ${target} inside the application.
 
 # INPUTS
-1. **Standard Guidance**: \`${opts.guideFile}\`
-2. **Target File Name**: \`${opts.taskFile}\`
+1. **Guide Description**: "${opts.guideDescription}"
+2. **Target File Name**: \`${taskFile}\`
 
 # RULES
-1. **Focus on the Guide Description**: The prompt must request the overall desired user outcome based specifically on the **description** in the frontmatter of \`${opts.guideFile}\`, keeping the request simple, high-level, and generic.
-2. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcomes instead.
-3. **No Specific Details or Sub-Features**: Do NOT list or specify implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the frontmatter description of \`${opts.guideFile}\`.
-4. **Format**: Format \`${opts.taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
-5. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant.
-6. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "implement X", "modify Y"). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
-7. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
-8. **No Internal Project References**: Do NOT name the guide itself or indicate that guidance exists.
+1. **Grounded in the Application**: Examine the existing files in \`${opts.baseApp}\` and assume the developer is working on the existing app. Reference its real pages, components, cards, forms, or content where relevant, asking the assistant to upgrade, refactor, or modify those existing parts rather than emitting a generic, detached one-liner or building an isolated demo from scratch.
+2. **Never Copy Description Verbatim**: Do NOT copy the **Guide Description** string verbatim into \`${taskFile}\`. Adapt the desired user outcome into a natural developer request situated in the \`${opts.baseApp}\` application.
+3. **Preserve High-Level Capability Boundary**: Keep the functional domain and execution context from the **Guide Description** clear (e.g., distinguishing on-device / built-in browser capabilities vs. external cloud APIs) without naming specific JS/CSS APIs, properties, or method names.
+4. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcome instead.
+5. **No Specific Details or Sub-Features**: Keep the request high-level. Do NOT list or specify secondary implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the **Guide Description** above.
+6. **Format**: Format \`${taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
+7. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant — casual, natural, and direct.
+8. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "implement X", "modify Y", "update the ..."). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
+9. **No Fallbacks**: Do NOT mention or mandate legacy fallbacks in the prompt.
+10. **No Internal Project References**: Do NOT mention or hint at the name of the guide, any guidance files, or the web guidance project in \`${taskFile}\`.
 
 # INSTRUCTION
 When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
@@ -325,14 +351,22 @@ ${targetSections}
 # SYSTEM WORKFLOW CONTEXT
 To accurately diagnose failures, understand how \`gd dev\` generates and executes these components:
 1. **Ground Truth**: \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` define the canonical, framework-agnostic implementation and must-pass requirements.
-2. **Patches**: Golden solution diffs and the zero-passrate baseline are generated from \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`.
-3. **Task Prompt**: \`task.md\` is generated from the \`description\` frontmatter of \`${GUIDE_FILE}\` and the target app's codebase.
-4. **Grader**: \`grader.ts\` validates the requirements in \`${EXPECTATIONS_FILE}\` against the application workspace and is calibrated against the golden patches (must pass 100%) and zero-passrate patch (must fail 100%).
-5. **Agent Evaluation Run**: The agent executes the \`task.md\` prompt against each target app without guidance (\`unguided\`) and with guidance (\`guided\`), and results are verified with \`grader.ts\`.
+2. **Task Prompt**: \`task.md\` is generated first from only the frontmatter \`description\` of \`${GUIDE_FILE}\` and the target app codebase (isolated from \`${GUIDE_FILE}\` body and \`${EXPECTATIONS_FILE}\`).
+3. **Patches**: Golden solution diffs are generated by solution agents provided with only \`task.md\` and \`${GUIDE_FILE}\` (they never see \`${EXPECTATIONS_FILE}\`) and are locked during calibration. The \`zero-passrate.patch\` anti-pattern baseline is generated using \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`.
+4. **Grader**: \`grader.ts\` validates the requirements in \`${EXPECTATIONS_FILE}\` against the application workspace and is calibrated against the locked golden patches (must pass 100%) and zero-passrate patch (must fail 100%). If all active golden solutions fail the same test during calibration, calibration aborts early with \`CALIBRATION_FAILED\`.
+5. **Agent Evaluation Run**: If calibration passes, the evaluated agent executes the \`task.md\` prompt against each target app without guidance (\`unguided\`) and with guidance (\`guided\`), and results are verified with \`grader.ts\`.
 
 # ROOT-CAUSE DIAGNOSIS RULES (BY PRIMARY FLAG)
 
 Diagnose each target according to its assigned flag:
+
+0. **\`CALIBRATION_FAILED\`**:
+   - The test suite failed calibration against the golden solution patches before agent evaluation runs could execute — typically because all 3 golden solution agents (which only read \`task.md\` + \`guide.md\`) failed the same expectation in \`expectations.md\`, or because \`grader.ts\` has a broken assertion.
+   - **Treat \`guide.md\` as Authoritative over \`expectations.md\`**: Compare the failing test(s) against \`guide.md\` and \`expectations.md\`.
+     - If \`expectations.md\` demands a detail, sub-feature, selector, or requirement that is omitted from \`guide.md\` or marked optional/secondary in \`guide.md\`, **trim or relax \`expectations.md\`** (and update \`targets/<target>/grader.ts\` to match) rather than bloating \`guide.md\`. Modifying \`guide.md\` triggers \`gd-dev-content\` and pings human ATLs, so avoid editing \`guide.md\` unless \`guide.md\` itself has contradictory code snippets or is genuinely missing a core concept of the feature. Always append:
+       \`*(Note: These expectations/grader adjustments have already been applied directly in this PR. After reviewing, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*\`
+     - If \`expectations.md\` and \`guide.md\` are already aligned and the failure is purely a buggy or overly rigid check in \`targets/<target>/grader.ts\` or an under-scoped prompt in \`targets/<target>/task.md\`, fix \`targets/<target>/grader.ts\` or \`targets/<target>/task.md\` directly without touching \`guide.md\` or \`expectations.md\`. Always append:
+       \`*(Note: These target adjustments have already been applied directly in this PR. After reviewing, add the needs-eval-run label to the PR to re-run calibration when running gd dev-gap)*\`
 
 1. **\`INFRASTRUCTURE_ERROR\`**:
    - The test run failed due to execution timeouts, agent CLI process crashes, rate limits (429), or missing setup files.
@@ -358,6 +392,9 @@ Diagnose each target according to its assigned flag:
      - **Guidance Quality (\`${GUIDE_FILE}\`)**: Does the guide lack essential modern web practices, clear syntax examples, fallback patterns, or common pitfalls?
      - **Expectations Alignment (\`${EXPECTATIONS_FILE}\`)**: Are the must-pass expectations ambiguous, conflicting, or missing key constraints?
      - **Miscellaneous Issues**: Any other issues discovered.
+   - **Default Attribution Bias (\`targets/\` First, Avoid False-Alarm \`guide.md\` Edits)**:
+     - Because calibration already passed (meaning all 3 solution agents successfully implemented \`task.md\` using only \`guide.md\` and passed 100% of \`grader.ts\`), **presume \`targets/<target>/grader.ts\` or \`targets/<target>/task.md\` is at fault** (\`gd-dev-eval\`, no edits to \`guide.md\`, no ATL ping) unless \`guide.md\` is demonstrably missing a core requirement or contains a contradictory code snippet.
+     - If \`expectations.md\` is misaligned with \`guide.md\` (e.g. requiring something omitted or optional in \`guide.md\`), treat \`guide.md\` as authoritative and trim \`expectations.md\` (plus update \`targets/<target>/grader.ts\`) rather than adding extra requirements to \`guide.md\`.
    - **Recommendation Rules**:
      - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
        \`*(Note: These source guidance changes have already been applied directly to ${GUIDE_FILE} / ${EXPECTATIONS_FILE} in this PR. After reviewing, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*\`
