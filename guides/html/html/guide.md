@@ -22,8 +22,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ### Guidelines
 
 - **DO** use the standard HTML5 doctype `<!DOCTYPE html>` to prevent quirky rendering modes.
-- **DO** set the `lang` attribute on the `<html>` element, set to the primary document language, for screen reader pronunciation and translation tools.
-- **DO** set the `lang` attribute on content that uses a language that differs from the primary language, for screen reader pronunciation and translation tools.
+- **DO** set the `lang` attribute on the `<html>` element set to the primary document language and on any element that uses a language that differs from the primary language, for screen reader pronunciation and translation tools, and any locale-sensitive features (e.g. CSS `hyphens`).
 - **DO** use the `<meta name="viewport">` element with the `content` attribute set to `"width=device-width, initial-scale=1.0"` to ensure page responsiveness.
 - **DO** use a single `<h1>` per page/view representing the main topic. Exceptions can be made for modal dialogs, which can also use a single `<h1>`.
 - **DO** maintain a sequential, non-skipping heading hierarchy (`<h2>` to `<h3>`, but not `<h2>` to `<h4>`).
