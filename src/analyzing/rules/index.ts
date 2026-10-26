@@ -278,4 +278,10 @@ export const POST_SELECTION_TUNED_GUIDE_IDS: readonly string[] = [
   'calculate-event-differentials',
   'checkbox',
   'declarative-dialog-popover-control',
+  'styling-web-components',
+  'custom-text-decorations',
+  'equal-width-text-lines',
+  'prevent-page-scroll-under-modal-dialog',
+  'autofill-payment-form',
+  'customize-scrollbar-color-and-thickness',
 ] as const;
