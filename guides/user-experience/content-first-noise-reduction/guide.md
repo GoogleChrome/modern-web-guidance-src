@@ -91,7 +91,6 @@ Put long or rarely needed content (specs, FAQs, fine print) in a `details` eleme
 ### Scroll-state queries
 
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
-{# BASELINE_STATUS reflects stuck/snapped/scrollable (Chrome 133). scrolled needs Chrome 144 (BCD css.at-rules.container.scroll-state_queries.scrolled); switch to the BCD-key form once web-features includes that key. #}
 
 Without scroll-state queries, the bar never hides, but it stays compact and usable. If your Baseline target includes those browsers, add a small script so the bar hides there too. Browsers that support other scroll-state queries but not `scrolled` also keep the bar visible.
 
