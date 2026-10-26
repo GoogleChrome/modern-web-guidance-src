@@ -213,6 +213,7 @@ export interface GuideMetadata {
   draft?: DraftState;
   draftReason?: string;
   featureIds: string[];
+  title?: string;
 }
 
 export function parseGuideMetadata(
@@ -230,7 +231,9 @@ export function parseGuideMetadata(
   const hasGuide = hasContent && !isDraftStub(draft);
   const featureIds = Array.isArray(data['web-feature-ids']) ? data['web-feature-ids'] : [];
 
-  return { hasGuide, isStub, draft, draftReason, featureIds };
+  const title = (typeof data.title === 'string' && data.title.trim()) || extractH1Heading(content);
+
+  return { hasGuide, isStub, draft, draftReason, featureIds, title };
 }
 
 export function detectEvals(filePaths: Iterable<string>): { hasGrader: boolean; hasTask: boolean } {
@@ -355,7 +358,7 @@ export function validateGuide(filePath: string): ValidationResult {
 
   const maskedBody = maskComments(body);
   const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
-  errors.push(...validateMacros(maskedBody, relativePath, { target: isPublished ? 'static-site' : 'local-dev' }));
+  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'static-site' } : {}));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateCallouts(maskedBody, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
@@ -767,7 +770,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   return {
     dir,
     name,
-    title: (data.title as string | undefined) || extractH1Heading(content),
+    title: meta.title,
     category,
     hasGuide,
     isStub,
