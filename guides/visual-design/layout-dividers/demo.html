@@ -50,8 +50,10 @@
       border-radius: 0.5rem;
       font-size: 0.9rem;
       gap: 1.5rem;
+      /* Let items shrink and words break so the page reflows at 320px without sideways scroll. */
+      overflow-wrap: anywhere;
 
-      > * { margin: 0; padding: 0; list-style: none; }
+      > * { margin: 0; padding: 0; list-style: none; min-inline-size: 0; }
       b { display: block; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
       q { font-style: italic; }
     }
@@ -67,8 +69,8 @@
     /* 2. Flex row */
     .flex-row {
       display: flex;
-      justify-content: space-between;
       column-rule: 2px solid var(--rule);
+      > * { flex: 1; }
     }
 
     /* 3. Flex wrap, rules in both axes */
@@ -110,7 +112,7 @@
     /* 7. Spanning item: compare rule-break values */
     .spans {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       rule: 2px solid var(--rule);
       > .wide { grid-column: span 2; }
     }
@@ -121,7 +123,7 @@
     /* 8. Value lists and repeat() */
     .lists {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       column-rule: 3px solid var(--accent), repeat(auto, 1px dashed var(--rule)), 3px solid var(--accent-2);
       row-rule: 3px double var(--rule), repeat(auto, 1px solid var(--rule));
     }
@@ -129,7 +131,7 @@
     /* 9. Overlap */
     .overlap {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       column-rule: 8px solid var(--accent-2);
       row-rule: 8px solid var(--accent);
       gap: 2rem;
@@ -140,7 +142,7 @@
     /* 10. Empty cells and visibility */
     .empty {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       /* Real empty cells: place items explicitly and leave the rest unoccupied.
          A hidden or empty placeholder element still counts as an item. */
       grid-template-areas:
@@ -161,7 +163,7 @@
     /* 11. Hover transitions */
     .hover {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       rule: 1px solid var(--rule);
       rule-break: intersection;
       @media (prefers-reduced-motion: no-preference) {
@@ -177,14 +179,14 @@
     /* 12. Writing modes */
     .rtl {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       direction: rtl;
       column-rule: 3px solid var(--accent-2);
       row-rule: 1px solid var(--accent);
     }
     .vertical {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       writing-mode: vertical-rl;
       column-rule: 3px solid var(--accent-2);
       row-rule: 1px solid var(--accent);
