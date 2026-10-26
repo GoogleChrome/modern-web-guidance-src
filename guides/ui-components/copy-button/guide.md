@@ -13,7 +13,7 @@ Build a button that copies the text of another element (code block, inline value
 
 ## Implementation
 
-### 1. Markup (MANDATORY)
+### 1. Markup
 
 ```html
 <!-- Custom commands MUST start with "--". commandfor is the id of the element whose text is copied. -->
