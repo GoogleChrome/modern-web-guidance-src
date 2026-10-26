@@ -250,7 +250,7 @@
     <section>
       <h2>3. <code>closedby="any"</code> (light dismiss)</h2>
       <p class="note">Clicking the backdrop closes it natively. Where <code>closedby</code> is unsupported, a feature-tested
-        <code>pointerdown</code> fallback does the same.</p>
+        pointer fallback does the same.</p>
       <button type="button" command="show-modal" commandfor="any-dlg">Open the ice sea</button>
       <dialog id="any-dlg" closedby="any" aria-labelledby="any-title">
         <h2 id="any-title">The sea of ice</h2>
@@ -334,12 +334,16 @@
     // 3. Fallback light dismiss where closedby is unsupported
     const anyDlg = document.getElementById('any-dlg');
     if (!('closedBy' in HTMLDialogElement.prototype)) {
-      let downOnBackdrop = false;
-      anyDlg.addEventListener('pointerdown', (e) => { downOnBackdrop = e.target === anyDlg; });
-      anyDlg.addEventListener('pointerup', (e) => {
-        // Require press and release on the backdrop so text selection drags don't dismiss
-        if (downOnBackdrop && e.target === anyDlg) anyDlg.close();
-      });
+      // Test the pointer position, not event.target: the <dialog> is also the target for its own
+      // padding and the gaps between its children
+      const outside = (e, dialog) => {
+        const r = dialog.getBoundingClientRect();
+        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      };
+      let pressedOutside = false;
+      anyDlg.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, anyDlg); });
+      // Require press and release outside so text selection drags don't dismiss
+      anyDlg.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, anyDlg)) anyDlg.close(); });
     }
 
     // 4. Unsaved changes guard
