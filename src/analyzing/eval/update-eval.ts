@@ -27,7 +27,6 @@ import {
 import type { AnalyzerFinding } from '../schema.ts';
 
 const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
-const ANALYZER_INTERNAL_DIR = join(WORKTREE_ROOT, 'analyzer-internal');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 const CACHE_ROOT = join(homedir(), '.cache', 'repos');
 
@@ -1082,7 +1081,13 @@ export async function runFixEvaluationCli(): Promise<void> {
 
   // 2. Sample held-out findings from the qualified guides
   console.log(`\n[2/3] Sampling held-out findings across ${QUALIFIED_GUIDE_IDS.length} qualified guides...`);
-  const reposPath = join(ANALYZER_INTERNAL_DIR, 'repos.json');
+  const evalDataDir = process.env.ANALYZER_EVAL_DATA_DIR;
+  if (!evalDataDir) {
+    throw new Error(
+      'ANALYZER_EVAL_DATA_DIR environment variable is not set. Please set the ANALYZER_EVAL_DATA_DIR environment variable to the path of the evaluation data directory.',
+    );
+  }
+  const reposPath = join(evalDataDir, 'repos.json');
   const reposRaw = JSON.parse(await readFile(reposPath, 'utf8')) as RepoConfigEntry[];
   const gradingRepos = reposRaw.filter((r) => r.split === 'held-out');
 
@@ -1367,7 +1372,7 @@ export async function runFixEvaluationCli(): Promise<void> {
 
   const dateStr = report.timestamp.slice(0, 10);
   const outPath = join(
-    ANALYZER_INTERNAL_DIR,
+    evalDataDir,
     'findings',
     `${dateStr}-fix-scorecard.json`,
   );
@@ -1392,8 +1397,8 @@ export async function runFixEvaluationCli(): Promise<void> {
   console.log(`Saved report to:        ${outPath}`);
   console.log('============================================================\n');
 
-  // Record to analyzer-internal/PROGRESS.md
-  const progressPath = join(ANALYZER_INTERNAL_DIR, 'PROGRESS.md');
+  // Record to PROGRESS.md in evaluation data directory
+  const progressPath = join(evalDataDir, 'PROGRESS.md');
   try {
     let progressContent = await readFile(progressPath, 'utf8');
     const n = allSampledFindings.length;

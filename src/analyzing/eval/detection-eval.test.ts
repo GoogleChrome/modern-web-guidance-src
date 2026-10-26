@@ -184,29 +184,31 @@ describe('blind card formatting & request construction', () => {
     assert.ok(JUDGE_SYSTEM_PROMPT.includes('no-op syntax swap'));
     assert.ok(JUDGE_SYSTEM_PROMPT.includes('non-1:1 library component migration'));
 
-    const map = await loadGuideSummariesMap();
-    const itpSummary = map.get('individual-transform-properties');
-    assert.ok(itpSummary);
-    assert.equal(
-      itpSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
-      true,
-    );
+    if (process.env.ANALYZER_EVAL_DATA_DIR) {
+      const map = await loadGuideSummariesMap();
+      const itpSummary = map.get('individual-transform-properties');
+      assert.ok(itpSummary);
+      assert.equal(
+        itpSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
+        true,
+      );
 
-    // Negative assertion: unverified spec entries without provenance do not inject a Technical Reference Dossier
-    assert.equal(
-      formatGuideTriageDossier(unverifiedSpec).includes('### Technical Reference Dossier'),
-      false,
-    );
-    assert.equal(
-      formatGuideTriageDossier(templatedWithProvenance).includes('### Technical Reference Dossier'),
-      false,
-    );
-    const unverifiedSummary = map.get('trusted-types');
-    assert.ok(unverifiedSummary);
-    assert.equal(
-      unverifiedSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
-      false,
-    );
+      // Negative assertion: unverified spec entries without provenance do not inject a Technical Reference Dossier
+      assert.equal(
+        formatGuideTriageDossier(unverifiedSpec).includes('### Technical Reference Dossier'),
+        false,
+      );
+      assert.equal(
+        formatGuideTriageDossier(templatedWithProvenance).includes('### Technical Reference Dossier'),
+        false,
+      );
+      const unverifiedSummary = map.get('trusted-types');
+      assert.ok(unverifiedSummary);
+      assert.equal(
+        unverifiedSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
+        false,
+      );
+    }
   });
 
   it('builds Gemini request body with JSON schema and temperature 0.2', () => {
@@ -960,7 +962,24 @@ Use the sample-feature property on the root element.
 });
 
 describe('loadPaulIrishScoredCards', () => {
-  it('loads the human-scored cards from canonical files excluding unsure, stubs, retired guides, and verifier drops', async () => {
+  it('fails fast when ANALYZER_EVAL_DATA_DIR is unset', async () => {
+    const orig = process.env.ANALYZER_EVAL_DATA_DIR;
+    delete process.env.ANALYZER_EVAL_DATA_DIR;
+    try {
+      await assert.rejects(
+        () => loadPaulIrishScoredCards(),
+        /ANALYZER_EVAL_DATA_DIR environment variable is not set/,
+      );
+    } finally {
+      if (orig) process.env.ANALYZER_EVAL_DATA_DIR = orig;
+    }
+  });
+
+  it('loads the human-scored cards from canonical files excluding unsure, stubs, retired guides, and verifier drops', async (t) => {
+    if (!process.env.ANALYZER_EVAL_DATA_DIR) {
+      t.skip('ANALYZER_EVAL_DATA_DIR not set');
+      return;
+    }
     const { cards, humanVerdicts } = await loadPaulIrishScoredCards();
     assert.ok(cards.length >= 90);
     assert.equal(humanVerdicts.size, cards.length);

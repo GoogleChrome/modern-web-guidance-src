@@ -1,12 +1,10 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { getGeminiApiKey } from './detection-eval.ts';
 
-const ANALYZER_INTERNAL_DIR = resolve(import.meta.dirname, '../../../analyzer-internal');
-
 /**
- * Guide Triage bucket classifying whether a published feature guide has a statically detectable brownfield target (`D-005`):
+ * Guide Triage bucket classifying whether a published feature guide has a statically detectable brownfield target:
  * - `'detectable'`: The guide replaces a concrete, statically identifiable legacy browser API, CSS property/selector workaround, DOM markup pattern, or third-party package in brownfield code.
  * - `'ui-recipe-multi-part'`: The guide teaches a multi-element UI component or architectural recipe (e.g. carousel, tabs, navigation drawer) where legacy implementations vary wildly and lack a single high-precision static code hook.
  * - `'skip-no-old-way'`: The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API) with no direct legacy browser workaround to migrate from.
@@ -63,11 +61,13 @@ export {
 export const GUIDE_TRIAGE_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-export const DEFAULT_EXPLAINERS_JSON_PATH = join(
-  ANALYZER_INTERNAL_DIR,
-  'findings',
-  '2026-10-19-guide-explainers-171.json',
-);
+export const DEFAULT_EXPLAINERS_JSON_PATH = process.env.ANALYZER_EVAL_DATA_DIR
+  ? join(
+      process.env.ANALYZER_EVAL_DATA_DIR,
+      'findings',
+      '2026-10-19-guide-explainers-171.json',
+    )
+  : '';
 
 export interface ExplainerContextEntry {
   readonly combinedExcerpt: string;
@@ -82,6 +82,9 @@ export async function loadExplainerContextMap(
   explainersJsonPath: string = DEFAULT_EXPLAINERS_JSON_PATH,
 ): Promise<Map<string, ExplainerContextEntry>> {
   const map = new Map<string, ExplainerContextEntry>();
+  if (!explainersJsonPath) {
+    return map;
+  }
   let content: string;
   try {
     content = await readFile(explainersJsonPath, 'utf8');

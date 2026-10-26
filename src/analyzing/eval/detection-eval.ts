@@ -31,15 +31,20 @@ import { getGeminiApiKey, findGuideMarkdownPath, loadRawGuideMarkdown } from '..
 
 const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
-const ANALYZER_INTERNAL_DIR = join(WORKTREE_ROOT, 'analyzer-internal');
-const LABELS_DIR = join(ANALYZER_INTERNAL_DIR, 'labels');
-const CARDS_DIR = join(LABELS_DIR, 'cards');
-const GRADES_PATH = process.env.GRADES_PATH ?? join(LABELS_DIR, 'grades.jsonl');
-const GUIDE_TRIAGE_PATH = join(ANALYZER_INTERNAL_DIR, 'guide-triage.json');
-const GUIDE_TRIAGE_JSON_PATH = GUIDE_TRIAGE_PATH;
-const CALIBRATION_DECK_PATH = join(CARDS_DIR, 'calibration-deck.json');
-const SPOTCHECK_DECK_PATH = join(CARDS_DIR, 'm3-spotcheck-deck.json');
-const REPOS_CONFIG_PATH = join(ANALYZER_INTERNAL_DIR, 'repos.json');
+
+/**
+ * Resolves the directory containing offline evaluation datasets and human calibration labels.
+ * When unset, functions requiring evaluation data fail fast with a descriptive error.
+ */
+export function getAnalyzerEvalDataDir(): string {
+  const dir = process.env.ANALYZER_EVAL_DATA_DIR;
+  if (!dir) {
+    throw new Error(
+      'ANALYZER_EVAL_DATA_DIR environment variable is not set. Please set ANALYZER_EVAL_DATA_DIR to point to your evaluation data directory.',
+    );
+  }
+  return dir;
+}
 
 export interface RepoConfigEntry {
   readonly repo: string;
@@ -59,7 +64,7 @@ export const JUDGE_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 /**
- * Canonical 7-verdict evaluation taxonomy for grading detected findings (D-040, D-045, D-048).
+ * Canonical 7-verdict evaluation taxonomy for grading detected findings.
  * - `'legit-modernize-target'`: Genuine legacy pattern where applying the guide is a clean win (the code matches the legacy/"Before" pattern or library workaround replaced by this guide, is not an intentional fallback, covers needed capabilities, and has meaningful payoff).
  * - `'not-old-pattern'`: Matcher misfired — this code isn't even doing the legacy pattern the guide replaces (matcher misfire / token collision).
  * - `'fallback-or-guard'`: Intentional fallback, `@supports` check, feature guard, ponyfill, or polyfill.
@@ -888,9 +893,13 @@ export function evaluateJudgeMetrics(
  * Loads human grades from the canonical grades file into a Map.
  */
 export async function loadHumanGrades(
-  gradesFilePath: string = GRADES_PATH,
+  gradesFilePath?: string,
 ): Promise<Map<string, string>> {
-  const content = await readFile(gradesFilePath, 'utf8');
+  const resolvedPath =
+    gradesFilePath ??
+    process.env.GRADES_PATH ??
+    join(getAnalyzerEvalDataDir(), 'labels', 'grades.jsonl');
+  const content = await readFile(resolvedPath, 'utf8');
   const lines = content.trim().split('\n').filter(Boolean);
   const map = new Map<string, string>();
 
@@ -1225,87 +1234,91 @@ export async function loadGuideSummariesMap(
     await walk(guidesRootDirOrFile);
   }
 
-  // Check if explainers JSON exists on disk, and if so, populate explainerContext on each guide
-  const explainersJsonPath = join(
-    ANALYZER_INTERNAL_DIR,
-    'findings',
-    '2026-10-19-guide-explainers-171.json',
-  );
-  try {
-    const explainersContent = await readFile(explainersJsonPath, 'utf8');
-    const parsed = JSON.parse(explainersContent) as unknown;
-    if (Array.isArray(parsed)) {
-      for (const item of parsed) {
-        if (typeof item === 'object' && item !== null) {
-          const rec = item as Record<string, unknown>;
-          const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
-          const excerpt =
-            typeof rec.combinedExcerpt === 'string'
-              ? rec.combinedExcerpt
-              : typeof rec.explainerContext === 'string'
-                ? rec.explainerContext
-                : typeof rec.excerpt === 'string'
-                  ? rec.excerpt
-                  : '';
-          if (guideId && excerpt.trim()) {
+  const evalDataDir = process.env.ANALYZER_EVAL_DATA_DIR;
+  if (evalDataDir) {
+    // Check if explainers JSON exists on disk, and if so, populate explainerContext on each guide
+    const explainersJsonPath = join(
+      evalDataDir,
+      'findings',
+      '2026-10-19-guide-explainers-171.json',
+    );
+    try {
+      const explainersContent = await readFile(explainersJsonPath, 'utf8');
+      const parsed = JSON.parse(explainersContent) as unknown;
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (typeof item === 'object' && item !== null) {
+            const rec = item as Record<string, unknown>;
+            const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
+            const excerpt =
+              typeof rec.combinedExcerpt === 'string'
+                ? rec.combinedExcerpt
+                : typeof rec.explainerContext === 'string'
+                  ? rec.explainerContext
+                  : typeof rec.excerpt === 'string'
+                    ? rec.excerpt
+                    : '';
+            if (guideId && excerpt.trim()) {
+              const existing = map.get(guideId);
+              if (existing) {
+                map.set(guideId, { ...existing, explainerContext: excerpt.trim() });
+              }
+            }
+          }
+        }
+      } else if (typeof parsed === 'object' && parsed !== null) {
+        for (const [guideId, val] of Object.entries(parsed as Record<string, unknown>)) {
+          let excerpt = '';
+          if (typeof val === 'string') {
+            excerpt = val.trim();
+          } else if (typeof val === 'object' && val !== null) {
+            const rec = val as Record<string, unknown>;
+            excerpt =
+              typeof rec.combinedExcerpt === 'string'
+                ? rec.combinedExcerpt.trim()
+                : typeof rec.explainerContext === 'string'
+                  ? rec.explainerContext.trim()
+                  : typeof rec.excerpt === 'string'
+                    ? rec.excerpt.trim()
+                    : '';
+          }
+          if (excerpt) {
             const existing = map.get(guideId);
             if (existing) {
-              map.set(guideId, { ...existing, explainerContext: excerpt.trim() });
+              map.set(guideId, { ...existing, explainerContext: excerpt });
             }
           }
         }
       }
-    } else if (typeof parsed === 'object' && parsed !== null) {
-      for (const [guideId, val] of Object.entries(parsed as Record<string, unknown>)) {
-        let excerpt = '';
-        if (typeof val === 'string') {
-          excerpt = val.trim();
-        } else if (typeof val === 'object' && val !== null) {
-          const rec = val as Record<string, unknown>;
-          excerpt =
-            typeof rec.combinedExcerpt === 'string'
-              ? rec.combinedExcerpt.trim()
-              : typeof rec.explainerContext === 'string'
-                ? rec.explainerContext.trim()
-                : typeof rec.excerpt === 'string'
-                  ? rec.excerpt.trim()
-                  : '';
-        }
-        if (excerpt) {
-          const existing = map.get(guideId);
-          if (existing) {
-            map.set(guideId, { ...existing, explainerContext: excerpt });
+    } catch {
+      /* ignore missing or unreadable explainers file */
+    }
+
+    // Also inject Technical Reference Dossier from guide-triage.json (or legacy specs) (R45)
+    try {
+      const guideTriageJsonPath = join(evalDataDir, 'guide-triage.json');
+      const specsContent = await readFile(guideTriageJsonPath, 'utf8');
+      const parsedSpecs = JSON.parse(specsContent) as unknown;
+      if (Array.isArray(parsedSpecs)) {
+        for (const item of parsedSpecs) {
+          if (typeof item === 'object' && item !== null) {
+            const rec = item as Record<string, unknown>;
+            const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
+            if (!guideId) continue;
+            const existing = map.get(guideId);
+            if (!existing) continue;
+            const dossier = formatGuideTriageDossier(rec);
+            if (!dossier) continue;
+            const mergedContext = existing.explainerContext
+              ? `${existing.explainerContext}\n\n${dossier}`
+              : dossier;
+            map.set(guideId, { ...existing, explainerContext: mergedContext });
           }
         }
       }
+    } catch {
+      /* ignore missing or unreadable guide-triage.json */
     }
-  } catch {
-    /* ignore missing or unreadable explainers file */
-  }
-
-  // Also inject Technical Reference Dossier from analyzer-internal/guide-triage.json (or legacy specs) (R45)
-  try {
-    const specsContent = await readFile(GUIDE_TRIAGE_JSON_PATH, 'utf8');
-    const parsedSpecs = JSON.parse(specsContent) as unknown;
-    if (Array.isArray(parsedSpecs)) {
-      for (const item of parsedSpecs) {
-        if (typeof item === 'object' && item !== null) {
-          const rec = item as Record<string, unknown>;
-          const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
-          if (!guideId) continue;
-          const existing = map.get(guideId);
-          if (!existing) continue;
-          const dossier = formatGuideTriageDossier(rec);
-          if (!dossier) continue;
-          const mergedContext = existing.explainerContext
-            ? `${existing.explainerContext}\n\n${dossier}`
-            : dossier;
-          map.set(guideId, { ...existing, explainerContext: mergedContext });
-        }
-      }
-    }
-  } catch {
-    /* ignore missing or unreadable guide-triage.json */
   }
 
   return map;
@@ -1321,10 +1334,17 @@ export interface PaulIrishGradesResult {
  * Returns only the scored cards (excluding 'unsure').
  */
 export async function loadPaulIrishScoredCards(
-  gradesPath: string = GRADES_PATH,
-  cardsDir: string = CARDS_DIR,
+  gradesPath?: string,
+  cardsDir?: string,
 ): Promise<PaulIrishGradesResult> {
-  const content = await readFile(gradesPath, 'utf8');
+  const evalDataDir = (!gradesPath || !cardsDir) ? getAnalyzerEvalDataDir() : '';
+  const resolvedGradesPath =
+    gradesPath ??
+    process.env.GRADES_PATH ??
+    join(evalDataDir, 'labels', 'grades.jsonl');
+  const resolvedCardsDir = cardsDir ?? join(evalDataDir, 'labels', 'cards');
+
+  const content = await readFile(resolvedGradesPath, 'utf8');
   const lines = content.trim().split('\n').filter(Boolean);
   const latestGrades = new Map<string, JudgeVerdict>();
 
@@ -1357,10 +1377,10 @@ export async function loadPaulIrishScoredCards(
   }
 
   // Load known deck paths if they exist
-  await ingestJsonFile(CALIBRATION_DECK_PATH);
-  await ingestJsonFile(SPOTCHECK_DECK_PATH);
-  await ingestJsonFile(join(cardsDir, '_calibration-deck.json'));
-  await ingestJsonFile(join(cardsDir, '_m3-spotcheck-deck.json'));
+  await ingestJsonFile(join(resolvedCardsDir, 'calibration-deck.json'));
+  await ingestJsonFile(join(resolvedCardsDir, 'm3-spotcheck-deck.json'));
+  await ingestJsonFile(join(resolvedCardsDir, '_calibration-deck.json'));
+  await ingestJsonFile(join(resolvedCardsDir, '_m3-spotcheck-deck.json'));
 
   async function scanDirectory(dir: string, maxDepth = 3): Promise<void> {
     if (maxDepth < 0) return;
@@ -1379,8 +1399,8 @@ export async function loadPaulIrishScoredCards(
     }
   }
 
-  await scanDirectory(cardsDir);
-  await scanDirectory(dirname(cardsDir), 1);
+  await scanDirectory(resolvedCardsDir);
+  await scanDirectory(dirname(resolvedCardsDir), 1);
 
   const scoredCards: CalibrationDeckItem[] = [];
   const scoredVerdicts = new Map<string, JudgeVerdict>();
@@ -1391,7 +1411,7 @@ export async function loadPaulIrishScoredCards(
     }
     const card = allCardsMap.get(cardId);
     if (!card) {
-      throw new Error(`Card ${cardId} in ${gradesPath} not found in ${cardsDir}`);
+      throw new Error(`Card ${cardId} in ${resolvedGradesPath} not found in ${resolvedCardsDir}`);
     }
     // Skip stub guides, retired guides (except the 2 canonical negative canary cards), and LLM Verifier drop cards
     const isCanaryCard = cardId === '2547b2ba6d74' || cardId === '7f2a96f62a4c';
@@ -1448,9 +1468,12 @@ export interface CalibrationDeckItem {
  * Loads calibration deck from JSON file.
  */
 export async function loadCalibrationDeck(
-  deckFilePath: string = CALIBRATION_DECK_PATH,
+  deckFilePath?: string,
 ): Promise<CalibrationDeckItem[]> {
-  const content = await readFile(deckFilePath, 'utf8');
+  const resolvedPath =
+    deckFilePath ??
+    join(getAnalyzerEvalDataDir(), 'labels', 'cards', 'calibration-deck.json');
+  const content = await readFile(resolvedPath, 'utf8');
   return JSON.parse(content) as CalibrationDeckItem[];
 }
 
@@ -1478,9 +1501,11 @@ export function extractCodeSnippet(fileContent: string, targetLine: number, radi
 export async function prepareBlindCards(
   items: ReadonlyArray<CalibrationDeckItem>,
   guideSummaries: ReadonlyMap<string, GuideSummaryInfo>,
-  reposConfigPath: string = REPOS_CONFIG_PATH,
+  reposConfigPath?: string,
 ): Promise<BlindCardPayload[]> {
-  const reposContent = await readFile(reposConfigPath, 'utf8');
+  const resolvedReposPath =
+    reposConfigPath ?? join(getAnalyzerEvalDataDir(), 'repos.json');
+  const reposContent = await readFile(resolvedReposPath, 'utf8');
   const repoEntries = JSON.parse(reposContent) as RepoConfigEntry[];
   const repoMap = new Map(repoEntries.map((r) => [r.repo, r]));
 

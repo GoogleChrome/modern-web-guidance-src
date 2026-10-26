@@ -13,7 +13,7 @@ import {
 
 describe('computeCardId', () => {
   it('computes 12-char SHA-256 matching spec §2.1 and existing labels', () => {
-    // Verified against analyzer-internal/labels/cards/lh-scorecalc.json
+    // Verified against labels/cards/lh-scorecalc.json
     const id1 = computeCardId(
       'lh-scorecalc',
       'a2a9e2bd036758d161c7ec80f20b1c158c069b2f',
@@ -23,7 +23,7 @@ describe('computeCardId', () => {
     );
     assert.strictEqual(id1, 'f724500e2ff9');
 
-    // Verified against analyzer-internal/labels/cards/fastmail-overture.json
+    // Verified against labels/cards/fastmail-overture.json
     const id2 = computeCardId(
       'fastmail-overture',
       '532d7d10d6052eb65e36b8ae9cd2d30ffa5925c8',

@@ -6,7 +6,7 @@ import {
   SUSPENDED_QUALIFIED_GUIDE_IDS,
 } from './qualification.ts';
 
-describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-045, D-046, D-048)', () => {
+describe('qualification shipping lists', () => {
   it('maintains 6 default shipping guides under Static Matcher Precision >= 90.0% at n >= 20', () => {
     assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 6);
     assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, [
@@ -19,7 +19,7 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
     ]);
   });
 
-  it('records the 4 suspended guides (D-041, D-042, D-048)', () => {
+  it('records the 4 suspended guides', () => {
     assert.deepStrictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS, [
       'autofill-highlight-inputs',
       'complex-shapes',
@@ -28,7 +28,7 @@ describe('qualification shipping lists (O40, O42, O64, O65, O6, D-041, D-042, D-
     ]);
   });
 
-  it('guarantees shipping lists cannot include experimental or suspended guides (O64, D-048)', () => {
+  it('guarantees shipping lists cannot include experimental or suspended guides', () => {
     const nonQualified = [
       'autofill-highlight-inputs',
       'complex-shapes',
