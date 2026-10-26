@@ -529,7 +529,6 @@ export const durationJsMatcher: JsRuleMatcher = {
     'msToDuration',
     '86400',
     '3600',
-    '60',
   ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const fullText = sourceFile.getFullText();
@@ -541,13 +540,12 @@ export const durationJsMatcher: JsRuleMatcher = {
     const visitedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {
-      if (isProtectedByFeatureGuard(node, DURATION_FEATURE_TOKENS)) {
-        return;
-      }
-
       if (Node.isCallExpression(node)) {
         const knownCall = isKnownDurationCall(node);
         if (knownCall !== null) {
+          if (isProtectedByFeatureGuard(node, DURATION_FEATURE_TOKENS)) {
+            return;
+          }
           const line = node.getStartLineNumber();
           if (!visitedLines.has(line)) {
             visitedLines.add(line);
@@ -564,6 +562,9 @@ export const durationJsMatcher: JsRuleMatcher = {
         Node.isMethodDeclaration(node)
       ) {
         if (isCustomDurationFormatterFunction(node)) {
+          if (isProtectedByFeatureGuard(node, DURATION_FEATURE_TOKENS)) {
+            return;
+          }
           const line = node.getStartLineNumber();
           if (!visitedLines.has(line)) {
             visitedLines.add(line);

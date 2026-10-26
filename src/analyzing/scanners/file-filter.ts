@@ -23,11 +23,14 @@ export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   '.temp',
   'gen',
   'generated',
+  'snapshots',
+  'extracted_snapshots',
 ]);
 
 export const CHECKED_IN_VENDOR_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'vendor',
   'third_party',
+  'third-party',
   'external',
   'bower_components',
   'jspm_packages',
@@ -85,6 +88,7 @@ export const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
  * Well-known vendored third-party library filenames (unminified copies checked into repos, R42).
  */
 export const VENDORED_LIBRARY_FILENAMES: ReadonlySet<string> = new Set([
+  'bundle.js',
   'bootstrap.js',
   'bootstrap.bundle.js',
   'bootstrap-sprockets.js',
@@ -268,10 +272,21 @@ export function isMinifiedContent(
   const lines = content.split('\n');
   if (lines.length <= 1) {
     const singleLine = lines[0] ?? '';
-    if (INLINE_ASSET_LINE_REGEX.test(singleLine)) {
+    if (singleLine.length <= maxLineLength) {
       return false;
     }
-    return singleLine.length > maxLineLength;
+    if (INLINE_ASSET_LINE_REGEX.test(singleLine)) {
+      const trimmed = singleLine.trim();
+      const collapsed = singleLine.replace(STRING_LITERAL_REGEX, '');
+      if (
+        trimmed.startsWith('<svg') ||
+        trimmed.startsWith('data:') ||
+        collapsed.length <= maxLineLength
+      ) {
+        return false;
+      }
+    }
+    return true;
   }
 
   const nonEmptyLines: string[] = [];

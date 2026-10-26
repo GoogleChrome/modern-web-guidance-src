@@ -317,4 +317,28 @@ describe('ime-safe-enter-submit rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('exempts keydown Enter handlers inside test and spec files', () => {
+    const code = `
+      textarea.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          form.requestSubmit();
+        }
+      });
+    `;
+    const testPaths = [
+      'src/__tests__/chat.test.ts',
+      'tests/input.spec.js',
+      'components/ChatBox.test.tsx',
+    ];
+    for (const testPath of testPaths) {
+      const { matches } = scanJsSource(
+        testPath,
+        code,
+        [imeSafeEnterSubmitMatcher],
+        project,
+      );
+      assert.equal(matches.length, 0, `Expected no matches for test file ${testPath}`);
+    }
+  });
 });

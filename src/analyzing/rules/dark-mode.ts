@@ -101,9 +101,9 @@ const darkModeJsMatcher: JsRuleMatcher = {
 
     const content = ctx.fileContent;
     const hasChangeListener =
-      content.includes("addEventListener('change'") ||
-      content.includes('addEventListener("change"') ||
-      content.includes('.addListener(');
+      content.includes('.addListener(') ||
+      /\baddEventListener\s*\([^;()]{0,120}['"`]change['"`]/.test(content) ||
+      /\.onchange\s*=/.test(content);
 
     // Check actual color-scheme property or property access, avoiding query literal (J-1)
     const hasColorScheme =

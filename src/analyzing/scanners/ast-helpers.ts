@@ -592,6 +592,11 @@ export function isProtectedByFeatureGuard(
   node: Node,
   featureTokens: readonly string[],
 ): boolean {
+  const sfText = node.getSourceFile().getFullText();
+  if (!featureTokens.some((token) => sfText.includes(token))) {
+    return false;
+  }
+
   // If node is a CallExpression (e.g. addEventListener) or BinaryExpression (e.g. onscroll = handler),
   // check if any callable argument/RHS contains an early-return guard checking featureTokens.
   if (Node.isCallExpression(node)) {

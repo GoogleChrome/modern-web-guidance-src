@@ -117,4 +117,20 @@ void test('dark-mode/js-match-media: JS negative / exempt cases', async (t) => {
     const { matches } = scanJsSource('guarded.js', code, [jsMatcher], project);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts matchMedia assigned to property and passed to addEventListener helper', () => {
+    const code = `
+      class Tokenizer {
+        #mediaQueryList;
+        constructor() {
+          this.#mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)');
+          addEventListener(this.#mediaQueryList, 'change', () => {
+            this.handleThemeChange();
+          });
+        }
+      }
+    `;
+    const { matches } = scanJsSource('tokenizer.js', code, [jsMatcher], project);
+    assert.equal(matches.length, 0);
+  });
 });

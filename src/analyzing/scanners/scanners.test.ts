@@ -121,6 +121,14 @@ void test('file-filter: path and content classification', async (t) => {
     const fileWithSvg = Array.from({ length: 30 }, (_, i) => `// line ${i}`).join('\n') +
       `\nconst icon = '<svg viewBox="0 0 100 100">${'path '.repeat(500)}</svg>';\n`;
     assert.equal(isMinifiedContent(fileWithSvg), false);
+
+    // Single-line minified file containing an embedded data URI should still be flagged as minified
+    const minifiedWithEmbeddedDataUri =
+      'const a = 1; ' +
+      'var x = 0; '.repeat(100) +
+      'const data = "data:application/octet-stream;base64,AAAA"; ' +
+      'var y = 2; '.repeat(100);
+    assert.equal(isMinifiedContent(minifiedWithEmbeddedDataUri), true);
   });
 
   await t.test('detects third-party license headers with semver', () => {

@@ -21,6 +21,9 @@ const ARIA_BUTTON_ROLES = new Set([
   'option',
 ]);
 
+const TEST_FILE_PATH_REGEX =
+  /(?:^|\/)(?:__tests__|tests?|specs?)\/|\.(?:test|spec)\.[cm]?[jt]sx?$/i;
+
 /**
  * Checks if a branch contains only event suppression calls (preventDefault, stopPropagation)
  * and control returns, with no submission or action invocations.
@@ -343,7 +346,11 @@ function matchOnKeydownAssignment(sourceFile: SourceFile): AnalyzerMatch[] {
 export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['keydown', 'onkeydown', 'onKeyDown'],
-  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
+  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
+    if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {
+      return [];
+    }
+
     const matches: AnalyzerMatch[] = [];
     const reportedLines = new Set<number>();
 
