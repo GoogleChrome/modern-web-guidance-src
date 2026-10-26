@@ -24,6 +24,44 @@ function getSpeculationRules(html: string) {
   }
 }
 
+// Collect the patterns a rule set can positively match, walking the `where` clause
+// and tracking `not` nesting. Each `not` flips the polarity, so a doubly negated
+// matcher (e.g. {"not": {"not": {"href_matches": "/logout"}}}) still matches the
+// URL and must be reported as positive.
+function getPositiveMatchers(clause: unknown, negated = false, matchers: string[] = []): string[] {
+  if (!clause || typeof clause !== 'object') {
+    return matchers;
+  }
+
+  const record = clause as Record<string, unknown>;
+
+  if ('not' in record) {
+    getPositiveMatchers(record.not, !negated, matchers);
+  }
+
+  for (const key of ['and', 'or']) {
+    const subclauses = record[key];
+    if (Array.isArray(subclauses)) {
+      for (const subclause of subclauses) {
+        getPositiveMatchers(subclause, negated, matchers);
+      }
+    }
+  }
+
+  if (!negated) {
+    for (const key of ['href_matches', 'selector_matches']) {
+      const value = record[key];
+      if (typeof value === 'string') {
+        matchers.push(value);
+      } else if (Array.isArray(value)) {
+        matchers.push(...value.filter((item): item is string => typeof item === 'string'));
+      }
+    }
+  }
+
+  return matchers;
+}
+
 test.describe(`Improve next page load performance Expectations: ${demoName}`, () => {
   
   // 1. Check for <script type="speculationrules">
@@ -120,7 +158,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
   });
 
   // 8. Check for state-changing URLs
-  test('URLs that likely trigger state changes (such as "/logout") are not speculated', async () => {
+  test('URLs that likely trigger state changes (such as "/logout") are not listed as a positive match in urls or where', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
@@ -131,8 +169,8 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
           expect(set.urls.some((url: string) => url.toLowerCase().includes('logout'))).toBe(false);
         }
         if (set.where) {
-          const positiveWhere = JSON.stringify(set.where, (key, value) => (key === 'not' ? undefined : value));
-          expect(positiveWhere.toLowerCase().includes('logout')).toBe(false);
+          const positiveMatchers = getPositiveMatchers(set.where).map((matcher) => matcher.toLowerCase());
+          expect(positiveMatchers.some((matcher) => matcher.includes('logout'))).toBe(false);
         }
       }
     } else {

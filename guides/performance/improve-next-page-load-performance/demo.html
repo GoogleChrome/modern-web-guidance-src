@@ -24,11 +24,13 @@
         },
         {
           "tag": "prerender-document-rules",
+          "eagerness": "moderate",
           "where": {
             "and": [
               { "href_matches": "/*" },
               { "not": { "href_matches": "/logout" } },
               { "not": { "href_matches": "/logout/*" } },
+              { "not": { "href_matches": "/wp-admin" } },
               { "not": { "href_matches": "/wp-admin/*" } }
             ]
           }
