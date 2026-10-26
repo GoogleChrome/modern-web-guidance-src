@@ -81,16 +81,6 @@ Reviewers can inspect the file diffs in the PR, leave inline comments or push ad
 
 Separately, `src/ci/sync-pipeline-issue.ts` maintains the canonical [Content & Eval Pipeline issue (#1815)](https://github.com/GoogleChrome/modern-web-guidance-src/issues/1815), including flagging guides under **Stale evals** whenever `expectations.md` has substantive changes newer than `grader.ts` or `targets/`.
 
-### Checking Status: `gd audit`
-
-You can use `gd audit` to see exactly where every guide sits in the Kanban board pipeline:
-
-```bash
-gd audit
-```
-
-This will output a categorized table sorted into the 6 maturity stages (`Stub`, `Incomplete`, `Needs expectations`, `Needs calibration`, `Needs test`, `Eval-ready`), along with recommended next steps.
-
 ### Manual Piece-wise execution
 
 Occasionally, you may want to generate or test specific pieces of the pipeline manually.

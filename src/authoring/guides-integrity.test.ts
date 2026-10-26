@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import path from 'node:path';
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
 // Import shared utilities
@@ -55,7 +55,7 @@ describe('Guides Validation (Single Source of Truth)', () => {
 
       const content = fs.readFileSync(guidePath, 'utf8');
 
-      // 1. Check frontmatter with gray-matter
+      // 1. Check frontmatter with @11ty/gray-matter
       try {
         const { data } = matter(content);
         assert.ok(data, 'Frontmatter should be parsable');

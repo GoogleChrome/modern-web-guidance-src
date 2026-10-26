@@ -295,7 +295,7 @@ function hasRecoveredPlaintextInUi(
     const doc = d.document;
     return Boolean(
       doc.querySelector(
-        '#secure-note, .private-message, #encrypt-btn, #encrypt-message, #out-plain, #recovered-message'
+        '#secure-note, .private-message, #encrypt-btn, #encrypt-message, #out-plain, #recovered-message, [id*="encrypt"], [id*="decrypt"], [id*="cipher"], [id*="plain"], [class*="encrypt"], [class*="decrypt"], [data-encrypt], [data-decrypt]'
       )
     );
   });

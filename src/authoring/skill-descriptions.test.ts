@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import { globSync } from 'glob';
 import { rootDir } from '../core/paths.ts';
 

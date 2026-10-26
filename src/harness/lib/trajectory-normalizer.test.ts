@@ -20,7 +20,7 @@ import {
   extractGeminiMetadata,
   extractPiMetadata
 } from './trajectory-normalizer.ts';
-import { collectGuidesUsed, collectGuidanceToolsUsed } from './guide-usage.ts';
+import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from './collection.ts';
 import { Agents } from '../config.ts';
 
@@ -383,6 +383,9 @@ test('trajectory_summary.json generation and priority read', async () => {
 
     const tokenUsage = extractTokenUsageFromResults(tempDir);
     assert.deepStrictEqual(tokenUsage, { total: 500, cached: 200 });
+
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'summary-guide-1'), true);
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'unrelated-guide'), false);
   } finally {
     removeTempDir(tempDir);
   }
@@ -463,6 +466,7 @@ test('generateNormalizedTrajectory aggregates entries across multiple main sessi
 
 test('agent trajectory parsers strictly enforce modern-web-guidance retrieve filter', () => {
   const validCmd = 'npx -y modern-web-guidance@latest retrieve "dialog-closedby,light-dismiss"';
+  const chainedCmd = 'npx -y modern-web-guidance@latest retrieve cpp-on-the-web; head -n 40 index.html && npx -y modern-web-guidance@latest retrieve "identify-inp-causes, support-global-calendar-systems"';
   const legacyCmd = 'npx modern-web retrieve dialog-closedby';
   const searchCmd = 'npx modern-web-guidance search "dialog"';
   const genericCmd = 'curl https://example.com/retrieve/docs && git retrieve-branch';
@@ -470,40 +474,44 @@ test('agent trajectory parsers strictly enforce modern-web-guidance retrieve fil
   // 1. Claude
   const claudeMeta = extractClaudeMetadata([
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: validCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: chainedCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: legacyCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: searchCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: genericCmd } }] } },
   ]);
-  assert.deepStrictEqual(claudeMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
+  assert.deepStrictEqual(claudeMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
 
   // 2. Codex
   const codexMeta = extractCodexMetadata([
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: validCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: chainedCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: legacyCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: searchCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: genericCmd }) } },
   ]);
-  assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
+  assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
 
   // 3. Gemini
   const geminiMeta = extractGeminiMetadata({
     messages: [
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: validCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: chainedCmd } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: legacyCmd } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: searchCmd } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: genericCmd } }] },
     ]
   });
-  assert.deepStrictEqual(geminiMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
+  assert.deepStrictEqual(geminiMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
 
   // 4. Pi
   const piMeta = extractPiMetadata([
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: validCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: chainedCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: legacyCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: searchCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: genericCmd } }] } },
   ]);
-  assert.deepStrictEqual(piMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss']);
+  assert.deepStrictEqual(piMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
 });
 
 test('ensureFreshTrajectorySummary regenerates stale trajectory_summary.json missing normalizerVersion when raw session logs exist', async () => {
