@@ -462,6 +462,9 @@
       ]
     },
     "ui-components": {
+      "checkbox": [
+        "daily-grind"
+      ],
       "hovercard": [
         "daily-grind"
       ],
