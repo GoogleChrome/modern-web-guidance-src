@@ -346,5 +346,21 @@ test('no build-machine rootDir path leak in bundled dist binaries', async () => 
   assert.strictEqual(searchMjs.includes(ROOT_DIR), false, 'search.mjs should not contain build-machine rootDir');
 });
 
+test('packaged dist contains complete 256-d teacher vectors for all chunks', async () => {
+  const zlib = await import('node:zlib');
+  const vectorFile = path.join(STAGING_DIR, 'skills/modern-web-guidance/use-cases.vectors.gen.json.gz');
+  const compressed = await fs.readFile(vectorFile);
+  const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8'));
+  assert.ok(items.length > 0, 'Corpus should contain chunks');
+  for (const item of items) {
+    assert.strictEqual(
+      item.vector.length,
+      256,
+      `Chunk "${item.id}" should have 256-d vector, got ${item.vector.length}`
+    );
+  }
+});
+
+
 
 

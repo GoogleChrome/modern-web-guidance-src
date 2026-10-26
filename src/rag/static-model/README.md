@@ -9,26 +9,67 @@ It replaces the 23.4 MB `all-MiniLM-L6-v2` TensorFlow.js runtime with a zero-dep
 | `words.json` | JSON `string[]` | 298 KB / 90 KB | Sorted 27,833-word vocabulary (guide corpus tokens + search aliases + general-English whole words) |
 | `words.i8` | `Int8Array(V × 256)` | 7.1 MB / 5.1 MB | Symmetric per-row `Int8` quantized 256-d unit vectors (`E`) |
 | `words.scale.f32` | `Float32Array(V)` | 111 KB / 92 KB | Per-word weight folded with row quantization scale (`W[i] * (maxAbs[i] / 127)`) |
+| `chunks.json` | JSON `string[]` | 119 KB / 24 KB | Content-hash index of 1,773 teacher-embedded guide chunks |
+| `chunks.i8` | `Int8Array(N × 256)` | 454 KB / 395 KB | Symmetric per-row `Int8` quantized 256-d teacher document vectors |
+| `chunks.scale.f32` | `Float32Array(N)` | 7.1 KB / 7.0 KB | Per-chunk quantization scales (`maxAbs / 127`) |
 
-At runtime, [`StaticEmbedder.embedSync`](../static-embedder.ts) tokenizes input text with [`tokenize()`](../bm25.ts), splits unknown hyphenated tokens (e.g., `anchor-positioning` → `anchor` + `positioning`, weighted `1 / parts.length`), accumulates the weighted sum of `words.i8` rows scaled by `words.scale.f32`, and L2-normalizes the resulting 256-d vector (<1 ms warm, ~8 ms cold start, zero third-party runtime dependencies).
+At runtime, search operates via asymmetric dense retrieval + BM25 fusion:
+- **Queries** are embedded client-side via [`StaticEmbedder.embedSync`](../static-embedder.ts) in <1 ms using the static word table (`words.*`).
+- **Guide chunks** are embedded at build time with the teacher model `gemini-embedding-001` (`RETRIEVAL_DOCUMENT`, 768-d → MRL 256-d unit vectors) loaded from the committed cache (`chunks.*`) into `use-cases.vectors.gen.json.gz`.
+- Both sides share the 256-d normalized embedding space distilled from `gemini-embedding-001`. Search ranks by best-matching chunk cosine fused with BM25.
 
 ---
 
-## How New Guides Are Handled
+## Guide Chunks Cache & Pre-Release Workflow
 
-New guides are added to `guides/` frequently. The system uses a two-tier workflow so day-to-day guide authoring requires **zero API keys and no model retraining**:
+Chunk vectors are cached in `chunks.json`, `chunks.i8`, and `chunks.scale.f32`.
+Each entry is keyed by a SHA-256 hash of:
+```
+teacher_model (gemini-embedding-001) + "\n" + task_type (RETRIEVAL_DOCUMENT) + "\n" + dims (256) + "\n" + exact_embedded_text
+```
+The exact embedded text includes the guide ID, description, chunk Markdown, and expanded macros (`[baseline]`, `[feature:...]`).
+Any change to guide prose, chunk boundaries, baseline data, or macro expansions automatically changes the hash and invalidates the cached vector for that chunk.
 
-### 1. Day-to-Day: Automatic When Adding or Editing Guides (`pnpm build`)
+### 1. Day-to-Day Development & CI Builds (`pnpm build`)
 
-When you add or edit a `guides/<category>/<guide-id>/guide.md` file:
+- Builds use the committed chunk cache.
+- If a guide is edited or added and its teacher vectors are not yet in `chunks.*`, `build-guides.ts` issues a loud console warning naming the guide and indexes the chunk for **BM25 search only** (`vector: []`).
+- This allows day-to-day editing and test runs without requiring network access or `GEMINI_API_KEY`.
 
-1. Run `pnpm build` (or `node src/build/build-guides.ts`).
-2. `build-guides.ts` chunks the new guide by Markdown headings and embeds each `${description}\n\n${chunk}` locally in ~3.6 seconds using `StaticEmbedder` and the existing `src/rag/static-model/` table, writing `use-cases.vectors.gen.json.gz` and `guides.json`.
-3. Why this works immediately without retraining `static-model/`:
-   - **Broad vocabulary coverage (27,833 words):** `words.json` already includes general English, HTML/CSS/JS/Web API terminology, and hyphen-splitting fallback (`view-transition-name` → `view` + `transition` + `name`). Over 98.5% of tokens in unseen web-dev queries and guides are already in `words.json`.
-   - **Exact lexical coverage via Hybrid BM25:** At search time, [`searchUseCases()`](../search.ts) fuses dense cosine similarity with per-chunk Okapi BM25 via Reciprocal Rank Fusion (`k = 60`). Even if a brand-new guide introduces a net-new single-token identifier that is not yet in `words.json`, BM25 indexes that token immediately from the guide chunks and surfaces the guide on exact keyword matches while `StaticEmbedder` matches the surrounding prose and hyphenated concepts.
+### 2. Pre-Release Embedding Script (`node src/rag/embed-chunks.ts`)
 
-### 2. Periodic Vocabulary & Weight Refresh (`node src/rag/train-static-model.ts`)
+Before cutting a release, an engineer runs:
+
+```bash
+# Requires GEMINI_API_KEY in .env or environment
+node src/rag/embed-chunks.ts
+```
+
+What `embed-chunks.ts` does:
+1. Scans all published guide chunks and calculates their content hashes.
+2. Checks which hashes are missing from the cache. If everything is up to date, it exits immediately (idempotent).
+3. Embeds any missing or changed chunks using `gemini-embedding-001` (`taskType: "RETRIEVAL_DOCUMENT"`, 768 dimensions), batched in groups of 100 with exponential backoff on rate limits.
+4. MRL-truncates new vectors to 256 dimensions and L2-normalizes them.
+5. Prunes stale chunk hashes from deleted guides or old text versions.
+6. Quantizes to Int8 + scale factor and writes `chunks.json`, `chunks.i8`, and `chunks.scale.f32`.
+
+To check whether all chunks have cached vectors without calling the API:
+```bash
+node src/rag/embed-chunks.ts --check
+```
+
+### 3. Release & Publish Gate
+
+The release script (`node src/build/publish-skills.ts`) strictly enforces vector completeness before publishing:
+1. It runs `embedGuideChunks({ check: true })`. If any chunk lacks a cached vector, publishing **fails loudly** and stops before creating packages or git tags.
+2. `build-dist.ts` and `build-guides.ts` enforce `--fail-on-missing-vectors` during release builds.
+3. Distribution tests (`src/build/dist.test.ts`) assert that 100% of chunks in `use-cases.vectors.gen.json.gz` contain valid 256-d vectors.
+
+There are no silent fallbacks.
+
+---
+
+## Vocabulary & Model Retraining (`node src/rag/train-static-model.ts`)
 
 When a batch of new guides introduces net-new non-hyphenated web platform identifiers (for example, a newly coined single-word CSS property or browser API name) and you want dense embeddings for those new tokens:
 

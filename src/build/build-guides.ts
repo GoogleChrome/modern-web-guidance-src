@@ -32,6 +32,7 @@ import { getFeatureName } from "../core/baseline.ts";
 import { rootDir, outDir } from "../core/paths.ts";
 import { toDevsiteMarkdown } from "./devsite-markdown.ts";
 import type { EmbedderLike } from "../rag/search.ts";
+import { loadChunkCache, computeChunkHash } from "../rag/chunk-cache.ts";
 
 const WORKSPACE_ROOT = rootDir;
 
@@ -51,6 +52,7 @@ export interface BuildOptions {
   targetGuidePath?: string;
   modelName?: string;
   noChunking?: boolean;
+  failOnMissingVectors?: boolean;
 }
 
 // Global variables to be set by processGuides
@@ -94,12 +96,18 @@ async function computePipelineHash(
     path.join(rootDir, "src/rag/static-model/words.json"),
     path.join(rootDir, "src/rag/static-model/words.i8"),
     path.join(rootDir, "src/rag/static-model/words.scale.f32"),
+    path.join(rootDir, "src/rag/chunk-cache.ts"),
+    path.join(rootDir, "src/rag/static-model/chunks.json"),
+    path.join(rootDir, "src/rag/static-model/chunks.i8"),
+    path.join(rootDir, "src/rag/static-model/chunks.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
     path.join(rootDir, "src/build/devsite-markdown.ts"),
   ];
 
   for (const dep of deps) {
-    hash.update(fs.readFileSync(dep, "utf-8"));
+    if (fs.existsSync(dep)) {
+      hash.update(fs.readFileSync(dep));
+    }
   }
 
   hash.update(target);
@@ -169,7 +177,7 @@ function prepareCleanCacheDir(paths: CachePaths): void {
 }
 
 export async function processGuides(opts: BuildOptions): Promise<boolean> {
-  const { outputDir, target, force, targetGuidePath, modelName, noChunking } = opts;
+  const { outputDir, target, force, targetGuidePath, modelName, noChunking, failOnMissingVectors } = opts;
 
   TARGET = target || 'skills-cli';
   IS_NO_CHUNKING = !!noChunking;
@@ -231,10 +239,43 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     readyGuides = [{dir: absoluteTargetPath, name, category, hasGuide: true} as GuideInventory];
   }
 
+  const chunkCache = TARGET !== 'static-site' && !modelName ? loadChunkCache() : null;
+  const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
+
   console.log("Generating embeddings…");
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
-    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder, staticSiteGuides, modelName);
+    await processSingleGuideFile(
+      guidePath,
+      inv.category,
+      inv.name,
+      useCases,
+      storeUseCases,
+      embedder,
+      staticSiteGuides,
+      modelName,
+      chunkCache,
+      missingChunks
+    );
+  }
+
+  if (missingChunks.length > 0) {
+    const missingGuides = [...new Set(missingChunks.map((m) => m.guideId))];
+    console.warn(
+      `\n⚠️  WARNING: ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:`
+    );
+    for (const g of missingGuides) {
+      console.warn(`   - ${g}`);
+    }
+    console.warn(
+      `   These chunks are indexed for BM25 search only. Run 'node src/rag/embed-chunks.ts' to embed them.\n`
+    );
+
+    if (failOnMissingVectors) {
+      throw new Error(
+        `Release check failed: ${missingChunks.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors. Run 'node src/rag/embed-chunks.ts' before release.`
+      );
+    }
   }
 
   if (TARGET !== 'static-site') {
@@ -308,7 +349,9 @@ async function processSingleGuideFile(
   storeUseCases: StoreUseCase[],
   embedder?: EmbedderLike,
   staticSiteGuides?: StaticSiteGuideMetadata[],
-  modelName?: string
+  modelName?: string,
+  chunkCache?: Map<string, Float32Array> | null,
+  missingChunks?: Array<{ guideId: string; category: string; chunk: string }>
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -382,10 +425,22 @@ web-feature-ids: ${JSON.stringify(featureIds)}
     : [...chunkMarkdown(processedMarkdown), summaryChunk];
 
   for (const chunk of chunks) {
-    const embeddingText = modelName
-      ? `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`
-      : `${data.description}\n\n${chunk}`;
-    const vector = await embedder.embed(embeddingText);
+    let vector: number[] = [];
+    if (modelName) {
+      const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
+      vector = await embedder.embed(embeddingText);
+    } else {
+      const embeddingText = `${id}: ${data.description}\n\n${chunk}`;
+      const hash = computeChunkHash(embeddingText);
+      const cached = chunkCache?.get(hash);
+      if (cached) {
+        vector = Array.from(cached);
+      } else {
+        missingChunks?.push({ guideId: id, category, chunk });
+        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector: ${chunk.slice(0, 50).trim()}...`);
+        vector = [];
+      }
+    }
 
     storeUseCases.push({
       id,
@@ -409,6 +464,7 @@ if (process.argv[1] === import.meta.filename) {
     'no-chunking': { type: 'boolean' as const },
     target: { type: 'string' as const },
     output: { type: 'string' as const },
+    'fail-on-missing-vectors': { type: 'boolean' as const },
   };
 
   const { values, positionals } = parseArgs({ options, allowPositionals: true });
@@ -419,6 +475,7 @@ if (process.argv[1] === import.meta.filename) {
   const modelName = values.model;
   const target = (values.target as BuildTarget | undefined) || 'skills-cli';
   const output = values.output;
+  const failOnMissingVectors = values['fail-on-missing-vectors'];
 
   processGuides({
     outputDir: output ? path.resolve(WORKSPACE_ROOT, output) : path.join(outDir, "build", target),
@@ -426,7 +483,8 @@ if (process.argv[1] === import.meta.filename) {
     force,
     targetGuidePath,
     modelName,
-    noChunking
+    noChunking,
+    failOnMissingVectors,
   }).catch((err) => {
     console.error(err);
     process.exit(1);

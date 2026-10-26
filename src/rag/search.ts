@@ -34,10 +34,9 @@ export interface EmbedderLike {
 }
 
 /** Query-level cosine floor: if no chunk in the corpus reaches this similarity, `[]` is returned.
- * Calibrated for the 256-d static model on real answerable queries (wild-v1, post-#1850 telemetry) vs OOS:
- * 0.78 keeps answerable-empty at ~0.6% (MiniLM's 0.30 was ~0.9%). An empty result on an answerable query costs
- * the agent its guidance, while an off-topic result list costs a few hundred tokens it filters by description. */
-export const DEFAULT_MIN_SIMILARITY = 0.78;
+ * With teacher-embedded chunk vectors, dense cosines operate in the standard [0.35, 0.85] range.
+ * 0.30 safely passes all in-domain queries while gating completely irrelevant OOS noise. */
+export const DEFAULT_MIN_SIMILARITY = 0.3;
 
 let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 
@@ -80,7 +79,7 @@ function loadVectors(): UseCaseVector[] {
   const items: UseCaseVector[] = JSON.parse(jsonContent);
 
   for (const item of items) {
-    if (!item.id || !Array.isArray(item.vector) || item.vector.length === 0 || typeof item.chunkContent !== "string") {
+    if (!item.id || !Array.isArray(item.vector) || typeof item.chunkContent !== "string") {
       throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id, vector, or chunkContent`);
     }
   }
@@ -110,6 +109,7 @@ export async function searchUseCases(
   // Both query and corpus vectors are L2-normalized unit vectors, so cosine similarity is dot product
   const best = new Map<string, { item: UseCaseVector; similarity: number }>();
   for (const item of cachedCorpus.vectors) {
+    if (item.vector.length === 0) continue;
     const sim = dotProduct(queryVector, item.vector);
     const existing = best.get(item.id);
     if (!existing || sim > existing.similarity) {
@@ -126,14 +126,17 @@ export async function searchUseCases(
 
   const limitedResults = fused.slice(0, limit).map(({ id }) => {
     const r = best.get(id);
-    if (!r) throw new Error(`BM25 returned guide "${id}" that has no vectors`);
+    const fallbackItem = !r ? cachedCorpus!.vectors.find((v) => v.id === id) : undefined;
+    if (!r && !fallbackItem) throw new Error(`BM25 returned guide "${id}" that is not in corpus`);
+    const item = r ? r.item : fallbackItem!;
+    const similarity = r ? r.similarity : 0;
     return {
-      id: r.item.id,
-      description: r.item.description,
-      category: r.item.category,
-      featuresUsed: r.item.featuresUsed.length > 0 ? r.item.featuresUsed : undefined,
-      tokenCount: r.item.tokenCount,
-      similarity: parseFloat(r.similarity.toFixed(4))
+      id: item.id,
+      description: item.description,
+      category: item.category,
+      featuresUsed: item.featuresUsed.length > 0 ? item.featuresUsed : undefined,
+      tokenCount: item.tokenCount,
+      similarity: parseFloat(similarity.toFixed(4))
     };
   });
 
