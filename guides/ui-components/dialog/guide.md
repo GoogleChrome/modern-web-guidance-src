@@ -141,6 +141,6 @@ The default depends on how the dialog is opened. If `closedby` is absent or inva
 - **DO** use a native `<button>` with an accessible name for close controls.
 - **DO** use one consistent heading level for dialog titles.
 
-### Fallbacks
+## Fallback strategies
 
 Only `closedby` needs a fallback: the optional feature-tested `pointerdown` backdrop handler above. For invoker commands, see {{ GUIDE_REF("declarative-dialog-popover-control") }}.
