@@ -134,18 +134,24 @@ Use for trails with more than ~4 items. See {{ GUIDE_REF("overflow-popup") }}.
 
 ## Fallback strategy
 
-{{ FEATURE_FALLBACKS("border-shape") }}
+### `border-shape`
+
+{{ BASELINE_STATUS("border-shape") }}
 
 - Use `clip-path: var(--shape)` with the same polygon as the base style, and enhance inside `@supports (border-shape: polygon(0 0, 100% 0, 100% 100%))` by setting `clip-path: none` and applying `border-shape`.
 - `clip-path` clips borders and outlines, so under the fallback use a color/background change plus negative `outline-offset` for focus instead of an outside outline.
 - The trail remains fully functional; only borders and outlines differ.
 
-{{ FEATURE_FALLBACKS("corner-shape") }}
+### `corner-shape`
+
+{{ BASELINE_STATUS("corner-shape") }}
 
 - Graceful degradation: unsupported browsers keep the plain `border-radius` corners. Wrap `corner-shape` in `@supports (corner-shape: squircle)` and tune the radius there.
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+### Anchor positioning
+
+{{ BASELINE_STATUS("anchor-positioning") }}
 
 - Wrap anchor-based placement in `@supports (position-area: block-end)`. Otherwise, on the popover's `toggle` event (`newState === "open"`), set `position: fixed` and compute `inset-block-start`/`inset-inline-start` from the trigger's `getBoundingClientRect()`, clamped to the viewport.
