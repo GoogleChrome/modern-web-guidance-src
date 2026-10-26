@@ -254,7 +254,8 @@
   .breadcrumb .bc-overflow { display: none; }
 
   @container bc (inline-size < 40rem) {
-    .breadcrumb .bc-mid { display: none; }
+    /* Every item except the first, the last two and the "…" item; the :has() guard keeps a trail without "…" intact */
+    .breadcrumb ol:has(> .bc-overflow) > li:not(:first-child, :nth-last-child(-n+2), .bc-overflow) { display: none; }
     .breadcrumb .bc-overflow { display: flex; }
   }
 
@@ -596,8 +597,8 @@
 </main>
 
 <script>
-  /* 1. Deep trails: mark middle items and add a "…" popover.
-        JS hides nothing; container queries decide when it shows. */
+  /* 1. Deep trails: add a "…" popover that lists a copy of the middle links.
+        JS hides nothing; a container query hides the middle items. */
   let uid = 0;
   document.querySelectorAll('.breadcrumb[data-collapse]').forEach((nav) => {
     const list  = nav.querySelector('ol');
@@ -605,7 +606,6 @@
     if (items.length <= 4) return;
 
     const middle = items.slice(1, -2);
-    middle.forEach((li) => li.classList.add('bc-mid'));
 
     const id = `bc-overflow-${++uid}`;
     const li = document.createElement('li');

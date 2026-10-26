@@ -124,9 +124,22 @@ Add when ancestors have meaningful siblings (e.g. docs sections); skip for simpl
 
 Use for trails with more than ~4 items.
 
-- Make the `<nav>` a size container (`container-type: inline-size`) so it responds to its own width, not the viewport.
-- Keep first item, last two items; mark the middle items with a class and hide them in a container query. Add a "…" `<li>` containing a `[popover]` button that lists the hidden links (copy the middle links into the popover). Give the button `aria-label="Show N more breadcrumbs"`.
-- Show the "…" item only when the middle is hidden (`display: none` by default, shown inside the container query).
+- Make the `<nav>` a size container (`container-type: inline-size`, in the snippet below) so it responds to its own width, not the viewport.
+- Keep the first item and the last two. Add a "…" `<li>` after the first item, containing a `[popover]` button that lists the hidden links. Give the button `aria-label="Show N more breadcrumbs"`.
+- Hide the middle items (every item except the first, the last two and the "…" item) in a container query, scoped to trails that contain the "…" item so a short trail never loses an item. Show the "…" item only then (`display: none` by default).
+- Render the middle links a second time inside the popover, generated from the same data. CSS cannot move an element between the trail and the popover as the width changes, so a copy keeps this free of script on resize. Moving the real links with script on resize avoids the duplicate but needs a `ResizeObserver` and focus handling.
+
+```css
+.breadcrumb { container-type: inline-size; }
+.breadcrumb .overflow { display: none; }
+/* 40rem is an example breakpoint */
+@container (inline-size < 40rem) {
+  /* No class on the middle items; the :has() guard keeps a trail without a "…" item intact */
+  .breadcrumb ol:has(> .overflow) > li:not(:first-child, :nth-last-child(-n+2), .overflow) { display: none; }
+  .breadcrumb .overflow { display: flex; }
+}
+```
+
 - Optional, for very narrow containers: show only the parent link with a leading "‹" (decorative, empty alt text) by hiding every `<li>` except `:nth-last-child(2)`.
 - Hidden items must be removed with `display: none` so that they leave the tab order and accessibility tree.
 
