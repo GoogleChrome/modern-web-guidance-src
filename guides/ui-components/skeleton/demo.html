@@ -62,6 +62,10 @@
         white-space: nowrap;
       }
 
+      .toggle-loading {
+        margin-block-end: 1rem;
+      }
+
       .cards {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
@@ -363,11 +367,13 @@
   <main>
     <h1>Skeleton card variations</h1>
 
-    <p class="loading-status" role="status">Loading cards…</p>
+    <!-- Empty from the start: live regions announce changes, not text that arrives with them -->
+    <p class="loading-status" role="status"></p>
+    <button type="button" class="toggle-loading">Finish loading</button>
     <section class="cards skeleton" aria-busy="true" inert aria-hidden="true">
       <article>
         <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
-        <div class="content" aria-hidden="true">
+        <div class="content">
           <p><time datetime="2026-10-14">Updated yesterday</time> · 4 min read</p>
           <h2></h2>
           <p></p>
@@ -397,16 +403,16 @@
         <button type="button">Subscribe</button>
       </article>
 
-      <article aria-hidden="true">
+      <article>
         <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
-        <div class="content" aria-hidden="true">
+        <div class="content">
           <p><time datetime="2026-10-14">Updated yesterday</time> · 4 min read</p>
           <h2></h2>
           <p></p>
         </div>
       </article>
 
-      <article aria-hidden="true">
+      <article>
         <div class="content">
           <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
           <div>
@@ -418,7 +424,7 @@
         </div>
       </article>
 
-      <article aria-hidden="true">
+      <article>
         <h2></h2>
         <ul>
           <li></li>
@@ -429,7 +435,7 @@
         <button type="button">Subscribe</button>
       </article>
 
-      <article aria-hidden="true">
+      <article>
         <div class="content">
           <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
           <div>
@@ -439,7 +445,7 @@
         </div>
       </article>
 
-      <article aria-hidden="true">
+      <article>
         <h2></h2>
         <ul>
           <li></li>
@@ -467,6 +473,46 @@
 
       collection.dataset.ready = '';
     });
+
+    // One status region per independently loading area; this demo has one area.
+    const collection = document.querySelector('.skeleton');
+    const status = document.querySelector('.loading-status');
+    const toggle = document.querySelector('.toggle-loading');
+    const sample = { H2: 'Card title', P: 'A short paragraph of loaded content.', LI: 'A list item' };
+    let announceTimer;
+
+    const startLoading = () => {
+      for (const el of collection.querySelectorAll('[data-sample]')) {
+        el.textContent = '';
+        delete el.dataset.sample;
+      }
+      collection.setAttribute('aria-busy', 'true');
+      collection.inert = true;
+      collection.setAttribute('aria-hidden', 'true');
+      // Set the text after the region exists, with a brief delay (example value)
+      announceTimer = setTimeout(() => { status.textContent = 'Loading cards…'; }, 100);
+      toggle.textContent = 'Finish loading';
+    };
+
+    const finishLoading = () => {
+      clearTimeout(announceTimer);
+      status.textContent = '';
+      for (const el of collection.querySelectorAll('h2:empty, p:empty, li:empty')) {
+        el.textContent = sample[el.tagName];
+        el.dataset.sample = '';
+      }
+      collection.removeAttribute('aria-busy');
+      collection.inert = false;
+      collection.removeAttribute('aria-hidden');
+      toggle.textContent = 'Show skeleton again';
+    };
+
+    toggle.addEventListener('click', () => {
+      if (collection.hasAttribute('aria-busy')) finishLoading();
+      else startLoading();
+    });
+
+    startLoading();
   </script>
 </body>
 
