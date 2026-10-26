@@ -115,7 +115,8 @@ Add when ancestors have meaningful siblings (e.g. docs sections); skip for simpl
 - Keep the ancestor link navigating. Add a **separate** `<button type="button" popovertarget>` right after it in the same `<li>`; never put the toggle inside the `<a>`.
 - Give the button an `aria-label` naming its purpose (e.g. "Pages at the same level as Components") and hide its chevron icon with `aria-hidden="true"`.
 - The menu is a `[popover]` `<ul>` of links, labeled with `aria-label`. Mark the sibling matching the current ancestor with `aria-current="true"` and visually label it.
-- Position the popover below the trigger with anchor positioning (`position-area: block-end span-inline-end`, `position-try-fallbacks: flip-block, flip-inline`). Reset the UA `inset: auto` and `margin`.
+- Position the popover below the trigger with anchor positioning (`position-area: block-end span-inline-end`, `position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline`). Reset the UA `inset: auto` and `margin`.
+- Keep the combined `flip-block flip-inline` fallback last. On a narrow screen near the bottom, the menu is too wide for the inline-end side and too tall for below, so each single flip fixes only one axis and the browser keeps the base placement, covering the trigger or running off screen.
 - Rotate the trigger chevron while open: `.trigger:has(+ :popover-open)`.
 - Wrap entry/exit fades in `prefers-reduced-motion: no-preference`.
 - For pills, join link and trigger into one shape by squaring the touching corners (`border-start-end-radius: 0` etc., using logical properties).
