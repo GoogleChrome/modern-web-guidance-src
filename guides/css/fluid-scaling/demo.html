@@ -29,7 +29,7 @@
     /* The element that scales fluids based on container width */
     .card-title {
       /* Fallback for browsers that do not support container units */
-      font-size: clamp(1.2rem, 0.5rem + 6vw, 3rem);
+      font-size: clamp(1.2rem, 6vw, 3rem);
       margin-top: 0;
       color: #1a0dab;
     }
@@ -37,7 +37,7 @@
     @supports (font-size: 1cqi) {
       .card-title {
         /* Use container units where supported */
-        font-size: clamp(1.2rem, 0.5rem + 6cqi, 3rem);
+        font-size: clamp(1.2rem, 6cqi, 3rem);
 
         /* Scale padding based on container width */
         padding: 0 5cqi;
