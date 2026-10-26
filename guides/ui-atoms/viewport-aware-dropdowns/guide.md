@@ -31,7 +31,7 @@ The first step is to create a trigger button that opens the overlay container us
 </div>
 ```
 
-This creates an *implicit* anchor association between the button and the panel, so that the panel can be positioned relative to the button.
+This creates an *implicit* anchor association between the button and the panel, so that the panel can be positioned relative to the button natively without needing `anchor-name` on the button or `position-anchor` on the panel.
 
 ### 2. Positioning with `position-area`
 

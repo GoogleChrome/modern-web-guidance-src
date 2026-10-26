@@ -4,7 +4,7 @@ description: Build a tree view control to navigate hierarchical data, with expan
 web-feature-ids:
   - details
   - details-content
-  - customizable-select
+  - tmp-customizable-select-listbox
 guides:
   - checkbox-group
   - hierarchical-navigation

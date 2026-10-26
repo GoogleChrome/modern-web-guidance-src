@@ -4,7 +4,7 @@
  * This module intentionally imports nothing else so it can be shared by the
  * ATL triage bot (src/ci/atl-triage.ts), which runs in a lightweight GitHub
  * Actions job and must avoid pulling in heavy parsing dependencies like
- * 'gray-matter', 'marked', or 'web-features' that the full macro renderer
+ * '@11ty/gray-matter', 'marked', or 'web-features' that the full macro renderer
  * (src/core/macros.ts) depends on.
  */
 
