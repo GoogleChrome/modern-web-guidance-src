@@ -48,6 +48,7 @@ import { menuRules } from './menu.ts';
 import { navigationDrawerRules } from './navigation-drawer.ts';
 import { optimizeImagePriorityRules } from './optimize-image-priority.ts';
 import { persistentToastNotificationsRules } from './persistent-toast-notifications.ts';
+import { physicsBasedEasingRules } from './physics-based-easing.ts';
 import { platformControlsDismissDialogRules } from './platform-controls-dismiss-dialog.ts';
 import { positionAwareTooltipsRules } from './position-aware-tooltips.ts';
 import { preciseTextAlignmentRules } from './precise-text-alignment.ts';
@@ -68,6 +69,7 @@ import { scrollabilityAffordanceHintsRules } from './scrollability-affordance-hi
 import { scrollspyRules } from './scrollspy.ts';
 import { selectMenuInteractionRules } from './select-menu-interaction.ts';
 import { sizeAwareStylingRules } from './size-aware-styling.ts';
+import { sliderRules } from './slider.ts';
 import { smsOtpFormRules } from './sms-otp-form.ts';
 import { softEdgeContentFadeRules } from './soft-edge-content-fade.ts';
 import { stateAwareStickyHeadersRules } from './state-aware-sticky-headers.ts';
@@ -123,6 +125,7 @@ export * from './menu.ts';
 export * from './navigation-drawer.ts';
 export * from './optimize-image-priority.ts';
 export * from './persistent-toast-notifications.ts';
+export * from './physics-based-easing.ts';
 export * from './platform-controls-dismiss-dialog.ts';
 export * from './position-aware-tooltips.ts';
 export * from './precise-text-alignment.ts';
@@ -143,6 +146,7 @@ export * from './scrollability-affordance-hints.ts';
 export * from './scrollspy.ts';
 export * from './select-menu-interaction.ts';
 export * from './size-aware-styling.ts';
+export * from './slider.ts';
 export * from './sms-otp-form.ts';
 export * from './soft-edge-content-fade.ts';
 export * from './state-aware-sticky-headers.ts';
@@ -418,6 +422,11 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     rules: persistentToastNotificationsRules,
   },
   {
+    guideId: 'physics-based-easing',
+    lifecycle: { status: 'experimental' },
+    rules: physicsBasedEasingRules,
+  },
+  {
     guideId: 'platform-controls-dismiss-dialog',
     lifecycle: { status: 'experimental' },
     rules: platformControlsDismissDialogRules,
@@ -519,6 +528,11 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     rules: sizeAwareStylingRules,
   },
   {
+    guideId: 'slider',
+    lifecycle: { status: 'experimental' },
+    rules: sliderRules,
+  },
+  {
     guideId: 'sms-otp-form',
     lifecycle: { status: 'experimental' },
     rules: smsOtpFormRules,
@@ -596,24 +610,6 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   {
     guideId: 'digital-signatures',
     lifecycle: { status: 'retired', reason: "Web Crypto signatures need exact key and encoding alignment (DER vs raw), so this isn't a safe in-place change." },
-    rules: [],
-  },
-  {
-    guideId: 'slider',
-    lifecycle: {
-      status: 'retired',
-      reason:
-        "The guide teaches styling native range inputs; it doesn't cover replacing slider libraries, and most noUiSlider/ionRangeSlider use needs features native range lacks (multiple handles, ranges).",
-    },
-    rules: [],
-  },
-  {
-    guideId: 'physics-based-easing',
-    lifecycle: {
-      status: 'retired',
-      reason:
-        "Spring libraries in real code mostly drive interruptible, velocity-preserving motion that a fixed CSS linear() curve can't reproduce; revisit for non-interactive springs.",
-    },
     rules: [],
   },
 ];

@@ -561,6 +561,8 @@
   ],
   "modernFeaturePatterns": {
     "animate-element-entry-exit": "@starting-style\\b|transition-behavior|\\ballow-discrete\\b|transitionBehavior",
+    "slider": "type\\s*=\\s*[\"']range[\"']|accent-color\\s*:|<\\s*input[^>]*type\\s*=\\s*[\"']range[\"']",
+    "physics-based-easing": "linear\\s*\\([^)]*%",
     "persistent-toast-notifications": "popover\\s*=\\s*[\"']manual[\"']|\\b(showPopover|hidePopover|togglePopover)\\b|\\bpopover\\b",
     "individual-transform-properties": "(^|[\\s;{}])(translate|rotate|scale)\\s*:\\s*[^;]+",
     "resilient-context-menus-and-nested-dropdowns": "\\bpopover\\b|\\bpopovertarget\\b|\\b(showPopover|togglePopover|hidePopover)\\b|anchor-name\\s*:|position-anchor\\s*:|position-area\\s*:|\\b(anchorName|positionAnchor|positionArea)\\b",
@@ -643,8 +645,8 @@
     "contrast-color": "contrast-color\\s*\\(",
     "custom-button-actions": "\\bcommandfor\\b|\\bcommand\\s*=|popovertarget",
     "menu": "\\bfocusgroup\\b|<\\s*menu\\b|popover",
-    "sms-otp-form": "autocomplete\\s*=\\s*[\"x27]one-time-code[\"x27]|autoComplete\\s*=\\s*[\"x27]one-time-code[\"x27]|\\bOTPCredential\\b",
-    "autofill-sign-up-form": "autocomplete\\s*=\\s*[\"x27]new-password[\"x27]|autoComplete\\s*=\\s*[\"x27]new-password[\"x27]"
+    "sms-otp-form": "autocomplete\\s*=\\s*[\"']one-time-code[\"']|autoComplete\\s*=\\s*[\"']one-time-code[\"']|\\bOTPCredential\\b",
+    "autofill-sign-up-form": "autocomplete\\s*=\\s*[\"']new-password[\"']|autoComplete\\s*=\\s*[\"']new-password[\"']"
   },
   "seededAgentFailureFixtures": [
     {
