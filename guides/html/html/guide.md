@@ -215,7 +215,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallback strategies for using the Popover API in a cross-browser way.
 - **DO** use `<dialog>` for modal overlays (requires JS `.showModal()`) to automatically trap focus, dim backgrounds, and support dismissing via `Esc`. Use the `closedby="any"` attribute to enable native "light-dismiss" (closing on backdrop click) without custom JavaScript.
-- **DO** provide a visble control for closing modal overlays, so that people using voice control software can easily determine how to dismiss the modal dialog.
+- **DO** provide a visible control for closing modal overlays, so that people using voice control software can easily determine how to dismiss the modal dialog.
 - **DO** utilize the Popover API (`popover` attribute) for non-modal UI (menus, tooltips) that do not require focus traps.
 - **DO** use `::backdrop` to style modal backgrounds.
 - **DO** use `<form method="dialog">` to dismiss dialogs without manual JS handlers. Combined button `formmethod="dialog"` yields the button's value to the dialog `.returnValue`.
