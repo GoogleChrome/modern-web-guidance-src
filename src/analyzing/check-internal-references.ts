@@ -19,23 +19,13 @@ export const BANNED_PATTERNS: ReadonlyArray<{ readonly name: string; readonly re
 
 /**
  * Narrow exemptions for existing code:
- * 1. prompts.ts formatBlindCardPrompt error string: version-hash continuity; remove at the next intentional judge bump.
- * 2. llm-verifier.ts formatVerifierPrompt error string: version-hash continuity; remove at the next intentional verifier bump.
- * 3. update-eval.ts progress logging in internal eval directory.
+ * 1. llm-verifier.ts formatVerifierPrompt error string: version-hash continuity; remove at the next intentional verifier bump.
+ * 2. update-eval.ts progress logging in internal eval directory.
  */
 export function isExemptedLine(relPath: string, lineText: string): boolean {
   const normalized = relPath.replace(/\\/g, '/');
 
-  // 1. prompts.ts formatBlindCardPrompt: version-hash continuity; remove at the next intentional judge bump
-  if (
-    normalized === 'src/analyzing/eval/prompts.ts' &&
-    lineText.includes('formatBlindCardPrompt failed:') &&
-    lineText.includes('Failing fast per R29.')
-  ) {
-    return true;
-  }
-
-  // 2. llm-verifier.ts formatVerifierPrompt: version-hash continuity; remove at the next intentional verifier bump
+  // 1. llm-verifier.ts formatVerifierPrompt: version-hash continuity; remove at the next intentional verifier bump
   if (
     normalized === 'src/analyzing/llm-verifier.ts' &&
     lineText.includes('formatVerifierPrompt failed:') &&
@@ -44,7 +34,7 @@ export function isExemptedLine(relPath: string, lineText: string): boolean {
     return true;
   }
 
-  // 3. update-eval.ts progress logging in internal eval directory
+  // 2. update-eval.ts progress logging in internal eval directory
   if (
     normalized === 'src/analyzing/eval/update-eval.ts' &&
     lineText.includes('PROGRESS.md')

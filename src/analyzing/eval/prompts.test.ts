@@ -82,13 +82,14 @@ describe('prompts: content-hashed versions', () => {
       temperature: 0.2,
       enableSearchGrounding: false,
     });
-    assert.strictEqual(JUDGE_VERSION, `${PROMPT_MODEL}:detective-v6-spec22-${expectedHash}`);
+    assert.strictEqual(JUDGE_VERSION, `${PROMPT_MODEL}:detective-v7-${expectedHash}`);
+    // Bumped from v6 (dab7de7f): removed guide-triage dossier from judge inputs and scrubbed formatter error text.
     assert.strictEqual(
       JUDGE_VERSION,
-      'gemini-3.8-flash:detective-v6-spec22-dab7de7f',
+      'gemini-3.8-flash:detective-v7-6e9c8398',
       'Pins Judge prompt identity to prevent accidental cache invalidation and preserve scorecard agreement',
     );
-    assert.match(JUDGE_VERSION, /^gemini-3\.8-flash:detective-v6-spec22-[0-9a-f]{8}$/);
+    assert.match(JUDGE_VERSION, /^gemini-3\.8-flash:detective-v7-[0-9a-f]{8}$/);
     assert.strictEqual(computeJudgePromptVersion(), JUDGE_VERSION);
   });
 

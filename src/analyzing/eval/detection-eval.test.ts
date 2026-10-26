@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   buildGeminiRequestBody,
@@ -8,8 +11,6 @@ import {
   evaluateJudgeStability,
   extractCodeSnippet,
   formatBlindCardPrompt,
-  formatGuideTriageDossier,
-  hasValidSpecProvenance,
   isJudgeVerdict,
   isPositiveVerdict,
   normalizeJudgeVerdict,
@@ -124,91 +125,155 @@ describe('blind card formatting & request construction', () => {
     assert.match(prompt, /developers used moment/);
   });
 
-  it('formats legacy-pattern-specs.json Technical Reference Dossier only when valid provenance is present and blocks unverified injection', async () => {
-    const unverifiedSpec = {
-      guideId: 'individual-transform-properties',
-      changesSomethingForDeveloper: 'Yes for multi-function chains.',
-      isLikeForLikeSwapAtSite: 'Yes when in canonical translate -> rotate -> scale order.',
-      replaces: ['Multi-function transform chains'],
-      doesNotReplace: ['Isolated single-function :hover transform'],
-      rationale: 'Avoids repeating static transform functions.',
-    };
-    assert.equal(hasValidSpecProvenance(unverifiedSpec), false);
-    assert.equal(formatGuideTriageDossier(unverifiedSpec), '');
-
-    // Circular templated text must be rejected even when provenance object is present
-    const templatedWithProvenance = {
-      guideId: 'persistent-toast-notifications',
-      changesSomethingForDeveloper:
-        'Yes: replaces Toast notification libraries with native HTML popover="manual", removing third-party library weight, manual event/DOM synchronization, or vendor-prefixed duplication while excluding Persistent system modal alerts (<dialog>).',
-      isLikeForLikeSwapAtSite:
-        'Yes: HTML popover="manual" directly replaces the matched call site or declaration (Toast notification libraries) without migrating unrelated components; cases requiring broader architectural changes (Persistent system modal alerts (<dialog>)) are excluded in doesNotReplace.',
-      replaces: ['Toast libraries'],
-      doesNotReplace: ['Dialogs'],
-      rationale: 'Toast replace',
-      provenance: {
-        methodVersion: 'spec-two-stage-v1',
-        model: 'gemini-2.5-pro',
-        evaluatedAt: '2026-10-20T20:00:00.000Z',
-        sources: ['guides/ui-components/persistent-toast-notifications/guide.md'],
-      },
-    };
-    assert.equal(hasValidSpecProvenance(templatedWithProvenance), false);
-    assert.equal(formatGuideTriageDossier(templatedWithProvenance), '');
-
-    const dossier = formatGuideTriageDossier({
-      ...unverifiedSpec,
-      provenance: {
-        methodVersion: 'spec-two-stage-v1',
-        model: 'gemini-2.5-pro',
-        evaluatedAt: '2026-10-20T20:00:00.000Z',
-        sources: ['guides/css/individual-transform-properties/guide.md'],
-      },
-    });
-    assert.match(
-      dossier,
-      /### Technical Reference Dossier \(Legacy Pattern & Modern API Boundaries\)/,
-    );
-    assert.match(dossier, /Payoff \(changesSomethingForDeveloper\): Yes for multi-function chains\./);
-    assert.match(
-      dossier,
-      /Local Swap \(isLikeForLikeSwapAtSite\): Yes when in canonical translate -> rotate -> scale order\./,
-    );
-    assert.match(dossier, /Replaces: Multi-function transform chains/);
-    assert.match(
-      dossier,
-      /Does NOT Replace \(Leave-It \/ False-Positive Boundaries\): Isolated single-function :hover transform/,
-    );
-    assert.match(dossier, /Known False-Positive Traps: Avoids repeating static transform functions\./);
-
+  it('excludes all guide-triage.json fields and dossier text from the formatted judge prompt even when triage entries exist', async () => {
     assert.ok(JUDGE_SYSTEM_PROMPT.includes('no-op syntax swap'));
     assert.ok(JUDGE_SYSTEM_PROMPT.includes('non-1:1 library component migration'));
 
-    // Pure dossier formatting assertions run unconditionally in public CI
-    assert.equal(
-      formatGuideTriageDossier(unverifiedSpec).includes('### Technical Reference Dossier'),
-      false,
-    );
-    assert.equal(
-      formatGuideTriageDossier(templatedWithProvenance).includes('### Technical Reference Dossier'),
-      false,
-    );
+    const tmpRoot = await mkdtemp(join(tmpdir(), 'judge-no-triage-'));
+    const origEvalDir = process.env.ANALYZER_EVAL_DATA_DIR;
+    try {
+      const guidesDir = join(tmpRoot, 'guides', 'css', 'individual-transform-properties');
+      const evalDir = join(tmpRoot, 'eval-data');
+      await mkdir(guidesDir, { recursive: true });
+      await mkdir(join(evalDir, 'findings'), { recursive: true });
 
-    // Only skip loading live eval data when the env var is unset
+      await writeFile(
+        join(guidesDir, 'guide.md'),
+        [
+          '---',
+          'name: individual-transform-properties',
+          'description: Animate translate, rotate, and scale independently.',
+          '---',
+          '',
+          '# Individual Transform Properties',
+          '',
+          'Use CSS `translate`, `rotate`, and `scale` properties to animate transforms independently.',
+        ].join('\n'),
+        'utf8',
+      );
+
+      await writeFile(
+        join(evalDir, 'findings', '2026-10-19-guide-explainers-171.json'),
+        JSON.stringify([
+          {
+            guideId: 'individual-transform-properties',
+            combinedExcerpt:
+              'CSSWGTransforms-2 explainer: individual transform properties avoid repeating other transform functions in keyframes.',
+          },
+        ]),
+        'utf8',
+      );
+
+      const triageEntry = {
+        guideId: 'individual-transform-properties',
+        classification: 'detectable',
+        detection: 'ast-pattern-SENTINEL_DETECTION',
+        updateScope: 'cross-layer-refactor',
+        changesSomethingForDeveloper: 'SENTINEL_PAYOFF_TEXT_FROM_TRIAGE',
+        isLikeForLikeSwapAtSite: 'SENTINEL_SWAP_TEXT_FROM_TRIAGE',
+        candidateTechniques: ['SENTINEL_CANDIDATE_TECHNIQUE'],
+        replaces: ['SENTINEL_REPLACES_PATTERN'],
+        doesNotReplace: ['SENTINEL_DOES_NOT_REPLACE_BOUNDARY'],
+        falsePositiveTraps: ['SENTINEL_FALSE_POSITIVE_TRAP'],
+        rationale: 'SENTINEL_TRIAGE_RATIONALE',
+        brownfieldTarget: 'SENTINEL_BROWNFIELD_TARGET',
+        evidenceFromGuide: 'SENTINEL_EVIDENCE_FROM_GUIDE',
+        reason: 'SENTINEL_TRIAGE_REASON',
+        provenance: {
+          methodVersion: 'spec-two-stage-v1',
+          model: 'gemini-2.5-pro',
+          evaluatedAt: '2026-10-20T20:00:00.000Z',
+          sources: ['guides/css/individual-transform-properties/guide.md'],
+        },
+      };
+      await writeFile(join(evalDir, 'guide-triage.json'), JSON.stringify([triageEntry]), 'utf8');
+
+      process.env.ANALYZER_EVAL_DATA_DIR = evalDir;
+      const summaries = await loadGuideSummariesMap(join(tmpRoot, 'guides'));
+      const summary = summaries.get('individual-transform-properties');
+      assert.ok(summary, 'Expected guide summary to load');
+
+      const card: BlindCardPayload = {
+        cardId: 'card-triage-isolation-1',
+        repo: 'sample-repo',
+        file: 'src/styles.css',
+        line: 12,
+        guideId: 'individual-transform-properties',
+        guideSummary: summary,
+        codeSnippet: '  transform: translateX(10px) rotate(45deg);',
+      };
+
+      const prompt = formatBlindCardPrompt(card);
+      const requestBodyJson = JSON.stringify(buildGeminiRequestBody(card));
+
+      // Guide body, upstream explainer, and code snippet stay present
+      assert.match(prompt, /## Modern Web Guidance Guide \(individual-transform-properties\)/);
+      assert.match(prompt, /animate transforms independently/);
+      assert.match(prompt, /## Upstream Feature Explainer & Motivation Context/);
+      assert.match(prompt, /CSSWGTransforms-2 explainer/);
+      assert.match(prompt, /transform: translateX\(10px\) rotate\(45deg\);/);
+
+      // No dossier headers, triage field keys, or triage text appear anywhere in prompt or request payload
+      const forbiddenSubstrings = [
+        'Technical Reference Dossier',
+        'Does NOT Replace',
+        'Known False-Positive Traps',
+        'Local Swap',
+        'Update Scope',
+        'changesSomethingForDeveloper',
+        'isLikeForLikeSwapAtSite',
+        'doesNotReplace',
+        'falsePositiveTraps',
+        'candidateTechniques',
+        'brownfieldTarget',
+        'evidenceFromGuide',
+        'SENTINEL_DETECTION',
+        'SENTINEL_PAYOFF_TEXT_FROM_TRIAGE',
+        'SENTINEL_SWAP_TEXT_FROM_TRIAGE',
+        'SENTINEL_CANDIDATE_TECHNIQUE',
+        'SENTINEL_REPLACES_PATTERN',
+        'SENTINEL_DOES_NOT_REPLACE_BOUNDARY',
+        'SENTINEL_FALSE_POSITIVE_TRAP',
+        'SENTINEL_TRIAGE_RATIONALE',
+        'SENTINEL_BROWNFIELD_TARGET',
+        'SENTINEL_EVIDENCE_FROM_GUIDE',
+        'SENTINEL_TRIAGE_REASON',
+      ];
+      assert.deepStrictEqual(
+        forbiddenSubstrings.filter((s) => prompt.includes(s) || requestBodyJson.includes(s)),
+        [],
+      );
+    } finally {
+      if (origEvalDir === undefined) {
+        delete process.env.ANALYZER_EVAL_DATA_DIR;
+      } else {
+        process.env.ANALYZER_EVAL_DATA_DIR = origEvalDir;
+      }
+      await rm(tmpRoot, { recursive: true, force: true });
+    }
+
     if (process.env.ANALYZER_EVAL_DATA_DIR) {
-      const map = await loadGuideSummariesMap();
-      const itpSummary = map.get('individual-transform-properties');
-      assert.ok(itpSummary);
-      assert.equal(
-        itpSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
-        true,
-      );
-      const unverifiedSummary = map.get('trusted-types');
-      assert.ok(unverifiedSummary);
-      assert.equal(
-        unverifiedSummary.explainerContext?.includes('### Technical Reference Dossier') ?? false,
-        false,
-      );
+      const liveMap = await loadGuideSummariesMap();
+      const rawTriage = JSON.parse(
+        await readFile(join(process.env.ANALYZER_EVAL_DATA_DIR, 'guide-triage.json'), 'utf8'),
+      ) as Array<Record<string, unknown>>;
+      const itpTriage = rawTriage.find((entry) => entry.guideId === 'individual-transform-properties');
+      const itpSummary = liveMap.get('individual-transform-properties');
+      assert.ok(itpTriage, 'Expected individual-transform-properties entry in guide-triage.json');
+      assert.ok(itpSummary, 'Expected individual-transform-properties summary from guides/');
+
+      const livePrompt = formatBlindCardPrompt({
+        cardId: 'card-live-triage-isolation',
+        file: 'src/styles.css',
+        line: 12,
+        guideId: 'individual-transform-properties',
+        guideSummary: itpSummary,
+        codeSnippet: '  transform: translateX(10px) rotate(45deg);',
+      });
+      assert.equal(livePrompt.includes('Technical Reference Dossier'), false);
+      if (typeof itpTriage.changesSomethingForDeveloper === 'string' && itpTriage.changesSomethingForDeveloper.trim()) {
+        assert.equal(livePrompt.includes(itpTriage.changesSomethingForDeveloper.trim()), false);
+      }
     }
   });
 

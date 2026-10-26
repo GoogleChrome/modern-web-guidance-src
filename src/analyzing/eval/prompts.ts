@@ -279,7 +279,7 @@ export function formatBlindCardPrompt(card: BlindCardPromptInput): string {
   const markdownBody = card.guideSummary.markdownBody?.trim();
   if (!markdownBody) {
     throw new Error(
-      `formatBlindCardPrompt failed: card ${card.cardId ?? 'unknown'} (guideId: "${card.guideId}") is missing required guideSummary.markdownBody. Failing fast per R29.`,
+      `formatBlindCardPrompt failed: card ${card.cardId ?? 'unknown'} (guideId: "${card.guideId}") is missing required guideSummary.markdownBody. Failing fast.`,
     );
   }
 
@@ -312,7 +312,7 @@ export function computeJudgePromptVersion(
     temperature,
     enableSearchGrounding: false,
   });
-  return `${PROMPT_MODEL}:detective-v6-spec22-${hash}`;
+  return `${PROMPT_MODEL}:detective-v7-${hash}`;
 }
 
 export const JUDGE_VERSION = computeJudgePromptVersion();

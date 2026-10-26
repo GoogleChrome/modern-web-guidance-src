@@ -1070,131 +1070,9 @@ export async function loadGuideSummaryFromMarkdown(
   return parseGuideSummaryMarkdown(content, guideId);
 }
 
-export const CIRCULAR_SPEC_TEMPLATE_PATTERNS: readonly RegExp[] = [
-  /^Yes: replaces .+ with native .+, removing third-party library weight, manual event\/DOM synchronization, or vendor-prefixed duplication while excluding .+\.$/,
-  /^Yes: .+ directly replaces the matched call site or declaration \(.+\) without migrating unrelated components; cases requiring broader architectural changes \(.+\) are excluded in doesNotReplace\.$/,
-  /^Yes when scoped to .+: adopting .+ eliminates manual workaround state or library overhead, whereas lookalikes such as .+ gain nothing and must be left alone\.$/,
-  /^Conditional \((?:needs-care|needs-verifier)\): only a like-for-like swap when the matched code is an isolated instance of .+; requires LLM Verifier \/ AST context to exclude .+ where migrating would alter surrounding component contracts\.$/,
-  /^No reliable static win across general matches: while .+ addresses .+ in greenfield designs, wild matches overlap heavily with .+ where rewriting is either a no-op or alters intended behavior\.$/,
-  /^No \(do-not-write-a-rule\): replacing .+ with .+ requires broader component, markup, or server\/runtime restructuring rather than a localized (?:call-site swap|local-swap)\.$/,
-];
-
-export function hasCircularTemplatedSpecText(value: string): boolean {
-  const trimmed = value.trim();
-  return CIRCULAR_SPEC_TEMPLATE_PATTERNS.some((re) => re.test(trimmed));
-}
-
 /**
- * Returns true only when a `legacy-pattern-specs.json` entry carries valid,
- * non-empty provenance metadata (`methodVersion`, `model`, `evaluatedAt`, `sources`)
- * alongside non-empty, non-circular answers (`changesSomethingForDeveloper`, `isLikeForLikeSwapAtSite`).
- * Unverified or circular template entries without provenance must never be injected into the Judge.
- */
-export function hasValidSpecProvenance(spec: Record<string, unknown>): boolean {
-  if (spec.detection === 'no-legacy-pattern') {
-    return false;
-  }
-
-  const changesForDev =
-    typeof spec.changesSomethingForDeveloper === 'string'
-      ? spec.changesSomethingForDeveloper.trim()
-      : '';
-  const likeForLike =
-    typeof spec.isLikeForLikeSwapAtSite === 'string'
-      ? spec.isLikeForLikeSwapAtSite.trim()
-      : '';
-  if (!changesForDev || !likeForLike) {
-    return false;
-  }
-  if (hasCircularTemplatedSpecText(changesForDev) || hasCircularTemplatedSpecText(likeForLike)) {
-    return false;
-  }
-
-  if (typeof spec.provenance !== 'object' || spec.provenance === null || Array.isArray(spec.provenance)) {
-    return false;
-  }
-  const prov = spec.provenance as Record<string, unknown>;
-  const methodVersion = typeof prov.methodVersion === 'string' ? prov.methodVersion.trim() : '';
-  const model = typeof prov.model === 'string' ? prov.model.trim() : '';
-  const evaluatedAt = typeof prov.evaluatedAt === 'string' ? prov.evaluatedAt.trim() : '';
-  if (!methodVersion || !model || !evaluatedAt) {
-    return false;
-  }
-  if (!Array.isArray(prov.sources) || prov.sources.length === 0) {
-    return false;
-  }
-  return prov.sources.every((s) => typeof s === 'string' && s.trim().length > 0);
-}
-
-/**
- * Formats a `legacy-pattern-specs.json` entry into a Technical Reference Dossier block
- * for the Judge prompt.
- * Returns `''` when the entry does not carry valid provenance, preventing unverified
- * or circular template text from biasing the Judge.
- */
-export function formatGuideTriageDossier(spec: Record<string, unknown>): string {
-  if (!hasValidSpecProvenance(spec)) {
-    return '';
-  }
-  const payoff =
-    typeof spec.changesSomethingForDeveloper === 'string'
-      ? spec.changesSomethingForDeveloper.trim()
-      : '';
-  const callSiteSwap =
-    typeof spec.isLikeForLikeSwapAtSite === 'string'
-      ? spec.isLikeForLikeSwapAtSite.trim()
-      : '';
-  const replaces = Array.isArray(spec.replaces)
-    ? spec.replaces.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
-    : [];
-  const doesNotReplace = Array.isArray(spec.doesNotReplace)
-    ? spec.doesNotReplace.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
-    : [];
-  const rationale = typeof spec.rationale === 'string' ? spec.rationale.trim() : '';
-  const trapsList = Array.isArray(spec.falsePositiveTraps)
-    ? spec.falsePositiveTraps.filter(
-        (x): x is string => typeof x === 'string' && x.trim().length > 0,
-      )
-    : [];
-  const trapsText = trapsList.length > 0 ? trapsList.join('; ') : rationale;
-
-  const lines: string[] = [
-    '### Technical Reference Dossier (Legacy Pattern & Modern API Boundaries)',
-  ];
-  if (typeof spec.detection === 'string' && spec.detection.trim().length > 0) {
-    lines.push(`- Detection: ${spec.detection.trim()}`);
-  }
-  if (typeof spec.updateScope === 'string' && spec.updateScope.trim().length > 0) {
-    const scope = spec.updateScope.trim();
-    lines.push(`- Update Scope: ${scope}`);
-    if (scope === 'cross-layer-refactor' || scope === 'widget-recipe') {
-      lines.push(
-        '- Note: When updateScope is cross-layer-refactor or widget-recipe, requiring coordinated HTML/CSS/JS changes across the component is expected and is NOT a reason to mark modern_feature_applies_here = false or has_meaningful_payoff = false.',
-      );
-    }
-  }
-  if (payoff) {
-    lines.push(`- Payoff (changesSomethingForDeveloper): ${payoff}`);
-  }
-  if (callSiteSwap) {
-    lines.push(`- Local Swap (isLikeForLikeSwapAtSite): ${callSiteSwap}`);
-  }
-  if (replaces.length > 0) {
-    lines.push(`- Replaces: ${replaces.join('; ')}`);
-  }
-  if (doesNotReplace.length > 0) {
-    lines.push(
-      `- Does NOT Replace (Leave-It / False-Positive Boundaries): ${doesNotReplace.join('; ')}`,
-    );
-  }
-  if (trapsText) {
-    lines.push(`- Known False-Positive Traps: ${trapsText}`);
-  }
-  return lines.join('\n');
-}
-
-/**
- * Loads guide summaries directly from markdown files into a map indexed by guideId.
+ * Loads guide summaries directly from markdown files into a map indexed by guideId,
+ * enriched only with external upstream feature explainers (never rule-writer triage text).
  */
 export async function loadGuideSummariesMap(
   guidesRootDirOrFile: string = GUIDES_DIR,
@@ -1292,28 +1170,6 @@ export async function loadGuideSummariesMap(
     }
   } catch {
     /* ignore missing or unreadable explainers file */
-  }
-
-  // Also inject Technical Reference Dossier from guide-triage.json (or legacy specs)
-  const guideTriageJsonPath = join(evalDataDir, 'guide-triage.json');
-  const specsContent = await readFile(guideTriageJsonPath, 'utf8');
-  const parsedSpecs = JSON.parse(specsContent) as unknown;
-  if (Array.isArray(parsedSpecs)) {
-    for (const item of parsedSpecs) {
-      if (typeof item === 'object' && item !== null) {
-        const rec = item as Record<string, unknown>;
-        const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
-        if (!guideId) continue;
-        const existing = map.get(guideId);
-        if (!existing) continue;
-        const dossier = formatGuideTriageDossier(rec);
-        if (!dossier) continue;
-        const mergedContext = existing.explainerContext
-          ? `${existing.explainerContext}\n\n${dossier}`
-          : dossier;
-        map.set(guideId, { ...existing, explainerContext: mergedContext });
-      }
-    }
   }
 
   return map;

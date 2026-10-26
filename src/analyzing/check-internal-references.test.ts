@@ -69,23 +69,16 @@ describe('check-internal-references guard', () => {
       false,
     );
 
-    // 1. prompts.ts formatBlindCardPrompt error string
+    // prompts.ts formatBlindCardPrompt no longer gets an exemption
     assert.strictEqual(
       isExemptedLine(
         'src/analyzing/eval/prompts.ts',
         '      `formatBlindCardPrompt failed: card ${card.cardId ?? \'unknown\'} (guideId: "${card.guideId}") is missing required guideSummary.markdownBody. Failing fast per R29.`,',
       ),
-      true,
-    );
-    assert.strictEqual(
-      isExemptedLine(
-        'src/analyzing/eval/prompts.ts',
-        '  // other comment referencing R29',
-      ),
       false,
     );
 
-    // 2. llm-verifier.ts formatVerifierPrompt error string
+    // 1. llm-verifier.ts formatVerifierPrompt error string
     assert.strictEqual(
       isExemptedLine(
         'src/analyzing/llm-verifier.ts',
@@ -101,7 +94,7 @@ describe('check-internal-references guard', () => {
       false,
     );
 
-    // 3. update-eval.ts progress logging in internal eval directory
+    // 2. update-eval.ts progress logging in internal eval directory
     assert.strictEqual(
       isExemptedLine(
         'src/analyzing/eval/update-eval.ts',
