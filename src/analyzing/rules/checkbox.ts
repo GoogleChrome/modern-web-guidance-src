@@ -19,17 +19,35 @@ const CHECKED_PSEUDO_ICON_REGEX =
   /:checked\s*[+~]\s*(?:label|span)::(?:before|after)\b/i;
 
 const NON_CHECKBOX_SELECTOR_REGEX =
-  /\b(?:radio|rating|rate|star|slider|switch|toggle|onoff|nav|menu|btn-check|toggle-btn|toggle-button)\b/i;
+  /\b(?:radio|rating|rate|star|slider|switch|toggle|onoff|nav|menu|btn-check|toggle-btn|toggle-button|show-more|read-more)\b/i;
+
+const DISCLOSURE_OR_TAB_WORD_REGEX = /\b(?:tab|tabs|accordion|collapse|collapsible|drawer)\b/i;
+const EXPLICIT_CHECKBOX_BRANCH_REGEX = /(?:checkbox|\.custom-control)/i;
+const INPUT_OR_SIBLING_DISCLOSURE_CLASS_REGEX =
+  /(?:input|\[type=['"]?checkbox['"]?\])[^\s>+~]*\.(?:accordion|tab|tabs|collapse|collapsible|drawer)\b|[+~]\s*(?:label|span)[^\s>+~]*\.(?:accordion|tab|tabs|collapse|collapsible|drawer)\b/i;
+
+function isExcludedSelectorBranch(branch: string): boolean {
+  if (NON_CHECKBOX_SELECTOR_REGEX.test(branch)) {
+    return true;
+  }
+  if (INPUT_OR_SIBLING_DISCLOSURE_CLASS_REGEX.test(branch)) {
+    return true;
+  }
+  if (!EXPLICIT_CHECKBOX_BRANCH_REGEX.test(branch) && DISCLOSURE_OR_TAB_WORD_REGEX.test(branch)) {
+    return true;
+  }
+  return false;
+}
 
 const STAR_CONTENT_REGEX = /(?:★|☆|\\2605|\\2606|\\f005|\\f006)/i;
 const STAR_OR_RATING_SELECTOR_REGEX = /\b(?:star|rating|rate)\b/i;
 
 const SR_ONLY_REGEX = /\.(?:sr-only|visually-hidden)\b/i;
 
-function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
+function getHidingOrStrippingKind(styleRule: CssRuleView): 'opacity' | 'appearance' | null {
   const opacityVal = (styleRule.getPropertyValue('opacity') ?? '').trim();
   if (opacityVal === '0' || opacityVal === '0%') {
-    return true;
+    return 'opacity';
   }
 
   const appearanceVal = (styleRule.getPropertyValue('appearance') ?? '').trim().toLowerCase();
@@ -37,16 +55,21 @@ function hasHidingOrStrippingDeclaration(styleRule: CssRuleView): boolean {
     styleRule.getPropertyValue('-webkit-appearance') ?? ''
   ).trim().toLowerCase();
   if (appearanceVal === 'none' || webkitAppearanceVal === 'none') {
-    return true;
+    return 'appearance';
   }
 
-  return false;
+  return null;
 }
 
 const TOGGLE_SWITCH_REGEX = /\b(?:switch|toggle|onoff|slider|toggle-btn|btn-check|toggle-button)\b/i;
 
-const SIBLING_CUSTOM_BOX_REGEX =
-  /(?:[+~]\s*(?:label|span)|::?(?:before|after)|\.custom-checkbox|\.custom-control|:indeterminate)/i;
+const CUSTOM_CHECKBOX_WRAPPER_CLASS_REGEX = /\.(?:custom-checkbox|custom-control-input)\b/i;
+
+const CHECKBOX_SIBLING_ELEMENT_REGEX =
+  /(?:(?:checkbox|\.custom-checkbox|\.custom-control)[^{};,]*[+~]\s*(?:label|span|i|\.[a-z_-]+)\b|\binput(?::not\([^)]*\)|:(?:checked|focus|disabled|hover))*\s*[+~]\s*(?:label|span)\b|\.checkbox-icon\b)/i;
+
+const CHECKBOX_SIBLING_PSEUDO_BOX_REGEX =
+  /(?:(?:checkbox|\.custom-checkbox|\.custom-control)[^{};,]*[+~]\s*(?:label|span|i)\s*::?(?:before|after)\b|\binput(?::not\([^)]*\)|:(?:checked|focus|disabled|hover))*\s*[+~]\s*(?:label|span)\s*::?(?:before|after)\b|\.checkbox-icon\b)/i;
 
 export const checkboxCssMatcher: CssRuleMatcher = {
   kind: 'css',
@@ -84,7 +107,7 @@ export const checkboxCssMatcher: CssRuleMatcher = {
 
     // 5. Case A: Custom checkmark icon on sibling pseudo-elements
     const hasCheckboxIconBranch = selectorBranches.some(
-      (b) => CHECKED_PSEUDO_ICON_REGEX.test(b) && !NON_CHECKBOX_SELECTOR_REGEX.test(b),
+      (b) => CHECKED_PSEUDO_ICON_REGEX.test(b) && !isExcludedSelectorBranch(b),
     );
     if (hasCheckboxIconBranch) {
       return {
@@ -93,24 +116,33 @@ export const checkboxCssMatcher: CssRuleMatcher = {
       };
     }
 
-    // 5. Case B: Hiding or stripping native checkbox controls
-    const matchesTarget = selectorBranches.some(
+    // 6. Case B: Hiding or stripping native checkbox controls for a sibling custom box
+    if (selectorBranches.some((b) => /\b(?:select|button|textarea)\b/i.test(b))) {
+      return null;
+    }
+
+    const matchingBranches = selectorBranches.filter(
       (b) =>
-        CHECKBOX_TARGET_PATTERNS.some((pattern) => pattern.test(b)) &&
-        !NON_CHECKBOX_SELECTOR_REGEX.test(b),
+        CHECKBOX_TARGET_PATTERNS.some((pattern) => pattern.test(b)) && !isExcludedSelectorBranch(b),
     );
-    if (!matchesTarget) {
+    if (matchingBranches.length === 0) {
       return null;
     }
 
-    if (!hasHidingOrStrippingDeclaration(styleRule)) {
+    const hidingKind = getHidingOrStrippingKind(styleRule);
+    if (!hidingKind) {
       return null;
     }
 
-    // Require sibling/custom-box selector, custom checkmark pseudo-element, or :indeterminate styling in stylesheet
+    const isWrapperClass = matchingBranches.some((b) => CUSTOM_CHECKBOX_WRAPPER_CLASS_REGEX.test(b));
+    const siblingPattern =
+      hidingKind === 'opacity' ? CHECKBOX_SIBLING_ELEMENT_REGEX : CHECKBOX_SIBLING_PSEUDO_BOX_REGEX;
+
+    // Require an actual checkbox sibling custom-box selector (not direct &::before / :indeterminate on the <input> itself, which is the modern appearance: none pattern)
     const hasVisualReplacement =
-      SIBLING_CUSTOM_BOX_REGEX.test(styleRule.selectorText) ||
-      SIBLING_CUSTOM_BOX_REGEX.test(ctx.stylesheetText);
+      isWrapperClass ||
+      siblingPattern.test(styleRule.selectorText) ||
+      siblingPattern.test(ctx.stylesheetText);
     if (!hasVisualReplacement) {
       return null;
     }

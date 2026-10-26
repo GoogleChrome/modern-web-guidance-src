@@ -76,6 +76,29 @@ void test('checkbox: positive brownfield matches', async (t) => {
     const matches = scanCss('containers.css', css, [matcher]);
     assert.equal(matches.length, 2);
   });
+
+  await t.test('flags comma-grouped checkbox and radio rules with opacity: 0 and sibling pseudo-element box', () => {
+    const css = `
+      input[type="checkbox"],
+      input[type="radio"] {
+        opacity: 0;
+        position: absolute;
+      }
+      input[type="checkbox"] + label::before,
+      input[type="radio"] + label::before {
+        content: "";
+        display: inline-block;
+      }
+      input[type="checkbox"]:checked + label::before,
+      input[type="radio"]:checked + label::before {
+        content: "✓";
+      }
+    `;
+    const matches = scanCss('grouped-controls.css', css, [matcher]);
+    assert.equal(matches.length, 2);
+    assert.equal(matches[0]?.line, 2);
+    assert.equal(matches[1]?.line, 12);
+  });
 });
 
 void test('checkbox: negative / exempt cases', async (t) => {
@@ -166,6 +189,10 @@ void test('checkbox: negative / exempt cases', async (t) => {
 
   await t.test('exempts modern appearance: none directly on input[type="checkbox"] (recommended technique)', () => {
     const css = `
+      .clearfix::after {
+        content: "";
+        display: table;
+      }
       input[type="checkbox"] {
         appearance: none;
         -webkit-appearance: none;
@@ -173,8 +200,43 @@ void test('checkbox: negative / exempt cases', async (t) => {
         height: 18px;
         border: 2px solid #555;
       }
+      input[type="checkbox"]::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+      }
+      input[type="checkbox"]:indeterminate::before {
+        content: "-";
+      }
+      input[type="checkbox"] + label {
+        cursor: pointer;
+      }
     `;
     const matches = scanCss('modern-checkbox.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts CSS-only accordion/tab disclosure hacks and multi-widget resets', () => {
+    const css = `
+      input.accordion[type="checkbox"]:checked + label::after {
+        content: "-";
+      }
+      .payment-tab-trigger > input:checked ~ label::before {
+        border-color: green;
+      }
+      input.tab:checked + span::before {
+        background: #ddd;
+      }
+      input[type="checkbox"].quote-show-more {
+        -webkit-appearance: none;
+      }
+      .chrome-bootstrap select,
+      .chrome-bootstrap input[type="checkbox"],
+      .chrome-bootstrap button {
+        -webkit-appearance: none;
+      }
+    `;
+    const matches = scanCss('disclosures-and-resets.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
 
