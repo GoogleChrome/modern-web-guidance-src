@@ -478,6 +478,9 @@
       "soft-edge-content-fade": [
         "task"
       ],
+      "typography": [
+        "daily-grind"
+      ],
       "visually-stable-font-fallbacks": [
         "task"
       ],
