@@ -203,14 +203,10 @@
           close;
       }
 
-      /* Configure the number of visible cards here. JavaScript reads this
-         value because CSS cannot use a custom property in :nth-child(). Whole
+      /* Cap the visible cards with a fixed :nth-child() selector, which works
+         without JavaScript. 7 is an example value (it shows six cards). Whole
          cards can be removed; in-card items may need visibility to reserve space. */
-      .skeleton[aria-busy="true"] {
-        --visible-cards: 6;
-      }
-
-      .skeleton[aria-busy="true"][data-ready] article[hidden] {
+      .skeleton[aria-busy="true"] > article:nth-child(n + 7) {
         display: none;
       }
 
@@ -471,21 +467,6 @@
     </section>
   </main>
   <script>
-    document.querySelectorAll('.skeleton[aria-busy="true"]').forEach((collection) => {
-      const configured = getComputedStyle(collection)
-        .getPropertyValue('--visible-cards')
-        .trim();
-      const count = Number.parseInt(configured, 10);
-      const cards = collection.querySelectorAll(':scope > article');
-      const visibleCount = Number.isFinite(count) ? Math.max(0, count) : cards.length;
-
-      cards.forEach((card, index) => {
-        if (index >= visibleCount) card.hidden = true;
-      });
-
-      collection.dataset.ready = '';
-    });
-
     // One status region per independently loading area; this demo has one area.
     const collection = document.querySelector('.skeleton');
     const status = document.querySelector('.loading-status');
