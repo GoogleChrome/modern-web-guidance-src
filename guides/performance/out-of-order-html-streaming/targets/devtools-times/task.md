@@ -1,1 +1,0 @@
-- Declaratively update pages in the application with content streamed later into the same HTML document or via imperative JavaScript APIs.
