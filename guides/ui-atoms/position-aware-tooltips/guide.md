@@ -26,7 +26,9 @@ Use the Popover API to create a tooltip. This creates an implicit anchor connect
 
 ```html
 <button popovertarget="tooltip" id="anchor" aria-describedby="tooltip">anchor</button>
-<div id="tooltip" popover role="tooltip"></div>
+<div id="tooltip" popover role="tooltip">
+  <div class="tooltip-content-inner"></div>
+</div>
 ```
 
 Reset the popover inset and margin styles for use with anchor positioning, but only if anchor positioning is supported.
@@ -101,6 +103,17 @@ If you need to change properties on the container itself (like `margin` or `back
     margin-block-start: 0.25rem;
   }
 }
+```
+
+## 5. Styling the inner container
+
+Style the inner container of the tooltip to ensure that, when visible, the tooltip will always fit between the trigger control and a side of the viewport. As an example, the following code will adhere to this, flipping the tooltip's content on the block axis.
+
+```css
+.tooltip-content-inner {
+  max-block-size: calc(50dvb - var(--trigger-height));
+  overflow-block: auto;
+} 
 ```
 
 ## Best practices
