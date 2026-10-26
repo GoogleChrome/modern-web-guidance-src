@@ -446,10 +446,14 @@
       } else if (b.hasAttribute("aria-pressed")) {
         flag(b, "aria-pressed", b.getAttribute("aria-pressed") !== "true");
       } else if (b.hasAttribute("aria-checked")) {
-        flag(b, "aria-checked", b.getAttribute("aria-checked") !== "true");
+        const on = b.getAttribute("aria-checked") !== "true";
+        flag(b, "aria-checked", on);
+        // Focus returns to the trigger when the menu closes, so announce the new state
+        say(`${b.textContent.trim()} ${on ? "on" : "off"}`);
       } else if ("clear" in b.dataset) {
         items.filter((x) => x.hasAttribute("aria-pressed")).forEach((x) => flag(x, "aria-pressed", x.dataset.align === "left"));
         menuItems.filter((x) => x.hasAttribute("aria-checked")).forEach((x) => flag(x, "aria-checked", false));
+        say("Formatting cleared");
       }
       if (menu.contains(b)) menu.hidePopover();
     });

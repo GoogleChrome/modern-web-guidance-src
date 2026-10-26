@@ -143,6 +143,7 @@ Add a trailing "More actions" menu when the toolbar has secondary actions or mus
 * Sync `aria-expanded` from the popover `toggle` event and focus the first item on open.
 * `ArrowDown`/`ArrowUp` move between items with wrapping; `Home`/`End` jump to the ends.
 * Close the menu after a `menuitem` is activated. For a `menuitemcheckbox`, `Enter` or a click toggles and closes, but `Space` toggles and keeps the menu open so several options can be changed in one visit (APG).
+* Announce the result before closing, using the same live region as the toolbar's action buttons (for example "Strikethrough on" or "Formatting cleared"). Once the menu closes, focus is back on the trigger and the item's new state is out of reach for a screen reader. Skip the message only when `Space` keeps the menu open, because the focused item's `aria-checked` change is announced on its own.
 * Anchor the menu to the trigger with `position-area` plus `position-try-fallbacks`.
 
 ```js
