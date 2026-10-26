@@ -32,7 +32,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** use `<button>` for triggered actions (JS, Modals, Forms) and `<a>` strictly for URL navigation. Set `type="button"` for non-submit buttons in forms to prevent unintended submission.
 - **DO** use `<ul>`, `<ol>`, and `<dl>` elements for list content.
 - **DO** ensure that all interactive elements like links and buttons have accessible names.
-- **DO** ensure that all interactive elements have a role that matches the interaction that they facilitate. Controls that trigger an interaction on the same page/in the same view should have a role of `button`, controls that redirect people should have a role of `link`.
+- Ensure that all interactive elements have a role that matches the interaction that they facilitate, whether that is their implicit role, or via the `role` attribute. Controls that trigger an interaction on the same page/in the same view should have a role of `button`, controls that redirect people should have a role of `link`.
 - **DO** hide purely decorative SVG images from assistive technology using `aria-hidden="true"`. If using a decorative `<img>`, always include an empty `alt` attribute (e.g. `alt=""`).
 - **DO** ensure that informative SVGs like logos, data visualizations, or icon buttons have a proper accessible name, and for more complex visuals, an accompanying text alternative, providing the same information as that conveyed visually.
 
