@@ -74,10 +74,34 @@ In the `beforematch` event handler, you MUST synchronize related ARIA states suc
 ```html
 <button aria-expanded="false">Hidden content</button>
 <!-- The browser automatically removes hidden="until-found" upon a search match -->
-<div class="hidden-container" hidden="until-found">
+<div id="hidden-panel" class="hidden-container" hidden="until-found">
   <p>This content is visually hidden.</p>
 </div>
 ```
+
+```javascript
+const revealBtn = document.getElementById('reveal-btn');
+const hiddenPanel = document.getElementById('hidden-panel');
+
+revealBtn.addEventListener('click', () => {
+  hiddenPanel.removeAttribute('hidden');
+  revealBtn.setAttribute('aria-expanded', 'true');
+  revealBtn.setAttribute('aria-disabled', 'true');
+});
+
+hiddenPanel.addEventListener('beforematch', () => {
+  revealBtn.setAttribute('aria-expanded', 'true');
+  revealBtn.setAttribute('aria-disabled', 'true');
+});
+```
+
+#### Custom mutually exclusive disclosures
+
+With mutually exclusive disclosures there's no way to semantically convey which control relates to which piece of hidden/expanded content, in a way that's announced by screen readers. As a result, this may cause WCAG 1.3.2 Meaningful Order issues, as the order in which content should be announced, may no longer be correct, and may affect the meaning of the content.
+
+See {{ GUIDE_REF("accordion") }} for accordion patterns, in which multiple disclosures are used in a way that is accessible.
+
+See {{ GUIDE_REF("tabs") }} for tab patterns which hides content until a specific tab is selected, keeping the information displayed minimal, helping to reduce the amount of visual noise.
 
 ## Best practices for `hidden="until-found"`
 
