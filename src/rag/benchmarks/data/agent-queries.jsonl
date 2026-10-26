@@ -1,0 +1,1043 @@
+{"qid":"aq0001","query":"custom scrollbar styling with high contrast accessibility","expectedGuide":"adapt-scrollbar-to-contrast-preferences","agent":"claude_code","runDate":"2026-09-02","words":7,"split":"dev"}
+{"qid":"aq0002","query":"high contrast","expectedGuide":"adapt-scrollbar-to-contrast-preferences","agent":"antigravity_cli","runDate":"2026-10-22","words":2,"split":"dev"}
+{"qid":"aq0003","query":"high contrast preference","expectedGuide":"adapt-scrollbar-to-contrast-preferences","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0004","query":"style accessible scrollbars","expectedGuide":"adapt-scrollbar-to-contrast-preferences","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0005","query":"style custom scrollbars","expectedGuide":"adapt-scrollbar-to-contrast-preferences","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0006","query":"style high contrast scrollbars","expectedGuide":"adapt-scrollbar-to-contrast-preferences","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0007","query":"style scrollbars","expectedGuide":"adapt-scrollbar-to-contrast-preferences","agent":"antigravity_cli","runDate":"2026-10-22","words":2,"split":"dev"}
+{"qid":"aq0008","query":"style scrollbars high contrast","expectedGuide":"adapt-scrollbar-to-contrast-preferences","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0009","query":"agent tools forms","expectedGuide":"agentic-forms","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0010","query":"ai agent form","expectedGuide":"agentic-forms","agent":"jetski_cli","runDate":"2026-09-21","words":3,"split":"dev"}
+{"qid":"aq0011","query":"declarative form agent tool","expectedGuide":"agentic-forms","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0012","query":"expose agent tools","expectedGuide":"agentic-forms","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0013","query":"expose form agent tools","expectedGuide":"agentic-forms","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"dev"}
+{"qid":"aq0014","query":"expose form tools ai agents","expectedGuide":"agentic-forms","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0015","query":"expose forms agent tools","expectedGuide":"agentic-forms","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0016","query":"expose forms as agent tools","expectedGuide":"agentic-forms","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0017","query":"expose forms as AI agent tools","expectedGuide":"agentic-forms","agent":"claude_code","runDate":"2026-10-24","words":6,"split":"dev"}
+{"qid":"aq0018","query":"expose forms to AI agents","expectedGuide":"agentic-forms","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0019","query":"expose tools AI agents forms","expectedGuide":"agentic-forms","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"dev"}
+{"qid":"aq0020","query":"expose tools forms","expectedGuide":"agentic-forms","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0021","query":"register a client-side tool for AI assistants to look up menu item details","expectedGuide":"agentic-javascript-tools","agent":"claude_code","runDate":"2026-09-14","words":13,"split":"dev"}
+{"qid":"aq0022","query":"register AI assistant tool","expectedGuide":"agentic-javascript-tools","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0023","query":"register assistant tools","expectedGuide":"agentic-javascript-tools","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0024","query":"register client side AI tool","expectedGuide":"agentic-javascript-tools","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0025","query":"register client tools","expectedGuide":"agentic-javascript-tools","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0026","query":"register WebMCP tool","expectedGuide":"agentic-javascript-tools","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0027","query":"tool AI assistant","expectedGuide":"agentic-javascript-tools","agent":"antigravity_cli","runDate":"2026-10-01","words":3,"split":"dev"}
+{"qid":"aq0028","query":"animate active nav indicator","expectedGuide":"anchor-positioning-tab-underline","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0029","query":"animate anchor tab underline","expectedGuide":"anchor-positioning-tab-underline","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0030","query":"animate navigation indicator","expectedGuide":"anchor-positioning-tab-underline","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0031","query":"sliding nav indicator","expectedGuide":"anchor-positioning-tab-underline","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0032","query":"sliding nav underline indicator","expectedGuide":"anchor-positioning-tab-underline","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0033","query":"animate element enter exit","expectedGuide":"animate-element-entry-exit","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0034","query":"animate element entry exit","expectedGuide":"animate-element-entry-exit","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0035","query":"animate element removal","expectedGuide":"animate-element-entry-exit","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0036","query":"animate accordion","expectedGuide":"animate-to-intrinsic-sizes","expectedGuides":["animate-to-intrinsic-sizes","calculate-with-intrinsic-sizes"],"agent":"antigravity_cli","runDate":"2026-10-20","words":2,"split":"dev"}
+{"qid":"aq0037","query":"animate accordion height","expectedGuide":"animate-to-intrinsic-sizes","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0038","query":"animate accordion height auto","expectedGuide":"animate-to-intrinsic-sizes","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0039","query":"animate intrinsic height","expectedGuide":"animate-to-intrinsic-sizes","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0040","query":"collapse alert zero height","expectedGuide":"animate-to-intrinsic-sizes","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0041","query":"dismiss alert without javascript","expectedGuide":"animate-to-intrinsic-sizes","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0042","query":"dismissable alert collapse height","expectedGuide":"animate-to-intrinsic-sizes","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0043","query":"build accessible forms","expectedGuide":"autofill-address-form","expectedGuides":["autofill-address-form","autofill-payment-form"],"agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0044","query":"accessible payment form","expectedGuide":"autofill-payment-form","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0045","query":"payment card form","expectedGuide":"autofill-payment-form","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0046","query":"payment card form autofill","expectedGuide":"autofill-payment-form","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0047","query":"payment form","expectedGuide":"autofill-payment-form","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0048","query":"payment form autofill","expectedGuide":"autofill-payment-form","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0049","query":"payment form credit card autofill","expectedGuide":"autofill-payment-form","agent":"antigravity_cli","runDate":"2026-10-02","words":5,"split":"dev"}
+{"qid":"aq0050","query":"validate payment fields","expectedGuide":"autofill-payment-form","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0051","query":"sign up form validation","expectedGuide":"autofill-sign-up-form","expectedGuides":["autofill-sign-up-form","verify-email-ownership"],"agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0052","query":"accessible form labels","expectedGuide":"brand-consistent-forms","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0053","query":"dark mode color scheme","expectedGuide":"brand-consistent-forms","expectedGuides":["brand-consistent-forms","component-specific-light-dark-theme"],"agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0054","query":"style checkbox radio range slider progress bar custom colors dark mode","expectedGuide":"brand-consistent-forms","agent":"claude_code","runDate":"2026-09-18","words":11,"split":"dev"}
+{"qid":"aq0055","query":"style form controls","expectedGuide":"brand-consistent-forms","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0056","query":"style form controls accent color","expectedGuide":"brand-consistent-forms","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0057","query":"style form controls accent-color","expectedGuide":"brand-consistent-forms","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0058","query":"style native checkbox radio range slider progress bar custom colors dark mode","expectedGuide":"brand-consistent-forms","agent":"claude_code","runDate":"2026-09-14","words":12,"split":"dev"}
+{"qid":"aq0059","query":"custom select","expectedGuide":"branded-select-styling","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0060","query":"select dropdown custom styling","expectedGuide":"branded-select-styling","agent":"jetski_cli","runDate":"2026-09-25","words":4,"split":"dev"}
+{"qid":"aq0061","query":"style custom select","expectedGuide":"branded-select-styling","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0062","query":"style custom select dropdown","expectedGuide":"branded-select-styling","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0063","query":"style select dropdown","expectedGuide":"branded-select-styling","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0064","query":"break up long tasks","expectedGuide":"break-up-long-tasks","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0065","query":"chunk long task","expectedGuide":"break-up-long-tasks","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0066","query":"yield long running tasks","expectedGuide":"break-up-long-tasks","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0067","query":"yield long task main thread","expectedGuide":"break-up-long-tasks","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0068","query":"yield long tasks","expectedGuide":"break-up-long-tasks","expectedGuides":["break-up-long-tasks","schedule-tasks-by-priority"],"agent":"antigravity_cli","runDate":"2026-10-07","words":3,"split":"dev"}
+{"qid":"aq0069","query":"yield main thread","expectedGuide":"break-up-long-tasks","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0070","query":"yield main thread long running processing loop scheduler.yield every 50ms","expectedGuide":"break-up-long-tasks","agent":"codex_cli","runDate":"2026-10-06","words":10,"split":"dev"}
+{"qid":"aq0071","query":"yield to main thread","expectedGuide":"break-up-long-tasks","expectedGuides":["break-up-long-tasks","schedule-tasks-by-priority"],"agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0072","query":"yielding to the main thread during a long-running JS loop for responsiveness","expectedGuide":"break-up-long-tasks","agent":"claude_code","runDate":"2026-09-16","words":12,"split":"dev"}
+{"qid":"aq0073","query":"track foreground time","expectedGuide":"calculate-total-foreground-time","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0074","query":"track page visibility","expectedGuide":"calculate-total-foreground-time","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0075","query":"track page visibility time","expectedGuide":"calculate-total-foreground-time","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0076","query":"track page visible time","expectedGuide":"calculate-total-foreground-time","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0077","query":"animate height auto","expectedGuide":"calculate-with-intrinsic-sizes","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0078","query":"animate height auto calc-size","expectedGuide":"calculate-with-intrinsic-sizes","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0079","query":"animate intrinsic sizes","expectedGuide":"calculate-with-intrinsic-sizes","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0080","query":"calculate intrinsic size","expectedGuide":"calculate-with-intrinsic-sizes","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0081","query":"interpolate-size calc-size animate height auto accordion","expectedGuide":"calculate-with-intrinsic-sizes","agent":"jetski_cli","runDate":"2026-09-23","words":6,"split":"dev"}
+{"qid":"aq0082","query":"interpolate-size height auto","expectedGuide":"calculate-with-intrinsic-sizes","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0083","query":"date calculation credit card expires leap year","expectedGuide":"capture-location-agnostic-data","agent":"antigravity_cli","runDate":"2026-10-09","words":7,"split":"dev"}
+{"qid":"aq0084","query":"handle location agnostic date time","expectedGuide":"capture-location-agnostic-data","agent":"antigravity_cli","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0085","query":"location agnostic date time","expectedGuide":"capture-location-agnostic-data","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0086","query":"preserve date time values","expectedGuide":"capture-location-agnostic-data","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0087","query":"store timezone independent dates","expectedGuide":"capture-location-agnostic-data","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0088","query":"store timezone-agnostic dates","expectedGuide":"capture-location-agnostic-data","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0089","query":"store timezone-independent date","expectedGuide":"capture-location-agnostic-data","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0090","query":"store timezone-independent date time","expectedGuide":"capture-location-agnostic-data","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0091","query":"Temporal API date reactive state","expectedGuide":"capture-location-agnostic-data","agent":"antigravity_cli","runDate":"2026-10-02","words":5,"split":"dev"}
+{"qid":"aq0092","query":"Temporal API immutable date state reactive updates","expectedGuide":"capture-location-agnostic-data","agent":"claude_code","runDate":"2026-07-29","words":7,"split":"dev"}
+{"qid":"aq0093","query":"accessible carousel","expectedGuide":"carousel-slide-effects","agent":"antigravity_cli","runDate":"2026-10-22","words":2,"split":"dev"}
+{"qid":"aq0094","query":"carousel scroll-driven animations scale","expectedGuide":"carousel-slide-effects","agent":"jetski_cli","runDate":"2026-09-21","words":4,"split":"dev"}
+{"qid":"aq0095","query":"scale cards scroll animation","expectedGuide":"carousel-slide-effects","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0096","query":"scale carousel cards at center of horizontal scroller with scroll-driven animations","expectedGuide":"carousel-slide-effects","agent":"claude_code","runDate":"2026-10-06","words":11,"split":"dev"}
+{"qid":"aq0097","query":"scroll driven animation carousel","expectedGuide":"carousel-slide-effects","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0098","query":"scroll driven carousel","expectedGuide":"carousel-slide-effects","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0099","query":"scroll driven carousel animation","expectedGuide":"carousel-slide-effects","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0100","query":"scroll driven carousel scaling","expectedGuide":"carousel-slide-effects","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0101","query":"scroll-driven carousel","expectedGuide":"carousel-slide-effects","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0102","query":"scroll-driven scale animation","expectedGuide":"carousel-slide-effects","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0103","query":"scroll snap carousel","expectedGuide":"carousel-snap-highlights","expectedGuides":["carousel-snap-highlights","scroll-snap-realtime-feedback","defer-work-until-scroll-ends"],"agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0104","query":"change parent style based on checkbox state has pseudo-class","expectedGuide":"child-state-based-styling","agent":"antigravity_cli","runDate":"2026-10-07","words":9,"split":"dev"}
+{"qid":"aq0105","query":"style parent based on checkbox","expectedGuide":"child-state-based-styling","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0106","query":"style parent based on child state","expectedGuide":"child-state-based-styling","agent":"claude_code","runDate":"2026-10-22","words":6,"split":"dev"}
+{"qid":"aq0107","query":"style parent by checkbox state","expectedGuide":"child-state-based-styling","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0108","query":"style parent checkbox","expectedGuide":"child-state-based-styling","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0109","query":"style parent checkbox checked","expectedGuide":"child-state-based-styling","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0110","query":"style parent checkbox has","expectedGuide":"child-state-based-styling","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0111","query":"style parent checked checkbox","expectedGuide":"child-state-based-styling","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0112","query":"style parent checked checkbox :has()","expectedGuide":"child-state-based-styling","agent":"antigravity_cli","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0113","query":"style parent when checkbox checked :has()","expectedGuide":"child-state-based-styling","agent":"antigravity_cli","runDate":"2026-10-20","words":6,"split":"dev"}
+{"qid":"aq0114","query":"clip decorative shapes","expectedGuide":"complex-shapes","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0115","query":"clip element custom shape","expectedGuide":"complex-shapes","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0116","query":"clip element organic shape","expectedGuide":"complex-shapes","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0117","query":"clip element organic shape mask","expectedGuide":"complex-shapes","agent":"antigravity_cli","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0118","query":"clip element with mask shape","expectedGuide":"complex-shapes","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0119","query":"clip image organic shape","expectedGuide":"complex-shapes","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0120","query":"clip organic shapes","expectedGuide":"complex-shapes","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0121","query":"image fallback","expectedGuide":"complex-shapes","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0122","query":"mask image","expectedGuide":"complex-shapes","expectedGuides":["complex-shapes","visually-texture-content"],"agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0123","query":"shape decorative elements","expectedGuide":"complex-shapes","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0124","query":"conditional polyfill loading","expectedGuide":"conditional-async-dependencies","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0125","query":"conditionally load module dependencies","expectedGuide":"conditional-async-dependencies","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"dev"}
+{"qid":"aq0126","query":"conditionally load module polyfill","expectedGuide":"conditional-async-dependencies","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0127","query":"implement accessible navbar popover with conditional async polyfill dependencies","expectedGuide":"conditional-async-dependencies","agent":"codex_cli","runDate":"2026-10-07","words":9,"split":"dev"}
+{"qid":"aq0128","query":"load async module polyfill","expectedGuide":"conditional-async-dependencies","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0129","query":"popover card button","expectedGuide":"conditional-async-dependencies","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0130","query":"conditional card layout with image","expectedGuide":"content-based-styling","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0131","query":"conditional layout has selector","expectedGuide":"content-based-styling","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0132","query":"conditional parent styling has","expectedGuide":"content-based-styling","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0133","query":"parent selector has","expectedGuide":"content-based-styling","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0134","query":"responsive image card layout","expectedGuide":"content-based-styling","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0135","query":"style card containing image :has()","expectedGuide":"content-based-styling","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0136","query":"style card with flex layout when it contains an image using has","expectedGuide":"content-based-styling","agent":"codex_cli","runDate":"2026-09-21","words":12,"split":"dev"}
+{"qid":"aq0137","query":"style parent containing image","expectedGuide":"content-based-styling","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0138","query":"convert time zones Temporal","expectedGuide":"coordinate-global-events","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"dev"}
+{"qid":"aq0139","query":"convert timezone date time","expectedGuide":"coordinate-global-events","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0140","query":"convert timezone date times","expectedGuide":"coordinate-global-events","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0141","query":"convert timezone dates Temporal","expectedGuide":"coordinate-global-events","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0142","query":"convert timezone Temporal","expectedGuide":"coordinate-global-events","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0143","query":"convert timezone temporal date","expectedGuide":"coordinate-global-events","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0144","query":"dates timezones","expectedGuide":"coordinate-global-events","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0145","query":"timezone aware date time","expectedGuide":"coordinate-global-events","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0146","query":"timezone conversion Temporal","expectedGuide":"coordinate-global-events","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0147","query":"timezone date conversion Temporal","expectedGuide":"coordinate-global-events","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0148","query":"compile C++ to WebAssembly","expectedGuide":"cpp-on-the-web","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0149","query":"load WebAssembly module","expectedGuide":"cpp-on-the-web","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0150","query":"run WebAssembly background worker","expectedGuide":"cpp-on-the-web","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0151","query":"run WebAssembly in worker","expectedGuide":"cpp-on-the-web","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0152","query":"run WebAssembly worker","expectedGuide":"cpp-on-the-web","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0153","query":"WebAssembly canvas render image","expectedGuide":"cpp-on-the-web","agent":"antigravity_cli","runDate":"2026-10-09","words":4,"split":"dev"}
+{"qid":"aq0154","query":"webassembly canvas rendering","expectedGuide":"cpp-on-the-web","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0155","query":"webassembly canvas worker","expectedGuide":"cpp-on-the-web","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0156","query":"custom select rich options","expectedGuide":"custom-select-picker-layouts","expectedGuides":["custom-select-picker-layouts","rich-media-picker"],"agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0157","query":"customizable select dropdown","expectedGuide":"custom-select-picker-layouts","expectedGuides":["custom-select-picker-layouts","branded-select-styling","animated-select-picker","rich-media-picker"],"agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0158","query":"custom scrollbar","expectedGuide":"customize-scrollbar-color-and-thickness","agent":"jetski_cli","runDate":"2026-09-11","words":2,"split":"dev"}
+{"qid":"aq0159","query":"custom scrollbar styling","expectedGuide":"customize-scrollbar-color-and-thickness","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0160","query":"style container scrollbar","expectedGuide":"customize-scrollbar-color-and-thickness","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0161","query":"style custom scrollbar","expectedGuide":"customize-scrollbar-color-and-thickness","expectedGuides":["customize-scrollbar-color-and-thickness","adapt-scrollbar-to-contrast-preferences"],"agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0162","query":"style scrollable container scrollbar","expectedGuide":"customize-scrollbar-color-and-thickness","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0163","query":"style scrollbar","expectedGuide":"customize-scrollbar-color-and-thickness","agent":"claude_code","runDate":"2026-10-20","words":2,"split":"dev"}
+{"qid":"aq0164","query":"style scrollbar thin colors","expectedGuide":"customize-scrollbar-color-and-thickness","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0165","query":"dark mode color-scheme theme switcher with light-dark","expectedGuide":"dark-mode","agent":"claude_code","runDate":"2026-10-07","words":7,"split":"dev"}
+{"qid":"aq0166","query":"implement color-scheme light dark theme custom properties scrollbar-color select form controls","expectedGuide":"dark-mode","agent":"codex_cli","runDate":"2026-08-10","words":11,"split":"dev"}
+{"qid":"aq0167","query":"implement color-scheme light dark theme variables select dropdown forced theme scrollbar-color","expectedGuide":"dark-mode","agent":"codex_cli","runDate":"2026-07-27","words":11,"split":"dev"}
+{"qid":"aq0168","query":"detect scroll completion","expectedGuide":"defer-work-until-scroll-ends","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0169","query":"detect scroll end","expectedGuide":"defer-work-until-scroll-ends","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0170","query":"scrollend scroll event detect visible element","expectedGuide":"defer-work-until-scroll-ends","agent":"jetski_cli","runDate":"2026-09-21","words":6,"split":"dev"}
+{"qid":"aq0171","query":"container style query","expectedGuide":"design-token-reactivity","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0172","query":"container style query custom property","expectedGuide":"design-token-reactivity","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"dev"}
+{"qid":"aq0173","query":"react ancestor style changes","expectedGuide":"design-token-reactivity","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0174","query":"react ancestor style queries","expectedGuide":"design-token-reactivity","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0175","query":"react to container styles","expectedGuide":"design-token-reactivity","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"dev"}
+{"qid":"aq0176","query":"style container query custom property","expectedGuide":"design-token-reactivity","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0177","query":"style query","expectedGuide":"design-token-reactivity","agent":"antigravity_cli","runDate":"2026-10-06","words":2,"split":"dev"}
+{"qid":"aq0178","query":"style query custom property","expectedGuide":"design-token-reactivity","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0179","query":"detect background tab","expectedGuide":"detect-initial-visibility-state","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0180","query":"detect background tab load","expectedGuide":"detect-initial-visibility-state","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0181","query":"detect background tab visibility","expectedGuide":"detect-initial-visibility-state","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0182","query":"detect initial page visibility","expectedGuide":"detect-initial-visibility-state","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0183","query":"animate carousel reduced motion","expectedGuide":"directional-navigation-transitions","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0184","query":"animate carousel slides","expectedGuide":"directional-navigation-transitions","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0185","query":"animate carousel transitions","expectedGuide":"directional-navigation-transitions","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0186","query":"animate content slider transition","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0187","query":"animate directional view transition","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0188","query":"carousel animation","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0189","query":"carousel directional slide animation prefers reduced motion","expectedGuide":"directional-navigation-transitions","agent":"codex_cli","runDate":"2026-09-30","words":7,"split":"dev"}
+{"qid":"aq0190","query":"carousel slider slide animation","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0191","query":"content carousel slider","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0192","query":"CSS View Transitions API React card slider directional transition prefers-reduced-motion","expectedGuide":"directional-navigation-transitions","agent":"codex_cli","runDate":"2026-08-03","words":10,"split":"dev"}
+{"qid":"aq0193","query":"directional carousel animation","expectedGuide":"directional-navigation-transitions","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0194","query":"directional slide transition","expectedGuide":"directional-navigation-transitions","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0195","query":"directional view transition","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0196","query":"directional view transition animation","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0197","query":"reduced motion","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0198","query":"slide transition between items","expectedGuide":"directional-navigation-transitions","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0199","query":"slide transition between panels","expectedGuide":"directional-navigation-transitions","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0200","query":"slide transition carousel","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0201","query":"slider carousel","expectedGuide":"directional-navigation-transitions","agent":"claude_code","runDate":"2026-10-24","words":2,"split":"dev"}
+{"qid":"aq0202","query":"view transition","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0203","query":"view transition animation reduced motion","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0204","query":"view transition element","expectedGuide":"directional-navigation-transitions","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0205","query":"render HTML in canvas","expectedGuide":"export-html-media-from-canvas","expectedGuides":["export-html-media-from-canvas","expose-canvas-content-to-browser-features"],"agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0206","query":"render HTML inside canvas","expectedGuide":"export-html-media-from-canvas","expectedGuides":["export-html-media-from-canvas","expose-canvas-content-to-browser-features"],"agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0207","query":"canvas accessibility","expectedGuide":"expose-canvas-content-to-browser-features","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0208","query":"interactive canvas html elements","expectedGuide":"expose-canvas-content-to-browser-features","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0209","query":"interactive HTML canvas","expectedGuide":"expose-canvas-content-to-browser-features","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0210","query":"interactive HTML inside canvas","expectedGuide":"expose-canvas-content-to-browser-features","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0211","query":"overlay interactive HTML inputs aligned on top of canvas with high-DPI crisp rendering","expectedGuide":"expose-canvas-content-to-browser-features","agent":"claude_code","runDate":"2026-09-23","words":13,"split":"dev"}
+{"qid":"aq0212","query":"cache inactive views","expectedGuide":"faster-spa-view-transitions","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0213","query":"hide inactive views preserve state","expectedGuide":"faster-spa-view-transitions","agent":"claude_code","runDate":"2026-10-24","words":5,"split":"dev"}
+{"qid":"aq0214","query":"keep inactive views hidden in DOM","expectedGuide":"faster-spa-view-transitions","agent":"claude_code","runDate":"2026-10-19","words":6,"split":"dev"}
+{"qid":"aq0215","query":"preserve DOM navigation","expectedGuide":"faster-spa-view-transitions","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0216","query":"preserve DOM state navigation","expectedGuide":"faster-spa-view-transitions","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0217","query":"preserve DOM state navigation SPA","expectedGuide":"faster-spa-view-transitions","agent":"antigravity_cli","runDate":"2026-10-07","words":5,"split":"dev"}
+{"qid":"aq0218","query":"preserve DOM state of previously visited SPA views for faster back navigation","expectedGuide":"faster-spa-view-transitions","agent":"claude_code","runDate":"2026-10-02","words":12,"split":"dev"}
+{"qid":"aq0219","query":"preserve hidden view state","expectedGuide":"faster-spa-view-transitions","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0220","query":"preserve inactive SPA views DOM state on navigation using content visibility","expectedGuide":"faster-spa-view-transitions","agent":"codex_cli","runDate":"2026-10-09","words":11,"split":"dev"}
+{"qid":"aq0221","query":"preserve navigation DOM","expectedGuide":"faster-spa-view-transitions","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0222","query":"preserve page state navigation","expectedGuide":"faster-spa-view-transitions","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0223","query":"preserve view DOM","expectedGuide":"faster-spa-view-transitions","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0224","query":"preserve view DOM state","expectedGuide":"faster-spa-view-transitions","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0225","query":"preserve view state navigation","expectedGuide":"faster-spa-view-transitions","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0226","query":"preserve visited view DOM","expectedGuide":"faster-spa-view-transitions","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0227","query":"ab testing anti flicker hide original content","expectedGuide":"flicker-free-client-side-ab-testing","agent":"jetski_cli","runDate":"2026-09-18","words":7,"split":"dev"}
+{"qid":"aq0228","query":"anti flicker experiment","expectedGuide":"flicker-free-client-side-ab-testing","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0229","query":"block render script","expectedGuide":"flicker-free-client-side-ab-testing","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0230","query":"block rendering script","expectedGuide":"flicker-free-client-side-ab-testing","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0231","query":"cta button","expectedGuide":"flicker-free-client-side-ab-testing","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0232","query":"landing page","expectedGuide":"flicker-free-client-side-ab-testing","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0233","query":"load third-party script without flash","expectedGuide":"flicker-free-client-side-ab-testing","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0234","query":"optimize image priority","expectedGuide":"flicker-free-client-side-ab-testing","expectedGuides":["flicker-free-client-side-ab-testing","optimize-image-priority"],"agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0235","query":"prevent content flash","expectedGuide":"flicker-free-client-side-ab-testing","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0236","query":"prevent flash before script","expectedGuide":"flicker-free-client-side-ab-testing","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0237","query":"prevent flash of original content","expectedGuide":"flicker-free-client-side-ab-testing","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0238","query":"prevent flash of unstyled content","expectedGuide":"flicker-free-client-side-ab-testing","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0239","query":"prevent flash render blocking script","expectedGuide":"flicker-free-client-side-ab-testing","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"dev"}
+{"qid":"aq0240","query":"semantic html","expectedGuide":"flicker-free-client-side-ab-testing","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0241","query":"container queries","expectedGuide":"fluid-scaling","expectedGuides":["fluid-scaling","responsive-design"],"agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0242","query":"associate custom form controls","expectedGuide":"form-associated-custom-elements","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0243","query":"form associated custom element","expectedGuide":"form-associated-custom-elements","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0244","query":"form associated custom elements","expectedGuide":"form-associated-custom-elements","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0245","query":"form-associated custom element","expectedGuide":"form-associated-custom-elements","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0246","query":"auto size form controls input textarea select to content","expectedGuide":"form-fields-automatically-fit-contents","agent":"codex_cli","runDate":"2026-07-27","words":9,"split":"dev"}
+{"qid":"aq0247","query":"auto size form input","expectedGuide":"form-fields-automatically-fit-contents","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0248","query":"auto size form inputs","expectedGuide":"form-fields-automatically-fit-contents","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0249","query":"auto-size form controls","expectedGuide":"form-fields-automatically-fit-contents","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0250","query":"auto-size form fields","expectedGuide":"form-fields-automatically-fit-contents","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0251","query":"auto-size form fields content","expectedGuide":"form-fields-automatically-fit-contents","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0252","query":"auto-size form fields to content","expectedGuide":"form-fields-automatically-fit-contents","agent":"claude_code","runDate":"2026-10-24","words":5,"split":"dev"}
+{"qid":"aq0253","query":"automatically size form controls","expectedGuide":"form-fields-automatically-fit-contents","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0254","query":"form size input textarea select content","expectedGuide":"form-fields-automatically-fit-contents","agent":"antigravity_cli","runDate":"2026-10-07","words":6,"split":"dev"}
+{"qid":"aq0255","query":"size form controls content","expectedGuide":"form-fields-automatically-fit-contents","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0256","query":"highlight matching text","expectedGuide":"highlight-text-ranges","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0257","query":"highlight search text","expectedGuide":"highlight-text-ranges","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0258","query":"highlight text matches","expectedGuide":"highlight-text-ranges","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0259","query":"attribute slow JavaScript to specific scripts long animation frames INP long tasks","expectedGuide":"identify-heavy-scripts","agent":"claude_code","runDate":"2026-08-24","words":12,"split":"dev"}
+{"qid":"aq0260","query":"attribute slow scripts","expectedGuide":"identify-heavy-scripts","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0261","query":"attribute slow scripts long animation frames","expectedGuide":"identify-heavy-scripts","agent":"claude_code","runDate":"2026-10-19","words":6,"split":"dev"}
+{"qid":"aq0262","query":"identify slow scripts","expectedGuide":"identify-heavy-scripts","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0263","query":"identify slow scripts performance","expectedGuide":"identify-heavy-scripts","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0264","query":"identify slow third-party and application scripts with browser performance APIs long tasks resource timing attribution","expectedGuide":"identify-heavy-scripts","agent":"codex_cli","runDate":"2026-09-07","words":15,"split":"dev"}
+{"qid":"aq0265","query":"measure slow scripts","expectedGuide":"identify-heavy-scripts","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0266","query":"identify causes of poor INP","expectedGuide":"identify-inp-causes","agent":"antigravity_cli","runDate":"2026-10-07","words":5,"split":"dev"}
+{"qid":"aq0267","query":"prefetch links","expectedGuide":"improve-next-page-load-performance","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0268","query":"prefetch links navigation","expectedGuide":"improve-next-page-load-performance","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0269","query":"prefetch links on hover","expectedGuide":"improve-next-page-load-performance","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0270","query":"prefetch links speculation rules","expectedGuide":"improve-next-page-load-performance","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0271","query":"prefetch navigation links","expectedGuide":"improve-next-page-load-performance","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0272","query":"prefetch page links","expectedGuide":"improve-next-page-load-performance","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0273","query":"prefetch page navigation","expectedGuide":"improve-next-page-load-performance","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0274","query":"balance heading text wrap","expectedGuide":"improve-text-layout-and-legibility","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0275","query":"balance heading text wrapping","expectedGuide":"improve-text-layout-and-legibility","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0276","query":"balance text wrapping","expectedGuide":"improve-text-layout-and-legibility","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0277","query":"text wrap balance pretty","expectedGuide":"improve-text-layout-and-legibility","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0278","query":"text wrap headings balance pretty typography","expectedGuide":"improve-text-layout-and-legibility","agent":"jetski_cli","runDate":"2026-09-23","words":6,"split":"dev"}
+{"qid":"aq0279","query":"text wrapping balance orphans","expectedGuide":"improve-text-layout-and-legibility","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0280","query":"text wrapping balance pretty","expectedGuide":"improve-text-layout-and-legibility","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0281","query":"animate spotlight mask","expectedGuide":"interactive-content-reveal","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0282","query":"pointer following spotlight mask","expectedGuide":"interactive-content-reveal","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0283","query":"pointer spotlight mask","expectedGuide":"interactive-content-reveal","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0284","query":"pointer spotlight mask effect","expectedGuide":"interactive-content-reveal","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0285","query":"pointer spotlight mask reveal","expectedGuide":"interactive-content-reveal","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0286","query":"spotlight mask reveal","expectedGuide":"interactive-content-reveal","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0287","query":"spotlight mask reveal cursor pointer","expectedGuide":"interactive-content-reveal","agent":"jetski_cli","runDate":"2026-09-21","words":5,"split":"dev"}
+{"qid":"aq0288","query":"spotlight mask reveal pointer","expectedGuide":"interactive-content-reveal","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0289","query":"spotlight mask reveal transition","expectedGuide":"interactive-content-reveal","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0290","query":"spotlight reveal effect mask","expectedGuide":"interactive-content-reveal","agent":"jetski_cli","runDate":"2026-09-23","words":4,"split":"dev"}
+{"qid":"aq0291","query":"spotlight reveal mask","expectedGuide":"interactive-content-reveal","agent":"jetski_cli","runDate":"2026-09-09","words":3,"split":"dev"}
+{"qid":"aq0292","query":"hover tooltip anchor positioning","expectedGuide":"interest-triggered-tooltips","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0293","query":"hover tooltip anchored to button","expectedGuide":"interest-triggered-tooltips","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0294","query":"hover tooltip popover","expectedGuide":"interest-triggered-tooltips","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0295","query":"hover tooltip popover anchor","expectedGuide":"interest-triggered-tooltips","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0296","query":"position hover tooltip","expectedGuide":"interest-triggered-tooltips","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0297","query":"show anchored tooltip","expectedGuide":"interest-triggered-tooltips","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0298","query":"show tooltip popover on hover","expectedGuide":"interest-triggered-tooltips","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"dev"}
+{"qid":"aq0299","query":"tooltip popover","expectedGuide":"interest-triggered-tooltips","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0300","query":"Build an accessible textarea form button with progressive states, feature detection, and download progress for the browser Language Detector API","expectedGuide":"language-detection","agent":"codex_cli","runDate":"2026-09-07","words":20,"split":"dev"}
+{"qid":"aq0301","query":"language detection","expectedGuide":"language-detection","agent":"antigravity_cli","runDate":"2026-10-07","words":2,"split":"dev"}
+{"qid":"aq0302","query":"light dismiss dialog","expectedGuide":"light-dismiss-a-dialog","expectedGuides":["light-dismiss-a-dialog","platform-controls-dismiss-dialog","flicker-free-client-side-ab-testing"],"agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0303","query":"modal dialog backdrop","expectedGuide":"light-dismiss-a-dialog","agent":"antigravity_cli","runDate":"2026-10-01","words":3,"split":"dev"}
+{"qid":"aq0304","query":"move iframe between containers without reloading preserve state DOM reparent fallback","expectedGuide":"move-dom-element-without-losing-state","agent":"codex_cli","runDate":"2026-07-31","words":11,"split":"dev"}
+{"qid":"aq0305","query":"move iframe preserve state","expectedGuide":"move-dom-element-without-losing-state","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0306","query":"move iframe preserving state","expectedGuide":"move-dom-element-without-losing-state","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0307","query":"move iframe without reload","expectedGuide":"move-dom-element-without-losing-state","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0308","query":"preserve iframe reparenting","expectedGuide":"move-dom-element-without-losing-state","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0309","query":"reparent iframe moveBefore","expectedGuide":"move-dom-element-without-losing-state","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0310","query":"reparent iframe preserve state","expectedGuide":"move-dom-element-without-losing-state","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0311","query":"drawer menu","expectedGuide":"navigation-drawer","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0312","query":"slide out drawer menu","expectedGuide":"navigation-drawer","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0313","query":"slide-out drawer menu","expectedGuide":"navigation-drawer","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0314","query":"slide-out drawer menu swipe dismiss dialog popover","expectedGuide":"navigation-drawer","agent":"antigravity_cli","runDate":"2026-10-09","words":7,"split":"dev"}
+{"qid":"aq0315","query":"slide-out drawer navigation menu with swipe to dismiss, backdrop click and escape to close","expectedGuide":"navigation-drawer","agent":"claude_code","runDate":"2026-08-26","words":14,"split":"dev"}
+{"qid":"aq0316","query":"swipe dismiss drawer","expectedGuide":"navigation-drawer","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0317","query":"load script priority","expectedGuide":"optimize-script-priority","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0318","query":"load scripts asynchronously","expectedGuide":"optimize-script-priority","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0319","query":"load scripts without blocking","expectedGuide":"optimize-script-priority","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0320","query":"load third-party scripts efficiently","expectedGuide":"optimize-script-priority","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0321","query":"optimize script loading priority","expectedGuide":"optimize-script-priority","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0322","query":"clip content to padding box curve","expectedGuide":"overflow-clipping-control","agent":"claude_code","runDate":"2026-10-19","words":6,"split":"dev"}
+{"qid":"aq0323","query":"clip inner border curve","expectedGuide":"overflow-clipping-control","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0324","query":"clip inner content box","expectedGuide":"overflow-clipping-control","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0325","query":"clip overflow concentric corners","expectedGuide":"overflow-clipping-control","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0326","query":"clip overflow content box","expectedGuide":"overflow-clipping-control","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0327","query":"clip overflow rounded corners","expectedGuide":"overflow-clipping-control","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0328","query":"clip overflow to inner border curve","expectedGuide":"overflow-clipping-control","agent":"claude_code","runDate":"2026-10-20","words":6,"split":"dev"}
+{"qid":"aq0329","query":"clip rounded content","expectedGuide":"overflow-clipping-control","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0330","query":"concentric border radius","expectedGuide":"overflow-clipping-control","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0331","query":"CSS rounded parent child clipping inner border radius overflow clip margin shadow bleed safety zone","expectedGuide":"overflow-clipping-control","agent":"codex_cli","runDate":"2026-07-29","words":15,"split":"dev"}
+{"qid":"aq0332","query":"overflow clip margin","expectedGuide":"overflow-clipping-control","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0333","query":"implement passkey WebAuthn conditional mediation autofill sign in button","expectedGuide":"passkey-authentication","agent":"codex_cli","runDate":"2026-07-22","words":9,"split":"dev"}
+{"qid":"aq0334","query":"passkey authentication","expectedGuide":"passkey-authentication","agent":"jetski_cli","runDate":"2026-09-11","words":2,"split":"dev"}
+{"qid":"aq0335","query":"automatic passkey creation","expectedGuide":"passkey-conditional-create","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0336","query":"automatically create passkeys","expectedGuide":"passkey-conditional-create","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0337","query":"conditional passkey creation","expectedGuide":"passkey-conditional-create","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0338","query":"create conditional passkeys","expectedGuide":"passkey-conditional-create","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0339","query":"passkey registration","expectedGuide":"passkey-conditional-create","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0340","query":"sign in form","expectedGuide":"passkey-conditional-create","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0341","query":"sign-in form","expectedGuide":"passkey-conditional-create","agent":"antigravity_cli","runDate":"2026-10-24","words":2,"split":"dev"}
+{"qid":"aq0342","query":"WebAuthn conditional passkey creation after password sign in form","expectedGuide":"passkey-conditional-create","agent":"codex_cli","runDate":"2026-07-27","words":9,"split":"dev"}
+{"qid":"aq0343","query":"$q","expectedGuide":"performance","expectedGuides":["performance","responsive-design"],"agent":"claude_code","runDate":"2026-10-06","words":1,"split":"dev"}
+{"qid":"aq0344","query":"audit web accessibility","expectedGuide":"performance","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0345","query":"audit web performance","expectedGuide":"performance","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0346","query":"optimize hero image loading","expectedGuide":"performance","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0347","query":"optimize image loading","expectedGuide":"performance","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0348","query":"anchor onboarding popover","expectedGuide":"persistent-app-tours","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0349","query":"anchor persistent popover","expectedGuide":"persistent-app-tours","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0350","query":"anchor popover to link","expectedGuide":"persistent-app-tours","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0351","query":"anchor position popover","expectedGuide":"persistent-app-tours","expectedGuides":["persistent-app-tours","interest-triggered-tooltips"],"agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0352","query":"anchor positioned popover","expectedGuide":"persistent-app-tours","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0353","query":"anchor positioning onboarding tour popover","expectedGuide":"persistent-app-tours","agent":"antigravity_cli","runDate":"2026-10-01","words":5,"split":"dev"}
+{"qid":"aq0354","query":"anchor positioning onboarding tour step popover","expectedGuide":"persistent-app-tours","agent":"jetski_cli","runDate":"2026-09-18","words":6,"split":"dev"}
+{"qid":"aq0355","query":"anchor positioning popover","expectedGuide":"persistent-app-tours","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0356","query":"onboarding tour popover","expectedGuide":"persistent-app-tours","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0357","query":"onboarding tour step popover","expectedGuide":"persistent-app-tours","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0358","query":"move element preserving state","expectedGuide":"persistent-top-layer-ui","expectedGuides":["persistent-top-layer-ui","move-dom-element-without-losing-state"],"agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0359","query":"spring animation hover","expectedGuide":"physics-based-easing","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0360","query":"spring bounce easing","expectedGuide":"physics-based-easing","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0361","query":"spring bounce transition easing","expectedGuide":"physics-based-easing","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0362","query":"spring bounce transitions","expectedGuide":"physics-based-easing","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0363","query":"spring easing animation","expectedGuide":"physics-based-easing","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0364","query":"spring easing transition","expectedGuide":"physics-based-easing","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0365","query":"light dismiss modal dialog","expectedGuide":"platform-controls-dismiss-dialog","expectedGuides":["platform-controls-dismiss-dialog","light-dismiss-a-dialog"],"agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0366","query":"center heading text within fixed padding using text-box-trim and text-box-edge with graceful fallback","expectedGuide":"precise-text-alignment","agent":"codex_cli","runDate":"2026-09-11","words":13,"split":"dev"}
+{"qid":"aq0367","query":"text box trim","expectedGuide":"precise-text-alignment","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0368","query":"trim heading vertical whitespace text-box-trim","expectedGuide":"precise-text-alignment","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0369","query":"trim text box edges","expectedGuide":"precise-text-alignment","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0370","query":"trim text box leading","expectedGuide":"precise-text-alignment","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0371","query":"trim text box leading space","expectedGuide":"precise-text-alignment","agent":"claude_code","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0372","query":"trim text box spacing","expectedGuide":"precise-text-alignment","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0373","query":"trim text box whitespace","expectedGuide":"precise-text-alignment","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0374","query":"declarative shadow dom hydrate","expectedGuide":"prerendering-custom-elements","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0375","query":"hydrate custom elements","expectedGuide":"prerendering-custom-elements","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0376","query":"hydrate declarative shadow DOM","expectedGuide":"prerendering-custom-elements","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0377","query":"server render custom element","expectedGuide":"prerendering-custom-elements","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0378","query":"server render web component","expectedGuide":"prerendering-custom-elements","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0379","query":"server-render custom element declarative shadow DOM","expectedGuide":"prerendering-custom-elements","agent":"claude_code","runDate":"2026-10-19","words":6,"split":"dev"}
+{"qid":"aq0380","query":"privacy consent local storage third party integrations content security policy","expectedGuide":"privacy","agent":"codex_cli","runDate":"2026-10-09","words":10,"split":"dev"}
+{"qid":"aq0381","query":"initial scroll position scroll-snap","expectedGuide":"pull-to-reveal","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0382","query":"reveal search scroll-initial-target","expectedGuide":"pull-to-reveal","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0383","query":"scroll initial target","expectedGuide":"pull-to-reveal","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0384","query":"scroll initial target snap","expectedGuide":"pull-to-reveal","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0385","query":"scroll snapping","expectedGuide":"pull-to-reveal","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0386","query":"scroll-initial-target pull down search","expectedGuide":"pull-to-reveal","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0387","query":"scroll-initial-target pull down search bar","expectedGuide":"pull-to-reveal","agent":"antigravity_cli","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0388","query":"set initial scroll target","expectedGuide":"pull-to-reveal","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"dev"}
+{"qid":"aq0389","query":"CSS @function custom function for generating reusable gradients and grid-template-columns","expectedGuide":"reduce-style-repetition","agent":"claude_code","runDate":"2026-09-04","words":10,"split":"dev"}
+{"qid":"aq0390","query":"CSS @function custom functions for reusable gradients","expectedGuide":"reduce-style-repetition","agent":"claude_code","runDate":"2026-09-07","words":7,"split":"dev"}
+{"qid":"aq0391","query":"CSS custom functions","expectedGuide":"reduce-style-repetition","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0392","query":"custom css function","expectedGuide":"reduce-style-repetition","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0393","query":"custom CSS function @function","expectedGuide":"reduce-style-repetition","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0394","query":"custom CSS functions","expectedGuide":"reduce-style-repetition","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0395","query":"generate reusable CSS functions","expectedGuide":"reduce-style-repetition","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0396","query":"responsive grid layout","expectedGuide":"reduce-style-repetition","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0397","query":"reusable CSS custom function for generating gradients and responsive grid columns","expectedGuide":"reduce-style-repetition","agent":"claude_code","runDate":"2026-09-09","words":11,"split":"dev"}
+{"qid":"aq0398","query":"reusable CSS functions","expectedGuide":"reduce-style-repetition","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0399","query":"adapt container layout","expectedGuide":"responsive-design","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0400","query":"container queries responsive component","expectedGuide":"responsive-design","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0401","query":"dynamic viewport units","expectedGuide":"responsive-design","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0402","query":"responsive container layout","expectedGuide":"responsive-design","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0403","query":"responsive container queries","expectedGuide":"responsive-design","expectedGuides":["responsive-design","size-aware-styling"],"agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0404","query":"responsive typography","expectedGuide":"responsive-design","agent":"antigravity_cli","runDate":"2026-10-22","words":2,"split":"dev"}
+{"qid":"aq0405","query":"custom select dropdown","expectedGuide":"rich-media-picker","expectedGuides":["rich-media-picker","animated-select-picker","branded-select-styling","custom-select-picker-layouts","select-menu-interaction","translator"],"agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0406","query":"custom select dropdown with rich HTML options icons and descriptions","expectedGuide":"rich-media-picker","agent":"claude_code","runDate":"2026-08-24","words":10,"split":"dev"}
+{"qid":"aq0407","query":"customizable select rich options","expectedGuide":"rich-media-picker","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0408","query":"customize select options","expectedGuide":"rich-media-picker","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0409","query":"rich html inside options select dropdown","expectedGuide":"rich-media-picker","agent":"jetski_cli","runDate":"2026-09-21","words":6,"split":"dev"}
+{"qid":"aq0410","query":"CSS scroll driven card scale reveal view timeline reduced motion","expectedGuide":"scroll-entry-exit-effects","agent":"codex_cli","runDate":"2026-10-09","words":10,"split":"dev"}
+{"qid":"aq0411","query":"scroll driven reveal","expectedGuide":"scroll-entry-exit-effects","expectedGuides":["scroll-entry-exit-effects","scroll-position-aware-elements"],"agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0412","query":"scroll driven reveal animation","expectedGuide":"scroll-entry-exit-effects","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0413","query":"scroll-driven animation reveal scale element as it enters and leaves viewport","expectedGuide":"scroll-entry-exit-effects","agent":"claude_code","runDate":"2026-09-04","words":11,"split":"dev"}
+{"qid":"aq0414","query":"scroll-driven reveal animation","expectedGuide":"scroll-entry-exit-effects","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0415","query":"scroll-driven reveal effect grow shrink","expectedGuide":"scroll-entry-exit-effects","agent":"jetski_cli","runDate":"2026-09-25","words":5,"split":"dev"}
+{"qid":"aq0416","query":"back to top button","expectedGuide":"scroll-position-aware-elements","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0417","query":"reveal button scroll position","expectedGuide":"scroll-position-aware-elements","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0418","query":"scroll back to top button animation","expectedGuide":"scroll-position-aware-elements","agent":"antigravity_cli","runDate":"2026-10-07","words":6,"split":"dev"}
+{"qid":"aq0419","query":"scroll driven back to top","expectedGuide":"scroll-position-aware-elements","agent":"antigravity_cli","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0420","query":"scroll position aware button","expectedGuide":"scroll-position-aware-elements","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0421","query":"scroll position state","expectedGuide":"scroll-position-aware-elements","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0422","query":"scroll state query","expectedGuide":"scroll-position-aware-elements","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0423","query":"scroll-driven animation reveal","expectedGuide":"scroll-position-aware-elements","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0424","query":"scroll-triggered back to top button","expectedGuide":"scroll-position-aware-elements","agent":"claude_code","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0425","query":"Build an accessible horizontal scroll-snap image carousel with live pending thumbnail feedback during scrolling and active aria-current state when scrolling ends","expectedGuide":"scroll-snap-realtime-feedback","agent":"codex_cli","runDate":"2026-08-21","words":21,"split":"dev"}
+{"qid":"aq0426","query":"scroll snap carousel feedback pending snapchanging","expectedGuide":"scroll-snap-realtime-feedback","agent":"antigravity_cli","runDate":"2026-10-02","words":6,"split":"dev"}
+{"qid":"aq0427","query":"scroll snap carousel pending thumbnail scrollsnapchanging scrollsnapchange","expectedGuide":"scroll-snap-realtime-feedback","agent":"codex_cli","runDate":"2026-09-21","words":7,"split":"dev"}
+{"qid":"aq0428","query":"scroll snap events carousel","expectedGuide":"scroll-snap-realtime-feedback","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0429","query":"scroll snap pending target","expectedGuide":"scroll-snap-realtime-feedback","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0430","query":"track scroll snap targets","expectedGuide":"scroll-snap-realtime-feedback","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0431","query":"detect scroll snap target","expectedGuide":"scroll-snap-state-sync","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0432","query":"highlight scroll snap navigation","expectedGuide":"scroll-snap-state-sync","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0433","query":"scroll snap","expectedGuide":"scroll-snap-state-sync","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0434","query":"scroll snap active nav highlight","expectedGuide":"scroll-snap-state-sync","agent":"claude_code","runDate":"2026-10-24","words":5,"split":"dev"}
+{"qid":"aq0435","query":"scroll snap container","expectedGuide":"scroll-snap-state-sync","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0436","query":"scroll snap section highlight","expectedGuide":"scroll-snap-state-sync","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0437","query":"scroll snap table of contents","expectedGuide":"scroll-snap-state-sync","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0438","query":"scroll snapping sidebar table of contents active link IntersectionObserver aria-current smooth scroll panel","expectedGuide":"scroll-snap-state-sync","agent":"codex_cli","runDate":"2026-08-10","words":13,"split":"dev"}
+{"qid":"aq0439","query":"smooth scroll to section","expectedGuide":"scroll-snap-state-sync","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0440","query":"initial scroll position","expectedGuide":"scroll-target-on-load","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0441","query":"initialize scroll position","expectedGuide":"scroll-target-on-load","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0442","query":"scroll container initial position","expectedGuide":"scroll-target-on-load","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0443","query":"scroll element into view initial load","expectedGuide":"scroll-target-on-load","agent":"antigravity_cli","runDate":"2026-10-24","words":6,"split":"dev"}
+{"qid":"aq0444","query":"scroll element into view on load","expectedGuide":"scroll-target-on-load","agent":"claude_code","runDate":"2026-10-19","words":6,"split":"dev"}
+{"qid":"aq0445","query":"scroll initial position","expectedGuide":"scroll-target-on-load","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0446","query":"set initial scroll position","expectedGuide":"scroll-target-on-load","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0447","query":"set initial scroll position of scroll container to a specific element without animation","expectedGuide":"scroll-target-on-load","agent":"claude_code","runDate":"2026-10-09","words":13,"split":"dev"}
+{"qid":"aq0448","query":"highlight active nav link","expectedGuide":"scrollspy","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0449","query":"highlight active nav link on scroll","expectedGuide":"scrollspy","agent":"claude_code","runDate":"2026-10-19","words":6,"split":"dev"}
+{"qid":"aq0450","query":"highlight active nav section","expectedGuide":"scrollspy","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0451","query":"highlight active navigation section","expectedGuide":"scrollspy","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0452","query":"highlight active navigation section scroll","expectedGuide":"scrollspy","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0453","query":"highlight active section navigation","expectedGuide":"scrollspy","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0454","query":"highlight current section","expectedGuide":"scrollspy","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0455","query":"highlight current section nav","expectedGuide":"scrollspy","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0456","query":"highlight visible section","expectedGuide":"scrollspy","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0457","query":"highlight visible section navigation","expectedGuide":"scrollspy","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0458","query":"clip an image with an organic SVG shape that scales with element dimensions","expectedGuide":"shaped-cutouts","agent":"claude_code","runDate":"2026-08-17","words":13,"split":"dev"}
+{"qid":"aq0459","query":"clip image custom shape","expectedGuide":"shaped-cutouts","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0460","query":"clip-path organic shape scaling with image, SVG mask cutout curve, gradient mask circular notch, drop-shadow filter on masked/clipped element","expectedGuide":"shaped-cutouts","agent":"claude_code","runDate":"2026-09-16","words":19,"split":"dev"}
+{"qid":"aq0461","query":"create image shape masks","expectedGuide":"shaped-cutouts","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0462","query":"create shape masks","expectedGuide":"shaped-cutouts","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0463","query":"css mask clip path","expectedGuide":"shaped-cutouts","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0464","query":"custom shape clip mask","expectedGuide":"shaped-cutouts","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0465","query":"custom shape clip path","expectedGuide":"shaped-cutouts","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0466","query":"custom shape mask","expectedGuide":"shaped-cutouts","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0467","query":"mask custom shapes","expectedGuide":"shaped-cutouts","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0468","query":"mask cutout gradient","expectedGuide":"shaped-cutouts","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0469","query":"mask image with SVG shape","expectedGuide":"shaped-cutouts","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"dev"}
+{"qid":"aq0470","query":"organic blob shape image crop clip-path scales with image size","expectedGuide":"shaped-cutouts","agent":"claude_code","runDate":"2026-08-06","words":10,"split":"dev"}
+{"qid":"aq0471","query":"scroll driven header shrink","expectedGuide":"shrinking-header-on-scroll","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0472","query":"scroll driven shrinking header","expectedGuide":"shrinking-header-on-scroll","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0473","query":"scroll-driven header animation","expectedGuide":"shrinking-header-on-scroll","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0474","query":"scroll-driven shrinking header","expectedGuide":"shrinking-header-on-scroll","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0475","query":"shrink header on scroll","expectedGuide":"shrinking-header-on-scroll","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0476","query":"shrink navigation on scroll","expectedGuide":"shrinking-header-on-scroll","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0477","query":"shrink sticky navigation smoothly linked to page scroll with fallback for browsers without CSS scroll-driven animations","expectedGuide":"shrinking-header-on-scroll","agent":"codex_cli","runDate":"2026-09-04","words":16,"split":"dev"}
+{"qid":"aq0478","query":"adapt cards container queries","expectedGuide":"size-aware-styling","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0479","query":"adapt component layout container queries","expectedGuide":"size-aware-styling","agent":"antigravity_cli","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0480","query":"adapt container size","expectedGuide":"size-aware-styling","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0481","query":"adapt layout container queries","expectedGuide":"size-aware-styling","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0482","query":"container queries card component","expectedGuide":"size-aware-styling","agent":"antigravity_cli","runDate":"2026-10-02","words":4,"split":"dev"}
+{"qid":"aq0483","query":"container queries card layout","expectedGuide":"size-aware-styling","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0484","query":"container queries responsive card","expectedGuide":"size-aware-styling","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0485","query":"container query card","expectedGuide":"size-aware-styling","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0486","query":"container query card layout","expectedGuide":"size-aware-styling","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0487","query":"container query component","expectedGuide":"size-aware-styling","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0488","query":"container query responsive card","expectedGuide":"size-aware-styling","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0489","query":"responsive card container query","expectedGuide":"size-aware-styling","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0490","query":"fade content mask","expectedGuide":"soft-edge-content-fade","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0491","query":"fade content mask gradient","expectedGuide":"soft-edge-content-fade","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0492","query":"fade out content gradient","expectedGuide":"soft-edge-content-fade","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0493","query":"fade out content gradient mask","expectedGuide":"soft-edge-content-fade","agent":"claude_code","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0494","query":"fade out content mask","expectedGuide":"soft-edge-content-fade","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0495","query":"fade out transparent preview paywall mask","expectedGuide":"soft-edge-content-fade","agent":"jetski_cli","runDate":"2026-09-09","words":6,"split":"dev"}
+{"qid":"aq0496","query":"mask-image content fade out preview","expectedGuide":"soft-edge-content-fade","agent":"antigravity_cli","runDate":"2026-10-06","words":5,"split":"dev"}
+{"qid":"aq0497","query":"compare precise timestamps","expectedGuide":"sort-high-precision-timestamps","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"dev"}
+{"qid":"aq0498","query":"parse nanosecond UTC timestamps","expectedGuide":"sort-high-precision-timestamps","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0499","query":"sort timestamps nanosecond precision","expectedGuide":"sort-high-precision-timestamps","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0500","query":"sort timestamps precision","expectedGuide":"sort-high-precision-timestamps","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"dev"}
+{"qid":"aq0501","query":"scroll driven animation","expectedGuide":"stack-drill-down","expectedGuides":["stack-drill-down","carousel-slide-effects","scroll-position-aware-elements"],"agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0502","query":"scroll snap navigation","expectedGuide":"stack-drill-down","expectedGuides":["stack-drill-down","scroll-snap-state-sync"],"agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0503","query":"sticky header scroll","expectedGuide":"state-aware-sticky-headers","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0504","query":"sticky header stuck styling","expectedGuide":"state-aware-sticky-headers","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0505","query":"style stuck sticky header","expectedGuide":"state-aware-sticky-headers","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0506","query":"style stuck sticky headers","expectedGuide":"state-aware-sticky-headers","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0507","query":"calculate international calendar dates","expectedGuide":"support-global-calendar-systems","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0508","query":"calendar date temporal","expectedGuide":"support-global-calendar-systems","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0509","query":"convert dates between calendars","expectedGuide":"support-global-calendar-systems","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0510","query":"convert dates between non-Gregorian calendar systems islamic hebrew japanese, leap months, days in month","expectedGuide":"support-global-calendar-systems","agent":"claude_code","runDate":"2026-08-31","words":14,"split":"dev"}
+{"qid":"aq0511","query":"convert international calendar dates","expectedGuide":"support-global-calendar-systems","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"dev"}
+{"qid":"aq0512","query":"convert non-Gregorian calendars","expectedGuide":"support-global-calendar-systems","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0513","query":"non-Gregorian calendar dates","expectedGuide":"support-global-calendar-systems","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0514","query":"non-Gregorian calendar Temporal","expectedGuide":"support-global-calendar-systems","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"dev"}
+{"qid":"aq0515","query":"accessible dialog","expectedGuide":"verify-email-ownership","agent":"codex_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0516","query":"verify email address ownership","expectedGuide":"verify-email-ownership","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0517","query":"verify email ownership","expectedGuide":"verify-email-ownership","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"dev"}
+{"qid":"aq0518","query":"font fallback layout shift","expectedGuide":"visually-stable-font-fallbacks","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0519","query":"font fallback layout shift size","expectedGuide":"visually-stable-font-fallbacks","agent":"antigravity_cli","runDate":"2026-10-09","words":5,"split":"dev"}
+{"qid":"aq0520","query":"match fallback font metrics","expectedGuide":"visually-stable-font-fallbacks","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"dev"}
+{"qid":"aq0521","query":"prevent font layout shift","expectedGuide":"visually-stable-font-fallbacks","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"dev"}
+{"qid":"aq0522","query":"prevent font swap layout shift","expectedGuide":"visually-stable-font-fallbacks","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"dev"}
+{"qid":"aq0523","query":"reduce font swap layout shift","expectedGuide":"visually-stable-font-fallbacks","agent":"claude_code","runDate":"2026-10-22","words":5,"split":"dev"}
+{"qid":"aq0524","query":"reduce font swap shifts","expectedGuide":"visually-stable-font-fallbacks","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"dev"}
+{"qid":"aq0525","query":"stabilize font swap","expectedGuide":"visually-stable-font-fallbacks","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"dev"}
+{"qid":"aq0526","query":"stabilize web font swap","expectedGuide":"visually-stable-font-fallbacks","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"dev"}
+{"qid":"aq0527","query":"aspect ratio","expectedGuide":"visually-stable-mixed-fonts","expectedGuides":["visually-stable-mixed-fonts","responsive-design"],"agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"dev"}
+{"qid":"aq0528","query":"form validation","expectedGuide":"accessible-error-announcement","expectedGuides":["accessible-error-announcement","autofill-sign-up-form","select-menu-interaction","style-parent-with-has"],"agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0529","query":"form validation error message","expectedGuide":"accessible-error-announcement","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0530","query":"form validation user-invalid aria-invalid","expectedGuide":"accessible-error-announcement","agent":"antigravity_cli","runDate":"2026-10-09","words":4,"split":"test"}
+{"qid":"aq0531","query":"inline form validation errors","expectedGuide":"accessible-error-announcement","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0532","query":"style form validation","expectedGuide":"accessible-error-announcement","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0533","query":"style required email validation with :user-invalid and synchronize aria-invalid only after user interaction on blur and input","expectedGuide":"accessible-error-announcement","agent":"codex_cli","runDate":"2026-08-14","words":17,"split":"test"}
+{"qid":"aq0534","query":"validate email form","expectedGuide":"accessible-error-announcement","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0535","query":"validate form input errors","expectedGuide":"accessible-error-announcement","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0536","query":"validate form user-invalid","expectedGuide":"accessible-error-announcement","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0537","query":"validate user-invalid forms","expectedGuide":"accessible-error-announcement","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0538","query":"accessible CSS generated content","expectedGuide":"accessible-generated-content","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0539","query":"accessible generated content","expectedGuide":"accessible-generated-content","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0540","query":"alt text for generated content","expectedGuide":"accessible-generated-content","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0541","query":"CSS generated content alt text","expectedGuide":"accessible-generated-content","agent":"claude_code","runDate":"2026-10-22","words":5,"split":"test"}
+{"qid":"aq0542","query":"accessible modal dialog with animated open close and backdrop plus dismissible toast overlay","expectedGuide":"animate-to-from-top-layer","agent":"codex_cli","runDate":"2026-09-04","words":13,"split":"test"}
+{"qid":"aq0543","query":"animate dialog enter exit","expectedGuide":"animate-to-from-top-layer","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0544","query":"animate dialog entry exit","expectedGuide":"animate-to-from-top-layer","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0545","query":"animate dialog modal","expectedGuide":"animate-to-from-top-layer","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0546","query":"animate modal dialog","expectedGuide":"animate-to-from-top-layer","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0547","query":"dismissible popover overlay","expectedGuide":"animate-to-from-top-layer","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0548","query":"modal dialog animation","expectedGuide":"animate-to-from-top-layer","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0549","query":"modal dialog smooth CSS animation backdrop enter exit","expectedGuide":"animate-to-from-top-layer","agent":"antigravity_cli","runDate":"2026-10-01","words":8,"split":"test"}
+{"qid":"aq0550","query":"popover floating overlay","expectedGuide":"animate-to-from-top-layer","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0551","query":"animate custom select dropdown","expectedGuide":"animated-select-picker","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0552","query":"animate customizable select","expectedGuide":"animated-select-picker","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0553","query":"animate native select picker","expectedGuide":"animated-select-picker","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0554","query":"style customizable select","expectedGuide":"animated-select-picker","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0555","query":"address form autofill","expectedGuide":"autofill-address-form","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0556","query":"autofill address form","expectedGuide":"autofill-address-form","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0557","query":"autofill shipping address","expectedGuide":"autofill-address-form","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0558","query":"autofill shipping address form","expectedGuide":"autofill-address-form","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0559","query":"shipping address autofill","expectedGuide":"autofill-address-form","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0560","query":"shipping address form","expectedGuide":"autofill-address-form","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0561","query":"shipping address form autocomplete","expectedGuide":"autofill-address-form","agent":"jetski_cli","runDate":"2026-09-09","words":4,"split":"test"}
+{"qid":"aq0562","query":"shipping address form autofill","expectedGuide":"autofill-address-form","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0563","query":"shipping address form autofill validation","expectedGuide":"autofill-address-form","agent":"antigravity_cli","runDate":"2026-10-06","words":5,"split":"test"}
+{"qid":"aq0564","query":"user-valid validation","expectedGuide":"autofill-address-form","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0565","query":"autofill highlight input style green border","expectedGuide":"autofill-highlight-inputs","agent":"jetski_cli","runDate":"2026-09-18","words":6,"split":"test"}
+{"qid":"aq0566","query":"style autofill input","expectedGuide":"autofill-highlight-inputs","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0567","query":"style autofill inputs","expectedGuide":"autofill-highlight-inputs","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0568","query":"style autofill inputs :autofill","expectedGuide":"autofill-highlight-inputs","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0569","query":"style autofilled inputs","expectedGuide":"autofill-highlight-inputs","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0570","query":"accessible sign up form","expectedGuide":"autofill-sign-up-form","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"test"}
+{"qid":"aq0571","query":"add accessible responsive sign up form html css validation","expectedGuide":"autofill-sign-up-form","agent":"codex_cli","runDate":"2026-08-10","words":9,"split":"test"}
+{"qid":"aq0572","query":"sign up form","expectedGuide":"autofill-sign-up-form","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0573","query":"sign-up form","expectedGuide":"autofill-sign-up-form","agent":"jetski_cli","runDate":"2026-09-09","words":2,"split":"test"}
+{"qid":"aq0574","query":"sign-up form validation","expectedGuide":"autofill-sign-up-form","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0575","query":"validate sign up form","expectedGuide":"autofill-sign-up-form","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0576","query":"validate sign-up form","expectedGuide":"autofill-sign-up-form","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0577","query":"validate signup form","expectedGuide":"autofill-sign-up-form","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0578","query":"batch analytics beacon requests","expectedGuide":"batch-analytics-events","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0579","query":"batch analytics events","expectedGuide":"batch-analytics-events","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0580","query":"batch background analytics","expectedGuide":"batch-analytics-events","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0581","query":"Core Web Vitals monitoring web-vitals batch metrics","expectedGuide":"batch-analytics-events","agent":"antigravity_cli","runDate":"2026-10-09","words":7,"split":"test"}
+{"qid":"aq0582","query":"debounce batch background request","expectedGuide":"batch-analytics-events","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0583","query":"defer background analytics telemetry","expectedGuide":"batch-analytics-events","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0584","query":"measure and report Core Web Vitals metrics to an analytics endpoint","expectedGuide":"batch-analytics-events","agent":"claude_code","runDate":"2026-08-24","words":11,"split":"test"}
+{"qid":"aq0585","query":"measure core web vitals","expectedGuide":"batch-analytics-events","expectedGuides":["batch-analytics-events","full-session-analytics"],"agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0586","query":"measure Core Web Vitals with web-vitals library and send batched to analytics endpoint","expectedGuide":"batch-analytics-events","agent":"claude_code","runDate":"2026-10-06","words":13,"split":"test"}
+{"qid":"aq0587","query":"report performance metrics","expectedGuide":"batch-analytics-events","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0588","query":"report web vitals metrics","expectedGuide":"batch-analytics-events","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0589","query":"calculate date duration countdown","expectedGuide":"calculate-event-differentials","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0590","query":"calculate date duration timezone","expectedGuide":"calculate-event-differentials","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0591","query":"calculate local date duration","expectedGuide":"calculate-event-differentials","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0592","query":"calculate local date durations","expectedGuide":"calculate-event-differentials","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0593","query":"countdown date timer","expectedGuide":"calculate-event-differentials","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0594","query":"countdown to date local time zone","expectedGuide":"calculate-event-differentials","agent":"claude_code","runDate":"2026-10-24","words":6,"split":"test"}
+{"qid":"aq0595","query":"countdown to date local timezone","expectedGuide":"calculate-event-differentials","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0596","query":"format a duration in hours and minutes into a localized human readable string","expectedGuide":"calculate-event-differentials","agent":"claude_code","runDate":"2026-08-21","words":13,"split":"test"}
+{"qid":"aq0597","query":"\\","expectedGuide":"carousel-snap-highlights","agent":"codex_cli","runDate":"2026-08-14","words":1,"split":"test"}
+{"qid":"aq0598","query":"carousel scroll snap","expectedGuide":"carousel-snap-highlights","agent":"jetski_cli","runDate":"2026-09-21","words":3,"split":"test"}
+{"qid":"aq0599","query":"horizontal scroll snap carousel highlight centered card reduced motion","expectedGuide":"carousel-snap-highlights","agent":"codex_cli","runDate":"2026-10-07","words":9,"split":"test"}
+{"qid":"aq0600","query":"scroll snap carousel active item","expectedGuide":"carousel-snap-highlights","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0601","query":"scroll snapping carousel","expectedGuide":"carousel-snap-highlights","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0602","query":"scroll-snap carousel with active/centered item highlighting using CSS :has() or scroll-driven detection, prefers-reduced-motion","expectedGuide":"carousel-snap-highlights","agent":"claude_code","runDate":"2026-10-02","words":13,"split":"test"}
+{"qid":"aq0603","query":"style snapped scroll item","expectedGuide":"carousel-snap-highlights","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0604","query":"accessible form controls","expectedGuide":"client-side-encryption","expectedGuides":["client-side-encryption","translator"],"agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0605","query":"encrypt browser data","expectedGuide":"client-side-encryption","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0606","query":"encrypt data authenticated encryption","expectedGuide":"client-side-encryption","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0607","query":"encrypt data in browser","expectedGuide":"client-side-encryption","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0608","query":"encrypt data Web Crypto","expectedGuide":"client-side-encryption","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0609","query":"post-quantum key encapsulation","expectedGuide":"client-side-encryption","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0610","query":"public key encapsulation encryption","expectedGuide":"client-side-encryption","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0611","query":"adaptive light dark theme","expectedGuide":"component-specific-light-dark-theme","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0612","query":"dark mode light theme responsive","expectedGuide":"component-specific-light-dark-theme","agent":"jetski_cli","runDate":"2026-09-23","words":5,"split":"test"}
+{"qid":"aq0613","query":"dark mode theme","expectedGuide":"component-specific-light-dark-theme","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0614","query":"implement dark mode","expectedGuide":"component-specific-light-dark-theme","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0615","query":"implement responsive light dark color themes with CSS custom properties color-scheme and nested component theme overrides","expectedGuide":"component-specific-light-dark-theme","agent":"codex_cli","runDate":"2026-09-07","words":16,"split":"test"}
+{"qid":"aq0616","query":"light dark theme","expectedGuide":"component-specific-light-dark-theme","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0617","query":"responsive dark mode theme","expectedGuide":"component-specific-light-dark-theme","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0618","query":"support dark mode","expectedGuide":"component-specific-light-dark-theme","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0619","query":"animate page navigation","expectedGuide":"consistent-cross-document-transitions","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0620","query":"cross document view transitions","expectedGuide":"consistent-cross-document-transitions","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0621","query":"cross-document transition readiness","expectedGuide":"consistent-cross-document-transitions","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0622","query":"cross-document view transitions","expectedGuide":"consistent-cross-document-transitions","expectedGuides":["consistent-cross-document-transitions","cross-document-transitions"],"agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0623","query":"smooth page transitions","expectedGuide":"consistent-cross-document-transitions","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0624","query":"stabilize cross-document view transitions","expectedGuide":"consistent-cross-document-transitions","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0625","query":"animate cross-document navigation","expectedGuide":"cross-document-transitions","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0626","query":"animate cross-document page transitions","expectedGuide":"cross-document-transitions","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0627","query":"animate page navigation transitions","expectedGuide":"cross-document-transitions","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0628","query":"animate page transitions","expectedGuide":"cross-document-transitions","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0629","query":"custom button commands","expectedGuide":"custom-button-actions","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0630","query":"declarative button command","expectedGuide":"custom-button-actions","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0631","query":"declarative button commands","expectedGuide":"custom-button-actions","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0632","query":"transform rotate scale transition","expectedGuide":"custom-button-actions","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0633","query":"build accessible rich media custom select picker with popover grid options","expectedGuide":"custom-select-picker-layouts","agent":"codex_cli","runDate":"2026-08-17","words":11,"split":"test"}
+{"qid":"aq0634","query":"confirmation dialog without javascript","expectedGuide":"declarative-dialog-popover-control","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0635","query":"declarative dialog","expectedGuide":"declarative-dialog-popover-control","agent":"antigravity_cli","runDate":"2026-10-24","words":2,"split":"test"}
+{"qid":"aq0636","query":"declarative dialog invoker command","expectedGuide":"declarative-dialog-popover-control","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0637","query":"declarative dialog trigger","expectedGuide":"declarative-dialog-popover-control","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0638","query":"dialog","expectedGuide":"declarative-dialog-popover-control","agent":"antigravity_cli","runDate":"2026-10-19","words":1,"split":"test"}
+{"qid":"aq0639","query":"dialog invoker commands","expectedGuide":"declarative-dialog-popover-control","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0640","query":"dialog modal popover","expectedGuide":"declarative-dialog-popover-control","agent":"jetski_cli","runDate":"2026-09-11","words":3,"split":"test"}
+{"qid":"aq0641","query":"dialog popover native html attributes","expectedGuide":"declarative-dialog-popover-control","agent":"antigravity_cli","runDate":"2026-10-02","words":5,"split":"test"}
+{"qid":"aq0642","query":"modal confirmation dialog","expectedGuide":"declarative-dialog-popover-control","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0643","query":"native dialog element confirmation modal with cancel button","expectedGuide":"declarative-dialog-popover-control","agent":"claude_code","runDate":"2026-07-31","words":8,"split":"test"}
+{"qid":"aq0644","query":"native HTML dialog popover API declarative buttons popovertarget commandfor closedby","expectedGuide":"declarative-dialog-popover-control","agent":"codex_cli","runDate":"2026-07-22","words":10,"split":"test"}
+{"qid":"aq0645","query":"open and close a modal dialog declaratively without JavaScript using invoker commands","expectedGuide":"declarative-dialog-popover-control","agent":"claude_code","runDate":"2026-08-17","words":12,"split":"test"}
+{"qid":"aq0646","query":"open confirmation dialog","expectedGuide":"declarative-dialog-popover-control","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0647","query":"open dialog declaratively","expectedGuide":"declarative-dialog-popover-control","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0648","query":"open modal dialog with buttons","expectedGuide":"declarative-dialog-popover-control","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0649","query":"popover","expectedGuide":"declarative-dialog-popover-control","agent":"antigravity_cli","runDate":"2026-10-19","words":1,"split":"test"}
+{"qid":"aq0650","query":"defer offscreen content rendering","expectedGuide":"defer-rendering-heavy-content","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0651","query":"defer offscreen rendering","expectedGuide":"defer-rendering-heavy-content","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0652","query":"defer rendering offscreen cards","expectedGuide":"defer-rendering-heavy-content","agent":"antigravity_cli","runDate":"2026-10-09","words":4,"split":"test"}
+{"qid":"aq0653","query":"defer rendering offscreen cards hidden debug panel","expectedGuide":"defer-rendering-heavy-content","agent":"jetski_cli","runDate":"2026-09-23","words":7,"split":"test"}
+{"qid":"aq0654","query":"defer rendering offscreen content","expectedGuide":"defer-rendering-heavy-content","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0655","query":"toggle hidden panel instantly","expectedGuide":"defer-rendering-heavy-content","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0656","query":"background image formats","expectedGuide":"deliver-optimized-decorative-images","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0657","query":"background image responsive image-set","expectedGuide":"deliver-optimized-decorative-images","agent":"jetski_cli","runDate":"2026-09-21","words":4,"split":"test"}
+{"qid":"aq0658","query":"responsive background image","expectedGuide":"deliver-optimized-decorative-images","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0659","query":"responsive background image avif webp image-set","expectedGuide":"deliver-optimized-decorative-images","agent":"jetski_cli","runDate":"2026-09-18","words":6,"split":"test"}
+{"qid":"aq0660","query":"responsive background image formats","expectedGuide":"deliver-optimized-decorative-images","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0661","query":"responsive background image image-set","expectedGuide":"deliver-optimized-decorative-images","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0662","query":"responsive background images","expectedGuide":"deliver-optimized-decorative-images","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0663","query":"serve background image formats","expectedGuide":"deliver-optimized-decorative-images","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0664","query":"fetch priority","expectedGuide":"deprioritize-background-fetches","agent":"antigravity_cli","runDate":"2026-10-09","words":2,"split":"test"}
+{"qid":"aq0665","query":"prioritize critical fetch request and send analytics POST concurrently on button click","expectedGuide":"deprioritize-background-fetches","agent":"codex_cli","runDate":"2026-07-29","words":12,"split":"test"}
+{"qid":"aq0666","query":"prioritize fetch requests","expectedGuide":"deprioritize-background-fetches","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0667","query":"send analytics","expectedGuide":"deprioritize-background-fetches","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0668","query":"digital signature","expectedGuide":"digital-signatures","agent":"antigravity_cli","runDate":"2026-10-22","words":2,"split":"test"}
+{"qid":"aq0669","query":"digital signature web crypto","expectedGuide":"digital-signatures","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0670","query":"responsive application layout","expectedGuide":"digital-signatures","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0671","query":"sign data with Web Crypto","expectedGuide":"digital-signatures","agent":"claude_code","runDate":"2026-10-24","words":5,"split":"test"}
+{"qid":"aq0672","query":"sign verify asymmetric crypto","expectedGuide":"digital-signatures","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0673","query":"sign verify cryptographic messages","expectedGuide":"digital-signatures","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0674","query":"sign verify data web crypto","expectedGuide":"digital-signatures","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0675","query":"sign verify data WebCrypto","expectedGuide":"digital-signatures","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0676","query":"sign verify message asymmetric key","expectedGuide":"digital-signatures","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0677","query":"sign verify with WebCrypto","expectedGuide":"digital-signatures","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0678","query":"drag element pointer events","expectedGuide":"drag","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0679","query":"drag floating element","expectedGuide":"drag","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0680","query":"drag to move element","expectedGuide":"drag","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0681","query":"stagger card entrance animations","expectedGuide":"dynamic-sibling-animations","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0682","query":"stagger entrance animation","expectedGuide":"dynamic-sibling-animations","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0683","query":"staggered animation","expectedGuide":"dynamic-sibling-animations","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0684","query":"staggered animation sibling-index","expectedGuide":"dynamic-sibling-animations","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0685","query":"staggered card animation","expectedGuide":"dynamic-sibling-animations","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0686","query":"staggered entrance animation","expectedGuide":"dynamic-sibling-animations","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0687","query":"staggered entry animation for grid cards sequential delay","expectedGuide":"dynamic-sibling-animations","agent":"claude_code","runDate":"2026-09-02","words":8,"split":"test"}
+{"qid":"aq0688","query":"circular layout cards fan","expectedGuide":"dynamic-sibling-styling","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0689","query":"circular layout trigonometric css","expectedGuide":"dynamic-sibling-styling","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0690","query":"circular layout trigonometry","expectedGuide":"dynamic-sibling-styling","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0691","query":"distribute sibling elements","expectedGuide":"dynamic-sibling-styling","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0692","query":"dynamic sibling index css","expectedGuide":"dynamic-sibling-styling","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0693","query":"fan out cards sibling-index","expectedGuide":"dynamic-sibling-styling","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0694","query":"sibling-index sibling-count","expectedGuide":"dynamic-sibling-styling","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0695","query":"sibling-index sibling-count dynamic layout","expectedGuide":"dynamic-sibling-styling","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0696","query":"spectrum fan cards circle layout dynamic sibling index sibling-count","expectedGuide":"dynamic-sibling-styling","agent":"antigravity_cli","runDate":"2026-10-01","words":9,"split":"test"}
+{"qid":"aq0697","query":"style elements by sibling position","expectedGuide":"dynamic-sibling-styling","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"test"}
+{"qid":"aq0698","query":"style sibling index","expectedGuide":"dynamic-sibling-styling","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0699","query":"trigonometric functions layout","expectedGuide":"dynamic-sibling-styling","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0700","query":"pause animation offscreen","expectedGuide":"efficient-background-processing","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0701","query":"pause offscreen animation","expectedGuide":"efficient-background-processing","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0702","query":"pause offscreen animation content-visibility","expectedGuide":"efficient-background-processing","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0703","query":"pause offscreen rendering","expectedGuide":"efficient-background-processing","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0704","query":"fit responsive heading","expectedGuide":"equal-width-text-lines","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0705","query":"fit text container","expectedGuide":"equal-width-text-lines","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0706","query":"fit text container width","expectedGuide":"equal-width-text-lines","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0707","query":"fit text to container width","expectedGuide":"equal-width-text-lines","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"test"}
+{"qid":"aq0708","query":"fit text width","expectedGuide":"equal-width-text-lines","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0709","query":"color picker input","expectedGuide":"export-html-media-from-canvas","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0710","query":"render HTML canvas","expectedGuide":"export-html-media-from-canvas","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0711","query":"render HTML element to canvas for image export download","expectedGuide":"export-html-media-from-canvas","agent":"claude_code","runDate":"2026-09-16","words":9,"split":"test"}
+{"qid":"aq0712","query":"container query fluid typography","expectedGuide":"fluid-scaling","agent":"jetski_cli","runDate":"2026-09-18","words":4,"split":"test"}
+{"qid":"aq0713","query":"container query font size","expectedGuide":"fluid-scaling","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0714","query":"container query typography fluid scale card","expectedGuide":"fluid-scaling","agent":"antigravity_cli","runDate":"2026-10-02","words":6,"split":"test"}
+{"qid":"aq0715","query":"container query units","expectedGuide":"fluid-scaling","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0716","query":"container query units clamp","expectedGuide":"fluid-scaling","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0717","query":"scale container typography","expectedGuide":"fluid-scaling","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0718","query":"scale text container query","expectedGuide":"fluid-scaling","agent":"jetski_cli","runDate":"2026-09-21","words":4,"split":"test"}
+{"qid":"aq0719","query":"scale text container width","expectedGuide":"fluid-scaling","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0720","query":"accessible form","expectedGuide":"forms","agent":"jetski_cli","runDate":"2026-09-25","words":2,"split":"test"}
+{"qid":"aq0721","query":"build an accessible secure multi-step registration form with validation autofill progress feedback and reduced motion","expectedGuide":"forms","agent":"codex_cli","runDate":"2026-08-28","words":15,"split":"test"}
+{"qid":"aq0722","query":"build multi-step form","expectedGuide":"forms","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0723","query":"form submission security","expectedGuide":"forms","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0724","query":"multi step registration form","expectedGuide":"forms","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0725","query":"multi-step form validation","expectedGuide":"forms","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0726","query":"multi-step registration form","expectedGuide":"forms","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0727","query":"validate form inputs","expectedGuide":"forms","expectedGuides":["forms","style-parent-with-has"],"agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0728","query":"defer analytics beacons","expectedGuide":"full-session-analytics","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0729","query":"defer analytics requests","expectedGuide":"full-session-analytics","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0730","query":"report web vitals beacon","expectedGuide":"full-session-analytics","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0731","query":"send analytics beacon","expectedGuide":"full-session-analytics","expectedGuides":["full-session-analytics","batch-analytics-events"],"agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0732","query":"send analytics beacon on page hide","expectedGuide":"full-session-analytics","expectedGuides":["full-session-analytics","batch-analytics-events"],"agent":"claude_code","runDate":"2026-10-22","words":6,"split":"test"}
+{"qid":"aq0733","query":"send analytics beacon on unload","expectedGuide":"full-session-analytics","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0734","query":"send analytics beacon unload","expectedGuide":"full-session-analytics","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0735","query":"send analytics on page hide","expectedGuide":"full-session-analytics","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"test"}
+{"qid":"aq0736","query":"web-vitals","expectedGuide":"full-session-analytics","agent":"antigravity_cli","runDate":"2026-10-19","words":1,"split":"test"}
+{"qid":"aq0737","query":"animate grouped view transitions","expectedGuide":"group-element-transitions","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"test"}
+{"qid":"aq0738","query":"animate list item add and remove with View Transitions API","expectedGuide":"group-element-transitions","agent":"claude_code","runDate":"2026-08-10","words":10,"split":"test"}
+{"qid":"aq0739","query":"animate list item changes view transition","expectedGuide":"group-element-transitions","agent":"claude_code","runDate":"2026-10-20","words":6,"split":"test"}
+{"qid":"aq0740","query":"animate list item transitions","expectedGuide":"group-element-transitions","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0741","query":"animate list items view transition","expectedGuide":"group-element-transitions","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0742","query":"animate list reorder view transition","expectedGuide":"group-element-transitions","agent":"claude_code","runDate":"2026-10-22","words":5,"split":"test"}
+{"qid":"aq0743","query":"animate list view transition","expectedGuide":"group-element-transitions","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0744","query":"animate list view transitions","expectedGuide":"group-element-transitions","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0745","query":"view transitions","expectedGuide":"group-element-transitions","expectedGuides":["group-element-transitions","same-document-transitions"],"agent":"antigravity_cli","runDate":"2026-10-09","words":2,"split":"test"}
+{"qid":"aq0746","query":"submit form on enter","expectedGuide":"ime-safe-enter-submit","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0747","query":"submit form textarea enter","expectedGuide":"ime-safe-enter-submit","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0748","query":"submit form with enter in textarea","expectedGuide":"ime-safe-enter-submit","agent":"antigravity_cli","runDate":"2026-10-20","words":6,"split":"test"}
+{"qid":"aq0749","query":"submit textarea enter","expectedGuide":"ime-safe-enter-submit","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0750","query":"submit textarea keyboard","expectedGuide":"ime-safe-enter-submit","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0751","query":"submit textarea on enter","expectedGuide":"ime-safe-enter-submit","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0752","query":"animation transform stacking context","expectedGuide":"individual-transform-properties","agent":"jetski_cli","runDate":"2026-09-09","words":4,"split":"test"}
+{"qid":"aq0753","query":"combine CSS animations","expectedGuide":"individual-transform-properties","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0754","query":"combine css animations transforms","expectedGuide":"individual-transform-properties","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0755","query":"combine multiple CSS animations","expectedGuide":"individual-transform-properties","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0756","query":"combine multiple CSS animations hover transform","expectedGuide":"individual-transform-properties","agent":"claude_code","runDate":"2026-10-19","words":6,"split":"test"}
+{"qid":"aq0757","query":"combine transform animations","expectedGuide":"individual-transform-properties","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0758","query":"combine transform animations hover scale","expectedGuide":"individual-transform-properties","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"test"}
+{"qid":"aq0759","query":"compose CSS animations","expectedGuide":"individual-transform-properties","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0760","query":"compose simultaneous CSS animations","expectedGuide":"individual-transform-properties","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0761","query":"compose transform animations","expectedGuide":"individual-transform-properties","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0762","query":"css animation stacking context hover transform","expectedGuide":"individual-transform-properties","agent":"antigravity_cli","runDate":"2026-10-09","words":6,"split":"test"}
+{"qid":"aq0763","query":"css independent transforms","expectedGuide":"individual-transform-properties","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0764","query":"independent simultaneous animations transform scale hover stacking context","expectedGuide":"individual-transform-properties","agent":"jetski_cli","runDate":"2026-09-25","words":8,"split":"test"}
+{"qid":"aq0765","query":"stacking context isolation","expectedGuide":"individual-transform-properties","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0766","query":"measure interaction contentful paint","expectedGuide":"interaction-paint-timing","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0767","query":"measure interaction rendering","expectedGuide":"interaction-paint-timing","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0768","query":"measure soft navigation paint","expectedGuide":"interaction-paint-timing","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0769","query":"measure soft navigation timing","expectedGuide":"interaction-paint-timing","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0770","query":"avoid layout reflow","expectedGuide":"interactions-in-complex-layouts","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0771","query":"contain","expectedGuide":"interactions-in-complex-layouts","agent":"antigravity_cli","runDate":"2026-10-19","words":1,"split":"test"}
+{"qid":"aq0772","query":"drag and drop","expectedGuide":"interactions-in-complex-layouts","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0773","query":"drag and drop cards","expectedGuide":"interactions-in-complex-layouts","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0774","query":"drag and drop reorder list items between columns","expectedGuide":"interactions-in-complex-layouts","agent":"claude_code","runDate":"2026-08-28","words":8,"split":"test"}
+{"qid":"aq0775","query":"layout reflow","expectedGuide":"interactions-in-complex-layouts","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0776","query":"optimize drag and drop","expectedGuide":"interactions-in-complex-layouts","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0777","query":"optimize drag animations","expectedGuide":"interactions-in-complex-layouts","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0778","query":"optimize drag interactions","expectedGuide":"interactions-in-complex-layouts","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0779","query":"prevent layout reflow","expectedGuide":"interactions-in-complex-layouts","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0780","query":"reorder list","expectedGuide":"interactions-in-complex-layouts","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0781","query":"reparent DOM element","expectedGuide":"interactions-in-complex-layouts","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0782","query":"interactive 3d form canvas","expectedGuide":"interactive-content-in-3d-scenes","agent":"antigravity_cli","runDate":"2026-10-09","words":4,"split":"test"}
+{"qid":"aq0783","query":"interest invoker hover focus","expectedGuide":"interest-triggered-action-previews","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0784","query":"interest invoker hover focus preview","expectedGuide":"interest-triggered-action-previews","agent":"claude_code","runDate":"2026-10-22","words":5,"split":"test"}
+{"qid":"aq0785","query":"interest preview hover focus","expectedGuide":"interest-triggered-action-previews","agent":"antigravity_cli","runDate":"2026-10-01","words":4,"split":"test"}
+{"qid":"aq0786","query":"interest triggered preview","expectedGuide":"interest-triggered-action-previews","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0787","query":"interest triggered preview interestfor","expectedGuide":"interest-triggered-action-previews","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0788","query":"interest triggered previews","expectedGuide":"interest-triggered-action-previews","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0789","query":"interest-triggered preview hover focus button","expectedGuide":"interest-triggered-action-previews","agent":"antigravity_cli","runDate":"2026-10-09","words":5,"split":"test"}
+{"qid":"aq0790","query":"show interest previews","expectedGuide":"interest-triggered-action-previews","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0791","query":"build accessible textarea controls progressive enhancement streaming client-side AI sessions progress monitoring resource cleanup","expectedGuide":"language-model","agent":"codex_cli","runDate":"2026-09-09","words":14,"split":"test"}
+{"qid":"aq0792","query":"built-in ai","expectedGuide":"language-model","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0793","query":"built-in AI prompt API","expectedGuide":"language-model","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0794","query":"client-side AI","expectedGuide":"language-model","agent":"jetski_cli","runDate":"2026-09-21","words":2,"split":"test"}
+{"qid":"aq0795","query":"manage built-in AI sessions","expectedGuide":"language-model","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0796","query":"manage local AI sessions","expectedGuide":"language-model","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"test"}
+{"qid":"aq0797","query":"prompt API language model session","expectedGuide":"language-model","agent":"claude_code","runDate":"2026-10-24","words":5,"split":"test"}
+{"qid":"aq0798","query":"defer offscreen media","expectedGuide":"lazy-load-video-and-audio","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0799","query":"lazy load video","expectedGuide":"lazy-load-video-and-audio","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0800","query":"lazy load video audio","expectedGuide":"lazy-load-video-and-audio","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0801","query":"access local network loopback","expectedGuide":"local-network-access","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0802","query":"access local network resources","expectedGuide":"local-network-access","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0803","query":"allow local network access","expectedGuide":"local-network-access","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0804","query":"enable local network access","expectedGuide":"local-network-access","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"test"}
+{"qid":"aq0805","query":"local network access permission","expectedGuide":"local-network-access","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0806","query":"lazy load hidden images","expectedGuide":"optimize-image-priority","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0807","query":"optimize hero image LCP fetchpriority preload and lazy load hidden gallery/menu images","expectedGuide":"optimize-image-priority","agent":"claude_code","runDate":"2026-09-07","words":12,"split":"test"}
+{"qid":"aq0808","query":"optimize image loading priority","expectedGuide":"optimize-image-priority","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0809","query":"optimize LCP hero image hidden gallery images lazy loading footer below fold","expectedGuide":"optimize-image-priority","agent":"codex_cli","runDate":"2026-07-22","words":12,"split":"test"}
+{"qid":"aq0810","query":"optimize LCP image priority","expectedGuide":"optimize-image-priority","expectedGuides":["optimize-image-priority","optimize-preload-priority"],"agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0811","query":"prioritize LCP image","expectedGuide":"optimize-image-priority","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0812","query":"LCP font image fetchpriority","expectedGuide":"optimize-preload-priority","agent":"antigravity_cli","runDate":"2026-10-02","words":4,"split":"test"}
+{"qid":"aq0813","query":"LCP optimization poster image video fetchpriority preload font woff2","expectedGuide":"optimize-preload-priority","agent":"claude_code","runDate":"2026-08-07","words":9,"split":"test"}
+{"qid":"aq0814","query":"optimize LCP image","expectedGuide":"optimize-preload-priority","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0815","query":"optimize LCP poster image","expectedGuide":"optimize-preload-priority","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0816","query":"optimize LCP video poster","expectedGuide":"optimize-preload-priority","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0817","query":"optimize video poster loading","expectedGuide":"optimize-preload-priority","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0818","query":"optimize web fonts","expectedGuide":"optimize-preload-priority","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0819","query":"preload custom web fonts","expectedGuide":"optimize-preload-priority","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0820","query":"preload LCP image fetchpriority","expectedGuide":"optimize-preload-priority","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0821","query":"preload LCP poster image","expectedGuide":"optimize-preload-priority","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0822","query":"create scroll-driven parallax","expectedGuide":"parallax-scroll-effects","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0823","query":"scroll driven parallax","expectedGuide":"parallax-scroll-effects","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0824","query":"scroll driven parallax animation","expectedGuide":"parallax-scroll-effects","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0825","query":"scroll parallax","expectedGuide":"parallax-scroll-effects","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0826","query":"scroll-driven parallax effect","expectedGuide":"parallax-scroll-effects","agent":"antigravity_cli","runDate":"2026-10-06","words":3,"split":"test"}
+{"qid":"aq0827","query":"scroll-driven parallax layers","expectedGuide":"parallax-scroll-effects","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0828","query":"accessible modal dialog","expectedGuide":"passkey-management","expectedGuides":["passkey-management","platform-controls-dismiss-dialog"],"agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0829","query":"manage passkey credentials","expectedGuide":"passkey-management","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0830","query":"manage passkeys","expectedGuide":"passkey-management","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0831","query":"manage passkeys list","expectedGuide":"passkey-management","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0832","query":"authenticate with passkey","expectedGuide":"passkey-reauthentication","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0833","query":"authenticate with passkeys","expectedGuide":"passkey-reauthentication","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0834","query":"passkey reauthentication","expectedGuide":"passkey-reauthentication","agent":"claude_code","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0835","query":"passkey reauthentication WebAuthn","expectedGuide":"passkey-reauthentication","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0836","query":"reauthenticate passkey webauthn","expectedGuide":"passkey-reauthentication","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0837","query":"reauthenticate with passkey","expectedGuide":"passkey-reauthentication","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0838","query":"verify identity WebAuthn","expectedGuide":"passkey-reauthentication","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0839","query":"verify user with passkey","expectedGuide":"passkey-reauthentication","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0840","query":"sibling-index","expectedGuide":"persistent-toast-notifications","agent":"antigravity_cli","runDate":"2026-10-22","words":1,"split":"test"}
+{"qid":"aq0841","query":"sibling-index stagger offset","expectedGuide":"persistent-toast-notifications","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0842","query":"stack toast popovers","expectedGuide":"persistent-toast-notifications","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0843","query":"stack top layer toasts","expectedGuide":"persistent-toast-notifications","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0844","query":"toast notification","expectedGuide":"persistent-toast-notifications","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0845","query":"toast notification popover","expectedGuide":"persistent-toast-notifications","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0846","query":"toast notification top layer popover","expectedGuide":"persistent-toast-notifications","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0847","query":"modal dialog popover","expectedGuide":"persistent-top-layer-ui","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0848","query":"move dialog preserving state","expectedGuide":"persistent-top-layer-ui","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0849","query":"moveBefore API reparent DOM node preserve state dialog","expectedGuide":"persistent-top-layer-ui","agent":"claude_code","runDate":"2026-09-18","words":8,"split":"test"}
+{"qid":"aq0850","query":"persistent overlay","expectedGuide":"persistent-top-layer-ui","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0851","query":"preserve dialog state moveBefore","expectedGuide":"persistent-top-layer-ui","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0852","query":"preserve dialog state moving","expectedGuide":"persistent-top-layer-ui","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"test"}
+{"qid":"aq0853","query":"preserve state moveBefore","expectedGuide":"persistent-top-layer-ui","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0854","query":"preserve state when moving element","expectedGuide":"persistent-top-layer-ui","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0855","query":"reparent dialog moveBefore","expectedGuide":"persistent-top-layer-ui","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0856","query":"back gesture dismiss dialog","expectedGuide":"platform-controls-dismiss-dialog","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0857","query":"close dialog back gesture","expectedGuide":"platform-controls-dismiss-dialog","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0858","query":"dismiss modal dialog","expectedGuide":"platform-controls-dismiss-dialog","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0859","query":"modal dialog","expectedGuide":"platform-controls-dismiss-dialog","expectedGuides":["platform-controls-dismiss-dialog","persistent-top-layer-ui"],"agent":"claude_code","runDate":"2026-10-22","words":2,"split":"test"}
+{"qid":"aq0860","query":"anchor positioned popover tooltip","expectedGuide":"position-aware-tooltips","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0861","query":"anchor positioning tooltip arrow","expectedGuide":"position-aware-tooltips","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0862","query":"anchored container query","expectedGuide":"position-aware-tooltips","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0863","query":"anchored container query fallback","expectedGuide":"position-aware-tooltips","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0864","query":"anchored popover tooltip","expectedGuide":"position-aware-tooltips","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0865","query":"anchored tooltip popover","expectedGuide":"position-aware-tooltips","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0866","query":"popover tooltip anchor positioning","expectedGuide":"position-aware-tooltips","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0867","query":"query anchored fallback position","expectedGuide":"position-aware-tooltips","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0868","query":"style anchored fallback position","expectedGuide":"position-aware-tooltips","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0869","query":"style anchored tooltip flips","expectedGuide":"position-aware-tooltips","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0870","query":"required email field validation only show error after blur when empty","expectedGuide":"required-field-feedback","agent":"codex_cli","runDate":"2026-08-07","words":11,"split":"test"}
+{"qid":"aq0871","query":"show errors after interaction","expectedGuide":"required-field-feedback","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0872","query":"validate field after interaction","expectedGuide":"required-field-feedback","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0873","query":"validate form after interaction","expectedGuide":"required-field-feedback","expectedGuides":["required-field-feedback","select-menu-interaction"],"agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0874","query":"validate form after user interaction","expectedGuide":"required-field-feedback","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"test"}
+{"qid":"aq0875","query":"validate form input","expectedGuide":"required-field-feedback","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0876","query":"validate forms after interaction","expectedGuide":"required-field-feedback","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"test"}
+{"qid":"aq0877","query":"decorate headings background images","expectedGuide":"resolution-optimized-pseudo-elements","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0878","query":"decorate headings image-set","expectedGuide":"resolution-optimized-pseudo-elements","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0879","query":"decorative css icon image-set","expectedGuide":"resolution-optimized-pseudo-elements","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0880","query":"decorative icon high-resolution image","expectedGuide":"resolution-optimized-pseudo-elements","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0881","query":"high resolution css background image","expectedGuide":"resolution-optimized-pseudo-elements","agent":"antigravity_cli","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0882","query":"high resolution decorative background image","expectedGuide":"resolution-optimized-pseudo-elements","agent":"antigravity_cli","runDate":"2026-10-22","words":5,"split":"test"}
+{"qid":"aq0883","query":"high resolution image-set","expectedGuide":"resolution-optimized-pseudo-elements","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0884","query":"high-resolution background image","expectedGuide":"resolution-optimized-pseudo-elements","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0885","query":"high-resolution icon image-set","expectedGuide":"resolution-optimized-pseudo-elements","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0886","query":"resolution responsive background images","expectedGuide":"resolution-optimized-pseudo-elements","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0887","query":"retina image background icon","expectedGuide":"resolution-optimized-pseudo-elements","agent":"jetski_cli","runDate":"2026-09-25","words":4,"split":"test"}
+{"qid":"aq0888","query":"respect OS text scale","expectedGuide":"respect-os-text-scale","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0889","query":"respect os text scale preference","expectedGuide":"respect-os-text-scale","agent":"antigravity_cli","runDate":"2026-10-24","words":5,"split":"test"}
+{"qid":"aq0890","query":"respect system text scaling","expectedGuide":"respect-os-text-scale","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0891","query":"respect text scaling","expectedGuide":"respect-os-text-scale","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0892","query":"respect user text scale","expectedGuide":"respect-os-text-scale","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0893","query":"text scale accessibility","expectedGuide":"respect-os-text-scale","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0894","query":"animate shared element transitions","expectedGuide":"same-document-transitions","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0895","query":"animate shared elements","expectedGuide":"same-document-transitions","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0896","query":"morph element view transition","expectedGuide":"same-document-transitions","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0897","query":"navigate same document transitions","expectedGuide":"same-document-transitions","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0898","query":"shared element view transition","expectedGuide":"same-document-transitions","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0899","query":"transition between page views","expectedGuide":"same-document-transitions","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0900","query":"view transition same-page smooth morph hero thumbnail","expectedGuide":"same-document-transitions","agent":"jetski_cli","runDate":"2026-09-25","words":7,"split":"test"}
+{"qid":"aq0901","query":"view transition shared element morph","expectedGuide":"same-document-transitions","agent":"claude_code","runDate":"2026-10-24","words":5,"split":"test"}
+{"qid":"aq0902","query":"view transitions morph elements","expectedGuide":"same-document-transitions","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0903","query":"prioritize background tasks scheduler","expectedGuide":"schedule-tasks-by-priority","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0904","query":"prioritize long running tasks","expectedGuide":"schedule-tasks-by-priority","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0905","query":"prioritize long tasks","expectedGuide":"schedule-tasks-by-priority","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0906","query":"prioritize long tasks scheduler","expectedGuide":"schedule-tasks-by-priority","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0907","query":"schedule prioritized tasks","expectedGuide":"schedule-tasks-by-priority","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0908","query":"schedule tasks by priority","expectedGuide":"schedule-tasks-by-priority","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0909","query":"task prioritization responsive long tasks scheduler","expectedGuide":"schedule-tasks-by-priority","agent":"jetski_cli","runDate":"2026-09-23","words":6,"split":"test"}
+{"qid":"aq0910","query":"task prioritization scheduler","expectedGuide":"schedule-tasks-by-priority","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0911","query":"task scheduling","expectedGuide":"schedule-tasks-by-priority","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0912","query":"yield to main thread scheduling","expectedGuide":"schedule-tasks-by-priority","agent":"claude_code","runDate":"2026-10-24","words":5,"split":"test"}
+{"qid":"aq0913","query":"implement a fixed horizontal page scroll progress indicator with CSS scroll-driven animation and JavaScript progressive enhancement fallback","expectedGuide":"scroll-progress-indicator","agent":"codex_cli","runDate":"2026-09-07","words":17,"split":"test"}
+{"qid":"aq0914","query":"scroll progress bar","expectedGuide":"scroll-progress-indicator","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0915","query":"scroll progress indicator","expectedGuide":"scroll-progress-indicator","agent":"antigravity_cli","runDate":"2026-10-07","words":3,"split":"test"}
+{"qid":"aq0916","query":"show scroll progress","expectedGuide":"scroll-progress-indicator","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0917","query":"scroll container overflow indicator gradient overlay","expectedGuide":"scrollability-affordance-hints","agent":"jetski_cli","runDate":"2026-09-25","words":6,"split":"test"}
+{"qid":"aq0918","query":"scroll indicator gradient overlay","expectedGuide":"scrollability-affordance-hints","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0919","query":"scroll overflow indicators","expectedGuide":"scrollability-affordance-hints","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0920","query":"scroll shadow indicators","expectedGuide":"scrollability-affordance-hints","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0921","query":"scroll shadows indicator","expectedGuide":"scrollability-affordance-hints","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0922","query":"show scroll indicators","expectedGuide":"scrollability-affordance-hints","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0923","query":"exclusive accordion searchable content","expectedGuide":"search-hidden-content","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0924","query":"exclusive accordion tabs searchable","expectedGuide":"search-hidden-content","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0925","query":"mutually exclusive searchable tabs","expectedGuide":"search-hidden-content","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0926","query":"mutually exclusive tabs","expectedGuide":"search-hidden-content","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0927","query":"reveal button","expectedGuide":"search-hidden-content","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0928","query":"search closed tabs","expectedGuide":"search-hidden-content","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0929","query":"search collapsed exclusive disclosures","expectedGuide":"search-hidden-content","agent":"codex_cli","runDate":"2026-10-23","words":4,"split":"test"}
+{"qid":"aq0930","query":"search collapsed tabs","expectedGuide":"search-hidden-content","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0931","query":"searchable hidden content","expectedGuide":"search-hidden-content","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0932","query":"custom select menu","expectedGuide":"select-menu-interaction","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0933","query":"defer form validation","expectedGuide":"select-menu-interaction","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0934","query":"form validation user invalid","expectedGuide":"select-menu-interaction","expectedGuides":["select-menu-interaction","required-field-feedback"],"agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0935","query":"form validation user-invalid","expectedGuide":"select-menu-interaction","expectedGuides":["select-menu-interaction","accessible-error-announcement","required-field-feedback","validate-input-after-interaction"],"agent":"jetski_cli","runDate":"2026-09-23","words":3,"split":"test"}
+{"qid":"aq0936","query":"form validation user-invalid required select","expectedGuide":"select-menu-interaction","agent":"antigravity_cli","runDate":"2026-10-09","words":5,"split":"test"}
+{"qid":"aq0937","query":"validate form fields","expectedGuide":"select-menu-interaction","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0938","query":"validate form fields after interaction","expectedGuide":"select-menu-interaction","expectedGuides":["select-menu-interaction","required-field-feedback"],"agent":"claude_code","runDate":"2026-10-19","words":5,"split":"test"}
+{"qid":"aq0939","query":"validate required select","expectedGuide":"select-menu-interaction","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0940","query":"validate select after user interaction","expectedGuide":"select-menu-interaction","agent":"antigravity_cli","runDate":"2026-10-22","words":5,"split":"test"}
+{"qid":"aq0941","query":"validate select interaction","expectedGuide":"select-menu-interaction","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0942","query":"combine CSS selectors","expectedGuide":"selector-atrule-combinations","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0943","query":"combine selectors and nested at-rules","expectedGuide":"selector-atrule-combinations","agent":"claude_code","runDate":"2026-10-20","words":5,"split":"test"}
+{"qid":"aq0944","query":"nest conditional rules selectors","expectedGuide":"selector-atrule-combinations","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0945","query":"nest css selectors at-rules","expectedGuide":"selector-atrule-combinations","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0946","query":"nested conditional CSS rules","expectedGuide":"selector-atrule-combinations","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0947","query":"nested selectors conditional rules","expectedGuide":"selector-atrule-combinations","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0948","query":"accessible form validation","expectedGuide":"sms-otp-form","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0949","query":"autofill SMS verification","expectedGuide":"sms-otp-form","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq0950","query":"autofill SMS verification codes","expectedGuide":"sms-otp-form","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0951","query":"form validation styling","expectedGuide":"sms-otp-form","expectedGuides":["sms-otp-form","style-parent-with-has"],"agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0952","query":"one-time code autofill","expectedGuide":"sms-otp-form","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0953","query":"SMS one-time code autofill","expectedGuide":"sms-otp-form","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0954","query":"SMS one-time code input","expectedGuide":"sms-otp-form","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0955","query":"SMS one-time passcode","expectedGuide":"sms-otp-form","agent":"claude_code","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq0956","query":"SMS one-time passcode input","expectedGuide":"sms-otp-form","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0957","query":"SMS one-time passcode OTP","expectedGuide":"sms-otp-form","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0958","query":"SMS one-time passcode verification","expectedGuide":"sms-otp-form","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0959","query":"SMS OTP code extraction WebOTP","expectedGuide":"sms-otp-form","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"test"}
+{"qid":"aq0960","query":"SMS OTP verification","expectedGuide":"sms-otp-form","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq0961","query":"SMS OTP verification form","expectedGuide":"sms-otp-form","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0962","query":"verify one-time passcode SMS","expectedGuide":"sms-otp-form","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0963","query":"verify SMS one-time codes","expectedGuide":"sms-otp-form","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0964","query":"verify SMS one-time passcode","expectedGuide":"sms-otp-form","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0965","query":"verify SMS passcodes","expectedGuide":"sms-otp-form","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0966","query":"drill down navigation stack","expectedGuide":"stack-drill-down","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0967","query":"hierarchical drill down navigation","expectedGuide":"stack-drill-down","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0968","query":"mobile viewport","expectedGuide":"stack-drill-down","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0969","query":"navigate between views transition","expectedGuide":"stack-drill-down","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0970","query":"scroll snap card navigation","expectedGuide":"stack-drill-down","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0971","query":"scroll-driven animations parallax swipe navigation","expectedGuide":"stack-drill-down","agent":"antigravity_cli","runDate":"2026-10-07","words":5,"split":"test"}
+{"qid":"aq0972","query":"swipe back card navigation","expectedGuide":"stack-drill-down","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0973","query":"swipe back card navigation scroll-driven animation parallax full-screen viewport","expectedGuide":"stack-drill-down","agent":"jetski_cli","runDate":"2026-09-18","words":9,"split":"test"}
+{"qid":"aq0974","query":"swipe back navigation","expectedGuide":"stack-drill-down","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0975","query":"swipe back navigation history","expectedGuide":"stack-drill-down","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0976","query":"view transitions page navigation","expectedGuide":"stack-drill-down","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0977","query":"CSS only form validation red border wrapping div invalid input :has :user-invalid","expectedGuide":"style-parent-with-has","agent":"claude_code","runDate":"2026-10-02","words":12,"split":"test"}
+{"qid":"aq0978","query":"form validation css","expectedGuide":"style-parent-with-has","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0979","query":"style invalid field wrappers","expectedGuide":"style-parent-with-has","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0980","query":"style invalid form fields","expectedGuide":"style-parent-with-has","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0981","query":"style invalid form wrappers","expectedGuide":"style-parent-with-has","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0982","query":"style parent wrapper on invalid input","expectedGuide":"style-parent-with-has","agent":"antigravity_cli","runDate":"2026-10-20","words":6,"split":"test"}
+{"qid":"aq0983","query":"built-in ai summarize","expectedGuide":"summarizer","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0984","query":"summarize text built-in AI","expectedGuide":"summarizer","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0985","query":"use browser native AI summarizer API progressive enhancement button summarize long article text","expectedGuide":"summarizer","agent":"codex_cli","runDate":"2026-08-06","words":13,"split":"test"}
+{"qid":"aq0986","query":"implement an accessible touch and pointer swipe-to-delete list item with smooth collapse animation and reduced-motion support","expectedGuide":"swipe-to-remove","agent":"codex_cli","runDate":"2026-09-09","words":16,"split":"test"}
+{"qid":"aq0987","query":"swipe to remove gesture list item animation","expectedGuide":"swipe-to-remove","agent":"jetski_cli","runDate":"2026-09-11","words":7,"split":"test"}
+{"qid":"aq0988","query":"accessible form status","expectedGuide":"translator","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0989","query":"client-side language translation i18n switcher static site","expectedGuide":"translator","agent":"claude_code","runDate":"2026-09-16","words":7,"split":"test"}
+{"qid":"aq0990","query":"translate page text","expectedGuide":"translator","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0991","query":"translate text","expectedGuide":"translator","agent":"antigravity_cli","runDate":"2026-10-19","words":2,"split":"test"}
+{"qid":"aq0992","query":"translate text between languages","expectedGuide":"translator","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0993","query":"translate text between languages in the browser using built-in on-device AI translation","expectedGuide":"translator","agent":"claude_code","runDate":"2026-08-24","words":12,"split":"test"}
+{"qid":"aq0994","query":"translate text in browser","expectedGuide":"translator","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0995","query":"translate text language","expectedGuide":"translator","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0996","query":"translate text languages","expectedGuide":"translator","agent":"codex_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq0997","query":"translate text on device","expectedGuide":"translator","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq0998","query":"translate text on page","expectedGuide":"translator","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0999","query":"translate text on-device","expectedGuide":"translator","agent":"claude_code","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq1000","query":"translate text Translator API","expectedGuide":"translator","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq1001","query":"email form validation only on blur avoid invalid styles while typing","expectedGuide":"validate-input-after-interaction","agent":"codex_cli","runDate":"2026-10-09","words":11,"split":"test"}
+{"qid":"aq1002","query":"validate email after blur","expectedGuide":"validate-input-after-interaction","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq1003","query":"validate email input blur","expectedGuide":"validate-input-after-interaction","agent":"antigravity_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq1004","query":"validate email on blur","expectedGuide":"validate-input-after-interaction","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq1005","query":"validate form field after blur","expectedGuide":"validate-input-after-interaction","agent":"claude_code","runDate":"2026-10-19","words":5,"split":"test"}
+{"qid":"aq1006","query":"validate form input user-invalid","expectedGuide":"validate-input-after-interaction","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq1007","query":"validate input after blur","expectedGuide":"validate-input-after-interaction","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq1008","query":"anchor popover dropdown menu","expectedGuide":"viewport-aware-dropdowns","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq1009","query":"anchor popover menu","expectedGuide":"viewport-aware-dropdowns","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq1010","query":"anchor popover positioning","expectedGuide":"viewport-aware-dropdowns","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq1011","query":"anchor positioned popover dropdown","expectedGuide":"viewport-aware-dropdowns","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq1012","query":"anchor positioning popover dropdown","expectedGuide":"viewport-aware-dropdowns","agent":"antigravity_cli","runDate":"2026-10-01","words":4,"split":"test"}
+{"qid":"aq1013","query":"anchored popover dropdown","expectedGuide":"viewport-aware-dropdowns","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq1014","query":"anchored popover panel","expectedGuide":"viewport-aware-dropdowns","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq1015","query":"dropdown menu popover anchor positioning","expectedGuide":"viewport-aware-dropdowns","agent":"antigravity_cli","runDate":"2026-10-22","words":5,"split":"test"}
+{"qid":"aq1016","query":"dropdown menu popover anchor positioning flip","expectedGuide":"viewport-aware-dropdowns","agent":"jetski_cli","runDate":"2026-09-18","words":6,"split":"test"}
+{"qid":"aq1017","query":"position anchored popover","expectedGuide":"viewport-aware-dropdowns","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq1018","query":"aspect ratio container","expectedGuide":"visually-stable-mixed-fonts","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq1019","query":"font-size-adjust aspect ratio","expectedGuide":"visually-stable-mixed-fonts","agent":"antigravity_cli","runDate":"2026-10-24","words":3,"split":"test"}
+{"qid":"aq1020","query":"normalize font size adjust","expectedGuide":"visually-stable-mixed-fonts","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq1021","query":"normalize mixed font height","expectedGuide":"visually-stable-mixed-fonts","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq1022","query":"normalize mixed font heights","expectedGuide":"visually-stable-mixed-fonts","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq1023","query":"normalize mixed font sizes","expectedGuide":"visually-stable-mixed-fonts","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq1024","query":"normalize mixed fonts","expectedGuide":"visually-stable-mixed-fonts","agent":"antigravity_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq1025","query":"normalize the visual height of mixed font families including inline code and lock an independently themed container to a numeric aspect ratio","expectedGuide":"visually-stable-mixed-fonts","agent":"codex_cli","runDate":"2026-09-11","words":22,"split":"test"}
+{"qid":"aq1026","query":"apply css mask image","expectedGuide":"visually-texture-content","agent":"antigravity_cli","runDate":"2026-10-22","words":4,"split":"test"}
+{"qid":"aq1027","query":"apply repeating CSS mask","expectedGuide":"visually-texture-content","agent":"codex_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq1028","query":"apply repeating image mask","expectedGuide":"visually-texture-content","agent":"codex_cli","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq1029","query":"apply repeating svg mask","expectedGuide":"visually-texture-content","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq1030","query":"CSS mask-image repeating SVG texture mask-repeat tiling background","expectedGuide":"visually-texture-content","agent":"claude_code","runDate":"2026-08-06","words":8,"split":"test"}
+{"qid":"aq1031","query":"repeat texture mask","expectedGuide":"visually-texture-content","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq1032","query":"repeating CSS mask image","expectedGuide":"visually-texture-content","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq1033","query":"repeating image mask","expectedGuide":"visually-texture-content","agent":"claude_code","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq1034","query":"repeating image mask texture","expectedGuide":"visually-texture-content","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq1035","query":"repeating mask image texture","expectedGuide":"visually-texture-content","agent":"claude_code","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq1036","query":"build web component","expectedGuide":"web-components","agent":"antigravity_cli","runDate":"2026-10-22","words":3,"split":"test"}
+{"qid":"aq1037","query":"custom element shadow dom","expectedGuide":"web-components","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq1038","query":"custom element web component","expectedGuide":"web-components","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq1039","query":"define custom element lifecycle","expectedGuide":"web-components","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq1040","query":"encapsulate web components","expectedGuide":"web-components","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
+{"qid":"aq1041","query":"modal dialog light dismiss","expectedGuide":"web-components","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq1042","query":"popover menu drawer","expectedGuide":"web-components","agent":"antigravity_cli","runDate":"2026-10-20","words":3,"split":"test"}
+{"qid":"aq1043","query":"reusable custom element component","expectedGuide":"web-components","agent":"claude_code","runDate":"2026-10-20","words":4,"split":"test"}

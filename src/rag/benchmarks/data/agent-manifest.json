@@ -1,0 +1,40 @@
+{
+  "version": "v1",
+  "createdAt": "2026-10-26T22:08:03.372Z",
+  "sourceSuites": [
+    "harness-pre-2056 (2026-07-22..2026-10-09)",
+    "nightly-2026-10-19_07-00-02-antigravity_cli",
+    "nightly-2026-10-19_17-02-55-claude_code",
+    "nightly-2026-10-19_17-28-30-codex_cli",
+    "nightly-2026-10-20_18-18-02-antigravity_cli",
+    "nightly-2026-10-20_20-25-55-claude_code",
+    "nightly-2026-10-20_20-43-48-codex_cli",
+    "nightly-2026-10-22_21-00-02-antigravity_cli",
+    "nightly-2026-10-22_23-40-02-claude_code",
+    "nightly-2026-10-23_00-00-10-codex_cli",
+    "nightly-2026-10-24_21-00-02-antigravity_cli",
+    "nightly-2026-10-24_23-53-23-claude_code"
+  ],
+  "dateRange": "2026-07-22..2026-10-24",
+  "judgeModel": "gemini-3.8-flash",
+  "rubricVersion": "v1",
+  "clustering": "group-partitioned by expectedGuide (resample by guide cluster in bootstrap CIs)",
+  "split": {
+    "dev": {
+      "queries": 527
+    },
+    "test": {
+      "queries": 516
+    }
+  },
+  "files": {
+    "agent-queries.jsonl": {
+      "rows": 1043,
+      "sha256": "14242c77fa70b8c105fcdab6b6d4506c305eb344fb0323934df3963fb201d011"
+    },
+    "agent-qrels.jsonl": {
+      "rows": 1043,
+      "sha256": "1499ffe3452fd4cdddf12a3f5b2add89f6e10dc566f7ab2b5350da01f9f55a30"
+    }
+  }
+}

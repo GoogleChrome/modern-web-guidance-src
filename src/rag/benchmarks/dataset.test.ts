@@ -127,7 +127,41 @@ describe("dataset parsers and serializers", () => {
   });
 });
 
-describe("checked-in public datasets (harness & oos)", () => {
+describe("checked-in public datasets (agent, harness & oos)", () => {
+  it("loads agent dataset with 1043 queries, matching qrels, manifest, and valid corpus expectedGuides", () => {
+    const agent = loadPublicDataset("agent");
+    assert.strictEqual(agent.queries.length, 1043);
+    assert.strictEqual(agent.qrels.size, 1043);
+    assert.ok(agent.manifest);
+    assert.strictEqual(agent.manifest.version, "v1");
+
+    const guidesJson: { id: string }[] = JSON.parse(
+      fs.readFileSync(path.join(outDir, "build/skills-cli/guides.json"), "utf8")
+    );
+    const validIds = new Set(guidesJson.map((g) => g.id));
+
+    const missingQrelQids = agent.queries.filter((q) => !agent.qrels.has(q.qid)).map((q) => q.qid);
+    assert.deepStrictEqual(missingQrelQids, []);
+
+    const orphanedExpectedGuides = agent.queries
+      .filter((q) => !q.expectedGuide || !validIds.has(q.expectedGuide))
+      .map((q) => q.qid);
+    assert.deepStrictEqual(orphanedExpectedGuides, []);
+
+    // Every query has valid split
+    for (const q of agent.queries) {
+      assert.ok(q.split === "dev" || q.split === "test", `Query ${q.qid} missing valid split`);
+    }
+
+    // Split filtering
+    const dev = filterDatasetBySplit(agent, "dev");
+    const test = filterDatasetBySplit(agent, "test");
+    assert.strictEqual(dev.queries.length, 527);
+    assert.strictEqual(test.queries.length, 516);
+    assert.strictEqual(dev.qrels.size, 527);
+    assert.strictEqual(test.qrels.size, 516);
+  });
+
   it("loads harness dataset with 160 queries, matching qrels, and valid corpus expectedGuides", () => {
     const harness = loadPublicDataset("harness");
     assert.strictEqual(harness.queries.length, 160);
@@ -539,6 +573,13 @@ describe("pooling and mining helpers", () => {
     assert.strictEqual(comp.wins, 1);
     assert.strictEqual(comp.losses, 0);
     assert.strictEqual(comp.oosNewlyRejected.length, 1);
+
+    // Guide-cluster bootstrap: resamples by guide cluster for agent dataset
+    const agentBaseSummary = { ...baseSummary, dataset: "agent" };
+    const agentHeadSummary = { ...headSummary, dataset: "agent" };
+    const agentComp = compareDatasetSummaries(agentBaseSummary, agentHeadSummary);
+    assert.strictEqual(typeof agentComp.ndcg5Delta.ciLow, "number");
+    assert.ok(agentComp.ndcg5Delta.ciLow <= agentComp.ndcg5Delta.ciHigh);
 
     const boot = pairedBootstrapDelta([0.1, 0.2, 0.1, 0.2], [0.8, 0.9, 0.8, 0.9]);
     assert.strictEqual(boot.significant, true);

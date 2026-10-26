@@ -187,6 +187,23 @@ function ensureWorktreeBuilt(targetDir: string, seedFromRoot = true): void {
   const legacyBuildScript = path.join(targetDir, "serving/scripts/build-guides.ts");
 
   if (fs.existsSync(modernBuildScript)) {
+    const targetNodeModules = path.join(targetDir, "node_modules");
+    let rootNodeModules: string | null = null;
+    let cur = rootDir;
+    while (cur !== path.dirname(cur)) {
+      const nm = path.join(cur, "node_modules");
+      if (fs.existsSync(nm)) {
+        rootNodeModules = nm;
+        break;
+      }
+      cur = path.dirname(cur);
+    }
+    if (!fs.existsSync(targetNodeModules) && rootNodeModules) {
+      try {
+        fs.symlinkSync(rootNodeModules, targetNodeModules, "junction");
+      } catch {}
+    }
+
     const targetCacheDir = path.join(targetDir, "out/build/skills-cli");
     const rootCacheDir = path.join(rootDir, "out/build/skills-cli");
     if (seedFromRoot && targetDir !== rootDir && !fs.existsSync(targetCacheDir) && fs.existsSync(rootCacheDir)) {
@@ -328,8 +345,9 @@ export function renderSingleMarkdown(
     const provLines = datasets
       .filter((d) => d.manifest)
       .map((d) => {
-        const qrelsSha = d.manifest?.files["wild-qrels.jsonl"]?.sha256;
-        return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}`;
+        const qrelsKey = Object.keys(d.manifest?.files ?? {}).find((k) => k.endsWith("qrels.jsonl"));
+        const qrelsSha = qrelsKey ? d.manifest?.files[qrelsKey]?.sha256 : undefined;
+        return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}${d.manifest?.dateRange ? `, date range: \`${d.manifest?.dateRange}\`` : ""}`;
       });
     if (provLines.length > 0) {
       lines.push("");
@@ -370,8 +388,9 @@ export function renderComparisonMarkdown(
     const provLines = datasets
       .filter((d) => d.manifest)
       .map((d) => {
-        const qrelsSha = d.manifest?.files["wild-qrels.jsonl"]?.sha256;
-        return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}`;
+        const qrelsKey = Object.keys(d.manifest?.files ?? {}).find((k) => k.endsWith("qrels.jsonl"));
+        const qrelsSha = qrelsKey ? d.manifest?.files[qrelsKey]?.sha256 : undefined;
+        return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}${d.manifest?.dateRange ? `, date range: \`${d.manifest?.dateRange}\`` : ""}`;
       });
     if (provLines.length > 0) {
       lines.push("");
@@ -455,8 +474,12 @@ async function loadRequestedDatasets(
 ): Promise<LoadedDataset[]> {
   const loaded: LoadedDataset[] = [];
   for (const name of names) {
-    if (name === "harness" || name === "oos") {
-      loaded.push(loadPublicDataset(name));
+    if (name === "agent" || name === "harness" || name === "oos") {
+      let ds = loadPublicDataset(name);
+      if (name === "agent" && options.split && options.split !== "all") {
+        ds = filterDatasetBySplit(ds, options.split);
+      }
+      loaded.push(ds);
     } else if (name === "wild") {
       let wild: LoadedDataset;
       try {
@@ -473,7 +496,7 @@ async function loadRequestedDatasets(
       }
       loaded.push(wild);
     } else {
-      throw new Error(`Unknown dataset "${name}". Expected one of: wild, harness, oos.`);
+      throw new Error(`Unknown dataset "${name}". Expected one of: wild, agent, harness, oos.`);
     }
   }
   return loaded;
@@ -517,7 +540,7 @@ async function main(): Promise<void> {
   const explicitDatasets = values.datasets
     ? values.datasets.split(",").map((s) => s.trim()).filter(Boolean)
     : undefined;
-  const datasetNames = explicitDatasets ?? (isPublicOnly ? ["harness", "oos"] : ["wild", "harness", "oos"]);
+  const datasetNames = explicitDatasets ?? (isPublicOnly ? ["agent", "oos"] : ["wild", "agent", "oos"]);
   const explicitWild = Boolean(explicitDatasets?.includes("wild"));
 
   const datasets = await loadRequestedDatasets(datasetNames, explicitWild, {

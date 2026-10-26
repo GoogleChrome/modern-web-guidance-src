@@ -7,7 +7,7 @@ import { Agents } from "../../harness/config.ts";
 
 export type Grade = 0 | 1 | 2;
 export type QueryScope = "in_domain" | "out_of_domain";
-export type PublicDatasetName = "harness" | "oos";
+export type PublicDatasetName = "agent" | "harness" | "oos";
 export type QueryStratum = "traffic" | "lowsim" | "head" | "tail" | "traffic2" | "far" | "near" | Agents | (string & {});
 
 export interface QueryRecord {
@@ -18,6 +18,7 @@ export interface QueryRecord {
   freq?: number;
   words?: number;
   expectedGuide?: string;
+  expectedGuides?: string[];
   agent?: Agents;
   runDate?: string;
   calledList?: boolean;
@@ -50,6 +51,7 @@ export interface DatasetManifest {
   version: string;
   createdAt: string;
   window?: string;
+  dateRange?: string;
   judgeModel: string;
   rubricVersion: string;
   files: Record<string, DatasetFileEntry>;
@@ -107,6 +109,7 @@ export function createQueryRecord(
     words: fields.words ?? countWords(fields.query),
   };
   if (fields.split !== undefined) rec.split = fields.split;
+  if (fields.expectedGuides !== undefined) rec.expectedGuides = fields.expectedGuides;
   return rec;
 }
 
@@ -149,6 +152,13 @@ export function validateQueryRecord(
   ) {
     throw new Error(`Invalid retrievedGuides at ${loc}: expected array of non-empty strings`);
   }
+  if (
+    raw.expectedGuides !== undefined &&
+    (!Array.isArray(raw.expectedGuides) ||
+      !raw.expectedGuides.every((guide: unknown) => typeof guide === "string" && guide.trim().length > 0))
+  ) {
+    throw new Error(`Invalid expectedGuides at ${loc}: expected array of non-empty strings`);
+  }
 
   const fields: Omit<QueryRecord, "words"> & { words?: number } = {
     qid: raw.qid,
@@ -157,6 +167,7 @@ export function validateQueryRecord(
     freq: typeof raw.freq === "number" ? raw.freq : undefined,
     words: typeof raw.words === "number" ? raw.words : undefined,
     expectedGuide: typeof raw.expectedGuide === "string" ? raw.expectedGuide : undefined,
+    expectedGuides: Array.isArray(raw.expectedGuides) ? raw.expectedGuides.map(String) : undefined,
     agent: raw.agent,
     runDate: typeof raw.runDate === "string" ? raw.runDate : undefined,
     split: raw.split === "dev" || raw.split === "test" ? raw.split : undefined,
@@ -294,11 +305,40 @@ export function loadDatasetFromFiles(name: string, queriesPath: string, qrelsPat
 }
 
 export function loadPublicDataset(name: PublicDatasetName, dataDir = DEFAULT_PUBLIC_DATA_DIR): LoadedDataset {
-  return loadDatasetFromFiles(
-    name,
-    path.join(dataDir, `${name}-queries.jsonl`),
-    path.join(dataDir, `${name}-qrels.jsonl`)
-  );
+  const queriesPath = path.join(dataDir, `${name}-queries.jsonl`);
+  const qrelsPath = path.join(dataDir, `${name}-qrels.jsonl`);
+  const queriesContent = fs.readFileSync(queriesPath, "utf8");
+  const qrelsContent = fs.readFileSync(qrelsPath, "utf8");
+  const queries = parseQueriesJsonl(queriesContent, queriesPath);
+  const qrels = parseQrelsJsonl(qrelsContent, qrelsPath);
+
+  let manifest: DatasetManifest | undefined;
+  if (name === "agent") {
+    const manifestPath = path.join(dataDir, "agent-manifest.json");
+    if (fs.existsSync(manifestPath)) {
+      manifest = parseManifestJson(fs.readFileSync(manifestPath, "utf8"), manifestPath);
+      if (manifest.version !== "v1") {
+        throw new Error(`Manifest version mismatch in ${manifestPath}: expected "v1", got "${manifest.version}"`);
+      }
+      const expQueriesHash = manifest.files["agent-queries.jsonl"]?.sha256;
+      const expQrelsHash = manifest.files["agent-qrels.jsonl"]?.sha256;
+      if (expQueriesHash && sha256(queriesContent) !== expQueriesHash) {
+        throw new Error(`SHA-256 mismatch for ${queriesPath}`);
+      }
+      if (expQrelsHash && sha256(qrelsContent) !== expQrelsHash) {
+        throw new Error(`SHA-256 mismatch for ${qrelsPath}`);
+      }
+    }
+    for (let i = 0; i < queries.length; i++) {
+      if (queries[i].split !== "dev" && queries[i].split !== "test") {
+        throw new Error(
+          `Invalid agent query record at ${queriesPath}:${i + 1}: missing or invalid split (found "${String(queries[i].split)}")`
+        );
+      }
+    }
+  }
+
+  return { name, queries, qrels, manifest };
 }
 
 function verifyAndLoadWildCache(versionDir: string, version: string): LoadedDataset {
