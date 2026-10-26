@@ -19,7 +19,7 @@ guides:
 
 Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover on narrow containers, becomes an inline navigation on wide containers, and identifies the current page.
 
-This guide describes site-navigation integration. It is navigation, not an application menu: links stay in the `Tab` order, with no `focusgroup`, `role="menu"`, `role="menuitem"`, `aria-haspopup="menu"` or arrow-key handling. See {{ GUIDE_REF("menu") }} for shared popover techniques, not its keyboard model. For reusable responsive disclosure behavior, see {{ GUIDE_REF("responsive-disclosure") }}. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
+This guide describes site-navigation integration. It is navigation, not an application menu: links stay in the `Tab` order, with no `focusgroup`, `role="menu"`, `role="menuitem"`, `aria-haspopup="menu"` or arrow-key handling. For positioning and animating the popover, see {{ GUIDE_REF("menu") }}. Use only those popover techniques, not its `focusgroup` and arrow-key menu model. For reusable responsive disclosure behavior, see {{ GUIDE_REF("responsive-disclosure") }}. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
 
 For component-driven layouts, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}.
 
