@@ -534,6 +534,7 @@
   ],
   "modernFeaturePatterns": {
     "animate-element-entry-exit": "@starting-style\\b|transition-behavior|\\ballow-discrete\\b|transitionBehavior",
+    "persistent-toast-notifications": "popover\\s*=\\s*[\"']manual[\"']|\\b(showPopover|hidePopover|togglePopover)\\b|\\bpopover\\b",
     "individual-transform-properties": "(^|[\\s;{}])(translate|rotate|scale)\\s*:\\s*[^;]+",
     "resilient-context-menus-and-nested-dropdowns": "\\bpopover\\b|\\bpopovertarget\\b|\\b(showPopover|togglePopover|hidePopover)\\b|anchor-name\\s*:|position-anchor\\s*:|position-area\\s*:|\\b(anchorName|positionAnchor|positionArea)\\b",
     "declarative-dialog-popover-control": "\\bcommandfor\\b|\\bcommand\\s*=|popovertarget|\\.showModal\\s*\\(|\\.showPopover\\s*\\(|\\.togglePopover\\s*\\(",

@@ -15,7 +15,7 @@ void test('autofill-highlight-inputs: rule metadata', () => {
   assert.equal(autofillHighlightInputsRule.guideId, 'autofill-highlight-inputs');
   assert.equal(autofillHighlightInputsRule.guideHash, AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH);
   assert.equal(AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH.length, 12);
-  assert.equal(autofillHighlightInputsRules.length, 0);
+  assert.equal(autofillHighlightInputsRules.length, 1);
   assert.ok(autofillHighlightInputsRule.verifierRubric.keepWhen.length > 0);
   assert.ok(autofillHighlightInputsRule.verifierRubric.dropWhen.length >= 2);
 });

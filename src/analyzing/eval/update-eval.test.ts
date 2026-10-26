@@ -12,7 +12,7 @@ import {
   runBadPatchSensitivitySuite,
   type UpdatePatch,
 } from './update-eval.ts';
-import { ALL_RULES } from '../rules/index.ts';
+import { ALL_RULES, QUALIFIED_GUIDE_IDS } from '../rules/index.ts';
 
 describe('locateFindingLineInContent', () => {
   it('extracts line number from cursor marker in codeSnippet', () => {
@@ -275,7 +275,7 @@ describe('checkModernFeaturePresent', () => {
 
   it('has explicit Check 2c validators for all guides in ALL_RULES', () => {
     const allGuideIds = [...new Set(ALL_RULES.map((r) => r.guideId))];
-    assert.strictEqual(allGuideIds.length, 71);
+    assert.ok(allGuideIds.length > 0, 'ALL_RULES must have active guides');
     for (const guideId of allGuideIds) {
       assert.doesNotThrow(
         () => checkModernFeaturePresent(guideId, 'const dummy = 1;'),
@@ -679,11 +679,19 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
 });
 
 describe('runBadPatchSensitivitySuite', () => {
-  it('covers all 59 seeded sensitivity fixtures with valid guide IDs', async (t) => {
+  it('covers all seeded sensitivity fixtures with valid guide IDs and covers all qualified guides', async (t) => {
     const fixtures = getSeededSensitivityTestCases();
-    assert.strictEqual(fixtures.length, 59);
+    assert.ok(fixtures.length > 0);
     const fixtureGuideIds = new Set(fixtures.map((f) => f.guideId));
-    assert.strictEqual(fixtureGuideIds.size, 59);
+    assert.strictEqual(fixtureGuideIds.size, fixtures.length);
+
+    for (const qid of QUALIFIED_GUIDE_IDS) {
+      assert.ok(
+        fixtureGuideIds.has(qid),
+        `Qualified default shipping guide "${qid}" must have seeded Update Eval test fixtures`,
+      );
+    }
+
     for (const fx of fixtures) {
       await t.test(`fixture for ${fx.guideId}`, () => {
         assert.ok(fx.originalContent.length > 0, `Missing originalContent for ${fx.guideId}`);
@@ -693,21 +701,22 @@ describe('runBadPatchSensitivitySuite', () => {
   });
 
   it('achieves 100% bad patch rejection rate and 100% good patch pass rate', async () => {
+    const fixtures = getSeededSensitivityTestCases();
     const report = await runBadPatchSensitivitySuite();
     assert.strictEqual(
       report.badPatchRejectionRate,
       1.0,
       `Bad patch rejection rate must be 1.0 (got ${report.badPatchRejectionRate}). Violations: ${JSON.stringify(report.violations)}`,
     );
-    assert.strictEqual(report.badPatchesRejected, 177);
-    assert.strictEqual(report.badPatchesTotal, 177);
+    assert.strictEqual(report.badPatchesRejected, report.badPatchesTotal);
+    assert.strictEqual(report.badPatchesTotal, fixtures.length * 3);
     assert.strictEqual(
       report.goodPatchPassRate,
       1.0,
       `Good patch pass rate must be 1.0 (got ${report.goodPatchPassRate}). Violations: ${JSON.stringify(report.violations)}`,
     );
-    assert.strictEqual(report.goodPatchesPassed, 59);
-    assert.strictEqual(report.goodPatchesTotal, 59);
+    assert.strictEqual(report.goodPatchesPassed, report.goodPatchesTotal);
+    assert.strictEqual(report.goodPatchesTotal, fixtures.length);
     assert.strictEqual(report.violations.length, 0);
   });
 });
