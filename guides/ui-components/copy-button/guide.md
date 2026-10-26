@@ -68,7 +68,7 @@ document.addEventListener('command', (event) => {
 - **Show and hide the bubble with `opacity`,** not `display: none` or `visibility: hidden`, which take it out of the accessibility tree so the text is not announced.
 - **Clean up:** after a short timeout, remove the state attributes and clear the bubble's text, so no stale "Copied" is left for screen reader browse mode.
 - **Not color alone:** swap the icon (copy to check) on success and use the bubble text for both outcomes.
-- **Repeat clicks:** clear the pending timeout and restart the animation instead of stacking timers.
+- **Repeat clicks:** clear the pending timeout and restart the animation instead of stacking timers. DO NOT disable the button while showing feedback: copying is idempotent, and disabling drops keyboard focus, announces a misleading unavailable state, and blocks retrying after a failure.
 - **Reduced motion:** under `prefers-reduced-motion: reduce`, replace icon and bubble animations with an opacity fade.
 
 ```js
