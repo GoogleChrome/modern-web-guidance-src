@@ -11,7 +11,7 @@ import {
   shouldScanFile,
 } from './file-filter.ts';
 
-describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
+describe('file-filter vendored and hashed asset exclusions', () => {
   it('excludes unminified vendored library filenames regardless of directory', () => {
     const vendoredFiles = [
       'public/js/bootstrap.js',
@@ -124,7 +124,7 @@ describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
     assert.equal(shouldScanFile('src/styles/aspect-ratio.css'), true);
   });
 
-  it('excludes Coolite Datejs and 2-part versioned license headers (Card 004ac0a9d6f8, R51)', () => {
+  it('excludes Coolite Datejs and 2-part versioned license headers (Card 004ac0a9d6f8)', () => {
     const cooliteDateJsHeader = [
       '/**',
       ' * @version: 1.0 Alpha-1',
@@ -209,7 +209,7 @@ describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
     assert.equal(shouldScanFile('dist/bundle.js'), false);
   });
 
-  it('skips docs, examples, demo, test, spec, and fixtures paths and test/spec files (R64)', () => {
+  it('skips docs, examples, demo, test, spec, and fixtures paths and test/spec files', () => {
     // Check all segments defined in DOCS_AND_TESTS_DIR_SEGMENTS
     const expectedSegments = [
       'docs',
@@ -243,7 +243,7 @@ describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
       );
     }
 
-    // Check *.test.* and *.spec.* file patterns
+    // Check *.test.* and *.spec.* file patterns, including standalone test.js/ts and spec.js/ts
     const testSpecFiles = [
       'src/components/button.test.ts',
       'src/components/button.spec.tsx',
@@ -251,6 +251,13 @@ describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
       'src/utils.spec.mjs',
       'button.test.jsx',
       'button.spec.ts',
+      'test.js',
+      'test.ts',
+      'spec.js',
+      'spec.ts',
+      'src/test.js',
+      'src/utils/test.ts',
+      'lib/spec.js',
     ];
     for (const f of testSpecFiles) {
       assert.equal(isDocsOrTestsPath(f), true, `expected isDocsOrTestsPath(${f}) to be true`);
@@ -261,6 +268,22 @@ describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
         `expected shouldScanFile(${f}, ..., includeDocsAndTests) to be true`,
       );
     }
+
+    // Lookalike names that are not test/spec files
+    assert.equal(isDocsOrTestsPath('test-utils.ts'), false);
+    assert.equal(isDocsOrTestsPath('src/testing.js'), false);
+    assert.equal(isDocsOrTestsPath('special.js'), false);
+    assert.equal(isDocsOrTestsPath('contest.js'), false);
+
+    // Minified files under docs/test are never scannable even with includeDocsAndTests: true
+    assert.equal(
+      shouldScanFile('docs/bundle.min.js', undefined, { includeDocsAndTests: true }),
+      false,
+    );
+    assert.equal(
+      shouldScanFile('test/vendor.min.css', undefined, { includeDocsAndTests: true }),
+      false,
+    );
 
     // Non-test, non-docs files relative to target dir are scanned
     assert.equal(isDocsOrTestsPath('src/components/Modal.tsx'), false);

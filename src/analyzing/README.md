@@ -37,7 +37,7 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 Modern Web Guidance Analyzer — /workspace/etherpad-lite
 Found 2 modernization opportunities across 2 guides:
 Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.
-Skipped 54 docs and test files (pass --include-docs-and-tests to scan).
+Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
 
 * form-fields-automatically-fit-contents [qualified] (1 finding)
   Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.
@@ -69,7 +69,7 @@ Coding agents receive structured JSON containing exact file coordinates, confide
       "guideId": "form-fields-automatically-fit-contents",
       "tier": "qualified",
       "summary": "Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.",
-      "retrieveCommand": "npx -y modern-web-guidance@latest retrieve \"form-fields-automatically-fit-contents\"",
+      "retrieveCommand": "npx modern-web-guidance retrieve form-fields-automatically-fit-contents",
       "count": 1,
       "findings": [
         {
@@ -85,7 +85,7 @@ Coding agents receive structured JSON containing exact file coordinates, confide
       "guideId": "responsive-table",
       "tier": "qualified",
       "summary": "Legacy responsive table packages (tablesaw, footable, basictable, jquery-basictable) should be modernized with native CSS Container Queries and stacked/scroll-snap mobile table layouts.",
-      "retrieveCommand": "npx -y modern-web-guidance@latest retrieve \"responsive-table\"",
+      "retrieveCommand": "npx modern-web-guidance retrieve responsive-table",
       "count": 1,
       "findings": [
         {
@@ -98,7 +98,7 @@ Coding agents receive structured JSON containing exact file coordinates, confide
       ]
     }
   ],
-  "skippedDocsAndTestsCount": 54
+  "skippedDocsAndTestsCount": 53
 }
 ```
 
@@ -282,7 +282,7 @@ Cross-split boundary isolation is statically verified by internal audit tooling.
 
 ### Update Eval
 
-To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), **Update Eval** (`update-eval.ts`) enforces three static checks on every candidate modernization update:
+To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap , **Update Eval** (`update-eval.ts`) enforces three static checks on every candidate modernization update:
 - **Check 1 (Finding Eliminated Check):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
 - **Check 2 (Modern Syntax & Anti-Gutting Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
 - **Check 3 (Behavioral Check):** Runs behavioral/test assertions when available.

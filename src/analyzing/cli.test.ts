@@ -156,7 +156,7 @@ describe('runAnalyzeCli', () => {
 
       const guide = parsed.guides.find((g) => g.guideId === 'autofill-sign-in-form');
       assert.ok(guide, 'Expected autofill-sign-in-form guide in JSON output');
-      assert.ok(guide.verifierRubric, 'Expected verifierRubric in guide JSON output (R17)');
+      assert.ok(guide.verifierRubric, 'Expected verifierRubric in guide JSON output');
       assert.ok(guide.verifierRubric.keepWhen.length >= 1);
       assert.ok(guide.verifierRubric.dropWhen.length >= 1);
       assert.equal(guide.tier, 'qualified');
@@ -443,7 +443,7 @@ describe('runAnalyzeCli', () => {
       assert.ok(!outputNoColor.includes('\u001b['), 'Expected no ANSI escape codes when color=false');
     });
 
-    it('skips docs, examples, demo, test, spec, and fixtures by default with --include-docs-and-tests opt-in (R64)', async () => {
+    it('skips docs, examples, demo, test, spec, and fixtures by default with --include-docs-and-tests opt-in', async () => {
       const testDir = await mkdtemp(join(tmpdir(), 'analyzer-r64-test-'));
       try {
         const passwordHtml = '<form><input type="password" name="password"></form>';
@@ -465,28 +465,32 @@ describe('runAnalyzeCli', () => {
         await mkdirAndWrite('fixtures/login.html');
         await mkdirAndWrite('src/login.test.html');
         await mkdirAndWrite('src/login.spec.html');
+        await mkdirAndWrite('test.html'); // Standalone test.* at root
 
-        // 1. Default run (--json): only src/login.html is reported, skippedDocsAndTestsCount is 8
+        // Minified file under docs/ should NOT be counted in skipped count (scanner ignores minified anyway)
+        await mkdirAndWrite('docs/bundle.min.js');
+
+        // 1. Default run (--json): only src/login.html is reported, skippedDocsAndTestsCount is 9
         const resJson = await runAnalyzeCli([testDir, '--json']);
         assert.equal(resJson.exitCode, 0);
         const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
         assert.equal(parsed.totalFindings, 1);
         assert.equal(parsed.guides[0]?.findings[0]?.file, join('src', 'login.html').replace(/\\/g, '/'));
-        assert.equal(parsed.skippedDocsAndTestsCount, 8);
+        assert.equal(parsed.skippedDocsAndTestsCount, 9);
 
         // 2. Default human-readable output: includes one dim line reporting skipped count
         const resHuman = await runAnalyzeCli([testDir]);
         assert.equal(resHuman.exitCode, 0);
         assert.ok(
-          resHuman.output.includes('Skipped 8 docs and test files (pass --include-docs-and-tests to scan).'),
+          resHuman.output.includes('Skipped 9 docs and test files (pass --include-docs-and-tests to scan).'),
           'Human output must include dim line with skipped count',
         );
 
-        // 3. Opt-in with --include-docs-and-tests: all 9 files are scanned
+        // 3. Opt-in with --include-docs-and-tests: all 10 scannable files are scanned
         const resIncluded = await runAnalyzeCli([testDir, '--include-docs-and-tests', '--json']);
         assert.equal(resIncluded.exitCode, 0);
         const parsedIncluded = JSON.parse(resIncluded.output) as AnalyzeJsonOutput;
-        assert.equal(parsedIncluded.totalFindings, 9);
+        assert.equal(parsedIncluded.totalFindings, 10);
         assert.equal(parsedIncluded.skippedDocsAndTestsCount, undefined);
 
         // 4. "Relative to target dir": analyze ./docs still scans docs

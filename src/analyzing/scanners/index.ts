@@ -45,7 +45,6 @@ import {
   isMinifiedContent,
   MAX_SOURCE_FILE_BYTES,
   shouldScanFile,
-  SUPPORTED_SOURCE_EXTENSIONS,
   type FileFilterOptions,
 } from './file-filter.ts';
 import {
@@ -288,7 +287,7 @@ function processJsxFile(
 }
 
 /**
- * Memoizes AST descendant queries and full-text slices on a SourceFile instance (O2)
+ * Memoizes AST descendant queries and full-text slices on a SourceFile instance
  * so that 40+ active JS rules scanning the same file do not re-walk the TypeScript AST
  * or re-slice full source strings on every rule invocation.
  */
@@ -697,14 +696,6 @@ export function scanFiles(
   return findings;
 }
 
-function hasScannableExtension(relPath: string): boolean {
-  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
-  if (normalized.endsWith('package.json')) return true;
-  const dotIdx = normalized.lastIndexOf('.');
-  if (dotIdx === -1) return false;
-  return SUPPORTED_SOURCE_EXTENSIONS.has(normalized.slice(dotIdx));
-}
-
 interface WalkDirState {
   readonly repoDirPath: string;
   readonly fileMap: Map<string, string>;
@@ -753,8 +744,26 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
 
     if (entry.isFile()) {
       if (!state.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
-        if (hasScannableExtension(relPath)) {
-          state.skippedDocsAndTestsCount++;
+        const includeOptions = {
+          ...state.fileFilterOptions,
+          includeDocsAndTests: true,
+        };
+        const isScannableSource = shouldScanFile(relPath, undefined, includeOptions);
+        if (isScannableSource) {
+          try {
+            const fileStat = await stat(fullPath);
+            if (fileStat.size <= MAX_SOURCE_FILE_BYTES) {
+              const content = await readFile(fullPath, 'utf8');
+              if (
+                Buffer.byteLength(content, 'utf8') <= MAX_SOURCE_FILE_BYTES &&
+                shouldScanFile(relPath, content, includeOptions)
+              ) {
+                state.skippedDocsAndTestsCount++;
+              }
+            }
+          } catch {
+            // Unreadable or binary file
+          }
         }
         continue;
       }

@@ -70,11 +70,11 @@ export const DOCS_AND_TESTS_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   '__fixtures__',
 ]);
 
-const TEST_OR_SPEC_FILE_RE = /\.(?:test|spec)\./i;
+const TEST_OR_SPEC_FILE_RE = /(?:^|\.)(?:test|spec)\./i;
 
 /**
  * Returns `true` if `relPath` (relative to the target directory) represents a documentation,
- * example, demo, test, spec, or fixtures path or is a `*.test.*` / `*.spec.*` file (R64).
+ * example, demo, test, spec, or fixtures path or is a `*.test.*` / `*.spec.*` file.
  */
 export function isDocsOrTestsPath(relPath: string): boolean {
   const normalized = relPath.replace(/\\/g, '/');
@@ -125,7 +125,7 @@ export const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Well-known vendored third-party library filenames (unminified copies checked into repos, R42).
+ * Well-known vendored third-party library filenames (unminified copies checked into repos).
  */
 export const VENDORED_LIBRARY_FILENAMES: ReadonlySet<string> = new Set([
   'bundle.js',
@@ -162,7 +162,7 @@ const VENDORED_MODERNIZR_FILENAME_RE = /^modernizr(?:[.-].*)?\.js$/i;
 const VENDORED_CHUI_STYLESHEET_RE = /^chui[.-].*\.css$/i;
 
 /**
- * Vendored library directory segments that frequently appear in source trees (R42).
+ * Vendored library directory segments that frequently appear in source trees.
  */
 export const VENDORED_DIRECTORY_SUBPATHS: readonly string[] = [
   '/dayjs/esm/',
@@ -176,7 +176,7 @@ export const VENDORED_DIRECTORY_SUBPATHS: readonly string[] = [
 ];
 
 /**
- * Framework-published hashed asset directories (e.g. Yii/Rails `/assets/a09b59a8/`, R42).
+ * Framework-published hashed asset directories (e.g. Yii/Rails `/assets/a09b59a8/`).
  */
 const HASHED_ASSET_DIR_RE = /\/assets\/[0-9a-f]{7,16}\//i;
 
@@ -209,7 +209,7 @@ function isStringSet(value: unknown): value is ReadonlySet<string> {
 
 /**
  * Returns `true` if `relPath` is a known vendored third-party library file,
- * vendored library directory subpath, or framework-published hashed asset bundle (R42).
+ * vendored library directory subpath, or framework-published hashed asset bundle.
  */
 export function isExcludedCorpusNonAppPath(relPath: string): boolean {
   const normalized = relPath.replace(/\\/g, '/').toLowerCase();
@@ -273,7 +273,7 @@ export function isVendoredOrGeneratedPath(
     }
   }
 
-  // Filter corpus non-app / documentation paths (R24, O46)
+  // Filter corpus non-app / documentation paths
   if (excludeCorpus) {
     if (
       /(?:^|\/)(?:docs|doc|site|website|gh-pages)\//i.test(normalized) ||
@@ -293,7 +293,7 @@ export function isVendoredOrGeneratedPath(
 }
 
 /**
- * Alias for `isVendoredOrGeneratedPath` (R42).
+ * Alias for `isVendoredOrGeneratedPath`.
  */
 export function isIgnoredPath(
   relPath: string,

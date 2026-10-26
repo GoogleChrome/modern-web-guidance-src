@@ -36,14 +36,14 @@ Fast, deterministic CPU scan (JavaScript/TypeScript AST via `ts-morph`, HTML/JSX
 
 ### LLM Verifier
 
-Runtime LLM filter (`gemini-3.8-flash`) that reads a **Static Matcher** candidate finding, `guide.md`, and the rule's `verifierRubric` (`keepWhen`/`dropWhen`) to decide `keep` vs `drop` before reporting findings. Not to be confused with **Detection Eval Judge**, which is an offline evaluation rater that never sees the rule's `verifierRubric`.
+Runtime LLM filter that reads a **Static Matcher** candidate finding, `guide.md`, and the rule's `verifierRubric` (`keepWhen`/`dropWhen`) to decide `keep` vs `drop` before reporting findings. Not to be confused with **Detection Eval Judge**, which is an offline evaluation rater that never sees the rule's `verifierRubric`.
 
 * _Reference_: `src/analyzing/llm-verifier.ts#runLlmVerifier`, `src/analyzing/schema.ts#VerifierRubric`
 * _Avoid_: `Phase 2`, `Phase 2 Filter`, `Stage 3`, `phase2Rubric`
 
 ### Detection Eval (`Detection Eval Judge`)
 
-Offline evaluation pass that grades **Blind Card** findings on the **`held-out` split** to measure whether detected code is a valid modernization target. The **Detection Eval Judge** (`3`-pass majority vote LLM) grades each card into the 7 canonical `JudgeVerdict` values (`legit-modernize-target`, `not-old-pattern`, `fallback-or-guard`, `loses-behavior`, `no-payoff`, `guide-wrong`, `unsure`) using only `guide.md` and upstream explainer context (never the rule's `verifierRubric`). Never invoked during user-facing CLI runs.
+Offline evaluation pass that grades **Blind Card** findings on the **`held-out` split** to measure whether detected code is a valid modernization target. The **Detection Eval Judge** (an offline LLM evaluator) grades each card into the 7 canonical `JudgeVerdict` values (`legit-modernize-target`, `not-old-pattern`, `fallback-or-guard`, `loses-behavior`, `no-payoff`, `guide-wrong`, `unsure`) using only `guide.md` and upstream explainer context (never the rule's `verifierRubric`). Never invoked during user-facing CLI runs.
 
 * _Reference_: `src/analyzing/eval/detection-eval.ts#JudgeVerdict`, `src/analyzing/eval/detection-eval.ts#runJudgeDirect`
 * _Avoid_: `Detective`, `Phase 2 Judge`, `Eval Judge` (unscoped)
@@ -73,7 +73,7 @@ A **Static Matcher** entry (`AnalyzerRule`) targeting a specific language or sca
 
 ### Sub-Pattern (`subPattern`)
 
-A distinct syntactic or payoff variant within a single `Rule` (for example, individual transform function variants in `individual-transform-properties.ts`). A **Deferred Sub-Pattern** (`ITP_DEFERRED_SUB_PATTERNS`) is a sub-pattern held back from default execution because its precision or payoff profile differs from the rule's active sub-patterns.
+A distinct syntactic or payoff variant within a single **Rule**. A **Deferred Sub-Pattern** is a sub-pattern held back from default execution because its precision or payoff profile differs from the rule's active sub-patterns.
 
 * _Reference_: `src/analyzing/rules/individual-transform-properties.ts#ITP_DEFERRED_SUB_PATTERNS`
 * _Avoid_: `Sub-Rule`, `Rule Variant`, `Branch`
@@ -150,7 +150,7 @@ A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx m
 
 ### Suspended Rule
 
-A previously qualified rule in `SUSPENDED_QUALIFIED_GUIDE_IDS` whose default shipping was temporarily halted pending evaluation-harness remediation or fresh **`held-out` split** re-verification. Distinct from an **Experimental Rule** (never qualified) and a **Retired Guide** (permanently removed from active scanning).
+A previously qualified rule whose default shipping has been temporarily paused. Distinct from an **Experimental Rule** (never qualified) and a **Retired Guide** (permanently removed from active scanning).
 
 * _Reference_: `src/analyzing/qualification.ts#SUSPENDED_QUALIFIED_GUIDE_IDS`
 * _Avoid_: `Quarantined Rule`, `Disabled Rule`
