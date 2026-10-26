@@ -479,17 +479,25 @@
 
     let pointerDown = false;
 
-    function selectionInsideRegion(sel) {
-      return sel.rangeCount > 0 &&
-        selectable.contains(sel.anchorNode) &&
-        selectable.contains(sel.focusNode);
+    // The selection as a range clipped to the quote, or null if it is not inside the quote. A triple-click
+    // ends at the start of the next element, so the end node can be outside the quote even though no text
+    // outside it is selected: accept that when clipping the range removes nothing but whitespace.
+    function quoteRange(sel) {
+      if (!sel.rangeCount) return null;
+      const range = sel.getRangeAt(0);
+      if (!selectable.contains(range.startContainer)) return null;
+      if (selectable.contains(range.endContainer)) return range;
+      const clipped = range.cloneRange();
+      clipped.setEnd(selectable, selectable.childNodes.length);
+      return clipped.toString().trim() === range.toString().trim() ? clipped : null;
     }
 
     function updatePopover() {
       const sel = getSelection();
-      const text = sel.toString().trim();
+      const range = quoteRange(sel);
+      const text = range ? range.toString().trim() : '';
 
-      if (sel.isCollapsed || !text || !selectionInsideRegion(sel)) {
+      if (sel.isCollapsed || !text) {
         // Don't dismiss while the user is interacting with the popover itself
         if (!popover.matches(':focus-within') && popover.matches(':popover-open')) {
           popover.hidePopover();
@@ -499,7 +507,7 @@
 
       selectedText = text;
 
-      const rect = sel.getRangeAt(0).getBoundingClientRect();
+      const rect = range.getBoundingClientRect();
       const x = Math.min(Math.max(rect.left + rect.width / 2, 32), innerWidth - 32);
       popover.style.setProperty('--x', `${x}px`);
       // Below the selection on touch (clear of the OS menu and selection handles), above it otherwise
