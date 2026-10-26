@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  DOCS_AND_TESTS_DIR_SEGMENTS,
   hasVendoredLicenseHeader,
+  isDocsOrTestsPath,
   isExcludedCorpusNonAppPath,
   isIgnoredPath,
   isMinifiedContent,
@@ -205,5 +207,72 @@ describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
     assert.equal(shouldScanFile('libs/body-scroll-lock.min.js'), false);
     assert.equal(shouldScanFile('node_modules/react/index.js'), false);
     assert.equal(shouldScanFile('dist/bundle.js'), false);
+  });
+
+  it('skips docs, examples, demo, test, spec, and fixtures paths and test/spec files (R64)', () => {
+    // Check all segments defined in DOCS_AND_TESTS_DIR_SEGMENTS
+    const expectedSegments = [
+      'docs',
+      'doc',
+      'examples',
+      'example',
+      'demo',
+      'demos',
+      'test',
+      'tests',
+      '__tests__',
+      'spec',
+      'specs',
+      'fixtures',
+      '__fixtures__',
+    ];
+    for (const seg of expectedSegments) {
+      assert.ok(
+        DOCS_AND_TESTS_DIR_SEGMENTS.has(seg),
+        `expected DOCS_AND_TESTS_DIR_SEGMENTS to contain ${seg}`,
+      );
+      assert.equal(
+        isDocsOrTestsPath(`${seg}/file.ts`),
+        true,
+        `expected isDocsOrTestsPath(${seg}/file.ts) to be true`,
+      );
+      assert.equal(
+        isDocsOrTestsPath(`sub/${seg}/file.js`),
+        true,
+        `expected isDocsOrTestsPath(sub/${seg}/file.js) to be true`,
+      );
+    }
+
+    // Check *.test.* and *.spec.* file patterns
+    const testSpecFiles = [
+      'src/components/button.test.ts',
+      'src/components/button.spec.tsx',
+      'src/utils.test.js',
+      'src/utils.spec.mjs',
+      'button.test.jsx',
+      'button.spec.ts',
+    ];
+    for (const f of testSpecFiles) {
+      assert.equal(isDocsOrTestsPath(f), true, `expected isDocsOrTestsPath(${f}) to be true`);
+      assert.equal(shouldScanFile(f), false, `expected shouldScanFile(${f}) to be false by default`);
+      assert.equal(
+        shouldScanFile(f, undefined, { includeDocsAndTests: true }),
+        true,
+        `expected shouldScanFile(${f}, ..., includeDocsAndTests) to be true`,
+      );
+    }
+
+    // Non-test, non-docs files relative to target dir are scanned
+    assert.equal(isDocsOrTestsPath('src/components/Modal.tsx'), false);
+    assert.equal(shouldScanFile('src/components/Modal.tsx'), true);
+    assert.equal(isDocsOrTestsPath('app.js'), false);
+    assert.equal(shouldScanFile('app.js'), true);
+
+    // "Relative to target dir": if target dir is docs/, a file directly in it has no docs segment
+    assert.equal(isDocsOrTestsPath('guide.md'), false);
+    assert.equal(isDocsOrTestsPath('index.html'), false);
+    // But subdirectories in docs matching excluded segments are still excluded
+    assert.equal(isDocsOrTestsPath('examples/button.html'), true);
+    assert.equal(isDocsOrTestsPath('demo/index.html'), true);
   });
 });

@@ -54,6 +54,46 @@ export const CORPUS_NON_APP_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'generated',
 ]);
 
+export const DOCS_AND_TESTS_DIR_SEGMENTS: ReadonlySet<string> = new Set([
+  'docs',
+  'doc',
+  'examples',
+  'example',
+  'demo',
+  'demos',
+  'test',
+  'tests',
+  '__tests__',
+  'spec',
+  'specs',
+  'fixtures',
+  '__fixtures__',
+]);
+
+const TEST_OR_SPEC_FILE_RE = /\.(?:test|spec)\./i;
+
+/**
+ * Returns `true` if `relPath` (relative to the target directory) represents a documentation,
+ * example, demo, test, spec, or fixtures path or is a `*.test.*` / `*.spec.*` file (R64).
+ */
+export function isDocsOrTestsPath(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/');
+  const segments = normalized.split('/').filter((s) => s && s !== '.');
+  if (segments.length === 0) {
+    return false;
+  }
+
+  for (let i = 0; i < segments.length - 1; i++) {
+    const seg = segments[i]?.toLowerCase();
+    if (seg && DOCS_AND_TESTS_DIR_SEGMENTS.has(seg)) {
+      return true;
+    }
+  }
+
+  const filename = segments[segments.length - 1] ?? '';
+  return TEST_OR_SPEC_FILE_RE.test(filename);
+}
+
 const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.min.js',
   '.min.css',
@@ -160,6 +200,7 @@ export interface FileFilterOptions {
   readonly customIgnoredDirs?: ReadonlySet<string>;
   readonly maxLineLength?: number;
   readonly excludeCorpusNonAppDirs?: boolean;
+  readonly includeDocsAndTests?: boolean;
 }
 
 function isStringSet(value: unknown): value is ReadonlySet<string> {
@@ -393,6 +434,10 @@ export function shouldScanFile(
     return false;
   }
 
+  if (!options?.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
+    return false;
+  }
+
   const normalized = relPath.replace(/\\/g, '/').toLowerCase();
   const isPackageJson = normalized.endsWith('package.json');
   if (!isPackageJson) {
@@ -403,7 +448,7 @@ export function shouldScanFile(
   }
 
   if (content !== undefined) {
-    // D-025, O26: Cap source files at < 1 MB (larger files are generated or bundled artifacts)
+    // Cap source files at < 1 MB (larger files are generated or bundled artifacts)
     if (Buffer.byteLength(content, 'utf8') > MAX_SOURCE_FILE_BYTES) {
       return false;
     }

@@ -46,6 +46,7 @@ export interface AnalyzeJsonOutput {
   readonly suspendedGuides?: readonly string[];
   readonly statusNotice?: string;
   readonly error?: string;
+  readonly skippedDocsAndTestsCount?: number;
 }
 
 export interface AnalyzeCliExecutionOptions {
@@ -66,6 +67,7 @@ export interface FormatHumanReadableOptions {
   readonly suspendedGuides?: readonly string[];
   readonly isDefaultQualifiedMode?: boolean;
   readonly color?: boolean;
+  readonly skippedDocsAndTestsCount?: number;
 }
 
 export type TextStyle = Parameters<typeof styleText>[0];
@@ -152,13 +154,14 @@ Usage: modern-web-guidance analyze <dir> [options]
 Analyze a codebase for legacy web platform patterns to detect modernization opportunities.
 
 Arguments:
-  <dir>              Directory to analyze (defaults to current directory)
+  <dir>                     Directory to analyze (defaults to current directory)
 
 Options:
-  --json             Output findings as structured JSON for coding agents
-  --guide <guideId>  Filter analysis to a specific guide ID
-  --experimental     Include all experimental rules (alias: --all-rules)
-  -h, --help         Show this help message
+  --json                    Output findings as structured JSON for coding agents
+  --guide <guideId>         Filter analysis to a specific guide ID
+  --experimental            Include all experimental rules (alias: --all-rules)
+  --include-docs-and-tests  Include documentation, example, demo, and test files in analysis
+  -h, --help                Show this help message
 `.trim();
 
 export function buildQualificationStatusNotice(
@@ -176,7 +179,7 @@ export function buildQualificationStatusNotice(
  * Formats findings into human-readable terminal output.
  * Renders modern styled header, provisional verification notice, visible keepWhen / dropWhen rubric lines,
  * file-diversified findings list with code preview (up to 5 findings per guide, max 2 per file first),
- * and single bottom footer (D-032, D-033).
+ * and single bottom footer.
  */
 export function formatHumanReadable(
   targetDir: string,
@@ -188,6 +191,7 @@ export function formatHumanReadable(
   const isDefaultMode = formatOptions?.isDefaultQualifiedMode ?? false;
   const activeRuleCount = formatOptions?.activeRuleCount;
   const activeGuideCount = formatOptions?.activeGuideCount ?? 0;
+  const skippedDocsAndTestsCount = formatOptions?.skippedDocsAndTestsCount ?? 0;
   const colorEnabled = shouldEnableColor(formatOptions?.color);
 
   const prevForce = process.env.FORCE_COLOR;
@@ -213,22 +217,50 @@ export function formatHumanReadable(
         ].join('\n');
       }
       if (isDefaultMode) {
-        return [
+        const lines = [
           `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
           `0 findings from ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide' : 'guides'} (pass --experimental to include experimental guides).`,
-          '',
-        ].join('\n');
+        ];
+        if (skippedDocsAndTestsCount > 0) {
+          lines.push(
+            fmt(
+              'dim',
+              `Skipped ${skippedDocsAndTestsCount} docs and test ${skippedDocsAndTestsCount === 1 ? 'file' : 'files'} (pass --include-docs-and-tests to scan).`,
+            ),
+          );
+        }
+        lines.push('');
+        return lines.join('\n');
       }
       const filterNote = guideFilter ? ` for guide "${guideFilter}"` : '';
-      return `No modernization opportunities found in ${targetDir}${filterNote}.\n`;
+      const lines: string[] = [];
+      if (skippedDocsAndTestsCount > 0) {
+        lines.push(
+          fmt(
+            'dim',
+            `Skipped ${skippedDocsAndTestsCount} docs and test ${skippedDocsAndTestsCount === 1 ? 'file' : 'files'} (pass --include-docs-and-tests to scan).`,
+          ),
+        );
+      }
+      lines.push(`No modernization opportunities found in ${targetDir}${filterNote}.\n`);
+      return lines.join('\n');
     }
 
     const lines: string[] = [
       `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
       `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}:`,
       fmt('dim', 'Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.'),
-      '',
     ];
+
+    if (skippedDocsAndTestsCount > 0) {
+      lines.push(
+        fmt(
+          'dim',
+          `Skipped ${skippedDocsAndTestsCount} docs and test ${skippedDocsAndTestsCount === 1 ? 'file' : 'files'} (pass --include-docs-and-tests to scan).`,
+        ),
+      );
+    }
+    lines.push('');
 
     for (const g of guides) {
       const tierBadge =
@@ -299,6 +331,7 @@ export async function runAnalyzeCli(
       guide: { type: 'string' },
       'all-rules': { type: 'boolean' },
       experimental: { type: 'boolean' },
+      'include-docs-and-tests': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true,
@@ -309,6 +342,7 @@ export async function runAnalyzeCli(
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
   const isHelp = Boolean(parsed.values.help);
   const useAllRules = Boolean(parsed.values['all-rules'] || parsed.values.experimental);
+  const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
   const targetDir = parsed.positionals[0] || '.';
 
   if (isHelp) {
@@ -361,12 +395,16 @@ export async function runAnalyzeCli(
     ? buildQualificationStatusNotice(activeRuleCount, activeGuideCount, suspendedGuides)
     : undefined;
 
+  const scanStats = { skippedDocsAndTestsCount: 0 };
   const findings =
     activeRuleCount > 0
       ? await scanRepoFiles(resolvedDir, activeRules, {
           maxFiles: options?.maxFiles,
+          includeDocsAndTests,
+          stats: scanStats,
         })
       : [];
+  const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount;
 
   const findingsByGuide = new Map<string, AnalyzerFinding[]>();
   for (const f of findings) {
@@ -426,6 +464,7 @@ export async function runAnalyzeCli(
     activeGuideCount,
     ...(suspendedGuides.length > 0 ? { suspendedGuides } : {}),
     ...(statusNotice ? { statusNotice } : {}),
+    ...(skippedDocsAndTestsCount > 0 ? { skippedDocsAndTestsCount } : {}),
   };
 
   if (isJson) {
@@ -441,6 +480,7 @@ export async function runAnalyzeCli(
     activeGuideCount,
     suspendedGuides,
     isDefaultQualifiedMode,
+    skippedDocsAndTestsCount,
   });
   return { exitCode: 0, output, data };
 }

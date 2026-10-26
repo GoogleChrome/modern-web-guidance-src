@@ -41,9 +41,11 @@ import {
   isBuildOrInstallPath,
   isCandidateVendoredFile,
   isCorpusNonAppPath,
+  isDocsOrTestsPath,
   isMinifiedContent,
   MAX_SOURCE_FILE_BYTES,
   shouldScanFile,
+  SUPPORTED_SOURCE_EXTENSIONS,
   type FileFilterOptions,
 } from './file-filter.ts';
 import {
@@ -69,7 +71,7 @@ export * from './sfc-extractor.ts';
 export const GUIDE_HASH_HEX_LENGTH = 12;
 
 /**
- * Computes the 12-char SHA-256 hash of a guide.md content string per D-016.
+ * Computes the 12-char SHA-256 hash of a guide.md content string.
  */
 export function computeGuideHash(guideContent: string): string {
   return createHash('sha256')
@@ -83,11 +85,13 @@ export interface ScanOptions {
   readonly commit?: string;
   readonly fileFilterOptions?: FileFilterOptions;
   readonly excludeCorpusNonAppDirs?: boolean;
+  readonly includeDocsAndTests?: boolean;
   readonly project?: Project;
 }
 
 export interface RepoScanOptions extends ScanOptions {
   readonly maxFiles?: number;
+  readonly stats?: { skippedDocsAndTestsCount?: number };
 }
 
 interface FileContext {
@@ -576,13 +580,20 @@ function ctxForVendored(
 }
 
 function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | undefined {
-  if (!options?.fileFilterOptions && options?.excludeCorpusNonAppDirs === undefined) {
+  if (
+    !options?.fileFilterOptions &&
+    options?.excludeCorpusNonAppDirs === undefined &&
+    options?.includeDocsAndTests === undefined
+  ) {
     return undefined;
   }
   return {
-    ...options.fileFilterOptions,
-    ...(options.excludeCorpusNonAppDirs !== undefined
+    ...options?.fileFilterOptions,
+    ...(options?.excludeCorpusNonAppDirs !== undefined
       ? { excludeCorpusNonAppDirs: options.excludeCorpusNonAppDirs }
+      : {}),
+    ...(options?.includeDocsAndTests !== undefined
+      ? { includeDocsAndTests: options.includeDocsAndTests }
       : {}),
   };
 }
@@ -623,6 +634,10 @@ export function scanFiles(
 
   for (const [relPath, content] of files) {
     try {
+      if (!filterOpts?.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
+        continue;
+      }
+
       if (!shouldScanFile(relPath, content, filterOpts)) {
         if (
           depRules.length > 0 &&
@@ -682,11 +697,21 @@ export function scanFiles(
   return findings;
 }
 
+function hasScannableExtension(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  if (normalized.endsWith('package.json')) return true;
+  const dotIdx = normalized.lastIndexOf('.');
+  if (dotIdx === -1) return false;
+  return SUPPORTED_SOURCE_EXTENSIONS.has(normalized.slice(dotIdx));
+}
+
 interface WalkDirState {
   readonly repoDirPath: string;
   readonly fileMap: Map<string, string>;
   readonly maxFiles: number;
   readonly fileFilterOptions?: FileFilterOptions;
+  readonly includeDocsAndTests: boolean;
+  skippedDocsAndTestsCount: number;
 }
 
 async function walkDirectory(currentDir: string, state: WalkDirState): Promise<void> {
@@ -727,6 +752,13 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
     }
 
     if (entry.isFile()) {
+      if (!state.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
+        if (hasScannableExtension(relPath)) {
+          state.skippedDocsAndTestsCount++;
+        }
+        continue;
+      }
+
       const isScannableSource = shouldScanFile(relPath, undefined, state.fileFilterOptions);
       const isVendoredCandidate = isCandidateVendoredFile(relPath);
 
@@ -760,21 +792,35 @@ export async function scanRepoFiles(
   repoDirPath: string,
   rules: readonly AnalyzerRule[],
   options?: RepoScanOptions,
-): Promise<AnalyzerFinding[]> {
+): Promise<AnalyzerFinding[] & { readonly skippedDocsAndTestsCount?: number }> {
   const fileMap = new Map<string, string>();
   const maxFiles = options?.maxFiles ?? 5000;
 
   const fileFilterOptions = resolveFileFilterOptions(options);
+  const includeDocsAndTests = Boolean(
+    options?.includeDocsAndTests ?? fileFilterOptions?.includeDocsAndTests,
+  );
 
-  await walkDirectory(repoDirPath, {
+  const state: WalkDirState = {
     repoDirPath,
     fileMap,
     maxFiles,
     fileFilterOptions,
-  });
+    includeDocsAndTests,
+    skippedDocsAndTestsCount: 0,
+  };
 
-  return scanFiles(fileMap, rules, {
+  await walkDirectory(repoDirPath, state);
+
+  if (options?.stats) {
+    options.stats.skippedDocsAndTestsCount = state.skippedDocsAndTestsCount;
+  }
+
+  const findings = scanFiles(fileMap, rules, {
     ...options,
     fileFilterOptions,
-  });
+  }) as AnalyzerFinding[] & { skippedDocsAndTestsCount?: number };
+
+  findings.skippedDocsAndTestsCount = state.skippedDocsAndTestsCount;
+  return findings;
 }
