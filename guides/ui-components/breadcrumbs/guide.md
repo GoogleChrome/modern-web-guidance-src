@@ -9,6 +9,7 @@ web-feature-ids:
   - container-queries
 guides:
   - menu
+  - icons
 ---
 
 # Build breadcrumbs
@@ -31,7 +32,7 @@ This is not for switching between views of the same page (tabs) or for site-wide
 .breadcrumb > ol > li + li::before { content: "/" / ""; }
 ```
 
-- For an icon divider (e.g. a chevron), use an empty `content: ""` with a `mask` (SVG data URI) on `background: currentColor` so the divider follows text color and forced-colors mode.
+- A styled character (`/`, `›`, `>`) generated as above is the simplest divider. For an icon divider such as a chevron, render it the way the codebase renders icons and keep it decorative; see {{ GUIDE_REF("icons") }}.
 
 ## 2. Styling
 
