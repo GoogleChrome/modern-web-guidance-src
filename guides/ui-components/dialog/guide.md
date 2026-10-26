@@ -114,9 +114,6 @@ The default depends on how the dialog is opened. If `closedby` is absent or inva
 - **DO** choose `closedby` deliberately: `any` (light dismiss and `Esc`), `closerequest` (`Esc` only, the modal default) or `none` (developer-controlled close only).
 - **DO** use `command="request-close"` or `requestClose()` for Cancel buttons that must honor unsaved-changes logic. They fire `cancel` first and ignore `closedby`.
 - **DO** treat `closedby` as progressive enhancement. `Esc` and the mobile back gesture already close modals without it.
-- **DON'T** require a backdrop-click fallback. If you add one, track `pointerdown` as well as `click` so a text selection that ends on the backdrop does not dismiss the dialog, and gate it behind a feature test (`'closedBy' in HTMLDialogElement.prototype`).
-
-{{ BASELINE_STATUS("dialog-closedby") }}
 
 ### Hooking into close
 
