@@ -278,7 +278,7 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 - **DO** use `details[open]` attribute for styling expanded states.
 - **DO** use `details::details-content` for styling the contents of the `<details>` element.
 
-- **DON'T** nest other interactive elements (links, buttons) directly inside `<summary>` text as it may break expected focus behaviour and screen reader announcements.
+- **DON'T** nest other interactive elements (links, buttons) directly inside `<summary>` text as it may break expected focus behavior and screen reader announcements.
 - **DON'T** hide visible triangles via `list-style: none` without providing explicit directional cues (via `::before`/`::after` pseudo-elements).
 - **DON'T** use the `title` attribute to create tooltip effects, as these cannot be accessed using a keyboard. Instead, use accessible tooltip patterns that can be triggered using a keyboard, and are consistently announced by screen readers.
 - **DON'T** provide text alternatives for custom state indicator icons (implemented using `<img>` or `<svg>` elements), as state should be communicated by the `<summary>` element, and a text alternative would duplicate this information
@@ -402,7 +402,7 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 
 - **DON'T** use inline styles for static design (colors, padding, margins) that belong in a stylesheet.
 - **DON'T** use inline event handlers (e.g., `onclick`). Trigger actions using `addEventListener()`.
-- **DON'T** convey state, interaction, or information using colour alone.
+- **DON'T** convey state, interaction, or information using color alone.
 
 ### Code Example
 
