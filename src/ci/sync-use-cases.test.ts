@@ -420,6 +420,66 @@ describe('buildUseCaseMaps', () => {
     assert.strictEqual(nameToIssueMap.get('my-use-case'), issue);
     assert.strictEqual(subdirToIssueMap.size, 0);
   });
+
+  test('prefers canonical (lowest-numbered) issue over newer duplicates regardless of input order', () => {
+    const canonical = {
+      number: 1212,
+      title: 'Create guide for the css-animations use case',
+      body: 'Use case subdir: [guides/animations/css-animations](https://github.com/...)',
+      state: 'open',
+      state_reason: null,
+    };
+    const duplicate1 = {
+      number: 2468,
+      title: 'Create guide for the css-animations use case',
+      body: 'Use case subdir: [guides/animations/css-animations](https://github.com/...)',
+      state: 'open',
+      state_reason: null,
+    };
+    const duplicate2 = {
+      number: 2722,
+      title: 'Create guide for the css-animations use case',
+      body: 'Use case subdir: [guides/animations/css-animations](https://github.com/...)',
+      state: 'open',
+      state_reason: null,
+    };
+
+    const asc = buildUseCaseMaps([canonical, duplicate1, duplicate2]);
+    assert.strictEqual(asc.nameToIssueMap.get('css-animations')?.number, 1212);
+    assert.strictEqual(asc.subdirToIssueMap.get('guides/animations/css-animations')?.number, 1212);
+
+    const desc = buildUseCaseMaps([duplicate2, duplicate1, canonical]);
+    assert.strictEqual(desc.nameToIssueMap.get('css-animations')?.number, 1212);
+    assert.strictEqual(desc.subdirToIssueMap.get('guides/animations/css-animations')?.number, 1212);
+  });
+
+  test('prefers active or completed issue over older issue closed as not_planned or duplicate', () => {
+    const abandonedEarly = {
+      number: 167,
+      title: 'Create guide and evals for the deliver-optimized-decorative-images use case',
+      body: 'Use case subdir: [guides/images/deliver-optimized-decorative-images](https://github.com/...)',
+      state: 'closed',
+      state_reason: 'not_planned',
+    };
+    const canonicalCompleted = {
+      number: 642,
+      title: 'Create guide for the deliver-optimized-decorative-images use case',
+      body: 'Use case subdir: [guides/images/deliver-optimized-decorative-images](https://github.com/...)',
+      state: 'closed',
+      state_reason: 'completed',
+    };
+    const laterDuplicate = {
+      number: 2224,
+      title: 'Create guide for the deliver-optimized-decorative-images use case',
+      body: 'Use case subdir: [guides/images/deliver-optimized-decorative-images](https://github.com/...)',
+      state: 'closed',
+      state_reason: 'duplicate',
+    };
+
+    const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps([abandonedEarly, canonicalCompleted, laterDuplicate]);
+    assert.strictEqual(nameToIssueMap.get('deliver-optimized-decorative-images')?.number, 642);
+    assert.strictEqual(subdirToIssueMap.get('guides/images/deliver-optimized-decorative-images')?.number, 642);
+  });
 });
 
 describe('buildRequiredFilesChecklist', () => {

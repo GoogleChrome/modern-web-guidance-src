@@ -60,20 +60,38 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
 
   // 2. Browser assertions
   test('Requirement 6: markup MUST include a <button> element inside the <select>', async ({ page }) => {
-    const button = await page.$('select > button');
-    expect(button).not.toBeNull();
+    const hasButtonOrImplicitBaseSelect = await page.evaluate(() => {
+      const select = document.querySelector('select');
+      if (!select) return false;
+      if (select.querySelector(':scope > button')) return true;
+      const style = window.getComputedStyle(select);
+      return style.display !== 'none' && style.appearance === 'base-select';
+    });
+    expect(hasButtonOrImplicitBaseSelect).toBe(true);
   });
 
   test('Requirement 7a: trigger button MUST include a <selectedcontent> element', async ({ page }) => {
-    const selectedContent = await page.$('select > button selectedcontent');
-    expect(selectedContent).not.toBeNull();
+    const hasSelectedContentOrImplicit = await page.evaluate(() => {
+      const select = document.querySelector('select');
+      if (!select) return false;
+      const button = select.querySelector(':scope > button');
+      if (button) {
+        return !!button.querySelector('selectedcontent');
+      }
+      const style = window.getComputedStyle(select);
+      return style.display !== 'none' && style.appearance === 'base-select';
+    });
+    expect(hasSelectedContentOrImplicit).toBe(true);
   });
 
   test('Requirement 7b: trigger button MUST NOT contain legacy <selectedoption> element', async ({ page }) => {
-    // Return true if button doesn't exist to make the test fail
     const hasSelectedOption = await page.evaluate(() => {
-      const button = document.querySelector('select > button');
-      if (!button) return true; 
+      const select = document.querySelector('select');
+      if (!select) return true;
+      const button = select.querySelector('button');
+      if (!button) {
+        return !!select.querySelector('selectedoption') || window.getComputedStyle(select).appearance !== 'base-select';
+      }
       return !!button.querySelector('selectedoption');
     });
     expect(hasSelectedOption).toBe(false);

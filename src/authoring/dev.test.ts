@@ -319,6 +319,42 @@ test('devCli.commitStepArtifacts returns false when not on a gd-dev/ branch', as
   assert.strictEqual(committed, false);
 });
 
+test('extractGuideDescription extracts description frontmatter correctly and throws on missing description', async () => {
+  const { extractGuideDescription } = await import('./dev.ts');
+
+  const validGuide = `---
+title: View Transitions
+description: Smoothly animate between views using the document View Transitions API.
+---
+# Content here
+`;
+  assert.strictEqual(
+    extractGuideDescription(validGuide),
+    'Smoothly animate between views using the document View Transitions API.'
+  );
+
+  const missingDescGuide = `---
+title: View Transitions
+---
+# Content here
+`;
+  assert.throws(
+    () => extractGuideDescription(missingDescGuide),
+    /Missing or empty 'description' frontmatter in guide\.md/
+  );
+
+  const emptyDescGuide = `---
+title: View Transitions
+description: "   "
+---
+# Content here
+`;
+  assert.throws(
+    () => extractGuideDescription(emptyDescGuide),
+    /Missing or empty 'description' frontmatter in guide\.md/
+  );
+});
+
 
 
 
