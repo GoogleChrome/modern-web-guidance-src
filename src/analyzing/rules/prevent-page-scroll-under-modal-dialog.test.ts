@@ -82,6 +82,23 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.match(matches[0].message, /overscroll-behavior/);
   });
 
+  test('flags camelCase modal handler setting document.body.style.overflowY = "hidden"', () => {
+    const code = `
+      const checkMobileAuth = () => {
+        setShowMobileModal(true);
+        document.body.style.overflowY = 'hidden';
+      };
+    `;
+    const { matches } = scanJsSource(
+      'src/components/Navbar.jsx',
+      code,
+      [preventPageScrollUnderModalDialogMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0].message, /overflowY = 'hidden'/);
+  });
+
   test('flags document.body.classList.add("modal-open")', () => {
     const code = `
       function openModal() {
@@ -194,7 +211,7 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.match(matches[1].message, /enableBodyScroll/);
   });
 
-  test('exempts generic .overflow-hidden utility classes without body/html prefix', () => {
+  test('exempts generic .overflow-hidden and .no-scroll utility classes without body/html or modal context', () => {
     const css = `
       .overflow-hidden {
         overflow: hidden;
@@ -202,10 +219,39 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
       .card .no-scroll {
         overflow: hidden;
       }
+      .no-scroll {
+        overflow: hidden;
+        -ms-overflow-style: none;
+      }
+      .no-scroll-y {
+        overflow-y: hidden;
+      }
     `;
     const matches = scanCss('styles/utilities.css', css, [
       preventPageScrollUnderModalDialogCssMatcher,
     ]);
+    assert.equal(matches.length, 0);
+  });
+
+  test('exempts horizontal overflowX = "hidden" and top-level IIFE context smearing', () => {
+    const code = `
+      (function () {
+        const label = 'debug overlay';
+        function restoreHorizontalClip() {
+          document.body.style.overflowX = 'hidden';
+        }
+        function enterBlockingDebugger() {
+          document.body.style.overflow = 'hidden';
+        }
+        return [label, restoreHorizontalClip, enterBlockingDebugger];
+      })();
+    `;
+    const { matches } = scanJsSource(
+      'src/runtime.js',
+      code,
+      [preventPageScrollUnderModalDialogMatcher],
+      project,
+    );
     assert.equal(matches.length, 0);
   });
 

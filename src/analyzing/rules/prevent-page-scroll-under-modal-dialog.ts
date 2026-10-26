@@ -22,11 +22,34 @@ export const PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH = '7d10dd62dcbc';
 
 const FULLSCREEN_ONLY_REGEX = /fullscreen/i;
 
-const MODAL_OR_OVERLAY_REGEX =
-  /\b(?:dialog|modal|drawer|lightbox|popup|overlay|showmodal|lockscroll|scrolllock)\b/i;
+const MODAL_OR_OVERLAY_WORD_REGEX =
+  /\b(?:dialog|modal|drawer|lightbox|popup|overlay|showmodal|lockscroll|scrolllock|disablescroll)\b/i;
+
+const MODAL_OR_OVERLAY_CAMEL_REGEX =
+  /[a-z](?:Dialog|Modal|Drawer|Lightbox|Popup|Overlay|ShowModal|LockScroll|ScrollLock)(?![a-z])|\bdisableScroll[A-Z]/;
+
+function hasModalOrOverlayName(text: string): boolean {
+  return MODAL_OR_OVERLAY_WORD_REGEX.test(text) || MODAL_OR_OVERLAY_CAMEL_REGEX.test(text);
+}
 
 const FULLSCREEN_CANVAS_GAME_REGEX =
   /\b(?:fullscreen|canvas|game|slide|deck|threejs|pixi)\b/i;
+
+const CSS_MODAL_CONTEXT_REGEX = /(?:\b(?:dialog|modal|lightbox|popup|overlay)\b|::backdrop)/i;
+
+function isImmediatelyInvokedFunction(fnNode: Node): boolean {
+  let parent: Node | undefined = fnNode.getParent();
+  while (
+    parent &&
+    (Node.isParenthesizedExpression(parent) || Node.isPrefixUnaryExpression(parent))
+  ) {
+    parent = parent.getParent();
+  }
+  if (!parent || !Node.isCallExpression(parent)) {
+    return false;
+  }
+  return unwrapExpression(parent.getExpression()) === fnNode;
+}
 
 function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
   let current: Node | undefined = node.getParent();
@@ -38,12 +61,18 @@ function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
       Node.isFunctionExpression(current) ||
       Node.isArrowFunction(current)
     ) {
+      if (isImmediatelyInvokedFunction(current)) {
+        break;
+      }
       const text = current.getText();
-      if (FULLSCREEN_CANVAS_GAME_REGEX.test(text) && !MODAL_OR_OVERLAY_REGEX.test(text)) {
+      if (text.length > 8_000) {
+        break;
+      }
+      if (FULLSCREEN_CANVAS_GAME_REGEX.test(text) && !hasModalOrOverlayName(text)) {
         return false;
       }
       if (
-        MODAL_OR_OVERLAY_REGEX.test(text) ||
+        hasModalOrOverlayName(text) ||
         text.includes('showModal') ||
         text.includes('<dialog')
       ) {
@@ -54,7 +83,7 @@ function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
   }
 
   if (
-    MODAL_OR_OVERLAY_REGEX.test(ctx.filePath) &&
+    hasModalOrOverlayName(ctx.filePath) &&
     !FULLSCREEN_CANVAS_GAME_REGEX.test(ctx.filePath)
   ) {
     return true;
@@ -71,15 +100,34 @@ const MODAL_SCROLL_LOCK_CLASSES = new Set([
   'overflow-hidden',
 ]);
 
-function isScrollLockSelector(selectorText: string): boolean {
+function isScrollLockSelector(
+  selectorText: string,
+  styleRule: CssRuleView,
+  ctx: CssMatcherContext,
+): boolean {
   const parts = selectorText.split(',');
   for (const rawPart of parts) {
     const part = rawPart.trim();
-    if (
-      /^(?:body|html)?\.(?:modal-open|dialog-open|no-scroll|scroll-lock)\b/i.test(part) ||
-      /^(?:body|html)\.overflow-hidden\b/i.test(part)
-    ) {
+    if (/^(?:body|html)?\.(?:modal-open|dialog-open)(?![-\w])/i.test(part)) {
       return true;
+    }
+    if (/^(?:body|html)\.(?:no-scroll|scroll-lock|overflow-hidden)(?![-\w])/i.test(part)) {
+      return true;
+    }
+    if (/^\.(?:no-scroll|scroll-lock)(?![-\w])/i.test(part)) {
+      if (
+        styleRule.getPropertyValue('-ms-overflow-style') ||
+        styleRule.getPropertyValue('scrollbar-width') ||
+        /\.no-scroll-[xy]\b/i.test(ctx.stylesheetText)
+      ) {
+        return false;
+      }
+      if (
+        hasModalOrOverlayName(ctx.filePath) ||
+        CSS_MODAL_CONTEXT_REGEX.test(ctx.stylesheetText)
+      ) {
+        return true;
+      }
     }
   }
   return false;
@@ -153,7 +201,7 @@ function matchOverflowAssignment(
   }
 
   const propName = left.getName();
-  if (propName !== 'overflow' && propName !== 'overflowY' && propName !== 'overflowX') {
+  if (propName !== 'overflow' && propName !== 'overflowY') {
     return null;
   }
 
@@ -227,7 +275,7 @@ function matchSetPropertyCall(
   }
 
   const propName = propArg.getLiteralText().toLowerCase();
-  if (propName !== 'overflow' && propName !== 'overflow-y' && propName !== 'overflow-x') {
+  if (propName !== 'overflow' && propName !== 'overflow-y') {
     return null;
   }
 
@@ -375,7 +423,7 @@ export const preventPageScrollUnderModalDialogCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    if (!isScrollLockSelector(styleRule.selectorText)) {
+    if (!isScrollLockSelector(styleRule.selectorText, styleRule, ctx)) {
       return null;
     }
 
