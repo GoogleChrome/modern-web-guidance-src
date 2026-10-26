@@ -398,6 +398,9 @@
       "same-document-transitions": [
         "task"
       ],
+      "scroll-completion-effects": [
+        "daily-grind"
+      ],
       "scroll-entry-exit-effects": [
         "task"
       ],
@@ -448,8 +451,14 @@
       "apply-webgl-shaders": [
         "task"
       ],
+      "browser-ui-theming": [
+        "daily-grind"
+      ],
       "complex-shapes": [
         "task"
+      ],
+      "contrast-color": [
+        "daily-grind"
       ],
       "customize-scrollbar-color-and-thickness": [
         "task"
