@@ -40,12 +40,6 @@ export interface GuideTriage {
   readonly reason: string;
   readonly modernFeature?: string;
   readonly falsePositiveTraps?: readonly string[];
-  readonly gitMirrorFilter?: {
-    readonly extensions: readonly string[];
-    readonly packageNames: readonly string[];
-    readonly broadCodeTokens: readonly string[];
-    readonly tokenMatchMode?: 'any' | 'all';
-  };
   readonly changesSomethingForDeveloper?: boolean | string;
   readonly isLikeForLikeSwapAtSite?: boolean | string;
   readonly category?: string;
