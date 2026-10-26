@@ -62,7 +62,8 @@ Text, standalone links and list items share one rule: hide the content, fill wit
   --line-one: 78%;      /* Per-bar widths are overridable custom properties */
   display: block;
   min-block-size: calc(var(--lines, 1) * 1lh); /* Reserves the height of the real text lines */
-  overflow: hidden;      /* Clips surplus real text so it cannot add lines */
+  line-clamp: var(--lines, 1); /* Limits real text to the bar count (see Fallbacks) */
+  overflow: hidden;      /* Clips whatever the clamp or fallback cuts off */
   user-select: none;
   color: transparent;
   text-decoration: none; /* Link underlines would otherwise show through */
@@ -85,15 +86,7 @@ Derive the bar size from the element instead of tuning it per element: `cap` fol
 
 Draw the bullet as a subpath, not with `::marker`: the `overflow: hidden` above clips an outside marker, and a marker cannot take the shimmer background. Remove the list's own padding and marker, and draw the dot inside the `li` box. This applies to bulleted lists; do not use the dot for a numbered list.
 
-Optionally clamp the real text to the bar count as an enhancement, with a `--lines` custom property (default `1`). `overflow: hidden` and the `lh`-based `min-block-size` stay as the baseline, because `line-clamp` alone does not reserve height.
-
-```css
-@supports (line-clamp: 1) {
-  .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
-    line-clamp: var(--lines, 1);
-  }
-}
-```
+Set `--lines` to the bar count (default `1`). `line-clamp` limits the real text to that many lines, and the `lh`-based `min-block-size` reserves their height, because `line-clamp` alone does not reserve height. A `min-block-size` does not stop surplus text from growing the box, so where `line-clamp` is unsupported, use the fallback below.
 
 For more than one bar, append a `move to` and another closed rounded rectangle to the same `shape()` for each extra bar, offset vertically by `n × (--bar-height + --bar-gap)` (which is `n × 1lh`) and sized by its own `--line-two`, `--line-three` and so on. `shape()` cannot repeat a path from a count, so each bar is written out. Set `--lines` to the bar count so `min-block-size` reserves the total height.
 
@@ -163,7 +156,7 @@ Put a representative label in the skeleton markup (as in the example above) so t
 
 A skeleton is a simplification, not a copy. Keep what defines the silhouette (media, title, a few lines of body, the primary action) and hide the rest.
 
-- Cap long text at 2–4 bars by defining that many subpaths in the `shape()`. `overflow: hidden` and the `lh` height keep surplus text from adding lines. Cap collections at a few items as described below.
+- Cap long text at 2–4 bars by defining that many subpaths in the `shape()`. `line-clamp` (or its fallback) and `overflow: hidden` keep surplus text from adding lines. Cap collections at a few items as described below.
 - To cap items, use a fixed `:nth-child(n + N)` selector with `display: none`. If the count must come from a custom property, read it in a small script, because CSS cannot use a custom property inside `:nth-child()`.
 - Remove whole cards or rows with `display: none`. For items inside a card, use `visibility: hidden` so the card height does not change when the real content arrives.
 - Decide what to hide by asking whether removing it changes the container's height. If it does, keep or reserve it.
@@ -192,4 +185,12 @@ If your Baseline target does not support `border-shape`, use `@supports (border-
 
 {{ BASELINE_STATUS("line-clamp") }}
 
-If your Baseline target does not support `line-clamp`, omit the `@supports` block. `overflow: hidden` and the `lh`-based `min-block-size` already clip surplus text and reserve the height, so layout is unchanged.
+If your Baseline target does not support `line-clamp`, cap the height instead. `overflow: hidden` clips what exceeds it, and the cap equals the bar count's height in `lh` units, so layout is unchanged.
+
+```css
+@supports not (line-clamp: 1) {
+  .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+    max-block-size: calc(var(--lines, 1) * 1lh);
+  }
+}
+```

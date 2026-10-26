@@ -225,6 +225,7 @@
         display: block;
         inline-size: 100%;
         min-block-size: var(--block);
+        line-clamp: var(--lines, 1);
         overflow: hidden;
         user-select: none;
         background-color: var(--skeleton-tone);
@@ -243,11 +244,11 @@
         text-decoration: none;
       }
 
-      /* Enhancement: clamp real text to the bar count. overflow: hidden and the
-         lh-based min-block-size above remain the baseline. */
-      @supports (line-clamp: 1) {
+      /* Without line-clamp, cap the height at the bar count so overflow: hidden
+         clips surplus text. min-block-size alone would let the box grow. */
+      @supports not (line-clamp: 1) {
         .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
-          line-clamp: var(--lines, 1);
+          max-block-size: calc(var(--lines, 1) * 1lh);
         }
       }
 

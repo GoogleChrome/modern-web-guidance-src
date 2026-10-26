@@ -4,7 +4,7 @@
 - Bar height is derived from the element's own font size (for example `1cap`) and the gap from its line height (for example `1lh` minus the bar height), without a per-element height override for headings.
 - Text bars are drawn with `border-shape: shape(...)` using rounded-end bar subpaths, with a filled `background`.
 - Paragraphs render 3-4 bars with the last one shorter than the rest, via multiple closed subpaths in one `shape()`. Headings render one bar.
-- Skeleton text elements clip real text with `line-clamp` set to the bar count (inside `@supports`), with `overflow: hidden` and `lh`-unit height reservation as the baseline, so long content does not add lines.
+- Skeleton text elements limit real text to the bar count with `line-clamp`, or with `overflow: hidden` and a `max-block-size` in `lh` units where `line-clamp` is unsupported, so long content does not add lines.
 - Buttons, inputs, and other controls (e.g. badges) keep their own padding and `border-radius` without a fixed block size, with transparent text and the skeleton tone as `background-color`.
 - Media and avatar placeholders are real `<img>`/`<video>`/`<canvas>` elements, not placeholder `<div>`s, with a `background-color` fill and `aspect-ratio`. The picture is removed with a large-length `object-position` (e.g. `-9999px 0`), not `content: linear-gradient()`.
 - Skeleton colors are derived from the surface with `color-mix()`.
