@@ -110,12 +110,16 @@ const steps = vertical
 
 ## Tooltips for icon-only buttons
 
-Use interest invokers with `popover="hint"`. The browser shows the hint on hover and keyboard focus and wires the tooltip role and `aria-describedby` itself. Do not add `role="tooltip"`, `aria-describedby`, or `aria-details`. `hint` popovers show without closing an open menu popover.
+Use interest invokers (`interestfor`) with `popover="hint"`, which shows the tooltip without closing an open menu popover.
 
 ```html
 <button type="button" aria-label="Bold" interestfor="tip-bold">…</button>
 <div id="tip-bold" popover="hint">Bold</div>
 ```
+
+{{ FEATURE("interest-invokers", "accessibility") }}
+
+{{ FEATURE("interest-invokers", "timing") }}
 
 ```css
 [popover="hint"] {
@@ -123,13 +127,6 @@ Use interest invokers with `popover="hint"`. The browser shows the hint on hover
   /* Anchor to the invoker; flip to the other side if there is no room */
   position-area: block-end;
   position-try-fallbacks: flip-block;
-}
-/* Example delays, set through custom properties so the interestfor polyfill can read them */
-[interestfor] {
-  --interest-delay-start: 400ms;
-  interest-delay-start: var(--interest-delay-start);
-  --interest-delay-end: 100ms;
-  interest-delay-end: var(--interest-delay-end);
 }
 ```
 
