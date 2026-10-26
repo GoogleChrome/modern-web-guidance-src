@@ -22,14 +22,14 @@ Toast notifications must be used to provide non-critical, supplemental informati
 * **MANDATORY:** Persistent toast notifications must remain present until they are dismissed.
 * **DO** use a container to manage the stacking of multiple toasts. Since popovers in the Top Layer ignore parent z-index, you must position them individually or within a common layout group.
 * **DO** add toast notifications consistently to the same container in the page, so that people using assistive technologies can consistently locate them.
-* **DO** make the container a region, with an accessible name, so that it can be easily identified using a screen reader. For example: `<div role=“region” aria-label=“Notifications”></div>`.
+* **DO** make the container a region, with an accessible name, so that it can be easily identified using a screen reader. For example: `<div role="region" aria-label="Notifications"></div>`.
 * **DO** use `ariaNotify()` to announce the content present in toasts that are displayed. This ensures that people using screen readers, who cannot see the screen, are aware of the presence of toast messages
 {# For context, this approach is as recommended in Celebrating with the Perfect Toast by Ian Lloyd https://a11y-tools.com/blog/2025/05/celebrating-with-the-perfect-toast/ #}
 * **DO** use sibling-index() to add margin between toast notifications so that items lower in the stack are visible.
 * **DO** provide a toast's trigger button (it must be a button element, or an input of type button) with a `popovertarget` attribute, referencing the `id` attribute of the toast. This will programmatically convey that there’s a toast present, and manage keyboard focus between the toast and trigger control.
 * **DO** provide an explicit "Close" button within the toast using popovertargetaction="hide".
-* **DO** ensure that a toast's dismiss button receives focus, so that people using only a keyboard, are able to dismiss the notifications.
-* **DO** ensure that focus is managed when a toast is dismissed. If there is a visible button that triggered the toast, return focus to this control on dismissal of the toast. If not, and this was the only toast component visible, return focus to the start of the page. If there are other toast components visible, move focus to the previous toast component.
+* **DO** ensure that a toast's dismiss button is keyboard-focusable (without automatically stealing focus when the toast appears), so keyboard users can navigate to the toast region and dismiss notifications.
+* **DO** manage focus when a user manually dismisses a currently focused toast: move focus to the next remaining toast in the stack, or—if no toasts remain—return focus to the user's prior focus location (or the control that triggered the toast).
 * **DO** use JavaScript for auto-dismissal timers (e.g., calling hidePopover() after 3000ms), if the user has set that they want auto-dismissal.
 * **DO** utilize transition-behavior: allow-discrete to animate the entry and exit from the Top Layer.
 * **DO** provide a non-animated version using the `prefers-reduced-motion` media query
@@ -41,7 +41,7 @@ Toast notifications must be used to provide non-critical, supplemental informati
 * **DON'T** use toasts in modal dialogs. Content outside of the dialog will be inert and unavailable to assistive technologies. Placing the toast in a modal dialog, separate from the existing toast container makes it difficult to locate, and may lead to people not being able to locate it.
 * **DON'T** surface toast notifications in the background while a modal dialog is open. It's likely the notification will be missed. Instead, suppress the notification until the modal dialog is dismissed.
 
-## Accessibility improvements
+## Optional: Usability & accessibility improvements
 
 * **Surface previous toasts**: Provide a way for people to access a list of past toast messages. This can help people who may encounter difficulty in remembering what the toast informed them, or reduce anxiety for people who inadvertently dismissed a toast message.
 {# This approach is suggested in Designing Toast Messages for Accessibility by Sheri Byrne-Haber in https://sheribyrnehaber.medium.com/designing-toast-messages-for-accessibility-fb610ac364be #}
