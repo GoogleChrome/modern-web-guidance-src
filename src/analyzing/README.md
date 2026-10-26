@@ -244,7 +244,7 @@ Every web platform standard in the catalog is classified across two orthogonal a
   - `widget-recipe` (26 guides): Coordinating HTML structure, CSS layout/styling, and JS behavior across multiple parts of a composite UI widget.
   - `n/a` (107 guides): Applicable when detection is `no-legacy-pattern`.
 
-### Qualified Feature Guides (6 Qualified Guides across 8 Rules)
+### Qualified Feature Guides
 
 *Scores are LLM judge estimates on held-out repositories (not human-graded).*
 
