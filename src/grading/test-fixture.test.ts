@@ -159,6 +159,36 @@ progress.progress-ring {
     }
   });
 
+  test('getCssStyleSheet isolates unterminated comments, strings, and url() in one source from subsequent files', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-css-isolation-test-'));
+    try {
+      const htmlFile = path.join(tempDir, 'index.html');
+      fs.writeFileSync(
+        htmlFile,
+        [
+          '<div style="color: red; background: url(">a</div>',
+          '<p style="font-family: &quot;Unclosed">b</p>',
+          '<style>.broken { color: red; /* unclosed comment</style>',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const cssFile = path.join(tempDir, 'global.css');
+      fs.writeFileSync(cssFile, '.after { color: blue; }', 'utf8');
+
+      const stylesheet = getCssStyleSheet([htmlFile, cssFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      const afterRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.after'
+      );
+      assert.ok(afterRule, 'Should preserve .after rule from global.css despite broken earlier sources');
+      assert.strictEqual(afterRule.style.getPropertyValue('color').trim(), 'blue');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   test('getCssStyleSheet extracts <style> inside <script> tags and excludes <style>/[style] inside <template> elements in .html', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-html-template-test-'));
     try {

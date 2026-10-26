@@ -6,7 +6,7 @@ import * as net from 'net';
 import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
 import { Project } from 'ts-morph';
-import { parse, CSSStyleSheet } from 'cssomnom';
+import { parse, CSSStyleSheet, CSSStyleDeclaration } from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
 
 export { expect } from '@playwright/test';
@@ -259,18 +259,6 @@ function unwrapGlobalPseudo(css: string): string {
   return result;
 }
 
-function isValidInlineStyle(style: string): boolean {
-  if (!style || style.startsWith('{')) return false;
-  let depth = 0;
-  for (const ch of style) {
-    if (ch === '{') depth++;
-    else if (ch === '}') {
-      depth--;
-      if (depth < 0) return false;
-    }
-  }
-  return depth === 0;
-}
 
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
@@ -295,8 +283,13 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
         });
         document.querySelectorAll('[style]').forEach((el: any) => {
           const inlineStyle = el.getAttribute('style')?.trim();
-          if (inlineStyle && isValidInlineStyle(inlineStyle)) {
-            cssBlocks.push(`[style] { ${inlineStyle} }`);
+          if (!inlineStyle) return;
+          // Parse through CSSStyleDeclaration so unparsed JSX expressions (e.g. `{expr}`) yield
+          // no declarations and are skipped, and valid ones serialize with balanced braces/strings.
+          const decl = new CSSStyleDeclaration();
+          decl.cssText = inlineStyle;
+          if (decl.length > 0) {
+            cssBlocks.push(`[style] { ${decl.cssText} }`);
           }
         });
         // Also extract <style> blocks from <script> tags (e.g. shadowRoot.innerHTML in web components)
@@ -326,7 +319,12 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
       }
     }
   }
-  return parse(unwrapGlobalPseudo(cssBlocks.join('\n')));
+  // Parse each block in isolation so CSS EOF error recovery closes any unterminated
+  // block, string, url(, or comment at its own boundary instead of swallowing later blocks.
+  const isolatedRules = cssBlocks.flatMap((block) =>
+    Array.from(parse(unwrapGlobalPseudo(block)).cssRules, (rule) => rule.cssText)
+  );
+  return parse(isolatedRules.join('\n'));
 }
 
 export function populateJsProject(project: Project, files: string[]): void {
