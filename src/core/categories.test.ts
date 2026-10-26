@@ -1,7 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import path from 'node:path';
 import { CATEGORIES, getCategoryTitle, getCategoryIndex, isKnownCategory } from './categories.ts';
 import { guidesDir } from './paths.ts';
 

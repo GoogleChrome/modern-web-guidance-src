@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {
   toDevsiteMarkdown,
   moonriseHeadingId,
-  githubSlug,
   buildHeadingMap,
   escapeJinjaDelimiters,
 } from './devsite-markdown.ts';

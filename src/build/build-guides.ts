@@ -13,7 +13,7 @@ import { isTmpFeature } from "../core/feature-parser.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
 import { rootDir, outDir } from "../core/paths.ts";
-import { CATEGORIES, getCategoryTitle } from "../core/categories.ts";
+import { CATEGORIES } from "../core/categories.ts";
 import { toDevsiteMarkdown } from "./devsite-markdown.ts";
 
 const WORKSPACE_ROOT = rootDir;
@@ -603,7 +603,7 @@ async function processSingleGuideFile(
     const bodyWithoutH1 = stripLeadingH1(devsiteResult.markdown);
     const finalContent = `${devsiteFrontmatter}\n\n${headerParts.join('\n\n')}\n\n${bodyWithoutH1.trim()}\n\n${sourceFooter}\n`;
 
-    const buildFilePath = writeBuiltGuide(category, id, finalContent);
+    writeBuiltGuide(category, id, finalContent);
 
     if (devsiteGuides) {
       devsiteGuides.push({
