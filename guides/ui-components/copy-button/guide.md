@@ -19,17 +19,17 @@ Build a button that copies the text of another element (code block, inline value
 
 ```html
 <!-- Custom commands MUST start with "--". commandfor is the id of the element whose text is copied. -->
-<!-- aria-label names the content being copied; several bare "Copy" buttons are indistinguishable to screen readers -->
-<button type="button" class="copy-button" command="--copy" commandfor="snippet" aria-label="Copy CSS code">
-  <!-- Decorative icon, rendered however the codebase renders icons -->
-  <span class="icon" aria-hidden="true"></span>
-  <!-- Visual-only confirmation bubble; the live region below does the announcing -->
-  <span class="tip" aria-hidden="true">Copied</span>
-</button>
+<span class="copy"> <!-- positioning context for the bubble -->
+  <!-- aria-label names the content being copied; several bare "Copy" buttons are indistinguishable to screen readers -->
+  <button type="button" class="copy-button" command="--copy" commandfor="snippet" aria-label="Copy CSS code">
+    <!-- Decorative icon, rendered however the codebase renders icons -->
+    <span class="icon" aria-hidden="true"></span>
+  </button>
+  <!-- The confirmation bubble IS the live region. Keep it empty until a copy, and outside the button:
+       a button's children are presentational, so a live region inside one is not reliably announced -->
+  <span class="tip" role="status"></span>
+</span>
 <pre><code id="snippet">…</code></pre>
-
-<!-- One shared live region announces success and failure -->
-<div id="copy-status" class="visually-hidden" role="status"></div>
 ```
 
 - Use `type="button"` so the button never submits a form.
@@ -51,9 +51,9 @@ async function copy(button, target, command = '--copy') {
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
-    // success: set [data-copied] on `button`, announce "Copied to clipboard"
+    report(button, true); // see Feedback below
   } catch {
-    // failure: announce "Copy failed. Select the text and copy it manually."
+    report(button, false); // clipboard access can be denied: show the failure too, not only announce it
   }
 }
 
@@ -64,10 +64,32 @@ document.addEventListener('command', (event) => {
 }, true);
 ```
 
-- **Feedback:** set `data-copied` on the button and remove it after a short timeout (about 2s, example value). Style that state by swapping the icon (copy to check) and showing a visual "Copied" bubble marked `aria-hidden`. Do not rely on color alone.
-- **Announce:** write to the live region by clearing it and setting the text on the next animation frame, so repeated identical messages are re-announced.
+- **One element for sighted and screen reader users:** `report()` sets `data-copied` (or `data-failed`) on the button and writes the message into the bubble, which is both the visible feedback and the live region. Sighted and screen reader users then get the same message for both outcomes. Keep messages short ("Copied", "Copy failed").
+- **Show and hide the bubble with `opacity`,** not `display: none` or `visibility: hidden`, which take it out of the accessibility tree so the text is not announced.
+- **Clean up:** after a short timeout, remove the state attributes and clear the bubble's text, so no stale "Copied" is left for screen reader browse mode.
+- **Not color alone:** swap the icon (copy to check) on success and use the bubble text for both outcomes.
 - **Repeat clicks:** clear the pending timeout and restart the animation instead of stacking timers.
 - **Reduced motion:** under `prefers-reduced-motion: reduce`, replace icon and bubble animations with an opacity fade.
+
+```js
+const timers = new WeakMap();
+
+function report(button, ok) {
+  const tip = button.nextElementSibling; // the role="status" bubble
+  clearTimeout(timers.get(button));
+  button.removeAttribute('data-copied');
+  button.removeAttribute('data-failed');
+  tip.textContent = ''; // clear first so an identical message is announced again
+  void button.offsetWidth; // restart the CSS animation
+  button.setAttribute(ok ? 'data-copied' : 'data-failed', '');
+  requestAnimationFrame(() => (tip.textContent = ok ? 'Copied' : 'Copy failed'));
+  timers.set(button, setTimeout(() => { // 2000ms is an example value
+    button.removeAttribute('data-copied');
+    button.removeAttribute('data-failed');
+    tip.textContent = '';
+  }, 2000));
+}
+```
 
 ### 3. Copy the current selection (optional)
 
