@@ -98,6 +98,9 @@ importers:
       '@types/omelette':
         specifier: ^0.4.5
         version: 0.4.5
+      ajv:
+        specifier: 8.17.1
+        version: 8.17.1
       cssomnom:
         specifier: ^0.1.4
         version: 0.1.4

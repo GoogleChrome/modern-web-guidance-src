@@ -80,6 +80,7 @@
     "@types/gh-pages": "^6.1.0",
     "@types/node": "^25.6.0",
     "@types/omelette": "^0.4.5",
+    "ajv": "8.17.1",
     "cssomnom": "^0.1.4",
     "diff": "^9.0.0",
     "esbuild": "^0.28.1",

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { calculateMetrics } from '../lib/metrics.ts';
 import type { EvalsReport } from '../lib/metrics.ts';
-import { NotPublishableError, PUBLIC_ASSERTION_FIELDS, PUBLIC_RUN_FIELDS, PUBLIC_SUITE_FIELDS } from './allowlists.ts';
+import { NotPublishableError, PUBLIC_ASSERTION_FIELDS, PUBLIC_RUN_FIELDS, PUBLIC_SUITE_FIELDS } from './public-fields.ts';
 import { rebuildEvals } from './rebuild-evals.ts';
 import { findLeaks, LeakError } from './scrub.ts';
 import { CLOUDTOP_HOST, FAKE_LDAP, REPO_CHECKOUT } from './fixtures/leak-samples.ts';

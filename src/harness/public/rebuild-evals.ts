@@ -5,7 +5,7 @@ import {
   PUBLIC_ASSERTION_FIELDS,
   PUBLIC_RUN_FIELDS,
   PUBLIC_SUITE_FIELDS,
-} from './allowlists.ts';
+} from './public-fields.ts';
 import { withoutGuides } from './overrides.ts';
 import { assertClean, scrubValue } from './scrub.ts';
 import type { LeakOptions } from './scrub.ts';
@@ -15,7 +15,7 @@ import type { LeakOptions } from './scrub.ts';
  *
  * The output is constructed from allowlisted fields rather than by deleting
  * keys from the raw report, so any field added to the harness later stays
- * private until it is listed in `allowlists.ts`. `summary` and `stats` are
+ * private until it is listed in `public-fields.ts`. `summary` and `stats` are
  * always recomputed from the published runs with the harness's own metrics
  * code, so they can never carry data from runs that were left out.
  *
