@@ -151,6 +151,10 @@ Analyze this failure and modify the existing grader file to fix these assertions
     ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to write a test for every expectation. Decide relevance from the base application in your workspace, not from the solution patches: do NOT test an expectation whose pattern only exists because a solution patch added it. Also skip expectations the base application already satisfies. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, add a comment listing every expectation number as TESTED or SKIPPED with a one-line reason.`
     : '';
 
+  const coverageInstruction = opts.isDisciplineGuide
+    ? ''
+    : `Every top-level expectation in \`${opts.expectationsFile}\` must have at least one dedicated \`test('...', ...)\` block whose name clearly describes that expectation. Do not omit, merge, or skip any expectation, including when revising the grader after a calibration failure.\n\n`;
+
   return `${prReviewContextBlock}${contextBlock}# GOAL
 Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${disciplineInstruction}${patchInstruction}
 
@@ -181,8 +185,8 @@ Base your grader's imports, workspace setup, helper function usage, and test str
   - **Linkedom Type Definitions**: [linkedom.d.ts](file://${opts.linkedomDtsPath})
   - **CSSOMNom Type Definitions**: [cssomnom.d.ts](file://${opts.cssomnomDtsPath})
 
-## 3. Granular Assertions: Single Assertion per Test
-Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
+## 3. Expectation Coverage & Granular Assertions
+${coverageInstruction}Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
 
 ## 4. Precision & Matching Rules
 - **Outcome-Based Assertions**: Verify structural and functional requirements in static checks rather than forcing a single narrow implementation when valid alternatives exist.

@@ -180,6 +180,31 @@ test('buildTargetGraderPrompt includes discipline scoping only for discipline gu
   assert.ok(!standardPrompt.includes('discipline guide'));
 });
 
+test('buildTargetGraderPrompt requires a test for every expectation only for non-discipline guides', () => {
+  const baseOpts = {
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
+    graderFile: 'grader.ts',
+    baseApp: 'devtools-times',
+    templateFile: 'template.grader.ts',
+  };
+  const coverageRule = 'Every top-level expectation in `expectations.md` must have at least one dedicated';
+
+  const standardPrompt = buildTargetGraderPrompt(baseOpts);
+  assert.ok(standardPrompt.includes(coverageRule));
+  assert.ok(standardPrompt.includes('Do not omit, merge, or skip any expectation'));
+
+  const retryPrompt = buildTargetGraderPrompt({ ...baseOpts, failureContext: 'Golden test failed' });
+  assert.ok(retryPrompt.includes(coverageRule));
+
+  const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(!disciplinePrompt.includes(coverageRule));
+});
+
 test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping only for discipline guides', () => {
   const baseSolutionOpts = {
     guideFile: 'guide.md',
