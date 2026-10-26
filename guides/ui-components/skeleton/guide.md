@@ -6,6 +6,7 @@ web-feature-ids:
   - color-mix
   - prefers-reduced-motion
   - inert
+  - cap
   - lh
   - line-clamp
   - user-select
@@ -53,13 +54,14 @@ Text, links and list items share one rule: hide the content, fill with the tone,
 
 ```css
 .skeleton[aria-busy="true"] :is(p, h2, li, a) {
-  /* lh units keep bars proportional to each element's own font size and line-height */
-  --bar-height: .68lh;
-  --bar-radius: .16lh; /* Example value; half the height gives fully round ends */
-  --bar-gap: .3lh;
+  /* Bar height follows the element's own glyphs, and the gap fills the rest of the line,
+     so bars sit on the real line pitch for any font size or leading. No per-element overrides. */
+  --bar-height: 1cap;
+  --bar-radius: calc(var(--bar-height) / 4); /* Half the height gives fully round ends */
+  --bar-gap: calc(1lh - var(--bar-height));
   --line-one: 78%;      /* Per-bar widths are overridable custom properties */
   display: block;
-  min-block-size: var(--bar-height);
+  min-block-size: calc(var(--lines, 1) * 1lh); /* Reserves the height of the real text lines */
   overflow: hidden;      /* Clips surplus real text so it cannot add lines */
   user-select: none;
   color: transparent;
@@ -79,6 +81,8 @@ Text, links and list items share one rule: hide the content, fill with the tone,
 }
 ```
 
+Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
+
 Optionally clamp the real text to the bar count as an enhancement, with a `--lines` custom property (default `1`). `overflow: hidden` and the `lh`-based `min-block-size` stay as the baseline, because `line-clamp` alone does not reserve height.
 
 ```css
@@ -89,11 +93,11 @@ Optionally clamp the real text to the bar count as an enhancement, with a `--lin
 }
 ```
 
-For more than one bar, append a `move to` and another closed rounded rectangle to the same `shape()` for each extra bar, offset vertically by `n × (--bar-height + --bar-gap)` and sized by its own `--line-two`, `--line-three` and so on. `shape()` cannot repeat a path from a count, so each bar is written out. Set `min-block-size` to the total height of all bars.
+For more than one bar, append a `move to` and another closed rounded rectangle to the same `shape()` for each extra bar, offset vertically by `n × (--bar-height + --bar-gap)` (which is `n × 1lh`) and sized by its own `--line-two`, `--line-three` and so on. `shape()` cannot repeat a path from a count, so each bar is written out. Set `--lines` to the bar count so `min-block-size` reserves the total height.
 
 | Element | Treatment |
 |---|---|
-| `h1`–`h3` | 1–2 bars with a larger `--bar-height`, so hierarchy matches the real template |
+| `h1`–`h3` | 1–2 bars, sized by the heading's own font size so hierarchy matches the real template |
 | `p` | 3 bars (2 in compact cards), last one shorter like a real paragraph |
 | `li` | 1 bar each, with a small circle subpath for the bullet; vary widths |
 | `a` | 1 short bar (`--line-one: 42%`) |

@@ -215,11 +215,13 @@
 
       /* Text bars: background fill, border-shape defines the bar outlines. */
       .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button) {
-        --bar-height: .68lh;
-        --bar-radius: .16lh;
-        --bar-gap: .3lh;
+        /* Bar size follows the glyphs (cap height) and the gap fills the rest of
+           the line, so bars sit on the real line pitch at any size and leading. */
+        --bar-height: 1cap;
+        --bar-radius: calc(var(--bar-height) / 4);
+        --bar-gap: calc(1lh - var(--bar-height));
         --line-one: 78%;
-        --block: var(--bar-height);
+        --block: calc(var(--lines, 1) * 1lh);
         display: block;
         inline-size: 100%;
         min-block-size: var(--block);
@@ -263,10 +265,8 @@
       }
 
       .skeleton[aria-busy="true"] li {
-        --bar-height: .56lh;
-        --bar-radius: .16lh;
-        --dot: .5lh;
-        --dot-gap: .4lh;
+        --dot: calc(var(--bar-height) * .8);
+        --dot-gap: .5em;
         --text-start: calc(var(--dot) + var(--dot-gap));
         --line-one: 72%;
         border-shape: shape(from 0 calc(var(--bar-height) / 2),
@@ -297,6 +297,7 @@
       .skeleton[aria-busy="true"] :is(input, button) {
         --bar-height: 2.4em;
         --bar-radius: .4em;
+        --block: var(--bar-height);
         --line-one: 100%;
         padding: 0;
         border-style: none;
@@ -310,12 +311,9 @@
       /* Line count is selected by element/layout rules, not a --lines variable:
          border-shape has to enumerate every bar path explicitly. */
       .skeleton[aria-busy="true"] h2 {
-        --bar-height: 1lh;
-        --bar-radius: .18lh;
         --line-one: 88%;
         --line-two: 64%;
         --lines: 2;
-        --block: calc(2 * var(--bar-height) + var(--bar-gap));
         border-shape: shape(from var(--bar-radius) 0,
             hline to calc(var(--line-one) - var(--bar-radius)),
             arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
@@ -339,13 +337,10 @@
       }
 
       .skeleton[aria-busy="true"] p {
-        --bar-height: .56lh;
-        --bar-radius: .16lh;
         --line-one: 100%;
         --line-two: 92%;
         --line-three: 68%;
         --lines: 3;
-        --block: calc(3 * var(--bar-height) + 2 * var(--bar-gap));
         border-shape: shape(from var(--bar-radius) 0,
             hline to calc(var(--line-one) - var(--bar-radius)),
             arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
@@ -382,7 +377,6 @@
         --line-one: 92%;
         --line-two: 62%;
         --lines: 2;
-        --block: calc(2 * var(--bar-height) + var(--bar-gap));
         border-shape: shape(from var(--bar-radius) 0,
             hline to calc(var(--line-one) - var(--bar-radius)),
             arc to var(--line-one) var(--bar-radius) of var(--bar-radius) var(--bar-radius) cw,
