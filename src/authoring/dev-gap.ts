@@ -6,7 +6,7 @@
  * format or `targets/`). For each guide without an open `gd pr` PR or a
  * leftover `gd-dev/` branch, runs `gd dev`, opens a PR with `gd pr`, then
  * returns to `main` and deletes the local branch. Also reruns open `gd pr` PRs
- * labeled `needs-eval-gen` or `needs-eval-run`.
+ * labeled `needs-dev-rerun`.
  *
  * Usage: gd dev-gap [--dry-run] [--limit <n>] [--targets <apps>]
  */
@@ -64,11 +64,7 @@ export interface FixEvalGapsOptions {
 }
 
 function getRerunMode(pr: OpenPr): DevPrRerunLabel | undefined {
-  const names = new Set((pr.labels ?? []).map(l => l.name));
-  // `needs-eval-gen` supersedes `needs-eval-run` since it also runs evals.
-  if (names.has('needs-eval-gen')) return 'needs-eval-gen';
-  if (names.has('needs-eval-run')) return 'needs-eval-run';
-  return undefined;
+  return (pr.labels ?? []).some(l => l.name === 'needs-dev-rerun') ? 'needs-dev-rerun' : undefined;
 }
 
 /** Decides which guides missing evals (or labeled PRs) to work on, and why any are skipped. */
@@ -117,7 +113,7 @@ export function planFixes(
   }
 
   // Also check open PRs that were not matched above (e.g. guides that already
-  // have evals on main) for `needs-eval-gen` / `needs-eval-run` rerun labels.
+  // have evals on main) for the `needs-dev-rerun` label.
   for (const pr of openPrs) {
     if (handledPrs.has(pr.number)) continue;
     const rerunMode = getRerunMode(pr);
