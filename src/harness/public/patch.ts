@@ -37,8 +37,21 @@ export function preparePatch(rawPatch: string): PreparedPatch {
   return capPatch(kept.join(''), droppedFiles);
 }
 
-/** Builds a single-file `diff --git` patch for a legacy run from the base app's copy and the agent's copy. */
-export function patchFromFiles(relPath: string, baseText: string | undefined, agentText: string): PreparedPatch {
+/**
+ * Builds a single-file `diff --git` patch for a legacy run from the base app's
+ * copy and the agent's copy. Binary targets (images, fonts) get git's one-line
+ * `Binary files ... differ` section instead of a byte-soup diff.
+ */
+export function patchFromFiles(relPath: string, base: Buffer | undefined, agent: Buffer): PreparedPatch {
+  if (isBinary(agent) || (base !== undefined && isBinary(base))) {
+    if (base !== undefined && base.equals(agent)) {
+      return { text: '', truncated: false, droppedFiles: [] };
+    }
+    const from = base === undefined ? '/dev/null' : `a/${relPath}`;
+    return { text: `diff --git a/${relPath} b/${relPath}\nBinary files ${from} and b/${relPath} differ\n`, truncated: false, droppedFiles: [] };
+  }
+  const baseText = base?.toString('utf8');
+  const agentText = agent.toString('utf8');
   const diff = generateUnifiedDiff(baseText ?? '', agentText, `a/${relPath}`, `b/${relPath}`)
     // The `diff` package emits a `====` separator line that git-style patches do not have.
     .replace(/^=+\n/m, '');
@@ -59,6 +72,21 @@ function splitPatch(patch: string): string[] {
     sections.push(patch.slice(starts[i], starts[i + 1]));
   }
   return sections;
+}
+
+/** Git's heuristic: a NUL byte in the first 8 KB means binary. Also catches invalid UTF-8. */
+export function isBinary(buffer: Buffer): boolean {
+  const head = buffer.subarray(0, 8000);
+  if (head.includes(0)) {
+    return true;
+  }
+  try {
+    // stream: true tolerates a multi-byte character cut off at the 8 KB boundary.
+    new TextDecoder('utf-8', { fatal: true }).decode(head, { stream: true });
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 function fileOfSection(section: string): string | undefined {

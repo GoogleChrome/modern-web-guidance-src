@@ -1,31 +1,45 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { mapWithConcurrency } from '../../core/concurrency.ts';
 import { baseAppsDir as defaultBaseAppsDir } from '../../core/paths.ts';
 import { extractSuiteSummary } from '../../dashboard/summary-extractor.js';
+import type { SuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { EvalsReport, RunResult } from '../lib/metrics.ts';
-import { overrideFor, selectSuites } from './allowlist.ts';
+import { applyRetention, overrideFor, selectSuites } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
-import { NotPublishableError } from './allowlists.ts';
 import { OverrideError } from './overrides.ts';
 import { patchFromFiles, preparePatch } from './patch.ts';
 import type { PreparedPatch } from './patch.ts';
+import { NotPublishableError } from './public-fields.ts';
 import { rebuildEvals } from './rebuild-evals.ts';
 import type { PublicEvals } from './rebuild-evals.ts';
 import { assertClean, LeakError, scrubString } from './scrub.ts';
-import type { SuiteStore } from './suite-store.ts';
+import type { SuiteRef, SuiteStore } from './suite-store.ts';
 
 /**
  * Builds the public copy of eval suites: `public-evals/<suiteId>/evals.json`
  * plus, per run, `agent.patch` and `modern-web.log`, and a `suites.gen.json`
  * manifest over everything built. Each suite is independent; one failing suite
  * is reported and skipped without affecting the others.
+ *
+ * Builds are incremental: `build-state.json` records which raw generation and
+ * overrides each published suite was built from, and unchanged suites are left
+ * alone. Raw nightlies are immutable once uploaded, so in steady state an
+ * hourly run costs one listing call plus whatever is new.
  */
 
 /** Directory name under the output root. Served at the same path on GitHub Pages. */
 export const PUBLIC_EVALS_DIR = 'public-evals';
 
-/** How many runs' artifacts are fetched at once. Each run is 2–3 small object reads. */
-const RUN_CONCURRENCY = 16;
+/** Bump when the public output format changes, so every suite is rebuilt once. */
+export const BUILDER_VERSION = 2;
+
+/** How many suites are built at once, and how many of one suite's runs are fetched at once. */
+const SUITE_CONCURRENCY = 4;
+const RUN_CONCURRENCY = 32;
+
+const STATE_FILE = 'build-state.json';
+const MANIFEST_FILE = 'suites.gen.json';
 
 export interface BuildOptions {
   store: SuiteStore;
@@ -36,27 +50,69 @@ export interface BuildOptions {
   baseAppsDir?: string;
   /** Tokens (e.g. operator LDAPs) that must not appear anywhere in the output. */
   forbiddenTokens?: readonly string[];
+  /** Rebuild every selected suite even if its recorded state matches. */
+  force?: boolean;
 }
 
 export interface SuiteBuildResult {
   suiteId: string;
-  status: 'built' | 'skipped';
+  status: 'built' | 'skipped' | 'unchanged' | 'removed';
   /** Why the suite was skipped. */
   reason?: string;
   files: number;
   bytes: number;
   truncatedPatches: number;
+  /** Manifest entry, for built suites. */
+  summary?: SuiteSummary;
 }
 
-/** Builds every suite the allowlist selects, then rewrites the manifest. */
+/**
+ * What each selected suite was last built (or skipped) from. Lives at
+ * `public-evals/build-state.json`. Skipped suites are remembered too, so a
+ * suite with an unreleased model is not downloaded again every hour; it is
+ * retried when its generation, overrides, or the released-model list change.
+ */
+interface BuildState {
+  builderVersion: number;
+  suites: Record<string, SuiteState>;
+}
+
+interface SuiteState {
+  generation: string;
+  excludeGuides: string[];
+  /** Present when the suite was skipped; the inputs that could change the outcome are recorded alongside. */
+  skipped?: { reason: string; releasedModels: string[] };
+}
+
+/**
+ * Builds every suite the allowlist selects (minus retention), removes suites
+ * that are no longer selected, and rewrites the manifest.
+ */
 export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteBuildResult[]> {
-  const candidates = await options.store.listSuiteIds();
-  const selected = selectSuites(options.allowlist, candidates);
-  const results: SuiteBuildResult[] = [];
-  for (const suiteId of selected) {
-    results.push(await buildSuite(suiteId, options));
+  const refs = await options.store.listSuites();
+  const refById = new Map(refs.map(ref => [ref.id, ref]));
+  const eligible = selectSuites(options.allowlist, refs.map(ref => ref.id));
+  const selected = applyRetention(options.allowlist, eligible.map(id => refById.get(id)!));
+
+  const state = readState(options.outDir);
+  const results = await mapWithConcurrency(selected, SUITE_CONCURRENCY, async suiteId => {
+    const ref = refById.get(suiteId)!;
+    const previous = options.force ? undefined : unchangedOutcome(state, ref, options.allowlist);
+    if (previous) {
+      return previous;
+    }
+    return buildSuite(suiteId, options);
+  });
+
+  for (const suiteId of publishedSuiteIds(options.outDir)) {
+    if (!selected.includes(suiteId)) {
+      fs.rmSync(path.join(options.outDir, PUBLIC_EVALS_DIR, suiteId), { recursive: true, force: true });
+      results.push({ suiteId, status: 'removed', files: 0, bytes: 0, truncatedPatches: 0 });
+    }
   }
-  writeManifest(options.outDir);
+
+  writeState(options.outDir, results, refById, options.allowlist);
+  writeManifest(options.outDir, results);
   return results;
 }
 
@@ -92,14 +148,13 @@ export async function buildSuite(suiteId: string, options: BuildOptions): Promis
     const runs = Object.entries(evals.results).flatMap(([key, publicRuns]) =>
       publicRuns.map((publicRun, i) => ({ publicRun, rawRun: raw.results[key][i], runPath: runRelativePath(key, raw.results[key][i].runNumber) })),
     );
-    for (const chunk of chunked(runs, RUN_CONCURRENCY)) {
-      await Promise.all(chunk.map(async ({ publicRun, rawRun, runPath }) => {
-        publicRun.files = await writeRunArtifacts(suiteId, runPath, rawRun, options, writer);
-      }));
-    }
+    await mapWithConcurrency(runs, RUN_CONCURRENCY, async ({ publicRun, rawRun, runPath }) => {
+      publicRun.files = await writeRunArtifacts(suiteId, runPath, rawRun, options, writer);
+    });
 
     writer.writeJson('evals.json', evals);
-    return { suiteId, status: 'built', reason: undefined, ...writer.totals() };
+    const summary = extractSuiteSummary(suiteId, evals) ?? undefined;
+    return { suiteId, status: 'built', ...writer.totals(), summary };
   } catch (err) {
     fs.rmSync(suiteDir, { recursive: true, force: true });
     if (err instanceof NotPublishableError || err instanceof LeakError || err instanceof OverrideError) {
@@ -110,22 +165,25 @@ export async function buildSuite(suiteId: string, options: BuildOptions): Promis
 }
 
 /**
- * Rewrites `<outDir>/public-evals/suites.gen.json` from every suite directory
- * present, so the manifest always reflects exactly what is published.
+ * Rewrites `<outDir>/public-evals/suites.gen.json` so it lists exactly the
+ * suite directories present. Entries come from this run's results when
+ * available, then from the previous manifest, and only as a last resort from
+ * re-reading a suite's `evals.json`.
  */
-export function writeManifest(outDir: string): number {
+export function writeManifest(outDir: string, results: readonly SuiteBuildResult[] = []): number {
   const root = path.join(outDir, PUBLIC_EVALS_DIR);
   fs.mkdirSync(root, { recursive: true });
-  const entries = fs
-    .readdirSync(root, { withFileTypes: true })
-    .filter(entry => entry.isDirectory() && fs.existsSync(path.join(root, entry.name, 'evals.json')))
-    .map(entry => {
-      const evals = JSON.parse(fs.readFileSync(path.join(root, entry.name, 'evals.json'), 'utf8')) as PublicEvals;
-      return extractSuiteSummary(entry.name, evals);
-    })
-    .filter(summary => summary !== null)
+
+  const fresh = new Map(results.filter(r => r.summary).map(r => [r.suiteId, r.summary!]));
+  const previous = readManifest(outDir);
+
+  const entries = publishedSuiteIds(outDir)
+    .map(id => fresh.get(id) ?? previous.get(id) ?? summarizeFromDisk(root, id))
+    .filter((summary): summary is SuiteSummary => summary !== null)
     .sort((a, b) => a.testId.localeCompare(b.testId));
-  fs.writeFileSync(path.join(root, 'suites.gen.json'), JSON.stringify(entries, null, 2) + '\n');
+
+  // Compact: at hundreds of suites the manifest is the largest thing the landing page fetches.
+  fs.writeFileSync(path.join(root, MANIFEST_FILE), JSON.stringify(entries) + '\n');
   return entries.length;
 }
 
@@ -134,6 +192,99 @@ export function runRelativePath(resultKey: string, runNumber: number): string {
   const [task, guide, runType] = resultKey.split(' - ');
   return `${runNumber}/${guide}/${task}/${runType}`;
 }
+
+// --- Incremental state ---
+
+/** The recorded outcome for a suite if nothing that feeds the build has changed since; otherwise undefined. */
+function unchangedOutcome(state: BuildState, ref: SuiteRef, allowlist: PublicAllowlist): SuiteBuildResult | undefined {
+  const recorded = state.suites[ref.id];
+  if (!recorded || state.builderVersion !== BUILDER_VERSION || recorded.generation !== ref.generation) {
+    return undefined;
+  }
+  if (!sameSet(recorded.excludeGuides, overrideFor(allowlist, ref.id)?.excludeGuides ?? [])) {
+    return undefined;
+  }
+  if (recorded.skipped) {
+    if (!sameSet(recorded.skipped.releasedModels, allowlist.releasedModels)) {
+      return undefined;
+    }
+    return { suiteId: ref.id, status: 'skipped', reason: recorded.skipped.reason, files: 0, bytes: 0, truncatedPatches: 0 };
+  }
+  return { suiteId: ref.id, status: 'unchanged', files: 0, bytes: 0, truncatedPatches: 0 };
+}
+
+function readState(outDir: string): BuildState {
+  const file = path.join(outDir, PUBLIC_EVALS_DIR, STATE_FILE);
+  if (!fs.existsSync(file)) {
+    return { builderVersion: BUILDER_VERSION, suites: {} };
+  }
+  const state = JSON.parse(fs.readFileSync(file, 'utf8')) as BuildState;
+  // Drop state for built suites whose directory is gone, so a manual delete forces a rebuild.
+  const present = new Set(publishedSuiteIds(outDir));
+  state.suites = Object.fromEntries(
+    Object.entries(state.suites).filter(([id, suite]) => suite.skipped || present.has(id)),
+  );
+  return state;
+}
+
+/** Written once at the end; a crash mid-run only means the unfinished suites rebuild next time. */
+function writeState(
+  outDir: string,
+  results: readonly SuiteBuildResult[],
+  refById: Map<string, SuiteRef>,
+  allowlist: PublicAllowlist,
+): void {
+  const next: BuildState = { builderVersion: BUILDER_VERSION, suites: {} };
+  for (const result of results) {
+    const ref = refById.get(result.suiteId);
+    if (!ref || result.status === 'removed') {
+      continue;
+    }
+    const entry: SuiteState = {
+      generation: ref.generation,
+      excludeGuides: overrideFor(allowlist, result.suiteId)?.excludeGuides ?? [],
+    };
+    if (result.status === 'skipped') {
+      entry.skipped = { reason: result.reason ?? '', releasedModels: [...allowlist.releasedModels] };
+    }
+    next.suites[result.suiteId] = entry;
+  }
+  fs.mkdirSync(path.join(outDir, PUBLIC_EVALS_DIR), { recursive: true });
+  fs.writeFileSync(path.join(outDir, PUBLIC_EVALS_DIR, STATE_FILE), JSON.stringify(next, null, 2) + '\n');
+}
+
+function sameSet(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && [...a].sort().every((value, i) => value === [...b].sort()[i]);
+}
+
+// --- Manifest helpers ---
+
+function publishedSuiteIds(outDir: string): string[] {
+  const root = path.join(outDir, PUBLIC_EVALS_DIR);
+  if (!fs.existsSync(root)) {
+    return [];
+  }
+  return fs
+    .readdirSync(root, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && fs.existsSync(path.join(root, entry.name, 'evals.json')))
+    .map(entry => entry.name);
+}
+
+function readManifest(outDir: string): Map<string, SuiteSummary> {
+  const file = path.join(outDir, PUBLIC_EVALS_DIR, MANIFEST_FILE);
+  if (!fs.existsSync(file)) {
+    return new Map();
+  }
+  const entries = JSON.parse(fs.readFileSync(file, 'utf8')) as SuiteSummary[];
+  return new Map(entries.map(entry => [entry.testId, entry]));
+}
+
+function summarizeFromDisk(root: string, suiteId: string): SuiteSummary | null {
+  const evals = JSON.parse(fs.readFileSync(path.join(root, suiteId, 'evals.json'), 'utf8')) as PublicEvals;
+  return extractSuiteSummary(suiteId, evals);
+}
+
+// --- Per-run artifacts ---
 
 /** Writes the per-run public artifacts and returns their names. */
 async function writeRunArtifacts(
@@ -178,16 +329,8 @@ async function publicPatchFor(
     return undefined;
   }
   const basePath = path.join(options.baseAppsDir ?? defaultBaseAppsDir, rawRun.baseApp, rawRun.targetFile);
-  const baseText = fs.existsSync(basePath) ? fs.readFileSync(basePath, 'utf8') : undefined;
-  return patchFromFiles(rawRun.targetFile, baseText, agentFile.toString('utf8'));
-}
-
-function chunked<T>(items: readonly T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
+  const base = fs.existsSync(basePath) ? fs.readFileSync(basePath) : undefined;
+  return patchFromFiles(rawRun.targetFile, base, agentFile);
 }
 
 /** Writes files under one suite's output directory, scrubbing text and counting totals. */
@@ -214,7 +357,7 @@ class SuiteWriter {
 
   writeJson(relPath: string, value: unknown): void {
     assertClean(value, `${path.basename(this.suiteDir)}/${relPath}`, { forbiddenTokens: this.forbiddenTokens });
-    this.write(relPath, JSON.stringify(value, null, 2) + '\n');
+    this.write(relPath, JSON.stringify(value) + '\n');
   }
 
   totals(): { files: number; bytes: number; truncatedPatches: number } {

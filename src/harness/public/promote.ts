@@ -1,13 +1,13 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { cBold, cCyan, cGreen, cRed, cYellow } from '../../core/colors.ts';
-import { dashboardDir, outDir as defaultOutRoot, rootDir } from '../../core/paths.ts';
-import { globToRegExp, loadAllowlist, validateAllowlistPolicy } from './allowlist.ts';
+import { outDir as defaultOutRoot, rootDir } from '../../core/paths.ts';
+import { DEFAULT_ALLOWLIST_PATH, globToRegExp, loadValidatedAllowlist, validateAllowlistPolicy } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
 import { buildSuite, PUBLIC_EVALS_DIR, writeManifest } from './builder.ts';
+import { forbiddenTokens } from './forbidden-tokens.ts';
 import { checkoutPublished, publishPublicEvals } from './publish.ts';
 import { GcsSuiteStore } from './suite-store.ts';
 
@@ -28,7 +28,7 @@ import { GcsSuiteStore } from './suite-store.ts';
  * pull request even when `--now` has already updated the site.
  */
 
-const ALLOWLIST_PATH = path.join(dashboardDir, 'public-suites-allowlist.json');
+const ALLOWLIST_PATH = DEFAULT_ALLOWLIST_PATH;
 
 /** The result of applying a command to the allowlist, before anything is written. */
 export interface AllowlistChange {
@@ -92,6 +92,7 @@ export function writeAllowlist(filePath: string, allowlist: PublicAllowlist): vo
     exclude: allowlist.exclude,
     overrides: allowlist.overrides,
     releasedModels: allowlist.releasedModels,
+    ...(allowlist.retention ? { retention: allowlist.retention } : {}),
   };
   fs.writeFileSync(filePath, JSON.stringify(ordered, null, 2) + '\n');
 }
@@ -122,7 +123,7 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const current = loadAllowlist(ALLOWLIST_PATH);
+  const current = loadValidatedAllowlist(ALLOWLIST_PATH);
   const change = command === 'promote'
     ? applyPromote(current, suiteId)
     : applyUnpublish(current, suiteId, values.guide);
@@ -202,7 +203,7 @@ async function updateSiteNow(command: string, suiteId: string, allowlist: Public
         store: new GcsSuiteStore(),
         outDir,
         allowlist,
-        forbiddenTokens: [os.userInfo().username],
+        forbiddenTokens: forbiddenTokens(),
       });
       if (result.status === 'skipped') {
         throw new Error(`${suiteId} was not published: ${result.reason}`);
@@ -210,7 +211,7 @@ async function updateSiteNow(command: string, suiteId: string, allowlist: Public
       console.log(`${cCyan('site')} built ${suiteId} (${result.files} files)`);
     }
 
-    const count = writeManifest(outDir);
+    const count = writeManifest(outDir, []);
     await publishPublicEvals(outDir, { message: `public-evals: ${command} ${suiteId}` });
     console.log(cGreen(`published ${count} suite(s) to gh-pages`));
   } finally {

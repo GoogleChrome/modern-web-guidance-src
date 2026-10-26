@@ -3,62 +3,25 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { EvalsReport } from '../lib/metrics.ts';
 import type { PublicAllowlist } from './allowlist.ts';
 import { buildSelectedSuites, buildSuite, runRelativePath, writeManifest } from './builder.ts';
 import type { BuildOptions } from './builder.ts';
 import type { PublicEvals } from './rebuild-evals.ts';
 import { LocalSuiteStore } from './suite-store.ts';
-import { CLOUDTOP_HOST, OTHER_FAKE_LDAP, REPO_CHECKOUT } from './fixtures/leak-samples.ts';
+import { CLOUDTOP_HOST } from './fixtures/leak-samples.ts';
+import { FIXTURE_MODEL, FIXTURE_SUITE, makeFixtureStore, PASSKEY_RUN, SECURITY_RUN, write } from './fixtures/make-store.ts';
 
-const FIXTURE_PATH = path.join(import.meta.dirname, 'fixtures', 'nightly-sample.evals.json');
-const SUITE = 'nightly-2026-10-20_20-43-48-codex_cli';
-const SECURITY_RUN = '1/security/daily-grind/guided';
-const PASSKEY_RUN = '1/passkey-authentication/task/guided';
+const SUITE = FIXTURE_SUITE;
 
 const allowlist: PublicAllowlist = {
   include: ['nightly-*-codex_cli', 'nightly-*-claude_code'],
   exclude: [],
   overrides: [],
-  releasedModels: ['example-model'],
+  releasedModels: [FIXTURE_MODEL],
 };
 
-/** A bucket-shaped directory with one publishable suite, one unreleased-model suite, and one non-nightly suite. */
-function makeStore(): { root: string; baseApps: string } {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-store-'));
-  const fixture = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf8')) as EvalsReport;
-
-  const suite = path.join(root, SUITE);
-  write(path.join(suite, 'evals.json'), JSON.stringify(fixture));
-  write(
-    path.join(suite, SECURITY_RUN, 'agent.patch'),
-    'diff --git a/src/app.ts b/src/app.ts\n--- a/src/app.ts\n+++ b/src/app.ts\n@@ -0,0 +1 @@\n+ok\n' +
-      'diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml\n--- a/pnpm-lock.yaml\n+++ b/pnpm-lock.yaml\n@@ -0,0 +1 @@\n+lock\n',
-  );
-  write(path.join(suite, SECURITY_RUN, 'modern-web.log'), `GET /guides/security from ${REPO_CHECKOUT}/guides\n`);
-  write(path.join(suite, SECURITY_RUN, 'agent_stderr.log'), `at /usr/local/google/home/${OTHER_FAKE_LDAP}/secret.ts\n`);
-  write(path.join(suite, SECURITY_RUN, 'session-1.html'), '<html>trajectory</html>');
-  write(path.join(suite, PASSKEY_RUN, 'index.html'), '<p>agent version</p>\n');
-  write(path.join(suite, PASSKEY_RUN, 'modern-web.log'), 'GET /guides/passkeys\n');
-
-  const unreleased = path.join(root, 'nightly-2026-10-21_00-00-00-claude_code');
-  write(path.join(unreleased, 'evals.json'), JSON.stringify({ ...fixture, agent: 'claude_code', model: 'secret-model' }));
-
-  const adhoc = path.join(root, 'test-2026-07-30T13-02-05');
-  write(path.join(adhoc, 'evals.json'), JSON.stringify(fixture));
-
-  const baseApps = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-base-apps-'));
-  write(path.join(baseApps, 'daily-grind', 'index.html'), '<p>base version</p>\n');
-  return { root, baseApps };
-}
-
-function write(file: string, contents: string): void {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, contents);
-}
-
 function makeOptions(overrides: Partial<BuildOptions> = {}): BuildOptions & { storeRoot: string } {
-  const { root, baseApps } = makeStore();
+  const { root, baseApps } = makeFixtureStore();
   return {
     store: new LocalSuiteStore(root),
     storeRoot: root,
@@ -200,8 +163,109 @@ describe('buildSelectedSuites + writeManifest', () => {
     const options = makeOptions();
     await buildSelectedSuites(options);
     fs.rmSync(path.join(options.outDir, 'public-evals', SUITE), { recursive: true });
-    assert.equal(writeManifest(options.outDir), 0);
+    assert.equal(writeManifest(options.outDir, []), 0);
     const manifest = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', 'suites.gen.json'), 'utf8'));
     assert.deepEqual(manifest, []);
+  });
+});
+
+describe('incremental builds', () => {
+  function stateFor(outDir: string) {
+    return JSON.parse(fs.readFileSync(path.join(outDir, 'public-evals', 'build-state.json'), 'utf8'));
+  }
+
+  test('second run leaves unchanged suites alone and records state', async () => {
+    const options = makeOptions();
+    const first = await buildSelectedSuites(options);
+    assert.equal(first.find(r => r.suiteId === SUITE)?.status, 'built');
+    assert.ok(stateFor(options.outDir).suites[SUITE].generation);
+
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'unchanged');
+    assert.equal(second.find(r => r.suiteId === 'nightly-2026-10-21_00-00-00-claude_code')?.status, 'skipped');
+  });
+
+  test('a skipped suite is remembered and not re-fetched until its inputs change', async () => {
+    const options = makeOptions();
+    const unreleased = 'nightly-2026-10-21_00-00-00-claude_code';
+    const reads: string[] = [];
+    const inner = options.store;
+    options.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => { reads.push(relPath); return inner.readFile(relPath); },
+    };
+
+    await buildSelectedSuites(options);
+    assert.match(stateFor(options.outDir).suites[unreleased].skipped.reason, /secret-model/);
+
+    reads.length = 0;
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === unreleased)?.status, 'skipped');
+    assert.deepEqual(reads.filter(r => r.startsWith(unreleased)), [], 'skipped suite must not be fetched again');
+
+    // Releasing the model is a reason to try again.
+    const released = { ...options, allowlist: { ...allowlist, releasedModels: [FIXTURE_MODEL, 'secret-model'] } };
+    const third = await buildSelectedSuites(released);
+    assert.equal(third.find(r => r.suiteId === unreleased)?.status, 'built');
+  });
+
+  test('a changed raw evals.json triggers a rebuild', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const evalsPath = path.join(options.storeRoot, SUITE, 'evals.json');
+    const future = new Date(Date.now() + 60_000);
+    fs.utimesSync(evalsPath, future, future);
+
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'built');
+  });
+
+  test('a new excludeGuides override triggers a rebuild', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const withOverride = { ...options, allowlist: { ...allowlist, overrides: [{ id: SUITE, excludeGuides: ['security'] }] } };
+    const second = await buildSelectedSuites(withOverride);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'built');
+    assert.deepEqual(stateFor(options.outDir).suites[SUITE].excludeGuides, ['security']);
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, SECURITY_RUN)));
+  });
+
+  test('--force rebuilds an unchanged suite', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const forced = await buildSelectedSuites({ ...options, force: true });
+    assert.equal(forced.find(r => r.suiteId === SUITE)?.status, 'built');
+  });
+
+  test('a suite that drops out of selection is removed from disk, state, and manifest', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const excluded = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, exclude: [SUITE] } });
+    assert.equal(excluded.find(r => r.suiteId === SUITE)?.status, 'removed');
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+    assert.ok(!(SUITE in stateFor(options.outDir).suites));
+    const manifest = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', 'suites.gen.json'), 'utf8'));
+    assert.deepEqual(manifest, []);
+  });
+
+  test('retention drops old suites', async () => {
+    const options = makeOptions();
+    const evalsPath = path.join(options.storeRoot, SUITE, 'evals.json');
+    const old = new Date(Date.now() - 200 * 24 * 60 * 60 * 1000);
+    fs.utimesSync(evalsPath, old, old);
+    const results = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, retention: { maxAgeDays: 90 } } });
+    assert.equal(results.find(r => r.suiteId === SUITE), undefined);
+  });
+
+  test('manifest reuses previous entries without re-reading evals.json', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const manifestPath = path.join(options.outDir, 'public-evals', 'suites.gen.json');
+    const before = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    // Corrupt the on-disk evals.json: if writeManifest re-parsed it, this would throw.
+    fs.writeFileSync(path.join(options.outDir, 'public-evals', SUITE, 'evals.json'), '{not json');
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'unchanged');
+    assert.deepEqual(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), before);
   });
 });
