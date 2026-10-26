@@ -160,7 +160,7 @@ Style the real `<img>`, `<video>` or `<canvas>` in place. Do not swap in a place
 ```
 
 - Use a length for `object-position`. A percentage does not move the picture out of the box.
-- DO NOT use `content: linear-gradient()` to remove the picture: it does not work in Safari, or on `<video>` and `<canvas>`.
+- DO NOT use `content: linear-gradient()` to remove the picture: it is not interoperable and does not work on `<video>` or `<canvas>`.
 - Neither technique works on an inline `<svg>`.
 - Remove the `controls` attribute from a skeleton `<video>`, since the browser's controls still draw over the placeholder.
 
@@ -214,7 +214,7 @@ Paint the shimmer on each placeholder shape's own `background`, not on a parent 
 
 With `background-attachment: fixed` the sweep is sized to the viewport, so a small loading area catches the highlight only briefly on each pass. Shorten the duration for small areas.
 
-DO NOT animate the `border-shape` path or the bars' visibility: it flashes in Chrome. Animate the background.
+DO NOT animate the `border-shape` path or the bars' visibility: it flashes. Animate the background.
 
 MANDATORY: Apply the shimmer (gradient and animation) only under `@media (prefers-reduced-motion: no-preference)`. Without it, the placeholders stay visible as a flat `--skeleton-tone` fill.
 
@@ -225,6 +225,14 @@ MANDATORY: Apply the shimmer (gradient and animation) only under `@media (prefer
 {{ BASELINE_STATUS("border-shape") }}
 
 If your Baseline target does not support `border-shape`, use `@supports (border-shape: shape(from 0 0, close))` to scope the bar shapes, and let other browsers show a solid `--skeleton-tone` fill with `border-radius` on the same elements, sized by `min-block-size` in `lh` units. Multi-line bars and variable lengths are the progressive enhancement. The layout reservation still prevents shift.
+
+```css
+@supports not (border-shape: shape(from 0 0, close)) {
+  .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+    border-radius: var(--bar-radius);
+  }
+}
+```
 
 ### @function
 

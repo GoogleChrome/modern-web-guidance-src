@@ -263,6 +263,14 @@
         text-decoration: none;
       }
 
+      /* Without border-shape the elements show as solid rounded blocks. The
+         height reservation still prevents layout shift. */
+      @supports not (border-shape: shape(from 0 0, close)) {
+        .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+          border-radius: var(--bar-radius);
+        }
+      }
+
       /* Without line-clamp, cap the height at the bar count so overflow: hidden
          clips surplus text. min-block-size alone would let the box grow. */
       @supports not (line-clamp: 1) {
