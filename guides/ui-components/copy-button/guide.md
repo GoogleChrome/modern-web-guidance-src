@@ -66,6 +66,7 @@ document.addEventListener('command', (event) => {
 
 - **One element for sighted and screen reader users:** `report()` sets `data-copied` (or `data-failed`) on the button and writes the message into the bubble, which is both the visible feedback and the live region. Sighted and screen reader users then get the same message for both outcomes. Keep messages short ("Copied", "Copy failed").
 - **Show and hide the bubble with `opacity`,** not `display: none` or `visibility: hidden`, which take it out of the accessibility tree so the text is not announced.
+- **Announce repeats:** VoiceOver skips a message identical to the previous one, even if the region was emptied in between and even if it comes from a different region. Track the last message once for the whole page (not per button, and not by reading the bubble, which is cleared) and, when a message repeats, append a no-break space (`\u00A0`) so it differs. It is not read aloud. Do not use `ariaNotify()` for this; it is not reliable across screen readers yet.
 - **Clean up:** after a short timeout, remove the state attributes and clear the bubble's text, so no stale "Copied" is left for screen reader browse mode.
 - **Not color alone:** swap the icon (copy to check) on success and use the bubble text for both outcomes.
 - **Repeat clicks:** clear the pending timeout and restart the animation instead of stacking timers. DO NOT disable the button while showing feedback: copying is idempotent, and disabling drops keyboard focus, announces a misleading unavailable state, and blocks retrying after a failure.
@@ -73,16 +74,20 @@ document.addEventListener('command', (event) => {
 
 ```js
 const timers = new WeakMap();
+let lastMessage = ''; // page-wide: VoiceOver compares with the previous message across regions
 
 function report(button, ok) {
   const tip = button.nextElementSibling; // the role="status" bubble
   clearTimeout(timers.get(button));
   button.removeAttribute('data-copied');
   button.removeAttribute('data-failed');
-  tip.textContent = ''; // clear first so an identical message is announced again
+  let message = ok ? 'Copied' : 'Copy failed';
+  if (message === lastMessage) message += '\u00A0'; // differs from the last one, so it is announced
+  lastMessage = message;
+  tip.textContent = '';
   void button.offsetWidth; // restart the CSS animation
   button.setAttribute(ok ? 'data-copied' : 'data-failed', '');
-  requestAnimationFrame(() => (tip.textContent = ok ? 'Copied' : 'Copy failed'));
+  requestAnimationFrame(() => (tip.textContent = message));
   timers.set(button, setTimeout(() => { // 2000ms is an example value
     button.removeAttribute('data-copied');
     button.removeAttribute('data-failed');
@@ -90,6 +95,8 @@ function report(button, ok) {
   }, 2000));
 }
 ```
+
+{# Maintainer note: the no-break space workaround is for a VoiceOver bug (WebKit bug 222189, rdar://74532730) and is what WordPress's a11y package does (packages/a11y/src/shared/filter-message.ts). ariaNotify() was tried and rejected: missing in a Safari that should have it, and on iPhone VoiceOver read the button name over the announcement. Revisit when it is dependable. #}
 
 ### 3. Copy the current selection (optional)
 

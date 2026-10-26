@@ -397,6 +397,8 @@
 
     let selectedText = '';
     const timers = new WeakMap();
+    // Page-wide: VoiceOver skips a message equal to the previous one, even from another region
+    let lastMessage = '';
 
     /* ---------- Helpers ---------- */
 
@@ -423,12 +425,15 @@
       clearTimeout(timers.get(button));
       button.removeAttribute('data-copied');
       button.removeAttribute('data-failed');
-      // Clear first and set the text on the next frame so a repeat message is announced again.
-      // The bubble is at opacity 0 as its animation restarts, so the empty frame is not visible.
+      let message = ok ? 'Copied' : 'Copy failed';
+      // A repeat gets a no-break space so it differs from the last message and is announced again
+      if (message === lastMessage) message += '\u00A0';
+      lastMessage = message;
+      // The bubble is at opacity 0 as its animation restarts, so the empty frame is not visible
       tip.textContent = '';
       void button.offsetWidth; // restart animation
       button.setAttribute(ok ? 'data-copied' : 'data-failed', '');
-      requestAnimationFrame(() => (tip.textContent = ok ? 'Copied' : 'Copy failed'));
+      requestAnimationFrame(() => (tip.textContent = message));
 
       timers.set(button, setTimeout(() => {
         button.removeAttribute('data-copied');
