@@ -1,1 +1,1 @@
-- Let users view and manage the passkeys registered to their account.
+- Add a passkey management section to the account settings in The DevTools Times where signed-in readers can view their registered passkeys, update their display names, or remove keys they no longer use while keeping their browser authenticator in sync.
