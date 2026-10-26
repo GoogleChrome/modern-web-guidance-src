@@ -57,7 +57,7 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 ## Key constraints
 
 - **DO** use `column-rule` / `row-rule` / `rule` on the container for flex, grid, or multicol dividers.
-- **DO NOT** fake dividers with item `border` (changes box size, needs `:last-child` resets, breaks on wrap).
+- **DO NOT** fake dividers with item `border` (changes box size, needs `:last-child` resets, breaks on wrap). The only exception is inside an `@supports not (...)` block, as in the fallback below.
 - **DO NOT** inject `<hr>`, `<li aria-hidden>`, or `<div class="divider">` elements or pseudo-elements.
 - **DO NOT** set `gap: 0` and expect a rule to show.
 - **DO NOT** use grid plus rules to present tabular data; use `<table>`.
@@ -70,11 +70,14 @@ Draw dividers between items of a flex, grid, or multicol container with CSS gap 
 
 Gap decorations are decorative, so the modern approach needs no fallback by default: unsupported browsers render plain gaps and all content stays usable (graceful degradation).
 
-If your Baseline target requires visible dividers, a fallback is only robust for the simplest case, a single-column stack:
+If your Baseline target requires visible dividers, a fallback is only robust for the simplest case, a single-column stack. Keep the gap non-zero and split it around the border so the spacing matches the rule, instead of adding padding or margin on top of the gap:
 
 ```css
+.stack { display: flex; flex-direction: column; gap: 1rem; row-rule: 1px solid currentColor; }
+
 @supports not (row-rule: 1px solid currentColor) {
-  .stack > * + * { border-block-start: 1px solid currentColor; padding-block-start: 1rem; }
+  .stack { gap: 0.5rem; }
+  .stack > * + * { border-block-start: 1px solid currentColor; padding-block-start: 0.5rem; }
 }
 ```
 

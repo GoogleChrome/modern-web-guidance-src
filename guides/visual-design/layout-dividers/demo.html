@@ -195,13 +195,12 @@
     .fallback {
       display: flex;
       flex-direction: column;
-      gap: 0;
-      @supports (row-rule: 1px solid red) {
-        gap: 1rem;
-        row-rule: 1px solid var(--rule);
-      }
-      @supports not (row-rule: 1px solid red) {
-        > * + * { border-block-start: 1px solid var(--rule); padding-block-start: 1rem; margin-block-start: 1rem; }
+      gap: 1rem;
+      row-rule: 1px solid var(--rule);
+      /* Split the gap around the border so spacing matches the rule. */
+      @supports not (row-rule: 1px solid var(--rule)) {
+        gap: 0.5rem;
+        > * + * { border-block-start: 1px solid var(--rule); padding-block-start: 0.5rem; }
       }
     }
 
@@ -337,7 +336,7 @@
     </div>
 
     <h2>13. Fallback pattern</h2>
-    <p class="note">Gap decorations when supported; a border on adjacent siblings otherwise (only reliable for a simple single-column stack).</p>
+    <p class="note">Gap decorations when supported; a border on adjacent siblings otherwise, with the gap halved so the spacing matches (only reliable for a simple single-column stack).</p>
     <div class="demo fallback">
       <p>Nothing is so painful to the human mind as a great and sudden change.</p>
       <p>The sun might shine, or the clouds might lour; but nothing could appear to me as it had done the day before.</p>
