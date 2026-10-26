@@ -371,7 +371,8 @@
         <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>C</kbd> still works as normal.
       </p>
 
-      <blockquote id="selectable" data-selectable style="margin: 0">
+      <!-- tabindex="-1" lets script move focus here when the popover closes under keyboard focus -->
+      <blockquote id="selectable" data-selectable tabindex="-1" style="margin: 0">
         <p>
           Progressive enhancement means starting with HTML that works everywhere,
           then layering on richer behaviour where the platform supports it.
@@ -441,7 +442,6 @@
         button.removeAttribute('data-copied');
         button.removeAttribute('data-failed');
         tip.textContent = ''; // leave no stale text for screen reader browse mode
-        if (popover.contains(button)) popover.hidePopover();
       }, FEEDBACK_MS));
     }
 
@@ -486,7 +486,7 @@
 
       if (sel.isCollapsed || !text || !selectionInsideRegion(sel)) {
         // Don't dismiss while the user is interacting with the popover itself
-        if (!popover.matches(':focus-within, [data-copied]') && popover.matches(':popover-open')) {
+        if (!popover.matches(':focus-within') && popover.matches(':popover-open')) {
           popover.hidePopover();
         }
         return;
@@ -501,6 +501,14 @@
 
       if (!popover.matches(':popover-open')) popover.showPopover();
     }
+
+    // Focus leaving the popover may have been the only reason it stayed open. Only ever hide here:
+    // re-running updatePopover() would re-show a popover that Escape just dismissed.
+    popover.addEventListener('focusout', () => setTimeout(() => {
+      if (getSelection().isCollapsed && !popover.matches(':focus-within') && popover.matches(':popover-open')) {
+        popover.hidePopover();
+      }
+    }, 0));
 
     // Keep selection when pressing the button
     popover.addEventListener('pointerdown', (e) => e.preventDefault());
@@ -522,7 +530,11 @@
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && popover.matches(':popover-open')) popover.hidePopover();
+      if (e.key === 'Escape' && popover.matches(':popover-open')) {
+        // Hiding the popover under focus would drop focus to the page, so move it to the quote first
+        if (popover.contains(document.activeElement)) selectable.focus({ preventScroll: true });
+        popover.hidePopover();
+      }
     });
 
     addEventListener('scroll', () => {

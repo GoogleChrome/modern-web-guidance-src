@@ -105,7 +105,8 @@ Add this only for long prose where users want a floating button on selection. Sk
 - Use a `popover="manual"` element (not light-dismissed, so the selection survives) containing a button with `command="--copy-selection" commandfor="<container id>"`.
 - Show it on `selectionchange` (debounced; wait for `pointerup` while dragging) only when the selection is non-collapsed and inside the container. Position it from `getSelection().getRangeAt(0).getBoundingClientRect()`.
 - Assign the selected text to `selectedText` when showing the popover; `copy()` reads that saved string for `--copy-selection`; interacting with the button can collapse the live selection.
-- Call `preventDefault()` on the popover's `pointerdown` to keep the selection. Hide on `Escape` and when the selection collapses, but not while focus is inside the popover.
+- Call `preventDefault()` on the popover's `pointerdown` to keep the selection. Hide on `Escape` and when the selection collapses, but not while focus is inside the popover (re-check when focus leaves it).
+- DO NOT hide the popover when the copy feedback timeout ends: a keyboard user's focus is on its button, and hiding it drops focus to the page, so the next `Tab` starts from the top. If `Escape` hides it while focus is inside, first move focus to the container (give it `tabindex="-1"`).
 
 ## Fallbacks and browser support
 
