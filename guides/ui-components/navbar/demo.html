@@ -38,7 +38,7 @@
       margin: 0;
     }
 
-    :where(a, button, summary):focus-visible {
+    :where(a, button):focus-visible {
       outline: 3px solid var(--focus-ring);
       outline-offset: 3px;
     }
@@ -173,20 +173,18 @@
       content: "";
     }
 
-    /* Nested Details Dropdown styles */
-    .nav-dropdown>summary {
-      list-style: none;
-    }
-
-    .nav-dropdown>summary::-webkit-details-marker {
-      display: none;
-    }
-
+    /* Nested dropdown styles */
     .dropdown-trigger {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 0.5rem;
+      inline-size: 100%;
+      border: 0;
+      background: none;
+      font: inherit;
+      font-weight: 650;
+      text-align: start;
       cursor: pointer;
     }
 
@@ -204,7 +202,7 @@
       transition: transform 180ms ease;
     }
 
-    .nav-dropdown[open] .dropdown-trigger::after {
+    .dropdown-trigger[aria-expanded="true"]::after {
       transform: rotate(180deg);
     }
 
@@ -341,8 +339,9 @@
         block-size: 0.2rem;
       }
 
-      /* Desktop flyout style for the native submenu popover. */
-      .dropdown-list {
+      /* Desktop flyout style for the native submenu popover. Scoped to [popover]
+         so the list stays a plain inline list if the script does not run. */
+      .dropdown-list[popover] {
         position: absolute;
         position-area: block-end span-inline-end;
         position-try-fallbacks: flip-block;
@@ -369,7 +368,7 @@
         display: grid;
       }
 
-      /* Fills the margin above the submenu so the pointer stays inside the <details>. */
+      /* Fills the margin above the submenu so the pointer stays inside the <li>. */
       .dropdown-list::before {
         content: "";
         position: absolute;
@@ -385,7 +384,7 @@
 
       /* Without anchor positioning the script below sets left and top. */
       @supports not (position-area: block-end) {
-        .dropdown-list {
+        .dropdown-list[popover] {
           position: fixed;
           margin: 0;
         }
@@ -435,23 +434,6 @@
             opacity: 0;
             transform: translateY(-0.5rem);
           }
-        }
-
-        /* Slide the inline submenu open and closed. */
-        .nav-dropdown {
-          interpolate-size: allow-keywords;
-        }
-
-        .nav-dropdown::details-content {
-          block-size: 0;
-          overflow: clip;
-          transition:
-            block-size 180ms ease,
-            content-visibility 180ms allow-discrete;
-        }
-
-        .nav-dropdown[open]::details-content {
-          block-size: auto;
         }
       }
     }
@@ -508,12 +490,17 @@
             </a>
           </li>
 
-          <li>
-            <details class="nav-dropdown">
-              <summary class="menu-link dropdown-trigger">
+          <li class="nav-dropdown">
+              <button
+                type="button"
+                class="menu-link dropdown-trigger"
+                aria-expanded="false"
+                aria-controls="services-menu"
+                popovertarget="services-menu"
+              >
                 <span>Services</span>
-              </summary>
-              <ul class="dropdown-list">
+              </button>
+              <ul id="services-menu" class="dropdown-list">
                 <li>
                   <a class="menu-link" href="design.html">Design</a>
                 </li>
@@ -524,7 +511,6 @@
                   <a class="menu-link" href="marketing.html">Marketing</a>
                 </li>
               </ul>
-            </details>
           </li>
 
           <li>
@@ -563,31 +549,41 @@
   <script>
     const menu = document.querySelector("#site-menu");
     const header = document.querySelector(".site-header");
-    const details = document.querySelector(".nav-dropdown");
-    const summary = details.querySelector("summary");
-    const submenu = details.querySelector(".dropdown-list");
+    const dropdown = document.querySelector(".nav-dropdown");
+    const trigger = dropdown.querySelector(".dropdown-trigger");
+    const submenu = dropdown.querySelector(".dropdown-list");
 
-    details.addEventListener("toggle", () => {
-      if (!submenu.matches("[popover]")) return;
+    const setExpanded = (open) => trigger.setAttribute("aria-expanded", String(open));
 
-      submenu.togglePopover({
-        force: details.open,
-        source: summary
-      });
+    // Narrow layout: the submenu is an inline disclosure, so the script toggles it.
+    // It is hidden by script, so without scripting the links stay visible.
+    submenu.hidden = true;
+    trigger.addEventListener("click", (event) => {
+      if (previewing) {
+        // Clicking a hover preview keeps it open instead of toggling it closed
+        previewing = false;
+        event.preventDefault();
+        return;
+      }
+      if (submenu.matches("[popover]")) return; // Wide layout: the native popover handles the click
+      submenu.hidden = !submenu.hidden;
+      setExpanded(!submenu.hidden);
     });
 
+    // Wide layout: keep aria-expanded in step with the native popover
     submenu.addEventListener("toggle", (event) => {
-      details.open = event.newState === "open";
+      setExpanded(event.newState === "open");
+      if (event.newState === "closed") previewing = false;
 
       if (event.newState === "open" && !CSS.supports("position-area", "block-end")) {
         placeSubmenu();
       }
     });
 
-    // Fallback for browsers without Anchor Positioning: below the summary,
+    // Fallback for browsers without Anchor Positioning: below the trigger,
     // flipped above and clamped to the viewport on overflow.
     function placeSubmenu() {
-      const anchor = summary.getBoundingClientRect();
+      const anchor = trigger.getBoundingClientRect();
       const size = submenu.getBoundingClientRect();
       const gap = 8;
       let top = anchor.bottom + gap;
@@ -602,24 +598,17 @@
     const canHover = matchMedia("(hover: hover)");
     let previewing = false;
 
-    details.addEventListener("pointerenter", (event) => {
+    dropdown.addEventListener("pointerenter", (event) => {
       if (event.pointerType === "touch" || !canHover.matches) return;
-      if (!submenu.matches("[popover]") || details.open) return;
+      if (!submenu.matches("[popover]") || submenu.matches(":popover-open")) return;
       previewing = true;
-      details.open = true;
+      submenu.showPopover({ source: trigger });
     });
 
-    details.addEventListener("pointerleave", () => {
+    dropdown.addEventListener("pointerleave", () => {
       if (!previewing) return;
-      details.open = false;
-    });
-
-    details.addEventListener("toggle", () => {
-      if (!details.open) previewing = false;
-    });
-
-    summary.addEventListener("click", () => {
       previewing = false;
+      submenu.hidePopover();
     });
 
     function syncLayoutState(width) {
@@ -628,11 +617,14 @@
 
       if (isWide && menu.hasAttribute("popover")) {
         menu.removeAttribute("popover");
+        submenu.hidden = false;
         submenu.setAttribute("popover", "auto");
-        details.open = false;
+        setExpanded(false);
       } else if (!isWide && !menu.hasAttribute("popover")) {
         menu.setAttribute("popover", "auto");
         submenu.removeAttribute("popover");
+        submenu.hidden = true;
+        setExpanded(false);
       }
     }
 
