@@ -451,6 +451,9 @@
       ]
     },
     "ui-components": {
+      "hovercard": [
+        "daily-grind"
+      ],
       "menu": [
         "daily-grind"
       ],
