@@ -401,6 +401,9 @@
       "platform-controls-dismiss-dialog": [
         "task"
       ],
+      "prevent-page-scroll-under-modal-dialog": [
+        "daily-grind"
+      ],
       "same-document-transitions": [
         "task"
       ],
