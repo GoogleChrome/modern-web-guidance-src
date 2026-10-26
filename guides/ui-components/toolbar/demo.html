@@ -127,11 +127,11 @@
           & [role="group"] { flex-direction: column; }
         }
 
+        /* A border, not a background: forced colors replaces backgrounds but keeps borders */
         & [role="separator"] {
-          inline-size: 1px;
           block-size: 1.5rem;
           margin-inline: 0.25rem;
-          background: var(--line);
+          border-inline-start: 1px solid var(--line);
         }
       }
 
@@ -218,7 +218,8 @@
         inset: auto;
         margin: 0.4rem 0;
         padding: 0.25rem 0.5rem;
-        border: 0;
+        /* Transparent here, visible under forced colors so the tooltip keeps its box */
+        border: 1px solid transparent;
         border-radius: 0.375rem;
         font-size: 0.8125rem;
         background: var(--ink);
@@ -291,6 +292,15 @@
         .btn { transition: background-color 0.15s, scale 0.1s; }
       }
 
+      /* Narrow screens: the toolbar wraps, so drop the separators (a wrapped one would sit alone at a row end)
+         and widen the gap between groups instead. Groups keep their aria-label. */
+      @media (width < 30rem) {
+        #text-bar {
+          column-gap: 0.75rem;
+          & [role="separator"] { display: none; }
+        }
+      }
+
       @media (forced-colors: active) {
         .btn::before { background-color: ButtonText; }
         .btn[aria-pressed="true"], #more-menu [aria-checked="true"] { outline: 2px solid Highlight; }
@@ -302,6 +312,7 @@
 
 <body>
   <main class="demo">
+    <noscript><p>This toolbar needs JavaScript for its keyboard navigation and actions.</p></noscript>
     <div role="toolbar" id="text-bar" aria-label="Text formatting" aria-controls="preview">
       <div role="group" aria-label="Style">
         <button type="button" class="btn" data-item data-icon="bold" data-style="bold" aria-pressed="false"
@@ -413,9 +424,14 @@
       setTimeout(() => (status.textContent = ""), 2000);
     };
     let zoom = 1;
+    // aria-disabled, not disabled, keeps the button focusable so arrow keys still reach it
+    const zoomIn = document.querySelector('[data-action="zoom-in"]');
+    const zoomOut = document.querySelector('[data-action="zoom-out"]');
     function setZoom(next) {
       zoom = Math.min(2, Math.max(0.5, next));
       preview.style.setProperty("--zoom", zoom);
+      flag(zoomIn, "aria-disabled", zoom >= 2);
+      flag(zoomOut, "aria-disabled", zoom <= 0.5);
       say(`Zoom ${Math.round(zoom * 100)}%`);
     }
     async function runAction(name) {

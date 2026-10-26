@@ -106,7 +106,7 @@ const steps = vertical
 
 * Keep a clear `:focus-visible` outline with an offset; never remove it.
 * Style toggled state from the ARIA attribute (`[aria-pressed="true"]`), not a separate class, so visual and accessible state cannot diverge.
-* Add a non-color cue for the toggled state (such as an underline bar) and, under `forced-colors: active`, use system colors (`ButtonText`, `Highlight`).
+* Add a non-color cue for the toggled state (such as an underline bar) and, under `forced-colors: active`, use system colors (`ButtonText`, `Highlight`). Draw separators and tooltip boxes with a border (a `transparent` one is fine), not `background` alone, which forced colors replaces with the page color.
 * Wrap hover styles in `@media (hover: hover)` and transitions in `@media (prefers-reduced-motion: no-preference)`.
 
 ## Tooltips for icon-only buttons
