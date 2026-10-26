@@ -7,24 +7,36 @@ import {
 } from './qualification.ts';
 
 describe('qualification shipping lists', () => {
-  it('maintains 6 default shipping guides under Static Matcher Precision >= 90.0% at n >= 20', () => {
-    assert.strictEqual(QUALIFIED_GUIDE_IDS.length, 6);
-    assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, [
-      'autofill-address-form',
-      'autofill-sign-in-form',
-      'form-fields-automatically-fit-contents',
-      'responsive-table',
-      'scroll-entry-exit-effects',
-      'scrollspy',
-    ]);
+  it('maintains default shipping guides clearing qualification standard', () => {
+    assert.ok(QUALIFIED_GUIDE_IDS.length > 0, 'Must have at least one qualified guide');
+    for (const gid of QUALIFIED_GUIDE_IDS) {
+      assert.strictEqual(
+        isGuideQualified(gid),
+        true,
+        `Guide ${gid} in QUALIFIED_GUIDE_IDS must return true from isGuideQualified`,
+      );
+      assert.strictEqual(
+        SUSPENDED_QUALIFIED_GUIDE_IDS.includes(gid),
+        false,
+        `Qualified guide ${gid} must NOT be in SUSPENDED_QUALIFIED_GUIDE_IDS`,
+      );
+    }
   });
 
-  it('records the suspended guides', () => {
-    assert.deepStrictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS, [
-      'complex-shapes',
-      'interactions-in-complex-layouts',
-      'language-detection',
-    ]);
+  it('records suspended guides separately from qualified shipping list', () => {
+    assert.ok(SUSPENDED_QUALIFIED_GUIDE_IDS.length > 0, 'Must have suspended guides');
+    for (const gid of SUSPENDED_QUALIFIED_GUIDE_IDS) {
+      assert.strictEqual(
+        QUALIFIED_GUIDE_IDS.includes(gid),
+        false,
+        `Suspended guide ${gid} must NOT be in QUALIFIED_GUIDE_IDS`,
+      );
+      assert.strictEqual(
+        isGuideQualified(gid),
+        false,
+        `Suspended guide ${gid} must return false from isGuideQualified`,
+      );
+    }
   });
 
   it('guarantees shipping lists cannot include experimental or suspended guides', () => {

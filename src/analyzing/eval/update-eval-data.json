@@ -561,6 +561,9 @@
   ],
   "modernFeaturePatterns": {
     "animate-element-entry-exit": "@starting-style\\b|transition-behavior|\\ballow-discrete\\b|transitionBehavior",
+    "client-side-encryption": "crypto\\.subtle\\.(encrypt|decrypt)|SubtleCrypto",
+    "digital-signatures": "crypto\\.subtle\\.(sign|verify)",
+    "visually-stable-font-fallbacks": "size-adjust\\s*:|font-size-adjust\\s*:|ascent-override\\s*:|descent-override\\s*:",
     "slider": "type\\s*=\\s*[\"']range[\"']|accent-color\\s*:|<\\s*input[^>]*type\\s*=\\s*[\"']range[\"']",
     "physics-based-easing": "linear\\s*\\([^)]*%",
     "persistent-toast-notifications": "popover\\s*=\\s*[\"']manual[\"']|\\b(showPopover|hidePopover|togglePopover)\\b|\\bpopover\\b",

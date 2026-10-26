@@ -6,6 +6,7 @@ import { animateToFromTopLayerRules } from './animate-to-from-top-layer.ts';
 import { animateToIntrinsicSizesRules } from './animate-to-intrinsic-sizes.ts';
 import { atruleSupportConditionalsRules } from './atrule-support-conditionals.ts';
 import { autofillAddressFormRules } from './autofill-address-form.ts';
+import { autofillHighlightInputsRules } from './autofill-highlight-inputs.ts';
 import { autofillPaymentFormRules } from './autofill-payment-form.ts';
 import { autofillSignInFormRules } from './autofill-sign-in-form.ts';
 import { autofillSignUpFormRules } from './autofill-sign-up-form.ts';
@@ -16,6 +17,7 @@ import { calculateEventDifferentialsRules } from './calculate-event-differential
 import { captureLocationAgnosticDataRules } from './capture-location-agnostic-data.ts';
 import { checkboxRules } from './checkbox.ts';
 import { childStateBasedStylingRules } from './child-state-based-styling.ts';
+import { clientSideEncryptionRules } from './client-side-encryption.ts';
 import { complexShapesRules } from './complex-shapes.ts';
 import { conditionalAsyncDependenciesRules } from './conditional-async-dependencies.ts';
 import { contrastColorRules } from './contrast-color.ts';
@@ -29,6 +31,7 @@ import { declarativeDialogPopoverControlRules } from './declarative-dialog-popov
 import { deferWorkUntilScrollEndsRules } from './defer-work-until-scroll-ends.ts';
 import { deliverOptimizedDecorativeImagesRules } from './deliver-optimized-decorative-images.ts';
 import { detectInitialVisibilityStateRules } from './detect-initial-visibility-state.ts';
+import { digitalSignaturesRules } from './digital-signatures.ts';
 import { dragRules } from './drag.ts';
 import { equalWidthTextLinesRules } from './equal-width-text-lines.ts';
 import { exportHtmlMediaFromCanvasRules } from './export-html-media-from-canvas.ts';
@@ -76,6 +79,7 @@ import { stateAwareStickyHeadersRules } from './state-aware-sticky-headers.ts';
 import { stylingWebComponentsRules } from './styling-web-components.ts';
 import { supportGlobalCalendarSystemsRules } from './support-global-calendar-systems.ts';
 import { switchRules } from './switch.ts';
+import { visuallyStableFontFallbacksRules } from './visually-stable-font-fallbacks.ts';
 
 export * from './anchor-positioning-tab-underline.ts';
 export * from './animate-element-entry-exit.ts';
@@ -83,6 +87,7 @@ export * from './animate-to-from-top-layer.ts';
 export * from './animate-to-intrinsic-sizes.ts';
 export * from './atrule-support-conditionals.ts';
 export * from './autofill-address-form.ts';
+export * from './autofill-highlight-inputs.ts';
 export * from './autofill-payment-form.ts';
 export * from './autofill-sign-in-form.ts';
 export * from './autofill-sign-up-form.ts';
@@ -93,6 +98,7 @@ export * from './calculate-event-differentials.ts';
 export * from './capture-location-agnostic-data.ts';
 export * from './checkbox.ts';
 export * from './child-state-based-styling.ts';
+export * from './client-side-encryption.ts';
 export * from './complex-shapes.ts';
 export * from './conditional-async-dependencies.ts';
 export * from './contrast-color.ts';
@@ -106,6 +112,7 @@ export * from './declarative-dialog-popover-control.ts';
 export * from './defer-work-until-scroll-ends.ts';
 export * from './deliver-optimized-decorative-images.ts';
 export * from './detect-initial-visibility-state.ts';
+export * from './digital-signatures.ts';
 export * from './drag.ts';
 export * from './equal-width-text-lines.ts';
 export * from './export-html-media-from-canvas.ts';
@@ -153,6 +160,7 @@ export * from './state-aware-sticky-headers.ts';
 export * from './styling-web-components.ts';
 export * from './support-global-calendar-systems.ts';
 export * from './switch.ts';
+export * from './visually-stable-font-fallbacks.ts';
 
 export type RuleLifecycle =
   | { readonly status: 'qualified' }
@@ -204,6 +212,11 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     rules: autofillAddressFormRules,
   },
   {
+    guideId: 'autofill-highlight-inputs',
+    lifecycle: { status: 'experimental' },
+    rules: autofillHighlightInputsRules,
+  },
+  {
     guideId: 'autofill-payment-form',
     lifecycle: { status: 'experimental' },
     rules: autofillPaymentFormRules,
@@ -211,7 +224,7 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   },
   {
     guideId: 'autofill-sign-in-form',
-    lifecycle: { status: 'qualified' },
+    lifecycle: { status: 'suspended', reason: "Changed after qualifying; re-qualifying on fresh held-out shards after the DOM template scanner fix." },
     rules: autofillSignInFormRules,
     postSelectionTuned: true,
   },
@@ -256,6 +269,11 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     guideId: 'child-state-based-styling',
     lifecycle: { status: 'experimental' },
     rules: childStateBasedStylingRules,
+  },
+  {
+    guideId: 'client-side-encryption',
+    lifecycle: { status: 'experimental' },
+    rules: clientSideEncryptionRules,
   },
   {
     guideId: 'complex-shapes',
@@ -324,6 +342,11 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     guideId: 'detect-initial-visibility-state',
     lifecycle: { status: 'experimental' },
     rules: detectInitialVisibilityStateRules,
+  },
+  {
+    guideId: 'digital-signatures',
+    lifecycle: { status: 'experimental' },
+    rules: digitalSignaturesRules,
   },
   {
     guideId: 'drag',
@@ -564,16 +587,13 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     rules: switchRules,
   },
   {
-    guideId: 'adapt-scrollbar-to-contrast-preferences',
-    lifecycle: { status: 'retired', reason: "No client-side legacy pattern; applicability depends on visual/semantic judgment" },
-    rules: [],
+    guideId: 'visually-stable-font-fallbacks',
+    lifecycle: { status: 'experimental' },
+    rules: visuallyStableFontFallbacksRules,
   },
   {
-    guideId: 'autofill-highlight-inputs',
-    lifecycle: {
-      status: 'retired',
-      reason: 'Swapping :-webkit-autofill for :autofill is a no-op in all current browser engines',
-    },
+    guideId: 'adapt-scrollbar-to-contrast-preferences',
+    lifecycle: { status: 'retired', reason: "No client-side legacy pattern; applicability depends on visual/semantic judgment" },
     rules: [],
   },
   {
@@ -598,50 +618,23 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     postSelectionTuned: true,
   },
   {
-    guideId: 'visually-stable-font-fallbacks',
-    lifecycle: { status: 'retired', reason: "WebFont.load calls in real code load runtime/canvas fonts, not fallback metrics; sampled hits were all false alarms." },
-    rules: [],
-  },
-  {
-    guideId: 'client-side-encryption',
-    lifecycle: { status: 'retired', reason: "Legacy algorithms (RC4, DES) and CryptoJS key derivation have no in-place Web Crypto equivalent without breaking ciphertext compatibility." },
-    rules: [],
-  },
-  {
-    guideId: 'digital-signatures',
-    lifecycle: { status: 'retired', reason: "Web Crypto signatures need exact key and encoding alignment (DER vs raw), so this isn't a safe in-place change." },
-    rules: [],
-  },
-  {
     guideId: 'resilient-context-menus-and-nested-dropdowns',
-    lifecycle: {
-      status: 'retired',
-      reason: 'Guide renamed to viewport-aware-dropdowns; the old Bootstrap dropdown-toggle rule was removed.',
-    },
+    lifecycle: { status: 'retired', reason: "Guide renamed to viewport-aware-dropdowns; the old Bootstrap dropdown-toggle rule was removed." },
     rules: [],
   },
   {
     guideId: 'shadow-dom',
-    lifecycle: {
-      status: 'retired',
-      reason: "Removed: string templates in script tags aren't Shadow DOM targets.",
-    },
+    lifecycle: { status: 'retired', reason: "Removed: string templates in script tags aren't Shadow DOM targets." },
     rules: [],
   },
   {
     guideId: 'copy-button',
-    lifecycle: {
-      status: 'retired',
-      reason: "Guide is still a stub on this branch; restore the rule once the guide's content merges.",
-    },
+    lifecycle: { status: 'retired', reason: "Guide is still a stub on this branch; restore the rule once the guide's content merges." },
     rules: [],
   },
   {
     guideId: 'accessible-error-announcement',
-    lifecycle: {
-      status: 'retired',
-      reason: "Removed: static CSS selectors can't detect missing live-region announcements.",
-    },
+    lifecycle: { status: 'retired', reason: "Removed: static CSS selectors can't detect missing live-region announcements." },
     rules: [],
   },
 ];
@@ -651,7 +644,7 @@ export const RULE_REGISTRY_BY_GUIDE_ID: ReadonlyMap<string, RuleRegistryEntry> =
 );
 
 /**
- * Production shipping qualified guide IDs (6 guides clearing precision threshold).
+ * Production shipping qualified guide IDs (5 guides clearing precision threshold).
  */
 export const QUALIFIED_GUIDE_IDS: readonly string[] = RULE_REGISTRY
   .filter((e) => e.lifecycle.status === 'qualified')

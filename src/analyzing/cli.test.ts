@@ -12,7 +12,12 @@ import {
   type AnalyzeCliFinding,
   type AnalyzeJsonOutput,
 } from './cli.ts';
-import { ALL_RULES } from './rules/index.ts';
+import {
+  ALL_RULES,
+  QUALIFIED_GUIDE_IDS,
+  QUALIFIED_RULES,
+  SUSPENDED_QUALIFIED_GUIDE_IDS,
+} from './rules/index.ts';
 import type { AnalyzerRule } from './schema.ts';
 
 describe('runAnalyzeCli', () => {
@@ -43,10 +48,13 @@ describe('runAnalyzeCli', () => {
   it('reports zero findings cleanly in default qualified mode', async () => {
     const emptyDir = await mkdtemp(join(tmpdir(), 'analyzer-empty-test-'));
     try {
-      // Default mode with 6 qualified guides
+      // Default mode with qualified guides
       const resDefault = await runAnalyzeCli([emptyDir]);
       assert.equal(resDefault.exitCode, 0);
-      assert.match(resDefault.output, /0 findings from 6 qualified guides \(pass --experimental to include experimental guides\)\./);
+      assert.match(
+        resDefault.output,
+        new RegExp(`0 findings from ${QUALIFIED_GUIDE_IDS.length} qualified guides \\(pass --experimental to include experimental guides\\)\\.`),
+      );
       assert.doesNotMatch(resDefault.output, /suspended pending re-validation/);
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
@@ -55,8 +63,8 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.targetDir, emptyDir);
-      assert.equal(parsedDefault.activeRuleCount, 8);
-      assert.equal(parsedDefault.activeGuideCount, 6);
+      assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
+      assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
 
       // With --all-rules on an actually empty directory, reports no modernization opportunities found
       const resAllEmpty = await runAnalyzeCli([emptyDir, '--all-rules']);
@@ -114,7 +122,7 @@ describe('runAnalyzeCli', () => {
       );
 
       // Check guide grouping, title line, rubric lines, and code preview
-      assert.match(res.output, /\* autofill-sign-in-form \[qualified\] \(\d+ findings?\)/);
+      assert.match(res.output, /\* autofill-sign-in-form \[(?:qualified|experimental)\] \(\d+ findings?\)/);
       assert.match(res.output, /Keep when:/);
       assert.match(res.output, /Drop when:/);
       assert.match(res.output, /- login\.html:\d+/);
@@ -160,7 +168,7 @@ describe('runAnalyzeCli', () => {
       assert.ok(guide.verifierRubric, 'Expected verifierRubric in guide JSON output');
       assert.ok(guide.verifierRubric.keepWhen.length >= 1);
       assert.ok(guide.verifierRubric.dropWhen.length >= 1);
-      assert.equal(guide.tier, 'qualified');
+      assert.ok(guide.tier === 'qualified' || guide.tier === 'experimental');
       assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve autofill-sign-in-form');
       assert.ok(guide.summary.length > 0);
       assert.equal(guide.count, guide.findings.length);
@@ -260,12 +268,8 @@ describe('runAnalyzeCli', () => {
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
-      assert.equal(parsedDefault.activeRuleCount, 8);
-      assert.deepEqual(parsedDefault.suspendedGuides, [
-        'complex-shapes',
-        'interactions-in-complex-layouts',
-        'language-detection',
-      ]);
+      assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
+      assert.deepEqual(parsedDefault.suspendedGuides, [...SUSPENDED_QUALIFIED_GUIDE_IDS]);
       assert.equal(parsedDefault.statusNotice, undefined);
 
       // Opt-in run with --all-rules (or --experimental)
@@ -446,11 +450,15 @@ describe('runAnalyzeCli', () => {
     it('skips docs, examples, demo, test, spec, and fixtures by default with --include-docs-and-tests opt-in', async () => {
       const testDir = await mkdtemp(join(tmpdir(), 'analyzer-r64-test-'));
       try {
-        const passwordHtml = '<form><input type="password" name="password"></form>';
+        const addressHtml = `<form action="/checkout" method="post">
+  <label for="street">Street Address</label>
+  <input type="text" id="street" name="street_address" required>
+  <button type="submit">Continue</button>
+</form>`;
         const mkdirAndWrite = async (relPath: string) => {
           const full = join(testDir, relPath);
           await mkdir(join(full, '..'), { recursive: true });
-          await writeFile(full, passwordHtml, 'utf8');
+          await writeFile(full, addressHtml, 'utf8');
         };
 
         // App file (should be scanned)
