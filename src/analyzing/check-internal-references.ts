@@ -62,11 +62,8 @@ export function scanDirectory(
       }
       violations.push(...scanDirectory(fullPath, root));
     } else if (entry.isFile()) {
-      // Exclude this guard script and its test
-      if (
-        entry.name === 'check-internal-references.ts' ||
-        entry.name === 'check-internal-references.test.ts'
-      ) {
+      // Exclude this guard script itself (its test builds banned strings at runtime and is scanned)
+      if (entry.name === 'check-internal-references.ts') {
         continue;
       }
 

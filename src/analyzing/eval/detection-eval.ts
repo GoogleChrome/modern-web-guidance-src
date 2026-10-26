@@ -9,6 +9,7 @@ export {
   JUDGE_SYSTEM_PROMPT,
   JUDGE_RESPONSE_SCHEMA,
   JUDGE_THINKING_BUDGET,
+  computeJudgePromptVersion,
   formatBlindCardPrompt,
 } from './prompts.ts';
 import {
@@ -16,6 +17,7 @@ import {
   JUDGE_SYSTEM_PROMPT,
   JUDGE_RESPONSE_SCHEMA,
   JUDGE_THINKING_BUDGET,
+  computeJudgePromptVersion,
   formatBlindCardPrompt,
 } from './prompts.ts';
 import {
@@ -24,13 +26,28 @@ import {
   sensitivitySpecificity,
   type SensitivitySpecificityResult,
 } from './stats.ts';
-import type { JudgeVerdict, CanonicalJudgeVerdict } from '../schema.ts';
+import { ALL_RULES } from '../rules/index.ts';
+import { computeGuideHash } from '../scanners/index.ts';
+import type { AnalyzerRule, JudgeVerdict, CanonicalJudgeVerdict } from '../schema.ts';
 export { type JudgeVerdict, type CanonicalJudgeVerdict, CANONICAL_VERDICTS } from '../schema.ts';
 export { getGeminiApiKey, findGuideMarkdownPath, loadRawGuideMarkdown } from '../llm-verifier.ts';
 import { getGeminiApiKey, findGuideMarkdownPath, loadRawGuideMarkdown } from '../llm-verifier.ts';
 
 const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
+
+const RULES_BY_ID: ReadonlyMap<string, AnalyzerRule> = new Map(
+  ALL_RULES.map((rule) => [rule.id, rule]),
+);
+const RULES_BY_GUIDE_ID: ReadonlyMap<string, AnalyzerRule> = (() => {
+  const map = new Map<string, AnalyzerRule>();
+  for (const rule of ALL_RULES) {
+    if (!map.has(rule.guideId)) {
+      map.set(rule.guideId, rule);
+    }
+  }
+  return map;
+})();
 
 /**
  * Resolves the directory containing offline evaluation datasets and human calibration labels.
@@ -154,6 +171,16 @@ export function verdictsAgree(humanVerdict: string, judgeVerdict: string): boole
   return false;
 }
 
+export interface JudgeInputProvenance {
+  readonly judgeVersion: string;
+  readonly guideHash: string;
+  readonly explainerContextHash: string;
+  readonly dossierHash: 'none';
+  readonly ruleId: string;
+  readonly ruleGuideHash: string;
+  readonly ruleHash?: string;
+}
+
 export interface DetectionEvalFactCheck {
   matches_before_syntax: boolean;
   has_fallback_or_feature_guard: boolean;
@@ -162,6 +189,7 @@ export interface DetectionEvalFactCheck {
   reasoning: string;
   verdict: JudgeVerdict;
   rawVerdict?: JudgeVerdict;
+  provenance?: JudgeInputProvenance;
 }
 
 export function isDetectionEvalFactCheck(obj: unknown): obj is DetectionEvalFactCheck {
@@ -180,12 +208,14 @@ export function isDetectionEvalFactCheck(obj: unknown): obj is DetectionEvalFact
     typeof obj.reasoning === 'string' &&
     'verdict' in obj &&
     isJudgeVerdict(obj.verdict) &&
-    (!('rawVerdict' in obj) || obj.rawVerdict === undefined || isJudgeVerdict(obj.rawVerdict))
+    (!('rawVerdict' in obj) || obj.rawVerdict === undefined || isJudgeVerdict(obj.rawVerdict)) &&
+    (!('provenance' in obj) || obj.provenance === undefined || (typeof obj.provenance === 'object' && obj.provenance !== null))
   );
 }
 
 export interface GuideSummaryInfo {
   guideId: string;
+  guideHash?: string;
   problem: string;
   before: string;
   now: string;
@@ -193,6 +223,7 @@ export interface GuideSummaryInfo {
   oldWayExamples?: string[];
   ruleSummary?: string;
   readonly explainerContext?: string;
+  readonly explainerContextHash?: string;
 }
 
 /**
@@ -216,8 +247,72 @@ export interface JudgeResult {
   cardId: string;
   verdict: JudgeVerdict;
   facts: DetectionEvalFactCheck;
+  judgeVersion?: string;
+  guideHash?: string;
+  explainerContextHash?: string;
+  dossierHash?: 'none';
+  ruleId?: string;
+  ruleGuideHash?: string;
+  provenance?: JudgeInputProvenance;
   rawResponse?: string;
   error?: string;
+}
+
+export function computeExplainerContextHash(explainerContext?: string): string {
+  const trimmed = explainerContext?.trim() ?? '';
+  if (!trimmed) {
+    return 'none';
+  }
+  return createHash('sha256').update(trimmed).digest('hex').slice(0, 12);
+}
+
+export function computeJudgeInputProvenance(
+  card: BlindCardPayload,
+  judgeVersion: string = JUDGE_VERSION,
+): JudgeInputProvenance {
+  const guideHash =
+    card.guideSummary.guideHash ??
+    card.guideHash ??
+    computeGuideHash(card.guideSummary.markdownBody ?? '');
+  const explainerContextHash = computeExplainerContextHash(card.guideSummary.explainerContext);
+  const matchedRule =
+    (card.ruleId ? RULES_BY_ID.get(card.ruleId) : undefined) ??
+    RULES_BY_ID.get(card.guideId) ??
+    RULES_BY_GUIDE_ID.get(card.guideId);
+  const ruleId = card.ruleId || matchedRule?.id || card.guideId;
+  const ruleGuideHash = matchedRule?.guideHash ?? card.guideHash ?? guideHash;
+
+  return {
+    judgeVersion,
+    guideHash,
+    explainerContextHash,
+    dossierHash: 'none',
+    ruleId,
+    ruleGuideHash,
+    ...(card.ruleHash ? { ruleHash: card.ruleHash } : {}),
+  };
+}
+
+export function attachJudgeInputProvenance(
+  result: JudgeResult,
+  card: BlindCardPayload,
+  judgeVersion: string = JUDGE_VERSION,
+): JudgeResult {
+  const provenance = computeJudgeInputProvenance(card, judgeVersion);
+  return {
+    ...result,
+    judgeVersion: provenance.judgeVersion,
+    guideHash: provenance.guideHash,
+    explainerContextHash: provenance.explainerContextHash,
+    dossierHash: provenance.dossierHash,
+    ruleId: provenance.ruleId,
+    ruleGuideHash: provenance.ruleGuideHash,
+    provenance,
+    facts: {
+      ...result.facts,
+      provenance,
+    },
+  };
 }
 
 export interface CanaryCard {
@@ -484,6 +579,10 @@ export async function runJudgeDirect(
 
   const customFetch = options.fetchFn ?? fetch;
   const concurrency = Math.max(1, options.concurrency ?? 5);
+  const effectiveJudgeVersion =
+    options.temperature === undefined
+      ? JUDGE_VERSION
+      : computeJudgePromptVersion(options.temperature);
   const results: JudgeResult[] = Array.from({ length: cards.length });
 
   let currentIndex = 0;
@@ -515,7 +614,11 @@ export async function runJudgeDirect(
         candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
       };
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-      results[idx] = parseJudgeJsonContent(text, card.cardId);
+      results[idx] = attachJudgeInputProvenance(
+        parseJudgeJsonContent(text, card.cardId),
+        card,
+        effectiveJudgeVersion,
+      );
     }
   }
 
@@ -529,6 +632,7 @@ interface PollBatchContext {
   batchName: string;
   apiKey: string;
   cards: BlindCardPayload[];
+  judgeVersion: string;
   timeoutMs: number;
   pollIntervalMs: number;
   customFetch: typeof fetch;
@@ -593,9 +697,13 @@ async function pollBatchUntilDone(ctx: PollBatchContext): Promise<JudgeResult[]>
 
       if (inlinedList && inlinedList.length === ctx.cards.length) {
         return inlinedList.map((item: InlinedGeminiResponseItem, idx: number) => {
-          const cardId = ctx.cards[idx].cardId;
+          const card = ctx.cards[idx];
           const text = item.response?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-          return parseJudgeJsonContent(text, cardId);
+          return attachJudgeInputProvenance(
+            parseJudgeJsonContent(text, card.cardId),
+            card,
+            ctx.judgeVersion,
+          );
         });
       }
       throw new Error(
@@ -628,10 +736,14 @@ export async function runJudgeBatch(
   const customFetch = options.fetchFn ?? fetch;
   const pollIntervalMs = options.pollIntervalMs ?? 2000;
   const timeoutMs = options.timeoutMs ?? 180000;
+  const effectiveJudgeVersion =
+    options.temperature === undefined
+      ? JUDGE_VERSION
+      : computeJudgePromptVersion(options.temperature);
 
   // Prepare batch requests
   const requests = cards.map((card) => ({
-    request: buildGeminiRequestBody(card),
+    request: buildGeminiRequestBody(card, options.temperature),
     metadata: { cardId: card.cardId },
   }));
 
@@ -670,6 +782,7 @@ export async function runJudgeBatch(
     batchName,
     apiKey,
     cards,
+    judgeVersion: effectiveJudgeVersion,
     timeoutMs,
     pollIntervalMs,
     customFetch,
@@ -780,10 +893,34 @@ export function evaluateJudgeStability(
       consensusVerdict = 'unsure';
     }
 
+    const provenanceSource =
+      consensusVerdict === v1 && v0 !== v1 ? run1[i] : run0[i];
+
     consensusResults.push({
       cardId: run0[i].cardId,
       verdict: consensusVerdict,
       facts: chosenFacts,
+      ...(provenanceSource.judgeVersion !== undefined
+        ? { judgeVersion: provenanceSource.judgeVersion }
+        : {}),
+      ...(provenanceSource.guideHash !== undefined
+        ? { guideHash: provenanceSource.guideHash }
+        : {}),
+      ...(provenanceSource.explainerContextHash !== undefined
+        ? { explainerContextHash: provenanceSource.explainerContextHash }
+        : {}),
+      ...(provenanceSource.dossierHash !== undefined
+        ? { dossierHash: provenanceSource.dossierHash }
+        : {}),
+      ...(provenanceSource.ruleId !== undefined
+        ? { ruleId: provenanceSource.ruleId }
+        : {}),
+      ...(provenanceSource.ruleGuideHash !== undefined
+        ? { ruleGuideHash: provenanceSource.ruleGuideHash }
+        : {}),
+      ...(provenanceSource.provenance !== undefined
+        ? { provenance: provenanceSource.provenance }
+        : {}),
     });
   }
 
@@ -1051,6 +1188,7 @@ export function parseGuideSummaryMarkdown(
 
   return {
     guideId,
+    guideHash: computeGuideHash(markdown),
     problem: cleanedProblem,
     before: cleanedBefore,
     now: cleanedNow,
@@ -1139,7 +1277,12 @@ export async function loadGuideSummariesMap(
           if (guideId && excerpt.trim()) {
             const existing = map.get(guideId);
             if (existing) {
-              map.set(guideId, { ...existing, explainerContext: excerpt.trim() });
+              const trimmedExcerpt = excerpt.trim();
+              map.set(guideId, {
+                ...existing,
+                explainerContext: trimmedExcerpt,
+                explainerContextHash: computeExplainerContextHash(trimmedExcerpt),
+              });
             }
           }
         }
@@ -1163,7 +1306,11 @@ export async function loadGuideSummariesMap(
         if (excerpt) {
           const existing = map.get(guideId);
           if (existing) {
-            map.set(guideId, { ...existing, explainerContext: excerpt });
+            map.set(guideId, {
+              ...existing,
+              explainerContext: excerpt,
+              explainerContextHash: computeExplainerContextHash(excerpt),
+            });
           }
         }
       }
@@ -1383,10 +1530,8 @@ export async function prepareBlindCards(
       }
     }
 
-    const computedGuideHash = createHash('sha256')
-      .update(summary.markdownBody)
-      .digest('hex')
-      .slice(0, 12);
+    const computedGuideHash =
+      summary.guideHash ?? computeGuideHash(summary.markdownBody);
     blindCards.push({
       cardId: item.cardId,
       repo: item.repo,

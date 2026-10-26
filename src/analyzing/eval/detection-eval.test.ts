@@ -6,6 +6,8 @@ import { describe, it } from 'node:test';
 import {
   buildGeminiRequestBody,
   checkCanaries,
+  computeExplainerContextHash,
+  computeJudgeInputProvenance,
   deriveJudgeVerdictFromFacts,
   evaluateJudgeMetrics,
   evaluateJudgeStability,
@@ -16,6 +18,7 @@ import {
   normalizeJudgeVerdict,
   verdictsAgree,
   JUDGE_SYSTEM_PROMPT,
+  JUDGE_VERSION,
   loadGuideSummariesMap,
   loadGuideSummaryFromMarkdown,
   loadPaulIrishScoredCards,
@@ -935,6 +938,138 @@ describe('mocked direct and batch judge runners', () => {
     assert.equal(results[0].cardId, SAMPLE_BLIND_CARD.cardId);
     assert.equal(results[0].verdict, 'legit-modernize-target');
     assert.equal(results[0].facts.matches_before_syntax, true);
+    assert.equal(results[0].judgeVersion, JUDGE_VERSION);
+    assert.match(results[0].guideHash ?? '', /^[0-9a-f]{12}$/);
+    assert.equal(results[0].explainerContextHash, 'none');
+    assert.equal(results[0].dossierHash, 'none');
+    assert.equal(results[0].ruleId, 'calculate-event-differentials');
+    assert.match(results[0].ruleGuideHash ?? '', /^[0-9a-f]{12}$/);
+    assert.deepStrictEqual(results[0].provenance, results[0].facts.provenance);
+  });
+
+  it('versions every verdict row across direct, batch, and 3-pass consensus with full input provenance', async () => {
+    const cardWithExplainer: BlindCardPayload = {
+      ...SAMPLE_BLIND_CARD,
+      cardId: 'card-prov-1',
+      ruleId: 'calculate-event-differentials',
+      ruleHash: 'rulehash1234',
+      guideSummary: {
+        ...SAMPLE_GUIDE_SUMMARY,
+        explainerContext: 'TC39 Temporal explainer excerpt.',
+      },
+    };
+
+    const expectedProvenance = computeJudgeInputProvenance(cardWithExplainer);
+    assert.equal(expectedProvenance.judgeVersion, JUDGE_VERSION);
+    assert.equal(
+      expectedProvenance.explainerContextHash,
+      computeExplainerContextHash('TC39 Temporal explainer excerpt.'),
+    );
+    assert.match(expectedProvenance.explainerContextHash, /^[0-9a-f]{12}$/);
+    assert.equal(expectedProvenance.dossierHash, 'none');
+    assert.equal(expectedProvenance.ruleId, 'calculate-event-differentials');
+    assert.match(expectedProvenance.ruleGuideHash, /^[0-9a-f]{12}$/);
+    assert.equal(expectedProvenance.ruleHash, 'rulehash1234');
+
+    const mockDirectFetch: typeof fetch = async () =>
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      matches_before_syntax: true,
+                      has_fallback_or_feature_guard: false,
+                      modern_feature_applies_here: true,
+                      has_meaningful_payoff: true,
+                      reasoning: 'Matches old Date subtraction.',
+                      verdict: 'legit-modernize-target',
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+
+    const run0 = await runJudgeDirect([cardWithExplainer], {
+      apiKey: 'test-key',
+      fetchFn: mockDirectFetch,
+    });
+    const run1 = await runJudgeDirect([cardWithExplainer], {
+      apiKey: 'test-key',
+      fetchFn: mockDirectFetch,
+    });
+
+    let batchPollCount = 0;
+    const mockBatchFetch: typeof fetch = async () => {
+      batchPollCount++;
+      if (batchPollCount === 1) {
+        return new Response(JSON.stringify({ name: 'batches/test-123' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(
+        JSON.stringify({
+          name: 'batches/test-123',
+          done: true,
+          response: {
+            inlinedResponses: {
+              inlinedResponses: [
+                {
+                  response: {
+                    candidates: [
+                      {
+                        content: {
+                          parts: [
+                            {
+                              text: JSON.stringify({
+                                matches_before_syntax: true,
+                                has_fallback_or_feature_guard: false,
+                                modern_feature_applies_here: true,
+                                has_meaningful_payoff: true,
+                                reasoning: 'Batch pass.',
+                                verdict: 'legit-modernize-target',
+                              }),
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    };
+
+    const run2 = await runJudgeBatch([cardWithExplainer], {
+      apiKey: 'test-key',
+      pollIntervalMs: 1,
+      fetchFn: mockBatchFetch,
+    });
+
+    assert.deepStrictEqual(run0[0].provenance, expectedProvenance);
+    assert.deepStrictEqual(run2[0].provenance, expectedProvenance);
+
+    const stability = evaluateJudgeStability([run0, run1, run2]);
+    const consensusRow = stability.consensusResults[0];
+    assert.equal(consensusRow.judgeVersion, JUDGE_VERSION);
+    assert.equal(consensusRow.guideHash, expectedProvenance.guideHash);
+    assert.equal(consensusRow.explainerContextHash, expectedProvenance.explainerContextHash);
+    assert.equal(consensusRow.dossierHash, 'none');
+    assert.equal(consensusRow.ruleId, 'calculate-event-differentials');
+    assert.equal(consensusRow.ruleGuideHash, expectedProvenance.ruleGuideHash);
+    assert.deepStrictEqual(consensusRow.provenance, expectedProvenance);
+    assert.deepStrictEqual(consensusRow.facts.provenance, expectedProvenance);
   });
 
   it('throws an explicit error when batch API returns an error response instead of falling back', async () => {
