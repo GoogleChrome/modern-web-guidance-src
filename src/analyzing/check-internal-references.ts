@@ -18,19 +18,13 @@ export const BANNED_PATTERNS: ReadonlyArray<{ readonly name: string; readonly re
 
 /**
  * Narrow exemptions for existing code:
- * 1. schema.ts: gitMirrorFilter line pending its coordinated move into analyzer-internal.
- * 2. prompts.ts formatBlindCardPrompt error string: version-hash continuity; remove at the next intentional judge bump.
- * 3. llm-verifier.ts formatVerifierPrompt error string: version-hash continuity; remove at the next intentional verifier bump.
+ * 1. prompts.ts formatBlindCardPrompt error string: version-hash continuity; remove at the next intentional judge bump.
+ * 2. llm-verifier.ts formatVerifierPrompt error string: version-hash continuity; remove at the next intentional verifier bump.
  */
 export function isExemptedLine(relPath: string, lineText: string): boolean {
   const normalized = relPath.replace(/\\/g, '/');
 
-  // 1. schema.ts: gitMirrorFilter line pending move to analyzer-internal
-  if (normalized === 'src/analyzing/schema.ts' && lineText.includes('gitMirrorFilter')) {
-    return true;
-  }
-
-  // 2. prompts.ts formatBlindCardPrompt: version-hash continuity; remove at the next intentional judge bump
+  // 1. prompts.ts formatBlindCardPrompt: version-hash continuity; remove at the next intentional judge bump
   if (
     normalized === 'src/analyzing/eval/prompts.ts' &&
     lineText.includes('formatBlindCardPrompt failed:') &&
@@ -39,7 +33,7 @@ export function isExemptedLine(relPath: string, lineText: string): boolean {
     return true;
   }
 
-  // 3. llm-verifier.ts formatVerifierPrompt: version-hash continuity; remove at the next intentional verifier bump
+  // 2. llm-verifier.ts formatVerifierPrompt: version-hash continuity; remove at the next intentional verifier bump
   if (
     normalized === 'src/analyzing/llm-verifier.ts' &&
     lineText.includes('formatVerifierPrompt failed:') &&

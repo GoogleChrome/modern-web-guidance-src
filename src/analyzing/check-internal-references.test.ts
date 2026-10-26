@@ -50,18 +50,14 @@ describe('check-internal-references guard', () => {
     assert.ok(agentPattern.test('jetski'));
   });
 
-  it('exempts exactly three narrow lines for hash continuity and pending schema migration', () => {
-    // 1. schema.ts gitMirrorFilter
+  it('exempts exactly two narrow lines for prompt version-hash continuity', () => {
+    // schema.ts no longer gets an exemption
     assert.strictEqual(
       isExemptedLine('src/analyzing/schema.ts', '  readonly gitMirrorFilter?: {'),
-      true,
-    );
-    assert.strictEqual(
-      isExemptedLine('src/analyzing/schema.ts', '  readonly otherField?: string;'),
       false,
     );
 
-    // 2. prompts.ts formatBlindCardPrompt error string
+    // 1. prompts.ts formatBlindCardPrompt error string
     assert.strictEqual(
       isExemptedLine(
         'src/analyzing/eval/prompts.ts',
@@ -77,7 +73,7 @@ describe('check-internal-references guard', () => {
       false,
     );
 
-    // 3. llm-verifier.ts formatVerifierPrompt error string
+    // 2. llm-verifier.ts formatVerifierPrompt error string
     assert.strictEqual(
       isExemptedLine(
         'src/analyzing/llm-verifier.ts',
