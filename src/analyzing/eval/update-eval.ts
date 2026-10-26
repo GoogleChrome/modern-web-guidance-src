@@ -777,8 +777,8 @@ export interface SeededFixture {
 }
 
 /**
- * Returns canonical seeded fixtures across all 25 qualified guides for adversarial sensitivity testing.
- * Fixtures are stored externally in fix-harness-data.json (code has 0 hardcoded test fixture prose).
+ * Returns canonical seeded fixtures across seeded guides for adversarial sensitivity testing.
+ * Fixtures are stored externally in update-eval-data.json (code has 0 hardcoded test fixture prose).
  */
 export function getSeededSensitivityTestCases(): SeededFixture[] {
   return fixHarnessData.seededFixtures;
@@ -796,7 +796,7 @@ export interface BadPatchSensitivityReport {
 }
 
 /**
- * Executes the Seeded Bad-Patch Sensitivity Suite across all 25 qualified guides.
+ * Executes the Seeded Bad-Patch Sensitivity Suite across seeded guides.
  * Verifies badPatchRejectionRate === 1.0 (100% rejection, 0 false passes).
  */
 export async function runBadPatchSensitivitySuite(

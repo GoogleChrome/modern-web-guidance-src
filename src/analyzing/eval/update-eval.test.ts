@@ -679,11 +679,11 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
 });
 
 describe('runBadPatchSensitivitySuite', () => {
-  it('covers all 25 seeded sensitivity fixtures with valid guide IDs', async (t) => {
+  it('covers all 59 seeded sensitivity fixtures with valid guide IDs', async (t) => {
     const fixtures = getSeededSensitivityTestCases();
-    assert.strictEqual(fixtures.length, 25);
+    assert.strictEqual(fixtures.length, 59);
     const fixtureGuideIds = new Set(fixtures.map((f) => f.guideId));
-    assert.strictEqual(fixtureGuideIds.size, 25);
+    assert.strictEqual(fixtureGuideIds.size, 59);
     for (const fx of fixtures) {
       await t.test(`fixture for ${fx.guideId}`, () => {
         assert.ok(fx.originalContent.length > 0, `Missing originalContent for ${fx.guideId}`);
@@ -699,15 +699,15 @@ describe('runBadPatchSensitivitySuite', () => {
       1.0,
       `Bad patch rejection rate must be 1.0 (got ${report.badPatchRejectionRate}). Violations: ${JSON.stringify(report.violations)}`,
     );
-    assert.strictEqual(report.badPatchesRejected, 75);
-    assert.strictEqual(report.badPatchesTotal, 75);
+    assert.strictEqual(report.badPatchesRejected, 177);
+    assert.strictEqual(report.badPatchesTotal, 177);
     assert.strictEqual(
       report.goodPatchPassRate,
       1.0,
       `Good patch pass rate must be 1.0 (got ${report.goodPatchPassRate}). Violations: ${JSON.stringify(report.violations)}`,
     );
-    assert.strictEqual(report.goodPatchesPassed, 25);
-    assert.strictEqual(report.goodPatchesTotal, 25);
+    assert.strictEqual(report.goodPatchesPassed, 59);
+    assert.strictEqual(report.goodPatchesTotal, 59);
     assert.strictEqual(report.violations.length, 0);
   });
 });

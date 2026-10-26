@@ -224,6 +224,312 @@
       "deletionPatch": "",
       "brokenSyntaxOrEvasionPatch": "body {\n  background-color: #222;\n  color: #fff;\n}",
       "goodPatch": ":root {\n  color-scheme: light dark;\n}\nbody {\n  background-color: light-dark(#ffffff, #121212);\n  color: light-dark(#111111, #f3f3f3);\n}"
+    },
+    {
+      "guideId": "atrule-support-conditionals",
+      "filePath": "src/utils/feature-check.ts",
+      "originalContent": "export function checkKeyframesSupport() {\n  return Modernizr.atRule(\"@keyframes\");\n}",
+      "noOpPatch": "export function checkKeyframesSupport() {\n  return Modernizr.atRule(\"@keyframes\");\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function checkKeyframesSupport() {\n  return true;\n}",
+      "goodPatch": "export function checkKeyframesSupport() {\n  return CSS.supports(\"animation-name\", \"test\");\n}"
+    },
+    {
+      "guideId": "capture-location-agnostic-data",
+      "filePath": "src/i18n/regions.ts",
+      "originalContent": "import countries from \"i18n-iso-countries\";\n\nexport function getCountryDisplayName(code: string): string | undefined {\n  return countries.getName(code, \"en\");\n}",
+      "noOpPatch": "import countries from \"i18n-iso-countries\";\n\nexport function getCountryDisplayName(code: string): string | undefined {\n  return countries.getName(code, \"en\");\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function getCountryDisplayName(code: string): string | undefined {\n  return code.toUpperCase();\n}",
+      "goodPatch": "export function getCountryDisplayName(code: string): string | undefined {\n  const displayNames = new Intl.DisplayNames([\"en\"], { type: \"region\" });\n  return displayNames.of(code);\n}"
+    },
+    {
+      "guideId": "custom-text-decorations",
+      "filePath": "src/styles/links.css",
+      "originalContent": "a.link {\n  text-decoration: none;\n  border-bottom: 2px solid #0070f3;\n  padding-bottom: 4px;\n}",
+      "noOpPatch": "a.link {\n  text-decoration: none;\n  border-bottom: 2px solid #0070f3;\n  padding-bottom: 4px;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "a.link {\n  color: #0070f3;\n}",
+      "goodPatch": "a.link {\n  text-decoration: underline;\n  text-underline-offset: 4px;\n  text-decoration-thickness: 2px;\n}"
+    },
+    {
+      "guideId": "deliver-optimized-decorative-images",
+      "filePath": "src/styles/banner.css",
+      "originalContent": ".hero-banner {\n  background-image: -webkit-image-set(url(\"/img/hero.webp\") 1x, url(\"/img/hero@2x.webp\") 2x);\n}",
+      "noOpPatch": ".hero-banner {\n  background-image: -webkit-image-set(url(\"/img/hero.webp\") 1x, url(\"/img/hero@2x.webp\") 2x);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": ".hero-banner {\n  background-image: url(\"/img/hero.webp\");\n}",
+      "goodPatch": ".hero-banner {\n  background-image: image-set(url(\"/img/hero.webp\") 1x, url(\"/img/hero@2x.webp\") 2x);\n}"
+    },
+    {
+      "guideId": "drag",
+      "filePath": "src/components/draggable.ts",
+      "originalContent": "export function setupDraggable(el: HTMLElement) {\n  el.addEventListener(\"mousedown\", (e) => {\n    const startX = e.clientX;\n    const onMove = (ev: MouseEvent) => {\n      el.style.left = String(ev.clientX - startX) + \"px\";\n    };\n    window.addEventListener(\"mousemove\", onMove);\n    window.addEventListener(\"mouseup\", () => window.removeEventListener(\"mousemove\", onMove));\n  });\n}",
+      "noOpPatch": "export function setupDraggable(el: HTMLElement) {\n  el.addEventListener(\"mousedown\", (e) => {\n    const startX = e.clientX;\n    const onMove = (ev: MouseEvent) => {\n      el.style.left = String(ev.clientX - startX) + \"px\";\n    };\n    window.addEventListener(\"mousemove\", onMove);\n    window.addEventListener(\"mouseup\", () => window.removeEventListener(\"mousemove\", onMove));\n  });\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function setupDraggable(el: HTMLElement) {\n  el.style.position = \"absolute\";\n}",
+      "goodPatch": "export function setupDraggable(el: HTMLElement) {\n  el.draggable = true;\n  el.addEventListener(\"dragstart\", (e) => {\n    e.dataTransfer?.setData(\"text/plain\", el.id);\n  });\n}"
+    },
+    {
+      "guideId": "equal-width-text-lines",
+      "filePath": "src/views/header.ts",
+      "originalContent": "import fitty from \"fitty\";\n\nexport function fitHeader() {\n  fitty(\".hero-title\", { minSize: 16, maxSize: 72 });\n}",
+      "noOpPatch": "import fitty from \"fitty\";\n\nexport function fitHeader() {\n  fitty(\".hero-title\", { minSize: 16, maxSize: 72 });\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function fitHeader() {\n  const el = document.querySelector(\".hero-title\") as HTMLElement;\n  if (el) el.style.fontSize = \"32px\";\n}",
+      "goodPatch": "export function fitHeader() {\n  if (CSS.supports(\"text-fit\", \"contain\")) {\n    const el = document.querySelector(\".hero-title\") as HTMLElement;\n    if (el) el.style.setProperty(\"text-fit\", \"contain\");\n  }\n}"
+    },
+    {
+      "guideId": "export-html-media-from-canvas",
+      "filePath": "src/canvas/recorder.ts",
+      "originalContent": "import CCapture from \"ccapture.js\";\n\nexport function startRecording(canvas: HTMLCanvasElement) {\n  const capturer = new CCapture({ format: \"webm\", framerate: 60 });\n  capturer.start();\n  return capturer;\n}",
+      "noOpPatch": "import CCapture from \"ccapture.js\";\n\nexport function startRecording(canvas: HTMLCanvasElement) {\n  const capturer = new CCapture({ format: \"webm\", framerate: 60 });\n  capturer.start();\n  return capturer;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function startRecording(canvas: HTMLCanvasElement) {\n  return canvas.toDataURL(\"image/png\");\n}",
+      "goodPatch": "export function startRecording(canvas: HTMLCanvasElement): MediaRecorder {\n  const stream = canvas.captureStream(60);\n  const recorder = new MediaRecorder(stream, { mimeType: \"video/webm\" });\n  recorder.start();\n  return recorder;\n}"
+    },
+    {
+      "guideId": "highlight-text-ranges",
+      "filePath": "src/search/highlighter.ts",
+      "originalContent": "import Mark from \"mark.js\";\n\nexport function highlightTerm(container: HTMLElement, term: string) {\n  const instance = new Mark(container);\n  instance.mark(term);\n}",
+      "noOpPatch": "import Mark from \"mark.js\";\n\nexport function highlightTerm(container: HTMLElement, term: string) {\n  const instance = new Mark(container);\n  instance.mark(term);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function highlightTerm(container: HTMLElement, term: string) {\n  container.innerHTML = container.innerHTML.replaceAll(term, `<span class=\"hl\">${term}</span>`);\n}",
+      "goodPatch": "export function highlightTerm(range: Range) {\n  const highlight = new Highlight(range);\n  CSS.highlights.set(\"search-result\", highlight);\n}"
+    },
+    {
+      "guideId": "improve-next-page-load-performance",
+      "filePath": "src/navigation/prefetch.ts",
+      "originalContent": "import quicklink from \"quicklink\";\n\nexport function initPrefetch() {\n  quicklink.listen();\n}",
+      "noOpPatch": "import quicklink from \"quicklink\";\n\nexport function initPrefetch() {\n  quicklink.listen();\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function initPrefetch() {\n  console.log(\"prefetch initialized\");\n}",
+      "goodPatch": "export function initPrefetch() {\n  const script = document.createElement(\"script\");\n  script.type = \"speculationrules\";\n  script.textContent = JSON.stringify({ prefetch: [{ where: { href_matches: \"/*\" } }] });\n  document.head.appendChild(script);\n}"
+    },
+    {
+      "guideId": "improve-text-layout-and-legibility",
+      "filePath": "src/components/Headline.tsx",
+      "originalContent": "import Balancer from \"react-wrap-balancer\";\n\nexport function Headline({ title }: { title: string }) {\n  return (\n    <h1>\n      <Balancer>{title}</Balancer>\n    </h1>\n  );\n}",
+      "noOpPatch": "import Balancer from \"react-wrap-balancer\";\n\nexport function Headline({ title }: { title: string }) {\n  return (\n    <h1>\n      <Balancer>{title}</Balancer>\n    </h1>\n  );\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function Headline({ title }: { title: string }) {\n  return <h1>{title}</h1>;\n}",
+      "goodPatch": "export function Headline({ title }: { title: string }) {\n  return (\n    <h1 style={{ textWrap: \"balance\" }} className=\"[text-wrap:balance]\">\n      {title}\n    </h1>\n  );\n}"
+    },
+    {
+      "guideId": "interactions-in-complex-layouts",
+      "filePath": "src/utils/layout.ts",
+      "originalContent": "import fastdom from \"fastdom\";\n\nexport function updateCardHeight(el: HTMLElement) {\n  fastdom.measure(() => {\n    const h = el.clientHeight;\n    fastdom.mutate(() => {\n      el.style.height = `${h + 20}px`;\n    });\n  });\n}",
+      "noOpPatch": "import fastdom from \"fastdom\";\n\nexport function updateCardHeight(el: HTMLElement) {\n  fastdom.measure(() => {\n    const h = el.clientHeight;\n    fastdom.mutate(() => {\n      el.style.height = `${h + 20}px`;\n    });\n  });\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function updateCardHeight(el: HTMLElement) {\n  const h = el.clientHeight;\n  el.style.height = `${h + 20}px`;\n}",
+      "goodPatch": "export function updateCardHeight(el: HTMLElement) {\n  el.style.cssText = \"content-visibility: auto; contain-intrinsic-size: 0 300px;\";\n}"
+    },
+    {
+      "guideId": "language-detection",
+      "filePath": "src/utils/lang.ts",
+      "originalContent": "import { franc } from \"franc\";\n\nexport function detectLanguage(text: string): string {\n  return franc(text);\n}",
+      "noOpPatch": "import { franc } from \"franc\";\n\nexport function detectLanguage(text: string): string {\n  return franc(text);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function detectLanguage(text: string): string {\n  return \"en\";\n}",
+      "goodPatch": "export async function detectLanguage(text: string): Promise<string> {\n  const detector = await LanguageDetector.create();\n  const results = await detector.detect(text);\n  return results[0]?.detectedLanguage ?? \"und\";\n}"
+    },
+    {
+      "guideId": "light-dismiss-a-dialog",
+      "filePath": "src/components/modal.ts",
+      "originalContent": "export function attachBackdropDismiss(dialog: HTMLDialogElement) {\n  dialog.addEventListener(\"click\", (e) => {\n    const rect = dialog.getBoundingClientRect();\n    const clickedOutside = e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom;\n    if (clickedOutside) {\n      dialog.close();\n    }\n  });\n}",
+      "noOpPatch": "export function attachBackdropDismiss(dialog: HTMLDialogElement) {\n  dialog.addEventListener(\"click\", (e) => {\n    const rect = dialog.getBoundingClientRect();\n    const clickedOutside = e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom;\n    if (clickedOutside) {\n      dialog.close();\n    }\n  });\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function attachBackdropDismiss(dialog: HTMLDialogElement) {\n  dialog.addEventListener(\"close\", () => {});\n}",
+      "goodPatch": "export function attachBackdropDismiss(dialog: HTMLDialogElement) {\n  if (\"closedBy\" in HTMLDialogElement) {\n    dialog.setAttribute(\"closedby\", \"any\");\n  }\n}"
+    },
+    {
+      "guideId": "platform-controls-dismiss-dialog",
+      "filePath": "src/components/dialog-dismiss.ts",
+      "originalContent": "export function bindDialogEscape(modal: HTMLElement) {\n  window.addEventListener(\"keydown\", (e) => {\n    if (e.key === \"Escape\") {\n      modal.classList.remove(\"is-open\");\n    }\n  });\n}",
+      "noOpPatch": "export function bindDialogEscape(modal: HTMLElement) {\n  window.addEventListener(\"keydown\", (e) => {\n    if (e.key === \"Escape\") {\n      modal.classList.remove(\"is-open\");\n    }\n  });\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function bindDialogEscape(modal: HTMLElement) {\n  modal.style.display = \"none\";\n}",
+      "goodPatch": "export function bindDialogEscape(modal: HTMLElement) {\n  const watcher = new CloseWatcher();\n  watcher.onclose = () => {\n    modal.classList.remove(\"is-open\");\n  };\n}"
+    },
+    {
+      "guideId": "responsive-table",
+      "filePath": "src/styles/table.css",
+      "originalContent": "@media (max-width: 768px) {\n  td::before {\n    content: attr(data-label);\n    font-weight: bold;\n  }\n}",
+      "noOpPatch": "@media (max-width: 768px) {\n  td::before {\n    content: attr(data-label);\n    font-weight: bold;\n  }\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "@media (max-width: 768px) {\n  td {\n    display: block;\n  }\n}",
+      "goodPatch": ".table-container {\n  container-type: inline-size;\n}\n@container (max-width: 600px) {\n  td {\n    display: grid;\n  }\n}"
+    },
+    {
+      "guideId": "sanitize-untrusted-html",
+      "filePath": "src/utils/render.ts",
+      "originalContent": "import DOMPurify from \"dompurify\";\n\nexport function renderMessage(container: HTMLElement, markup: string) {\n  container.innerHTML = DOMPurify.sanitize(markup);\n}",
+      "noOpPatch": "import DOMPurify from \"dompurify\";\n\nexport function renderMessage(container: HTMLElement, markup: string) {\n  container.innerHTML = DOMPurify.sanitize(markup);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function renderMessage(container: HTMLElement, markup: string) {\n  container.textContent = markup;\n}",
+      "goodPatch": "export function renderMessage(container: HTMLElement, markup: string) {\n  container.setHTMLUnsafe(markup);\n}"
+    },
+    {
+      "guideId": "scroll-entry-exit-effects",
+      "filePath": "src/views/reveal.ts",
+      "originalContent": "import ScrollReveal from \"scrollreveal\";\n\nexport function initScrollReveal() {\n  ScrollReveal().reveal(\".reveal-card\", { delay: 200, distance: \"20px\" });\n}",
+      "noOpPatch": "import ScrollReveal from \"scrollreveal\";\n\nexport function initScrollReveal() {\n  ScrollReveal().reveal(\".reveal-card\", { delay: 200, distance: \"20px\" });\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function initScrollReveal() {\n  const cards = document.querySelectorAll(\".reveal-card\");\n  cards.forEach(c => c.classList.add(\"visible\"));\n}",
+      "goodPatch": "export function initScrollReveal() {\n  const style = document.createElement(\"style\");\n  style.textContent = \".reveal-card { animation-timeline: view(); animation-range: entry 0% cover 30%; }\";\n  document.head.appendChild(style);\n}"
+    },
+    {
+      "guideId": "scroll-position-aware-elements",
+      "filePath": "src/components/navbar.ts",
+      "originalContent": "export function setupScrollHeader(navbar: HTMLElement) {\n  window.addEventListener(\"scroll\", () => {\n    if (window.scrollY > 50) {\n      navbar.classList.add(\"is-scrolled\");\n    } else {\n      navbar.classList.remove(\"is-scrolled\");\n    }\n  });\n}",
+      "noOpPatch": "export function setupScrollHeader(navbar: HTMLElement) {\n  window.addEventListener(\"scroll\", () => {\n    if (window.scrollY > 50) {\n      navbar.classList.add(\"is-scrolled\");\n    } else {\n      navbar.classList.remove(\"is-scrolled\");\n    }\n  });\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function setupScrollHeader(navbar: HTMLElement) {\n  navbar.style.position = \"sticky\";\n}",
+      "goodPatch": "export function setupScrollHeader(navbar: HTMLElement) {\n  const timeline = new ScrollTimeline({ source: document.documentElement });\n  navbar.animate([{ height: \"80px\" }, { height: \"50px\" }], { timeline });\n}"
+    },
+    {
+      "guideId": "scroll-progress-indicator",
+      "filePath": "src/components/progress-bar.ts",
+      "originalContent": "export function trackScrollProgress(bar: HTMLElement) {\n  window.addEventListener(\"scroll\", () => {\n    const max = document.documentElement.scrollHeight - window.innerHeight;\n    const pct = (window.scrollY / max) * 100;\n    bar.style.width = `${pct}%`;\n  });\n}",
+      "noOpPatch": "export function trackScrollProgress(bar: HTMLElement) {\n  window.addEventListener(\"scroll\", () => {\n    const max = document.documentElement.scrollHeight - window.innerHeight;\n    const pct = (window.scrollY / max) * 100;\n    bar.style.width = `${pct}%`;\n  });\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function trackScrollProgress(bar: HTMLElement) {\n  bar.style.width = \"100%\";\n}",
+      "goodPatch": "export function trackScrollProgress(bar: HTMLElement) {\n  bar.style.animationTimeline = \"scroll()\";\n}"
+    },
+    {
+      "guideId": "scrollspy",
+      "filePath": "src/views/doc-nav.html",
+      "originalContent": "<nav id=\"navbar-example\" class=\"navbar navbar-light bg-light\" data-bs-spy=\"scroll\" data-bs-target=\"#nav-content\">\n  <ul class=\"nav nav-pills\">\n    <li class=\"nav-item\"><a class=\"nav-link\" href=\"#sec1\">Section 1</a></li>\n    <li class=\"nav-item\"><a class=\"nav-link\" href=\"#sec2\">Section 2</a></li>\n  </ul>\n</nav>",
+      "noOpPatch": "<nav id=\"navbar-example\" class=\"navbar navbar-light bg-light\" data-bs-spy=\"scroll\" data-bs-target=\"#nav-content\">\n  <ul class=\"nav nav-pills\">\n    <li class=\"nav-item\"><a class=\"nav-link\" href=\"#sec1\">Section 1</a></li>\n    <li class=\"nav-item\"><a class=\"nav-link\" href=\"#sec2\">Section 2</a></li>\n  </ul>\n</nav>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<nav id=\"navbar-example\" class=\"navbar navbar-light bg-light\">\n  <ul class=\"nav nav-pills\">\n    <li class=\"nav-item\"><a class=\"nav-link\" href=\"#sec1\">Section 1</a></li>\n  </ul>\n</nav>",
+      "goodPatch": "<nav id=\"navbar-example\" class=\"navbar navbar-light bg-light\" style=\"scroll-target-group: auto;\">\n  <ul class=\"nav nav-pills\">\n    <li class=\"nav-item\"><a class=\"nav-link\" href=\"#sec1\">Section 1</a></li>\n    <li class=\"nav-item\"><a class=\"nav-link\" href=\"#sec2\">Section 2</a></li>\n  </ul>\n</nav>"
+    },
+    {
+      "guideId": "soft-edge-content-fade",
+      "filePath": "src/styles/fade.css",
+      "originalContent": ".scroll-container {\n  -webkit-mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);\n}",
+      "noOpPatch": ".scroll-container {\n  -webkit-mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": ".scroll-container {\n  overflow-x: auto;\n}",
+      "goodPatch": ".scroll-container {\n  mask-image: linear-gradient(to right, transparent, black 20%, black 80%, transparent);\n}"
+    },
+    {
+      "guideId": "state-aware-sticky-headers",
+      "filePath": "src/components/sticky.ts",
+      "originalContent": "export function setupStickyWatcher(header: HTMLElement, sentinel: HTMLElement) {\n  const observer = new IntersectionObserver(([entry]) => {\n    header.classList.toggle(\"is-stuck\", !entry.isIntersecting);\n  });\n  observer.observe(sentinel);\n}",
+      "noOpPatch": "export function setupStickyWatcher(header: HTMLElement, sentinel: HTMLElement) {\n  const observer = new IntersectionObserver(([entry]) => {\n    header.classList.toggle(\"is-stuck\", !entry.isIntersecting);\n  });\n  observer.observe(sentinel);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function setupStickyWatcher(header: HTMLElement) {\n  header.style.position = \"sticky\";\n}",
+      "goodPatch": "export function setupStickyWatcher(header: HTMLElement) {\n  const style = document.createElement(\"style\");\n  style.textContent = \"@container scroll-state(stuck: top) { header { box-shadow: 0 2px 4px rgba(0,0,0,0.1); } }\";\n  document.head.appendChild(style);\n}"
+    },
+    {
+      "guideId": "styling-web-components",
+      "filePath": "src/components/widget.css",
+      "originalContent": ":host-context(.dark-theme) .button {\n  background: #333;\n  color: #fff;\n}",
+      "noOpPatch": ":host-context(.dark-theme) .button {\n  background: #333;\n  color: #fff;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": ".button {\n  background: #333;\n  color: #fff;\n}",
+      "goodPatch": ":host([data-theme=\"dark\"]) .button {\n  background: #333;\n  color: #fff;\n}"
+    },
+    {
+      "guideId": "support-global-calendar-systems",
+      "filePath": "src/utils/calendar.ts",
+      "originalContent": "import jalaali from \"jalaali-js\";\n\nexport function formatPersianDate(year: number, month: number, day: number) {\n  return jalaali.toJalaali(year, month, day);\n}",
+      "noOpPatch": "import jalaali from \"jalaali-js\";\n\nexport function formatPersianDate(year: number, month: number, day: number) {\n  return jalaali.toJalaali(year, month, day);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function formatPersianDate(year: number, month: number, day: number) {\n  return { jy: year, jm: month, jd: day };\n}",
+      "goodPatch": "export function formatPersianDate(date: Date) {\n  return new Intl.DateTimeFormat(\"fa-IR\", { calendar: \"persian\" }).format(date);\n}"
+    },
+    {
+      "guideId": "switch",
+      "filePath": "src/views/settings.html",
+      "originalContent": "<label class=\"toggle-control\">\n  <input type=\"checkbox\" role=\"switch\" id=\"notifications\">\n  <span class=\"slider\"></span>\n</label>",
+      "noOpPatch": "<label class=\"toggle-control\">\n  <input type=\"checkbox\" role=\"switch\" id=\"notifications\">\n  <span class=\"slider\"></span>\n</label>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<label class=\"toggle-control\">\n  <input type=\"checkbox\" id=\"notifications\">\n</label>",
+      "goodPatch": "<label class=\"toggle-control\">\n  <input type=\"checkbox\" switch id=\"notifications\">\n</label>"
+    },
+    {
+      "guideId": "navigation-drawer",
+      "filePath": "src/components/drawer.html",
+      "originalContent": "<nav id=\"sidenav\" class=\"nav-drawer\">\n  <button class=\"close-btn\">Close</button>\n  <a href=\"/home\">Home</a>\n</nav>",
+      "noOpPatch": "<nav id=\"sidenav\" class=\"nav-drawer\">\n  <button class=\"close-btn\">Close</button>\n  <a href=\"/home\">Home</a>\n</nav>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<nav id=\"sidenav\" class=\"nav-drawer-menu\">\n  <a href=\"/home\">Home</a>\n</nav>",
+      "goodPatch": "<dialog id=\"sidenav\" class=\"nav-drawer\">\n  <button class=\"close-btn\">Close</button>\n  <a href=\"/home\">Home</a>\n</dialog>"
+    },
+    {
+      "guideId": "required-field-feedback",
+      "filePath": "src/styles/form-validation.css",
+      "originalContent": "input:required:invalid {\n  border-color: #e53e3e;\n}",
+      "noOpPatch": "input:required:invalid {\n  border-color: #e53e3e;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "input.error {\n  border-color: #e53e3e;\n}",
+      "goodPatch": "input:user-invalid {\n  border-color: #e53e3e;\n}"
+    },
+    {
+      "guideId": "menu",
+      "filePath": "src/components/context-menu.html",
+      "originalContent": "<div role=\"menu\" class=\"action-menu\" id=\"menu1\">\n  <div role=\"menuitem\" tabindex=\"0\">Cut</div>\n  <div role=\"menuitem\" tabindex=\"-1\">Copy</div>\n</div>",
+      "noOpPatch": "<div role=\"menu\" class=\"action-menu\" id=\"menu1\">\n  <div role=\"menuitem\" tabindex=\"0\">Cut</div>\n  <div role=\"menuitem\" tabindex=\"-1\">Copy</div>\n</div>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<div class=\"action-menu\" id=\"menu1\">\n  <div>Cut</div>\n</div>",
+      "goodPatch": "<div role=\"menu\" focusgroup=\"menu nomemory\" popover=\"auto\" class=\"action-menu\" id=\"menu1\">\n  <button role=\"menuitem\">Cut</button>\n  <button role=\"menuitem\">Copy</button>\n</div>"
+    },
+    {
+      "guideId": "conditional-async-dependencies",
+      "filePath": "src/utils/loader.ts",
+      "originalContent": "import loadjs from \"loadjs\";\n\nexport function loadChartLib(cb: () => void) {\n  loadjs(\"/vendor/chart.min.js\", cb);\n}",
+      "noOpPatch": "import loadjs from \"loadjs\";\n\nexport function loadChartLib(cb: () => void) {\n  loadjs(\"/vendor/chart.min.js\", cb);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function loadChartLib(cb: () => void) {\n  cb();\n}",
+      "goodPatch": "export async function loadChartLib() {\n  return import(\"/vendor/chart.min.js\");\n}"
+    },
+    {
+      "guideId": "progress-ring",
+      "filePath": "src/components/progress-circle.ts",
+      "originalContent": "export function setProgressRing(circle: SVGCircleElement, percent: number) {\n  const radius = circle.r.baseVal.value;\n  const circumference = 2 * Math.PI * radius;\n  const offset = circumference - (percent / 100) * circumference;\n  circle.style.strokeDashoffset = String(offset);\n}",
+      "noOpPatch": "export function setProgressRing(circle: SVGCircleElement, percent: number) {\n  const radius = circle.r.baseVal.value;\n  const circumference = 2 * Math.PI * radius;\n  const offset = circumference - (percent / 100) * circumference;\n  circle.style.strokeDashoffset = String(offset);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function setProgressRing(circle: SVGCircleElement, percent: number) {\n  circle.style.opacity = String(percent / 100);\n}",
+      "goodPatch": "export function setProgressRing(progressEl: HTMLElement, percent: number) {\n  progressEl.style.background = `conic-gradient(#2563eb ${percent}%, #e2e8f0 ${percent}%)`;\n}"
+    },
+    {
+      "guideId": "select-menu-interaction",
+      "filePath": "src/styles/select-field.css",
+      "originalContent": "select:invalid {\n  color: #a0aec0;\n}",
+      "noOpPatch": "select:invalid {\n  color: #a0aec0;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "select {\n  color: #a0aec0;\n}",
+      "goodPatch": "select:user-invalid {\n  color: #e53e3e;\n}"
+    },
+    {
+      "guideId": "contrast-color",
+      "filePath": "src/utils/color.ts",
+      "originalContent": "export function getContrastColor(r: number, g: number, b: number): string {\n  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;\n  return luminance >= 128 ? \"#000000\" : \"#ffffff\";\n}",
+      "noOpPatch": "export function getContrastColor(r: number, g: number, b: number): string {\n  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;\n  return luminance >= 128 ? \"#000000\" : \"#ffffff\";\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function getContrastColor(bg: string): string {\n  return \"#000000\";\n}",
+      "goodPatch": "export function getContrastColor(bg: string): string {\n  return `contrast-color(${bg})`;\n}"
+    },
+    {
+      "guideId": "autofill-payment-form",
+      "filePath": "src/checkout/billing.html",
+      "originalContent": "<form action=\"/process-payment\" method=\"POST\">\n  <label for=\"cc\">Card Number</label>\n  <input type=\"text\" id=\"cc\" name=\"cardnumber\">\n  <label for=\"exp\">Expiry</label>\n  <input type=\"text\" id=\"exp\" name=\"expdate\">\n</form>",
+      "noOpPatch": "<form action=\"/process-payment\" method=\"POST\">\n  <label for=\"cc\">Card Number</label>\n  <input type=\"text\" id=\"cc\" name=\"cardnumber\">\n  <label for=\"exp\">Expiry</label>\n  <input type=\"text\" id=\"exp\" name=\"expdate\">\n</form>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<form action=\"/process-payment\" method=\"POST\">\n  <input type=\"text\" name=\"pan\">\n</form>",
+      "goodPatch": "<form action=\"/process-payment\" method=\"POST\">\n  <label for=\"cc\">Card Number</label>\n  <input type=\"text\" id=\"cc\" name=\"cardnumber\" autocomplete=\"cc-number\">\n  <label for=\"exp\">Expiry</label>\n  <input type=\"text\" id=\"exp\" name=\"expdate\" autocomplete=\"cc-exp\">\n</form>"
+    },
+    {
+      "guideId": "defer-work-until-scroll-ends",
+      "filePath": "src/views/scroll-debounce.ts",
+      "originalContent": "export function onScrollStop(cb: () => void) {\n  let timer: any = null;\n  window.addEventListener(\"scroll\", () => {\n    clearTimeout(timer);\n    timer = setTimeout(cb, 150);\n  });\n}",
+      "noOpPatch": "export function onScrollStop(cb: () => void) {\n  let timer: any = null;\n  window.addEventListener(\"scroll\", () => {\n    clearTimeout(timer);\n    timer = setTimeout(cb, 150);\n  });\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function onScrollStop(cb: () => void) {\n  window.addEventListener(\"scroll\", cb);\n}",
+      "goodPatch": "export function onScrollStop(cb: () => void) {\n  window.addEventListener(\"scrollend\", cb);\n}"
     }
   ],
   "modernFeaturePatterns": {
