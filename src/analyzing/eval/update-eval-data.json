@@ -530,6 +530,24 @@
       "deletionPatch": "",
       "brokenSyntaxOrEvasionPatch": "export function onScrollStop(cb: () => void) {\n  window.addEventListener(\"scroll\", cb);\n}",
       "goodPatch": "export function onScrollStop(cb: () => void) {\n  window.addEventListener(\"scrollend\", cb);\n}"
+    },
+    {
+      "guideId": "copy-button",
+      "filePath": "src/utils/clipboard.ts",
+      "originalContent": "export function copyToClipboard(text: string): boolean {\n  const textarea = document.createElement(\"textarea\");\n  textarea.value = text;\n  document.body.appendChild(textarea);\n  textarea.select();\n  const success = document.execCommand(\"copy\");\n  document.body.removeChild(textarea);\n  return success;\n}",
+      "noOpPatch": "export function copyToClipboard(text: string): boolean {\n  const textarea = document.createElement(\"textarea\");\n  textarea.value = text;\n  document.body.appendChild(textarea);\n  textarea.select();\n  const success = document.execCommand(\"copy\");\n  document.body.removeChild(textarea);\n  return success;\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function copyToClipboard(text: string): boolean {\n  console.log(\"Copy requested:\", text);\n  return false;\n}",
+      "goodPatch": "export async function copyToClipboard(text: string): Promise<boolean> {\n  try {\n    await navigator.clipboard.writeText(text);\n    return true;\n  } catch {\n    return false;\n  }\n}"
+    },
+    {
+      "guideId": "camera-and-microphone-capture",
+      "filePath": "src/media/capture.ts",
+      "originalContent": "export function startCamera(videoEl: HTMLVideoElement, onSuccess: () => void, onError: (err: unknown) => void): void {\n  navigator.getUserMedia({ video: true, audio: false }, (stream) => {\n    videoEl.srcObject = stream;\n    onSuccess();\n  }, onError);\n}",
+      "noOpPatch": "export function startCamera(videoEl: HTMLVideoElement, onSuccess: () => void, onError: (err: unknown) => void): void {\n  navigator.getUserMedia({ video: true, audio: false }, (stream) => {\n    videoEl.srcObject = stream;\n    onSuccess();\n  }, onError);\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function startCamera(videoEl: HTMLVideoElement, onSuccess: () => void, onError: (err: unknown) => void): void {\n  console.warn(\"Camera disabled\");\n  onError(new Error(\"Camera disabled\"));\n}",
+      "goodPatch": "export async function startCamera(videoEl: HTMLVideoElement, onSuccess: () => void, onError: (err: unknown) => void): Promise<void> {\n  try {\n    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });\n    videoEl.srcObject = stream;\n    onSuccess();\n  } catch (err) {\n    onError(err);\n  }\n}"
     }
   ],
   "modernFeaturePatterns": {
@@ -614,7 +632,9 @@
     "custom-text-decorations": "text-decoration-thickness\\s*:|text-underline-offset\\s*:|text-decoration-color\\s*:",
     "contrast-color": "contrast-color\\s*\\(",
     "custom-button-actions": "\\bcommandfor\\b|\\bcommand\\s*=|popovertarget",
-    "menu": "\\bfocusgroup\\b|<\\s*menu\\b|popover"
+    "menu": "\\bfocusgroup\\b|<\\s*menu\\b|popover",
+    "copy-button": "navigator\\.clipboard\\.(?:writeText|write)|\\bclipboard\\.(?:writeText|write)\\b|\\bcommand\\s*=\\s*['\"][^'\"]*\\b(?:copy|--copy)\\b|\\bcommandfor\\b",
+    "camera-and-microphone-capture": "navigator\\.mediaDevices\\.getUserMedia|\\bmediaDevices\\.getUserMedia\\b"
   },
   "seededAgentFailureFixtures": [
     {

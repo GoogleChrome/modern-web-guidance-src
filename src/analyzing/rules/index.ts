@@ -14,6 +14,7 @@ import { brandConsistentFormsRules } from './brand-consistent-forms.ts';
 import { brandedSelectStylingRules } from './branded-select-styling.ts';
 import { breakUpLongTasksRules } from './break-up-long-tasks.ts';
 import { calculateEventDifferentialsRules } from './calculate-event-differentials.ts';
+import { cameraAndMicrophoneCaptureRules } from './camera-and-microphone-capture.ts';
 import { captureLocationAgnosticDataRules } from './capture-location-agnostic-data.ts';
 import { checkboxRules } from './checkbox.ts';
 import { childStateBasedStylingRules } from './child-state-based-styling.ts';
@@ -21,6 +22,7 @@ import { complexShapesRules } from './complex-shapes.ts';
 import { conditionalAsyncDependenciesRules } from './conditional-async-dependencies.ts';
 import { contrastColorRules } from './contrast-color.ts';
 import { coordinateGlobalEventsRules } from './coordinate-global-events.ts';
+import { copyButtonRules } from './copy-button.ts';
 import { customButtonActionsRules } from './custom-button-actions.ts';
 import { customSelectPickerLayoutsRules } from './custom-select-picker-layouts.ts';
 import { customTextDecorationsRules } from './custom-text-decorations.ts';
@@ -90,6 +92,7 @@ export * from './brand-consistent-forms.ts';
 export * from './branded-select-styling.ts';
 export * from './break-up-long-tasks.ts';
 export * from './calculate-event-differentials.ts';
+export * from './camera-and-microphone-capture.ts';
 export * from './capture-location-agnostic-data.ts';
 export * from './checkbox.ts';
 export * from './child-state-based-styling.ts';
@@ -97,6 +100,7 @@ export * from './complex-shapes.ts';
 export * from './conditional-async-dependencies.ts';
 export * from './contrast-color.ts';
 export * from './coordinate-global-events.ts';
+export * from './copy-button.ts';
 export * from './custom-button-actions.ts';
 export * from './custom-select-picker-layouts.ts';
 export * from './custom-text-decorations.ts';
@@ -187,7 +191,7 @@ export const ALL_RULES: readonly AnalyzerRule[] = [
   ...sanitizeUntrustedHtmlRules,
   ...scrollPositionAwareElementsRules,
 
-  // Batch 4 Empirical GitMirror Guides (6 guides, 7 rules -> 46 rules across 35 feature guides total):
+  // Batch 4 Empirical Guides (6 guides, 7 rules -> 46 rules across 35 feature guides total):
   ...autofillHighlightInputsRules,
   ...complexShapesRules,
   ...deliverOptimizedDecorativeImagesRules,
@@ -245,6 +249,8 @@ export const ALL_RULES: readonly AnalyzerRule[] = [
   ...contrastColorRules,
   ...customButtonActionsRules,
   ...menuRules,
+  ...copyButtonRules,
+  ...cameraAndMicrophoneCaptureRules,
 ];
 
 
