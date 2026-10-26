@@ -6,6 +6,7 @@ web-feature-ids:
   - dialog-closedby
   - invoker-commands
   - popover
+  - overscroll-behavior
 guides:
   - declarative-dialog-popover-control
   - prevent-page-scroll-under-modal-dialog
@@ -47,7 +48,19 @@ The browser provides: inert page, focus containment, top layer, `::backdrop`, `E
 
 - **DON'T** add `role="dialog"`, `aria-modal`, a focus trap, `inert` toggling or an `Esc` handler.
 - **DON'T** open it with `show()` or the `open` attribute.
-- **DO** stop the page scrolling behind it as described in {{ GUIDE_REF("prevent-page-scroll-under-modal-dialog") }}.
+- **DO** stop the page scrolling behind it with the CSS below. See {{ GUIDE_REF("prevent-page-scroll-under-modal-dialog") }} for the details.
+- **DON'T** lock scrolling with `overflow: hidden` or `position: fixed` on `html` or `body`.
+
+```css
+/* MANDATORY (both rules): without them, scrolling over the backdrop or inside the dialog scrolls the page behind it */
+dialog:modal {
+  overscroll-behavior: contain; /* stops scroll gestures in the dialog chaining to the page */
+}
+dialog::backdrop {
+  overflow: hidden; /* ::backdrop is not a scroll container by default, so it would ignore overscroll-behavior */
+  overscroll-behavior: contain;
+}
+```
 
 Not for menus or tooltips: see Rule 3.
 
@@ -146,7 +159,7 @@ The default depends on how the dialog is opened. If `closedby` is absent or inva
 
 {{ BASELINE_STATUS("dialog-closedby") }}
 
-Without `closedby`, a modal still closes with `Esc` and the back gesture; only click-outside is lost, so this is graceful degradation. If your Baseline target requires light dismiss, add this where `closedby` is missing:
+Without `closedby`, a modal still closes with `Esc` and the back gesture; only click-outside is lost, so this is graceful degradation. `closedby="none"` is ignored the same way: `Esc` fires `cancel` and then closes the dialog. Keep the unsaved-changes guard in a `cancel` handler, not in `closedby="none"` alone, so it also protects where `closedby` is missing. If your Baseline target requires light dismiss, add this where `closedby` is missing:
 
 ```js
 if (!('closedBy' in HTMLDialogElement.prototype)) {
@@ -164,6 +177,12 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
   }
 }
 ```
+
+### `overscroll-behavior`
+
+{{ BASELINE_STATUS("overscroll-behavior") }}
+
+Treat scroll containment as progressive enhancement. Do not feature-detect it: `@supports` reports the property as supported even where non-scrollable containers ignore it. Where it is not enforced, the dialog still contains scroll whenever its own content overflows, and `showModal()` still makes the page inert. Do not fall back to `overflow: hidden` or `position: fixed` on `html` or `body`, which removes the root scrollbar and shifts the layout.
 
 ### Invoker Commands (`command` / `commandfor`)
 

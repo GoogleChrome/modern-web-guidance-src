@@ -158,9 +158,13 @@
       }
     }
 
-    /* 8. ::backdrop styling. Scroll locking is covered in the
-       prevent-page-scroll-under-modal-dialog guide and only referenced here. */
+    /* 8. ::backdrop styling and scroll containment: both rules are needed to stop the page scrolling behind a modal */
+    dialog:modal {
+      overscroll-behavior: contain;
+    }
     dialog::backdrop {
+      overflow: hidden; /* ::backdrop is not a scroll container by default, so it would ignore overscroll-behavior */
+      overscroll-behavior: contain;
       background: light-dark(rgb(15 23 42 / 0.45), rgb(0 0 0 / 0.65));
       backdrop-filter: blur(3px);
     }
@@ -334,6 +338,20 @@
   </main>
 
   <script>
+    // Fallbacks: load each polyfill only where native support is missing (CDN URLs are for the demo; prefer bundling)
+    (async () => {
+      try {
+        if (!('popover' in HTMLElement.prototype)) {
+          await import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
+        }
+        if (!('commandForElement' in HTMLButtonElement.prototype)) {
+          await import('https://esm.run/invokers-polyfill');
+        }
+      } catch (err) {
+        console.error('Polyfill failed to load:', err);
+      }
+    })();
+
     // 2. returnValue
     const formDlg = document.getElementById('form-dlg');
     formDlg.addEventListener('close', () => {

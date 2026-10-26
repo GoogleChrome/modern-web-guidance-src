@@ -1,15 +1,12 @@
 - The overlay is a `<dialog>` with a non-empty accessible name (`aria-labelledby` or `aria-label`).
 - A modal dialog is opened with `showModal()` or `command="show-modal"`, and `:modal` matches while it is open.
-- Focus moves into the dialog when it opens and returns to the invoking element when it closes.
-- Pressing `Esc` closes an open modal dialog (unless `closedby="none"` is set), and the page has no `keydown` handler for `Escape` that closes it.
-- A native `<button>` inside the dialog closes it.
-- When light dismiss is requested on a dialog, `closedby="any"` is set on the `<dialog>` and clicking the backdrop closes it.
-- When a dialog guards unsaved form changes, it uses `closedby="none"` plus a confirmation path (such as `request-close` with a `cancel` handler) and stays open until the user confirms.
-- When a non-modal dialog panel needs the top layer, it uses `<dialog popover>` and the page behind it stays interactive.
+- Focus returns to the invoking element when a modal dialog closes.
+- Pressing `Esc` closes an open modal dialog unless `closedby="none"` is set.
+- When light dismiss is requested on a dialog, clicking the backdrop closes it.
+- A backdrop-click fallback, if present, does not close the dialog when a press starts inside the dialog and ends on the backdrop.
+- When a dialog guards unsaved form changes, it has `closedby="none"`.
+- When a dialog guards unsaved form changes, it stays open after a cancel request with unsaved edits until the user confirms.
+- A non-modal dialog panel leaves the page behind it interactive.
 - While a modal dialog is open, content outside it is not focusable.
 - No `<dialog>` has `role="dialog"` or `aria-modal`.
-- A native modal has no JavaScript focus trap and no manual toggling of `inert` on other content.
-- Nothing described as modal is opened with the `open` attribute or `show()`.
-- No `<div role="dialog">` (or similar custom element) is used in place of `<dialog>`.
-- A backdrop-click fallback, if present, is feature-tested and does not close the dialog when a press starts inside the dialog and ends on the backdrop.
-- When menus or tooltips are present, they use `[popover]` on a semantic element, not `<dialog>`.
+- While a modal dialog is open, scrolling over its backdrop or inside it does not scroll the page behind it.
