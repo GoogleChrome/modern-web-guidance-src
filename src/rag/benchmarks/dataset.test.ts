@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -204,6 +205,58 @@ describe("ensureWildDataset cache verification", () => {
     );
   });
 
+  it("throws on manifest version mismatch", async (t) => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-wild-test-manifest-"));
+    t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+    const vDir = path.join(tmpDir, "v99");
+    fs.mkdirSync(vDir, { recursive: true });
+    const qContent = serializeQueriesJsonl([{ qid: "w1", query: "popover api", words: 2 }]);
+    const rContent = serializeQrelsJsonl([{ qid: "w1", query: "popover api", scope: "in_domain", needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }]);
+    const manifest = {
+      version: "v98", // mismatch against requested v99
+      createdAt: "2026-10-13T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {
+        "wild-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+        "wild-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+      },
+    };
+    fs.writeFileSync(path.join(vDir, "wild-queries.jsonl"), qContent);
+    fs.writeFileSync(path.join(vDir, "wild-qrels.jsonl"), rContent);
+    fs.writeFileSync(path.join(vDir, "manifest.json"), JSON.stringify(manifest));
+    await assert.rejects(
+      () => ensureWildDataset("v99", { cacheDir: tmpDir, allowDownload: false }),
+      /Manifest version mismatch.*expected "v99", got "v98"/
+    );
+  });
+
+  it("rejects wild-v2 records missing split at load time", async (t) => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-wild-test-v2-nosplit-"));
+    t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+    const vDir = path.join(tmpDir, "v2");
+    fs.mkdirSync(vDir, { recursive: true });
+    const qContent = serializeQueriesJsonl([{ qid: "w0001", query: "popover api", words: 2 }]); // lacks split!
+    const rContent = serializeQrelsJsonl([{ qid: "w0001", query: "popover api", scope: "in_domain", needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }]);
+    const manifest = {
+      version: "v2",
+      createdAt: "2026-10-26T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {
+        "wild-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+        "wild-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+      },
+    };
+    fs.writeFileSync(path.join(vDir, "wild-queries.jsonl"), qContent);
+    fs.writeFileSync(path.join(vDir, "wild-qrels.jsonl"), rContent);
+    fs.writeFileSync(path.join(vDir, "manifest.json"), JSON.stringify(manifest));
+    await assert.rejects(
+      () => ensureWildDataset("v2", { cacheDir: tmpDir, allowDownload: false }),
+      /Invalid wild-v2 query record.*missing or invalid split/
+    );
+  });
+
   it("exports DEFAULT_WILD_VERSION as v2 and filters datasets by split", () => {
     assert.strictEqual(DEFAULT_WILD_VERSION, "v2");
     const mockDataset = {
@@ -230,6 +283,51 @@ describe("ensureWildDataset cache verification", () => {
     assert.strictEqual(testSplit.queries[0].qid, "w2");
     assert.strictEqual(testSplit.qrels.size, 1);
     assert.strictEqual(testSplit.qrels.has("w2"), true);
+
+    // Rejects invalid split arguments (including empty string)
+    assert.throws(
+      () => filterDatasetBySplit(mockDataset, "" as any),
+      /Invalid split "": expected "dev" or "test"/
+    );
+    assert.throws(
+      () => filterDatasetBySplit(mockDataset, "devv" as any),
+      /Invalid split "devv": expected "dev" or "test"/
+    );
+
+    // Rejects split filtering when records lack a valid split (e.g. wild-v1)
+    const mockV1Dataset = {
+      name: "wild-v1",
+      queries: [createQueryRecord({ qid: "w0000", query: "popover" })],
+      qrels: new Map([
+        ["w0000", { qid: "w0000", query: "popover", scope: "in_domain" as const, needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }],
+      ]),
+    };
+    assert.throws(
+      () => filterDatasetBySplit(mockV1Dataset, "dev"),
+      /Dataset "wild-v1" query "w0000" does not have a valid split.*does not support split filtering/
+    );
+  });
+});
+
+describe("bench-rag CLI validation", () => {
+  const benchScript = path.join(import.meta.dirname, "bench-rag.ts");
+
+  it("eagerly rejects invalid --split values even under --public-only", () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [benchScript, "--public-only", "--split", "devv"], { encoding: "utf8", stdio: "pipe" }),
+      /Invalid --split "devv"/
+    );
+    assert.throws(
+      () => execFileSync(process.execPath, [benchScript, "--public-only", "--split", ""], { encoding: "utf8", stdio: "pipe" }),
+      /Invalid --split ""/
+    );
+  });
+
+  it("eagerly rejects invalid --wild-version values", () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [benchScript, "--public-only", "--wild-version", ""], { encoding: "utf8", stdio: "pipe" }),
+      /Invalid --wild-version ""/
+    );
   });
 });
 

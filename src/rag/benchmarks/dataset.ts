@@ -307,6 +307,9 @@ function verifyAndLoadWildCache(versionDir: string, version: string): LoadedData
   const qrelsPath = path.join(versionDir, "wild-qrels.jsonl");
 
   const manifest = parseManifestJson(fs.readFileSync(manifestPath, "utf8"), manifestPath);
+  if (manifest.version !== version) {
+    throw new Error(`Manifest version mismatch in ${manifestPath}: expected "${version}", got "${manifest.version}"`);
+  }
   const queriesContent = fs.readFileSync(queriesPath, "utf8");
   const qrelsContent = fs.readFileSync(qrelsPath, "utf8");
 
@@ -319,15 +322,38 @@ function verifyAndLoadWildCache(versionDir: string, version: string): LoadedData
     throw new Error(`SHA-256 mismatch for ${qrelsPath}`);
   }
 
+  const queries = parseQueriesJsonl(queriesContent, queriesPath);
+  const qrels = parseQrelsJsonl(qrelsContent, qrelsPath);
+
+  if (version === "v2") {
+    for (let i = 0; i < queries.length; i++) {
+      if (queries[i].split !== "dev" && queries[i].split !== "test") {
+        throw new Error(
+          `Invalid wild-v2 query record at ${queriesPath}:${i + 1}: missing or invalid split (found "${String(queries[i].split)}")`
+        );
+      }
+    }
+  }
+
   return {
     name: `wild-${version}`,
-    queries: parseQueriesJsonl(queriesContent, queriesPath),
-    qrels: parseQrelsJsonl(qrelsContent, qrelsPath),
+    queries,
+    qrels,
     manifest,
   };
 }
 
 export function filterDatasetBySplit(dataset: LoadedDataset, split: "dev" | "test"): LoadedDataset {
+  if (split !== "dev" && split !== "test") {
+    throw new Error(`Invalid split "${String(split)}": expected "dev" or "test"`);
+  }
+  for (const q of dataset.queries) {
+    if (q.split !== "dev" && q.split !== "test") {
+      throw new Error(
+        `Dataset "${dataset.name}" query "${q.qid}" does not have a valid split (found "${String(q.split)}"). Dataset does not support split filtering.`
+      );
+    }
+  }
   const queries = dataset.queries.filter((q) => q.split === split);
   const qids = new Set(queries.map((q) => q.qid));
   const qrels = new Map<string, QrelRecord>();

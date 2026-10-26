@@ -451,28 +451,27 @@ export function renderComparisonMarkdown(
 async function loadRequestedDatasets(
   names: string[],
   explicitWild: boolean,
-  options: { wildVersion?: string; split?: string } = {}
+  options: { wildVersion?: string; split?: "dev" | "test" | "all" } = {}
 ): Promise<LoadedDataset[]> {
   const loaded: LoadedDataset[] = [];
   for (const name of names) {
     if (name === "harness" || name === "oos") {
       loaded.push(loadPublicDataset(name));
     } else if (name === "wild") {
+      let wild: LoadedDataset;
       try {
-        let wild = await ensureWildDataset(options.wildVersion);
-        if (options.split && options.split !== "all") {
-          if (options.split !== "dev" && options.split !== "test") {
-            throw new Error(`Invalid --split "${options.split}". Expected "dev", "test", or "all".`);
-          }
-          wild = filterDatasetBySplit(wild, options.split);
-        }
-        loaded.push(wild);
+        wild = await ensureWildDataset(options.wildVersion);
       } catch (err) {
         if (explicitWild) throw err;
         console.warn(
           `[benchmark:rag] Skipping private 'wild' dataset (${err instanceof Error ? err.message : String(err)}). Running public datasets only.`
         );
+        continue;
       }
+      if (options.split && options.split !== "all") {
+        wild = filterDatasetBySplit(wild, options.split);
+      }
+      loaded.push(wild);
     } else {
       throw new Error(`Unknown dataset "${name}". Expected one of: wild, harness, oos.`);
     }
@@ -498,6 +497,17 @@ async function main(): Promise<void> {
     },
   });
 
+  const rawSplit = values.split;
+  if (rawSplit !== undefined && rawSplit !== "dev" && rawSplit !== "test" && rawSplit !== "all") {
+    throw new Error(`Invalid --split "${rawSplit}". Expected "dev", "test", or "all".`);
+  }
+  const split = (rawSplit ?? "all") as "dev" | "test" | "all";
+
+  const rawWildVersion = values["wild-version"];
+  if (rawWildVersion !== undefined && (!rawWildVersion.trim() || rawWildVersion.includes("/"))) {
+    throw new Error(`Invalid --wild-version "${rawWildVersion}". Expected non-empty version name.`);
+  }
+
   const evalOpts: EvaluateTargetOptions = {
     limit: parseInt(values.limit ?? "5", 10),
     useCurrentGuides: Boolean(values["use-current-guides"]),
@@ -511,8 +521,8 @@ async function main(): Promise<void> {
   const explicitWild = Boolean(explicitDatasets?.includes("wild"));
 
   const datasets = await loadRequestedDatasets(datasetNames, explicitWild, {
-    wildVersion: values["wild-version"],
-    split: values.split,
+    wildVersion: rawWildVersion,
+    split,
   });
   if (datasets.length === 0) {
     throw new Error("No benchmark datasets loaded.");
