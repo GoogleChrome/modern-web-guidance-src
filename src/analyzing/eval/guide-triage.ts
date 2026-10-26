@@ -41,25 +41,25 @@ export interface Gate0Entry {
   readonly groundingSources?: readonly string[];
 }
 
-export {
-  GATE0_PROMPT_VERSION,
-  GATE0_RESPONSE_SCHEMA,
-  GATE0_SYSTEM_PROMPT,
-  GATE0_THINKING_BUDGET,
-  computeGate0PromptVersion,
-  formatGate0Prompt,
-} from './prompts.ts';
 import {
-  GATE0_PROMPT_VERSION,
-  GATE0_RESPONSE_SCHEMA,
-  GATE0_SYSTEM_PROMPT,
-  GATE0_THINKING_BUDGET,
-  computeGate0PromptVersion,
-  formatGate0Prompt,
+  GUIDE_TRIAGE_PROMPT_VERSION,
+  GUIDE_TRIAGE_RESPONSE_SCHEMA,
+  GUIDE_TRIAGE_SYSTEM_PROMPT,
+  GUIDE_TRIAGE_THINKING_BUDGET,
+  computeGuideTriagePromptVersion,
+  formatGuideTriagePrompt,
 } from './prompts.ts';
 
+export {
+  GUIDE_TRIAGE_PROMPT_VERSION,
+  GUIDE_TRIAGE_RESPONSE_SCHEMA,
+  GUIDE_TRIAGE_SYSTEM_PROMPT,
+  GUIDE_TRIAGE_THINKING_BUDGET,
+  computeGuideTriagePromptVersion,
+  formatGuideTriagePrompt,
+};
+
 export const GUIDE_TRIAGE_MODEL = 'gemini-3.8-flash';
-export const GATE0_MODEL = GUIDE_TRIAGE_MODEL;
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 export const DEFAULT_EXPLAINERS_JSON_PATH = join(
@@ -160,8 +160,6 @@ export interface GuideTriageInput {
   readonly explainerContextHash?: string;
 }
 
-export type Gate0GuideInput = GuideTriageInput;
-
 export interface GuideTriageOptions {
   readonly apiKey?: string;
   readonly fetchFn?: typeof fetch;
@@ -169,8 +167,6 @@ export interface GuideTriageOptions {
   readonly model?: string;
   readonly enableSearchGrounding?: boolean;
 }
-
-export type Gate0Options = GuideTriageOptions;
 
 export function buildGuideTriageRequestBody(guide: GuideTriageInput, options?: GuideTriageOptions): unknown {
   const enableSearchGrounding = options?.enableSearchGrounding ?? true;
@@ -183,19 +179,19 @@ export function buildGuideTriageRequestBody(guide: GuideTriageInput, options?: G
   };
   const body: Record<string, unknown> = {
     systemInstruction: {
-      parts: [{ text: GATE0_SYSTEM_PROMPT }],
+      parts: [{ text: GUIDE_TRIAGE_SYSTEM_PROMPT }],
     },
     contents: [
       {
         role: 'user',
-        parts: [{ text: formatGate0Prompt(guidePromptInput) }],
+        parts: [{ text: formatGuideTriagePrompt(guidePromptInput) }],
       },
     ],
     generationConfig: {
       responseMimeType: 'application/json',
-      responseSchema: GATE0_RESPONSE_SCHEMA,
+      responseSchema: GUIDE_TRIAGE_RESPONSE_SCHEMA,
       temperature: 0.0,
-      thinkingConfig: { thinkingBudget: GATE0_THINKING_BUDGET },
+      thinkingConfig: { thinkingBudget: GUIDE_TRIAGE_THINKING_BUDGET },
     },
   };
 
@@ -205,7 +201,6 @@ export function buildGuideTriageRequestBody(guide: GuideTriageInput, options?: G
 
   return body;
 }
-export const buildGate0RequestBody = buildGuideTriageRequestBody;
 
 export function parseGuideTriageResponse(
   rawText: string,
@@ -312,7 +307,6 @@ export function parseGuideTriageResponse(
     ...(evidenceSource ? { evidenceSource } : {}),
   };
 }
-export const parseGate0Response = parseGuideTriageResponse;
 
 async function fetchWithRetry(
   url: string,
@@ -361,10 +355,10 @@ export async function triageGuide(
 ): Promise<Gate0Entry> {
   const apiKey = getGeminiApiKey(options);
   const customFetch = options?.fetchFn ?? fetch;
-  const model = options?.model ?? GATE0_MODEL;
+  const model = options?.model ?? GUIDE_TRIAGE_MODEL;
   const maxRetries = options?.maxRetries ?? 8;
 
-  const body = buildGate0RequestBody(guide, options);
+  const body = buildGuideTriageRequestBody(guide, options);
   const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
 
   const res = await fetchWithRetry(
@@ -381,7 +375,7 @@ export async function triageGuide(
   if (!res.ok) {
     const errText = await res.text();
     throw new Error(
-      `Gate 0 classifyGuide failed for ${guide.guideId} with HTTP ${res.status}: ${errText}`,
+      `Gate 0 triageGuide failed for ${guide.guideId} with HTTP ${res.status}: ${errText}`,
     );
   }
 
@@ -403,7 +397,7 @@ export async function triageGuide(
   const text = candidate?.content?.parts?.[0]?.text;
   if (!text) {
     throw new Error(
-      `Gate 0 classifyGuide returned empty candidate text for guide ${guide.guideId}`,
+      `Gate 0 triageGuide returned empty candidate text for guide ${guide.guideId}`,
     );
   }
 
@@ -421,7 +415,7 @@ export async function triageGuide(
     }
   }
 
-  const parsed = parseGate0Response(text, guide.guideId);
+  const parsed = parseGuideTriageResponse(text, guide.guideId);
   const enableSearchGrounding = options?.enableSearchGrounding ?? true;
 
   const explainerContextHash =
@@ -441,12 +435,10 @@ export async function triageGuide(
     brownfieldTarget: parsed.brownfieldTarget,
     evidenceFromGuide: parsed.evidenceFromGuide,
     reason: parsed.reason,
-    gate0PromptVersion: computeGate0PromptVersion(0.0, enableSearchGrounding),
+    gate0PromptVersion: computeGuideTriagePromptVersion(0.0, enableSearchGrounding),
     ...(parsed.evidenceSource ? { evidenceSource: parsed.evidenceSource } : {}),
     ...(explainerContextHash ? { explainerContextHash } : {}),
     webSearchQueries,
     ...(groundingSources.length > 0 ? { groundingSources } : {}),
   };
 }
-
-export const classifyGuideGate0 = triageGuide;

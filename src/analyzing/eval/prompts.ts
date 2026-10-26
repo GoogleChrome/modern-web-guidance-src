@@ -15,15 +15,15 @@ import { createHash } from 'node:crypto';
 import { computePromptContentHash } from '../llm-verifier.ts';
 
 export const PROMPT_MODEL = 'gemini-3.8-flash';
-export const GATE0_THINKING_BUDGET = 2048;
+export const GUIDE_TRIAGE_THINKING_BUDGET = 2048;
 export const JUDGE_THINKING_BUDGET = 2048;
-export const FIX_SIMULATION_THINKING_BUDGET = 1024;
+export const UPDATE_SIMULATION_THINKING_BUDGET = 1024;
 
 // ============================================================================
-// 1. Gate 0 Catalog Triage (R27, R31)
+// 1. Guide Triage (R27, R31)
 // ============================================================================
 
-export const GATE0_SYSTEM_PROMPT = `You are an expert static analysis triage classifier for the Modern Web Guidance catalog.
+export const GUIDE_TRIAGE_SYSTEM_PROMPT = `You are an expert static analysis triage classifier for the Modern Web Guidance catalog.
 Your task is to classify whether a published feature guide has a statically detectable brownfield target.
 
 You must classify the guide into exactly one of three Gate 0 buckets:
@@ -55,7 +55,7 @@ Guidelines for classification:
 - Set 'reason' to a single crisp sentence explaining the classification decision.
 - Set 'evidenceSource' to 'guide', 'explainer', 'search', 'ecosystem-knowledge', or 'none' indicating which primary source justified your classification.`;
 
-export const GATE0_RESPONSE_SCHEMA = {
+export const GUIDE_TRIAGE_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
     classification: {
@@ -110,7 +110,7 @@ export const GATE0_RESPONSE_SCHEMA = {
   ],
 };
 
-export const GATE0_USER_PROMPT_TEMPLATE = `## Guide: \${guide.guideId} (Category: \${guide.category})
+export const GUIDE_TRIAGE_USER_PROMPT_TEMPLATE = `## Guide: \${guide.guideId} (Category: \${guide.category})
 
 ### Full Guide Markdown:
 \`\`\`markdown
@@ -120,7 +120,7 @@ export const GATE0_USER_PROMPT_TEMPLATE = `## Guide: \${guide.guideId} (Category
 Analyze the entire guide markdown above and classify it into one of: 'detectable', 'ui-recipe-multi-part', or 'skip-no-old-way'.
 Identify candidateTechniques (if any), borderline flag, brownfieldTarget, cite evidenceFromGuide (from the guide or web ecosystem knowledge), and provide a 1-sentence reason.`;
 
-export interface Gate0PromptGuideInput {
+export interface GuideTriagePromptGuideInput {
   readonly guideId: string;
   readonly category: string;
   readonly markdownContent: string;
@@ -128,7 +128,7 @@ export interface Gate0PromptGuideInput {
   readonly explainerContext?: string;
 }
 
-export function formatGate0Prompt(guide: Gate0PromptGuideInput): string {
+export function formatGuideTriagePrompt(guide: GuideTriagePromptGuideInput): string {
   const explainerSection =
     guide.explainerContext && guide.explainerContext.trim().length > 0
       ? `\n\n### Upstream W3C / TC39 / ChromeStatus Explainer & Motivation Context:\n${guide.explainerContext.trim()}`
@@ -145,47 +145,38 @@ Analyze the entire guide markdown above and classify it into one of: 'detectable
 Identify candidateTechniques (if any), borderline flag, brownfieldTarget, cite evidenceFromGuide (from the guide, explainer, or web ecosystem knowledge), select evidenceSource, and provide a 1-sentence reason.`;
 }
 
-export function computeGate0PromptVersion(
+export function computeGuideTriagePromptVersion(
   temperature = 0.0,
   enableSearchGrounding = true,
 ): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
-    systemPrompt: GATE0_SYSTEM_PROMPT,
-    userPromptTemplateSource: formatGate0Prompt.toString(),
-    schema: GATE0_RESPONSE_SCHEMA,
-    thinkingBudget: GATE0_THINKING_BUDGET,
+    systemPrompt: GUIDE_TRIAGE_SYSTEM_PROMPT,
+    userPromptTemplateSource: formatGuideTriagePrompt.toString(),
+    schema: GUIDE_TRIAGE_RESPONSE_SCHEMA,
+    thinkingBudget: GUIDE_TRIAGE_THINKING_BUDGET,
     temperature,
     enableSearchGrounding,
   });
   return `${PROMPT_MODEL}:gate0-v2-${hash}`;
 }
 
-export const GATE0_PROMPT_VERSION = computeGate0PromptVersion();
+export const GUIDE_TRIAGE_PROMPT_VERSION = computeGuideTriagePromptVersion();
 
 // ============================================================================
-// 2. Phase 2 Verification (R28, R31)
+// 2. LLM Verifier (R28, R31)
 // ============================================================================
 
 export {
   computePromptContentHash,
-  PHASE2_THINKING_BUDGET,
   VERIFIER_THINKING_BUDGET,
-  PHASE2_SYSTEM_PROMPT,
   VERIFIER_SYSTEM_PROMPT,
-  PHASE2_RESPONSE_SCHEMA,
   VERIFIER_RESPONSE_SCHEMA,
-  PHASE2_USER_PROMPT_TEMPLATE,
+  VERIFIER_USER_PROMPT_TEMPLATE,
   type VerifierPromptFindingInput,
-  type Phase2PromptFindingInput,
   type VerifierPromptRuleInput,
-  type Phase2PromptRuleInput,
   formatVerifierPrompt,
-  formatPhase2Prompt,
-  buildVerifierPrompt,
-  buildPhase2Prompt,
-  computePhase2PromptVersion,
-  PHASE2_PROMPT_VERSION,
+  computeVerifierPromptVersion,
   VERIFIER_PROMPT_VERSION,
 } from '../llm-verifier.ts';
 
@@ -329,10 +320,10 @@ export function computeJudgePromptVersion(
 export const JUDGE_VERSION = computeJudgePromptVersion();
 
 // ============================================================================
-// 4. Synthetic Fix Simulation (R30, R31)
+// 4. Update Simulation (R30, R31)
 // ============================================================================
 
-export const SYNTHETIC_FIX_SIMULATION_PROMPT = `You are an expert web platform modernization engineer.
+export const UPDATE_SIMULATION_PROMPT = `You are an expert web platform modernization engineer.
 Your task is to refactor a legacy web pattern in a brownfield codebase using the standard modern web platform capability prescribed in the provided Modern Web Guide.
 
 Guidelines:
@@ -342,7 +333,7 @@ Guidelines:
 4. Allow no change: If the finding is a false positive (not actually the legacy pattern) or already serves as a deliberate fallback/polyfill that should be retained, make no changes: return the original code window completely unchanged in "patchedWindow" and explain why in "explanation".
 5. Output format: In "patchedWindow", provide the complete replacement text for the code window with valid syntax and no placeholders. In "explanation", provide a concise summary of the change or why no change was needed.`;
 
-export const FIX_RESPONSE_SCHEMA = {
+export const UPDATE_SIMULATION_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
     patchedWindow: {
@@ -358,9 +349,7 @@ export const FIX_RESPONSE_SCHEMA = {
   required: ['patchedWindow', 'explanation'],
 };
 
-export const FIX_AGENT_SCHEMA = FIX_RESPONSE_SCHEMA;
-
-export const FIX_USER_PROMPT_TEMPLATE = `## Modern Web Guide: \${params.guideId}
+export const UPDATE_SIMULATION_USER_PROMPT_TEMPLATE = `## Modern Web Guide: \${params.guideId}
 \${params.guideMarkdown}
 
 ## Analyzer Finding
@@ -377,7 +366,7 @@ Refactor the code window to replace the legacy workaround with the modern web pl
 Important:
 - If this finding is a false positive or intentional fallback that should be kept, return the original window unchanged in patchedWindow.`;
 
-export interface FixSimulationPromptParams {
+export interface UpdateSimulationPromptParams {
   readonly guideId: string;
   readonly guideMarkdown: string;
   readonly filePath: string;
@@ -386,7 +375,7 @@ export interface FixSimulationPromptParams {
   readonly windowText: string;
 }
 
-export function formatFixSimulationPrompt(params: FixSimulationPromptParams): string {
+export function formatUpdateSimulationPrompt(params: UpdateSimulationPromptParams): string {
   return `## Modern Web Guide: ${params.guideId}
 ${params.guideMarkdown}
 
@@ -405,17 +394,17 @@ Important:
 - If this finding is a false positive or intentional fallback that should be kept, return the original window unchanged in patchedWindow.`;
 }
 
-export function computeSyntheticFixPromptVersion(): string {
+export function computeUpdateSimulationPromptVersion(): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
-    systemPrompt: SYNTHETIC_FIX_SIMULATION_PROMPT,
-    userPromptTemplateSource: formatFixSimulationPrompt.toString(),
-    schema: FIX_RESPONSE_SCHEMA,
-    thinkingBudget: FIX_SIMULATION_THINKING_BUDGET,
+    systemPrompt: UPDATE_SIMULATION_PROMPT,
+    userPromptTemplateSource: formatUpdateSimulationPrompt.toString(),
+    schema: UPDATE_SIMULATION_RESPONSE_SCHEMA,
+    thinkingBudget: UPDATE_SIMULATION_THINKING_BUDGET,
     temperature: 0.0,
     enableSearchGrounding: false,
   });
   return `${PROMPT_MODEL}:fix-sim-v2-${hash}`;
 }
 
-export const SYNTHETIC_FIX_PROMPT_VERSION = computeSyntheticFixPromptVersion();
+export const UPDATE_SIMULATION_PROMPT_VERSION = computeUpdateSimulationPromptVersion();

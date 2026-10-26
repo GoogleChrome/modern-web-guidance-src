@@ -3,14 +3,10 @@ import test, { describe } from 'node:test';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import {
   LLM_VERIFIER_MODEL,
-  PHASE2_MODEL,
-  buildPhase2RequestBody,
   buildVerifierRequestBody,
-  formatPhase2Prompt,
-  parsePhase2Response,
+  formatVerifierPrompt,
   parseVerifierResponse,
   runLlmVerifier,
-  type Phase2Options,
   type VerifierOptions,
 } from './llm-verifier.ts';
 
@@ -64,16 +60,15 @@ const mockFindings: AnalyzerFinding[] = [
   },
 ];
 
-describe('phase2 LLM verifier', () => {
-  test('exports updated canonical verifier names alongside backward-compatible aliases', () => {
+describe('LLM verifier', () => {
+  test('exports canonical verifier configuration', () => {
     assert.equal(LLM_VERIFIER_MODEL, 'gemini-3.8-flash');
-    assert.equal(PHASE2_MODEL, LLM_VERIFIER_MODEL);
-    assert.equal(buildVerifierRequestBody, buildPhase2RequestBody);
-    assert.equal(parseVerifierResponse, parsePhase2Response);
+    assert.ok(typeof buildVerifierRequestBody === 'function');
+    assert.ok(typeof parseVerifierResponse === 'function');
   });
 
   test('formats prompt with rule summary, rubrics, and AST slice', () => {
-    const prompt = formatPhase2Prompt(mockFindings[0], mockRule, '# Test Guide Markdown');
+    const prompt = formatVerifierPrompt(mockFindings[0], mockRule, '# Test Guide Markdown');
     assert.match(prompt, /Rule: test-rule/);
     assert.match(prompt, /Summary: Detects old-pattern/);
     assert.match(prompt, /Keep When:/);
@@ -85,7 +80,7 @@ describe('phase2 LLM verifier', () => {
   });
 
   test('builds Gemini request body with temperature 0 and thinkingBudget 1024', () => {
-    const body = buildPhase2RequestBody(
+    const body = buildVerifierRequestBody(
       mockFindings[0],
       mockRule,
       '# Test Guide Markdown',
@@ -103,30 +98,30 @@ describe('phase2 LLM verifier', () => {
     assert.match(body.contents[0].parts[0].text, /Test Guide Markdown/);
   });
 
-  test('parsePhase2Response parses valid JSON and throws on malformed output', () => {
+  test('parseVerifierResponse parses valid JSON and throws on malformed output', () => {
     const validJson = JSON.stringify({
       keep: true,
       reason: 'Standard DOM jQuery visibility manipulation',
       confidence: 'high',
     });
-    const parsed = parsePhase2Response(validJson, 'card-1');
+    const parsed = parseVerifierResponse(validJson, 'card-1');
     assert.equal(parsed.cardId, 'card-1');
     assert.equal(parsed.keep, true);
     assert.equal(parsed.confidence, 'high');
 
     // Throws on missing fields (fail fast)
-    assert.throws(() => parsePhase2Response('not json', 'card-1'), /JSON parse error/);
+    assert.throws(() => parseVerifierResponse('not json', 'card-1'), /JSON parse error/);
     assert.throws(
-      () => parsePhase2Response(JSON.stringify({ reason: 'no keep' }), 'card-1'),
+      () => parseVerifierResponse(JSON.stringify({ reason: 'no keep' }), 'card-1'),
       /missing boolean 'keep'/,
     );
     assert.throws(
-      () => parsePhase2Response(JSON.stringify({ keep: true }), 'card-1'),
+      () => parseVerifierResponse(JSON.stringify({ keep: true }), 'card-1'),
       /missing string 'reason'/,
     );
     assert.throws(
       () =>
-        parsePhase2Response(
+        parseVerifierResponse(
           JSON.stringify({ keep: true, reason: 'ok', confidence: 'invalid' }),
           'card-1',
         ),
@@ -172,7 +167,7 @@ describe('phase2 LLM verifier', () => {
       );
     };
 
-    const options: Phase2Options = {
+    const options: VerifierOptions = {
       apiKey: 'test-key',
       fetchFn: mockFetch,
       concurrency: 2,

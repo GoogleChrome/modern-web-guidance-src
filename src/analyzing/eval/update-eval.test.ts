@@ -10,9 +10,6 @@ import {
   getSeededSensitivityTestCases,
   locateFindingLineInContent,
   runBadPatchSensitivitySuite,
-  validateFixPatch,
-  validateUpdatePatch,
-  type FixPatch,
   type UpdatePatch,
 } from './update-eval.ts';
 import { ALL_RULES } from '../rules/index.ts';
@@ -572,8 +569,6 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
   const testFixture = foundFixture;
 
   it('Gate 1 fails on no-op patch (legacy finding remains)', async () => {
-    assert.equal(validateUpdatePatch, evaluateAgentUpdate);
-    assert.equal(validateFixPatch, evaluateAgentUpdate);
     const patch: UpdatePatch = {
       filePath: testFixture.filePath,
       originalContent: testFixture.originalContent,
@@ -583,12 +578,8 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
 
     const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.resolved, false);
-    assert.strictEqual(res.gate1.passed, false);
     assert.strictEqual(res.findingEliminatedCheck.passed, false);
-    assert.equal(res.findingEliminatedCheck, res.gate1);
-    assert.equal(res.modernSyntaxCheck, res.gate2);
-    assert.equal(res.behavioralCheck, res.gate3);
-    assert.ok(res.gate1.findingsRemaining > 0);
+    assert.ok(res.findingEliminatedCheck.findingsRemaining > 0);
   });
 
   it('Gate 2a fails on syntax error', async () => {
@@ -601,8 +592,8 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
 
     const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.resolved, false);
-    assert.strictEqual(res.gate2.passed, false);
-    assert.strictEqual(res.gate2.syntaxClean, false);
+    assert.strictEqual(res.modernSyntaxCheck.passed, false);
+    assert.strictEqual(res.modernSyntaxCheck.syntaxClean, false);
   });
 
   it('Gate 2b fails on gutting / deletion', async () => {
@@ -615,8 +606,8 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
 
     const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.resolved, false);
-    assert.strictEqual(res.gate2.passed, false);
-    assert.strictEqual(res.gate2.structuralIntegrityPassed, false);
+    assert.strictEqual(res.modernSyntaxCheck.passed, false);
+    assert.strictEqual(res.modernSyntaxCheck.structuralIntegrityPassed, false);
   });
 
   it('Gate 2c fails on evasion without modern feature', async () => {
@@ -629,8 +620,8 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
 
     const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.resolved, false);
-    assert.strictEqual(res.gate2.passed, false);
-    assert.strictEqual(res.gate2.modernFeatureVerified, false);
+    assert.strictEqual(res.modernSyntaxCheck.passed, false);
+    assert.strictEqual(res.modernSyntaxCheck.modernFeatureVerified, false);
   });
 
   it('Gate 3 fails when behavioralCheck callback fails', async () => {
@@ -645,10 +636,10 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
       behavioralCheck: () => false,
     });
     assert.strictEqual(res.resolved, false);
-    assert.strictEqual(res.gate1.passed, true);
-    assert.strictEqual(res.gate2.passed, true);
-    assert.strictEqual(res.gate3.passed, false);
-    assert.strictEqual(res.gate3.status, 'FAILED');
+    assert.strictEqual(res.findingEliminatedCheck.passed, true);
+    assert.strictEqual(res.modernSyntaxCheck.passed, true);
+    assert.strictEqual(res.behavioralCheck.passed, false);
+    assert.strictEqual(res.behavioralCheck.status, 'FAILED');
   });
 
   it('passes all 3 gates on reference good patch', async () => {
@@ -663,10 +654,10 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
       behavioralCheck: () => true,
     });
     assert.strictEqual(res.resolved, true);
-    assert.strictEqual(res.gate1.passed, true);
-    assert.strictEqual(res.gate2.passed, true);
-    assert.strictEqual(res.gate3.passed, true);
-    assert.strictEqual(res.gate3.status, 'PASSED');
+    assert.strictEqual(res.findingEliminatedCheck.passed, true);
+    assert.strictEqual(res.modernSyntaxCheck.passed, true);
+    assert.strictEqual(res.behavioralCheck.passed, true);
+    assert.strictEqual(res.behavioralCheck.status, 'PASSED');
   });
 
   it('evaluates Gate 1 on patchedWindow when provided for windowed refactoring', async () => {
@@ -682,8 +673,8 @@ describe('evaluateAgentUpdate (3-Gate Grader)', () => {
     const res = await evaluateAgentUpdate(patch);
     assert.strictEqual(res.staticResolved, true);
     assert.strictEqual(res.resolved, false);
-    assert.strictEqual(res.gate1.passed, true);
-    assert.strictEqual(res.gate3.status, 'SKIPPED_NO_TEST_HARNESS');
+    assert.strictEqual(res.findingEliminatedCheck.passed, true);
+    assert.strictEqual(res.behavioralCheck.status, 'SKIPPED_NO_TEST_HARNESS');
   });
 });
 
@@ -812,9 +803,9 @@ describe('checkAgentModernizationInvariants (R61)', () => {
       });
 
       assert.strictEqual(res.resolved, false, `Expected failure case "${fc.id}" to fail Gate 2`);
-      assert.strictEqual(res.gate2.passed, false, `Expected gate2 to fail for "${fc.id}"`);
-      assert.strictEqual(res.gate2.invariantPassed, false, `Expected invariant check to fail for "${fc.id}"`);
-      assert.strictEqual(res.gate2.failureReason, fc.expectedFailureReason);
+      assert.strictEqual(res.modernSyntaxCheck.passed, false, `Expected modernSyntaxCheck to fail for "${fc.id}"`);
+      assert.strictEqual(res.modernSyntaxCheck.invariantPassed, false, `Expected invariant check to fail for "${fc.id}"`);
+      assert.strictEqual(res.modernSyntaxCheck.failureReason, fc.expectedFailureReason);
     }
   });
 });

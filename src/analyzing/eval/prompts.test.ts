@@ -2,69 +2,69 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   computePromptContentHash,
-  computeGate0PromptVersion,
-  computePhase2PromptVersion,
+  computeGuideTriagePromptVersion,
+  computeVerifierPromptVersion,
   computeJudgePromptVersion,
-  computeSyntheticFixPromptVersion,
+  computeUpdateSimulationPromptVersion,
   formatBlindCardPrompt,
-  formatFixSimulationPrompt,
-  formatGate0Prompt,
-  formatPhase2Prompt,
-  FIX_RESPONSE_SCHEMA,
-  FIX_SIMULATION_THINKING_BUDGET,
-  GATE0_PROMPT_VERSION,
-  GATE0_RESPONSE_SCHEMA,
-  GATE0_SYSTEM_PROMPT,
-  GATE0_THINKING_BUDGET,
+  formatUpdateSimulationPrompt,
+  formatGuideTriagePrompt,
+  formatVerifierPrompt,
+  UPDATE_SIMULATION_RESPONSE_SCHEMA,
+  UPDATE_SIMULATION_THINKING_BUDGET,
+  GUIDE_TRIAGE_PROMPT_VERSION,
+  GUIDE_TRIAGE_RESPONSE_SCHEMA,
+  GUIDE_TRIAGE_SYSTEM_PROMPT,
+  GUIDE_TRIAGE_THINKING_BUDGET,
   JUDGE_RESPONSE_SCHEMA,
   JUDGE_SYSTEM_PROMPT,
   JUDGE_THINKING_BUDGET,
   JUDGE_VERSION,
-  PHASE2_PROMPT_VERSION,
-  PHASE2_RESPONSE_SCHEMA,
-  PHASE2_SYSTEM_PROMPT,
-  PHASE2_THINKING_BUDGET,
+  VERIFIER_PROMPT_VERSION,
+  VERIFIER_RESPONSE_SCHEMA,
+  VERIFIER_SYSTEM_PROMPT,
+  VERIFIER_THINKING_BUDGET,
   PROMPT_MODEL,
-  SYNTHETIC_FIX_PROMPT_VERSION,
-  SYNTHETIC_FIX_SIMULATION_PROMPT,
+  UPDATE_SIMULATION_PROMPT_VERSION,
+  UPDATE_SIMULATION_PROMPT,
 } from './prompts.ts';
 
 describe('prompts: content-hashed versions (R31)', () => {
   it('includes model name in all 4 prompt version strings', () => {
-    assert.ok(GATE0_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Gate 0 version includes model');
-    assert.ok(PHASE2_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Phase 2 version includes model');
+    assert.ok(GUIDE_TRIAGE_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Gate 0 version includes model');
+    assert.ok(VERIFIER_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Verifier version includes model');
     assert.ok(JUDGE_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Judge version includes model');
-    assert.ok(SYNTHETIC_FIX_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Fix version includes model');
+    assert.ok(UPDATE_SIMULATION_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Update version includes model');
   });
 
-  it('matches deterministic 8-char SHA-256 hash for Gate 0', () => {
+  it('matches deterministic 8-char SHA-256 hash for Guide Triage', () => {
     const expectedHash = computePromptContentHash({
       model: PROMPT_MODEL,
-      systemPrompt: GATE0_SYSTEM_PROMPT,
-      userPromptTemplateSource: formatGate0Prompt.toString(),
-      schema: GATE0_RESPONSE_SCHEMA,
-      thinkingBudget: GATE0_THINKING_BUDGET,
+      systemPrompt: GUIDE_TRIAGE_SYSTEM_PROMPT,
+      userPromptTemplateSource: formatGuideTriagePrompt.toString(),
+      schema: GUIDE_TRIAGE_RESPONSE_SCHEMA,
+      thinkingBudget: GUIDE_TRIAGE_THINKING_BUDGET,
       temperature: 0.0,
       enableSearchGrounding: true,
     });
-    assert.strictEqual(GATE0_PROMPT_VERSION, `${PROMPT_MODEL}:gate0-v2-${expectedHash}`);
-    assert.match(GATE0_PROMPT_VERSION, /^gemini-3\.8-flash:gate0-v2-[0-9a-f]{8}$/);
-    assert.strictEqual(computeGate0PromptVersion(), GATE0_PROMPT_VERSION);
+    assert.strictEqual(GUIDE_TRIAGE_PROMPT_VERSION, `${PROMPT_MODEL}:gate0-v2-${expectedHash}`);
+    assert.match(GUIDE_TRIAGE_PROMPT_VERSION, /^gemini-3\.8-flash:gate0-v2-[0-9a-f]{8}$/);
+    assert.strictEqual(computeGuideTriagePromptVersion(), GUIDE_TRIAGE_PROMPT_VERSION);
   });
 
-  it('matches deterministic 8-char SHA-256 hash for Phase 2', () => {
+  it('matches deterministic 8-char SHA-256 hash for Verifier', () => {
     const expectedHash = computePromptContentHash({
       model: PROMPT_MODEL,
-      systemPrompt: PHASE2_SYSTEM_PROMPT,
-      userPromptTemplateSource: formatPhase2Prompt.toString(),
-      schema: PHASE2_RESPONSE_SCHEMA,
-      thinkingBudget: PHASE2_THINKING_BUDGET,
+      systemPrompt: VERIFIER_SYSTEM_PROMPT,
+      userPromptTemplateSource: formatVerifierPrompt.toString(),
+      schema: VERIFIER_RESPONSE_SCHEMA,
+      thinkingBudget: VERIFIER_THINKING_BUDGET,
       temperature: 0.0,
       enableSearchGrounding: false,
     });
-    assert.strictEqual(PHASE2_PROMPT_VERSION, `${PROMPT_MODEL}:phase2-v2-guide-${expectedHash}`);
-    assert.match(PHASE2_PROMPT_VERSION, /^gemini-3\.8-flash:phase2-v2-guide-[0-9a-f]{8}$/);
-    assert.strictEqual(computePhase2PromptVersion(), PHASE2_PROMPT_VERSION);
+    assert.strictEqual(VERIFIER_PROMPT_VERSION, `${PROMPT_MODEL}:phase2-v2-guide-${expectedHash}`);
+    assert.match(VERIFIER_PROMPT_VERSION, /^gemini-3\.8-flash:phase2-v2-guide-[0-9a-f]{8}$/);
+    assert.strictEqual(computeVerifierPromptVersion(), VERIFIER_PROMPT_VERSION);
   });
 
   it('matches deterministic 8-char SHA-256 hash for Judge', () => {
@@ -82,25 +82,25 @@ describe('prompts: content-hashed versions (R31)', () => {
     assert.strictEqual(computeJudgePromptVersion(), JUDGE_VERSION);
   });
 
-  it('matches deterministic 8-char SHA-256 hash for Synthetic Fix', () => {
+  it('matches deterministic 8-char SHA-256 hash for Synthetic Update', () => {
     const expectedHash = computePromptContentHash({
       model: PROMPT_MODEL,
-      systemPrompt: SYNTHETIC_FIX_SIMULATION_PROMPT,
-      userPromptTemplateSource: formatFixSimulationPrompt.toString(),
-      schema: FIX_RESPONSE_SCHEMA,
-      thinkingBudget: FIX_SIMULATION_THINKING_BUDGET,
+      systemPrompt: UPDATE_SIMULATION_PROMPT,
+      userPromptTemplateSource: formatUpdateSimulationPrompt.toString(),
+      schema: UPDATE_SIMULATION_RESPONSE_SCHEMA,
+      thinkingBudget: UPDATE_SIMULATION_THINKING_BUDGET,
       temperature: 0.0,
       enableSearchGrounding: false,
     });
-    assert.strictEqual(SYNTHETIC_FIX_PROMPT_VERSION, `${PROMPT_MODEL}:fix-sim-v2-${expectedHash}`);
-    assert.match(SYNTHETIC_FIX_PROMPT_VERSION, /^gemini-3\.8-flash:fix-sim-v2-[0-9a-f]{8}$/);
-    assert.strictEqual(computeSyntheticFixPromptVersion(), SYNTHETIC_FIX_PROMPT_VERSION);
+    assert.strictEqual(UPDATE_SIMULATION_PROMPT_VERSION, `${PROMPT_MODEL}:fix-sim-v2-${expectedHash}`);
+    assert.match(UPDATE_SIMULATION_PROMPT_VERSION, /^gemini-3\.8-flash:fix-sim-v2-[0-9a-f]{8}$/);
+    assert.strictEqual(computeUpdateSimulationPromptVersion(), UPDATE_SIMULATION_PROMPT_VERSION);
   });
 });
 
 describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
-  it('formatGate0Prompt formats guide with candidateTechniques and borderline instructions', () => {
-    const formatted = formatGate0Prompt({
+  it('formatGuideTriagePrompt formats guide with candidateTechniques and borderline instructions', () => {
+    const formatted = formatGuideTriagePrompt({
       guideId: 'test-guide',
       category: 'css',
       markdownContent: '# Test Guide\n\nUse text-wrap: balance.',
@@ -111,8 +111,8 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
     assert.match(formatted, /borderline flag/);
   });
 
-  it('formatGate0Prompt includes upstream explainer context when provided', () => {
-    const formatted = formatGate0Prompt({
+  it('formatGuideTriagePrompt includes upstream explainer context when provided', () => {
+    const formatted = formatGuideTriagePrompt({
       guideId: 'test-guide',
       category: 'css',
       markdownContent: '# Test Guide\n\nUse text-wrap: balance.',
@@ -122,8 +122,8 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
     assert.match(formatted, /developers currently use JS libraries like balance-text\./);
   });
 
-  it('formatPhase2Prompt includes full guide.md when provided', () => {
-    const formatted = formatPhase2Prompt(
+  it('formatVerifierPrompt includes full guide.md when provided', () => {
+    const formatted = formatVerifierPrompt(
       {
         file: 'src/main.ts',
         line: 12,
@@ -229,8 +229,8 @@ describe('prompts: prompt formatters and schema validation (R27–R30)', () => {
     );
   });
 
-  it('formatFixSimulationPrompt formats fix request cleanly', () => {
-    const formatted = formatFixSimulationPrompt({
+  it('formatUpdateSimulationPrompt formats update request cleanly', () => {
+    const formatted = formatUpdateSimulationPrompt({
       guideId: 'dialog',
       guideMarkdown: '# Dialog Guide\n\nUse <dialog>.',
       filePath: 'src/app.js',

@@ -159,8 +159,6 @@ export interface DetectionEvalFactCheck {
   rawVerdict?: JudgeVerdict;
 }
 
-export type DetectiveFactCheck = DetectionEvalFactCheck;
-
 export function isDetectionEvalFactCheck(obj: unknown): obj is DetectionEvalFactCheck {
   if (typeof obj !== 'object' || obj === null) {
     return false;
@@ -180,8 +178,6 @@ export function isDetectionEvalFactCheck(obj: unknown): obj is DetectionEvalFact
     (!('rawVerdict' in obj) || obj.rawVerdict === undefined || isJudgeVerdict(obj.rawVerdict))
   );
 }
-
-export const isDetectiveFactCheck = isDetectionEvalFactCheck;
 
 export interface GuideSummaryInfo {
   guideId: string;
@@ -1183,7 +1179,6 @@ export function formatGuideTriageDossier(spec: Record<string, unknown>): string 
   }
   return lines.join('\n');
 }
-export const formatLegacyPatternSpecDossier = formatGuideTriageDossier;
 
 /**
  * Loads guide summaries directly from markdown files into a map indexed by guideId.

@@ -9,7 +9,6 @@ import {
   extractCodeSnippet,
   formatBlindCardPrompt,
   formatGuideTriageDossier,
-  formatLegacyPatternSpecDossier,
   hasValidSpecProvenance,
   isJudgeVerdict,
   isPositiveVerdict,
@@ -126,7 +125,6 @@ describe('blind card formatting & request construction', () => {
   });
 
   it('formats legacy-pattern-specs.json Technical Reference Dossier only when valid provenance is present and blocks unverified injection (R45)', async () => {
-    assert.equal(formatGuideTriageDossier, formatLegacyPatternSpecDossier);
     const unverifiedSpec = {
       guideId: 'individual-transform-properties',
       changesSomethingForDeveloper: 'Yes for multi-function chains.',
@@ -136,7 +134,7 @@ describe('blind card formatting & request construction', () => {
       rationale: 'Avoids repeating static transform functions.',
     };
     assert.equal(hasValidSpecProvenance(unverifiedSpec), false);
-    assert.equal(formatLegacyPatternSpecDossier(unverifiedSpec), '');
+    assert.equal(formatGuideTriageDossier(unverifiedSpec), '');
 
     // Circular templated text must be rejected even when provenance object is present
     const templatedWithProvenance = {
@@ -156,9 +154,9 @@ describe('blind card formatting & request construction', () => {
       },
     };
     assert.equal(hasValidSpecProvenance(templatedWithProvenance), false);
-    assert.equal(formatLegacyPatternSpecDossier(templatedWithProvenance), '');
+    assert.equal(formatGuideTriageDossier(templatedWithProvenance), '');
 
-    const dossier = formatLegacyPatternSpecDossier({
+    const dossier = formatGuideTriageDossier({
       ...unverifiedSpec,
       provenance: {
         methodVersion: 'r41-blind-two-stage-v1',
@@ -196,11 +194,11 @@ describe('blind card formatting & request construction', () => {
 
     // Negative assertion: unverified spec entries without provenance do not inject a Technical Reference Dossier
     assert.equal(
-      formatLegacyPatternSpecDossier(unverifiedSpec).includes('### Technical Reference Dossier'),
+      formatGuideTriageDossier(unverifiedSpec).includes('### Technical Reference Dossier'),
       false,
     );
     assert.equal(
-      formatLegacyPatternSpecDossier(templatedWithProvenance).includes('### Technical Reference Dossier'),
+      formatGuideTriageDossier(templatedWithProvenance).includes('### Technical Reference Dossier'),
       false,
     );
     const unverifiedSummary = map.get('masonry-layout');

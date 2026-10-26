@@ -31,22 +31,21 @@ const ANALYZER_INTERNAL_DIR = join(WORKTREE_ROOT, 'analyzer-internal');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 const CACHE_ROOT = join(homedir(), '.cache', 'repos');
 
-export {
-  SYNTHETIC_FIX_PROMPT_VERSION,
-  SYNTHETIC_FIX_SIMULATION_PROMPT,
-  FIX_RESPONSE_SCHEMA,
-  FIX_AGENT_SCHEMA,
-  FIX_SIMULATION_THINKING_BUDGET,
-  formatFixSimulationPrompt,
-} from './prompts.ts';
 import {
-  SYNTHETIC_FIX_PROMPT_VERSION,
-  SYNTHETIC_FIX_SIMULATION_PROMPT,
-  FIX_RESPONSE_SCHEMA,
-  FIX_AGENT_SCHEMA,
-  FIX_SIMULATION_THINKING_BUDGET,
-  formatFixSimulationPrompt,
+  UPDATE_SIMULATION_PROMPT_VERSION,
+  UPDATE_SIMULATION_PROMPT,
+  UPDATE_SIMULATION_RESPONSE_SCHEMA,
+  UPDATE_SIMULATION_THINKING_BUDGET,
+  formatUpdateSimulationPrompt,
 } from './prompts.ts';
+
+export {
+  UPDATE_SIMULATION_PROMPT_VERSION,
+  UPDATE_SIMULATION_PROMPT,
+  UPDATE_SIMULATION_RESPONSE_SCHEMA,
+  UPDATE_SIMULATION_THINKING_BUDGET,
+  formatUpdateSimulationPrompt,
+};
 
 export interface UpdatePatch {
   /** Relative or absolute path to the file being patched */
@@ -66,14 +65,12 @@ export interface UpdatePatch {
   /** Patched window content produced by the refactor agent (if windowed evaluation) */
   readonly patchedWindow?: string;
 }
-export type FixPatch = UpdatePatch;
 
 export interface FindingEliminatedCheckResult {
   readonly passed: boolean;
   readonly findingsRemaining: number;
   readonly failureReason?: string;
 }
-export type Gate1Result = FindingEliminatedCheckResult;
 
 export interface ModernSyntaxCheckResult {
   readonly passed: boolean;
@@ -84,14 +81,12 @@ export interface ModernSyntaxCheckResult {
   readonly diagnostics: readonly string[];
   readonly failureReason?: string;
 }
-export type Gate2Result = ModernSyntaxCheckResult;
 
 export interface BehavioralCheckResult {
   readonly passed: boolean;
   readonly status: 'PASSED' | 'FAILED' | 'SKIPPED_NO_TEST_HARNESS';
   readonly failureReason?: string;
 }
-export type Gate3Result = BehavioralCheckResult;
 
 export interface UpdateValidationResult {
   readonly resolved: boolean;
@@ -102,17 +97,12 @@ export interface UpdateValidationResult {
   readonly findingEliminatedCheck: FindingEliminatedCheckResult;
   readonly modernSyntaxCheck: ModernSyntaxCheckResult;
   readonly behavioralCheck: BehavioralCheckResult;
-  readonly gate1: FindingEliminatedCheckResult;
-  readonly gate2: ModernSyntaxCheckResult;
-  readonly gate3: BehavioralCheckResult;
   readonly summary: string;
 }
-export type FixValidationResult = UpdateValidationResult;
 
 export interface UpdateValidationOptions {
   readonly behavioralCheck?: (patch: UpdatePatch) => Promise<boolean> | boolean;
 }
-export type FixValidationOptions = UpdateValidationOptions;
 
 /**
  * Checks whether the modern platform feature prescribed by guide.md
@@ -481,19 +471,20 @@ export function checkAgentModernizationInvariants(
     );
     if (commandForMatch) {
       const targetId = commandForMatch[1];
-      // Check if target element exists in patchedContent as a <div with that id
-      const divRegex = new RegExp(
-        `<div\\b[^>]*\\bid\\s*=\\s*["']${targetId}["'][^>]*>`,
+      // Check if target element exists in patchedContent as a non-dialog container (<div, <section, <article, <aside) with that id
+      const containerRegex = new RegExp(
+        `<(div|section|article|aside)\\b[^>]*\\bid\\s*=\\s*["']${targetId}["'][^>]*>`,
         'i',
       );
-      const divMatch = patchedContent.match(divRegex);
-      if (divMatch) {
-        const openingTag = divMatch[0];
-        // If it's a div and does not have the popover attribute
+      const containerMatch = patchedContent.match(containerRegex);
+      if (containerMatch) {
+        const openingTag = containerMatch[0];
+        const tagName = containerMatch[1].toLowerCase();
+        // If it's a container and does not have the popover attribute
         if (!/\bpopover\b/i.test(openingTag)) {
           return {
             passed: false,
-            failureReason: `Cross-layer contract mismatch: commandfor targets element with id "${targetId}" which is a <div> without a popover attribute`,
+            failureReason: `Cross-layer contract mismatch: commandfor targets element with id "${targetId}" which is a <${tagName}> without a popover attribute`,
           };
         }
       }
@@ -602,14 +593,14 @@ export async function evaluateAgentUpdate(
     }
   }
 
-  const gate1: Gate1Result = {
+  const findingEliminatedCheck: FindingEliminatedCheckResult = {
     passed: gate1Passed,
     findingsRemaining,
     failureReason,
   };
 
-  if (!gate1.passed) {
-    const gate2: ModernSyntaxCheckResult = {
+  if (!findingEliminatedCheck.passed) {
+    const modernSyntaxCheck: ModernSyntaxCheckResult = {
       passed: false,
       syntaxClean: false,
       structuralIntegrityPassed: false,
@@ -617,7 +608,7 @@ export async function evaluateAgentUpdate(
       diagnostics: [],
       failureReason: 'Gate 2 skipped because Gate 1 failed',
     };
-    const gate3: BehavioralCheckResult = {
+    const behavioralCheck: BehavioralCheckResult = {
       passed: false,
       status: 'SKIPPED_NO_TEST_HARNESS',
       failureReason: 'Gate 3 skipped because Gate 1 failed',
@@ -628,13 +619,10 @@ export async function evaluateAgentUpdate(
       guideId: patch.guideId,
       ruleId: patch.ruleId,
       filePath: patch.filePath,
-      findingEliminatedCheck: gate1,
-      modernSyntaxCheck: gate2,
-      behavioralCheck: gate3,
-      gate1,
-      gate2,
-      gate3,
-      summary: `GATE_1_FAILED: ${gate1.failureReason}`,
+      findingEliminatedCheck,
+      modernSyntaxCheck,
+      behavioralCheck,
+      summary: `GATE_1_FAILED: ${findingEliminatedCheck.failureReason}`,
     };
   }
 
@@ -693,7 +681,7 @@ export async function evaluateAgentUpdate(
     gate2Reason = invariantCheck.failureReason;
   }
 
-  const gate2: Gate2Result = {
+  const modernSyntaxCheck: ModernSyntaxCheckResult = {
     passed: gate2Passed,
     syntaxClean: syntaxCheck.clean,
     structuralIntegrityPassed: structuralCheck.passed,
@@ -703,8 +691,8 @@ export async function evaluateAgentUpdate(
     failureReason: gate2Reason,
   };
 
-  if (!gate2.passed) {
-    const gate3: BehavioralCheckResult = {
+  if (!modernSyntaxCheck.passed) {
+    const behavioralCheck: BehavioralCheckResult = {
       passed: false,
       status: 'SKIPPED_NO_TEST_HARNESS',
       failureReason: 'Gate 3 skipped because Gate 2 failed',
@@ -715,13 +703,10 @@ export async function evaluateAgentUpdate(
       guideId: patch.guideId,
       ruleId: patch.ruleId,
       filePath: patch.filePath,
-      findingEliminatedCheck: gate1,
-      modernSyntaxCheck: gate2,
-      behavioralCheck: gate3,
-      gate1,
-      gate2,
-      gate3,
-      summary: `GATE_2_FAILED: ${gate2.failureReason}`,
+      findingEliminatedCheck,
+      modernSyntaxCheck,
+      behavioralCheck,
+      summary: `GATE_2_FAILED: ${modernSyntaxCheck.failureReason}`,
     };
   }
 
@@ -750,14 +735,14 @@ export async function evaluateAgentUpdate(
     }
   }
 
-  const gate3: Gate3Result = {
+  const behavioralCheck: BehavioralCheckResult = {
     passed: gate3Passed,
     status: gate3Status,
     failureReason: gate3Reason,
   };
 
-  const staticResolved = gate1.passed && gate2.passed;
-  const resolved = staticResolved && gate3.passed;
+  const staticResolved = findingEliminatedCheck.passed && modernSyntaxCheck.passed;
+  const resolved = staticResolved && behavioralCheck.passed;
 
   let summary: string;
   if (resolved) {
@@ -765,7 +750,7 @@ export async function evaluateAgentUpdate(
   } else if (staticResolved) {
     summary = 'STATIC_RESOLVED: Gates 1 & 2 passed (Gate 3 skipped: no test harness)';
   } else {
-    summary = `GATE_3_FAILED: ${gate3.failureReason}`;
+    summary = `GATE_3_FAILED: ${behavioralCheck.failureReason}`;
   }
 
   return {
@@ -774,18 +759,12 @@ export async function evaluateAgentUpdate(
     guideId: patch.guideId,
     ruleId: patch.ruleId,
     filePath: patch.filePath,
-    findingEliminatedCheck: gate1,
-    modernSyntaxCheck: gate2,
-    behavioralCheck: gate3,
-    gate1,
-    gate2,
-    gate3,
+    findingEliminatedCheck,
+    modernSyntaxCheck,
+    behavioralCheck,
     summary,
   };
 }
-
-export const validateFixPatch = evaluateAgentUpdate;
-export const validateUpdatePatch = evaluateAgentUpdate;
 
 export interface SeededFixture {
   readonly guideId: string;
@@ -832,7 +811,7 @@ export async function runBadPatchSensitivitySuite(
   for (const f of fixtures) {
     // 1. Test No-Op Patch (should fail Gate 1)
     badPatchesTotal++;
-    const noOpRes = await validateFixPatch({
+    const noOpRes = await evaluateAgentUpdate({
       filePath: f.filePath,
       originalContent: f.originalContent,
       patchedContent: f.noOpPatch,
@@ -848,7 +827,7 @@ export async function runBadPatchSensitivitySuite(
 
     // 2. Test Deletion / Gutting Patch (should fail Gate 2b / 2c per G12)
     badPatchesTotal++;
-    const delRes = await validateFixPatch({
+    const delRes = await evaluateAgentUpdate({
       filePath: f.filePath,
       originalContent: f.originalContent,
       patchedContent: f.deletionPatch,
@@ -864,7 +843,7 @@ export async function runBadPatchSensitivitySuite(
 
     // 3. Test Broken-Syntax / Evasion Patch (should fail Gate 2a or 2c)
     badPatchesTotal++;
-    const brokenRes = await validateFixPatch({
+    const brokenRes = await evaluateAgentUpdate({
       filePath: f.filePath,
       originalContent: f.originalContent,
       patchedContent: f.brokenSyntaxOrEvasionPatch,
@@ -880,7 +859,7 @@ export async function runBadPatchSensitivitySuite(
 
     // 4. Test Valid Good Patch (should pass all 3 gates)
     goodPatchesTotal++;
-    const goodRes = await validateFixPatch(
+    const goodRes = await evaluateAgentUpdate(
       {
         filePath: f.filePath,
         originalContent: f.originalContent,
@@ -1019,11 +998,11 @@ export async function simulateSingleShotWindowFix(params: {
   const apiKey = params.apiKey ?? getGeminiApiKey();
   const customFetch = params.fetchFn ?? fetch;
 
-  const userPrompt = formatFixSimulationPrompt(params);
+  const userPrompt = formatUpdateSimulationPrompt(params);
 
   const body = {
     systemInstruction: {
-      parts: [{ text: SYNTHETIC_FIX_SIMULATION_PROMPT }],
+      parts: [{ text: UPDATE_SIMULATION_PROMPT }],
     },
     contents: [
       {
@@ -1033,9 +1012,9 @@ export async function simulateSingleShotWindowFix(params: {
     ],
     generationConfig: {
       responseMimeType: 'application/json',
-      responseSchema: FIX_RESPONSE_SCHEMA,
+      responseSchema: UPDATE_SIMULATION_RESPONSE_SCHEMA,
       temperature: 0.0,
-      thinkingConfig: { thinkingBudget: FIX_SIMULATION_THINKING_BUDGET },
+      thinkingConfig: { thinkingBudget: UPDATE_SIMULATION_THINKING_BUDGET },
     },
   };
 
@@ -1071,11 +1050,6 @@ export async function simulateSingleShotWindowFix(params: {
     explanation: parsed.explanation ?? 'No explanation provided',
   };
 }
-
-/**
- * Aliases for simulateSingleShotWindowFix
- */
-export const promptAgentFix = simulateSingleShotWindowFix;
 
 /**
  * End-to-End Agentic Fix Runner for Milestone 4.
@@ -1274,7 +1248,7 @@ export async function runFixEvaluationCli(): Promise<void> {
     let patchedWindow = windowText;
     let explanation = '';
     try {
-      const fixRes = await promptAgentFix({
+      const fixRes = await simulateSingleShotWindowFix({
         guideId: finding.guideId,
         guideMarkdown: guideMd,
         findingMessage: finding.message,
@@ -1298,7 +1272,7 @@ export async function runFixEvaluationCli(): Promise<void> {
       explanation = `LLM Fix error: ${err instanceof Error ? err.message : String(err)}`;
     }
 
-    const val = await validateFixPatch({
+    const val = await evaluateAgentUpdate({
       filePath: finding.file,
       originalContent,
       patchedContent,
@@ -1336,9 +1310,9 @@ export async function runFixEvaluationCli(): Promise<void> {
       resolved: isResolved,
       staticResolved: val.staticResolved,
       explanation,
-      gate1Passed: val.gate1.passed,
-      gate2Passed: val.gate2.passed,
-      gate3Passed: val.gate3.passed,
+      gate1Passed: val.findingEliminatedCheck.passed,
+      gate2Passed: val.modernSyntaxCheck.passed,
+      gate3Passed: val.behavioralCheck.passed,
       summary: val.summary,
     });
   }

@@ -1,33 +1,28 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  GATE0_MODEL,
-  GATE0_PROMPT_VERSION,
-  GATE0_RESPONSE_SCHEMA,
-  GATE0_SYSTEM_PROMPT,
   GUIDE_TRIAGE_MODEL,
-  buildGate0RequestBody,
+  GUIDE_TRIAGE_PROMPT_VERSION,
+  GUIDE_TRIAGE_RESPONSE_SCHEMA,
+  GUIDE_TRIAGE_SYSTEM_PROMPT,
   buildGuideTriageRequestBody,
-  classifyGuideGate0,
-  formatGate0Prompt,
-  parseGate0Response,
+  formatGuideTriagePrompt,
   parseGuideTriageResponse,
   triageGuide,
 } from './guide-triage.ts';
 
-void test('guide-triage: canonical symbol renames and aliases', async (t) => {
-  await t.test('exports GUIDE_TRIAGE_MODEL alongside GATE0_MODEL', () => {
+void test('guide-triage: canonical symbol definitions', async (t) => {
+  await t.test('exports GUIDE_TRIAGE_MODEL and core functions', () => {
     assert.equal(GUIDE_TRIAGE_MODEL, 'gemini-3.8-flash');
-    assert.equal(GATE0_MODEL, GUIDE_TRIAGE_MODEL);
-    assert.equal(buildGuideTriageRequestBody, buildGate0RequestBody);
-    assert.equal(parseGuideTriageResponse, parseGate0Response);
-    assert.equal(classifyGuideGate0, triageGuide);
+    assert.equal(typeof buildGuideTriageRequestBody, 'function');
+    assert.equal(typeof parseGuideTriageResponse, 'function');
+    assert.equal(typeof triageGuide, 'function');
   });
 });
 
-void test('gate0: prompt formatting and request body construction', async (t) => {
-  await t.test('formatGate0Prompt includes guideId, category, and full markdown', () => {
-    const prompt = formatGate0Prompt({
+void test('guide-triage: prompt formatting and request body construction', async (t) => {
+  await t.test('formatGuideTriagePrompt includes guideId, category, and full markdown', () => {
+    const prompt = formatGuideTriagePrompt({
       guideId: 'temporal-now',
       category: 'javascript',
       guideHash: '1234567890ab',
@@ -38,8 +33,8 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
     assert.ok(prompt.includes('Replaces moment timezone.'));
   });
 
-  await t.test('formatGate0Prompt appends explainer context when supplied', () => {
-    const prompt = formatGate0Prompt({
+  await t.test('formatGuideTriagePrompt appends explainer context when supplied', () => {
+    const prompt = formatGuideTriagePrompt({
       guideId: 'temporal-now',
       category: 'javascript',
       guideHash: '1234567890ab',
@@ -51,8 +46,8 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
     assert.ok(prompt.includes('developers currently rely on moment-timezone.'));
   });
 
-  await t.test('buildGate0RequestBody creates temperature 0 request with schema and default search grounding', () => {
-    const body = buildGate0RequestBody({
+  await t.test('buildGuideTriageRequestBody creates temperature 0 request with schema and default search grounding', () => {
+    const body = buildGuideTriageRequestBody({
       guideId: 'temporal-now',
       category: 'javascript',
       guideHash: '1234567890ab',
@@ -63,22 +58,22 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
         temperature: number;
         thinkingConfig: { thinkingBudget: number };
         responseMimeType: string;
-        responseSchema: typeof GATE0_RESPONSE_SCHEMA;
+        responseSchema: typeof GUIDE_TRIAGE_RESPONSE_SCHEMA;
       };
       tools?: Array<{ googleSearch: Record<string, unknown> }>;
     };
 
-    assert.equal(body.systemInstruction.parts[0]?.text, GATE0_SYSTEM_PROMPT);
+    assert.equal(body.systemInstruction.parts[0]?.text, GUIDE_TRIAGE_SYSTEM_PROMPT);
     assert.equal(body.generationConfig.temperature, 0);
     assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 2048);
     assert.equal(body.generationConfig.responseMimeType, 'application/json');
-    assert.deepEqual(body.generationConfig.responseSchema, GATE0_RESPONSE_SCHEMA);
+    assert.deepEqual(body.generationConfig.responseSchema, GUIDE_TRIAGE_RESPONSE_SCHEMA);
     assert.ok(body.tools, 'tools array should be defined by default');
     assert.deepEqual(body.tools[0], { googleSearch: {} });
   });
 
-  await t.test('buildGate0RequestBody supports enableSearchGrounding: false to disable', () => {
-    const body = buildGate0RequestBody(
+  await t.test('buildGuideTriageRequestBody supports enableSearchGrounding: false to disable', () => {
+    const body = buildGuideTriageRequestBody(
       {
         guideId: 'temporal-now',
         category: 'javascript',
@@ -92,8 +87,8 @@ void test('gate0: prompt formatting and request body construction', async (t) =>
   });
 });
 
-void test('gate0: parseGate0Response validation', async (t) => {
-  await t.test('parses valid Gate 0 JSON successfully', () => {
+void test('guide-triage: parseGuideTriageResponse validation', async (t) => {
+  await t.test('parses valid Guide Triage JSON successfully', () => {
     const raw = JSON.stringify({
       classification: 'detectable',
       candidateTechniques: ['moment-timezone', 'date-fns-tz'],
@@ -105,7 +100,7 @@ void test('gate0: parseGate0Response validation', async (t) => {
       reason: 'Replaces legacy timezone libraries with native Temporal API.',
     });
 
-    const parsed = parseGate0Response(raw, 'temporal-now');
+    const parsed = parseGuideTriageResponse(raw, 'temporal-now');
     assert.equal(parsed.classification, 'detectable');
     assert.deepEqual(parsed.candidateTechniques, ['moment-timezone', 'date-fns-tz']);
     assert.deepEqual(parsed.replaces, ['moment-timezone', 'date-fns-tz']);
@@ -124,7 +119,7 @@ void test('gate0: parseGate0Response validation', async (t) => {
 
   await t.test('throws on malformed JSON', () => {
     assert.throws(
-      () => parseGate0Response('{ invalid json', 'test-guide'),
+      () => parseGuideTriageResponse('{ invalid json', 'test-guide'),
       /Gate 0 response JSON parse error for guide test-guide/,
     );
   });
@@ -137,7 +132,7 @@ void test('gate0: parseGate0Response validation', async (t) => {
       reason: 'some reason',
     });
     assert.throws(
-      () => parseGate0Response(raw, 'test-guide'),
+      () => parseGuideTriageResponse(raw, 'test-guide'),
       /Gate 0 response invalid classification 'invalid-bucket' for guide test-guide/,
     );
   });
@@ -152,7 +147,7 @@ void test('gate0: parseGate0Response validation', async (t) => {
       reason: 'reason',
     });
     assert.throws(
-      () => parseGate0Response(raw, 'test-guide'),
+      () => parseGuideTriageResponse(raw, 'test-guide'),
       /Gate 0 response missing string 'brownfieldTarget' for guide test-guide/,
     );
   });
@@ -217,7 +212,7 @@ void test('guide-triage: triageGuide with mock fetch', async (t) => {
       },
     );
 
-    assert.ok(capturedUrl.includes(`models/${GATE0_MODEL}:generateContent?key=test-api-key`));
+    assert.ok(capturedUrl.includes(`models/${GUIDE_TRIAGE_MODEL}:generateContent?key=test-api-key`));
     assert.ok(capturedBody.includes('scrollend-event'));
     assert.ok(capturedBody.includes('CSSWG scrollend explainer'));
     assert.equal(entry.guideId, 'scrollend-event');
@@ -225,7 +220,7 @@ void test('guide-triage: triageGuide with mock fetch', async (t) => {
     assert.equal(entry.classification, 'detectable');
     assert.equal(entry.brownfieldTarget, 'manual wheel event listeners');
     assert.equal(entry.evidenceFromGuide, 'Replaces window.addEventListener("wheel", ...)');
-    assert.equal(entry.gate0PromptVersion, GATE0_PROMPT_VERSION);
+    assert.equal(entry.gate0PromptVersion, GUIDE_TRIAGE_PROMPT_VERSION);
     assert.equal(entry.evidenceSource, 'explainer');
     assert.ok(typeof entry.explainerContextHash === 'string' && entry.explainerContextHash.length > 0);
     assert.deepEqual(entry.webSearchQueries, ['legacy scrollend replacement']);
@@ -309,7 +304,7 @@ void test('guide-triage: triageGuide with mock fetch', async (t) => {
             maxRetries: 1,
           },
         ),
-      /Gate 0 classifyGuide failed for failing-guide with HTTP 502/,
+      /Gate 0 triageGuide failed for failing-guide with HTTP 502/,
     );
   });
 });

@@ -7,12 +7,10 @@ const WORKTREE_ROOT = resolve(import.meta.dirname, '../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 
 export const LLM_VERIFIER_MODEL = 'gemini-3.8-flash';
-export const PHASE2_MODEL = LLM_VERIFIER_MODEL;
 export const PROMPT_MODEL = LLM_VERIFIER_MODEL;
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-export const PHASE2_THINKING_BUDGET = 1024;
-export const VERIFIER_THINKING_BUDGET = PHASE2_THINKING_BUDGET;
+export const VERIFIER_THINKING_BUDGET = 1024;
 
 /**
  * Computes a deterministic 8-character SHA-256 hash across prompt model, system prompt,
@@ -39,7 +37,7 @@ export function computePromptContentHash(params: {
   return createHash('sha256').update(payload).digest('hex').slice(0, 8);
 }
 
-export const PHASE2_SYSTEM_PROMPT = `You are an expert static analysis Phase 2 verifier for Modern Web Guidance.
+export const VERIFIER_SYSTEM_PROMPT = `You are an expert static analysis Phase 2 verifier for Modern Web Guidance.
 Your task is to verify whether candidate static analysis matches from Phase 1 represent genuine targets for web platform modernization according to the rule's summary, Phase 2 rubric, and the accompanying guide.md, or whether they should be dropped as false positives.
 
 Follow these verification principles:
@@ -50,9 +48,7 @@ Follow these verification principles:
 5. Output concise, objective reasoning explaining why this finding should be kept or dropped.
 6. Provide your confidence level ('high', 'medium', or 'low').`;
 
-export const VERIFIER_SYSTEM_PROMPT = PHASE2_SYSTEM_PROMPT;
-
-export const PHASE2_RESPONSE_SCHEMA = {
+export const VERIFIER_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
     keep: { type: 'BOOLEAN' },
@@ -65,9 +61,7 @@ export const PHASE2_RESPONSE_SCHEMA = {
   required: ['keep', 'reason', 'confidence'],
 };
 
-export const VERIFIER_RESPONSE_SCHEMA = PHASE2_RESPONSE_SCHEMA;
-
-export const PHASE2_USER_PROMPT_TEMPLATE = `## Modern Web Guidance Guide (\${rule.guideId})
+export const VERIFIER_USER_PROMPT_TEMPLATE = `## Modern Web Guidance Guide (\${rule.guideId})
 \`\`\`markdown
 \${guideMarkdown}
 \`\`\`
@@ -99,8 +93,6 @@ export interface VerifierPromptFindingInput {
   readonly codeSnippet?: string;
 }
 
-export type Phase2PromptFindingInput = VerifierPromptFindingInput;
-
 export interface VerifierPromptRuleInput {
   readonly id: string;
   readonly guideId?: string;
@@ -110,8 +102,6 @@ export interface VerifierPromptRuleInput {
     readonly dropWhen: readonly string[];
   };
 }
-
-export type Phase2PromptRuleInput = VerifierPromptRuleInput;
 
 export function formatVerifierPrompt(
   finding: VerifierPromptFindingInput,
@@ -150,25 +140,20 @@ ${contextSnippet}
 \`\`\``;
 }
 
-export const formatPhase2Prompt = formatVerifierPrompt;
-export const buildVerifierPrompt = formatVerifierPrompt;
-export const buildPhase2Prompt = formatVerifierPrompt;
-
-export function computePhase2PromptVersion(): string {
+export function computeVerifierPromptVersion(): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
-    systemPrompt: PHASE2_SYSTEM_PROMPT,
+    systemPrompt: VERIFIER_SYSTEM_PROMPT,
     userPromptTemplateSource: formatVerifierPrompt.toString(),
-    schema: PHASE2_RESPONSE_SCHEMA,
-    thinkingBudget: PHASE2_THINKING_BUDGET,
+    schema: VERIFIER_RESPONSE_SCHEMA,
+    thinkingBudget: VERIFIER_THINKING_BUDGET,
     temperature: 0.0,
     enableSearchGrounding: false,
   });
   return `${PROMPT_MODEL}:phase2-v2-guide-${hash}`;
 }
 
-export const PHASE2_PROMPT_VERSION = computePhase2PromptVersion();
-export const VERIFIER_PROMPT_VERSION = PHASE2_PROMPT_VERSION;
+export const VERIFIER_PROMPT_VERSION = computeVerifierPromptVersion();
 
 /**
  * Resolves the Gemini API key from options, environment, or the workspace .env file.
@@ -235,7 +220,6 @@ export async function loadRawGuideMarkdown(
 }
 
 export type VerifierConfidence = 'high' | 'medium' | 'low';
-export type Phase2Confidence = VerifierConfidence;
 
 export interface VerifierVerdict {
   readonly cardId: string;
@@ -243,7 +227,6 @@ export interface VerifierVerdict {
   readonly reason: string;
   readonly confidence: VerifierConfidence;
 }
-export type Phase2Verdict = VerifierVerdict;
 
 export interface VerifierOptions {
   readonly apiKey?: string;
@@ -252,14 +235,12 @@ export interface VerifierOptions {
   readonly maxRetries?: number;
   readonly model?: string;
 }
-export type Phase2Options = VerifierOptions;
 
 export interface LlmVerifierResult {
   readonly results: readonly VerifierVerdict[];
   readonly verdicts: readonly VerifierVerdict[];
   readonly keptFindings: readonly AnalyzerFinding[];
 }
-export type Phase2FilterResult = LlmVerifierResult;
 
 export function buildVerifierRequestBody(
   finding: AnalyzerFinding,
@@ -268,23 +249,22 @@ export function buildVerifierRequestBody(
 ): unknown {
   return {
     systemInstruction: {
-      parts: [{ text: PHASE2_SYSTEM_PROMPT }],
+      parts: [{ text: VERIFIER_SYSTEM_PROMPT }],
     },
     contents: [
       {
         role: 'user',
-        parts: [{ text: formatPhase2Prompt(finding, rule, guideMarkdown) }],
+        parts: [{ text: formatVerifierPrompt(finding, rule, guideMarkdown) }],
       },
     ],
     generationConfig: {
       responseMimeType: 'application/json',
-      responseSchema: PHASE2_RESPONSE_SCHEMA,
+      responseSchema: VERIFIER_RESPONSE_SCHEMA,
       temperature: 0.0,
-      thinkingConfig: { thinkingBudget: PHASE2_THINKING_BUDGET },
+      thinkingConfig: { thinkingBudget: VERIFIER_THINKING_BUDGET },
     },
   };
 }
-export const buildPhase2RequestBody = buildVerifierRequestBody;
 
 export function parseVerifierResponse(rawText: string, cardId: string): VerifierVerdict {
   let parsed: unknown;
@@ -319,7 +299,6 @@ export function parseVerifierResponse(rawText: string, cardId: string): Verifier
     confidence,
   };
 }
-export const parsePhase2Response = parseVerifierResponse;
 
 async function fetchWithRetry(
   url: string,
@@ -473,7 +452,3 @@ export async function runLlmVerifier(
     keptFindings,
   };
 }
-
-export const simulateSingleShotPhase2Filter = runLlmVerifier;
-export const simulateSingleShotVerifier = runLlmVerifier;
-export const runPhase2Filter = runLlmVerifier;
