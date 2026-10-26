@@ -126,9 +126,11 @@ Style the real `<img>`, `<video>` or `<canvas>` in place. Do not swap in a place
 - Neither technique works on an inline `<svg>`.
 - Remove the `controls` attribute from a skeleton `<video>`, since the browser's controls still draw over the placeholder.
 
-## 5. Other surfaces
+## 5. Controls and chips
 
-Controls and other surfaces that are not text or media (buttons, inputs, badges, chips and similar) already have a shape: keep their own size, padding, border width and `border-radius`, and only hide the content and apply the skeleton fill. DO NOT replace them with text bars or give them a fixed block size, which would shift the layout when the real control arrives.
+Elements that are themselves the visible shape and have no children with their own skeleton treatment (buttons, inputs, badges and chips) already have a shape: keep their own size, padding, border width and `border-radius`, and only hide the content and apply the skeleton fill. DO NOT replace them with text bars or give them a fixed block size, which would shift the layout when the real control arrives.
+
+Containers such as a card, `<footer>` or `<nav>` keep their real background and layout. Style the text, media and controls inside them instead.
 
 ```css
 .skeleton[aria-busy="true"] :is(button, input) { /* Add badge and chip selectors here */
