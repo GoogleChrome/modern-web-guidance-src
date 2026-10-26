@@ -141,13 +141,20 @@ Add a trailing "More actions" menu when the toolbar has secondary actions or mus
 * Items are `role="menuitem"` (commands) or `role="menuitemcheckbox"` with `aria-checked` (toggles), each `tabindex="-1"`.
 * `popover` provides top layer, light dismiss, `Escape`, and focus return to the trigger. Do not reimplement them.
 * Sync `aria-expanded` from the popover `toggle` event and focus the first item on open.
-* `ArrowDown`/`ArrowUp` move between items with wrapping; `Home`/`End` jump to the ends. Close the menu after an item is activated.
+* `ArrowDown`/`ArrowUp` move between items with wrapping; `Home`/`End` jump to the ends.
+* Close the menu after a `menuitem` is activated. For a `menuitemcheckbox`, `Enter` or a click toggles and closes, but `Space` toggles and keeps the menu open so several options can be changed in one visit (APG).
 * Anchor the menu to the trigger with `position-area` plus `position-try-fallbacks`.
 
 ```js
 menu.addEventListener("toggle", ({ newState }) => {
   more.setAttribute("aria-expanded", String(newState === "open"));
   if (newState === "open") menuItems[0].focus();
+});
+// Space on a checkbox toggles without closing; preventDefault stops the button's click
+menu.addEventListener("keydown", (e) => {
+  if (e.key !== " " || e.target.getAttribute("role") !== "menuitemcheckbox") return;
+  e.preventDefault();
+  e.target.setAttribute("aria-checked", String(e.target.getAttribute("aria-checked") !== "true"));
 });
 ```
 

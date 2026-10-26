@@ -469,6 +469,12 @@
       menu.style.left = `${Math.max(0, Math.min(t.right - m.width, innerWidth - m.width))}px`;
     }
     menu.addEventListener("keydown", (e) => {
+      // Space on a checkbox toggles without closing (APG); Enter and click fall through to the click handler and close
+      if (e.key === " " && e.target.getAttribute("role") === "menuitemcheckbox") {
+        e.preventDefault();
+        flag(e.target, "aria-checked", e.target.getAttribute("aria-checked") !== "true");
+        return;
+      }
       const at = menuItems.indexOf(document.activeElement);
       const to = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: -1 }[e.key];
       if (to === undefined) return;
