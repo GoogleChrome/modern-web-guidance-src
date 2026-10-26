@@ -70,7 +70,7 @@ The button declaratively controls the menu with `popovertarget` and `aria-contro
 
 On narrow containers, keep `popover="auto"` on the navigation list. Anchor the fixed popover to the menu button and constrain its height so a long navigation can scroll without exceeding the viewport.
 
-The breakpoint is the container width at which the inline row (brand, actions and every link) stops fitting. `45rem` is an example value: measure your own widest inline row and round up, in `rem` so text zoom scales it. A short navigation can collapse at a narrower width. When items are added, raise it: too low causes horizontal scrolling, too high collapses a navigation that would have fit.
+The breakpoint is the container width at which the inline row (brand, actions and every link) stops fitting. The values below are examples: measure your own widest inline row and round up, in `rem` so text zoom scales it. A short navigation can collapse at a narrower width. When items are added, raise it: too low causes horizontal scrolling, too high collapses a navigation that would have fit.
 
 {# Maintainer note: @container conditions cannot use var(), so the breakpoint is repeated by hand in each query and in the script. #}
 
