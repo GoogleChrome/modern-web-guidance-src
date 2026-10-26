@@ -17,7 +17,7 @@ import {
 } from 'cssomnom';
 import type { Document, Element } from 'linkedom';
 
-// @ts-expect-error - package.json omits "type": "module", but Playwright executes ESM
+// @ts-ignore - package.json omits "type": "module", but Playwright executes ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 interface StyledEntry {
