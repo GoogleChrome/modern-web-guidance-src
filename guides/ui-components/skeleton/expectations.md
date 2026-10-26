@@ -7,6 +7,6 @@
 - Skeleton text elements limit real text to the bar count with `line-clamp`, or with `overflow: hidden` and a `max-block-size` in `lh` units where `line-clamp` is unsupported, so long content does not add lines.
 - Buttons, inputs, and other controls (e.g. badges) keep their own padding and `border-radius` without a fixed block size, with transparent text and the skeleton tone as `background-color`.
 - Media and avatar placeholders are real `<img>`/`<video>`/`<canvas>` elements, not placeholder `<div>`s, with a `background-color` fill and `aspect-ratio`. The picture is removed with a large-length `object-position` (e.g. `-9999px 0`), not `content: linear-gradient()`.
-- Skeleton colors are derived from the surface with `color-mix()`.
+- Skeleton colors are derived from the surface with `color-mix()` using an explicit color space.
 - A shimmer gradient is painted on each placeholder shape's own background with `background-attachment: fixed`, so all shapes sweep in sync without a parent overlay. The shimmer gradient and animation are only applied under `prefers-reduced-motion: no-preference`.
 - Only a limited number of cards are visible while loading, even if more are in the markup.

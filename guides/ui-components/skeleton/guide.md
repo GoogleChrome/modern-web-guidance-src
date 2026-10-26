@@ -47,7 +47,7 @@ MANDATORY: Put `aria-busy="true"` on the container and scope every skeleton styl
 
 ## 2. Colors
 
-Skeleton colors belong to the surface. Define `--skeleton-tone` on the container and derive it from the surface with `color-mix()`, mixing a little of the text color into the surface color, so a darker surface gets a darker skeleton. Derive a lighter `--skeleton-highlight` the same way for the shimmer. Use the container's real background and text tokens.
+Skeleton colors belong to the surface. Define `--skeleton-tone` on the container and derive it from the surface with `color-mix(in oklab, …)`, mixing a little of the text color into the surface color, so a darker surface gets a darker skeleton. Derive a lighter `--skeleton-highlight` the same way for the shimmer. Mix in `oklab`, not `srgb`, which blends unevenly. Use the container's real background and text tokens.
 
 ## 3. Text
 

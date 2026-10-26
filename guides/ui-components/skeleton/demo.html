@@ -157,9 +157,9 @@
 
     @layer prototype {
       .skeleton[aria-busy="true"] {
-        --skeleton-tone: color-mix(in oklch, var(--surface) 88%, var(--ink));
+        --skeleton-tone: color-mix(in oklab, var(--surface) 88%, var(--ink));
         /* not currentColor: bars set color: transparent */
-        --skeleton-highlight: color-mix(in oklch, var(--surface) 70%, white);
+        --skeleton-highlight: color-mix(in oklab, var(--surface) 70%, white);
       }
 
       /* One text bar as a closed rounded rectangle, ending at --end. --i is the
