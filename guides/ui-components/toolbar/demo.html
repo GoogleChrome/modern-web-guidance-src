@@ -223,8 +223,14 @@
         font-size: 0.8125rem;
         background: var(--ink);
         color: var(--surface);
+        /* Place the hint on the axis the toolbar does not stack along, so it never covers the next control */
         position-area: block-end;
         position-try-fallbacks: flip-block;
+      }
+      .tip-inline {
+        margin: 0 0.4rem;
+        position-area: inline-end;
+        position-try-fallbacks: flip-inline;
       }
 
       /* The interestfor polyfill reads delays from custom properties, so set them this way */
@@ -361,9 +367,9 @@
   <div id="tip-right" popover="hint">Align right</div>
   <div id="tip-copy" popover="hint">Copy text</div>
   <div id="tip-select" popover="hint">Select text</div>
-  <div id="tip-zoom-in" popover="hint">Zoom in</div>
-  <div id="tip-zoom-out" popover="hint">Zoom out</div>
-  <div id="tip-zoom-reset" popover="hint">Reset zoom</div>
+  <div id="tip-zoom-in" class="tip-inline" popover="hint">Zoom in</div>
+  <div id="tip-zoom-out" class="tip-inline" popover="hint">Zoom out</div>
+  <div id="tip-zoom-reset" class="tip-inline" popover="hint">Reset zoom</div>
   <div id="tip-more" popover="hint">More actions</div>
 
   <script type="module">

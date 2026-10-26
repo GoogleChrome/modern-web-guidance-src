@@ -89,6 +89,7 @@ Choose a vertical toolbar when controls stack along a side edge (a tool palette 
 * Set `aria-orientation="vertical"` on the toolbar. The default for `role="toolbar"` is horizontal, so omit it there.
 * Lay items out in a column (`flex-direction: column`, no wrapping), and read the orientation from the attribute when handling keys.
 * A separator between stacked items is horizontal: use `aria-orientation="horizontal"` (the separator default) there, not `vertical`.
+* Tooltips open beside the button (`position-area: inline-end`), not below it; see Tooltips below.
 
 ```js
 const vertical = toolbar.getAttribute("aria-orientation") === "vertical";
@@ -111,6 +112,8 @@ const steps = vertical
 ## Tooltips for icon-only buttons
 
 Use interest invokers (`interestfor`) with `popover="hint"`, which shows the tooltip without closing an open menu popover.
+
+MANDATORY: Position the hint on the axis the toolbar does not stack along: `position-area: block-end` (fallback `flip-block`) for a horizontal toolbar, `position-area: inline-end` (fallback `flip-inline`) for a vertical one. A hint placed along the stacking axis covers the next control and swallows its click, because the hint stays open while the pointer is over it.
 
 ```html
 <button type="button" aria-label="Bold" interestfor="tip-bold">…</button>
