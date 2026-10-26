@@ -90,6 +90,8 @@
         block-size: 1.125rem;
         background-color: currentColor;
         mask: var(--icon-copy) center / contain no-repeat;
+        /* In forced colors the UA would otherwise replace the background and hide the masked icon */
+        forced-color-adjust: none;
       }
 
       /* Success state */
