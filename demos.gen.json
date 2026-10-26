@@ -392,7 +392,7 @@
     {
       "id": "autofill-highlight-inputs",
       "category": "forms",
-      "title": "Use the CSS :autofill pseudo-class to highlight form fields that have been autofilled by the browser and not edited by the user",
+      "title": "Highlight browser-autofilled fields the user hasn't edited with CSS :autofill",
       "description": "Use CSS to highlight form fields that have been autofilled by the browser and not edited by the user.",
       "features": [
         "autofill"
