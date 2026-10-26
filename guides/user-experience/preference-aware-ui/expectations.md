@@ -6,5 +6,5 @@
 - With `prefers-reduced-motion: reduce` emulated, both from page load and after switching at runtime, every animation or transition that changes `transform`, `translate`, `scale`, or `rotate` under `no-preference` is either not running or has a longer duration.
 - With `prefers-reduced-motion: reduce` emulated, every `video` element with the `autoplay` attribute is paused.
 - Currency amounts, dates, or numbers with a grouping or decimal separator rendered by the page are formatted differently under the `de-DE` browser locale than under `en-US`.
-- With Save-Data enabled (the `Save-Data: on` request header and `navigator.connection.saveData` set to `true`), the page transfers fewer bytes of `video`, `iframe`, and image resources than when Save-Data is disabled.
+- If the page has optional media (a `<video>`, a third-party `<iframe>`, or media inserted by script), then with Save-Data enabled (the `Save-Data: on` request header and `navigator.connection.saveData` set to `true`), that media's video file or embedded content isn't downloaded until the user asks for it; a `<video>` with `preload="none"` and no `autoplay` meets this.
 - When `navigator.connection` is undefined, page scripts execute without uncaught errors.
