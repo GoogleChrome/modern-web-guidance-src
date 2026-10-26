@@ -450,6 +450,11 @@
       .menu-link[aria-current="page"]::before {
         background: Highlight;
       }
+
+      .dropdown-trigger::after {
+        forced-color-adjust: none; /* Otherwise the masked background is dropped */
+        background-color: CanvasText; /* currentColor would keep the page's gray */
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
