@@ -1,6 +1,9 @@
 {
   "guides": {
     "accessibility": {
+      "accessibility": [
+        "daily-grind"
+      ],
       "accessible-error-announcement": [
         "task"
       ],
