@@ -226,4 +226,101 @@ describe('scroll-position-aware-elements rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('flags scroll listener toggling custom class on .fixed-top or .sticky-top element', () => {
+    const jqCode = `
+      $(window).scroll(function () {
+        if ($(window).scrollTop() > 200) {
+          $('.fixed-top').addClass('menu-bg');
+        } else {
+          $('.fixed-top').removeClass('menu-bg');
+        }
+      });
+    `;
+    const jqResult = scanJsSource(
+      'src/fixed-top-menu.js',
+      jqCode,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(jqResult.matches.length, 1);
+
+    const domCode = `
+      const bar = document.querySelector('.sticky-top');
+      window.addEventListener('scroll', () => {
+        bar.classList.toggle('elevated', window.scrollY > 16);
+      });
+    `;
+    const domResult = scanJsSource(
+      'src/sticky-top-bar.js',
+      domCode,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(domResult.matches.length, 1);
+  });
+
+  test('flags jQuery .offset().top compared against constant threshold variable', () => {
+    const code = `
+      var SCROLLING_NAVBAR_OFFSET_TOP = 50;
+      $(window).on('scroll', function () {
+        var $navbar = $('.navbar');
+        if ($navbar.length) {
+          if ($navbar.offset().top > SCROLLING_NAVBAR_OFFSET_TOP) {
+            $('.scrolling-navbar').addClass('top-nav-collapse');
+          } else {
+            $('.scrolling-navbar').removeClass('top-nav-collapse');
+          }
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'public/js/modules/scrolling-navbar.js',
+      code,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(matches.length, 1);
+  });
+
+  test('exempts getBoundingClientRect clamping and scrollTop setter calls', () => {
+    const clampingCode = `
+      function stickyEl(adBanner, beforeEl) {
+        const getTop = () => beforeEl.getBoundingClientRect().top;
+        let scrollPos = 0;
+        window.addEventListener('scroll', () => {
+          scrollPos = window.scrollY;
+          if (scrollPos > 100) {
+            adBanner.classList.add('fixed');
+          } else {
+            adBanner.classList.remove('fixed');
+          }
+        });
+        return getTop;
+      }
+    `;
+    const clampingResult = scanJsSource(
+      'src/ad-clamp.js',
+      clampingCode,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(clampingResult.matches.length, 0);
+
+    const setterOnlyCode = `
+      $(window).on('scroll', function () {
+        if (locked) {
+          $(window).scrollTop(0);
+          $('.navbar').addClass('fixed-top');
+        }
+      });
+    `;
+    const setterResult = scanJsSource(
+      'src/scroll-lock.js',
+      setterOnlyCode,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(setterResult.matches.length, 0);
+  });
 });

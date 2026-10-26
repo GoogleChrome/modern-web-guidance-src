@@ -65,7 +65,8 @@ const SCROLL_STATE_CLASSES = new Set([
   'page-loaded',
 ]);
 
-const HEADER_TARGET_REGEX = /header|navbar|\bnav\b|topbar|top[-_]bar|masthead|logo|brand/i;
+const POSITIONED_OR_HEADER_TARGET_REGEX =
+  /header|navbar|\bnav\b|topbar|top[-_]bar|masthead|logo|brand|fixed[-_]?top|fixed[-_]?bottom|sticky[-_]?top|sticky[-_]?bottom|\bfixed\b|\bsticky\b|\baffix\b|back[-_]?to[-_]?top|scroll[-_]?to[-_]?top|go[-_]?to[-_]?top|\btotop\b|\bgotop\b/i;
 const NOT_HEADER_REGEX = /page[-_]?header|hero|banner|table|thead|\bth\b|card[-_]?header|modal[-_]?header|section[-_]?header|sidebar|sidenav|footer/i;
 
 const SIZE_STYLE_PROPERTIES = new Set([
@@ -109,44 +110,125 @@ const COMPARISON_OPERATORS = new Set([
   SyntaxKind.ExclamationEqualsEqualsToken,
 ]);
 
-function handlerReadsScrollOffset(handlerNode: Node): boolean {
-  let found = false;
-  handlerNode.forEachDescendant((node) => {
-    if (found) return;
+function isScrollOffsetReadNode(node: Node): boolean {
+  const parent = node.getParent();
+  if (
+    parent &&
+    Node.isBinaryExpression(parent) &&
+    parent.getOperatorToken().getKind() === SyntaxKind.EqualsToken &&
+    parent.getLeft() === node
+  ) {
+    return false;
+  }
 
-    if (Node.isIdentifier(node) && SCROLL_OFFSET_PROPERTIES.has(node.getText())) {
-      found = true;
-      return;
+  if (Node.isIdentifier(node)) {
+    if (parent && Node.isPropertyAccessExpression(parent) && parent.getNameNode() === node) {
+      return false;
     }
+    return SCROLL_OFFSET_PROPERTIES.has(node.getText());
+  }
 
-    if (Node.isPropertyAccessExpression(node)) {
-      if (SCROLL_OFFSET_PROPERTIES.has(node.getName())) {
-        found = true;
-        return;
-      }
-      // jQuery offset().top
-      if (node.getName() === 'top') {
-        const expr = unwrapExpression(node.getExpression());
-        if (Node.isCallExpression(expr)) {
-          const callee = unwrapExpression(expr.getExpression());
-          if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'offset') {
-            found = true;
-            return;
-          }
+  if (Node.isPropertyAccessExpression(node)) {
+    if (parent && Node.isCallExpression(parent) && parent.getExpression() === node) {
+      return false;
+    }
+    if (SCROLL_OFFSET_PROPERTIES.has(node.getName())) {
+      return true;
+    }
+    // jQuery $navbar.offset().top
+    if (node.getName() === 'top') {
+      const expr = unwrapExpression(node.getExpression());
+      if (Node.isCallExpression(expr)) {
+        const callee = unwrapExpression(expr.getExpression());
+        if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'offset') {
+          return true;
         }
       }
     }
+    return false;
+  }
 
-    // jQuery $(window).scrollTop() or $(this).scrollTop()
-    if (Node.isCallExpression(node)) {
-      const expr = unwrapExpression(node.getExpression());
-      if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'scrollTop') {
-        found = true;
-        return;
-      }
+  // jQuery $(window).scrollTop() or $(this).scrollTop() getter (0 arguments)
+  if (Node.isCallExpression(node) && node.getArguments().length === 0) {
+    const expr = unwrapExpression(node.getExpression());
+    if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'scrollTop') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function subtreeReadsScrollOffset(root: Node): boolean {
+  if (isScrollOffsetReadNode(root)) {
+    return true;
+  }
+  let found = false;
+  root.forEachDescendant((node) => {
+    if (!found && isScrollOffsetReadNode(node)) {
+      found = true;
     }
   });
   return found;
+}
+
+function findPriorAssignmentRhs(
+  handlerNode: Node,
+  identifierName: string,
+  beforePos: number,
+): Node | null {
+  let latestRhs: Node | null = null;
+  handlerNode.forEachDescendant((node) => {
+    if (
+      Node.isBinaryExpression(node) &&
+      node.getOperatorToken().getKind() === SyntaxKind.EqualsToken &&
+      node.getStart() < beforePos
+    ) {
+      const left = unwrapExpression(node.getLeft());
+      if (Node.isIdentifier(left) && left.getText() === identifierName) {
+        latestRhs = node.getRight();
+      }
+    }
+  });
+  return latestRhs;
+}
+
+function identifierRepresentsScrollOffset(id: Node, handlerNode: Node): boolean {
+  const parent = id.getParent();
+  if (parent && Node.isPropertyAccessExpression(parent) && parent.getNameNode() === id) {
+    return false;
+  }
+  const name = id.getText();
+  const assignedRhs = findPriorAssignmentRhs(handlerNode, name, id.getStart());
+  if (assignedRhs) {
+    return subtreeReadsScrollOffset(assignedRhs);
+  }
+  const resolved = resolveLocalExpression(id, 2);
+  if (resolved !== id) {
+    return subtreeReadsScrollOffset(resolved);
+  }
+  return /scroll|pageyoffset|windowpos/i.test(name);
+}
+
+function operandRepresentsScrollOffset(operand: Node, handlerNode: Node): boolean {
+  const unwrapped = unwrapExpression(operand);
+  if (subtreeReadsScrollOffset(unwrapped)) {
+    return true;
+  }
+  if (Node.isIdentifier(unwrapped) && identifierRepresentsScrollOffset(unwrapped, handlerNode)) {
+    return true;
+  }
+  let found = false;
+  unwrapped.forEachDescendant((node) => {
+    if (!found && Node.isIdentifier(node) && identifierRepresentsScrollOffset(node, handlerNode)) {
+      found = true;
+    }
+  });
+  return found;
+}
+
+function handlerReadsScrollOffset(handlerNode: Node): boolean {
+  return subtreeReadsScrollOffset(handlerNode);
 }
 
 function handlerHasScrollComparison(handlerNode: Node): boolean {
@@ -155,23 +237,12 @@ function handlerHasScrollComparison(handlerNode: Node): boolean {
     if (found) return;
     if (Node.isBinaryExpression(node)) {
       const op = node.getOperatorToken().getKind();
-      if (COMPARISON_OPERATORS.has(op)) {
-        const leftNode = resolveLocalExpression(node.getLeft(), 2);
-        const rightNode = resolveLocalExpression(node.getRight(), 2);
-        const leftText = leftNode.getText();
-        const rightText = rightNode.getText();
-        const mentionsScroll =
-          leftText.includes('scroll') ||
-          leftText.includes('pageYOffset') ||
-          leftText.includes('windowpos') ||
-          leftText.includes('position') ||
-          rightText.includes('scroll') ||
-          rightText.includes('pageYOffset') ||
-          rightText.includes('windowpos') ||
-          rightText.includes('position');
-        if (mentionsScroll) {
-          found = true;
-        }
+      if (
+        COMPARISON_OPERATORS.has(op) &&
+        (operandRepresentsScrollOffset(node.getLeft(), handlerNode) ||
+          operandRepresentsScrollOffset(node.getRight(), handlerNode))
+      ) {
+        found = true;
       }
     }
   });
@@ -235,6 +306,25 @@ function getEffectiveHandlerNodes(handlerNode: Node, sourceFile: SourceFile): No
   return result;
 }
 
+function isInsideBoundingRectHelper(node: Node): boolean {
+  let current: Node | undefined = node.getParent();
+  while (current && !Node.isSourceFile(current)) {
+    if (
+      Node.isFunctionDeclaration(current) ||
+      Node.isFunctionExpression(current) ||
+      Node.isArrowFunction(current) ||
+      Node.isMethodDeclaration(current)
+    ) {
+      if (current.getText().includes('getBoundingClientRect')) {
+        return true;
+      }
+      break;
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
 function isNestedInsideInteractionListener(node: Node): boolean {
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
@@ -264,6 +354,28 @@ function isNestedInsideInteractionListener(node: Node): boolean {
   return false;
 }
 
+function getMutationTargetText(targetExpr: Node): string {
+  let base = unwrapExpression(targetExpr);
+  if (
+    Node.isPropertyAccessExpression(base) &&
+    (base.getName() === 'classList' || base.getName() === 'style')
+  ) {
+    base = unwrapExpression(base.getExpression());
+  }
+  const resolved = resolveLocalExpression(base, 2);
+  return resolved === base
+    ? base.getText()
+    : `${base.getText()} ${resolved.getText()}`;
+}
+
+function isPositionedOrHeaderTarget(targetExpr: Node): boolean {
+  const targetText = getMutationTargetText(targetExpr);
+  return (
+    POSITIONED_OR_HEADER_TARGET_REGEX.test(targetText) &&
+    !NOT_HEADER_REGEX.test(targetText)
+  );
+}
+
 function handlerMutatesScrollStateOrSize(handlerNode: Node): boolean {
   // Reject lazy-loading, parallax, infinite scroll, or nav link href handlers
   const handlerText = handlerNode.getText();
@@ -271,6 +383,7 @@ function handlerMutatesScrollStateOrSize(handlerNode: Node): boolean {
     handlerText.includes('setAttribute(\'src\'') ||
     handlerText.includes('setAttribute("src"') ||
     handlerText.includes('data-parallax') ||
+    handlerText.includes('getBoundingClientRect') ||
     handlerText.includes('fetchMore') ||
     handlerText.includes('loadMore') ||
     handlerText.includes('href')
@@ -286,13 +399,9 @@ function handlerMutatesScrollStateOrSize(handlerNode: Node): boolean {
     if (isDomClassOrAttrMutation(node)) {
       if (Node.isCallExpression(node)) {
         const callee = unwrapExpression(node.getExpression());
-        let targetText = '';
-        if (Node.isPropertyAccessExpression(callee)) {
-          targetText = callee.getExpression().getText();
-        }
-
-        const isHeaderTarget =
-          HEADER_TARGET_REGEX.test(targetText) && !NOT_HEADER_REGEX.test(targetText);
+        const isPositionedTarget =
+          Node.isPropertyAccessExpression(callee) &&
+          isPositionedOrHeaderTarget(callee.getExpression());
 
         const args = node.getArguments();
         for (const arg of args) {
@@ -305,7 +414,7 @@ function handlerMutatesScrollStateOrSize(handlerNode: Node): boolean {
                 return;
               }
             }
-            if (isHeaderTarget) {
+            if (isPositionedTarget) {
               found = true;
               return;
             }
@@ -329,15 +438,9 @@ function handlerMutatesScrollStateOrSize(handlerNode: Node): boolean {
             found = true;
             return;
           }
-          if (SIZE_STYLE_PROPERTIES.has(prop)) {
-            const targetText = expr.getExpression().getText();
-            if (
-              HEADER_TARGET_REGEX.test(targetText) &&
-              !NOT_HEADER_REGEX.test(targetText)
-            ) {
-              found = true;
-              return;
-            }
+          if (SIZE_STYLE_PROPERTIES.has(prop) && isPositionedOrHeaderTarget(expr)) {
+            found = true;
+            return;
           }
         }
       }
@@ -346,21 +449,19 @@ function handlerMutatesScrollStateOrSize(handlerNode: Node): boolean {
     // jQuery .css('width', ...) or .css('height', ...) or .css('padding', ...)
     if (Node.isCallExpression(node)) {
       const expr = unwrapExpression(node.getExpression());
-      if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'css') {
-        const targetText = expr.getExpression().getText();
-        if (
-          HEADER_TARGET_REGEX.test(targetText) &&
-          !NOT_HEADER_REGEX.test(targetText)
-        ) {
-          const args = node.getArguments();
-          if (args.length > 0) {
-            const firstArg = unwrapExpression(args[0]);
-            if (Node.isStringLiteral(firstArg)) {
-              const prop = firstArg.getLiteralText().toLowerCase().trim();
-              if (JQUERY_SIZE_CSS_PROPERTIES.has(prop)) {
-                found = true;
-                return;
-              }
+      if (
+        Node.isPropertyAccessExpression(expr) &&
+        expr.getName() === 'css' &&
+        isPositionedOrHeaderTarget(expr.getExpression())
+      ) {
+        const args = node.getArguments();
+        if (args.length > 0) {
+          const firstArg = unwrapExpression(args[0]);
+          if (Node.isStringLiteral(firstArg)) {
+            const prop = firstArg.getLiteralText().toLowerCase().trim();
+            if (JQUERY_SIZE_CSS_PROPERTIES.has(prop)) {
+              found = true;
+              return;
             }
           }
         }
@@ -421,12 +522,15 @@ export const scrollPositionAwareElementsJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (isNestedInsideInteractionListener(rootNode)) {
+      if (isNestedInsideInteractionListener(rootNode) || isInsideBoundingRectHelper(rootNode)) {
         return;
       }
 
       const handler = resolveHandlerNode(rawHandlerNode);
       const effectiveNodes = getEffectiveHandlerNodes(handler, sourceFile);
+      if (effectiveNodes.some((n) => n.getText().includes('getBoundingClientRect'))) {
+        return;
+      }
 
       const hasOffset = effectiveNodes.some((n) => handlerReadsScrollOffset(n));
       if (!hasOffset) {
