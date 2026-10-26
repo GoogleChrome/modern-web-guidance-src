@@ -61,7 +61,7 @@ To prevent sizes from becoming too small or too large, use the CSS `clamp()` fun
 ```css
 .component-title {
   /* Clamp font size between 1rem and 2.5rem, scaling with 5% of container width */
-  font-size: clamp(1rem, 0.5rem + 5cqi, 2.5rem);
+  font-size: clamp(1rem, 5cqi, 2.5rem);
 }
 ```
 
@@ -74,13 +74,13 @@ If container queries are not supported by the browser, you should provide a fall
 ```css
 .component-title {
   /* Fallback for browsers that do not support container units */
-  font-size: clamp(1rem, 0.5rem + 5vw, 2.5rem);
+  font-size: clamp(1rem, 5vw, 2.5rem);
 }
 
 @supports (font-size: 1cqi) {
   .component-title {
     /* Use container units where supported */
-    font-size: clamp(1rem, 0.5rem + 5cqi, 2.5rem);
+    font-size: clamp(1rem, 5cqi, 2.5rem);
   }
 }
 ```
