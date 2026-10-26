@@ -28,7 +28,7 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--tier <tier>` | String | Restrict analysis to a confidence tier (`qualified` or `experimental`). |
-| `--experimental`, `--all-rules` | Flag | Run all 70 active feature guides (98 rules total in `ALL_RULES`), including experimental rules. |
+| `--experimental`, `--all-rules` | Flag | Run all 71 active feature guides (98 rules total in `ALL_RULES`), including experimental rules. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
@@ -47,12 +47,12 @@ Note: Static analysis results are provisional — verify against the Keep/Drop c
   - src/views/Register.vue:18
     <input type="password" id="pass">
 
-* animate-element-entry-exit [qualified] (1 finding)
-  Modernize imperative animation toggles and display none timing with CSS @starting-style and transition-behavior: allow-discrete.
-  Keep when: Imperative transitionend listener or animation frame loop coordinates entry/exit
-  Drop when: Transition already uses @starting-style
-  - src/components/Toast.tsx:75
-    el.addEventListener('transitionend', () => el.style.display = 'none');
+* ime-safe-enter-submit [qualified] (1 finding)
+  Guard Enter-key form submission handlers with !event.isComposing to prevent premature submit during CJK IME composition.
+  Keep when: Keydown handler checks for Enter and triggers submission without checking event.isComposing
+  Drop when: Handler already checks event.isComposing or event.keyCode === 229
+  - src/components/ChatInput.tsx:75
+    if (e.key === 'Enter' && !e.shiftKey) submitMessage();
 
 Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
 ```
@@ -206,69 +206,48 @@ export const autofillSignInFormRule: AnalyzerRule = {
 ### Qualified Rules & Gated Execution
 
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
-- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear objective qualification criteria (70 active guides: 37 qualified across 53 rules, and 33 experimental across 45 rules, totaling 98 rules in `ALL_RULES`). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
-- **`ALL_RULES` (`--experimental` / `--all-rules`):** Executes all 70 active feature guides across 98 rules in `ALL_RULES`, including experimental rules.
+- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear objective qualification criteria (71 active guides: 15 qualified across 20 rules, and 56 experimental across 78 rules, totaling 98 rules in `ALL_RULES`). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
+- **`ALL_RULES` (`--experimental` / `--all-rules`):** Executes all 71 active feature guides across 98 rules in `ALL_RULES`, including experimental rules.
 
 ### 3-Tier Qualification Criteria
 
 Rules qualify for default terminal shipping under a 3-tier hierarchy:
-- **Tier A (Human Ground Truth $\ge 90\%$):** Rules validated by direct blind human spot-check decks on the `held-out` split achieving $\ge 90\%$ precision.
-- **Tier B (Detection Eval Consensus $\ge 90\%$ at $n \ge 35$):** Rules where 3-run majority-vote Detection Eval Judge consensus reaches $\ge 90\%$ across at least 35 candidate findings on the `held-out` split with Wilson 95% CI lower bound $\ge 0.85$.
-- **Tier C (Structural / Low Misfire $\le 10\%$):** Rules with deterministic syntactic markers (e.g. `package.json` dependencies, vendored library replacements, unambiguous web platform APIs) exhibiting low structural misfire rates ($\le 10\%$).
+- **Tier A (Human Ground Truth $\ge 90\%$):** Rules validated by direct blind human spot-check decks on the `held-out` split achieving $\ge 90\%$ precision at $n \ge 35$, Wilson LB $\ge 0.90$.
+- **Tier B (Detection Eval Consensus $\ge 90\%$ at $n \ge 30$):** Rules where 7-verdict Detection Eval Judge consensus reaches $\ge 90\%$ across at least 30 candidate findings on the `held-out` split.
+- **Tier C (Deterministic AST / Low Misfire $\ge 85\%$ at $n \ge 10$):** Rules with deterministic structural AST/DOM/CSS/dependency matchers exhibiting $\ge 85\%$ precision with low structural misfire rates.
 
 ### 2-Axis Triage Taxonomy
 
-Every web platform standard in the catalog is classified across two orthogonal axes:
-- **Axis 1: Detectability / Feasibility:**
-  - `detectable`: Deterministic structural AST/DOM/CSS/dependency pattern with high signal-to-noise ratio.
-  - `not-detectable`: Visual, behavioural, or conceptual change without a distinguishable legacy syntax footprint.
-  - `hard-not-recommended`: High ambiguity or overwhelming userland idiom collision.
-- **Axis 2: Scope & Architecture:**
-  - `1-to-1-replacement`: Direct, self-contained API substitution (e.g., CSS `text-wrap: balance`, `scrollbar-color`, `autocomplete`).
-  - `ui-recipe-multi-part`: Multi-component orchestrations (dialog + backdrop + escape listener) requiring compound matching.
-  - `library-superseded`: Third-party npm package or vendored script superseded by native standard.
+Every web platform standard in the catalog is classified across two orthogonal axes in `analyzer-internal/guide-triage.json` (covering all **249 catalog guides**):
+- **Axis 1: Detection (`detection`):**
+  - `direct-token` (47 guides) & `structural-ast` (61 guides): Deterministic token, AST, DOM, CSS, or `package.json` patterns (`ast-only` in `LEXICON.md`) with high signal-to-noise ratio requiring no LLM runtime verification.
+  - `needs-verifier` (34 guides): Pattern detectable by static matchers but requiring runtime LLM Verifier evaluation against a `verifierRubric` (`keepWhen` / `dropWhen`) to reject subtle false alarms.
+  - `no-legacy-pattern` (107 guides): Visual, behavioral, or greenfield capability without a distinguishable brownfield syntax footprint to replace.
+- **Axis 2: Update Scope (`updateScope`):**
+  - `local-swap` (72 guides): Replacing or adding a property, selector, attribute, or call at the same site (`call-site-swap` in `LEXICON.md`; e.g., standard `autocomplete` attributes, `text-wrap: balance`, `field-sizing: content`).
+  - `cross-layer-refactor` (44 guides): Deleting imperative JS listeners, observers, or helper libraries and moving behavior into declarative CSS or HTML (`@starting-style`, `animation-timeline`, `:has()`).
+  - `widget-recipe` (26 guides): Coordinating HTML structure, CSS layout/styling, and JS behavior across multiple parts of a composite UI widget.
+  - `n/a` (107 guides): Applicable when detection is `no-legacy-pattern`.
 
-### Qualified Feature Guides (37 Qualified Guides across 53 Rules)
+### Qualified Feature Guides (15 Qualified Guides across 20 Rules)
 
-| # | Guide ID | Matcher Kind | Qualification Tier | Modern Platform Target |
-| :- | :--- | :--- | :--- | :--- |
-| 1 | `animate-element-entry-exit` | CSS | Tier A | `@starting-style` and `transition-behavior: allow-discrete` |
-| 2 | `animate-to-intrinsic-sizes` | CSS | Tier B | `calc-size()` and `interpolate-size: allow-keywords` |
-| 3 | `atrule-support-conditionals` | CSS | Tier C | `@supports at-rule(@...)` |
-| 4 | `autofill-address-form` | DOM | Tier B | Standard `autocomplete` attributes on address form inputs |
-| 5 | `autofill-sign-in-form` | DOM | Tier A | Standard `autocomplete="username"` and `autocomplete="current-password"` |
-| 6 | `branded-select-styling` | CSS | Tier B | Customizable native `<select>` with `appearance: base-select` |
-| 7 | `calculate-event-differentials` | JS | Tier B | Temporal API (`Temporal.PlainDate` / `Temporal.Instant`) |
-| 8 | `capture-location-agnostic-data` | JS | Tier C | Native `Intl.DisplayNames` and location-agnostic `Temporal` types |
-| 9 | `checkbox` | CSS | Tier A | CSS `accent-color` for styled checkboxes |
-| 10 | `custom-text-decorations` | CSS | Tier C | CSS `text-decoration-thickness`, `text-underline-offset`, `text-decoration-color` |
-| 11 | `customize-scrollbar-color-and-thickness` | CSS | Tier A | Standard CSS `scrollbar-color` and `scrollbar-width` |
-| 12 | `dark-mode` | CSS | Tier B | CSS `color-scheme: light dark` and `light-dark()` color functions |
-| 13 | `deliver-optimized-decorative-images` | CSS | Tier A | CSS `image-set()` resolution and format negotiation |
-| 14 | `drag` | DOM | Tier C | Native HTML Drag and Drop standards |
-| 15 | `equal-width-text-lines` | CSS | Tier B | CSS `text-wrap: balance` and text sizing |
-| 16 | `export-html-media-from-canvas` | JS | Tier C | Canvas captureStream and MediaRecorder standards |
-| 17 | `form-fields-automatically-fit-contents` | CSS | Tier B | CSS `field-sizing: content` |
-| 18 | `highlight-text-ranges` | JS | Tier C | CSS Custom Highlight API (`CSS.highlights` and `::highlight()`) |
-| 19 | `improve-next-page-load-performance` | DOM | Tier C | Declarative Speculation Rules API (`<script type="speculationrules">`) |
-| 20 | `improve-text-layout-and-legibility` | CSS | Tier C | CSS `text-wrap: pretty` and `text-wrap: balance` |
-| 21 | `individual-transform-properties` | CSS | Tier A | Individual transform properties (`rotate`, `scale`, `translate`) |
-| 22 | `interactions-in-complex-layouts` | CSS | Tier C | CSS subgrid and container query layouts |
-| 23 | `language-detection` | JS | Tier C | Built-in browser `LanguageDetector` API |
-| 24 | `light-dismiss-a-dialog` | DOM | Tier B | Native `<dialog closedby="any">` |
-| 25 | `platform-controls-dismiss-dialog` | DOM | Tier C | Built-in dialog dismiss controls (`command="close"`) |
-| 26 | `prevent-page-scroll-under-modal-dialog` | CSS | Tier B | Native `<dialog>` and CSS `overscroll-behavior: contain` |
-| 27 | `responsive-table` | CSS | Tier A | CSS Container Queries (`@container`) and sticky headers |
-| 28 | `sanitize-untrusted-html` | JS | Tier B | Native `Sanitizer` API and `setHTML()` |
-| 29 | `scroll-entry-exit-effects` | CSS | Tier C | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
-| 30 | `scroll-position-aware-elements` | CSS | Tier B | CSS Scroll-Driven Animations (`animation-timeline: scroll()`) |
-| 31 | `scroll-progress-indicator` | CSS | Tier C | CSS Scroll-Driven Animations scroll progress |
-| 32 | `scrollspy` | CSS | Tier B | CSS `scroll-target-group: auto` and `:target-current` |
-| 33 | `soft-edge-content-fade` | CSS | Tier C | CSS `mask-image: linear-gradient(...)` |
-| 34 | `state-aware-sticky-headers` | CSS | Tier C | CSS `position: sticky` and scroll-driven state detection |
-| 35 | `styling-web-components` | CSS | Tier C | CSS `::part()`, `adoptedStyleSheets`, and modern shadow DOM styling |
-| 36 | `support-global-calendar-systems` | JS | Tier C | Native `Temporal.PlainDate.prototype.withCalendar()` and `Intl.DateTimeFormat` |
-| 37 | `switch` | DOM | Tier C | Native HTML `<input type="checkbox" switch>` |
+| # | Guide ID | Matcher Kind | Qualification Tier | Held-Out Precision | Sample Size ($n$) | Modern Platform Target |
+| :- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | `autofill-address-form` | DOM | Tier C | 100.0% | 20 | Standard `autocomplete` attributes on address form inputs |
+| 2 | `autofill-payment-form` | DOM | Tier C | 100.0% | 11 | Standard `autocomplete` attributes on payment and credit card inputs |
+| 3 | `autofill-sign-in-form` | DOM | Tier B | 100.0% | 31 | Standard `autocomplete="username"` and `autocomplete="current-password"` |
+| 4 | `branded-select-styling` | JS | Tier C | 85.2% | 27 | Customizable native `<select>` with `appearance: base-select` |
+| 5 | `checkbox` | CSS | Tier C | 89.7% | 29 | CSS `accent-color` for styled checkboxes |
+| 6 | `custom-text-decorations` | CSS | Tier C | 100.0% | 24 | CSS `text-decoration-thickness`, `text-underline-offset`, `text-decoration-color` |
+| 7 | `equal-width-text-lines` | Dependency & JS | Tier C | 91.7% | 12 | CSS `text-wrap: balance` replacing FitText libraries |
+| 8 | `form-fields-automatically-fit-contents` | CSS | Tier C | 100.0% | 26 | CSS `field-sizing: content` |
+| 9 | `ime-safe-enter-submit` | JS | Tier C | 100.0% | 17 | IME-safe Enter submission gating on `isComposing` / `keyCode === 229` |
+| 10 | `prevent-page-scroll-under-modal-dialog` | Dependency & CSS | Tier C | 91.7% | 12 | Native `<dialog>` and CSS `overscroll-behavior: contain` |
+| 11 | `responsive-table` | Dependency & CSS | Tier B | 100.0% | 35 | CSS Container Queries (`@container`) and sticky headers |
+| 12 | `scroll-entry-exit-effects` | Dependency & JS | Tier B | 97.1% | 35 | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
+| 13 | `scrollspy` | CSS | Tier B | 94.3% | 35 | CSS `scroll-target-group: auto` and `:target-current` |
+| 14 | `select-menu-interaction` | CSS & JS | Tier C | 96.2% | 26 | Native `<select>` custom picker interactions and `:user-invalid` |
+| 15 | `styling-web-components` | CSS | Tier C | 100.0% | 10 | CSS `::part()`, `adoptedStyleSheets`, and modern shadow DOM styling |
 
 ---
 
@@ -287,9 +266,9 @@ The analyzer adheres to statistical rigor to guarantee production accuracy befor
 
 ### 2-Split Corpus Architecture (`rule-writing` vs `held-out`)
 
-The evaluation corpus is divided into two strictly isolated splits:
-- **`rule-writing` (208 local repos in `analyzer-internal/repos.json` + 7,048 GitMirror files across 5,320 repos):** Used freely by engineers and agents to discover legacy patterns, author Static Matcher AST patterns, and tune LLM Verifier rubrics.
-- **`held-out` (7,137 remote GitMirror files across 5,258 repos, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`):** Reserved strictly for out-of-sample precision and recall validation (`scorecard.ts`). Never inspected when authoring or debugging rules, guaranteeing zero tuning leakage.
+The evaluation corpus is divided into two strictly isolated splits across 26,426 files and 8,508 repositories covering 71/71 active feature guides:
+- **`rule-writing` (13,215 files across 208 local repos in `analyzer-internal/repos.json` and remote GitMirror repos):** Used freely by engineers and agents to discover legacy patterns, author Static Matcher AST patterns, and tune LLM Verifier rubrics.
+- **`held-out` (13,211 files across 8,508 repositories, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`):** Reserved strictly for out-of-sample precision and recall validation (`scorecard.ts`). Never inspected when authoring or debugging rules, guaranteeing zero tuning leakage.
 
 Cross-split boundary isolation is statically verified by internal audit tooling.
 
@@ -299,7 +278,7 @@ To evaluate end-to-end code modernization without falling into the "Deletion Equ
 - **Check 1 (Finding Eliminated Check):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
 - **Check 2 (Modern Syntax & Anti-Gutting Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
 - **Check 3 (Behavioral Check):** Runs behavioral/test assertions when available.
-- **Verified Benchmarks:** **100.0% (`75/75`) rejection** on the 3-class seeded bad-patch sensitivity suite (`no-op`, `deletion-gutting`, `broken/evasion`), **100.0% (`25/25`) acceptance** on reference good fixes, and **90.0% (`36/40`, 95% CI `[76.9% – 96.0%]`)** static pass rate across findings from 25 guides.
+- **Verified Benchmarks:** **100.0% (`177/177`) rejection** on the 3-class seeded bad-patch sensitivity suite across 59 seeded fixtures (`no-op`, `deletion-gutting`, `broken/evasion`), and **100.0% (`59/59`) acceptance** on reference good fixes.
 
 ### Running Evaluation Benchmarks
 
@@ -313,7 +292,7 @@ pnpm run preflight
 # Run Detection Eval Judge benchmark on evaluation decks:
 node --env-file=.env src/analyzing/eval/detection-eval.ts
 
-# Run 75-patch sensitivity suite & end-to-end agentic update evaluation:
+# Run seeded sensitivity suite & end-to-end agentic update evaluation:
 node --env-file=.env src/analyzing/eval/update-eval.ts
 ```
 
@@ -326,9 +305,9 @@ All scorecard results and audit trails are logged to `PROGRESS.md` and serialize
 Follow this 4-step workflow to author, test, and qualify a rule for modern web guidance:
 
 ### Step 1: Guide Triage
-1. **Verify Guide Triage status**: Ensure the feature guide is categorized as `detectable` (not `ui-recipe-multi-part` or `skip-no-old-way`).
+1. **Verify Guide Triage status**: Ensure the feature guide is triaged with `detection: 'direct-token'`, `'structural-ast'`, or `'needs-verifier'` (never `'no-legacy-pattern'`).
 2. **Record the Guide Triage entry**: Identify concrete 1-to-1 legacy APIs, CSS workarounds, or npm packages that the modern platform feature directly replaces (`replaces`), alongside lookalike patterns that are out of scope (`doesNotReplace`).
-3. **Ground in real code**: Inspect only the `rule-writing` corpus (`208` local repos + `7,048` GitMirror files). Never inspect held-out code.
+3. **Ground in real code**: Inspect only the `rule-writing` corpus (13,215 files across local and GitMirror repositories). Never inspect held-out code.
 
 ### Step 2: Static Matcher Authoring
 1. **Choose matcher kind**: `JsRuleMatcher` (AST via `ts-morph`), `DomRuleMatcher` (HTML/JSX DOM via `linkedom`), `CssRuleMatcher` (CSS via `cssomnom`), or `DependencyRuleMatcher` (`package.json`).
@@ -345,8 +324,8 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 2. **Agentic verification**: Ensure that `--json` output emits the complete rubric so AI coding agents can verify findings before proposing modernizations.
 
 ### Step 4: Held-Out Qualification
-1. **Run preflight checks**: `pnpm run check:analyze` and `node --test "src/analyzing/**/*.test.ts"`.
+1. **Run preflight checks**: `pnpm run preflight` and `node --test "src/analyzing/**/*.test.ts"`.
 2. **Run detection and update evaluation**: `node --env-file=.env src/analyzing/eval/update-eval.ts` and `node --env-file=.env src/analyzing/eval/detection-eval.ts`.
 3. **Qualification criteria**:
    - **Experimental Rule**: Active in `ALL_RULES`, available under `--experimental` / `--all-rules`.
-   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it reaches $n \ge 35$ evaluated findings on the untuned `held-out` split and clears Wilson 95% CI lower bound $\ge 0.90$.
+   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it meets Tier A, B, or C qualification criteria on the untuned `held-out` split.
