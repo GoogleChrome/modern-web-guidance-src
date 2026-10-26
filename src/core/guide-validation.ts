@@ -361,6 +361,7 @@ export function validateGuide(filePath: string): ValidationResult {
   errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'static-site' } : {}));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateCallouts(maskedBody, relativePath));
+  errors.push(...validatePendingGuideRefs(body, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
@@ -992,6 +993,34 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
     }
   }
 
+  return errors;
+}
+
+const PENDING_GUIDE_REF_PATTERN = /\{#\s*PENDING_GUIDE_REF:([\s\S]*?)#\}/g;
+const GUIDE_REF_SLUG_PATTERN = /GUIDE_REF\(\s*["']([^"']+)["']\s*\)/g;
+
+/**
+ * A `{# PENDING_GUIDE_REF: … {{ GUIDE_REF("slug") }} … #}` comment parks a link to a guide
+ * that isn't published yet. Once the target is published, the wrapper must be removed so
+ * the link goes live; a typo'd or missing slug is also an error.
+ */
+export function validatePendingGuideRefs(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const guides = getGuidesMap();
+  for (const [, inner] of body.matchAll(PENDING_GUIDE_REF_PATTERN)) {
+    const slugs = [...inner.matchAll(GUIDE_REF_SLUG_PATTERN)].map(m => m[1]);
+    if (slugs.length === 0) {
+      errors.push(`PENDING_GUIDE_REF comment in ${relativePath} contains no {{ GUIDE_REF("…") }}.`);
+    }
+    for (const slug of slugs) {
+      const target = guides.get(slug);
+      if (!target) {
+        errors.push(`PENDING_GUIDE_REF in ${relativePath} references unknown guide "${slug}".`);
+      } else if (target.isPublished) {
+        errors.push(`"${slug}" is now published. In ${relativePath}, remove the {# PENDING_GUIDE_REF: … #} wrapper to restore the link.`);
+      }
+    }
+  }
   return errors;
 }
 

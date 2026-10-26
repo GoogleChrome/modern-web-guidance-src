@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments, validateMacros } from './macros.ts';
 
@@ -146,6 +146,29 @@ describe('GUIDE_REF publication target validation', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('validatePendingGuideRefs', () => {
+  const pending = (slug: string) => `Intro.\n\n{# PENDING_GUIDE_REF: For tooltips, see {{ GUIDE_REF("${slug}") }}. #}\n`;
+
+  test('allows parking a link to an unpublished guide', () => {
+    assert.deepStrictEqual(validatePendingGuideRefs(pending('slider-tooltip'), 'test.md'), []);
+  });
+
+  test('fails once the target guide is published', () => {
+    const errors = validatePendingGuideRefs(pending('forms'), 'test.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /"forms" is now published.*remove the \{# PENDING_GUIDE_REF/);
+  });
+
+  test('fails on unknown slugs and on markers without a GUIDE_REF', () => {
+    assert.match(validatePendingGuideRefs(pending('no-such-guide-xyz'), 'test.md')[0], /unknown guide "no-such-guide-xyz"/);
+    assert.match(validatePendingGuideRefs('{# PENDING_GUIDE_REF: nothing here #}', 'test.md')[0], /contains no/);
+  });
+
+  test('ignores ordinary maintainer comments', () => {
+    assert.deepStrictEqual(validatePendingGuideRefs('{# see {{ GUIDE_REF("forms") }} someday #}', 'test.md'), []);
   });
 });
 
