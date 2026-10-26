@@ -82,14 +82,14 @@ A distinct syntactic or payoff variant within a single **Rule**. A **Deferred Su
 
 ### `rule-writing` split
 
-The partition of repositories that engineers and agents inspect to discover legacy patterns, author rules, and debug matchers. Kept distinct from the **`held-out` split** to prevent tuning matchers directly against the evaluation sample.
+The partition of repositories that engineers and agents inspect to discover legacy patterns, author rules, and debug matchers. Kept distinct from the **`held-out` split** to prevent tuning matchers directly against the evaluation sample. The split spans local corpus repos and sampled public repos.
 
 * _Reference_: `src/analyzing/README.md#2-split-corpus-architecture-rule-writing-vs-held-out`
 * _Avoid_: `build` split, `dev` split
 
 ### `held-out` split
 
-The partition of repositories reserved strictly for offline precision and recall evaluation. Kept separate from repositories used during rule authoring and debugging so performance reflects out-of-sample code.
+The partition of repositories reserved strictly for offline precision and recall evaluation. Kept separate from repositories used during rule authoring and debugging so performance reflects out-of-sample code. The split spans local corpus repos and sampled public repos.
 
 * _Reference_: `src/analyzing/qualification.ts`, `src/analyzing/README.md#2-split-corpus-architecture-rule-writing-vs-held-out`
 * _Avoid_: `grading-only` split, `tune` split, `final` split, `local-93`
