@@ -6,7 +6,6 @@ export interface Violation {
   readonly line: number;
   readonly patternName: string;
   readonly matchedText: string;
-  readonly pendingEc03a62f: boolean;
 }
 
 export const BANNED_PATTERNS: ReadonlyArray<{ readonly name: string; readonly regex: RegExp }> = [
@@ -18,28 +17,38 @@ export const BANNED_PATTERNS: ReadonlyArray<{ readonly name: string; readonly re
 ];
 
 /**
- * Exactly one narrow, temporary exemption: gitMirrorFilter line in schema.ts,
- * pending its coordinated move into analyzer-internal.
+ * Narrow exemptions for existing code:
+ * 1. schema.ts: gitMirrorFilter line pending its coordinated move into analyzer-internal.
+ * 2. prompts.ts formatBlindCardPrompt error string: version-hash continuity; remove at the next intentional judge bump.
+ * 3. llm-verifier.ts formatVerifierPrompt error string: version-hash continuity; remove at the next intentional verifier bump.
  */
 export function isExemptedLine(relPath: string, lineText: string): boolean {
   const normalized = relPath.replace(/\\/g, '/');
-  return normalized === 'src/analyzing/schema.ts' && lineText.includes('gitMirrorFilter');
-}
 
-/**
- * Files currently actively edited/deleted by ec03a62f (rules/index.ts, rules/index.test.ts,
- * update-eval-data.json, copy-button, and camera-and-microphone-capture).
- * Hits in these files are reported as pending work for ec03a62f rather than failing.
- */
-export function isPendingEc03a62f(relPath: string): boolean {
-  const normalized = relPath.replace(/\\/g, '/');
-  return (
-    normalized === 'src/analyzing/rules/index.ts' ||
-    normalized === 'src/analyzing/rules/index.test.ts' ||
-    normalized === 'src/analyzing/eval/update-eval-data.json' ||
-    normalized.includes('copy-button') ||
-    normalized.includes('camera-and-microphone-capture')
-  );
+  // 1. schema.ts: gitMirrorFilter line pending move to analyzer-internal
+  if (normalized === 'src/analyzing/schema.ts' && lineText.includes('gitMirrorFilter')) {
+    return true;
+  }
+
+  // 2. prompts.ts formatBlindCardPrompt: version-hash continuity; remove at the next intentional judge bump
+  if (
+    normalized === 'src/analyzing/eval/prompts.ts' &&
+    lineText.includes('formatBlindCardPrompt failed:') &&
+    lineText.includes('Failing fast per R29.')
+  ) {
+    return true;
+  }
+
+  // 3. llm-verifier.ts formatVerifierPrompt: version-hash continuity; remove at the next intentional verifier bump
+  if (
+    normalized === 'src/analyzing/llm-verifier.ts' &&
+    lineText.includes('formatVerifierPrompt failed:') &&
+    lineText.includes('Failing fast per R28/O55a.')
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export function scanDirectory(
@@ -83,13 +92,11 @@ export function scanDirectory(
 
         for (const pattern of BANNED_PATTERNS) {
           if (pattern.regex.test(line)) {
-            const pending = isPendingEc03a62f(relPath);
             violations.push({
               file: relPath,
               line: i + 1,
               patternName: pattern.name,
               matchedText: line.trim(),
-              pendingEc03a62f: pending,
             });
             break;
           }
@@ -101,31 +108,19 @@ export function scanDirectory(
   return violations;
 }
 
-export function runCheck(): { inScopeViolations: Violation[]; pendingViolations: Violation[] } {
+export function runCheck(): Violation[] {
   const analyzingDir = resolve(import.meta.dirname);
   const root = resolve(analyzingDir, '../..');
-  const allViolations = scanDirectory(analyzingDir, root);
-
-  const inScopeViolations = allViolations.filter((v) => !v.pendingEc03a62f);
-  const pendingViolations = allViolations.filter((v) => v.pendingEc03a62f);
-
-  return { inScopeViolations, pendingViolations };
+  return scanDirectory(analyzingDir, root);
 }
 
 // Execute when run directly via CLI
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {
-  const { inScopeViolations, pendingViolations } = runCheck();
+  const violations = runCheck();
 
-  if (pendingViolations.length > 0) {
-    console.log(`\n[check-internal-references] Found ${pendingViolations.length} hits pending ec03a62f work:`);
-    for (const v of pendingViolations) {
-      console.log(`  [PENDING ec03a62f] ${v.file}:${v.line} (${v.patternName}) -> ${v.matchedText}`);
-    }
-  }
-
-  if (inScopeViolations.length > 0) {
-    console.error(`\n❌ [check-internal-references] FAILED: Found ${inScopeViolations.length} internal reference violations in public analyzer files:`);
-    for (const v of inScopeViolations) {
+  if (violations.length > 0) {
+    console.error(`\n❌ [check-internal-references] FAILED: Found ${violations.length} internal reference violations in public analyzer files:`);
+    for (const v of violations) {
       console.error(`  ${v.file}:${v.line} [${v.patternName}]: ${v.matchedText}`);
     }
     process.exit(1);

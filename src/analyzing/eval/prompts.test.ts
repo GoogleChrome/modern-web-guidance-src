@@ -63,6 +63,11 @@ describe('prompts: content-hashed versions', () => {
       enableSearchGrounding: false,
     });
     assert.strictEqual(VERIFIER_PROMPT_VERSION, `${PROMPT_MODEL}:phase2-v2-guide-${expectedHash}`);
+    assert.strictEqual(
+      VERIFIER_PROMPT_VERSION,
+      'gemini-3.8-flash:phase2-v2-guide-e3c8dc91',
+      'Pins Verifier prompt identity to prevent accidental cache invalidation',
+    );
     assert.match(VERIFIER_PROMPT_VERSION, /^gemini-3\.8-flash:phase2-v2-guide-[0-9a-f]{8}$/);
     assert.strictEqual(computeVerifierPromptVersion(), VERIFIER_PROMPT_VERSION);
   });
@@ -78,6 +83,11 @@ describe('prompts: content-hashed versions', () => {
       enableSearchGrounding: false,
     });
     assert.strictEqual(JUDGE_VERSION, `${PROMPT_MODEL}:detective-v6-spec22-${expectedHash}`);
+    assert.strictEqual(
+      JUDGE_VERSION,
+      'gemini-3.8-flash:detective-v6-spec22-dab7de7f',
+      'Pins Judge prompt identity to prevent accidental cache invalidation and preserve scorecard agreement',
+    );
     assert.match(JUDGE_VERSION, /^gemini-3\.8-flash:detective-v6-spec22-[0-9a-f]{8}$/);
     assert.strictEqual(computeJudgePromptVersion(), JUDGE_VERSION);
   });

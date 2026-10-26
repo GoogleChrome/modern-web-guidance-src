@@ -3,7 +3,6 @@ import { describe, it } from 'node:test';
 import {
   BANNED_PATTERNS,
   isExemptedLine,
-  isPendingEc03a62f,
   runCheck,
 } from './check-internal-references.ts';
 
@@ -51,7 +50,8 @@ describe('check-internal-references guard', () => {
     assert.ok(agentPattern.test('jetski'));
   });
 
-  it('exempts exactly one line for gitMirrorFilter in schema.ts', () => {
+  it('exempts exactly three narrow lines for hash continuity and pending schema migration', () => {
+    // 1. schema.ts gitMirrorFilter
     assert.strictEqual(
       isExemptedLine('src/analyzing/schema.ts', '  readonly gitMirrorFilter?: {'),
       true,
@@ -60,30 +60,42 @@ describe('check-internal-references guard', () => {
       isExemptedLine('src/analyzing/schema.ts', '  readonly otherField?: string;'),
       false,
     );
+
+    // 2. prompts.ts formatBlindCardPrompt error string
     assert.strictEqual(
-      isExemptedLine('src/analyzing/eval/detection-eval.ts', '  gitMirrorFilter'),
+      isExemptedLine(
+        'src/analyzing/eval/prompts.ts',
+        '      `formatBlindCardPrompt failed: card ${card.cardId ?? \'unknown\'} (guideId: "${card.guideId}") is missing required guideSummary.markdownBody. Failing fast per R29.`,',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      isExemptedLine(
+        'src/analyzing/eval/prompts.ts',
+        '  // other comment referencing R29',
+      ),
+      false,
+    );
+
+    // 3. llm-verifier.ts formatVerifierPrompt error string
+    assert.strictEqual(
+      isExemptedLine(
+        'src/analyzing/llm-verifier.ts',
+        '      `formatVerifierPrompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast per R28/O55a.`,',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      isExemptedLine(
+        'src/analyzing/llm-verifier.ts',
+        '  // other comment referencing R28',
+      ),
       false,
     );
   });
 
-  it('identifies files actively edited by ec03a62f', () => {
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/index.ts'), true);
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/index.test.ts'), true);
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/eval/update-eval-data.json'), true);
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/copy-button.ts'), true);
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/camera-and-microphone-capture.ts'), true);
-
-    // Other files are NOT exempted
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/README.md'), false);
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/cli.ts'), false);
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/eval/detection-eval.ts'), false);
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/eval/update-eval.ts'), false);
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/rules/checkbox.ts'), false);
-    assert.strictEqual(isPendingEc03a62f('src/analyzing/scanners/file-filter.ts'), false);
-  });
-
   it('passes on current codebase with zero unexempted violations', () => {
-    const { inScopeViolations } = runCheck();
-    assert.deepStrictEqual(inScopeViolations, [], 'Expected zero unexempted in-scope violations');
+    const violations = runCheck();
+    assert.deepStrictEqual(violations, [], 'Expected zero unexempted in-scope violations');
   });
 });

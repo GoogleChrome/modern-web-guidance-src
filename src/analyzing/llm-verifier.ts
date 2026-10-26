@@ -114,7 +114,7 @@ export function formatVerifierPrompt(
 
   if (!guideMarkdown || !guideMarkdown.trim()) {
     throw new Error(
-      `formatVerifierPrompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast.`,
+      `formatVerifierPrompt failed: guideMarkdown is required for rule ${rule.id} (guide ${rule.guideId ?? rule.id}). Failing fast per R28/O55a.`,
     );
   }
 

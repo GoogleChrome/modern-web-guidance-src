@@ -182,7 +182,7 @@ export const ALL_RULES: readonly AnalyzerRule[] = [
   ...darkModeRules,
 
   // Batch 3 Wild-Verified Guides (4 active guides, 6 rules -> 39 rules across 29 feature guides total;
-  // model-partial-time-concepts and custom-select-picker-layouts removed per O69 guide mismatch):
+  // model-partial-time-concepts and custom-select-picker-layouts removed per guide mismatch):
   ...dragRules,
   ...sanitizeUntrustedHtmlRules,
   ...scrollPositionAwareElementsRules,
@@ -265,7 +265,7 @@ export const QUALIFIED_RULES: readonly AnalyzerRule[] = ALL_RULES.filter((r) =>
 );
 
 /**
- * Guides that were tuned after initial held-out inspection (G10 disclosure, R32.4).
+ * Guides that were tuned after initial held-out inspection.
  */
 export const POST_SELECTION_TUNED_GUIDE_IDS: readonly string[] = [
   'manage-recurring-intervals',
