@@ -46,12 +46,42 @@ describe("searchUseCases", () => {
     assert.ok(Array.isArray(results));
   });
 
-  it("returns empty array when no chunk meets minSimilarity", async () => {
+  it("returns empty array when dense top-1 is below floor AND BM25 has no matches", async () => {
     const mockEmbedder: EmbedderLike = {
       embed: async () => Array.from({ length: 384 }, () => 0),
     };
-    const results = await searchUseCases("test query", 5, 0.3, mockEmbedder);
+    // Nonce query with zero BM25 lexical matches in the guide corpus
+    const results = await searchUseCases("xyznonexistentunmatchedterm998877", 5, 0.3, mockEmbedder);
     assert.strictEqual(results.length, 0);
+  });
+
+  it("fuses and returns results when dense is below floor but BM25 matches", async () => {
+    const zeroEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 384 }, () => 0),
+    };
+    // Dense similarity is 0 (below 0.3 floor), but BM25 matches "autofill address form"
+    const results = await searchUseCases("autofill address form", 5, 0.3, zeroEmbedder);
+    assert.ok(results.length > 0, "Should return BM25 matches even when dense similarity is 0");
+    assert.ok(
+      results.some((r) => r.id === "autofill-address-form"),
+      "BM25 should surface autofill-address-form"
+    );
+  });
+
+  it("returns results for queries matching uncached BM25-only guide entries with zero similarity", async () => {
+    const zeroEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 384 }, () => 0),
+    };
+    const results = await searchUseCases("payment card checkout", 5, 0.3, zeroEmbedder);
+    assert.ok(results.length > 0);
+    assert.strictEqual(results[0].similarity, 0, "Similarity for zero-dense match should be 0");
+  });
+
+  it("above-floor behavior is unchanged and preserves dense similarities", async () => {
+    const results = await searchUseCases("autofill address form", 5, 0.3);
+    assert.ok(results.length > 0);
+    assert.strictEqual(results[0].id, "autofill-address-form");
+    assert.ok(results[0].similarity > 0.3);
   });
 
   it("keeps sibling guides on a cluster query", async () => {
