@@ -463,6 +463,9 @@
       "persistent-toast-notifications": [
         "task"
       ],
+      "progress": [
+        "daily-grind"
+      ],
       "progress-ring": [
         "daily-grind"
       ],
