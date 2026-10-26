@@ -34,18 +34,24 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 ### Human-Readable Output Example
 
 ```text
-Modern Web Guidance Analyzer — /workspace/elFinder
-Found 2 modernization opportunities across 1 guide:
+Modern Web Guidance Analyzer — /workspace/etherpad-lite
+Found 2 modernization opportunities across 2 guides:
 Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.
+Skipped 54 docs and test files (pass --include-docs-and-tests to scan).
 
-* form-fields-automatically-fit-contents [qualified] (2 findings)
+* form-fields-automatically-fit-contents [qualified] (1 finding)
   Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.
   Keep when: A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/wi…
   Drop when: The code is guarded by a feature query checking CSS.supports("field-sizing", "content") or field-sizing suppo…
-  - js/commands/rename.js:454
-    this.style.height = this.scrollHeight + 'px';
-  - js/elFinder.resources.js:174
-    this.style.height = this.scrollHeight + 'px';
+  - src/static/js/admin/settings.js:30
+    $('.settings').autosize();
+
+* responsive-table [qualified] (1 finding)
+  Legacy responsive table packages (tablesaw, footable, basictable, jquery-basictable) should be modernized with native CSS Container Queries and stacked/scroll-snap mobile table layouts.
+  Keep when: A project declares tablesaw, footable, basictable, or jquery-basictable in package.json dependencies to imple…
+  Drop when: The package is unreferenced or unused in the build output.; The application uses standard modern container qu…
+  - src/static/css/admin.css:269
+    td:before {
 
 Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
 ```
@@ -56,7 +62,7 @@ Coding agents receive structured JSON containing exact file coordinates, confide
 
 ```json
 {
-  "targetDir": "/workspace/elFinder",
+  "targetDir": "/workspace/etherpad-lite",
   "totalFindings": 2,
   "guides": [
     {
@@ -64,18 +70,35 @@ Coding agents receive structured JSON containing exact file coordinates, confide
       "tier": "qualified",
       "summary": "Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.",
       "retrieveCommand": "npx -y modern-web-guidance@latest retrieve \"form-fields-automatically-fit-contents\"",
-      "count": 2,
+      "count": 1,
       "findings": [
         {
           "ruleId": "form-fields-automatically-fit-contents",
-          "file": "js/commands/rename.js",
-          "line": 454,
-          "message": "JavaScript dynamic scrollHeight calculation resizes form field; replace with declarative CSS field-sizing: content.",
-          "codeSnippet": "this.style.height = this.scrollHeight + 'px';"
+          "file": "src/static/js/admin/settings.js",
+          "line": 30,
+          "message": "Library autosize() call auto-expands textarea/input fields; modernize with CSS field-sizing: content.",
+          "codeSnippet": "$('.settings').autosize();"
+        }
+      ]
+    },
+    {
+      "guideId": "responsive-table",
+      "tier": "qualified",
+      "summary": "Legacy responsive table packages (tablesaw, footable, basictable, jquery-basictable) should be modernized with native CSS Container Queries and stacked/scroll-snap mobile table layouts.",
+      "retrieveCommand": "npx -y modern-web-guidance@latest retrieve \"responsive-table\"",
+      "count": 1,
+      "findings": [
+        {
+          "ruleId": "responsive-table/css-data-label-table",
+          "file": "src/static/css/admin.css",
+          "line": 269,
+          "message": "CSS rule injects table cell headers via td::before content: attr(data-*); modernize with CSS Container Queries and accessible pseudo-element headers.",
+          "codeSnippet": "td:before {"
         }
       ]
     }
-  ]
+  ],
+  "skippedDocsAndTestsCount": 54
 }
 ```
 
