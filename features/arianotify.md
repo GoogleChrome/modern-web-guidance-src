@@ -2,7 +2,7 @@
 
 ## Fallbacks
 
-{{ BASELINE_STATUS("ariaNotify") }}
+{{ BASELINE_STATUS("arianotify") }}
 
 Use an ARIA live region, ensuring that the container is present in the page on load, and then add the messages to the live region container when relevant.
 

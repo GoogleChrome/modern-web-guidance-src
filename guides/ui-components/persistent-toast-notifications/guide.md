@@ -3,6 +3,7 @@ name: persistent-toast-notifications
 description: Create non-intrusive toast and overlay notifications for persistent, stackable messaging and state communication.
 web-feature-ids:
   - popover
+  - arianotify
   - anchor-positioning
   - sibling-count
   - transition-behavior
@@ -54,7 +55,7 @@ Toast notifications must be used to provide non-critical, supplemental informati
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("aria-notify") }}
+{{ FEATURE_FALLBACKS("arianotify") }}
 
 ### sibling-index()
 
