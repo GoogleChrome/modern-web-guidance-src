@@ -108,10 +108,9 @@ Text, standalone links and list items share one rule that hides the content and 
   border-shape: var(--bars); /* Each element below sets its own --bars */
 }
 
-/* Each bar is --bar(line index, end position); --lines is the bar count */
+/* Each bar is --bar(line index, end position); --lines is the bar count (default 1) */
 .skeleton[aria-busy="true"] h2 {
-  --lines: 2;
-  --bars: shape(from 0 0, --bar(0, 88%), --bar(1, 64%));
+  --bars: shape(from 0 0, --bar(0, 88%));
 }
 
 .skeleton[aria-busy="true"] p {
@@ -158,8 +157,8 @@ For more than one bar, call `--bar()` once per bar with its index and end positi
 
 | Element | Treatment |
 |---|---|
-| `h1`–`h3` | 1–2 bars, sized by the heading's own font size so hierarchy matches the real template |
-| `p` | 3 bars (2 in compact cards), last one shorter like a real paragraph |
+| `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--bar()` and set `--lines: 2` |
+| `p` | 3 bars, last one shorter like a real paragraph |
 | `li` | 1 bar each, with a small circle for the bullet; vary widths. Start the bar at the real list's indent so the text does not shift when content arrives |
 | `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
 
@@ -222,7 +221,7 @@ Put a representative label in the skeleton markup (as in the example above) so t
 
 A skeleton is a simplification, not a copy. Keep what defines the silhouette (media, title, a few lines of body, the primary action) and hide the rest.
 
-- Cap long text at 2–4 bars by calling `--bar()` that many times. `line-clamp` (or its fallback) and `overflow: hidden` keep surplus text from adding lines. Cap collections at a few items as described below.
+- Cap long text at 3–4 bars by calling `--bar()` that many times. `line-clamp` (or its fallback) and `overflow: hidden` keep surplus text from adding lines. Cap collections at a few items as described below.
 - To cap items, use a fixed `:nth-child(n + N)` selector with `display: none`. If the count must come from a custom property, read it in a small script, because CSS cannot use a custom property inside `:nth-child()`.
 - Remove whole cards or rows with `display: none`. For items inside a card, use `visibility: hidden` so the card height does not change when the real content arrives.
 - Decide what to hide by asking whether removing it changes the container's height. If it does, keep or reserve it.

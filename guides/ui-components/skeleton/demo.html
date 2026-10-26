@@ -347,18 +347,12 @@
       /* Each element lists its own bars (index, end position), because shape()
          cannot repeat a path from a count. --lines sets the reserved height. */
       .skeleton[aria-busy="true"] h2 {
-        --lines: 2;
-        --bars: shape(from 0 0, --bar(0, 88%), --bar(1, 64%));
+        --bars: shape(from 0 0, --bar(0, 88%));
       }
 
       .skeleton[aria-busy="true"] p {
         --lines: 3;
         --bars: shape(from 0 0, --bar(0, 100%), --bar(1, 92%), --bar(2, 68%));
-      }
-
-      .skeleton[aria-busy="true"] article:where(:not(:has(> .media)), :has(.content > .media)) p {
-        --lines: 2;
-        --bars: shape(from 0 0, --bar(0, 92%), --bar(1, 62%));
       }
 
       @keyframes sweep {
