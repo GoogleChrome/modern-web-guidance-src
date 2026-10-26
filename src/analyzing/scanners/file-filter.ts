@@ -19,6 +19,8 @@ export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'playwright-report',
   'tmp',
   'temp',
+  '.tmp',
+  '.temp',
   'gen',
   'generated',
 ]);

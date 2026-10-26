@@ -47,7 +47,7 @@ function prepareCssContext(
     }
   }
 
-  const declPropertyRe = /(?:^|[;{\s])\s*(--[\w-]+|[a-zA-Z][a-zA-Z0-9_-]*)\s*:/g;
+  const declPropertyRe = /(?:^|[;{])\s*(--[\w-]+|[a-zA-Z][a-zA-Z0-9_-]*)\s*:/g;
   let declMatch: RegExpExecArray | null = declPropertyRe.exec(cssContent);
   while (declMatch !== null) {
     if (declMatch[1]) {

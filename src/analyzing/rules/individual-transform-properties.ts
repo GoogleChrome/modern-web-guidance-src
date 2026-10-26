@@ -246,6 +246,7 @@ interface AnalyzedStyleRule {
 
 interface AnalyzedStylesheet {
   readonly normalRules: readonly AnalyzedStyleRule[];
+  readonly rulesByBaseSelector: ReadonlyMap<string, readonly AnalyzedStyleRule[]>;
   readonly keyframeGroups: ReadonlyMap<string, readonly AnalyzedStyleRule[]>;
   readonly keyframeNamesWithTransform: ReadonlySet<string>;
 }
@@ -313,8 +314,21 @@ function analyzeStylesheet(ctx: CssMatcherContext): AnalyzedStylesheet {
     // Fallback to empty analysis if CSS is malformed.
   }
 
+  const rulesByBaseSelector = new Map<string, AnalyzedStyleRule[]>();
+  for (const rule of normalRules) {
+    for (const baseSel of rule.baseSelectors) {
+      let list = rulesByBaseSelector.get(baseSel);
+      if (!list) {
+        list = [];
+        rulesByBaseSelector.set(baseSel, list);
+      }
+      list.push(rule);
+    }
+  }
+
   const result: AnalyzedStylesheet = {
     normalRules,
+    rulesByBaseSelector,
     keyframeGroups: keyframeMap,
     keyframeNamesWithTransform,
   };
@@ -373,15 +387,25 @@ function getRepeatingKeyframeFirstLine(steps: readonly AnalyzedStyleRule[]): num
   return validSteps[0]?.line ?? null;
 }
 
-function sharesBaseSelector(a: readonly string[], b: readonly string[]): boolean {
-  for (const selA of a) {
-    for (const selB of b) {
-      if (selA === selB) {
-        return true;
+function getRelatedRulesByBaseSelector(
+  analysis: AnalyzedStylesheet,
+  currentBaseSelectors: readonly string[],
+): readonly AnalyzedStyleRule[] {
+  if (currentBaseSelectors.length === 0) return [];
+  const result: AnalyzedStyleRule[] = [];
+  const seen = new Set<AnalyzedStyleRule>();
+  for (const baseSel of currentBaseSelectors) {
+    const list = analysis.rulesByBaseSelector.get(baseSel);
+    if (list) {
+      for (const rule of list) {
+        if (!seen.has(rule)) {
+          seen.add(rule);
+          result.push(rule);
+        }
       }
     }
   }
-  return false;
+  return result;
 }
 
 function referencesTransformKeyframes(
@@ -441,20 +465,16 @@ function matchSingleFunctionStateRule(
 
   const analysis = analyzeStylesheet(ctx);
   const currentBaseSelectors = extractBaseSelectors(styleRule.selectorText);
+  const relatedRules = getRelatedRulesByBaseSelector(analysis, currentBaseSelectors);
 
-  for (const other of analysis.normalRules) {
-    if (
-      other.transitionsTransform &&
-      sharesBaseSelector(currentBaseSelectors, other.baseSelectors)
-    ) {
+  for (const other of relatedRules) {
+    if (other.transitionsTransform) {
       return null;
     }
     if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
       continue;
     }
-    if (sharesBaseSelector(currentBaseSelectors, other.baseSelectors)) {
-      return null;
-    }
+    return null;
   }
 
   const ownAnimation =
@@ -514,11 +534,10 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
     }
 
     const currentBaseSelectors = extractBaseSelectors(styleRule.selectorText);
-    for (const other of analysis.normalRules) {
-      if (
-        other.transitionsTransform &&
-        sharesBaseSelector(currentBaseSelectors, other.baseSelectors)
-      ) {
+    const relatedRules = getRelatedRulesByBaseSelector(analysis, currentBaseSelectors);
+
+    for (const other of relatedRules) {
+      if (other.transitionsTransform) {
         return null;
       }
     }
@@ -526,11 +545,8 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
     // e) State and keyframe composition check on normal style rules:
     // Only match when composed across paired rules sharing the same base selector
     // or when paired with an own transform keyframe animation.
-    for (const other of analysis.normalRules) {
+    for (const other of relatedRules) {
       if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
-        continue;
-      }
-      if (!sharesBaseSelector(currentBaseSelectors, other.baseSelectors)) {
         continue;
       }
       if (
@@ -600,20 +616,16 @@ export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher
 
     const analysis = analyzeStylesheet(ctx);
     const currentBaseSelectors = extractBaseSelectors(styleRule.selectorText);
+    const relatedRules = getRelatedRulesByBaseSelector(analysis, currentBaseSelectors);
 
-    for (const other of analysis.normalRules) {
-      if (
-        other.transitionsTransform &&
-        sharesBaseSelector(currentBaseSelectors, other.baseSelectors)
-      ) {
+    for (const other of relatedRules) {
+      if (other.transitionsTransform) {
         return null;
       }
       if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
         continue;
       }
-      if (sharesBaseSelector(currentBaseSelectors, other.baseSelectors)) {
-        return null;
-      }
+      return null;
     }
 
     const ownAnimation =
