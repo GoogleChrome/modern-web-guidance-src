@@ -13,7 +13,8 @@
 - Second-level navigation triggers are `<button>` elements with `aria-expanded` and `aria-controls`, not `<details>`/`<summary>`, and their nested list is promoted to a popover only in the wide layout.
 - On narrow layouts, the sub-navigation expands vertically inline inside the popover navigation panel, pushing other sibling list links down.
 - On wide layouts, each nested submenu is a top-layer popover positioned relative to its trigger button using CSS Anchor Positioning.
-- On wide layouts, each nested submenu is a `popover="auto"` opened by its trigger's `popovertarget`, so the browser provides light dismiss, Escape handling and focus restoration, and `aria-expanded` reflects whether it is open.
+- On wide layouts, each nested submenu is a `popover="auto"` opened by its trigger's `popovertarget`, so the browser provides light dismiss, Escape handling and focus restoration.
+- A submenu trigger's `aria-expanded` is `true` while its submenu is open and `false` while it is closed.
 - On wide layouts with a hover-capable pointer, hovering a submenu's trigger opens its submenu.
 - On wide layouts, the submenu still opens by click and by keyboard (`Enter`/`Space`) on its trigger button.
 - On wide layouts, focusing a submenu's trigger without activating it does not open the submenu.

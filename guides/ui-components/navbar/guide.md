@@ -5,6 +5,12 @@ web-feature-ids:
   - popover
   - anchor-positioning
   - container-queries
+  - viewport-units
+  - logical-properties
+  - focus-visible
+  - forced-colors
+  - starting-style
+  - transition-behavior
 # - local-link
 guides:
   - responsive-disclosure
@@ -258,4 +264,12 @@ The wide floating submenu is different: without Anchor Positioning a popover fal
 
 - In the submenu's `toggle` handler, when it opens and `CSS.supports("position-area", "block-end")` is false, place it below the trigger, flipping above and clamping to the viewport when it would overflow.
 - Apply the result as `left` and `top`, with `position: fixed`, `inset: auto` and `margin: 0` so the coordinates are viewport-relative.
+
+If `showPopover({ source })` is unavailable for the hover preview, give the trigger an `anchor-name` and the submenu a matching `position-anchor` instead of relying on the implicit anchor.
+
+{{ BASELINE_STATUS("starting-style") }}
+
+{{ BASELINE_STATUS("transition-behavior") }}
+
+Without `@starting-style` or `transition-behavior: allow-discrete`, the optional popover transitions are skipped and the navigation and submenu open and close instantly, which is progressive enhancement and fully functional.
 
