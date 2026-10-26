@@ -45,6 +45,9 @@
       "css": [
         "daily-grind"
       ],
+      "css-layout": [
+        "daily-grind"
+      ],
       "design-token-reactivity": [
         "task"
       ],
