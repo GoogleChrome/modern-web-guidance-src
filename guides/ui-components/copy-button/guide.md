@@ -5,6 +5,8 @@ web-feature-ids:
   - invoker-commands
   - async-clipboard
   - popover
+guides:
+  - icons
 ---
 
 # Copy button
@@ -18,6 +20,7 @@ Build a button that copies the text of another element (code block, inline value
 ```html
 <!-- Custom commands MUST start with "--". commandfor is the id of the element whose text is copied. -->
 <button type="button" class="copy-button" command="--copy" commandfor="snippet">
+  <!-- Decorative icon, rendered however the codebase renders icons -->
   <span class="icon" aria-hidden="true"></span>
   <!-- Name the content being copied; several bare "Copy" buttons are indistinguishable to screen readers -->
   <span class="visually-hidden">Copy CSS code</span>
@@ -31,25 +34,8 @@ Build a button that copies the text of another element (code block, inline value
 ```
 
 - Use `type="button"` so the button never submits a form.
-- Hide the label with a screen-reader-only class, not `display: none`.
-- Draw the icon with `mask` over `background-color: currentColor` so it follows text color, dark mode, and forced colors.
-- MANDATORY: make the button a fixed square and center the icon explicitly. A `<span>` icon is inline and has no size, so without this the icon renders off-center.
-
-```css
-.copy-button {
-  display: inline-grid;
-  place-items: center; /* centers the icon on both axes */
-  inline-size: 2.25rem; /* example size; keep inline-size === block-size */
-  block-size: 2.25rem;
-  padding: 0; /* UA button padding would shift the icon */
-}
-.copy-button .icon {
-  inline-size: 1.125rem; /* a span has no size, so a mask would not render */
-  block-size: 1.125rem;
-  background-color: currentColor;
-  mask: var(--icon-copy) center / contain no-repeat;
-}
-```
+- Hide the label with a screen-reader-only class, not `display: none`. An `aria-label` on the button works too.
+- Render the icon with whatever the codebase uses for icons (see {{ GUIDE_REF("icons") }}) and mark it decorative; the button's accessible name comes from the label, not the icon.
 
 ### 2. Handler (MANDATORY)
 
