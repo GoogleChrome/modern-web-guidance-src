@@ -19,11 +19,10 @@ Build a button that copies the text of another element (code block, inline value
 
 ```html
 <!-- Custom commands MUST start with "--". commandfor is the id of the element whose text is copied. -->
-<button type="button" class="copy-button" command="--copy" commandfor="snippet">
+<!-- aria-label names the content being copied; several bare "Copy" buttons are indistinguishable to screen readers -->
+<button type="button" class="copy-button" command="--copy" commandfor="snippet" aria-label="Copy CSS code">
   <!-- Decorative icon, rendered however the codebase renders icons -->
   <span class="icon" aria-hidden="true"></span>
-  <!-- Name the content being copied; several bare "Copy" buttons are indistinguishable to screen readers -->
-  <span class="visually-hidden">Copy CSS code</span>
   <!-- Visual-only confirmation bubble; the live region below does the announcing -->
   <span class="tip" aria-hidden="true">Copied</span>
 </button>
@@ -34,8 +33,8 @@ Build a button that copies the text of another element (code block, inline value
 ```
 
 - Use `type="button"` so the button never submits a form.
-- Hide the label with a screen-reader-only class, not `display: none`. An `aria-label` on the button works too.
-- Render the icon with whatever the codebase uses for icons (see {{ GUIDE_REF("icons") }}) and mark it decorative; the button's accessible name comes from the label, not the icon.
+- Name an icon-only button with `aria-label`. If the button shows visible text, that text is the name; do not add an `aria-label` that differs from it.
+- Render the icon with whatever the codebase uses for icons (see {{ GUIDE_REF("icons") }}) and mark it decorative; the button's accessible name comes from `aria-label`, not the icon.
 
 ### 2. Handler (MANDATORY)
 
