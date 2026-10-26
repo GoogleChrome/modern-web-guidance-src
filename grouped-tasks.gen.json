@@ -259,6 +259,11 @@
         "devtools-times"
       ]
     },
+    "pwa": {
+      "migrate-web-app-origin": [
+        "daily-grind"
+      ]
+    },
     "security": {
       "client-side-encryption": [
         "daily-grind"
@@ -478,6 +483,9 @@
       "scrollspy": [
         "daily-grind",
         "devtools-times"
+      ],
+      "spinner": [
+        "daily-grind"
       ],
       "stack-drill-down": [
         "task"
