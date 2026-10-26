@@ -141,8 +141,18 @@
     .empty {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
+      /* Real empty cells: place items explicitly and leave the rest unoccupied.
+         A hidden or empty placeholder element still counts as an item. */
+      grid-template-areas:
+        "victor elizabeth ."
+        ".      clerval   ."
+        "justine .        walton";
       rule: 2px solid var(--rule);
-      > .gap-cell { visibility: hidden; }
+      > .victor { grid-area: victor; }
+      > .elizabeth { grid-area: elizabeth; }
+      > .clerval { grid-area: clerval; }
+      > .justine { grid-area: justine; }
+      > .walton { grid-area: walton; }
     }
     .empty.all { rule-visibility-items: all; }
     .empty.around { rule-visibility-items: around; }
@@ -306,9 +316,9 @@
 
     <h2>10. Empty cells: <code>rule-visibility-items</code></h2>
     <p class="note"><code>all</code> paints rules next to empty cells, <code>around</code> if either side has an item, <code>between</code> only when both do.</p>
-    <div class="demo empty all"><p><b>all</b>Victor</p><p>Elizabeth</p><p class="gap-cell">.</p><p class="gap-cell">.</p><p>Clerval</p><p class="gap-cell">.</p><p>Justine</p><p class="gap-cell">.</p><p>Walton</p></div>
-    <div class="demo empty around" style="margin-block-start: 1rem"><p><b>around</b>Victor</p><p>Elizabeth</p><p class="gap-cell">.</p><p class="gap-cell">.</p><p>Clerval</p><p class="gap-cell">.</p><p>Justine</p><p class="gap-cell">.</p><p>Walton</p></div>
-    <div class="demo empty between" style="margin-block-start: 1rem"><p><b>between</b>Victor</p><p>Elizabeth</p><p class="gap-cell">.</p><p class="gap-cell">.</p><p>Clerval</p><p class="gap-cell">.</p><p>Justine</p><p class="gap-cell">.</p><p>Walton</p></div>
+    <div class="demo empty all"><p class="victor"><b>all</b>Victor</p><p class="elizabeth">Elizabeth</p><p class="clerval">Clerval</p><p class="justine">Justine</p><p class="walton">Walton</p></div>
+    <div class="demo empty around" style="margin-block-start: 1rem"><p class="victor"><b>around</b>Victor</p><p class="elizabeth">Elizabeth</p><p class="clerval">Clerval</p><p class="justine">Justine</p><p class="walton">Walton</p></div>
+    <div class="demo empty between" style="margin-block-start: 1rem"><p class="victor"><b>between</b>Victor</p><p class="elizabeth">Elizabeth</p><p class="clerval">Clerval</p><p class="justine">Justine</p><p class="walton">Walton</p></div>
 
     <h2>11. Transitions on hover and focus</h2>
     <p class="note">Hover or tab to a link: <code>rule-color</code> and <code>rule-width</code> animate, unless the user prefers reduced motion.</p>
