@@ -324,6 +324,9 @@
       ]
     },
     "ui-behaviors": {
+      "2d-panning": [
+        "daily-grind"
+      ],
       "anchor-positioning-tab-underline": [
         "daily-grind"
       ],
