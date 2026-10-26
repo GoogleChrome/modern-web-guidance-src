@@ -32,14 +32,14 @@ Build a button that copies the text of another element (code block, inline value
 
 - Use `type="button"` so the button never submits a form.
 - Hide the label with a screen-reader-only class, not `display: none`.
-- Draw the icon with `mask` over `background-color: currentColor` so it follows text color, dark mode, and forced colors.
-- MANDATORY: make the button a fixed square and center the icon explicitly. A `<span>` icon is inline and has no size, so without this the icon renders off-center.
+- Draw the icon with `mask` over `background-color: currentColor` and `forced-color-adjust: none` so it follows text color, dark mode, and forced colors.
+- For icon-only buttons, size the button and `<span class="icon">` explicitly and center the icon on both axes (a `<span>` is inline and has no intrinsic size):
 
 ```css
 .copy-button {
   display: inline-grid;
   place-items: center; /* centers the icon on both axes */
-  inline-size: 2.25rem; /* example size; keep inline-size === block-size */
+  inline-size: 2.25rem; /* example size for an icon-only button */
   block-size: 2.25rem;
   padding: 0; /* UA button padding would shift the icon */
 }
@@ -48,6 +48,7 @@ Build a button that copies the text of another element (code block, inline value
   block-size: 1.125rem;
   background-color: currentColor;
   mask: var(--icon-copy) center / contain no-repeat;
+  forced-color-adjust: none; /* preserves the currentColor fill in forced-colors mode */
 }
 ```
 
