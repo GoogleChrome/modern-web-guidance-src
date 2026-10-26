@@ -283,16 +283,16 @@ Rules qualify for default terminal shipping under the **Static Matcher precision
 
 ### 2-Axis Triage Taxonomy
 
-Every web platform standard in the catalog is classified across two orthogonal axes (covering all **249 catalog guides**):
+Every web platform standard in the catalog is classified across two orthogonal axes:
 - **Axis 1: Detection (`detection`):**
-  - `direct-token` (47 guides) & `structural-ast` (61 guides): Deterministic token, AST, DOM, CSS, or `package.json` patterns with high signal-to-noise ratio requiring no LLM runtime verification.
-  - `needs-verifier` (34 guides): Pattern detectable by static matchers but requiring runtime LLM Verifier evaluation against a `verifierRubric` (`keepWhen` / `dropWhen`) to reject subtle false alarms.
-  - `no-legacy-pattern` (107 guides): Visual, behavioral, or greenfield capability without a distinguishable brownfield syntax footprint to replace.
+  - `direct-token` & `structural-ast`: Deterministic token, AST, DOM, CSS, or `package.json` patterns with high signal-to-noise ratio requiring no LLM runtime verification.
+  - `needs-verifier`: Pattern detectable by static matchers but requiring runtime LLM Verifier evaluation against a `verifierRubric` (`keepWhen` / `dropWhen`) to reject subtle false alarms.
+  - `no-legacy-pattern`: Visual, behavioral, or greenfield capability without a distinguishable brownfield syntax footprint to replace.
 - **Axis 2: Update Scope (`updateScope`):**
-  - `local-swap` (72 guides): Replacing or adding a property, selector, attribute, or call at the same site (e.g., standard `autocomplete` attributes, `text-wrap: balance`, `field-sizing: content`).
-  - `cross-layer-refactor` (44 guides): Deleting imperative JS listeners, observers, or helper libraries and moving behavior into declarative CSS or HTML (`@starting-style`, `animation-timeline`, `:has()`).
-  - `widget-recipe` (26 guides): Coordinating HTML structure, CSS layout/styling, and JS behavior across multiple parts of a composite UI widget.
-  - `n/a` (107 guides): Applicable when detection is `no-legacy-pattern`.
+  - `local-swap`: Replacing or adding a property, selector, attribute, or call at the same site (e.g., standard `autocomplete` attributes, `text-wrap: balance`, `field-sizing: content`).
+  - `cross-layer-refactor`: Deleting imperative JS listeners, observers, or helper libraries and moving behavior into declarative CSS or HTML (`@starting-style`, `animation-timeline`, `:has()`).
+  - `widget-recipe`: Coordinating HTML structure, CSS layout/styling, and JS behavior across multiple parts of a composite UI widget.
+  - `n/a`: Applicable when detection is `no-legacy-pattern`.
 
 ### Qualified Feature Guides
 
@@ -336,7 +336,7 @@ To evaluate end-to-end code modernization without falling into the "Deletion Equ
 - **Check 1 (Finding Eliminated Check):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
 - **Check 2 (Modern Syntax & Anti-Gutting Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
 - **Check 3 (Behavioral Check):** Runs behavioral/test assertions when available.
-- **Verified Benchmarks:** **100.0% (`177/177`) rejection** on the 3-class seeded bad-patch sensitivity suite across 59 seeded fixtures (`no-op`, `deletion-gutting`, `broken/evasion`), and **100.0% (`59/59`) acceptance** on reference good fixes.
+- **Verified Benchmarks:** Verified on the 3-class seeded bad-patch sensitivity suite (`no-op`, `deletion-gutting`, `broken/evasion`) and reference good fixes.
 
 ### Running Evaluation Benchmarks
 
@@ -353,8 +353,6 @@ node --env-file=.env src/analyzing/eval/detection-eval.ts
 # Run seeded sensitivity suite & end-to-end agentic update evaluation:
 node --env-file=.env src/analyzing/eval/update-eval.ts
 ```
-
-All scorecard results and audit trails are logged to `PROGRESS.md`.
 
 ---
 

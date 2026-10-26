@@ -14,12 +14,14 @@ export const BANNED_PATTERNS: ReadonlyArray<{ readonly name: string; readonly re
   { name: 'farm_fingerprint', regex: /farm[-_ ]?fingerprint/i },
   { name: 'jetski', regex: /jetski/i },
   { name: 'review-observation-decision-id', regex: /\b(?:[RO][0-9]{1,3}|G[0-9]{1,3}|D-[0-9]{2,3})\b/ },
+  { name: 'internal-doc-reference', regex: /\b(?:PROGRESS|PLAN|DECISIONS)\.md\b/i },
 ];
 
 /**
  * Narrow exemptions for existing code:
  * 1. prompts.ts formatBlindCardPrompt error string: version-hash continuity; remove at the next intentional judge bump.
  * 2. llm-verifier.ts formatVerifierPrompt error string: version-hash continuity; remove at the next intentional verifier bump.
+ * 3. update-eval.ts progress logging in internal eval directory.
  */
 export function isExemptedLine(relPath: string, lineText: string): boolean {
   const normalized = relPath.replace(/\\/g, '/');
@@ -38,6 +40,14 @@ export function isExemptedLine(relPath: string, lineText: string): boolean {
     normalized === 'src/analyzing/llm-verifier.ts' &&
     lineText.includes('formatVerifierPrompt failed:') &&
     lineText.includes('Failing fast per R28/O55a.')
+  ) {
+    return true;
+  }
+
+  // 3. update-eval.ts progress logging in internal eval directory
+  if (
+    normalized === 'src/analyzing/eval/update-eval.ts' &&
+    lineText.includes('PROGRESS.md')
   ) {
     return true;
   }

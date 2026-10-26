@@ -15,7 +15,19 @@ describe('check-internal-references guard', () => {
       'farm_fingerprint',
       'jetski',
       'review-observation-decision-id',
+      'internal-doc-reference',
     ]);
+
+    const docPattern = BANNED_PATTERNS.find((p) => p.name === 'internal-doc-reference')!.regex;
+    assert.ok(docPattern.test('PROGRESS.md'));
+    assert.ok(docPattern.test('PLAN.md'));
+    assert.ok(docPattern.test('DECISIONS.md'));
+    assert.ok(docPattern.test('logged in progress.md'));
+    assert.ok(docPattern.test('see plan.md'));
+    assert.ok(docPattern.test('per decisions.md'));
+    assert.ok(!docPattern.test('README.md'));
+    assert.ok(!docPattern.test('LEXICON.md'));
+    assert.ok(!docPattern.test('guide.md'));
 
     const reviewObsId = BANNED_PATTERNS.find((p) => p.name === 'review-observation-decision-id')!.regex;
     assert.ok(reviewObsId.test('D-041'));
@@ -50,7 +62,7 @@ describe('check-internal-references guard', () => {
     assert.ok(agentPattern.test('jetski'));
   });
 
-  it('exempts exactly two narrow lines for prompt version-hash continuity', () => {
+  it('exempts narrow lines for prompt continuity and internal progress logging', () => {
     // schema.ts no longer gets an exemption
     assert.strictEqual(
       isExemptedLine('src/analyzing/schema.ts', '  readonly gitMirrorFilter?: {'),
@@ -85,6 +97,22 @@ describe('check-internal-references guard', () => {
       isExemptedLine(
         'src/analyzing/llm-verifier.ts',
         '  // other comment referencing R28',
+      ),
+      false,
+    );
+
+    // 3. update-eval.ts progress logging in internal eval directory
+    assert.strictEqual(
+      isExemptedLine(
+        'src/analyzing/eval/update-eval.ts',
+        '  const progressPath = join(evalDataDir, \'PROGRESS.md\');',
+      ),
+      true,
+    );
+    assert.strictEqual(
+      isExemptedLine(
+        'src/analyzing/README.md',
+        'All scorecard results and audit trails are logged to PROGRESS.md.',
       ),
       false,
     );
