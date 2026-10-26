@@ -284,6 +284,17 @@
   @media (forced-colors: active) {
     .breadcrumb a[aria-current="page"] { text-decoration: underline; }
     .bc-shaped > ol > li > a, .bc-pills a, .bc-trigger, .bc-menu { border: 1px solid LinkText; }
+
+    /* Without border-shape the shape comes from clip-path, which cuts the slanted sides off a border, and forced
+       colors removes the background that drew the shape. Use plain bordered segments and a text separator so the
+       trail still reads as a path. With border-shape the border follows the shape, so nothing changes. */
+    @supports not (border-shape: polygon(0 0, 100% 0, 100% 100%)) {
+      .bc-shaped > ol { gap: .5rem; }
+      .bc-shaped > ol > li > a { clip-path: none; border: 2px solid LinkText; }
+      .bc-shaped > ol > li + li { margin-inline-start: 0; }
+      .bc-shaped > ol > li + li::before { content: "›" / ""; margin-inline-end: .5rem; }
+      .bc-shaped > ol > li > a:focus-visible { outline: 3px solid Highlight; outline-offset: 2px; }
+    }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
