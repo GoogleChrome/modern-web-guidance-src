@@ -38,6 +38,8 @@
       max-inline-size: 44rem;
       margin-inline: auto;
       display: grid;
+      /* minmax(0, 1fr): the column may shrink below its content, so long code scrolls inside its block */
+      grid-template-columns: minmax(0, 1fr);
       gap: 2.5rem;
     }
 
@@ -178,6 +180,11 @@
       .tip::after { display: none; }
     }
 
+    /* Copying needs script, so show no control that does nothing */
+    @media (scripting: none) {
+      .copy { display: none; }
+    }
+
     /* ---------- Example 1: code block ---------- */
 
     .code-block {
@@ -215,7 +222,9 @@
       border-radius: .625rem;
       background: var(--surface-2);
 
-      code { font-size: .9375rem; }
+      max-inline-size: 100%;
+
+      code { font-size: .9375rem; min-inline-size: 0; overflow-wrap: anywhere; }
       .copy-button { --size: 2rem; }
     }
 
@@ -241,7 +250,8 @@
         border-radius: .5rem;
       }
 
-      .copy-button { --size: 2.5rem; }
+      /* Stretch to the field's height (the wrapper is a flex item); width stays --size */
+      .copy-button { --size: 2.5rem; block-size: auto; }
     }
 
     /* ---------- Example 4: selection popover ---------- */
