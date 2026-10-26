@@ -633,7 +633,15 @@
     items[0].after(li);
   });
 
-  /* 2. Fallback positioning where CSS anchor positioning isn't available. */
+  /* 2. Close an open menu once focus lands outside it and its own trigger: popover light dismiss does not cover
+        keyboard focus leaving, and an open menu can cover the next focused control. */
+  document.addEventListener('focusin', ({ target }) => {
+    for (const menu of document.querySelectorAll('.bc-menu:popover-open')) {
+      if (!menu.contains(target) && !target.closest(`[popovertarget="${menu.id}"]`)) menu.hidePopover();
+    }
+  });
+
+  /* 3. Fallback positioning where CSS anchor positioning isn't available. */
   if (!CSS.supports('position-area', 'block-end')) {
     document.addEventListener('toggle', (e) => {
       const menu = e.target;
@@ -646,7 +654,7 @@
     }, true);
   }
 
-  /* 3. Demo only: show container width and active tier in the playground. */
+  /* 4. Demo only: show container width and active tier in the playground. */
   const ro = new ResizeObserver((entries) => {
     for (const entry of entries) {
       const out = entry.target.parentElement.querySelector('.readout');

@@ -6,6 +6,7 @@
 - Links in the trail show a visible focus indicator (non-zero outline or distinct style) when focused with the keyboard.
 - When sibling dropdown triggers are present, each trigger is a `<button type="button">` with a `popovertarget` attribute and a non-empty `aria-label`, placed outside the ancestor's `<a>`.
 - When sibling dropdown triggers are present, each trigger's target is an element with the `popover` attribute containing `<a>` links, activating the trigger opens the popover, pressing Escape closes it, and the adjacent ancestor link remains a navigable `<a>` with an `href`.
+- When a sibling dropdown is open, moving keyboard focus to a control outside the dropdown and its trigger closes it.
 - The `<nav>` (or an ancestor wrapper) has `container-type: inline-size`, and a container query hides middle trail items at narrow widths.
 - In a trail with more than four items at a narrow container width, a "…" `<button>` with `popovertarget` and an `aria-label` is visible and hidden items are not displayed.
 - Hidden middle items are not focusable at narrow container widths (`display: none`).
