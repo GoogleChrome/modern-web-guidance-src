@@ -272,7 +272,7 @@ const __filename = __fileURLToPath(import.meta.url);
 const __dirname = __dirnameFunction(__filename);
 `,
         },
-        sourcemap: true,
+        sourcemap: false,
         sourcesContent: false,
         metafile: true,
         minify: true,

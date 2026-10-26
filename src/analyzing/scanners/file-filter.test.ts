@@ -152,6 +152,45 @@ describe('file-filter vendored and hashed asset exclusions (R42, R51)', () => {
       'window.WidgetLib = {};',
     ].join('\n');
     assert.equal(hasVendoredLicenseHeader(apacheTwoPartHeader), true);
+
+    // Lighthouse-style first-party Apache 2.0 header without library version marker
+    const lighthouseHeaderWithFloatsInBody = [
+      '/**',
+      ' * @license',
+      ' * Copyright 2017 Google LLC',
+      ' * SPDX-License-Identifier: Apache-2.0',
+      ' */',
+      '',
+      'export class Logger {',
+      '  animation = "fadeInDown 0.3s forwards";',
+      '  opacity = 0.26;',
+      '}',
+    ].join('\n');
+    assert.equal(hasVendoredLicenseHeader(lighthouseHeaderWithFloatsInBody), false);
+    assert.equal(shouldScanFile('renderer/logger.js', lighthouseHeaderWithFloatsInBody), true);
+
+    // HTML comment format license without version
+    const htmlLicenseHeader = [
+      '<!--',
+      '@license',
+      'Copyright 2018 Google LLC',
+      'SPDX-License-Identifier: Apache-2.0',
+      '-->',
+      '<!doctype html>',
+      '<html><body>Hello</body></html>',
+    ].join('\n');
+    assert.equal(hasVendoredLicenseHeader(htmlLicenseHeader), false);
+    assert.equal(shouldScanFile('assets/template.html', htmlLicenseHeader), true);
+  });
+
+  it('permits multi-line files with large embedded template literals (p90 check)', () => {
+    // Normal multi-line code file with 25 lines, where one line has a large template literal
+    const normalLines = Array.from({ length: 24 }, (_, i) => `const x${i} = ${i};`);
+    const largeTemplateLine = 'const template = `' + '<div class="item">'.repeat(100) + '`;';
+    const content = [...normalLines, largeTemplateLine].join('\n');
+
+    assert.equal(isMinifiedContent(content), false);
+    assert.equal(shouldScanFile('renderer/components.js', content), true);
   });
 
   it('correctly classifies build/install vs checked-in vendor directories (Slice C)', () => {

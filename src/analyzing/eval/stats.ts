@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 export const CARD_ID_HEX_LENGTH = 12;
 export const Z_95 = 1.96;
 export const Z_SEQUENTIAL_STOPPING = 2.39;

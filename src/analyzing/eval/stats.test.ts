@@ -179,7 +179,7 @@ describe('gwetAc1Nominal', () => {
   });
 
   it('resists the prevalence paradox under heavily skewed base rates', () => {
-    // Simulating grades.paulirish.jsonl distribution:
+    // Simulating grades.jsonl distribution:
     // 83 (right, right), 2 (not-old, not-old), 1 (right, unsure)
     const pairs: Array<readonly [string, string]> = [
       ...Array.from({ length: 83 }, () => ['right', 'right'] as const),

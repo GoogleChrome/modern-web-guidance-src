@@ -26,7 +26,6 @@
     "typecheck": "tsc && tsc -p src/dashboard/tsconfig.json",
     "lint": "oxlint --ignore-path .oxlintignore",
     "preflight": "pnpm build && pnpm typecheck && pnpm lint && pnpm test",
-    "check:analyze": "node $HOME/code/jig/preflight.ts src/analyzing",
     "suite": "node src/harness/run-suite.ts",
     "qsmoke": "node src/harness/quick-smoke.ts",
     "task": "node src/harness/run-suite.ts",

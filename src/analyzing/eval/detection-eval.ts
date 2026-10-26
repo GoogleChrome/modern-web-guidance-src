@@ -34,7 +34,7 @@ const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 const ANALYZER_INTERNAL_DIR = join(WORKTREE_ROOT, 'analyzer-internal');
 const LABELS_DIR = join(ANALYZER_INTERNAL_DIR, 'labels');
 const CARDS_DIR = join(LABELS_DIR, 'cards');
-const GRADES_PATH = join(LABELS_DIR, 'grades.paulirish.jsonl');
+const GRADES_PATH = process.env.GRADES_PATH ?? join(LABELS_DIR, 'grades.jsonl');
 const GUIDE_TRIAGE_PATH = join(ANALYZER_INTERNAL_DIR, 'guide-triage.json');
 const LEGACY_PATTERN_SPECS_PATH = join(ANALYZER_INTERNAL_DIR, 'legacy', 'legacy-pattern-specs.json');
 const CALIBRATION_DECK_PATH = join(CARDS_DIR, 'calibration-deck.json');
@@ -1318,7 +1318,7 @@ export interface PaulIrishGradesResult {
 }
 
 /**
- * Loads Paul's canonical human-graded cards from grades.paulirish.jsonl and cards directory.
+ * Loads canonical human-graded cards from grades.jsonl and cards directory.
  * Returns only the scored cards (excluding 'unsure').
  */
 export async function loadPaulIrishScoredCards(

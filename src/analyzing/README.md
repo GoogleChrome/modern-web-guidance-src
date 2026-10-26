@@ -28,7 +28,7 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--tier <tier>` | String | Restrict analysis to a confidence tier (`qualified` or `experimental`). |
-| `--experimental`, `--all-rules` | Flag | Run all 71 active feature guides (98 rules total in `ALL_RULES` across 85 rule modules on disk), including experimental and unmeasured rules. |
+| `--experimental`, `--all-rules` | Flag | Run all 70 active feature guides (98 rules total in `ALL_RULES`), including experimental rules. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
 ### Human-Readable Output Example
@@ -125,7 +125,7 @@ flowchart LR
 
 ### LLM Verifier (Contextual Rubric Filter)
 
-Candidate matches are validated against rule-specific rubrics defined in [`schema.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/schema.ts):
+Candidate matches are validated against rule-specific rubrics defined in [`schema.ts`](./schema.ts):
 - **`keepWhen` Criteria**: Verified when the candidate matches genuine legacy workarounds (e.g., custom event loops, manual clipboard workarounds, DIY popover positioning).
 - **`dropWhen` Criteria**: Immediately discards false positives, including:
   - Code already guarded by feature detection (`'showPicker' in HTMLInputElement.prototype`).
@@ -136,7 +136,7 @@ Candidate matches are validated against rule-specific rubrics defined in [`schem
 
 ## 4. Rule Authoring (`AnalyzerRule`)
 
-Each analyzer rule implements the `AnalyzerRule` interface from [`schema.ts`](file:///usr/local/google/home/paulirish/code/guidance/src/analyzing/schema.ts):
+Each analyzer rule implements the `AnalyzerRule` interface from [`schema.ts`](./schema.ts):
 
 ```typescript
 export interface AnalyzerRule {
@@ -197,68 +197,87 @@ export const autofillSignInFormRule: AnalyzerRule = {
 };
 ```
 
-### Qualified Rules & Gated Execution (`R33`, `D-041`, `D-042`, `D-048`)
+### Qualified Rules & Gated Execution
 
 To guarantee zero hallucinated false alarms when run in interactive developer terminals, the analyzer enforces strict gating:
-- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear objective qualification criteria (71 active guides, 37 qualified across Tier A, B, and C, and 34 experimental across 98 rules in `ALL_RULES`, backed by 85 rule modules on disk). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
-- **`ALL_RULES` (`--experimental` / `--all-rules`):** Executes all 71 active feature guides across 98 rules in `ALL_RULES`, including experimental and unmeasured rules.
+- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear objective qualification criteria (70 active guides: 37 qualified across 53 rules, and 33 experimental across 45 rules, totaling 98 rules in `ALL_RULES`). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
+- **`ALL_RULES` (`--experimental` / `--all-rules`):** Executes all 70 active feature guides across 98 rules in `ALL_RULES`, including experimental rules.
 
-### Registered Feature Guides (71 Active Guides, 98 Rules in `ALL_RULES`, 85 Rule Modules on Disk)
+### 3-Tier Qualification Criteria
 
-> **Note:** `accessible-error-announcement`, `stack-drill-down`, `shadow-dom`, and `shrinking-header-on-scroll` were retired per Guide Triage review (`D-027`). All pre-`R39`–`R53` held-out precision numbers below are historical (`D-041`) and suspended pending `O7`–`O9` re-validation (`D-042`).
+Rules qualify for default terminal shipping under a 3-tier hierarchy:
+- **Tier A (Human Ground Truth $\ge 90\%$):** Rules validated by direct blind human spot-check decks on the `held-out` split achieving $\ge 90\%$ precision.
+- **Tier B (Detection Eval Consensus $\ge 90\%$ at $n \ge 35$):** Rules where 3-run majority-vote Detection Eval Judge consensus reaches $\ge 90\%$ across at least 35 candidate findings on the `held-out` split with Wilson 95% CI lower bound $\ge 0.85$.
+- **Tier C (Structural / Low Misfire $\le 10\%$):** Rules with deterministic syntactic markers (e.g. `package.json` dependencies, vendored library replacements, unambiguous web platform APIs) exhibiting low structural misfire rates ($\le 10\%$).
 
-| # | Guide ID | Tier | Held-Out Tune Prec (`local-93`) | Untuned Final Prec (`gitmirror`) | Modern Platform Target |
-| :- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `animate-element-entry-exit` | Experimental (Failed Held-Out) | `77/79 = 97.5%` (95% CI `[91.2% - 99.3%]`) | `46/58 = 79.3%` | `@starting-style` and `transition-behavior: allow-discrete` |
-| 2 | `individual-transform-properties` | Suspended (`D-042` / `R39` / `R50.2`) | `58/68 = 85.3%` | `94/95 = 98.9%` (pre-`R39` / pre-`R48`) | Individual transform properties (`rotate`, `scale`, `translate`) |
-| 3 | `autofill-sign-in-form` | Unmeasured Low-$n$ | `23/23 = 100.0%` | `68/75 = 90.7%` | Standard `autocomplete="username"` and `autocomplete="current-password"` |
-| 4 | `animate-to-intrinsic-sizes` | Unmeasured Low-$n$ | `4/4 = 100.0%` | `12/13 = 92.3%` | `calc-size()` and `interpolate-size: allow-keywords` |
-| 5 | `declarative-dialog-popover-control` | Experimental (Tuned) | `27/33 = 81.8%` | `57/73 = 78.1%` | Declarative `commandfor` / `command` and `popovertarget` |
-| 6 | `coordinate-global-events` | Experimental | `3/4 = 75.0%` | `17/19 = 89.5%` | `Temporal.ZonedDateTime` for global timezone events |
-| 7 | `customize-scrollbar-color-and-thickness` | Experimental | `22/29 = 75.9%` | `88/97 = 90.7%` | Standard CSS `scrollbar-color` and `scrollbar-width` |
-| 8 | `child-state-based-styling` | Experimental | `2/13 = 15.4%` | `3/31 = 9.7%` | CSS `:has()` relational pseudo-class |
-| 9 | `break-up-long-tasks` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `0/1 = 0.0%` | `scheduler.yield()` and `scheduler.postTask()` |
-| 10 | `ime-safe-enter-submit` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `9/9 = 100.0%` | `e.isComposing` guard on Enter keydown handlers |
-| 11 | `calculate-event-differentials` | Unmeasured Low-$n$ (Tuned) | `1/1 = 100.0%` | `10/13 = 76.9%` | Temporal API (`Temporal.PlainDate` / `Temporal.Instant`) |
-| 12 | `resilient-context-menus-and-nested-dropdowns` | Experimental | `26/29 = 89.7%` | `36/57 = 63.2%` | Native `popover` and CSS Anchor Positioning |
-| 13 | `form-fields-automatically-fit-contents` | Unmeasured Low-$n$ | `2/2 = 100.0%` | `12/12 = 100.0%` | CSS `field-sizing: content` |
-| 14 | `brand-consistent-forms` | Experimental | `2/7 = 28.6%` | `30/57 = 52.6%` | CSS `accent-color` for custom form controls |
-| 15 | `scrollspy` | Experimental | `0/0 = N/A` | `40/53 = 75.5%` | CSS `scroll-target-group: auto` and `:target-current` |
-| 16 | `autofill-address-form` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `1/1 = 100.0%` | Standard `autocomplete` attributes on address form inputs |
-| 17 | `branded-select-styling` | Experimental | `3/7 = 42.9%` | `11/17 = 64.7%` | Customizable native `<select>` with `appearance: base-select` |
-| 18 | `adapt-scrollbar-to-contrast-preferences` | Experimental | `0/1 = 0.0%` | `0/15 = 0.0%` | `scrollbar-color`, `scrollbar-width`, and `prefers-contrast` |
-| 19 | `checkbox` | Unmeasured Low-$n$ (Tuned) | `5/5 = 100.0%` | `32/35 = 91.4%` | CSS `accent-color` for styled checkboxes |
-| 20 | `size-aware-styling` | Experimental | `0/0 = N/A` | `0/0 = N/A` | Native CSS Container Queries (`@container`) |
-| 21 | `defer-work-until-scroll-ends` | Experimental | `0/0 = N/A` | `9/11 = 81.8%` | Native `scrollend` event listener |
-| 22 | `schedule-tasks-by-priority` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `2/2 = 100.0%` | Prioritized task scheduling via `scheduler.postTask()` |
-| 23 | `prevent-page-scroll-under-modal-dialog` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `5/8 = 62.5%` | Native `<dialog>` and CSS `overscroll-behavior: contain` |
-| 24 | `dark-mode` | Experimental | `2/3 = 66.7%` | `35/54 = 64.8%` | CSS `color-scheme: light dark` and `light-dark()` color functions |
-| 25 | `manage-recurring-intervals` | Experimental (Tuned) | `3/4 = 75.0%` | `5/12 = 41.7%` | Temporal API (`Temporal.PlainDate.add` / `Temporal.Duration`) |
-| 26 | `drag` | Experimental / Low-$n$ | `0/0 = N/A` | `1/1 = 100.0%` | Native HTML Drag and Drop standards |
-| 27 | `format-human-readable-durations` | Unmeasured Low-$n$ | `7/7 = 100.0%` | `17/19 = 89.5%` | `Intl.DurationFormat` |
-| 28 | `sanitize-untrusted-html` | Unmeasured Low-$n$ | `2/2 = 100.0%` | `9/16 = 56.3%` | Native `Sanitizer` API and `setHTML()` |
-| 29 | `scroll-position-aware-elements` | Unmeasured Low-$n$ | `1/1 = 100.0%` | `9/16 = 56.3%` | CSS Scroll-Driven Animations (`animation-timeline: scroll()`) |
-| 30 | `autofill-highlight-inputs` | Suspended (`D-042` Batch 4 Clean 1-to-1) | `N/A` | `60/60` (pre-`R48`; `0` `R35` human spot-checks) | Standard CSS `:autofill` pseudo-class |
-| 31 | `complex-shapes` | Suspended (`D-042` Batch 4 Clean 1-to-1) | `N/A` | `89/91` post-P2; `94/100` P1 (`0.875` LB `< 0.90`) | CSS Masking Module Level 1 (`mask-image`, `mask-*`) |
-| 32 | `deliver-optimized-decorative-images` | Suspended (`D-042` Batch 4 Clean 1-to-1) | `N/A` | `60/60` (pre-`R48`; `0` `R35` human spot-checks) | CSS `image-set()` resolution and format negotiation |
-| 33 | `responsive-table` | Batch 4 Clean 1-to-1 | `N/A` | `316 repos / 376 files` | CSS Container Queries (`@container`) and sticky headers |
-| 34 | `equal-width-text-lines` | Batch 4 Needs Care | `N/A` | `38 repos / 46 files` | CSS `text-fit: grow per-line-all` and balance |
-| 35 | `light-dismiss-a-dialog` | Batch 4 Needs Care | `N/A` | `19 repos / 22 files` | Native `<dialog closedby="any">` |
-| 36 | `detect-initial-visibility-state` | Wave 3A Experimental | `N/A` | `N/A` | `performance.getEntriesByType('visibility-state')` (`VisibilityStateEntry`) |
-| 37 | `resolution-optimized-pseudo-elements` | Wave 3A Experimental | `N/A` | `N/A` | Standard CSS `image-set()` on `::before` / `::after` pseudo-elements |
-| 38 | `atrule-support-conditionals` | Wave 3A Experimental | `N/A` | `N/A` | Native CSS `@supports` and `@supports at-rule(@...)` |
-| 39 | `scroll-entry-exit-effects` | Wave 3A Experimental | `N/A` | `N/A` | CSS Scroll-Driven Animations (`animation-timeline: view()`, `animation-range`) |
-| 40 | `language-detection` | Wave 3A Experimental | `N/A` | `N/A` | Built-in browser `LanguageDetector` API |
-| 41 | `improve-next-page-load-performance` | Wave 3A Experimental | `N/A` | `N/A` | Declarative Speculation Rules API (`<script type="speculationrules">`) |
-| 42 | `highlight-text-ranges` | Wave 3A Experimental | `N/A` | `N/A` | CSS Custom Highlight API (`CSS.highlights` and `::highlight()`) |
-| 43 | `support-global-calendar-systems` | Wave 3A Experimental | `N/A` | `N/A` | Native `Temporal.PlainDate.prototype.withCalendar()` and `Intl.DateTimeFormat` |
-| 44 | `capture-location-agnostic-data` | Wave 3A Experimental | `N/A` | `N/A` | Native `Intl.DisplayNames` and location-agnostic `Temporal` types |
+### 2-Axis Triage Taxonomy
+
+Every web platform standard in the catalog is classified across two orthogonal axes:
+- **Axis 1: Detectability / Feasibility:**
+  - `detectable`: Deterministic structural AST/DOM/CSS/dependency pattern with high signal-to-noise ratio.
+  - `not-detectable`: Visual, behavioural, or conceptual change without a distinguishable legacy syntax footprint.
+  - `hard-not-recommended`: High ambiguity or overwhelming userland idiom collision.
+- **Axis 2: Scope & Architecture:**
+  - `1-to-1-replacement`: Direct, self-contained API substitution (e.g., CSS `text-wrap: balance`, `scrollbar-color`, `autocomplete`).
+  - `ui-recipe-multi-part`: Multi-component orchestrations (dialog + backdrop + escape listener) requiring compound matching.
+  - `library-superseded`: Third-party npm package or vendored script superseded by native standard.
+
+### Qualified Feature Guides (37 Qualified Guides across 53 Rules)
+
+| # | Guide ID | Matcher Kind | Qualification Tier | Modern Platform Target |
+| :- | :--- | :--- | :--- | :--- |
+| 1 | `animate-element-entry-exit` | CSS | Tier A | `@starting-style` and `transition-behavior: allow-discrete` |
+| 2 | `animate-to-intrinsic-sizes` | CSS | Tier B | `calc-size()` and `interpolate-size: allow-keywords` |
+| 3 | `atrule-support-conditionals` | CSS | Tier C | `@supports at-rule(@...)` |
+| 4 | `autofill-address-form` | DOM | Tier B | Standard `autocomplete` attributes on address form inputs |
+| 5 | `autofill-sign-in-form` | DOM | Tier A | Standard `autocomplete="username"` and `autocomplete="current-password"` |
+| 6 | `branded-select-styling` | CSS | Tier B | Customizable native `<select>` with `appearance: base-select` |
+| 7 | `calculate-event-differentials` | JS | Tier B | Temporal API (`Temporal.PlainDate` / `Temporal.Instant`) |
+| 8 | `capture-location-agnostic-data` | JS | Tier C | Native `Intl.DisplayNames` and location-agnostic `Temporal` types |
+| 9 | `checkbox` | CSS | Tier A | CSS `accent-color` for styled checkboxes |
+| 10 | `custom-text-decorations` | CSS | Tier C | CSS `text-decoration-thickness`, `text-underline-offset`, `text-decoration-color` |
+| 11 | `customize-scrollbar-color-and-thickness` | CSS | Tier A | Standard CSS `scrollbar-color` and `scrollbar-width` |
+| 12 | `dark-mode` | CSS | Tier B | CSS `color-scheme: light dark` and `light-dark()` color functions |
+| 13 | `deliver-optimized-decorative-images` | CSS | Tier A | CSS `image-set()` resolution and format negotiation |
+| 14 | `drag` | DOM | Tier C | Native HTML Drag and Drop standards |
+| 15 | `equal-width-text-lines` | CSS | Tier B | CSS `text-wrap: balance` and text sizing |
+| 16 | `export-html-media-from-canvas` | JS | Tier C | Canvas captureStream and MediaRecorder standards |
+| 17 | `form-fields-automatically-fit-contents` | CSS | Tier B | CSS `field-sizing: content` |
+| 18 | `highlight-text-ranges` | JS | Tier C | CSS Custom Highlight API (`CSS.highlights` and `::highlight()`) |
+| 19 | `improve-next-page-load-performance` | DOM | Tier C | Declarative Speculation Rules API (`<script type="speculationrules">`) |
+| 20 | `improve-text-layout-and-legibility` | CSS | Tier C | CSS `text-wrap: pretty` and `text-wrap: balance` |
+| 21 | `individual-transform-properties` | CSS | Tier A | Individual transform properties (`rotate`, `scale`, `translate`) |
+| 22 | `interactions-in-complex-layouts` | CSS | Tier C | CSS subgrid and container query layouts |
+| 23 | `language-detection` | JS | Tier C | Built-in browser `LanguageDetector` API |
+| 24 | `light-dismiss-a-dialog` | DOM | Tier B | Native `<dialog closedby="any">` |
+| 25 | `platform-controls-dismiss-dialog` | DOM | Tier C | Built-in dialog dismiss controls (`command="close"`) |
+| 26 | `prevent-page-scroll-under-modal-dialog` | CSS | Tier B | Native `<dialog>` and CSS `overscroll-behavior: contain` |
+| 27 | `responsive-table` | CSS | Tier A | CSS Container Queries (`@container`) and sticky headers |
+| 28 | `sanitize-untrusted-html` | JS | Tier B | Native `Sanitizer` API and `setHTML()` |
+| 29 | `scroll-entry-exit-effects` | CSS | Tier C | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
+| 30 | `scroll-position-aware-elements` | CSS | Tier B | CSS Scroll-Driven Animations (`animation-timeline: scroll()`) |
+| 31 | `scroll-progress-indicator` | CSS | Tier C | CSS Scroll-Driven Animations scroll progress |
+| 32 | `scrollspy` | CSS | Tier B | CSS `scroll-target-group: auto` and `:target-current` |
+| 33 | `soft-edge-content-fade` | CSS | Tier C | CSS `mask-image: linear-gradient(...)` |
+| 34 | `state-aware-sticky-headers` | CSS | Tier C | CSS `position: sticky` and scroll-driven state detection |
+| 35 | `styling-web-components` | CSS | Tier C | CSS `::part()`, `adoptedStyleSheets`, and modern shadow DOM styling |
+| 36 | `support-global-calendar-systems` | JS | Tier C | Native `Temporal.PlainDate.prototype.withCalendar()` and `Intl.DateTimeFormat` |
+| 37 | `switch` | DOM | Tier C | Native HTML `<input type="checkbox" switch>` |
 
 ---
 
 ## 5. Evaluation, Update Eval & Measurement Framework
 
-The analyzer adheres to strict statistical rigor to guarantee production accuracy before any rule is published in `QUALIFIED_RULES`.
+The analyzer adheres to statistical rigor to guarantee production accuracy before any rule is published in `QUALIFIED_RULES`.
+
+### Evaluation Subsystem (`src/analyzing/eval/`)
+
+- **`guide-triage.ts`**: Implements the 2-axis triage taxonomy (`detectable`, `1-to-1-replacement`, etc.) and maintains canonical metadata for all web platform guides.
+- **`detection-eval.ts`**: Runs multi-pass LLM judge evaluation (`gemini-3.8-flash`) against human-graded cards (`grades.jsonl`) to measure true-positive and false-positive rates with majority voting.
+- **`llm-verifier.ts`**: Implements the runtime and eval-time LLM verifier evaluating candidate matches against `verifierRubric` (`keepWhen` / `dropWhen`) specifications.
+- **`update-eval.ts`**: Automated patch validation harness testing candidate modernization updates across 3 classes of bad patches (`no-op`, `deletion-gutting`, `broken/evasion`) and reference good fixes.
+- **`stats.ts`**: Statistical foundations implementing Wilson binomial confidence intervals, sequential stopping decisions, and TPR/TNR metrics.
+- **`prompts.ts`**: Centralized prompt templates, thinking budgets, and content-hashed version tracking across all LLM evaluation passes.
 
 ### 2-Split Corpus Architecture (`rule-writing` vs `held-out`)
 
@@ -266,29 +285,9 @@ The evaluation corpus is divided into two strictly isolated splits:
 - **`rule-writing` (208 local repos in `analyzer-internal/repos.json` + 7,048 GitMirror files across 5,320 repos):** Used freely by engineers and agents to discover legacy patterns, author Static Matcher AST patterns, and tune LLM Verifier rubrics.
 - **`held-out` (7,137 remote GitMirror files across 5,258 repos, `MOD(ABS(FARM_FINGERPRINT(repository)), 2) = 1`):** Reserved strictly for out-of-sample precision and recall validation (`scorecard.ts`). Never inspected when authoring or debugging rules, guaranteeing zero tuning leakage.
 
-Cross-split boundary isolation is statically verified by the internal audit tooling in `analyzer-internal/src/audit-transcripts.ts`.
+Cross-split boundary isolation is statically verified by internal audit tooling.
 
-### Detection Eval Protocol & Honest Calibration (`D-031`, `D-041`, `D-042`)
-
-Evaluation uses a 3-run majority-vote `gemini-3.8-flash` **Detection Eval Judge** ([`detection-eval.ts`](./eval/detection-eval.ts)) operating under a de-primed, explainer-grounded prompt:
-- **Current Admission Status:** **`not admitted` (`QUALIFIED_JUDGE_METADATA.admitted = false` in [`qualification.ts`](./qualification.ts) per `D-041` & `D-042`).**
-- **Why De-Admitted (`R34`, `R48`, `O6`):** Although `gemini-3.8-flash:detective-v6-spec22-c3f54b90` cleared in-sample calibration on Paul's 95 active kept cards ($\mathrm{AC}_1 = 0.703$, 3-pass stability $96.5\%$, Canary TNR $100.0\%$ [`2/2`]), it failed the pre-registered `R34` out-of-sample blind specificity check (`_false-positives-check-deck`: $\mathrm{AC}_1 = 0.258 < 0.70$, stability $85.0\% < 95.0\%$), contained a bug in `deriveJudgeVerdictFromFacts` (`R48`) that overwrote `leave-it` and `guide-wrong` to `right`, and was superseded by prompt/code changes in `29b403d05` and `7c6f1a18b`.
-
-### Historical Pre-`D-041` Scorecard Results (`grading-only` vs. `held-out` — Invalidated Pending Re-Run)
-
-> **Invalidation Notice (`D-041`, `D-042`):** The historical scorecard runs below executed before `R42`/`R51` vendor/docs file filtering, `R46` `package.json` dependency guards, `R47` SFC/scope context slicing, and `R48` Judge `leave-it` preservation. No guide is currently promoted from these runs.
-
-1. **Historical `grading-only` Split (93 local repos, `845acda987f8` — now in `rule-writing` per `D-036`):**
-   - **Pooled Precision:** **78.5%** (`278/354`, 95% CI `[74.0% - 82.5%]`).
-   - **Clears $\ge 0.90$ LB (`animate-element-entry-exit`):** **97.5%** (`77/79`, 95% CI `[91.2% - 99.3%]`).
-   - **Coverage:** 1/35 guides clearing $\ge 0.90$ LB + 13 zero-FP low-$n$ guides.
-   - **Recall:** **60.4%** ($n=101$).
-2. **Historical `held-out` Split (2,336 GitMirror repos, `d26557cf4124` — invalidated per `D-041`):**
-   - **Pooled Precision:** **72.0%** (`695/966`, 95% CI `[69.0% - 74.7%]`); **100% (`9/9`)** on Paul's blind human spot-check deck (`_gitmirror-final-spotcheck-deck`).
-   - **Historical `individual-transform-properties` (Suspended per `R39`/`D-042`):** **98.9%** (`94/95`, 95% CI `[94.3% - 99.8%]`).
-   - **Static Matcher Precision:** **53.1%** (`721/1359`). The **LLM Verifier** retained **966** findings.
-
-### Update Eval ([`update-eval.ts`](./eval/update-eval.ts))
+### Update Eval
 
 To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap (`G12`), **Update Eval** (`update-eval.ts`) enforces three static checks on every candidate modernization update:
 - **Check 1 (Finding Eliminated Check):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
@@ -302,8 +301,8 @@ To evaluate end-to-end code modernization without falling into the "Deletion Equ
 # Run unit tests across analyzing subsystem:
 node --test "src/analyzing/**/*.test.ts"
 
-# Run preflight verification (typecheck, lint, ast-grep):
-pnpm run check:analyze
+# Run preflight verification (build, typecheck, lint):
+pnpm run preflight
 
 # Run Detection Eval Judge benchmark on evaluation decks:
 node --env-file=.env src/analyzing/eval/detection-eval.ts

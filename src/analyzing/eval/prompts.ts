@@ -10,8 +10,6 @@
  * Implements R27, R28, R29, R30, and R31 with deterministic content hashing and thinking budget configuration.
  */
 
-import { createHash } from 'node:crypto';
-
 import { computePromptContentHash } from '../llm-verifier.ts';
 
 export const PROMPT_MODEL = 'gemini-3.8-flash';

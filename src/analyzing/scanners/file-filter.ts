@@ -135,8 +135,13 @@ export const VENDORED_DIRECTORY_SUBPATHS: readonly string[] = [
 const HASHED_ASSET_DIR_RE = /\/assets\/[0-9a-f]{7,16}\//i;
 
 export const MAX_UNMINIFIED_LINE_LENGTH = 1200;
-const LICENSE_HEADER_SCAN_BYTES = 1500;
-const VENDOR_VERSION_REGEX = /(?:\bv?\d+\.\d+(?:\.\d+)?\b|@version\s*:?\s*\d+\.\d+)/i;
+const STRING_LITERAL_REGEX =
+  /"[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|`[^`\\]*(?:\\.[^`\\]*)*`/g;
+const LEADING_COMMENT_BLOCK_RE =
+  /^\s*(?:\/\*[\s\S]*?\*\/|(?:\/\/[^\n]*\n\s*)+|<!--[\s\S]*?-->)/;
+const VENDOR_VERSION_REGEX =
+  /(?:\bv\d+\.\d+(?:\.\d+)?\b|@version\s*:?\s*v?\d+\.\d+|\b\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\b)/i;
+const LICENSE_URL_REGEX = /https?:\/\/[^\s*>)]+/gi;
 const LICENSE_NAME_VERSION_REGEX =
   /(?:apache|mpl|gpl|lgpl|agpl|bsd|mit|isc|epl|cddl|cc(?:-by(?:-[a-z]+)*)?)(?:\s+license,?\s*(?:version)?)?[\s-]*v?\d+\.\d+(?:\.\d+)?/gi;
 const SPDX_LICENSE_REGEX = /spdx-license-identifier:[^\n]*/gi;
@@ -269,17 +274,27 @@ export function isMinifiedContent(
 
   const nonEmptyLines: string[] = [];
   let longLineCount = 0;
-  let totalLength = 0;
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     nonEmptyLines.push(line);
-    totalLength += line.length;
 
     if (line.length > maxLineLength) {
-      if (!INLINE_ASSET_LINE_REGEX.test(line)) {
-        longLineCount++;
+      if (INLINE_ASSET_LINE_REGEX.test(line)) {
+        const collapsed = line.replace(STRING_LITERAL_REGEX, '');
+        if (
+          collapsed.length > maxLineLength &&
+          !trimmed.startsWith('<svg') &&
+          !trimmed.startsWith('data:')
+        ) {
+          longLineCount++;
+        }
+      } else {
+        const collapsed = line.replace(STRING_LITERAL_REGEX, '');
+        if (collapsed.length > maxLineLength) {
+          longLineCount++;
+        }
       }
     }
   }
@@ -290,11 +305,13 @@ export function isMinifiedContent(
 
   // Multi-line file heuristic:
   // If the file has >= 20 lines, and long lines are < 5% of non-empty lines,
-  // and the average line length is < 120, this is normal authored code with an isolated long line.
+  // and the 90th percentile line length is < 160, this is normal authored code with an isolated long line.
   if (nonEmptyLines.length >= 20) {
     const longLineFraction = longLineCount / nonEmptyLines.length;
-    const avgLineLength = totalLength / nonEmptyLines.length;
-    if (longLineFraction < 0.05 && avgLineLength < 120) {
+    const sortedLengths = nonEmptyLines.map((l) => l.length).sort((a, b) => a - b);
+    const p90Index = Math.floor(sortedLengths.length * 0.9);
+    const p90 = sortedLengths[Math.min(p90Index, sortedLengths.length - 1)] ?? 0;
+    if (longLineFraction < 0.05 && p90 < 160) {
       return false;
     }
   }
@@ -305,21 +322,27 @@ export function isMinifiedContent(
 /**
  * Checks if the opening bytes contain a third-party versioned license banner.
  * First-party headers matching `ownNames` are protected and will not be treated as vendored.
- * Strips license-name version identifiers (e.g. Apache-2.0, MPL-2.0) before testing version regex.
+ * Strips URLs, SPDX identifiers, and license-name version identifiers (e.g. Apache-2.0, MPL-2.0)
+ * before testing version regex.
  */
 export function hasVendoredLicenseHeader(
   content: string,
   options?: { ownNames?: readonly string[] },
 ): boolean {
-  const headerSlice = content.slice(0, LICENSE_HEADER_SCAN_BYTES);
+  const match = content.slice(0, 2000).match(LEADING_COMMENT_BLOCK_RE);
+  if (!match) {
+    return false;
+  }
+  const headerSlice = match[0];
 
   const hasLicenseIndicator =
-    headerSlice.startsWith('/*!') || VENDOR_LICENSE_REGEX.test(headerSlice);
+    headerSlice.includes('/*!') || VENDOR_LICENSE_REGEX.test(headerSlice);
   if (!hasLicenseIndicator) {
     return false;
   }
 
   const sanitizedForVersion = headerSlice
+    .replace(LICENSE_URL_REGEX, '')
     .replace(SPDX_LICENSE_REGEX, '')
     .replace(LICENSE_NAME_VERSION_REGEX, '');
   const hasVersion = VENDOR_VERSION_REGEX.test(sanitizedForVersion);
