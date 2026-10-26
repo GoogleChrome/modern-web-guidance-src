@@ -43,6 +43,22 @@ void test('autofill-sign-in-form: positive brownfield matches', async (t) => {
     assert.equal(matches[0]?.line, 3);
   });
 
+  await t.test('flags old/current/existing/previous password fields inside change-password forms', () => {
+    const html = `
+      <form action="/change-password" method="post">
+        <input type="password" id="ChangePasswordOldPassword" name="oldPassword">
+        <input type="password" name="current_password" placeholder="Current password">
+        <input type="password" name="new_password" placeholder="New password">
+      </form>
+    `;
+    const matches = scanHtml('change-password.html', html, [matcher]);
+    assert.equal(matches.length, 2);
+    assert.deepEqual(
+      matches.map((m) => m.line),
+      [3, 4],
+    );
+  });
+
   await t.test('flags real-world grocy login.blade.php template fixture', () => {
     const grocyBlade = `
       <form method="post" action="{{ $U('/login') }}" id="login-form" novalidate>
@@ -109,11 +125,14 @@ void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts sign-up and registration password fields (owned by autofill-sign-up-form)', () => {
+  await t.test('exempts generic and confirmation password fields in registration and reset forms (owned by autofill-sign-up-form)', () => {
     const html = `
       <form action="/register" method="post">
-        <input type="password" id="signup-password" name="new_password" required>
+        <input type="password" id="password" name="password" required>
         <input type="password" id="confirm-password" name="confirm_password" required>
+      </form>
+      <form name="reset_form" action="/reset-password" method="post">
+        <input type="password" name="password" required>
       </form>
     `;
     const matches = scanHtml('register.html', html, [matcher]);

@@ -1,18 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { checkModernFeaturePresent } from '../eval/update-eval.ts';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
 import {
   SMS_OTP_FORM_GUIDE_HASH,
-  smsOtpFormMatcher,
   smsOtpFormRule,
   smsOtpFormRules,
 } from './sms-otp-form.ts';
 
 const matcher = smsOtpFormRule.matcher as DomRuleMatcher;
 
-void test('sms-otp-form: rule metadata', () => {
+void test('sms-otp-form: rule metadata and Check 2c quotes', () => {
   assert.equal(SMS_OTP_FORM_GUIDE_HASH.length, 12);
   assert.equal(smsOtpFormRule.id, 'sms-otp-form');
   assert.equal(smsOtpFormRule.guideId, 'sms-otp-form');
@@ -20,6 +20,21 @@ void test('sms-otp-form: rule metadata', () => {
   assert.equal(smsOtpFormRules.length, 1);
   assert.ok(smsOtpFormRule.verifierRubric.keepWhen.length >= 2);
   assert.ok(smsOtpFormRule.verifierRubric.dropWhen.length >= 2);
+
+  assert.equal(
+    checkModernFeaturePresent(
+      'sms-otp-form',
+      "<input type='text' autocomplete='one-time-code' inputmode='numeric'>",
+    ),
+    true,
+  );
+  assert.equal(
+    checkModernFeaturePresent(
+      'sms-otp-form',
+      "<input type='text' autoComplete='one-time-code' />",
+    ),
+    true,
+  );
 });
 
 void test('sms-otp-form: positive brownfield matches', async (suiteContext) => {
@@ -109,6 +124,33 @@ void test('sms-otp-form: negative and safe cases', async (suiteContext) => {
       </form>
     `;
     const matches = scanHtml('compliant.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await suiteContext.test('exempts hex IDs and embedded substrings containing 2fa or otp', () => {
+    const html = `
+      <form action="/feedback" method="post">
+        <input type="text" name="what_doing" id="input-a92fafe4">
+        <input type="text" name="spotprice" id="field-f0otp9">
+        <input type="text" name="footpath" id="id-dead2fab">
+      </form>
+    `;
+    const matches = scanHtml('feedback.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await suiteContext.test('exempts phone/mobile number inputs and TOTP setup secret-key fields', () => {
+    const html = `
+      <form action="/2fa/setup" method="post">
+        <input type="tel" name="phone" placeholder="Phone number">
+        <input type="text" id="otp-mobile" name="mobile_number" placeholder="Mobile number">
+        <input type="text" name="contact" autocomplete="tel">
+        <input type="password" id="item_form_otp_secret" maxlength="64" autocomplete="off">
+        <input type="text" name="totp_secret" placeholder="Authenticator secret key">
+        <input type="text" name="otp_shared_key" placeholder="Shared key">
+      </form>
+    `;
+    const matches = scanHtml('2fa-setup.html', html, [matcher]);
     assert.equal(matches.length, 0);
   });
 

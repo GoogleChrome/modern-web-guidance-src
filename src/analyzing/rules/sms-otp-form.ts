@@ -4,68 +4,219 @@ import type {
   DomMatcherContext,
   DomRuleMatcher,
 } from '../schema.ts';
+import {
+  findEnclosingFormAttrs,
+  isTestOrFixtureFilePath,
+  tokenizeIdentifierWords,
+} from './helpers/password-credential.ts';
 
 export const SMS_OTP_FORM_GUIDE_HASH = 'd49c2ddc155d';
 
-const OTP_IDENTIFIER_REGEX =
-  /(?:otp|passcode|verification[-_]?code|verificationcode|sms[-_]?code|smscode|2fa|mfa[-_]?code|mfacode|one[-_]?time[-_]?code)/i;
+const NON_TEXT_INPUT_TYPES: ReadonlySet<string> = new Set([
+  'hidden',
+  'checkbox',
+  'radio',
+  'button',
+  'submit',
+  'reset',
+  'file',
+  'image',
+  'email',
+  'url',
+  'date',
+  'time',
+  'datetime-local',
+  'month',
+  'week',
+  'color',
+  'range',
+]);
 
-const NON_OTP_EXCLUSION_REGEX =
-  /(?:cvv|cvc|csc|card|credit|expire|search|promo|coupon|discount|gift|zip|postal)/i;
+const NON_OTP_AUTOCOMPLETE_TOKENS: ReadonlySet<string> = new Set([
+  'tel',
+  'tel-country-code',
+  'tel-national',
+  'tel-area-code',
+  'tel-local',
+  'tel-local-prefix',
+  'tel-local-suffix',
+  'tel-extension',
+  'username',
+  'email',
+  'current-password',
+  'new-password',
+  'cc-number',
+  'cc-csc',
+  'cc-exp',
+  'postal-code',
+]);
 
-const SEGMENTED_CLASS_REGEX =
-  /(?:otp[-_]?(?:box|digit|cell|field)|pin[-_]?(?:box|digit|cell|input)|digit[-_]?box)/i;
+const NON_OTP_EXCLUSION_WORDS: ReadonlySet<string> = new Set([
+  'cvv',
+  'cvc',
+  'csc',
+  'card',
+  'credit',
+  'expire',
+  'expiry',
+  'search',
+  'promo',
+  'coupon',
+  'discount',
+  'gift',
+  'zip',
+  'zipcode',
+  'postal',
+  'postalcode',
+  'captcha',
+]);
 
-const FORM_TAG_REGEX = /<\/?(form|Form)\b([^>]*)>/gi;
+const TOTP_SECRET_EXCLUSION_WORDS: ReadonlySet<string> = new Set([
+  'secret',
+  'secrets',
+  'secretkey',
+  'seed',
+  'sharedkey',
+  'setupkey',
+  'privatekey',
+  'apikey',
+  'authkey',
+  'otpauth',
+  'qrcode',
+  'recovery',
+  'backup',
+]);
 
-/**
- * Checks whether an element line position is enclosed within an open `<form>` or `<Form>` tag.
- */
-function isEnclosedInForm(documentText: string, targetLine: number): boolean {
-  const strippedText = documentText
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-  const lines = strippedText.split('\n');
-  const textBefore = lines.slice(0, targetLine - 1).join('\n');
+const PHONE_EXCLUSION_WORDS: ReadonlySet<string> = new Set([
+  'phone',
+  'phonenumber',
+  'mobile',
+  'mobilenumber',
+  'telephone',
+  'cellphone',
+  'msisdn',
+  'telnumber',
+  'fax',
+]);
 
-  let depth = 0;
-  let match: RegExpExecArray | null;
-  FORM_TAG_REGEX.lastIndex = 0;
+const EXPLICIT_OTP_SINGLE_WORDS: ReadonlySet<string> = new Set([
+  'otp',
+  'totp',
+  'hotp',
+  'passcode',
+  '2fa',
+  'otpbox',
+  'otpcode',
+  'otpinput',
+  'otpfield',
+  'otpdigit',
+  'otpcell',
+  'smscode',
+  'smsotp',
+  'verificationcode',
+  'verifycode',
+  'mfacode',
+  '2facode',
+  'onetimecode',
+]);
 
-  while ((match = FORM_TAG_REGEX.exec(textBefore)) !== null) {
-    const isClosing = match[0].startsWith('</');
-    const attrs = match[2] ?? '';
-    const isSelfClosing = attrs.trim().endsWith('/');
+const OTP_FORM_CONTEXT_WORDS: ReadonlySet<string> = new Set([
+  'otp',
+  'totp',
+  'verification',
+  'verify',
+  '2fa',
+  'mfa',
+  'twofactor',
+]);
 
-    if (isClosing) {
-      depth = Math.max(0, depth - 1);
-    } else if (!isSelfClosing) {
-      depth++;
+const SEGMENTED_SINGLE_CLASS_WORDS: ReadonlySet<string> = new Set([
+  'otpbox',
+  'otpdigit',
+  'otpcell',
+  'otpfield',
+  'pinbox',
+  'pindigit',
+  'pincell',
+  'pininput',
+  'digitbox',
+]);
+
+function hasExplicitOtpTokenSequence(words: readonly string[]): boolean {
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]!;
+    const next = words[i + 1];
+    const next2 = words[i + 2];
+
+    if (EXPLICIT_OTP_SINGLE_WORDS.has(w)) {
+      return true;
     }
-  }
-
-  if (depth > 0) {
-    return true;
-  }
-
-  // Same-line form check: line contains <form or <Form before element
-  const currentLine = lines[targetLine - 1] ?? '';
-  if (/<(form|Form)\b/i.test(currentLine)) {
-    const formIndex = currentLine.search(/<(form|Form)\b/i);
-    const inputIndex = currentLine.search(/<input\b/i);
-    if (formIndex !== -1 && (inputIndex === -1 || formIndex < inputIndex)) {
+    if (w === 'verification' && next === 'code') {
+      return true;
+    }
+    if (
+      w === 'sms' &&
+      (next === 'code' || next === 'otp' || next === 'verification' || next === 'passcode')
+    ) {
+      return true;
+    }
+    if (
+      w === 'mfa' &&
+      (next === 'code' || next === 'otp' || next === 'passcode' || next === 'token' || next === 'input')
+    ) {
+      return true;
+    }
+    if (w === 'two' && next === 'factor' && next2 === 'code') {
+      return true;
+    }
+    if (
+      w === 'one' &&
+      next === 'time' &&
+      (next2 === 'code' || next2 === 'password' || next2 === 'passcode')
+    ) {
       return true;
     }
   }
-
   return false;
 }
 
-function getFormContext(documentText: string, targetLine: number): string {
-  const lines = documentText.split('\n');
-  const textBefore = lines.slice(Math.max(0, targetLine - 30), targetLine).join('\n');
-  const formMatch = textBefore.match(/<(?:form|Form)\b([^>]*)>/i);
-  return formMatch ? formMatch[1] ?? '' : '';
+function hasSegmentedClassTokens(classWords: readonly string[]): boolean {
+  for (let i = 0; i < classWords.length; i++) {
+    const w = classWords[i]!;
+    const next = classWords[i + 1];
+    if (SEGMENTED_SINGLE_CLASS_WORDS.has(w)) {
+      return true;
+    }
+    if (
+      w === 'otp' &&
+      (next === 'box' || next === 'digit' || next === 'cell' || next === 'field')
+    ) {
+      return true;
+    }
+    if (
+      w === 'pin' &&
+      (next === 'box' || next === 'digit' || next === 'cell' || next === 'input')
+    ) {
+      return true;
+    }
+    if (w === 'digit' && next === 'box') {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasOtpFormContext(formWords: readonly string[]): boolean {
+  for (let i = 0; i < formWords.length; i++) {
+    const w = formWords[i]!;
+    if (OTP_FORM_CONTEXT_WORDS.has(w)) {
+      return true;
+    }
+    if (w === 'two' && formWords[i + 1] === 'factor') {
+      return true;
+    }
+  }
+  return false;
 }
 
 export const smsOtpFormMatcher: DomRuleMatcher = {
@@ -73,30 +224,12 @@ export const smsOtpFormMatcher: DomRuleMatcher = {
   selector: 'input',
   fastTokens: ['otp', 'passcode', 'verification', 'sms', '2fa', 'mfa', 'pin'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
-    // 0. Skip test fixtures, visual regression tests, and mock directories
-    const lowerPath = ctx.filePath.toLowerCase();
-    if (
-      lowerPath.includes('/test/') ||
-      lowerPath.includes('/tests/') ||
-      lowerPath.includes('/fixtures/') ||
-      lowerPath.includes('/fixture/') ||
-      lowerPath.includes('__tests__')
-    ) {
+    if (isTestOrFixtureFilePath(ctx.filePath)) {
       return null;
     }
 
-    // 1. Skip non-interactive or non-text-entry inputs
     const type = (element.getAttribute('type') ?? 'text').toLowerCase();
-    if (
-      type === 'hidden' ||
-      type === 'checkbox' ||
-      type === 'radio' ||
-      type === 'button' ||
-      type === 'submit' ||
-      type === 'reset' ||
-      type === 'file' ||
-      type === 'image'
-    ) {
+    if (NON_TEXT_INPUT_TYPES.has(type)) {
       return null;
     }
 
@@ -108,33 +241,89 @@ export const smsOtpFormMatcher: DomRuleMatcher = {
       return null;
     }
 
-    // 2. Identify candidate OTP inputs
+    const autocomplete = (
+      element.getAttribute('autocomplete') ??
+      element.getAttribute('autoComplete') ??
+      ''
+    )
+      .toLowerCase()
+      .trim();
+    const autocompleteTokens = autocomplete ? autocomplete.split(/\s+/) : [];
+    if (autocompleteTokens.some((t) => NON_OTP_AUTOCOMPLETE_TOKENS.has(t))) {
+      return null;
+    }
+
     const name = element.getAttribute('name') ?? '';
     const id = element.getAttribute('id') ?? '';
     const placeholder = element.getAttribute('placeholder') ?? '';
     const ariaLabel = element.getAttribute('aria-label') ?? '';
-    const className = element.getAttribute('class') ?? element.getAttribute('className') ?? '';
-    const combinedIdentifiers = `${name} ${id} ${placeholder} ${ariaLabel} ${className}`.toLowerCase();
+    const className =
+      element.getAttribute('class') ?? element.getAttribute('className') ?? '';
+    const maxLength =
+      element.getAttribute('maxlength') ?? element.getAttribute('maxLength') ?? '';
 
-    if (NON_OTP_EXCLUSION_REGEX.test(combinedIdentifiers)) {
+    const primaryWords = tokenizeIdentifierWords(`${name} ${id}`);
+    const labelWords = tokenizeIdentifierWords(`${placeholder} ${ariaLabel}`);
+    const classWords = tokenizeIdentifierWords(className);
+    const allWords = [...primaryWords, ...labelWords, ...classWords];
+
+    // Exclude CVV, postal/zip, promo, captcha, and TOTP setup secret-key fields
+    if (
+      allWords.some(
+        (w) => NON_OTP_EXCLUSION_WORDS.has(w) || TOTP_SECRET_EXCLUSION_WORDS.has(w),
+      )
+    ) {
+      return null;
+    }
+    if (
+      allWords.includes('key') &&
+      allWords.some((w) => w === 'shared' || w === 'setup' || w === 'private')
+    ) {
+      return null;
+    }
+    if (type === 'password' && maxLength !== '' && Number(maxLength) >= 12) {
       return null;
     }
 
-    const hasExplicitOtpIdentifier = OTP_IDENTIFIER_REGEX.test(combinedIdentifiers);
-    const formContext = getFormContext(ctx.documentText, element.line);
+    // Exclude phone and mobile number inputs
+    if (
+      primaryWords.some((w) => PHONE_EXCLUSION_WORDS.has(w) || w === 'tel') ||
+      classWords.some((w) => PHONE_EXCLUSION_WORDS.has(w))
+    ) {
+      return null;
+    }
+    const fieldMentionsOtpCode =
+      hasExplicitOtpTokenSequence(primaryWords) ||
+      hasExplicitOtpTokenSequence(labelWords) ||
+      primaryWords.includes('code') ||
+      labelWords.includes('code');
+    if (labelWords.some((w) => PHONE_EXCLUSION_WORDS.has(w)) && !fieldMentionsOtpCode) {
+      return null;
+    }
+
+    const hasExplicitOtpIdentifier = hasExplicitOtpTokenSequence(allWords);
+    const explicitFormId = element.hasAttribute('form')
+      ? (element.getAttribute('form') ?? '')
+      : undefined;
+    const enclosingFormAttrs =
+      findEnclosingFormAttrs(
+        ctx.documentText,
+        element.line,
+        explicitFormId,
+        element.column,
+      ) ?? '';
+    const formWords = tokenizeIdentifierWords(enclosingFormAttrs);
     const isInsideOtpForm =
-      /(?:otp|verification|verify|two[-_]?factor|2fa|mfa)/i.test(formContext) &&
-      (name.toLowerCase().includes('code') || id.toLowerCase().includes('code') || placeholder.toLowerCase().includes('code'));
+      hasOtpFormContext(formWords) &&
+      (primaryWords.includes('code') || labelWords.includes('code'));
 
     if (!hasExplicitOtpIdentifier && !isInsideOtpForm) {
       return null;
     }
 
-    // 3. Check for segmented multi-box inputs (single-character boxes)
-    const maxLength = element.getAttribute('maxlength') ?? element.getAttribute('maxLength') ?? '';
     const isSegmentedBox =
       maxLength === '1' ||
-      SEGMENTED_CLASS_REGEX.test(className) ||
+      hasSegmentedClassTokens(classWords) ||
       (element.getAttribute('size') === '1' && hasExplicitOtpIdentifier);
 
     if (isSegmentedBox) {
@@ -145,26 +334,18 @@ export const smsOtpFormMatcher: DomRuleMatcher = {
       };
     }
 
-    // 4. Check for type="number" or type="tel" anti-patterns
     if (type === 'number' || type === 'tel') {
       return {
-        message:
-          `Never use type="${type}" for OTP codes; use type="text" with inputmode="numeric" and autocomplete="one-time-code".`,
+        message: `Never use type="${type}" for OTP codes; use type="text" with inputmode="numeric" and autocomplete="one-time-code".`,
         subPattern:
           'OTP input using type="number" or type="tel" instead of type="text" with inputmode="numeric"',
       };
     }
 
-    // 5. Check autocomplete attribute
-    const autocomplete = (
-      element.getAttribute('autocomplete') ?? element.getAttribute('autoComplete') ?? ''
-    ).toLowerCase().trim();
-
-    if (autocomplete.includes('one-time-code')) {
+    if (autocompleteTokens.includes('one-time-code')) {
       return null;
     }
 
-    // Input lacks autocomplete="one-time-code"
     return {
       message:
         'OTP verification input lacks autocomplete="one-time-code" to enable browser and OS autofill.',
@@ -188,13 +369,11 @@ export const smsOtpFormRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The input already specifies autocomplete="one-time-code".',
-      'The input is a standard password or credential field without OTP verification context.',
+      'The input is a phone/mobile number field, a TOTP setup secret key, or a standard password field.',
       'The input is a credit card CVV/CVC code or postal/zip code.',
       'The input is disabled, readonly, hidden, or a non-interactive display widget.',
     ],
   },
 };
 
-export const smsOtpFormRules: readonly AnalyzerRule[] = [
-  smsOtpFormRule,
-];
+export const smsOtpFormRules: readonly AnalyzerRule[] = [smsOtpFormRule];

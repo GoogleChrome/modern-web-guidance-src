@@ -1,18 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { checkModernFeaturePresent } from '../eval/update-eval.ts';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
 import { createInMemoryProject } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
 import {
   AUTOFILL_SIGN_UP_FORM_GUIDE_HASH,
-  autofillSignUpFormMatcher,
   autofillSignUpFormRule,
   autofillSignUpFormRules,
 } from './autofill-sign-up-form.ts';
 
 const matcher = autofillSignUpFormRule.matcher as DomRuleMatcher;
 
-void test('autofill-sign-up-form: rule metadata', () => {
+void test('autofill-sign-up-form: rule metadata and Check 2c quotes', () => {
   assert.equal(AUTOFILL_SIGN_UP_FORM_GUIDE_HASH.length, 12);
   assert.equal(autofillSignUpFormRule.id, 'autofill-sign-up-form');
   assert.equal(autofillSignUpFormRule.guideId, 'autofill-sign-up-form');
@@ -20,6 +20,21 @@ void test('autofill-sign-up-form: rule metadata', () => {
   assert.equal(autofillSignUpFormRules.length, 1);
   assert.ok(autofillSignUpFormRule.verifierRubric.keepWhen.length >= 2);
   assert.ok(autofillSignUpFormRule.verifierRubric.dropWhen.length >= 2);
+
+  assert.equal(
+    checkModernFeaturePresent(
+      'autofill-sign-up-form',
+      "<input type='password' autocomplete='new-password'>",
+    ),
+    true,
+  );
+  assert.equal(
+    checkModernFeaturePresent(
+      'autofill-sign-up-form',
+      "<input type='password' autoComplete='new-password' />",
+    ),
+    true,
+  );
 });
 
 void test('autofill-sign-up-form: positive brownfield matches', async (t) => {
@@ -43,7 +58,6 @@ void test('autofill-sign-up-form: positive brownfield matches', async (t) => {
       </form>
     `;
     const matches = scanHtml('register.html', html, [matcher]);
-    // Both are inside a registration form!
     assert.equal(matches.length, 2);
   });
 
@@ -106,6 +120,19 @@ void test('autofill-sign-up-form: negative / exempt cases', async (t) => {
       </form>
     `;
     const matches = scanHtml('login.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts old/current/existing/previous password fields in change-password forms', () => {
+    const html = `
+      <form action="/change_password.do" method="post">
+        <input type="password" id="ChangePasswordOldPassword" name="oldPassword">
+        <input type="password" name="current_password" placeholder="Current password" autocomplete="off">
+        <input type="password" name="existingPassword">
+        <input type="password" name="previous_password">
+      </form>
+    `;
+    const matches = scanHtml('change-password.html', html, [matcher]);
     assert.equal(matches.length, 0);
   });
 

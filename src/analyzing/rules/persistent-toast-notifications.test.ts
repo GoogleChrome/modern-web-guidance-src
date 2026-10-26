@@ -116,26 +116,30 @@ void test('persistent-toast-notifications JS matcher', async (t) => {
     assert.equal(matches.length, 2);
   });
 
-  await t.test('exempts progress bars and complex queue managers', () => {
+  await t.test('exempts progress bars, queue options, and interactive Toastify options', () => {
     const project = createInMemoryProject();
     const code = `
       import toastr from 'toastr';
+      import Toastify from 'toastify-js';
       toastr.success('Saved', 'Title', { progressBar: true });
       toastr.error('Failed', 'Error', { preventDuplicates: true });
+      Toastify({ text: 'Open', onClick: () => openDetails() }).showToast();
+      Toastify({ text: 'Docs', destination: 'https://example.com', newWindow: true }).showToast();
+      Toastify({ text: 'Done', callback: () => cleanup() }).showToast();
     `;
-    const sourceFile = project.createSourceFile('queue-toastr.js', code);
+    const sourceFile = project.createSourceFile('interactive-toasts.js', code);
     const matches = persistentToastNotificationsJsMatcher.matchFile(sourceFile, {
-      filePath: 'queue-toastr.js',
+      filePath: 'interactive-toasts.js',
       fileContent: code,
     });
     assert.equal(matches.length, 0);
   });
 
-  await t.test('flags hand-rolled toasts with secondary signals (body append / viewport positioning)', () => {
+  await t.test('flags hand-rolled toasts with structural second signals (body append or fixed/viewport positioning)', () => {
     const project = createInMemoryProject();
     const code = `
-      $("<div>").addClass("toast").appendTo("body").fadeIn(300).delay(2000).fadeOut(300);
-      $("<div class='notification'>").appendTo(document.body);
+      $("<div>Saved</div>").appendTo("body").fadeIn(300).delay(2000).fadeOut(300);
+      $("<div>Copied</div>").css({ position: "fixed", bottom: "16px", right: "16px" }).fadeIn(200).delay(1500).fadeOut(200);
     `;
     const sourceFile = project.createSourceFile('hand-rolled.js', code);
     const matches = persistentToastNotificationsJsMatcher.matchFile(sourceFile, {
@@ -145,15 +149,19 @@ void test('persistent-toast-notifications JS matcher', async (t) => {
     assert.equal(matches.length, 2);
   });
 
-  await t.test('exempts generic non-toast jQuery fade animations', () => {
+  await t.test('exempts stop().fadeIn().fadeOut(), name-only toasts, and synchronous show/hide layout measurements', () => {
     const project = createInMemoryProject();
     const code = `
+      $el.stop().fadeIn().fadeOut();
       $("#hero-banner").fadeIn(300).delay(2000).fadeOut(300);
       $(".dropdown-menu").slideDown(200).slideUp(200);
+      $("<div class='toast'>").fadeIn(200).delay(1000).fadeOut(200);
+      $("<div class='notification'>").appendTo(document.body);
+      this.$menu.show().css({ position: "absolute", left: 0, top: 0 }).hide();
     `;
-    const sourceFile = project.createSourceFile('generic-animation.js', code);
+    const sourceFile = project.createSourceFile('non-toast-animations.js', code);
     const matches = persistentToastNotificationsJsMatcher.matchFile(sourceFile, {
-      filePath: 'generic-animation.js',
+      filePath: 'non-toast-animations.js',
       fileContent: code,
     });
     assert.equal(matches.length, 0);
