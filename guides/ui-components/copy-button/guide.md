@@ -133,7 +133,7 @@ Register only one of the two paths so a click never copies twice.
 
 {{ BASELINE_STATUS("async-clipboard") }}
 
-If your Baseline target does not include it, or the page is not a secure context, `navigator.clipboard` is undefined. Guard with `navigator.clipboard?.writeText` and fall back to selecting the text and calling `document.execCommand('copy')` (deprecated but widely supported, synchronous, and must run inside the click handler). If that also fails, take the failure path from `copy()`.
+`navigator.clipboard` is only available in secure contexts (`https:` or `localhost`), and the write is rejected when permission is denied. `copy()` already covers both: a missing `navigator.clipboard` throws inside the `try`, so the failure message is shown and announced. DO NOT add a `document.execCommand('copy')` fallback: it is deprecated, and serving the page over HTTPS removes the cause.
 
 ### Popover (optional selection button only)
 
