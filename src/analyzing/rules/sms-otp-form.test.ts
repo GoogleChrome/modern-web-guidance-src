@@ -1,0 +1,146 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
+import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import type { DomRuleMatcher } from '../schema.ts';
+import {
+  SMS_OTP_FORM_GUIDE_HASH,
+  smsOtpFormMatcher,
+  smsOtpFormRule,
+  smsOtpFormRules,
+} from './sms-otp-form.ts';
+
+const matcher = smsOtpFormRule.matcher as DomRuleMatcher;
+
+void test('sms-otp-form: rule metadata', () => {
+  assert.equal(SMS_OTP_FORM_GUIDE_HASH.length, 12);
+  assert.equal(smsOtpFormRule.id, 'sms-otp-form');
+  assert.equal(smsOtpFormRule.guideId, 'sms-otp-form');
+  assert.equal(smsOtpFormRule.guideHash, SMS_OTP_FORM_GUIDE_HASH);
+  assert.equal(smsOtpFormRules.length, 1);
+  assert.ok(smsOtpFormRule.verifierRubric.keepWhen.length >= 2);
+  assert.ok(smsOtpFormRule.verifierRubric.dropWhen.length >= 2);
+});
+
+void test('sms-otp-form: positive brownfield matches', async (suiteContext) => {
+  await suiteContext.test('flags OTP input lacking autocomplete inside verification form', () => {
+    const html = `
+      <form action="/verify-otp" method="post">
+        <label for="otp">Enter Verification Code</label>
+        <input type="text" id="otp" name="otp" required>
+        <button type="submit">Verify</button>
+      </form>
+    `;
+    const matches = scanHtml('verify.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /one-time-code/);
+    assert.equal(matches[0]?.subPattern, 'OTP input missing autocomplete="one-time-code"');
+  });
+
+  await suiteContext.test('flags 2FA passcode input with type="number" anti-pattern', () => {
+    const html = `
+      <form action="/auth/2fa" method="post">
+        <label for="passcode">SMS Passcode</label>
+        <input type="number" id="passcode" name="passcode">
+      </form>
+    `;
+    const matches = scanHtml('2fa.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /Never use type="number"/);
+    assert.equal(
+      matches[0]?.subPattern,
+      'OTP input using type="number" or type="tel" instead of type="text" with inputmode="numeric"',
+    );
+  });
+
+  await suiteContext.test('flags OTP input with type="tel" anti-pattern', () => {
+    const html = `
+      <form action="/sms-verify" method="post">
+        <input type="tel" name="sms_code" placeholder="Enter code">
+      </form>
+    `;
+    const matches = scanHtml('sms.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /Never use type="tel"/);
+  });
+
+  await suiteContext.test('flags segmented multi-box inputs with maxlength="1"', () => {
+    const html = `
+      <form action="/verify" method="post">
+        <div class="otp-inputs">
+          <input type="text" class="otp-box" name="otp_1" maxlength="1">
+          <input type="text" class="otp-box" name="otp_2" maxlength="1">
+        </div>
+      </form>
+    `;
+    const matches = scanHtml('segmented.html', html, [matcher]);
+    assert.equal(matches.length, 2);
+    assert.match(matches[0]?.message ?? '', /Segmented multi-box/);
+    assert.equal(
+      matches[0]?.subPattern,
+      'segmented 6-box OTP input with keyup focus jumping',
+    );
+  });
+
+  await suiteContext.test('flags JSX React OTP input component lacking autocomplete', () => {
+    const project = createInMemoryProject();
+    const jsx = `
+      function OtpForm() {
+        return (
+          <form onSubmit={handleVerify}>
+            <label htmlFor="auth-code">Two-Factor Code</label>
+            <input id="auth-code" name="verification_code" type="text" />
+          </form>
+        );
+      }
+    `;
+    const sourceFile = project.createSourceFile('OtpForm.tsx', jsx);
+    const matches = scanJsx('OtpForm.tsx', sourceFile, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /one-time-code/);
+  });
+});
+
+void test('sms-otp-form: negative and safe cases', async (suiteContext) => {
+  await suiteContext.test('exempts inputs already specifying autocomplete="one-time-code"', () => {
+    const html = `
+      <form action="/verify" method="post">
+        <input type="text" name="otp" autocomplete="one-time-code" inputmode="numeric" required>
+      </form>
+    `;
+    const matches = scanHtml('compliant.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await suiteContext.test('exempts standard password and login fields', () => {
+    const html = `
+      <form action="/login" method="post">
+        <input type="text" name="username">
+        <input type="password" name="password">
+      </form>
+    `;
+    const matches = scanHtml('login.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await suiteContext.test('exempts credit card CVV and postal code fields', () => {
+    const html = `
+      <form action="/pay" method="post">
+        <input type="text" name="cvv" placeholder="CVV">
+        <input type="text" name="zip_code" placeholder="Postal Code">
+      </form>
+    `;
+    const matches = scanHtml('checkout.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await suiteContext.test('exempts disabled, hidden, or readonly inputs', () => {
+    const html = `
+      <input type="text" name="otp" disabled>
+      <input type="hidden" name="otp_token" value="abc">
+      <input type="text" name="verification_code" readonly>
+    `;
+    const matches = scanHtml('noninteractive.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+});

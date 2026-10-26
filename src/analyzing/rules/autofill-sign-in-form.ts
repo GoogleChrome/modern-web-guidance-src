@@ -176,12 +176,14 @@ const autofillSignInFormMatcher: DomRuleMatcher = {
 
     const isNewCredential =
       /(?:new|confirm|repeat|signup|register|change|create)/i.test(combinedIdentifiers);
-    const targetToken = isNewCredential ? 'new-password' : 'current-password';
-    const alternativeToken = isNewCredential ? 'current-password' : 'new-password';
+    if (isNewCredential) {
+      // Carved out to autofill-sign-up-form
+      return null;
+    }
 
     return {
       message:
-        `Password input inside form lacks autocomplete="${targetToken}" (or autocomplete="${alternativeToken}").`,
+        'Password input inside sign-in or credential form lacks autocomplete="current-password".',
     };
   },
 };

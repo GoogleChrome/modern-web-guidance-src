@@ -530,6 +530,33 @@
       "deletionPatch": "",
       "brokenSyntaxOrEvasionPatch": "export function onScrollStop(cb: () => void) {\n  window.addEventListener(\"scroll\", cb);\n}",
       "goodPatch": "export function onScrollStop(cb: () => void) {\n  window.addEventListener(\"scrollend\", cb);\n}"
+    },
+    {
+      "guideId": "sms-otp-form",
+      "filePath": "src/components/verify-otp.html",
+      "originalContent": "<form id=\"otp-form\" action=\"/verify-otp\" method=\"POST\">\n  <div class=\"form-group\">\n    <label for=\"otp-input\">Verification code</label>\n    <p id=\"otp-format-hint\" class=\"field-hint\">Enter the 6-digit code sent to your phone.</p>\n    <input type=\"number\" id=\"otp-input\" name=\"otp\" required>\n  </div>\n  <button type=\"submit\">Verify code</button>\n</form>",
+      "noOpPatch": "<form id=\"otp-form\" action=\"/verify-otp\" method=\"POST\">\n  <div class=\"form-group\">\n    <label for=\"otp-input\">Verification code</label>\n    <p id=\"otp-format-hint\" class=\"field-hint\">Enter the 6-digit code sent to your phone.</p>\n    <input type=\"number\" id=\"otp-input\" name=\"otp\" required>\n  </div>\n  <button type=\"submit\">Verify code</button>\n</form>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<form id=\"otp-form\" action=\"/verify-otp\" method=\"POST\">\n  <div class=\"form-group\">\n    <label for=\"otp-input\">Verification code</label>\n    <p id=\"otp-format-hint\" class=\"field-hint\">Enter the 6-digit code sent to your phone.</p>\n    <input type=\"text\" id=\"otp-input\" name=\"otp\" required>\n  </div>\n  <button type=\"submit\">Verify code</button>\n</form>",
+      "goodPatch": "<form id=\"otp-form\" action=\"/verify-otp\" method=\"POST\">\n  <div class=\"form-group\">\n    <label for=\"otp-input\">Verification code</label>\n    <p id=\"otp-format-hint\" class=\"field-hint\">Enter the 6-digit code sent to your phone.</p>\n    <input type=\"text\" id=\"otp-input\" name=\"otp\" inputmode=\"numeric\" autocomplete=\"one-time-code\" pattern=\"\\d{6}\" maxlength=\"6\" required>\n  </div>\n  <button type=\"submit\">Verify code</button>\n</form>"
+    },
+    {
+      "guideId": "autofill-sign-up-form",
+      "filePath": "src/components/signup.html",
+      "originalContent": "<form id=\"signup-form\" action=\"/register\" method=\"POST\">\n  <div class=\"form-group\">\n    <label for=\"username\">Email</label>\n    <input type=\"email\" id=\"username\" name=\"email\" autocomplete=\"username\" required>\n  </div>\n  <div class=\"form-group\">\n    <label for=\"password\">Create Password</label>\n    <input type=\"password\" id=\"password\" name=\"new_password\" required>\n  </div>\n  <button type=\"submit\">Create account</button>\n</form>",
+      "noOpPatch": "<form id=\"signup-form\" action=\"/register\" method=\"POST\">\n  <div class=\"form-group\">\n    <label for=\"username\">Email</label>\n    <input type=\"email\" id=\"username\" name=\"email\" autocomplete=\"username\" required>\n  </div>\n  <div class=\"form-group\">\n    <label for=\"password\">Create Password</label>\n    <input type=\"password\" id=\"password\" name=\"new_password\" required>\n  </div>\n  <button type=\"submit\">Create account</button>\n</form>",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "<form id=\"signup-form\" action=\"/register\" method=\"POST\">\n  <div class=\"form-group\">\n    <label for=\"username\">Email</label>\n    <input type=\"email\" id=\"username\" name=\"email\" autocomplete=\"username\" required>\n  </div>\n  <div class=\"form-group\">\n    <label for=\"password\">Create Password</label>\n    <input type=\"password\" id=\"password\" name=\"new_password\" autocomplete=\"current-password\" required>\n  </div>\n  <button type=\"submit\">Create account</button>\n</form>",
+      "goodPatch": "<form id=\"signup-form\" action=\"/register\" method=\"POST\">\n  <div class=\"form-group\">\n    <label for=\"username\">Email</label>\n    <input type=\"email\" id=\"username\" name=\"email\" autocomplete=\"username\" required>\n  </div>\n  <div class=\"form-group\">\n    <label for=\"password\">Create Password</label>\n    <input type=\"password\" id=\"password\" name=\"new_password\" autocomplete=\"new-password\" required>\n  </div>\n  <button type=\"submit\">Create account</button>\n</form>"
+    },
+    {
+      "guideId": "persistent-toast-notifications",
+      "filePath": "src/components/toast-service.js",
+      "originalContent": "import Toastify from 'toastify-js';\n\nexport function showNotification(message) {\n  Toastify({ text: message }).showToast();\n}",
+      "noOpPatch": "import Toastify from 'toastify-js';\n\nexport function showNotification(message) {\n  Toastify({ text: message }).showToast();\n}",
+      "deletionPatch": "",
+      "brokenSyntaxOrEvasionPatch": "export function showNotification(message) {\n  console.log(message);\n}",
+      "goodPatch": "export function showNotification(message) {\n  const toast = document.getElementById('toast-notification');\n  if (toast) {\n    toast.textContent = message;\n    toast.showPopover();\n    setTimeout(() => toast.hidePopover(), 3000);\n  }\n}"
     }
   ],
   "modernFeaturePatterns": {
@@ -615,7 +642,9 @@
     "custom-text-decorations": "text-decoration-thickness\\s*:|text-underline-offset\\s*:|text-decoration-color\\s*:",
     "contrast-color": "contrast-color\\s*\\(",
     "custom-button-actions": "\\bcommandfor\\b|\\bcommand\\s*=|popovertarget",
-    "menu": "\\bfocusgroup\\b|<\\s*menu\\b|popover"
+    "menu": "\\bfocusgroup\\b|<\\s*menu\\b|popover",
+    "sms-otp-form": "autocomplete\\s*=\\s*[\"x27]one-time-code[\"x27]|autoComplete\\s*=\\s*[\"x27]one-time-code[\"x27]|\\bOTPCredential\\b",
+    "autofill-sign-up-form": "autocomplete\\s*=\\s*[\"x27]new-password[\"x27]|autoComplete\\s*=\\s*[\"x27]new-password[\"x27]"
   },
   "seededAgentFailureFixtures": [
     {

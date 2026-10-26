@@ -109,6 +109,17 @@ void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts sign-up and registration password fields (owned by autofill-sign-up-form)', () => {
+    const html = `
+      <form action="/register" method="post">
+        <input type="password" id="signup-password" name="new_password" required>
+        <input type="password" id="confirm-password" name="confirm_password" required>
+      </form>
+    `;
+    const matches = scanHtml('register.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts inputs with autocomplete="one-time-code"', () => {
     const html = `
       <form action="/mfa" method="post">

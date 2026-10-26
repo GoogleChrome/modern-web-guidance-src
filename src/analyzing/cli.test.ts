@@ -262,7 +262,6 @@ describe('runAnalyzeCli', () => {
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.activeRuleCount, 8);
       assert.deepEqual(parsedDefault.suspendedGuides, [
-        'autofill-highlight-inputs',
         'complex-shapes',
         'interactions-in-complex-layouts',
         'language-detection',

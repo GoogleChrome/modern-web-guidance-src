@@ -1,6 +1,5 @@
 import {
   Node,
-  SyntaxKind,
   type CallExpression,
   type ObjectLiteralExpression,
   type SourceFile,
@@ -229,23 +228,17 @@ function isLibraryReference(
   return false;
 }
 
-const NON_PERSISTENT_TOAST_OPTION_KEYS: ReadonlySet<string> = new Set([
-  'onClick',
-  'callback',
-  'destination',
-  'newWindow',
-  'oldestFirst',
-  'ripple',
-  'types',
-  'dismissible',
+const COMPLEX_QUEUE_OPTION_KEYS: ReadonlySet<string> = new Set([
   'progressBar',
-  'timeOut',
-  'extendedTimeOut',
   'preventDuplicates',
+  'maxOpened',
+  'newestOnTop',
   'onclick',
+  'onCloseClick',
+  'tapToDismiss',
 ]);
 
-function hasAutoDismissOrQueueOptions(obj: ObjectLiteralExpression): boolean {
+function hasComplexQueueOrProgressBarOptions(obj: ObjectLiteralExpression): boolean {
   for (const prop of obj.getProperties()) {
     if (
       Node.isPropertyAssignment(prop) ||
@@ -253,33 +246,82 @@ function hasAutoDismissOrQueueOptions(obj: ObjectLiteralExpression): boolean {
       Node.isMethodDeclaration(prop)
     ) {
       const name = prop.getName();
-      if (NON_PERSISTENT_TOAST_OPTION_KEYS.has(name)) {
-        return true;
-      }
-      if (name === 'duration' && Node.isPropertyAssignment(prop)) {
-        const init = prop.getInitializer();
-        if (init) {
-          const unwrapped = unwrapExpression(init);
-          if (
-            Node.isNumericLiteral(unwrapped) &&
-            Number(unwrapped.getLiteralText()) > 0
-          ) {
-            return true;
-          }
-          if (
-            !Node.isNumericLiteral(unwrapped) &&
-            !(
-              Node.isPrefixUnaryExpression(unwrapped) &&
-              unwrapped.getOperatorToken() === SyntaxKind.MinusToken
-            )
-          ) {
-            return true;
-          }
+      if (COMPLEX_QUEUE_OPTION_KEYS.has(name)) {
+        const init = Node.isPropertyAssignment(prop) ? prop.getInitializer() : undefined;
+        if (!init || init.getText() !== 'false') {
+          return true;
         }
       }
     }
   }
   return false;
+}
+
+function matchHandRolledToast(node: CallExpression): string | null {
+  const callee = unwrapExpression(node.getExpression());
+  if (!Node.isPropertyAccessExpression(callee)) {
+    return null;
+  }
+  const methodName = callee.getName();
+
+  // Pattern 1: Chained animation fadeOut following fadeIn/delay
+  if (methodName === 'fadeOut' || methodName === 'hide' || methodName === 'slideUp') {
+    let walker: Node | undefined = callee.getExpression();
+    let hasFadeIn = false;
+    let hasSecondarySignal = false;
+
+    while (walker) {
+      if (Node.isCallExpression(walker)) {
+        const wExpr = walker.getExpression();
+        if (Node.isPropertyAccessExpression(wExpr)) {
+          const wName = wExpr.getName();
+          if (wName === 'fadeIn' || wName === 'show' || wName === 'slideDown') {
+            hasFadeIn = true;
+          }
+          if (wName === 'appendTo') {
+            const arg = walker.getArguments()[0]?.getText();
+            if (arg && /(?:body|document\.body)/i.test(arg)) {
+              hasSecondarySignal = true;
+            }
+          }
+          walker = wExpr.getExpression();
+          continue;
+        }
+      }
+      const txt = walker.getText();
+      if (/(?:body|top|bottom|fixed|absolute|toast|notification)/i.test(txt)) {
+        hasSecondarySignal = true;
+      }
+      break;
+    }
+
+    const parentStmt = node.getParent();
+    const enclosingText = parentStmt?.getText() ?? '';
+    if (
+      !hasSecondarySignal &&
+      /(?:body|top|bottom|position:\s*fixed|toast|notification)/i.test(enclosingText)
+    ) {
+      hasSecondarySignal = true;
+    }
+
+    if (hasFadeIn && hasSecondarySignal) {
+      return 'Hand-rolled toast notification using animation and DOM insertion can be modernized with native HTML popover="manual", CSS Anchor Positioning, and transition-behavior: allow-discrete.';
+    }
+  }
+
+  // Pattern 2: Toast element appended to body with class "toast" or "notification"
+  if (methodName === 'appendTo') {
+    const firstArg = node.getArguments()[0]?.getText() ?? '';
+    if (/(?:body|document\.body)/i.test(firstArg)) {
+      const receiver = callee.getExpression();
+      const receiverText = receiver.getText();
+      if (/(?:toast|notification)/i.test(receiverText)) {
+        return 'DOM toast element appended directly to body can be modernized with native HTML popover="manual" in the top layer.';
+      }
+    }
+  }
+
+  return null;
 }
 
 function isToastifyInstance(node: Node): boolean {
@@ -292,7 +334,7 @@ function isToastifyInstance(node: Node): boolean {
         const resolvedArg = resolveLocalExpression(firstArg, 2);
         if (
           Node.isObjectLiteralExpression(resolvedArg) &&
-          hasAutoDismissOrQueueOptions(resolvedArg)
+          hasComplexQueueOrProgressBarOptions(resolvedArg)
         ) {
           return false;
         }
@@ -313,7 +355,7 @@ function isNotyfInstance(node: Node): boolean {
         const resolvedArg = resolveLocalExpression(firstArg, 2);
         if (
           Node.isObjectLiteralExpression(resolvedArg) &&
-          hasAutoDismissOrQueueOptions(resolvedArg)
+          hasComplexQueueOrProgressBarOptions(resolvedArg)
         ) {
           return false;
         }
@@ -325,6 +367,11 @@ function isNotyfInstance(node: Node): boolean {
 }
 
 function matchToastCall(callExpr: CallExpression): string | null {
+  const handRolledMsg = matchHandRolledToast(callExpr);
+  if (handRolledMsg) {
+    return handRolledMsg;
+  }
+
   const callee = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(callee)) {
     return null;
@@ -349,7 +396,7 @@ function matchToastCall(callExpr: CallExpression): string | null {
       const resolvedFirst = resolveLocalExpression(firstArg, 2);
       if (
         Node.isObjectLiteralExpression(resolvedFirst) &&
-        hasAutoDismissOrQueueOptions(resolvedFirst)
+        hasComplexQueueOrProgressBarOptions(resolvedFirst)
       ) {
         return null;
       }
@@ -360,12 +407,15 @@ function matchToastCall(callExpr: CallExpression): string | null {
   if (
     TOASTR_METHODS.has(methodName) &&
     args.length > 0 &&
-    args.length <= 2 &&
+    args.length <= 3 &&
     isLibraryReference(receiver, 'toastr', ['toastr'])
   ) {
     for (const arg of args) {
       const resolvedArg = resolveLocalExpression(arg, 2);
-      if (Node.isObjectLiteralExpression(resolvedArg)) {
+      if (
+        Node.isObjectLiteralExpression(resolvedArg) &&
+        hasComplexQueueOrProgressBarOptions(resolvedArg)
+      ) {
         return null;
       }
     }
@@ -386,23 +436,30 @@ function fileUsesManualPopoverOrQueueManager(fileContent: string): boolean {
 
 export const persistentToastNotificationsJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['Toastify', 'Notyf', 'toastr'],
+  fastTokens: ['Toastify', 'Notyf', 'toastr', 'fadeIn', 'fadeOut', 'toast', 'appendTo'],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     if (fileUsesManualPopoverOrQueueManager(ctx.fileContent)) {
       return [];
     }
 
     const matches: AnalyzerMatch[] = [];
+    const matchedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {
       if (!Node.isCallExpression(node)) {
         return;
       }
 
+      const line = node.getStartLineNumber();
+      if (matchedLines.has(line)) {
+        return;
+      }
+
       const msg = matchToastCall(node);
       if (msg && !isProtectedByFeatureGuard(node, TOAST_GUARD_TOKENS)) {
+        matchedLines.add(line);
         matches.push({
-          line: node.getStartLineNumber(),
+          line,
           message: msg,
         });
       }
