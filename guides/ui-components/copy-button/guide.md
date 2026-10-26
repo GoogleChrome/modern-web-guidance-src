@@ -108,7 +108,10 @@ if (!('CommandEvent' in window)) {
   // Resolve the target from commandfor, as the browser does for command events
   document.addEventListener('click', (event) => {
     const button = event.target.closest('button[command^="--copy"]');
-    if (button) copy(button, document.getElementById(button.getAttribute('commandfor')), button.getAttribute('command'));
+    if (button) {
+      const target = document.getElementById(button.getAttribute('commandfor'));
+      if (target) copy(button, target, button.getAttribute('command'));
+    }
   });
 }
 ```
@@ -117,10 +120,8 @@ Register only one of the two paths so a click never copies twice.
 
 ### Async Clipboard
 
-{{ BASELINE_STATUS("async-clipboard") }}
+{{ BASELINE_STATUS("async-clipboard", "api.Clipboard.writeText") }}
 
-If your Baseline target does not include it, or the page is not a secure context, `navigator.clipboard` is undefined. Guard with `navigator.clipboard?.writeText` and fall back to selecting the text and calling `document.execCommand('copy')` (deprecated but widely supported, synchronous, and must run inside the click handler). If that also fails, take the failure path from `copy()`.
+In non-secure contexts (`http:`) or when clipboard permission is denied, `navigator.clipboard?.writeText` rejects or is undefined; the `try / catch` in `copy()` handles this and announces the failure message.
 
-### Popover (optional selection button only)
-
-{{ BASELINE_STATUS("popover") }}
+{{ FEATURE_FALLBACKS("popover") }}
