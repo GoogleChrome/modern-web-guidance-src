@@ -302,7 +302,9 @@
     background: var(--surface);
   }
   .resizer + .resizer { margin-block-start: 1rem; }
-  .readout { display: block; margin-block-start: .6rem; font: .75rem/1.4 ui-monospace, monospace; color: var(--muted); }
+  .readout { margin: .6rem 0 0; font: .75rem/1.4 ui-monospace, monospace; color: var(--muted); }
+  .width-control { display: flex; align-items: center; gap: .75rem; margin-block: 1rem .4rem; font-size: .85rem; }
+  .width-control input { flex: 1; max-inline-size: 24rem; }
 
   @media (forced-colors: active) {
     .breadcrumb a[aria-current="page"] { text-decoration: underline; }
@@ -584,7 +586,7 @@
 
   <section>
     <h2>11. Resize playground</h2>
-    <p>Drag the bottom-right corner of each dashed box to change the container's width.</p>
+    <p>Use the width slider above each dashed box, or drag its bottom-right corner, to change the container's width.</p>
 
     <div class="resizer">
       <nav class="breadcrumb bc-chevron" data-sep="chevron" data-collapse aria-label="Breadcrumbs, resizable (chevron)">
@@ -597,7 +599,7 @@
           <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
         </ol>
       </nav>
-      <output class="readout"></output>
+      <p class="readout"></p>
     </div>
 
     <div class="resizer">
@@ -611,7 +613,7 @@
           <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
         </ol>
       </nav>
-      <output class="readout"></output>
+      <p class="readout"></p>
     </div>
 
     <div class="resizer">
@@ -625,7 +627,7 @@
           <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
         </ol>
       </nav>
-      <output class="readout"></output>
+      <p class="readout"></p>
     </div>
   </section>
 </main>
@@ -688,16 +690,46 @@
     }, true);
   }
 
-  /* 4. Demo only: show container width and active tier in the playground. */
+  /* 4. Demo only: a width slider per playground box (works from the keyboard and on touch, where the drag corner
+        does not), plus a readout of the container width and active tier. The readout is a plain paragraph, not a
+        live region, so it is not announced on every change; the slider's aria-valuetext carries the same text. */
+  const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const sliders = new Map();
+  document.querySelectorAll('.resizer').forEach((box) => {
+    const nav = box.querySelector('.breadcrumb');
+    const chrome = (box.getBoundingClientRect().width - nav.getBoundingClientRect().width) / rootPx; // padding + border
+    const label = document.createElement('label');
+    label.className = 'width-control';
+    label.append('Container width');
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.step = 0.5;
+    const fit = () => {
+      range.min = Math.ceil(11 - chrome); // the box has min-inline-size: 11rem
+      range.max = Math.floor(box.parentElement.clientWidth / rootPx - chrome);
+    };
+    fit();
+    addEventListener('resize', fit);
+    range.addEventListener('input', () => { box.style.inlineSize = `${Number(range.value) + chrome}rem`; });
+    label.append(range);
+    box.before(label);
+    sliders.set(nav, range);
+  });
+
   const ro = new ResizeObserver((entries) => {
     for (const entry of entries) {
-      const out = entry.target.parentElement.querySelector('.readout');
-      const rem = entry.contentRect.width / parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const nav = entry.target;
+      const out = nav.parentElement.querySelector('.readout');
+      const rem = entry.contentRect.width / rootPx;
       const tier = rem < 20 ? 'narrow: “‹ Parent”' : rem < 40 ? 'medium: first, …, last two' : 'wide: full trail';
-      out.textContent = `${rem.toFixed(1)}rem, ${tier}`;
+      const text = `${rem.toFixed(1)}rem, ${tier}`;
+      out.textContent = text;
+      const range = sliders.get(nav);
+      range.value = rem; // keeps the slider in step when the corner is dragged
+      range.setAttribute('aria-valuetext', text);
     }
   });
-  document.querySelectorAll('.resizer .breadcrumb').forEach((nav) => ro.observe(nav));
+  sliders.forEach((_, nav) => ro.observe(nav));
 </script>
 </body>
 </html>
