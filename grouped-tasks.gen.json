@@ -436,6 +436,9 @@
       ],
       "swipe-to-remove": [
         "task"
+      ],
+      "swipe-to-reveal": [
+        "daily-grind"
       ]
     },
     "ui-components": {
