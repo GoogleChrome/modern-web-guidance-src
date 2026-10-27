@@ -121,6 +121,9 @@ Text, standalone links and list items share one rule that hides the content and 
   border-shape: var(--bars); /* Each element below sets its own --bars */
 }
 
+/* Inline links keep their own color and underline, so make them inherit the hidden text */
+.skeleton[aria-busy="true"] :is(p, h2, li) a { color: inherit; text-decoration: none; }
+
 /* Each bar is --bar(line index, end position); --lines is the bar count (default 1) */
 .skeleton[aria-busy="true"] h2 {
   --bars: shape(from 0 0, --bar(0, 88%));

@@ -291,6 +291,12 @@
         --bars: shape(from 0 0, --bar(0, 42%));
       }
 
+      /* Inline links keep their own color and underline, so make them inherit the hidden text */
+      .skeleton[aria-busy="true"] :is(p, h2, li) a {
+        color: inherit;
+        text-decoration: none;
+      }
+
 
       /* Lists: a dot plus a bar per item. The dot is a circle drawn with two
          arcs; the bar starts after it. A real ::marker is not used because
@@ -389,7 +395,7 @@
             <h2>A heading with its real text still present while loading</h2>
             <p>This deliberately longer paragraph tests that the fixed skeleton
             block height clips surplus text instead of creating additional
-            skeleton lines or changing the card layout.</p>
+            skeleton lines or changing the <a href="#">card layout</a>.</p>
           </div>
         </div>
       </article>
@@ -421,7 +427,7 @@
             <h2>A heading with its real text still present while loading</h2>
             <p>This deliberately longer paragraph tests that the fixed skeleton
             block height clips surplus text instead of creating additional
-            skeleton lines or changing the card layout.</p>
+            skeleton lines or changing the <a href="#">card layout</a>.</p>
           </div>
         </div>
       </article>
