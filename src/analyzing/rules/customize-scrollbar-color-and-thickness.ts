@@ -34,17 +34,30 @@ const TRANSPARENT_VALUES = new Set([
 
 const WEBKIT_SCROLLBAR_REGEX = /::-webkit-scrollbar(?![-\w])/i;
 const WEBKIT_THUMB_REGEX = /::-webkit-scrollbar-thumb\b/i;
+const HOVER_WEBKIT_SCROLLBAR_REGEX = /:hover::-webkit-scrollbar(?![-\w])/i;
+
+function normalizeCssValue(raw: string | null | undefined): string {
+  return raw?.replace(/\s*!important\s*$/i, '').trim().toLowerCase() ?? '';
+}
 
 function isZeroDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
-  const val = styleRule.getPropertyValue(prop)?.trim().toLowerCase();
+  const val = normalizeCssValue(styleRule.getPropertyValue(prop));
   return Boolean(val && ZERO_DIMENSION_REGEX.test(val));
 }
 
-function hasNonZeroDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
-  const val = styleRule.getPropertyValue(prop)?.trim().toLowerCase();
+function hasAnyNonZeroDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
+  const val = normalizeCssValue(styleRule.getPropertyValue(prop));
   if (!val || RESET_DIMENSIONS.has(val) || ZERO_DIMENSION_REGEX.test(val)) {
     return false;
   }
+  return true;
+}
+
+function hasCustomThicknessDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
+  if (!hasAnyNonZeroDimension(styleRule, prop)) {
+    return false;
+  }
+  const val = normalizeCssValue(styleRule.getPropertyValue(prop));
   const pxMatch = val.match(/^(\d+(?:\.\d+)?)px$/);
   if (pxMatch && Number(pxMatch[1]) > 15) {
     return false;
@@ -56,7 +69,7 @@ function hasValidColor(
   styleRule: CssRuleView,
   prop: 'background' | 'background-color',
 ): boolean {
-  const val = styleRule.getPropertyValue(prop)?.trim().toLowerCase();
+  const val = normalizeCssValue(styleRule.getPropertyValue(prop));
   if (!val) {
     return false;
   }
@@ -108,12 +121,20 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
         return null;
       }
     } else if (isScrollbar) {
-      const displayValue = styleRule.getPropertyValue('display')?.trim().toLowerCase() ?? '';
-      const hasPositiveDim =
-        hasNonZeroDimension(styleRule, 'width') || hasNonZeroDimension(styleRule, 'height');
+      const displayValue = normalizeCssValue(styleRule.getPropertyValue('display'));
+      const hasCustomThickness =
+        hasCustomThicknessDimension(styleRule, 'width') ||
+        hasCustomThicknessDimension(styleRule, 'height');
+      const hasAnyNonZeroDim =
+        hasAnyNonZeroDimension(styleRule, 'width') ||
+        hasAnyNonZeroDimension(styleRule, 'height');
       const hasZeroDim =
         isZeroDimension(styleRule, 'width') || isZeroDimension(styleRule, 'height');
-      const hidesScrollbar = displayValue === 'none' || (hasZeroDim && !hasPositiveDim);
+      const isHoverRevealZeroScrollbar =
+        displayValue !== 'none' && HOVER_WEBKIT_SCROLLBAR_REGEX.test(ctx.stylesheetText);
+      const hidesScrollbar =
+        displayValue === 'none' ||
+        (hasZeroDim && !hasAnyNonZeroDim && !isHoverRevealZeroScrollbar);
 
       if (hidesScrollbar) {
         return {
@@ -123,7 +144,7 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       }
 
       // Non-zero thickness customization requires accompanying -webkit-scrollbar-thumb styling
-      if (!hasPositiveDim || !ctx.stylesheetText.includes('-webkit-scrollbar-thumb')) {
+      if (!hasCustomThickness || !ctx.stylesheetText.includes('-webkit-scrollbar-thumb')) {
         return null;
       }
     } else {

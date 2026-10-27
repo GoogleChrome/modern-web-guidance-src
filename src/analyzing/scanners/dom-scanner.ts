@@ -196,15 +196,20 @@ function parseTagAttributes(
     line = wsEq.line;
     col = wsEq.col;
 
+    const attrKey = attrName.toLowerCase();
     if (i < len && html[i] === '=') {
       const valResult = readAttributeValue(html, i, line, col);
-      attributes[attrName.toLowerCase()] = valResult.value;
+      if (!Object.hasOwn(attributes, attrKey)) {
+        attributes[attrKey] = valResult.value;
+      }
       i = valResult.index;
       line = valResult.line;
       col = valResult.col;
     } else {
       // Bare boolean attribute e.g. <input required>
-      attributes[attrName.toLowerCase()] = '';
+      if (!Object.hasOwn(attributes, attrKey)) {
+        attributes[attrKey] = '';
+      }
     }
   }
 
@@ -326,7 +331,10 @@ function getLinkedomAttributes(el: LinkedomElementNode): Record<string, string> 
   const attrs: Record<string, string> = {};
   if (Array.isArray(el.attributes)) {
     for (const a of el.attributes) {
-      attrs[a.name.toLowerCase()] = typeof a.value === 'string' ? a.value : '';
+      const key = a.name.toLowerCase();
+      if (!Object.hasOwn(attrs, key)) {
+        attrs[key] = typeof a.value === 'string' ? a.value : '';
+      }
     }
   }
   return attrs;
@@ -341,7 +349,16 @@ function decodeBasicEntities(val: string): string {
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'");
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&nbsp;/gi, '\u00a0')
+    .replace(/&#x([0-9a-f]+);/gi, (full, hex: string) => {
+      const cp = Number.parseInt(hex, 16);
+      return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : full;
+    })
+    .replace(/&#(\d+);/g, (full, dec: string) => {
+      const cp = Number.parseInt(dec, 10);
+      return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : full;
+    });
 }
 
 /**
@@ -352,7 +369,6 @@ function findMatchingToken(
   tokens: readonly HtmlTagToken[],
   startIndex: number,
   tagLower: string,
-  el: LinkedomElementNode,
   elAttrs: Readonly<Record<string, string>>,
 ): { token?: HtmlTagToken; nextIndex: number } {
   const elAttrCount = Object.keys(elAttrs).length;
@@ -369,11 +385,12 @@ function findMatchingToken(
       if (!Object.hasOwn(elAttrs, k)) {
         return false;
       }
-      const actual = el.getAttribute(k);
+      const actual = elAttrs[k];
+      const decoded = decodeBasicEntities(v);
       return (
         actual === v ||
-        (v === '' && el.hasAttribute(k)) ||
-        (actual !== null && decodeBasicEntities(v) === actual)
+        actual === decoded ||
+        (k === 'class' && decoded.trim().replace(/\s+/g, ' ') === actual)
       );
     });
     if (tokenMatches) {
@@ -474,11 +491,13 @@ export function scanHtml(
       const tagLower = el.tagName.toLowerCase();
       const elAttrs = getLinkedomAttributes(el);
 
-      const matchRes = findMatchingToken(tokens, tokenIndex, tagLower, el, elAttrs);
+      const matchRes = findMatchingToken(tokens, tokenIndex, tagLower, elAttrs);
+      if (!matchRes.token) {
+        continue;
+      }
       tokenIndex = matchRes.nextIndex;
 
-      const line = matchRes.token ? matchRes.token.line : 1;
-      const column = matchRes.token ? matchRes.token.column : 1;
+      const { line, column } = matchRes.token;
 
       const view: DomElementView = {
         tagName: tagLower,
@@ -487,8 +506,11 @@ export function scanHtml(
         column,
         isJsx: false,
         hasSpreadAttribute: false,
-        hasAttribute: (name: string) => el.hasAttribute(name),
-        getAttribute: (name: string) => el.getAttribute(name),
+        hasAttribute: (name: string) => Object.hasOwn(elAttrs, name.toLowerCase()),
+        getAttribute: (name: string) => {
+          const lower = name.toLowerCase();
+          return Object.hasOwn(elAttrs, lower) ? (elAttrs[lower] ?? null) : null;
+        },
       };
 
       const result = rule.matchElement(view, ctx);

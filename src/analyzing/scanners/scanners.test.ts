@@ -847,6 +847,37 @@ const showMenu = true;
     assert.equal(findings[0]?.line, 7);
   });
 
+  await t.test('scanHtml matches mixed-case attributes, avoids empty-attribute collisions, and preserves HTML5 first duplicate attribute', () => {
+    const html = `<!DOCTYPE html>
+<html>
+<body>
+  <input type="">
+  <form>
+    <input type="password" formControlName="password">
+    <input type="password" name="pwd" name="override-pwd" class="  field   input  ">
+  </form>
+</body>
+</html>`;
+
+    const passwordRule: DomRuleMatcher = {
+      kind: 'dom',
+      selector: 'form input[type="password"]',
+      fastTokens: ['type="password"'],
+      matchElement: (el) => ({
+        message: `found at ${el.getAttribute('formControlName') ?? el.getAttribute('name')}`,
+      }),
+    };
+
+    const matches = scanHtml('login.component.html', html, [passwordRule]);
+    assert.deepEqual(
+      matches.map((m) => ({ line: m.line, message: m.message })),
+      [
+        { line: 6, message: 'found at password' },
+        { line: 7, message: 'found at pwd' },
+      ],
+    );
+  });
+
   await t.test('scanJsx matches JSX elements and respects skipIfHasSpread', () => {
     const project = createInMemoryProject();
     const code = `

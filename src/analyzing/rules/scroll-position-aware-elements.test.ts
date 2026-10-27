@@ -323,4 +323,78 @@ describe('scroll-position-aware-elements rule', () => {
     );
     assert.equal(setterResult.matches.length, 0);
   });
+
+  test('retains scroll listeners inside IIFE wrappers and multi-helper dispatchers when sibling helpers use getBoundingClientRect', () => {
+    const iifeAndMultiHelperCode = `
+      (function ($) {
+        function measureHeroBounds(el) {
+          return el.getBoundingClientRect().top;
+        }
+
+        function handleNavbarScroll() {
+          if (window.scrollY > 200) {
+            nav.classList.add('navbar-scrolled');
+          } else {
+            nav.classList.remove('navbar-scrolled');
+          }
+        }
+
+        function handleAnimationScroll() {
+          const rect = document.body.getBoundingClientRect();
+          return rect.height;
+        }
+
+        function handleScroll() {
+          handleNavbarScroll();
+          handleAnimationScroll();
+        }
+
+        window.addEventListener('scroll', handleScroll);
+        measureHeroBounds(document.body);
+      })(jQuery);
+    `;
+    const result = scanJsSource(
+      'src/main.js',
+      iifeAndMultiHelperCode,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(result.matches.length, 1);
+    assert.equal(result.matches[0]?.line, 25);
+  });
+
+  test('exempts setAttribute on positioned targets and sticky-header element-docking comparisons (scrollTop > offset().top)', () => {
+    const setAttrAndDockingCode = `
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 100) {
+          header.setAttribute('aria-label', 'Site header');
+        }
+      });
+
+      $(window).on('scroll', function () {
+        const scrollTop = $(window).scrollTop();
+        if (scrollTop > $('.wrap-sticky').offset().top) {
+          getNav.addClass('sticked');
+        } else {
+          getNav.removeClass('sticked');
+        }
+      });
+
+      const headerOffset = siteHeader.offsetTop;
+      window.addEventListener('scroll', () => {
+        if (window.scrollY >= headerOffset) {
+          siteHeader.classList.add('is-stuck');
+        } else {
+          siteHeader.classList.remove('is-stuck');
+        }
+      });
+    `;
+    const result = scanJsSource(
+      'src/bootsnav.js',
+      setAttrAndDockingCode,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(result.matches.length, 0);
+  });
 });

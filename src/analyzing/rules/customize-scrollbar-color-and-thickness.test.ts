@@ -264,6 +264,39 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts hover-reveal scrollbars (width: 0 with :hover::-webkit-scrollbar) and single-axis >15px or !important dimensions from hidesScrollbar', () => {
+    const hoverRevealCss = `
+      .card-prompt::-webkit-scrollbar {
+        width: 0;
+      }
+      .card-prompt:hover::-webkit-scrollbar {
+        width: 4px;
+      }
+    `;
+    assert.equal(scanCss('cards.css', hoverRevealCss, [matcher]).length, 0);
+
+    const singleAxisLargeCss = `
+      .wide-track::-webkit-scrollbar {
+        width: 16px;
+        height: 0;
+      }
+    `;
+    assert.equal(scanCss('wide.css', singleAxisLargeCss, [matcher]).length, 0);
+
+    const singleAxisImportantCss = `
+      .custom-track::-webkit-scrollbar {
+        width: 8px !important;
+        height: 0;
+      }
+      .custom-track::-webkit-scrollbar-thumb {
+        background: #666 !important;
+      }
+    `;
+    const matches = scanCss('important.css', singleAxisImportantCss, [matcher]);
+    assert.equal(matches.length, 2);
+    assert.match(matches[0]?.message ?? '', /customize scrollbar appearance/);
+  });
+
   await t.test('exempts unrelated CSS rules', () => {
     const css = `
       .card {
