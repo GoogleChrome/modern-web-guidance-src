@@ -211,93 +211,11 @@
       border-block-end: 1px solid #e1e2e4;
     }
 
-    /* Many options: a customizable select listbox with a master checkbox. */
-    select {
-      inline-size: 100%;
-      margin-block-start: 0.5rem;
-    }
-
-    @supports (appearance: base-select) {
-      select,
-      select::picker(select) {
-        appearance: base-select;
-      }
-
-      select {
-        padding: 0.25rem;
-        color: var(--text-color);
-        background-color: var(--surface);
-        border: 1px solid #dadce0;
-        border-radius: 8px;
-      }
-
-      select:focus-visible {
-        outline: 2px solid var(--brand-primary);
-        outline-offset: 2px;
-      }
-
-      /* Rows align checkbox, name, and model through subgrid. */
-      select .wrapper {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        column-gap: 0.75rem;
-      }
-
-      option {
-        display: grid;
-        grid-template-columns: subgrid;
-        grid-column: 1 / -1;
-        align-items: center;
-        min-block-size: 44px;
-        padding-inline: 0.75rem;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-
-      option:hover {
-        background-color: #f1f3f4;
-      }
-
-      option:checked {
-        background-color: #e8f0fe;
-      }
-
-      option:focus-visible {
-        outline: 2px solid var(--brand-primary);
-        outline-offset: -2px;
-      }
-
-      /* The built-in checkmark moves to the start and is drawn as a checkbox. */
-      option::checkmark {
-        order: -1;
-        display: grid;
-        place-content: center;
-        inline-size: 1.25em;
-        aspect-ratio: 1;
-        color: #ffffff;
-        font-size: 0.8em;
-        content: "";
-        border: 2px solid var(--border-color);
-        border-radius: 4px;
-      }
-
-      option:checked::checkmark {
-        content: "\2713";
-        background-color: var(--brand-primary);
-        border-color: var(--brand-primary);
-      }
-
-      option:disabled {
-        color: var(--text-disabled);
-        cursor: not-allowed;
-      }
-
-      @media (forced-colors: active) {
-        option:checked::checkmark {
-          color: CanvasText;
-          background-color: Canvas;
-        }
-      }
+    /* Many options: the same checkbox list, height-bounded and scrollable. */
+    .scroll-list {
+      max-block-size: 16rem;
+      padding-inline-end: 0.5rem;
+      overflow-y: auto;
     }
   </style>
 </head>
@@ -361,35 +279,110 @@
         <output id="status" aria-live="polite"></output>
       </fieldset>
     </form>
-    <h2>Many options: customizable select listbox</h2>
-    <p>For long lists. A scrollable, keyboard-navigable listbox keeps the form compact. Provisional guidance (about 12+ options), pending a11y review.</p>
+    <h2>Many options: scrollable checkbox list</h2>
+    <p>For long lists. The same labelled checkboxes in a height-bounded, scrollable container keep the form compact and render identically in every browser.</p>
     <form>
       <fieldset>
         <legend>Ship crew</legend>
 
         <label class="master">
-          <input type="checkbox" id="select-all-crew" class="checkbox" aria-controls="crew" />
+          <input type="checkbox" id="select-all-crew" class="checkbox" aria-controls="crew-ada crew-bolt crew-cog crew-dial crew-echo crew-flux crew-gear crew-hex crew-ion crew-jolt crew-kilo crew-lathe" />
           Select all crew
         </label>
 
-        <label for="crew" hidden>Ship crew</label>
-        <select id="crew" name="crew" multiple size="6" aria-describedby="crew-status">
-          <div class="wrapper">
-            <option value="ada" selected><span>Ada Navigator</span><span class="model">AN-01</span></option>
-            <option value="bolt"><span>Bolt Engineer</span><span class="model">BE-02</span></option>
-            <option value="cog" selected><span>Cog Mechanic</span><span class="model">CM-03</span></option>
-            <option value="dial"><span>Dial Pilot</span><span class="model">DP-04</span></option>
-            <option value="echo"><span>Echo Radio Operator</span><span class="model">ER-05</span></option>
-            <option value="flux"><span>Flux Technician</span><span class="model">FT-06</span></option>
-            <option value="gear"><span>Gear Quartermaster</span><span class="model">GQ-07</span></option>
-            <option value="hex"><span>Hex Analyst</span><span class="model">HA-08</span></option>
-            <option value="ion"><span>Ion Gunner</span><span class="model">IG-09</span></option>
-            <option value="jolt"><span>Jolt Medic</span><span class="model">JM-10</span></option>
-            <option value="kilo"><span>Kilo Cook</span><span class="model">KC-11</span></option>
-            <option value="lathe"><span>Lathe Fabricator</span><span class="model">LF-12</span></option>
-            <option value="mono" disabled><span>Mono Cadet (on leave)</span><span class="model">MC-13</span></option>
-          </div>
-        </select>
+        <ul class="options scroll-list" id="crew">
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-ada" name="crew" value="ada" checked />
+              <span>Ada Navigator</span>
+              <span class="model">AN-01</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-bolt" name="crew" value="bolt" />
+              <span>Bolt Engineer</span>
+              <span class="model">BE-02</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-cog" name="crew" value="cog" checked />
+              <span>Cog Mechanic</span>
+              <span class="model">CM-03</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-dial" name="crew" value="dial" />
+              <span>Dial Pilot</span>
+              <span class="model">DP-04</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-echo" name="crew" value="echo" />
+              <span>Echo Radio Operator</span>
+              <span class="model">ER-05</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-flux" name="crew" value="flux" />
+              <span>Flux Technician</span>
+              <span class="model">FT-06</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-gear" name="crew" value="gear" />
+              <span>Gear Quartermaster</span>
+              <span class="model">GQ-07</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-hex" name="crew" value="hex" />
+              <span>Hex Analyst</span>
+              <span class="model">HA-08</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-ion" name="crew" value="ion" />
+              <span>Ion Gunner</span>
+              <span class="model">IG-09</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-jolt" name="crew" value="jolt" />
+              <span>Jolt Medic</span>
+              <span class="model">JM-10</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-kilo" name="crew" value="kilo" />
+              <span>Kilo Cook</span>
+              <span class="model">KC-11</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-lathe" name="crew" value="lathe" />
+              <span>Lathe Fabricator</span>
+              <span class="model">LF-12</span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" class="checkbox" id="crew-mono" name="crew" value="mono" disabled />
+              <span>Mono Cadet (on leave)</span>
+              <span class="model">MC-13</span>
+            </label>
+          </li>
+        </ul>
 
         <output id="crew-status" aria-live="polite"></output>
       </fieldset>
@@ -426,15 +419,12 @@
       noun: 'units active',
     });
 
-    const crew = document.querySelector('#crew');
-    const syncCrew = setupGroup({
+    setupGroup({
       master: document.querySelector('#select-all-crew'),
-      items: [...crew.options].filter((option) => !option.disabled),
+      items: [...document.querySelectorAll('input[name="crew"]:not(:disabled)')],
       summary: document.querySelector('#crew-status'),
       noun: 'crew members on duty',
     });
-    // Change events fire on the select, not on each option.
-    crew.addEventListener('change', syncCrew);
   </script>
 </body>
 

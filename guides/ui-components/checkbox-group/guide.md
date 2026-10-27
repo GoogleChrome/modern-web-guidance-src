@@ -19,11 +19,11 @@ A checkbox group lets users pick any number of options, and a master checkbox se
 
 MANDATORY: Default to a `<fieldset>` of `<label>`s with nested `<input type="checkbox">`, as described below. It has the best assistive technology support, needs no ARIA, works without JavaScript, and is the only pattern with native indeterminate support for a master checkbox. Use it when:
 
-* The group has a small to moderate number of options (provisionally about 12 or fewer) that users scan and compare at once.
 * The group has a master checkbox.
 * Options carry secondary metadata that should align in columns.
+* The list is long. Keep the checkboxes and bound the list's height in a scroll container (see section 4) instead of switching patterns.
 
-A customizable `<select multiple>` listbox may suit long, height-bounded lists that need type-ahead or compact form space, but this guidance is pending a11y SME review. The 12-option figure is a provisional heuristic, not an established rule. DO NOT choose the listbox pattern; use labelled checkboxes unless the use case explicitly requires a listbox.
+A customizable `<select multiple>` listbox may suit long, height-bounded lists that need type-ahead or compact form space, but this guidance is pending a11y SME review, and it cannot render per-row checkboxes in browsers without `appearance: base-select`. DO NOT choose the listbox pattern; use labelled checkboxes unless the use case explicitly requires a listbox.
 
 ## 1. Group with `<fieldset>` and `<legend>`
 
@@ -169,6 +169,19 @@ Make the option list a grid and have each row use `subgrid`, so the checkbox, na
   cursor: pointer;
 }
 ```
+
+### Long lists
+
+For long lists (provisionally about 12 or more options), keep the same markup and bound the list's height so the form stays compact. Leave the master checkbox outside the scroll container so it stays visible.
+
+```css
+.scroll-list {
+  max-block-size: 16rem;
+  overflow-y: auto;
+}
+```
+
+Scrolling regions are keyboard-reachable in current browsers because the checkboxes inside them are focusable. If the list can contain no focusable options (for example all disabled), add `tabindex="0"` so keyboard users can still scroll it.
 
 ## Fallbacks
 
