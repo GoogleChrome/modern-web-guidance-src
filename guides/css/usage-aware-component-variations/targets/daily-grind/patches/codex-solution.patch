@@ -5,29 +5,17 @@ index 0000000..849ddff
 +++ b/.gitignore
 @@ -0,0 +1 @@
 +dist/
-diff --git a/build.mjs b/build.mjs
-new file mode 100644
-index 0000000..67f2c50
---- /dev/null
-+++ b/build.mjs
-@@ -0,0 +1,6 @@
-+import { copyFile, mkdir } from 'node:fs/promises';
-+
-+const outputDirectory = new URL('./dist/', import.meta.url);
-+
-+await mkdir(outputDirectory, { recursive: true });
-+await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', outputDirectory));
 diff --git a/index.html b/index.html
-index 66c9173..df31a7a 100644
+index 66c9173..ec41905 100644
 --- a/index.html
 +++ b/index.html
-@@ -107,8 +107,14 @@
+@@ -107,14 +107,32 @@
        margin-top: 20px;
      }
  
-+    /* Context producers only declare meaning; components choose their variants. */
-+    .seasonal-favorites {
-+      --surface: featured;
++    /* Sections publish context without knowing which components consume it. */
++    [data-coffee-category="seasonal"] {
++      --coffee-category: seasonal;
 +    }
 +
      .card {
@@ -36,56 +24,89 @@ index 66c9173..df31a7a 100644
        padding: 20px;
        border-radius: 8px;
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-@@ -135,6 +141,31 @@
+       text-align: center;
+     }
+ 
++    .card-badge {
++      display: none;
++      width: fit-content;
++      margin: 0 auto 12px;
++      padding: 3px 10px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.75rem;
++      font-weight: 700;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -135,6 +153,30 @@
        background: #3e2723;
      }
  
-+    /* Inherited context reaches both cards and their nested buttons.
-+       Browsers without style queries keep the default component styles above. */
-+    @container style(--surface: featured) {
++    /* The neutral card above remains usable without style-query support.
++       Inherited context also works through wrappers or from another parent. */
++    @container style(--coffee-category: seasonal) {
 +      .card {
 +        background: #fff8ed;
 +        border-color: var(--accent);
-+        box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
++        box-shadow: 0 4px 12px rgba(78, 52, 46, 0.12);
 +      }
 +
-+      .btn {
++      .card-badge {
++        display: block;
++      }
++
++      .card .btn {
 +        background: var(--accent);
 +        color: var(--text);
-+        font-weight: 600;
 +      }
 +
-+      .btn:hover {
-+        background: #ff9800;
-+      }
-+
-+      .btn:focus-visible {
-+        outline: 2px solid var(--primary);
-+        outline-offset: 3px;
++      .card .btn:hover,
++      .card .btn:focus-visible {
++        background: #ff9100;
 +      }
 +    }
 +
      footer {
        background: var(--secondary);
        text-align: center;
-@@ -175,7 +206,7 @@
+@@ -175,20 +217,23 @@
    </header>
  
    <main class="container">
 -    <section>
-+    <section class="seasonal-favorites">
++    <section data-coffee-category="seasonal">
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
          <div class="card">
++          <span class="card-badge">Seasonal pick</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="card-badge">Seasonal pick</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="card-badge">Seasonal pick</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
 diff --git a/package.json b/package.json
-index 2bd4d77..5c14ac8 100644
+index 2bd4d77..fbdc488 100644
 --- a/package.json
 +++ b/package.json
 @@ -2,6 +2,7 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "node build.mjs",
++    "build": "node --input-type=module -e \"import { mkdir, copyFile } from 'node:fs/promises'; await mkdir('dist', { recursive: true }); await copyFile('index.html', 'dist/index.html');\"",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {

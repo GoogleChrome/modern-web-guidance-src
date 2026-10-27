@@ -1,1 +1,1 @@
-- Update the Seasonal Favorites coffee cards on the homepage so the same card component looks promotional when it's placed in a featured spot but stays plain everywhere else, with the look driven purely by which container the card sits in, and make sure the cards lay out correctly right-to-left since an Arabic version of the site is coming soon.
+- Update the Seasonal Favorites coffee cards in `index.html` so their styling and visual appearance automatically adapt based on the semantic theme or category context of their parent section using CSS.
