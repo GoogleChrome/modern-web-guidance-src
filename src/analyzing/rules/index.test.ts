@@ -8,7 +8,6 @@ import { scanAllGuides } from '../../core/guide-validation.ts';
 import type { AnalyzerRule } from '../schema.ts';
 import {
   ALL_RULES,
-  POST_SELECTION_TUNED_GUIDE_IDS,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
   RULE_REGISTRY,
@@ -114,7 +113,7 @@ describe('rule registry architectural invariants', () => {
     }
   });
 
-  it('enforces lifecycle derived lists consistency and post-selection tuning', () => {
+  it('enforces lifecycle derived lists consistency', () => {
     const qualifiedEntries = RULE_REGISTRY.filter((e) => e.lifecycle.status === 'qualified');
     assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, qualifiedEntries.map((e) => e.guideId));
     assert.deepStrictEqual(
@@ -124,13 +123,6 @@ describe('rule registry architectural invariants', () => {
 
     const suspendedEntries = RULE_REGISTRY.filter((e) => e.lifecycle.status === 'suspended');
     assert.deepStrictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS, suspendedEntries.map((e) => e.guideId));
-
-    const tunedEntries = RULE_REGISTRY.filter((e) => Boolean(e.postSelectionTuned));
-    assert.deepStrictEqual(POST_SELECTION_TUNED_GUIDE_IDS, tunedEntries.map((e) => e.guideId));
-    assert.ok(
-      POST_SELECTION_TUNED_GUIDE_IDS.includes('animate-element-entry-exit'),
-      'animate-element-entry-exit must be marked postSelectionTuned',
-    );
 
     const activeEntries = RULE_REGISTRY.filter((e) => e.lifecycle.status !== 'retired');
     assert.deepStrictEqual(

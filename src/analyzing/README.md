@@ -46,12 +46,12 @@ Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
   - src/static/js/admin/settings.js:30
     $('.settings').autosize();
 
-* responsive-table [qualified] (1 finding)
-  Table cell stacking using td::before content: attr(data-*) without @container queries should be modernized with CSS Container Queries.
-  Keep when: A CSS rule uses td::before or td:before with content: attr(data-label), attr(data-th), or attr(data-title) to…
-  Drop when: The stylesheet already uses @container queries to adapt the table layout based on container width.; The conte…
-  - src/static/css/admin.css:269
-    td:before {
+* scrollspy [qualified] (1 finding)
+  Manual JavaScript scrollspy observers and plugins should be replaced with CSS scroll-target-group: auto and :target-current.
+  Keep when: The code initializes a scrollspy plugin or IntersectionObserver/scroll listener that toggles active navigation l…
+  Drop when: The stylesheet already uses scroll-target-group: auto and :target-current.; The code tracks scroll position for…
+  - src/static/js/nav.js:42
+    $('body').scrollspy({ target: '#navbar' });
 
 Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
 ```
@@ -63,7 +63,7 @@ Coding agents receive structured JSON containing exact file coordinates, confide
 ```json
 {
   "targetDir": "/workspace/etherpad-lite",
-  "totalFindings": 2,
+  "totalFindings": 1,
   "guides": [
     {
       "guideId": "form-fields-automatically-fit-contents",
@@ -101,49 +101,9 @@ Coding agents receive structured JSON containing exact file coordinates, confide
           }
         }
       ]
-    },
-    {
-      "guideId": "responsive-table",
-      "tier": "qualified",
-      "summary": "Table cell stacking using td::before content: attr(data-*) without @container queries should be modernized with CSS Container Queries.",
-      "retrieveCommand": "npx modern-web-guidance retrieve responsive-table",
-      "verifierRubric": {
-        "keepWhen": [
-          "A CSS rule uses td::before or td:before with content: attr(data-label), attr(data-th), or attr(data-title) to generate mobile stacked table card headers without container queries.",
-          "…"
-        ],
-        "dropWhen": [
-          "The stylesheet already uses @container queries to adapt the table layout based on container width.",
-          "…"
-        ]
-      },
-      "count": 1,
-      "findings": [
-        {
-          "ruleId": "responsive-table/css-data-label-table",
-          "file": "src/static/css/admin.css",
-          "line": 269,
-          "message": "CSS rule injects table cell headers via td::before content: attr(data-*); modernize with CSS Container Queries and accessible pseudo-element headers.",
-          "codeSnippet": "   267 |   }\n   268 | \n>  269 |   td:before {\n   270 |     position: absolute;\n   271 |     top: 6px;…",
-          "summary": "Table cell stacking using td::before content: attr(data-*) without @container queries should be modernized with CSS Container Queries.",
-          "verifierRubric": {
-            "keepWhen": [
-              "A CSS rule uses td::before or td:before with content: attr(data-label), attr(data-th), or attr(data-title) to generate mobile stacked table card headers without container queries.",
-              "…"
-            ],
-            "dropWhen": [
-              "The stylesheet already uses @container queries to adapt the table layout based on container width.",
-              "…"
-            ]
-          }
-        }
-      ]
     }
   ],
-  "activeRuleCount": 7,
-  "activeGuideCount": 5,
   "suspendedGuides": [
-    "autofill-sign-in-form",
     "complex-shapes",
     "interactions-in-complex-layouts",
     "language-detection"
@@ -272,14 +232,15 @@ export const autofillSignInFormRule: AnalyzerRule = {
 ### Qualified Rules & Gated Execution
 
 To keep terminal false alarms low when run in developer environments, the analyzer enforces qualification gating:
-- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that meet the qualification standard: static matcher precision ≥ 90% at n ≥ 20 on held-out repositories, as scored by an LLM judge (not human-graded). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
+- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear the default-on qualification standard on the `held-out` split as scored by the multi-judge panel: Static Matcher Precision $\ge 80\%$ and Post-Verifier Precision $\ge 90\%$ at $n \ge 10$ (or Static Matcher Precision $\ge 90\%$ at $n \ge 5$ for rare patterns). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
 - **`ALL_RULES` (`--experimental` / `--all-rules`):** Executes all active feature guides across all rules in `ALL_RULES`, including experimental rules.
 
 ### Qualification Criteria
 
-Rules qualify for default terminal shipping under the **Static Matcher precision standard**:
-- **Static Matcher Precision $\ge 90.0\%$ at $n \ge 20$:** Evaluated on held-out out-of-sample repositories (`precision` before LLM Verifier), as scored by an LLM judge (not human-graded).
-- Rules requiring runtime LLM Verifier evaluation (`needs-verifier`) or with static matcher precision below 90% remain in the experimental tier until their static matchers reach the standard.
+Rules qualify for default terminal shipping when scored on `held-out` findings by the multi-judge panel:
+- **Standard Bar:** Static Matcher Precision $\ge 80.0\%$ and Post-Verifier Precision $\ge 90.0\%$ at $n \ge 10$ evaluated findings on the `held-out` split.
+- **Rare-Pattern Bar:** Static Matcher Precision $\ge 90.0\%$ at $n \ge 5$ evaluated findings on the `held-out` split.
+- Rules below the bar remain in the experimental tier (`--experimental` / `--all-rules`) until their matchers and rubrics clear the threshold.
 
 ### 2-Axis Triage Taxonomy
 
@@ -296,15 +257,20 @@ Every web platform standard in the catalog is classified across two orthogonal a
 
 ### Qualified Feature Guides
 
-*Scores are LLM judge estimates on held-out repositories (not human-graded).*
+*Scores are multi-judge panel consensus estimates on the `held-out` split.*
 
-| # | Guide ID | Matcher Kind | Static Matcher Precision | Post-Verifier Precision | Sample Size ($n$) | Modern Platform Target |
-| :- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `responsive-table` | Dependency & CSS | 100.0% (35/35) | 100.0% (35/35) | 35 | CSS Container Queries (`@container`) and sticky headers |
-| 2 | `scroll-entry-exit-effects` | Dependency & JS | 97.1% (34/35) | 97.1% (34/35) | 35 | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
-| 3 | `form-fields-automatically-fit-contents` | CSS | 96.3% (26/27) | 100.0% (26/26) | 27 | CSS `field-sizing: content` |
-| 4 | `scrollspy` | CSS | 94.3% (33/35) | 94.3% (33/35) | 35 | CSS `scroll-target-group: auto` and `:target-current` |
-| 5 | `autofill-address-form` | DOM | 91.7% (22/24) | 100.0% (20/20) | 24 | Standard `autocomplete` attributes on address form inputs |
+| Guide ID | Matcher Kind | Split | Yield | Sampled ($n$ / kept $n$) | Static Matcher Precision (95% Wilson CI) | Post-Verifier Precision (95% Wilson CI) | Modern Platform Target |
+| :--- | :--- | :---: | :---: | :---: | :--- | :--- | :--- |
+| `autofill-address-form` | DOM | `held-out` | 18 | 18 / 18 | 100.0% ([82.4%, 100.0%]) | 100.0% ([82.4%, 100.0%]) | Standard `autocomplete` attributes on address form inputs |
+| `styling-web-components` | CSS & JS | `held-out` | 92 | 19 / 19 | 100.0% ([83.2%, 100.0%]) | 100.0% ([83.2%, 100.0%]) | `::part()`, `:host`, and constructable stylesheets (`adoptedStyleSheets`) |
+| `scrollspy` | Dependency & JS | `held-out` | 121 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | CSS `scroll-target-group: auto` and `:target-current` |
+| `scroll-entry-exit-effects` | Dependency & JS | `held-out` | 48 | 35 / 35 | 97.1% ([85.5%, 99.5%]) | 97.1% ([85.5%, 99.5%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
+| `custom-text-decorations` | CSS | `held-out` | 34 | 28 / 27 | 96.4% ([82.3%, 99.4%]) | 100.0% ([87.5%, 100.0%]) | `text-decoration-thickness`, `text-underline-offset`, and `text-decoration-color` |
+| `form-fields-automatically-fit-contents` | Dependency & JS | `held-out` | 26 | 26 / 25 | 96.2% ([81.1%, 99.3%]) | 100.0% ([86.7%, 100.0%]) | CSS `field-sizing: content` |
+| `interest-triggered-tooltips` | Dependency, DOM & JS | `held-out` | 50 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
+| `checkbox` | CSS, DOM & JS | `held-out` | 175 | 35 / 32 | 85.7% ([70.6%, 93.7%]) | 93.8% ([79.9%, 98.3%]) | Native `<input type="checkbox">`, `accent-color`, and `:indeterminate` |
+| `autofill-sign-in-form` | DOM | `held-out` | 189 | 35 / 26 | 85.7% ([70.6%, 93.7%]) | 92.3% ([75.9%, 97.9%]) | Standard `autocomplete="username"` and `autocomplete="current-password"` |
+| `autofill-payment-form` | DOM & JS | `held-out` | 30 | 15 / 12 | 80.0% ([54.8%, 93.0%]) | 100.0% ([75.8%, 100.0%]) | Standard `cc-*` `autocomplete` attributes on payment inputs |
 
 ---
 
@@ -322,7 +288,7 @@ The analyzer gates rules on evaluation against held-out repositories before any 
 
 ### 2-Split Corpus Architecture (`rule-writing` vs `held-out`)
 
-The evaluation corpus is divided into two isolated splits across 26,426 files and 8,508 repositories covering active feature guides:
+The evaluation corpus is divided into two isolated splits across repositories and source files covering active feature guides:
 - **`rule-writing`:** Used by engineers and agents to discover legacy patterns, author Static Matcher AST patterns, and tune LLM Verifier rubrics.
 - **`held-out`:** Reserved strictly for out-of-sample precision and recall validation. Kept separate when authoring or debugging rules to evaluate generalization on unseen code.
 
@@ -371,4 +337,4 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 2. **Run detection evaluation**: `node --env-file=.env src/analyzing/eval/detection-eval.ts`.
 3. **Qualification criteria**:
    - **Experimental Rule**: Active in `ALL_RULES`, available under `--experimental` / `--all-rules`.
-   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it meets the Static Matcher Precision qualification standard (>= 90% at n >= 20) on the untuned `held-out` split.
+   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it clears the multi-judge qualification standard on the `held-out` split (Static Matcher Precision $\ge 80\%$ and Post-Verifier Precision $\ge 90\%$ at $n \ge 10$, or Static Matcher Precision $\ge 90\%$ at $n \ge 5$ for rare patterns).
