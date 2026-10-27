@@ -167,13 +167,17 @@
       }
 
       /* Forced colors replaces text and background colors, which would show the
-         real text and drop the fills. Opt the skeleton out and use a system
-         color, so the placeholders follow the user's theme. */
+         real text and drop the fills. Opt the placeholders out (not the container:
+         the property inherits to the cards' borders) and use a system color, so
+         they follow the user's theme. */
       @media (forced-colors: active) {
         .skeleton[aria-busy="true"] {
-          forced-color-adjust: none;
           --skeleton-tone: GrayText;
           --skeleton-highlight: GrayText; /* Same as the tone: no shimmer */
+        }
+
+        .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button, img, video, canvas, .media) {
+          forced-color-adjust: none;
         }
       }
 

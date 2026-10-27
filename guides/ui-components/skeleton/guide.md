@@ -71,14 +71,18 @@ const finishLoading = () => { status.textContent = ''; };
 
 Skeleton colors belong to the surface. Define `--skeleton-tone` on the container and derive it from the surface with `color-mix(in oklab, …)`, mixing a little of the text color into the surface color, so a darker surface gets a darker skeleton. Derive a lighter `--skeleton-highlight` the same way for the shimmer. Mix in `oklab`, not `srgb`, which blends unevenly. Use the container's real background and text tokens.
 
-MANDATORY: Handle forced colors. It replaces text and background colors, so the transparent text would show and the bar and block fills would disappear. Opt the skeleton out with `forced-color-adjust: none` on the container (the property inherits to everything inside it) and use a system color for the tone, so the placeholders follow the user's theme.
+MANDATORY: Handle forced colors. It replaces text and background colors, so the transparent text would show and the bar and block fills would disappear. Opt only the placeholder elements out with `forced-color-adjust: none`, not the container: the property inherits, so setting it on the container also keeps the cards' own borders and backgrounds in the page's colors and they almost vanish. Use a system color for the tone, so the placeholders follow the user's theme.
 
 ```css
 @media (forced-colors: active) {
   .skeleton[aria-busy="true"] {
-    forced-color-adjust: none;
     --skeleton-tone: GrayText;
     --skeleton-highlight: GrayText; /* Same as the tone, so there is no shimmer */
+  }
+
+  /* On the placeholders, not the container: the property inherits to the cards' borders */
+  .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button, img, video, canvas) {
+    forced-color-adjust: none;
   }
 }
 ```
