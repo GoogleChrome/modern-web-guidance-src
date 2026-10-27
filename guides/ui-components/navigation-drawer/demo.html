@@ -208,7 +208,7 @@
     function onDrawerClosed() {
       drawer.hidePopover();
       main.inert = false;
-      drawer.setAttribute('aria-modal', 'false');
+      drawer.removeAttribute('aria-modal');
       openBtn.setAttribute('aria-expanded', 'false');
       openBtn.focus();
     }

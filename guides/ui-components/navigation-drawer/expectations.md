@@ -4,6 +4,7 @@
 - The menu trigger button has `aria-expanded="false"` when the drawer is closed.
 - Clicking the menu trigger button makes the drawer visible.
 - When the drawer is open, the menu trigger button's `aria-expanded` attribute is `true`.
+- When the drawer is open, the drawer has `aria-modal="true"`
 - The drawer element uses the popover API with `popover="manual"`.
 - When the drawer is open, a dimmed backdrop (the `::backdrop` pseudo-element) is visible behind it that covers the rest of the page.
 - The drawer's navigation sheet does not span the full width of the viewport when open, leaving a portion of the dimmed backdrop visible alongside it.
@@ -15,6 +16,7 @@
 - Keyboard focus is moved inside the drawer after it opens.
 - After the drawer is closed, the menu trigger button's `aria-expanded` attribute returns to `false`.
 - After the drawer is closed, focus moves back to the menu trigger button.
+- When the drawer is closed, the `aria-modal="true"` attribute is removed
 - The drawer's horizontal scroll container uses CSS scroll snap with `scroll-snap-type: x mandatory`.
 - The drawer's horizontal scroll container uses `scroll-behavior: smooth` only when the user has not requested reduced motion (e.g., via `@media (prefers-reduced-motion: no-preference)`).
 - Horizontally scrolling the drawer's scroll container all the way to its end position closes the drawer.

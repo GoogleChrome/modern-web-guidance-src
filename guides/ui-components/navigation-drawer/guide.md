@@ -247,7 +247,7 @@ function closeDrawer() {
 
 Use an `IntersectionObserver` on the sheet — not the scroll position — as the source of truth for the drawer's state. The observer fires regardless of how the sheet moved (user swipe, programmatic scroll, snap settle), so all dismissal paths converge in the same callback.
 
-As the state of the dialog is managed using a popover, manually apply `aria-modal='true'` when the dialog is open, and `aria-modal='false'` when it is closed.
+As the state of the dialog is managed using a popover, manually apply `aria-modal='true'` when the dialog is open, and remove the attribute when the drawer is closed.
 
 ```js
 function onDrawerOpened() {
