@@ -5,7 +5,7 @@ web-feature-ids:
   - user-pseudos
 ---
 
-# Style Parent with :has()
+# Style a Form Group When a Field Is Invalid with :has()
 
 ## The Problem
 Often, an error state requires styling elements *outside* the input itself—for example, changing the color of a parent `fieldset` border, highlighting the `<label>`, or showing a global error icon in the card header. Historically, this required JavaScript to toggle classes on parent elements.
@@ -57,9 +57,11 @@ By combining `:has()` with `:user-invalid`, we can declaratively style any ances
 
 /* Change the icon too */
 .card-section:has(:user-invalid) .status-icon::after {
-  content: "⚠️";
+  content: "⚠️" / "Error";
 }
 ```
+
+Parent styling only adds emphasis: it doesn't say which field is wrong or why, so each field still needs its own visible error text. See {{ GUIDE_REF("required-field-feedback") }}.
 
 ## Fallbacking & Browser Support
 
@@ -98,8 +100,9 @@ form.addEventListener('blur', (e) => {
   const container = e.target.closest('.card-section');
   if (!container) return;
 
-  // Check if ANY fallbacked input in this container is invalid
-  const hasError = container.querySelector('.user-invalid-fallback');
+  // Check if ANY input in this container is invalid. Match :user-invalid as well as the
+  // fallback class: a browser can support :user-invalid but not :has().
+  const hasError = container.querySelector(':is(:user-invalid, .user-invalid-fallback)');
   container.classList.toggle('has-error-fallback', !!hasError);
 }, true); // Capture phase to ensure we run after the fallback's blur listener
 
@@ -107,10 +110,20 @@ form.addEventListener('blur', (e) => {
 form.addEventListener('input', (e) => {
   const container = e.target.closest('.card-section');
   if (container) {
-    const hasError = container.querySelector('.user-invalid-fallback');
+    const hasError = container.querySelector(':is(:user-invalid, .user-invalid-fallback)');
     container.classList.toggle('has-error-fallback', !!hasError);
   }
 });
+
+// A submit attempt flags every failing field through the invalid event, the only event
+// it fires on fields the user never touched. invalid doesn't bubble, so use the capture phase.
+form.addEventListener('invalid', (e) => {
+  const container = e.target.closest('.card-section');
+  if (container) {
+    const hasError = container.querySelector(':is(:user-invalid, .user-invalid-fallback)');
+    container.classList.toggle('has-error-fallback', !!hasError);
+  }
+}, true);
 
 // Handle form resets
 form.addEventListener('reset', () => {
