@@ -7,6 +7,12 @@ web-feature-ids:
   - popover
   - anchor-positioning
   - container-queries
+  - has
+  - forced-colors
+  - focus-visible
+  - prefers-reduced-motion
+  - clip-path
+  - logical-properties
 guides:
   - menu
   - icons
