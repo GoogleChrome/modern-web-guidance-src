@@ -334,6 +334,9 @@
       "pull-to-reveal": [
         "task"
       ],
+      "responsive-table": [
+        "daily-grind"
+      ],
       "scroll-position-aware-elements": [
         "task"
       ],
