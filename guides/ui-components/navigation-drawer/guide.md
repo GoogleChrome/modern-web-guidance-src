@@ -83,7 +83,7 @@ The popover must cover the whole viewport so its `::backdrop` dims the entire pa
   /* min() caps the sheet width on large screens but on a phone leaves
      a 20% peek of page content visible, which is the affordance that
      tells the user they can tap outside to dismiss. */
-  --drawer-width: min(20em, 80dvw);
+  --drawer-width: min(20em, 80dvw, 100dvw - 24px);
 
   /* Custom property driven by the scroll-driven animation below.
      0 = drawer fully closed (transparent backdrop).
