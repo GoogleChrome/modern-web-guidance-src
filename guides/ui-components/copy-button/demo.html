@@ -390,8 +390,9 @@
         <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>C</kbd> still works as normal.
       </p>
 
-      <!-- tabindex="-1" lets script move focus here when the popover closes under keyboard focus -->
-      <blockquote id="selectable" data-selectable tabindex="-1" style="margin: 0">
+      <!-- No tabindex here: script adds one only for the Escape focus move, because a permanently focusable
+           quote makes Tab skip the copy button in Firefox after a click -->
+      <blockquote id="selectable" data-selectable style="margin: 0">
         <p>
           Progressive enhancement means starting with HTML that works everywhere,
           then layering on richer behaviour where the platform supports it.
@@ -561,8 +562,13 @@
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && popover.matches(':popover-open')) {
-        // Hiding the popover under focus would drop focus to the page, so move it to the quote first
-        if (popover.contains(document.activeElement)) selectable.focus({ preventScroll: true });
+        // Hiding the popover under focus would drop focus to the page, so move it to the quote first,
+        // making it focusable only for this move
+        if (popover.contains(document.activeElement)) {
+          selectable.tabIndex = -1;
+          selectable.addEventListener('blur', () => selectable.removeAttribute('tabindex'), { once: true });
+          selectable.focus({ preventScroll: true });
+        }
         popover.hidePopover();
       }
     });
