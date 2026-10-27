@@ -8,7 +8,9 @@ import { baseAppsDir, suitesDir } from '../core/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
+import { ensureFreshHostCodexAuth } from './agents/codex-cli-agent.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
+import { determineAgent } from '../cli/telemetry/detect-agent.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -16,7 +18,7 @@ const RUN_TYPES = ['guided', 'unguided'];
 let logStream: fs.WriteStream | null = null;
 
 
-const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
@@ -113,6 +115,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     console.log(`\nStarting execution for ${numRuns} runs`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
+      if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
       console.log(`\n${'='.repeat(60)}`);
       console.log(`>>> STARTING RUN ${runNumber} <<<`);
       console.log(`${'='.repeat(60)}\n`);
@@ -180,7 +183,11 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         fs.writeFileSync(pnpmWorkspacePath, yamlContent);
 
         try {
+          const isAgentOrNonInteractive = Boolean(process.env.CI) || !process.stdout.isTTY || determineAgent().isAgent;
           const pnpmArgs = ['-r', '--no-bail'];
+          if (isAgentOrNonInteractive) {
+            pnpmArgs.push('--reporter=append-only');
+          }
           if (suiteConfig.workerCount) {
             pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
           }

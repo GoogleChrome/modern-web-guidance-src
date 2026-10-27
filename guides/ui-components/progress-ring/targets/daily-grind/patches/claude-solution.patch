@@ -1,0 +1,162 @@
+diff --git a/index.html b/index.html
+index 66c9173..e383967 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,111 @@
+       background: #3e2723;
+     }
+ 
++    /* Loyalty Rewards */
++    @property --value {
++      syntax: '<number>';
++      inherits: true;
++      initial-value: 0;
++    }
++
++    .loyalty {
++      margin-top: 60px;
++    }
++
++    .loyalty-card {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: center;
++      gap: 40px;
++      background: white;
++      padding: 30px 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      margin-top: 20px;
++    }
++
++    .loyalty-info {
++      max-width: 400px;
++      text-align: center;
++    }
++
++    .loyalty-info h3 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    .progress-ring-wrapper {
++      position: relative;
++      display: grid;
++      place-items: center;
++    }
++
++    progress.progress-ring {
++      --size: 180px;
++      --thickness: 16px;
++      --track-color: var(--secondary);
++      --fill-color: var(--accent);
++      --value: attr(value type(<number>));
++      width: var(--size);
++      height: var(--size);
++      border-radius: 50%;
++      appearance: none;
++      background: conic-gradient(var(--fill-color) calc(var(--value) * 1%),
++          var(--track-color) 0);
++      background-clip: border-area;
++      border: var(--thickness) solid transparent;
++      background-origin: border-box;
++      transition: --value 0s ease-in-out;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      progress.progress-ring {
++        transition-duration: 0.4s;
++      }
++    }
++
++    @supports not (background-clip: border-area) {
++      progress.progress-ring {
++        mask-image: radial-gradient(transparent calc(50% - var(--thickness)),
++            black calc(50% - var(--thickness) + 0.5px));
++        border: 0;
++      }
++    }
++
++    /* Hide native bars */
++    progress.progress-ring::-webkit-progress-bar {
++      background: none;
++    }
++
++    progress.progress-ring::-webkit-progress-value {
++      background: none;
++    }
++
++    progress.progress-ring::-moz-progress-bar {
++      background: none;
++    }
++
++    progress.progress-ring[value="100"] {
++      --fill-color: #6d4c41;
++    }
++
++    .progress-ring-content {
++      position: absolute;
++      text-align: center;
++      line-height: 1.2;
++      color: var(--primary);
++    }
++
++    .progress-ring-content strong {
++      display: block;
++      font-size: 2rem;
++    }
++
++    .progress-ring-content span {
++      font-size: 0.8rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +300,25 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="loyalty" aria-labelledby="loyalty-heading">
++      <h2 id="loyalty-heading" style="text-align: center;">Loyalty Rewards</h2>
++      <div class="loyalty-card">
++        <div class="progress-ring-wrapper">
++          <progress id="loyalty-progress" class="progress-ring" value="70" max="100"
++            aria-label="Progress toward your next free drink: 7 of 10 purchases"></progress>
++          <div class="progress-ring-content" aria-hidden="true">
++            <strong id="loyalty-count">7 / 10</strong>
++            <span>drinks</span>
++          </div>
++        </div>
++        <div class="loyalty-info">
++          <h3>You're 3 drinks away from a free one!</h3>
++          <p>Earn a stamp with every drink you buy. Collect 10 and your next drink is on us.</p>
++          <a href="/rewards" class="btn">View Rewards</a>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +331,19 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback: sync the value attribute to --value where attr() isn't supported
++    if (!CSS.supports("width: attr(value type(<number>))")) {
++      const progress = document.getElementById("loyalty-progress");
++      const sync = () => progress.style.setProperty("--value", progress.getAttribute("value"));
++      sync();
++      new MutationObserver(sync).observe(progress, {
++        attributes: true,
++        attributeFilter: ["value"],
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

@@ -1,0 +1,1 @@
+- Update the navigation bar and seasonal favorite cards in index.html with an interactive menu component that lets users choose from a list of actions and options, including multi-level nested submenus for drink categories and order customizations.

@@ -1,0 +1,189 @@
+diff --git a/index.html b/index.html
+index 66c9173..cbbf9d8 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,12 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
++  <script>
++    try {
++      document.querySelector('meta[name="color-scheme"]').content = localStorage.getItem("color-scheme") ?? "light dark";
++    } catch (e) {}
++  </script>
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -12,6 +18,25 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      color-scheme: light dark;
++
++      &:has(> head > meta[name="color-scheme"][content="dark"]) {
++        color-scheme: dark;
++      }
++
++      &:has(> head > meta[name="color-scheme"][content="light"]) {
++        color-scheme: light;
++      }
++    }
++
++    :root {
++      --primary: light-dark(#4e342e, #3b2723);
++      --secondary: light-dark(#d7ccc8, #2b211f);
++      --text: light-dark(#3e2723, #efebe9);
++      --light: light-dark(#fafafa, #1c1614);
++      --card: light-dark(white, #2a2220);
++      --heading: light-dark(#4e342e, #ffcc80);
++      --btn-hover: light-dark(#3e2723, #6d4c41);
+     }
+ 
+     * {
+@@ -52,6 +77,8 @@
+     }
+ 
+     nav ul li {
++      display: flex;
++      align-items: center;
+       margin-left: 20px;
+     }
+ 
+@@ -72,6 +99,57 @@
+       border-radius: 4px;
+     }
+ 
++    .theme-toggle {
++      background: none;
++      border: 1px solid var(--accent);
++      color: white;
++      border-radius: 4px;
++      padding: 4px 10px;
++      font: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .theme-toggle:hover {
++      color: var(--accent);
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
++    /* Toggle options: show the action that leads to the opposite of the rendered scheme */
++    .theme-toggle .to-light {
++      display: none;
++    }
++
++    :root:has(> head > meta[name="color-scheme"][content="dark"]) {
++      .theme-toggle .to-dark {
++        display: none;
++      }
++
++      .theme-toggle .to-light {
++        display: inline;
++      }
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root:not(:has(> head > meta[name="color-scheme"][content="light"])) {
++        .theme-toggle .to-dark {
++          display: none;
++        }
++
++        .theme-toggle .to-light {
++          display: inline;
++        }
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -108,7 +186,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--card);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +195,7 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--heading);
+     }
+ 
+     .btn {
+@@ -132,7 +210,7 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--btn-hover);
+     }
+ 
+     footer {
+@@ -165,6 +243,12 @@
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" class="theme-toggle" id="theme-toggle">
++          <span class="to-dark"><span aria-hidden="true">🌙</span><span class="visually-hidden">Switch to dark theme</span></span>
++          <span class="to-light"><span aria-hidden="true">☀️</span><span class="visually-hidden">Switch to light theme</span></span>
++        </button>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +291,38 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const meta = document.querySelector('meta[name="color-scheme"]');
++      const dark = matchMedia("(prefers-color-scheme: dark)");
++      const systemScheme = () => (dark.matches ? "dark" : "light");
++
++      function stored() {
++        try {
++          return localStorage.getItem("color-scheme");
++        } catch (e) {
++          return null;
++        }
++      }
++
++      document.getElementById("theme-toggle").addEventListener("click", () => {
++        const rendered = meta.content === "dark" || meta.content === "light" ? meta.content : systemScheme();
++        const target = rendered === "dark" ? "light" : "dark";
++        const value = target === systemScheme() ? null : target;
++        try {
++          if (value) localStorage.setItem("color-scheme", value);
++          else localStorage.removeItem("color-scheme");
++        } catch (e) {}
++        meta.content = value ?? "light dark";
++      });
++
++      window.addEventListener("storage", (e) => {
++        if (e.key === "color-scheme" || e.key === null) {
++          meta.content = stored() ?? "light dark";
++        }
++      });
++    })();
++  </script>
+ </body>
+ 
+ </html>

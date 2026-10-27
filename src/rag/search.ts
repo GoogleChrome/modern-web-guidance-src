@@ -15,6 +15,8 @@ export interface UseCaseResult {
   similarity: number;
 }
 
+export type CompactSearchResult = Pick<UseCaseResult, "id" | "description">;
+
 export interface UseCaseVector {
   id: string;
   description: string;
@@ -86,7 +88,7 @@ function loadVectors(): UseCaseVector[] {
  */
 export async function searchUseCases(
   query: string,
-  limit = 5,
+  limit = 10,
   minSimilarity = DEFAULT_MIN_SIMILARITY,
   embedder?: EmbedderLike
 ): Promise<UseCaseResult[]> {
