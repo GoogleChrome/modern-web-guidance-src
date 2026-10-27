@@ -64,8 +64,8 @@
       display: inline-grid;
       place-items: center;
       flex: none;
-      inline-size: var(--size);
-      block-size: var(--size);
+      min-inline-size: var(--size);
+      min-block-size: var(--size);
       padding: 0;
       border: 1px solid var(--border);
       border-radius: .5rem;
@@ -250,8 +250,8 @@
         border-radius: .5rem;
       }
 
-      /* Stretch to the field's height (the wrapper is a flex item); width stays --size */
-      .copy-button { --size: 2.5rem; block-size: auto; }
+      /* The button stretches to the field's height in the flex row; its width and minimum height stay --size */
+      .copy-button { --size: 2.5rem; }
     }
 
     /* ---------- Example 4: selection popover ---------- */
