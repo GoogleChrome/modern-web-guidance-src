@@ -496,5 +496,55 @@ describe('dependency-scanner runtime & client-side filtering', () => {
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.message, 'Replace "aos" (^2.3.4)');
   });
+
+  it('findPackageLine locates top-level dependency across nested overrides, brace strings, minified JSON, and reordered fields', () => {
+    const rule: DependencyRuleMatcher = {
+      kind: 'dependency',
+      packages: ['moment', 'select2'],
+    };
+
+    // 1. Nested overrides / pnpm.overrides / resolutions appearing before top-level dependencies
+    //    plus strings containing braces and escaped quotes
+    const nestedAndBracesPkg = [
+      '{', // 1
+      '  "name": "app",', // 2
+      '  "description": "Config with { \\"dependencies\\": { \\"moment\\": \\"1.0.0\\" } }",', // 3
+      '  "pnpm": {', // 4
+      '    "overrides": {', // 5
+      '      "dependencies": {', // 6
+      '        "moment": "2.29.0"', // 7
+      '      }', // 8
+      '    }', // 9
+      '  },', // 10
+      '  "overrides": {', // 11
+      '    "select2": "4.0.0",', // 12
+      '    "dependencies": {', // 13
+      '      "moment": "2.29.0"', // 14
+      '    }', // 15
+      '  },', // 16
+      '  "peerDependencies": {', // 17
+      '    "select2": "^4.1.0"', // 18
+      '  },', // 19
+      '  "dependencies": {', // 20
+      '    "react": "^18.2.0",', // 21
+      '    "moment": "^2.29.4"', // 22
+      '  }', // 23
+      '}', // 24
+    ].join('\n');
+
+    const matches = scanPackageJson('package.json', nestedAndBracesPkg, [rule]);
+    assert.equal(matches.length, 2);
+    const momentMatch = matches.find((m) => m.message.includes('"moment"'));
+    const select2Match = matches.find((m) => m.message.includes('"select2"'));
+    assert.equal(momentMatch?.line, 22, 'must report top-level dependencies line, not overrides or description string');
+    assert.equal(select2Match?.line, 18, 'must report top-level peerDependencies line even when peerDependencies precedes dependencies');
+
+    // 2. Minified single-line package.json
+    const minifiedPkg =
+      '{"name":"minified-app","overrides":{"dependencies":{"moment":"2.0.0"}},"dependencies":{"vue":"^3.0.0","moment":"^2.29.4"}}';
+    const minifiedMatches = scanPackageJson('package.json', minifiedPkg, [rule]);
+    assert.equal(minifiedMatches.length, 1);
+    assert.equal(minifiedMatches[0]?.line, 1);
+  });
 });
 

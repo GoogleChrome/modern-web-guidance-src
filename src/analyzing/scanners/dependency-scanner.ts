@@ -400,32 +400,49 @@ export function isPureNodeBackendOrCliPackage(
   );
 }
 
+const JSON_TOKEN_RE = /"(?:\\.|[^"\\\n])*"|[{[]|[}\]]|:|\n/g;
+
 /**
- * Finds the 1-based line number where `pkgName` is defined inside `field` of `packageJsonContent`.
+ * Finds the 1-based line number where `pkgName` is defined inside the top-level `field`
+ * object of `packageJsonContent`.
  */
 function findPackageLine(
   packageJsonContent: string,
   field: string,
   pkgName: string,
 ): number {
-  const fieldMatch = new RegExp(`"${escapeRegExp(field)}"\\s*:\\s*\\{`).exec(
-    packageJsonContent,
-  );
-  const searchStart = fieldMatch ? fieldMatch.index + fieldMatch[0].length : 0;
-  const pkgMatch = new RegExp(`"${escapeRegExp(pkgName)}"\\s*:`).exec(
-    packageJsonContent.slice(searchStart),
-  );
-  if (!pkgMatch) {
-    return 1;
-  }
-  const offset = searchStart + pkgMatch.index;
+  let depth = 0;
   let line = 1;
-  for (let i = 0; i < offset; i++) {
-    if (packageJsonContent.charCodeAt(i) === 10) {
+  let inTargetField = false;
+  let pendingString: string | null = null;
+  let pendingLine = 1;
+
+  for (const [token] of packageJsonContent.matchAll(JSON_TOKEN_RE)) {
+    if (token === '\n') {
       line++;
+    } else if (token === '{' || token === '[') {
+      depth++;
+      pendingString = null;
+    } else if (token === '}' || token === ']') {
+      if (inTargetField && depth === 2) {
+        return 1;
+      }
+      depth--;
+      pendingString = null;
+    } else if (token === ':') {
+      if (depth === 1) {
+        inTargetField = pendingString === field;
+      } else if (inTargetField && depth === 2 && pendingString === pkgName) {
+        return pendingLine;
+      }
+      pendingString = null;
+    } else {
+      pendingString = token.includes('\\') ? (JSON.parse(token) as string) : token.slice(1, -1);
+      pendingLine = line;
     }
   }
-  return line;
+
+  return 1;
 }
 
 /**

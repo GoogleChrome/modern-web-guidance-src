@@ -302,4 +302,81 @@ test('matchesPackageSpec, isRequireOfPackage, and isLibraryReference', async (t)
       'import { Temporal as AliasedTemporal } must shadow local alias AliasedTemporal',
     );
   });
+
+  await t.test(
+    'handles renamed destructuring, default values, nested patterns, and rest elements',
+    () => {
+      const sf = project.createSourceFile(
+        'destructuringEdgeCases.ts',
+        `
+        function renamedAndDefault(obj: any) {
+          const { Temporal: LocalTemporal, other = Temporal } = obj;
+          Temporal.now();
+          LocalTemporal.now();
+          other.now();
+        }
+
+        function nestedAndRest(obj: any) {
+          const { outer: { inner: [NestedTemporal] }, ...RestTemporal } = obj;
+          NestedTemporal.now();
+          RestTemporal.now();
+        }
+        `,
+        { overwrite: true },
+      );
+
+      const calls = sf.getDescendants().filter(Node.isCallExpression);
+      const [
+        globalTemporalCall,
+        localTemporalCall,
+        otherCall,
+        nestedTemporalCall,
+        restTemporalCall,
+      ] = calls;
+      assert.ok(
+        globalTemporalCall &&
+          localTemporalCall &&
+          otherCall &&
+          nestedTemporalCall &&
+          restTemporalCall,
+      );
+
+      const getReceiver = (call: Node) => {
+        const expr = Node.isCallExpression(call) ? call.getExpression() : null;
+        assert.ok(expr && Node.isPropertyAccessExpression(expr));
+        return expr.getExpression();
+      };
+
+      assert.equal(
+        isUnshadowedGlobal(getReceiver(globalTemporalCall), 'Temporal'),
+        true,
+        'source property key in { Temporal: LocalTemporal } and default value in { other = Temporal } must NOT shadow Temporal',
+      );
+      assert.equal(
+        isUnshadowedGlobal(getReceiver(localTemporalCall), 'LocalTemporal'),
+        false,
+        'target binding LocalTemporal in { Temporal: LocalTemporal } must shadow LocalTemporal',
+      );
+      assert.equal(
+        isUnshadowedGlobal(getReceiver(otherCall), 'other'),
+        false,
+        'target binding other in { other = Temporal } must shadow other',
+      );
+      assert.equal(
+        isUnshadowedGlobal(getReceiver(nestedTemporalCall), 'NestedTemporal'),
+        false,
+        'nested object/array pattern { outer: { inner: [NestedTemporal] } } must shadow NestedTemporal',
+      );
+      assert.equal(
+        isUnshadowedGlobal(getReceiver(nestedTemporalCall), 'outer'),
+        true,
+        'intermediate property key outer in { outer: { inner: [NestedTemporal] } } must NOT shadow outer',
+      );
+      assert.equal(
+        isUnshadowedGlobal(getReceiver(restTemporalCall), 'RestTemporal'),
+        false,
+        'rest element ...RestTemporal must shadow RestTemporal',
+      );
+    },
+  );
 });

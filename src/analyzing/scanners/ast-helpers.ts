@@ -59,17 +59,23 @@ function getForLoopDeclarations(scope: Node): readonly VariableDeclaration[] {
   return [];
 }
 
+function bindingNameContains(nameNode: Node, targetName: string): boolean {
+  if (Node.isIdentifier(nameNode)) {
+    return nameNode.getText() === targetName;
+  }
+  if (Node.isObjectBindingPattern(nameNode) || Node.isArrayBindingPattern(nameNode)) {
+    return nameNode
+      .getElements()
+      .some((el) => Node.isBindingElement(el) && bindingNameContains(el.getNameNode(), targetName));
+  }
+  return false;
+}
+
 function hasBindingName(
   decl: VariableDeclaration | ParameterDeclaration,
   targetName: string,
 ): boolean {
-  const nameNode = decl.getNameNode();
-  if (Node.isIdentifier(nameNode)) {
-    return nameNode.getText() === targetName;
-  }
-  return nameNode
-    .getDescendantsOfKind(SyntaxKind.Identifier)
-    .some((id) => id.getText() === targetName);
+  return bindingNameContains(decl.getNameNode(), targetName);
 }
 
 interface ResolvedImport {
