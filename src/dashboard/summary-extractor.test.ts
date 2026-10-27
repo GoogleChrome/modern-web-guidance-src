@@ -58,90 +58,53 @@ test('extractSuiteSummary stores only a name for single-task guides', () => {
     assert.strictEqual(guide.guidedRate, 75);
 });
 
-test('extractSuiteSummary computes cross-cutting a11yStats and runtime/token efficiencyStats', () => {
+test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and exact unrounded uplift', () => {
     const summary = extractSuiteSummary('run-3', {
         results: {
-            'daily-grind - accordion - unguided': [{
-                runtimeMs: 120000,
+            'daily-grind - scrollspy - unguided': [{
+                discipline: 'ui-behaviors',
+                runtime: { agentRuntime: 120000, graderRuntime: 9000 },
                 tokenUsage: { total: 500000, cached: 450000 },
                 results: [
-                    { passed: false, message: 'Trigger button sets aria-expanded="true"', testId: 'c1' },
-                    { passed: true, message: 'Renders three panels', testId: 'c2' },
+                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: false, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: false, message: 'Renders three sections', testId: 's3' },
                 ],
             }],
-            'daily-grind - accordion - guided': [{
-                runtimeMs: 90000,
+            'daily-grind - scrollspy - guided': [{
+                discipline: 'ui-behaviors',
+                runtime: { agentRuntime: 90000, graderRuntime: 9000 },
                 tokenUsage: { total: 600000, cached: 560000 },
                 results: [
-                    { passed: true, message: 'Trigger button sets aria-expanded="true"', testId: 'c1' },
-                    { passed: true, message: 'Renders three panels', testId: 'c2' },
+                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: true, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: false, message: 'Renders three sections', testId: 's3' },
                 ],
             }],
         },
     } as never);
 
     assert.ok(summary);
-    assert.strictEqual(summary.a11yStats.unguidedPassed, 0);
-    assert.strictEqual(summary.a11yStats.unguidedTotal, 1);
-    assert.strictEqual(summary.a11yStats.guidedPassed, 1);
-    assert.strictEqual(summary.a11yStats.guidedTotal, 1);
-    assert.strictEqual(summary.a11yStats.uplift, 100);
+    assert.strictEqual(summary.a11yStats.unguidedPassed, 1);
+    assert.strictEqual(summary.a11yStats.unguidedTotal, 2);
+    assert.strictEqual(summary.a11yStats.guidedPassed, 2);
+    assert.strictEqual(summary.a11yStats.guidedTotal, 2);
+    assert.strictEqual(summary.a11yStats.uplift, 50);
     assert.strictEqual(summary.a11yStats.guideCount, 1);
-    assert.strictEqual(summary.a11yStats.bySubCategory.aria_roles_live.guidedRate, 100);
 
+    // 1/3 (33%) -> 2/3 (67%): exact difference 33.33 pp rounds to 33, not 34
+    const scrollspy = summary.guides.scrollspy;
+    assert.strictEqual(scrollspy.unguidedRate, 33);
+    assert.strictEqual(scrollspy.guidedRate, 67);
+    assert.strictEqual(scrollspy.uplift, 33);
+
+    // Agent-only runtime & uncached tokens (50k -> 40k = -20%)
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 120000);
     assert.strictEqual(summary.efficiencyStats.runtime.guidedMedianMs, 90000);
     assert.strictEqual(summary.efficiencyStats.runtime.medianDeltaPct, -25);
-    assert.strictEqual(summary.efficiencyStats.runtime.fasterTaskPct, 100);
-    assert.strictEqual(summary.efficiencyStats.runtime.pairedTaskCount, 1);
-
-    // Uncached tokens: unguided = 50,000, guided = 40,000 (-20%)
     assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 50000);
     assert.strictEqual(summary.efficiencyStats.tokens.guidedUncachedMedian, 40000);
     assert.strictEqual(summary.efficiencyStats.tokens.uncachedMedianDeltaPct, -20);
-    assert.strictEqual(summary.efficiencyStats.tokens.fewerUncachedTokensTaskPct, 100);
-    assert.strictEqual(summary.efficiencyStats.tokens.pairedTaskCount, 1);
-});
-
-test('extractSuiteSummary efficiency uses agent runtime only and excludes token-less runs from pairs', () => {
-    const summary = extractSuiteSummary('run-4', {
-        results: {
-            'task - popover - unguided': [{
-                runtime: { agentRuntime: 650000, graderRuntime: 9000 }, // timed out (>= 600s), no tokens recorded
-                results: [{ passed: false, message: 'Generation failed', isEarlyFailure: true }],
-            }],
-            'task - popover - guided': [{
-                runtime: { agentRuntime: 200000, graderRuntime: 9000 },
-                tokenUsage: { total: 100000, cached: 20000 },
-                results: [{ passed: true, message: 'Uses popover', testId: 'p1' }],
-            }],
-            'task - dialog - unguided': [{
-                runtime: { agentRuntime: 100000, graderRuntime: 9000 },
-                tokenUsage: { total: 50000, cached: 10000 },
-                results: [{ passed: true, message: 'Opens dialog', testId: 'd1' }],
-            }],
-            'task - dialog - guided': [{
-                runtime: { agentRuntime: 120000, graderRuntime: 9000 },
-                tokenUsage: { total: 60000, cached: 10000 },
-                results: [{ passed: true, message: 'Opens dialog', testId: 'd1' }],
-            }],
-        },
-    } as never);
-
-    assert.ok(summary);
-    const { runtime, tokens } = summary.efficiencyStats;
-    // Grader time is excluded: medians are agent-only.
-    assert.strictEqual(runtime.unguidedMedianMs, 375000);
-    assert.strictEqual(runtime.guidedMedianMs, 160000);
-    assert.strictEqual(runtime.unguidedTimeouts, 1);
-    assert.strictEqual(runtime.guidedTimeouts, 0);
-    assert.strictEqual(runtime.pairedTaskCount, 2);
-    assert.strictEqual(runtime.fasterTasksCount, 1);
-    // The timed-out unguided run has no tokens, so only `dialog` forms a token pair.
-    assert.strictEqual(tokens.pairedTaskCount, 1);
-    assert.strictEqual(tokens.fewerUncachedTasksCount, 0);
-    assert.strictEqual(tokens.unguidedUncachedMedian, 40000);
-    assert.strictEqual(tokens.guidedUncachedMedian, 65000);
 });
 
 test('extractSuiteSummary excludes infra-errored task pairs from guide and suite rollups while counting agent-broken apps as 0/N', () => {
@@ -197,71 +160,6 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
     assert.deepStrictEqual(summary.chartData.unguided, [0]);
     assert.deepStrictEqual(summary.chartData.guided_err_rate, [0]);
     assert.deepStrictEqual(summary.chartData.unguided_err_rate, [0]);
-});
-
-test('extractSuiteSummary computes uplift from unrounded exact rates and attaches per-task a11y breakdowns', () => {
-    const summary = extractSuiteSummary('run-rounding-and-task-a11y', {
-        results: {
-            'daily-grind - scrollspy - unguided': [{
-                discipline: 'ui-behaviors',
-                results: [
-                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
-                    { passed: false, message: 'Respects prefers-reduced-motion', testId: 's2' },
-                    { passed: false, message: 'Scroll container has :focus-visible outline', testId: 's3' },
-                ],
-            }],
-            'daily-grind - scrollspy - guided': [{
-                discipline: 'ui-behaviors',
-                results: [
-                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
-                    { passed: true, message: 'Respects prefers-reduced-motion', testId: 's2' },
-                    { passed: false, message: 'Scroll container has :focus-visible outline', testId: 's3' },
-                ],
-            }],
-            'devtools-times - scrollspy - unguided': [{
-                discipline: 'ui-behaviors',
-                results: [
-                    { passed: false, message: 'Active link sets aria-current="true"', testId: 's1' },
-                    { passed: false, message: 'Respects prefers-reduced-motion', testId: 's2' },
-                    { passed: false, message: 'Scroll container has :focus-visible outline', testId: 's3' },
-                ],
-            }],
-            'devtools-times - scrollspy - guided': [{
-                discipline: 'ui-behaviors',
-                results: [
-                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
-                    { passed: true, message: 'Respects prefers-reduced-motion', testId: 's2' },
-                    { passed: true, message: 'Scroll container has :focus-visible outline', testId: 's3' },
-                ],
-            }],
-        },
-    } as never);
-
-    assert.ok(summary);
-    const scrollspy = summary.guides.scrollspy;
-    const dg = scrollspy.tasks?.['daily-grind'];
-    const dt = scrollspy.tasks?.['devtools-times'];
-    assert.ok(dg && dt);
-
-    // 1/3 (33.33% -> 33%) to 2/3 (66.67% -> 67%): exact difference is 33.33 pp -> rounds to 33, not 67 - 33 = 34
-    assert.strictEqual(dg.unguidedRate, 33);
-    assert.strictEqual(dg.guidedRate, 67);
-    assert.strictEqual(dg.uplift, 33);
-
-    // Per-task a11y breakdown is populated on multi-target guides
-    assert.ok(dg.a11y);
-    assert.strictEqual(dg.a11y.unguidedPassed, 1);
-    assert.strictEqual(dg.a11y.unguidedTotal, 3);
-    assert.strictEqual(dg.a11y.guidedPassed, 2);
-    assert.strictEqual(dg.a11y.guidedTotal, 3);
-    assert.strictEqual(dg.a11y.uplift, 33);
-
-    assert.ok(dt.a11y);
-    assert.strictEqual(dt.a11y.unguidedPassed, 0);
-    assert.strictEqual(dt.a11y.unguidedTotal, 3);
-    assert.strictEqual(dt.a11y.guidedPassed, 3);
-    assert.strictEqual(dt.a11y.guidedTotal, 3);
-    assert.strictEqual(dt.a11y.uplift, 100);
 });
 
 test('extractSuiteSummary computes unguidedLeakRate when unguided run accesses expected guide', () => {

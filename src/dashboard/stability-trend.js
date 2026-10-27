@@ -1,5 +1,5 @@
 import { ApiClient } from './api.js';
-import { getRunStats, isEarlyFailureRun, getColor, escapeHtml } from './utils.js';
+import { getRunStats, isEarlyFailureRun, getColor } from './utils.js';
 
 const api = new ApiClient();
 
@@ -24,20 +24,24 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
     if (!container) return;
 
     container.innerHTML = `<div class="stability-loading">Loading historical data...</div>`;
-    const sourceParam = api.source;
 
     try {
-        const { suites: manifestSuites = [] } = await api.getManifest('slim');
+        const response = await fetch('/api/suites');
+        if (!response.ok) throw new Error('Could not fetch suite manifest');
+        /** @type {{ suites: SuiteInfo[] }} */
+        const manifest = await response.json();
 
-        const currentSuite = manifestSuites.find(s => (s.testId || /** @type {any} */ (s).id) === currentTestId);
+        const currentSuite = manifest.suites.find(s => s.id === currentTestId);
         const criteria = currentSuite ? { agent: currentSuite.agent, model: currentSuite.model, serving: currentSuite.serving } : null;
 
         /** @type {string[]} */
         let currentAssertions = [];
         let currentPromptText = '';
         try {
-            const currentData = await api.getEvals(currentTestId);
-            if (currentData && currentData.results) {
+            const currentRes = await fetch(`${currentTestId}/evals.json`);
+            if (currentRes.ok) {
+                /** @type {import('../harness/lib/metrics.ts').EvalsReport} */
+                const currentData = await currentRes.json();
                 const guidedKey = `${scenarioName} - guided`;
                 const unguidedKey = `${scenarioName} - unguided`;
                 const currentValidRun = [...(currentData.results[guidedKey] || []), ...(currentData.results[unguidedKey] || [])].find(r => !isEarlyFailureRun(r.results));
@@ -57,23 +61,17 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
         /** @type {any[]} */
         let history = [];
-        for (const suite of manifestSuites) {
-            const suiteId = suite.testId || /** @type {any} */ (suite).id;
-            if (!suiteId) continue;
+        for (const suite of manifest.suites) {
             if (criteria) {
                 if (suite.agent !== criteria.agent || suite.model !== criteria.model || suite.serving !== criteria.serving) continue;
             }
 
-            /** @type {import('../harness/lib/metrics.ts').EvalsReport | null} */
-            let data = null;
-            try {
-                data = await api.getEvals(suiteId);
-            } catch {
-                continue;
-            }
-            if (data) {
-                if (!data.results) {
-                    console.warn(`[StabilityTrend] Suite ${suiteId} has no results.`);
+            const res = await fetch(`${suite.id}/evals.json`);
+            if (res.ok) {
+                /** @type {import('../harness/lib/metrics.ts').EvalsReport} */
+                const data = await res.json();
+                if (!data || !data.results) {
+                    console.warn(`[StabilityTrend] Suite ${suite.id} has no results.`);
                     continue;
                 }
                 const guidedKey = `${scenarioName} - guided`;
@@ -92,7 +90,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                         if (isEarlyFailureRun(run.results)) continue;
                         const historyAssertions = run.results.map(r => r.message).sort();
                         if (currentAssertions.length > 0 && currentAssertions.join('|') !== historyAssertions.join('|')) {
-                             console.log(`[StabilityTrend] Skipping runs in suite ${suiteId} - Grader checks differ.`);
+                             console.log(`[StabilityTrend] Skipping runs in suite ${suite.id} - Grader checks differ.`);
                              continue; // Skip if checks differ!
                         }
                         guidedTrials.push(getRunStats(run.results).rate);
@@ -112,7 +110,7 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                     const candidateRun = (guidedRun && guidedRun[0]) || (unguidedRun && unguidedRun[0]);
                     if (candidateRun) {
                         const typeLabel = guidedRun && guidedRun[0] ? 'guided' : 'unguided';
-                        const resultInfo = await api.getResultInfo(suiteId, candidateRun, `${scenarioName} - ${typeLabel}`);
+                        const resultInfo = await api.getResultInfo(suite.id, candidateRun, `${scenarioName} - ${typeLabel}`);
                         if (resultInfo) {
                             const { usedBasePath } = resultInfo;
                             const runText = await api.getFileText(`${usedBasePath}/run.mjs`);
@@ -127,24 +125,24 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                 } catch (e) {}
 
                 if (currentPromptText && historyPromptText && currentPromptText !== historyPromptText) {
-                    console.log(`[StabilityTrend] Skipping suite ${suiteId} - Prompt text differs.`);
+                    console.log(`[StabilityTrend] Skipping suite ${suite.id} - Prompt text differs.`);
                     continue; 
                 }
 
                 if (guidedTrials.length > 0 || unguidedTrials.length > 0) {
-                    console.log(`[StabilityTrend] Matched suite ${suiteId} - Prompt and Assertions identical! (Guided Trials: ${guidedTrials.length}, Unguided Trials: ${unguidedTrials.length})`);
+                    console.log(`[StabilityTrend] Matched suite ${suite.id} - Prompt and Assertions identical! (Guided Trials: ${guidedTrials.length}, Unguided Trials: ${unguidedTrials.length})`);
                     
                     const gAvg = guidedTrials.length > 0 ? guidedTrials.reduce((a,b)=>a+b,0) / guidedTrials.length : null;
                     const uAvg = unguidedTrials.length > 0 ? unguidedTrials.reduce((a,b)=>a+b,0) / unguidedTrials.length : null;
 
                     history.push({
-                        testId: suiteId,
+                        testId: suite.id,
                         timestamp: suite.timestamp,
                         guidedAvg: gAvg,
                         unguidedAvg: uAvg,
                         guidedTrials,
                         unguidedTrials,
-                        isCurrent: suiteId === currentTestId
+                        isCurrent: suite.id === currentTestId
                     });
                 }
             }
@@ -207,9 +205,9 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                 <svg width="${width}" height="${totalHeight}" viewBox="0 0 ${width} ${totalHeight}" style="display: block;">
                     
                     <!-- Top Subplot (Unguided) -->
-                    <line x1="${paddingX}" y1="${paddingY}" x2="${width - paddingX}" y2="${paddingY}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4" />
-                    <line x1="${paddingX}" y1="${paddingY + graphHeight / 2}" x2="${width - paddingX}" y2="${paddingY + graphHeight / 2}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4" />
-                    <line x1="${paddingX}" y1="${paddingY + graphHeight}" x2="${width - paddingX}" y2="${paddingY + graphHeight}" stroke="var(--color-outline)" stroke-width="1" />
+                    <line x1="${paddingX}" y1="${paddingY}" x2="${width - paddingX}" y2="${paddingY}" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4" />
+                    <line x1="${paddingX}" y1="${paddingY + graphHeight / 2}" x2="${width - paddingX}" y2="${paddingY + graphHeight / 2}" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4" />
+                    <line x1="${paddingX}" y1="${paddingY + graphHeight}" x2="${width - paddingX}" y2="${paddingY + graphHeight}" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
                     
                     <text x="${paddingX - 10}" y="${paddingY + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">100%</text>
                     <text x="${paddingX - 10}" y="${paddingY + graphHeight / 2 + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">50%</text>
@@ -218,9 +216,9 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                     ${uPoints ? `<polyline points="${uPoints}" fill="none" stroke="oklch(65% 0.1 200)" stroke-width="1.5" stroke-dasharray="3" stroke-linecap="round" stroke-linejoin="round" />` : ''}
 
                     <!-- Bottom Subplot (Guided) -->
-                    <line x1="${paddingX}" y1="${gOffset + paddingY}" x2="${width - paddingX}" y2="${gOffset + paddingY}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4" />
-                    <line x1="${paddingX}" y1="${gOffset + paddingY + graphHeight / 2}" x2="${width - paddingX}" y2="${gOffset + paddingY + graphHeight / 2}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4" />
-                    <line x1="${paddingX}" y1="${gOffset + paddingY + graphHeight}" x2="${width - paddingX}" y2="${gOffset + paddingY + graphHeight}" stroke="var(--color-outline)" stroke-width="1" />
+                    <line x1="${paddingX}" y1="${gOffset + paddingY}" x2="${width - paddingX}" y2="${gOffset + paddingY}" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4" />
+                    <line x1="${paddingX}" y1="${gOffset + paddingY + graphHeight / 2}" x2="${width - paddingX}" y2="${gOffset + paddingY + graphHeight / 2}" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4" />
+                    <line x1="${paddingX}" y1="${gOffset + paddingY + graphHeight}" x2="${width - paddingX}" y2="${gOffset + paddingY + graphHeight}" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
                     
                     <text x="${paddingX - 10}" y="${gOffset + paddingY + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">100%</text>
                     <text x="${paddingX - 10}" y="${gOffset + paddingY + graphHeight / 2 + 4}" fill="var(--text-secondary)" font-size="0.75rem" text-anchor="end">50%</text>
@@ -232,17 +230,16 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                     ${history.map((h, i) => {
                         const x = paddingX + i * stepX;
                         const displayId = formatShortTime(h.timestamp);
-                        const strokeColor = h.isCurrent ? 'var(--text-primary)' : 'var(--bg-primary)';
+                        const strokeColor = h.isCurrent ? '#fff' : 'var(--bg-primary)';
                         const strokeWidth = h.isCurrent ? 3 : 2;
-                        const safeTestId = escapeHtml(h.testId) || '';
 
                         let uTrialPoints = '';
                         if (h.unguidedTrials) {
                             h.unguidedTrials.forEach((/** @type {number} */ trialRate) => {
                                 const yU = paddingY + graphHeight - (trialRate / 100 * graphHeight);
                                 uTrialPoints += `
-                                    <circle cx="${x}" cy="${yU}" r="4" fill="var(--color-outline)" stroke="${strokeColor}" stroke-width="${strokeWidth}">
-                                        <title>Suite: ${safeTestId}\nUnguided Trial: ${trialRate}%</title>
+                                    <circle cx="${x}" cy="${yU}" r="4" fill="rgba(255,255,255,0.3)" stroke="${strokeColor}" stroke-width="${strokeWidth}">
+                                        <title>Suite: ${h.testId}\nUnguided Trial: ${trialRate}%</title>
                                     </circle>
                                 `;
                             });
@@ -254,21 +251,19 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
                                 const yG = gOffset + paddingY + graphHeight - (trialRate / 100 * graphHeight);
                                 gTrialPoints += `
                                     <circle cx="${x}" cy="${yG}" r="5" fill="${getColor(trialRate)}" stroke="${strokeColor}" stroke-width="${strokeWidth}">
-                                        <title>Suite: ${safeTestId}\nGuided Trial: ${trialRate}%</title>
+                                        <title>Suite: ${h.testId}\nGuided Trial: ${trialRate}%</title>
                                     </circle>
                                 `;
                             });
                         }
 
-                        // SVG <a> is focusable, so each run is reachable by keyboard (was a click-only <g onclick>).
-                        const pointHref = `dashboard.html?testId=${encodeURIComponent(h.testId)}&source=${encodeURIComponent(sourceParam)}`;
                         return `
-                            <a class="stability-point-group" href="${pointHref}" aria-label="Open suite ${safeTestId}">
-                                <line x1="${x}" y1="${paddingY}" x2="${x}" y2="${gOffset + paddingY + graphHeight}" stroke="${h.isCurrent ? 'var(--color-outline)' : 'var(--border-color)'}" stroke-width="${h.isCurrent ? 1.5 : 1}" />
+                            <g class="stability-point-group" onclick="window.location.href='dashboard.html?testId=${h.testId}&source=local'">
+                                <line x1="${x}" y1="${paddingY}" x2="${x}" y2="${gOffset + paddingY + graphHeight}" stroke="${h.isCurrent ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)'}" stroke-width="${h.isCurrent ? 1.5 : 1}" />
                                 ${uTrialPoints}
                                 ${gTrialPoints}
-                                <text x="${x}" y="${gOffset + paddingY + graphHeight + 20}" fill="${h.isCurrent ? 'var(--text-primary)' : 'var(--text-secondary)'}" font-size="0.7rem" font-weight="${h.isCurrent ? 'bold' : 'normal'}" text-anchor="middle">${escapeHtml(displayId)}</text>
-                            </a>
+                                <text x="${x}" y="${gOffset + paddingY + graphHeight + 20}" fill="${h.isCurrent ? '#fff' : 'var(--text-secondary)'}" font-size="0.7rem" font-weight="${h.isCurrent ? 'bold' : 'normal'}" text-anchor="middle">${displayId}</text>
+                            </g>
                         `;
                     }).join('')}
                 </svg>
@@ -278,6 +273,6 @@ export async function loadStabilityTrend(scenarioName, currentTestId) {
 
     } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
-        container.innerHTML = `<div class="stability-error">Error querying trend: ${escapeHtml(message)}</div>`;
+        container.innerHTML = `<div class="stability-error">Error querying trend: ${message}</div>`;
     }
 };

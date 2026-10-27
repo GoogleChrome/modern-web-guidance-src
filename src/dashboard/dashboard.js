@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const backBtns = document.querySelectorAll('a[href="./"]');
         backBtns.forEach(btn => {
             if (btn instanceof HTMLAnchorElement) {
-                btn.href = `./?source=${source}`;
+                btn.href = `./?source=${encodeURIComponent(source)}`;
             }
         });
     }
@@ -253,8 +253,8 @@ async function loadDashboardData(testId) {
             const targetGuide = hash.substring(7); // remove '#guide-'
             const targetTask = params.get('task');
             setTimeout(() => {
-                const accordionEl = (targetTask && document.querySelector(`.task-accordion[data-guide="${targetGuide}"][data-task="${targetTask}"]`))
-                    || document.querySelector(`.task-accordion[data-guide="${targetGuide}"]`);
+                const accordionEl = (targetTask && document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"][data-task="${CSS.escape(targetTask)}"]`))
+                    || document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"]`);
                 if (accordionEl) {
                     accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                     if (!accordionEl.classList.contains('open')) {
@@ -335,6 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle Esc key or dialog close API
     modal.addEventListener('close', () => {
+        modal.classList.remove('diff-modal');
+        modal.querySelector('.modal-content')?.classList.remove('diff-modal');
         const url = new URL(window.location.href);
         const paramsList = ['testName', 'checkId', 'view', 'run'];
         let changed = false;
@@ -355,9 +357,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams(window.location.search);
         const source = params.get('source');
         const testId = params.get('testId');
-        if (source === 'remote') {
+        if (source === 'remote' && testId) {
             gcsBtn.hidden = false;
-            gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${testId}?project=chrome-kiwi-air-force-dev`, '_blank');
+            gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${encodeURIComponent(testId)}?project=chrome-kiwi-air-force-dev`, '_blank');
         }
     }
 
@@ -889,33 +891,7 @@ function renderGrid(data, testId) {
         return a.localeCompare(b);
     });
 
-    /**
-     * @typedef {Object} ScenarioItem
-     * @property {string} appName
-     * @property {string} guide
-     * @property {string} scenarioName
-     * @property {DashboardRunResult[] | undefined} unguidedRuns
-     * @property {DashboardRunResult[] | undefined} guidedRuns
-     * @property {number | null} unguidedAvg
-     * @property {number | null} guidedAvg
-     * @property {number | null} uplift
-     * @property {number | null} a11yUnguidedAvg
-     * @property {number | null} a11yGuidedAvg
-     * @property {number | null} a11yUplift
-     * @property {number} a11yCheckCount
-     * @property {number} uRuntimeMs
-     * @property {number} gRuntimeMs
-     * @property {number | null} runtimeDeltaMs
-     * @property {number} uUncachedTokens
-     * @property {number} gUncachedTokens
-     * @property {number | null} uncachedDeltaTokens
-     * @property {number} infraErrorCount
-     * @property {boolean} hasInfraError
-     * @property {boolean} hasBuildFailure
-     * @property {number} leakCount
-     * @property {boolean} hasLeak
-     * @property {boolean} hasFailure
-     */
+    /** @typedef {{ appName: string, guide: string, scenarioName: string, unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
 
     /** @type {ScenarioItem[]} */
     const scenarios = [];
@@ -1369,29 +1345,20 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
         }
 
+        const passSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="visually-hidden">Pass</span>';
+        const failSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span class="visually-hidden">Fail</span>';
+        const passCell = (/** @type {boolean | undefined} */ pass) => `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? passSvg : failSvg) : '-'}</td>`;
+
         assertionMap.forEach((status, message) => {
             const a11yInfo = classifyAccessibilityCheck(sampleRun?.discipline || '', guideName, message);
             const subCatMeta = a11yInfo.subCategory ? A11Y_SUBCATEGORY_MAP[a11yInfo.subCategory] : null;
             const a11yBadge = a11yInfo.isAccessibility && subCatMeta
-                ? ` <span class="a11y-check-badge">A11y · ${escapeHtml(subCatMeta.shortLabel)}<span class="visually-hidden"> — ${escapeHtml(subCatMeta.label)}: ${escapeHtml(a11yInfo.rationale)}</span></span>`
+                ? ` <span class="a11y-check-badge">A11y · ${escapeHtml(subCatMeta.shortLabel)}</span>`
                 : '';
 
             truthMatrixHtml += `<tr class="${a11yInfo.isAccessibility ? 'a11y-assertion-row' : ''}">`;
-            if (maxRuns > 1) {
-                for (let i = 0; i < maxRuns; i++) {
-                    const pass = status.unguided[i];
-                    truthMatrixHtml += `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
-                }
-                for (let i = 0; i < maxRuns; i++) {
-                    const pass = status.guided[i];
-                    truthMatrixHtml += `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
-                }
-            } else {
-                const uPass = status.unguided[0];
-                const gPass = status.guided[0];
-                truthMatrixHtml += `<td class="center ${uPass !== undefined ? (uPass ? 'pass' : 'fail') : ''}">${uPass !== undefined ? (uPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
-                truthMatrixHtml += `<td class="center ${gPass !== undefined ? (gPass ? 'pass' : 'fail') : ''}">${gPass !== undefined ? (gPass ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>') : '-'}</td>`;
-            }
+            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += passCell(status.unguided[i]);
+            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += passCell(status.guided[i]);
             let diagnosticsHtml = '';
             if (status.error) {
                 const loc = status.errorLocation ? ` <span class="assertion-error-loc">(${escapeHtml(status.errorLocation)})</span>` : '';
@@ -2037,8 +2004,8 @@ function renderDashboardDumbbellChart(data) {
                 const parsed = parseResultKey(originalKey);
                 if (parsed) {
                     const { guide, task } = parsed;
-                    const accordionEl = (task && document.querySelector(`.task-accordion[data-guide="${guide}"][data-task="${task}"]`))
-                        || document.querySelector(`.task-accordion[data-guide="${guide}"]`);
+                    const accordionEl = (task && document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"][data-task="${CSS.escape(task)}"]`))
+                        || document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"]`);
                     if (accordionEl) {
                         accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                         if (!accordionEl.classList.contains('open')) {

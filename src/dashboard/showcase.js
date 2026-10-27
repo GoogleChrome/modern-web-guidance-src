@@ -1,75 +1,17 @@
 /**
  * Use-case Evaluation Spotlight for the landing page (index.html).
- *
- * Loads real Unguided vs. Guided task pairs extracted from the latest nightly
- * evaluation suites (`./showcase-runs.json`) across Claude Code, Antigravity CLI,
- * and Codex CLI. Highlights the task prompt, side-by-side pass rates, approach
- * summary, and the deterministic grader assertions for each use case.
  */
 import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior } from './utils.js';
 
-/**
- * @typedef {Object} ShowcaseModeRun
- * @property {number} passed
- * @property {number} total
- * @property {number} rate
- * @property {number} a11yPassed
- * @property {number} a11yTotal
- * @property {number} runtimeMs
- * @property {number} uncachedTokens
- * @property {number} totalTokens
- * @property {string[]} guidesUsed
- * @property {number} addedLines
- * @property {number} removedLines
- */
-
-/**
- * @typedef {Object} ShowcaseCheckItem
- * @property {number} index
- * @property {string} message
- * @property {boolean} unguidedPassed
- * @property {boolean} guidedPassed
- * @property {boolean} flipped
- * @property {boolean} isA11y
- * @property {string | null} a11yLabel
- */
-
-/**
- * @typedef {Object} ShowcaseAgentPair
- * @property {string} agentId
- * @property {string} agentLabel
- * @property {string} model
- * @property {string} suiteId
- * @property {string} date
- * @property {ShowcaseModeRun} unguided
- * @property {ShowcaseModeRun} guided
- * @property {ShowcaseCheckItem[]} checks
- */
-
-/**
- * @typedef {Object} ShowcaseTask
- * @property {string} id
- * @property {string} label
- * @property {string} category
- * @property {string} categoryLabel
- * @property {string} featureSummary
- * @property {string} prompt
- * @property {string} baseApp
- * @property {Record<string, ShowcaseAgentPair>} agents
- */
-
-/**
- * @typedef {Object} ShowcasePayload
- * @property {string} generatedAt
- * @property {ShowcaseTask[]} tasks
- */
+/** @typedef {{ passed: number, total: number, rate: number, a11yPassed: number, a11yTotal: number, runtimeMs: number, uncachedTokens: number, totalTokens: number, guidesUsed: string[], addedLines: number, removedLines: number }} ShowcaseModeRun */
+/** @typedef {{ index: number, message: string, unguidedPassed: boolean, guidedPassed: boolean, flipped: boolean, isA11y: boolean, a11yLabel: string | null }} ShowcaseCheckItem */
+/** @typedef {{ agentId: string, agentLabel: string, model: string, suiteId: string, date: string, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
+/** @typedef {{ id: string, label: string, category: string, categoryLabel: string, featureSummary: string, prompt: string, baseApp: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
+/** @typedef {{ generatedAt: string, tasks: ShowcaseTask[] }} ShowcasePayload */
 
 const AGENT_ORDER = ['claude_code', 'antigravity_cli', 'codex_cli'];
 
-/**
- * Concise task tab labels so the horizontal task bar scans cleanly without wrapping.
- * @type {Record<string, string>}
- */
+/** @type {Record<string, string>} */
 const SHORT_TASK_LABELS = {
     'highlight-text-ranges': 'Search highlights',
     'animate-to-from-top-layer': 'Top-layer motion',
@@ -79,40 +21,21 @@ const SHORT_TASK_LABELS = {
     'interest-triggered-tooltips': 'Interest tooltips'
 };
 
-/**
- * Category folder lookup for every guide referenced in `showcase-runs.json` (`guidesUsed`),
- * so each retrieved guide links directly to its `guides/<category>/<slug>/guide.md` on GitHub.
- * @type {Record<string, string>}
- */
+/** @type {Record<string, string>} */
 const GUIDE_CATEGORY_MAP = {
-    'accessibility': 'accessibility',
-    'animate-to-from-top-layer': 'ui-behaviors',
-    'css': 'css',
-    'dark-mode': 'visual-design',
-    'declarative-dialog-popover-control': 'ui-behaviors',
-    'directional-navigation-transitions': 'ui-behaviors',
-    'faster-spa-view-transitions': 'performance',
-    'flicker-free-client-side-ab-testing': 'performance',
-    'forms': 'forms',
-    'highlight-text-ranges': 'ui-behaviors',
-    'html': 'html',
-    'interest-triggered-tooltips': 'ui-behaviors',
-    'light-dismiss-a-dialog': 'ui-behaviors',
-    'motion': 'ui-behaviors',
-    'move-dom-element-without-losing-state': 'ui-behaviors',
-    'optimize-image-priority': 'performance',
-    'optimize-preload-priority': 'performance',
-    'performance': 'performance',
-    'position-aware-tooltips': 'ui-atoms',
-    'same-document-transitions': 'ui-behaviors',
-    'scrollspy': 'ui-components',
-    'search-hidden-content': 'ui-behaviors'
+    'accessibility': 'accessibility', 'animate-to-from-top-layer': 'ui-behaviors', 'css': 'css',
+    'dark-mode': 'visual-design', 'declarative-dialog-popover-control': 'ui-behaviors',
+    'directional-navigation-transitions': 'ui-behaviors', 'faster-spa-view-transitions': 'performance',
+    'flicker-free-client-side-ab-testing': 'performance', 'forms': 'forms',
+    'highlight-text-ranges': 'ui-behaviors', 'html': 'html', 'interest-triggered-tooltips': 'ui-behaviors',
+    'light-dismiss-a-dialog': 'ui-behaviors', 'motion': 'ui-behaviors',
+    'move-dom-element-without-losing-state': 'ui-behaviors', 'optimize-image-priority': 'performance',
+    'optimize-preload-priority': 'performance', 'performance': 'performance',
+    'position-aware-tooltips': 'ui-atoms', 'same-document-transitions': 'ui-behaviors',
+    'scrollspy': 'ui-components', 'search-hidden-content': 'ui-behaviors'
 };
 
-/**
- * Concise 1-line summary contrasting what agents typically build unguided vs. guided on each task.
- * @type {Record<string, { unguided: string, guided: string }>}
- */
+/** @type {Record<string, { unguided: string, guided: string }>} */
 const TASK_APPROACH_CONTRAST = {
     'highlight-text-ranges': {
         unguided: 'Mutated DOM text nodes with <mark> wrappers on every keystroke instead of using the CSS Custom Highlight API.',
@@ -140,11 +63,7 @@ const TASK_APPROACH_CONTRAST = {
     }
 };
 
-/**
- * Per-(task, agent) overrides when a specific run diverges from the typical pattern
- * (e.g., partial adherence on a guided run or an unguided run that already passed 100%).
- * @type {Record<string, Partial< { unguided: string, guided: string } >>}
- */
+/** @type {Record<string, Partial<{ unguided: string, guided: string }>>} */
 const TASK_PAIR_OVERRIDES = {
     'animate-to-from-top-layer:antigravity_cli': {
         unguided: 'Applied @starting-style, transition-behavior: allow-discrete, and ::backdrop transitions (8/9), but omitted the prefers-reduced-motion guard.'
@@ -158,10 +77,8 @@ const TASK_PAIR_OVERRIDES = {
 };
 
 /**
- * Resolves the unguided and guided approach summaries for the selected task and agent pair.
  * @param {ShowcaseTask} task
  * @param {ShowcaseAgentPair} pair
- * @returns {{ unguided: string, guided: string }}
  */
 function getApproachContrast(task, pair) {
     const base = TASK_APPROACH_CONTRAST[task.id] || {
@@ -277,10 +194,12 @@ function renderTaskPills(currentTask) {
                 checksExpanded = false;
                 renderAll();
                 const activeBtn = /** @type {HTMLElement | null} */ (container.querySelector('.ab-task-pill[aria-pressed="true"]'));
-                if (activeBtn && container.scrollWidth > container.clientWidth) {
-                    const targetLeft = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.offsetWidth / 2);
-                    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                    container.scrollTo({ left: Math.max(0, targetLeft), behavior: reduceMotion ? 'auto' : 'smooth' });
+                if (activeBtn) {
+                    activeBtn.focus({ preventScroll: true });
+                    if (container.scrollWidth > container.clientWidth) {
+                        const targetLeft = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.offsetWidth / 2);
+                        container.scrollTo({ left: Math.max(0, targetLeft), behavior: getScrollBehavior() });
+                    }
                 }
                 announceSelection();
             }
@@ -309,6 +228,7 @@ function renderAgentPills(currentTask, currentPair) {
             if (id && id !== activeAgentId) {
                 activeAgentId = id;
                 renderAll();
+                /** @type {HTMLElement | null} */ (container.querySelector('.ab-agent-pill[aria-pressed="true"]'))?.focus({ preventScroll: true });
                 announceSelection();
             }
         });

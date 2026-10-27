@@ -187,6 +187,8 @@ function setupTimelineFilterControls(guideName) {
     });
 }
 
+let outsideClickBound = false;
+
 /**
  * @param {string} currentGuide
  */
@@ -328,12 +330,15 @@ function setupNavigationControls(currentGuide) {
         items[currentFocus].scrollIntoView({ block: 'nearest' });
     }
 
-    document.addEventListener('click', (e) => {
-        const target = /** @type {Node} */ (e.target);
-        if (!searchInput.contains(target) && !list.contains(target)) {
-            closeList();
-        }
-    });
+    if (!outsideClickBound) {
+        outsideClickBound = true;
+        document.addEventListener('click', (e) => {
+            const target = /** @type {Node} */ (e.target);
+            if (!searchInput.contains(target) && !list.contains(target)) {
+                closeList();
+            }
+        });
+    }
 }
 
 /**
@@ -598,7 +603,7 @@ function renderGraphs(guideName) {
 
         // Auto-scroll to highlighted point if it exists in this chart, or to the latest runs on the right
         if (highlightTestId) {
-            const highlightedEl = svg.querySelector(`[data-testid="${highlightTestId}"]`);
+            const highlightedEl = svg.querySelector(`[data-testid="${CSS.escape(highlightTestId)}"]`);
             if (highlightedEl) {
                 setTimeout(() => {
                     const wrapperRect = chartWrapper.getBoundingClientRect();

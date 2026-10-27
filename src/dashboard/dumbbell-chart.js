@@ -113,6 +113,7 @@ export class DumbbellChart {
    */
   render(data) {
     let offsetStep = 8;
+    let baseRowHeight = this.options.rowHeight;
     this.init();
 
     const labels = data.labels || [];
@@ -196,7 +197,7 @@ export class DumbbellChart {
     let naturalContentHeight = 0;
     featureNames.forEach(f => {
         const count = groups[f].length;
-        naturalContentHeight += this.options.rowHeight + (count - 1) * offsetStep;
+        naturalContentHeight += baseRowHeight + (count - 1) * offsetStep;
     });
 
     const verticalMargins = this.options.margin.top + this.options.margin.bottom;
@@ -206,7 +207,7 @@ export class DumbbellChart {
     if (this.options.maxHeight && totalNaturalHeight > this.options.maxHeight && naturalContentHeight > 0) {
         const availableContentHeight = this.options.maxHeight - verticalMargins;
         const compressionFactor = availableContentHeight / naturalContentHeight;
-        this.options.rowHeight *= compressionFactor;
+        baseRowHeight *= compressionFactor;
         offsetStep *= compressionFactor;
         finalSvgHeight = this.options.maxHeight;
     }
@@ -309,7 +310,7 @@ export class DumbbellChart {
 
     featureNames.forEach((featureName, rowIndex) => {
       const items = groups[featureName];
-      const rowHeight = this.options.rowHeight + (items.length - 1) * offsetStep;
+      const rowHeight = baseRowHeight + (items.length - 1) * offsetStep;
       const rowY = currentY + (rowHeight / 2);
 
       // Faint horizontal separator

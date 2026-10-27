@@ -1,22 +1,14 @@
 import { authenticatedFetch, parseResultKey, isLocalDashboardHost } from './utils.js';
-import { MANIFEST_FILES } from './summary-extractor.js';
 import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 
 /**
  * @typedef {'local' | 'remote' | 'static'} DataSource
  */
 
-/**
- * Manifest promises memoized per page load (keyed by `${source}:${kind}`), shared by every
- * ApiClient instance so the hero and the suites table download each artifact once.
- * @type {Map<string, Promise<any>>}
- */
+/** @type {Map<string, Promise<{ suites: import('./insights.js').ManifestSuite[] }>>} */
 const manifestCache = new Map();
 
 export class ApiClient {
-    /**
-     * Clears the in-memory manifest promise cache.
-     */
     static clearCache() {
         manifestCache.clear();
     }
@@ -148,114 +140,56 @@ export class ApiClient {
         }
     }
 
-    // --- Suite manifests (suites.gen.json / suites.slim.gen.json / headline-insights.gen.json) ---
-
     /**
-     * @typedef {'full' | 'slim' | 'insights'} ManifestKind
+     * Loads and memoizes the suites manifest (`suites.gen.json`, or `/api/suites` locally).
+     * @returns {Promise<{ suites: import('./insights.js').ManifestSuite[] }>}
      */
-
-    /**
-     * @typedef {Object} ManifestResult
-     * @property {ManifestKind} kind What was asked for.
-     * @property {ManifestKind} servedFrom Which artifact actually answered (`full` when a small file was missing).
-     * @property {boolean} fallback True when `servedFrom !== kind` (derived client-side from the full manifest).
-     * @property {import('./insights.js').ManifestSuite[]} [suites] For `full` / `slim`.
-     * @property {import('./insights.js').HeadlineInsights & { generatedAt?: string }} [insights] For `insights`.
-     */
-
-    /**
-     * Raw fetch of one manifest artifact for the current source. Resolves to `null` on 404 so callers can fall back.
-     * @private
-     * @param {ManifestKind} kind
-     * @returns {Promise<any | null>}
-     */
-    async _fetchManifestFile(kind) {
-        const name = MANIFEST_FILES[kind];
-        const bust = `t=${Date.now()}`;
-        if (this.source === 'local') {
-            // The dev server computes full summaries on request; slim/insights are derived client-side.
-            if (kind !== 'full') return null;
-            const res = await fetch(`/api/suites?${bust}`);
-            if (!res.ok) throw new Error('Failed to load local suites');
-            const data = await res.json();
-            return Array.isArray(data) ? data : (data.suites || []);
-        }
-        const url = this.source === 'remote'
-            ? `${this.gcsPrefix}${encodeURIComponent(name)}?alt=media&${bust}`
-            : `/${name}?${bust}`;
-        const res = this.source === 'remote' ? await authenticatedFetch(url) : await fetch(url);
-        if (res.status === 404) return null;
-        if (!res.ok) throw new Error(`Failed to load ${name} (${res.status})`);
-        return await res.json();
-    }
-
-    /**
-     * Loads a suites manifest. Small artifacts (`slim`, `insights`) are preferred for first paint;
-     * when they are missing (older bucket / dev server) the full manifest is fetched once and the
-     * requested shape is derived client-side, so callers never have to special-case the fallback.
-     * Results are memoized per page load and per source, and `full`/`slim` share one array per kind,
-     * so `hydrateMissingStats()` mutations are visible to every consumer.
-     *
-     * @param {ManifestKind} [kind='slim']
-     * @returns {Promise<ManifestResult>}
-     */
-    async getManifest(kind = 'slim') {
-        const cacheKey = `${this.source}:${kind}`;
-        const cached = manifestCache.get(cacheKey);
+    async getManifest() {
+        const cached = manifestCache.get(this.source);
         if (cached) return cached;
 
         const promise = (async () => {
-            /** @type {any} */
-            const direct = await this._fetchManifestFile(kind).catch(err => {
-                if (kind === 'full') throw err;
-                console.warn(`Manifest ${MANIFEST_FILES[kind]} unavailable, falling back to the full manifest:`, err instanceof Error ? err.message : err);
-                return null;
-            });
-            if (direct !== null) {
-                if (kind === 'insights') return { kind, servedFrom: kind, fallback: false, insights: direct };
-                return { kind, servedFrom: kind, fallback: false, suites: direct };
+            const bust = `t=${Date.now()}`;
+            if (this.source === 'local') {
+                const res = await fetch(`/api/suites?${bust}`);
+                if (!res.ok) throw new Error('Failed to load local suites');
+                const data = await res.json();
+                return { suites: Array.isArray(data) ? data : (data.suites || []) };
             }
-            const full = await this.getManifest('full');
-            const suites = /** @type {import('./insights.js').ManifestSuite[]} */ (full.suites || []);
-            if (kind === 'insights') {
-                return { kind, servedFrom: /** @type {ManifestKind} */ ('full'), fallback: true, insights: computeHeadlineInsights(suites) };
-            }
-            // Slim derived from full: keep the SAME entry objects (not copies) so hydration stays shared.
-            return { kind, servedFrom: /** @type {ManifestKind} */ ('full'), fallback: true, suites };
+            const url = this.source === 'remote'
+                ? `${this.gcsPrefix}suites.gen.json?alt=media&${bust}`
+                : `/suites.gen.json?${bust}`;
+            const res = this.source === 'remote' ? await authenticatedFetch(url) : await fetch(url);
+            if (!res.ok) throw new Error(`Failed to load suites.gen.json (${res.status})`);
+            const suites = await res.json();
+            return { suites: Array.isArray(suites) ? suites : (suites.suites || []) };
         })();
-        manifestCache.set(cacheKey, promise);
-        promise.catch(() => manifestCache.delete(cacheKey));
+        manifestCache.set(this.source, promise);
+        promise.catch(() => manifestCache.delete(this.source));
         return promise;
     }
 
     /**
-     * Convenience: the landing-page headline numbers, with the client-side evals.json fallback for
-     * manifests that predate `a11yStats`/`efficiencyStats`. Resolves as soon as a first result exists;
-     * `onUpdate` fires once more if hydration changed anything.
-     *
+     * Computes headline insights from the suites manifest, hydrating missing `a11yStats` from `evals.json` when needed.
      * @param {{ perAgentRecentN?: number, onUpdate?: (insights: import('./insights.js').HeadlineInsights) => void }} [options]
      * @returns {Promise<import('./insights.js').HeadlineInsights>}
      */
     async getHeadlineInsights(options = {}) {
         const { perAgentRecentN = 3, onUpdate } = options;
         const insightOptions = { perAgentRecentN };
-        const served = await this.getManifest('insights');
-        let insights = /** @type {import('./insights.js').HeadlineInsights} */ (served.insights);
-        if (served.fallback || perAgentRecentN !== insights.options.perAgentRecentN) {
-            const { suites = [] } = await this.getManifest('full');
-            insights = computeHeadlineInsights(suites, insightOptions);
-            if (insights.missingStats.length > 0) {
-                const hydrate = hydrateMissingStats(suites, id => this.getEvals(id), insightOptions)
-                    .then(() => {
-                        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
-                            window.dispatchEvent(new CustomEvent('mwg:manifest-hydrated', { detail: { source: this.source, suites } }));
-                        }
-                        const updated = computeHeadlineInsights(suites, insightOptions);
-                        if (onUpdate) onUpdate(updated);
-                        return updated;
-                    });
-                if (!onUpdate) return hydrate;
-            }
+        const { suites = [] } = await this.getManifest();
+        const insights = computeHeadlineInsights(suites, insightOptions);
+        if (insights.missingStats.length > 0) {
+            const hydrate = hydrateMissingStats(suites, id => this.getEvals(id), insightOptions)
+                .then(() => {
+                    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+                        window.dispatchEvent(new CustomEvent('mwg:manifest-hydrated', { detail: { source: this.source, suites } }));
+                    }
+                    const updated = computeHeadlineInsights(suites, insightOptions);
+                    if (onUpdate) onUpdate(updated);
+                    return updated;
+                });
+            if (!onUpdate) return hydrate;
         }
         return insights;
     }

@@ -1,22 +1,13 @@
 /**
  * Hero / headline takeaways for the landing page.
- *
- * Loads the suites manifest (same sources as landing.js: local dev server,
- * static suites.gen.json, or the private GCS bucket after Google sign-in),
- * reduces it to headline insights via `computeHeadlineInsights()` from
- * ./insights.js, and renders the two quality takeaway cards, the per-agent
- * comparison table, and the numbers inside the "How we measure" disclosure.
- *
- * The hero never touches the browse UI below it (landing.js owns that).
  */
 import { getAccessToken, escapeHtml, getAgentBadge } from './utils.js';
 import { ApiClient } from './api.js';
 
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
-/** @typedef {import('./insights.js').FamilyInsight} FamilyInsight */
 /** @typedef {import('./insights.js').RateComparison} RateComparison */
 
-/** Short parenthetical shown once in the lede for family names that are not self-explanatory. @type {Record<string, string>} */
+/** @type {Record<string, string>} */
 const FAMILY_HINT = { antigravity_cli: 'Gemini' };
 
 const api = new ApiClient();
@@ -26,8 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!heroEl) return;
     void loadAndRender();
 
-    // Remote data needs a Google access token. landing.js owns the sign-in
-    // button; the hero just mirrors it and reacts once a token shows up.
     const authBtn = document.getElementById('auth-btn');
     const heroAuthBtn = document.getElementById('hero-auth-btn');
     if (heroAuthBtn && authBtn) {
@@ -38,11 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-/**
- * Resolves true when an access token becomes available (polls the shared state in utils.js).
- * @param {number} [timeoutMs]
- * @returns {Promise<boolean>}
- */
+/** @param {number} [timeoutMs] @returns {Promise<boolean>} */
 function waitForToken(timeoutMs = 120000) {
     const start = Date.now();
     return new Promise(resolve => {
@@ -55,19 +40,11 @@ function waitForToken(timeoutMs = 120000) {
     });
 }
 
-/**
- * Loads the headline numbers through ApiClient.getHeadlineInsights(), which prefers the small
- * pre-computed headline-insights.gen.json, falls back to the full manifest, and hydrates
- * a11y/efficiency stats from evals.json for just the latest-N suites when the manifest predates
- * them. Two-phase paint: manifest-only numbers first, hydrated numbers via onUpdate.
- */
 async function loadAndRender() {
     if (!heroEl) return;
     setBusy(true);
     setStatus(null);
 
-    // The private bucket needs a Google token. Until the small headline/slim artifacts are
-    // published public-read (see @data's Plan C), don't hit GCS signed-out: it only yields 401s.
     const signedOut = api.source === 'remote' && !getAccessToken();
     if (signedOut) {
         renderPending();
@@ -93,7 +70,7 @@ async function loadAndRender() {
         });
         const noSourceParam = !new URLSearchParams(window.location.search).get('source');
         if (api.source === 'local' && noSourceParam && !insights.families.length) {
-            const { suites = [] } = await api.getManifest('full');
+            const { suites = [] } = await api.getManifest();
             if (suites.length === 0) {
                 api.source = 'remote';
                 if (!getAccessToken()) {
@@ -112,7 +89,6 @@ async function loadAndRender() {
             }
         }
         paint(insights);
-        // Hydration is still running when the manifest lacked stats; keep aria-busy until onUpdate.
         if (insights.missingStats.length > 0) return;
     } catch (err) {
         if (!signedOut) console.error('Hero: failed to load headline insights', err);
@@ -124,13 +100,10 @@ async function loadAndRender() {
 
 /** @param {boolean} busy */
 function setBusy(busy) {
-    if (!heroEl) return;
-    heroEl.setAttribute('aria-busy', String(busy));
+    if (heroEl) heroEl.setAttribute('aria-busy', String(busy));
 }
 
-/**
- * @param {'auth' | 'auth-snapshot' | 'empty' | 'error' | null} kind
- */
+/** @param {'auth' | 'auth-snapshot' | 'empty' | 'error' | null} kind */
 function setStatus(kind) {
     const el = document.getElementById('hero-status');
     const text = document.getElementById('hero-status-text');
@@ -154,11 +127,7 @@ function setStatus(kind) {
     announce(text.textContent);
 }
 
-/**
- * Announces a message through the always-present live region (a region that is
- * un-hidden and filled in the same tick is not reliably announced).
- * @param {string} message
- */
+/** @param {string} message */
 function announce(message) {
     const live = document.getElementById('hero-live');
     if (!live) return;
@@ -166,21 +135,17 @@ function announce(message) {
     requestAnimationFrame(() => { live.textContent = message; });
 }
 
-// ==========================================
-// RENDERING
-// ==========================================
-
 /** @param {HeadlineInsights} insights */
 function renderHero(insights) {
     renderEyebrow(insights);
     renderTakeaways(insights);
     renderAgentTable(insights);
-    renderMethodNumbers(insights);
+    const el = document.getElementById('method-recent-n');
+    if (el) el.textContent = String(insights.options.perAgentRecentN);
     const o = insights.pooled?.overall;
     announce(o ? `Latest results loaded: ${signed(o.upliftPp, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
 }
 
-/** Placeholder content when no numbers are available (pre sign-in, empty source, error). */
 function renderPending() {
     const list = document.getElementById('hero-takeaways');
     if (list) {
@@ -214,11 +179,7 @@ function renderEyebrow(insights) {
     el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>Nightly evaluations${detail}${latest ? ` · latest data <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
 }
 
-/**
- * Renders the visual dumbbell bar + self-labeled unguided → guided rate pair inside the primary hero takeaway.
- * @param {number} uRate
- * @param {number} gRate
- */
+/** @param {number} uRate @param {number} gRate */
 function renderTakeawayDumbbell(uRate, gRate) {
     const u = Math.max(0, Math.min(100, Math.round(uRate || 0)));
     const g = Math.max(0, Math.min(100, Math.round(gRate || 0)));
@@ -245,14 +206,9 @@ function renderTakeaways(insights) {
     if (!list) return;
 
     const pooled = insights.pooled;
-    const fams = insights.families;
-    const familyNames = joinNames(fams.map(f => f.label));
-    const runsPhrase = describeRuns(insights);
-
     /** @type {string[]} */
     const cards = [];
 
-    // 1. Primary focal figure: Web best practices (overall pass rate, pooled across families)
     if (pooled?.overall) {
         const o = pooled.overall;
         const overallShortText = `~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${insights.pooled?.suiteCount || 0} nightly runs`;
@@ -264,12 +220,10 @@ function renderTakeaways(insights) {
             figureText: `${signed(o.upliftPp, 0)} percentage points`,
             statement: 'pass-rate lift across all tasks',
             visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
-            qualifier: `<span class="range">${fmtPct(o.unguidedRate)} → ${fmtPct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} graded checks per mode. ${familyNames}; ${runsPhrase}.`,
             short: `<span class="visually-hidden">${fmtPct(o.unguidedRate)} → ${fmtPct(o.guidedRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
         }));
     }
 
-    // 2. Quiet secondary stat: Accessibility subscore (pooled)
     if (!pooled?.a11y) {
         cards.push(pendingCard('a11y', 'Accessibility', '', false));
     } else {
@@ -281,7 +235,6 @@ function renderTakeaways(insights) {
             label: 'Accessibility',
             figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${fmtPct(a.unguidedRate)} → <strong>${fmtPct(a.guidedRate)}</strong>)</span>`,
             figureText: `${signed(a.upliftPp, 0)} percentage points (${fmtPct(a.unguidedRate)} to ${fmtPct(a.guidedRate)})`,
-            qualifier: `<span class="range">${fmtPct(a.unguidedRate)} → ${fmtPct(a.guidedRate)}</span> across ~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} accessibility checks${a.guideCount ? ` in ${a.guideCount} guides` : ''}.`,
             short: `<a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">${a11yShortText} <span aria-hidden="true">→</span></a>`
         }));
     }
@@ -290,7 +243,6 @@ function renderTakeaways(insights) {
 }
 
 /**
- * Placeholder card used before numbers are available (pre sign-in, hydrating, empty source).
  * @param {string} metric
  * @param {string} label
  * @param {string} statement
@@ -304,16 +256,12 @@ function pendingCard(metric, label, statement, primary = false) {
         figure: '<span class="unit">—</span>',
         figureText: 'not loaded',
         statement,
-        qualifier: 'Numbers appear once results are loaded.'
+        short: 'Numbers appear once results are loaded.'
     });
 }
 
-/**
- * @param {{ metric: string, primary?: boolean, label: string, figure: string, figureText: string, statement?: string, visual?: string, qualifier: string, short?: string }} c
- *   `short` is a compact visual/scannable summary; `qualifier` is the full screen-reader / detailed text.
- */
+/** @param {{ metric: string, primary?: boolean, label: string, figure: string, figureText: string, statement?: string, visual?: string, short: string }} c */
 function takeawayCard(c) {
-    const short = c.short || c.qualifier;
     const roleCls = c.primary ? 'takeaway takeaway-primary' : 'takeaway takeaway-secondary';
     return `
         <li class="${roleCls}" data-metric="${c.metric}">
@@ -321,8 +269,7 @@ function takeawayCard(c) {
             <p class="takeaway-figure"><span aria-hidden="true">${c.figure}</span><span class="visually-hidden">${escapeHtml(c.figureText)}</span></p>
             ${c.statement ? `<p class="takeaway-statement">${c.statement}</p>` : ''}
             ${c.visual || ''}
-            <p class="takeaway-qualifier takeaway-qualifier-full">${c.qualifier}</p>
-            <p class="takeaway-qualifier takeaway-qualifier-short">${short}</p>
+            <p class="takeaway-qualifier takeaway-qualifier-short">${c.short}</p>
         </li>`;
 }
 
@@ -360,7 +307,7 @@ function rateCell(r) {
     return `
         <div class="metric-main">
             <span class="metric-pair">${fmtPct(r.unguidedRate)} → <strong>${fmtPct(r.guidedRate)}</strong></span>
-            ${deltaChip(r.upliftPp, 'pp', 'higher')}
+            ${deltaChip(r.upliftPp)}
         </div>`;
 }
 
@@ -368,63 +315,29 @@ function naCell() {
     return '<span class="na"><span aria-hidden="true">—</span><span class="visually-hidden">not available</span></span>';
 }
 
-/**
- * Delta chip: arrow glyph + signed value + a visible valence word for time/tokens
- * ("14% faster", "10% more"), plus screen-reader text. Color is only a secondary cue.
- * @param {number} value
- * @param {'pp' | '%'} unit
- * @param {'higher' | 'lower'} goodWhen
- * @param {[string, string]} [words] Visible words for [decrease, increase], e.g. ['faster', 'slower'].
- */
-function deltaChip(value, unit, goodWhen, words) {
-    const rounded = Math.sign(value) * roundAbs(value);
-    const isGood = goodWhen === 'higher' ? rounded > 0 : rounded < 0;
+/** @param {number} value */
+function deltaChip(value) {
+    const rounded = Math.sign(value) * Math.round(Math.abs(value || 0));
     const isFlat = rounded === 0;
+    const isGood = rounded > 0;
     const cls = isFlat ? 'flat' : (isGood ? 'good' : 'cost');
     const glyph = isFlat ? '•' : (rounded > 0 ? '▲' : '▼');
-    const unitText = unit === 'pp' ? ' pp' : '%';
-    const visible = words
-        ? (isFlat ? `no change` : `${Math.abs(rounded)}${unitText} ${rounded < 0 ? words[0] : words[1]}`)
-        : `${signed(rounded, 0)}${unitText}`;
-    const sr = isFlat ? 'no change' : `${rounded > 0 ? 'up' : 'down'} ${Math.abs(rounded)}${unit === 'pp' ? ' percentage points' : ' percent'}${isGood ? ', better' : ', worse'}`;
+    const visible = `${signed(rounded, 0)} pp`;
+    const sr = isFlat ? 'no change' : `${rounded > 0 ? 'up' : 'down'} ${Math.abs(rounded)} percentage points${isGood ? ', better' : ', worse'}`;
     return `<span class="delta ${cls}"><span class="glyph" aria-hidden="true">${glyph}</span><span aria-hidden="true">${visible}</span><span class="visually-hidden">${sr}</span></span>`;
 }
-
-/** @param {HeadlineInsights} insights */
-function renderMethodNumbers(insights) {
-    const el = document.getElementById('method-recent-n');
-    if (el) el.textContent = String(insights.options.perAgentRecentN);
-}
-
-// ==========================================
-// HELPERS
-// ==========================================
 
 /** @param {HeadlineInsights} insights */
 function latestDateOf(insights) {
     return insights.latestTimestamp ? insights.latestTimestamp.slice(0, 10) : '';
 }
 
-/** @param {HeadlineInsights} insights */
-function describeRuns(insights) {
-    const n = insights.options.perAgentRecentN;
-    const total = insights.pooled?.suiteCount || 0;
-    const latest = latestDateOf(insights);
-    return `latest ${n} nightly ${n === 1 ? 'run' : 'runs'} each (${total} total${latest ? `, through ${formatDate(latest)}` : ''})`;
-}
-
-/**
- * Shortens model identifiers when displayed inside a family row where the vendor is already known.
- * @param {string} model
- */
+/** @param {string} model */
 function shortModelName(model) {
     return (model || '').replace(/^(claude-|gemini-)/i, '');
 }
 
-/**
- * Compact date ("Oct 9") for secondary row metadata.
- * @param {string} iso
- */
+/** @param {string} iso */
 function formatDateShort(iso) {
     const d = new Date(`${iso.slice(0, 10)}T00:00:00`);
     if (isNaN(d.getTime())) return iso;
@@ -443,23 +356,12 @@ function joinNames(names) {
     return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
 
-/**
- * @param {number} v
- * @param {number} digits
- */
+/** @param {number} v @param {number} digits */
 function signed(v, digits) {
     const r = Math.sign(v || 0) * Number(Math.abs(v || 0).toFixed(digits));
     if (r > 0) return `+${r}`;
     if (r < 0) return `−${Math.abs(r)}`;
     return '0';
-}
-
-/**
- * Rounds the magnitude (half away from zero).
- * @param {number} v
- */
-function roundAbs(v) {
-    return Math.round(Math.abs(v || 0));
 }
 
 /** @param {number} v */

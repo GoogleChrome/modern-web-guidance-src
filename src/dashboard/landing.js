@@ -4,8 +4,6 @@ import { DumbbellChart } from './dumbbell-chart.js';
 import { ApiClient } from './api.js';
 
 /**
- * A manifest entry as shown in the table. Slim manifests omit `guides`/`chartData`;
- * those are merged in lazily from the full manifest (see ensureFullManifest).
  * @typedef {import('./insights.js').ManifestSuite & {
  *   source: import('./api.js').DataSource;
  *   timestamp: string;
@@ -68,10 +66,7 @@ let currentGuideSortDir = 'asc';
 /** @type {InsightsMode} */
 let currentInsightsMode = 'all';
 
-/** Single data source per page load (`?source=local|remote|static`, else inferred from the host). */
 const api = new ApiClient();
-/** @type {Promise<void> | null} */
-let fullManifestPromise = null;
 
 /** @type {Record<string, string>} */
 const servingDisplayNames = {
@@ -408,7 +403,7 @@ function syncSortHeaders() {
 
 /**
  * Opens the Breakdowns drawer, switches to the requested check scope (`'a11y'` or `'all'`),
- * expands the nested By Guide subdrawer sorted by uplift, and optionally scrolls/focuses it.
+ * sorts the By Guide panel by uplift, and optionally scrolls/focuses it.
  * @param {InsightsMode} mode
  * @param {boolean} [scrollAndFocus=true]
  */
@@ -420,7 +415,6 @@ function openGuidesBreakdown(mode, scrollAndFocus = true) {
     currentInsightsMode = mode;
     modeAllBtn?.setAttribute('aria-pressed', String(mode === 'all'));
     modeA11yBtn?.setAttribute('aria-pressed', String(mode === 'a11y'));
-    guideSubdrawerOpen = true;
     currentGuideSort = 'uplift';
     currentGuideSortDir = 'desc';
 
@@ -432,9 +426,9 @@ function openGuidesBreakdown(mode, scrollAndFocus = true) {
     if (scrollAndFocus && drawer instanceof HTMLElement) {
         const guideDrawer = drawer.querySelector('.insights-guide-drawer') || drawer;
         guideDrawer.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
-        const summary = drawer.querySelector('.insights-guide-summary') || drawer.querySelector('.insights-summary');
-        if (summary instanceof HTMLElement) {
-            summary.focus({ preventScroll: true });
+        const heading = guideDrawer.querySelector('.insights-panel-title') || drawer.querySelector('.insights-summary');
+        if (heading instanceof HTMLElement) {
+            heading.focus({ preventScroll: true });
         }
     }
 }
@@ -483,9 +477,6 @@ function setupInsightsControls() {
         currentInsightsMode = mode;
         modeAllBtn?.setAttribute('aria-pressed', String(mode === 'all'));
         modeA11yBtn?.setAttribute('aria-pressed', String(mode === 'a11y'));
-        if (mode === 'a11y') {
-            guideSubdrawerOpen = true;
-        }
         renderPivotInsights();
     };
     modeAllBtn?.addEventListener('click', () => setMode('all'));
@@ -641,13 +632,9 @@ function setEmptyState(message) {
     if (p && message) p.textContent = message;
 }
 
-/**
- * Loads the slim manifest (or the full one when slim is unavailable — ApiClient falls back
- * transparently) and registers every suite for the table.
- */
 async function loadSuites() {
     try {
-        const { suites } = await api.getManifest('slim');
+        const { suites } = await api.getManifest();
         const list = Array.isArray(suites) ? suites : [];
         for (const suite of list) {
             if (suite && suite.testId && suite.guidedStats) {
@@ -659,31 +646,6 @@ async function loadSuites() {
         console.error('Error loading suites manifest:', error);
         setEmptyState('Could not load evaluation runs.');
     }
-}
-
-/**
- * Per-guide data (`guides`, `chartData`) lives only in the full manifest. Fetch it once,
- * on demand (breakdowns drawer, pass-rate preview), and merge it into the table entries.
- * @returns {Promise<void>}
- */
-function ensureFullManifest() {
-    if (!fullManifestPromise) {
-        fullManifestPromise = (async () => {
-            const { suites, fallback } = await api.getManifest('full');
-            // When slim was already served from the full manifest the entries are the same objects.
-            if (fallback) return;
-            for (const suite of suites || []) {
-                const key = `${suite.testId}|||${api.source}`;
-                if (allTestData[key]) {
-                    allTestData[key] = { ...allTestData[key], ...suite, source: api.source };
-                }
-            }
-        })().catch(err => {
-            console.warn('Full manifest unavailable:', err);
-            fullManifestPromise = null;
-        });
-    }
-    return fullManifestPromise;
 }
 
 /**
@@ -992,8 +954,8 @@ function renderSuites() {
         const tok = testInfo.efficiencyStats?.tokens;
         const hasTokens = Boolean(tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0));
 
-        const localLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${testInfo.source}`;
-        const a11yLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${testInfo.source}&mode=a11y&sort=a11y-desc`;
+        const localLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(testInfo.source)}`;
+        const a11yLink = `dashboard.html?testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(testInfo.source)}&mode=a11y&sort=a11y-desc`;
         const taskCount = testInfo.taskCount || 0;
         const maxRuns = testInfo.maxRuns || 1;
         const earlyFailureRate = testInfo.earlyFailureRate || 0;
@@ -1208,17 +1170,7 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
     }
 
     const chartData = testInfo.chartData;
-    if (!chartData || !chartData.labels || chartData.labels.length < 1) {
-        // Slim manifest: pull per-guide data once, then retry while the pointer/focus is still here.
-        ensureFullManifest().then(() => {
-            if (currentDumbbellKey === compoundKey) {
-                currentDumbbellKey = null;
-                const refreshed = allTestData[compoundKey];
-                if (refreshed?.chartData) showTooltipChart(refreshed, x, y, compoundKey);
-            }
-        });
-        return;
-    }
+    if (!chartData || !chartData.labels || chartData.labels.length < 1) return;
     const { labels, guided, unguided, guided_failed, unguided_failed, guided_err_rate, unguided_err_rate } = chartData;
 
     tooltipContainer.classList.remove('hidden');
@@ -1350,7 +1302,6 @@ function getInsightKeys() {
 
 /** @typedef {{ uplift: number, uRate: number, gRate: number, uErr?: number, gErr?: number, rtDeltaPct?: number | null, tokDeltaPct?: number | null, description?: string }} PivotItem */
 /** @typedef {'alpha' | 'uplift-desc' | 'uplift-asc'} PanelSortMode */
-let guideSubdrawerOpen = true;
 /** @type {Record<'model' | 'dimension', PanelSortMode>} */
 const currentPanelSorts = { model: 'alpha', dimension: 'uplift-desc' };
 /** @type {Record<'model' | 'dimension' | 'guide', boolean>} */
@@ -1360,7 +1311,6 @@ function renderPivotInsights() {
     const container = document.getElementById('insights-container');
     if (!container) return;
 
-    // Preserve scroll positions across re-renders so sorting or filtering doesn't jump.
     /** @type {Record<string, number>} */
     const savedScrollPositions = {};
     container.querySelectorAll('.insights-table-scroll[data-scroll-section]').forEach(el => {
@@ -1368,18 +1318,6 @@ function renderPivotInsights() {
             savedScrollPositions[el.dataset.scrollSection] = el.scrollTop;
         }
     });
-
-    // Preserve whether the nested guide drawer was opened by the user across re-renders.
-    const existingGuideDrawer = container.querySelector('.insights-guide-drawer');
-    if (existingGuideDrawer instanceof HTMLDetailsElement) {
-        guideSubdrawerOpen = existingGuideDrawer.open;
-    }
-
-    // Guide-level rows need the full manifest; render what we have and refresh when it lands.
-    const needsFull = Object.values(allTestData).some(t => !t.guides);
-    if (needsFull && !fullManifestPromise) {
-        ensureFullManifest().then(() => renderPivotInsights());
-    }
 
     const keys = getInsightKeys();
     const onlyA11y = currentInsightsMode === 'a11y';
@@ -1442,16 +1380,11 @@ function renderPivotInsights() {
             const src = onlyA11y ? gEntry.a11y : gEntry;
             if (!src) return;
             const u = { passed: src.unguidedPassed || 0, total: src.unguidedTotal || 0 };
-            const g = { passed: src.guidedPassed || 0, total: scOrGuideTotal(src.guidedTotal) };
+            const g = { passed: src.guidedPassed || 0, total: src.guidedTotal || 0 };
             if (onlyA11y ? (u.total === 0 && g.total === 0) : (u.total === 0 || g.total === 0)) return;
             (grouped.guide[guide] ||= []).push({ uplift: upliftPp(u, g), uRate: toRate(u), gRate: toRate(g) });
         });
     });
-
-    /** @param {number | undefined} n */
-    function scOrGuideTotal(n) {
-        return n || 0;
-    }
 
     /** @param {PivotItem[]} arr */
     const getMedianItem = (arr) => {
@@ -1709,11 +1642,10 @@ function renderPivotInsights() {
             ${renderPivotTable(grouped.model, 'model')}
             ${renderExpandRow('model')}
         </div>
-        <details class="insights-panel insights-panel-full insights-guide-drawer" data-panel="guide"${guideSubdrawerOpen ? ' open' : ''}>
-            <summary class="insights-guide-summary visually-hidden">By Guide (${guideCount})</summary>
+        <div class="insights-panel insights-panel-full insights-guide-drawer" data-panel="guide">
             <div class="insights-guide-body">
                 <div class="insights-panel-header-row">
-                    <h3 class="insights-panel-title">By Guide (${guideCount})${modeSuffix}</h3>
+                    <h3 class="insights-panel-title" tabindex="-1">By Guide (${guideCount})${modeSuffix}</h3>
                     <div class="guide-legend" title="Shaded band shows ±1 standard deviation across runs; vertical tick mark shows median rate">
                         <span class="guide-legend-item">
                             <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
@@ -1745,22 +1677,14 @@ function renderPivotInsights() {
                 ${renderPivotTable(grouped.guide, 'guide')}
                 ${renderExpandRow('guide')}
             </div>
-        </details>
+        </div>
     `;
 
-    // Restore scroll positions
     container.querySelectorAll('.insights-table-scroll[data-scroll-section]').forEach(el => {
         if (el instanceof HTMLElement && el.dataset.scrollSection && savedScrollPositions[el.dataset.scrollSection] !== undefined) {
             el.scrollTop = savedScrollPositions[el.dataset.scrollSection];
         }
     });
-
-    const guideDrawer = container.querySelector('.insights-guide-drawer');
-    if (guideDrawer instanceof HTMLDetailsElement) {
-        guideDrawer.addEventListener('toggle', () => {
-            guideSubdrawerOpen = guideDrawer.open;
-        });
-    }
 
     container.querySelectorAll('.insights-panel-title-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1769,6 +1693,7 @@ function renderPivotInsights() {
             if (key && currentPanelSorts[key] !== 'alpha') {
                 currentPanelSorts[key] = 'alpha';
                 renderPivotInsights();
+                /** @type {HTMLElement | null} */ (container.querySelector(`.insights-panel-title-btn[data-panel-title-sort="${key}"]`))?.focus();
             }
         });
     });
@@ -1781,6 +1706,7 @@ function renderPivotInsights() {
             const cur = currentPanelSorts[key] || 'alpha';
             currentPanelSorts[key] = cur === 'alpha' ? 'uplift-desc' : (cur === 'uplift-desc' ? 'uplift-asc' : 'alpha');
             renderPivotInsights();
+            /** @type {HTMLElement | null} */ (container.querySelector(`.insights-uplift-sort-btn[data-panel-uplift-sort="${key}"]`))?.focus();
         });
     });
 
@@ -1791,6 +1717,7 @@ function renderPivotInsights() {
             if (!key) return;
             expandedPanels[key] = !expandedPanels[key];
             renderPivotInsights();
+            /** @type {HTMLElement | null} */ (container.querySelector(`.insights-expand-btn[data-expand-panel="${key}"]`))?.focus();
         });
     });
 
@@ -1800,6 +1727,7 @@ function renderPivotInsights() {
         if (target instanceof HTMLSelectElement) {
             currentGuideSort = /** @type {GuideSortKey} */ (target.value);
             renderPivotInsights();
+            document.getElementById('guide-sort-select')?.focus();
         }
     });
     const sortDirBtn = document.getElementById('guide-sort-dir-btn');

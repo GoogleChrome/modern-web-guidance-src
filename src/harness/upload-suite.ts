@@ -3,8 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { cRed, cGreen, cCyan, cBold } from '../core/colors.ts';
 import { suitesDir as baseResultsDir } from '../core/paths.ts';
-import { extractSuiteSummary, toSlimSuiteSummary, MANIFEST_FILES, SUMMARY_SCHEMA_VERSION } from '../dashboard/summary-extractor.js';
-import { computeHeadlineInsights } from '../dashboard/insights.js';
+import { extractSuiteSummary } from '../dashboard/summary-extractor.js';
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
@@ -55,52 +54,11 @@ async function uploadDirectory(bucket: any, dirPath: string, gcsPrefix: string, 
   }
 }
 
-interface ReconcileOptions {
-  /**
-   * Also re-extract entries that exist but predate SUMMARY_SCHEMA_VERSION (e.g. lack a11yStats /
-   * efficiencyStats). Default OFF for `pnpm upload <suite>` so merging a schema bump never changes
-   * what a nightly upload writes; ON for `--reconcile-manifest` and `--refresh-stale`.
-   */
-  refreshStale?: boolean;
-  /** Re-extract every active suite, not just missing/stale entries. */
-  force?: boolean;
-  /**
-   * Also write suites.slim.gen.json and headline-insights.gen.json next to suites.gen.json.
-   * Default OFF for `pnpm upload <suite>`; ON for `--reconcile-manifest` and `--derived-manifests`.
-   */
-  writeDerived?: boolean;
-  /** Write the reconciled manifest(s) to this local path instead of uploading. */
-  dryRunOutput?: string;
-  /**
-   * Store the manifest gzip-encoded (Content-Encoding: gzip). GCS decompresses transparently for
-   * clients that do not advertise gzip, so `gcloud storage cat` and browsers both keep working,
-   * while the public landing page downloads ~10x fewer bytes.
-   */
-  gzip?: boolean;
-}
-
-/** True when a manifest entry has no summary at all (legacy string entry or failed extraction). */
-function isMissingManifestEntry(entry: any): boolean {
-  return !entry || !entry.guidedStats;
-}
-
-/** True when a manifest entry predates the current summary schema and should be re-extracted. */
-function isStaleManifestEntry(entry: any): boolean {
-  if (isMissingManifestEntry(entry)) return true;
-  const version = typeof entry.schemaVersion === 'number' ? entry.schemaVersion : 1;
-  return version < SUMMARY_SCHEMA_VERSION;
-}
-
-async function reconcileAndUploadManifest(
-  bucket: any,
-  uploadedSuiteName: string | null,
-  evalsData: any,
-  options: ReconcileOptions = {},
-) {
+async function reconcileAndUploadManifest(bucket: any, uploadedSuiteName: string, evalsData: any) {
   console.log(cCyan('🔄 Reconciling GCS suites manifest...'));
   
   let remoteManifest: any[] = [];
-  const manifestFile = bucket.file(MANIFEST_FILES.full);
+  const manifestFile = bucket.file('suites.gen.json');
   try {
     const [exists] = await manifestFile.exists();
     if (exists) {
@@ -125,7 +83,7 @@ async function reconcileAndUploadManifest(
   } while (pageToken);
 
   const activeSuiteIds = new Set<string>(gcsPrefixes.map((p: string) => p.replace(/\/$/, '')));
-  if (uploadedSuiteName) activeSuiteIds.add(uploadedSuiteName);
+  activeSuiteIds.add(uploadedSuiteName);
 
   const manifestMap = new Map<string, any>();
   for (const entry of remoteManifest) {
@@ -136,43 +94,32 @@ async function reconcileAndUploadManifest(
   }
 
   // Update the uploaded suite's summary
-  if (uploadedSuiteName && evalsData) {
-    const uploadedSummary = extractSuiteSummary(uploadedSuiteName, evalsData);
-    if (uploadedSummary) {
-      manifestMap.set(uploadedSuiteName, uploadedSummary);
-    }
+  const uploadedSummary = extractSuiteSummary(uploadedSuiteName, evalsData);
+  if (uploadedSummary) {
+    manifestMap.set(uploadedSuiteName, uploadedSummary);
   }
 
-  // Backfill summaries for active GCS suites whose entry is missing (always, pre-existing behavior),
-  // plus entries that predate the current schema when --refresh-stale / --reconcile-manifest is used,
-  // or everything when --force is given.
-  const staleSuiteIds = Array.from(activeSuiteIds).filter(id => {
-    if (id === uploadedSuiteName) return false;
-    const entry = manifestMap.get(id);
-    if (options.force) return true;
-    return options.refreshStale ? isStaleManifestEntry(entry) : isMissingManifestEntry(entry);
+  // Backfill missing summaries for any active GCS suites that lack detailed summary
+  const missingSuiteIds = Array.from(activeSuiteIds).filter(id => {
+    const existing = manifestMap.get(id);
+    return !existing || !existing.guidedStats;
   });
 
-  let refreshed = 0;
-  const skipped: string[] = [];
-  if (staleSuiteIds.length > 0) {
-    console.log(`Re-extracting ${staleSuiteIds.length} suite summar${staleSuiteIds.length === 1 ? 'y' : 'ies'} (schema v${SUMMARY_SCHEMA_VERSION})...`);
+  if (missingSuiteIds.length > 0) {
     const concurrency = 10;
-    for (let i = 0; i < staleSuiteIds.length; i += concurrency) {
-      const chunk = staleSuiteIds.slice(i, i + concurrency);
+    for (let i = 0; i < missingSuiteIds.length; i += concurrency) {
+      const chunk = missingSuiteIds.slice(i, i + concurrency);
       await Promise.all(chunk.map(async (suiteId) => {
         try {
+          console.log(`Extracting summary for missing GCS suite: ${suiteId}...`);
           const evalsFile = bucket.file(`${suiteId}/evals.json`);
           const [fileContent] = await evalsFile.download();
           const parsed = JSON.parse(fileContent.toString('utf8'));
           const summary = extractSuiteSummary(suiteId, parsed);
           if (summary) {
             manifestMap.set(suiteId, summary);
-            refreshed++;
           }
         } catch (e: any) {
-          // Incomplete suites (no evals.json) stay as they were; never invent entries for them.
-          skipped.push(suiteId);
           console.warn(`Could not fetch evals.json for ${suiteId}: ${e.message}`);
         }
       }));
@@ -181,88 +128,17 @@ async function reconcileAndUploadManifest(
 
   const updatedList = Array.from(manifestMap.values()).sort((a, b) => (a.testId || '').localeCompare(b.testId || ''));
 
-  // Artifacts:
-  //   suites.gen.json            full summaries (guides + chartData) for browsing views — always
-  //   suites.slim.gen.json       same entries minus guides/chartData (~2 KB/suite) for first paint — opt-in, or auto-refreshed when already present in the bucket
-  //   headline-insights.gen.json precomputed landing-page hero numbers — opt-in, or auto-refreshed when already present in the bucket
-  // The derived pair is written together with the full manifest so the three never disagree.
-  let shouldWriteDerived = Boolean(options.writeDerived);
-  if (!shouldWriteDerived && !options.dryRunOutput) {
-    try {
-      const [slimExists] = await bucket.file(MANIFEST_FILES.slim).exists();
-      shouldWriteDerived = Boolean(slimExists);
-    } catch {
-      shouldWriteDerived = false;
-    }
-  }
-  const artifacts: Array<{ name: string; json: string }> = [
-    { name: MANIFEST_FILES.full, json: JSON.stringify(updatedList, null, 2) },
-  ];
-  if (shouldWriteDerived) {
-    const insights = computeHeadlineInsights(updatedList);
-    artifacts.push(
-      { name: MANIFEST_FILES.slim, json: JSON.stringify(updatedList.map(toSlimSuiteSummary), null, 2) },
-      { name: MANIFEST_FILES.insights, json: JSON.stringify({ generatedAt: new Date().toISOString(), ...insights }, null, 2) },
-    );
-  }
+  await manifestFile.save(JSON.stringify(updatedList, null, 2), {
+    contentType: 'application/json',
+    resumable: false,
+  });
 
-  if (options.dryRunOutput) {
-    // dryRunOutput names the full manifest; the slim/insights twins land next to it.
-    const dir = path.dirname(options.dryRunOutput);
-    fs.mkdirSync(dir, { recursive: true });
-    for (const { name, json } of artifacts) {
-      const target = name === MANIFEST_FILES.full ? options.dryRunOutput : path.join(dir, name);
-      fs.writeFileSync(target, json);
-      console.log(`   ${target} (${(json.length / 1024).toFixed(0)} KB)`);
-    }
-    console.log(cBold(cGreen(`✅ Dry run: wrote reconciled manifests to ${dir} (${updatedList.length} suites, ${refreshed} refreshed, ${skipped.length} without evals.json). Nothing uploaded.`)));
-    return;
-  }
-
-  for (const { name, json } of artifacts) {
-    await bucket.file(name).save(json, {
-      contentType: 'application/json',
-      resumable: false,
-      gzip: Boolean(options.gzip),
-    });
-  }
-
-  console.log(cBold(cGreen(`✅ Reconciled and updated gs://${BUCKET_NAME}/{${artifacts.map(a => a.name).join(',')}} (${updatedList.length} suites, ${refreshed} refreshed${options.gzip ? ', gzip-encoded' : ''})`)));
+  console.log(cBold(cGreen(`✅ Reconciled and updated gs://${BUCKET_NAME}/suites.gen.json (${updatedList.length} suites)`)));
 }
 
 async function main() {
   const args = process.argv.slice(2);
   const summaryOnly = args.includes('--summary-only');
-  const reconcileOnly = args.includes('--reconcile-manifest');
-  const force = args.includes('--force');
-  const gzip = args.includes('--gzip');
-  // Opt-ins for the per-suite upload path (both are implied by --reconcile-manifest). Defaults are
-  // OFF so a schema bump in summary-extractor.js never changes what a nightly upload writes.
-  const refreshStale = reconcileOnly || args.includes('--refresh-stale');
-  const writeDerived = reconcileOnly || args.includes('--derived-manifests');
-  const dryRunArg = args.find(a => a === '--dry-run' || a.startsWith('--dry-run='));
-  const dryRunOutput = dryRunArg
-    ? (dryRunArg.includes('=') ? path.resolve(dryRunArg.split('=')[1]) : path.resolve('out/dashboard/suites.remote.gen.json'))
-    : undefined;
-
-  // Manifest-only mode (explicit, never run by nightlies): regenerate gs://guidance-evals/suites.gen.json
-  // for every suite whose entry is missing or predates SUMMARY_SCHEMA_VERSION (all of them with --force),
-  // and write the slim + headline-insights twins. No suite files are uploaded. `--dry-run[=path]` writes
-  // the results locally instead of touching the bucket.
-  //   pnpm upload --reconcile-manifest --dry-run
-  //   pnpm upload --reconcile-manifest [--gzip]
-  if (reconcileOnly) {
-    console.log(cBold(cCyan(`Reconciling suites manifest${force ? ' (forced full refresh)' : ''}${dryRunOutput ? ' [dry run]' : ''}`)));
-    const storage = new Storage({ projectId: PROJECT_ID });
-    const bucket = storage.bucket(BUCKET_NAME);
-    try {
-      await reconcileAndUploadManifest(bucket, null, null, { force, refreshStale, writeDerived, dryRunOutput, gzip });
-    } catch (error: any) {
-      console.error(cRed(`❌ Manifest reconcile failed: ${error.message}`));
-      process.exit(1);
-    }
-    return;
-  }
   
   // Remove flags to get positional arguments
   const positionalArgs = args.filter(a => !a.startsWith('--'));
@@ -271,7 +147,7 @@ async function main() {
   const customResultsDir = positionalArgs[1];
 
   if (!suiteName) {
-    console.error('❌ Please provide a suite name as an argument. e.g. pnpm upload <suite-name> (or pnpm upload --reconcile-manifest)');
+    console.error('❌ Please provide a suite name as an argument. e.g. pnpm upload <suite-name>');
     process.exit(1);
   }
 
@@ -338,8 +214,7 @@ async function main() {
   try {
     await uploadDirectory(bucket, resultsDir, suiteName, summaryOnly);
     console.log(cBold(cGreen(`\n✅ Successfully uploaded suite '${suiteName}' to gs://${BUCKET_NAME}/${suiteName}`)));
-    // Default: pre-existing footprint (suites.gen.json only, backfill only missing entries).
-    await reconcileAndUploadManifest(bucket, suiteName, evalsData, { refreshStale, writeDerived, gzip });
+    await reconcileAndUploadManifest(bucket, suiteName, evalsData);
   } catch (error: any) {
     console.error(cRed(`❌ Upload failed: ${error.message}`));
     process.exit(1);

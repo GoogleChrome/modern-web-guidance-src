@@ -5,15 +5,6 @@ import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js'
 const TIMEOUT_MS = 600000;
 
 /**
- * Bump when the shape or semantics of `SuiteSummary` change, so stale manifest entries
- * (`suites.gen.json`) can be detected and regenerated (`pnpm upload --reconcile-manifest`).
- *
- * 1: guidedStats/unguidedStats/guides/chartData (implicit, entries without `schemaVersion`)
- * 2: + a11yStats, efficiencyStats (agent-only runtime, uncached tokens), per-task runtime/token chartData
- */
-export const SUMMARY_SCHEMA_VERSION = 2;
-
-/**
  * @typedef {Object} GuideSummary
  * @property {number} guidedPassed
  * @property {number} guidedTotal
@@ -22,9 +13,9 @@ export const SUMMARY_SCHEMA_VERSION = 2;
  * @property {number} unguidedTotal
  * @property {number} unguidedRate
  * @property {number} uplift
- * @property {SubCategoryA11yStats} [a11y] Cross-cutting accessibility check breakdown for this guide.
- * @property {Record<string, GuideSummary>} [tasks] Per-task breakdown; only when the guide has more than one task.
- * @property {string} [taskName] The sole task's name, when the guide has exactly one.
+ * @property {SubCategoryA11yStats} [a11y]
+ * @property {Record<string, GuideSummary>} [tasks]
+ * @property {string} [taskName]
  */
 
 /**
@@ -52,28 +43,19 @@ export const SUMMARY_SCHEMA_VERSION = 2;
  */
 
 /**
- * Runtime/token efficiency of guided vs. unguided runs within one suite.
- *
- * Runtime values are agent-only wall-clock time (grader time excluded, see `getAgentRuntimeMs`).
- * "Paired" counts compare the guided and unguided run(s) of the same task; a task counts as
- * faster / using fewer tokens when its guided average is <= its unguided average.
- * Token medians use "uncached" tokens (`total - cached`), the fair cross-agent metric because
- * Claude Code / Codex CLI report large volumes of cheap cached prompt re-reads.
- *
  * @typedef {Object} SuiteEfficiencyStats
  * @property {{
  *   guidedMedianMs: number,
  *   unguidedMedianMs: number,
  *   guidedMeanMs: number,
  *   unguidedMeanMs: number,
- *   medianDeltaMs: number,
  *   medianDeltaPct: number,
  *   fasterTaskPct: number,
  *   fasterTasksCount: number,
  *   pairedTaskCount: number,
  *   guidedTimeouts: number,
  *   unguidedTimeouts: number
- * }} runtime `guidedTimeouts`/`unguidedTimeouts` count runs at or beyond the 600s per-attempt harness timeout.
+ * }} runtime
  * @property {{
  *   guidedUncachedMedian: number,
  *   unguidedUncachedMedian: number,
@@ -81,15 +63,12 @@ export const SUMMARY_SCHEMA_VERSION = 2;
  *   uncachedMedianDeltaPct: number,
  *   guidedTotalMedian: number,
  *   unguidedTotalMedian: number,
- *   totalMedianDelta: number,
- *   totalMedianDeltaPct: number,
  *   guidedUncachedTotal: number,
  *   unguidedUncachedTotal: number,
  *   suiteUncachedDeltaPct: number,
  *   guidedTotal: number,
  *   unguidedTotal: number,
  *   guidedCachedSharePct: number,
- *   unguidedCachedSharePct: number,
  *   fewerUncachedTokensTaskPct: number,
  *   fewerUncachedTasksCount: number,
  *   pairedTaskCount: number
@@ -98,7 +77,6 @@ export const SUMMARY_SCHEMA_VERSION = 2;
 
 /**
  * @typedef {Object} SuiteSummary
- * @property {number} schemaVersion See `SUMMARY_SCHEMA_VERSION`.
  * @property {string} testId
  * @property {string} timestamp
  * @property {string} agent
@@ -119,34 +97,7 @@ export const SUMMARY_SCHEMA_VERSION = 2;
  */
 
 /**
- * A `SuiteSummary` without the two bulky per-guide / per-task payloads (`guides`, `chartData`),
- * ~2 KB per suite instead of ~55 KB. Enough for the landing page table, scorecards, and the
- * pooled pass-rate / accessibility insights; pooled per-task medians need the full summary.
- * @typedef {Omit<SuiteSummary, 'guides' | 'chartData'>} SlimSuiteSummary
- */
-
-/** Manifest file names served next to each other (bucket root, out/dashboard, static dist). */
-export const MANIFEST_FILES = /** @type {const} */ ({
-    full: 'suites.gen.json',
-    slim: 'suites.slim.gen.json',
-    insights: 'headline-insights.gen.json'
-});
-
-/**
- * Strips `guides` and `chartData` from a summary (or legacy manifest entry) for the slim manifest.
- * @template {{ guides?: unknown, chartData?: unknown }} T
- * @param {T} summary
- * @returns {Omit<T, 'guides' | 'chartData'>}
- */
-export function toSlimSuiteSummary(summary) {
-    // eslint-disable-next-line no-unused-vars
-    const { guides, chartData, ...slim } = summary;
-    return slim;
-}
-
-/**
  * Extracts a compact summary object from an evals.json payload.
- *
  * @param {string} testId
  * @param {Partial<import('../harness/lib/metrics.ts').EvalsReport> & { enableSkills?: boolean }} evalsData
  * @param {string|null} [forcedTimestamp=null]
@@ -468,7 +419,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const unguidedMedianMs = Math.round(median(unguidedRuntimes));
     const guidedMeanMs = guidedRuntimes.length > 0 ? Math.round(guidedRuntimes.reduce((a, b) => a + b, 0) / guidedRuntimes.length) : 0;
     const unguidedMeanMs = unguidedRuntimes.length > 0 ? Math.round(unguidedRuntimes.reduce((a, b) => a + b, 0) / unguidedRuntimes.length) : 0;
-    const medianDeltaMs = guidedMedianMs - unguidedMedianMs;
     const medianDeltaPct = unguidedMedianMs > 0 ? Math.round(((guidedMedianMs - unguidedMedianMs) / unguidedMedianMs) * 100) : 0;
 
     let pairedRuntimeCount = 0;
@@ -495,12 +445,8 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const unguidedUncachedMedian = Math.round(median(unguidedUncachedTokens));
     const uncachedMedianDelta = guidedUncachedMedian - unguidedUncachedMedian;
     const uncachedMedianDeltaPct = unguidedUncachedMedian > 0 ? Math.round(((guidedUncachedMedian - unguidedUncachedMedian) / unguidedUncachedMedian) * 100) : 0;
-
     const guidedTotalMedian = Math.round(median(guidedTotalTokens));
     const unguidedTotalMedian = Math.round(median(unguidedTotalTokens));
-    const totalMedianDelta = guidedTotalMedian - unguidedTotalMedian;
-    const totalMedianDeltaPct = unguidedTotalMedian > 0 ? Math.round(((guidedTotalMedian - unguidedTotalMedian) / unguidedTotalMedian) * 100) : 0;
-
     const guidedUncachedTotal = Math.max(0, guidedTotalTokenSum - guidedCachedTokenSum);
     const unguidedUncachedTotal = Math.max(0, unguidedTotalTokenSum - unguidedCachedTokenSum);
     const suiteUncachedDeltaPct = unguidedUncachedTotal > 0 ? Math.round(((guidedUncachedTotal - unguidedUncachedTotal) / unguidedUncachedTotal) * 100) : 0;
@@ -511,7 +457,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             unguidedMedianMs,
             guidedMeanMs,
             unguidedMeanMs,
-            medianDeltaMs,
             medianDeltaPct,
             fasterTaskPct: pairedRuntimeCount > 0 ? Math.round((fasterGuidedCount / pairedRuntimeCount) * 100) : 0,
             fasterTasksCount: fasterGuidedCount,
@@ -526,15 +471,12 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             uncachedMedianDeltaPct,
             guidedTotalMedian,
             unguidedTotalMedian,
-            totalMedianDelta,
-            totalMedianDeltaPct,
             guidedUncachedTotal,
             unguidedUncachedTotal,
             suiteUncachedDeltaPct,
             guidedTotal: guidedTotalTokenSum,
             unguidedTotal: unguidedTotalTokenSum,
             guidedCachedSharePct: guidedTotalTokenSum > 0 ? Math.round((guidedCachedTokenSum / guidedTotalTokenSum) * 100) : 0,
-            unguidedCachedSharePct: unguidedTotalTokenSum > 0 ? Math.round((unguidedCachedTokenSum / unguidedTotalTokenSum) * 100) : 0,
             fewerUncachedTokensTaskPct: pairedTokensCount > 0 ? Math.round((fewerUncachedCount / pairedTokensCount) * 100) : 0,
             fewerUncachedTasksCount: fewerUncachedCount,
             pairedTaskCount: pairedTokensCount
@@ -553,7 +495,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const chartData = calculateChartData(results, eligibleScenarios);
 
     return {
-        schemaVersion: SUMMARY_SCHEMA_VERSION,
         testId: testId,
         timestamp: evalsData.timestamp || forcedTimestamp || new Date().toISOString(),
         agent: evalsData.agent || 'unknown',

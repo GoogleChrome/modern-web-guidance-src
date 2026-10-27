@@ -1,5 +1,3 @@
-import { escapeHtml } from './utils.js';
-
 document.addEventListener('DOMContentLoaded', async () => {
   const tableBodyRaw = document.querySelector('#tasks-table tbody');
   const launchFormRaw = document.getElementById('launch-form');
@@ -14,12 +12,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', (e) => {
       const currentTarget = e.currentTarget;
       if (!(currentTarget instanceof HTMLElement)) return;
-      document.querySelectorAll('#agent-group .btn-toggle').forEach(b => {
-        b.classList.remove('active');
-        b.setAttribute('aria-pressed', 'false');
-      });
+      document.querySelectorAll('#agent-group .btn-toggle').forEach(b => b.classList.remove('active'));
       currentTarget.classList.add('active');
-      currentTarget.setAttribute('aria-pressed', 'true');
       const agentEl = document.getElementById('agent');
       if (agentEl instanceof HTMLInputElement) {
         agentEl.value = currentTarget.getAttribute('data-value') || '';
@@ -39,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const skillsResponse = await fetch('/api/available-skills');
     const skillsData = await skillsResponse.json();
+    console.log('Skills received from API:', skillsData.skills);
     renderSkills(skillsData.skills || []);
     
     updateTaskCount();
@@ -65,11 +60,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn-toggle';
-      const isActive = selectedSkills.has(skill);
-      if (isActive) {
+      if (selectedSkills.has(skill)) {
         btn.classList.add('active');
       }
-      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
       btn.setAttribute('data-value', skill);
       btn.textContent = skill;
       
@@ -77,11 +70,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (selectedSkills.has(skill)) {
           selectedSkills.delete(skill);
           btn.classList.remove('active');
-          btn.setAttribute('aria-pressed', 'false');
         } else {
           selectedSkills.add(skill);
           btn.classList.add('active');
-          btn.setAttribute('aria-pressed', 'true');
         }
       });
       
@@ -180,13 +171,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const headersRow = document.getElementById('table-headers');
     if (!headersRow) return;
-    let headerHtml = `<th scope="col">Guide</th>`;
+    let headerHtml = `<th>Guide</th>`;
     headers.forEach(h => {
       const isSelected = h === 'task';
-      const safeH = escapeHtml(h);
-      headerHtml += `<th class="checkbox-header" scope="col">
+      headerHtml += `<th class="checkbox-header">
         <label class="custom-checkbox">
-          <input type="checkbox" class="header-check" data-task="${safeH}" aria-label="Select all ${safeH} tasks" ${isSelected ? 'checked' : ''}>
+          <input type="checkbox" class="header-check" data-task="${h}" ${isSelected ? 'checked' : ''}>
           <span class="checkmark"></span>
         </label>
       </th>`;
@@ -196,17 +186,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const totalCols = headers.length + 1;
 
     for (const [category, categoryGuides] of Object.entries(guides)) {
-      const safeCategory = escapeHtml(category);
       const headerRow = document.createElement('tr');
       headerRow.classList.add('category-header');
       headerRow.setAttribute('data-category', category);
-      headerRow.innerHTML = `<td colspan="${totalCols}"><button type="button" class="category-toggle-btn" aria-expanded="true"><span class="expand-icon" aria-hidden="true">▼</span> ${safeCategory}</button></td>`;
+      headerRow.innerHTML = `<td colspan="${totalCols}"><span class="expand-icon">▼</span> ${category}</td>`;
       tableBody.appendChild(headerRow);
 
       for (const [guideName, tasks] of Object.entries(categoryGuides)) {
         const fullKey = `${category}/${guideName}`;
-        const safeFullKey = escapeHtml(fullKey);
-        const safeGuideName = escapeHtml(guideName);
         const row = document.createElement('tr');
         row.classList.add('guide-row');
         row.setAttribute('data-category', category);
@@ -215,22 +202,21 @@ document.addEventListener('DOMContentLoaded', async () => {
           <td class="guide-name">
             <div class="guide-cell-content">
               <label class="custom-checkbox">
-                <input type="checkbox" class="guide-check-all" data-guide="${safeFullKey}" aria-label="Select all tasks for ${safeGuideName}">
+                <input type="checkbox" class="guide-check-all" data-guide="${fullKey}">
                 <span class="checkmark"></span>
               </label>
-              ${safeGuideName}
+              ${guideName}
             </div>
           </td>
         `;
 
         headers.forEach(h => {
-          const safeH = escapeHtml(h);
           if (tasks.includes(h)) {
             rowHtml += `
               <td class="checkbox-cell">
                 <label class="pill-checkbox">
-                  <input type="checkbox" name="tasks" value="${safeFullKey}" class="task-check" data-guide="${safeFullKey}" data-task="${safeH}" aria-label="${safeGuideName} ${safeH}" ${h === 'task' ? 'checked' : ''}>
-                  <span class="pill-label">${safeH}</span>
+                  <input type="checkbox" name="tasks" value="${fullKey}" class="task-check" data-guide="${fullKey}" data-task="${h}" ${h === 'task' ? 'checked' : ''}>
+                  <span class="pill-label">${h}</span>
                 </label>
               </td>
             `;
@@ -312,15 +298,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       const currentTarget = e.currentTarget;
       if (!(currentTarget instanceof HTMLElement)) return;
       const cat = currentTarget.getAttribute('data-category');
-      const toggleBtn = currentTarget.querySelector('.category-toggle-btn');
+      const icon = currentTarget.querySelector('.expand-icon');
       const rows = document.querySelectorAll(`.guide-row[data-category="${cat}"]`);
       
       rows.forEach(r => r.classList.toggle('collapsed'));
       
-      const isCollapsed = Boolean(rows[0]?.classList.contains('collapsed'));
-      currentTarget.classList.toggle('is-collapsed', isCollapsed);
-      if (toggleBtn instanceof HTMLElement) {
-        toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+      const isCollapsed = rows[0]?.classList.contains('collapsed');
+      if (icon instanceof HTMLElement) {
+        icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
       }
     });
   });
@@ -416,7 +401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (data.success) {
         [runBtn, headerBtn].forEach(btn => {
           if (btn instanceof HTMLButtonElement) {
-            btn.classList.add('btn-launched');
+            btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
             btn.innerHTML = '<span>🚀 Started! Closing...</span>';
           }
         });

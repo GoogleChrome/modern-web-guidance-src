@@ -1,23 +1,12 @@
 /// <reference path="./evals.d.ts" />
 import { classifyScenarioCheck } from './a11y-classifier.js';
 
-/**
- * Utility functions shared between Dashboard and Landing pages.
- */
-
-/**
- * Returns true if the dashboard is running on a local dev host or cloudtop proxy.
- * @param {string} [hostname]
- * @returns {boolean}
- */
+/** @param {string} [hostname] */
 export function isLocalDashboardHost(hostname = (typeof window !== 'undefined' ? window.location.hostname : '')) {
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.googlers.com');
 }
 
-/**
- * Returns `'auto'` when the user prefers reduced motion, otherwise `'smooth'`.
- * @returns {ScrollBehavior}
- */
+/** @returns {ScrollBehavior} */
 export function getScrollBehavior() {
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         return 'auto';
@@ -25,44 +14,28 @@ export function getScrollBehavior() {
     return 'smooth';
 }
 
-/**
- * Computes the median of a numeric array.
- * @param {number[]} values
- * @returns {number}
- */
+/** @param {number[]} values */
 export function median(values) {
     if (!values || values.length === 0) return 0;
     const sorted = [...values].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 !== 0
-        ? sorted[mid]
-        : (sorted[mid - 1] + sorted[mid]) / 2;
+    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-/**
- * Formats a duration in milliseconds into a concise human-readable string (e.g., "1m 39s", "59s").
- * @param {number | undefined | null} ms
- * @returns {string}
- */
+/** @param {number | undefined | null} ms */
 export function formatDuration(ms) {
     if (!ms || ms <= 0) return '0s';
     const totalSec = Math.round(ms / 1000);
     if (totalSec < 60) return `${totalSec}s`;
     const mins = Math.floor(totalSec / 60);
     const secs = totalSec % 60;
-    if (mins < 60) {
-        return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-    }
+    if (mins < 60) return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
     const hrs = Math.floor(mins / 60);
     const remMins = mins % 60;
     return remMins > 0 ? `${hrs}h ${remMins}m` : `${hrs}h`;
 }
 
-/**
- * Calculates normalized (uncached) tokens (`total - cached`) from a tokenUsage object.
- * @param {{ total?: number, cached?: number } | undefined | null} tokenUsage
- * @returns {{ total: number, cached: number, uncached: number, cachedPct: number }}
- */
+/** @param {{ total?: number, cached?: number } | undefined | null} tokenUsage */
 export function getTokenBreakdown(tokenUsage) {
     const total = Math.max(0, tokenUsage?.total || 0);
     const cached = Math.max(0, Math.min(total, tokenUsage?.cached || 0));
@@ -72,15 +45,11 @@ export function getTokenBreakdown(tokenUsage) {
 }
 
 /**
- * Extracts total run duration in milliseconds from either `run.runtimeMs` or `run.runtime.{agentRuntime,graderRuntime}`.
  * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} run
- * @returns {number}
  */
 export function getRunDurationMs(run) {
     if (!run) return 0;
-    if (typeof run.runtimeMs === 'number' && run.runtimeMs > 0) {
-        return run.runtimeMs;
-    }
+    if (typeof run.runtimeMs === 'number' && run.runtimeMs > 0) return run.runtimeMs;
     if (run.runtime && typeof run.runtime === 'object') {
         return (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0);
     }
@@ -88,39 +57,25 @@ export function getRunDurationMs(run) {
 }
 
 /**
- * Extracts the time the coding agent itself spent on the task, in milliseconds.
- *
- * Grader time is fixed harness overhead that MWG cannot influence, so efficiency
- * comparisons (unguided vs. guided) use this value rather than {@link getRunDurationMs}.
- * Legacy runs that only recorded a combined `runtimeMs` fall back to that number.
- *
+ * Extracts agent-only task duration in milliseconds (excluding fixed grader overhead).
  * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} run
- * @returns {number}
  */
 export function getAgentRuntimeMs(run) {
     if (!run) return 0;
     if (run.runtime && typeof run.runtime === 'object' && typeof run.runtime.agentRuntime === 'number' && run.runtime.agentRuntime > 0) {
         return run.runtime.agentRuntime;
     }
-    if (typeof run.runtimeMs === 'number' && run.runtimeMs > 0) {
-        return run.runtimeMs;
-    }
-    return 0;
+    return (typeof run.runtimeMs === 'number' && run.runtimeMs > 0) ? run.runtimeMs : 0;
 }
 
-/**
- * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
- * @returns {boolean}
- */
+/** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks */
 export function isEarlyFailureRun(checks) {
     return !!(checks && checks.some(c => c.isEarlyFailure));
 }
 
 /**
- * Returns true if an unguided run accessed its expected guide.
  * @param {import('../harness/lib/metrics.ts').RunResult & { guideUsed?: { guidesUsed?: string[] } | null } | undefined | null} run
  * @param {string} [fallbackGuide]
- * @returns {boolean}
  */
 export function isUnguidedLeakRun(run, fallbackGuide = '') {
     if (!run) return false;
@@ -129,24 +84,18 @@ export function isUnguidedLeakRun(run, fallbackGuide = '') {
     return !!(expected && guides.includes(expected));
 }
 
-/**
- * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
- * @returns {{ rate: number, passed: number, total: number }}
- */
+/** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks */
 export function getRunStats(checks) {
     if (!checks || !checks.length || isEarlyFailureRun(checks)) return { rate: 0, passed: 0, total: 0 };
     const passed = checks.filter(c => c.passed).length;
     const total = checks.length;
-    const rate = Math.round((passed / total) * 100);
-    return { rate, passed, total };
+    return { rate: Math.round((passed / total) * 100), passed, total };
 }
 
 /**
- * Computes pass rate and check list filtered strictly to cross-cutting accessibility checks.
  * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
  * @param {string} guideName
  * @param {string} [discipline='']
- * @returns {{ rate: number, passed: number, total: number, checks: Array<import('../harness/lib/metrics.ts').ScenarioCheck & { a11y: ReturnType<typeof classifyScenarioCheck> }> }}
  */
 export function getA11yRunStats(checks, guideName, discipline = '') {
     if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0, checks: [] };
@@ -155,8 +104,7 @@ export function getA11yRunStats(checks, guideName, discipline = '') {
         .filter(c => c.a11y.isAccessibility);
     const passed = classified.filter(c => c.passed).length;
     const total = classified.length;
-    const rate = total > 0 ? Math.round((passed / total) * 100) : 0;
-    return { rate, passed, total, checks: classified };
+    return { rate: total > 0 ? Math.round((passed / total) * 100) : 0, passed, total, checks: classified };
 }
 
 /**
@@ -287,45 +235,11 @@ export function getEligibleScenarioIds(results) {
     return eligible;
 }
 
-/**
- * @typedef {Object} ChartAppData
- * @property {number[]} guided
- * @property {number[]} unguided
- * @property {number[]} guided_tokens
- * @property {number[]} unguided_tokens
- * @property {number[]} guided_uncached_tokens
- * @property {number[]} unguided_uncached_tokens
- * @property {number[]} guided_cached_pct
- * @property {number[]} unguided_cached_pct
- * @property {number[]} guided_runtime_ms
- * @property {number[]} unguided_runtime_ms
- * @property {boolean} guided_failed
- * @property {boolean} unguided_failed
- * @property {number} guided_err_rate
- * @property {number} unguided_err_rate
- * @property {number} a11y_total
- */
+/** @typedef {{ guided: number[], unguided: number[], guided_tokens: number[], unguided_tokens: number[], guided_uncached_tokens: number[], unguided_uncached_tokens: number[], guided_cached_pct: number[], unguided_cached_pct: number[], guided_runtime_ms: number[], unguided_runtime_ms: number[], guided_failed: boolean, unguided_failed: boolean, guided_err_rate: number, unguided_err_rate: number, a11y_total: number }} ChartAppData */
 
 /**
  * @param {Record<string, Array<import('../harness/lib/metrics.ts').RunResult & { discipline?: string }>>} results
  * @param {{ onlyA11y?: boolean, eligibleScenarios?: Set<string> } | Set<string>} [optionsOrEligible={}]
- * @returns {{
- *   labels: string[],
- *   guided: number[],
- *   unguided: number[],
- *   guided_tokens: number[],
- *   unguided_tokens: number[],
- *   guided_uncached_tokens: number[],
- *   unguided_uncached_tokens: number[],
- *   guided_cached_pct: number[],
- *   unguided_cached_pct: number[],
- *   guided_runtime_ms: number[],
- *   unguided_runtime_ms: number[],
- *   guided_failed: boolean[],
- *   unguided_failed: boolean[],
- *   guided_err_rate: number[],
- *   unguided_err_rate: number[]
- * }}
  */
 export function calculateChartData(results, optionsOrEligible = {}) {
     const isSet = optionsOrEligible instanceof Set;

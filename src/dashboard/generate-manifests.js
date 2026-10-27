@@ -54,10 +54,10 @@ export function generateMapping(outputDir = defaultOutputDir) {
  */
 export async function generateSuitesManifest(outputDir = defaultOutputDir, resultsSourceDir = suitesDir) {
     fs.mkdirSync(outputDir, { recursive: true });
-    const { extractSuiteSummary, toSlimSuiteSummary, MANIFEST_FILES } = await import('./summary-extractor.js');
+    const { extractSuiteSummary } = await import('./summary-extractor.js');
     /** @type {Map<string, Record<string, any>>} */
     const suitesMap = new Map();
-    const outputPath = path.join(outputDir, MANIFEST_FILES.full);
+    const outputPath = path.join(outputDir, 'suites.gen.json');
 
     // Add suites from results dir
     if (fs.existsSync(resultsSourceDir)) {
@@ -86,33 +86,7 @@ export async function generateSuitesManifest(outputDir = defaultOutputDir, resul
         return (a.testId || '').localeCompare(b.testId || '');
     });
     fs.writeFileSync(outputPath, JSON.stringify(sortedSuites, null, 2));
-    // Slim twin (no guides/chartData) for first-paint consumers such as the landing table.
-    fs.writeFileSync(path.join(outputDir, MANIFEST_FILES.slim), JSON.stringify(sortedSuites.map(toSlimSuiteSummary), null, 2));
     return sortedSuites;
-}
-
-/**
- * Writes headline-insights.gen.json: the landing-page hero numbers precomputed from a suites
- * manifest (same shape as `computeHeadlineInsights()` output), so static/Pages builds can render
- * the hero without re-deriving it client-side.
- *
- * @param {string} [outputDir]
- * @param {Array<Record<string, any>> | null} [suites] Manifest entries; defaults to reading suites.gen.json from `outputDir`.
- * @param {import('./insights.js').InsightOptions} [options]
- */
-export async function generateHeadlineInsightsManifest(outputDir = defaultOutputDir, suites = null, options = {}) {
-    fs.mkdirSync(outputDir, { recursive: true });
-    const { computeHeadlineInsights } = await import('./insights.js');
-    const { MANIFEST_FILES } = await import('./summary-extractor.js');
-    let entries = suites;
-    if (!entries) {
-        const manifestPath = path.join(outputDir, MANIFEST_FILES.full);
-        entries = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : [];
-    }
-    const insights = computeHeadlineInsights(/** @type {any[]} */ (entries), options);
-    const outputPath = path.join(outputDir, MANIFEST_FILES.insights);
-    fs.writeFileSync(outputPath, JSON.stringify({ generatedAt: new Date().toISOString(), ...insights }, null, 2));
-    return insights;
 }
 
 export async function generateGroupedTasksManifest(outputDir = defaultOutputDir) {
@@ -231,7 +205,7 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
 
     // Copy static files from dashboardDir (.html, .js, .css, .svg, .png, etc.)
     for (const rel of fs.readdirSync(dashboardDir, { recursive: true, encoding: 'utf8' })) {
-        if (rel.endsWith('.test.ts') || rel.endsWith('.spec.js') || path.basename(rel) === 'tsconfig.json' || path.basename(rel).startsWith('.') || rel.startsWith('mock-results')) continue;
+        if (rel.endsWith('.test.ts') || rel.endsWith('.spec.js') || path.basename(rel).startsWith('.') || rel.startsWith('mock-results')) continue;
         const ext = path.extname(rel);
         if (STATIC_WEB_EXTS.has(ext)) {
             const dest = path.join(stageDir, rel);
@@ -274,9 +248,7 @@ export async function runAllManifests({ resultsOnly = false, outputDir = default
     }
 
     console.log('🔄 Generating suites manifests...');
-    const suites = await generateSuitesManifest(outputDir);
-    console.log('🔄 Generating headline insights snapshot...');
-    await generateHeadlineInsightsManifest(outputDir, suites);
+    await generateSuitesManifest(outputDir);
 }
 
 // CLI Runner
