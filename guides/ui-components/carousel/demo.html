@@ -56,9 +56,10 @@
     }
 
     /*
-     * Looping without clones: at the first slide, park the last slide before it (order: -1); at the
-     * last slide, park the first slide after it (order: 1). Middle slides never get `order`, so
-     * scrolling never reaches a limit at the ends and native scroll buttons never disable.
+     * Looping without clones: at or one step from the first slide, park the last slide before it
+     * (order: -1); at or one step from the last slide, park the first slide after it (order: 1). The
+     * neighbor is already in place before scrolling reaches an end, so native scroll buttons never
+     * disable. Only the first and last slides ever get `order`.
      * Without support the carousel stays a finite list.
      */
     @supports (order: mod(sibling-index(), 2)) {
@@ -68,8 +69,8 @@
 
       .carousel-item {
         order: calc(
-          max(0, 1 - abs(sibling-index() - 1)) * max(0, 1 - abs(var(--current) - (sibling-count() - 1)))
-          - max(0, 1 - abs(sibling-index() - sibling-count())) * max(0, 1 - abs(var(--current)))
+          clamp(0, 1 - (sibling-index() - 1), 1) * clamp(0, var(--current) - (sibling-count() - 3), 1)
+          - clamp(0, 1 - (sibling-count() - sibling-index()), 1) * clamp(0, 2 - var(--current), 1)
         );
       }
     }
