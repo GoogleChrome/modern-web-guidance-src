@@ -19,7 +19,7 @@ A toolbar groups related controls (formatting, alignment, view options) into one
 
 ## Structure and semantics
 
-MANDATORY: Put `role="toolbar"` and an `aria-label` on the container. Wrap related controls in `role="group"` with their own `aria-label`, and divide groups with `role="separator"` and `aria-orientation="vertical"`. Optionally add `aria-controls` pointing at the element the toolbar acts on; it is only worth adding when the toolbar controls one specific element.
+MANDATORY: Put `role="toolbar"` and an `aria-label` on the container. Wrap related controls in `role="group"` with their own `aria-label`, and divide groups with `role="separator"` and `aria-orientation="vertical"`. If a wrapped separator would sit alone at a row end, hide it visually with `opacity: 0`, not `display: none` or `visibility: hidden`, which also remove it from the accessibility tree. Optionally add `aria-controls` pointing at the element the toolbar acts on; it is only worth adding when the toolbar controls one specific element.
 
 * Use real `<button type="button">` elements.
 * Icon-only buttons need an `aria-label`; tooltips do not replace it. Render icons from CSS so they follow `currentColor` and forced-colors (see {{ GUIDE_REF("icons") }}).
@@ -143,7 +143,9 @@ Add a trailing "More actions" menu when the toolbar has secondary actions or mus
 * Sync `aria-expanded` from the popover `toggle` event and focus the first item on open.
 * `ArrowDown`/`ArrowUp` move between items with wrapping; `Home`/`End` jump to the ends.
 * Close the menu after a `menuitem` is activated. For a `menuitemcheckbox`, `Enter` or a click toggles and closes, but `Space` toggles and keeps the menu open so several options can be changed in one visit (APG).
-* Announce the result on every activation, using the same live region as the toolbar's action buttons (for example "Strikethrough on" or "Formatting cleared"), including after `Space` on a checkbox. A screen reader does not reliably announce an `aria-checked` change made from script, so the live region is what confirms the new state. For `Enter` and clicks, announce before closing: once the menu closes, focus is back on the trigger and the item's new state is out of reach.
+* Announce the result on every activation, using the same live region as the toolbar's action buttons (for example "Strikethrough on" or "Formatting cleared"), including after `Space` on a checkbox. A screen reader does not reliably announce an `aria-checked` change made from script, so the live region is what confirms the new state. For `Enter` and clicks the menu closes and focus returns to the trigger, so the item's new state is out of reach afterward; write the message after a short delay (about 500 ms, an example value), because VoiceOver can skip live region updates made during a focus change. `Space` keeps focus on the item, so announce it immediately.
+
+{# Maintainer note: the delay is a workaround for a known VoiceOver bug (https://bugs.webkit.org/show_bug.cgi?id=222190, live region updates are skipped during a focus change). In Safari TP, announcing immediately was said 5 of 8 times; about 500 ms after closing, 6 of 6, and Chrome still announced it. A timer cannot guarantee delivery, so remove it if the bug is fixed. #}
 * Anchor the menu to the trigger with `position-area` plus `position-try-fallbacks`.
 
 ```js

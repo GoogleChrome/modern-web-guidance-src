@@ -292,12 +292,13 @@
         .btn { transition: background-color 0.15s, scale 0.1s; }
       }
 
-      /* Narrow screens: the toolbar wraps, so drop the separators (a wrapped one would sit alone at a row end)
-         and widen the gap between groups instead. Groups keep their aria-label. */
+      /* Narrow screens: the toolbar wraps, so hide the separators visually (a wrapped one would sit alone at a
+         row end) and widen the gap between groups instead. opacity keeps them in the accessibility tree, which
+         display: none or visibility: hidden would not. Groups keep their aria-label. */
       @media (width < 30rem) {
         #text-bar {
           column-gap: 0.75rem;
-          & [role="separator"] { display: none; }
+          & [role="separator"] { opacity: 0; }
         }
       }
 
@@ -419,9 +420,15 @@
     // Plain actions have no pressed state: they run once and report the result in a live region
     const status = document.querySelector(".status");
     const preview = document.querySelector("#preview");
-    const say = (text) => {
-      status.textContent = text;
-      setTimeout(() => (status.textContent = ""), 2000);
+    let sayTimer;
+    const say = (text, delay = 0) => {
+      clearTimeout(sayTimer);
+      const write = () => {
+        status.textContent = text;
+        sayTimer = setTimeout(() => (status.textContent = ""), 2000);
+      };
+      if (delay) sayTimer = setTimeout(write, delay);
+      else write();
     };
     let zoom = 1;
     // aria-disabled, not disabled, keeps the button focusable so arrow keys still reach it
@@ -464,12 +471,13 @@
       } else if (b.hasAttribute("aria-checked")) {
         const on = b.getAttribute("aria-checked") !== "true";
         flag(b, "aria-checked", on);
-        // Focus returns to the trigger when the menu closes, so announce the new state
-        say(`${b.textContent.trim()} ${on ? "on" : "off"}`);
+        // The menu closes and focus returns to the trigger. VoiceOver can skip a live region update made
+        // during a focus change, so announce after a short delay (500 ms is an example value)
+        say(`${b.textContent.trim()} ${on ? "on" : "off"}`, 500);
       } else if ("clear" in b.dataset) {
         items.filter((x) => x.hasAttribute("aria-pressed")).forEach((x) => flag(x, "aria-pressed", x.dataset.align === "left"));
         menuItems.filter((x) => x.hasAttribute("aria-checked")).forEach((x) => flag(x, "aria-checked", false));
-        say("Formatting cleared");
+        say("Formatting cleared", 500);
       }
       if (menu.contains(b)) menu.hidePopover();
     });
