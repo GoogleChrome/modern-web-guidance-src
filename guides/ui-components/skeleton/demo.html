@@ -467,6 +467,7 @@
     const toggle = document.querySelector('.toggle-loading');
     const sample = { H2: 'Card title', P: 'A short paragraph of loaded content.', LI: 'A list item' };
     let announceTimer;
+    let lastMessage = '';
 
     const startLoading = () => {
       for (const el of collection.querySelectorAll('[data-sample]')) {
@@ -477,7 +478,13 @@
       collection.inert = true;
       collection.setAttribute('aria-hidden', 'true');
       // Set the text after the region exists, with a brief delay (example value)
-      announceTimer = setTimeout(() => { status.textContent = 'Loading cards…'; }, 100);
+      announceTimer = setTimeout(() => {
+        // VoiceOver skips a message identical to the last one, even after the region is cleared: add a no-break space
+        let message = 'Loading cards…';
+        if (message === lastMessage) message += '\u00A0';
+        lastMessage = message;
+        status.textContent = message;
+      }, 100);
       toggle.textContent = 'Finish loading';
     };
 

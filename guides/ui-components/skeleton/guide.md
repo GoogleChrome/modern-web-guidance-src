@@ -50,14 +50,22 @@ MANDATORY: Put `aria-busy="true"` on the container and scope every skeleton styl
 - `inert` blocks interaction. `aria-hidden="true"` stops screen readers reading stale or empty text. The visually hidden `role="status"` message gives one generic announcement instead.
 - MANDATORY: Keep the status element on the page, empty, before the skeleton appears, and set its text afterward. Live regions announce changes only, so text that arrives together with the element is not announced. Use one status element per independently loading area, outside its skeleton container so it survives the toggle.
 - DO NOT depend on `<figure>` or other markup that exists only for the skeleton.
-- When loading finishes, toggle `aria-busy`, `inert` and `aria-hidden` together and clear the status text, so the stale message is not read later and the next load announces again.
+- When loading finishes, toggle `aria-busy`, `inert` and `aria-hidden` together and clear the status text, so the stale message is not read later.
+- **Announce repeats:** VoiceOver skips a message identical to the previous one from the same region, even if the region was emptied in between. Track the last message for each status element and, when a message repeats, append a no-break space (`\u00A0`) so it differs. It is not read aloud.
 
 ```js
 const status = document.querySelector('.loading-status');
+let lastMessage = ''; // One per status element
 // Set the text after the region exists; the 100ms delay is an example value
-const startLoading = (message) => setTimeout(() => { status.textContent = message; }, 100);
+const startLoading = (message) => setTimeout(() => {
+  if (message === lastMessage) message += '\u00A0'; // Differs from the last one, so VoiceOver announces it again
+  lastMessage = message;
+  status.textContent = message;
+}, 100);
 const finishLoading = () => { status.textContent = ''; };
 ```
+
+{# Maintainer note: the no-break space is a workaround for a VoiceOver bug (WebKit bug 222189): an identical message is skipped even after the region is cleared. Without it a tester heard "Loading cards…" 0 of 3 times in Chrome, 1 of 3 in Safari TP and 2 of 3 in Firefox; with it, every new load was announced. #}
 
 ## 2. Colors
 
