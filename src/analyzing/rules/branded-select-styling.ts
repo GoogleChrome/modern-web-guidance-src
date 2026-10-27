@@ -104,7 +104,7 @@ const brandedSelectStylingJsMatcher: JsRuleMatcher = createJsCallMatcher({
   matchCall: matchSelectCall,
 });
 
-export const brandedSelectStylingRule: AnalyzerRule = {
+const brandedSelectStylingRule: AnalyzerRule = {
   id: 'branded-select-styling',
   guideId: 'branded-select-styling',
   guideHash: BRANDED_SELECT_STYLING_GUIDE_HASH,
@@ -134,9 +134,11 @@ export const brandedSelectStylingJsRule: AnalyzerRule = {
   verifierRubric: brandedSelectStylingRule.verifierRubric,
 };
 
-export const brandedSelectStylingDependencyRule = brandedSelectStylingRule;
+export const brandedSelectStylingDeferredRules: readonly AnalyzerRule[] = [
+  // unregistered in a76520de2, reason not recorded; pending rule-writing measurement
+  brandedSelectStylingRule,
+];
 
-// Dependency rule retired, JS rule made opt-in only
 export const brandedSelectStylingRules: readonly AnalyzerRule[] = [
   brandedSelectStylingJsRule,
 ];

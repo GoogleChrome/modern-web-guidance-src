@@ -267,7 +267,7 @@ export const dragJsMatcher: JsRuleMatcher = createJsCallMatcher({
   matchCall: matchDragStartListener,
 });
 
-export const dragPackageRule: AnalyzerRule = {
+const dragPackageRule: AnalyzerRule = {
   id: 'drag/package-drag-drop',
   guideId: 'drag',
   guideHash: DRAG_GUIDE_HASH,
@@ -305,7 +305,11 @@ export const dragJsRule: AnalyzerRule = {
   },
 };
 
-// Retired dragPackageRule from default array; JS rule retained
+export const dragDeferredRules: readonly AnalyzerRule[] = [
+  // unregistered in a76520de2, reason not recorded; pending rule-writing measurement
+  dragPackageRule,
+];
+
 export const dragRules: readonly AnalyzerRule[] = [
   dragJsRule,
 ];

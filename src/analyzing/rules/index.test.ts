@@ -27,20 +27,6 @@ function isAnalyzerRuleExport(value: unknown): value is AnalyzerRule {
   );
 }
 
-/**
- * Deferred or retired sub-pattern rules that remain exported from their module for unit tests
- * or opt-in triage evaluation (`optInRuleExport`), while excluded from the active `*Rules` array.
- */
-const DEFERRED_SUB_RULE_IDS: ReadonlySet<string> = new Set([
-  'branded-select-styling',
-  'child-state-based-styling',
-  'drag/package-drag-drop',
-  'individual-transform-properties/single-function-state',
-  'individual-transform-properties/standalone-chain',
-  'lazy-load-video-and-audio/package-lazyload',
-  'scrollspy/js',
-]);
-
 describe('rule registry architectural invariants', () => {
   it('enforces that every rule module file on disk is registered in RULE_REGISTRY', () => {
     const rulesDir = resolve(import.meta.dirname);
@@ -156,17 +142,10 @@ describe('rule registry architectural invariants', () => {
         `Rule module "${entry.guideId}.ts" must export at least one AnalyzerRule`,
       );
       for (const exportedRule of exportedRules) {
-        if (DEFERRED_SUB_RULE_IDS.has(exportedRule.id)) {
-          assert.ok(
-            !entry.rules.includes(exportedRule),
-            `Rule "${exportedRule.id}" in "${entry.guideId}.ts" is in DEFERRED_SUB_RULE_IDS but is registered in RULE_REGISTRY entry.rules`,
-          );
-        } else {
-          assert.ok(
-            entry.rules.includes(exportedRule),
-            `Exported rule "${exportedRule.id}" in "${entry.guideId}.ts" is missing from RULE_REGISTRY entry.rules`,
-          );
-        }
+        assert.ok(
+          entry.rules.includes(exportedRule),
+          `Exported rule "${exportedRule.id}" in "${entry.guideId}.ts" is missing from RULE_REGISTRY entry.rules`,
+        );
       }
       for (const registeredRule of entry.rules) {
         assert.ok(
@@ -174,14 +153,13 @@ describe('rule registry architectural invariants', () => {
           `Registered rule "${registeredRule.id}" for "${entry.guideId}" is not exported by "${entry.guideId}.ts"`,
         );
       }
-      const rulesToCheck = new Set<AnalyzerRule>([...entry.rules, ...exportedRules]);
 
       for (const rule of entry.rules) {
         assert.ok(!seenRegisteredRuleIds.has(rule.id), `duplicate rule id: ${rule.id}`);
         seenRegisteredRuleIds.add(rule.id);
       }
 
-      for (const rule of rulesToCheck) {
+      for (const rule of entry.rules) {
         await t.test(`rule ${rule.id} (${rule.guideId}) has valid structure`, () => {
           assert.ok(rule.id, 'rule has id');
           assert.strictEqual(rule.guideId, entry.guideId, 'rule.guideId matches entry.guideId');

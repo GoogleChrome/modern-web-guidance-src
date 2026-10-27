@@ -401,7 +401,7 @@ export const scrollspyRule: AnalyzerRule = {
   },
 };
 
-export const scrollspyJsRule: AnalyzerRule = {
+const scrollspyJsRule: AnalyzerRule = {
   id: 'scrollspy/js',
   guideId: 'scrollspy',
   guideHash: SCROLLSPY_GUIDE_HASH,
@@ -411,7 +411,9 @@ export const scrollspyJsRule: AnalyzerRule = {
   verifierRubric: scrollspyRule.verifierRubric,
 };
 
-/**
- * Opt-in only until scroll-target-group is Baseline: retired from default production scan per Slice 6 audit.
- */
+export const scrollspyDeferredRules: readonly AnalyzerRule[] = [
+  // opt-in sub-pattern: deferred from default production scan until CSS scroll-target-group and :target-current reach Baseline
+  scrollspyJsRule,
+];
+
 export const scrollspyRules: readonly AnalyzerRule[] = [scrollspyRule];
