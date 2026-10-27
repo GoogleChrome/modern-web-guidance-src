@@ -1,1 +1,1 @@
-- Server-render a custom element, then hydrate it in place without re-rendering or a flash of unstyled content.
+- Convert the "Seasonal Favorites" drink cards on the Daily Grind homepage into server-rendered custom elements with an interactive details or favorite toggle button, so each card renders styled immediately before JavaScript runs and hydrates in place without re-rendering or a flash of unstyled content.

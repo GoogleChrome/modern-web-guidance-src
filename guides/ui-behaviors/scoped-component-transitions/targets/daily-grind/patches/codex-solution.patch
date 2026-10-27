@@ -1,0 +1,270 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..2755e88 100644
+--- a/index.html
++++ b/index.html
+@@ -113,6 +113,65 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      view-transition-name: match-element;
++    }
++
++    /* Keep the overlay and animated children within this component. The
++       scope retains its automatic root participation and geometry animation. */
++    #favorites-grid {
++      overflow: clip;
++      view-transition-scope: all;
++    }
++
++    .favorites-controls {
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    button {
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .favorites-controls button,
++    .remove-favorite {
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      padding: 6px 12px;
++    }
++
++    .remove-favorite {
++      display: block;
++      margin: 15px auto 0;
++    }
++
++    button:focus-visible,
++    a:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .favorites-status {
++      text-align: center;
++      margin-top: 10px;
++    }
++
++    ::view-transition-group(*) {
++      animation-duration: 300ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
+     }
+ 
+     .card h3 {
+@@ -175,23 +234,32 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
++    <section aria-labelledby="favorites-heading">
++      <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <div class="favorites-controls" aria-label="Arrange seasonal favorites">
++        <button type="button" id="sort-favorites" aria-controls="favorites-grid">Sort A–Z</button>
++        <button type="button" id="reverse-favorites" aria-controls="favorites-grid">Reverse order</button>
++        <button type="button" id="reset-favorites" aria-controls="favorites-grid">Reset favorites</button>
++      </div>
++      <p id="favorites-status" class="favorites-status" role="status">3 favorites shown.</p>
++      <div class="grid" id="favorites-grid">
++        <div class="card" data-name="Maple Oat Latte">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="remove-favorite" aria-label="Remove Maple Oat Latte">Remove</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-name="Dark Roast Espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="remove-favorite" aria-label="Remove Dark Roast Espresso">Remove</button>
+         </div>
+-        <div class="card">
++        <div class="card" data-name="Cold Brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="remove-favorite" aria-label="Remove Cold Brew">Remove</button>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +275,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/src/main.ts"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..09dd74b 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3",
++    "vite": "^7.1.0"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/src/main.ts b/src/main.ts
+new file mode 100644
+index 0000000..5c4189a
+--- /dev/null
++++ b/src/main.ts
+@@ -0,0 +1,103 @@
++export {};
++
++interface ScopedTransition {
++  ready: Promise<void>;
++}
++
++// Element-scoped transitions are newer than the DOM declarations shipped by
++// TypeScript. Keep this local type optional so unsupported browsers still work.
++type TransitionScope = HTMLElement & {
++  startViewTransition?: (update: () => void) => ScopedTransition;
++};
++
++function requireElement<T extends HTMLElement>(
++  selector: string,
++  constructor: { new (): T },
++): T {
++  const element = document.querySelector(selector);
++  if (!(element instanceof constructor)) {
++    throw new Error(`Missing required element: ${selector}`);
++  }
++  return element;
++}
++
++function runScopedTransition(scope: TransitionScope, updateDOM: () => void): void {
++  const update = (): void => {
++    const focused = document.activeElement;
++    updateDOM();
++    // appendChild preserves identity but may blur a moved, focused descendant.
++    if (focused instanceof HTMLElement && scope.contains(focused)
++      && document.activeElement !== focused) {
++      focused.focus({ preventScroll: true });
++    }
++  };
++  if (typeof scope.startViewTransition !== 'function') {
++    update();
++    return;
++  }
++
++  const transition = scope.startViewTransition(update);
++  // Repeated actions on this scope can skip the previous animation.
++  transition.ready.catch(() => {});
++}
++
++const grid = requireElement('#favorites-grid', HTMLDivElement);
++const sortButton = requireElement('#sort-favorites', HTMLButtonElement);
++const reverseButton = requireElement('#reverse-favorites', HTMLButtonElement);
++const resetButton = requireElement('#reset-favorites', HTMLButtonElement);
++const status = requireElement('#favorites-status', HTMLParagraphElement);
++// Retain original nodes, including removed cards, for identity-preserving reset.
++const originalCards = Array.from(grid.querySelectorAll<HTMLElement>('.card'));
++
++function visibleCards(): HTMLElement[] {
++  return Array.from(grid.children).filter((child): child is HTMLElement =>
++    child instanceof HTMLElement && child.classList.contains('card'),
++  );
++}
++
++function announce(message: string): void {
++  const count = grid.childElementCount;
++  status.textContent = count === 0
++    ? `${message} No favorites shown. Use Reset favorites to restore them.`
++    : `${message} ${count} ${count === 1 ? 'favorite' : 'favorites'} shown.`;
++}
++
++sortButton.addEventListener('click', () => {
++  runScopedTransition(grid, () => {
++    const cards = visibleCards().sort((a, b) =>
++      (a.dataset.name ?? '').localeCompare(b.dataset.name ?? ''),
++    );
++    for (const card of cards) grid.appendChild(card);
++    announce('Sorted A–Z.');
++  });
++});
++
++reverseButton.addEventListener('click', () => {
++  runScopedTransition(grid, () => {
++    for (const card of visibleCards().reverse()) grid.appendChild(card);
++    announce('Order reversed.');
++  });
++});
++
++resetButton.addEventListener('click', () => {
++  runScopedTransition(grid, () => {
++    for (const card of originalCards) grid.appendChild(card);
++    announce('Favorites restored.');
++  });
++});
++
++for (const card of originalCards) {
++  const removeButton = card.querySelector<HTMLButtonElement>('.remove-favorite');
++  removeButton?.addEventListener('click', () => {
++    // The whole grid is the scope, so its height also animates on removal.
++    runScopedTransition(grid, () => {
++      if (card.parentElement !== grid) return;
++      const hadFocus = card.contains(document.activeElement);
++      const adjacentCard = card.nextElementSibling ?? card.previousElementSibling;
++      const focusTarget = adjacentCard?.querySelector<HTMLElement>('button, a[href]') ?? resetButton;
++      card.remove();
++      if (hadFocus) focusTarget.focus();
++      announce(`${card.dataset.name ?? 'Favorite'} removed.`);
++    });
++  });
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..0d8dcf3
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "noEmit": true,
++    "skipLibCheck": true
++  },
++  "include": ["src/**/*.ts"]
++}

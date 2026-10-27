@@ -1,0 +1,77 @@
+diff --git a/index.html b/index.html
+index 66c9173..834733f 100644
+--- a/index.html
++++ b/index.html
+@@ -28,6 +28,18 @@
+     }
+ 
+     /* Navigation */
++    @property --nav-gradient-angle {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 90deg;
++    }
++
++    @keyframes shift-gradient {
++      to {
++        --nav-gradient-angle: 450deg;
++      }
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -38,6 +50,11 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++
++      @supports at-rule(@property) {
++        background-image: linear-gradient(var(--nav-gradient-angle), var(--primary), #3e2723, var(--primary));
++        animation: shift-gradient 10s linear infinite;
++      }
+     }
+ 
+     .logo {
+@@ -93,6 +110,27 @@
+       margin-bottom: 1rem;
+     }
+ 
++    @supports at-rule(@starting-style) {
++      .hero {
++        transition: opacity 0.6s ease-out;
++      }
++
++      .hero h1 {
++        transition: transform 0.6s ease-out, opacity 0.6s ease-out;
++      }
++    }
++
++    @starting-style {
++      .hero {
++        opacity: 0;
++      }
++
++      .hero h1 {
++        opacity: 0;
++        transform: translateY(15px);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -113,6 +151,13 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++
++      @supports at-rule(@container) {
++        container-type: inline-size;
++        display: flex;
++        flex-direction: column;
++        justify-content: space-between;
++      }
+     }
+ 
+     .card h3 {
