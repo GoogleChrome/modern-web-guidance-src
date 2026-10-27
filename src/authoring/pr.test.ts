@@ -29,7 +29,7 @@ The guide lacks Safari fallback examples.
 
 #### Actionable Recommendations:
 - \`guide.md\`: Add fallback syntax example for Safari.
-*(Note: After modifying source files, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*
+*(Note: After modifying source files, add the needs-dev-rerun label to the PR to regenerate all target artifacts when running gd dev-gap)*
 `;
 
     const labels = determinePrLabels(report);
@@ -161,12 +161,11 @@ describe('computeLabelDiff', () => {
     const diff3 = computeLabelDiff([], [
       { name: 'gd-dev-content' },
       { name: 'gd-dev-eval' },
-      { name: 'needs-eval-gen' },
-      { name: 'needs-eval-run' },
+      { name: 'needs-dev-rerun' },
       { name: 'enhancement' },
     ]);
     assert.deepEqual(diff3.addLabels, []);
-    assert.deepEqual(diff3.removeLabels, ['gd-dev-content', 'gd-dev-eval', 'needs-eval-gen', 'needs-eval-run']);
+    assert.deepEqual(diff3.removeLabels, ['gd-dev-content', 'gd-dev-eval', 'needs-dev-rerun']);
   });
 });
 
@@ -239,7 +238,7 @@ describe('runDevPr', () => {
     devPrCli.viewOpenPr = () => ({
       number: 42,
       url: 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42',
-      labels: [{ name: 'gd-dev-content' }, { name: 'needs-eval-gen' }, { name: 'category:css' }],
+      labels: [{ name: 'gd-dev-content' }, { name: 'needs-dev-rerun' }, { name: 'category:css' }],
     });
 
     devPrCli.editPr = (prNumber, _bodyPath, addLabels, removeLabels) => {
@@ -255,7 +254,7 @@ describe('runDevPr', () => {
       assert.equal(prUpdated, true);
       assert.equal(updatedPrNumber, 42);
       assert.deepEqual(addedLabels, ['gd-dev-eval']);
-      assert.deepEqual(removedLabels, ['gd-dev-content', 'needs-eval-gen']);
+      assert.deepEqual(removedLabels, ['gd-dev-content', 'needs-dev-rerun']);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
       fs.rmSync(resultsDir, { recursive: true, force: true });

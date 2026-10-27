@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites cards in index.html so that swiping horizontally on a drink item reveals contextual action buttons for that drink without automatically executing an action.
