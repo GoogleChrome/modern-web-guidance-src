@@ -233,7 +233,7 @@ Write a small script that adapts to your markup and covers these requirements:
 
 For previous/next that wrap from the last slide to the first and back, keep the track endless instead of disabling controls at the ends. Do not clone slides or move them in the DOM, which conflicts with frameworks and duplicates content for assistive technology. Instead, park an end slide beside the current one with CSS `order`, and only when the carousel is at or one step from that end. Parking one step early puts the neighbor in place before scrolling reaches an end, so the native scroll button never disables mid-scroll and drops keyboard focus. The track then always has a neighbor on both sides, so native scroll buttons never disable, and keyboard scrolling, touch, and snapping all keep working. Only the first and last slides ever get `order`.
 
-- Keep a `--current` custom property on the track: the zero-based index of the current slide. Park the last slide before the first (`order: -1`) when `--current` is `0` or `1`, and park the first slide after the last (`order: 1`) when `--current` is the last or second-to-last index. Identify the first and last slides with `sibling-index()` and `sibling-count()`. The formula below is the part that is easy to get wrong.
+- Keep a `--current` custom property on the track: the zero-based index of the current slide. Park the last slide before the first (`order: -1`) when `--current` is `0` or `1`, and park the first slide after the last (`order: 1`) when `--current` is the last or second-to-last index. Set `order` only on the first and last slides (`:first-child` and `:last-child`), not on every slide. `sibling-count()` is needed to find the last indexes. The formulas below are the part that is easy to get wrong.
 - When scrolling settles, update `--current` from the scroll position. If the parking changes, measure the current slide's offset along the scrolling axis before and after, then instantly scroll by the difference in the same task so the change is invisible. Turn scroll snapping off (`scroll-snap-type: none`) around the reorder and the compensating scroll and restore it afterward, because Firefox otherwise re-snaps to another slide and keeps scrolling. This also applies when a parked slide is released after the user leaves an end slide.
 - Set `inert` on the parked slide while it is parked, and clear it when it becomes the current slide. It is a visual-only neighbor, so its content must not be reachable by keyboard or assistive technology out of sequence.
 - Looping needs at least three slides. Because the compensation is measured, slides may differ in size.
@@ -241,15 +241,14 @@ For previous/next that wrap from the last slide to the first and back, keep the 
 - Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the compensating scroll is instant.
 
 ```css
-.carousel-slide {
-  /*
-   * -1 for the last slide while --current is 0 or 1; 1 for the first slide while --current is the
-   * last or second-to-last index; 0 otherwise. Each clamp(0, x, 1) term is 1 or 0 without conditionals.
-   */
-  order: calc(
-    clamp(0, 1 - (sibling-index() - 1), 1) * clamp(0, var(--current) - (sibling-count() - 3), 1)
-    - clamp(0, 1 - (sibling-count() - sibling-index()), 1) * clamp(0, 2 - var(--current), 1)
-  );
+/* The first slide parks after the last while --current is the last or second-to-last index. */
+.carousel-slide:first-child {
+  order: clamp(0, var(--current) - (sibling-count() - 3), 1);
+}
+
+/* The last slide parks before the first while --current is 0 or 1. */
+.carousel-slide:last-child {
+  order: calc(-1 * clamp(0, 2 - var(--current), 1));
 }
 ```
 
