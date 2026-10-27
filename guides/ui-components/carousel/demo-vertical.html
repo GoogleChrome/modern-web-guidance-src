@@ -297,20 +297,60 @@
 
     const nearest = () => slides.reduce((a, b) => (Math.abs(offsetToCenter(b)) < Math.abs(offsetToCenter(a)) ? b : a));
 
-    // Run a callback once scrolling settles, with a debounced fallback when scrollend is unsupported.
+    // Run a callback once scrolling settles. Without scrollend, a debounce stands in for it.
     function onSettled(fn) {
+      if ("onscrollend" in window) {
+        // A scrollend from a scroll that was cut short can arrive after the next one has started; skip it.
+        track.addEventListener("scrollend", () => {
+          const at = [track.scrollLeft, track.scrollTop].join();
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            if ([track.scrollLeft, track.scrollTop].join() === at) fn();
+          }));
+        });
+        return;
+      }
       let timer;
-      track.addEventListener("scrollend", fn);
       track.addEventListener("scroll", () => {
         clearTimeout(timer);
         timer = setTimeout(fn, 150);
       }, { passive: true });
     }
 
+    // Fallback clicks made mid-scroll build on the pending target, so rapid clicks are not lost.
+    let pending = null;
+    const step = (dir) => {
+      const target = neighbor(pending ?? nearest(), dir);
+      if (!target) return;
+      pending = target;
+      show(target);
+    };
+
+    // Native scroll buttons aim from the in-flight position, so a click mid-scroll would repeat the same slide.
+    // Finish the running scroll first; presses on the buttons and markers target the track itself.
+    let lastPos = track.scrollLeft + track.scrollTop;
+    let heading = 0;
+    track.addEventListener("scroll", () => {
+      const pos = track.scrollLeft + track.scrollTop;
+      heading = Math.sign(pos - lastPos) || heading;
+      lastPos = pos;
+    }, { passive: true });
+    track.addEventListener("scrollend", () => { heading = 0; });
+    track.addEventListener("pointerdown", (e) => {
+      const current = nearest();
+      // Not aligned with a slide means a scroll is running; scroll events can lag, so derive the direction if needed.
+      if (e.target !== track || Math.abs(offsetToCenter(current)) < 1) return;
+      const dir = heading || (offsetToCenter(current) < 0 ? 1 : -1);
+      const ahead = slides.filter((s) => offsetToCenter(s) * dir >= 0);
+      ahead.sort((x, y) => Math.abs(offsetToCenter(x)) - Math.abs(offsetToCenter(y)));
+      show(ahead[0], "instant");
+      // Park the end slides now, so the native button already has a neighbor to aim at.
+      sync();
+    });
+
     controls.hidden = hasButtons;
     if (!hasButtons) {
-      prevBtn.addEventListener("click", () => show(neighbor(nearest(), -1)));
-      nextBtn.addEventListener("click", () => show(neighbor(nearest(), 1)));
+      prevBtn.addEventListener("click", () => step(-1));
+      nextBtn.addEventListener("click", () => step(1));
     }
     markerNav.hidden = hasMarkers;
     if (!hasMarkers) {
@@ -337,6 +377,7 @@
 
     // The single code path for state: controls only scroll; this reflects where scrolling ended.
     function sync() {
+      pending = null;
       const item = nearest();
       const i = slides.indexOf(item);
       if (loops && i !== parkedFor) {
