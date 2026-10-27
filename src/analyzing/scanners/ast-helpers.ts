@@ -70,6 +70,30 @@ function findVariableInitializerInStatements(
   return null;
 }
 
+function getForLoopDeclarations(scope: Node): readonly VariableDeclaration[] {
+  if (
+    Node.isForStatement(scope) ||
+    Node.isForOfStatement(scope) ||
+    Node.isForInStatement(scope)
+  ) {
+    const init = scope.getInitializer();
+    if (init && Node.isVariableDeclarationList(init)) {
+      return init.getDeclarations();
+    }
+  }
+  return [];
+}
+
+function isDeclarationBindingName(decl: VariableDeclaration, targetName: string): boolean {
+  const nameNode = decl.getNameNode();
+  if (Node.isIdentifier(nameNode)) {
+    return nameNode.getText() === targetName;
+  }
+  return nameNode
+    .getDescendantsOfKind(SyntaxKind.Identifier)
+    .some((id) => id.getText() === targetName);
+}
+
 /**
  * Checks whether `name` is a parameter in a callable scope.
  */
@@ -84,12 +108,19 @@ function findInEnclosingScopes<T>(
   startNode: Node,
   name: string,
   matchStatements: (statements: readonly Statement[]) => T | null,
+  matchForDecl?: (decl: VariableDeclaration) => T | null,
 ): T | null {
   let currentScope: Node | undefined = startNode.getParent();
 
   while (currentScope) {
     if (isParameterInScope(currentScope, name)) {
       return null;
+    }
+
+    for (const decl of getForLoopDeclarations(currentScope)) {
+      if (isDeclarationBindingName(decl, name)) {
+        return matchForDecl ? matchForDecl(decl) : null;
+      }
     }
 
     if (Node.isBlock(currentScope) || Node.isSourceFile(currentScope)) {
@@ -111,8 +142,14 @@ function findInEnclosingScopes<T>(
  */
 function findLocalInitializer(startNode: Node, name: string): Node | null {
   const beforePos = startNode.getStart();
-  return findInEnclosingScopes(startNode, name, (statements) =>
-    findVariableInitializerInStatements(statements, name, beforePos),
+  return findInEnclosingScopes(
+    startNode,
+    name,
+    (statements) => findVariableInitializerInStatements(statements, name, beforePos),
+    (decl) =>
+      decl.getStart() < beforePos && decl.getName() === name
+        ? (decl.getInitializer() ?? null)
+        : null,
   );
 }
 
@@ -185,7 +222,7 @@ function isShadowedByStatements(
   for (const stmt of statements) {
     if (Node.isVariableStatement(stmt)) {
       for (const decl of stmt.getDeclarationList().getDeclarations()) {
-        if (decl.getName() === globalName) {
+        if (isDeclarationBindingName(decl, globalName)) {
           return true;
         }
       }
@@ -238,9 +275,17 @@ export function isUnshadowedGlobal(node: Node, globalName: string): boolean {
 
     if (Node.isCatchClause(currentScope)) {
       const catchVar = currentScope.getVariableDeclaration();
-      if (catchVar && catchVar.getName() === globalName) {
+      if (catchVar && isDeclarationBindingName(catchVar, globalName)) {
         return false;
       }
+    }
+
+    if (
+      getForLoopDeclarations(currentScope).some((decl) =>
+        isDeclarationBindingName(decl, globalName),
+      )
+    ) {
+      return false;
     }
 
     if (Node.isBlock(currentScope) || Node.isSourceFile(currentScope)) {
@@ -1034,6 +1079,20 @@ function checkEnclosingBindings(
   while (current) {
     if (isShadowedByCallableScope(current, localName)) {
       return 'shadowed';
+    }
+
+    for (const decl of getForLoopDeclarations(current)) {
+      const status = checkVariableDeclarationBinding(
+        decl,
+        localName,
+        identName,
+        packages,
+        allowDefaultImport,
+        requireOpts,
+      );
+      if (status !== 'none') {
+        return status;
+      }
     }
 
     if (Node.isBlock(current) || Node.isSourceFile(current)) {

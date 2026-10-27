@@ -5,7 +5,9 @@ import {
   isLibraryReference,
   isProtectedByFeatureGuard,
   isRequireOfPackage,
+  isUnshadowedGlobal,
   matchesPackageSpec,
+  resolveLocalExpression,
 } from './ast-helpers.ts';
 
 test('isProtectedByFeatureGuard: bare variable and negative early-return guards', async (t) => {
@@ -215,6 +217,41 @@ test('matchesPackageSpec, isRequireOfPackage, and isLibraryReference', async (t)
         allowGlobal: false,
       }),
       true,
+    );
+  });
+
+  await t.test('handles for-loop variable shadowing and initializers across scope walks', () => {
+    const sf = project.createSourceFile(
+      'forLoopScopes.ts',
+      `
+      for (const Temporal of items) {
+        Temporal.now();
+      }
+      for (const el = document.getElementById('box'); el; ) {
+        el.focus();
+      }
+      `,
+      { overwrite: true },
+    );
+
+    const calls = sf.getDescendants().filter(Node.isCallExpression);
+    const temporalNowCall = calls.find((c) => c.getText() === 'Temporal.now()');
+    const elFocusCall = calls.find((c) => c.getText() === 'el.focus()');
+    assert.ok(temporalNowCall && elFocusCall);
+
+    const temporalExpr = temporalNowCall.getExpression();
+    const elExpr = elFocusCall.getExpression();
+    assert.ok(Node.isPropertyAccessExpression(temporalExpr) && Node.isPropertyAccessExpression(elExpr));
+
+    assert.equal(
+      isUnshadowedGlobal(temporalExpr.getExpression(), 'Temporal'),
+      false,
+      'for-of loop variable must shadow global identifier',
+    );
+    assert.equal(
+      resolveLocalExpression(elExpr.getExpression()).getText(),
+      "document.getElementById('box')",
+      'for-statement initializer must resolve via resolveLocalExpression',
     );
   });
 });

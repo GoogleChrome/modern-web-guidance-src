@@ -1,6 +1,7 @@
 import {
   Node,
   Project,
+  SyntaxKind,
   type CallExpression,
   type NewExpression,
   type SourceFile,
@@ -106,25 +107,32 @@ export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher 
       const matches: AnalyzerMatch[] = [];
       const visitedLines = config.dedupeLines ? new Set<number>() : null;
 
-      sourceFile.forEachDescendant((node) => {
-        if (!Node.isCallExpression(node) && !Node.isNewExpression(node)) {
-          return;
-        }
-        if (Node.isCallExpression(node) ? !config.matchCall : !config.matchNew) {
-          return;
-        }
+      const callNodes = config.matchCall
+        ? sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)
+        : [];
+      const newNodes = config.matchNew
+        ? sourceFile.getDescendantsOfKind(SyntaxKind.NewExpression)
+        : [];
+      const candidates: ReadonlyArray<CallExpression | NewExpression> =
+        callNodes.length > 0 && newNodes.length > 0
+          ? [...callNodes, ...newNodes].sort((a, b) => a.getPos() - b.getPos())
+          : callNodes.length > 0
+            ? callNodes
+            : newNodes;
+
+      for (const node of candidates) {
         const line = node.getStartLineNumber();
         if (visitedLines?.has(line)) {
-          return;
+          continue;
         }
         if (
           config.featureGuardTokens &&
           isProtectedByFeatureGuard(node, config.featureGuardTokens)
         ) {
-          return;
+          continue;
         }
         if (config.isGuarded?.(node, sourceFile, ctx)) {
-          return;
+          continue;
         }
         const message = Node.isCallExpression(node)
           ? config.matchCall?.(node, sourceFile, ctx)
@@ -133,7 +141,7 @@ export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher 
           visitedLines?.add(line);
           matches.push({ line, message });
         }
-      });
+      }
 
       return matches;
     },
