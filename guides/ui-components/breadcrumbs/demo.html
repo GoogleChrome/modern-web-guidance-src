@@ -76,6 +76,8 @@
   .bc-bar a { display: block; padding: .6rem 1.1rem; text-decoration: none; }
   .bc-bar a:not([aria-current]):hover { background: var(--accent-soft); }
   .bc-bar a[aria-current="page"] { background: var(--surface); }
+  /* The chevron sits in the <li>, outside the link: give the current <li> the link's background so no strip of the bar shows behind it */
+  .bc-bar > ol > li:has(> a[aria-current="page"]) { background: var(--surface); }
   .bc-bar a:focus-visible { outline-offset: -3px; background: var(--accent-soft); }
 
   /* 4b. Joined pill: the bar's segments inside one fully rounded container */
@@ -282,9 +284,11 @@
   }
 
   /* A bar that wraps breaks apart (and a 999px radius turns into an oval), so stack it as one column when its
-     segments no longer fit on a row. 26rem is an example breakpoint; the chevron turns to point down. */
-  @container bc (inline-size < 26rem) {
+     segments no longer fit on a row. 24rem is an example breakpoint: just above the bars' natural width (about
+     23.5rem here), so they stack only when they would not fit. The chevron turns to point down. */
+  @container bc (inline-size < 24rem) {
     .bc-bar > ol { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+    .bc-bar a { padding-block: .35rem; } /* Compact rows: three rows take less space than a wrapped bar */
     .bc-bar > ol > li + li { border-inline-start: 0; border-block-start: 1px solid var(--border); }
     .bc-bar a { flex: 1; }
     .bc-joined > ol { border-radius: 1.4rem; }
