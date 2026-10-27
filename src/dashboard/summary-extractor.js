@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
 import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
 
 /** Per-attempt agent timeout enforced by the harness (src/harness/run_suite.ts). */
@@ -113,6 +113,7 @@ export const SUMMARY_SCHEMA_VERSION = 2;
  * @property {number} earlyFailureRate
  * @property {number} [guidedErrorRate]
  * @property {number} [unguidedErrorRate]
+ * @property {number} [unguidedLeakRate]
  * @property {Record<string, GuideSummary>} guides
  * @property {ReturnType<typeof calculateChartData>} chartData
  */
@@ -175,6 +176,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     let guidedEarlyFailures = 0;
     let unguidedTotalRuns = 0;
     let unguidedEarlyFailures = 0;
+    let unguidedLeaks = 0;
 
     // Cross-cutting accessibility counters
     let a11yGuidedPassed = 0;
@@ -276,6 +278,9 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             if (isEarlyFailureRun(run.results)) {
                 if (isGuided) guidedEarlyFailures++;
                 else if (isUnguided) unguidedEarlyFailures++;
+            }
+            if (isUnguided && isUnguidedLeakRun(run, parsedKey?.guide)) {
+                unguidedLeaks++;
             }
 
             if (isEligibleScenario) {
@@ -543,6 +548,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const earlyFailureRate = totalAllRuns > 0 ? Math.round((summaryEarlyFailures / totalAllRuns) * 100) : 0;
     const guidedErrorRate = guidedTotalRuns > 0 ? Math.round((gFailures / guidedTotalRuns) * 100) : 0;
     const unguidedErrorRate = unguidedTotalRuns > 0 ? Math.round((uFailures / unguidedTotalRuns) * 100) : 0;
+    const unguidedLeakRate = unguidedTotalRuns > 0 ? Math.round((unguidedLeaks / unguidedTotalRuns) * 100) : 0;
 
     const chartData = calculateChartData(results, eligibleScenarios);
 
@@ -562,6 +568,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         earlyFailureRate: earlyFailureRate,
         guidedErrorRate: guidedErrorRate,
         unguidedErrorRate: unguidedErrorRate,
+        ...(unguidedLeakRate > 0 ? { unguidedLeakRate } : {}),
         guides: guidesFormatted,
         chartData: chartData
     };

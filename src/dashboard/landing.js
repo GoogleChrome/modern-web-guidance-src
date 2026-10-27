@@ -997,6 +997,7 @@ function renderSuites() {
         const taskCount = testInfo.taskCount || 0;
         const maxRuns = testInfo.maxRuns || 1;
         const earlyFailureRate = testInfo.earlyFailureRate || 0;
+        const unguidedLeakRate = testInfo.unguidedLeakRate || 0;
         const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
         const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
         const isFaulty = earlyFailureRate === 100;
@@ -1039,7 +1040,7 @@ function renderSuites() {
         const dateDisplay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const metaParts = [
             !scheduled && label ? escapeHtml(label) : '',
-            taskCount > 0 ? `${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}` : '',
+            taskCount > 0 ? `${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}` : '',
             escapeHtml(timeAgo(date)),
             ldap ? escapeHtml(ldap) : ''
         ].filter(Boolean).join(' · ');

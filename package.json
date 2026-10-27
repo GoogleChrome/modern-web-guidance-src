@@ -21,8 +21,7 @@
     "build:static-site": "node src/build/build-guides.ts --target=static-site --output=dist/static-site-guides",
     "publish-skills": "node src/build/publish-skills.ts",
     "collect-evals": "node src/build/collect-eval-results.ts",
-    "benchmark:rag": "node src/rag/benchmarks/eval-rag-suite.ts",
-    "plot:serve": "npx serve src/rag/benchmarks/data",
+    "benchmark:rag": "node src/rag/benchmarks/bench-rag.ts",
     "baselinestatus": "node src/cli/baseline-status.ts",
     "typecheck": "tsc && tsc -p src/dashboard/tsconfig.json",
     "lint": "oxlint --ignore-path .oxlintignore",
@@ -71,7 +70,7 @@
     }
   },
   "devDependencies": {
-    "@anthropic-ai/claude-code": "^2.1.302",
+    "@anthropic-ai/claude-code": "^2.1.310",
     "@google/gemini-cli-core": "0.61.0",
     "@octokit/rest": "^22.0.1",
     "@playwright/test": "^1.58.2",
@@ -90,12 +89,13 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.19.0",
-    "@google/gemini-cli": "0.61.0",
+    "@11ty/gray-matter": "^3.0.0",
+    "@google-cloud/storage": "^7.22.0",
+    "@google/gemini-cli": "0.64.0",
     "@huggingface/tokenizers": "^0.2.0",
-    "@huggingface/transformers": "^4.3.0",
-    "@mdn/browser-compat-data": "^8.0.7",
-    "@openai/codex": "0.163.0",
+    "@huggingface/transformers": "^4.3.1",
+    "@mdn/browser-compat-data": "^8.1.6",
+    "@openai/codex": "0.164.0",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-converter": "^4.22.0",
     "@tensorflow/tfjs-core": "^4.22.0",
@@ -105,10 +105,9 @@
     "caniuse-lite": "1.0.30001806",
     "colors": "^1.4.0",
     "glob": "^13.0.6",
-    "gray-matter": "^4.0.3",
     "marked": "^18.0.3",
     "mdn-data": "2.29.0",
     "omelette": "^0.4.17",
-    "web-features": "^3.43.0"
+    "web-features": "^3.44.0"
   }
 }

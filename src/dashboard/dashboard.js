@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, isLocalDashboardHost, getScrollBehavior } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, isLocalDashboardHost, getScrollBehavior } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
@@ -627,18 +627,25 @@ function renderSummary(data) {
     const tasksWithGuides = new Set();
 
     let totalAllRunsCount = 0;
+    let totalUnguidedRunsCount = 0;
     let computedEarlyFailures = 0;
+    let unguidedLeaksCount = 0;
     Object.keys(results).forEach(key => {
         const base = key.replace(' - guided', '').replace(' - unguided', '');
         baseKeys.add(base);
+        const parsed = parseResultKey(key);
 
         const runs = results[key] || [];
         totalAllRunsCount += runs.length;
         const isGuided = key.endsWith(' - guided');
+        if (!isGuided) totalUnguidedRunsCount += runs.length;
 
         runs.forEach((/** @type {DashboardRunResult} */ run) => {
             if (isEarlyFailureRun(run.results)) {
                 computedEarlyFailures++;
+            }
+            if (!isGuided && isUnguidedLeakRun(run, parsed?.guide)) {
+                unguidedLeaksCount++;
             }
             const hasTools = run.guidanceToolsUsed && run.guidanceToolsUsed.length > 0;
             const hasGuides = (run.guidesUsed && run.guidesUsed.length > 0) || (run.guideUsed && typeof run.guideUsed === 'object' && run.guideUsed.guidesUsed && run.guideUsed.guidesUsed.length > 0);
@@ -669,6 +676,8 @@ function renderSummary(data) {
         : computedEarlyFailures;
     const rawRate = totalAllRunsCount > 0 ? (totalEarlyFailures / totalAllRunsCount) * 100 : 0;
     const totalEarlyFailureRate = rawRate > 0 && rawRate < 1 ? Number(rawRate.toFixed(1)) : Math.round(rawRate);
+    const rawLeakRate = totalUnguidedRunsCount > 0 ? (unguidedLeaksCount / totalUnguidedRunsCount) * 100 : 0;
+    const unguidedLeakRate = rawLeakRate > 0 && rawLeakRate < 1 ? Number(rawLeakRate.toFixed(1)) : Math.round(rawLeakRate);
 
     const a11yDimensionsHtml = A11Y_SUBCATEGORIES.map(sub => {
         const sc = a11yStats.bySubCategory?.[sub.id];
@@ -753,6 +762,12 @@ function renderSummary(data) {
                 <div class="narrative-metric-row">
                     <span>Infra errors (excluded)</span>
                     <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</strong>
+                </div>
+                ` : ''}
+                ${unguidedLeaksCount > 0 ? `
+                <div class="narrative-metric-row">
+                    <span>Unguided leaks</span>
+                    <strong style="color: #8b5cf6;">${unguidedLeakRate}% (${unguidedLeaksCount} run${unguidedLeaksCount === 1 ? '' : 's'})</strong>
                 </div>
                 ` : ''}
             </div>
@@ -1018,6 +1033,8 @@ function renderGrid(data, testId) {
             const infraErrorCount = countInfraErrors(unguidedRuns) + countInfraErrors(guidedRuns);
             const hasInfraError = infraErrorCount > 0;
             const hasBuildFailure = [...(unguidedRuns || []), ...(guidedRuns || [])].some(r => r.results?.some(c => c.failureReason));
+            const leakCount = (unguidedRuns || []).filter(r => isUnguidedLeakRun(r, guide)).length;
+            const hasLeak = leakCount > 0;
             const hasFailure = hasInfraError || hasBuildFailure;
 
             scenarios.push({
@@ -1042,6 +1059,8 @@ function renderGrid(data, testId) {
                 infraErrorCount,
                 hasInfraError,
                 hasBuildFailure,
+                leakCount,
+                hasLeak,
                 hasFailure
             });
         });
@@ -1071,7 +1090,7 @@ function renderGrid(data, testId) {
             unguidedAvg, guidedAvg, uplift,
             a11yUnguidedAvg, a11yGuidedAvg, a11yUplift, a11yCheckCount,
             uRuntimeMs, gRuntimeMs, uUncachedTokens, gUncachedTokens,
-            infraErrorCount, hasInfraError, hasBuildFailure, hasFailure
+            infraErrorCount, hasInfraError, hasBuildFailure, leakCount, hasFailure
         } = item;
 
         sortedScenarios.push(scenarioName);
@@ -1136,6 +1155,7 @@ function renderGrid(data, testId) {
                     ${a11yPillHtml}
                     ${hasInfraError ? `<span class="generation-failed-badge infra-error-badge" title="Infrastructure / CLI errors are excluded from pass rates">${infraErrorCount} Infra Error${infraErrorCount === 1 ? '' : 's'}</span>` : ''}
                     ${hasBuildFailure ? `<span class="generation-failed-badge" title="Agent produced a broken app or build that failed grading">Build Failed</span>` : ''}
+                    ${leakCount > 0 ? `<span class="generation-failed-badge" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border-color: rgba(139, 92, 246, 0.3);" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(guide)}">${leakCount > 1 ? `${leakCount} Unguided Leaks` : 'Unguided Leak'}</span>` : ''}
                 </div>
                 <div class="right-section">
                     ${metaChipsHtml}
@@ -1314,6 +1334,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         const isRunEarlyFailure = (runs) => runs && runs.some(r => isEarlyFailureRun(r.results));
         const uFailed = isRunEarlyFailure(unguidedRuns);
         const gFailed = isRunEarlyFailure(guidedRuns);
+        const scenarioGuide = parseResultKey(`${scenarioName} - unguided`)?.guide || '';
 
         let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Assertion results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader assertion results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
 
@@ -1434,6 +1455,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const jsonFile = files.find(f => f.endsWith('_results.json'));
                  const runtimeFile = files.includes('runtime.json') ? 'runtime.json' : null;
                  const isEarlyFailure = isEarlyFailureRun(run.results);
+                 const isLeak = typeLabel === 'Unguided' && isUnguidedLeakRun(run, scenarioGuide);
                  const earlyFailureMsg = isEarlyFailure ? (run.results?.find(c => c.isEarlyFailure)?.message || 'Infrastructure Error') : '';
                  const buildFailureReason = !isEarlyFailure ? (run.results?.find(c => c.failureReason)?.failureReason || '') : '';
                  const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
@@ -1451,6 +1473,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                              ? `<span class="tfoot-chip-error" title="${escapeHtml(earlyFailureMsg)}">ERROR</span>`
                              : `<span class="tfoot-chip-rate" style="--rate-color: ${getColor(s.rate)};">${s.rate}%</span>`
                          }
+                         ${isLeak ? `<span class="run-chip-leak" style="font-size: 0.7rem; color: #8b5cf6; border: 1px solid #8b5cf6; padding: 1px 4px; border-radius: 4px;" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}">Unguided Leak</span>` : ''}
                          ${buildFailureReason ? `<span class="tfoot-chip-build-failed" title="${escapeHtml(buildFailureReason)}">Build Failed</span>` : ''}
                          ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent time: </span>${formatRuntime(taskRuntime)}</span>` : ''}
                          ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)} uncached<span class="visually-hidden">, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
@@ -1542,9 +1565,10 @@ ${toolsUsed.map((/** @type {string} */ t) => {
         } else {
             tfootHtml += `<td class="center" style="vertical-align: top;">${unguidedChips[0]}</td><td class="center" style="vertical-align: top;">${guidedChips[0]}</td>`;
         }
-const guidedCards = await getRunCards(guidedRuns, 'Guided');
+        const unguidedCards = await getRunCards(unguidedRuns, 'Unguided');
+        const guidedCards = await getRunCards(guidedRuns, 'Guided');
         tfootHtml += `<td>
-<div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px;">${guidedCards}</div>
+<div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px;">${unguidedCards}${guidedCards}</div>
 </td></tr></tfoot>`;
 
         truthMatrixHtml = truthMatrixHtml.replace('</tbody></table></div>', `</tbody>${tfootHtml}</table></div>`);

@@ -629,6 +629,12 @@ describe('INCLUDE', () => {
         /Web feature ID "nonexistent-feature" not found/
       );
     });
+
+    it('emits fallbacks without a status line for pending tmp-* features', () => {
+      const result = replaceMacros('{{ FEATURE_FALLBACKS("tmp-customizable-select-listbox") }}', 'test.md');
+      assert.match(result, /^### Fallbacks & browser support for customizable-select-listbox\n\n[^\n]/);
+      assert.doesNotMatch(result, /Browser support for/);
+    });
   });
 
   describe('caching', () => {
@@ -669,6 +675,14 @@ describe('INCLUDE', () => {
       const content = '{{ GUIDE_REF("break-up-long-tasks") }}';
       const result = replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' });
       assert.equal(result, '[Break Up Long Tasks](../performance/break-up-long-tasks.md)');
+    });
+
+    it('throws for unpublished guides on the static-site target', () => {
+      const content = '{{ GUIDE_REF("slider-tooltip") }}';
+      assert.throws(
+        () => replaceMacros(content, path.join(rootDir, 'test.md'), { target: 'static-site' }),
+        /links to an unpublished guide/,
+      );
     });
 
     it('throws error for non-existent guide', () => {

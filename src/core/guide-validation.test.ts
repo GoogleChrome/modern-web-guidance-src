@@ -3,9 +3,9 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, getStatusName, getGuideStatus, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
-import { maskComments } from './macros.ts';
+import { maskComments, validateMacros } from './macros.ts';
 
 describe('extractH1Heading and extractAllH1Headings', () => {
   test('extracts standard ATX H1 heading', () => {
@@ -119,6 +119,82 @@ describe('parseExpectations', () => {
     assert.deepStrictEqual(result.mustPass, []);
     assert.deepStrictEqual(result.mustFail, []);
     assert.deepStrictEqual(result.appAgnostic, []);
+  });
+});
+
+describe('GUIDE_REF publication target validation', () => {
+  test('allows references to published guides', () => {
+    assert.deepStrictEqual(validateMacros('See {{ GUIDE_REF("forms") }}.', 'test.md', { target: 'static-site' }), []);
+  });
+
+  test('rejects references to unpublished guides', () => {
+    const errors = validateMacros(`See {{ GUIDE_REF('slider-tooltip') }}.`, 'test.md', { target: 'static-site' });
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /GUIDE_REF\("slider-tooltip"\).*unpublished/);
+  });
+
+  test('validateGuide only enforces it for published (non-draft) guides', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-ref-'));
+    const guidePath = path.join(dir, 'ref-test', 'guide.md');
+    fs.mkdirSync(path.dirname(guidePath));
+    const write = (draftLine: string) => fs.writeFileSync(guidePath, `---\nname: ref-test\ndescription: d\nweb-feature-ids: []\n${draftLine}---\n# Ref test\n\nSee {{ GUIDE_REF("slider-tooltip") }}.\n`);
+    try {
+      write('');
+      assert.ok(validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+      write('draft: wip\n');
+      assert.ok(!validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('validatePendingGuideRefs', () => {
+  const pending = (slug: string) => `Intro.\n\n{# PENDING_GUIDE_REF: For tooltips, see {{ GUIDE_REF("${slug}") }}. #}\n`;
+
+  test('allows parking a link to an unpublished guide', () => {
+    assert.deepStrictEqual(validatePendingGuideRefs(pending('slider-tooltip'), 'test.md'), []);
+  });
+
+  test('fails once the target guide is published', () => {
+    const errors = validatePendingGuideRefs(pending('forms'), 'test.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /"forms" is now published.*remove the \{# PENDING_GUIDE_REF/);
+  });
+
+  test('fails on unknown slugs and on markers without a GUIDE_REF', () => {
+    assert.match(validatePendingGuideRefs(pending('no-such-guide-xyz'), 'test.md')[0], /unknown guide "no-such-guide-xyz"/);
+    assert.match(validatePendingGuideRefs('{# PENDING_GUIDE_REF: nothing here #}', 'test.md')[0], /contains no/);
+  });
+
+  test('ignores ordinary maintainer comments', () => {
+    assert.deepStrictEqual(validatePendingGuideRefs('{# see {{ GUIDE_REF("forms") }} someday #}', 'test.md'), []);
+  });
+});
+
+describe('validateCallouts', () => {
+  test('allows known GitHub alert types and plain blockquotes', () => {
+    const body = `> [!NOTE]\n> A note.\n\n> [!important]\n> Lowercase is fine.\n\n> Just a quote.\n\n> **Note on kid handling:** prose label, not a callout.\n`;
+    assert.deepStrictEqual(validateCallouts(body, 'test.md'), []);
+  });
+
+  test('rejects unknown alert types', () => {
+    const errors = validateCallouts(`> [!DANGER]\n> Boom.\n`, 'test.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Unsupported alert type "\[!DANGER\]"/);
+  });
+
+  test('rejects bold-label callouts, including inside list items', () => {
+    const body = `> **Important:** Top level.\n\n- item\n\n  > **Note**: Nested.\n`;
+    const errors = validateCallouts(body, 'test.md');
+    assert.strictEqual(errors.length, 2);
+    assert.match(errors[0], /\[!IMPORTANT\]/);
+    assert.match(errors[1], /\[!NOTE\]/);
+  });
+
+  test('ignores callout-like text inside code fences', () => {
+    const body = '```md\n> **Note:** example\n> [!BOGUS]\n```\n';
+    assert.deepStrictEqual(validateCallouts(body, 'test.md'), []);
   });
 });
 
@@ -515,13 +591,13 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       assert.strictEqual(inv.targets?.[0].hasTask, true);
       
       const status = classifyGuide(inv);
-      assert.strictEqual(status, 'eval-ready');
+      assert.strictEqual(status, 'complete');
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
-  test('classifyGuide returns incomplete, needs-calibration, and needs-test for partial target capsules', () => {
+  test('classifyGuide returns needs-calibration and needs-test for partial target capsules', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-test-target-partial-'));
     const guideDir = path.join(tmpDir, 'guides', 'test-category', 'test-guide-partial');
     const targetsDir = path.join(guideDir, 'targets', 'daily-grind');
@@ -532,10 +608,10 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     fs.writeFileSync(path.join(guideDir, 'expectations.md'), '- rule');
 
     try {
-      // Case 1: only partial solutions exist across targets -> hasSolution is false
+      // Case 1: only partial solutions exist across targets -> hasSolution is false (still Stage 3 needs-calibration)
       fs.writeFileSync(path.join(patchesDir, 'jetski-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
       let inv = inventoryGuide(guideDir);
-      assert.strictEqual(classifyGuide(inv), 'incomplete');
+      assert.strictEqual(classifyGuide(inv), 'needs-calibration');
 
       // Case 2: all solution patches and zero-passrate exist, but missing grader
       fs.writeFileSync(path.join(patchesDir, 'claude-solution.patch'), '+++ b/src/app.ts\n+const x = 1;');
@@ -549,10 +625,10 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       inv = inventoryGuide(guideDir);
       assert.strictEqual(classifyGuide(inv), 'needs-test');
 
-      // Case 4: all present -> eval-ready
+      // Case 4: all present -> complete
       fs.writeFileSync(path.join(targetsDir, 'task.md'), '- task');
       inv = inventoryGuide(guideDir);
-      assert.strictEqual(classifyGuide(inv), 'eval-ready');
+      assert.strictEqual(classifyGuide(inv), 'complete');
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -594,7 +670,7 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
       assert.strictEqual(inv.hasTask, true);
       
       const status = classifyGuide(inv);
-      assert.strictEqual(status, 'eval-ready');
+      assert.strictEqual(status, 'complete');
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -930,42 +1006,138 @@ describe('checkOriginTrialGraduations', () => {
   });
 });
 
-describe('getStatusName and getGuideStatus lifecycle', () => {
+describe('classifyGuide lifecycle', () => {
   test('evaluates lifecycle status from guidance, expectations, and evals', () => {
-    assert.strictEqual(getStatusName('', true, true, false, true), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Content', false, false, true, true), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Content', true, true, false, false), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Content', false, true, false, true), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getStatusName('Content', true, false, false, true), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getStatusName('Content', false, false, false, true), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getStatusName('Content', true, true, false, true), null);
+    assert.strictEqual(classifyGuide({ hasGuide: false, hasGrader: true, hasTask: true, hasExpectations: true }), 'incomplete');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: false, draft: 'wip', hasExpectations: true }), 'incomplete');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: false }), 'needs-expectations');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: true, hasExpectations: true }), 'needs-calibration');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: false, hasExpectations: true }), 'needs-test');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: false, hasExpectations: true }), 'needs-calibration');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: true }), 'complete');
   });
 
-  test('getGuideStatus evaluates GuideInventory identically for standard and discipline guides', () => {
+  test('classifyGuide evaluates GuideInventory identically for standard and discipline guides', async t => {
     for (const isDisciplineGuide of [false, true]) {
-      const baseInv: GuideInventory = {
-        dir: '/tmp/guides/accessibility/accessibility',
-        name: 'accessibility',
-        category: 'accessibility',
-        hasGuide: true,
-        isStub: false,
-        hasDemo: false,
-        hasExpectations: true,
-        expectationsEmpty: false,
-        hasNegativeDemo: false,
-        hasGrader: false,
-        hasTask: false,
-        featureIds: [],
-        isDisciplineGuide,
-        draft: undefined,
-        isPublished: true,
-      };
+      await t.test(`isDisciplineGuide=${isDisciplineGuide}`, () => {
+        const baseInv: GuideInventory = {
+          dir: '/tmp/guides/accessibility/accessibility',
+          name: 'accessibility',
+          category: 'accessibility',
+          hasGuide: true,
+          isStub: false,
+          hasDemo: false,
+          hasExpectations: true,
+          expectationsEmpty: false,
+          hasNegativeDemo: false,
+          hasGrader: false,
+          hasTask: false,
+          featureIds: [],
+          isDisciplineGuide,
+          draft: undefined,
+          isPublished: true,
+        };
 
-      assert.strictEqual(getGuideStatus(baseInv), ProjectStatus.NeedsEvals);
-      assert.strictEqual(getGuideStatus({ ...baseInv, hasGrader: true, hasTask: true }), null);
-      assert.strictEqual(getGuideStatus({ ...baseInv, hasExpectations: false }), ProjectStatus.NeedsGuidance);
-      assert.strictEqual(getGuideStatus({ ...baseInv, draft: 'wip' }), ProjectStatus.NeedsGuidance);
+        assert.strictEqual(classifyGuide(baseInv), 'needs-calibration');
+        assert.strictEqual(classifyGuide({ ...baseInv, hasGrader: true, hasTask: true }), 'complete');
+        assert.strictEqual(classifyGuide({ ...baseInv, hasExpectations: false }), 'needs-expectations');
+        assert.strictEqual(classifyGuide({ ...baseInv, draft: 'wip' }), 'incomplete');
+      });
     }
+  });
+
+  test('classifyGuide evaluates in-memory snapshots consistently', () => {
+    const meta1 = parseGuideMetadata(`---
+name: old
+draft: true
+---
+# Old
+Body`, undefined, true);
+    const evals1 = detectEvals(['guide.md', 'expectations.md', 'grader.ts', 'tasks/task.md']);
+    assert.strictEqual(classifyGuide({ ...meta1, ...evals1, hasExpectations: true }), 'incomplete');
+
+    const meta2 = parseGuideMetadata(`---
+name: ready
+---
+# Ready
+Body`, undefined, true);
+    const evals2 = detectEvals(['guide.md', 'expectations.md']);
+    assert.strictEqual(classifyGuide({ ...meta2, ...evals2, hasExpectations: true }), 'needs-calibration');
+
+    const meta3 = parseGuideMetadata(`---
+name: complete
+---
+# Complete
+Body`, undefined, true);
+    const evals3 = detectEvals(['guide.md', 'expectations.md', 'targets/daily-grind/grader.ts', 'targets/daily-grind/task.md']);
+    assert.strictEqual(classifyGuide({ ...meta3, ...evals3, hasExpectations: true }), 'complete');
+  });
+
+  test('getPendingGuideStage compares before/after guide state across Stage 2 and Stage 3', () => {
+    const baseInv: GuideInventory = {
+      dir: '/tmp/guides/forms/slider',
+      name: 'slider',
+      category: 'forms',
+      hasGuide: true,
+      isStub: false,
+      hasDemo: true,
+      hasExpectations: true,
+      expectationsEmpty: false,
+      hasNegativeDemo: false,
+      hasGrader: false,
+      hasTask: false,
+      featureIds: [],
+      isDisciplineGuide: false,
+      draft: undefined,
+      isPublished: true,
+    };
+
+    // Eval changes on NeedsEvals guides count even when also touching guide.md
+    assert.strictEqual(
+      getPendingGuideStage(baseInv, ['guide.md', 'targets/daily-grind/grader.ts']),
+      ProjectStatus.NeedsEvals
+    );
+    // Pure content change touching only guide.md on a NeedsEvals guide is not an eval change
+    assert.strictEqual(
+      getPendingGuideStage(baseInv, ['guide.md']),
+      null
+    );
+
+    const stubInv: GuideInventory = {
+      ...baseInv,
+      hasGuide: false,
+      isStub: true,
+      hasDemo: false,
+      hasExpectations: false,
+    };
+    // Frontmatter-only edit on a stub stays a stub (null)
+    assert.strictEqual(
+      getPendingGuideStage(stubInv, ['guide.md'], parseGuideMetadata('---\nname: slider\nweb-feature-ids:\n  - tmp-slider\n---\n', undefined, true)),
+      null
+    );
+    // Writing guide.md body on a stub advances NeedsGuidance even before expectations.md is added
+    assert.strictEqual(
+      getPendingGuideStage(stubInv, ['guide.md'], parseGuideMetadata('---\nname: slider\n---\n# Slider\nProse here.', undefined, true)),
+      ProjectStatus.NeedsGuidance
+    );
+
+    const blockedInv: GuideInventory = { ...baseInv, draft: 'blocked' };
+    // Frontmatter retag on a blocked guide that keeps `draft: blocked` is ignored
+    assert.strictEqual(
+      getPendingGuideStage(blockedInv, ['guide.md'], parseGuideMetadata(`---\nname: slider\ndraft: blocked\ndraft-reason: still blocked\n---\n# Slider\nProse`, undefined, true)),
+      null
+    );
+    // Removing `draft: blocked` in guide.md unblocks the guide and counts as NeedsGuidance
+    assert.strictEqual(
+      getPendingGuideStage(blockedInv, ['guide.md'], parseGuideMetadata(`---\nname: slider\n---\n# Slider\nProse`, undefined, true)),
+      ProjectStatus.NeedsGuidance
+    );
+
+    const wipInv: GuideInventory = { ...baseInv, draft: 'wip' };
+    assert.strictEqual(
+      getPendingGuideStage(wipInv, ['guide.md']),
+      ProjectStatus.NeedsGuidance
+    );
   });
 });
 

@@ -92,7 +92,7 @@ describe('runCliAgentCommand', () => {
     }
   });
 
-  test('executes caller finally block and records TIMEOUT (10m) when killed by SIGTERM timeout', async () => {
+  test('executes caller finally block and records TIMEOUT (15m) when killed by SIGTERM timeout', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-timeout-'));
     const workDir = path.join(tempDir, 'work');
     const targetDir = path.join(tempDir, 'target');
@@ -143,7 +143,7 @@ describe('runCliAgentCommand', () => {
       assert.strictEqual(status, 1);
       assert.ok(fs.existsSync(finallyMarker), 'Caller finally block must run to export trajectories on SIGTERM timeout');
       const failureData = JSON.parse(fs.readFileSync(path.join(targetDir, 'generation_failed.json'), 'utf8'));
-      assert.strictEqual(failureData.exitCode, 'TIMEOUT (10m)');
+      assert.strictEqual(failureData.exitCode, 'TIMEOUT (15m)');
       const childPid = Number(fs.readFileSync(pidFile, 'utf8'));
       assert.throws(() => process.kill(childPid, 0), /ESRCH/, 'Timed-out child process must be killed');
     } finally {

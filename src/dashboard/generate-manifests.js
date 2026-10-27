@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 
 import { outDir, suitesDir, guidesDir, dashboardDir } from '../core/paths.ts';
 
@@ -136,20 +136,107 @@ export async function generateGroupedTasksManifest(outputDir = defaultOutputDir)
     fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped }, null, 2));
 }
 
+const STATIC_WEB_EXTS = new Set([
+    '.html', '.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.json',
+]);
+
 /**
- * Copies dashboard static files and generated manifests into out/dashboard-pages/ for deployment.
+ * Lists a guide dir's demo pages: demo.html first, then demo-*.html variants, then negative-demo.html.
+ * @param {string} relDir path relative to guidesDir
+ */
+function listDemoFiles(relDir) {
+    const guideDir = path.join(guidesDir, relDir);
+    const rank = (/** @type {string} */ f) => f === 'demo.html' ? 0 : f === 'negative-demo.html' ? 2 : 1;
+    return fs.readdirSync(guideDir)
+        .filter(f => /^(demo|demo-.+|negative-demo)\.html$/.test(f))
+        .sort((a, b) => (rank(a) - rank(b)) || a.localeCompare(b))
+        .map(f => ({
+            id: f.slice(0, -'.html'.length),
+            path: `guides/${relDir.split(path.sep).join('/')}/${f}`,
+        }));
+}
+
+/**
+ * Scans guides for demo pages and writes demos.gen.json.
+ */
+export function generateDemosManifest(outputDir = defaultOutputDir) {
+    fs.mkdirSync(outputDir, { recursive: true });
+
+    const guides = fs.readdirSync(guidesDir, { recursive: true, encoding: 'utf8' })
+        // A guide is a dir with both guide.md and demo.html. Other demo.html files are assets of a parent
+        // guide's demo (e.g. pwa/migrate-web-app-origin/new-site/).
+        .filter(rel => path.basename(rel) === 'demo.html' && fs.existsSync(path.join(guidesDir, path.dirname(rel), 'guide.md')))
+        .map(rel => {
+            const relDir = path.dirname(rel);
+            const guideDir = path.join(guidesDir, relDir);
+            const { data, content } = matter(fs.readFileSync(path.join(guideDir, 'guide.md'), 'utf8'));
+            const category = relDir.split(path.sep)[0];
+            const rawFeatures = data['web-feature-ids'];
+            const features = Array.isArray(rawFeatures)
+                ? rawFeatures.map(String)
+                : (typeof rawFeatures === 'string' && rawFeatures.trim() ? [rawFeatures.trim()] : []);
+            return {
+                id: path.basename(relDir),
+                category,
+                title: content.match(/^#\s+(.+)$/m)?.[1].trim() ?? path.basename(relDir),
+                description: String(data.description ?? ''),
+                features,
+                demos: listDemoFiles(relDir),
+            };
+        })
+        .sort((a, b) => a.category.localeCompare(b.category) || a.id.localeCompare(b.id));
+
+    const features = Array.from(new Set(guides.flatMap(g => g.features))).sort();
+
+    fs.writeFileSync(path.join(outputDir, 'demos.gen.json'), JSON.stringify({ guides, features }, null, 2));
+    return { guides, features };
+}
+
+/**
+ * Injected into guide demo previews rendered inside iframes (`?preview=1`).
+ * Defends the gallery against offscreen demos calling `.focus()` or `.scrollIntoView()` on load
+ * which would otherwise cause the browser to scroll the top-level parent window.
+ */
+const PREVIEW_SHIM = '<script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>';
+
+/**
+ * @param {string} html
+ */
+export function injectPreviewShim(html) {
+    const m = html.match(/<head[^>]*>/i) || html.match(/<html[^>]*>/i);
+    if (m && m.index !== undefined) {
+        const idx = m.index + m[0].length;
+        return html.slice(0, idx) + PREVIEW_SHIM + html.slice(idx);
+    }
+    return PREVIEW_SHIM + html;
+}
+
+/**
+ * Filter for fs.cpSync: keep demo pages and their static assets; skip eval targets and dotfiles.
+ * Empty dirs may be created, but git (and thus gh-pages) ignores them.
+ * @param {string} src
+ */
+function isDemoAsset(src) {
+    const name = path.basename(src);
+    if (name === 'targets' || name.startsWith('.')) return false;
+    return fs.statSync(src).isDirectory() || STATIC_WEB_EXTS.has(path.extname(name).toLowerCase());
+}
+
+/**
+ * Copies dashboard static files, generated manifests, and guide demos into out/dashboard-pages/ for deployment.
  */
 export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), manifestsDir = defaultOutputDir) {
     fs.rmSync(stageDir, { recursive: true, force: true });
     fs.mkdirSync(stageDir, { recursive: true });
 
-    // Copy static files from dashboardDir (.html, .js, .css, .json, .svg, .png, etc.)
-    const staticExts = new Set(['.html', '.js', '.css', '.json', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico']);
-    for (const file of fs.readdirSync(dashboardDir)) {
-        if (file.endsWith('.test.ts') || file.endsWith('.spec.js') || file === 'tsconfig.json' || file.startsWith('.')) continue;
-        const ext = path.extname(file);
-        if (staticExts.has(ext)) {
-            fs.copyFileSync(path.join(dashboardDir, file), path.join(stageDir, file));
+    // Copy static files from dashboardDir (.html, .js, .css, .svg, .png, etc.)
+    for (const rel of fs.readdirSync(dashboardDir, { recursive: true, encoding: 'utf8' })) {
+        if (rel.endsWith('.test.ts') || rel.endsWith('.spec.js') || path.basename(rel) === 'tsconfig.json' || path.basename(rel).startsWith('.') || rel.startsWith('mock-results')) continue;
+        const ext = path.extname(rel);
+        if (STATIC_WEB_EXTS.has(ext)) {
+            const dest = path.join(stageDir, rel);
+            fs.mkdirSync(path.dirname(dest), { recursive: true });
+            fs.copyFileSync(path.join(dashboardDir, rel), dest);
         }
     }
 
@@ -159,6 +246,15 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
             if (file.includes('.gen.')) {
                 fs.copyFileSync(path.join(manifestsDir, file), path.join(stageDir, file));
             }
+        }
+    }
+
+    const stagedGuidesDir = path.join(stageDir, 'guides');
+    fs.cpSync(guidesDir, stagedGuidesDir, { recursive: true, filter: isDemoAsset });
+    for (const rel of fs.readdirSync(stagedGuidesDir, { recursive: true, encoding: 'utf8' })) {
+        if (rel.endsWith('.html')) {
+            const htmlPath = path.join(stagedGuidesDir, rel);
+            fs.writeFileSync(htmlPath, injectPreviewShim(fs.readFileSync(htmlPath, 'utf8')));
         }
     }
 }
@@ -173,6 +269,8 @@ export async function runAllManifests({ resultsOnly = false, outputDir = default
         generateMapping(outputDir);
         console.log('🔄 Generating grouped tasks manifest...');
         await generateGroupedTasksManifest(outputDir);
+        console.log('🔄 Generating demos manifest...');
+        generateDemosManifest(outputDir);
     }
 
     console.log('🔄 Generating suites manifests...');

@@ -1,0 +1,144 @@
+diff --git a/index.html b/index.html
+index 66c9173..bc4272d 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,125 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Polyfills getClientCapabilities(), parseRequestOptionsFromJSON() and toJSON()
++    try {
++      await import('https://esm.sh/webauthn-polyfills');
++    } catch (err) {
++      console.warn('Failed to load webauthn-polyfills:', err);
++    }
++
++    let isAuthenticating = false;
++
++    async function isImmediateUiSupported() {
++      if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
++        return false;
++      }
++      try {
++        const capabilities = await PublicKeyCredential.getClientCapabilities();
++        return Boolean(capabilities?.immediateGet);
++      } catch {
++        return false;
++      }
++    }
++
++    async function postJSON(url, body) {
++      return fetch(url, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(body),
++      });
++    }
++
++    async function authenticateWithImmediateUi() {
++      // Unsupported browsers would open a blocking modal, so treat them like "no local credentials"
++      if (!(await isImmediateUiSupported())) {
++        throw new DOMException('Immediate UI mode is not supported', 'NotAllowedError');
++      }
++
++      const optionsResponse = await fetch('/api/login/options', { method: 'POST' });
++      if (!optionsResponse.ok) {
++        throw new Error('Failed to fetch authentication options');
++      }
++      const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(await optionsResponse.json());
++
++      // No signal and no allowCredentials with immediate UI mode
++      const cred = await navigator.credentials.get({
++        password: true,
++        publicKey,
++        uiMode: 'immediate',
++      });
++
++      if (!cred) {
++        throw new DOMException('No credential returned', 'NotAllowedError');
++      }
++
++      if (cred.type === 'public-key') {
++        const encoded = cred.toJSON();
++        const verifyResponse = await postJSON('/api/login/verify', encoded);
++
++        if (verifyResponse.status === 404) {
++          if (PublicKeyCredential.signalUnknownCredential) {
++            await PublicKeyCredential.signalUnknownCredential({
++              rpId: publicKey.rpId || window.location.hostname,
++              credentialId: encoded.id,
++            });
++          }
++          throw new Error('Passkey credential is no longer recognized by the server');
++        }
++        if (!verifyResponse.ok) {
++          throw new Error('Passkey verification failed');
++        }
++        return verifyResponse.json();
++      }
++
++      if (cred.type === 'password') {
++        const verifyResponse = await postJSON('/api/login/password', {
++          username: cred.id,
++          password: cred.password,
++        });
++        if (!verifyResponse.ok) {
++          throw new Error('Password verification failed');
++        }
++        return verifyResponse.json();
++      }
++
++      throw new Error(`Unsupported credential type: ${cred.type}`);
++    }
++
++    function signInUrl(destination) {
++      return `/signin?returnUrl=${encodeURIComponent(destination)}`;
++    }
++
++    const protectedLinks = document.querySelectorAll(
++      'a[href="/rewards"], a[href="/account"], a[href="/order-online"]'
++    );
++
++    for (const link of protectedLinks) {
++      link.addEventListener('click', async (event) => {
++        if (document.body.dataset.signedIn === 'true') return;
++
++        event.preventDefault();
++        if (isAuthenticating) return;
++
++        const destination = link.getAttribute('href');
++        isAuthenticating = true;
++        try {
++          await authenticateWithImmediateUi();
++          document.body.dataset.signedIn = 'true';
++          window.location.assign(destination);
++        } catch (err) {
++          if (err.name !== 'NotAllowedError') {
++            console.error('Authentication error:', err);
++          }
++          window.location.assign(signInUrl(destination));
++        } finally {
++          isAuthenticating = false;
++        }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..7652723 100644
+--- a/package.json
++++ b/package.json
+@@ -4,6 +4,9 @@
+   "scripts": {
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
++  "dependencies": {
++    "webauthn-polyfills": "*"
++  },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+   }

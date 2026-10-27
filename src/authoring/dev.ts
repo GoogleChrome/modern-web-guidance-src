@@ -1,11 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
+import matter from '@11ty/gray-matter';
 import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
 import { Agents, type SuiteConfig } from '../harness/config.ts';
+import { ensureFreshHostCodexAuth } from '../harness/agents/codex-cli-agent.ts';
 import { collectGuidesUsed } from '../harness/lib/guide-usage.ts';
 import { setupGuideDevWorkDir, runAgent, copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
 import {
@@ -17,7 +19,6 @@ import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../core/colors.ts';
 import { capturePatchFromGit, initGitRepo } from '../core/patch-utils.ts';
 import {
   type GuideInventory,
-  type GuideStatus,
   GUIDE_FILE,
   DEMO_FILE,
   EXPECTATIONS_FILE,
@@ -56,6 +57,15 @@ export interface DevGuideOptions {
   };
 }
 
+export function extractGuideDescription(rawGuideContent: string): string {
+  const { data } = matter(rawGuideContent);
+  const desc = typeof data?.description === 'string' ? data.description.trim() : '';
+  if (!desc) {
+    throw new Error(`Missing or empty 'description' frontmatter in ${GUIDE_FILE}`);
+  }
+  return desc;
+}
+
 export const devCli = {
   commitStepArtifacts(guideDir: string, commitMessage: string): boolean {
     try {
@@ -79,6 +89,60 @@ export const devCli = {
     }
   },
 };
+
+/**
+ * Returns true if any of `inputs` changed after `outputs` were last written. Committed changes are
+ * ordered by git history (so merges count); uncommitted inputs count as changed when `outputs` are
+ * committed and unmodified. Uncommitted `outputs`, or no git repo, fall back to modification times.
+ */
+function changedSince(inputs: string[], outputs: string[]): boolean {
+  const ins = inputs.filter(p => fs.existsSync(p));
+  const outs = outputs.filter(p => fs.existsSync(p));
+  if (ins.length === 0 || outs.length === 0) return false;
+
+  const byMtime = () =>
+    Math.max(...ins.map(p => fs.statSync(p).mtimeMs)) > Math.max(...outs.map(p => fs.statSync(p).mtimeMs));
+  const git = (args: string[]): string =>
+    execFileSync('git', args, { cwd: path.dirname(outs[0]), encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+
+  try {
+    const isDirty = (p: string) => git(['status', '--porcelain', '--', p]) !== '';
+    if (outs.some(isDirty)) return byMtime();
+    if (ins.some(isDirty)) return true;
+    const lastOutputCommit = git(['log', '-1', '--format=%H', '--', ...outs]);
+    if (!lastOutputCommit) return byMtime();
+    return git(['rev-list', '--count', `${lastOutputCommit}..HEAD`, '--', ...ins]) !== '0';
+  } catch {
+    return byMtime();
+  }
+}
+
+/**
+ * Deletes the stale artifacts of a target capsule so `devGuide` (which skips files that already
+ * exist) regenerates them, based on what changed since its golden solution patches were generated:
+ * - `guide.md` / `expectations.md`: wipe the target and regenerate everything.
+ * - `task.md`: regenerate the solution patches and `grader.ts` (keep `task.md` and `zero-passrate.patch`).
+ * - Otherwise (e.g. only `grader.ts`): nothing; calibration and evals still run.
+ * Comparing against the solution patches keeps reruns idempotent: once they are regenerated, an
+ * earlier input change no longer counts.
+ */
+export function applyTargetRerun(guideDir: string, targetCapsuleDir: string): 'regenerate-all' | 'regenerate-solutions' | 'none' {
+  const solutionPatches = Object.values(SOLUTION_PATCH_FILES).map(f => path.join(targetCapsuleDir, f));
+  const target = path.basename(targetCapsuleDir);
+  if (changedSince([GUIDE_FILE, EXPECTATIONS_FILE].map(f => path.join(guideDir, f)), solutionPatches)) {
+    console.log(cYellow(`\n${GUIDE_FILE} or ${EXPECTATIONS_FILE} changed since ${target} was generated; regenerating all ${target} artifacts.`));
+    fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
+    return 'regenerate-all';
+  }
+  if (changedSince([path.join(targetCapsuleDir, TASK_FILE)], solutionPatches)) {
+    console.log(cYellow(`\n${TASK_FILE} changed since the ${target} solution patches were generated; regenerating solution patches and ${GRADER_FILE}.`));
+    for (const f of [...Object.values(SOLUTION_PATCH_FILES), GRADER_FILE]) {
+      fs.rmSync(path.join(targetCapsuleDir, f), { force: true });
+    }
+    return 'regenerate-solutions';
+  }
+  return 'none';
+}
 
 function printInventory(inv: GuideInventory, targets: readonly string[] = SUPPORTED_BASE_APPS): void {
   const icon = (exists: boolean, willGenerate = false, warn = false) => {
@@ -144,14 +208,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     await applyPrReviewFeedback(targetDir, options.prContext);
   }
 
-  // Under needs-eval-gen, wipe targets after Step 0 so Step 2 regenerates all target artifacts from source guidance
-  if (options.prContext?.rerunMode === 'needs-eval-gen') {
-    for (const t of targets) {
-      const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, t);
-      if (fs.existsSync(targetCapsuleDir)) {
-        fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
-      }
-    }
+  // After Step 0, regenerate only what the changed files require (needs-dev-rerun and local `gd dev` runs alike).
+  for (const t of targets) {
+    applyTargetRerun(targetDir, path.join(targetDir, TARGETS_DIR, t));
   }
 
   // Step 0.5: Excise old eval artifacts if they exist
@@ -174,12 +233,30 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     return false;
   }
 
-  // Step 2: Parallel target generation across targets
-  await Promise.all(
+  // Step 2: Parallel target generation and calibration across targets
+  const calibrationFailures = new Map<string, string>();
+  const calibrationResults = await Promise.all(
     targets.map(async (baseApp) => {
       const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, baseApp);
       fs.mkdirSync(targetCapsuleDir, { recursive: true });
 
+      // Start zeroPassrateTask immediately in parallel with generateTargetTask
+      const zeroPassrateTask = (async () => {
+        const zeroPassratePatch = path.join(targetCapsuleDir, ZERO_PASSRATE_PATCH_FILE);
+        if (!fs.existsSync(zeroPassratePatch)) {
+          console.log(cCyan(`\n--- Generating ${ZERO_PASSRATE_PATCH_FILE} for ${baseApp} ---`));
+          await generateTargetPatch(targetDir, baseApp, 'zero-passrate');
+        }
+      })();
+
+      // Generate task.md first so solution agents can consume it
+      const taskFile = path.join(targetCapsuleDir, TASK_FILE);
+      if (!fs.existsSync(taskFile)) {
+        console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
+        await generateTargetTask(targetDir, baseApp, options.prContext);
+      }
+
+      // Once generateTargetTask finishes, run the solution agents in parallel
       const solutionAgents = getActiveSolutionAgents(targetCapsuleDir);
       const patchTasks = solutionAgents.map(async (agent) => {
         const solPatchFile = SOLUTION_PATCH_FILES[agent];
@@ -190,24 +267,8 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         }
       });
 
-      const zeroPassrateTask = (async () => {
-        const zeroPassratePatch = path.join(targetCapsuleDir, ZERO_PASSRATE_PATCH_FILE);
-        if (!fs.existsSync(zeroPassratePatch)) {
-          console.log(cCyan(`\n--- Generating ${ZERO_PASSRATE_PATCH_FILE} for ${baseApp} ---`));
-          await generateTargetPatch(targetDir, baseApp, 'zero-passrate');
-        }
-      })();
-
-      const taskTask = (async () => {
-        const taskFile = path.join(targetCapsuleDir, TASK_FILE);
-        if (!fs.existsSync(taskFile)) {
-          console.log(cCyan(`\n--- Generating ${TASK_FILE} for ${baseApp} ---`));
-          await generateTargetTask(targetDir, baseApp, options.prContext);
-        }
-      })();
-
-      // Wait for solution patches, zero-passrate patch, and task.md to finish
-      await Promise.all([...patchTasks, zeroPassrateTask, taskTask]);
+      // Wait for solution patches and zero-passrate patch to finish
+      await Promise.all([...patchTasks, zeroPassrateTask]);
 
       // Grader generation depends on the generated solution patches in patches/
       const graderFile = path.join(targetCapsuleDir, GRADER_FILE);
@@ -215,12 +276,8 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         console.log(cCyan(`\n--- Generating ${GRADER_FILE} for ${baseApp} ---`));
         await generateTargetGrader(targetDir, baseApp, undefined, options.prContext);
       }
-    })
-  );
 
-  // Step 3: Calibrate targets in parallel and retry grader if calibration fails
-  const calibrationResults = await Promise.all(
-    targets.map(async (baseApp) => {
+      // Calibrate target and retry grader if calibration fails
       console.log(cCyan(`\n--- Calibrating target: ${baseApp} ---`));
       for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
         const res = await testGrader(path.join(targetDirRaw, TARGETS_DIR, baseApp));
@@ -229,11 +286,19 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
           return true;
         }
 
+        if (res.sharedFailingTests && res.sharedFailingTests.length > 0) {
+          console.error(cRed(`❌ All golden solutions failed the same assertion(s) on ${baseApp}:\n${res.sharedFailingTests.map(t => `   - ${t}`).join('\n')}`));
+          console.error(cYellow(`Aborting calibration immediately (0 retries). Presuming guide.md / expectations.md misalignment or broken test.`));
+          calibrationFailures.set(baseApp, res.errorDetails || 'All golden solutions failed shared test assertions.');
+          return false;
+        }
+
         if (attempt <= maxRetries) {
           console.log(cYellow(`Attempt ${attempt} calibration failed for ${baseApp}. Regenerating ${GRADER_FILE}...`));
           await generateTargetGrader(targetDir, baseApp, res.errorDetails, options.prContext);
         } else {
           console.error(cRed(`❌ ${baseApp} failed calibration after ${attempt} attempt(s): ${res.errorDetails || 'Unknown error'}`));
+          calibrationFailures.set(baseApp, res.errorDetails || 'Calibration failed after maximum retries.');
           return false;
         }
       }
@@ -255,8 +320,8 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
   devCli.commitStepArtifacts(targetDir, `feat(guide): generate ${currentInv.name} evaluations and artifacts`);
 
   // Step 5: Run evaluation report (printed last)
-  if (options.test !== false && overallSuccess) {
-    await runDevReport(targetDir, currentInv, targets, options.prContext);
+  if (options.test !== false && (overallSuccess || calibrationFailures.size > 0)) {
+    await runDevReport(targetDir, currentInv, targets, options.prContext, calibrationFailures);
   }
 
   // Commit post-report modifications if any files were updated by the report agent
@@ -267,25 +332,38 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
   const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
+  if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
   const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-${patchType}`, undefined, agent);
   try {
     await copyBaseAppToWorkspace(baseApp, workDir);
 
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
-    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
 
-    // Git init is required for capturePatchFromGit to extract git diffs
+    let prompt: string;
+    if (patchType === 'zero-passrate') {
+      fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+      prompt = buildZeroPassratePrompt({
+        guideFile: GUIDE_FILE,
+        expectationsFile: EXPECTATIONS_FILE,
+        workDir,
+        isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
+      });
+    } else {
+      const sourceTask = path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE);
+      if (fs.existsSync(sourceTask)) {
+        fs.copyFileSync(sourceTask, path.join(workDir, TASK_FILE));
+      }
+      prompt = buildSolutionPrompt({
+        guideFile: GUIDE_FILE,
+        taskFile: TASK_FILE,
+        workDir,
+        isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
+      });
+    }
+
+    // Git init is required for capturePatchFromGit to extract git diffs.
+    // Initialized after copying expectations.md / task.md so they are part of initial commit.
     initGitRepo(workDir);
-
-    const promptOpts = {
-      guideFile: GUIDE_FILE,
-      expectationsFile: EXPECTATIONS_FILE,
-      workDir,
-      isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
-    };
-    const prompt = patchType === 'zero-passrate'
-      ? buildZeroPassratePrompt(promptOpts)
-      : buildSolutionPrompt(promptOpts);
 
     await runAgent(agent, prompt, workDir, { homeDir: tempHome });
 
@@ -312,12 +390,12 @@ async function generateTargetTask(
 ): Promise<void> {
   const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-task`);
   try {
-    fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
-    fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+    const rawGuide = fs.readFileSync(path.join(guideDirAbs, GUIDE_FILE), 'utf-8');
+    const guideDescription = extractGuideDescription(rawGuide);
     await copyBaseAppToWorkspace(baseApp, workDir);
 
     const prompt = buildTargetTaskPrompt({
-      guideFile: GUIDE_FILE,
+      guideDescription,
       taskFile: TASK_FILE,
       baseApp,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
@@ -581,7 +659,7 @@ function printSummary(targetDir: string, inv: GuideInventory, result: Calibratio
 // Batch mode: process all incomplete guides
 export async function devAll(options: DevGuideOptions = {}): Promise<void> {
   const incompleteGuides = scanAllGuides().filter(inv =>
-    inv.hasGuide && inv.hasExpectations && !inv.expectationsEmpty && classifyGuide(inv) !== 'eval-ready'
+    inv.hasGuide && inv.hasExpectations && !inv.expectationsEmpty && classifyGuide(inv) !== 'complete'
   );
 
   if (incompleteGuides.length === 0) {
@@ -623,185 +701,6 @@ export async function devAll(options: DevGuideOptions = {}): Promise<void> {
     console.log(cRed(`Failed: ${failed.map(r => r.name).join(', ')}`));
   }
   console.log('');
-}
-
-const statusLabel: Record<GuideStatus, { label: string; color: (s: string) => string }> = {
-  'incomplete': { label: 'Needs use cases (Stage 1 - incomplete)', color: cRed },
-  'stub': { label: 'Needs guidance (Stage 2 - stub)', color: cYellow },
-  'needs-expectations': { label: 'Needs guidance (Stage 2 - missing expectations)', color: cYellow },
-  'needs-calibration': { label: 'Needs evals (Stage 3 - needs calibration)', color: cYellow },
-  'needs-test': { label: 'Needs evals (Stage 3 - needs agent test)', color: cCyan },
-  'eval-ready': { label: 'Eval-ready (Complete)', color: cGreen },
-};
-
-export function auditGuides(options: { groupByUsecases?: boolean } = {}): void {
-  const allGuides = scanAllGuides();
-
-  if (allGuides.length === 0) {
-    console.log('No guides found.');
-    return;
-  }
-
-  const byStatus = new Map<GuideStatus, GuideInventory[]>();
-  for (const inv of allGuides) {
-    const status = classifyGuide(inv);
-    if (!byStatus.has(status)) byStatus.set(status, []);
-    byStatus.get(status)!.push(inv);
-  }
-
-  // Summary counts
-  console.log(cBold(`\nGuide Audit: ${allGuides.length} guides\n`));
-  for (const status of ['incomplete', 'stub', 'needs-expectations', 'needs-calibration', 'needs-test', 'eval-ready'] as GuideStatus[]) {
-    const guides = byStatus.get(status) || [];
-    const { label, color } = statusLabel[status];
-    console.log(`  ${color(`${String(guides.length).padStart(2)}`)}  ${label}`);
-  }
-
-  if (!options.groupByUsecases) {
-    renderFeatureMatrix(allGuides);
-  } else {
-    // Per-category detail
-    const byCategory = new Map<string, GuideInventory[]>();
-    for (const inv of allGuides) {
-      if (!byCategory.has(inv.category)) byCategory.set(inv.category, []);
-      byCategory.get(inv.category)!.push(inv);
-    }
-
-    const dot = (has: boolean) => has ? '●' : cDim('○');
-    const guideDot = (inv: GuideInventory) => {
-      if (inv.hasGuide) return '●';
-      if (inv.isStub) return '◐';
-      return cDim('○');
-    };
-    // Pad a single visible character (possibly ANSI-wrapped) to a fixed column width
-    const col = (s: string, w = 6) => s + ' '.repeat(w - 1);
-
-    for (const [category, guides] of byCategory) {
-      console.log(cBold(`\n${category}/`));
-
-      const hdr = 'guide'.padEnd(6) + 'demo'.padEnd(6) + 'expct'.padEnd(6)
-        + '│ ' + 'neg'.padEnd(6) + 'grdr'.padEnd(6) + 'task';
-      console.log(cDim(`  ${'name'.padEnd(42)} ${hdr}`));
-
-      for (const inv of guides.sort((a, b) => a.name.localeCompare(b.name))) {
-        const status = classifyGuide(inv);
-        const { color } = statusLabel[status];
-
-        const name = inv.name.length > 40 ? inv.name.substring(0, 39) + '…' : inv.name;
-        const expctDot = inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations);
-        const row = col(guideDot(inv)) + col(dot(inv.hasDemo)) + col(expctDot)
-          + cDim('│') + ' ' + col(dot(inv.hasNegativeDemo)) + col(dot(inv.hasGrader))
-          + dot(inv.hasTask);
-        console.log(`  ${color(name.padEnd(42))} ${row}`);
-      }
-    }
-  }
-
-  // Next action suggestions, ordered by pipeline stage
-  const nextCalibrate = byStatus.get('needs-calibration')?.[0];
-  const nextTest = byStatus.get('needs-test')?.[0];
-  const nextExpectations = byStatus.get('needs-expectations')?.[0];
-  const nextStub = byStatus.get('stub')?.[0];
-  const nextIncomplete = byStatus.get('incomplete')?.[0];
-
-  const actions: string[] = [];
-
-  // Automatable: ready for `gd dev`
-  const devTarget = nextCalibrate || nextTest;
-  if (devTarget) {
-    const rel = path.relative(process.cwd(), devTarget.dir);
-    actions.push(`${cCyan('Run:')}    ${cCyan(`gd dev ${rel}`)}`);
-  }
-
-  // Needs human writing before `gd dev` can run
-  if (nextExpectations) {
-    const rel = path.relative(process.cwd(), nextExpectations.dir);
-    actions.push(`${cYellow('Write:')}  add ${cBold('expectations.md')} to ${rel}`);
-  }
-  if (nextStub) {
-    const rel = path.relative(process.cwd(), nextStub.dir);
-    actions.push(`${cYellow('Write:')}  flesh out ${cBold('guide.md')}, ${cBold('demo.html')}, and ${cBold('expectations.md')} in ${rel}`);
-  }
-  if (nextIncomplete) {
-    const rel = path.relative(process.cwd(), nextIncomplete.dir);
-    actions.push(`${cYellow('Write:')}  add missing ${cBold('guide.md')} or ${cBold('demo.html')} in ${rel}`);
-  }
-
-  console.log('');
-  if (actions.length > 0) {
-    console.log(cBold('Next steps:'));
-    for (const action of actions) {
-      console.log(`  ${action}`);
-    }
-  } else {
-    console.log(cGreen(`All guides are eval-ready!`));
-  }
-  console.log('');
-}
-
-function renderFeatureMatrix(allGuides: GuideInventory[]): void {
-  const featureToGuides = new Map<string, GuideInventory[]>();
-  for (const inv of allGuides) {
-    const fIds = inv.featureIds.length > 0 ? inv.featureIds : ['(no-feature)'];
-    for (const fId of fIds) {
-      if (!featureToGuides.has(fId)) featureToGuides.set(fId, []);
-      featureToGuides.get(fId)!.push(inv);
-    }
-  }
-
-  const sortedFeatures = Array.from(featureToGuides.keys()).sort((a, b) => {
-    if (a === '(no-feature)') return 1;
-    if (b === '(no-feature)') return -1;
-    return a.localeCompare(b);
-  });
-
-  const dot = (has: boolean) => (has ? '●' : cDim('○'));
-  const guideDot = (inv: GuideInventory) => {
-    if (inv.hasGuide) return '●';
-    if (inv.isStub) return '◐';
-    return cDim('○');
-  };
-
-  const hdr = 'guide'.padEnd(10) + 'demo'.padEnd(10) + 'expct'.padEnd(10) + '│ ' + 'neg'.padEnd(10) + 'grdr'.padEnd(10) + 'task';
-  console.log(cDim(`\n  ${'feature'.padEnd(32)} count ${hdr}`));
-
-  const statusRank: Record<GuideStatus, number> = {
-    'incomplete': 0,
-    'stub': 1,
-    'needs-expectations': 2,
-    'needs-calibration': 3,
-    'needs-test': 4,
-    'eval-ready': 5,
-  };
-
-  for (const fId of sortedFeatures) {
-    const guides = featureToGuides.get(fId)!;
-    const col = (s: string, w = 10) => s + ' '.repeat(Math.max(0, w - guides.length));
-
-    // Determine overall status as the minimum status rank among all guides in this feature
-    const statuses = guides.map(classifyGuide);
-    const minRank = Math.min(...statuses.map(s => statusRank[s]));
-    const overallStatus = (Object.keys(statusRank) as GuideStatus[]).find(s => statusRank[s] === minRank) || 'incomplete';
-    const { color } = statusLabel[overallStatus];
-
-    const name = fId.length > 30 ? fId.substring(0, 29) + '…' : fId;
-
-    const renderDots = (fn: (inv: GuideInventory) => string) => {
-      return guides.map(inv => fn(inv)).join('');
-    };
-
-    const expctDots = guides.map(inv => (inv.expectationsEmpty ? cYellow('○') : dot(inv.hasExpectations))).join('');
-
-    const row = col(renderDots(guideDot)) +
-      col(renderDots(inv => dot(inv.hasDemo))) +
-      col(expctDots) +
-      cDim('│') + ' ' +
-      col(renderDots(inv => dot(inv.hasNegativeDemo))) +
-      col(renderDots(inv => dot(inv.hasGrader))) +
-      renderDots(inv => dot(inv.hasTask));
-
-    console.log(`  ${color(name.padEnd(32))} ${String(guides.length).padStart(5)}  ${row}`);
-  }
 }
 
 if (import.meta.url.startsWith('file:') && process.argv[1] === import.meta.filename) {

@@ -6,7 +6,7 @@
  * format or `targets/`). For each guide without an open `gd pr` PR or a
  * leftover `gd-dev/` branch, runs `gd dev`, opens a PR with `gd pr`, then
  * returns to `main` and deletes the local branch. Also reruns open `gd pr` PRs
- * labeled `needs-eval-gen` or `needs-eval-run`.
+ * labeled `needs-dev-rerun`.
  *
  * Usage: gd dev-gap [--dry-run] [--limit <n>] [--targets <apps>]
  */
@@ -17,9 +17,8 @@ import path from 'node:path';
 
 import { cBold, cCyan, cDim, cGreen, cRed } from '../core/colors.ts';
 import {
+  classifyGuide,
   scanAllGuides,
-  getGuideStatus,
-  ProjectStatus,
   REPORT_FILE,
   type GuideInventory,
 } from '../core/guide-validation.ts';
@@ -65,11 +64,7 @@ export interface FixEvalGapsOptions {
 }
 
 function getRerunMode(pr: OpenPr): DevPrRerunLabel | undefined {
-  const names = new Set((pr.labels ?? []).map(l => l.name));
-  // `needs-eval-gen` supersedes `needs-eval-run` since it also runs evals.
-  if (names.has('needs-eval-gen')) return 'needs-eval-gen';
-  if (names.has('needs-eval-run')) return 'needs-eval-run';
-  return undefined;
+  return (pr.labels ?? []).some(l => l.name === 'needs-dev-rerun') ? 'needs-dev-rerun' : undefined;
 }
 
 /** Decides which guides missing evals (or labeled PRs) to work on, and why any are skipped. */
@@ -83,7 +78,8 @@ export function planFixes(
   const handledPrs = new Set<number>();
 
   for (const inv of guides) {
-    if (getGuideStatus(inv) !== ProjectStatus.NeedsEvals) continue;
+    const status = classifyGuide(inv);
+    if (status !== 'needs-calibration' && status !== 'needs-test') continue;
     const guidePath = `guides/${inv.category}/${inv.name}`;
 
     // `gd pr` titles its PR the same way whichever branch it runs from.
@@ -117,7 +113,7 @@ export function planFixes(
   }
 
   // Also check open PRs that were not matched above (e.g. guides that already
-  // have evals on main) for `needs-eval-gen` / `needs-eval-run` rerun labels.
+  // have evals on main) for the `needs-dev-rerun` label.
   for (const pr of openPrs) {
     if (handledPrs.has(pr.number)) continue;
     const rerunMode = getRerunMode(pr);
@@ -361,7 +357,8 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
     fs.rmSync(resultsDir, { recursive: true, force: true });
 
     const devOk = await evalGapFixCli.runDevGuide(inv, { ...options, targets, prContext });
-    if (!devOk || !fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
+    // A failed run that still wrote a report (e.g. CALIBRATION_FAILED) is pushed so the PR shows its diagnosis.
+    if (!fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
       outcome = { gap, status: 'dev-failed', detail: devOk ? `gd dev wrote no ${REPORT_FILE}` : 'gd dev failed' };
     } else {
       const prUrl = await evalGapFixCli.runDevPr(inv.dir);

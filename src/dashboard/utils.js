@@ -117,6 +117,19 @@ export function isEarlyFailureRun(checks) {
 }
 
 /**
+ * Returns true if an unguided run accessed its expected guide.
+ * @param {import('../harness/lib/metrics.ts').RunResult & { guideUsed?: { guidesUsed?: string[] } | null } | undefined | null} run
+ * @param {string} [fallbackGuide]
+ * @returns {boolean}
+ */
+export function isUnguidedLeakRun(run, fallbackGuide = '') {
+    if (!run) return false;
+    const expected = run.guideName || fallbackGuide;
+    const guides = run.guidesUsed || (run.guideUsed && run.guideUsed.guidesUsed) || [];
+    return !!(expected && guides.includes(expected));
+}
+
+/**
  * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
  * @returns {{ rate: number, passed: number, total: number }}
  */
