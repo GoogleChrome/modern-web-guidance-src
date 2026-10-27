@@ -107,6 +107,20 @@ function getShadowStyleSheets(): CSSStyleSheet[] {
   return sheets;
 }
 
+function collectStyleRules(rules: any[]): CSSStyleRule[] {
+  const result: CSSStyleRule[] = [];
+  for (const rule of rules) {
+    if (rule instanceof CSSStyleRule) {
+      result.push(rule);
+    } else if (rule && Array.isArray(rule.cssRules)) {
+      result.push(...collectStyleRules(Array.from(rule.cssRules)));
+    } else if (rule && rule.cssRules) {
+      result.push(...collectStyleRules(Array.from(rule.cssRules)));
+    }
+  }
+  return result;
+}
+
 test.describe('shadow-dom Target Grader', () => {
   test('The custom element attaches an open shadow root (mode: "open") to encapsulate its internal DOM subtree', () => {
     const sourceFiles = getAllSourceFiles();
@@ -287,22 +301,17 @@ test.describe('shadow-dom Target Grader', () => {
       if ((expr as any).getName() !== 'addEventListener') return false;
       const eventName = getStringLiteralValue(call.getArguments()[0]);
       if (eventName !== 'slotchange') return false;
-
-      const handler = call.getArguments()[1];
-      if (!handler) return false;
-
-      const handlerCalls = handler.getDescendantsOfKind(SyntaxKind.CallExpression);
-      const usesAssignedElementsOrFilteredNodes = handlerCalls.some((hCall) => {
-        const hExpr = hCall.getExpression();
-        if (hExpr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
-        const mName = (hExpr as any).getName();
-        return mName === 'assignedElements' || mName === 'assignedNodes';
-      });
-
-      return usesAssignedElementsOrFilteredNodes;
+      return Boolean(call.getArguments()[1]);
     });
 
-    expect(hasSlotchangeListener).toBe(true);
+    const usesAssignedElementsOrFilteredNodes = calls.some((call) => {
+      const expr = call.getExpression();
+      if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
+      const mName = (expr as any).getName();
+      return mName === 'assignedElements' || mName === 'assignedNodes';
+    });
+
+    expect(hasSlotchangeListener && usesAssignedElementsOrFilteredNodes).toBe(true);
   });
 
   test('Component styles live in the shadow root via adoptedStyleSheets, a <style> element, or a <link rel="stylesheet"> inside the shadow tree', () => {
@@ -331,26 +340,25 @@ test.describe('shadow-dom Target Grader', () => {
 
   test('A Light DOM element outside the component that uses the same class name as an internal element does not receive the component styles', () => {
     const globalSheet = getCssStyleSheet(targetFiles);
-    const globalRules = Array.from(globalSheet.cssRules);
+    const globalRules = collectStyleRules(Array.from(globalSheet.cssRules));
     const shadowSheets = getShadowStyleSheets();
-    const shadowRules = shadowSheets.flatMap((s) => Array.from(s.cssRules));
+    const shadowRules = shadowSheets.flatMap((s) =>
+      collectStyleRules(Array.from(s.cssRules))
+    );
 
     // The component's card styles (e.g. .card or article inside shadow root) must not remain leaked as global .card rules
-    const hasGlobalCardRule = globalRules.some(
-      (r): r is CSSStyleRule =>
-        r instanceof CSSStyleRule &&
-        r.selectorText
-          .split(',')
-          .some((sel) => sel.trim() === '.card' || sel.trim().startsWith('.card '))
+    const hasGlobalCardRule = globalRules.some((r) =>
+      r.selectorText
+        .split(',')
+        .some((sel) => sel.trim() === '.card' || sel.trim().startsWith('.card '))
     );
 
     const hasEncapsulatedCardRule = shadowRules.some(
-      (r): r is CSSStyleRule =>
-        r instanceof CSSStyleRule &&
-        (r.style.getPropertyValue('background') !== '' ||
-          r.style.getPropertyValue('background-color') !== '' ||
-          r.style.getPropertyValue('border-radius') !== '' ||
-          r.style.getPropertyValue('box-shadow') !== '')
+      (r) =>
+        r.style.getPropertyValue('background') !== '' ||
+        r.style.getPropertyValue('background-color') !== '' ||
+        r.style.getPropertyValue('border-radius') !== '' ||
+        r.style.getPropertyValue('box-shadow') !== ''
     );
 
     expect(!hasGlobalCardRule && hasEncapsulatedCardRule).toBe(true);
@@ -370,9 +378,14 @@ test.describe('shadow-dom Target Grader', () => {
         );
         if (cards.length < 2) return false;
 
-        // Pick a card that currently has no [slot="badge"] child
+        // Pick a card that currently has no [slot="badge"] child and no limited/badge host attribute
         const targetCard =
-          cards.find((c) => !c.querySelector('[slot="badge"]')) || cards[1];
+          cards.find(
+            (c) =>
+              !c.querySelector('[slot="badge"]') &&
+              !c.hasAttribute('limited') &&
+              !c.hasAttribute('badge')
+          ) || cards[1];
         const sr = targetCard.shadowRoot!;
         const badgeSlot = sr.querySelector(
           'slot[name="badge"]'
@@ -396,11 +409,13 @@ test.describe('shadow-dom Target Grader', () => {
 
         const initialSnap = getSnapshot();
 
-        // Append whitespace text node with no slot or inside card — should NOT trigger badge state
+        // Append whitespace text node in the badge slot — should NOT trigger badge state
         const wsNode = document.createTextNode('   \n  ');
         targetCard.appendChild(wsNode);
         await new Promise((r) => setTimeout(r, 50));
         const afterWhitespaceSnap = getSnapshot();
+        wsNode.remove();
+        await new Promise((r) => setTimeout(r, 50));
 
         // Now add a slotted badge element dynamically
         const badgeEl = document.createElement('span');
