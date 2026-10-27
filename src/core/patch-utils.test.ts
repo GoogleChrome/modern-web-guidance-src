@@ -60,6 +60,45 @@ describe('extractTargetFilesFromPatch', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('ignores task.md, expectations.md, guide.md, and pnpm-workspace.yaml in patch headers', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-exclude-test-'));
+    const patchPath = path.join(tmpDir, 'demo.patch');
+    const patchContent = `--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1 +1 @@
+-old
++new
+--- /dev/null
++++ b/guide.md
+@@ -0,0 +1 @@
++# Guide
+--- /dev/null
++++ b/expectations.md
+@@ -0,0 +1 @@
++# Expectations
+--- /dev/null
++++ b/task.md
+@@ -0,0 +1 @@
++# Task
+--- /dev/null
++++ b/targets/daily-grind/task.md
+@@ -0,0 +1 @@
++# Target Task
+--- /dev/null
++++ b/pnpm-workspace.yaml
+@@ -0,0 +1 @@
++packages: []
+`;
+    fs.writeFileSync(patchPath, patchContent);
+
+    try {
+      const files = extractTargetFilesFromPatch(patchPath);
+      assert.deepStrictEqual(files, ['src/App.tsx']);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('applyPatchSync', () => {
@@ -120,6 +159,43 @@ describe('capturePatchFromGit', () => {
       assert.match(patchContent, /\+world/);
       assert.doesNotMatch(patchContent, /package-lock\.json/);
       assert.doesNotMatch(patchContent, /pnpm-lock\.yaml/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('excludes task.md, expectations.md, guide.md, and pnpm-workspace.yaml from captured patch', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-patch-exclusions-'));
+    const repoDir = path.join(tmpDir, 'repo');
+    const patchDest = path.join(tmpDir, 'out', 'change.patch');
+    fs.mkdirSync(repoDir, { recursive: true });
+
+    try {
+      execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
+      execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
+
+      // Create valid modifications and excluded files
+      fs.writeFileSync(path.join(repoDir, 'valid.txt'), 'valid content\n');
+      fs.writeFileSync(path.join(repoDir, 'guide.md'), '# Guide\n');
+      fs.writeFileSync(path.join(repoDir, 'expectations.md'), '# Expectations\n');
+      fs.writeFileSync(path.join(repoDir, 'task.md'), '# Task\n');
+      fs.writeFileSync(path.join(repoDir, 'pnpm-workspace.yaml'), 'packages: []\n');
+
+      const nestedDir = path.join(repoDir, 'sub');
+      fs.mkdirSync(nestedDir, { recursive: true });
+      fs.writeFileSync(path.join(nestedDir, 'guide.md'), '# Sub Guide\n');
+      fs.writeFileSync(path.join(nestedDir, 'task.md'), '# Sub Task\n');
+
+      const result = capturePatchFromGit(repoDir, patchDest);
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(fs.existsSync(patchDest), true);
+      const patchContent = fs.readFileSync(patchDest, 'utf8');
+      assert.match(patchContent, /valid\.txt/);
+      assert.doesNotMatch(patchContent, /guide\.md/);
+      assert.doesNotMatch(patchContent, /expectations\.md/);
+      assert.doesNotMatch(patchContent, /task\.md/);
+      assert.doesNotMatch(patchContent, /pnpm-workspace\.yaml/);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

@@ -1,0 +1,193 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..9458fe7 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -20,7 +20,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+     <div class="bg-white p-6 md:p-8 shadow-sm">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="teaser-category-chip text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+                     <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+                         {article.data.title}
+@@ -38,9 +38,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 </div>
+             </div>
+             <div class="lg:col-span-2">
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
++                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-media block">
++                    <span class="teaser-badge">Featured</span>
++                    <Image
++                        src={image}
+                         alt=""
+                         width={800}
+                         height={533}
+@@ -53,10 +54,11 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+     </div>
+ ) : (
+     <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
++        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-media block">
++            <span class="teaser-badge">Featured</span>
++            <Image
++                src={image}
++                alt={article.data.title}
+                 width={400}
+                 height={225}
+                 format="webp"
+@@ -64,7 +66,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             />
+         </a>
+         <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++            <div class="teaser-category-chip text-amber-800 text-sm font-brand tracking-widest mb-1">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+                 <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+                     {article.data.title}
+diff --git a/src/components/TopStoryTeaserGrid.astro b/src/components/TopStoryTeaserGrid.astro
+index e015eae..49c1a20 100644
+--- a/src/components/TopStoryTeaserGrid.astro
++++ b/src/components/TopStoryTeaserGrid.astro
+@@ -32,10 +32,13 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+     </h2>
+ 
+     <!-- Top Section: Large Article -->
+-    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
++    <!-- `surface-featured` flags this as a promotional context; the category
++         chip and badge below react to it without either side knowing about
++         the other (see usage-aware-component-variations guide). -->
++    <div class="surface-featured shadow-sm overflow-hidden mb-6 lg:mb-8">
+         <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+             <div class="flex flex-col justify-center p-4 sm:p-6 lg:p-8 lg:order-first">
+-                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
++                <a href={`${import.meta.env.BASE_URL}category/${topArticle.data.category.toLowerCase()}`} class="teaser-category-chip text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                     {capitalizedCategory}
+                 </a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
+@@ -54,7 +57,8 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+                 </div>
+             </div>
+             <div class="w-full order-first lg:order-last">
+-                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`}>
++                <a href={`${import.meta.env.BASE_URL}articles/${topArticle.id}`} class="teaser-media block">
++                    <span class="teaser-badge">Featured</span>
+                     <Image width="320" height="180" src={topArticleImage} alt={topArticle.data.title} class="w-full h-full object-cover aspect-video lg:aspect-auto" />
+                 </a>
+             </div>
+@@ -69,12 +73,13 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
+             return (
+                 <div class="flex flex-col shadow-sm overflow-hidden h-full">
+                     {index === 1 && (
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="teaser-media block">
++                            <span class="teaser-badge">Featured</span>
+                             <Image width="320" height="180" src={bottomArticleImages[index]} alt={article.data.title} class="w-full h-auto object-cover aspect-video" />
+                         </a>
+                     )}
+                     <div class="p-4 sm:p-6 flex flex-col flex-grow">
+-                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-400 font-semibold text-sm mb-2 hover:underline">
++                        <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="teaser-category-chip text-amber-400 font-semibold text-sm mb-2 hover:underline">
+                             {capitalizedBottomCategory}
+                         </a>
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..8684ecd 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -55,7 +55,9 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <!-- `surface-featured` marks this as a promotional context; ArticleTeaser
++         reacts to the inherited flag without knowing this page produced it. -->
++    <main class="surface-featured max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..862565c 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,74 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++/*
++ * Usage-aware component variations (container style queries).
++ *
++ * `.surface-featured` is applied by *context providers* (e.g. the hero
++ * section on the homepage, the lead story in a teaser grid) to flag the
++ * surface as promotional. Teaser cards react to the inherited `--surface`
++ * custom property without knowing what produced it, and surfaces never
++ * name the components that react to them.
++ */
++.surface-featured {
++  --surface: featured;
++}
++
++.teaser-media {
++  position: relative;
++}
++
++.teaser-badge {
++  display: none;
++  position: absolute;
++  inset-block-start: 0.75rem;
++  inset-inline-end: 0.75rem;
++  inline-size: max-content;
++  padding-block: 0.25rem;
++  padding-inline: 0.75rem;
++  background: #f59e0b;
++  color: white;
++  font-size: 0.75rem;
++  font-weight: 600;
++  letter-spacing: 0.05em;
++  text-transform: uppercase;
++  border-radius: 999px;
++}
++
++.teaser-category-chip {
++  display: inline-block;
++  inline-size: fit-content;
++  padding-block: 0.25rem;
++  padding-inline: 0.75rem;
++  background: transparent;
++  border: 1px solid currentColor;
++  border-radius: 999px;
++  transition: background-color 0.2s ease, color 0.2s ease;
++}
++
++/* Progressive-enhancement fallback: selector-based, works everywhere. */
++:where(.surface-featured) .teaser-badge {
++  display: block;
++}
++
++:where(.surface-featured) .teaser-category-chip {
++  background: #f59e0b;
++  color: white;
++  border-color: transparent;
++}
++
++/* Style query: overrides the selector fallback once supported (same
++   specificity, later in source order — no browser-support branching needed). */
++@container style(--surface: featured) {
++  .teaser-badge {
++    display: block;
++  }
++
++  .teaser-category-chip {
++    background: #f59e0b;
++    color: white;
++    border-color: transparent;
++  }
+ }
+\ No newline at end of file

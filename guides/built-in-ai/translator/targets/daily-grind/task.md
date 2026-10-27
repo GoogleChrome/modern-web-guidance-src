@@ -1,1 +1,1 @@
-- Implement functionality to translate text between languages on the website.
+- Add an on-device language selector to the Daily Grind homepage so visitors can translate the coffee menu descriptions and story text between languages directly in the browser.

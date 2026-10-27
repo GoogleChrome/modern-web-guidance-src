@@ -218,7 +218,7 @@ HTML for nonce-based CSP:
 ```
 
 **Server / Middleware Per-Request Nonce Generation:**
-In server-rendered or SSR middleware (such as Node.js, Express, or Astro middleware), generate a fresh cryptographic nonce on every request, attach it to `Content-Security-Policy`, and stamp `nonce` onto `<script>` tags in HTML responses:
+In server-rendered or SSR middleware (such as Node.js, Express, or Astro middleware), generate a fresh cryptographic nonce on every request, attach it to `Content-Security-Policy`, and pass the nonce into your template/SSR rendering context so only trusted template `<script>` tags receive it:
 
 ```javascript
 const bytes = new Uint8Array(16);
@@ -237,13 +237,16 @@ const csp = [
 headers.set('Reporting-Endpoints', 'main-endpoint="https://reports.example/main"');
 headers.set('Content-Security-Policy', csp);
 
-// If transforming rendered HTML in middleware, inject the per-request nonce onto <script> tags:
-html = html.replace(/<script\b(?![^>]*\bnonce=)/gi, `<script nonce="${nonce}"`);
+// Pass the per-request nonce into your template/SSR rendering context (or replace an
+// explicit placeholder token in a static template before interpolating any user data):
+res.locals.nonce = nonce; // e.g., <script nonce="<%= nonce %>" src="/app.js"></script>
 ```
 
 For static/cached HTML (SPAs) where a per-response nonce is not possible, use hash-based CSP: compute the `sha256-` hash of each script and list the hashes in `script-src` alongside `'strict-dynamic' 'report-sample'`.
 
-**Avoid**: Broad scheme or domain allowlists (such as `https:` alone or `script-src https://cdn.example.com` without `'strict-dynamic'`) as the primary `script-src` protection — they are easily bypassed by open redirects, JSONP endpoints, and dependency injection on the allowed origin.
+**Avoid**:
+- Broad scheme or domain allowlists (such as `https:` alone or `script-src https://cdn.example.com` without `'strict-dynamic'`) as the primary `script-src` protection — they are easily bypassed by open redirects, JSONP endpoints, and dependency injection on the allowed origin.
+- Rewriting already-rendered HTML with a regular expression (such as `html.replace(/<script\b.../gi, ...)`) to stamp CSP nonces onto every `<script>` tag — post-processing rendered HTML cannot distinguish developer-authored `<script>` tags from untrusted `<script>` tags introduced via reflected or stored HTML injection, authorizing attacker-injected scripts under `script-src 'nonce-...'`.
 
 #### 3.3 Trusted Types Enforcement
 Trusted Types enforces source-level guidance at runtime by blocking raw string assignments to dangerous DOM XSS sinks (`innerHTML`, `outerHTML`, `document.write`, `script.src`, `script.textContent`) unless they pass through a named policy.

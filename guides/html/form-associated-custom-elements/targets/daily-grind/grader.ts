@@ -68,14 +68,40 @@ test.describe('Form-Associated Custom Elements Grader', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
       await page.evaluate(() => {
+        const findEl = () =>
+          document.querySelector('rating-input, star-rating') ||
+          Array.from(document.querySelectorAll('form *')).find(
+            (node) => node.tagName.includes('-') && Boolean(node.shadowRoot || (node.constructor as any)?.formAssociated)
+          ) ||
+          Array.from(document.querySelectorAll('form *')).find((node) => node.tagName.includes('-')) ||
+          null;
+        (window as any).__getFaceEl = findEl;
         return new Promise<void>((resolve) => {
-          if (customElements.get('rating-input')) {
+          const el = findEl();
+          const tag = el ? el.tagName.toLowerCase() : 'rating-input';
+          const finish = () => {
+            const target = findEl() as any;
+            if (target) {
+              const form = target.form || target.closest('form');
+              if (form) {
+                form.querySelectorAll('input[required], select[required], textarea[required]').forEach((ctrl: Element) => {
+                  ctrl.removeAttribute('required');
+                });
+              }
+              if (target.hasAttribute('value')) {
+                target.removeAttribute('value');
+                target.value = '';
+              }
+            }
             resolve();
+          };
+          if (customElements.get(tag)) {
+            finish();
           } else {
-            const timer = setTimeout(resolve, 1000);
-            customElements.whenDefined('rating-input').then(() => {
+            const timer = setTimeout(finish, 1000);
+            customElements.whenDefined(tag).then(() => {
               clearTimeout(timer);
-              resolve();
+              finish();
             });
           }
         });
@@ -84,7 +110,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Custom element renders without hidden input elements in light DOM or shadow DOM', async ({ page }) => {
       const inputCount = await page.evaluate(() => {
-        const el = document.querySelector('rating-input');
+        const el = (window as any).__getFaceEl?.() ?? document.querySelector('rating-input');
         if (!el || !el.shadowRoot) return -1;
         const lightInputs = el.querySelectorAll('input').length;
         const shadowInputs = el.shadowRoot.querySelectorAll('input').length;
@@ -95,7 +121,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Custom element matches :invalid when required and value is empty', async ({ page }) => {
       const isInvalid = await page.evaluate(() => {
-        const el = document.querySelector('rating-input');
+        const el = (window as any).__getFaceEl?.() ?? document.querySelector('rating-input');
         return Boolean(el && el.matches(':invalid'));
       });
       expect(isInvalid).toBe(true);
@@ -103,7 +129,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Owning form checkValidity returns false when required custom element has empty value', async ({ page }) => {
       const isValid = await page.evaluate(() => {
-        const el = document.querySelector('rating-input');
+        const el = (window as any).__getFaceEl?.() ?? document.querySelector('rating-input');
         const form = el ? (el as any).form || el.closest('form') : null;
         return form ? form.checkValidity() : null;
       });
@@ -112,7 +138,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Owning form reportValidity returns false when required custom element has empty value', async ({ page }) => {
       const reportResult = await page.evaluate(() => {
-        const el = document.querySelector('rating-input');
+        const el = (window as any).__getFaceEl?.() ?? document.querySelector('rating-input');
         const form = el ? (el as any).form || el.closest('form') : null;
         return form ? form.reportValidity() : null;
       });
@@ -121,7 +147,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Owning form reportValidity moves focus into custom element or its internal controls', async ({ page }) => {
       const hasFocus = await page.evaluate(() => {
-        const el = document.querySelector('rating-input');
+        const el = (window as any).__getFaceEl?.() ?? document.querySelector('rating-input');
         const form = el ? (el as any).form || el.closest('form') : null;
         if (!el || !form) return false;
         form.reportValidity();
@@ -132,7 +158,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Clicking submit button does not fire submit event when required custom element is empty', async ({ page }) => {
       const submitted = await page.evaluate(() => {
-        const el = document.querySelector('rating-input');
+        const el = (window as any).__getFaceEl?.() ?? document.querySelector('rating-input');
         const form = el ? (el as any).form || el.closest('form') : null;
         if (!el || !form) return null;
         let fired = false;
@@ -153,7 +179,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Activating internal control updates custom element value property', async ({ page }) => {
       const valueAfterClick = await page.evaluate(() => {
-        const el = document.querySelector('rating-input') as any;
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as any;
         if (!el || !el.shadowRoot) return null;
         const btn = el.shadowRoot.querySelector('button[data-value], [role="radio"], button') as HTMLElement | null;
         if (btn) btn.click();
@@ -164,7 +190,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Setting non-empty value clears validity errors so custom element matches :valid', async ({ page }) => {
       const matchesValid = await page.evaluate(() => {
-        const el = document.querySelector('rating-input') as any;
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as any;
         if (!el) return null;
         el.value = '3';
         return el.matches(':valid');
@@ -174,7 +200,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Setting non-empty value makes owning form checkValidity return true', async ({ page }) => {
       const formValid = await page.evaluate(() => {
-        const el = document.querySelector('rating-input') as any;
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as any;
         const form = el ? el.form || el.closest('form') : null;
         if (!el || !form) return null;
         el.value = '3';
@@ -185,7 +211,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Submitting owning form includes custom element value in FormData under its name attribute', async ({ page }) => {
       const formDataValue = await page.evaluate(() => {
-        const el = document.querySelector('rating-input') as any;
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as any;
         const form = el ? el.form || el.closest('form') : null;
         if (!el || !form) return null;
         el.value = '4';
@@ -198,7 +224,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Resetting owning form invokes formResetCallback and restores initial empty value', async ({ page }) => {
       const valueAfterReset = await page.evaluate(() => {
-        const el = document.querySelector('rating-input') as any;
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as any;
         const form = el ? el.form || el.closest('form') : null;
         if (!el || !form) return null;
         el.value = '4';
@@ -210,7 +236,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Resetting owning form re-evaluates validity to invalid when required and empty', async ({ page }) => {
       const isInvalidAfterReset = await page.evaluate(() => {
-        const el = document.querySelector('rating-input') as any;
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as any;
         const form = el ? el.form || el.closest('form') : null;
         if (!el || !form) return null;
         el.value = '4';
@@ -222,7 +248,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Disabling ancestor fieldset disables internal controls', async ({ page }) => {
       const controlsDisabled = await page.evaluate(() => {
-        const el = document.querySelector('rating-input');
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as HTMLElement | null;
         const fieldset = el ? el.closest('fieldset') : null;
         if (!el || !fieldset || !el.shadowRoot) return null;
         fieldset.disabled = true;
@@ -234,7 +260,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Clicking internal controls while disabled does not modify custom element value', async ({ page }) => {
       const valueUnchanged = await page.evaluate(() => {
-        const el = document.querySelector('rating-input') as any;
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as any;
         const fieldset = el ? el.closest('fieldset') : null;
         if (!el || !fieldset || !el.shadowRoot) return null;
         el.value = '2';
@@ -248,7 +274,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Re-enabling ancestor fieldset re-enables controls unless custom element has its own disabled attribute', async ({ page }) => {
       const checkReEnable = await page.evaluate(() => {
-        const el = document.querySelector('rating-input') as any;
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as any;
         const fieldset = el ? el.closest('fieldset') : null;
         if (!el || !fieldset || !el.shadowRoot) return null;
         fieldset.disabled = true;
@@ -269,7 +295,7 @@ test.describe('Form-Associated Custom Elements Grader', () => {
 
     test('Invoking formStateRestoreCallback restores custom element value from provided state', async ({ page }) => {
       const restoredValue = await page.evaluate(() => {
-        const el = document.querySelector('rating-input') as any;
+        const el = ((window as any).__getFaceEl?.() ?? document.querySelector('rating-input')) as any;
         if (!el || typeof el.formStateRestoreCallback !== 'function') return null;
         el.formStateRestoreCallback('5');
         return el.value;

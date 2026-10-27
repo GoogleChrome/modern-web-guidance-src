@@ -262,6 +262,18 @@ export interface CalibrationResult {
   errorDetails?: string;
   solutions: Partial<Record<SolutionAgent, SolutionTestResult>>;
   zeroPassrate: { passed: number; failed: number; passingTests: string[] };
+  sharedFailingTests?: string[];
+}
+
+export function findSharedFailingTests(
+  solutions: Partial<Record<SolutionAgent, SolutionTestResult>>,
+  activeAgents: SolutionAgent[]
+): string[] {
+  if (activeAgents.length === 0) return [];
+  const lists = activeAgents.map(a => solutions[a]?.failingTests ?? []);
+  if (lists.some(l => l.length === 0)) return [];
+  const [first, ...rest] = lists;
+  return first.filter(testTitle => rest.every(l => l.includes(testTitle)));
 }
 
 export async function testTargetGrader(guideDirAbs: string, baseApp: string): Promise<CalibrationResult> {
@@ -372,10 +384,19 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   await Promise.all([...solutionCalibrationTasks, zeroPassrateTask]);
 
   if (!allSolutionsPassed || zeroPassrateFailed) {
+    const sharedFailingTests = findSharedFailingTests(result.solutions, activeAgents);
+    if (sharedFailingTests.length > 0) {
+      result.sharedFailingTests = sharedFailingTests;
+    }
+    const sharedBanner = sharedFailingTests.length > 0
+      ? `\n\n⚠️  SHARED FAILING TESTS ACROSS ALL ${activeAgents.length} GOLDEN SOLUTIONS (fail-fast calibration abort):\n` +
+        sharedFailingTests.map(t => `   - ${t}`).join('\n')
+      : '';
     const statusSummary = activeAgents.map(a => `   - ${a}: ${solutionStatus[a] || 'Unknown'}`).join('\n') +
       `\n   - zero-passrate: ${zeroPassrateStatus}`;
     result.errorDetails = `Calibration results summary:\n${statusSummary}\n\n` +
-      (solutionErrors.length > 0 ? `Solution failure details:\n\n` + solutionErrors.join('\n\n---\n\n') : '') +
+      sharedBanner +
+      (solutionErrors.length > 0 ? `\n\nSolution failure details:\n\n` + solutionErrors.join('\n\n---\n\n') : '') +
       (zeroPassrateFailed && result.zeroPassrate.passed > 0 ? `\n\nZero-passrate details:\n${zeroPassrateStatus}` : '');
     return result;
   }

@@ -253,7 +253,7 @@ async function setupNativePage(page: any, targetUrl?: string): Promise<{ stats: 
 
   await page.route('**/*', async (route: any) => {
     const url = route.request().url();
-    if (url.includes('@js-temporal/polyfill') || url.includes('cdn.jsdelivr.net/npm/@js-temporal/polyfill')) {
+    if (url.includes('temporal-polyfill') || url.includes('@js-temporal/polyfill')) {
       polyfillRequested = true;
     }
     await route.continue();
