@@ -1,1 +1,1 @@
-- Restrict the page to communicating only with an explicit allowlist of network endpoints to prevent unauthorized third-party requests and client-side data exfiltration.
+- Daily Grind is adding a newsletter signup form to the homepage that sends emails to our own server; make sure the page can only reach our own server and the Unsplash photo host so an injected script can't send customer data anywhere else, and show customers a message if a request can't go through.
