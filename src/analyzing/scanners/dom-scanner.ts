@@ -433,15 +433,15 @@ function querySelectorAllIncludingTemplates(
 }
 
 /**
- * Scans an HTML file using linkedom + linear HTML tokenizer.
+ * Scans an HTML file using linkedom + linear HTML tokenizer against rules in a single parse pass.
  */
-export function scanHtml(
+export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
   filePath: string,
   htmlContent: string,
-  rules: readonly DomRuleMatcher[],
-): AnalyzerMatch[] {
-  const activeRules = rules.filter((rule) =>
-    matchesFastTokens(htmlContent, rule.fastTokens),
+  rules: readonly T[],
+): { rule: T; match: AnalyzerMatch }[] {
+  const activeRules = rules.filter((r) =>
+    matchesFastTokens(htmlContent, r.matcher.fastTokens),
   );
   if (activeRules.length === 0) {
     return [];
@@ -457,12 +457,13 @@ export function scanHtml(
     documentText: htmlContent,
   };
 
-  const matches: AnalyzerMatch[] = [];
+  const results: { rule: T; match: AnalyzerMatch }[] = [];
 
   for (const rule of activeRules) {
+    const { matcher } = rule;
     let elements: LinkedomElementNode[];
     try {
-      elements = querySelectorAllIncludingTemplates(document, rule.selector);
+      elements = querySelectorAllIncludingTemplates(document, matcher.selector);
     } catch {
       continue;
     }
@@ -498,19 +499,37 @@ export function scanHtml(
         },
       };
 
-      const result = rule.matchElement(view, ctx);
+      const result = matcher.matchElement(view, ctx);
       if (result) {
-        matches.push({
-          line,
-          column,
-          message: result.message,
-          ...(result.subPattern ? { subPattern: result.subPattern } : {}),
+        results.push({
+          rule,
+          match: {
+            line,
+            column,
+            message: result.message,
+            ...(result.subPattern ? { subPattern: result.subPattern } : {}),
+          },
         });
       }
     }
   }
 
-  return matches;
+  return results;
+}
+
+/**
+ * Scans an HTML file using linkedom + linear HTML tokenizer.
+ */
+export function scanHtml(
+  filePath: string,
+  htmlContent: string,
+  rules: readonly DomRuleMatcher[],
+): AnalyzerMatch[] {
+  return scanHtmlRules(
+    filePath,
+    htmlContent,
+    rules.map((matcher) => ({ matcher })),
+  ).map(({ match }) => match);
 }
 
 /**
@@ -555,18 +574,28 @@ function extractJsxAttributes(
 }
 
 /**
- * Scans a JSX/TSX SourceFile using the static JSX-DOM bridge.
+ * Scans a JSX/TSX SourceFile using the static JSX-DOM bridge against rules in a single pass.
  */
-export function scanJsx(
+export function scanJsxRules<T extends { readonly matcher: DomRuleMatcher }>(
   filePath: string,
   sourceFile: SourceFile,
-  rules: readonly DomRuleMatcher[],
-): AnalyzerMatch[] {
+  rules: readonly T[],
+): { rule: T; match: AnalyzerMatch }[] {
   const fileContent = sourceFile.getFullText();
-  const activeRules = rules.filter((rule) =>
-    matchesFastTokens(fileContent, rule.fastTokens),
+  const activeRules = rules.filter((r) =>
+    matchesFastTokens(fileContent, r.matcher.fastTokens),
   );
   if (activeRules.length === 0) {
+    return [];
+  }
+
+  const jsxNodes: Array<JsxOpeningElement | JsxSelfClosingElement> = [];
+  sourceFile.forEachDescendant((node) => {
+    if (Node.isJsxOpeningElement(node) || Node.isJsxSelfClosingElement(node)) {
+      jsxNodes.push(node);
+    }
+  });
+  if (jsxNodes.length === 0) {
     return [];
   }
 
@@ -576,19 +605,21 @@ export function scanJsx(
     documentText: fileContent,
   };
 
-  const matches: AnalyzerMatch[] = [];
-  const jsxNodes: Array<JsxOpeningElement | JsxSelfClosingElement> = [];
-
-  sourceFile.forEachDescendant((node) => {
-    if (Node.isJsxOpeningElement(node) || Node.isJsxSelfClosingElement(node)) {
-      jsxNodes.push(node);
-    }
-  });
-
-  for (const jsxNode of jsxNodes) {
+  const preparedElements = jsxNodes.map((jsxNode) => {
     const tagName = jsxNode.getTagNameNode().getText().toLowerCase();
     const { hasSpread, staticAttrs, dynamicAttrs } = extractJsxAttributes(jsxNode);
     const { line, column } = sourceFile.getLineAndColumnAtPos(jsxNode.getStart());
+
+    let mockEl: { matches(selector: string): boolean } | null = null;
+    try {
+      const el = document.createElement(tagName);
+      for (const [k, v] of Object.entries(staticAttrs)) {
+        el.setAttribute(k, v);
+      }
+      mockEl = el;
+    } catch {
+      mockEl = null;
+    }
 
     const view: DomElementView = {
       tagName,
@@ -602,43 +633,65 @@ export function scanJsx(
       hasDynamicAttribute: (name: string) => dynamicAttrs.has(name.toLowerCase()),
     };
 
-    for (const rule of activeRules) {
-      if (rule.skipIfHasSpread && hasSpread) {
+    return { view, mockEl, hasSpread, dynamicAttrs };
+  });
+
+  const results: { rule: T; match: AnalyzerMatch }[] = [];
+
+  for (const rule of activeRules) {
+    const { matcher } = rule;
+    for (const { view, mockEl, hasSpread, dynamicAttrs } of preparedElements) {
+      if (matcher.skipIfHasSpread && hasSpread) {
         continue;
       }
       if (
-        rule.skipIfDynamicAttributes &&
-        rule.skipIfDynamicAttributes.some((a) => dynamicAttrs.has(a.toLowerCase()))
+        matcher.skipIfDynamicAttributes &&
+        matcher.skipIfDynamicAttributes.some((a) => dynamicAttrs.has(a.toLowerCase()))
       ) {
         continue;
       }
 
       let selectorMatches = false;
-      try {
-        const mockEl = document.createElement(tagName);
-        for (const [k, v] of Object.entries(staticAttrs)) {
-          mockEl.setAttribute(k, v);
+      if (mockEl) {
+        try {
+          selectorMatches = mockEl.matches(matcher.selector);
+        } catch {
+          selectorMatches = false;
         }
-        selectorMatches = mockEl.matches(rule.selector);
-      } catch {
-        selectorMatches = false;
       }
-
       if (!selectorMatches) {
         continue;
       }
 
-      const result = rule.matchElement(view, ctx);
+      const result = matcher.matchElement(view, ctx);
       if (result) {
-        matches.push({
-          line,
-          column,
-          message: result.message,
-          ...(result.subPattern ? { subPattern: result.subPattern } : {}),
+        results.push({
+          rule,
+          match: {
+            line: view.line,
+            column: view.column,
+            message: result.message,
+            ...(result.subPattern ? { subPattern: result.subPattern } : {}),
+          },
         });
       }
     }
   }
 
-  return matches;
+  return results;
+}
+
+/**
+ * Scans a JSX/TSX SourceFile using the static JSX-DOM bridge.
+ */
+export function scanJsx(
+  filePath: string,
+  sourceFile: SourceFile,
+  rules: readonly DomRuleMatcher[],
+): AnalyzerMatch[] {
+  return scanJsxRules(
+    filePath,
+    sourceFile,
+    rules.map((matcher) => ({ matcher })),
+  ).map(({ match }) => match);
 }

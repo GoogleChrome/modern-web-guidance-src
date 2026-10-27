@@ -254,4 +254,52 @@ test('matchesPackageSpec, isRequireOfPackage, and isLibraryReference', async (t)
       'for-statement initializer must resolve via resolveLocalExpression',
     );
   });
+
+  await t.test('handles destructured parameter shadowing and aliased named imports', () => {
+    const sf = project.createSourceFile(
+      'destructuredAndAliasedImports.ts',
+      `
+      import { Temporal as AliasedTemporal } from '@js-temporal/polyfill';
+
+      function withDestructuredParam({ Temporal }: { Temporal: { now: () => void } }) {
+        Temporal.now();
+      }
+
+      Temporal.now();
+      AliasedTemporal.now();
+      `,
+      { overwrite: true },
+    );
+
+    const calls = sf.getDescendants().filter(Node.isCallExpression);
+    const paramCall = calls[0];
+    const unshadowedGlobalCall = calls[1];
+    const aliasedCall = calls[2];
+    assert.ok(paramCall && unshadowedGlobalCall && aliasedCall);
+
+    const paramExpr = paramCall.getExpression();
+    const globalExpr = unshadowedGlobalCall.getExpression();
+    const aliasedExpr = aliasedCall.getExpression();
+    assert.ok(
+      Node.isPropertyAccessExpression(paramExpr) &&
+        Node.isPropertyAccessExpression(globalExpr) &&
+        Node.isPropertyAccessExpression(aliasedExpr),
+    );
+
+    assert.equal(
+      isUnshadowedGlobal(paramExpr.getExpression(), 'Temporal'),
+      false,
+      'destructured parameter { Temporal } must shadow global Temporal',
+    );
+    assert.equal(
+      isUnshadowedGlobal(globalExpr.getExpression(), 'Temporal'),
+      true,
+      'import { Temporal as AliasedTemporal } must not shadow bare global Temporal',
+    );
+    assert.equal(
+      isUnshadowedGlobal(aliasedExpr.getExpression(), 'AliasedTemporal'),
+      false,
+      'import { Temporal as AliasedTemporal } must shadow local alias AliasedTemporal',
+    );
+  });
 });
