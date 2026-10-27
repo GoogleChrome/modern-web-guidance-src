@@ -5,13 +5,9 @@ import {
   computeGuideTriagePromptVersion,
   computeVerifierPromptVersion,
   computeJudgePromptVersion,
-  computeUpdateSimulationPromptVersion,
   formatBlindCardPrompt,
-  formatUpdateSimulationPrompt,
   formatGuideTriagePrompt,
   formatVerifierPrompt,
-  UPDATE_SIMULATION_RESPONSE_SCHEMA,
-  UPDATE_SIMULATION_THINKING_BUDGET,
   GUIDE_TRIAGE_PROMPT_VERSION,
   GUIDE_TRIAGE_RESPONSE_SCHEMA,
   GUIDE_TRIAGE_SYSTEM_PROMPT,
@@ -25,16 +21,13 @@ import {
   VERIFIER_SYSTEM_PROMPT,
   VERIFIER_THINKING_BUDGET,
   PROMPT_MODEL,
-  UPDATE_SIMULATION_PROMPT_VERSION,
-  UPDATE_SIMULATION_PROMPT,
 } from './prompts.ts';
 
 describe('prompts: content-hashed versions', () => {
-  it('includes model name in all 4 prompt version strings', () => {
+  it('includes model name in all 3 prompt version strings', () => {
     assert.ok(GUIDE_TRIAGE_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Guide Triage version includes model');
     assert.ok(VERIFIER_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Verifier version includes model');
     assert.ok(JUDGE_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Judge version includes model');
-    assert.ok(UPDATE_SIMULATION_PROMPT_VERSION.startsWith(`${PROMPT_MODEL}:`), 'Update version includes model');
   });
 
   it('matches deterministic 8-char SHA-256 hash for Guide Triage', () => {
@@ -91,21 +84,6 @@ describe('prompts: content-hashed versions', () => {
     );
     assert.match(JUDGE_VERSION, /^gemini-3\.8-flash:detective-v7-[0-9a-f]{8}$/);
     assert.strictEqual(computeJudgePromptVersion(), JUDGE_VERSION);
-  });
-
-  it('matches deterministic 8-char SHA-256 hash for Synthetic Update', () => {
-    const expectedHash = computePromptContentHash({
-      model: PROMPT_MODEL,
-      systemPrompt: UPDATE_SIMULATION_PROMPT,
-      userPromptTemplateSource: formatUpdateSimulationPrompt.toString(),
-      schema: UPDATE_SIMULATION_RESPONSE_SCHEMA,
-      thinkingBudget: UPDATE_SIMULATION_THINKING_BUDGET,
-      temperature: 0.0,
-      enableSearchGrounding: false,
-    });
-    assert.strictEqual(UPDATE_SIMULATION_PROMPT_VERSION, `${PROMPT_MODEL}:fix-sim-v2-${expectedHash}`);
-    assert.match(UPDATE_SIMULATION_PROMPT_VERSION, /^gemini-3\.8-flash:fix-sim-v2-[0-9a-f]{8}$/);
-    assert.strictEqual(computeUpdateSimulationPromptVersion(), UPDATE_SIMULATION_PROMPT_VERSION);
   });
 });
 
@@ -239,20 +217,5 @@ describe('prompts: prompt formatters and schema validation', () => {
       ),
     );
   });
-
-  it('formatUpdateSimulationPrompt formats update request cleanly', () => {
-    const formatted = formatUpdateSimulationPrompt({
-      guideId: 'dialog',
-      guideMarkdown: '# Dialog Guide\n\nUse <dialog>.',
-      filePath: 'src/app.js',
-      line: 10,
-      findingMessage: 'Custom div modal',
-      windowText: 'function open() { modal.style.display = "block"; }',
-    });
-
-    assert.match(formatted, /## Modern Web Guide: dialog/);
-    assert.match(formatted, /## Target Code Window/);
-    assert.match(formatted, /modal\.style\.display = "block"/);
-    assert.match(formatted, /If this finding is a false positive or intentional fallback/);
-  });
 });
+

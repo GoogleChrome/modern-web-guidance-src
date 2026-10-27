@@ -108,14 +108,6 @@ describe('check-internal-references guard', () => {
       false,
     );
 
-    // 2. update-eval.ts progress logging in internal eval directory
-    assert.strictEqual(
-      isExemptedLine(
-        'src/analyzing/eval/update-eval.ts',
-        fromParts("  const progressPath = join(evalDataDir, 'PROG", "RESS.md');"),
-      ),
-      true,
-    );
     assert.strictEqual(
       isExemptedLine(
         'src/analyzing/README.md',

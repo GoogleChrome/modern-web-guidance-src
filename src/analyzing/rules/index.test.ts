@@ -5,7 +5,6 @@ import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { scanAllGuides } from '../../core/guide-validation.ts';
-import { getSeededSensitivityTestCases } from '../eval/update-eval.ts';
 import type { AnalyzerRule } from '../schema.ts';
 import {
   ALL_RULES,
@@ -111,18 +110,6 @@ describe('rule registry architectural invariants', () => {
       assert.ok(
         !guide.isStub,
         `Guide "${entry.guideId}" must not be a stub`,
-      );
-    }
-  });
-
-  it('enforces that every qualified guide has seeded Update Eval fixtures', () => {
-    const fixtures = getSeededSensitivityTestCases();
-    const fixtureGuideIds = new Set(fixtures.map((f) => f.guideId));
-
-    for (const qid of QUALIFIED_GUIDE_IDS) {
-      assert.ok(
-        fixtureGuideIds.has(qid),
-        `Qualified default shipping guide "${qid}" must have seeded Update Eval test fixtures`,
       );
     }
   });

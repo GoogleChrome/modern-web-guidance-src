@@ -2,7 +2,7 @@
 
 The Modern Web Guidance Analyzer scans brownfield web codebases for legacy idioms, obsolete polyfills, and userland workarounds, mapping every finding directly to a corresponding [Modern Web Guidance](../../guides) standard. It is designed for dual operation: fast, human-readable terminal reports for developers and structured machine-readable JSON for autonomous coding agents.
 
-See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Modernize`, `analyze`, `Guide Triage`, `Static Matcher`, `LLM Verifier`, `Detection Eval Judge`, `Update Eval`, and the `rule-writing` and `held-out` splits).
+See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Modernize`, `analyze`, `Guide Triage`, `Static Matcher`, `LLM Verifier`, `Detection Eval Judge`, and the `rule-writing` and `held-out` splits).
 
 ---
 
@@ -308,7 +308,7 @@ Every web platform standard in the catalog is classified across two orthogonal a
 
 ---
 
-## 5. Evaluation, Update Eval & Measurement Framework
+## 5. Evaluation & Measurement Framework
 
 The analyzer gates rules on evaluation against held-out repositories before any rule is published in `QUALIFIED_RULES`.
 
@@ -317,7 +317,6 @@ The analyzer gates rules on evaluation against held-out repositories before any 
 - **`guide-triage.ts`**: Implements the 2-axis triage taxonomy (`Detection` and `Update Scope`) and maintains canonical metadata for all web platform guides.
 - **`detection-eval.ts`**: Runs multi-pass LLM judge evaluation (`gemini-3.8-flash`) against human-graded cards (`grades.jsonl`) to measure true-positive and matcher misfire rates with majority voting.
 - **`llm-verifier.ts`**: Implements the runtime and eval-time LLM verifier evaluating candidate matches against `verifierRubric` (`keepWhen` / `dropWhen`) specifications.
-- **`update-eval.ts`**: Automated patch validation harness testing candidate modernization updates across 3 classes of bad patches (`no-op`, `deletion-gutting`, `broken/evasion`) and reference good fixes.
 - **`stats.ts`**: Statistical foundations implementing Wilson binomial confidence intervals, sequential stopping decisions, and TPR/TNR metrics.
 - **`prompts.ts`**: Centralized prompt templates, thinking budgets, and content-hashed version tracking across all LLM evaluation passes.
 
@@ -328,14 +327,6 @@ The evaluation corpus is divided into two isolated splits across 26,426 files an
 - **`held-out`:** Reserved strictly for out-of-sample precision and recall validation. Kept separate when authoring or debugging rules to evaluate generalization on unseen code.
 
 Cross-split boundary isolation is statically verified by internal audit tooling.
-
-### Update Eval
-
-To evaluate end-to-end code modernization without falling into the "Deletion Equals Resolution" trap , **Update Eval** (`update-eval.ts`) enforces three static checks on every candidate modernization update:
-- **Check 1 (Finding Eliminated Check):** Splices the patched window into the full file and verifies `0` remaining findings in the window and reduced full-file finding count.
-- **Check 2 (Modern Syntax & Anti-Gutting Check):** Verifies clean AST/DOM/CSS parsing (`ts-morph` with JSX support, `linkedom`, `cssomnom`), top-level export retention, and comment-stripped presence of the guide's positive modern web feature.
-- **Check 3 (Behavioral Check):** Runs behavioral/test assertions when available.
-- **Verified Benchmarks:** Verified on the 3-class seeded bad-patch sensitivity suite (`no-op`, `deletion-gutting`, `broken/evasion`) and reference good fixes.
 
 ### Running Evaluation Benchmarks
 
@@ -348,9 +339,6 @@ pnpm run preflight
 
 # Run Detection Eval Judge benchmark on evaluation decks:
 node --env-file=.env src/analyzing/eval/detection-eval.ts
-
-# Run seeded sensitivity suite & end-to-end agentic update evaluation:
-node --env-file=.env src/analyzing/eval/update-eval.ts
 ```
 
 ---
@@ -380,7 +368,7 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 
 ### Step 4: Held-Out Qualification
 1. **Run preflight checks**: `pnpm run preflight` and `node --test "src/analyzing/**/*.test.ts"`.
-2. **Run detection and update evaluation**: `node --env-file=.env src/analyzing/eval/update-eval.ts` and `node --env-file=.env src/analyzing/eval/detection-eval.ts`.
+2. **Run detection evaluation**: `node --env-file=.env src/analyzing/eval/detection-eval.ts`.
 3. **Qualification criteria**:
    - **Experimental Rule**: Active in `ALL_RULES`, available under `--experimental` / `--all-rules`.
    - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it meets the Static Matcher Precision qualification standard (>= 90% at n >= 20) on the untuned `held-out` split.

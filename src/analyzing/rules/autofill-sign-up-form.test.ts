@@ -1,29 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { checkModernFeaturePresent } from '../eval/update-eval.ts';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
 import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
 import { autofillSignUpFormRule } from './autofill-sign-up-form.ts';
 
 const matcher = autofillSignUpFormRule.matcher as DomRuleMatcher;
-
-void test('autofill-sign-up-form: Check 2c quotes', () => {
-  assert.equal(
-    checkModernFeaturePresent(
-      'autofill-sign-up-form',
-      "<input type='password' autocomplete='new-password'>",
-    ),
-    true,
-  );
-  assert.equal(
-    checkModernFeaturePresent(
-      'autofill-sign-up-form',
-      "<input type='password' autoComplete='new-password' />",
-    ),
-    true,
-  );
-});
 
 void test('autofill-sign-up-form: positive brownfield matches', async (t) => {
   await t.test('flags new password input lacking autocomplete in registration form', () => {
