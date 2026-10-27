@@ -2,19 +2,16 @@ import {
   Node,
   SyntaxKind,
   type CallExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
-  getSafeModuleSpecifier,
-  isGlobalReference,
+  isLibraryReference,
   isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -35,211 +32,9 @@ const TOOLTIP_CONTEXT_REGEX = /tooltip|role\s*=\s*['"]tooltip['"]/i;
 const NON_TOOLTIP_WIDGET_REGEX =
   /\b(?:dropdown|combobox|listbox|menu|menubar|menuitem|contextmenu|modal|dialog|select|datepicker|autocomplete)\b/i;
 
-function matchesPackageSpec(
-  spec: string | null,
-  packages: readonly string[],
-): boolean {
-  return (
-    spec !== null &&
-    packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
-  );
-}
-
-function isRequireOfPackage(
-  node: Node,
-  packages: readonly string[],
-): boolean {
-  const unwrapped = unwrapExpression(node);
-  if (!Node.isCallExpression(unwrapped)) {
-    return false;
-  }
-  const callee = unwrapExpression(unwrapped.getExpression());
-  const firstArg = unwrapped.getArguments()[0];
-  if (
-    Node.isIdentifier(callee) &&
-    callee.getText() === 'require' &&
-    firstArg &&
-    Node.isStringLiteral(firstArg)
-  ) {
-    return matchesPackageSpec(firstArg.getLiteralText(), packages);
-  }
-  return false;
-}
-
-function checkEnclosingBindings(
-  identNode: Node,
-  localName: string,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean,
-): 'matched' | 'shadowed' | 'none' {
-  let current: Node | undefined = identNode.getParent();
-  while (current) {
-    if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isFunctionExpression(current) ||
-      Node.isArrowFunction(current) ||
-      Node.isMethodDeclaration(current)
-    ) {
-      if (
-        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
-        current.getName() === localName
-      ) {
-        return 'shadowed';
-      }
-      for (const param of current.getParameters()) {
-        for (const el of param.getDescendantsOfKind(identNode.getKind())) {
-          if (el.getText() === localName && el.getParent() !== current) {
-            return 'shadowed';
-          }
-        }
-      }
-    }
-
-    if (Node.isBlock(current) || Node.isSourceFile(current)) {
-      for (const stmt of current.getStatements()) {
-        if (
-          (Node.isFunctionDeclaration(stmt) || Node.isClassDeclaration(stmt)) &&
-          stmt.getName() === localName
-        ) {
-          return 'shadowed';
-        }
-        if (!Node.isVariableStatement(stmt)) {
-          continue;
-        }
-        for (const decl of stmt.getDeclarationList().getDeclarations()) {
-          const nameNode = decl.getNameNode();
-          if (Node.isIdentifier(nameNode) && nameNode.getText() === localName) {
-            const init = decl.getInitializer();
-            if (init) {
-              const resolvedInit = resolveLocalExpression(init, 2);
-              if (
-                allowDefaultImport &&
-                isRequireOfPackage(resolvedInit, packages)
-              ) {
-                return 'matched';
-              }
-              if (Node.isPropertyAccessExpression(resolvedInit)) {
-                const propName = resolvedInit.getName();
-                if (
-                  (propName === identName ||
-                    (allowDefaultImport && propName === 'default')) &&
-                  isRequireOfPackage(
-                    resolveLocalExpression(resolvedInit.getExpression(), 2),
-                    packages,
-                  )
-                ) {
-                  return 'matched';
-                }
-              }
-            }
-            return 'shadowed';
-          } else if (Node.isObjectBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (el.getName() === localName) {
-                const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
-                const init = decl.getInitializer();
-                if (
-                  init &&
-                  (propName === identName || (allowDefaultImport && propName === 'default')) &&
-                  isRequireOfPackage(resolveLocalExpression(init, 2), packages)
-                ) {
-                  return 'matched';
-                }
-                return 'shadowed';
-              }
-            }
-          } else if (Node.isArrayBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (Node.isBindingElement(el) && el.getName() === localName) {
-                return 'shadowed';
-              }
-            }
-          }
-        }
-      }
-    }
-
-    current = current.getParent();
-  }
-  return 'none';
-}
-
-function isLibraryReference(
-  node: Node,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean = true,
-  allowGlobal: boolean = true,
-): boolean {
-  const unwrapped = unwrapExpression(node);
-
-  if (allowDefaultImport && isRequireOfPackage(unwrapped, packages)) {
-    return true;
-  }
-
-  if (Node.isPropertyAccessExpression(unwrapped)) {
-    const propName = unwrapped.getName();
-    if (propName === identName || (allowDefaultImport && propName === 'default')) {
-      const receiver = unwrapped.getExpression();
-      if (isRequireOfPackage(resolveLocalExpression(receiver, 2), packages)) {
-        return true;
-      }
-      if (allowGlobal && isGlobalReference(receiver, 'Popper')) {
-        return true;
-      }
-      if (allowGlobal && isGlobalReference(receiver, 'FloatingUIDOM')) {
-        return true;
-      }
-    }
-  }
-
-  if (Node.isIdentifier(unwrapped)) {
-    const localName = unwrapped.getText();
-    const sourceFile = unwrapped.getSourceFile();
-
-    const bindingStatus = checkEnclosingBindings(
-      unwrapped,
-      localName,
-      identName,
-      packages,
-      allowDefaultImport,
-    );
-    if (bindingStatus === 'matched') {
-      return true;
-    }
-    if (bindingStatus === 'shadowed') {
-      return false;
-    }
-
-    for (const imp of sourceFile.getImportDeclarations()) {
-      const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
-      if (
-        imp.getDefaultImport()?.getText() === localName ||
-        imp.getNamespaceImport()?.getText() === localName
-      ) {
-        return allowDefaultImport && matchesPkg;
-      }
-      for (const named of imp.getNamedImports()) {
-        const importedName = named.getName();
-        const boundName = named.getAliasNode()?.getText() ?? importedName;
-        if (boundName === localName) {
-          return (
-            matchesPkg &&
-            (importedName === identName ||
-              (allowDefaultImport && importedName === 'default'))
-          );
-        }
-      }
-    }
-  }
-
-  if (allowGlobal && isGlobalReference(unwrapped, identName)) {
-    return true;
-  }
-
-  return false;
-}
+const POSITIONING_GLOBAL_NAMESPACES = {
+  globalNamespaces: ['Popper', 'FloatingUIDOM'],
+} as const;
 
 function hasTooltipContext(callExpr: CallExpression): boolean {
   let hasNonTooltipWidgetArg = false;
@@ -315,14 +110,18 @@ function matchPopperTooltipCall(callExpr: CallExpression): string | null {
   }
 
   const callee = unwrapExpression(callExpr.getExpression());
-  const isPopper = isLibraryReference(callee, 'createPopper', [
-    '@popperjs/core',
-    'popper.js',
-  ]);
-  const isFloatingUi = isLibraryReference(callee, 'computePosition', [
-    '@floating-ui/dom',
-    '@floating-ui/core',
-  ]);
+  const isPopper = isLibraryReference(
+    callee,
+    'createPopper',
+    ['@popperjs/core', 'popper.js'],
+    POSITIONING_GLOBAL_NAMESPACES,
+  );
+  const isFloatingUi = isLibraryReference(
+    callee,
+    'computePosition',
+    ['@floating-ui/dom', '@floating-ui/core'],
+    POSITIONING_GLOBAL_NAMESPACES,
+  );
 
   if (!isPopper && !isFloatingUi) {
     return null;
@@ -336,33 +135,11 @@ function matchPopperTooltipCall(callExpr: CallExpression): string | null {
   return `JavaScript ${apiName} tooltip positioning can be modernized with CSS Anchor Positioning, position-try-fallbacks, and @container anchored(fallback: ...).`;
 }
 
-export const positionAwareTooltipsJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const positionAwareTooltipsJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['createPopper', 'computePosition'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      if (isGuardedByAnchorSupport(node)) {
-        return;
-      }
-
-      const message = matchPopperTooltipCall(node);
-      if (message) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node) => isGuardedByAnchorSupport(node),
+  matchCall: (node) => matchPopperTooltipCall(node),
+});
 
 export const positionAwareTooltipsJsRule: AnalyzerRule = {
   id: 'position-aware-tooltips/js-popper-tooltip',

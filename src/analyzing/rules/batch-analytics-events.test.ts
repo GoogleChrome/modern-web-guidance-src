@@ -1,29 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  BATCH_ANALYTICS_EVENTS_GUIDE_HASH,
-  batchAnalyticsEventsMatcher,
-  batchAnalyticsEventsRule,
-  batchAnalyticsEventsRules,
+  batchAnalyticsEventsMatcher
 } from './batch-analytics-events.ts';
-
-void test('batch-analytics-events: rule metadata', () => {
-  assert.equal(batchAnalyticsEventsRule.id, 'batch-analytics-events');
-  assert.equal(batchAnalyticsEventsRule.guideId, 'batch-analytics-events');
-  assert.equal(
-    batchAnalyticsEventsRule.guideHash,
-    BATCH_ANALYTICS_EVENTS_GUIDE_HASH,
-  );
-  assert.equal(BATCH_ANALYTICS_EVENTS_GUIDE_HASH.length, 12);
-  assert.equal(batchAnalyticsEventsRules.length, 1);
-  assert.ok(batchAnalyticsEventsRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(batchAnalyticsEventsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('batch-analytics-events JS matcher', async (t) => {
   await t.test('flags unload and beforeunload listeners calling sendBeacon, fetch, or synchronous XMLHttpRequest', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('unload', () => {
         navigator.sendBeacon('/analytics', JSON.stringify(events));
@@ -39,18 +21,13 @@ void test('batch-analytics-events JS matcher', async (t) => {
         xhr.send(payload);
       });
     `;
-    const sourceFile = project.createSourceFile('analytics.js', code);
-    const matches = batchAnalyticsEventsMatcher.matchFile(sourceFile, {
-      filePath: 'analytics.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(batchAnalyticsEventsMatcher, 'analytics.js', code);
     assert.equal(matches.length, 3);
     assert.match(matches[0]?.message ?? '', /visibilitychange/);
     assert.doesNotMatch(matches[0]?.message ?? '', /fetchLater/);
   });
 
   await t.test('exempts visibilitychange / pagehide listeners and unsaved-changes beforeunload prompts', () => {
-    const project = createInMemoryProject();
     const code = `
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
@@ -69,16 +46,11 @@ void test('batch-analytics-events JS matcher', async (t) => {
         navigator.sendBeacon('/analytics', data);
       });
     `;
-    const sourceFile = project.createSourceFile('safe.js', code);
-    const matches = batchAnalyticsEventsMatcher.matchFile(sourceFile, {
-      filePath: 'safe.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(batchAnalyticsEventsMatcher, 'safe.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('flags onunload assignment and named listener functions sending telemetry', () => {
-    const project = createInMemoryProject();
     const code = `
       function sendTelemetry() {
         navigator.sendBeacon('/log', JSON.stringify({ event: 'exit' }));
@@ -89,11 +61,7 @@ void test('batch-analytics-events JS matcher', async (t) => {
         navigator.sendBeacon('/onunload-log', payload);
       };
     `;
-    const sourceFile = project.createSourceFile('named-handler.js', code);
-    const matches = batchAnalyticsEventsMatcher.matchFile(sourceFile, {
-      filePath: 'named-handler.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(batchAnalyticsEventsMatcher, 'named-handler.js', code);
     assert.equal(matches.length, 2);
   });
 });

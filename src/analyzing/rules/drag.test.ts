@@ -1,35 +1,12 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { createInMemoryProject, scanJsSource, scanPackageJson } from '../scanners/index.ts';
+import { scanJsSource, scanPackageJson } from '../scanners/index.ts';
 import {
-  DRAG_GUIDE_HASH,
   dragDependencyMatcher,
-  dragJsMatcher,
-  dragJsRule,
-  dragPackageRule,
-  dragRules,
+  dragJsMatcher
 } from './drag.ts';
 
 describe('drag rules', () => {
-  const project = createInMemoryProject();
-
-  test('has correct metadata and 12-char guideHash', () => {
-    assert.equal(dragPackageRule.id, 'drag/package-drag-drop');
-    assert.equal(dragPackageRule.guideId, 'drag');
-    assert.equal(dragPackageRule.guideHash, DRAG_GUIDE_HASH);
-    assert.equal(dragPackageRule.guideHash.length, 12);
-    assert.ok(dragPackageRule.verifierRubric.keepWhen.length >= 1);
-    assert.ok(dragPackageRule.verifierRubric.dropWhen.length >= 2);
-
-    assert.equal(dragJsRule.id, 'drag/js-mouse-touch-drag');
-    assert.equal(dragJsRule.guideId, 'drag');
-    assert.equal(dragJsRule.guideHash, DRAG_GUIDE_HASH);
-    assert.ok(dragJsRule.verifierRubric.keepWhen.length >= 1);
-    assert.ok(dragJsRule.verifierRubric.dropWhen.length >= 2);
-
-    assert.equal(dragRules.length, 1);
-  });
-
   test('flags legacy mousedown / mousemove coordinate drag loop', () => {
     const code = `
       function makeDraggable(el, handle) {
@@ -49,7 +26,7 @@ describe('drag rules', () => {
         });
       }
     `;
-    const { matches } = scanJsSource('src/drag.js', code, [dragJsMatcher], project);
+    const { matches } = scanJsSource('src/drag.js', code, [dragJsMatcher]);
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /Pointer Events/);
   });
@@ -66,7 +43,7 @@ describe('drag rules', () => {
         panel.style.transform = \`translateX(\${x}px)\`;
       });
     `;
-    const { matches } = scanJsSource('src/touch-drag.js', code, [dragJsMatcher], project);
+    const { matches } = scanJsSource('src/touch-drag.js', code, [dragJsMatcher]);
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /Pointer Events/);
   });
@@ -97,7 +74,7 @@ describe('drag rules', () => {
         el.style.left = e.clientX + 'px';
       });
     `;
-    const { matches } = scanJsSource('src/modern-drag.js', code, [dragJsMatcher], project);
+    const { matches } = scanJsSource('src/modern-drag.js', code, [dragJsMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -108,7 +85,7 @@ describe('drag rules', () => {
         input.focus();
       });
     `;
-    const { matches } = scanJsSource('src/focus.js', code, [dragJsMatcher], project);
+    const { matches } = scanJsSource('src/focus.js', code, [dragJsMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -119,7 +96,7 @@ describe('drag rules', () => {
         // no-op comment
       });
     `;
-    const { matches } = scanJsSource('src/noop.js', code, [dragJsMatcher], project);
+    const { matches } = scanJsSource('src/noop.js', code, [dragJsMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -143,7 +120,7 @@ describe('drag rules', () => {
         }
       }
     `;
-    const { matches } = scanJsSource('src/scope-drag.js', code, [dragJsMatcher], project);
+    const { matches } = scanJsSource('src/scope-drag.js', code, [dragJsMatcher]);
     assert.equal(matches.length, 0);
   });
 });

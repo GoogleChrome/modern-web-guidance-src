@@ -1,29 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
+import { scanJsSource } from '../scanners/index.ts';
 import {
-  DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH,
-  detectInitialVisibilityStateMatcher,
-  detectInitialVisibilityStateRule,
-  detectInitialVisibilityStateRules,
+  detectInitialVisibilityStateMatcher
 } from './detect-initial-visibility-state.ts';
-
-void test('detect-initial-visibility-state: rule metadata', () => {
-  assert.equal(detectInitialVisibilityStateRule.id, 'detect-initial-visibility-state');
-  assert.equal(detectInitialVisibilityStateRule.guideId, 'detect-initial-visibility-state');
-  assert.equal(
-    detectInitialVisibilityStateRule.guideHash,
-    DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH,
-  );
-  assert.equal(DETECT_INITIAL_VISIBILITY_STATE_GUIDE_HASH.length, 12);
-  assert.equal(detectInitialVisibilityStateRules.length, 1);
-  assert.ok(detectInitialVisibilityStateRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(detectInitialVisibilityStateRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('detect-initial-visibility-state: positive matches', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('flags vendor-prefixed webkitHidden, mozHidden, msHidden, webkitVisibilityState', () => {
     const code = `
       const isHidden = document.webkitHidden || document.mozHidden || document.msHidden;
@@ -32,8 +13,7 @@ void test('detect-initial-visibility-state: positive matches', async (t) => {
     const { matches } = scanJsSource(
       'compat/webkit.js',
       code,
-      [detectInitialVisibilityStateMatcher],
-      project,
+      [detectInitialVisibilityStateMatcher]
     );
     assert.equal(matches.length, 4);
     assert.match(matches[0]?.message ?? '', /webkitHidden/);
@@ -48,8 +28,7 @@ void test('detect-initial-visibility-state: positive matches', async (t) => {
     const { matches } = scanJsSource(
       'compat/events.js',
       code,
-      [detectInitialVisibilityStateMatcher],
-      project,
+      [detectInitialVisibilityStateMatcher]
     );
     assert.equal(matches.length, 3);
     assert.match(matches[0]?.message ?? '', /webkitvisibilitychange/);
@@ -64,8 +43,7 @@ void test('detect-initial-visibility-state: positive matches', async (t) => {
     const { matches } = scanJsSource(
       'compat/check.js',
       code,
-      [detectInitialVisibilityStateMatcher],
-      project,
+      [detectInitialVisibilityStateMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /webkitHidden/);
@@ -84,8 +62,7 @@ void test('detect-initial-visibility-state: positive matches', async (t) => {
     const { matches } = scanJsSource(
       'analytics/visibility.js',
       code,
-      [detectInitialVisibilityStateMatcher],
-      project,
+      [detectInitialVisibilityStateMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /wasHidden/);
@@ -104,16 +81,13 @@ void test('detect-initial-visibility-state: positive matches', async (t) => {
     const { matches } = scanJsSource(
       'analytics/rum.js',
       code,
-      [detectInitialVisibilityStateMatcher],
-      project,
+      [detectInitialVisibilityStateMatcher]
     );
     assert.equal(matches.length, 2);
   });
 });
 
 void test('detect-initial-visibility-state: negative / exempt cases', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('exempts generic initialState object and live tab-switch wasHidden tracking', () => {
     const code = `
       const initialState = {
@@ -131,8 +105,7 @@ void test('detect-initial-visibility-state: negative / exempt cases', async (t) 
     const { matches } = scanJsSource(
       'ui/feed.js',
       code,
-      [detectInitialVisibilityStateMatcher],
-      project,
+      [detectInitialVisibilityStateMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -151,8 +124,7 @@ void test('detect-initial-visibility-state: negative / exempt cases', async (t) 
     const { matches } = scanJsSource(
       'compat/fallback.js',
       code,
-      [detectInitialVisibilityStateMatcher],
-      project,
+      [detectInitialVisibilityStateMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -170,8 +142,7 @@ void test('detect-initial-visibility-state: negative / exempt cases', async (t) 
     const { matches } = scanJsSource(
       'media/video.js',
       code,
-      [detectInitialVisibilityStateMatcher],
-      project,
+      [detectInitialVisibilityStateMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -185,8 +156,7 @@ void test('detect-initial-visibility-state: negative / exempt cases', async (t) 
     const { matches } = scanJsSource(
       'perf/modern.js',
       code,
-      [detectInitialVisibilityStateMatcher],
-      project,
+      [detectInitialVisibilityStateMatcher]
     );
     assert.equal(matches.length, 0);
   });

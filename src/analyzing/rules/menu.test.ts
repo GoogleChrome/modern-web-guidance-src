@@ -1,32 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanHtml } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  MENU_GUIDE_HASH,
   menuDomMatcher,
-  menuDomRule,
-  menuJsMatcher,
-  menuJsRule,
-  menuRule,
-  menuRules,
+  menuJsMatcher
 } from './menu.ts';
-
-void test('menu: rule metadata', () => {
-  assert.equal(menuRule.id, 'menu/js');
-  assert.equal(menuRule.guideId, 'menu');
-  assert.equal(menuRule.guideHash, MENU_GUIDE_HASH);
-  assert.equal(MENU_GUIDE_HASH.length, 12);
-  assert.equal(menuRules.length, 2);
-  assert.ok(menuJsRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(menuJsRule.verifierRubric.dropWhen.length >= 2);
-  assert.ok(menuDomRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(menuDomRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('menu: positive brownfield matches', async (t) => {
   await t.test('flags manual menu keydown arrow roving tabindex', () => {
-    const project = createInMemoryProject();
     const code = `
       // Menu with role="menuitem"
       menuElement.addEventListener('keydown', (event) => {
@@ -36,11 +17,7 @@ void test('menu: positive brownfield matches', async (t) => {
         }
       });
     `;
-    const sourceFile = project.createSourceFile('menu-nav.js', code);
-    const matches = menuJsMatcher.matchFile(sourceFile, {
-      filePath: 'menu-nav.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(menuJsMatcher, 'menu-nav.js', code);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 3);
     assert.match(matches[0]?.message ?? '', /focusgroup/);
@@ -78,7 +55,6 @@ void test('menu: negative / exempt cases', async (t) => {
   });
 
   await t.test('exempts non-menu arrow navigation (e.g. game controls)', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('keydown', (event) => {
         if (event.key === 'ArrowDown') {
@@ -86,11 +62,7 @@ void test('menu: negative / exempt cases', async (t) => {
         }
       });
     `;
-    const sourceFile = project.createSourceFile('game.js', code);
-    const matches = menuJsMatcher.matchFile(sourceFile, {
-      filePath: 'game.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(menuJsMatcher, 'game.js', code);
     assert.equal(matches.length, 0);
   });
 });

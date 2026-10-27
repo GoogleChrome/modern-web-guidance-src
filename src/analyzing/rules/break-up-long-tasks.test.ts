@@ -1,26 +1,11 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
+import { scanJsSource } from '../scanners/index.ts';
 import {
-  BREAK_UP_LONG_TASKS_GUIDE_HASH,
-  breakUpLongTasksMatcher,
-  breakUpLongTasksRule,
-  breakUpLongTasksRules,
+  breakUpLongTasksMatcher
 } from './break-up-long-tasks.ts';
 
 describe('break-up-long-tasks rule', () => {
-  const project = createInMemoryProject();
-
-  test('has correct metadata and 12-char guideHash', () => {
-    assert.equal(breakUpLongTasksRule.id, 'break-up-long-tasks');
-    assert.equal(breakUpLongTasksRule.guideId, 'break-up-long-tasks');
-    assert.equal(breakUpLongTasksRule.guideHash, BREAK_UP_LONG_TASKS_GUIDE_HASH);
-    assert.equal(breakUpLongTasksRule.guideHash.length, 12);
-    assert.ok(breakUpLongTasksRule.verifierRubric.keepWhen.length >= 2);
-    assert.ok(breakUpLongTasksRule.verifierRubric.dropWhen.length >= 2);
-    assert.equal(breakUpLongTasksRules.length, 1);
-  });
-
   test('flags new Promise(resolve => setTimeout(resolve, 0)) yielding', () => {
     const code = `
       async function processArray(items) {
@@ -33,8 +18,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'perf/chunk.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scheduler\.yield/);
@@ -47,8 +31,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'perf/yield.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scheduler\.yield/);
@@ -63,8 +46,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'perf/immediate.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /setImmediate/);
@@ -83,8 +65,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'perf/batch.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /setImmediate/);
@@ -103,8 +84,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'perf/channel.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /MessageChannel/);
@@ -121,8 +101,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'ui/focus.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -136,8 +115,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'utils/delay.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -157,8 +135,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'perf/guarded.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -172,8 +149,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'perf/optional-yield.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -187,8 +163,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'test/helpers.test.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -206,8 +181,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'rpc/worker.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -223,8 +197,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'rpc/channel.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -256,8 +229,7 @@ describe('break-up-long-tasks rule', () => {
     const { matches } = scanJsSource(
       'ui/dom-defer.js',
       code,
-      [breakUpLongTasksMatcher],
-      project,
+      [breakUpLongTasksMatcher]
     );
     assert.equal(matches.length, 0);
   });

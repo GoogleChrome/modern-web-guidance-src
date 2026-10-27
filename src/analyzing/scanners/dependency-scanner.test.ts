@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { DependencyRuleMatcher } from '../schema.ts';
 import {
+  createDependencyMatcher,
   isPureNodeBackendOrCliPackage,
   scanPackageJson,
   scanVendoredLibraryFile,
@@ -468,6 +469,32 @@ describe('dependency-scanner runtime & client-side filtering', () => {
     );
     assert.equal(chosenMatches.length, 1);
     assert.equal(chosenMatches[0]?.line, 1);
+  });
+
+  it('createDependencyMatcher formats package matches and honors null skips', () => {
+    const matcher = createDependencyMatcher(['aos', 'franc'], (pkgName, versionRange, ctx) => {
+      if (pkgName === 'franc' && ctx.packageJson.private === true) {
+        return null;
+      }
+      return `Replace "${pkgName}" (${versionRange})`;
+    });
+
+    const pkg = JSON.stringify(
+      {
+        private: true,
+        dependencies: {
+          react: '^18.2.0',
+          aos: '^2.3.4',
+          franc: '^6.1.0',
+        },
+      },
+      null,
+      2,
+    );
+
+    const matches = scanPackageJson('package.json', pkg, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.message, 'Replace "aos" (^2.3.4)');
   });
 });
 

@@ -3,7 +3,6 @@ import {
   SyntaxKind,
   type CallExpression,
   type NewExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
   isDomClassOrAttrMutation,
@@ -13,10 +12,9 @@ import {
   resolveCallableNode,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -107,44 +105,12 @@ function matchScrollabilityResizeObserver(newExpr: NewExpression): string | null
   return 'ResizeObserver comparing scrollWidth/clientWidth or scrollHeight/clientHeight to toggle overflow affordance classes can be modernized with CSS @container scroll-state(scrollable: ...).';
 }
 
-export const scrollabilityAffordanceHintsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const scrollabilityAffordanceHintsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['scrollWidth', 'scrollHeight'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (Node.isCallExpression(node)) {
-        if (isGuardedByScrollState(node)) {
-          return;
-        }
-        const message = matchScrollabilityListener(node);
-        if (message) {
-          matches.push({
-            line: node.getStartLineNumber(),
-            message,
-          });
-        }
-        return;
-      }
-
-      if (Node.isNewExpression(node)) {
-        if (isGuardedByScrollState(node)) {
-          return;
-        }
-        const message = matchScrollabilityResizeObserver(node);
-        if (message) {
-          matches.push({
-            line: node.getStartLineNumber(),
-            message,
-          });
-        }
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node) => isGuardedByScrollState(node),
+  matchCall: matchScrollabilityListener,
+  matchNew: matchScrollabilityResizeObserver,
+});
 
 export const scrollabilityAffordanceHintsRule: AnalyzerRule = {
   id: 'scrollability-affordance-hints',

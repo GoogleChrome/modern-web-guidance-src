@@ -6,16 +6,14 @@ import {
   type SourceFile,
 } from 'ts-morph';
 import {
-  getSafeModuleSpecifier,
-  isGlobalReference,
+  isLibraryReference,
   isProtectedByFeatureGuard,
-  resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
@@ -33,192 +31,6 @@ const TEXT_WRAP_GUARD_TOKENS = [
   'text-wrap',
   'textWrap',
 ] as const;
-
-function matchesPackageSpec(
-  spec: string | null,
-  packages: readonly string[],
-): boolean {
-  return (
-    spec !== null &&
-    packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
-  );
-}
-
-function isRequireOfPackage(
-  node: Node,
-  packages: readonly string[],
-): boolean {
-  const unwrapped = unwrapExpression(node);
-  if (!Node.isCallExpression(unwrapped)) {
-    return false;
-  }
-  const callee = unwrapExpression(unwrapped.getExpression());
-  const firstArg = unwrapped.getArguments()[0];
-  if (
-    Node.isIdentifier(callee) &&
-    callee.getText() === 'require' &&
-    firstArg &&
-    Node.isStringLiteral(firstArg)
-  ) {
-    return matchesPackageSpec(firstArg.getLiteralText(), packages);
-  }
-  return false;
-}
-
-function checkEnclosingBindings(
-  identNode: Node,
-  localName: string,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean,
-): 'matched' | 'shadowed' | 'none' {
-  let current: Node | undefined = identNode.getParent();
-  while (current) {
-    if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isFunctionExpression(current) ||
-      Node.isArrowFunction(current) ||
-      Node.isMethodDeclaration(current)
-    ) {
-      if (
-        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
-        current.getName() === localName
-      ) {
-        return 'shadowed';
-      }
-      for (const param of current.getParameters()) {
-        for (const el of param.getDescendantsOfKind(identNode.getKind())) {
-          if (el.getText() === localName && el.getParent() !== current) {
-            return 'shadowed';
-          }
-        }
-      }
-    }
-
-    if (Node.isBlock(current) || Node.isSourceFile(current)) {
-      for (const stmt of current.getStatements()) {
-        if (!Node.isVariableStatement(stmt)) {
-          continue;
-        }
-        for (const decl of stmt.getDeclarationList().getDeclarations()) {
-          const nameNode = decl.getNameNode();
-          if (Node.isObjectBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (el.getName() === localName) {
-                const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
-                const init = decl.getInitializer();
-                if (
-                  init &&
-                  (propName === identName || (allowDefaultImport && propName === 'default')) &&
-                  isRequireOfPackage(resolveLocalExpression(init, 2), packages)
-                ) {
-                  return 'matched';
-                }
-                return 'shadowed';
-              }
-            }
-          } else if (Node.isArrayBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (Node.isBindingElement(el) && el.getName() === localName) {
-                return 'shadowed';
-              }
-            }
-          }
-        }
-      }
-    }
-
-    current = current.getParent();
-  }
-  return 'none';
-}
-
-function isLibraryReference(
-  node: Node,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean = true,
-  allowGlobal: boolean = true,
-): boolean {
-  const unwrapped = unwrapExpression(node);
-
-  if (allowDefaultImport && isRequireOfPackage(unwrapped, packages)) {
-    return true;
-  }
-
-  if (Node.isPropertyAccessExpression(unwrapped)) {
-    const propName = unwrapped.getName();
-    if (propName === identName || (allowDefaultImport && propName === 'default')) {
-      const receiver = unwrapped.getExpression();
-      if (isRequireOfPackage(resolveLocalExpression(receiver, 2), packages)) {
-        return true;
-      }
-    }
-  }
-
-  if (Node.isIdentifier(unwrapped)) {
-    const localName = unwrapped.getText();
-    const sourceFile = unwrapped.getSourceFile();
-
-    for (const imp of sourceFile.getImportDeclarations()) {
-      const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
-      if (
-        imp.getDefaultImport()?.getText() === localName ||
-        imp.getNamespaceImport()?.getText() === localName
-      ) {
-        return allowDefaultImport && matchesPkg;
-      }
-      for (const named of imp.getNamedImports()) {
-        const importedName = named.getName();
-        const boundName = named.getAliasNode()?.getText() ?? importedName;
-        if (boundName === localName) {
-          return (
-            matchesPkg &&
-            (importedName === identName ||
-              (allowDefaultImport && importedName === 'default'))
-          );
-        }
-      }
-    }
-
-    const bindingStatus = checkEnclosingBindings(
-      unwrapped,
-      localName,
-      identName,
-      packages,
-      allowDefaultImport,
-    );
-    if (bindingStatus === 'matched') {
-      return true;
-    }
-    if (bindingStatus === 'shadowed') {
-      return false;
-    }
-
-    const resolved = resolveLocalExpression(unwrapped, 2);
-    if (resolved !== unwrapped) {
-      if (allowDefaultImport && isRequireOfPackage(resolved, packages)) {
-        return true;
-      }
-      if (Node.isPropertyAccessExpression(resolved)) {
-        const propName = resolved.getName();
-        if (
-          (propName === identName || (allowDefaultImport && propName === 'default')) &&
-          isRequireOfPackage(resolveLocalExpression(resolved.getExpression(), 2), packages)
-        ) {
-          return true;
-        }
-      }
-      return false;
-    }
-  }
-
-  if (allowGlobal && isGlobalReference(unwrapped, identName)) {
-    return true;
-  }
-
-  return false;
-}
 
 function matchBalanceTextCall(callExpr: CallExpression): string | null {
   const callee = unwrapExpression(callExpr.getExpression());
@@ -253,8 +65,7 @@ function matchBalancerJsx(
       tagNameNode,
       'Balancer',
       ['react-wrap-balancer', 'vue-wrap-balancer'],
-      true,
-      false,
+      { allowGlobal: false },
     )
   ) {
     return '<Balancer> JavaScript text-wrapping component can be modernized with native CSS text-wrap: balance.';
@@ -262,19 +73,12 @@ function matchBalancerJsx(
   return null;
 }
 
-export const improveTextLayoutAndLegibilityPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: TEXT_BALANCE_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy JavaScript text-balancing package "${pkgName}" (${versionRange}) can be modernized with native CSS text-wrap: balance and text-wrap: pretty.`,
-    };
-  },
-};
+export const improveTextLayoutAndLegibilityPackageMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    TEXT_BALANCE_PACKAGES,
+    (pkgName, versionRange) =>
+      `Legacy JavaScript text-balancing package "${pkgName}" (${versionRange}) can be modernized with native CSS text-wrap: balance and text-wrap: pretty.`,
+  );
 
 export const improveTextLayoutAndLegibilityJsMatcher: JsRuleMatcher = {
   kind: 'js',

@@ -3,8 +3,10 @@ import { execSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
+import { pathToFileURL } from 'node:url';
 import { scanAllGuides } from '../../core/guide-validation.ts';
 import { getSeededSensitivityTestCases } from '../eval/update-eval.ts';
+import type { AnalyzerRule } from '../schema.ts';
 import {
   ALL_RULES,
   POST_SELECTION_TUNED_GUIDE_IDS,
@@ -13,6 +15,19 @@ import {
   RULE_REGISTRY,
   SUSPENDED_QUALIFIED_GUIDE_IDS,
 } from './index.ts';
+
+function isAnalyzerRuleExport(value: unknown): value is AnalyzerRule {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    'id' in value &&
+    'guideId' in value &&
+    'guideHash' in value &&
+    'matcher' in value &&
+    'verifierRubric' in value
+  );
+}
 
 describe('rule registry architectural invariants', () => {
   it('enforces that every rule module file on disk is registered in RULE_REGISTRY', () => {
@@ -137,18 +152,34 @@ describe('rule registry architectural invariants', () => {
     );
   });
 
-  it('validates rule properties for all rules in ALL_RULES', async (t) => {
-    for (const rule of ALL_RULES) {
-      await t.test(`rule ${rule.id} (${rule.guideId}) has valid structure`, () => {
-        assert.ok(rule.id, 'rule has id');
-        assert.ok(rule.guideId, 'rule has guideId');
-        assert.ok(rule.guideHash, 'rule has guideHash');
-        assert.strictEqual(rule.guideHash.length, 12, 'guideHash is 12 chars');
-        assert.ok(rule.summary, 'rule has summary');
-        assert.ok(rule.matcher, 'rule has matcher');
-        assert.ok(rule.verifierRubric.keepWhen.length > 0, 'has keepWhen');
-        assert.ok(rule.verifierRubric.dropWhen.length > 0, 'has dropWhen');
-      });
+  it('validates rule properties for all registered and exported AnalyzerRule objects', async (t) => {
+    const rulesDir = resolve(import.meta.dirname);
+    const seenRegisteredRuleIds = new Set<string>();
+    for (const entry of RULE_REGISTRY) {
+      if (entry.lifecycle.status === 'retired') {
+        continue;
+      }
+      const modUrl = pathToFileURL(join(rulesDir, `${entry.guideId}.ts`)).href;
+      const mod: Record<string, unknown> = await import(modUrl);
+      const exportedRules = Object.values(mod).filter(isAnalyzerRuleExport);
+      const rulesToCheck = new Set<AnalyzerRule>([...entry.rules, ...exportedRules]);
+
+      for (const rule of entry.rules) {
+        assert.ok(!seenRegisteredRuleIds.has(rule.id), `duplicate rule id: ${rule.id}`);
+        seenRegisteredRuleIds.add(rule.id);
+      }
+
+      for (const rule of rulesToCheck) {
+        await t.test(`rule ${rule.id} (${rule.guideId}) has valid structure`, () => {
+          assert.ok(rule.id, 'rule has id');
+          assert.strictEqual(rule.guideId, entry.guideId, 'rule.guideId matches entry.guideId');
+          assert.match(rule.guideHash, /^[0-9a-f]{12}$/, 'guideHash is 12 lowercase hex chars');
+          assert.ok(rule.summary, 'rule has summary');
+          assert.ok(rule.matcher, 'rule has matcher');
+          assert.ok(rule.verifierRubric.keepWhen.length > 0, 'has keepWhen');
+          assert.ok(rule.verifierRubric.dropWhen.length > 0, 'has dropWhen');
+        });
+      }
     }
   });
 });

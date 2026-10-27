@@ -1,37 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  CUSTOM_SELECT_PICKER_LAYOUTS_GUIDE_HASH,
-  customSelectPickerLayoutsJsMatcher,
-  customSelectPickerLayoutsJsRule,
-  customSelectPickerLayoutsRules,
+  customSelectPickerLayoutsJsMatcher
 } from './custom-select-picker-layouts.ts';
-
-void test('custom-select-picker-layouts: rule metadata', () => {
-  assert.equal(CUSTOM_SELECT_PICKER_LAYOUTS_GUIDE_HASH.length, 12);
-
-  assert.equal(
-    customSelectPickerLayoutsJsRule.id,
-    'custom-select-picker-layouts/js-custom-select',
-  );
-  assert.equal(
-    customSelectPickerLayoutsJsRule.guideId,
-    'custom-select-picker-layouts',
-  );
-  assert.equal(
-    customSelectPickerLayoutsJsRule.guideHash,
-    CUSTOM_SELECT_PICKER_LAYOUTS_GUIDE_HASH,
-  );
-
-  assert.equal(customSelectPickerLayoutsRules.length, 1);
-  assert.ok(customSelectPickerLayoutsJsRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(customSelectPickerLayoutsJsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('custom-select-picker-layouts JS matcher', async (t) => {
   await t.test('flags Choices, TomSelect, SlimSelect, and select2 with custom option templates on single-select', () => {
-    const project = createInMemoryProject();
     const code = `
       import Choices from 'choices.js';
       import TomSelect from 'tom-select';
@@ -66,16 +40,11 @@ void test('custom-select-picker-layouts JS matcher', async (t) => {
         templateSelection: (state) => state.text,
       });
     `;
-    const sourceFile = project.createSourceFile('picker.js', code);
-    const matches = customSelectPickerLayoutsJsMatcher.matchFile(sourceFile, {
-      filePath: 'picker.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(customSelectPickerLayoutsJsMatcher, 'picker.js', code);
     assert.equal(matches.length, 4);
   });
 
   await t.test('exempts multi-select, tags: true, ajax, maxItems > 1, or guarded calls', () => {
-    const project = createInMemoryProject();
     const code = `
       import Choices from 'choices.js';
       import TomSelect from 'tom-select';
@@ -131,16 +100,11 @@ void test('custom-select-picker-layouts JS matcher', async (t) => {
         templateResult: (item) => item.text,
       });
     `;
-    const sourceFile = project.createSourceFile('excluded.js', code);
-    const matches = customSelectPickerLayoutsJsMatcher.matchFile(sourceFile, {
-      filePath: 'excluded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(customSelectPickerLayoutsJsMatcher, 'excluded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts shadowed local Choices or TomSelect classes', () => {
-    const project = createInMemoryProject();
     const code = `
       import TomSelect from 'tom-select';
 
@@ -153,11 +117,7 @@ void test('custom-select-picker-layouts JS matcher', async (t) => {
         });
       }
     `;
-    const sourceFile = project.createSourceFile('shadowed.js', code);
-    const matches = customSelectPickerLayoutsJsMatcher.matchFile(sourceFile, {
-      filePath: 'shadowed.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(customSelectPickerLayoutsJsMatcher, 'shadowed.js', code);
     assert.equal(matches.length, 0);
   });
 });

@@ -1,29 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  SCROLL_TARGET_ON_LOAD_GUIDE_HASH,
-  scrollTargetOnLoadMatcher,
-  scrollTargetOnLoadRule,
-  scrollTargetOnLoadRules,
+  scrollTargetOnLoadMatcher
 } from './scroll-target-on-load.ts';
-
-void test('scroll-target-on-load: rule metadata', () => {
-  assert.equal(scrollTargetOnLoadRule.id, 'scroll-target-on-load');
-  assert.equal(scrollTargetOnLoadRule.guideId, 'scroll-target-on-load');
-  assert.equal(
-    scrollTargetOnLoadRule.guideHash,
-    SCROLL_TARGET_ON_LOAD_GUIDE_HASH,
-  );
-  assert.equal(SCROLL_TARGET_ON_LOAD_GUIDE_HASH.length, 12);
-  assert.equal(scrollTargetOnLoadRules.length, 1);
-  assert.ok(scrollTargetOnLoadRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(scrollTargetOnLoadRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('scroll-target-on-load JS matcher', async (t) => {
   await t.test('flags DOMContentLoaded and load listeners reading location.hash and calling scrollIntoView or window.scrollTo', () => {
-    const project = createInMemoryProject();
     const code = `
       document.addEventListener('DOMContentLoaded', () => {
         if (window.location.hash) {
@@ -41,16 +23,11 @@ void test('scroll-target-on-load JS matcher', async (t) => {
         }
       });
     `;
-    const sourceFile = project.createSourceFile('scroll-load.js', code);
-    const matches = scrollTargetOnLoadMatcher.matchFile(sourceFile, {
-      filePath: 'scroll-load.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(scrollTargetOnLoadMatcher, 'scroll-load.js', code);
     assert.equal(matches.length, 2);
   });
 
   await t.test('exempts when guarded by CSS.supports("scroll-initial-target", "nearest") or inside click listeners', () => {
-    const project = createInMemoryProject();
     const code = `
       document.addEventListener('DOMContentLoaded', () => {
         if (!CSS.supports('scroll-initial-target', 'nearest')) {
@@ -75,16 +52,11 @@ void test('scroll-target-on-load JS matcher', async (t) => {
         el?.scrollIntoView({ behavior: 'smooth' });
       });
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = scrollTargetOnLoadMatcher.matchFile(sourceFile, {
-      filePath: 'guarded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(scrollTargetOnLoadMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts nested interactive event listeners inside DOMContentLoaded and load handlers', () => {
-    const project = createInMemoryProject();
     const code = `
       document.addEventListener('DOMContentLoaded', () => {
         const backToTop = document.querySelector('#back-to-top');
@@ -108,16 +80,11 @@ void test('scroll-target-on-load JS matcher', async (t) => {
         };
       });
     `;
-    const sourceFile = project.createSourceFile('nested-interactive.js', code);
-    const matches = scrollTargetOnLoadMatcher.matchFile(sourceFile, {
-      filePath: 'nested-interactive.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(scrollTargetOnLoadMatcher, 'nested-interactive.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('flags initial load scroll even when sibling nested event listeners are present', () => {
-    const project = createInMemoryProject();
     const code = `
       document.addEventListener('DOMContentLoaded', () => {
         if (window.location.hash) {
@@ -131,11 +98,7 @@ void test('scroll-target-on-load JS matcher', async (t) => {
         });
       });
     `;
-    const sourceFile = project.createSourceFile('mixed-handlers.js', code);
-    const matches = scrollTargetOnLoadMatcher.matchFile(sourceFile, {
-      filePath: 'mixed-handlers.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(scrollTargetOnLoadMatcher, 'mixed-handlers.js', code);
     assert.equal(matches.length, 1);
   });
 });

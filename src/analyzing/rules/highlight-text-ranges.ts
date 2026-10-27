@@ -1,20 +1,17 @@
 import {
   Node,
   type CallExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
   isGlobalReference,
-  isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -107,43 +104,18 @@ function matchMarkJsCall(callExpr: CallExpression): string | null {
   return `new Mark().${methodName}() mutates DOM nodes to highlight text; modernize with the CSS Custom Highlight API (new Highlight(), CSS.highlights.set(), and ::highlight()).`;
 }
 
-export const highlightTextRangesPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: MARKJS_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy DOM text-highlighting package "${pkgName}" (${versionRange}) can be modernized with the native CSS Custom Highlight API (CSS.highlights and ::highlight()).`,
-    };
-  },
-};
+export const highlightTextRangesPackageMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    MARKJS_PACKAGES,
+    (pkgName, versionRange) =>
+      `Legacy DOM text-highlighting package "${pkgName}" (${versionRange}) can be modernized with the native CSS Custom Highlight API (CSS.highlights and ::highlight()).`,
+  );
 
-export const highlightTextRangesJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const highlightTextRangesJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['new Mark', '.mark(', '.markRegExp(', '.unmark(', 'Mark('],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const msg = matchMarkJsCall(node);
-      if (msg && !isProtectedByFeatureGuard(node, HIGHLIGHT_GUARD_TOKENS)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message: msg,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  featureGuardTokens: HIGHLIGHT_GUARD_TOKENS,
+  matchCall: (node) => matchMarkJsCall(node),
+});
 
 export const highlightTextRangesPackageRule: AnalyzerRule = {
   id: 'highlight-text-ranges/package-markjs',

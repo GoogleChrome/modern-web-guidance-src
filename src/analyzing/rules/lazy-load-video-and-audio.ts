@@ -11,12 +11,11 @@ import {
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -115,47 +114,18 @@ function matchMediaLazyObserver(
   return 'IntersectionObserver swapping data-src / data-poster onto <video> or <audio> elements can be modernized with native loading="lazy" on <video> and <audio>.';
 }
 
-export const lazyLoadVideoAndAudioPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: LAZY_MEDIA_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy lazy-loading library "${pkgName}" (${versionRange}) can be modernized with native loading="lazy" on <video> and <audio> elements.`,
-    };
-  },
-};
+export const lazyLoadVideoAndAudioPackageMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    LAZY_MEDIA_PACKAGES,
+    (pkgName, versionRange) =>
+      `Legacy lazy-loading library "${pkgName}" (${versionRange}) can be modernized with native loading="lazy" on <video> and <audio> elements.`,
+  );
 
-export const lazyLoadVideoAndAudioJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const lazyLoadVideoAndAudioJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['IntersectionObserver'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isNewExpression(node)) {
-        return;
-      }
-
-      if (isGuardedByLazyMediaSupport(node)) {
-        return;
-      }
-
-      const msg = matchMediaLazyObserver(node, sourceFile);
-      if (msg) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message: msg,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node) => isGuardedByLazyMediaSupport(node),
+  matchNew: (node, sourceFile) => matchMediaLazyObserver(node, sourceFile),
+});
 
 export const lazyLoadVideoAndAudioPackageRule: AnalyzerRule = {
   id: 'lazy-load-video-and-audio/package-lazyload',

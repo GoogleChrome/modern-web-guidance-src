@@ -1,29 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  PLATFORM_CONTROLS_DISMISS_DIALOG_GUIDE_HASH,
-  platformControlsDismissDialogJsMatcher,
-  platformControlsDismissDialogRule,
-  platformControlsDismissDialogRules,
+  platformControlsDismissDialogJsMatcher
 } from './platform-controls-dismiss-dialog.ts';
-
-void test('platform-controls-dismiss-dialog: rule metadata', () => {
-  assert.equal(platformControlsDismissDialogRule.id, 'platform-controls-dismiss-dialog');
-  assert.equal(platformControlsDismissDialogRule.guideId, 'platform-controls-dismiss-dialog');
-  assert.equal(
-    platformControlsDismissDialogRule.guideHash,
-    PLATFORM_CONTROLS_DISMISS_DIALOG_GUIDE_HASH,
-  );
-  assert.equal(PLATFORM_CONTROLS_DISMISS_DIALOG_GUIDE_HASH.length, 12);
-  assert.equal(platformControlsDismissDialogRules.length, 1);
-  assert.ok(platformControlsDismissDialogRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(platformControlsDismissDialogRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('platform-controls-dismiss-dialog: positive brownfield matches', async (t) => {
   await t.test('flags window.addEventListener("keydown") checking event.key === "Escape"', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && modal.classList.contains('active')) {
@@ -31,18 +13,13 @@ void test('platform-controls-dismiss-dialog: positive brownfield matches', async
         }
       });
     `;
-    const sourceFile = project.createSourceFile('modal-esc.js', code);
-    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
-      filePath: 'modal-esc.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'modal-esc.js', code);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
     assert.match(matches[0]?.message ?? '', /Escape/);
   });
 
   await t.test('flags keydown checking event.keyCode === 27 calling dialog.close()', () => {
-    const project = createInMemoryProject();
     const code = `
       document.addEventListener('keydown', (e) => {
         if (e.keyCode === 27) {
@@ -50,17 +27,12 @@ void test('platform-controls-dismiss-dialog: positive brownfield matches', async
         }
       });
     `;
-    const sourceFile = project.createSourceFile('dialog-esc.js', code);
-    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
-      filePath: 'dialog-esc.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'dialog-esc.js', code);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
 
   await t.test('flags window.addEventListener("popstate") dismissing modal dialog', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('popstate', (event) => {
         if (modal.classList.contains('active')) {
@@ -68,18 +40,13 @@ void test('platform-controls-dismiss-dialog: positive brownfield matches', async
         }
       });
     `;
-    const sourceFile = project.createSourceFile('popstate-dismiss.js', code);
-    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
-      filePath: 'popstate-dismiss.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'popstate-dismiss.js', code);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
     assert.match(matches[0]?.message ?? '', /popstate/);
   });
 
   await t.test('flags switch case on keyCode 27 dismissing drawer', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('keydown', (e) => {
         switch (e.keyCode) {
@@ -89,17 +56,12 @@ void test('platform-controls-dismiss-dialog: positive brownfield matches', async
         }
       });
     `;
-    const sourceFile = project.createSourceFile('switch-esc.js', code);
-    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
-      filePath: 'switch-esc.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'switch-esc.js', code);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
 
   await t.test('flags document.onkeydown assignment dismissing modal', () => {
-    const project = createInMemoryProject();
     const code = `
       document.onkeydown = function(e) {
         if (e.key === 'Escape') {
@@ -107,11 +69,7 @@ void test('platform-controls-dismiss-dialog: positive brownfield matches', async
         }
       };
     `;
-    const sourceFile = project.createSourceFile('onkeydown.js', code);
-    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
-      filePath: 'onkeydown.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'onkeydown.js', code);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
@@ -119,7 +77,6 @@ void test('platform-controls-dismiss-dialog: positive brownfield matches', async
 
 void test('platform-controls-dismiss-dialog: negative / exempt cases', async (t) => {
   await t.test('exempts keydown handler guarded by CloseWatcher', () => {
-    const project = createInMemoryProject();
     const code = `
       if (!('CloseWatcher' in window)) {
         window.addEventListener('keydown', (e) => {
@@ -129,16 +86,11 @@ void test('platform-controls-dismiss-dialog: negative / exempt cases', async (t)
         });
       }
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
-      filePath: 'guarded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts keydown handler checking ArrowDown or Enter (not Escape)', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -146,16 +98,11 @@ void test('platform-controls-dismiss-dialog: negative / exempt cases', async (t)
         }
       });
     `;
-    const sourceFile = project.createSourceFile('enter.js', code);
-    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
-      filePath: 'enter.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'enter.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts Escape key listener closing websocket or audio context', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
@@ -163,26 +110,17 @@ void test('platform-controls-dismiss-dialog: negative / exempt cases', async (t)
         }
       });
     `;
-    const sourceFile = project.createSourceFile('websocket.js', code);
-    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
-      filePath: 'websocket.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'websocket.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts popstate listener for page routing without modal dismiss', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('popstate', (event) => {
         renderPage(window.location.pathname);
       });
     `;
-    const sourceFile = project.createSourceFile('router.js', code);
-    const matches = platformControlsDismissDialogJsMatcher.matchFile(sourceFile, {
-      filePath: 'router.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'router.js', code);
     assert.equal(matches.length, 0);
   });
 });

@@ -3,19 +3,16 @@ import {
   SyntaxKind,
   type CallExpression,
   type NewExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
-  getSafeModuleSpecifier,
-  isGlobalReference,
+  isLibraryReference,
   isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -31,192 +28,6 @@ const NACL_SIGN_METHODS: ReadonlySet<string> = new Set([
   'detached',
   'keyPair',
 ]);
-
-function matchesPackageSpec(
-  spec: string | null,
-  packages: readonly string[],
-): boolean {
-  return (
-    spec !== null &&
-    packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
-  );
-}
-
-function isRequireOfPackage(
-  node: Node,
-  packages: readonly string[],
-): boolean {
-  const unwrapped = unwrapExpression(node);
-  if (!Node.isCallExpression(unwrapped)) {
-    return false;
-  }
-  const callee = unwrapExpression(unwrapped.getExpression());
-  const firstArg = unwrapped.getArguments()[0];
-  if (
-    Node.isIdentifier(callee) &&
-    callee.getText() === 'require' &&
-    firstArg &&
-    Node.isStringLiteral(firstArg)
-  ) {
-    return matchesPackageSpec(firstArg.getLiteralText(), packages);
-  }
-  return false;
-}
-
-function checkEnclosingBindings(
-  identNode: Node,
-  localName: string,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean,
-): 'matched' | 'shadowed' | 'none' {
-  let current: Node | undefined = identNode.getParent();
-  while (current) {
-    if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isFunctionExpression(current) ||
-      Node.isArrowFunction(current) ||
-      Node.isMethodDeclaration(current)
-    ) {
-      if (
-        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
-        current.getName() === localName
-      ) {
-        return 'shadowed';
-      }
-      for (const param of current.getParameters()) {
-        for (const el of param.getDescendantsOfKind(identNode.getKind())) {
-          if (el.getText() === localName && el.getParent() !== current) {
-            return 'shadowed';
-          }
-        }
-      }
-    }
-
-    if (Node.isBlock(current) || Node.isSourceFile(current)) {
-      for (const stmt of current.getStatements()) {
-        if (!Node.isVariableStatement(stmt)) {
-          continue;
-        }
-        for (const decl of stmt.getDeclarationList().getDeclarations()) {
-          const nameNode = decl.getNameNode();
-          if (Node.isObjectBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (el.getName() === localName) {
-                const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
-                const init = decl.getInitializer();
-                if (
-                  init &&
-                  (propName === identName || (allowDefaultImport && propName === 'default')) &&
-                  isRequireOfPackage(resolveLocalExpression(init, 2), packages)
-                ) {
-                  return 'matched';
-                }
-                return 'shadowed';
-              }
-            }
-          } else if (Node.isArrayBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (Node.isBindingElement(el) && el.getName() === localName) {
-                return 'shadowed';
-              }
-            }
-          }
-        }
-      }
-    }
-
-    current = current.getParent();
-  }
-  return 'none';
-}
-
-function isLibraryReference(
-  node: Node,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean = true,
-  allowGlobal: boolean = true,
-): boolean {
-  const unwrapped = unwrapExpression(node);
-
-  if (allowDefaultImport && isRequireOfPackage(unwrapped, packages)) {
-    return true;
-  }
-
-  if (Node.isPropertyAccessExpression(unwrapped)) {
-    const propName = unwrapped.getName();
-    if (propName === identName || (allowDefaultImport && propName === 'default')) {
-      const receiver = unwrapped.getExpression();
-      if (isRequireOfPackage(resolveLocalExpression(receiver, 2), packages)) {
-        return true;
-      }
-    }
-  }
-
-  if (Node.isIdentifier(unwrapped)) {
-    const localName = unwrapped.getText();
-    const sourceFile = unwrapped.getSourceFile();
-
-    for (const imp of sourceFile.getImportDeclarations()) {
-      const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
-      if (
-        imp.getDefaultImport()?.getText() === localName ||
-        imp.getNamespaceImport()?.getText() === localName
-      ) {
-        return allowDefaultImport && matchesPkg;
-      }
-      for (const named of imp.getNamedImports()) {
-        const importedName = named.getName();
-        const boundName = named.getAliasNode()?.getText() ?? importedName;
-        if (boundName === localName) {
-          return (
-            matchesPkg &&
-            (importedName === identName ||
-              (allowDefaultImport && importedName === 'default'))
-          );
-        }
-      }
-    }
-
-    const bindingStatus = checkEnclosingBindings(
-      unwrapped,
-      localName,
-      identName,
-      packages,
-      allowDefaultImport,
-    );
-    if (bindingStatus === 'matched') {
-      return true;
-    }
-    if (bindingStatus === 'shadowed') {
-      return false;
-    }
-
-    const resolved = resolveLocalExpression(unwrapped, 2);
-    if (resolved !== unwrapped) {
-      if (allowDefaultImport && isRequireOfPackage(resolved, packages)) {
-        return true;
-      }
-      if (Node.isPropertyAccessExpression(resolved)) {
-        const propName = resolved.getName();
-        if (
-          (propName === identName || (allowDefaultImport && propName === 'default')) &&
-          isRequireOfPackage(resolveLocalExpression(resolved.getExpression(), 2), packages)
-        ) {
-          return true;
-        }
-      }
-      return false;
-    }
-  }
-
-  if (allowGlobal && isGlobalReference(unwrapped, identName)) {
-    return true;
-  }
-
-  return false;
-}
 
 function isNaclSignObject(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
@@ -247,7 +58,9 @@ function matchSignatureNewExpression(newExpr: NewExpression): string | null {
         isLibraryReference(kjurNode, 'KJUR', ['jsrsasign']) ||
         (Node.isPropertyAccessExpression(kjurNode) &&
           kjurNode.getName() === 'KJUR' &&
-          isLibraryReference(kjurNode.getExpression(), 'jsrsasign', ['jsrsasign'], true, false));
+          isLibraryReference(kjurNode.getExpression(), 'jsrsasign', ['jsrsasign'], {
+            allowGlobal: false,
+          }));
       if (isKjurRef) {
         return 'new KJUR.crypto.Signature() digital signature can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).';
       }
@@ -266,11 +79,12 @@ function matchSignatureNewExpression(newExpr: NewExpression): string | null {
   }
 
   if (Node.isIdentifier(callee)) {
+    const namedOnly = { allowDefaultImport: false, allowGlobal: false } as const;
     const isEllipticCtor =
-      isLibraryReference(callee, 'ec', ['elliptic'], false, false) ||
-      isLibraryReference(callee, 'EC', ['elliptic'], false, false) ||
-      isLibraryReference(callee, 'eddsa', ['elliptic'], false, false) ||
-      isLibraryReference(callee, 'EdDSA', ['elliptic'], false, false);
+      isLibraryReference(callee, 'ec', ['elliptic'], namedOnly) ||
+      isLibraryReference(callee, 'EC', ['elliptic'], namedOnly) ||
+      isLibraryReference(callee, 'eddsa', ['elliptic'], namedOnly) ||
+      isLibraryReference(callee, 'EdDSA', ['elliptic'], namedOnly);
     if (isEllipticCtor) {
       if (isUnsupportedEllipticCurve(newExpr.getArguments())) {
         return null;
@@ -333,36 +147,12 @@ function matchSignatureCallExpression(callExpr: CallExpression): string | null {
   return null;
 }
 
-export const digitalSignaturesJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const digitalSignaturesJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['KJUR', 'nacl', 'elliptic', 'ec', 'EC', 'eddsa', 'EdDSA'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isNewExpression(node) && !Node.isCallExpression(node)) {
-        return;
-      }
-
-      if (isGuardedByWebCryptoCheck(node)) {
-        return;
-      }
-
-      const msg = Node.isNewExpression(node)
-        ? matchSignatureNewExpression(node)
-        : matchSignatureCallExpression(node);
-
-      if (msg) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message: msg,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node) => isGuardedByWebCryptoCheck(node),
+  matchCall: (node) => matchSignatureCallExpression(node),
+  matchNew: (node) => matchSignatureNewExpression(node),
+});
 
 export const digitalSignaturesJsRule: AnalyzerRule = {
   id: 'digital-signatures/js-signature',

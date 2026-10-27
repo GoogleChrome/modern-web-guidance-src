@@ -10,12 +10,11 @@ import {
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -230,47 +229,18 @@ function matchQuicklinkCall(
   return null;
 }
 
-export const improveNextPageLoadPerformancePackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: PREFETCH_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy link-prefetching package "${pkgName}" (${versionRange}) can be modernized with the declarative Speculation Rules API (<script type="speculationrules">).`,
-    };
-  },
-};
+export const improveNextPageLoadPerformancePackageMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    PREFETCH_PACKAGES,
+    (pkgName, versionRange) =>
+      `Legacy link-prefetching package "${pkgName}" (${versionRange}) can be modernized with the declarative Speculation Rules API (<script type="speculationrules">).`,
+  );
 
-export const improveNextPageLoadPerformanceJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const improveNextPageLoadPerformanceJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['quicklink'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      if (isGuardedBySpeculationRules(node)) {
-        return;
-      }
-
-      const msg = matchQuicklinkCall(node, sourceFile);
-      if (msg) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message: msg,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node) => isGuardedBySpeculationRules(node),
+  matchCall: (node, sourceFile) => matchQuicklinkCall(node, sourceFile),
+});
 
 export const improveNextPageLoadPerformancePackageRule: AnalyzerRule = {
   id: 'improve-next-page-load-performance/package-prefetch',

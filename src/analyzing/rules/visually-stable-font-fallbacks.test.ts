@@ -1,51 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanPackageJson } from '../scanners/dependency-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  VISUALLY_STABLE_FONT_FALLBACKS_GUIDE_HASH,
   visuallyStableFontFallbacksJsMatcher,
-  visuallyStableFontFallbacksJsRule,
-  visuallyStableFontFallbacksPackageMatcher,
-  visuallyStableFontFallbacksPackageRule,
-  visuallyStableFontFallbacksRules,
+  visuallyStableFontFallbacksPackageMatcher
 } from './visually-stable-font-fallbacks.ts';
-
-void test('visually-stable-font-fallbacks: rule metadata', () => {
-  assert.equal(
-    visuallyStableFontFallbacksPackageRule.id,
-    'visually-stable-font-fallbacks/package-font-loader',
-  );
-  assert.equal(
-    visuallyStableFontFallbacksPackageRule.guideId,
-    'visually-stable-font-fallbacks',
-  );
-  assert.equal(
-    visuallyStableFontFallbacksPackageRule.guideHash,
-    VISUALLY_STABLE_FONT_FALLBACKS_GUIDE_HASH,
-  );
-  assert.equal(VISUALLY_STABLE_FONT_FALLBACKS_GUIDE_HASH.length, 12);
-
-  assert.equal(
-    visuallyStableFontFallbacksJsRule.id,
-    'visually-stable-font-fallbacks/js-font-loader',
-  );
-  assert.equal(
-    visuallyStableFontFallbacksJsRule.guideId,
-    'visually-stable-font-fallbacks',
-  );
-  assert.equal(
-    visuallyStableFontFallbacksJsRule.guideHash,
-    VISUALLY_STABLE_FONT_FALLBACKS_GUIDE_HASH,
-  );
-
-  assert.equal(visuallyStableFontFallbacksRules.length, 2);
-  assert.ok(visuallyStableFontFallbacksPackageRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(visuallyStableFontFallbacksPackageRule.verifierRubric.dropWhen.length >= 2);
-  assert.ok(visuallyStableFontFallbacksJsRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(visuallyStableFontFallbacksJsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('visually-stable-font-fallbacks dependency matcher', async (t) => {
   await t.test('flags fontfaceobserver and webfontloader', () => {
     const pkg = JSON.stringify(
@@ -83,7 +43,6 @@ void test('visually-stable-font-fallbacks dependency matcher', async (t) => {
 
 void test('visually-stable-font-fallbacks JS matcher', async (t) => {
   await t.test('flags new FontFaceObserver().load() and WebFont.load()', () => {
-    const project = createInMemoryProject();
     const code = `
       import FontFaceObserver from 'fontfaceobserver';
       import WebFont from 'webfontloader';
@@ -100,16 +59,11 @@ void test('visually-stable-font-fallbacks JS matcher', async (t) => {
         },
       });
     `;
-    const sourceFile = project.createSourceFile('fonts.js', code);
-    const matches = visuallyStableFontFallbacksJsMatcher.matchFile(sourceFile, {
-      filePath: 'fonts.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(visuallyStableFontFallbacksJsMatcher, 'fonts.js', code);
     assert.equal(matches.length, 2);
   });
 
   await t.test('exempts when guarded by CSS.supports("font-size-adjust", ...) or canvas drawing', () => {
-    const project = createInMemoryProject();
     const code = `
       import FontFaceObserver from 'fontfaceobserver';
 
@@ -127,11 +81,7 @@ void test('visually-stable-font-fallbacks JS matcher', async (t) => {
         });
       }
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = visuallyStableFontFallbacksJsMatcher.matchFile(sourceFile, {
-      filePath: 'guarded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(visuallyStableFontFallbacksJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
 
     const cssGuardedCode = `
@@ -141,19 +91,11 @@ void test('visually-stable-font-fallbacks JS matcher', async (t) => {
         document.documentElement.classList.add('fonts-loaded');
       });
     `;
-    const cssGuardedFile = project.createSourceFile('css-guarded.js', cssGuardedCode);
-    const cssGuardedMatches = visuallyStableFontFallbacksJsMatcher.matchFile(
-      cssGuardedFile,
-      {
-        filePath: 'css-guarded.js',
-        fileContent: cssGuardedCode,
-      },
-    );
+    const cssGuardedMatches = matchJsRule(visuallyStableFontFallbacksJsMatcher, 'css-guarded.js', cssGuardedCode);
     assert.equal(cssGuardedMatches.length, 0);
   });
 
   await t.test('exempts shadowed local FontFaceObserver or WebFont classes', () => {
-    const project = createInMemoryProject();
     const code = `
       import FontFaceObserver from 'fontfaceobserver';
 
@@ -165,11 +107,7 @@ void test('visually-stable-font-fallbacks JS matcher', async (t) => {
         obs.load();
       }
     `;
-    const sourceFile = project.createSourceFile('shadowed.js', code);
-    const matches = visuallyStableFontFallbacksJsMatcher.matchFile(sourceFile, {
-      filePath: 'shadowed.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(visuallyStableFontFallbacksJsMatcher, 'shadowed.js', code);
     assert.equal(matches.length, 0);
   });
 });

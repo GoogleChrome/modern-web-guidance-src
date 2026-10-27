@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import { createInMemoryProject, scanJsSource } from '../scanners/js-scanner.ts';
+import { scanJsSource } from '../scanners/js-scanner.ts';
 import type { CssRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
   darkModeCssRule,
@@ -65,8 +65,6 @@ void test('dark-mode: CSS negative / exempt cases', async (t) => {
 });
 
 void test('dark-mode/js-match-media: JS positive matches', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('flags matchMedia without a change listener', () => {
     const code = `
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -74,7 +72,7 @@ void test('dark-mode/js-match-media: JS positive matches', async (t) => {
         loadDarkAssets();
       }
     `;
-    const { matches } = scanJsSource('theme-init.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('theme-init.js', code, [jsMatcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
     assert.match(matches[0]?.message ?? '', /color-scheme/);
@@ -87,15 +85,13 @@ void test('dark-mode/js-match-media: JS positive matches', async (t) => {
         document.documentElement.classList.add('dark');
       }
     `;
-    const { matches } = scanJsSource('theme-toggle.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('theme-toggle.js', code, [jsMatcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
 });
 
 void test('dark-mode/js-match-media: JS negative / exempt cases', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('exempts matchMedia when a change listener is registered and color-scheme is used', () => {
     const code = `
       const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -104,7 +100,7 @@ void test('dark-mode/js-match-media: JS negative / exempt cases', async (t) => {
         document.documentElement.style.colorScheme = e.matches ? 'dark' : 'light';
       });
     `;
-    const { matches } = scanJsSource('modern-listener.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('modern-listener.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -114,7 +110,7 @@ void test('dark-mode/js-match-media: JS negative / exempt cases', async (t) => {
         const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       }
     `;
-    const { matches } = scanJsSource('guarded.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('guarded.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -130,7 +126,7 @@ void test('dark-mode/js-match-media: JS negative / exempt cases', async (t) => {
         }
       }
     `;
-    const { matches } = scanJsSource('tokenizer.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('tokenizer.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 });

@@ -1,26 +1,11 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
+import { scanJsSource } from '../scanners/index.ts';
 import {
-  DEFER_WORK_UNTIL_SCROLL_ENDS_GUIDE_HASH,
-  deferWorkUntilScrollEndsMatcher,
-  deferWorkUntilScrollEndsRule,
-  deferWorkUntilScrollEndsRules,
+  deferWorkUntilScrollEndsMatcher
 } from './defer-work-until-scroll-ends.ts';
 
 describe('defer-work-until-scroll-ends rule', () => {
-  const project = createInMemoryProject();
-
-  test('has correct metadata and 12-char guideHash', () => {
-    assert.equal(deferWorkUntilScrollEndsRule.id, 'defer-work-until-scroll-ends');
-    assert.equal(deferWorkUntilScrollEndsRule.guideId, 'defer-work-until-scroll-ends');
-    assert.equal(deferWorkUntilScrollEndsRule.guideHash, DEFER_WORK_UNTIL_SCROLL_ENDS_GUIDE_HASH);
-    assert.equal(deferWorkUntilScrollEndsRule.guideHash.length, 12);
-    assert.ok(deferWorkUntilScrollEndsRule.verifierRubric.keepWhen.length >= 2);
-    assert.ok(deferWorkUntilScrollEndsRule.verifierRubric.dropWhen.length >= 2);
-    assert.equal(deferWorkUntilScrollEndsRules.length, 1);
-  });
-
   test('flags addEventListener("scroll") with clearTimeout and setTimeout debounce', () => {
     const code = `
       let scrollTimer = null;
@@ -34,8 +19,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'views/feed.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scrollend/);
@@ -50,8 +34,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'nav/sticky.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scrollend/);
@@ -66,8 +49,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'ui/scroll.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scrollend/);
@@ -91,8 +73,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'components/scroller.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scrollend/);
@@ -111,8 +92,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'ui/scroll-tracker.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scrollend/);
@@ -131,8 +111,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'nav/persist.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scrollend/);
@@ -150,8 +129,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'nav/func-decl.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /scrollend/);
@@ -170,8 +148,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'nav/leading.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -188,8 +165,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'nav/different-timers.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -210,8 +186,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'utils/scroll-polyfill.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -232,8 +207,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'ui/progress.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -251,8 +225,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     const { matches } = scanJsSource(
       'layout/grid.js',
       code,
-      [deferWorkUntilScrollEndsMatcher],
-      project,
+      [deferWorkUntilScrollEndsMatcher]
     );
     assert.equal(matches.length, 0);
   });

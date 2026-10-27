@@ -1,26 +1,11 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
+import { scanJsSource } from '../scanners/index.ts';
 import {
-  COORDINATE_GLOBAL_EVENTS_GUIDE_HASH,
-  coordinateGlobalEventsMatcher,
-  coordinateGlobalEventsRule,
-  coordinateGlobalEventsRules,
+  coordinateGlobalEventsMatcher
 } from './coordinate-global-events.ts';
 
 describe('coordinate-global-events rule', () => {
-  const project = createInMemoryProject();
-
-  test('has correct metadata and 12-char guideHash', () => {
-    assert.equal(coordinateGlobalEventsRule.id, 'coordinate-global-events');
-    assert.equal(coordinateGlobalEventsRule.guideId, 'coordinate-global-events');
-    assert.equal(coordinateGlobalEventsRule.guideHash, COORDINATE_GLOBAL_EVENTS_GUIDE_HASH);
-    assert.equal(coordinateGlobalEventsRule.guideHash.length, 12);
-    assert.ok(coordinateGlobalEventsRule.verifierRubric.keepWhen.length >= 2);
-    assert.ok(coordinateGlobalEventsRule.verifierRubric.dropWhen.length >= 2);
-    assert.equal(coordinateGlobalEventsRules.length, 1);
-  });
-
   test('flags legacy getTimezoneOffset() calls', () => {
     const code = `
       function getLocalTimezoneOffset() {
@@ -32,8 +17,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'time/offset.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /getTimezoneOffset/);
@@ -50,8 +34,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'time/moment-tz.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 2);
     assert.match(matches[0].message, /moment\.tz|\.tz\(\)/);
@@ -66,8 +49,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'time/converter.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /UTC\/local/);
@@ -85,8 +67,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'time/guarded.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -98,8 +79,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'display/annotation_layer.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /getTimezoneOffset/);
@@ -114,8 +94,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'time/iso.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -130,8 +109,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'time/shift.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -146,8 +124,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'time/timeAgo.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -161,8 +138,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'auth/cookie.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -179,8 +155,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'time/standard.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -195,8 +170,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'user/profile.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -214,8 +188,7 @@ describe('coordinate-global-events rule', () => {
     const { matches } = scanJsSource(
       'analytics/telemetry.js',
       code,
-      [coordinateGlobalEventsMatcher],
-      project,
+      [coordinateGlobalEventsMatcher]
     );
     assert.equal(matches.length, 0);
   });

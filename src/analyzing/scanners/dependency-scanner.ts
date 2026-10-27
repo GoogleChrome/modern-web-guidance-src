@@ -390,6 +390,28 @@ const ALL_DEPENDENCY_FIELDS = [
   'optionalDependencies',
 ] as const;
 
+/**
+ * Constructs a `DependencyRuleMatcher` for `packages` using a message formatter
+ * that returns a message string (or `null` when a package entry should be skipped).
+ */
+export function createDependencyMatcher(
+  packages: readonly string[],
+  formatMessage: (
+    pkgName: string,
+    versionRange: string,
+    ctx: DependencyMatcherContext,
+  ) => string | null,
+): DependencyRuleMatcher {
+  return {
+    kind: 'dependency',
+    packages,
+    matchPackage(pkgName, versionRange, ctx) {
+      const message = formatMessage(pkgName, versionRange, ctx);
+      return message !== null ? { message } : null;
+    },
+  };
+}
+
 export const FRONTEND_FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
   'react',
   'react-dom',

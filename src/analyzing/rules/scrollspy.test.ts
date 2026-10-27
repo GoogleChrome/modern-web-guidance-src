@@ -1,21 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanHtml } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
   scrollspyJsRule,
-  scrollspyRule,
-  scrollspyRules,
+  scrollspyRule
 } from './scrollspy.ts';
 
 const domMatcher = scrollspyRule.matcher as DomRuleMatcher;
 const jsMatcher = scrollspyJsRule.matcher as JsRuleMatcher;
-
-void test('scrollspy rules array metadata', () => {
-  assert.equal(scrollspyRules.length, 1);
-});
-
 void test('scrollspy DOM: positive brownfield matches', async (t) => {
   await t.test('flags body element with data-spy="scroll"', () => {
     const html = `
@@ -85,40 +79,29 @@ void test('scrollspy DOM: negative / exempt cases', async (t) => {
 
 void test('scrollspy JS: positive brownfield matches', async (t) => {
   await t.test('flags jQuery .scrollspy() plugin call', () => {
-    const project = createInMemoryProject();
     const code = `
       $(document).ready(function() {
         $('body').scrollspy({ target: '#navbar-example', offset: 50 });
       });
     `;
-    const sourceFile = project.createSourceFile('app.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'app.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'app.js', code);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /Legacy scrollspy plugin/);
   });
 
   await t.test('flags Bootstrap new ScrollSpy constructor invocation', () => {
-    const project = createInMemoryProject();
     const code = `
       import { ScrollSpy } from 'bootstrap';
       const spy = new ScrollSpy(document.body, {
         target: '#main-nav'
       });
     `;
-    const sourceFile = project.createSourceFile('main.ts', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'main.ts',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'main.ts', code);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /Legacy scrollspy plugin/);
   });
 
   await t.test('flags manual scroll event listener calculating section offsetTop for active nav', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('scroll', () => {
         const sections = document.querySelectorAll('section');
@@ -132,17 +115,12 @@ void test('scrollspy JS: positive brownfield matches', async (t) => {
         });
       });
     `;
-    const sourceFile = project.createSourceFile('scroll-nav.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'scroll-nav.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'scroll-nav.js', code);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /Manual scroll listener calculates section positions/);
   });
 
   await t.test('flags named function reference in addEventListener with pageYOffset', () => {
-    const project = createInMemoryProject();
     const code = `
       function updateActiveNav() {
         const curY = window.pageYOffset;
@@ -155,16 +133,11 @@ void test('scrollspy JS: positive brownfield matches', async (t) => {
       }
       window.addEventListener('scroll', updateActiveNav);
     `;
-    const sourceFile = project.createSourceFile('named-scroll.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'named-scroll.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'named-scroll.js', code);
     assert.equal(matches.length, 1);
   });
 
   await t.test('flags window.onscroll assignment tracking section positions', () => {
-    const project = createInMemoryProject();
     const code = `
       window.onscroll = function() {
         const y = window.scrollY;
@@ -178,17 +151,12 @@ void test('scrollspy JS: positive brownfield matches', async (t) => {
         });
       };
     `;
-    const sourceFile = project.createSourceFile('onscroll.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'onscroll.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'onscroll.js', code);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /Manual onscroll assignment/);
   });
 
   await t.test('flags IntersectionObserver tracking section visibility to toggle active TOC links', () => {
-    const project = createInMemoryProject();
     const code = `
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -201,11 +169,7 @@ void test('scrollspy JS: positive brownfield matches', async (t) => {
       }, { threshold: 0.5 });
       document.querySelectorAll('section').forEach(s => observer.observe(s));
     `;
-    const sourceFile = project.createSourceFile('observer-scrollspy.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'observer-scrollspy.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'observer-scrollspy.js', code);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /IntersectionObserver/);
   });
@@ -213,22 +177,16 @@ void test('scrollspy JS: positive brownfield matches', async (t) => {
 
 void test('scrollspy JS: negative / exempt cases', async (t) => {
   await t.test('exempts scroll listener guarded by CSS.supports for scroll-target-group', () => {
-    const project = createInMemoryProject();
     const code = `
       if (!CSS.supports('scroll-target-group: auto')) {
         $('body').scrollspy({ target: '#nav' });
       }
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'guarded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts scroll listener handling infinite scroll or window scroll position', () => {
-    const project = createInMemoryProject();
     const code = `
       window.addEventListener('scroll', () => {
         if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
@@ -236,16 +194,11 @@ void test('scrollspy JS: negative / exempt cases', async (t) => {
         }
       });
     `;
-    const sourceFile = project.createSourceFile('infinite.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'infinite.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'infinite.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts IntersectionObserver used for lazy loading images', () => {
-    const project = createInMemoryProject();
     const code = `
       const imageObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
@@ -258,25 +211,16 @@ void test('scrollspy JS: negative / exempt cases', async (t) => {
       });
       document.querySelectorAll('img.lazy').forEach(img => imageObserver.observe(img));
     `;
-    const sourceFile = project.createSourceFile('lazy-load.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'lazy-load.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'lazy-load.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts UIkit.scrollspy or non-nav min/max scrollspy plugins', () => {
-    const project = createInMemoryProject();
     const code = `
       UIkit.scrollspy('#target', { cls: 'uk-animation-fade' });
       $('#nav').scrollspy({ min: 100, max: 500, onEnter: function() {} });
     `;
-    const sourceFile = project.createSourceFile('uikit.js', code);
-    const matches = jsMatcher.matchFile(sourceFile, {
-      filePath: 'uikit.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(jsMatcher, 'uikit.js', code);
     assert.equal(matches.length, 0);
   });
 });

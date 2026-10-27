@@ -1,21 +1,20 @@
 import {
   Node,
   SyntaxKind,
+  type CallExpression,
   type SourceFile,
 } from 'ts-morph';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 import {
-  isProtectedByFeatureGuard,
   matchEventListenerCall,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 
 export const DRAG_GUIDE_HASH = '9b55b34dd53b';
 
@@ -189,23 +188,69 @@ function isNoOpOrPreventDefaultOnlyHandler(handlerNode: Node): boolean {
   return stripped.length === 0;
 }
 
-export const dragDependencyMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: TARGET_DRAG_PACKAGES,
-  matchPackage(
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ): { message: string } | null {
-    return {
-      message:
-        `Legacy drag-and-drop library "${pkgName}" (${versionRange}) can be modernized using Pointer Events (pointerdown, pointermove) and setPointerCapture().`,
-    };
-  },
-};
+export const dragDependencyMatcher: DependencyRuleMatcher = createDependencyMatcher(
+  TARGET_DRAG_PACKAGES,
+  (pkgName, versionRange) =>
+    `Legacy drag-and-drop library "${pkgName}" (${versionRange}) can be modernized using Pointer Events (pointerdown, pointermove) and setPointerCapture().`,
+);
 
-export const dragJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+function matchDragStartListener(
+  node: CallExpression,
+  sourceFile: SourceFile,
+): string | null {
+  const dragStartMatch = matchEventListenerCall(node, DRAG_START_EVENTS);
+  if (!dragStartMatch) {
+    return null;
+  }
+
+  if (isNoOpOrPreventDefaultOnlyHandler(dragStartMatch.handlerNode)) {
+    return null;
+  }
+
+  // Find enclosing functional scope or class
+  let scope: Node = node;
+  let parent: Node | undefined = node.getParent();
+  while (parent && !Node.isSourceFile(parent)) {
+    if (
+      Node.isFunctionDeclaration(parent) ||
+      Node.isFunctionExpression(parent) ||
+      Node.isArrowFunction(parent) ||
+      Node.isMethodDeclaration(parent) ||
+      Node.isClassDeclaration(parent)
+    ) {
+      scope = parent;
+      break;
+    }
+    parent = parent.getParent();
+  }
+
+  if (scope === node) {
+    scope = sourceFile;
+  }
+
+  // Check if this drag start handler or its enclosing scope contains move listeners, coordinate access, and style positioning
+  const moveInHandler = hasMoveOrEndListener(dragStartMatch.handlerNode);
+  const moveInScope = hasMoveOrEndListener(scope);
+  if (!moveInHandler && !moveInScope) {
+    return null;
+  }
+
+  const coordsInHandler = hasCoordinateAccess(dragStartMatch.handlerNode);
+  const coordsInScope = hasCoordinateAccess(scope);
+  if (!coordsInHandler && !coordsInScope) {
+    return null;
+  }
+
+  const styleInHandler = hasPositionStyleMutation(dragStartMatch.handlerNode);
+  const styleInScope = hasPositionStyleMutation(scope);
+  if (!styleInHandler && !styleInScope) {
+    return null;
+  }
+
+  return `Imperative mouse/touch event listeners ('${dragStartMatch.eventName}' with coordinate tracking) used for draggable positioning; modernize using Pointer Events (pointerdown, pointermove) and setPointerCapture().`;
+}
+
+export const dragJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
     'mousedown',
     'touchstart',
@@ -216,87 +261,11 @@ export const dragJsMatcher: JsRuleMatcher = {
     'pageX',
     'pageY',
   ],
-  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
-    // If the file already utilizes setPointerCapture, skip
-    if (sourceFile.getText().includes('setPointerCapture')) {
-      return [];
-    }
-
-    const matches: AnalyzerMatch[] = [];
-    const reportedLines = new Set<number>();
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const dragStartMatch = matchEventListenerCall(node, DRAG_START_EVENTS);
-      if (!dragStartMatch) {
-        return;
-      }
-
-      if (isProtectedByFeatureGuard(node, POINTER_GUARD_TOKENS)) {
-        return;
-      }
-
-      if (isNoOpOrPreventDefaultOnlyHandler(dragStartMatch.handlerNode)) {
-        return;
-      }
-
-      // Find enclosing functional scope or class
-      let scope: Node = node;
-      let parent: Node | undefined = node.getParent();
-      while (parent && !Node.isSourceFile(parent)) {
-        if (
-          Node.isFunctionDeclaration(parent) ||
-          Node.isFunctionExpression(parent) ||
-          Node.isArrowFunction(parent) ||
-          Node.isMethodDeclaration(parent) ||
-          Node.isClassDeclaration(parent)
-        ) {
-          scope = parent;
-          break;
-        }
-        parent = parent.getParent();
-      }
-
-      if (scope === node) {
-        scope = sourceFile;
-      }
-
-      // Check if this drag start handler or its enclosing scope contains move listeners, coordinate access, and style positioning
-      const moveInHandler = hasMoveOrEndListener(dragStartMatch.handlerNode);
-      const moveInScope = hasMoveOrEndListener(scope);
-      if (!moveInHandler && !moveInScope) {
-        return;
-      }
-
-      const coordsInHandler = hasCoordinateAccess(dragStartMatch.handlerNode);
-      const coordsInScope = hasCoordinateAccess(scope);
-      if (!coordsInHandler && !coordsInScope) {
-        return;
-      }
-
-      const styleInHandler = hasPositionStyleMutation(dragStartMatch.handlerNode);
-      const styleInScope = hasPositionStyleMutation(scope);
-      if (!styleInHandler && !styleInScope) {
-        return;
-      }
-
-      const line = node.getStartLineNumber();
-      if (!reportedLines.has(line)) {
-        reportedLines.add(line);
-        matches.push({
-          line,
-          message:
-            `Imperative mouse/touch event listeners ('${dragStartMatch.eventName}' with coordinate tracking) used for draggable positioning; modernize using Pointer Events (pointerdown, pointermove) and setPointerCapture().`,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  shouldSkipFile: (sourceFile) => sourceFile.getText().includes('setPointerCapture'),
+  dedupeLines: true,
+  featureGuardTokens: POINTER_GUARD_TOKENS,
+  matchCall: matchDragStartListener,
+});
 
 export const dragPackageRule: AnalyzerRule = {
   id: 'drag/package-drag-drop',

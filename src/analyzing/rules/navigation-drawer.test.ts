@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject, scanJsSource } from '../scanners/js-scanner.ts';
+import { scanJsSource, withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
   navigationDrawerDomRule,
@@ -78,7 +78,6 @@ void test('navigation-drawer: DOM positive brownfield matches', async (suiteCont
   });
 
   await suiteContext.test('flags JSX Sidenav component without popover', () => {
-    const project = createInMemoryProject();
     const code = `
       export function Sidenav() {
         return (
@@ -88,8 +87,9 @@ void test('navigation-drawer: DOM positive brownfield matches', async (suiteCont
         );
       }
     `;
-    const sourceFile = project.createSourceFile('Sidenav.tsx', code);
-    const matches = scanJsx('Sidenav.tsx', sourceFile, [domMatcher]);
+    const matches = withVirtualSourceFile('Sidenav.tsx', code, (sourceFile) =>
+            scanJsx('Sidenav.tsx', sourceFile, [domMatcher]),
+          );
     assert.equal(matches.length, 1);
   });
 });

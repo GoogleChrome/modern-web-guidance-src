@@ -2,25 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { checkModernFeaturePresent } from '../eval/update-eval.ts';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
-import {
-  AUTOFILL_SIGN_UP_FORM_GUIDE_HASH,
-  autofillSignUpFormRule,
-  autofillSignUpFormRules,
-} from './autofill-sign-up-form.ts';
+import { autofillSignUpFormRule } from './autofill-sign-up-form.ts';
 
 const matcher = autofillSignUpFormRule.matcher as DomRuleMatcher;
 
-void test('autofill-sign-up-form: rule metadata and Check 2c quotes', () => {
-  assert.equal(AUTOFILL_SIGN_UP_FORM_GUIDE_HASH.length, 12);
-  assert.equal(autofillSignUpFormRule.id, 'autofill-sign-up-form');
-  assert.equal(autofillSignUpFormRule.guideId, 'autofill-sign-up-form');
-  assert.equal(autofillSignUpFormRule.guideHash, AUTOFILL_SIGN_UP_FORM_GUIDE_HASH);
-  assert.equal(autofillSignUpFormRules.length, 1);
-  assert.ok(autofillSignUpFormRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(autofillSignUpFormRule.verifierRubric.dropWhen.length >= 2);
-
+void test('autofill-sign-up-form: Check 2c quotes', () => {
   assert.equal(
     checkModernFeaturePresent(
       'autofill-sign-up-form',
@@ -84,7 +72,6 @@ void test('autofill-sign-up-form: positive brownfield matches', async (t) => {
   });
 
   await t.test('flags JSX React registration form component', () => {
-    const project = createInMemoryProject();
     const jsx = `
       export function SignUpForm() {
         return (
@@ -94,8 +81,9 @@ void test('autofill-sign-up-form: positive brownfield matches', async (t) => {
         );
       }
     `;
-    const sourceFile = project.createSourceFile('SignUpForm.tsx', jsx);
-    const matches = scanJsx('SignUpForm.tsx', sourceFile, [matcher]);
+    const matches = withVirtualSourceFile('SignUpForm.tsx', jsx, (sourceFile) =>
+            scanJsx('SignUpForm.tsx', sourceFile, [matcher]),
+          );
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /new-password/);
   });

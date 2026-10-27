@@ -1,21 +1,18 @@
 import {
-  Node,
   type CallExpression,
-  type SourceFile,
+  type Node,
 } from 'ts-morph';
 import {
   isDomClassOrAttrMutation,
-  isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveLocalExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -122,29 +119,11 @@ export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const selectMenuInteractionJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const selectMenuInteractionJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['blur', 'change'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const msg = matchSelectValidationListener(node);
-      if (msg && !isProtectedByFeatureGuard(node, USER_INVALID_GUARD_TOKENS)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message: msg,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  featureGuardTokens: USER_INVALID_GUARD_TOKENS,
+  matchCall: matchSelectValidationListener,
+});
 
 export const selectMenuInteractionCssRule: AnalyzerRule = {
   id: 'select-menu-interaction/css-select-invalid',

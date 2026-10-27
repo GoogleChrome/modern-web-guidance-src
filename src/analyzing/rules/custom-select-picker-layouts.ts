@@ -4,19 +4,16 @@ import {
   type CallExpression,
   type NewExpression,
   type ObjectLiteralExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
-  getSafeModuleSpecifier,
-  isGlobalReference,
+  isLibraryReference,
   isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -35,210 +32,6 @@ const TEMPLATE_OPTION_KEYS = [
   'templateResult',
   'templateSelection',
 ] as const;
-
-function matchesPackageSpec(
-  spec: string | null,
-  packages: readonly string[],
-): boolean {
-  return (
-    spec !== null &&
-    packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
-  );
-}
-
-function isRequireOfPackage(
-  node: Node,
-  packages: readonly string[],
-): boolean {
-  const unwrapped = unwrapExpression(node);
-  if (!Node.isCallExpression(unwrapped)) {
-    return false;
-  }
-  const callee = unwrapExpression(unwrapped.getExpression());
-  const firstArg = unwrapped.getArguments()[0];
-  if (
-    Node.isIdentifier(callee) &&
-    callee.getText() === 'require' &&
-    firstArg &&
-    Node.isStringLiteral(firstArg)
-  ) {
-    return matchesPackageSpec(firstArg.getLiteralText(), packages);
-  }
-  return false;
-}
-
-function checkEnclosingBindings(
-  identNode: Node,
-  localName: string,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean,
-): 'matched' | 'shadowed' | 'none' {
-  let current: Node | undefined = identNode.getParent();
-  while (current) {
-    if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isFunctionExpression(current) ||
-      Node.isArrowFunction(current) ||
-      Node.isMethodDeclaration(current)
-    ) {
-      if (
-        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
-        current.getName() === localName
-      ) {
-        return 'shadowed';
-      }
-      for (const param of current.getParameters()) {
-        const paramNameNode = param.getNameNode();
-        if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
-          return 'shadowed';
-        }
-        for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
-          if (el.getText() === localName) {
-            return 'shadowed';
-          }
-        }
-      }
-    }
-
-    if (Node.isBlock(current) || Node.isSourceFile(current)) {
-      for (const stmt of current.getStatements()) {
-        if (
-          (Node.isFunctionDeclaration(stmt) || Node.isClassDeclaration(stmt)) &&
-          stmt.getName() === localName
-        ) {
-          return 'shadowed';
-        }
-        if (!Node.isVariableStatement(stmt)) {
-          continue;
-        }
-        for (const decl of stmt.getDeclarationList().getDeclarations()) {
-          const nameNode = decl.getNameNode();
-          if (Node.isIdentifier(nameNode) && nameNode.getText() === localName) {
-            const init = decl.getInitializer();
-            if (init) {
-              const resolvedInit = resolveLocalExpression(init, 2);
-              if (
-                allowDefaultImport &&
-                isRequireOfPackage(resolvedInit, packages)
-              ) {
-                return 'matched';
-              }
-              if (Node.isPropertyAccessExpression(resolvedInit)) {
-                const propName = resolvedInit.getName();
-                if (
-                  (propName === identName ||
-                    (allowDefaultImport && propName === 'default')) &&
-                  isRequireOfPackage(
-                    resolveLocalExpression(resolvedInit.getExpression(), 2),
-                    packages,
-                  )
-                ) {
-                  return 'matched';
-                }
-              }
-            }
-            return 'shadowed';
-          } else if (Node.isObjectBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (el.getName() === localName) {
-                const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
-                const init = decl.getInitializer();
-                if (
-                  init &&
-                  (propName === identName || (allowDefaultImport && propName === 'default')) &&
-                  isRequireOfPackage(resolveLocalExpression(init, 2), packages)
-                ) {
-                  return 'matched';
-                }
-                return 'shadowed';
-              }
-            }
-          } else if (Node.isArrayBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (Node.isBindingElement(el) && el.getName() === localName) {
-                return 'shadowed';
-              }
-            }
-          }
-        }
-      }
-    }
-
-    current = current.getParent();
-  }
-  return 'none';
-}
-
-function isLibraryReference(
-  node: Node,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean = true,
-  allowGlobal: boolean = true,
-): boolean {
-  const unwrapped = unwrapExpression(node);
-
-  if (allowDefaultImport && isRequireOfPackage(unwrapped, packages)) {
-    return true;
-  }
-
-  if (Node.isPropertyAccessExpression(unwrapped)) {
-    const propName = unwrapped.getName();
-    if (propName === identName || (allowDefaultImport && propName === 'default')) {
-      const receiver = unwrapped.getExpression();
-      if (isRequireOfPackage(resolveLocalExpression(receiver, 2), packages)) {
-        return true;
-      }
-    }
-  }
-
-  if (Node.isIdentifier(unwrapped)) {
-    const localName = unwrapped.getText();
-    const sourceFile = unwrapped.getSourceFile();
-
-    const bindingStatus = checkEnclosingBindings(
-      unwrapped,
-      localName,
-      identName,
-      packages,
-      allowDefaultImport,
-    );
-    if (bindingStatus === 'matched') {
-      return true;
-    }
-    if (bindingStatus === 'shadowed') {
-      return false;
-    }
-
-    for (const imp of sourceFile.getImportDeclarations()) {
-      const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
-      if (
-        imp.getDefaultImport()?.getText() === localName ||
-        imp.getNamespaceImport()?.getText() === localName
-      ) {
-        return allowDefaultImport && matchesPkg;
-      }
-      for (const named of imp.getNamedImports()) {
-        const importedName = named.getName();
-        const boundName = named.getAliasNode()?.getText() ?? importedName;
-        if (boundName === localName) {
-          return (
-            matchesPkg &&
-            (importedName === identName ||
-              (allowDefaultImport && importedName === 'default'))
-          );
-        }
-      }
-    }
-  }
-
-  if (allowGlobal && isGlobalReference(unwrapped, identName)) {
-    return true;
-  }
-
-  return false;
-}
 
 function isGuardedByCustomizableSelect(node: Node): boolean {
   if (isProtectedByFeatureGuard(node, CUSTOM_SELECT_GUARD_TOKENS)) {
@@ -477,8 +270,7 @@ function matchSelect2Call(callExpr: CallExpression): string | null {
   return null;
 }
 
-export const customSelectPickerLayoutsJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const customSelectPickerLayoutsJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
     'Choices',
     'TomSelect',
@@ -488,38 +280,11 @@ export const customSelectPickerLayoutsJsMatcher: JsRuleMatcher = {
     'templateResult',
     'templateSelection',
   ],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-    const visitedLines = new Set<number>();
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isNewExpression(node) && !Node.isCallExpression(node)) {
-        return;
-      }
-
-      if (isGuardedByCustomizableSelect(node)) {
-        return;
-      }
-
-      const message = Node.isNewExpression(node)
-        ? matchNewCustomSelect(node)
-        : matchSelect2Call(node);
-
-      if (message) {
-        const line = node.getStartLineNumber();
-        if (!visitedLines.has(line)) {
-          visitedLines.add(line);
-          matches.push({
-            line,
-            message,
-          });
-        }
-      }
-    });
-
-    return matches;
-  },
-};
+  dedupeLines: true,
+  isGuarded: (node) => isGuardedByCustomizableSelect(node),
+  matchCall: (node) => matchSelect2Call(node),
+  matchNew: (node) => matchNewCustomSelect(node),
+});
 
 export const customSelectPickerLayoutsJsRule: AnalyzerRule = {
   id: 'custom-select-picker-layouts/js-custom-select',

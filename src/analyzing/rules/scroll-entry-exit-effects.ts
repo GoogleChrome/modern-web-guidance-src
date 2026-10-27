@@ -1,20 +1,17 @@
 import {
   Node,
   type CallExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
-  isGlobalReference,
-  isProtectedByFeatureGuard,
+  isLibraryReference,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -33,54 +30,6 @@ const SCROLL_TIMELINE_GUARD_TOKENS = [
   'view-timeline',
   'animation-range',
 ] as const;
-
-function isLibraryReference(
-  node: Node,
-  identName: string,
-  packages: readonly string[],
-): boolean {
-  if (isGlobalReference(node, identName)) {
-    return true;
-  }
-  const unwrapped = unwrapExpression(node);
-  if (!Node.isIdentifier(unwrapped) || unwrapped.getText() !== identName) {
-    return false;
-  }
-  const sourceFile = unwrapped.getSourceFile();
-  for (const imp of sourceFile.getImportDeclarations()) {
-    const spec = imp.getModuleSpecifierValue();
-    if (!packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
-      continue;
-    }
-    if (
-      imp.getDefaultImport()?.getText() === identName ||
-      imp.getNamespaceImport()?.getText() === identName
-    ) {
-      return true;
-    }
-    for (const named of imp.getNamedImports()) {
-      const local = named.getAliasNode()?.getText() ?? named.getName();
-      if (local === identName) {
-        return true;
-      }
-    }
-  }
-  const resolved = resolveLocalExpression(unwrapped, 2);
-  if (Node.isCallExpression(resolved)) {
-    const callee = unwrapExpression(resolved.getExpression());
-    const firstArg = resolved.getArguments()[0];
-    if (
-      Node.isIdentifier(callee) &&
-      callee.getText() === 'require' &&
-      firstArg &&
-      Node.isStringLiteral(firstArg)
-    ) {
-      const spec = firstArg.getLiteralText();
-      return packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
-    }
-  }
-  return false;
-}
 
 function isScrollRevealInstance(node: Node): boolean {
   const resolved = resolveLocalExpression(node, 2);
@@ -128,43 +77,18 @@ function matchScrollRevealCall(callExpr: CallExpression): string | null {
   return null;
 }
 
-export const scrollEntryExitEffectsPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: SCROLL_REVEAL_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Legacy scroll-reveal package "${pkgName}" (${versionRange}) can be modernized with native CSS Scroll-Driven Animations (animation-timeline: view() and animation-range: entry, exit).`,
-    };
-  },
-};
+export const scrollEntryExitEffectsPackageMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    SCROLL_REVEAL_PACKAGES,
+    (pkgName, versionRange) =>
+      `Legacy scroll-reveal package "${pkgName}" (${versionRange}) can be modernized with native CSS Scroll-Driven Animations (animation-timeline: view() and animation-range: entry, exit).`,
+  );
 
-export const scrollEntryExitEffectsJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const scrollEntryExitEffectsJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['AOS.init', 'ScrollReveal', 'new WOW'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const msg = matchScrollRevealCall(node);
-      if (msg && !isProtectedByFeatureGuard(node, SCROLL_TIMELINE_GUARD_TOKENS)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message: msg,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  featureGuardTokens: SCROLL_TIMELINE_GUARD_TOKENS,
+  matchCall: (node) => matchScrollRevealCall(node),
+});
 
 export const scrollEntryExitEffectsPackageRule: AnalyzerRule = {
   id: 'scroll-entry-exit-effects/package-scroll-reveal',

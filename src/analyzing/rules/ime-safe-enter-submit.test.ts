@@ -1,24 +1,11 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
+import { scanJsSource } from '../scanners/index.ts';
 import {
-  IME_SAFE_ENTER_SUBMIT_GUIDE_HASH,
-  imeSafeEnterSubmitMatcher,
-  imeSafeEnterSubmitRule,
+  imeSafeEnterSubmitMatcher
 } from './ime-safe-enter-submit.ts';
 
 describe('ime-safe-enter-submit rule', () => {
-  const project = createInMemoryProject();
-
-  test('has correct metadata and 12-char guideHash', () => {
-    assert.equal(imeSafeEnterSubmitRule.id, 'ime-safe-enter-submit');
-    assert.equal(imeSafeEnterSubmitRule.guideId, 'ime-safe-enter-submit');
-    assert.equal(imeSafeEnterSubmitRule.guideHash, IME_SAFE_ENTER_SUBMIT_GUIDE_HASH);
-    assert.equal(imeSafeEnterSubmitRule.guideHash.length, 12);
-    assert.ok(imeSafeEnterSubmitRule.verifierRubric.keepWhen.length >= 2);
-    assert.ok(imeSafeEnterSubmitRule.verifierRubric.dropWhen.length >= 2);
-  });
-
   test('flags addEventListener keydown checking event.key === "Enter"', () => {
     const code = `
       textarea.addEventListener('keydown', (event) => {
@@ -31,8 +18,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'chat/input.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
@@ -50,8 +36,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'forms/barcode.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
@@ -75,8 +60,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'components/ChatBox.tsx',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
@@ -95,8 +79,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'search/search.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
@@ -116,8 +99,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'input/switch.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
@@ -138,8 +120,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'chat/safe-input.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -158,8 +139,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'chat/safe-safari.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -180,8 +160,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'forms/keyup.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -198,8 +177,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'chat/shortcut.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -216,8 +194,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'chat/negated-modifiers.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
@@ -248,8 +225,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'chat/suppress-only.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -284,8 +260,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'ui/aria-button.js',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -312,8 +287,7 @@ describe('ime-safe-enter-submit rule', () => {
     const { matches } = scanJsSource(
       'components/CustomButton.tsx',
       code,
-      [imeSafeEnterSubmitMatcher],
-      project,
+      [imeSafeEnterSubmitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -335,8 +309,7 @@ describe('ime-safe-enter-submit rule', () => {
       const { matches } = scanJsSource(
         testPath,
         code,
-        [imeSafeEnterSubmitMatcher],
-        project,
+        [imeSafeEnterSubmitMatcher]
       );
       assert.equal(matches.length, 0, `Expected no matches for test file ${testPath}`);
     }

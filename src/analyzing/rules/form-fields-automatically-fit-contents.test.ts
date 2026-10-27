@@ -1,14 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/js-scanner.ts';
+import { scanJsSource } from '../scanners/js-scanner.ts';
 import type { JsRuleMatcher } from '../schema.ts';
 import { formFieldsAutomaticallyFitContentsRule } from './form-fields-automatically-fit-contents.ts';
 
 const matcher = formFieldsAutomaticallyFitContentsRule.matcher as JsRuleMatcher;
 
 void test('form-fields-automatically-fit-contents: positive cases', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('flags autosize(textarea) library call', () => {
     const code = `
       import autosize from 'autosize';
@@ -18,7 +16,7 @@ void test('form-fields-automatically-fit-contents: positive cases', async (t) =>
         autosize(textarea);
       }
     `;
-    const { matches } = scanJsSource('autosize-init.js', code, [matcher], project);
+    const { matches } = scanJsSource('autosize-init.js', code, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 6);
     assert.match(matches[0]?.message ?? '', /autosize\(\)/);
@@ -34,7 +32,7 @@ void test('form-fields-automatically-fit-contents: positive cases', async (t) =>
         }
       }
     `;
-    const { matches } = scanJsSource('react-textarea.js', code, [matcher], project);
+    const { matches } = scanJsSource('react-textarea.js', code, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 6);
   });
@@ -47,7 +45,7 @@ void test('form-fields-automatically-fit-contents: positive cases', async (t) =>
         this.style.height = this.scrollHeight + 'px';
       });
     `;
-    const { matches } = scanJsSource('chat.js', code, [matcher], project);
+    const { matches } = scanJsSource('chat.js', code, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 5);
     assert.match(matches[0]?.message ?? '', /field-sizing: content/);
@@ -62,7 +60,7 @@ void test('form-fields-automatically-fit-contents: positive cases', async (t) =>
         }
       });
     `;
-    const { matches } = scanJsSource('elfinder.js', code, [matcher], project);
+    const { matches } = scanJsSource('elfinder.js', code, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 5);
   });
@@ -75,15 +73,13 @@ void test('form-fields-automatically-fit-contents: positive cases', async (t) =>
         domNode.style.height = newHeight + "px";
       }
     `;
-    const { matches } = scanJsSource('expand.js', code, [matcher], project);
+    const { matches } = scanJsSource('expand.js', code, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 5);
   });
 });
 
 void test('form-fields-automatically-fit-contents: negative cases', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('skips when guarded by CSS.supports for field-sizing', () => {
     const code = `
       if (!CSS.supports('field-sizing', 'content')) {
@@ -95,7 +91,7 @@ void test('form-fields-automatically-fit-contents: negative cases', async (t) =>
         });
       }
     `;
-    const { matches } = scanJsSource('guarded.js', code, [matcher], project);
+    const { matches } = scanJsSource('guarded.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -107,7 +103,7 @@ void test('form-fields-automatically-fit-contents: negative cases', async (t) =>
         }
       }
     `;
-    const { matches } = scanJsSource('dialog.js', code, [matcher], project);
+    const { matches } = scanJsSource('dialog.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -119,7 +115,7 @@ void test('form-fields-automatically-fit-contents: negative cases', async (t) =>
         progressBar.style.width = (scrolled / total * 100) + '%';
       }
     `;
-    const { matches } = scanJsSource('progress.js', code, [matcher], project);
+    const { matches } = scanJsSource('progress.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -129,7 +125,7 @@ void test('form-fields-automatically-fit-contents: negative cases', async (t) =>
         container.style.height = container.scrollHeight + 'px';
       });
     `;
-    const { matches } = scanJsSource('orientation.js', code, [matcher], project);
+    const { matches } = scanJsSource('orientation.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -140,7 +136,7 @@ void test('form-fields-automatically-fit-contents: negative cases', async (t) =>
         grid.autosize();
       }
     `;
-    const { matches } = scanJsSource('dashboard.js', code, [matcher], project);
+    const { matches } = scanJsSource('dashboard.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 });

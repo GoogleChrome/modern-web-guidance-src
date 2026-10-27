@@ -8,12 +8,12 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 import { isProtectedByFeatureGuard, unwrapExpression } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 
 export const CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH = '77481d042afa';
 export const FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH = '77481d042afa';
@@ -340,20 +340,11 @@ const DURATION_UNIT_LABELS = new Set([
   'days',
 ]);
 
-export const durationDependencyMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: DURATION_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message:
-        `Legacy duration formatting package "${pkgName}" (${versionRange}) can be replaced with native Temporal.Duration and Intl.DurationFormat.`,
-    };
-  },
-};
+export const durationDependencyMatcher: DependencyRuleMatcher = createDependencyMatcher(
+  DURATION_PACKAGES,
+  (pkgName, versionRange) =>
+    `Legacy duration formatting package "${pkgName}" (${versionRange}) can be replaced with native Temporal.Duration and Intl.DurationFormat.`,
+);
 
 /**
  * Checks whether a call expression is humanizeDuration(...), prettyMs(...),
