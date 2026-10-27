@@ -4,3 +4,9 @@
 - The implementation MUST apply `text-wrap: balance` to headings (`<h1>`–`<h6>`) and `text-wrap: pretty` to body text paragraphs.
 - The implementation MUST NOT apply `text-wrap: balance` or `text-wrap: pretty` globally via the universal selector (`*`).
 - The implementation MUST NOT use `text-align: justify` without `hyphens: auto`.
+- The preferred (middle) value of every `clamp()` used for `font-size` includes a `rem`, `em` or `%` term.
+- The minimum and maximum values of every `clamp()` used for `font-size` are in `rem`, `em` or `%`.
+- The maximum value of every `clamp()` used for `font-size` is no more than 2.5 times its minimum value.
+- Every element with `hyphens: auto` has a non-empty `lang` value, from the `lang` attribute on itself or on its nearest ancestor that has one.
+- Applying a line height of 1.5, letter spacing of 0.12em and word spacing of 0.16em to all elements, and spacing of 2em after paragraphs, doesn't make the content of any element that has text of its own, other than a scroll container, overflow its height.
+- At a 320 CSS px viewport width, no `<p>` element makes the page scroll horizontally.
