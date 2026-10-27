@@ -27,7 +27,7 @@ Must use this skill:
 - At the **start** of implementing any web UI, CSS layout/animation, or client-side JS logic (dates/timezones, sanitization, performance, accessibility)—including when fixing UX symptoms (e.g., janky interactions, layout shifts).
 - Before creating or updating a component, to check if a standardized modern web pattern already exists.
 - To avoid implementing ad-hoc solutions or loading large dependencies unnecessarily.
-- To modernize existing code: run the **Modernize** workflow, starting with `analyze` (Step 3).
+- To modernize existing code: run the modernization flow (**Modernize an existing codebase**) below.
 
 ## Usage Instructions
 
@@ -85,9 +85,25 @@ If the output is truncated, you must repeat the command but redirect to a file a
 
 ---
 
-### Step 3. Modernize Existing Code (`analyze`)
+### Step 3. Verify Guidance Compliance
 
-Building something new uses `search` and `retrieve` (Steps 1 & 2). Modernizing existing code uses `analyze` plus the **Modernize** workflow below. The `analyze` subcommand detects legacy web platform patterns and stops there; the agent executes the rest of the workflow:
+When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
+- **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
+- **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
+
+---
+
+### Step 4. Disclose Skill Usage
+
+When you consult `modern-web-guidance` for a task, end the response where you deliver those changes with a `### Modern Web Guidance` section:
+- **When retrieved guides shaped your code**: Write **one** bullet (1–2 sentences, ≤75 words) per newly applied `<id>` in first-person voice explaining the non-obvious implementation choices, CSS/API overrides, or fallbacks `<id>` required and the pitfall it prevented, anchored by a short verbatim quote of that specific rule or gotcha (never the guide's intro overview):
+  `- **\`<id>\`**: <Non-obvious APIs, overrides, or fallbacks applied and the pitfall prevented> ("<short verbatim quote of the specific rule or gotcha>").`
+  - **Never** guess `<id>`s or quotes from memory after context compaction (re-run `search`/`retrieve` if needed), and credit **only** guide-backed changes from the current turn.
+- **When searched/listed in this turn but zero guides applied**: Write one first-person sentence naming which topics or guides you checked in `modern-web-guidance` and why none applied (omit if any guide applied).
+
+## Modernize an existing codebase
+
+Enter the modernization flow only when the user asks to update, modernize, or audit existing code. Building new features uses `search` and `retrieve` (Steps 1–4 above); the modernization flow starts with `analyze` to detect legacy web platform patterns and then reuses Steps 2–4:
 
 1. **Detect Legacy Patterns (`analyze`)**: Execute `analyze` with `--json` for machine-readable output:
    ```sh
@@ -97,28 +113,9 @@ Building something new uses `search` and `retrieve` (Steps 1 & 2). Modernizing e
    - Evaluate each finding against the guide's `Keep when` (`verifierRubric.keepWhen`) and `Drop when` (`verifierRubric.dropWhen`) verification criteria.
    - Silently discard any finding that matches a `Drop when` condition (such as intentional feature-detect fallbacks, third-party vendor code, or out-of-scope lookalikes) before presenting a modernization plan to the user.
    - Group verified issues by `guideId` and present a clear modernization plan to the user before making edits.
-3. **Retrieve Guidance**: For each approved item, retrieve the relevant guide:
-   ```sh
-   npx -y modern-web-guidance@latest retrieve "<guideId>"
-   ```
-4. **Apply Modernization & Verify**: Apply modern web standard replacements, then re-run `analyze` to verify findings are cleanly resolved.
-5. **Summarize**: Conclude with a concise summary of modernized patterns and browser support considerations.
-
----
-
-### Step 4. Verify Guidance Compliance
-
-When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
-- **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
-- **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
-
-### Step 5. Disclose Skill Usage
-
-When you consult `modern-web-guidance` for a task, end the response where you deliver those changes with a `### Modern Web Guidance` section:
-- **When retrieved guides shaped your code**: Write **one** bullet (1–2 sentences, ≤75 words) per newly applied `<id>` in first-person voice explaining the non-obvious implementation choices, CSS/API overrides, or fallbacks `<id>` required and the pitfall it prevented, anchored by a short verbatim quote of that specific rule or gotcha (never the guide's intro overview):
-  `- **\`<id>\`**: <Non-obvious APIs, overrides, or fallbacks applied and the pitfall prevented> ("<short verbatim quote of the specific rule or gotcha>").`
-  - **Never** guess `<id>`s or quotes from memory after context compaction (re-run `search`/`retrieve` if needed), and credit **only** guide-backed changes from the current turn.
-- **When searched/listed in this turn but zero guides applied**: Write one first-person sentence naming which topics or guides you checked in `modern-web-guidance` and why none applied (omit if any guide applied).
+3. **Retrieve Guidance**: For each approved item, retrieve the relevant guide via **Step 2 (Retrieve Best Practices)** (`npx -y modern-web-guidance@latest retrieve "<guideId>"`).
+4. **Apply Modernization & Verify**: Apply modern web standard replacements, verify compliance via **Step 3 (Verify Guidance Compliance)**, and re-run `analyze` to confirm findings are cleanly resolved.
+5. **Disclose & Summarize**: Disclose applied guides via **Step 4 (Disclose Skill Usage)** and note any browser support considerations.
 
 ## Using npx / pnpx
 

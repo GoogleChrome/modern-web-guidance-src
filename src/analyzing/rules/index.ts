@@ -632,6 +632,10 @@ export const RULE_REGISTRY_BY_GUIDE_ID: ReadonlyMap<string, RuleRegistryEntry> =
 
 /**
  * Production shipping qualified guide IDs clearing the qualification standard.
+ *
+ * Rules qualify for default terminal shipping when scored on held-out findings by the multi-judge panel:
+ * - Static Matcher Precision >= 80.0% and Post-Rubric Precision >= 90.0% at n >= 10 findings
+ *   (or Static Matcher Precision >= 90.0% at n >= 5 for rare patterns).
  */
 export const QUALIFIED_GUIDE_IDS: readonly string[] = RULE_REGISTRY
   .filter((e) => e.lifecycle.status === 'qualified')

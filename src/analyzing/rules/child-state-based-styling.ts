@@ -239,7 +239,7 @@ const childStateBasedStylingJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const childStateBasedStylingRule: AnalyzerRule = {
+const childStateBasedStylingRule: AnalyzerRule = {
   id: 'child-state-based-styling',
   guideId: 'child-state-based-styling',
   guideHash: '70dc57b74e35',
@@ -278,6 +278,11 @@ export const childStateBasedStylingJsParentClassRule: AnalyzerRule = {
     ],
   },
 };
+
+export const childStateBasedStylingDeferredRules: readonly AnalyzerRule[] = [
+  // CSS sibling-combinator (+ / ~) sub-pattern deferred: rewriting working sibling selectors into :has() is a syntax-only swap without container-state payoff
+  childStateBasedStylingRule,
+];
 
 export const childStateBasedStylingRules: readonly AnalyzerRule[] = [
   childStateBasedStylingJsParentClassRule,

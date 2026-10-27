@@ -3,11 +3,11 @@ import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
-import { SUSPENDED_QUALIFIED_GUIDE_IDS } from './qualification.ts';
 import {
   ALL_RULES,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
+  SUSPENDED_QUALIFIED_GUIDE_IDS,
 } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerFinding, AnalyzerRule, VerifierRubric } from './schema.ts';

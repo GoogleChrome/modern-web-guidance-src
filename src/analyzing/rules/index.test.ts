@@ -31,21 +31,17 @@ describe('rule registry architectural invariants', () => {
   it('enforces that every rule module file on disk is registered in RULE_REGISTRY', () => {
     const rulesDir = resolve(import.meta.dirname);
     const untrackedFiles = new Set<string>();
-    try {
-      const gitStatus = execSync('git status --porcelain src/analyzing/rules', {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      });
-      for (const line of gitStatus.split('\n')) {
-        if (line.startsWith('?? ')) {
-          const match = line.slice(3).trim().match(/([^/\\]+)\.ts$/);
-          if (match && !line.includes('.test.ts')) {
-            untrackedFiles.add(match[1]!);
-          }
+    const gitStatus = execSync('git status --porcelain src/analyzing/rules', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    for (const line of gitStatus.split('\n')) {
+      if (line.startsWith('?? ')) {
+        const match = line.slice(3).trim().match(/([^/\\]+)\.ts$/);
+        if (match && !line.includes('.test.ts')) {
+          untrackedFiles.add(match[1]!);
         }
       }
-    } catch {
-      // If git command fails, untrackedFiles remains empty
     }
 
     const filesOnDisk = readdirSync(rulesDir)
@@ -140,15 +136,30 @@ describe('rule registry architectural invariants', () => {
       }
       const modUrl = pathToFileURL(join(rulesDir, `${entry.guideId}.ts`)).href;
       const mod: Record<string, unknown> = await import(modUrl);
-      const exportedRules = Object.values(mod).filter(isAnalyzerRuleExport);
-      const rulesToCheck = new Set<AnalyzerRule>([...entry.rules, ...exportedRules]);
+      const exportedRules = [...new Set(Object.values(mod).filter(isAnalyzerRuleExport))];
+      assert.ok(
+        exportedRules.length > 0,
+        `Rule module "${entry.guideId}.ts" must export at least one AnalyzerRule`,
+      );
+      for (const exportedRule of exportedRules) {
+        assert.ok(
+          entry.rules.includes(exportedRule),
+          `Exported rule "${exportedRule.id}" in "${entry.guideId}.ts" is missing from RULE_REGISTRY entry.rules`,
+        );
+      }
+      for (const registeredRule of entry.rules) {
+        assert.ok(
+          exportedRules.includes(registeredRule),
+          `Registered rule "${registeredRule.id}" for "${entry.guideId}" is not exported by "${entry.guideId}.ts"`,
+        );
+      }
 
       for (const rule of entry.rules) {
         assert.ok(!seenRegisteredRuleIds.has(rule.id), `duplicate rule id: ${rule.id}`);
         seenRegisteredRuleIds.add(rule.id);
       }
 
-      for (const rule of rulesToCheck) {
+      for (const rule of entry.rules) {
         await t.test(`rule ${rule.id} (${rule.guideId}) has valid structure`, () => {
           assert.ok(rule.id, 'rule has id');
           assert.strictEqual(rule.guideId, entry.guideId, 'rule.guideId matches entry.guideId');
