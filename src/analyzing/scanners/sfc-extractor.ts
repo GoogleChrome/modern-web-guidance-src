@@ -284,21 +284,24 @@ function extractLitCssBlocks(content: string): readonly string[] {
   return blocks;
 }
 
-/**
- * Extracts style blocks from HTML, Vue, Svelte, and Astro files,
- * or Lit css`...` tagged template literals from JS/TS files.
- */
-export function extractStyleBlocks(relPath: string, content: string): readonly string[] {
+export function isMarkupPath(relPath: string): boolean {
   const lowerPath = relPath.toLowerCase();
-  const isMarkup =
+  return (
     lowerPath.endsWith('.html') ||
     lowerPath.endsWith('.htm') ||
     lowerPath.endsWith('.php') ||
     lowerPath.endsWith('.vue') ||
     lowerPath.endsWith('.svelte') ||
-    lowerPath.endsWith('.astro');
+    lowerPath.endsWith('.astro')
+  );
+}
 
-  if (!isMarkup) {
+/**
+ * Extracts style blocks from HTML, Vue, Svelte, and Astro files,
+ * or Lit css`...` tagged template literals from JS/TS files.
+ */
+export function extractStyleBlocks(relPath: string, content: string): readonly string[] {
+  if (!isMarkupPath(relPath)) {
     // Check for Lit css`...` tagged template literals
     if (content.includes('css`')) {
       return extractLitCssBlocks(content);

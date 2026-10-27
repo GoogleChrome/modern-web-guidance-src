@@ -1,6 +1,7 @@
 import {
   Node,
   Project,
+  SyntaxKind,
   type CallExpression,
   type NewExpression,
   type SourceFile,
@@ -106,52 +107,41 @@ export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher 
       const matches: AnalyzerMatch[] = [];
       const visitedLines = config.dedupeLines ? new Set<number>() : null;
 
-      sourceFile.forEachDescendant((node) => {
-        const matchCall = config.matchCall;
-        const matchNew = config.matchNew;
-        if (matchCall && Node.isCallExpression(node)) {
-          const line = node.getStartLineNumber();
-          if (visitedLines?.has(line)) {
-            return;
-          }
-          if (
-            config.featureGuardTokens &&
-            isProtectedByFeatureGuard(node, config.featureGuardTokens)
-          ) {
-            return;
-          }
-          if (config.isGuarded?.(node, sourceFile, ctx)) {
-            return;
-          }
-          const message = matchCall(node, sourceFile, ctx);
-          if (message) {
-            visitedLines?.add(line);
-            matches.push({ line, message });
-          }
-          return;
-        }
+      const callNodes = config.matchCall
+        ? sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)
+        : [];
+      const newNodes = config.matchNew
+        ? sourceFile.getDescendantsOfKind(SyntaxKind.NewExpression)
+        : [];
+      const candidates: ReadonlyArray<CallExpression | NewExpression> =
+        callNodes.length > 0 && newNodes.length > 0
+          ? [...callNodes, ...newNodes].sort((a, b) => a.getPos() - b.getPos())
+          : callNodes.length > 0
+            ? callNodes
+            : newNodes;
 
-        if (matchNew && Node.isNewExpression(node)) {
-          const line = node.getStartLineNumber();
-          if (visitedLines?.has(line)) {
-            return;
-          }
-          if (
-            config.featureGuardTokens &&
-            isProtectedByFeatureGuard(node, config.featureGuardTokens)
-          ) {
-            return;
-          }
-          if (config.isGuarded?.(node, sourceFile, ctx)) {
-            return;
-          }
-          const message = matchNew(node, sourceFile, ctx);
-          if (message) {
-            visitedLines?.add(line);
-            matches.push({ line, message });
-          }
+      for (const node of candidates) {
+        const line = node.getStartLineNumber();
+        if (visitedLines?.has(line)) {
+          continue;
         }
-      });
+        if (
+          config.featureGuardTokens &&
+          isProtectedByFeatureGuard(node, config.featureGuardTokens)
+        ) {
+          continue;
+        }
+        if (config.isGuarded?.(node, sourceFile, ctx)) {
+          continue;
+        }
+        const message = Node.isCallExpression(node)
+          ? config.matchCall?.(node, sourceFile, ctx)
+          : config.matchNew?.(node, sourceFile, ctx);
+        if (message) {
+          visitedLines?.add(line);
+          matches.push({ line, message });
+        }
+      }
 
       return matches;
     },

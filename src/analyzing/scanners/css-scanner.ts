@@ -5,7 +5,6 @@ import {
 } from 'cssomnom';
 import type {
   AnalyzerMatch,
-  AnalyzerRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
@@ -71,14 +70,14 @@ function prepareCssContext(
 }
 
 /**
- * Scans a CSS string using cssomnom against a list of AnalyzerRules with CssRuleMatchers
+ * Scans a CSS string using cssomnom against a list of rules with CssRuleMatchers
  * in a single parse pass.
  */
-export function scanCssRules(
+export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
   filePath: string,
   cssContent: string,
-  rules: readonly (AnalyzerRule & { matcher: CssRuleMatcher })[],
-): { rule: AnalyzerRule & { matcher: CssRuleMatcher }; match: AnalyzerMatch }[] {
+  rules: readonly T[],
+): { rule: T; match: AnalyzerMatch }[] {
   const activeRules = rules.filter((rule) =>
     matchesFastTokens(cssContent, rule.matcher.fastTokens),
   );
@@ -92,7 +91,7 @@ export function scanCssRules(
   }
 
   const { styleRules, ctx } = prepared;
-  const results: { rule: AnalyzerRule & { matcher: CssRuleMatcher }; match: AnalyzerMatch }[] = [];
+  const results: { rule: T; match: AnalyzerMatch }[] = [];
 
   for (const view of styleRules) {
     for (const rule of activeRules) {
@@ -114,42 +113,14 @@ export function scanCssRules(
   return results;
 }
 
-/**
- * Scans a CSS string using cssomnom against a list of CssRuleMatchers.
- */
 export function scanCss(
   filePath: string,
   cssContent: string,
   rules: readonly CssRuleMatcher[],
 ): AnalyzerMatch[] {
-  const activeRules = rules.filter((rule) =>
-    matchesFastTokens(cssContent, rule.fastTokens),
-  );
-  if (activeRules.length === 0) {
-    return [];
-  }
-
-  const prepared = prepareCssContext(filePath, cssContent);
-  if (!prepared) {
-    return [];
-  }
-
-  const { styleRules, ctx } = prepared;
-  const matches: AnalyzerMatch[] = [];
-
-  for (const view of styleRules) {
-    for (const rule of activeRules) {
-      const result = rule.matchRule(view, ctx);
-      if (result) {
-        matches.push({
-          line: view.line,
-          column: view.column,
-          message: result.message,
-          ...(result.subPattern ? { subPattern: result.subPattern } : {}),
-        });
-      }
-    }
-  }
-
-  return matches;
+  return scanCssRules(
+    filePath,
+    cssContent,
+    rules.map((matcher) => ({ matcher })),
+  ).map(({ match }) => match);
 }
