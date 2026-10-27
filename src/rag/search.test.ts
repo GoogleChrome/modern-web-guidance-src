@@ -9,7 +9,7 @@ import { searchUseCases, type UseCaseVector, type EmbedderLike } from "./search.
 describe("searchUseCases", () => {
   it("should return autofill-address-form as the best match for 'autofill address form'", async () => {
     const results = await searchUseCases("autofill address form");
-    assert.ok(results.length > 0, "Should return some results");
+    assert.strictEqual(results.length, 10, "Default search should return top-10 results");
     
     const bestMatch = results[0];
     assert.strictEqual(bestMatch.id, "autofill-address-form", "Best match should be autofill-address-form");
