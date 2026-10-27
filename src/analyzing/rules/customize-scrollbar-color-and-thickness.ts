@@ -38,7 +38,7 @@ const WEBKIT_THUMB_STATE_REGEX =
   /::-webkit-scrollbar-thumb\s*:(?:hover|active|focus|window-inactive)\b/i;
 const HOVER_WEBKIT_SCROLLBAR_REGEX = /:hover::-webkit-scrollbar(?![-\w])/i;
 const GRADIENT_VALUE_REGEX =
-  /(?:linear|radial|conic|-webkit|-moz|-o)-gradient\s*\(/i;
+  /(?:(?:-webkit-|-moz-|-o-)?(?:repeating-)?(?:linear|radial|conic)-gradient|-webkit-gradient)\s*\(/i;
 
 function normalizeCssValue(raw: string | null | undefined): string {
   return raw?.replace(/\s*!important\s*$/i, '').trim().toLowerCase() ?? '';

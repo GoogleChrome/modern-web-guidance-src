@@ -76,6 +76,9 @@ const RESET_PROP_VALUES = new Set([
   'auto',
 ]);
 
+const EXPLICIT_ERROR_COLOR_TOKEN_REGEX =
+  /\b(?:red|crimson|firebrick|darkred|maroon)\b|--[a-z0-9-]*(?:error|danger|invalid|alert|warn)|#(?:f00|ff0000|d00|c00|e00|dc3545|ef4444|f44336|d32f2f|b91c1c|b94a48|cc0000)\b/i;
+
 function normalizeCssDeclValue(raw: string): string {
   return raw.replace(/\s*!important\s*$/i, '').trim().toLowerCase();
 }
@@ -84,9 +87,39 @@ function isPlaceholderColorEmulation(styleRule: CssRuleView): boolean {
   if (/placeholder/i.test(styleRule.selectorText)) {
     return true;
   }
-  return styleRule.declarations.some((d) =>
-    /placeholder/i.test(d.value),
-  );
+  if (styleRule.declarations.some((d) => /placeholder/i.test(d.value))) {
+    return true;
+  }
+
+  // If the rule only sets color and/or opacity (no non-reset border, background, outline, box-shadow, display, visibility)
+  // and the color value does not contain an explicit error/danger color token, it is dimming the unselected <option value=""> placeholder
+  const nonResetVisualDecls = styleRule.declarations.filter((d) => {
+    const prop = d.property.toLowerCase();
+    if (!ERROR_OR_DISPLAY_PROPERTIES.has(prop)) {
+      return false;
+    }
+    const val = normalizeCssDeclValue(d.value);
+    return Boolean(val && !RESET_PROP_VALUES.has(val));
+  });
+
+  if (
+    nonResetVisualDecls.length > 0 &&
+    nonResetVisualDecls.every((d) => {
+      const prop = d.property.toLowerCase();
+      return prop === 'color' || prop === 'opacity';
+    })
+  ) {
+    const hasExplicitErrorColor = nonResetVisualDecls.some(
+      (d) =>
+        d.property.toLowerCase() === 'color' &&
+        EXPLICIT_ERROR_COLOR_TOKEN_REGEX.test(d.value),
+    );
+    if (!hasExplicitErrorColor) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function hasNonResetVisualErrorDeclaration(styleRule: CssRuleView): boolean {

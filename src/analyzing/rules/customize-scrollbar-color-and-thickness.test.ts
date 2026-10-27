@@ -252,6 +252,9 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
       ::-webkit-scrollbar-thumb {
         background: linear-gradient(to bottom, #888eb0, #7c5dfa);
       }
+      .legacy-grad::-webkit-scrollbar-thumb {
+        background: -webkit-linear-gradient(top, #888eb0, #7c5dfa);
+      }
       ::-webkit-scrollbar-thumb:hover {
         background: #8ed5af;
       }

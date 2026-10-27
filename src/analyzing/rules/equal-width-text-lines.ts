@@ -32,10 +32,9 @@ const NON_TEXT_FIT_TARGETS =
 const SINGLE_LINE_ENCLOSING_NAME_REGEX =
   /\b(?:initSingle|fitSingle(?:Line)?|singleLine|circleType|circletype)\b/i;
 
-const SINGLE_LINE_SELECTOR_REGEX =
-  /(?:^|[\s>+~])(?:h[1-6]|a|\.biglink|\.r-fit-text)\s*$/i;
+const SINGLE_LINE_SELECTOR_REGEX = /(?:^|[\s>+~])\.r-fit-text\s*$/i;
 
-function isSingleLineOrClampOption(call: CallExpression): boolean {
+function isSingleLineOption(call: CallExpression): boolean {
   for (const arg of call.getArguments()) {
     const resolved = resolveLocalExpression(arg, 2);
     if (Node.isObjectLiteralExpression(resolved)) {
@@ -59,15 +58,6 @@ function isSingleLineOrClampOption(call: CallExpression): boolean {
         if (init && init.getText() === '1') {
           return true;
         }
-      }
-      // Fluid viewport clamping / single-line container fitting options (fit-text-to-container / clamp())
-      if (
-        resolved.getProperty('minFontSize') ||
-        resolved.getProperty('maxFontSize') ||
-        resolved.getProperty('minSize') ||
-        resolved.getProperty('maxSize')
-      ) {
-        return true;
       }
     }
   }
@@ -93,6 +83,12 @@ function isInSingleLineContext(call: CallExpression, sourceFile: SourceFile): bo
         return true;
       }
     }
+    if (
+      Node.isCallExpression(current) &&
+      /\.r-fit-text\b/.test(current.getExpression().getText())
+    ) {
+      return true;
+    }
     current = current.getParent();
   }
 
@@ -100,7 +96,7 @@ function isInSingleLineContext(call: CallExpression, sourceFile: SourceFile): bo
 }
 
 function isSingleLineSelectorTarget(text: string): boolean {
-  if (/\bthis\.\$el\b/.test(text) || /\.r-fit-text\b/.test(text)) {
+  if (/\.r-fit-text\b/.test(text)) {
     return true;
   }
   const strMatches = text.match(/['"`]([^'"`]+)['"`]/g);
@@ -116,7 +112,7 @@ function isSingleLineSelectorTarget(text: string): boolean {
 }
 
 function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
-  if (isSingleLineOrClampOption(call) || isInSingleLineContext(call, sourceFile)) {
+  if (isSingleLineOption(call) || isInSingleLineContext(call, sourceFile)) {
     return false;
   }
   const expr = unwrapExpression(call.getExpression());
@@ -246,7 +242,7 @@ export const equalWidthTextLinesJsRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The call is guarded by CSS.supports("text-fit", ...) or a progressive enhancement fallback check.',
-      'The call passes minFontSize/maxFontSize or minSize/maxSize clamp options or fits a single-line heading, link, or slide element (covered by fit-text-to-container or fluid-scaling clamp()).',
+      'The call explicitly sets single-line mode (multiLine: false, singleLine: true, maxLines: 1) or targets Reveal.js .r-fit-text single-slide elements.',
       'The script curves text along a circular path (CircleType) or measures container aspect ratios or video dimensions rather than text typography lines.',
       'The sizing uses fluid viewport units (clamp, vw, cqi) without imperative line-scaling loops.',
     ],

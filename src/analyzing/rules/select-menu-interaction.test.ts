@@ -62,6 +62,9 @@ void test('select-menu-interaction CSS matcher', async (t) => {
         color: var(--pico-form-element-placeholder-color);
         opacity: 1;
       }
+      select:invalid {
+        color: #999;
+      }
       form.was-validated select:invalid ~ .select2-container--bootstrap4 .select2-selection {
         border-color: #dc3545;
       }

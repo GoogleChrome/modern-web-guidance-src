@@ -53,7 +53,15 @@ function hasStackedTableContext(styleRule: CssRuleView, ctx: CssMatcherContext):
       return false;
     }
     const display = normalizeCssPropValue(other.getPropertyValue('display'));
-    return STACKED_DISPLAY_REGEX.test(display);
+    const position = normalizeCssPropValue(other.getPropertyValue('position'));
+    const floatVal = normalizeCssPropValue(other.getPropertyValue('float'));
+    return (
+      STACKED_DISPLAY_REGEX.test(display) ||
+      position === 'absolute' ||
+      position === 'relative' ||
+      floatVal === 'left' ||
+      floatVal === 'right'
+    );
   });
 }
 
@@ -67,7 +75,7 @@ export const responsiveTableCssMatcher: CssRuleMatcher = {
     }
 
     const parentAtRule = styleRule.parentAtRule?.toLowerCase() ?? '';
-    if (parentAtRule.includes('container') || parentAtRule.includes('print')) {
+    if (parentAtRule.includes('container') || /\bprint\b/i.test(parentAtRule)) {
       return null;
     }
 
