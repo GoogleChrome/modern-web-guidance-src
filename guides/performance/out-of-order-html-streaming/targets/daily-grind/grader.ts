@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import {
   test,
   expect,
@@ -11,6 +12,37 @@ import { CSSStyleRule, type CSSRule, type CSSStyleSheet } from 'cssomnom';
 
 // @ts-ignore - import.meta.url is supported in Playwright ESM runtime
 const targetFiles: string[] = getTargetFiles(import.meta.url);
+
+function getRawHtmlWithoutTemplates(file: string): string {
+  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) return '';
+  const raw = fs.readFileSync(file, 'utf8');
+  return raw.replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, '');
+}
+
+function extractMarkerNames(html: string): string[] {
+  const names: string[] = [];
+  const regex = /<\?(?:start|marker)\b[^>]*?\bname\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>?]+))/gi;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(html)) !== null) {
+    const name = (match[1] || match[2] || match[3] || '').trim();
+    if (name) names.push(name);
+  }
+  return names;
+}
+
+function hasNonEmptyFallbackRangeInHtml(html: string): boolean {
+  const startRegex = /<\?start\b[^>]*?\bname\s*=\s*(?:"[^"]+"|'[^']+'|[^\s>?]+)[^>]*>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = startRegex.exec(html)) !== null) {
+    const afterStart = match.index + match[0].length;
+    const endMatch = /<\?end\b[^>]*>/i.exec(html.slice(afterStart));
+    if (endMatch) {
+      const inner = html.slice(afterStart, afterStart + endMatch.index).trim();
+      if (inner.length > 0) return true;
+    }
+  }
+  return false;
+}
 
 function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
   const result: CSSStyleRule[] = [];
@@ -58,56 +90,29 @@ const SAFE_HTML_METHODS = new Set([
 test.describe('out-of-order-html-streaming Target Grader', () => {
   test('The page should initially render fallback content (such as a loading skeleton) within a range defined by <?start> and <?end> processing instructions', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasFallbackInRange = docs.some(({ document }) => {
-      const elements: any[] = Array.from(document.querySelectorAll('*'));
-      return elements.some((el) => {
-        const nodes: any[] = Array.from(el.childNodes || []);
-        let inStartRange = false;
-        let foundFallbackElement = false;
-        for (const node of nodes) {
-          if (node.nodeType === 8 || node.nodeType === 7) {
-            const raw = (node.nodeValue || node.data || '').trim();
-            if (/^\?start\b/i.test(raw) && /\bname\s*=/i.test(raw)) {
-              inStartRange = true;
-              foundFallbackElement = false;
-            } else if (/^\?end\b/i.test(raw) && inStartRange && foundFallbackElement) {
-              return true;
-            }
-          } else if (inStartRange && node.nodeType === 1) {
-            foundFallbackElement = true;
-          }
-        }
-        return false;
-      });
+    const hasFallbackInRange = docs.some(({ file }) => {
+      const htmlWithoutTemplates = getRawHtmlWithoutTemplates(file);
+      return hasNonEmptyFallbackRangeInHtml(htmlWithoutTemplates);
     });
     expect(hasFallbackInRange).toBe(true);
   });
 
   test('The fallback content should be automatically replaced by the final content delivered in a <template for="..."> element once that part of the HTML stream is processed', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const startNames = new Set<string>();
-
-    for (const { document } of docs) {
-      const elements: any[] = Array.from(document.querySelectorAll('*'));
-      for (const el of elements) {
-        const nodes: any[] = Array.from(el.childNodes || []);
-        for (const node of nodes) {
-          if (node.nodeType === 8 || node.nodeType === 7) {
-            const raw = (node.nodeValue || node.data || '').trim();
-            const match = raw.match(/^\?start\s+name\s*=\s*["']?([^"'\s>?]+)["']?/i);
-            if (match && match[1]) {
-              startNames.add(match[1]);
-            }
-          }
-        }
-      }
-    }
-
-    const hasMatchingTemplateFor = docs.some(({ document }) => {
+    const hasMatchingTemplateFor = docs.some(({ file, document }) => {
       const templates: any[] = Array.from(document.querySelectorAll('template[for]'));
+      if (templates.length === 0) return false;
+
+      const htmlWithoutTemplates = getRawHtmlWithoutTemplates(file);
+      const startNames = new Set(extractMarkerNames(htmlWithoutTemplates));
+
       return templates.some((tpl) => {
         const targetName = tpl.getAttribute('for')?.trim();
-        const hasContent = (tpl.innerHTML || tpl.textContent || '').trim().length > 0 || (tpl.childNodes && tpl.childNodes.length > 0);
+        const contentRoot = tpl.content || tpl;
+        const hasContent =
+          (contentRoot.children && contentRoot.children.length > 0) ||
+          (contentRoot.childNodes && contentRoot.childNodes.length > 0) ||
+          String(tpl.innerHTML || tpl.textContent || '').trim().length > 0;
         return Boolean(targetName && startNames.has(targetName) && hasContent);
       });
     });
