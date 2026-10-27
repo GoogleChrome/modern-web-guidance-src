@@ -8,14 +8,14 @@ The canonical domain language for the Modern Web Guidance Analyzer (`src/analyzi
 
 The people-facing name for the end-to-end workflow of finding legacy web platform code in an existing project and changing it to modern platform standards across three steps: **Detection** (via `analyze`), **Verification** (reviewing findings against `verifierRubric`), and **Update** (retrieving `guide.md`, updating the code, and verifying the result). Distinct from **`analyze`**, which is the detection step only.
 
-* _Reference_: `guides/modern-web-guidance/SKILL.md#step-3-modernize-existing-code-analyze`, `src/analyzing/README.md#2-modernize-workflow`
+* _Reference_: `guides/modern-web-guidance/SKILL.md#modernize-an-existing-codebase`, `src/analyzing/README.md#2-modernize-workflow`
 * _Avoid_: `Modern Web Refactor`, `Refactor` (as a feature or workflow name), `Uplift`, `Modern Web Uplift`
 
 ### `analyze`
 
 The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for legacy web platform patterns matching qualified or experimental rules. It performs the detection step only and stops there; the AI coding agent and developer carry out the verification and update steps of the **Modernize** workflow.
 
-* _Reference_: `src/analyzing/cli.ts#runAnalyzeCli`, `guides/modern-web-guidance/SKILL.md#step-3-modernize-existing-code-analyze`
+* _Reference_: `src/analyzing/cli.ts#runAnalyzeCli`, `guides/modern-web-guidance/SKILL.md#modernize-an-existing-codebase`
 * _Avoid_: `modern-web-guidance refactor`, `modern-web-guidance uplift`, `scan` (as a CLI command name)
 
 ## Pipeline Steps
@@ -54,7 +54,7 @@ Offline evaluation pass that grades **Blind Card** findings on the **`held-out` 
 
 A published feature guide in `guides/<guideId>/guide.md` representing one modern web platform capability.
 
-* _Reference_: `guides/modern-web-guidance/SKILL.md#step-1-learn-what-the-guide-teaches`
+* _Reference_: `guides/modern-web-guidance/SKILL.md#step-2-retrieve-best-practices`
 * _Avoid_: `Feature`, `Article`, `Standard`
 
 ### Rule (`ruleId`)
@@ -84,7 +84,7 @@ The partition of repositories that engineers and agents inspect to discover lega
 
 The partition of repositories reserved strictly for offline precision and recall evaluation. Kept separate from repositories used during rule authoring and debugging so performance reflects out-of-sample code. The split spans local corpus repos and sampled public repos.
 
-* _Reference_: `src/analyzing/qualification.ts`, `src/analyzing/README.md#2-split-corpus-architecture-rule-writing-vs-held-out`
+* _Reference_: `src/analyzing/rules/index.ts`, `src/analyzing/README.md#2-split-corpus-architecture-rule-writing-vs-held-out`
 * _Avoid_: `grading-only` split, `tune` split, `final` split, `local-93`
 
 ## Evaluation & Calibration
@@ -115,14 +115,14 @@ The proportion of evaluated findings graded `legit-modernize-target` ($\text{leg
 - **Static Matcher Precision**: Precision of findings emitted by the **Static Matcher** alone, before any **LLM Verifier** pass.
 - **Post-Verifier Precision**: Precision of findings retained after the **LLM Verifier** (`verifierRubric`) filter. Default CLI rule shipping (**Qualified Rule**) requires clearing both **Static Matcher Precision** ($\ge 80\%$) and **Post-Verifier Precision** ($\ge 90\%$) at $n \ge 10$ (or **Static Matcher Precision** $\ge 90\%$ at $n \ge 5$ for rare patterns) on the **`held-out` split** as scored by the multi-judge panel.
 
-* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/README.md#qualification-criteria`
+* _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/README.md#qualification-criteria`
 * _Avoid_: `P1 Precision`, `P2 Precision`, `p1Precision`, `p2Precision`, `Strict Precision`, `Raw Precision`, `Detector Accuracy`, `Verified Precision`, `Final Precision`
 
 ### Matcher Misfire Rate
 
 The proportion of evaluated findings graded `not-old-pattern` ($\text{not-old-pattern} / n$), measuring how often a **Static Matcher** fires on code that is not attempting the legacy pattern. Its complement ($1 - \text{Matcher Misfire Rate}$, or **Non-Misfire Rate**) is used only when plotting alongside **Precision** on a `0–100%` chart axis.
 
-* _Reference_: `src/analyzing/qualification.ts`, `src/analyzing/eval/detection-eval.ts#JudgeVerdict`
+* _Reference_: `src/analyzing/rules/index.ts`, `src/analyzing/eval/detection-eval.ts#JudgeVerdict`
 * _Avoid_: `False Positive Rate`, `Error Rate`, `Non-Misfire Rate (as an evaluation metric)`
 
 ## Rule Lifecycle States
@@ -138,14 +138,14 @@ An active rule in `ALL_RULES` available behind `--experimental` (`--all-rules`) 
 
 A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Static Matcher Precision** $\ge 80\%$ and **Post-Verifier Precision** $\ge 90\%$ at $n \ge 10$, or **Static Matcher Precision** $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**, which runs only under `--experimental` (`--all-rules`).
 
-* _Reference_: `src/analyzing/qualification.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
+* _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
 * _Avoid_: `Default Rule`, `Tier 1 Rule`, `Tier A / Tier B / Tier C`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`
 
 ### Suspended Rule
 
 A previously qualified rule whose default shipping has been temporarily paused. Distinct from an **Experimental Rule** (never qualified) and a **Retired Guide** (permanently removed from active scanning).
 
-* _Reference_: `src/analyzing/rules/index.ts#SUSPENDED_QUALIFIED_GUIDE_IDS`, `src/analyzing/qualification.ts#SUSPENDED_QUALIFIED_GUIDE_IDS`
+* _Reference_: `src/analyzing/rules/index.ts#SUSPENDED_QUALIFIED_GUIDE_IDS`
 * _Avoid_: `Quarantined Rule`, `Disabled Rule`
 
 ### Retired Guide

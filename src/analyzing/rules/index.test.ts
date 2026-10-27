@@ -27,25 +27,35 @@ function isAnalyzerRuleExport(value: unknown): value is AnalyzerRule {
   );
 }
 
+/**
+ * Deferred or retired sub-pattern rules that remain exported from their module for unit tests
+ * or opt-in triage evaluation (`optInRuleExport`), while excluded from the active `*Rules` array.
+ */
+const DEFERRED_SUB_RULE_IDS: ReadonlySet<string> = new Set([
+  'branded-select-styling',
+  'child-state-based-styling',
+  'drag/package-drag-drop',
+  'individual-transform-properties/single-function-state',
+  'individual-transform-properties/standalone-chain',
+  'lazy-load-video-and-audio/package-lazyload',
+  'scrollspy/js',
+]);
+
 describe('rule registry architectural invariants', () => {
   it('enforces that every rule module file on disk is registered in RULE_REGISTRY', () => {
     const rulesDir = resolve(import.meta.dirname);
     const untrackedFiles = new Set<string>();
-    try {
-      const gitStatus = execSync('git status --porcelain src/analyzing/rules', {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      });
-      for (const line of gitStatus.split('\n')) {
-        if (line.startsWith('?? ')) {
-          const match = line.slice(3).trim().match(/([^/\\]+)\.ts$/);
-          if (match && !line.includes('.test.ts')) {
-            untrackedFiles.add(match[1]!);
-          }
+    const gitStatus = execSync('git status --porcelain src/analyzing/rules', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    for (const line of gitStatus.split('\n')) {
+      if (line.startsWith('?? ')) {
+        const match = line.slice(3).trim().match(/([^/\\]+)\.ts$/);
+        if (match && !line.includes('.test.ts')) {
+          untrackedFiles.add(match[1]!);
         }
       }
-    } catch {
-      // If git command fails, untrackedFiles remains empty
     }
 
     const filesOnDisk = readdirSync(rulesDir)
@@ -140,7 +150,30 @@ describe('rule registry architectural invariants', () => {
       }
       const modUrl = pathToFileURL(join(rulesDir, `${entry.guideId}.ts`)).href;
       const mod: Record<string, unknown> = await import(modUrl);
-      const exportedRules = Object.values(mod).filter(isAnalyzerRuleExport);
+      const exportedRules = [...new Set(Object.values(mod).filter(isAnalyzerRuleExport))];
+      assert.ok(
+        exportedRules.length > 0,
+        `Rule module "${entry.guideId}.ts" must export at least one AnalyzerRule`,
+      );
+      for (const exportedRule of exportedRules) {
+        if (DEFERRED_SUB_RULE_IDS.has(exportedRule.id)) {
+          assert.ok(
+            !entry.rules.includes(exportedRule),
+            `Rule "${exportedRule.id}" in "${entry.guideId}.ts" is in DEFERRED_SUB_RULE_IDS but is registered in RULE_REGISTRY entry.rules`,
+          );
+        } else {
+          assert.ok(
+            entry.rules.includes(exportedRule),
+            `Exported rule "${exportedRule.id}" in "${entry.guideId}.ts" is missing from RULE_REGISTRY entry.rules`,
+          );
+        }
+      }
+      for (const registeredRule of entry.rules) {
+        assert.ok(
+          exportedRules.includes(registeredRule),
+          `Registered rule "${registeredRule.id}" for "${entry.guideId}" is not exported by "${entry.guideId}.ts"`,
+        );
+      }
       const rulesToCheck = new Set<AnalyzerRule>([...entry.rules, ...exportedRules]);
 
       for (const rule of entry.rules) {
