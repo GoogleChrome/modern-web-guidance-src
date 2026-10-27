@@ -81,6 +81,10 @@
       ],
       "style-parent-with-has": [
         "task"
+      ],
+      "usage-aware-component-variations": [
+        "daily-grind",
+        "devtools-times"
       ]
     },
     "forms": {
