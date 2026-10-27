@@ -134,7 +134,7 @@ pnpm link --global && gd setup-completion
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + expectations.md" through target generation, calibration, agent tests, and report creation (`--targets <apps>`). |
 | `gd dev <dir> --test-grader` | Run calibration check across target apps (golden patches should pass 100%, zero-passrate should fail 100%). |
 | `gd pr <dir>` | Opens a GitHub Pull Request with auto-labeled classification and `report.md` body. |
-| `gd dev-gap` | Scans guides on disk for non-draft guides with `guide.md` and `expectations.md` that are missing evals (plus open PRs labeled `needs-eval-gen` or `needs-eval-run`), and runs `gd dev` + `gd pr` for each one (`--dry-run`, `--limit <n>`, `--targets <apps>`, defaulting to `daily-grind`). |
+| `gd dev-gap` | Scans guides on disk for non-draft guides with `guide.md` and `expectations.md` that are missing evals (plus open PRs labeled `needs-dev-rerun`), and runs `gd dev` + `gd pr` for each one (`--dry-run`, `--limit <n>`, `--targets <apps>`, defaulting to `daily-grind`). |
 | `gd dev-all` | Batch process all incomplete guides. |
 
 **Evaluation:**
