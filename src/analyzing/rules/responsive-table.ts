@@ -25,6 +25,37 @@ export const responsiveTablePackageMatcher: DependencyRuleMatcher =
 
 const TD_BEFORE_REGEX = /(?:^|[,\s>+~])td::?before\b/i;
 const ATTR_DATA_REGEX = /attr\s*\(\s*(?:data-label|data-th|data-title)\s*\)/i;
+const VIEWPORT_MEDIA_REGEX = /\b(?:max-width|min-width|width)\b/i;
+const DATA_GRID_SELECTOR_REGEX =
+  /\b(?:dataTable|dataTables|ag-theme|ag-root|ag-cell|tanstack|handsontable|tabulator|jqgrid|ui-jqgrid|slickgrid|k-grid|rt-table|rt-td)\b/i;
+const TABLE_ELEMENT_SELECTOR_REGEX = /(?:^|[\s>+~,.:#[\]])(?:table|thead|tbody|tfoot|tr|th|td)\b/i;
+const STACKED_DISPLAY_REGEX = /^(?:block|flex|grid|inline-block|inline-flex|none)\b/i;
+
+function normalizeCssPropValue(raw: string | null | undefined): string {
+  return raw?.replace(/\s*!important\s*$/i, '').trim().toLowerCase() ?? '';
+}
+
+function hasStackedTableContext(styleRule: CssRuleView, ctx: CssMatcherContext): boolean {
+  const selfDisplay = normalizeCssPropValue(styleRule.getPropertyValue('display'));
+  const selfPosition = normalizeCssPropValue(styleRule.getPropertyValue('position'));
+  const selfFloat = normalizeCssPropValue(styleRule.getPropertyValue('float'));
+  if (
+    STACKED_DISPLAY_REGEX.test(selfDisplay) ||
+    selfPosition === 'absolute' ||
+    selfFloat === 'left' ||
+    selfFloat === 'right'
+  ) {
+    return true;
+  }
+
+  return (ctx.styleRules ?? []).some((other) => {
+    if (!TABLE_ELEMENT_SELECTOR_REGEX.test(other.selectorText)) {
+      return false;
+    }
+    const display = normalizeCssPropValue(other.getPropertyValue('display'));
+    return STACKED_DISPLAY_REGEX.test(display);
+  });
+}
 
 export const responsiveTableCssMatcher: CssRuleMatcher = {
   kind: 'css',
@@ -35,12 +66,13 @@ export const responsiveTableCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    if (styleRule.parentAtRule?.toLowerCase().includes('container')) {
+    const parentAtRule = styleRule.parentAtRule?.toLowerCase() ?? '';
+    if (parentAtRule.includes('container') || parentAtRule.includes('print')) {
       return null;
     }
 
-    // Skip print stylesheets / media queries
-    if (styleRule.parentAtRule?.toLowerCase().includes('print')) {
+    // Must be inside a viewport @media query (mobile breakpoint table stacking)
+    if (!parentAtRule.includes('@media') || !VIEWPORT_MEDIA_REGEX.test(parentAtRule)) {
       return null;
     }
 
@@ -49,8 +81,11 @@ export const responsiveTableCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // Skip calendar date labels
-    if (styleRule.selectorText.includes('.calendar')) {
+    // Skip calendar date labels or third-party JS data grid stylesheets
+    if (
+      styleRule.selectorText.includes('.calendar') ||
+      DATA_GRID_SELECTOR_REGEX.test(styleRule.selectorText)
+    ) {
       return null;
     }
 
@@ -64,6 +99,11 @@ export const responsiveTableCssMatcher: CssRuleMatcher = {
       (d) => d.property.toLowerCase() === 'content',
     );
     if (!contentDecl || !ATTR_DATA_REGEX.test(contentDecl.value)) {
+      return null;
+    }
+
+    // 4. Require table-stacking / label-positioning layout context
+    if (!hasStackedTableContext(styleRule, ctx)) {
       return null;
     }
 
@@ -106,9 +146,10 @@ export const responsiveTableCssRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The stylesheet already uses @container queries to adapt the table layout based on container width.',
+      'The td::before rule is not inside a viewport @media query (e.g. unconditional card-list modifiers) or lacks table-stacking layout context.',
       'The content: attr(...) is used on anchor tags for print styles (e.g. a::after { content: " (" attr(href) ")" }).',
       'The table uses horizontal scrolling wrapper containers (overflow-x: auto) without pseudo-element cell transformation.',
-      'The table is a virtualized data grid (AG Grid, TanStack Table) managing dynamic cell recycling.',
+      'The table is a third-party or virtualized data grid (jQuery DataTables, AG Grid, TanStack Table) managing dynamic cell rendering.',
       'Hover tooltips or calendar date headers utilizing attr(data-*).',
     ],
   },

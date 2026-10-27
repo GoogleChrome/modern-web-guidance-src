@@ -91,6 +91,15 @@ void test('equal-width-text-lines JS matcher', async (t) => {
       fitty('.single-line-badge', { multiLine: false });
       fitty('.single-line-heading', { singleLine: true });
       fitty('.one-liner', { maxLines: 1 });
+      $("h1").fitText(1.2, { minFontSize: '16px', maxFontSize: '30px' });
+      fitty(slide.querySelectorAll('.r-fit-text'), { minSize: 20, maxSize: 200 });
+      fitty(this.$el, this.options);
+      $(".biglink").fitText(1.5);
+      const plugin = {
+        initSingle: function($callout) {
+          $callout.fitText(2.15);
+        }
+      };
       canvas.fitText(ctx, 'heading');
       chart.fitText();
       this.fitText();

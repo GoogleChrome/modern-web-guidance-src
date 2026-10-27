@@ -42,9 +42,12 @@ void test('responsive-table dependency matcher', async (t) => {
 });
 
 void test('responsive-table CSS matcher: positive brownfield matches', async (t) => {
-  await t.test('flags td:before with content: attr(data-label)', () => {
+  await t.test('flags td:before with content: attr(data-label) inside viewport media query with stacked table cells', () => {
     const css = `
       @media only screen and (max-width: 760px) {
+        table, thead, tbody, th, td, tr {
+          display: block;
+        }
         td:before {
           content: attr(data-label);
           font-weight: bold;
@@ -56,22 +59,27 @@ void test('responsive-table CSS matcher: positive brownfield matches', async (t)
     assert.match(matches[0]?.message ?? '', /Container Queries/);
   });
 
-  await t.test('flags td::before with content: attr(data-th)', () => {
+  await t.test('flags td::before with content: attr(data-th) inside viewport media query', () => {
     const css = `
-      td::before {
-        content: attr(data-th) ": ";
-        display: inline-block;
+      @media (max-width: 640px) {
+        td::before {
+          content: attr(data-th) ": ";
+          display: inline-block;
+        }
       }
     `;
     const matches = scanCss('reveal.css', css, [responsiveTableCssMatcher]);
     assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
+    assert.equal(matches[0]?.line, 3);
   });
 
-  await t.test('flags .table td:before with content: attr(data-title)', () => {
+  await t.test('flags .table td:before with content: attr(data-title) and float/block label positioning', () => {
     const css = `
-      .responsive-table td:before {
-        content: attr(data-title);
+      @media screen and (max-width: 768px) {
+        .responsive-table td:before {
+          content: attr(data-title);
+          float: left;
+        }
       }
     `;
     const matches = scanCss('table.css', css, [responsiveTableCssMatcher]);
@@ -89,6 +97,33 @@ void test('responsive-table CSS matcher: negative / exempt cases', async (t) => 
       }
     `;
     const matches = scanCss('modern-table.css', css, [responsiveTableCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts unconditional non-media-query card-list modifier rules', () => {
+    const css = `
+      .table-wrapper.is-card-list td:before {
+        content: attr(data-label);
+        font-weight: 600;
+      }
+    `;
+    const matches = scanCss('card-list.css', css, [responsiveTableCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts third-party data grid selectors such as jQuery DataTables', () => {
+    const css = `
+      @media only screen and (max-width: 640px) {
+        table.dataTable td {
+          display: block;
+        }
+        table.dataTable td:before {
+          content: attr(data-th);
+          display: inline-block;
+        }
+      }
+    `;
+    const matches = scanCss('base-datatable.css', css, [responsiveTableCssMatcher]);
     assert.equal(matches.length, 0);
   });
 

@@ -241,10 +241,26 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.equal(matches[0]?.line, 9);
   });
 
-  await t.test('exempts image backgrounds on scrollbar thumb', () => {
+  await t.test('exempts image and gradient backgrounds on scrollbar thumb and companion ::-webkit-scrollbar rules', () => {
     const css = `
       .custom::-webkit-scrollbar-thumb {
         background: url('thumb.png') no-repeat;
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: linear-gradient(to bottom, #888eb0, #7c5dfa);
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #8ed5af;
+      }
+      .glass::-webkit-scrollbar {
+        width: 4px;
+      }
+      .glass::-webkit-scrollbar-thumb {
+        background-color: transparent;
+        backdrop-filter: blur(10px);
       }
     `;
     const matches = scanCss('image.css', css, [matcher]);
