@@ -264,12 +264,9 @@
   .breadcrumb .bc-overflow { display: none; }
 
   @container bc (inline-size < 40rem) {
-    /* Every item except the first, the last two and the "…" item; the :has() guard keeps a trail without "…" intact */
-    .breadcrumb ol:has(> .bc-overflow) > li:not(:first-child, :nth-last-child(-n+2), .bc-overflow) { display: none; }
     .breadcrumb .bc-overflow { display: flex; }
-    /* The "…" item is a plain button, not a shape: give it and the first visible item after it (the hidden middle
-       items sit between them in the DOM) a normal gap, not the overlap */
-    .bc-shaped > ol > li.bc-overflow, .bc-shaped > ol:has(> .bc-overflow) > li:nth-last-child(2) { margin-inline-start: .25rem; }
+    /* The "…" item is a plain button, not a shape: give it and the item after it a normal gap, not the overlap */
+    .bc-shaped > ol > li.bc-overflow, .bc-shaped > ol > li.bc-overflow + li { margin-inline-start: .25rem; }
   }
 
   @container bc (inline-size < 20rem) {
@@ -566,7 +563,7 @@
 
   <section>
     <h2>10. Deep nesting, collapsed (container query)</h2>
-    <p>Trails with more than four items get a “…” button (added by JS) that opens a popover listing the middle items. Below 40rem of container width the middle collapses; below 20rem the trail becomes a single “‹ Parent” link.</p>
+    <p>Trails with more than three items get a “…” button (added by JS) that opens a popover listing the middle items. Below 40rem of container width the middle collapses; below 20rem the trail becomes a single “‹ Parent” link.</p>
     <div class="stack">
       <nav class="breadcrumb bc-chevron" data-sep="chevron" data-collapse aria-label="Breadcrumbs, deep (chevron)">
         <ol>
@@ -640,13 +637,13 @@
 </main>
 
 <script>
-  /* 1. Deep trails: add a "…" popover that lists a copy of the middle links.
-        JS hides nothing; a container query hides the middle items. */
+  /* 1. Deep trails: add a "…" popover. While the container query shows the "…" item, the real middle items are
+        moved into the popover; they move back when it is hidden. */
   let uid = 0;
   document.querySelectorAll('.breadcrumb[data-collapse]').forEach((nav) => {
     const list  = nav.querySelector('ol');
     const items = [...list.children];
-    if (items.length <= 4) return;
+    if (items.length <= 3) return;
 
     const middle = items.slice(1, -2);
 
@@ -666,14 +663,21 @@
     menu.id = id;
     menu.className = 'bc-menu';
     menu.setAttribute('aria-label', 'Hidden breadcrumbs');
-    middle.forEach((m) => {
-      const item = document.createElement('li');
-      item.append(m.querySelector('a').cloneNode(true));
-      menu.append(item);
-    });
 
     li.append(btn, menu);
     items[0].after(li);
+
+    // The "…" item's display depends only on the container width, so moving items cannot retrigger this
+    new ResizeObserver(() => {
+      const collapsed = getComputedStyle(li).display !== 'none';
+      const focused = document.activeElement;
+      if (collapsed) menu.append(...middle);
+      else if (menu.children.length) {
+        menu.hidePopover();
+        li.after(...menu.children);
+      }
+      if (focused?.isConnected) focused.focus();
+    }).observe(nav);
   });
 
   /* 2. Close an open menu once focus lands outside it and its own trigger: popover light dismiss does not cover
