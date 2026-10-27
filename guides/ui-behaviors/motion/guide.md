@@ -43,6 +43,7 @@ web-feature-ids:
 ### Accessibility
 
 Use `prefers-reduced-motion` media queries to turn off heavy motion for users who prefer it.
+- **Preserve non-motion transitions**: Keep non-motion transitions (such as `color` or `background-color` changes on links and buttons) enabled; only dampen or disable spatial movement, scaling, rotation, or persistent animations.
 - **Provide Pause mechanism**: Allow users to stop auto-running carousels, banners, or other persistent animations.
 - **Default to static views**: Consider defaulting to static states and allowing users to opt-in to motion.
 - **Don't exceed flash limits (three per second)**: Never include rapid light-to-dark flashing. Such effects can cause seizures.

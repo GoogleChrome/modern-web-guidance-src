@@ -359,7 +359,11 @@
 
       /* Respect reduced-motion preferences without a jarring 0.01ms blanket reset */
       @media (prefers-reduced-motion: reduce) {
-        button,
+        button {
+          translate: none;
+          scale: none;
+        }
+
         .motion-card {
           transition: none;
         }
