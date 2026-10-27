@@ -151,6 +151,10 @@ Analyze this failure and modify the existing grader file to fix these assertions
     ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to write a test for every expectation. Decide relevance from the base application in your workspace, not from the solution patches: do NOT test an expectation whose pattern only exists because a solution patch added it. Also skip expectations the base application already satisfies. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, add a comment listing every expectation number as TESTED or SKIPPED with a one-line reason.`
     : '';
 
+  const coverageInstruction = opts.isDisciplineGuide
+    ? ''
+    : `Every top-level expectation in \`${opts.expectationsFile}\` must have at least one dedicated \`test('...', ...)\` block whose name clearly describes that expectation. Do not omit, merge, or skip any expectation, including when revising the grader after a calibration failure.\n\n`;
+
   return `${prReviewContextBlock}${contextBlock}# GOAL
 Write a Playwright test script named \`${opts.graderFile}\` that directly validates the implementation requirements defined in \`${opts.expectationsFile}\` for the \`${opts.baseApp}\` web application. The grader must be robust enough to pass 100% against all golden solution diffs, as developers using different AI tools will implement valid variations of the requirements.${disciplineInstruction}${patchInstruction}
 
@@ -181,8 +185,8 @@ Base your grader's imports, workspace setup, helper function usage, and test str
   - **Linkedom Type Definitions**: [linkedom.d.ts](file://${opts.linkedomDtsPath})
   - **CSSOMNom Type Definitions**: [cssomnom.d.ts](file://${opts.cssomnomDtsPath})
 
-## 3. Granular Assertions: Single Assertion per Test
-Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
+## 3. Expectation Coverage & Granular Assertions
+${coverageInstruction}Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
 
 ## 4. Precision & Matching Rules
 - **Outcome-Based Assertions**: Verify structural and functional requirements in static checks rather than forcing a single narrow implementation when valid alternatives exist.
@@ -273,8 +277,8 @@ export function buildApplyReviewFeedbackPrompt(opts: ReviewFeedbackPromptOptions
   const contextBlock = parts.join('\n\n');
 
   let rerunNote = '';
-  if (opts.rerunMode === 'needs-eval-gen') {
-    rerunNote = `\n> [!NOTE]\n> This rerun is in \`needs-eval-gen\` mode: all target capsules under \`targets/\` will be wiped and regenerated from source guidance after this step. Apply reviewer feedback ONLY to \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\`. Do NOT edit files under \`targets/\`.\n`;
+  if (opts.rerunMode === 'needs-dev-rerun') {
+    rerunNote = `\n> [!NOTE]\n> This rerun is in \`needs-dev-rerun\` mode: after this step, files are regenerated based on what changed. If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` changes, every file under \`targets/\` is regenerated, so do not also edit target files in that case. If only \`targets/<target>/${TASK_FILE}\` changes, the solution patches and \`grader.ts\` are regenerated from the new task.\n`;
   }
 
   return `${contextBlock}
@@ -364,9 +368,9 @@ Diagnose each target according to its assigned flag:
    - The test suite failed calibration against the golden solution patches before agent evaluation runs could execute — typically because all 3 golden solution agents (which only read \`task.md\` + \`guide.md\`) failed the same expectation in \`expectations.md\`, or because \`grader.ts\` has a broken assertion.
    - **Treat \`guide.md\` as Authoritative over \`expectations.md\`**: Compare the failing test(s) against \`guide.md\` and \`expectations.md\`.
      - If \`expectations.md\` demands a detail, sub-feature, selector, or requirement that is omitted from \`guide.md\` or marked optional/secondary in \`guide.md\`, **trim or relax \`expectations.md\`** (and update \`targets/<target>/grader.ts\` to match) rather than bloating \`guide.md\`. Modifying \`guide.md\` triggers \`gd-dev-content\` and pings human ATLs, so avoid editing \`guide.md\` unless \`guide.md\` itself has contradictory code snippets or is genuinely missing a core concept of the feature. Always append:
-       \`*(Note: These expectations/grader adjustments have already been applied directly in this PR. After reviewing, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*\`
+       \`*(Note: These expectations/grader adjustments have already been applied directly in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
      - If \`expectations.md\` and \`guide.md\` are already aligned and the failure is purely a buggy or overly rigid check in \`targets/<target>/grader.ts\` or an under-scoped prompt in \`targets/<target>/task.md\`, fix \`targets/<target>/grader.ts\` or \`targets/<target>/task.md\` directly without touching \`guide.md\` or \`expectations.md\`. Always append:
-       \`*(Note: These target adjustments have already been applied directly in this PR. After reviewing, add the needs-eval-run label to the PR to re-run calibration when running gd dev-gap)*\`
+       \`*(Note: These target adjustments have already been applied directly in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
 
 1. **\`INFRASTRUCTURE_ERROR\`**:
    - The test run failed due to execution timeouts, agent CLI process crashes, rate limits (429), or missing setup files.
@@ -376,14 +380,14 @@ Diagnose each target according to its assigned flag:
    - The guided agent did not invoke \`modern-web-guidance\`.
    - **Diagnosis**: State that the test prompt in \`task.md\` failed to activate modern web guidance during the agent's run.
    - **Recommendation**: Provide concrete edits for \`targets/<target>/task.md\` so the desired user outcome in the target app more naturally triggers modern web guidance lookup. Always append:
-     \`*(Note: This fix has already been applied directly to targets/<target>/task.md in this PR. After reviewing, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
+     \`*(Note: This fix has already been applied directly to targets/<target>/task.md in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
 
 3. **\`MISSING_EXPECTED_GUIDE\`**:
    - The guided agent invoked guidance tools, but \`${opts.guideName}\` was not among the consumed guides.
    - **Culprit**: \`targets/<target>/task.md\` or the \`description\` in \`${GUIDE_FILE}\`.
    - **Root Cause**: The prompt keywords failed to match the guide's indexing keywords or description frontmatter.
    - **Recommendation**: Provide concrete edits for \`targets/<target>/task.md\` or the frontmatter \`description\` in \`${GUIDE_FILE}\`. Always append:
-     \`*(Note: This fix has already been applied directly in this PR. If source guidance was modified, add the needs-eval-gen label; if only targets/<target>/task.md was modified, add the needs-eval-run label)*\`
+     \`*(Note: This fix has already been applied directly in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
 
 4. **\`LOW_GUIDED_PASS_RATE\`**:
    - The guided agent pass rate is under 90%.
@@ -397,9 +401,9 @@ Diagnose each target according to its assigned flag:
      - If \`expectations.md\` is misaligned with \`guide.md\` (e.g. requiring something omitted or optional in \`guide.md\`), treat \`guide.md\` as authoritative and trim \`expectations.md\` (plus update \`targets/<target>/grader.ts\`) rather than adding extra requirements to \`guide.md\`.
    - **Recommendation Rules**:
      - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
-       \`*(Note: These source guidance changes have already been applied directly to ${GUIDE_FILE} / ${EXPECTATIONS_FILE} in this PR. After reviewing, add the needs-eval-gen label to the PR to regenerate all target artifacts when running gd dev-gap)*\`
+       \`*(Note: These source guidance changes have already been applied directly to ${GUIDE_FILE} / ${EXPECTATIONS_FILE} in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
      - **Grader Fixes**: When grader fixes are necessary, only recommend direct edits to \`targets/<target>/grader.ts\` if \`${GUIDE_FILE}\` and \`${EXPECTATIONS_FILE}\` require **NO** changes. Always append:
-       \`*(Note: These grader adjustments have already been applied directly to targets/<target>/grader.ts in this PR. After reviewing, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
+       \`*(Note: These grader adjustments have already been applied directly to targets/<target>/grader.ts in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
      - **Miscellaneous Fixes**: Any other recommended fixes (do not have to be file-specific).
 
 5. **\`HIGH_UNGUIDED_PASS_RATE\`**:
@@ -410,7 +414,7 @@ Diagnose each target according to its assigned flag:
    - **Recommendation Rules (\`targets/\` Only — Do NOT Edit \`${GUIDE_FILE}\`)**:
      - Do **NOT** modify \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\`.
      - If \`targets/<target>/task.md\` leaks implementation details or \`targets/<target>/grader.ts\` has overly loose checks that fail to enforce \`${EXPECTATIONS_FILE}\`, tighten \`targets/<target>/task.md\` and/or \`targets/<target>/grader.ts\` directly. Always append:
-       \`*(Note: These target adjustments have already been applied directly in this PR. After reviewing, add the needs-eval-run label to the PR to re-run evaluations when running gd dev-gap)*\`
+       \`*(Note: These target adjustments have already been applied directly in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
 
 6. **\`HEALTHY\`**:
    - The target achieved ≥ 90% guided pass rate with all guidance tools and guides correctly consumed.

@@ -1,0 +1,299 @@
+diff --git a/index.html b/index.html
+index 66c9173..b534a4e 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,215 @@
+       background: #3e2723;
+     }
+ 
++    /* Browser UI theming */
++    :root {
++      color-scheme: light;
++      accent-color: var(--primary);
++      scrollbar-color: var(--primary) var(--secondary);
++      scrollbar-width: thin;
++    }
++
++    ::selection {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    .customizer {
++      margin-top: 60px;
++    }
++
++    .order-form {
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 24px;
++      margin-top: 20px;
++      display: grid;
++      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      gap: 20px;
++    }
++
++    .field,
++    fieldset {
++      border: none;
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      min-width: 0;
++    }
++
++    .field>label,
++    legend {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .field.wide,
++    .form-actions {
++      grid-column: 1 / -1;
++    }
++
++    .order-form input:not([type="radio"], [type="checkbox"], [type="range"]),
++    .order-form select,
++    .order-form textarea {
++      font: inherit;
++      color: var(--text);
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 8px 10px;
++    }
++
++    .order-form input:focus-visible,
++    .order-form select:focus-visible,
++    .order-form textarea:focus-visible,
++    .order-form button:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .order-form ::placeholder {
++      color: #6d4c41;
++      opacity: 0.8;
++    }
++
++    .order-form input:placeholder-shown {
++      border-style: dashed;
++    }
++
++    .order-form input:not([type="range"]):user-valid,
++    .order-form textarea:user-valid {
++      border-color: #558b2f;
++    }
++
++    .order-form input:not([type="range"]):user-invalid,
++    .order-form select:user-invalid,
++    .order-form textarea:user-invalid {
++      border-color: #c62828;
++      background: #fff3f0;
++    }
++
++    .order-form textarea {
++      field-sizing: content;
++      min-height: 4.5em;
++      max-height: 12em;
++      resize: vertical;
++    }
++
++    .order-form select,
++    .order-form select::picker(select) {
++      appearance: base-select;
++    }
++
++    .order-form select::picker(select) {
++      background: white;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      padding: 4px;
++    }
++
++    .order-form select option {
++      padding: 6px 10px;
++      border-radius: 3px;
++    }
++
++    .order-form select option:hover,
++    .order-form select option:checked {
++      background: var(--secondary);
++      color: var(--primary);
++    }
++
++    .choices {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++    }
++
++    .choices label {
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: 6px 12px;
++      cursor: pointer;
++      background: var(--light);
++    }
++
++    .choices label:has(:checked) {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++    }
++
++    .choices label:has(:focus-visible) {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .order-form input[type="file"]::file-selector-button {
++      font: inherit;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 4px;
++      padding: 6px 12px;
++      margin-right: 10px;
++      cursor: pointer;
++    }
++
++    .order-form input[type="file"]::file-selector-button:hover {
++      background: var(--text);
++    }
++
++    .order-form input[type="range"] {
++      appearance: none;
++      background: transparent;
++      height: 1.5rem;
++    }
++
++    .order-form input[type="range"]::-webkit-slider-runnable-track {
++      height: 6px;
++      border-radius: 3px;
++      background: var(--primary);
++    }
++
++    .order-form input[type="range"]::-moz-range-track {
++      height: 6px;
++      border-radius: 3px;
++      background: var(--primary);
++    }
++
++    .order-form input[type="range"]::-webkit-slider-thumb {
++      appearance: none;
++      width: 20px;
++      height: 20px;
++      margin-top: -7px;
++      border-radius: 50%;
++      background: var(--accent);
++      border: 2px solid var(--text);
++    }
++
++    .order-form input[type="range"]::-moz-range-thumb {
++      width: 16px;
++      height: 16px;
++      border-radius: 50%;
++      background: var(--accent);
++      border: 2px solid var(--text);
++    }
++
++    .order-form button {
++      font: inherit;
++      background: var(--primary);
++      color: white;
++      border: none;
++      border-radius: 5px;
++      padding: 10px 20px;
++      cursor: pointer;
++      transition: background 0.3s;
++    }
++
++    .order-form button:hover {
++      background: var(--text);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +404,78 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="customizer" aria-labelledby="customize-heading">
++      <h2 id="customize-heading" style="text-align: center;">Customize Your Order</h2>
++      <form class="order-form" action="/order-online" method="post">
++        <div class="field">
++          <label for="drink">Drink</label>
++          <select id="drink" name="drink" required>
++            <option value="">Choose a drink</option>
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </div>
++
++        <fieldset>
++          <legend>Size</legend>
++          <div class="choices">
++            <label><input type="radio" name="size" value="small"> Small</label>
++            <label><input type="radio" name="size" value="medium" checked> Medium</label>
++            <label><input type="radio" name="size" value="large"> Large</label>
++          </div>
++        </fieldset>
++
++        <fieldset>
++          <legend>Extras</legend>
++          <div class="choices">
++            <label><input type="checkbox" name="extras" value="extra-shot"> Extra shot</label>
++            <label><input type="checkbox" name="extras" value="oat-milk"> Oat milk</label>
++            <label><input type="checkbox" name="extras" value="vanilla"> Vanilla</label>
++          </div>
++        </fieldset>
++
++        <div class="field">
++          <label for="sweetness">Sweetness</label>
++          <input type="range" id="sweetness" name="sweetness" min="0" max="5" value="2">
++        </div>
++
++        <div class="field">
++          <label for="name">Name for the order</label>
++          <input type="text" id="name" name="name" placeholder="e.g. Alex" required autocomplete="given-name">
++        </div>
++
++        <div class="field">
++          <label for="pickup-date">Pickup date</label>
++          <input type="date" id="pickup-date" name="pickup-date">
++        </div>
++
++        <div class="field">
++          <label for="pickup-time">Pickup time</label>
++          <input type="time" id="pickup-time" name="pickup-time">
++        </div>
++
++        <div class="field">
++          <label for="cup-color">Sleeve color</label>
++          <input type="color" id="cup-color" name="cup-color" value="#4e342e">
++        </div>
++
++        <div class="field">
++          <label for="cup-art">Cup art reference (optional)</label>
++          <input type="file" id="cup-art" name="cup-art" accept="image/*">
++        </div>
++
++        <div class="field wide">
++          <label for="notes">Special instructions</label>
++          <textarea id="notes" name="notes" placeholder="Anything else we should know?"></textarea>
++        </div>
++
++        <div class="form-actions">
++          <button type="submit">Place Order</button>
++        </div>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
