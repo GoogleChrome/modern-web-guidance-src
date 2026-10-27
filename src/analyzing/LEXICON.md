@@ -100,7 +100,7 @@ An evaluation finding packaged for unbiased grading (enclosing `contextSlice`, f
 
 A curated or sampled collection of **Blind Cards** packaged together for human spot-checking, judge benchmarking, or calibration. Graded blind without showing rule rubrics or prior labels.
 
-* _Reference_: `src/analyzing/eval/detection-eval.ts#loadCalibrationDeck`
+* _Reference_: `src/analyzing/eval/detection-eval.ts#loadPaulIrishScoredCards`
 * _Avoid_: `Evaluation Suite`, `Test Deck`, `Test Suite`, `Calibration Deck`, `FP Check Deck`, `Gate 0 Deck`
 
 ### Blind Replication

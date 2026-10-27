@@ -106,16 +106,6 @@ export const GUIDE_TRIAGE_RESPONSE_SCHEMA = {
   ],
 };
 
-export const GUIDE_TRIAGE_USER_PROMPT_TEMPLATE = `## Guide: \${guide.guideId} (Category: \${guide.category})
-
-### Full Guide Markdown:
-\`\`\`markdown
-\${guide.markdownContent}
-\`\`\`
-
-Analyze the entire guide markdown above and classify it into one of: 'detectable', 'ui-recipe-multi-part', or 'skip-no-old-way'.
-Identify candidateTechniques (if any), borderline flag, brownfieldTarget, cite evidenceFromGuide (from the guide or web ecosystem knowledge), and provide a 1-sentence reason.`;
-
 export interface GuideTriagePromptGuideInput {
   readonly guideId: string;
   readonly category: string;
@@ -237,27 +227,9 @@ export const JUDGE_RESPONSE_SCHEMA = {
   ],
 };
 
-export const JUDGE_USER_PROMPT_TEMPLATE = `## Modern Web Guidance Guide (\${card.guideId})
-\${card.guideSummary.markdownBody}
-
-## Code Location
-- File: \${card.file}
-- Line: \${card.line}
-
-## Code Snippet
-\`\`\`
-\${card.codeSnippet}
-\`\`\``;
-
 export interface BlindCardGuideSummaryInput {
   readonly guideId?: string;
   readonly markdownBody?: string;
-  readonly summary?: string;
-  readonly verifierRubric?: unknown;
-  readonly problem?: string;
-  readonly before?: string;
-  readonly now?: string;
-  readonly ruleSummary?: string;
   readonly explainerContext?: string;
 }
 
