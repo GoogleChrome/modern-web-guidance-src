@@ -44,8 +44,7 @@ The drawer is a single popover containing a horizontal scroller, which contains 
     <nav class="Drawer-sheet" tabindex="-1">
       <!-- Close button that can be used to dismiss the drawer -->
       <button id="drawer-close" aria-label="Close menu">
-        <!-- MANDATORY: Inline decorative SVGs MUST define aria-hidden="true" -->
-        <svg aria-hidden="true" viewBox="0 0 24 24">...</svg>
+        <!-- close icon or blank if icon inserted via CSS -->
       </button>
       <ul>
         <li><a href="/page-1">Page 1</a></li>
@@ -64,13 +63,14 @@ The drawer is a single popover containing a horizontal scroller, which contains 
             aria-label="Menu"
             aria-expanded="false"
             aria-controls="drawer">
-      <!-- MANDATORY: Inline decorative SVGs MUST define aria-hidden="true" -->
-      <svg aria-hidden="true" viewBox="0 0 24 24">...</svg>
+      <!-- open icon or blank if icon inserted via CSS -->
     </button>
   </header>
   <!-- Page content. -->
 </main>
 ```
+
+See {{ GUIDE_REF('icons') }} for maintaining accessibility when using icons.
 
 ### 2. Styles
 
