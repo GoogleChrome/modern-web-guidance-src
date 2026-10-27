@@ -27,7 +27,12 @@ const FITTEXT_PACKAGES = [
 ] as const;
 
 const NON_TEXT_FIT_TARGETS =
-  /\b(?:canvas|ctx|context|chart|video|audio|player|camera|scene|game|threejs)\b/i;
+  /\b(?:canvas|ctx|context|chart|video|audio|player|camera|scene|game|threejs|circleType|circletype)\b/i;
+
+const SINGLE_LINE_ENCLOSING_NAME_REGEX =
+  /\b(?:initSingle|fitSingle(?:Line)?|singleLine|circleType|circletype)\b/i;
+
+const SINGLE_LINE_SELECTOR_REGEX = /(?:^|[\s>+~])\.r-fit-text\s*$/i;
 
 function isSingleLineOption(call: CallExpression): boolean {
   for (const arg of call.getArguments()) {
@@ -59,8 +64,55 @@ function isSingleLineOption(call: CallExpression): boolean {
   return false;
 }
 
+function isInSingleLineContext(call: CallExpression, sourceFile: SourceFile): boolean {
+  const filePath = sourceFile.getFilePath();
+  if (/circletype/i.test(filePath)) {
+    return true;
+  }
+
+  let current: Node | undefined = call.getParent();
+  while (current) {
+    if (
+      Node.isFunctionDeclaration(current) ||
+      Node.isMethodDeclaration(current) ||
+      Node.isPropertyAssignment(current) ||
+      Node.isVariableDeclaration(current)
+    ) {
+      const name = current.getName?.() ?? '';
+      if (name && SINGLE_LINE_ENCLOSING_NAME_REGEX.test(name)) {
+        return true;
+      }
+    }
+    if (
+      Node.isCallExpression(current) &&
+      /\.r-fit-text\b/.test(current.getExpression().getText())
+    ) {
+      return true;
+    }
+    current = current.getParent();
+  }
+
+  return false;
+}
+
+function isSingleLineSelectorTarget(text: string): boolean {
+  if (/\.r-fit-text\b/.test(text)) {
+    return true;
+  }
+  const strMatches = text.match(/['"`]([^'"`]+)['"`]/g);
+  if (!strMatches || strMatches.length === 0) {
+    return false;
+  }
+  const lastRaw = strMatches[strMatches.length - 1];
+  if (!lastRaw) {
+    return false;
+  }
+  const selector = lastRaw.slice(1, -1).trim();
+  return SINGLE_LINE_SELECTOR_REGEX.test(selector);
+}
+
 function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
-  if (isSingleLineOption(call)) {
+  if (isSingleLineOption(call) || isInSingleLineContext(call, sourceFile)) {
     return false;
   }
   const expr = unwrapExpression(call.getExpression());
@@ -69,8 +121,19 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
     if (name !== 'fitty' && name !== 'fitText' && name !== 'fittext') {
       return false;
     }
-    if (call.getArguments().length === 0) {
+    const args = call.getArguments();
+    if (args.length === 0) {
       return false;
+    }
+    const firstArg = args[0];
+    if (firstArg) {
+      const resolvedFirst = resolveLocalExpression(firstArg, 2);
+      if (
+        isSingleLineSelectorTarget(firstArg.getText()) ||
+        isSingleLineSelectorTarget(resolvedFirst.getText())
+      ) {
+        return false;
+      }
     }
     if (!isGlobalReference(expr, name)) {
       const hasPkgImport = sourceFile.getImportDeclarations().some((imp) => {
@@ -92,6 +155,14 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
 
     // Skip canvas, chart, video, audio, or non-text graphical contexts
     if (Node.isIdentifier(target) && NON_TEXT_FIT_TARGETS.test(target.getText())) {
+      return false;
+    }
+
+    const resolvedTarget = resolveLocalExpression(target, 2);
+    if (
+      isSingleLineSelectorTarget(target.getText()) ||
+      isSingleLineSelectorTarget(resolvedTarget.getText())
+    ) {
       return false;
     }
 
@@ -171,7 +242,8 @@ export const equalWidthTextLinesJsRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The call is guarded by CSS.supports("text-fit", ...) or a progressive enhancement fallback check.',
-      'The script measures container aspect ratios or video dimensions rather than text typography lines.',
+      'The call explicitly sets single-line mode (multiLine: false, singleLine: true, maxLines: 1) or targets Reveal.js .r-fit-text single-slide elements.',
+      'The script curves text along a circular path (CircleType) or measures container aspect ratios or video dimensions rather than text typography lines.',
       'The sizing uses fluid viewport units (clamp, vw, cqi) without imperative line-scaling loops.',
     ],
   },
