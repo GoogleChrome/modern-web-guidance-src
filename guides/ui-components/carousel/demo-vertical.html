@@ -226,6 +226,11 @@
       background: var(--accent);
     }
 
+    .carousel-track,
+    :where(.fallback-controls, .fallback-markers) button {
+      touch-action: manipulation;
+    }
+
     :focus-visible {
       outline: 0.2rem solid #f90;
       outline-offset: 0.15rem;
