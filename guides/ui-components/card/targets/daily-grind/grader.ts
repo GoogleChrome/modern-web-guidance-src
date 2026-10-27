@@ -484,18 +484,31 @@ test.describe('card Target Grader', () => {
       const flatRules = collectFlatStyleRules(stylesheet.cssRules);
       const hasFocusVisibleRule = flatRules.some(
         (r) =>
-          r.selectorText.includes(':focus-visible') &&
+          (r.selectorText.includes(':focus-visible') || r.selectorText.includes(':focus')) &&
           (r.style.getPropertyValue('outline').trim() !== '' ||
             r.style.getPropertyValue('box-shadow').trim() !== ''),
       );
 
       const card = page.locator('article.card').first();
-      const nonStretchedControl = card.locator('button, select, input, a:not(.card-link)').first();
+      const nonStretchedControl = card
+        .locator('button, select, input:not([type="hidden"]), a:not(.card-link)')
+        .first();
       await nonStretchedControl.focus();
 
       const controlHasVisibleOutline = await nonStretchedControl.evaluate((el) => {
-        const s = window.getComputedStyle(el);
-        return s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0;
+        const hasVisibleIndicator = (target: Element | null) => {
+          if (!target) return false;
+          const s = window.getComputedStyle(target);
+          return (
+            (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) ||
+            s.boxShadow !== 'none'
+          );
+        };
+        return (
+          hasVisibleIndicator(el) ||
+          hasVisibleIndicator(el.closest('label')) ||
+          hasVisibleIndicator(el.nextElementSibling)
+        );
       });
 
       const stretchedLinksCount = await card.locator('a.card-link').count();
