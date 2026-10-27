@@ -122,11 +122,14 @@ interface BuildState {
   pending: PendingChange[];
 }
 
+/** The allowlist inputs a suite's outcome depends on, so a change to any of them rebuilds it. */
 interface SuiteState {
   generation: string;
   excludeGuides: string[];
-  /** Present when the suite was skipped; the inputs that could change the outcome are recorded alongside. */
-  skipped?: { code: SkipCode; releasedModels: string[] };
+  /** Releasing a model lets a skipped suite publish; un-releasing one must take a published suite down. */
+  releasedModels: string[];
+  /** Present when the suite was skipped. */
+  skipped?: { code: SkipCode };
 }
 
 /**
@@ -300,14 +303,13 @@ function unchangedOutcome(state: BuildState, ref: SuiteRef, options: BuildOption
     state.builderVersion !== BUILDER_VERSION ||
     state.forbiddenTokensVersion !== (options.forbiddenTokensVersion ?? 0) ||
     recorded.generation !== ref.generation ||
-    !sameSet(recorded.excludeGuides, overrideFor(options.allowlist, ref.id)?.excludeGuides ?? [])
+    !sameSet(recorded.excludeGuides, overrideFor(options.allowlist, ref.id)?.excludeGuides ?? []) ||
+    !recorded.releasedModels ||
+    !sameSet(recorded.releasedModels, options.allowlist.releasedModels)
   ) {
     return undefined;
   }
   if (recorded.skipped) {
-    if (!sameSet(recorded.skipped.releasedModels, options.allowlist.releasedModels)) {
-      return undefined;
-    }
     return { suiteId: ref.id, status: 'skipped', code: recorded.skipped.code, reason: `remembered: ${recorded.skipped.code}`, files: 0, bytes: 0, truncatedPatches: 0 };
   }
   return { suiteId: ref.id, status: 'unchanged', files: 0, bytes: 0, truncatedPatches: 0 };
@@ -367,9 +369,10 @@ function writeState(
     const entry: SuiteState = {
       generation: ref.generation,
       excludeGuides: overrideFor(options.allowlist, result.suiteId)?.excludeGuides ?? [],
+      releasedModels: [...options.allowlist.releasedModels].sort(),
     };
     if (result.status === 'skipped' && result.code) {
-      entry.skipped = { code: result.code, releasedModels: [...options.allowlist.releasedModels].sort() };
+      entry.skipped = { code: result.code };
     }
     next.suites[result.suiteId] = entry;
   }

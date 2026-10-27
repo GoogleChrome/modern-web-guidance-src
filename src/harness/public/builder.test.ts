@@ -211,6 +211,20 @@ describe('incremental builds', () => {
     assert.equal(third.find(r => r.suiteId === unreleased)?.status, 'built');
   });
 
+  test('un-releasing a model takes an already published suite down', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    assert.ok(fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, 'evals.json')));
+
+    const withdrawn = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, releasedModels: [] } });
+    const mine = withdrawn.find(r => r.suiteId === SUITE);
+    assert.equal(mine?.status, 'skipped');
+    assert.equal(mine?.code, 'unreleased-model');
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+    const manifest = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', 'suites.gen.json'), 'utf8'));
+    assert.deepEqual(manifest, []);
+  });
+
   test('a changed raw evals.json triggers a rebuild', async () => {
     const options = makeOptions();
     await buildSelectedSuites(options);
