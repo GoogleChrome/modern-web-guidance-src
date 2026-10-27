@@ -11,6 +11,6 @@
 - Skeleton colors are derived from the surface with `color-mix()` using an explicit color space.
 - A shimmer gradient is painted on each placeholder shape's own background with `background-attachment: fixed`, so all shapes sweep in sync without a parent overlay. The shimmer gradient and animation are only applied under `prefers-reduced-motion: no-preference`.
 - Only a limited number of cards are visible while loading, even if more are in the markup.
-- Under `forced-colors: active`, the skeleton opts out with `forced-color-adjust: none` and fills its placeholders with a system color.
+- Under `forced-colors: active`, the skeleton placeholders (not the container) set `forced-color-adjust: none` and are filled with a system color.
 - The skeleton container has `inert` and `aria-hidden="true"` while loading.
 - The loading message is set, by script, into a `role="status"` element that was already on the page and empty when the skeleton appears.
