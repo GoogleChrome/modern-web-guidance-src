@@ -1,263 +1,539 @@
-diff --git a/coffee-card.js b/coffee-card.js
+diff --git a/grind-card.js b/grind-card.js
 new file mode 100644
-index 0000000..7c8ee39
+index 0000000..8af44f8
 --- /dev/null
-+++ b/coffee-card.js
-@@ -0,0 +1,139 @@
-+class CoffeeCard extends HTMLElement {
++++ b/grind-card.js
+@@ -0,0 +1,440 @@
++/**
++ * `<grind-card>` Web Component
++ *
++ * A reusable, themeable, and container-responsive card component for
++ * The Daily Grind.
++ *
++ * Custom CSS Properties (Theming API - unset on :host so they inherit from any ancestor):
++ * - `--card-bg`: Card surface background (default: `white`)
++ * - `--card-fg`: Card body text color (default: `inherit`)
++ * - `--card-heading-color`: Card heading text color (default: `var(--primary, #4e342e)`)
++ * - `--card-border`: Card border shorthand (default: `none`)
++ * - `--card-radius`: Card border radius (default: `8px`)
++ * - `--card-padding`: Card internal padding (default: `20px`)
++ * - `--card-shadow`: Card box-shadow (default: `0 2px 5px rgba(0, 0, 0, 0.1)`)
++ * - `--card-gap`: Gap between card regions (default: `10px`)
++ * - `--card-align`: Text alignment in vertical layout (default: `center`)
++ * - `--card-btn-bg`: Action button/link background (default: `var(--primary, #4e342e)`)
++ * - `--card-btn-fg`: Action button/link text color (default: `white`)
++ * - `--card-btn-hover-bg`: Action button/link hover background (default: `#3e2723`)
++ * - `--card-btn-radius`: Action button/link border radius (default: `5px`)
++ * - `--card-btn-padding`: Action button/link padding (default: `10px 20px`)
++ * - `--card-badge-bg`: Badge background color (default: `var(--accent, #ffab40)`)
++ * - `--card-badge-fg`: Badge text color (default: `var(--text, #3e2723)`)
++ *
++ * Shadow Parts (`::part()`):
++ * - `card`: Outer card surface container
++ * - `header`: Header wrapper containing the title and optional badge
++ * - `badge`: Optional badge element
++ * - `title`: Card heading (`<h3>`)
++ * - `body`: Description/content container
++ * - `footer`: Actions/footer wrapper
++ * - `action` (also `button`): Primary call-to-action link/button inside the footer
++ *
++ * Slots:
++ * - `badge`: Optional badge content
++ * - `title`: Heading content (falls back to `heading` / `title` attribute)
++ * - (default): Body description content (falls back to `description` attribute)
++ * - `action` / `footer`: Custom action elements (falls back to built-in CTA using `href` and `cta-text` / `action-text`)
++ *
++ * Custom States (`:state()`):
++ * - `featured`: Present when the `featured` attribute is set or toggled
++ * - `disabled`: Present when the `disabled` attribute is set
++ * - `favorited`: Present when the `favorited` attribute is set or toggled
++ */
++
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    @layer base, theme, layout, state;
++
++    @layer base {
++      :host {
++        display: block;
++        container-type: inline-size;
++        container-name: grind-card;
++        box-sizing: border-box;
++
++        /* Private shadow aliases reading public inherited custom properties with single-source fallbacks */
++        --_card-bg: var(--card-bg, white);
++        --_card-fg: var(--card-fg, inherit);
++        --_card-heading-color: var(--card-heading-color, var(--primary, #4e342e));
++        --_card-border: var(--card-border, none);
++        --_card-radius: var(--card-radius, 8px);
++        --_card-padding: var(--card-padding, 20px);
++        --_card-shadow: var(--card-shadow, 0 2px 5px rgba(0, 0, 0, 0.1));
++        --_card-gap: var(--card-gap, 10px);
++        --_card-align: var(--card-align, center);
++        --_card-btn-bg: var(--card-btn-bg, var(--primary, #4e342e));
++        --_card-btn-fg: var(--card-btn-fg, white);
++        --_card-btn-hover-bg: var(--card-btn-hover-bg, #3e2723);
++        --_card-btn-radius: var(--card-btn-radius, 5px);
++        --_card-btn-padding: var(--card-btn-padding, 10px 20px);
++        --_card-badge-bg: var(--card-badge-bg, var(--accent, #ffab40));
++        --_card-badge-fg: var(--card-badge-fg, var(--text, #3e2723));
++      }
++
++      *,
++      *::before,
++      *::after {
++        box-sizing: border-box;
++      }
++
++      .card {
++        display: grid;
++        grid-template-columns: 1fr;
++        gap: var(--_card-gap);
++        align-items: center;
++        height: 100%;
++        background: var(--_card-bg);
++        color: var(--_card-fg);
++        border: var(--_card-border);
++        border-radius: var(--_card-radius);
++        padding: var(--_card-padding);
++        box-shadow: var(--_card-shadow);
++        text-align: var(--_card-align);
++        transition: box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
++      }
++
++      .content {
++        display: flex;
++        flex-direction: column;
++        gap: var(--_card-gap);
++        min-width: 0;
++      }
++
++      .header {
++        display: flex;
++        flex-direction: column;
++        align-items: center;
++        gap: 6px;
++      }
++
++      .badge {
++        display: inline-block;
++        background: var(--_card-badge-bg);
++        color: var(--_card-badge-fg);
++        font-size: 0.75rem;
++        font-weight: 700;
++        text-transform: uppercase;
++        letter-spacing: 0.05em;
++        padding: 2px 8px;
++        border-radius: 999px;
++      }
++
++      .badge[hidden] {
++        display: none;
++      }
++
++      .title {
++        margin: 0;
++        font: inherit;
++        font-size: 1.17rem;
++        font-weight: 700;
++        line-height: 1.3;
++        color: var(--_card-heading-color);
++      }
++
++      .body {
++        margin: 0;
++        color: var(--_card-fg);
++      }
++
++      .footer {
++        margin-top: 5px;
++        display: flex;
++        justify-content: center;
++        align-items: center;
++        gap: 10px;
++      }
++
++      /* Form controls and interactive buttons/links inherit typography explicitly */
++      .action {
++        display: inline-block;
++        font: inherit;
++        color: var(--_card-btn-fg);
++        background: var(--_card-btn-bg);
++        padding: var(--_card-btn-padding);
++        border-radius: var(--_card-btn-radius);
++        border: none;
++        text-decoration: none;
++        cursor: pointer;
++        white-space: nowrap;
++        transition: background-color 0.3s ease, color 0.3s ease, transform 0.15s ease;
++      }
++
++      .action:hover,
++      .action:focus-visible {
++        background: var(--_card-btn-hover-bg);
++      }
++
++      .action[hidden] {
++        display: none;
++      }
++
++      /* Light touch-ups for projected Light DOM nodes */
++      ::slotted(p) {
++        margin: 0;
++      }
++
++      ::slotted(h1),
++      ::slotted(h2),
++      ::slotted(h3),
++      ::slotted(h4) {
++        margin: 0;
++        color: inherit;
++        font: inherit;
++      }
++
++      ::slotted(a),
++      ::slotted(button) {
++        font: inherit;
++      }
++    }
++
++    @layer layout {
++      /* Narrow spot (e.g. compact sidebar or narrow column) */
++      @container (max-width: 15rem) {
++        .card {
++          padding: 14px;
++          gap: 8px;
++        }
++
++        .footer {
++          width: 100%;
++        }
++
++        .action {
++          width: 100%;
++          text-align: center;
++        }
++      }
++
++      /* Wide spot: rearrange into a horizontal split layout */
++      @container (min-width: 28rem) {
++        .card {
++          grid-template-columns: 1fr auto;
++          text-align: left;
++          gap: 20px;
++        }
++
++        .header {
++          flex-direction: row;
++          align-items: baseline;
++          justify-content: flex-start;
++          flex-wrap: wrap;
++          gap: 10px;
++        }
++
++        .footer {
++          margin-top: 0;
++          justify-content: flex-end;
++        }
++      }
++    }
++
++    @layer state {
++      :host([disabled]),
++      :host(:state(disabled)) {
++        opacity: 0.55;
++        pointer-events: none;
++      }
++
++      :host(:state(featured)) .card {
++        outline: 2px solid var(--_card-badge-bg);
++        outline-offset: -2px;
++      }
++    }
++  </style>
++
++  <article class="card" part="card">
++    <div class="content" part="content">
++      <header class="header" part="header">
++        <span class="badge" part="badge" hidden>
++          <slot name="badge"></slot>
++        </span>
++        <h3 class="title" part="title">
++          <slot name="title"></slot>
++        </h3>
++      </header>
++      <div class="body" part="body">
++        <slot></slot>
++      </div>
++    </div>
++    <footer class="footer" part="footer">
++      <slot name="action">
++        <a class="action" part="action button" href="#">View Details</a>
++      </slot>
++    </footer>
++  </article>
++`;
++
++export class GrindCard extends HTMLElement {
 +  static get observedAttributes() {
-+    return ['title', 'description', 'href', 'button-text'];
++    return [
++      'heading',
++      'title',
++      'description',
++      'href',
++      'cta-text',
++      'action-text',
++      'badge',
++      'featured',
++      'disabled',
++      'favorited'
++    ];
 +  }
++
++  #internals;
++  #titleSlot;
++  #defaultSlot;
++  #badgeSlot;
++  #badgeEl;
++  #actionEl;
 +
 +  constructor() {
 +    super();
-+    const shadow = this.attachShadow({ mode: 'open' });
++    this.attachShadow({ mode: 'open' });
++    this.shadowRoot.appendChild(template.content.cloneNode(true));
 +
-+    shadow.innerHTML = `
-+      <style>
-+        :host {
-+          display: block;
-+          container-type: inline-size;
-+          --_card-bg: var(--card-bg, white);
-+          --_card-fg: var(--card-fg, var(--card-color, #3e2723));
-+        }
++    if (typeof this.attachInternals === 'function') {
++      this.#internals = this.attachInternals();
++    }
 +
-+        .card {
-+          background: var(--_card-bg);
-+          color: var(--_card-fg);
-+          padding: 20px;
-+          border-radius: 8px;
-+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-+          text-align: center;
-+          box-sizing: border-box;
-+          height: 100%;
-+          display: flex;
-+          flex-direction: column;
-+          justify-content: space-between;
-+        }
++    this.#titleSlot = this.shadowRoot.querySelector('slot[name="title"]');
++    this.#defaultSlot = this.shadowRoot.querySelector('slot:not([name])');
++    this.#badgeSlot = this.shadowRoot.querySelector('slot[name="badge"]');
++    this.#badgeEl = this.shadowRoot.querySelector('.badge');
++    this.#actionEl = this.shadowRoot.querySelector('.action');
 +
-+        .title {
-+          margin-bottom: 10px;
-+          color: #212121;
-+          font-size: 1.17rem;
-+          font-weight: bold;
-+        }
-+
-+        .description {
-+          margin-bottom: 15px;
-+          line-height: 1.6;
-+          flex-grow: 1;
-+        }
-+
-+        .btn {
-+          display: inline-block;
-+          background: #757575;
-+          color: white;
-+          padding: 10px 20px;
-+          text-decoration: none;
-+          border-radius: 5px;
-+          margin-top: 15px;
-+          transition: background 0.3s;
-+          font-family: inherit;
-+          font-size: 0.9rem;
-+          align-self: center;
-+        }
-+
-+        @container (min-width: 30rem) {
-+          .card {
-+            padding: 30px;
-+          }
-+          .title {
-+            font-size: 1.4rem;
-+          }
-+        }
-+      </style>
-+      <div class="card" part="card container">
-+        <h3 class="title" part="title heading"><slot name="title">Seasonal Coffee</slot></h3>
-+        <p class="description" part="description content"><slot name="description">Ethically sourced, locally roasted.</slot></p>
-+        <a class="btn" part="button btn action link submit" href="#"><slot name="button">View Details</slot></a>
-+      </div>
-+    `;
++    this.#badgeSlot.addEventListener('slotchange', () => this.#syncBadge());
++    this.#titleSlot.addEventListener('slotchange', () => this.#syncTitle());
++    this.#defaultSlot.addEventListener('slotchange', () => this.#syncDescription());
 +  }
 +
 +  connectedCallback() {
-+    this._syncContent();
++    this.#syncAll();
 +  }
 +
 +  attributeChangedCallback() {
-+    this._syncContent();
++    if (this.isConnected) {
++      this.#syncAll();
++    }
 +  }
 +
-+  _syncContent() {
-+    if (!this.shadowRoot) return;
-+    const titleSlot = this.shadowRoot.querySelector('slot[name="title"]');
-+    const descSlot = this.shadowRoot.querySelector('slot[name="description"]');
-+    const btnSlot = this.shadowRoot.querySelector('slot[name="button"]');
-+    const btn = this.shadowRoot.querySelector('.btn');
++  get featured() {
++    return this.#hasState('featured') || this.hasAttribute('featured');
++  }
 +
-+    if (this.hasAttribute('title') && titleSlot) {
-+      titleSlot.textContent = this.getAttribute('title');
-+    }
-+    if (this.hasAttribute('description') && descSlot) {
-+      descSlot.textContent = this.getAttribute('description');
-+    }
-+    if (this.hasAttribute('button-text') && btnSlot) {
-+      btnSlot.textContent = this.getAttribute('button-text');
-+    }
-+    if (this.hasAttribute('href') && btn) {
-+      btn.setAttribute('href', this.getAttribute('href'));
-+    }
++  set featured(value) {
++    this.#setState('featured', Boolean(value));
++    this.toggleAttribute('featured', Boolean(value));
++  }
 +
-+    const h3 = this.querySelector('h3:not([slot])');
-+    if (h3) h3.setAttribute('slot', 'title');
++  get favorited() {
++    return this.#hasState('favorited') || this.hasAttribute('favorited');
++  }
 +
-+    const p = this.querySelector('p:not([slot])');
-+    if (p) p.setAttribute('slot', 'description');
++  set favorited(value) {
++    this.#setState('favorited', Boolean(value));
++    this.toggleAttribute('favorited', Boolean(value));
++  }
 +
-+    const a = this.querySelector('a:not([slot])');
-+    if (a) {
-+      if (a.hasAttribute('href') && btn) {
-+        btn.setAttribute('href', a.getAttribute('href'));
-+      }
-+      if (!this.hasAttribute('button-text') && btnSlot && a.textContent.trim()) {
-+        btnSlot.textContent = a.textContent.trim();
-+      }
++  get disabled() {
++    return this.#hasState('disabled') || this.hasAttribute('disabled');
++  }
++
++  set disabled(value) {
++    this.#setState('disabled', Boolean(value));
++    this.toggleAttribute('disabled', Boolean(value));
++  }
++
++  #hasState(name) {
++    return Boolean(this.#internals?.states?.has(name));
++  }
++
++  #setState(name, active) {
++    if (!this.#internals?.states) return;
++    if (active) {
++      this.#internals.states.add(name);
++    } else {
++      this.#internals.states.delete(name);
 +    }
++  }
++
++  #syncAll() {
++    this.#syncTitle();
++    this.#syncDescription();
++    this.#syncBadge();
++    this.#syncAction();
++    this.#syncStates();
++  }
++
++  #syncTitle() {
++    if (!this.#titleSlot) return;
++    const assigned = this.#titleSlot.assignedNodes({ flatten: false });
++    if (assigned.length === 0) {
++      const headingText = this.getAttribute('heading') || this.getAttribute('title') || '';
++      this.#titleSlot.textContent = headingText;
++    }
++  }
++
++  #syncDescription() {
++    if (!this.#defaultSlot) return;
++    const assigned = this.#defaultSlot
++      .assignedNodes({ flatten: false })
++      .filter((node) => node.nodeType !== Node.TEXT_NODE || node.textContent.trim() !== '');
++    if (assigned.length === 0 && this.hasAttribute('description')) {
++      this.#defaultSlot.textContent = this.getAttribute('description') || '';
++    }
++  }
++
++  #syncBadge() {
++    if (!this.#badgeSlot || !this.#badgeEl) return;
++    const assigned = this.#badgeSlot
++      .assignedNodes({ flatten: false })
++      .filter((node) => node.nodeType !== Node.TEXT_NODE || node.textContent.trim() !== '');
++    const badgeAttr = this.getAttribute('badge');
++
++    if (assigned.length > 0) {
++      this.#badgeEl.hidden = false;
++    } else if (badgeAttr) {
++      this.#badgeSlot.textContent = badgeAttr;
++      this.#badgeEl.hidden = false;
++    } else {
++      this.#badgeSlot.textContent = '';
++      this.#badgeEl.hidden = true;
++    }
++  }
++
++  #syncAction() {
++    if (!this.#actionEl) return;
++    const href = this.getAttribute('href');
++    const ctaText =
++      this.getAttribute('cta-text') ||
++      this.getAttribute('action-text') ||
++      'View Details';
++
++    this.#actionEl.textContent = ctaText;
++    if (href) {
++      this.#actionEl.setAttribute('href', href);
++      this.#actionEl.hidden = false;
++    } else if (this.hasAttribute('cta-text') || this.hasAttribute('action-text')) {
++      this.#actionEl.setAttribute('href', '#');
++      this.#actionEl.hidden = false;
++    } else {
++      this.#actionEl.setAttribute('href', '#');
++      this.#actionEl.hidden = false;
++    }
++  }
++
++  #syncStates() {
++    this.#setState('featured', this.hasAttribute('featured'));
++    this.#setState('disabled', this.hasAttribute('disabled'));
++    this.#setState('favorited', this.hasAttribute('favorited'));
 +  }
 +}
 +
-+if (typeof customElements !== 'undefined') {
-+  if (!customElements.get('coffee-card')) {
-+    customElements.define('coffee-card', CoffeeCard);
-+  }
-+  if (!customElements.get('my-card')) {
-+    customElements.define('my-card', class extends CoffeeCard {});
-+  }
-+  if (!customElements.get('daily-card')) {
-+    customElements.define('daily-card', class extends CoffeeCard {});
-+  }
++if (!customElements.get('grind-card')) {
++  customElements.define('grind-card', GrindCard);
 +}
-+
-+if (typeof window !== 'undefined') {
-+  window.CoffeeCard = CoffeeCard;
-+}
-+
-+export { CoffeeCard };
 diff --git a/index.html b/index.html
-index 66c9173..e5996df 100644
+index 66c9173..5efc2e5 100644
 --- a/index.html
 +++ b/index.html
-@@ -5,6 +5,7 @@
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>The Daily Grind | Artisanal Coffee</title>
-+  <script type="module" src="./coffee-card.js"></script>
-   <style>
-     :root {
-       --primary: #4e342e;
-@@ -135,6 +136,44 @@
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -135,6 +122,22 @@
        background: #3e2723;
      }
  
-+    /* Component part styling across shadow boundary */
-+    coffee-card::part(card),
-+    my-card::part(card),
-+    daily-card::part(card),
-+    ::part(card) {
-+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    /* Example of restyling <grind-card> across the shadow boundary via custom properties and ::part() */
++    .spotlight-section {
++      margin-top: 40px;
++      --card-bg: #fff8e1;
++      --card-fg: #4e342e;
++      --card-heading-color: #3e2723;
++      --card-border: 1px solid #ffe082;
++      --card-btn-bg: var(--accent);
++      --card-btn-fg: #3e2723;
++      --card-btn-hover-bg: #ff9100;
 +    }
 +
-+    coffee-card::part(title),
-+    my-card::part(title),
-+    daily-card::part(title),
-+    ::part(title) {
-+      color: var(--primary);
-+    }
-+
-+    coffee-card::part(button),
-+    coffee-card::part(btn),
-+    my-card::part(button),
-+    my-card::part(btn),
-+    daily-card::part(button),
-+    daily-card::part(btn),
-+    ::part(button),
-+    ::part(btn) {
-+      background: var(--primary);
-+      color: white;
-+    }
-+
-+    coffee-card::part(button):hover,
-+    coffee-card::part(btn):hover,
-+    my-card::part(button):hover,
-+    my-card::part(btn):hover,
-+    daily-card::part(button):hover,
-+    daily-card::part(btn):hover,
-+    ::part(button):hover,
-+    ::part(btn):hover {
-+      background: #3e2723;
++    .spotlight-section grind-card::part(action) {
++      font-weight: 600;
 +    }
 +
      footer {
        background: var(--secondary);
        text-align: center;
-@@ -178,21 +217,33 @@
+@@ -178,25 +181,33 @@
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
 -        <div class="card">
 -          <h3>Maple Oat Latte</h3>
--          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <grind-card heading="Maple Oat Latte" href="/menu/seasonal" cta-text="View Details">
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
 -        </div>
 -        <div class="card">
 -          <h3>Dark Roast Espresso</h3>
--          <p>Bold, smokey, and perfect for a morning boost.</p>
++        </grind-card>
++        <grind-card heading="Dark Roast Espresso" href="/menu/espresso" cta-text="View Details">
+           <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
 -        </div>
 -        <div class="card">
 -          <h3>Cold Brew</h3>
--          <p>Steeped for 18 hours for maximum smoothness.</p>
++        </grind-card>
++        <grind-card heading="Cold Brew" href="/menu/cold-brew" cta-text="View Details">
+           <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
 -        </div>
-+        <coffee-card
-+          title="Maple Oat Latte"
-+          description="Creamy oat milk with a hint of Vermont maple syrup."
-+          button-text="View Details"
-+          href="/menu/seasonal">
-+          <span slot="title">Maple Oat Latte</span>
-+          <span slot="description">Creamy oat milk with a hint of Vermont maple syrup.</span>
-+          <span slot="button">View Details</span>
-+        </coffee-card>
-+        <coffee-card
-+          title="Dark Roast Espresso"
-+          description="Bold, smokey, and perfect for a morning boost."
-+          button-text="View Details"
-+          href="/menu/espresso">
-+          <span slot="title">Dark Roast Espresso</span>
-+          <span slot="description">Bold, smokey, and perfect for a morning boost.</span>
-+          <span slot="button">View Details</span>
-+        </coffee-card>
-+        <coffee-card
-+          title="Cold Brew"
-+          description="Steeped for 18 hours for maximum smoothness."
-+          button-text="View Details"
-+          href="/menu/cold-brew">
-+          <span slot="title">Cold Brew</span>
-+          <span slot="description">Steeped for 18 hours for maximum smoothness.</span>
-+          <span slot="button">View Details</span>
-+        </coffee-card>
++        </grind-card>
        </div>
      </section>
++
++    <section class="spotlight-section">
++      <grind-card
++        heading="Rewards Member Exclusive: Autumn Tasting Flight"
++        badge="Limited Time"
++        href="/rewards"
++        cta-text="Claim Offer"
++        featured
++      >
++        <p>Sample all three Seasonal Favorites side-by-side and earn double points on your visit.</p>
++      </grind-card>
++    </section>
    </main>
-diff --git a/package.json b/package.json
-index 2bd4d77..5fad9e9 100644
---- a/package.json
-+++ b/package.json
-@@ -2,6 +2,7 @@
-   "name": "daily-grind",
-   "version": "1.0.0",
-   "scripts": {
-+    "build": "node --check coffee-card.js",
-     "start": "pnpm dlx statikk --port ${PORT:-11222}"
-   },
-   "pnpm": {
+ 
++  <script type="module" src="/grind-card.js"></script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
