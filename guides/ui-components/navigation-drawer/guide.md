@@ -34,9 +34,9 @@ The drawer is a single popover containing a horizontal scroller, which contains 
 
 ```html
 <!-- popover="manual" is REQUIRED. Do not use popover="auto" or "hint". -->
-<!-- MANDATORY: Apply role="dialog" to the container so that the drawer is exposed as a dialog
+<!-- MANDATORY: Use a dialog element so that the drawer is exposed as a dialog
      to assistive technologies. Use the aria-label attribute to provide an accessible name for the dialog or, if there is already text within the drawer that can act as its accessible name, use the aria-labelledby attribute instead. --> 
-<div class="Drawer" id="drawer" popover="manual" role="dialog" aria-label="Navigation drawer">
+<dialog class="Drawer" id="drawer" popover="manual" aria-label="Navigation drawer">
   <div class="Drawer-scroller">
     <!-- tabindex="-1" makes the sheet programmatically focusable so we
          can move focus into it when the drawer opens, without adding it
@@ -53,7 +53,7 @@ The drawer is a single popover containing a horizontal scroller, which contains 
       </ul>
     </nav>
   </div>
-</div>
+</dialog>
 
 <main>
   <header>
@@ -247,11 +247,14 @@ function closeDrawer() {
 
 Use an `IntersectionObserver` on the sheet — not the scroll position — as the source of truth for the drawer's state. The observer fires regardless of how the sheet moved (user swipe, programmatic scroll, snap settle), so all dismissal paths converge in the same callback.
 
+As the state of the dialog is managed using a popover, manually apply `aria-modal='true'` when the dialog is open, and `aria-modal='false'` when it is closed.
+
 ```js
 function onDrawerOpened() {
   // Mark the rest of the page inert so keyboard and screen-reader
   // users cannot tab into content hidden behind the drawer.
   document.querySelector('main').inert = true;
+  drawer.setAttribute('aria-modal', 'true');
   openBtn.setAttribute('aria-expanded', 'true');
   // Move focus into the drawer for keyboard users.
   sheet.focus();
@@ -262,6 +265,7 @@ function onDrawerClosed() {
   // so the slide-out is visible to the user.
   drawer.hidePopover();
   document.querySelector('main').inert = false;
+  drawer.setAttribute('aria-modal', 'false');
   openBtn.setAttribute('aria-expanded', 'false');
   openBtn.focus();
 }
