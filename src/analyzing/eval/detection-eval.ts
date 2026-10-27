@@ -175,7 +175,6 @@ export interface JudgeInputProvenance {
   readonly judgeVersion: string;
   readonly promptGuideHash: string;
   readonly explainerContextHash: string;
-  readonly dossierHash: 'none';
   readonly ruleId: string;
   readonly ruleGuideHash: string;
   readonly ruleHash: string;
@@ -251,7 +250,6 @@ export interface JudgeResult {
   judgeVersion?: string;
   promptGuideHash?: string;
   explainerContextHash?: string;
-  dossierHash?: 'none';
   ruleId?: string;
   ruleGuideHash?: string;
   ruleHash?: string;
@@ -348,7 +346,6 @@ export function computeJudgeInputProvenance(
     judgeVersion: trimmedJudgeVersion,
     promptGuideHash,
     explainerContextHash,
-    dossierHash: 'none',
     ruleId,
     ruleGuideHash,
     ruleHash,
@@ -366,7 +363,6 @@ export function attachJudgeInputProvenance(
     judgeVersion: provenance.judgeVersion,
     promptGuideHash: provenance.promptGuideHash,
     explainerContextHash: provenance.explainerContextHash,
-    dossierHash: provenance.dossierHash,
     ruleId: provenance.ruleId,
     ruleGuideHash: provenance.ruleGuideHash,
     ruleHash: provenance.ruleHash,
@@ -933,7 +929,6 @@ export function evaluateJudgeStability(
     judgeVersion: r.judgeVersion ?? r.provenance?.judgeVersion,
     promptGuideHash: r.promptGuideHash ?? r.provenance?.promptGuideHash,
     explainerContextHash: r.explainerContextHash ?? r.provenance?.explainerContextHash,
-    dossierHash: r.dossierHash ?? r.provenance?.dossierHash,
     ruleId: r.ruleId ?? r.provenance?.ruleId,
     ruleGuideHash: r.ruleGuideHash ?? r.provenance?.ruleGuideHash,
     ruleHash: r.ruleHash ?? r.provenance?.ruleHash,
@@ -957,7 +952,6 @@ export function evaluateJudgeStability(
       'judgeVersion',
       'promptGuideHash',
       'explainerContextHash',
-      'dossierHash',
       'ruleId',
       'ruleGuideHash',
       'ruleHash',
@@ -1003,34 +997,11 @@ export function evaluateJudgeStability(
     const provenanceSource =
       consensusVerdict === v1 && v0 !== v1 ? r1 : r0;
 
+    const { rawResponse: _rawResponse, error: _error, ...provenanceFields } = provenanceSource;
     consensusResults.push({
-      cardId: r0.cardId,
+      ...provenanceFields,
       verdict: consensusVerdict,
       facts: chosenFacts,
-      ...(provenanceSource.judgeVersion !== undefined
-        ? { judgeVersion: provenanceSource.judgeVersion }
-        : {}),
-      ...(provenanceSource.promptGuideHash !== undefined
-        ? { promptGuideHash: provenanceSource.promptGuideHash }
-        : {}),
-      ...(provenanceSource.explainerContextHash !== undefined
-        ? { explainerContextHash: provenanceSource.explainerContextHash }
-        : {}),
-      ...(provenanceSource.dossierHash !== undefined
-        ? { dossierHash: provenanceSource.dossierHash }
-        : {}),
-      ...(provenanceSource.ruleId !== undefined
-        ? { ruleId: provenanceSource.ruleId }
-        : {}),
-      ...(provenanceSource.ruleGuideHash !== undefined
-        ? { ruleGuideHash: provenanceSource.ruleGuideHash }
-        : {}),
-      ...(provenanceSource.ruleHash !== undefined
-        ? { ruleHash: provenanceSource.ruleHash }
-        : {}),
-      ...(provenanceSource.provenance !== undefined
-        ? { provenance: provenanceSource.provenance }
-        : {}),
     });
   }
 

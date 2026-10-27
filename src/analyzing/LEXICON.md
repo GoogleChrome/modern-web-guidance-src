@@ -48,13 +48,6 @@ Offline evaluation pass that grades **Blind Card** findings on the **`held-out` 
 * _Reference_: `src/analyzing/eval/detection-eval.ts#JudgeVerdict`, `src/analyzing/eval/detection-eval.ts#runJudgeDirect`
 * _Avoid_: `Detective`, `Phase 2 Judge`, `Eval Judge` (unscoped)
 
-### Update Eval
-
-Offline evaluation pass that gives an LLM a flagged code window and `guide.md`, asks it to update the code to the modern standard, and verifies three static invariants: (1) legacy finding eliminated, (2) modern syntax present and parses cleanly without gutting exports, and (3) seeded broken updates rejected. Pairs with **Detection Eval** to cover both ends of the **Modernize** workflow.
-
-* _Reference_: `src/analyzing/eval/update-eval.ts#evaluateAgentUpdate`
-* _Avoid_: `Fix Smoke Test`, `Fix Harness`, `Milestone 4`, `Gate 1 / Gate 2 / Gate 3`
-
 ## Detection Hierarchy
 
 ### Guide (`guideId`)

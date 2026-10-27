@@ -805,11 +805,12 @@ describe('evaluateJudgeStability', () => {
         judgeVersion: baseProv.judgeVersion,
         promptGuideHash: baseProv.promptGuideHash,
         explainerContextHash: baseProv.explainerContextHash,
-        dossierHash: baseProv.dossierHash,
         ruleId: baseProv.ruleId,
         ruleGuideHash: baseProv.ruleGuideHash,
         ruleHash: baseProv.ruleHash,
         provenance: baseProv,
+        rawResponse: `{"verdict":"${verdict}"}`,
+        error: 'transient-pass-warning',
       },
     ];
 
@@ -823,6 +824,10 @@ describe('evaluateJudgeStability', () => {
     assert.equal(split.consensusResults[0].facts.rawVerdict, 'unsure');
     assert.equal(split.consensusResults[0].promptGuideHash, baseProv.promptGuideHash);
     assert.equal(split.consensusResults[0].ruleHash, baseProv.ruleHash);
+    assert.equal(split.consensusResults[0].rawResponse, undefined);
+    assert.equal(split.consensusResults[0].error, undefined);
+    assert.equal('rawResponse' in split.consensusResults[0], false);
+    assert.equal('error' in split.consensusResults[0], false);
   });
 
   it('throws when the 3 stability runs disagree on input provenance or cardId', () => {
@@ -843,7 +848,6 @@ describe('evaluateJudgeStability', () => {
         judgeVersion: baseProv.judgeVersion,
         promptGuideHash: baseProv.promptGuideHash,
         explainerContextHash: baseProv.explainerContextHash,
-        dossierHash: baseProv.dossierHash,
         ruleId: baseProv.ruleId,
         ruleGuideHash: baseProv.ruleGuideHash,
         ruleHash: baseProv.ruleHash,
@@ -1036,7 +1040,6 @@ describe('mocked direct and batch judge runners', () => {
       computePromptGuideHash(SAMPLE_BLIND_CARD.guideSummary.markdownBody),
     );
     assert.equal(results[0].explainerContextHash, 'none');
-    assert.equal(results[0].dossierHash, 'none');
     assert.equal(results[0].ruleId, 'calculate-event-differentials');
     assert.match(results[0].ruleGuideHash ?? '', /^[0-9a-f]{12}$/);
     assert.match(results[0].ruleHash ?? '', /^[0-9a-f]{12}$/);
@@ -1066,7 +1069,6 @@ describe('mocked direct and batch judge runners', () => {
       computeExplainerContextHash('TC39 Temporal explainer excerpt.'),
     );
     assert.match(expectedProvenance.explainerContextHash, /^[0-9a-f]{12}$/);
-    assert.equal(expectedProvenance.dossierHash, 'none');
     assert.equal(expectedProvenance.ruleId, 'calculate-event-differentials');
     assert.match(expectedProvenance.ruleGuideHash, /^[0-9a-f]{12}$/);
     assert.equal(expectedProvenance.ruleHash, 'rulehash1234');
@@ -1165,12 +1167,15 @@ describe('mocked direct and batch judge runners', () => {
     assert.equal(consensusRow.judgeVersion, JUDGE_VERSION);
     assert.equal(consensusRow.promptGuideHash, expectedProvenance.promptGuideHash);
     assert.equal(consensusRow.explainerContextHash, expectedProvenance.explainerContextHash);
-    assert.equal(consensusRow.dossierHash, 'none');
     assert.equal(consensusRow.ruleId, 'calculate-event-differentials');
     assert.equal(consensusRow.ruleGuideHash, expectedProvenance.ruleGuideHash);
     assert.equal(consensusRow.ruleHash, 'rulehash1234');
     assert.deepStrictEqual(consensusRow.provenance, expectedProvenance);
     assert.deepStrictEqual(consensusRow.facts.provenance, expectedProvenance);
+    assert.equal(consensusRow.rawResponse, undefined);
+    assert.equal(consensusRow.error, undefined);
+    assert.equal('rawResponse' in consensusRow, false);
+    assert.equal('error' in consensusRow, false);
   });
 
   it('throws an explicit error when batch API returns an error response instead of falling back', async () => {

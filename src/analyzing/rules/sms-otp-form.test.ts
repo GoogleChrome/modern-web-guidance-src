@@ -1,29 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { checkModernFeaturePresent } from '../eval/update-eval.ts';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
 import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
 import { smsOtpFormRule } from './sms-otp-form.ts';
 
 const matcher = smsOtpFormRule.matcher as DomRuleMatcher;
-
-void test('sms-otp-form: Check 2c quotes', () => {
-  assert.equal(
-    checkModernFeaturePresent(
-      'sms-otp-form',
-      "<input type='text' autocomplete='one-time-code' inputmode='numeric'>",
-    ),
-    true,
-  );
-  assert.equal(
-    checkModernFeaturePresent(
-      'sms-otp-form',
-      "<input type='text' autoComplete='one-time-code' />",
-    ),
-    true,
-  );
-});
 
 void test('sms-otp-form: positive brownfield matches', async (suiteContext) => {
   await suiteContext.test('flags OTP input lacking autocomplete inside verification form', () => {

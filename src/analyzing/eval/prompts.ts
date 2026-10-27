@@ -5,7 +5,6 @@
  * - Guide Triage (guide-triage.ts)
  * - LLM Verifier candidate verification (llm-verifier.ts)
  * - Detection Eval judge fact-checking (detection-eval.ts)
- * - Synthetic single-shot update generation simulation (update-eval.ts)
  *
  * Provides deterministic content hashing and thinking budget configuration.
  */
@@ -15,7 +14,6 @@ import { computePromptContentHash } from '../llm-verifier.ts';
 export const PROMPT_MODEL = 'gemini-3.8-flash';
 export const GUIDE_TRIAGE_THINKING_BUDGET = 2048;
 export const JUDGE_THINKING_BUDGET = 2048;
-export const UPDATE_SIMULATION_THINKING_BUDGET = 1024;
 
 // ============================================================================
 // 1. Guide Triage
@@ -317,92 +315,3 @@ export function computeJudgePromptVersion(
 
 export const JUDGE_VERSION = computeJudgePromptVersion();
 
-// ============================================================================
-// 4. Update Simulation
-// ============================================================================
-
-export const UPDATE_SIMULATION_PROMPT = `You are an expert web platform modernization engineer.
-Your task is to refactor a legacy web pattern in a brownfield codebase using the standard modern web platform capability prescribed in the provided Modern Web Guide.
-
-Guidelines:
-1. Refactor the legacy pattern: Replace the flagged legacy workaround with the modern web platform feature taught in the guide.
-2. Preserve user-visible behavior: Keep behavior the same for users (what they see, hear, and interact with). Do not delete or hollow out surrounding functions, handlers, classes, elements, or unrelated styles. Maintain existing names, exported signatures, and application structure.
-3. Feature detection and fallbacks: If the guide indicates that modern browser support requires a feature check or progressive enhancement, add an appropriate feature guard.
-4. Allow no change: If the finding is a false positive (not actually the legacy pattern) or already serves as a deliberate fallback/polyfill that should be retained, make no changes: return the original code window completely unchanged in "patchedWindow" and explain why in "explanation".
-5. Output format: In "patchedWindow", provide the complete replacement text for the code window with valid syntax and no placeholders. In "explanation", provide a concise summary of the change or why no change was needed.`;
-
-export const UPDATE_SIMULATION_RESPONSE_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    patchedWindow: {
-      type: 'STRING',
-      description:
-        'The complete replacement text for the provided code window, incorporating the modern web platform feature and preserving surrounding application logic. If no change is warranted, return the original window unchanged.',
-    },
-    explanation: {
-      type: 'STRING',
-      description: 'Concise explanation of the modernization change or reason for no change.',
-    },
-  },
-  required: ['patchedWindow', 'explanation'],
-};
-
-export const UPDATE_SIMULATION_USER_PROMPT_TEMPLATE = `## Modern Web Guide: \${params.guideId}
-\${params.guideMarkdown}
-
-## Analyzer Finding
-- File: \${params.filePath}
-- Line: \${params.line}
-- Message: \${params.findingMessage}
-
-## Target Code Window
-\`\`\`
-\${params.windowText}
-\`\`\`
-
-Refactor the code window to replace the legacy workaround with the modern web platform feature taught in the guide while preserving all surrounding application logic.
-Important:
-- If this finding is a false positive or intentional fallback that should be kept, return the original window unchanged in patchedWindow.`;
-
-export interface UpdateSimulationPromptParams {
-  readonly guideId: string;
-  readonly guideMarkdown: string;
-  readonly filePath: string;
-  readonly line: number;
-  readonly findingMessage: string;
-  readonly windowText: string;
-}
-
-export function formatUpdateSimulationPrompt(params: UpdateSimulationPromptParams): string {
-  return `## Modern Web Guide: ${params.guideId}
-${params.guideMarkdown}
-
-## Analyzer Finding
-- File: ${params.filePath}
-- Line: ${params.line}
-- Message: ${params.findingMessage}
-
-## Target Code Window
-\`\`\`
-${params.windowText}
-\`\`\`
-
-Refactor the code window to replace the legacy workaround with the modern web platform feature taught in the guide while preserving all surrounding application logic.
-Important:
-- If this finding is a false positive or intentional fallback that should be kept, return the original window unchanged in patchedWindow.`;
-}
-
-export function computeUpdateSimulationPromptVersion(): string {
-  const hash = computePromptContentHash({
-    model: PROMPT_MODEL,
-    systemPrompt: UPDATE_SIMULATION_PROMPT,
-    userPromptTemplateSource: formatUpdateSimulationPrompt.toString(),
-    schema: UPDATE_SIMULATION_RESPONSE_SCHEMA,
-    thinkingBudget: UPDATE_SIMULATION_THINKING_BUDGET,
-    temperature: 0.0,
-    enableSearchGrounding: false,
-  });
-  return `${PROMPT_MODEL}:fix-sim-v2-${hash}`;
-}
-
-export const UPDATE_SIMULATION_PROMPT_VERSION = computeUpdateSimulationPromptVersion();

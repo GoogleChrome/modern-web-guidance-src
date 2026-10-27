@@ -20,7 +20,6 @@ export const BANNED_PATTERNS: ReadonlyArray<{ readonly name: string; readonly re
 /**
  * Narrow exemptions for existing code:
  * 1. llm-verifier.ts formatVerifierPrompt error string: version-hash continuity; remove at the next intentional verifier bump.
- * 2. update-eval.ts progress logging in internal eval directory.
  */
 export function isExemptedLine(relPath: string, lineText: string): boolean {
   const normalized = relPath.replace(/\\/g, '/');
@@ -30,14 +29,6 @@ export function isExemptedLine(relPath: string, lineText: string): boolean {
     normalized === 'src/analyzing/llm-verifier.ts' &&
     lineText.includes('formatVerifierPrompt failed:') &&
     lineText.includes('Failing fast per R28/O55a.')
-  ) {
-    return true;
-  }
-
-  // 2. update-eval.ts progress logging in internal eval directory
-  if (
-    normalized === 'src/analyzing/eval/update-eval.ts' &&
-    lineText.includes('PROGRESS.md')
   ) {
     return true;
   }
