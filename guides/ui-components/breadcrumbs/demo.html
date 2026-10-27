@@ -60,8 +60,8 @@
 
   /* ===== 1–2. Slash / chevron ===== */
   .bc-slash > ol > li > a, .bc-chevron > ol > li > a { text-decoration: none; }
-  .bc-slash > ol > li > a:not([aria-current]):hover,
-  .bc-chevron > ol > li > a:not([aria-current]):hover { text-decoration: underline; }
+  .bc-slash > ol > li > a:not([aria-current]):is(:hover, :focus-visible),
+  .bc-chevron > ol > li > a:not([aria-current]):is(:hover, :focus-visible) { text-decoration: underline; }
 
   /* ===== 3. Underlined links (keep the divider: order alone does not read as a hierarchy) ===== */
   .bc-underline a:not([aria-current]) { text-decoration: underline; }
