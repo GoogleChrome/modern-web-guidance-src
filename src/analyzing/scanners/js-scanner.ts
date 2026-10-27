@@ -180,7 +180,7 @@ export function scanJsSource(
   fileContent: string,
   rules: readonly JsRuleMatcher[],
   project?: Project,
-): { matches: AnalyzerMatch[]; sourceFile?: SourceFile } {
+): { readonly matches: AnalyzerMatch[]; readonly sourceFile?: SourceFile } {
   // 1. Filter rules by fastTokens
   const activeRules = rules.filter((rule) =>
     matchesFastTokens(fileContent, rule.fastTokens),
@@ -216,5 +216,5 @@ export function scanJsSource(
     }
   }
 
-  return { matches, sourceFile };
+  return project ? { matches, sourceFile } : { matches };
 }

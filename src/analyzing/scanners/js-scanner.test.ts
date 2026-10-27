@@ -7,6 +7,7 @@ import {
   createJsCallMatcher,
   matchJsRule,
   scanFiles,
+  scanJsSource,
   withVirtualSourceFile,
 } from './index.ts';
 
@@ -209,5 +210,22 @@ test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) =>
       sf.getProject().getSourceFiles().length,
     );
     assert.equal(fileCountAfter, 1, 'only the active virtual SourceFile exists during callback');
+  });
+
+  await t.test('scanJsSource omits sourceFile when project is omitted and returns active sourceFile when project is passed', () => {
+    const matcher = createJsCallMatcher({
+      fastTokens: ['legacyCall'],
+      matchCall: (node) =>
+        node.getExpression().getText() === 'legacyCall' ? 'legacy call' : null,
+    });
+
+    const withoutProject = scanJsSource('sample.ts', 'legacyCall();', [matcher]);
+    assert.equal(withoutProject.matches.length, 1);
+    assert.equal('sourceFile' in withoutProject, false);
+
+    const callerProject = createInMemoryProject();
+    const withProject = scanJsSource('sample.ts', 'legacyCall();', [matcher], callerProject);
+    assert.equal(withProject.matches.length, 1);
+    assert.equal(withProject.sourceFile?.wasForgotten(), false);
   });
 });
