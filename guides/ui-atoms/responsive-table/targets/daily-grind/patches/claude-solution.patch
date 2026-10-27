@@ -1,91 +1,79 @@
 diff --git a/index.html b/index.html
-index 66c9173..1bcc9c0 100644
+index 66c9173..e2d0321 100644
 --- a/index.html
 +++ b/index.html
-@@ -135,6 +135,118 @@
-       background: #3e2723;
+@@ -152,6 +152,104 @@
+       text-decoration: none;
+       font-size: 0.85rem;
      }
- 
-+    /* Responsive table */
-+    .table-section {
-+      margin-top: 60px;
-+    }
 +
 +    .table-wrapper {
++      margin-block-start: 30px;
 +      overflow: auto;
 +      max-inline-size: 100%;
 +      max-block-size: min(500px, 80vh);
 +      container-type: inline-size;
 +      background: white;
-+      margin-top: 20px;
 +      border-radius: 8px;
 +      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 +    }
 +
-+    .table-wrapper table {
++    .nutrition-table {
++      inline-size: 100%;
 +      border-collapse: separate;
 +      border-spacing: 0;
-+      inline-size: 100%;
-+      min-inline-size: 700px;
 +    }
 +
-+    .table-wrapper th,
-+    .table-wrapper td {
-+      padding: 10px 16px;
++    .nutrition-table caption {
++      padding: 15px;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 10px 15px;
 +      text-align: start;
-+      border-block-end: 1px solid var(--secondary);
-+      white-space: nowrap;
++      border-block-end: 1px solid #ddd;
 +    }
 +
-+    .table-wrapper thead {
++    .nutrition-table thead {
 +      position: sticky;
 +      inset-block-start: 0;
 +      z-index: 1;
 +    }
 +
-+    .table-wrapper thead th {
-+      background: var(--primary);
-+      color: white;
++    .nutrition-table thead th {
++      background: #eee;
 +    }
 +
-+    .table-wrapper tbody th {
++    .nutrition-table tbody th {
 +      position: sticky;
 +      inset-inline-start: 0;
 +      background: white;
 +    }
 +
-+    .table-wrapper table {
-+      --label-1: "Drink";
-+      --label-2: "Size";
-+      --label-3: "Calories";
-+      --label-4: "Caffeine";
-+      --label-5: "Price";
-+    }
-+
 +    @container (width < 600px) {
-+      .table-wrapper table {
-+        min-inline-size: 0;
-+      }
 +
-+      .table-wrapper table,
-+      .table-wrapper thead,
-+      .table-wrapper tbody,
-+      .table-wrapper tr,
-+      .table-wrapper th,
-+      .table-wrapper td {
++      .nutrition-table,
++      .nutrition-table thead,
++      .nutrition-table tbody,
++      .nutrition-table tr,
++      .nutrition-table th,
++      .nutrition-table td {
 +        display: block;
 +      }
 +
-+      .table-wrapper thead {
++      .nutrition-table thead {
 +        display: none;
 +      }
 +
-+      .table-wrapper tr {
-+        margin-block-end: 1.5rem;
++      .nutrition-table tr {
++        margin: 0 10px 1.5rem;
 +        border: 1px solid #ccc;
 +      }
 +
-+      .table-wrapper tbody th {
++      .nutrition-table tbody th {
 +        position: sticky;
 +        inset-block-start: 0;
 +        inset-inline-start: auto;
@@ -93,67 +81,74 @@ index 66c9173..1bcc9c0 100644
 +        background: #eee;
 +      }
 +
-+      .table-wrapper td {
-+        white-space: normal;
++      .nutrition-table {
++        --label-2: "Calories";
++        --label-3: "Sugar";
++        --label-4: "Caffeine";
++        --label-5: "Price";
 +      }
 +
-+      .table-wrapper td:nth-child(2)::before {
-+        content: var(--label-2) ": " / var(--label-2);
-+        font-weight: bold;
++      .nutrition-table td:nth-child(2)::before {
++        content: var(--label-2) ": ";
 +      }
 +
-+      .table-wrapper td:nth-child(3)::before {
-+        content: var(--label-3) ": " / var(--label-3);
-+        font-weight: bold;
++      .nutrition-table td:nth-child(3)::before {
++        content: var(--label-3) ": ";
 +      }
 +
-+      .table-wrapper td:nth-child(4)::before {
-+        content: var(--label-4) ": " / var(--label-4);
-+        font-weight: bold;
++      .nutrition-table td:nth-child(4)::before {
++        content: var(--label-4) ": ";
 +      }
 +
-+      .table-wrapper td:nth-child(5)::before {
-+        content: var(--label-5) ": " / var(--label-5);
-+        font-weight: bold;
++      .nutrition-table td:nth-child(5)::before {
++        content: var(--label-5) ": ";
 +      }
 +    }
-+
-     footer {
-       background: var(--secondary);
-       text-align: center;
-@@ -195,6 +307,35 @@
+   </style>
+ </head>
+ 
+@@ -194,6 +292,44 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
        </div>
-     </section>
 +
-+    <section class="table-section">
-+      <h2 style="text-align: center;">Menu at a Glance</h2>
-+      <div class="table-wrapper">
-+        <table>
++      <div tabindex="0" role="region" aria-labelledby="seasonal-table-caption" class="table-wrapper">
++        <table class="nutrition-table">
++          <caption id="seasonal-table-caption">Nutrition and pricing for Seasonal Favorites (16 oz)</caption>
 +          <thead>
 +            <tr>
 +              <th scope="col">Drink</th>
-+              <th scope="col">Size</th>
 +              <th scope="col">Calories</th>
++              <th scope="col">Sugar</th>
 +              <th scope="col">Caffeine</th>
 +              <th scope="col">Price</th>
 +            </tr>
 +          </thead>
 +          <tbody>
-+            <tr><th scope="row">Maple Oat Latte</th><td>12 oz</td><td>190</td><td>75 mg</td><td>$5.25</td></tr>
-+            <tr><th scope="row">Dark Roast Espresso</th><td>2 oz</td><td>5</td><td>130 mg</td><td>$3.00</td></tr>
-+            <tr><th scope="row">Cold Brew</th><td>16 oz</td><td>10</td><td>200 mg</td><td>$4.50</td></tr>
-+            <tr><th scope="row">Flat White</th><td>8 oz</td><td>120</td><td>130 mg</td><td>$4.75</td></tr>
-+            <tr><th scope="row">Cappuccino</th><td>12 oz</td><td>130</td><td>75 mg</td><td>$4.50</td></tr>
-+            <tr><th scope="row">Mocha</th><td>12 oz</td><td>290</td><td>90 mg</td><td>$5.50</td></tr>
-+            <tr><th scope="row">Chai Latte</th><td>12 oz</td><td>240</td><td>50 mg</td><td>$4.95</td></tr>
-+            <tr><th scope="row">Americano</th><td>12 oz</td><td>10</td><td>150 mg</td><td>$3.75</td></tr>
-+            <tr><th scope="row">Nitro Cold Brew</th><td>16 oz</td><td>15</td><td>230 mg</td><td>$5.00</td></tr>
-+            <tr><th scope="row">Matcha Latte</th><td>12 oz</td><td>200</td><td>70 mg</td><td>$5.25</td></tr>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>240 kcal</td>
++              <td>28 g</td>
++              <td>150 mg</td>
++              <td>$5.75</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>10 kcal</td>
++              <td>0 g</td>
++              <td>212 mg</td>
++              <td>$3.25</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>5 kcal</td>
++              <td>0 g</td>
++              <td>200 mg</td>
++              <td>$4.50</td>
++            </tr>
 +          </tbody>
 +        </table>
 +      </div>
-+    </section>
+     </section>
    </main>
  
-   <footer>

@@ -1,67 +1,77 @@
 diff --git a/index.html b/index.html
-index 66c9173..7833889 100644
+index 66c9173..453390c 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,113 @@
-       text-decoration: none;
-       font-size: 0.85rem;
+@@ -135,6 +135,130 @@
+       background: #3e2723;
      }
-+
-+    /* Responsive Table Styles */
+ 
++    /* Nutritional and Pricing Breakdown Table */
 +    .table-wrapper {
 +      overflow: auto;
 +      max-inline-size: 100%;
 +      max-block-size: min(500px, 80vh);
 +      container-type: inline-size;
++      margin-block-start: 2rem;
 +      background: white;
 +      border-radius: 8px;
 +      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 +    }
 +
 +    table {
++      width: 100%;
 +      border-collapse: separate;
 +      border-spacing: 0;
-+      width: 100%;
-+      min-inline-size: 750px;
-+      --label-1: "Employee";
-+      --label-2: "Role";
-+      --label-3: "Status";
++      text-align: left;
++    }
++
++    caption {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      padding: 1rem;
++      text-align: left;
++      background: white;
++    }
++
++    th,
++    td {
++      padding: 0.75rem 1rem;
++      border-block-end: 1px solid var(--secondary);
 +    }
 +
 +    /* Sticky column headers (desktop) */
 +    thead {
 +      position: sticky;
 +      inset-block-start: 0;
-+      z-index: 1; /* Above sticky row headers */
-+      background: white;
++      z-index: 1;
++      background: var(--primary);
++      color: white;
++    }
++
++    thead th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
 +    }
 +
 +    /* Sticky row headers (desktop) */
 +    tbody th {
 +      position: sticky;
 +      inset-inline-start: 0;
-+      background: white; /* Required to cover background during scroll */
-+      text-align: left;
-+    }
-+
-+    th, td {
-+      padding: 12px 16px;
-+      text-align: left;
-+      border-bottom: 1px solid var(--secondary);
-+    }
-+
-+    tbody tr:last-child td,
-+    tbody tr:last-child th {
-+      border-bottom: none;
++      background: white;
++      color: var(--primary);
++      font-weight: 600;
 +    }
 +
 +    @container (width < 600px) {
-+      table, thead, tbody, tr, th, td {
++      table,
++      thead,
++      tbody,
++      tr,
++      th,
++      td {
 +        display: block;
-+      }
-+
-+      table {
-+        min-inline-size: 0;
 +      }
 +
 +      thead {
@@ -72,8 +82,6 @@ index 66c9173..7833889 100644
 +      tr {
 +        margin-block-end: 1.5rem;
 +        border: 1px solid #ccc;
-+        border-radius: 6px;
-+        background: white;
 +      }
 +
 +      /* Sticky row headers at the top of each block/card */
@@ -82,169 +90,95 @@ index 66c9173..7833889 100644
 +        inset-block-start: 0;
 +        z-index: 2;
 +        background: #eee;
-+        border-bottom: 1px solid #ccc;
++        color: var(--primary);
 +      }
 +
-+      td {
-+        border-bottom: 1px solid #eee;
-+      }
-+
-+      td:last-child {
-+        border-bottom: none;
-+      }
-+
-+      /* Define column labels as CSS variables (often set via JS) */
++      /* Define column labels as CSS variables */
 +      table {
-+        --label-1: "Employee";
-+        --label-2: "Role";
-+        --label-3: "Status";
++        --label-1: "Drink";
++        --label-2: "Size";
++        --label-3: "Calories";
++        --label-4: "Caffeine";
++        --label-5: "Sugar";
++        --label-6: "Price";
 +      }
 +
-+      /* Inject labels with accessible names */
++      /* Inject labels */
 +      td:nth-child(2)::before {
-+        /* MANDATORY: The accessible name (after the /) ensures screen readers 
-+           announce the label correctly without the trailing colon. */
-+        content: var(--label-2) ": " / var(--label-2);
-+        font-weight: bold;
++        content: var(--label-2) ": ";
++        font-weight: 600;
 +      }
-+      /* MANDATORY: Map the label for each column */
++
 +      td:nth-child(3)::before {
-+        content: var(--label-3) ": " / var(--label-3);
-+        font-weight: bold;
++        content: var(--label-3) ": ";
++        font-weight: 600;
++      }
++
++      td:nth-child(4)::before {
++        content: var(--label-4) ": ";
++        font-weight: 600;
++      }
++
++      td:nth-child(5)::before {
++        content: var(--label-5) ": ";
++        font-weight: 600;
++      }
++
++      td:nth-child(6)::before {
++        content: var(--label-6) ": ";
++        font-weight: 600;
 +      }
 +    }
-   </style>
- </head>
- 
-@@ -195,6 +302,100 @@
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +318,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
        </div>
-     </section>
 +
-+    <section style="margin-top: 50px;">
-+      <h2 style="text-align: center; margin-bottom: 20px;">Our Team</h2>
-+      <div class="table-wrapper">
++      <div tabindex="0" role="region" aria-labelledby="seasonal-nutrition-caption" class="table-wrapper">
 +        <table>
++          <caption id="seasonal-nutrition-caption">Nutritional and Pricing Breakdown</caption>
 +          <thead>
 +            <tr>
-+              <th>Employee</th>
-+              <th>Role</th>
-+              <th>Status</th>
++              <th scope="col">Drink</th>
++              <th scope="col">Size</th>
++              <th scope="col">Calories</th>
++              <th scope="col">Caffeine</th>
++              <th scope="col">Sugar</th>
++              <th scope="col">Price</th>
 +            </tr>
 +          </thead>
 +          <tbody>
 +            <tr>
-+              <!-- Row header remains sticky horizontally on desktop, 
-+                   and becomes a sticky card header on mobile -->
-+              <th>Alex Rivera</th>
-+              <td>Engineer</td>
-+              <td>Active</td>
++              <th scope="row">Maple Oat Latte</th>
++              <td>16 oz (Grande)</td>
++              <td>210 kcal</td>
++              <td>150 mg</td>
++              <td>18 g</td>
++              <td>$5.75</td>
 +            </tr>
 +            <tr>
-+              <th>Jordan Lee</th>
-+              <td>Head Roaster</td>
-+              <td>Active</td>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>2 oz (Double)</td>
++              <td>10 kcal</td>
++              <td>165 mg</td>
++              <td>0 g</td>
++              <td>$3.50</td>
 +            </tr>
 +            <tr>
-+              <th>Casey Smith</th>
-+              <td>Lead Barista</td>
-+              <td>On Shift</td>
-+            </tr>
-+            <tr>
-+              <th>Morgan Taylor</th>
-+              <td>Store Manager</td>
-+              <td>Active</td>
-+            </tr>
-+            <tr>
-+              <th>Sam Kim</th>
-+              <td>Barista</td>
-+              <td>On Break</td>
-+            </tr>
-+            <tr>
-+              <th>Taylor Green</th>
-+              <td>Shift Lead</td>
-+              <td>Active</td>
-+            </tr>
-+            <tr>
-+              <th>Riley Chen</th>
-+              <td>Pastry Chef</td>
-+              <td>Active</td>
-+            </tr>
-+            <tr>
-+              <th>Avery Brooks</th>
-+              <td>Barista</td>
-+              <td>Off Duty</td>
-+            </tr>
-+            <tr>
-+              <th>Quinn Davis</th>
-+              <td>Roaster</td>
-+              <td>Active</td>
-+            </tr>
-+            <tr>
-+              <th>Dakota Johnson</th>
-+              <td>Operations</td>
-+              <td>Active</td>
-+            </tr>
-+            <tr>
-+              <th>Jamie Vance</th>
-+              <td>Quality Specialist</td>
-+              <td>Active</td>
-+            </tr>
-+            <tr>
-+              <th>Skyler Patel</th>
-+              <td>Inventory Lead</td>
-+              <td>Active</td>
-+            </tr>
-+            <tr>
-+              <th>Reese Campbell</th>
-+              <td>Barista</td>
-+              <td>On Shift</td>
-+            </tr>
-+            <tr>
-+              <th>Kendall Wright</th>
-+              <td>Events Coordinator</td>
-+              <td>Active</td>
-+            </tr>
-+            <tr>
-+              <th>Robin Hayes</th>
-+              <td>Apprentice Roaster</td>
-+              <td>Active</td>
++              <th scope="row">Cold Brew</th>
++              <td>16 oz (Grande)</td>
++              <td>15 kcal</td>
++              <td>205 mg</td>
++              <td>0 g</td>
++              <td>$4.75</td>
 +            </tr>
 +          </tbody>
 +        </table>
 +      </div>
-+    </section>
+     </section>
    </main>
  
-   <footer>
-@@ -207,6 +408,16 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
- 
-+  <script>
-+    document.addEventListener('DOMContentLoaded', () => {
-+      document.querySelectorAll('.table-wrapper table').forEach(table => {
-+        const headers = table.querySelectorAll('thead th');
-+        headers.forEach((th, idx) => {
-+          table.style.setProperty(`--label-${idx + 1}`, `"${th.textContent.trim()}"`);
-+        });
-+      });
-+    });
-+  </script>
- </body>
- 
- </html>
-diff --git a/package.json b/package.json
-index 2bd4d77..45613df 100644
---- a/package.json
-+++ b/package.json
-@@ -2,7 +2,8 @@
-   "name": "daily-grind",
-   "version": "1.0.0",
-   "scripts": {
--    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "start": "pnpm dlx statikk --port ${PORT:-11222}",
-+    "build": "exit 0"
-   },
-   "pnpm": {
-     "onlyBuiltDependencies": []

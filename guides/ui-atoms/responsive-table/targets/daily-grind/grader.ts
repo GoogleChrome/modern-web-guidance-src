@@ -5,214 +5,338 @@ import {
   getCssStyleSheet,
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule, CSSContainerRule } from 'cssomnom';
+import {
+  getCascadedStyle,
+  CSSStyleRule,
+  CSSContainerRule,
+  CSSMediaRule,
+  CSSGroupingRule,
+} from 'cssomnom';
+import type { CSSRule, CSSStyleSheet } from 'cssomnom';
+import type { Document } from 'linkedom';
 
-// @ts-ignore
+// @ts-expect-error import.meta.url is supported by the test runner
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('Responsive Table Target Grader', () => {
-  test('Table markup uses semantic table, thead, tbody, tr, th, and td elements', () => {
-    const docs = getHtmlDocuments(targetFiles);
+function getTopLevelStyleRules(rules: CSSRule[]): CSSStyleRule[] {
+  const result: CSSStyleRule[] = [];
+  for (const rule of rules) {
+    if (rule instanceof CSSStyleRule) {
+      result.push(rule);
+    } else if (
+      rule instanceof CSSGroupingRule &&
+      !(rule instanceof CSSContainerRule) &&
+      !(rule instanceof CSSMediaRule)
+    ) {
+      result.push(...getTopLevelStyleRules(Array.from(rule.cssRules)));
+    }
+  }
+  return result;
+}
+
+function getResponsiveStyleRules(rules: CSSRule[]): CSSStyleRule[] {
+  const result: CSSStyleRule[] = [];
+  for (const rule of rules) {
+    if (rule instanceof CSSContainerRule || rule instanceof CSSMediaRule) {
+      if (/\b600px\b|\bwidth\b|\bmax-width\b|\binline-size\b|\bmax-inline-size\b/.test(rule.conditionText)) {
+        result.push(...collectAllStyleRules(Array.from(rule.cssRules)));
+      }
+    } else if (rule instanceof CSSGroupingRule) {
+      result.push(...getResponsiveStyleRules(Array.from(rule.cssRules)));
+    }
+  }
+  return result;
+}
+
+function collectAllStyleRules(rules: CSSRule[]): CSSStyleRule[] {
+  const result: CSSStyleRule[] = [];
+  for (const rule of rules) {
+    if (rule instanceof CSSStyleRule) {
+      result.push(rule);
+      result.push(...collectAllStyleRules(Array.from(rule.cssRules)));
+    } else if (rule instanceof CSSGroupingRule) {
+      result.push(...collectAllStyleRules(Array.from(rule.cssRules)));
+    }
+  }
+  return result;
+}
+
+function isZeroOffset(val: string): boolean {
+  const trimmed = val.trim();
+  return /^0([a-z%]+)?$/i.test(trimmed);
+}
+
+function hasZeroBlockStart(style: { getPropertyValue(prop: string): string }): boolean {
+  return (
+    isZeroOffset(style.getPropertyValue('inset-block-start')) ||
+    isZeroOffset(style.getPropertyValue('top')) ||
+    isZeroOffset(style.getPropertyValue('inset-block')) ||
+    isZeroOffset(style.getPropertyValue('inset'))
+  );
+}
+
+function hasZeroInlineStart(style: { getPropertyValue(prop: string): string }): boolean {
+  return (
+    isZeroOffset(style.getPropertyValue('inset-inline-start')) ||
+    isZeroOffset(style.getPropertyValue('left')) ||
+    isZeroOffset(style.getPropertyValue('inset-inline')) ||
+    isZeroOffset(style.getPropertyValue('inset'))
+  );
+}
+
+test.describe('responsive-table Target Grader', () => {
+  test('The table uses semantic <table>, <thead>, <tbody>, <tr>, <th>, and <td> elements', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     const hasSemanticTable = docs.some(({ document }) => {
-      const table = document.querySelector('table');
-      if (!table) return false;
-      const thead = table.querySelector('thead');
-      const tbody = table.querySelector('tbody');
-      const tr = table.querySelector('tr');
-      const th = table.querySelector('th');
-      const td = table.querySelector('td');
-      return Boolean(thead && tbody && tr && th && td);
+      const tables = Array.from(document.querySelectorAll('table'));
+      return tables.some((table) => {
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
+        const theadTrTh = thead?.querySelector('tr th');
+        const tbodyTr = tbody?.querySelector('tr');
+        const tbodyTh = tbodyTr?.querySelector('th');
+        const tbodyTd = tbodyTr?.querySelector('td');
+        return Boolean(thead && tbody && theadTrTh && tbodyTr && tbodyTh && tbodyTd);
+      });
     });
     expect(hasSemanticTable).toBe(true);
   });
 
-  test('Column headers remain sticky at the top of the scrollable area when container is wider than 600px', () => {
-    const docs = getHtmlDocuments(targetFiles);
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+  test('When the table wrapper causes scrolling, the wrapper has a role="region" attribute, an accessible name, and a tabindex="0" attribute', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const topRules = getTopLevelStyleRules(Array.from(stylesheet.cssRules));
 
-    const hasScrollableContainer =
-      rules.some(r =>
-        /\b(auto|scroll)\b/i.test(
-          r.style.getPropertyValue('overflow') ||
-            r.style.getPropertyValue('overflow-y') ||
-            r.style.getPropertyValue('overflow-block')
-        )
-      ) ||
-      docs.some(({ document }) =>
-        Boolean(
-          document.querySelector(
-            '.overflow-auto, .overflow-scroll, .overflow-y-auto, .overflow-y-scroll'
-          )
-        )
+    const hasValidWrapper = docs.some(({ document }) => {
+      const regions = Array.from(document.querySelectorAll('[role="region"][tabindex="0"]'));
+      return regions.some((wrapper) => {
+        if (!wrapper.querySelector('table')) return false;
+
+        const ariaLabel = wrapper.getAttribute('aria-label')?.trim();
+        const ariaLabelledBy = wrapper.getAttribute('aria-labelledby')?.trim();
+        const hasValidLabelledBy = Boolean(
+          ariaLabelledBy &&
+            ariaLabelledBy
+              .split(/\s+/)
+              .some((id: string) => Boolean(document.getElementById(id)?.textContent?.trim()))
+        );
+        if (!ariaLabel && !hasValidLabelledBy) return false;
+
+        const cascaded = getCascadedStyle(wrapper, topRules);
+        const overflow = [
+          cascaded.getPropertyValue('overflow'),
+          cascaded.getPropertyValue('overflow-x'),
+          cascaded.getPropertyValue('overflow-y'),
+        ].join(' ');
+        const hasScrollCss =
+          /\b(auto|scroll)\b/.test(overflow) ||
+          topRules.some(
+            (r) =>
+              /\b(auto|scroll)\b/.test(
+                [
+                  r.style.getPropertyValue('overflow'),
+                  r.style.getPropertyValue('overflow-x'),
+                  r.style.getPropertyValue('overflow-y'),
+                ].join(' ')
+              )
+          ) ||
+          /\boverflow-(x-|y-)?(auto|scroll)\b/.test(wrapper.getAttribute('class') || '');
+
+        return hasScrollCss;
+      });
+    });
+
+    expect(hasValidWrapper).toBe(true);
+  });
+
+  test('When the table container is wider than 600px, column headers remain fixed at the top of the scrollable area during vertical scroll', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const topRules = getTopLevelStyleRules(Array.from(stylesheet.cssRules));
+
+    const hasStickyColumnHeaders = docs.some(({ document }) => {
+      const thead = document.querySelector('table thead');
+      const theadTh = document.querySelector('table thead th');
+      if (!thead && !theadTh) return false;
+
+      const targets = [thead, theadTh].filter(Boolean);
+      const matchedViaCascade = targets.some((el) => {
+        const cascaded = getCascadedStyle(el, topRules);
+        return (
+          cascaded.getPropertyValue('position').trim() === 'sticky' &&
+          hasZeroBlockStart(cascaded)
+        );
+      });
+
+      const matchedViaRule = topRules.some(
+        (r) =>
+          /\bthead\b/.test(r.selectorText) &&
+          r.style.getPropertyValue('position').trim() === 'sticky' &&
+          hasZeroBlockStart(r.style)
       );
 
-    const hasStickyColumnHeader =
-      rules.some(r => {
-        const sel = r.selectorText;
-        const matchesColHeader =
-          /(^|[\s,>])thead(\b|\s|>)/i.test(sel) ||
-          /(^|[\s,>])th\[scope=["']?col["']?\]/i.test(sel);
-        if (!matchesColHeader) return false;
-        const pos = r.style.getPropertyValue('position');
-        const top =
-          r.style.getPropertyValue('inset-block-start') ||
-          r.style.getPropertyValue('top') ||
-          r.style.getPropertyValue('inset');
-        const isZero = top === '0' || top === '0px' || top.startsWith('0');
-        return (pos === 'sticky' || pos === '-webkit-sticky') && isZero;
-      }) ||
-      docs.some(({ document }) =>
-        Boolean(document.querySelector('thead.sticky, thead [class*="sticky"], th[scope="col"].sticky'))
+      const matchedViaUtility = targets.some((el) => {
+        const cls = el.getAttribute('class') || '';
+        return /\bsticky\b/.test(cls) && /\b(top-0|inset-block-start-0)\b/.test(cls);
+      });
+
+      return matchedViaCascade || matchedViaRule || matchedViaUtility;
+    });
+
+    expect(hasStickyColumnHeaders).toBe(true);
+  });
+
+  test('When the table container is wider than 600px, the first column (row headers) remains fixed at the left of the scrollable area during horizontal scroll', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const topRules = getTopLevelStyleRules(Array.from(stylesheet.cssRules));
+
+    const hasStickyRowHeaders = docs.some(({ document }) => {
+      const tbodyTh = document.querySelector('table tbody th');
+      if (!tbodyTh) return false;
+
+      const cascaded = getCascadedStyle(tbodyTh, topRules);
+      const matchedViaCascade =
+        cascaded.getPropertyValue('position').trim() === 'sticky' &&
+        hasZeroInlineStart(cascaded);
+
+      const matchedViaRule = topRules.some(
+        (r) =>
+          /\b(tbody\s+th|th\[scope=['"]?row['"]?\]|tr\s+th)\b/.test(r.selectorText) &&
+          r.style.getPropertyValue('position').trim() === 'sticky' &&
+          hasZeroInlineStart(r.style)
       );
 
-    expect(hasScrollableContainer && hasStickyColumnHeader).toBe(true);
+      const cls = tbodyTh.getAttribute('class') || '';
+      const matchedViaUtility =
+        /\bsticky\b/.test(cls) && /\b(left-0|start-0|inset-inline-start-0)\b/.test(cls);
+
+      return matchedViaCascade || matchedViaRule || matchedViaUtility;
+    });
+
+    expect(hasStickyRowHeaders).toBe(true);
   });
 
-  test('Row headers remain sticky at the left of the scrollable area when container is wider than 600px', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = Array.from(stylesheet.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+  test('When the table container width is reduced below 600px, the table layout transforms into a stacked view where rows are separated blocks', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allRules = Array.from(stylesheet.cssRules);
+    const topRules = getTopLevelStyleRules(allRules);
+    const responsiveRules = getResponsiveStyleRules(allRules);
+    const combinedRules = [...topRules, ...responsiveRules];
 
-    const hasStickyRowHeader = rules.some(r => {
-      const sel = r.selectorText;
-      const matchesRowHeader =
-        /(^|[\s,>])tbody\s+(tr\s+)?th\b/i.test(sel) ||
-        /(^|[\s,>])th\[scope=["']?row["']?\]/i.test(sel) ||
-        /(^|[\s,>])tr\s*>\s*th:first-child\b/i.test(sel);
-      if (!matchesRowHeader) return false;
-      const pos = r.style.getPropertyValue('position');
-      const left =
-        r.style.getPropertyValue('inset-inline-start') ||
-        r.style.getPropertyValue('left') ||
-        r.style.getPropertyValue('inset');
-      const isZero = left === '0' || left === '0px' || left.startsWith('0');
-      return (pos === 'sticky' || pos === '-webkit-sticky') && isZero;
+    const hasStackedLayout = docs.some(({ document }) => {
+      const tr = document.querySelector('table tbody tr');
+      const td = document.querySelector('table tbody td');
+      if (!tr || !td) return false;
+
+      const hasContainerType =
+        topRules.some((r) =>
+          /\b(inline-size|size)\b/.test(r.style.getPropertyValue('container-type'))
+        ) || Boolean(document.querySelector('[class*="@container"]'));
+
+      const trCascaded = getCascadedStyle(tr, combinedRules);
+      const tdCascaded = getCascadedStyle(td, combinedRules);
+
+      const isStackedViaCascade =
+        /\b(block|flex|grid)\b/.test(trCascaded.getPropertyValue('display')) &&
+        /\b(block|flex|grid)\b/.test(tdCascaded.getPropertyValue('display'));
+
+      const isStackedViaRules =
+        responsiveRules.some(
+          (r) =>
+            /\btr\b/.test(r.selectorText) &&
+            /\b(block|flex|grid)\b/.test(r.style.getPropertyValue('display'))
+        ) &&
+        responsiveRules.some(
+          (r) =>
+            /\btd\b/.test(r.selectorText) &&
+            /\b(block|flex|grid)\b/.test(r.style.getPropertyValue('display'))
+        );
+
+      return hasContainerType && (isStackedViaCascade || isStackedViaRules);
     });
 
-    expect(hasStickyRowHeader).toBe(true);
+    expect(hasStackedLayout).toBe(true);
   });
 
-  test('Table layout transforms into a stacked view with separated row blocks when container width is below 600px', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const containerRules = Array.from(stylesheet.cssRules).filter(
-      (r): r is CSSContainerRule => r instanceof CSSContainerRule
-    );
-    const stackedRule = containerRules.find(cr =>
-      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
-        cr.conditionText
-      )
-    );
-    const innerRules = stackedRule
-      ? Array.from(stackedRule.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule)
-      : [];
+  test('In the stacked view, the thead element is hidden and is not accessible to screen readers', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allRules = Array.from(stylesheet.cssRules);
+    const topRules = getTopLevelStyleRules(allRules);
+    const responsiveRules = getResponsiveStyleRules(allRules);
+    const combinedRules = [...topRules, ...responsiveRules];
 
-    const hasBlockDisplay = innerRules.some(r => {
-      const sel = r.selectorText;
-      const matchesTableEl = /(^|[\s,>])(tr|td|th|table|tbody)\b/i.test(sel);
-      if (!matchesTableEl) return false;
-      const display = r.style.getPropertyValue('display');
-      return /\b(block|grid|flex)\b/i.test(display);
+    const isTheadHidden = docs.some(({ document }) => {
+      const thead = document.querySelector('table thead');
+      if (!thead) return false;
+
+      const cascaded = getCascadedStyle(thead, combinedRules);
+      const hiddenViaCascade = cascaded.getPropertyValue('display').trim() === 'none';
+
+      const hiddenViaRule = responsiveRules.some(
+        (r) =>
+          /\bthead\b/.test(r.selectorText) &&
+          r.style.getPropertyValue('display').trim() === 'none'
+      );
+
+      return hiddenViaCascade || hiddenViaRule;
     });
 
-    const hasRowSeparation = innerRules.some(r => {
-      const sel = r.selectorText;
-      const matchesTr = /(^|[\s,>])(tbody\s+)?tr\b/i.test(sel);
-      if (!matchesTr) return false;
-      const margin =
-        r.style.getPropertyValue('margin-block-end') ||
-        r.style.getPropertyValue('margin-bottom') ||
-        r.style.getPropertyValue('margin');
-      const border =
-        r.style.getPropertyValue('border') ||
-        r.style.getPropertyValue('border-block-end') ||
-        r.style.getPropertyValue('border-bottom');
-      return Boolean(margin || border);
-    });
-
-    expect(Boolean(stackedRule && hasBlockDisplay && hasRowSeparation)).toBe(true);
+    expect(isTheadHidden).toBe(true);
   });
 
-  test('The thead element is hidden and removed from accessibility tree in stacked view', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const containerRules = Array.from(stylesheet.cssRules).filter(
-      (r): r is CSSContainerRule => r instanceof CSSContainerRule
-    );
-    const stackedRule = containerRules.find(cr =>
-      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
-        cr.conditionText
-      )
-    );
-    const innerRules = stackedRule
-      ? Array.from(stackedRule.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule)
-      : [];
+  test('In the stacked view, each data cell (td) displays a label corresponding to its column header using a pseudo-element', () => {
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allRules = Array.from(stylesheet.cssRules);
+    const responsiveRules = getResponsiveStyleRules(allRules);
+    const allStyleRules = collectAllStyleRules(allRules);
 
-    const hidesThead = innerRules.some(r => {
-      const sel = r.selectorText;
-      const matchesThead = /(^|[\s,>])thead\b/i.test(sel);
-      if (!matchesThead) return false;
-      return r.style.getPropertyValue('display') === 'none';
+    const candidateRules = responsiveRules.length > 0 ? responsiveRules : allStyleRules;
+    const pseudoRulesWithContent = candidateRules.filter((r) => {
+      const isTdBefore = /\btd\b.*::?before\b/.test(r.selectorText);
+      const content = r.style.getPropertyValue('content').trim();
+      const hasValidContent =
+        content.length > 0 && content !== 'none' && content !== 'normal' && content !== '""' && content !== "''";
+      return isTdBefore && hasValidContent;
     });
 
-    expect(hidesThead).toBe(true);
+    const hasColumnLabels =
+      pseudoRulesWithContent.length >= 2 ||
+      pseudoRulesWithContent.some((r) => /\b(attr|var)\s*\(/.test(r.style.getPropertyValue('content')));
+
+    expect(hasColumnLabels).toBe(true);
   });
 
-  test('Each data cell displays a label corresponding to its column header using a pseudo-element in stacked view', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const containerRules = Array.from(stylesheet.cssRules).filter(
-      (r): r is CSSContainerRule => r instanceof CSSContainerRule
-    );
-    const stackedRule = containerRules.find(cr =>
-      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
-        cr.conditionText
-      )
-    );
-    const innerRules = stackedRule
-      ? Array.from(stackedRule.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule)
-      : [];
+  test('In the stacked view, row headers (tbody th) are sticky at the top of their respective row block during scroll', () => {
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const allRules = Array.from(stylesheet.cssRules);
+    const topRules = getTopLevelStyleRules(allRules);
+    const responsiveRules = getResponsiveStyleRules(allRules);
+    const combinedRules = [...topRules, ...responsiveRules];
 
-    const tdPseudoRules = innerRules.filter(r => {
-      const isTdPseudo = /(^|[\s,>])td[^\s{]*::?(before|after)\b/i.test(r.selectorText);
-      if (!isTdPseudo) return false;
-      const content = r.style.getPropertyValue('content');
-      return Boolean(content && content !== 'none' && content !== 'normal');
+    const hasStickyStackedRowHeader = docs.some(({ document }) => {
+      const tbodyTh = document.querySelector('table tbody th');
+      if (!tbodyTh) return false;
+
+      if (responsiveRules.length === 0) return false;
+
+      const cascaded = getCascadedStyle(tbodyTh, combinedRules);
+      const matchedViaCascade =
+        cascaded.getPropertyValue('position').trim() === 'sticky' &&
+        hasZeroBlockStart(cascaded);
+
+      const matchedViaRules = responsiveRules.some(
+        (r) =>
+          /\b(tbody\s+th|th)\b/.test(r.selectorText) &&
+          hasZeroBlockStart(r.style)
+      );
+
+      return matchedViaCascade || matchedViaRules;
     });
 
-    expect(tdPseudoRules.length >= 2).toBe(true);
-  });
-
-  test('Row headers in stacked view are sticky at the top of their respective row block', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const topRules = Array.from(stylesheet.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-    const containerRules = Array.from(stylesheet.cssRules).filter(
-      (r): r is CSSContainerRule => r instanceof CSSContainerRule
-    );
-    const stackedRule = containerRules.find(cr =>
-      /(width\s*<=?\s*\d+|max-width:\s*\d+|inline-size\s*<=?\s*\d+|max-inline-size:\s*\d+)/i.test(
-        cr.conditionText
-      )
-    );
-    const innerRules = stackedRule
-      ? Array.from(stackedRule.cssRules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule)
-      : [];
-
-    const isRowHeaderSel = (sel: string) =>
-      /(^|[\s,>])tbody\s+(tr\s+)?th\b/i.test(sel) || /(^|[\s,>])th\[scope=["']?row["']?\]/i.test(sel);
-
-    const hasStickyPosition = [...topRules, ...innerRules].some(r => {
-      if (!isRowHeaderSel(r.selectorText)) return false;
-      const pos = r.style.getPropertyValue('position');
-      return pos === 'sticky' || pos === '-webkit-sticky';
-    });
-
-    const hasTopZeroInStacked = innerRules.some(r => {
-      if (!isRowHeaderSel(r.selectorText)) return false;
-      const top =
-        r.style.getPropertyValue('inset-block-start') ||
-        r.style.getPropertyValue('top') ||
-        r.style.getPropertyValue('inset');
-      return top === '0' || top === '0px' || top.startsWith('0');
-    });
-
-    expect(hasStickyPosition && hasTopZeroInStacked).toBe(true);
+    expect(hasStickyStackedRowHeader).toBe(true);
   });
 });
