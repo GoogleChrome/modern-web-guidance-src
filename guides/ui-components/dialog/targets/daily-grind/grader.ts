@@ -32,7 +32,7 @@ function getAllDialogs(docs: Array<{ file: string; document: any }>): any[] {
   return docs.flatMap((d) => Array.from(d.document.querySelectorAll('dialog')));
 }
 
-function hasValidAccessibleName(dialog: any, doc: any): boolean {
+function hasValidAccessibleName(dialog: any, doc: any, project: Project = getJsProject(targetFiles)): boolean {
   const ariaLabel = dialog.getAttribute('aria-label')?.trim();
   if (ariaLabel && ariaLabel.length > 0) {
     return true;
@@ -42,7 +42,17 @@ function hasValidAccessibleName(dialog: any, doc: any): boolean {
     const ids = labelledBy.split(/\s+/).filter(Boolean);
     return ids.some((id: string) => {
       const target = doc.getElementById(id) || doc.querySelector(`[id="${id}"]`);
-      return Boolean(target && (target.textContent?.trim().length > 0 || target.getAttribute('aria-label')?.trim().length > 0));
+      if (!target) return false;
+      if (target.textContent?.trim().length > 0 || target.getAttribute('aria-label')?.trim().length > 0) {
+        return true;
+      }
+      return project.getSourceFiles().some(
+        (sf) =>
+          sf.getFullText().includes(id) &&
+          sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) =>
+            /\.(textContent|innerText)\b/.test(bin.getLeft().getText())
+          )
+      );
     });
   }
   return false;
@@ -50,16 +60,17 @@ function hasValidAccessibleName(dialog: any, doc: any): boolean {
 
 function hasDeclarativeModalInvoker(docs: Array<{ file: string; document: any }>): boolean {
   return docs.some((d) => {
-    const invokers = Array.from(d.document.querySelectorAll('[command="show-modal"][commandfor]'));
+    const invokers = Array.from(d.document.querySelectorAll('button[command][commandfor]'));
     return invokers.some((invoker: any) => {
+      const cmd = invoker.getAttribute('command')?.trim().toLowerCase();
       const targetId = invoker.getAttribute('commandfor')?.trim();
-      return Boolean(targetId && d.document.querySelector(`dialog[id="${targetId}"]`));
+      return Boolean(cmd === 'show-modal' && targetId && d.document.querySelector(`dialog[id="${targetId}"]`));
     });
   });
 }
 
-function hasImperativeShowModal(project: Project): boolean {
-  return project.getSourceFiles().some((sf) =>
+function hasImperativeShowModal(project: Project, docs: Array<{ file: string; document: any }> = []): boolean {
+  const inScripts = project.getSourceFiles().some((sf) =>
     sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
       const expr = call.getExpression();
       return (
@@ -68,12 +79,16 @@ function hasImperativeShowModal(project: Project): boolean {
       );
     })
   );
+  const inInlineHandlers = docs.some((d) =>
+    Boolean(d.document.querySelector('button[onclick*="showModal("]'))
+  );
+  return inScripts || inInlineHandlers;
 }
 
 function isModalImplementationValid(docs: Array<{ file: string; document: any }>, project: Project): boolean {
   const dialogs = getAllDialogs(docs);
   if (dialogs.length === 0) return false;
-  return hasDeclarativeModalInvoker(docs) || hasImperativeShowModal(project);
+  return hasDeclarativeModalInvoker(docs) || hasImperativeShowModal(project, docs);
 }
 
 test.describe('dialog Target Grader', () => {
@@ -101,13 +116,13 @@ test.describe('dialog Target Grader', () => {
   test('Focus returns to the invoking element when a modal dialog closes', () => {
     const docs = getHtmlDocuments(targetFiles);
     const project = getJsProject(targetFiles);
-    const invokersAreButtons = docs.some((d) =>
-      Boolean(
-        d.document.querySelector(
-          'button[command="show-modal"], button[aria-haspopup="dialog"], button[aria-controls], button[data-drink]'
-        )
-      )
-    );
+    const invokersAreButtons = docs.some((d) => {
+      const hasTriggerButtons =
+        Boolean(d.document.querySelector('.hero button')) &&
+        Boolean(d.document.querySelector('.card button'));
+      const hasUnconvertedLinks = Boolean(d.document.querySelector('.hero a, .card a'));
+      return hasTriggerButtons && !hasUnconvertedLinks;
+    });
     expect(isModalImplementationValid(docs, project) && invokersAreButtons).toBe(true);
   });
 
@@ -115,29 +130,77 @@ test.describe('dialog Target Grader', () => {
     const docs = getHtmlDocuments(targetFiles);
     const project = getJsProject(targetFiles);
     const dialogs = getAllDialogs(docs);
-    const hasEscCloseableDialog = dialogs.some((d) => {
+    const allDialogsHaveValidClosedBy = dialogs.every((d) => {
       const closedBy = d.getAttribute('closedby')?.trim().toLowerCase();
-      return !closedBy || closedBy === 'any' || closedBy === 'closerequest';
+      return !closedBy || closedBy === 'any' || closedBy === 'closerequest' || closedBy === 'none';
     });
-    expect(isModalImplementationValid(docs, project) && hasEscCloseableDialog).toBe(true);
+    const hasManualEscapeHandler = project.getSourceFiles().some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        const expr = call.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
+        if (expr?.getName() !== 'addEventListener') return false;
+        const eventType = call.getArguments()[0]?.asKind(SyntaxKind.StringLiteral)?.getLiteralValue();
+        if (eventType !== 'keydown' && eventType !== 'keyup') return false;
+        const handler = call.getArguments()[1];
+        const handlerText =
+          handler?.getKind() === SyntaxKind.ArrowFunction ||
+          handler?.getKind() === SyntaxKind.FunctionExpression
+            ? handler.getText()
+            : sf.getFullText();
+        return /\bEscape\b|\bEsc\b/.test(handlerText) && /\.close\s*\(/.test(handlerText);
+      })
+    );
+    expect(
+      isModalImplementationValid(docs, project) &&
+        allDialogsHaveValidClosedBy &&
+        !hasManualEscapeHandler
+    ).toBe(true);
   });
 
   test('When light dismiss is requested on a dialog, clicking the backdrop closes it', () => {
     const docs = getHtmlDocuments(targetFiles);
     const project = getJsProject(targetFiles);
     const dialogs = getAllDialogs(docs);
-    const hasClosedByAny = dialogs.some(
-      (d) =>
-        d.getAttribute('closedby')?.trim().toLowerCase() === 'any' ||
-        d.getAttribute('popover')?.trim().toLowerCase() === 'auto'
-    );
-    const hasPointerLightDismiss = project.getSourceFiles().some((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
-        const expr = call.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
-        return expr?.getName() === 'getBoundingClientRect';
-      })
-    );
-    expect(dialogs.length > 0 && (hasClosedByAny || hasPointerLightDismiss)).toBe(true);
+    const hasNativeLightDismiss = dialogs.some((d) => {
+      const closedBy = d.getAttribute('closedby')?.trim().toLowerCase();
+      const popoverAttr = d.getAttribute('popover')?.trim().toLowerCase();
+      return (
+        closedBy === 'any' ||
+        (d.hasAttribute('popover') && (!popoverAttr || popoverAttr === 'auto'))
+      );
+    });
+    const allCalls = project
+      .getSourceFiles()
+      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const hasPointerLightDismiss =
+      allCalls.some(
+        (c) => c.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() === 'getBoundingClientRect'
+      ) &&
+      allCalls.some(
+        (c) => c.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() === 'close'
+      );
+    const hasNaiveClickLightDismiss = allCalls.some((call) => {
+      if (call.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() !== 'addEventListener') {
+        return false;
+      }
+      const eventType = call.getArguments()[0]?.asKind(SyntaxKind.StringLiteral)?.getLiteralValue();
+      if (eventType !== 'click' && eventType !== 'pointerup' && eventType !== 'mouseup') return false;
+      const handlerText = call.getArguments()[1]?.getText() || '';
+      return (
+        (/\.target\s*===?\s*|\s===?\s*[^;)]*\.target\b/.test(handlerText) ||
+          /!\s*[\w$.]+\.contains\s*\(\s*[\w$.]*\.target\b/.test(handlerText)) &&
+        /\.close\s*\(/.test(handlerText)
+      );
+    });
+    const lightDismissNotRequested =
+      !hasNaiveClickLightDismiss &&
+      dialogs.every((d) => {
+        const closedBy = d.getAttribute('closedby')?.trim().toLowerCase();
+        return !closedBy || closedBy === 'closerequest' || closedBy === 'none';
+      });
+    expect(
+      dialogs.length > 0 &&
+        (hasNativeLightDismiss || hasPointerLightDismiss || lightDismissNotRequested)
+    ).toBe(true);
   });
 
   test('A backdrop-click fallback, if present, does not close the dialog when a press starts inside the dialog and ends on the backdrop', () => {
@@ -148,34 +211,46 @@ test.describe('dialog Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
     const allCalls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
 
-    const pointerListenerEvents = allCalls
-      .filter((call) => {
-        const expr = call.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
-        return expr?.getName() === 'addEventListener';
-      })
+    const listenerCalls = allCalls.filter(
+      (call) => call.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() === 'addEventListener'
+    );
+    const pointerListenerEvents = listenerCalls
       .map((call) => call.getArguments()[0]?.asKind(SyntaxKind.StringLiteral)?.getLiteralValue())
       .filter(Boolean);
 
-    const hasBackdropFallback =
-      pointerListenerEvents.includes('pointerdown') ||
-      pointerListenerEvents.includes('pointerup') ||
-      pointerListenerEvents.includes('mousedown') ||
-      pointerListenerEvents.includes('mouseup') ||
+    const hasTargetEqualityClickDismiss = listenerCalls.some((call) => {
+      const eventType = call.getArguments()[0]?.asKind(SyntaxKind.StringLiteral)?.getLiteralValue();
+      if (eventType !== 'click' && eventType !== 'pointerup' && eventType !== 'mouseup') return false;
+      const handlerText = call.getArguments()[1]?.getText() || '';
+      return (
+        (/\.target\s*===?\s*|\s===?\s*[^;)]*\.target\b/.test(handlerText) ||
+          /!\s*[\w$.]+\.contains\s*\(\s*[\w$.]*\.target\b/.test(handlerText)) &&
+        /\.close\s*\(/.test(handlerText)
+      );
+    });
+
+    const hasBoundsCheckWithClose =
       allCalls.some(
         (call) =>
           call.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() ===
           'getBoundingClientRect'
+      ) &&
+      allCalls.some(
+        (call) =>
+          call.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() === 'close'
+      ) &&
+      pointerListenerEvents.some((ev) =>
+        ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'].includes(ev || '')
       );
 
+    const hasPressAndReleaseTracking =
+      (pointerListenerEvents.includes('pointerdown') &&
+        (pointerListenerEvents.includes('pointerup') || pointerListenerEvents.includes('click'))) ||
+      (pointerListenerEvents.includes('mousedown') &&
+        (pointerListenerEvents.includes('mouseup') || pointerListenerEvents.includes('click')));
+
     const fallbackChecksBothPressAndRelease =
-      !hasBackdropFallback ||
-      (((pointerListenerEvents.includes('pointerdown') && pointerListenerEvents.includes('pointerup')) ||
-        (pointerListenerEvents.includes('mousedown') && pointerListenerEvents.includes('mouseup'))) &&
-        allCalls.some(
-          (call) =>
-            call.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() ===
-            'getBoundingClientRect'
-        ));
+      !hasTargetEqualityClickDismiss && (!hasBoundsCheckWithClose || hasPressAndReleaseTracking);
 
     expect(dialogs.length > 0 && fallbackChecksBothPressAndRelease).toBe(true);
   });
@@ -190,21 +265,31 @@ test.describe('dialog Target Grader', () => {
       sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
         const expr = call.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
         if (expr?.getName() !== 'addEventListener') return false;
-        const eventType = call.getArguments()[0]?.asKind(SyntaxKind.StringLiteral)?.getLiteralValue();
-        if (eventType !== 'cancel') return false;
+        if (call.getArguments()[0]?.asKind(SyntaxKind.StringLiteral)?.getLiteralValue() !== 'cancel') {
+          return false;
+        }
         const handler = call.getArguments()[1];
-        return Boolean(
-          handler &&
-            handler.getDescendantsOfKind(SyntaxKind.CallExpression).some((innerCall) => {
-              const innerExpr = innerCall.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
-              return innerExpr?.getName() === 'preventDefault';
-            })
-        );
+        if (!handler) return false;
+        const scope =
+          handler.getKind() === SyntaxKind.ArrowFunction ||
+          handler.getKind() === SyntaxKind.FunctionExpression
+            ? handler
+            : sf;
+        return scope
+          .getDescendantsOfKind(SyntaxKind.CallExpression)
+          .some((c) => c.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() === 'preventDefault');
       })
+    );
+
+    const setsClosedByNoneInJs = sourceFiles.some((sf) =>
+      /\bclosedBy\s*=\s*['"`]none['"`]|setAttribute\s*\(\s*['"`]closedby['"`]\s*,\s*['"`]none['"`]\s*\)/i.test(
+        sf.getFullText()
+      )
     );
 
     const guardedDialogsValid =
       !cancelListenersPreventDefault ||
+      setsClosedByNoneInJs ||
       dialogs.some((d) => d.getAttribute('closedby')?.trim().toLowerCase() === 'none');
 
     expect(dialogs.length > 0 && guardedDialogsValid).toBe(true);
@@ -225,8 +310,19 @@ test.describe('dialog Target Grader', () => {
         sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
           const expr = call.getExpression().asKind(SyntaxKind.PropertyAccessExpression);
           if (expr?.getName() !== 'addEventListener') return false;
-          const eventType = call.getArguments()[0]?.asKind(SyntaxKind.StringLiteral)?.getLiteralValue();
-          return eventType === 'cancel';
+          if (call.getArguments()[0]?.asKind(SyntaxKind.StringLiteral)?.getLiteralValue() !== 'cancel') {
+            return false;
+          }
+          const handler = call.getArguments()[1];
+          if (!handler) return false;
+          const scope =
+            handler.getKind() === SyntaxKind.ArrowFunction ||
+            handler.getKind() === SyntaxKind.FunctionExpression
+              ? handler
+              : sf;
+          return scope
+            .getDescendantsOfKind(SyntaxKind.CallExpression)
+            .some((c) => c.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() === 'preventDefault');
         })
       );
 
@@ -238,12 +334,27 @@ test.describe('dialog Target Grader', () => {
     const project = getJsProject(targetFiles);
     const dialogs = getAllDialogs(docs);
 
-    const nonModalDialogs = dialogs.filter((d) => d.hasAttribute('popover'));
+    const hasImperativeShow = project.getSourceFiles().some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some(
+        (call) => call.getExpression().asKind(SyntaxKind.PropertyAccessExpression)?.getName() === 'show'
+      )
+    );
+    const nonModalDialogs = dialogs.filter((d) => d.hasAttribute('popover') || hasImperativeShow);
     const nonModalHasCloseControl = nonModalDialogs.every((d) =>
       Boolean(d.querySelector('button, [popovertargetaction="hide"], [command="close"], [command="hide-popover"]'))
     );
+    const togglesInertOnPage = project.getSourceFiles().some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) =>
+        /\.inert\b/.test(bin.getLeft().getText())
+      )
+    );
 
-    expect(isModalImplementationValid(docs, project) && nonModalHasCloseControl).toBe(true);
+    expect(
+      dialogs.length > 0 &&
+        (isModalImplementationValid(docs, project) || nonModalDialogs.length > 0) &&
+        nonModalHasCloseControl &&
+        !togglesInertOnPage
+    ).toBe(true);
   });
 
   test('While a modal dialog is open, content outside it is not focusable', () => {
@@ -272,26 +383,55 @@ test.describe('dialog Target Grader', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const styleRules = collectStyleRules(stylesheet.cssRules);
 
-    const hasModalOverscrollContain = styleRules.some((r) => {
-      const sel = r.selectorText || '';
-      const targetsDialog = /\bdialog\b/.test(sel) || /:modal\b/.test(sel);
-      const overscroll =
-        r.style.getPropertyValue('overscroll-behavior') ||
-        r.style.getPropertyValue('overscroll-behavior-y');
-      return targetsDialog && /\bcontain\b|\bnone\b/.test(overscroll);
-    });
+    const dialogRules = styleRules.filter((r) =>
+      (r.selectorText || '')
+        .split(',')
+        .some((s) => {
+          const subject = s.trim().split(/[\s>+~]+/).pop() || '';
+          return (
+            !subject.includes('::') &&
+            !/^dialog[-_]/i.test(subject) &&
+            (/^dialog\b/i.test(subject) || /:modal\b/.test(subject))
+          );
+        })
+    );
 
-    const hasBackdropScrollContainment = styleRules.some((r) => {
-      const sel = r.selectorText || '';
-      if (!/::backdrop\b/.test(sel)) return false;
+    const hasModalOverscrollContain =
+      dialogRules.some((r) => {
+        const overscroll =
+          r.style.getPropertyValue('overscroll-behavior') ||
+          r.style.getPropertyValue('overscroll-behavior-y') ||
+          r.style.getPropertyValue('overscroll-behavior-block');
+        return /\b(contain|none)\b/.test(overscroll);
+      }) &&
+      !dialogRules.some((r) => {
+        const overflow =
+          r.style.getPropertyValue('overflow') ||
+          r.style.getPropertyValue('overflow-y') ||
+          r.style.getPropertyValue('overflow-block');
+        return /\b(visible|clip)\b/.test(overflow);
+      });
+
+    const backdropRules = styleRules.filter((r) =>
+      (r.selectorText || '').split(',').some((s) => /::backdrop\b/.test(s))
+    );
+
+    const hasBackdropOverflow = backdropRules.some((r) => {
       const overflow =
-        r.style.getPropertyValue('overflow') || r.style.getPropertyValue('overflow-y');
-      const overscroll =
-        r.style.getPropertyValue('overscroll-behavior') ||
-        r.style.getPropertyValue('overscroll-behavior-y');
-      return /\bhidden\b/.test(overflow) && /\bcontain\b|\bnone\b/.test(overscroll);
+        r.style.getPropertyValue('overflow') ||
+        r.style.getPropertyValue('overflow-y') ||
+        r.style.getPropertyValue('overflow-block');
+      return /\b(hidden|auto|scroll)\b/.test(overflow);
     });
 
-    expect(hasModalOverscrollContain && hasBackdropScrollContainment).toBe(true);
+    const hasBackdropOverscroll = backdropRules.some((r) => {
+      const overscroll =
+        r.style.getPropertyValue('overscroll-behavior') ||
+        r.style.getPropertyValue('overscroll-behavior-y') ||
+        r.style.getPropertyValue('overscroll-behavior-block');
+      return /\b(contain|none)\b/.test(overscroll);
+    });
+
+    expect(hasModalOverscrollContain && hasBackdropOverflow && hasBackdropOverscroll).toBe(true);
   });
 });
