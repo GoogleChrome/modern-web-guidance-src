@@ -1,1 +1,1 @@
-- Style a native range slider with custom track, thumb, fill, and focus states while preserving native functionality and accessibility.
+- Add a custom-styled brew strength range slider to the Daily Grind homepage with custom track, thumb, fill progress, and focus states while preserving native slider functionality and accessibility.
