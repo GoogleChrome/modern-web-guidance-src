@@ -1,20 +1,17 @@
 import {
   Node,
   type CallExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
-  isGlobalReference,
-  isProtectedByFeatureGuard,
+  isLibraryReference,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -87,54 +84,6 @@ function isClientSideDependency(
   return true;
 }
 
-function isLibraryReference(
-  node: Node,
-  identName: string,
-  packages: readonly string[],
-): boolean {
-  if (isGlobalReference(node, identName)) {
-    return true;
-  }
-  const unwrapped = unwrapExpression(node);
-  if (!Node.isIdentifier(unwrapped) || unwrapped.getText() !== identName) {
-    return false;
-  }
-  const sourceFile = unwrapped.getSourceFile();
-  for (const imp of sourceFile.getImportDeclarations()) {
-    const spec = imp.getModuleSpecifierValue();
-    if (!packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
-      continue;
-    }
-    if (
-      imp.getDefaultImport()?.getText() === identName ||
-      imp.getNamespaceImport()?.getText() === identName
-    ) {
-      return true;
-    }
-    for (const named of imp.getNamedImports()) {
-      const local = named.getAliasNode()?.getText() ?? named.getName();
-      if (local === identName) {
-        return true;
-      }
-    }
-  }
-  const resolved = resolveLocalExpression(unwrapped, 2);
-  if (Node.isCallExpression(resolved)) {
-    const callee = unwrapExpression(resolved.getExpression());
-    const firstArg = resolved.getArguments()[0];
-    if (
-      Node.isIdentifier(callee) &&
-      callee.getText() === 'require' &&
-      firstArg &&
-      Node.isStringLiteral(firstArg)
-    ) {
-      const spec = firstArg.getLiteralText();
-      return packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
-    }
-  }
-  return false;
-}
-
 function isLanguageDetectInstance(node: Node): boolean {
   const resolved = resolveLocalExpression(node, 2);
   if (Node.isNewExpression(resolved) || Node.isCallExpression(resolved)) {
@@ -181,46 +130,20 @@ function matchLanguageDetectionCall(callExpr: CallExpression): string | null {
   return null;
 }
 
-export const languageDetectionPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: LANGUAGE_DETECT_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    ctx: DependencyMatcherContext,
-  ) => {
-    if (!isClientSideDependency(pkgName, ctx.packageJson)) {
-      return null;
-    }
-    return {
-      message: `Client-side language detection package "${pkgName}" (${versionRange}) bundles static n-gram models; modernize with the built-in browser LanguageDetector API.`,
-    };
-  },
-};
+export const languageDetectionPackageMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    LANGUAGE_DETECT_PACKAGES,
+    (pkgName, versionRange, ctx) =>
+      isClientSideDependency(pkgName, ctx.packageJson)
+        ? `Client-side language detection package "${pkgName}" (${versionRange}) bundles static n-gram models; modernize with the built-in browser LanguageDetector API.`
+        : null,
+  );
 
-export const languageDetectionJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const languageDetectionJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['franc', 'francAll', 'LanguageDetect', 'tinyld'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const msg = matchLanguageDetectionCall(node);
-      if (msg && !isProtectedByFeatureGuard(node, LANGUAGE_DETECTOR_GUARD_TOKENS)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message: msg,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  featureGuardTokens: LANGUAGE_DETECTOR_GUARD_TOKENS,
+  matchCall: (node) => matchLanguageDetectionCall(node),
+});
 
 export const languageDetectionPackageRule: AnalyzerRule = {
   id: 'language-detection/package-lang-detect',

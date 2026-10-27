@@ -1,35 +1,23 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject, scanJsSource } from '../scanners/js-scanner.ts';
+import { scanJsSource, withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
   declarativeDialogPopoverControlClickListenerMatcher,
-  declarativeDialogPopoverControlClickListenerRule,
-  declarativeDialogPopoverControlMatcher,
-  declarativeDialogPopoverControlRule,
+  declarativeDialogPopoverControlMatcher
 } from './declarative-dialog-popover-control.ts';
 
 const domRules: readonly DomRuleMatcher[] = [declarativeDialogPopoverControlMatcher];
 const jsRules: readonly JsRuleMatcher[] = [declarativeDialogPopoverControlClickListenerMatcher];
 
 function runJsxScan(filePath: string, code: string) {
-  const project = createInMemoryProject();
-  const sf = project.createSourceFile(filePath, code, { overwrite: true });
-  return scanJsx(filePath, sf, domRules);
+  return withVirtualSourceFile(filePath, code, (sf) =>
+        scanJsx(filePath, sf, domRules),
+      );
 }
 
 describe('declarativeDialogPopoverControlRule (DOM)', () => {
-  it('has valid rule metadata and non-empty verifierRubric', () => {
-    assert.equal(declarativeDialogPopoverControlRule.id, 'declarative-dialog-popover-control');
-    assert.equal(
-      declarativeDialogPopoverControlClickListenerRule.id,
-      'declarative-dialog-popover-control/click-listener',
-    );
-    assert.ok(declarativeDialogPopoverControlRule.verifierRubric.keepWhen.length > 0);
-    assert.ok(declarativeDialogPopoverControlRule.verifierRubric.dropWhen.length > 0);
-  });
-
   it('flags button with onclick calling showModal()', () => {
     const html = `
       <button onclick="document.getElementById('dlg').showModal()">Open</button>

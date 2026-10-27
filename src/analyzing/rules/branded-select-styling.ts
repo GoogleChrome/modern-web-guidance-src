@@ -1,17 +1,13 @@
 import {
   Node,
-  type SourceFile,
+  type CallExpression,
 } from 'ts-morph';
-import {
-  isProtectedByFeatureGuard,
-  unwrapExpression,
-} from '../scanners/ast-helpers.ts';
+import { unwrapExpression } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -67,77 +63,46 @@ function isJQueryLikeReceiver(node: Node): boolean {
   }
 }
 
-const brandedSelectStylingDependencyMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: TARGET_SELECT_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message:
-        `Legacy custom select library "${pkgName}" (${versionRange}) can be modernized using native customizable <select> with appearance: base-select and ::picker(select).`,
-    };
-  },
-};
+const brandedSelectStylingDependencyMatcher: DependencyRuleMatcher = createDependencyMatcher(
+  TARGET_SELECT_PACKAGES,
+  (pkgName, versionRange) =>
+    `Legacy custom select library "${pkgName}" (${versionRange}) can be modernized using native customizable <select> with appearance: base-select and ::picker(select).`,
+);
 
-const brandedSelectStylingJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+function matchSelectCall(node: CallExpression): string | null {
+  const expr = unwrapExpression(node.getExpression());
+  if (!Node.isPropertyAccessExpression(expr)) {
+    return null;
+  }
+
+  const methodName = expr.getName().toLowerCase();
+  if (!TARGET_JS_METHODS.has(methodName)) {
+    return null;
+  }
+
+  // Check receiver: for chosen, require jQuery-like receiver (reject this.chosen())
+  if (methodName === 'chosen' && !isJQueryLikeReceiver(expr.getExpression())) {
+    return null;
+  }
+
+  // Exclude multi-select, remote ajax search, or tag-creation options in AST
+  const args = node.getArguments();
+  if (args.length > 0) {
+    const argText = args[0]?.getText() ?? '';
+    if (SEARCH_OR_COMPLEX_OPTIONS_REGEX.test(argText)) {
+      return null;
+    }
+  }
+
+  return `Legacy custom select method call .${expr.getName()}() replaces native <select>; modernize with customizable select (appearance: base-select and ::picker(select)).`;
+}
+
+const brandedSelectStylingJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['select2', 'chosen', 'selectpicker', 'niceSelect', 'niceselect', 'selectric'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-    const visitedLines = new Set<number>();
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const expr = unwrapExpression(node.getExpression());
-      if (!Node.isPropertyAccessExpression(expr)) {
-        return;
-      }
-
-      const methodName = expr.getName().toLowerCase();
-      if (!TARGET_JS_METHODS.has(methodName)) {
-        return;
-      }
-
-      // Check receiver: for chosen, require jQuery-like receiver (reject this.chosen())
-      if (methodName === 'chosen' && !isJQueryLikeReceiver(expr.getExpression())) {
-        return;
-      }
-
-      // Exclude multi-select, remote ajax search, or tag-creation options in AST
-      const args = node.getArguments();
-      if (args.length > 0) {
-        const argText = args[0]?.getText() ?? '';
-        if (SEARCH_OR_COMPLEX_OPTIONS_REGEX.test(argText)) {
-          return;
-        }
-      }
-
-      if (isProtectedByFeatureGuard(node, SELECT_FEATURE_TOKENS)) {
-        return;
-      }
-
-      const line = node.getStartLineNumber();
-      if (visitedLines.has(line)) {
-        return;
-      }
-
-      visitedLines.add(line);
-      matches.push({
-        line,
-        message:
-          `Legacy custom select method call .${expr.getName()}() replaces native <select>; modernize with customizable select (appearance: base-select and ::picker(select)).`,
-      });
-    });
-
-    return matches;
-  },
-};
+  dedupeLines: true,
+  featureGuardTokens: SELECT_FEATURE_TOKENS,
+  matchCall: matchSelectCall,
+});
 
 export const brandedSelectStylingRule: AnalyzerRule = {
   id: 'branded-select-styling',

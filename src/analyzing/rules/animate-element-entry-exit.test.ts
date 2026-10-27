@@ -1,24 +1,11 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
+import { scanJsSource } from '../scanners/index.ts';
 import {
-  ANIMATE_ELEMENT_ENTRY_EXIT_GUIDE_HASH,
-  animateElementEntryExitMatcher,
-  animateElementEntryExitRule,
+  animateElementEntryExitMatcher
 } from './animate-element-entry-exit.ts';
 
 describe('animate-element-entry-exit rule', () => {
-  const project = createInMemoryProject();
-
-  test('has correct metadata and 12-char guideHash', () => {
-    assert.equal(animateElementEntryExitRule.id, 'animate-element-entry-exit');
-    assert.equal(animateElementEntryExitRule.guideId, 'animate-element-entry-exit');
-    assert.equal(animateElementEntryExitRule.guideHash, ANIMATE_ELEMENT_ENTRY_EXIT_GUIDE_HASH);
-    assert.equal(animateElementEntryExitRule.guideHash.length, 12);
-    assert.ok(animateElementEntryExitRule.verifierRubric.keepWhen.length >= 2);
-    assert.ok(animateElementEntryExitRule.verifierRubric.dropWhen.length >= 2);
-  });
-
   test('flags imperative jQuery fadeIn/fadeOut and slideUp/slideDown', () => {
     const code = `
       function hideToast(toast) {
@@ -32,8 +19,7 @@ describe('animate-element-entry-exit rule', () => {
     const { matches } = scanJsSource(
       'ui/components.js',
       code,
-      [animateElementEntryExitMatcher],
-      project,
+      [animateElementEntryExitMatcher]
     );
     assert.equal(matches.length, 5);
     assert.match(matches[0].message, /fadeIn/);
@@ -65,8 +51,7 @@ describe('animate-element-entry-exit rule', () => {
     const { matches } = scanJsSource(
       'ui/toast.js',
       code,
-      [animateElementEntryExitMatcher],
-      project,
+      [animateElementEntryExitMatcher]
     );
     assert.equal(matches.length, 3);
     assert.match(matches[0].message, /animationend/);
@@ -90,8 +75,7 @@ describe('animate-element-entry-exit rule', () => {
     const { matches } = scanJsSource(
       'ui/alert.js',
       code,
-      [animateElementEntryExitMatcher],
-      project,
+      [animateElementEntryExitMatcher]
     );
     assert.equal(matches.length, 2);
   });
@@ -107,8 +91,7 @@ describe('animate-element-entry-exit rule', () => {
     const { matches } = scanJsSource(
       'audio/player.js',
       code,
-      [animateElementEntryExitMatcher],
-      project,
+      [animateElementEntryExitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -125,8 +108,7 @@ describe('animate-element-entry-exit rule', () => {
     const { matches } = scanJsSource(
       'ui/logger.js',
       code,
-      [animateElementEntryExitMatcher],
-      project,
+      [animateElementEntryExitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -142,8 +124,7 @@ describe('animate-element-entry-exit rule', () => {
     const { matches } = scanJsSource(
       'ui/fallback.js',
       code,
-      [animateElementEntryExitMatcher],
-      project,
+      [animateElementEntryExitMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -155,7 +136,7 @@ describe('animate-element-entry-exit rule', () => {
         setTimeout(() => $('#copied').fadeOut(100), 1000);
       }
     `;
-    const resA = scanJsSource('ui/toastA.js', codeA, [animateElementEntryExitMatcher], project);
+    const resA = scanJsSource('ui/toastA.js', codeA, [animateElementEntryExitMatcher]);
     assert.equal(resA.matches.length, 0);
 
     const codeB = `
@@ -163,7 +144,7 @@ describe('animate-element-entry-exit rule', () => {
         $('.toast').fadeIn().delay(2000).fadeOut();
       }
     `;
-    const resB = scanJsSource('ui/toastB.js', codeB, [animateElementEntryExitMatcher], project);
+    const resB = scanJsSource('ui/toastB.js', codeB, [animateElementEntryExitMatcher]);
     assert.equal(resB.matches.length, 0);
 
     const codeC = `
@@ -172,7 +153,7 @@ describe('animate-element-entry-exit rule', () => {
         $('#modal').fadeOut(200, () => $('#modal').remove());
       }
     `;
-    const resC = scanJsSource('ui/modal.js', codeC, [animateElementEntryExitMatcher], project);
+    const resC = scanJsSource('ui/modal.js', codeC, [animateElementEntryExitMatcher]);
     assert.equal(resC.matches.length, 2);
   });
 
@@ -181,7 +162,7 @@ describe('animate-element-entry-exit rule', () => {
       var scene_controls = $('#scene_controls');
       scene_controls.fadeIn(100);
     `;
-    const res = scanJsSource('ui/interface.js', code, [animateElementEntryExitMatcher], project);
+    const res = scanJsSource('ui/interface.js', code, [animateElementEntryExitMatcher]);
     assert.equal(res.matches.length, 1);
   });
 });

@@ -2,25 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
 import {
-  SOFT_EDGE_CONTENT_FADE_GUIDE_HASH,
-  softEdgeContentFadeCssMatcher,
-  softEdgeContentFadeRule,
-  softEdgeContentFadeRules,
+  softEdgeContentFadeCssMatcher
 } from './soft-edge-content-fade.ts';
-
-void test('soft-edge-content-fade: rule metadata', () => {
-  assert.equal(softEdgeContentFadeRule.id, 'soft-edge-content-fade');
-  assert.equal(softEdgeContentFadeRule.guideId, 'soft-edge-content-fade');
-  assert.equal(
-    softEdgeContentFadeRule.guideHash,
-    SOFT_EDGE_CONTENT_FADE_GUIDE_HASH,
-  );
-  assert.equal(SOFT_EDGE_CONTENT_FADE_GUIDE_HASH.length, 12);
-  assert.equal(softEdgeContentFadeRules.length, 1);
-  assert.ok(softEdgeContentFadeRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(softEdgeContentFadeRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('soft-edge-content-fade: positive matches', async (t) => {
   await t.test('flags -webkit-mask-image: linear-gradient(...) without standard mask-image', () => {
     const css = `

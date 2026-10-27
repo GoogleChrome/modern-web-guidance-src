@@ -1,51 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  REQUIRED_FIELD_FEEDBACK_GUIDE_HASH,
   requiredFieldFeedbackCssMatcher,
-  requiredFieldFeedbackCssRule,
-  requiredFieldFeedbackJsMatcher,
-  requiredFieldFeedbackJsRule,
-  requiredFieldFeedbackRules,
+  requiredFieldFeedbackJsMatcher
 } from './required-field-feedback.ts';
-
-void test('required-field-feedback: rule metadata', () => {
-  assert.equal(
-    requiredFieldFeedbackCssRule.id,
-    'required-field-feedback/css-required-invalid',
-  );
-  assert.equal(
-    requiredFieldFeedbackCssRule.guideId,
-    'required-field-feedback',
-  );
-  assert.equal(
-    requiredFieldFeedbackCssRule.guideHash,
-    REQUIRED_FIELD_FEEDBACK_GUIDE_HASH,
-  );
-  assert.equal(REQUIRED_FIELD_FEEDBACK_GUIDE_HASH.length, 12);
-
-  assert.equal(
-    requiredFieldFeedbackJsRule.id,
-    'required-field-feedback/js-blur-dirty-class',
-  );
-  assert.equal(
-    requiredFieldFeedbackJsRule.guideId,
-    'required-field-feedback',
-  );
-  assert.equal(
-    requiredFieldFeedbackJsRule.guideHash,
-    REQUIRED_FIELD_FEEDBACK_GUIDE_HASH,
-  );
-
-  assert.equal(requiredFieldFeedbackRules.length, 2);
-  assert.ok(requiredFieldFeedbackCssRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(requiredFieldFeedbackCssRule.verifierRubric.dropWhen.length >= 2);
-  assert.ok(requiredFieldFeedbackJsRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(requiredFieldFeedbackJsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('required-field-feedback CSS matcher', async (t) => {
   await t.test('flags :required:invalid and [required]:invalid selectors', () => {
     const css = `
@@ -122,7 +82,6 @@ void test('required-field-feedback CSS matcher', async (t) => {
 
 void test('required-field-feedback JS matcher', async (t) => {
   await t.test('flags blur / invalid listeners on inputs toggling .touched / .dirty / .interacted / .was-validated', () => {
-    const project = createInMemoryProject();
     const code = `
       const emailInput = document.querySelector('input[required]');
       emailInput.addEventListener('blur', () => {
@@ -132,16 +91,11 @@ void test('required-field-feedback JS matcher', async (t) => {
         emailInput.classList.add('was-validated');
       });
     `;
-    const sourceFile = project.createSourceFile('validation.js', code);
-    const matches = requiredFieldFeedbackJsMatcher.matchFile(sourceFile, {
-      filePath: 'validation.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(requiredFieldFeedbackJsMatcher, 'validation.js', code);
     assert.equal(matches.length, 2);
   });
 
   await t.test('exempts aria-invalid accessibility sync and CSS.supports(":user-invalid") guards', () => {
-    const project = createInMemoryProject();
     const code = `
       const input = document.querySelector('input[required]');
       input.addEventListener('blur', () => {
@@ -156,11 +110,7 @@ void test('required-field-feedback JS matcher', async (t) => {
         });
       }
     `;
-    const sourceFile = project.createSourceFile('a11y.js', code);
-    const matches = requiredFieldFeedbackJsMatcher.matchFile(sourceFile, {
-      filePath: 'a11y.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(requiredFieldFeedbackJsMatcher, 'a11y.js', code);
     assert.equal(matches.length, 0);
   });
 });

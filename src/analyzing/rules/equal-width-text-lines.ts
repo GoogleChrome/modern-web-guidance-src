@@ -6,16 +6,14 @@ import {
 } from 'ts-morph';
 import {
   isGlobalReference,
-  isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -125,51 +123,21 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
   return false;
 }
 
-export const equalWidthTextLinesPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: FITTEXT_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message:
-        `Legacy text-fitting package "${pkgName}" (${versionRange}) can be modernized with native CSS text-fit: grow per-line-all.`,
-    };
-  },
-};
+export const equalWidthTextLinesPackageMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    FITTEXT_PACKAGES,
+    (pkgName, versionRange) =>
+      `Legacy text-fitting package "${pkgName}" (${versionRange}) can be modernized with native CSS text-fit: grow per-line-all.`,
+  );
 
-export const equalWidthTextLinesJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const equalWidthTextLinesJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['fitty', 'fitText', 'fittext'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      if (!isFitTextCall(node, sourceFile)) {
-        return;
-      }
-
-      if (isProtectedByFeatureGuard(node, ['text-fit', 'text-wrap'])) {
-        return;
-      }
-
-      const callText = node.getExpression().getText();
-      matches.push({
-        line: node.getStartLineNumber(),
-        message:
-          `Imperative text-fitting script call "${callText}" can be modernized with native CSS text-fit: grow per-line-all.`,
-      });
-    });
-
-    return matches;
-  },
-};
+  featureGuardTokens: ['text-fit', 'text-wrap'],
+  matchCall: (node, sourceFile) =>
+    isFitTextCall(node, sourceFile)
+      ? `Imperative text-fitting script call "${node.getExpression().getText()}" can be modernized with native CSS text-fit: grow per-line-all.`
+      : null,
+});
 
 export const equalWidthTextLinesPackageRule: AnalyzerRule = {
   id: 'equal-width-text-lines/package-fittext',

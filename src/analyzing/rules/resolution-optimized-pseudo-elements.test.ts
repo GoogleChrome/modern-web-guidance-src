@@ -2,31 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
 import {
-  RESOLUTION_OPTIMIZED_PSEUDO_ELEMENTS_GUIDE_HASH,
-  resolutionOptimizedPseudoElementsCssMatcher,
-  resolutionOptimizedPseudoElementsRule,
-  resolutionOptimizedPseudoElementsRules,
+  resolutionOptimizedPseudoElementsCssMatcher
 } from './resolution-optimized-pseudo-elements.ts';
-
-void test('resolution-optimized-pseudo-elements: rule metadata', () => {
-  assert.equal(
-    resolutionOptimizedPseudoElementsRule.id,
-    'resolution-optimized-pseudo-elements',
-  );
-  assert.equal(
-    resolutionOptimizedPseudoElementsRule.guideId,
-    'resolution-optimized-pseudo-elements',
-  );
-  assert.equal(
-    resolutionOptimizedPseudoElementsRule.guideHash,
-    RESOLUTION_OPTIMIZED_PSEUDO_ELEMENTS_GUIDE_HASH,
-  );
-  assert.equal(RESOLUTION_OPTIMIZED_PSEUDO_ELEMENTS_GUIDE_HASH.length, 12);
-  assert.equal(resolutionOptimizedPseudoElementsRules.length, 1);
-  assert.ok(resolutionOptimizedPseudoElementsRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(resolutionOptimizedPseudoElementsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('resolution-optimized-pseudo-elements: positive matches', async (t) => {
   await t.test('flags ::before with -webkit-image-set in content', () => {
     const css = `

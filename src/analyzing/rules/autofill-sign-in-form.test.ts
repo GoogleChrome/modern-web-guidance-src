@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
 import { autofillSignInFormRule } from './autofill-sign-in-form.ts';
 
@@ -79,7 +79,6 @@ void test('autofill-sign-in-form: positive brownfield matches', async (t) => {
   });
 
   await t.test('flags password input inside JSX form element', () => {
-    const project = createInMemoryProject();
     const code = `
       export function LoginForm() {
         return (
@@ -91,8 +90,9 @@ void test('autofill-sign-in-form: positive brownfield matches', async (t) => {
         );
       }
     `;
-    const sourceFile = project.createSourceFile('LoginForm.tsx', code);
-    const matches = scanJsx('LoginForm.tsx', sourceFile, [matcher]);
+    const matches = withVirtualSourceFile('LoginForm.tsx', code, (sourceFile) =>
+            scanJsx('LoginForm.tsx', sourceFile, [matcher]),
+          );
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 6);
   });
@@ -172,7 +172,6 @@ void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
   });
 
   await t.test('exempts JSX inputs with spread attributes', () => {
-    const project = createInMemoryProject();
     const code = `
       export function CustomInput(props: any) {
         return (
@@ -182,13 +181,13 @@ void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
         );
       }
     `;
-    const sourceFile = project.createSourceFile('CustomInput.tsx', code);
-    const matches = scanJsx('CustomInput.tsx', sourceFile, [matcher]);
+    const matches = withVirtualSourceFile('CustomInput.tsx', code, (sourceFile) =>
+            scanJsx('CustomInput.tsx', sourceFile, [matcher]),
+          );
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts JSX inputs with dynamic autocomplete attribute', () => {
-    const project = createInMemoryProject();
     const code = `
       export function DynamicInput({ autoMode }: { autoMode: string }) {
         return (
@@ -198,8 +197,9 @@ void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
         );
       }
     `;
-    const sourceFile = project.createSourceFile('DynamicInput.tsx', code);
-    const matches = scanJsx('DynamicInput.tsx', sourceFile, [matcher]);
+    const matches = withVirtualSourceFile('DynamicInput.tsx', code, (sourceFile) =>
+            scanJsx('DynamicInput.tsx', sourceFile, [matcher]),
+          );
     assert.equal(matches.length, 0);
   });
 

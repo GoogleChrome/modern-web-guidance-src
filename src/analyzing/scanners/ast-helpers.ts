@@ -6,8 +6,10 @@ import {
   type ExportDeclaration,
   type IfStatement,
   type ImportDeclaration,
+  type ParameterDeclaration,
   type SourceFile,
   type Statement,
+  type VariableDeclaration,
 } from 'ts-morph';
 import ts from 'typescript';
 
@@ -860,4 +862,323 @@ export function getSafeModuleSpecifier(
     return compilerNode.text;
   }
   return null;
+}
+
+/**
+ * Returns `true` when `spec` equals one of `packages` or is a subpath import (`<pkg>/...`).
+ */
+export function matchesPackageSpec(
+  spec: string | null,
+  packages: readonly string[],
+): boolean {
+  return (
+    spec !== null &&
+    packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
+  );
+}
+
+export interface RequirePackageOptions {
+  readonly allowCurriedRequire?: boolean;
+}
+
+/**
+ * Returns `true` when `node` unwraps to `require('<pkg>')` (or `require('<pkg>')()` when
+ * `options.allowCurriedRequire` is `true`) for any package in `packages`.
+ */
+export function isRequireOfPackage(
+  node: Node,
+  packages: readonly string[],
+  options?: RequirePackageOptions,
+): boolean {
+  const unwrapped = unwrapExpression(node);
+  if (!Node.isCallExpression(unwrapped)) {
+    return false;
+  }
+  const callee = unwrapExpression(unwrapped.getExpression());
+  const firstArg = unwrapped.getArguments()[0];
+  if (
+    Node.isIdentifier(callee) &&
+    callee.getText() === 'require' &&
+    firstArg &&
+    Node.isStringLiteral(firstArg)
+  ) {
+    return matchesPackageSpec(firstArg.getLiteralText(), packages);
+  }
+  if (options?.allowCurriedRequire && isRequireOfPackage(callee, packages, options)) {
+    return true;
+  }
+  return false;
+}
+
+export interface LibraryReferenceOptions {
+  /**
+   * Whether default imports (`import lib from 'pkg'`), namespace imports (`import * as lib from 'pkg'`),
+   * and bare `require('pkg')` bindings match `identName`. Defaults to `true`.
+   */
+  readonly allowDefaultImport?: boolean;
+  /**
+   * Whether an unshadowed global (`identName`, `window.<identName>`, `globalThis.<identName>`, `self.<identName>`)
+   * matches without an explicit import or `require()`. Defaults to `true`.
+   */
+  readonly allowGlobal?: boolean;
+  /**
+   * Whether curried factory calls on `require('pkg')()` (e.g. `const list = require('country-list')()`)
+   * count as requiring the package. Defaults to `false`.
+   */
+  readonly allowCurriedRequire?: boolean;
+  /**
+   * Optional UMD global namespace identifiers (e.g. `['Popper', 'FloatingUIDOM']`) whose
+   * `<Namespace>.<identName>` property access is recognized when `allowGlobal` is `true`.
+   */
+  readonly globalNamespaces?: readonly string[];
+}
+
+function isParameterBindingName(param: ParameterDeclaration, localName: string): boolean {
+  const paramNameNode = param.getNameNode();
+  if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
+    return true;
+  }
+  for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
+    if (el.getText() === localName) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isShadowedByCallableScope(scope: Node, localName: string): boolean {
+  if (
+    !Node.isFunctionDeclaration(scope) &&
+    !Node.isFunctionExpression(scope) &&
+    !Node.isArrowFunction(scope) &&
+    !Node.isMethodDeclaration(scope)
+  ) {
+    return false;
+  }
+  if (
+    (Node.isFunctionDeclaration(scope) || Node.isFunctionExpression(scope)) &&
+    scope.getName() === localName
+  ) {
+    return true;
+  }
+  return scope.getParameters().some((param) => isParameterBindingName(param, localName));
+}
+
+function matchesExpectedPropertyName(
+  propName: string,
+  identName: string,
+  allowDefaultImport: boolean,
+): boolean {
+  return propName === identName || (allowDefaultImport && propName === 'default');
+}
+
+function checkVariableDeclarationBinding(
+  decl: VariableDeclaration,
+  localName: string,
+  identName: string,
+  packages: readonly string[],
+  allowDefaultImport: boolean,
+  requireOpts: RequirePackageOptions | undefined,
+): 'matched' | 'shadowed' | 'none' {
+  const nameNode = decl.getNameNode();
+
+  if (Node.isIdentifier(nameNode)) {
+    if (nameNode.getText() !== localName) {
+      return 'none';
+    }
+    const init = decl.getInitializer();
+    if (!init) {
+      return 'shadowed';
+    }
+    const resolvedInit = resolveLocalExpression(init, 2);
+    if (allowDefaultImport && isRequireOfPackage(resolvedInit, packages, requireOpts)) {
+      return 'matched';
+    }
+    if (
+      Node.isPropertyAccessExpression(resolvedInit) &&
+      matchesExpectedPropertyName(resolvedInit.getName(), identName, allowDefaultImport) &&
+      isRequireOfPackage(resolveLocalExpression(resolvedInit.getExpression(), 2), packages, requireOpts)
+    ) {
+      return 'matched';
+    }
+    return 'shadowed';
+  }
+
+  if (Node.isObjectBindingPattern(nameNode)) {
+    for (const el of nameNode.getElements()) {
+      if (el.getName() !== localName) {
+        continue;
+      }
+      const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
+      const init = decl.getInitializer();
+      if (
+        init &&
+        matchesExpectedPropertyName(propName, identName, allowDefaultImport) &&
+        isRequireOfPackage(resolveLocalExpression(init, 2), packages, requireOpts)
+      ) {
+        return 'matched';
+      }
+      return 'shadowed';
+    }
+    return 'none';
+  }
+
+  if (Node.isArrayBindingPattern(nameNode)) {
+    for (const el of nameNode.getElements()) {
+      if (Node.isBindingElement(el) && el.getName() === localName) {
+        return 'shadowed';
+      }
+    }
+  }
+
+  return 'none';
+}
+
+function checkEnclosingBindings(
+  identNode: Node,
+  localName: string,
+  identName: string,
+  packages: readonly string[],
+  allowDefaultImport: boolean,
+  requireOpts: RequirePackageOptions | undefined,
+): 'matched' | 'shadowed' | 'none' {
+  let current: Node | undefined = identNode.getParent();
+  while (current) {
+    if (isShadowedByCallableScope(current, localName)) {
+      return 'shadowed';
+    }
+
+    if (Node.isBlock(current) || Node.isSourceFile(current)) {
+      for (const stmt of current.getStatements()) {
+        if (
+          (Node.isFunctionDeclaration(stmt) || Node.isClassDeclaration(stmt)) &&
+          stmt.getName() === localName
+        ) {
+          return 'shadowed';
+        }
+        if (!Node.isVariableStatement(stmt)) {
+          continue;
+        }
+        for (const decl of stmt.getDeclarationList().getDeclarations()) {
+          const status = checkVariableDeclarationBinding(
+            decl,
+            localName,
+            identName,
+            packages,
+            allowDefaultImport,
+            requireOpts,
+          );
+          if (status !== 'none') {
+            return status;
+          }
+        }
+      }
+    }
+
+    current = current.getParent();
+  }
+  return 'none';
+}
+
+function checkImportDeclarations(
+  sourceFile: SourceFile,
+  localName: string,
+  identName: string,
+  packages: readonly string[],
+  allowDefaultImport: boolean,
+): boolean | null {
+  for (const imp of sourceFile.getImportDeclarations()) {
+    const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
+    if (
+      imp.getDefaultImport()?.getText() === localName ||
+      imp.getNamespaceImport()?.getText() === localName
+    ) {
+      return allowDefaultImport && matchesPkg;
+    }
+    for (const named of imp.getNamedImports()) {
+      const importedName = named.getName();
+      const boundName = named.getAliasNode()?.getText() ?? importedName;
+      if (boundName === localName) {
+        return (
+          matchesPkg &&
+          matchesExpectedPropertyName(importedName, identName, allowDefaultImport)
+        );
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Checks whether `node` refers to library export `identName` from one of `packages`
+ * via ESM `import` (default, namespace, named, or aliased), CommonJS `require()`
+ * (direct, property access, or destructured), or an unshadowed UMD browser global.
+ */
+export function isLibraryReference(
+  node: Node,
+  identName: string,
+  packages: readonly string[],
+  options?: LibraryReferenceOptions,
+): boolean {
+  const allowDefaultImport = options?.allowDefaultImport ?? true;
+  const allowGlobal = options?.allowGlobal ?? true;
+  const requireOpts = options?.allowCurriedRequire
+    ? { allowCurriedRequire: true }
+    : undefined;
+
+  const unwrapped = unwrapExpression(node);
+
+  if (allowDefaultImport && isRequireOfPackage(unwrapped, packages, requireOpts)) {
+    return true;
+  }
+
+  if (Node.isPropertyAccessExpression(unwrapped)) {
+    if (matchesExpectedPropertyName(unwrapped.getName(), identName, allowDefaultImport)) {
+      const receiver = unwrapped.getExpression();
+      if (isRequireOfPackage(resolveLocalExpression(receiver, 2), packages, requireOpts)) {
+        return true;
+      }
+      if (
+        allowGlobal &&
+        options?.globalNamespaces?.some((ns) => isGlobalReference(receiver, ns))
+      ) {
+        return true;
+      }
+    }
+  }
+
+  if (Node.isIdentifier(unwrapped)) {
+    const localName = unwrapped.getText();
+    const bindingStatus = checkEnclosingBindings(
+      unwrapped,
+      localName,
+      identName,
+      packages,
+      allowDefaultImport,
+      requireOpts,
+    );
+    if (bindingStatus === 'matched') {
+      return true;
+    }
+    if (bindingStatus === 'shadowed') {
+      return false;
+    }
+
+    const importMatch = checkImportDeclarations(
+      unwrapped.getSourceFile(),
+      localName,
+      identName,
+      packages,
+      allowDefaultImport,
+    );
+    if (importMatch !== null) {
+      return importMatch;
+    }
+  }
+
+  if (allowGlobal && isGlobalReference(unwrapped, identName)) {
+    return true;
+  }
+
+  return false;
 }

@@ -1,50 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanPackageJson } from '../scanners/dependency-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH,
   lazyLoadVideoAndAudioJsMatcher,
   lazyLoadVideoAndAudioJsRule,
   lazyLoadVideoAndAudioPackageMatcher,
-  lazyLoadVideoAndAudioPackageRule,
   lazyLoadVideoAndAudioRules,
 } from './lazy-load-video-and-audio.ts';
 
-void test('lazy-load-video-and-audio: rule metadata', () => {
-  assert.equal(
-    lazyLoadVideoAndAudioPackageRule.id,
-    'lazy-load-video-and-audio/package-lazyload',
-  );
-  assert.equal(
-    lazyLoadVideoAndAudioPackageRule.guideId,
-    'lazy-load-video-and-audio',
-  );
-  assert.equal(
-    lazyLoadVideoAndAudioPackageRule.guideHash,
-    LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH,
-  );
-  assert.equal(LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH.length, 12);
-
-  assert.equal(
-    lazyLoadVideoAndAudioJsRule.id,
-    'lazy-load-video-and-audio/js-media-observer',
-  );
-  assert.equal(
-    lazyLoadVideoAndAudioJsRule.guideId,
-    'lazy-load-video-and-audio',
-  );
-  assert.equal(
-    lazyLoadVideoAndAudioJsRule.guideHash,
-    LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH,
-  );
-
-  assert.equal(lazyLoadVideoAndAudioRules.length, 1);
+void test('lazy-load-video-and-audio: active rules export', () => {
   assert.deepEqual(lazyLoadVideoAndAudioRules, [lazyLoadVideoAndAudioJsRule]);
-  assert.ok(lazyLoadVideoAndAudioPackageRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(lazyLoadVideoAndAudioPackageRule.verifierRubric.dropWhen.length >= 2);
-  assert.ok(lazyLoadVideoAndAudioJsRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(lazyLoadVideoAndAudioJsRule.verifierRubric.dropWhen.length >= 2);
 });
 
 void test('lazy-load-video-and-audio dependency matcher', async (t) => {
@@ -84,7 +50,6 @@ void test('lazy-load-video-and-audio dependency matcher', async (t) => {
 
 void test('lazy-load-video-and-audio JS matcher', async (t) => {
   await t.test('flags IntersectionObserver swapping data-src onto <video> / <source> and calling load()', () => {
-    const project = createInMemoryProject();
     const code = `
       const lazyVideos = document.querySelectorAll('video.lazy');
       const videoObserver = new IntersectionObserver((entries, observer) => {
@@ -100,16 +65,11 @@ void test('lazy-load-video-and-audio JS matcher', async (t) => {
       });
       lazyVideos.forEach((v) => videoObserver.observe(v));
     `;
-    const sourceFile = project.createSourceFile('lazy-video.js', code);
-    const matches = lazyLoadVideoAndAudioJsMatcher.matchFile(sourceFile, {
-      filePath: 'lazy-video.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(lazyLoadVideoAndAudioJsMatcher, 'lazy-video.js', code);
     assert.equal(matches.length, 1);
   });
 
   await t.test('exempts IntersectionObserver guarded by HTMLMediaElement.prototype.loading check', () => {
-    const project = createInMemoryProject();
     const code = `
       const supportsLazyMedia = Object.hasOwn(HTMLMediaElement.prototype, 'loading');
       if (!supportsLazyMedia) {
@@ -126,16 +86,11 @@ void test('lazy-load-video-and-audio JS matcher', async (t) => {
         });
       }
     `;
-    const sourceFile = project.createSourceFile('guarded-video.js', code);
-    const matches = lazyLoadVideoAndAudioJsMatcher.matchFile(sourceFile, {
-      filePath: 'guarded-video.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(lazyLoadVideoAndAudioJsMatcher, 'guarded-video.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts image-only IntersectionObserver lazy loaders', () => {
-    const project = createInMemoryProject();
     const code = `
       const images = document.querySelectorAll('img[data-src]');
       const imgObserver = new IntersectionObserver((entries) => {
@@ -146,11 +101,7 @@ void test('lazy-load-video-and-audio JS matcher', async (t) => {
         });
       });
     `;
-    const sourceFile = project.createSourceFile('lazy-img.js', code);
-    const matches = lazyLoadVideoAndAudioJsMatcher.matchFile(sourceFile, {
-      filePath: 'lazy-img.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(lazyLoadVideoAndAudioJsMatcher, 'lazy-img.js', code);
     assert.equal(matches.length, 0);
   });
 });

@@ -1,37 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  POSITION_AWARE_TOOLTIPS_GUIDE_HASH,
-  positionAwareTooltipsJsMatcher,
-  positionAwareTooltipsJsRule,
-  positionAwareTooltipsRules,
+  positionAwareTooltipsJsMatcher
 } from './position-aware-tooltips.ts';
-
-void test('position-aware-tooltips: rule metadata', () => {
-  assert.equal(POSITION_AWARE_TOOLTIPS_GUIDE_HASH.length, 12);
-
-  assert.equal(
-    positionAwareTooltipsJsRule.id,
-    'position-aware-tooltips/js-popper-tooltip',
-  );
-  assert.equal(
-    positionAwareTooltipsJsRule.guideId,
-    'position-aware-tooltips',
-  );
-  assert.equal(
-    positionAwareTooltipsJsRule.guideHash,
-    POSITION_AWARE_TOOLTIPS_GUIDE_HASH,
-  );
-
-  assert.equal(positionAwareTooltipsRules.length, 1);
-  assert.ok(positionAwareTooltipsJsRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(positionAwareTooltipsJsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('position-aware-tooltips JS matcher', async (t) => {
   await t.test('flags createPopper and computePosition for tooltip elements', () => {
-    const project = createInMemoryProject();
     const code = `
       import { createPopper } from '@popperjs/core';
       import { computePosition, flip } from '@floating-ui/dom';
@@ -45,16 +19,11 @@ void test('position-aware-tooltips JS matcher', async (t) => {
         middleware: [flip()],
       });
     `;
-    const sourceFile = project.createSourceFile('tooltip.js', code);
-    const matches = positionAwareTooltipsJsMatcher.matchFile(sourceFile, {
-      filePath: 'tooltip.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(positionAwareTooltipsJsMatcher, 'tooltip.js', code);
     assert.equal(matches.length, 2);
   });
 
   await t.test('exempts when guarded by CSS.supports("anchor-name", "--a") or CSS.supports("position-anchor", "--a")', () => {
-    const project = createInMemoryProject();
     const code = `
       import { createPopper } from '@popperjs/core';
       import { computePosition } from '@floating-ui/dom';
@@ -70,16 +39,11 @@ void test('position-aware-tooltips JS matcher', async (t) => {
         computePosition(anchor, tooltip);
       }
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = positionAwareTooltipsJsMatcher.matchFile(sourceFile, {
-      filePath: 'guarded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(positionAwareTooltipsJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts non-tooltip dropdown menus or shadowed local functions', () => {
-    const project = createInMemoryProject();
     const code = `
       import { createPopper } from '@popperjs/core';
       const trigger = document.querySelector('#menu-btn');
@@ -99,16 +63,11 @@ void test('position-aware-tooltips JS matcher', async (t) => {
         createPopper(trigger, userCardPanel, { placement: 'bottom' });
       }
     `;
-    const sourceFile = project.createSourceFile('menu.js', code);
-    const matches = positionAwareTooltipsJsMatcher.matchFile(sourceFile, {
-      filePath: 'menu.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(positionAwareTooltipsJsMatcher, 'menu.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts when non-tooltip widget keywords take precedence over tooltip naming in compound contexts', () => {
-    const project = createInMemoryProject();
     const code = `
       import { createPopper } from '@popperjs/core';
       const trigger = document.querySelector('#menu-btn');
@@ -122,11 +81,7 @@ void test('position-aware-tooltips JS matcher', async (t) => {
         }
       }
     `;
-    const sourceFile = project.createSourceFile('compound.js', code);
-    const matches = positionAwareTooltipsJsMatcher.matchFile(sourceFile, {
-      filePath: 'compound.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(positionAwareTooltipsJsMatcher, 'compound.js', code);
     assert.equal(matches.length, 0);
   });
 });

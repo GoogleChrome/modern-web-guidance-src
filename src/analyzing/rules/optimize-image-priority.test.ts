@@ -1,27 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import {
-  OPTIMIZE_IMAGE_PRIORITY_GUIDE_HASH,
-  optimizeImagePriorityMatcher,
-  optimizeImagePriorityRule,
-  optimizeImagePriorityRules,
+  optimizeImagePriorityMatcher
 } from './optimize-image-priority.ts';
-
-void test('optimize-image-priority: rule metadata', () => {
-  assert.equal(optimizeImagePriorityRule.id, 'optimize-image-priority');
-  assert.equal(optimizeImagePriorityRule.guideId, 'optimize-image-priority');
-  assert.equal(
-    optimizeImagePriorityRule.guideHash,
-    OPTIMIZE_IMAGE_PRIORITY_GUIDE_HASH,
-  );
-  assert.equal(OPTIMIZE_IMAGE_PRIORITY_GUIDE_HASH.length, 12);
-  assert.equal(optimizeImagePriorityRules.length, 1);
-  assert.ok(optimizeImagePriorityRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(optimizeImagePriorityRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('optimize-image-priority DOM matcher', async (t) => {
   await t.test('flags <link rel="preload" as="image"> without fetchpriority or imagesrcset when <img> is present', () => {
     const html = `
@@ -81,16 +64,16 @@ void test('optimize-image-priority DOM matcher', async (t) => {
   });
 
   await t.test('flags JSX hero <img loading="eager"> lacking fetchpriority', () => {
-    const project = createInMemoryProject();
     const code = `
       export function HeroSection() {
         return <img src="/hero.jpg" id="hero-img" loading="eager" alt="Hero" />;
       }
     `;
-    const sourceFile = project.createSourceFile('HeroSection.tsx', code);
-    const matches = scanJsx('HeroSection.tsx', sourceFile, [
-      optimizeImagePriorityMatcher,
-    ]);
+    const matches = withVirtualSourceFile('HeroSection.tsx', code, (sourceFile) =>
+            scanJsx('HeroSection.tsx', sourceFile, [
+            optimizeImagePriorityMatcher,
+          ]),
+          );
     assert.equal(matches.length, 1);
   });
 

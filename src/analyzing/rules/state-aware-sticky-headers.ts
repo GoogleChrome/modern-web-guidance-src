@@ -3,7 +3,6 @@ import {
   SyntaxKind,
   type CallExpression,
   type NewExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
   isDomClassOrAttrMutation,
@@ -14,10 +13,9 @@ import {
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -162,8 +160,7 @@ function matchStickyScrollListener(callExpr: CallExpression): string | null {
   return 'Scroll listener toggling stuck/pinned classes on a sticky header can be modernized with CSS container-type: scroll-state and @container scroll-state(stuck: top).';
 }
 
-export const stateAwareStickyHeadersMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const stateAwareStickyHeadersMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
     'is-stuck',
     'is-pinned',
@@ -172,41 +169,10 @@ export const stateAwareStickyHeadersMatcher: JsRuleMatcher = {
     'header-stuck',
     'is-sticky',
   ],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (Node.isNewExpression(node)) {
-        if (isGuardedByScrollStateSupport(node)) {
-          return;
-        }
-        const message = matchStickyIntersectionObserver(node);
-        if (message) {
-          matches.push({
-            line: node.getStartLineNumber(),
-            message,
-          });
-        }
-        return;
-      }
-
-      if (Node.isCallExpression(node)) {
-        if (isGuardedByScrollStateSupport(node)) {
-          return;
-        }
-        const message = matchStickyScrollListener(node);
-        if (message) {
-          matches.push({
-            line: node.getStartLineNumber(),
-            message,
-          });
-        }
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node) => isGuardedByScrollStateSupport(node),
+  matchCall: matchStickyScrollListener,
+  matchNew: matchStickyIntersectionObserver,
+});
 
 export const stateAwareStickyHeadersRule: AnalyzerRule = {
   id: 'state-aware-sticky-headers',

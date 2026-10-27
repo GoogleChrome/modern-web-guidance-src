@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
 import { autofillAddressFormRule } from './autofill-address-form.ts';
 
@@ -45,7 +45,6 @@ void test('autofill-address-form: positive brownfield matches', async (t) => {
   });
 
   await t.test('flags zipcode input inside JSX form', () => {
-    const project = createInMemoryProject();
     const code = `
       export function AddressForm() {
         return (
@@ -55,8 +54,9 @@ void test('autofill-address-form: positive brownfield matches', async (t) => {
         );
       }
     `;
-    const sourceFile = project.createSourceFile('AddressForm.tsx', code);
-    const matches = scanJsx('AddressForm.tsx', sourceFile, [matcher]);
+    const matches = withVirtualSourceFile('AddressForm.tsx', code, (sourceFile) =>
+            scanJsx('AddressForm.tsx', sourceFile, [matcher]),
+          );
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /postal-code/);
   });

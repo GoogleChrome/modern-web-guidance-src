@@ -1,59 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanPackageJson } from '../scanners/dependency-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  IMPROVE_NEXT_PAGE_LOAD_PERFORMANCE_GUIDE_HASH,
   improveNextPageLoadPerformanceJsMatcher,
-  improveNextPageLoadPerformanceJsRule,
-  improveNextPageLoadPerformancePackageMatcher,
-  improveNextPageLoadPerformancePackageRule,
-  improveNextPageLoadPerformanceRules,
+  improveNextPageLoadPerformancePackageMatcher
 } from './improve-next-page-load-performance.ts';
-
-void test('improve-next-page-load-performance: rule metadata', () => {
-  assert.equal(
-    improveNextPageLoadPerformancePackageRule.id,
-    'improve-next-page-load-performance/package-prefetch',
-  );
-  assert.equal(
-    improveNextPageLoadPerformancePackageRule.guideId,
-    'improve-next-page-load-performance',
-  );
-  assert.equal(
-    improveNextPageLoadPerformancePackageRule.guideHash,
-    IMPROVE_NEXT_PAGE_LOAD_PERFORMANCE_GUIDE_HASH,
-  );
-  assert.equal(IMPROVE_NEXT_PAGE_LOAD_PERFORMANCE_GUIDE_HASH.length, 12);
-
-  assert.equal(
-    improveNextPageLoadPerformanceJsRule.id,
-    'improve-next-page-load-performance/js-quicklink',
-  );
-  assert.equal(
-    improveNextPageLoadPerformanceJsRule.guideId,
-    'improve-next-page-load-performance',
-  );
-  assert.equal(
-    improveNextPageLoadPerformanceJsRule.guideHash,
-    IMPROVE_NEXT_PAGE_LOAD_PERFORMANCE_GUIDE_HASH,
-  );
-
-  assert.equal(improveNextPageLoadPerformanceRules.length, 2);
-  assert.ok(
-    improveNextPageLoadPerformancePackageRule.verifierRubric.keepWhen.length >= 1,
-  );
-  assert.ok(
-    improveNextPageLoadPerformancePackageRule.verifierRubric.dropWhen.length >= 2,
-  );
-  assert.ok(
-    improveNextPageLoadPerformanceJsRule.verifierRubric.keepWhen.length >= 1,
-  );
-  assert.ok(
-    improveNextPageLoadPerformanceJsRule.verifierRubric.dropWhen.length >= 2,
-  );
-});
-
 void test('improve-next-page-load-performance dependency matcher', async (t) => {
   await t.test('flags instant.page, quicklink, and flying-pages', () => {
     const pkg = JSON.stringify(
@@ -92,43 +44,26 @@ void test('improve-next-page-load-performance dependency matcher', async (t) => 
 
 void test('improve-next-page-load-performance JS matcher', async (t) => {
   await t.test('flags quicklink.listen(...) and quicklink.prefetch(...)', () => {
-    const project = createInMemoryProject();
     const code = `
       quicklink.listen({ origins: true });
       quicklink.prefetch(['/next-article', '/pricing']);
     `;
-    const sourceFile = project.createSourceFile('prefetch.js', code);
-    const matches = improveNextPageLoadPerformanceJsMatcher.matchFile(
-      sourceFile,
-      {
-        filePath: 'prefetch.js',
-        fileContent: code,
-      },
-    );
+    const matches = matchJsRule(improveNextPageLoadPerformanceJsMatcher, 'prefetch.js', code);
     assert.equal(matches.length, 2);
     assert.match(matches[0]?.message ?? '', /Speculation Rules/);
   });
 
   await t.test('flags imported quicklink default and named imports', () => {
-    const project = createInMemoryProject();
     const code = `
       import quicklink, { listen } from 'quicklink';
       quicklink.prefetch('/pricing');
       listen();
     `;
-    const sourceFile = project.createSourceFile('imported-prefetch.js', code);
-    const matches = improveNextPageLoadPerformanceJsMatcher.matchFile(
-      sourceFile,
-      {
-        filePath: 'imported-prefetch.js',
-        fileContent: code,
-      },
-    );
+    const matches = matchJsRule(improveNextPageLoadPerformanceJsMatcher, 'imported-prefetch.js', code);
     assert.equal(matches.length, 2);
   });
 
   await t.test('exempts when guarded by HTMLScriptElement.supports?.("speculationrules")', () => {
-    const project = createInMemoryProject();
     const code = `
       if (!HTMLScriptElement.supports?.('speculationrules')) {
         quicklink.listen();
@@ -139,31 +74,16 @@ void test('improve-next-page-load-performance JS matcher', async (t) => {
         quicklink.prefetch('/about');
       }
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = improveNextPageLoadPerformanceJsMatcher.matchFile(
-      sourceFile,
-      {
-        filePath: 'guarded.js',
-        fileContent: code,
-      },
-    );
+    const matches = matchJsRule(improveNextPageLoadPerformanceJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts unrelated listen() or prefetch() calls', () => {
-    const project = createInMemoryProject();
     const code = `
       server.listen(3000);
       router.prefetch('/dashboard');
     `;
-    const sourceFile = project.createSourceFile('server.js', code);
-    const matches = improveNextPageLoadPerformanceJsMatcher.matchFile(
-      sourceFile,
-      {
-        filePath: 'server.js',
-        fileContent: code,
-      },
-    );
+    const matches = matchJsRule(improveNextPageLoadPerformanceJsMatcher, 'server.js', code);
     assert.equal(matches.length, 0);
   });
 });

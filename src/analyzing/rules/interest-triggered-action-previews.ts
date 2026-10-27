@@ -2,23 +2,20 @@ import {
   Node,
   SyntaxKind,
   type CallExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
-  getSafeModuleSpecifier,
   isGlobalReference,
+  isLibraryReference,
   isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveCallableNode,
-  resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -45,210 +42,6 @@ const HOVER_EVENTS = [
 
 const PREVIEW_ACTION_REGEX =
   /\b(?:preview|hovercard|hoverCard|actionCard|quickview|quickView|popover|showPopover|togglePopover)\b|dataset\.preview|dataset\.effect/i;
-
-function matchesPackageSpec(
-  spec: string | null,
-  packages: readonly string[],
-): boolean {
-  return (
-    spec !== null &&
-    packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
-  );
-}
-
-function isRequireOfPackage(
-  node: Node,
-  packages: readonly string[],
-): boolean {
-  const unwrapped = unwrapExpression(node);
-  if (!Node.isCallExpression(unwrapped)) {
-    return false;
-  }
-  const callee = unwrapExpression(unwrapped.getExpression());
-  const firstArg = unwrapped.getArguments()[0];
-  if (
-    Node.isIdentifier(callee) &&
-    callee.getText() === 'require' &&
-    firstArg &&
-    Node.isStringLiteral(firstArg)
-  ) {
-    return matchesPackageSpec(firstArg.getLiteralText(), packages);
-  }
-  return false;
-}
-
-function checkEnclosingBindings(
-  identNode: Node,
-  localName: string,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean,
-): 'matched' | 'shadowed' | 'none' {
-  let current: Node | undefined = identNode.getParent();
-  while (current) {
-    if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isFunctionExpression(current) ||
-      Node.isArrowFunction(current) ||
-      Node.isMethodDeclaration(current)
-    ) {
-      if (
-        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
-        current.getName() === localName
-      ) {
-        return 'shadowed';
-      }
-      for (const param of current.getParameters()) {
-        const paramNameNode = param.getNameNode();
-        if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
-          return 'shadowed';
-        }
-        for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
-          if (el.getText() === localName) {
-            return 'shadowed';
-          }
-        }
-      }
-    }
-
-    if (Node.isBlock(current) || Node.isSourceFile(current)) {
-      for (const stmt of current.getStatements()) {
-        if (
-          (Node.isFunctionDeclaration(stmt) || Node.isClassDeclaration(stmt)) &&
-          stmt.getName() === localName
-        ) {
-          return 'shadowed';
-        }
-        if (!Node.isVariableStatement(stmt)) {
-          continue;
-        }
-        for (const decl of stmt.getDeclarationList().getDeclarations()) {
-          const nameNode = decl.getNameNode();
-          if (Node.isIdentifier(nameNode) && nameNode.getText() === localName) {
-            const init = decl.getInitializer();
-            if (init) {
-              const resolvedInit = resolveLocalExpression(init, 2);
-              if (
-                allowDefaultImport &&
-                isRequireOfPackage(resolvedInit, packages)
-              ) {
-                return 'matched';
-              }
-              if (Node.isPropertyAccessExpression(resolvedInit)) {
-                const propName = resolvedInit.getName();
-                if (
-                  (propName === identName ||
-                    (allowDefaultImport && propName === 'default')) &&
-                  isRequireOfPackage(
-                    resolveLocalExpression(resolvedInit.getExpression(), 2),
-                    packages,
-                  )
-                ) {
-                  return 'matched';
-                }
-              }
-            }
-            return 'shadowed';
-          } else if (Node.isObjectBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (el.getName() === localName) {
-                const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
-                const init = decl.getInitializer();
-                if (
-                  init &&
-                  (propName === identName || (allowDefaultImport && propName === 'default')) &&
-                  isRequireOfPackage(resolveLocalExpression(init, 2), packages)
-                ) {
-                  return 'matched';
-                }
-                return 'shadowed';
-              }
-            }
-          } else if (Node.isArrayBindingPattern(nameNode)) {
-            for (const el of nameNode.getElements()) {
-              if (Node.isBindingElement(el) && el.getName() === localName) {
-                return 'shadowed';
-              }
-            }
-          }
-        }
-      }
-    }
-
-    current = current.getParent();
-  }
-  return 'none';
-}
-
-function isLibraryReference(
-  node: Node,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean = true,
-  allowGlobal: boolean = true,
-): boolean {
-  const unwrapped = unwrapExpression(node);
-
-  if (allowDefaultImport && isRequireOfPackage(unwrapped, packages)) {
-    return true;
-  }
-
-  if (Node.isPropertyAccessExpression(unwrapped)) {
-    const propName = unwrapped.getName();
-    if (propName === identName || (allowDefaultImport && propName === 'default')) {
-      const receiver = unwrapped.getExpression();
-      if (isRequireOfPackage(resolveLocalExpression(receiver, 2), packages)) {
-        return true;
-      }
-    }
-  }
-
-  if (Node.isIdentifier(unwrapped)) {
-    const localName = unwrapped.getText();
-    const sourceFile = unwrapped.getSourceFile();
-
-    const bindingStatus = checkEnclosingBindings(
-      unwrapped,
-      localName,
-      identName,
-      packages,
-      allowDefaultImport,
-    );
-    if (bindingStatus === 'matched') {
-      return true;
-    }
-    if (bindingStatus === 'shadowed') {
-      return false;
-    }
-
-    for (const imp of sourceFile.getImportDeclarations()) {
-      const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
-      if (
-        imp.getDefaultImport()?.getText() === localName ||
-        imp.getNamespaceImport()?.getText() === localName
-      ) {
-        return allowDefaultImport && matchesPkg;
-      }
-      for (const named of imp.getNamedImports()) {
-        const importedName = named.getName();
-        const boundName = named.getAliasNode()?.getText() ?? importedName;
-        if (boundName === localName) {
-          return (
-            matchesPkg &&
-            (importedName === identName ||
-              (allowDefaultImport && importedName === 'default'))
-          );
-        }
-      }
-    }
-  }
-
-  if (allowGlobal && isGlobalReference(unwrapped, identName)) {
-    return true;
-  }
-
-  return false;
-}
 
 function isGuardedByInterestInvoker(node: Node, fileContent: string): boolean {
   if (
@@ -333,52 +126,19 @@ function matchHoverPreviewCall(callExpr: CallExpression): string | null {
   return null;
 }
 
-export const interestTriggeredActionPreviewsPackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: HOVERINTENT_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message: `Hover-intent dependency "${pkgName}" (${versionRange}) can be modernized with declarative HTML interestfor, interest-delay, and interest / loseinterest events.`,
-    };
-  },
-};
+export const interestTriggeredActionPreviewsPackageMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    HOVERINTENT_PACKAGES,
+    (pkgName, versionRange) =>
+      `Hover-intent dependency "${pkgName}" (${versionRange}) can be modernized with declarative HTML interestfor, interest-delay, and interest / loseinterest events.`,
+  );
 
-export const interestTriggeredActionPreviewsJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const interestTriggeredActionPreviewsJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['hoverintent', 'hoverIntent', 'mouseenter', 'mouseover', 'focusin'],
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-    const visitedLines = new Set<number>();
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      if (isGuardedByInterestInvoker(node, ctx.fileContent)) {
-        return;
-      }
-
-      const message = matchHoverPreviewCall(node);
-      if (message) {
-        const line = node.getStartLineNumber();
-        if (!visitedLines.has(line)) {
-          visitedLines.add(line);
-          matches.push({
-            line,
-            message,
-          });
-        }
-      }
-    });
-
-    return matches;
-  },
-};
+  dedupeLines: true,
+  isGuarded: (node, _sourceFile, ctx) => isGuardedByInterestInvoker(node, ctx.fileContent),
+  matchCall: (node) => matchHoverPreviewCall(node),
+});
 
 export const interestTriggeredActionPreviewsPackageRule: AnalyzerRule = {
   id: 'interest-triggered-action-previews/package-hoverintent',

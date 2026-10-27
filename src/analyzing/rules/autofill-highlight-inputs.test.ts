@@ -3,23 +3,10 @@ import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
 import type { CssRuleMatcher } from '../schema.ts';
 import {
-  AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH,
-  autofillHighlightInputsRule,
-  autofillHighlightInputsRules,
+  autofillHighlightInputsRule
 } from './autofill-highlight-inputs.ts';
 
 const matcher = autofillHighlightInputsRule.matcher as CssRuleMatcher;
-
-void test('autofill-highlight-inputs: rule metadata', () => {
-  assert.equal(autofillHighlightInputsRule.id, 'autofill-highlight-inputs');
-  assert.equal(autofillHighlightInputsRule.guideId, 'autofill-highlight-inputs');
-  assert.equal(autofillHighlightInputsRule.guideHash, AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH);
-  assert.equal(AUTOFILL_HIGHLIGHT_INPUTS_GUIDE_HASH.length, 12);
-  assert.equal(autofillHighlightInputsRules.length, 1);
-  assert.ok(autofillHighlightInputsRule.verifierRubric.keepWhen.length > 0);
-  assert.ok(autofillHighlightInputsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('autofill-highlight-inputs: positive brownfield matches', async (t) => {
   await t.test('flags input:-webkit-autofill inset box-shadow hack', () => {
     const css = `

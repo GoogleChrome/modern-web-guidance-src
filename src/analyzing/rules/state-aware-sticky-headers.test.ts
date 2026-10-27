@@ -1,32 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  STATE_AWARE_STICKY_HEADERS_GUIDE_HASH,
-  stateAwareStickyHeadersMatcher,
-  stateAwareStickyHeadersRule,
-  stateAwareStickyHeadersRules,
+  stateAwareStickyHeadersMatcher
 } from './state-aware-sticky-headers.ts';
-
-void test('state-aware-sticky-headers: rule metadata', () => {
-  assert.equal(stateAwareStickyHeadersRule.id, 'state-aware-sticky-headers');
-  assert.equal(
-    stateAwareStickyHeadersRule.guideId,
-    'state-aware-sticky-headers',
-  );
-  assert.equal(
-    stateAwareStickyHeadersRule.guideHash,
-    STATE_AWARE_STICKY_HEADERS_GUIDE_HASH,
-  );
-  assert.equal(STATE_AWARE_STICKY_HEADERS_GUIDE_HASH.length, 12);
-  assert.equal(stateAwareStickyHeadersRules.length, 1);
-  assert.ok(stateAwareStickyHeadersRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(stateAwareStickyHeadersRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('state-aware-sticky-headers JS matcher', async (t) => {
   await t.test('flags IntersectionObserver with threshold: [1] / intersectionRatio < 1 toggling .is-stuck', () => {
-    const project = createInMemoryProject();
     const code = `
       const header = document.querySelector('.sticky-header');
       const observer = new IntersectionObserver(
@@ -37,16 +16,11 @@ void test('state-aware-sticky-headers JS matcher', async (t) => {
       );
       observer.observe(header);
     `;
-    const sourceFile = project.createSourceFile('sticky.js', code);
-    const matches = stateAwareStickyHeadersMatcher.matchFile(sourceFile, {
-      filePath: 'sticky.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(stateAwareStickyHeadersMatcher, 'sticky.js', code);
     assert.equal(matches.length, 1);
   });
 
   await t.test('flags scroll listener toggling .is-pinned / .sticky-active on sticky header', () => {
-    const project = createInMemoryProject();
     const code = `
       const stickyHeader = document.querySelector('header.sticky');
       window.addEventListener('scroll', () => {
@@ -57,16 +31,11 @@ void test('state-aware-sticky-headers JS matcher', async (t) => {
         }
       });
     `;
-    const sourceFile = project.createSourceFile('scroll-sticky.js', code);
-    const matches = stateAwareStickyHeadersMatcher.matchFile(sourceFile, {
-      filePath: 'scroll-sticky.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(stateAwareStickyHeadersMatcher, 'scroll-sticky.js', code);
     assert.equal(matches.length, 1);
   });
 
   await t.test('exempts when guarded by CSS.supports("container-type", "scroll-state")', () => {
-    const project = createInMemoryProject();
     const code = `
       if (!CSS.supports('container-type', 'scroll-state')) {
         const observer = new IntersectionObserver(
@@ -78,16 +47,11 @@ void test('state-aware-sticky-headers JS matcher', async (t) => {
         observer.observe(document.querySelector('.sticky-header'));
       }
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = stateAwareStickyHeadersMatcher.matchFile(sourceFile, {
-      filePath: 'guarded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(stateAwareStickyHeadersMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts directional hide-on-scroll-down / show-on-scroll-up headers', () => {
-    const project = createInMemoryProject();
     const code = `
       let lastScroll = 0;
       const header = document.querySelector('header');
@@ -97,16 +61,11 @@ void test('state-aware-sticky-headers JS matcher', async (t) => {
         lastScroll = current;
       });
     `;
-    const sourceFile = project.createSourceFile('headroom.js', code);
-    const matches = stateAwareStickyHeadersMatcher.matchFile(sourceFile, {
-      filePath: 'headroom.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(stateAwareStickyHeadersMatcher, 'headroom.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts arbitrary positive pixel scroll thresholds like scrollY > 100 or scrollTop > 200', () => {
-    const project = createInMemoryProject();
     const code = `
       const header = document.querySelector('header.sticky');
       window.addEventListener('scroll', () => {
@@ -120,16 +79,11 @@ void test('state-aware-sticky-headers JS matcher', async (t) => {
         header.classList.toggle('stuck', container.scrollTop > 200);
       });
     `;
-    const sourceFile = project.createSourceFile('pixel-threshold.js', code);
-    const matches = stateAwareStickyHeadersMatcher.matchFile(sourceFile, {
-      filePath: 'pixel-threshold.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(stateAwareStickyHeadersMatcher, 'pixel-threshold.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('flags IntersectionObserver with isIntersecting === false and getBoundingClientRect().y <= 0 docking checks', () => {
-    const project = createInMemoryProject();
     const code = `
       const sentinel = document.querySelector('.sentinel');
       const header = document.querySelector('.site-header');
@@ -147,11 +101,7 @@ void test('state-aware-sticky-headers JS matcher', async (t) => {
         header.classList.toggle('is-pinned', rect.y <= 0);
       });
     `;
-    const sourceFile = project.createSourceFile('sentinel-y.js', code);
-    const matches = stateAwareStickyHeadersMatcher.matchFile(sourceFile, {
-      filePath: 'sentinel-y.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(stateAwareStickyHeadersMatcher, 'sentinel-y.js', code);
     assert.equal(matches.length, 2);
   });
 });

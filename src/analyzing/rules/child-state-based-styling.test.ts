@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import { createInMemoryProject, scanJsSource } from '../scanners/js-scanner.ts';
+import { scanJsSource } from '../scanners/js-scanner.ts';
 import type { CssRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
   childStateBasedStylingJsParentClassRule,
@@ -120,8 +120,6 @@ void test('child-state-based-styling: CSS negative / exempt cases', async (t) =>
 });
 
 void test('child-state-based-styling/js-parent-class: JS positive matches', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('flags focus/blur event listeners adding/removing focused class on parentElement', () => {
     const code = `
       const input = document.querySelector('input');
@@ -132,7 +130,7 @@ void test('child-state-based-styling/js-parent-class: JS positive matches', asyn
         input.parentElement.classList.remove('is-focused');
       });
     `;
-    const { matches } = scanJsSource('input-focus.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('input-focus.js', code, [jsMatcher]);
     assert.equal(matches.length, 2);
     assert.equal(matches[0]?.line, 4);
     assert.equal(matches[1]?.line, 7);
@@ -148,7 +146,7 @@ void test('child-state-based-styling/js-parent-class: JS positive matches', asyn
         });
       }
     `;
-    const { matches } = scanJsSource('field-change.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('field-change.js', code, [jsMatcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 5);
   });
@@ -161,22 +159,20 @@ void test('child-state-based-styling/js-parent-class: JS positive matches', asyn
         };
       }
     `;
-    const { matches } = scanJsSource('onfocus.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('onfocus.js', code, [jsMatcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 4);
   });
 });
 
 void test('child-state-based-styling/js-parent-class: JS negative / exempt cases', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('exempts classList modification directly on input itself', () => {
     const code = `
       input.addEventListener('focus', () => {
         input.classList.add('focused');
       });
     `;
-    const { matches } = scanJsSource('self-target.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('self-target.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -186,7 +182,7 @@ void test('child-state-based-styling/js-parent-class: JS negative / exempt cases
         button.parentElement.classList.toggle('open');
       });
     `;
-    const { matches } = scanJsSource('click-open.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('click-open.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -198,7 +194,7 @@ void test('child-state-based-styling/js-parent-class: JS negative / exempt cases
         });
       }
     `;
-    const { matches } = scanJsSource('guarded.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('guarded.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -210,7 +206,7 @@ void test('child-state-based-styling/js-parent-class: JS negative / exempt cases
         }
       });
     `;
-    const { matches } = scanJsSource('delegation.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('delegation.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -221,7 +217,7 @@ void test('child-state-based-styling/js-parent-class: JS negative / exempt cases
         input.parentElement.classList.add('is-focused');
       });
     `;
-    const { matches } = scanJsSource('redux-focus.js', code, [jsMatcher], project);
+    const { matches } = scanJsSource('redux-focus.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 });

@@ -10,10 +10,9 @@ import {
   resolveCallableNode,
   resolveLocalExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -94,29 +93,11 @@ function matchSnapStateSyncListener(callExpr: CallExpression): string | null {
   return 'scrollend listener computing snapped index via Math.round(scrollLeft / ...) or Math.round(scrollTop / ...) can be modernized with the native scrollsnapchange event.';
 }
 
-export const scrollSnapStateSyncMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const scrollSnapStateSyncMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['Math.round', 'Math.floor'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const message = matchSnapStateSyncListener(node);
-      if (message && !isGuardedBySnapChange(node, sourceFile)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node, sourceFile) => isGuardedBySnapChange(node, sourceFile),
+  matchCall: matchSnapStateSyncListener,
+});
 
 export const scrollSnapStateSyncRule: AnalyzerRule = {
   id: 'scroll-snap-state-sync',

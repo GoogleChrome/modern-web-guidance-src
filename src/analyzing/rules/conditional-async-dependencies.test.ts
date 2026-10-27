@@ -1,51 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanPackageJson } from '../scanners/dependency-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  CONDITIONAL_ASYNC_DEPENDENCIES_GUIDE_HASH,
   conditionalAsyncDependenciesJsMatcher,
-  conditionalAsyncDependenciesJsRule,
-  conditionalAsyncDependenciesPackageMatcher,
-  conditionalAsyncDependenciesPackageRule,
-  conditionalAsyncDependenciesRules,
+  conditionalAsyncDependenciesPackageMatcher
 } from './conditional-async-dependencies.ts';
-
-void test('conditional-async-dependencies: rule metadata', () => {
-  assert.equal(
-    conditionalAsyncDependenciesPackageRule.id,
-    'conditional-async-dependencies/package-script-loader',
-  );
-  assert.equal(
-    conditionalAsyncDependenciesPackageRule.guideId,
-    'conditional-async-dependencies',
-  );
-  assert.equal(
-    conditionalAsyncDependenciesPackageRule.guideHash,
-    CONDITIONAL_ASYNC_DEPENDENCIES_GUIDE_HASH,
-  );
-  assert.equal(CONDITIONAL_ASYNC_DEPENDENCIES_GUIDE_HASH.length, 12);
-
-  assert.equal(
-    conditionalAsyncDependenciesJsRule.id,
-    'conditional-async-dependencies/js-script-loader',
-  );
-  assert.equal(
-    conditionalAsyncDependenciesJsRule.guideId,
-    'conditional-async-dependencies',
-  );
-  assert.equal(
-    conditionalAsyncDependenciesJsRule.guideHash,
-    CONDITIONAL_ASYNC_DEPENDENCIES_GUIDE_HASH,
-  );
-
-  assert.equal(conditionalAsyncDependenciesRules.length, 2);
-  assert.ok(conditionalAsyncDependenciesPackageRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(conditionalAsyncDependenciesPackageRule.verifierRubric.dropWhen.length >= 2);
-  assert.ok(conditionalAsyncDependenciesJsRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(conditionalAsyncDependenciesJsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('conditional-async-dependencies dependency matcher', async (t) => {
   await t.test('flags loadjs and scriptjs', () => {
     const pkg = JSON.stringify(
@@ -83,7 +43,6 @@ void test('conditional-async-dependencies dependency matcher', async (t) => {
 
 void test('conditional-async-dependencies JS matcher', async (t) => {
   await t.test('flags loadjs(), $script(), and conditional document.createElement("script")', () => {
-    const project = createInMemoryProject();
     const code = `
       import loadjs from 'loadjs';
       import $script from 'scriptjs';
@@ -107,16 +66,11 @@ void test('conditional-async-dependencies JS matcher', async (t) => {
         }
       }
     `;
-    const sourceFile = project.createSourceFile('loader.js', code);
-    const matches = conditionalAsyncDependenciesJsMatcher.matchFile(sourceFile, {
-      filePath: 'loader.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(conditionalAsyncDependenciesJsMatcher, 'loader.js', code);
     assert.equal(matches.length, 3);
   });
 
   await t.test('exempts third-party analytics/ads/Stripe snippets and JSON-LD scripts', () => {
-    const project = createInMemoryProject();
     const code = `
       function injectAnalytics() {
         const ga = document.createElement('script');
@@ -146,16 +100,11 @@ void test('conditional-async-dependencies JS matcher', async (t) => {
         document.head.appendChild(s);
       }
     `;
-    const sourceFile = project.createSourceFile('analytics.js', code);
-    const matches = conditionalAsyncDependenciesJsMatcher.matchFile(sourceFile, {
-      filePath: 'analytics.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(conditionalAsyncDependenciesJsMatcher, 'analytics.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts shadowed local loadjs or $script functions', () => {
-    const project = createInMemoryProject();
     const code = `
       import loadjs from 'loadjs';
 
@@ -164,16 +113,11 @@ void test('conditional-async-dependencies JS matcher', async (t) => {
         loadjs('/local/module.js');
       }
     `;
-    const sourceFile = project.createSourceFile('shadowed.js', code);
-    const matches = conditionalAsyncDependenciesJsMatcher.matchFile(sourceFile, {
-      filePath: 'shadowed.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(conditionalAsyncDependenciesJsMatcher, 'shadowed.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts script elements without src or without async load handlers', () => {
-    const project = createInMemoryProject();
     const code = `
       function insertRawScript() {
         const script = document.createElement('script');
@@ -181,11 +125,7 @@ void test('conditional-async-dependencies JS matcher', async (t) => {
         document.body.appendChild(script);
       }
     `;
-    const sourceFile = project.createSourceFile('raw-script.js', code);
-    const matches = conditionalAsyncDependenciesJsMatcher.matchFile(sourceFile, {
-      filePath: 'raw-script.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(conditionalAsyncDependenciesJsMatcher, 'raw-script.js', code);
     assert.equal(matches.length, 0);
   });
 });

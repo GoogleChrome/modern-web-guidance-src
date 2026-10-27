@@ -2,7 +2,6 @@ import {
   Node,
   SyntaxKind,
   type CallExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
   isProtectedByFeatureGuard,
@@ -10,10 +9,9 @@ import {
   resolveCallableNode,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -163,29 +161,11 @@ function matchScrollTargetOnLoadListener(callExpr: CallExpression): string | nul
   return `Imperative '${listener.eventName}' listener performing instant initial target scrolling can be modernized with CSS scroll-initial-target: nearest (with @supports guard) or native fragment navigation.`;
 }
 
-export const scrollTargetOnLoadMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const scrollTargetOnLoadMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['scrollIntoView', 'scrollTo'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const message = matchScrollTargetOnLoadListener(node);
-      if (message && !isGuardedByScrollInitialTarget(node)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node) => isGuardedByScrollInitialTarget(node),
+  matchCall: matchScrollTargetOnLoadListener,
+});
 
 export const scrollTargetOnLoadRule: AnalyzerRule = {
   id: 'scroll-target-on-load',

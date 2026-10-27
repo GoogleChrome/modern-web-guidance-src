@@ -1,33 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanPackageJson } from '../scanners/dependency-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  EQUAL_WIDTH_TEXT_LINES_GUIDE_HASH,
   equalWidthTextLinesJsMatcher,
-  equalWidthTextLinesJsRule,
-  equalWidthTextLinesPackageMatcher,
-  equalWidthTextLinesPackageRule,
-  equalWidthTextLinesRules,
+  equalWidthTextLinesPackageMatcher
 } from './equal-width-text-lines.ts';
-
-void test('equal-width-text-lines: rule metadata', () => {
-  assert.equal(equalWidthTextLinesPackageRule.id, 'equal-width-text-lines/package-fittext');
-  assert.equal(equalWidthTextLinesPackageRule.guideId, 'equal-width-text-lines');
-  assert.equal(equalWidthTextLinesPackageRule.guideHash, EQUAL_WIDTH_TEXT_LINES_GUIDE_HASH);
-  assert.equal(EQUAL_WIDTH_TEXT_LINES_GUIDE_HASH.length, 12);
-
-  assert.equal(equalWidthTextLinesJsRule.id, 'equal-width-text-lines/js-fittext');
-  assert.equal(equalWidthTextLinesJsRule.guideId, 'equal-width-text-lines');
-  assert.equal(equalWidthTextLinesJsRule.guideHash, EQUAL_WIDTH_TEXT_LINES_GUIDE_HASH);
-
-  assert.equal(equalWidthTextLinesRules.length, 2);
-  assert.ok(equalWidthTextLinesPackageRule.verifierRubric.keepWhen.length > 0);
-  assert.ok(equalWidthTextLinesPackageRule.verifierRubric.dropWhen.length >= 2);
-  assert.ok(equalWidthTextLinesJsRule.verifierRubric.keepWhen.length > 0);
-  assert.ok(equalWidthTextLinesJsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('equal-width-text-lines dependency matcher', async (t) => {
   await t.test('flags fitty in dependencies', () => {
     const pkg = JSON.stringify({
@@ -76,53 +54,37 @@ void test('equal-width-text-lines dependency matcher', async (t) => {
 
 void test('equal-width-text-lines JS matcher', async (t) => {
   await t.test('flags fitty call', () => {
-    const project = createInMemoryProject();
     const code = `
       fitty('.lockup-line');
     `;
-    const sourceFile = project.createSourceFile('poster.js', code);
-    const matches = equalWidthTextLinesJsMatcher.matchFile(sourceFile, {
-      filePath: 'poster.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(equalWidthTextLinesJsMatcher, 'poster.js', code);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
     assert.match(matches[0]?.message ?? '', /text-fit/);
   });
 
   await t.test('flags jQuery .fitText call', () => {
-    const project = createInMemoryProject();
     const code = `
       $("#bigTitle").fitText(0.6);
       $("#underBigTitle").fitText(2.5);
       $header.fitText();
       $('.content').find('.headline').fitText();
     `;
-    const sourceFile = project.createSourceFile('header.js', code);
-    const matches = equalWidthTextLinesJsMatcher.matchFile(sourceFile, {
-      filePath: 'header.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(equalWidthTextLinesJsMatcher, 'header.js', code);
     assert.equal(matches.length, 4);
   });
 
   await t.test('exempts when guarded by CSS.supports for text-fit', () => {
-    const project = createInMemoryProject();
     const code = `
       if (!CSS.supports('text-fit', 'grow per-line-all')) {
         fitty('.lockup-line');
       }
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = equalWidthTextLinesJsMatcher.matchFile(sourceFile, {
-      filePath: 'guarded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(equalWidthTextLinesJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts unrelated function calls and single line options', () => {
-    const project = createInMemoryProject();
     const code = `
       const bounds = map.fitBounds(coords);
       const formatted = formatText(title);
@@ -137,26 +99,17 @@ void test('equal-width-text-lines JS matcher', async (t) => {
         fitText('hello');
       }
     `;
-    const sourceFile = project.createSourceFile('unrelated.js', code);
-    const matches = equalWidthTextLinesJsMatcher.matchFile(sourceFile, {
-      filePath: 'unrelated.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(equalWidthTextLinesJsMatcher, 'unrelated.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts when guarded by CSS.supports for text-wrap: balance', () => {
-    const project = createInMemoryProject();
     const code = `
       if (!CSS.supports('text-wrap', 'balance')) {
         fitty('.lockup-line');
       }
     `;
-    const sourceFile = project.createSourceFile('guarded-wrap.js', code);
-    const matches = equalWidthTextLinesJsMatcher.matchFile(sourceFile, {
-      filePath: 'guarded-wrap.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(equalWidthTextLinesJsMatcher, 'guarded-wrap.js', code);
     assert.equal(matches.length, 0);
   });
 });

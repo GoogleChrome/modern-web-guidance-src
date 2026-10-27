@@ -1,22 +1,19 @@
 import {
-  Node,
   type CallExpression,
-  type SourceFile,
+  type Node,
 } from 'ts-morph';
 import {
   isDomClassOrAttrMutation,
-  isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveCallableNode,
   resolveLocalExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -127,29 +124,11 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const requiredFieldFeedbackJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const requiredFieldFeedbackJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['blur', 'invalid', 'touched', 'dirty', 'interacted', 'was-validated'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const message = matchDirtyClassBlurListener(node);
-      if (message && !isProtectedByFeatureGuard(node, USER_INVALID_GUARD_TOKENS)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  featureGuardTokens: USER_INVALID_GUARD_TOKENS,
+  matchCall: (node) => matchDirtyClassBlurListener(node),
+});
 
 export const requiredFieldFeedbackCssRule: AnalyzerRule = {
   id: 'required-field-feedback/css-required-invalid',

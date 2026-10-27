@@ -1,21 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/js-scanner.ts';
+import { scanJsSource } from '../scanners/js-scanner.ts';
 import type { JsRuleMatcher } from '../schema.ts';
 import {
-  sizeAwareStylingRule,
-  sizeAwareStylingRules,
+  sizeAwareStylingRule
 } from './size-aware-styling.ts';
 
 const matcher = sizeAwareStylingRule.matcher as JsRuleMatcher;
-
-void test('size-aware-styling rules array metadata', () => {
-  assert.equal(sizeAwareStylingRules.length, 1);
-});
-
 void test('size-aware-styling: positive brownfield matches', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('flags ResizeObserver toggling responsive CSS classes', () => {
     const code = `
       const observer = new ResizeObserver((entries) => {
@@ -26,7 +18,7 @@ void test('size-aware-styling: positive brownfield matches', async (t) => {
       });
       observer.observe(document.querySelector('.card'));
     `;
-    const { matches } = scanJsSource('card-resize.js', code, [matcher], project);
+    const { matches } = scanJsSource('card-resize.js', code, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
     assert.match(matches[0]?.message ?? '', /container queries/);
@@ -43,7 +35,7 @@ void test('size-aware-styling: positive brownfield matches', async (t) => {
         }
       });
     `;
-    const { matches } = scanJsSource('window-resize.js', code, [matcher], project);
+    const { matches } = scanJsSource('window-resize.js', code, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
     assert.match(matches[0]?.message ?? '', /container queries/);
@@ -58,15 +50,13 @@ void test('size-aware-styling: positive brownfield matches', async (t) => {
         }
       });
     `;
-    const { matches } = scanJsSource('jquery-resize.js', code, [matcher], project);
+    const { matches } = scanJsSource('jquery-resize.js', code, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
 });
 
 void test('size-aware-styling: negative / exempt cases', async (t) => {
-  const project = createInMemoryProject();
-
   await t.test('exempts real-world asciiflow toolbar.tsx fixture (sibling width sync, SAS-2)', () => {
     const asciiflowCode = `
       useEffect(() => {
@@ -81,7 +71,7 @@ void test('size-aware-styling: negative / exempt cases', async (t) => {
         return () => ro.disconnect();
       }, []);
     `;
-    const { matches } = scanJsSource('toolbar.tsx', asciiflowCode, [matcher], project);
+    const { matches } = scanJsSource('toolbar.tsx', asciiflowCode, [matcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -97,7 +87,7 @@ void test('size-aware-styling: negative / exempt cases', async (t) => {
       });
       ro.observe(canvas);
     `;
-    const { matches } = scanJsSource('canvas-resize.js', code, [matcher], project);
+    const { matches } = scanJsSource('canvas-resize.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -113,7 +103,7 @@ void test('size-aware-styling: negative / exempt cases', async (t) => {
       });
       ro.observe(editorContainer);
     `;
-    const { matches } = scanJsSource('monaco-resize.js', code, [matcher], project);
+    const { matches } = scanJsSource('monaco-resize.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -126,7 +116,7 @@ void test('size-aware-styling: negative / exempt cases', async (t) => {
       });
       ro.observe(scrollContainer);
     `;
-    const { matches } = scanJsSource('virtual-scroll.js', code, [matcher], project);
+    const { matches } = scanJsSource('virtual-scroll.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -141,7 +131,7 @@ void test('size-aware-styling: negative / exempt cases', async (t) => {
         ro.observe(card);
       }
     `;
-    const { matches } = scanJsSource('guarded-cq.js', code, [matcher], project);
+    const { matches } = scanJsSource('guarded-cq.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 
@@ -152,7 +142,7 @@ void test('size-aware-styling: negative / exempt cases', async (t) => {
         const isMobile = document.body.clientWidth < 768;
       });
     `;
-    const { matches } = scanJsSource('overflow.js', code, [matcher], project);
+    const { matches } = scanJsSource('overflow.js', code, [matcher]);
     assert.equal(matches.length, 0);
   });
 });

@@ -10,10 +10,9 @@ import {
   resolveCallableNode,
   resolveLocalExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -89,29 +88,11 @@ function matchRealtimeSnapScrollListener(callExpr: CallExpression): string | nul
   return 'Non-debounced scroll listener computing active snap index via Math.round(scrollLeft / ...) or Math.round(scrollTop / ...) can be modernized with the native scrollsnapchanging event.';
 }
 
-export const scrollSnapRealtimeFeedbackMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const scrollSnapRealtimeFeedbackMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['Math.round', 'Math.abs'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const message = matchRealtimeSnapScrollListener(node);
-      if (message && !isGuardedBySnapChanging(node, sourceFile)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node, sourceFile) => isGuardedBySnapChanging(node, sourceFile),
+  matchCall: matchRealtimeSnapScrollListener,
+});
 
 export const scrollSnapRealtimeFeedbackRule: AnalyzerRule = {
   id: 'scroll-snap-realtime-feedback',

@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { SyntaxKind, type SourceFile } from 'ts-morph';
 import type { AnalyzerRule } from '../schema.ts';
-import { createInMemoryProject, scanFiles } from './index.ts';
+import {
+  createInMemoryProject,
+  createJsCallMatcher,
+  matchJsRule,
+  scanFiles,
+  scanJsSource,
+  withVirtualSourceFile,
+} from './index.ts';
 
 function createCallExpressionRule(id: string, guideId: string, targetCallee: string): AnalyzerRule {
   return {
@@ -167,5 +174,58 @@ test('scanFiles memoizes sourceFile.getDescendantsOfKind, getFullText, and getTe
         { ruleId: 'rule-beta', line: 4 },
       ],
     );
+  });
+});
+
+test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) => {
+  await t.test('reuses a single virtual Project and removes virtual files after each call', () => {
+    const matcher = createJsCallMatcher({
+      fastTokens: ['legacyCall', 'LegacyWidget'],
+      featureGuardTokens: ['modernApi'],
+      dedupeLines: true,
+      matchCall: (node) =>
+        node.getExpression().getText() === 'legacyCall' ? 'legacy call' : null,
+      matchNew: (node) =>
+        node.getExpression().getText() === 'LegacyWidget' ? 'legacy widget' : null,
+    });
+
+    const first = matchJsRule(
+      matcher,
+      'sample.ts',
+      [
+        'legacyCall(); legacyCall();',
+        'new LegacyWidget();',
+        'if (!window.modernApi) { legacyCall(); }',
+      ].join('\n'),
+    );
+    assert.deepEqual(first, [
+      { line: 1, message: 'legacy call' },
+      { line: 2, message: 'legacy widget' },
+    ]);
+
+    const second = matchJsRule(matcher, 'sample.ts', 'const clean = 1;');
+    assert.deepEqual(second, []);
+
+    const fileCountAfter = withVirtualSourceFile('check.ts', 'export const x = 1;', (sf) =>
+      sf.getProject().getSourceFiles().length,
+    );
+    assert.equal(fileCountAfter, 1, 'only the active virtual SourceFile exists during callback');
+  });
+
+  await t.test('scanJsSource omits sourceFile when project is omitted and returns active sourceFile when project is passed', () => {
+    const matcher = createJsCallMatcher({
+      fastTokens: ['legacyCall'],
+      matchCall: (node) =>
+        node.getExpression().getText() === 'legacyCall' ? 'legacy call' : null,
+    });
+
+    const withoutProject = scanJsSource('sample.ts', 'legacyCall();', [matcher]);
+    assert.equal(withoutProject.matches.length, 1);
+    assert.equal('sourceFile' in withoutProject, false);
+
+    const callerProject = createInMemoryProject();
+    const withProject = scanJsSource('sample.ts', 'legacyCall();', [matcher], callerProject);
+    assert.equal(withProject.matches.length, 1);
+    assert.equal(withProject.sourceFile?.wasForgotten(), false);
   });
 });

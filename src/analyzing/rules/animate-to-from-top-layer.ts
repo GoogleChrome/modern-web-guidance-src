@@ -2,7 +2,6 @@ import {
   Node,
   SyntaxKind,
   type CallExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
   isProtectedByFeatureGuard,
@@ -10,10 +9,9 @@ import {
   resolveCallableNode,
   resolveLocalExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -89,29 +87,11 @@ function matchTopLayerExitListener(callExpr: CallExpression): string | null {
   return `Imperative '${listener.eventName}' listener delaying .close() or .hidePopover() after exit animation can be modernized with CSS @starting-style, transition-behavior: allow-discrete, and overlay.`;
 }
 
-export const animateToFromTopLayerMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const animateToFromTopLayerMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['animationend', 'transitionend', 'close', 'hidePopover'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const message = matchTopLayerExitListener(node);
-      if (message && !isGuardedByTopLayerSupport(node)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node) => isGuardedByTopLayerSupport(node),
+  matchCall: (node) => matchTopLayerExitListener(node),
+});
 
 export const animateToFromTopLayerRule: AnalyzerRule = {
   id: 'animate-to-from-top-layer',

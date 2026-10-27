@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Project } from 'ts-morph';
-import { isProtectedByFeatureGuard } from './ast-helpers.ts';
+import { Node, Project } from 'ts-morph';
+import {
+  isLibraryReference,
+  isProtectedByFeatureGuard,
+  isRequireOfPackage,
+  matchesPackageSpec,
+} from './ast-helpers.ts';
 
 test('isProtectedByFeatureGuard: bare variable and negative early-return guards', async (t) => {
   const project = new Project({ useInMemoryFileSystem: true });
@@ -74,6 +79,142 @@ test('isProtectedByFeatureGuard: bare variable and negative early-return guards'
       isProtectedByFeatureGuard(callNode, ['scheduler', 'window.scheduler']),
       true,
       'if (window.scheduler) return must guard subsequent legacy fallback code',
+    );
+  });
+});
+
+test('matchesPackageSpec, isRequireOfPackage, and isLibraryReference', async (t) => {
+  const project = new Project({ useInMemoryFileSystem: true });
+
+  await t.test('matchesPackageSpec matches exact package names and subpaths only', () => {
+    assert.equal(matchesPackageSpec('capsize', ['capsize', '@capsizecss/core']), true);
+    assert.equal(matchesPackageSpec('@capsizecss/core/metrics', ['capsize', '@capsizecss/core']), true);
+    assert.equal(matchesPackageSpec('capsize-extra', ['capsize']), false);
+    assert.equal(matchesPackageSpec(null, ['capsize']), false);
+  });
+
+  await t.test('isRequireOfPackage supports direct and optional curried require()', () => {
+    const sf = project.createSourceFile(
+      'req.js',
+      `
+      const a = require('country-list');
+      const b = require('country-list')();
+      `,
+      { overwrite: true },
+    );
+    const decls = sf.getVariableDeclarations();
+    const initA = decls[0]?.getInitializer();
+    const initB = decls[1]?.getInitializer();
+    assert.ok(initA && initB);
+    assert.equal(isRequireOfPackage(initA, ['country-list']), true);
+    assert.equal(isRequireOfPackage(initB, ['country-list']), false);
+    assert.equal(isRequireOfPackage(initB, ['country-list'], { allowCurriedRequire: true }), true);
+  });
+
+  await t.test('isLibraryReference resolves ESM imports, CJS require, globals, and local shadowing', () => {
+    const sf = project.createSourceFile(
+      'libRef.ts',
+      `
+      import tippy from 'tippy.js';
+      import { computePosition as calcPos } from '@floating-ui/dom';
+      import ecDefault, { ec as NamedEC } from 'elliptic';
+
+      const cjsToast = require('toastify-js');
+      const { createPopper: popperFn } = require('@popperjs/core');
+
+      tippy('#btn');
+      calcPos(ref, floating);
+      new ecDefault('p256');
+      new NamedEC('p256');
+      cjsToast({});
+      popperFn(ref, tip);
+      Popper.createPopper(ref, tip);
+      AOS.init();
+
+      function shadowed(tippy: (s: string) => void) {
+        tippy('#local');
+      }
+      `,
+      { overwrite: true },
+    );
+
+    const calls = sf.getDescendants().filter(Node.isCallExpression);
+    const news = sf.getDescendants().filter(Node.isNewExpression);
+
+    const tippyGlobalImportCall = calls.find((c) => c.getText() === "tippy('#btn')");
+    const calcPosCall = calls.find((c) => c.getText() === 'calcPos(ref, floating)');
+    const cjsToastCall = calls.find((c) => c.getText() === 'cjsToast({})');
+    const popperFnCall = calls.find((c) => c.getText() === 'popperFn(ref, tip)');
+    const umdPopperCall = calls.find((c) => c.getText() === 'Popper.createPopper(ref, tip)');
+    const aosCall = calls.find((c) => c.getText() === 'AOS.init()');
+    const shadowedCall = calls.find((c) => c.getText() === "tippy('#local')");
+    const ecDefaultNew = news[0];
+    const namedEcNew = news[1];
+
+    assert.ok(
+      tippyGlobalImportCall &&
+        calcPosCall &&
+        cjsToastCall &&
+        popperFnCall &&
+        umdPopperCall &&
+        aosCall &&
+        shadowedCall &&
+        ecDefaultNew &&
+        namedEcNew,
+    );
+
+    const aosCallee = aosCall.getExpression();
+    assert.ok(Node.isPropertyAccessExpression(aosCallee));
+
+    assert.equal(
+      isLibraryReference(tippyGlobalImportCall.getExpression(), 'tippy', ['tippy.js']),
+      true,
+    );
+    assert.equal(
+      isLibraryReference(calcPosCall.getExpression(), 'computePosition', ['@floating-ui/dom']),
+      true,
+    );
+    assert.equal(
+      isLibraryReference(cjsToastCall.getExpression(), 'Toastify', ['toastify-js']),
+      true,
+    );
+    assert.equal(
+      isLibraryReference(popperFnCall.getExpression(), 'createPopper', ['@popperjs/core']),
+      true,
+    );
+    assert.equal(
+      isLibraryReference(umdPopperCall.getExpression(), 'createPopper', ['@popperjs/core'], {
+        globalNamespaces: ['Popper'],
+      }),
+      true,
+    );
+    assert.equal(
+      isLibraryReference(aosCallee.getExpression(), 'AOS', ['aos']),
+      true,
+    );
+    assert.equal(
+      isLibraryReference(aosCallee.getExpression(), 'AOS', ['aos'], {
+        allowGlobal: false,
+      }),
+      false,
+    );
+    assert.equal(
+      isLibraryReference(shadowedCall.getExpression(), 'tippy', ['tippy.js']),
+      false,
+    );
+    assert.equal(
+      isLibraryReference(ecDefaultNew.getExpression(), 'ec', ['elliptic'], {
+        allowDefaultImport: false,
+        allowGlobal: false,
+      }),
+      false,
+    );
+    assert.equal(
+      isLibraryReference(namedEcNew.getExpression(), 'ec', ['elliptic'], {
+        allowDefaultImport: false,
+        allowGlobal: false,
+      }),
+      true,
     );
   });
 });

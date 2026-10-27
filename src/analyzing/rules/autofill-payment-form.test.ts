@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
 import { autofillPaymentFormRule } from './autofill-payment-form.ts';
 
@@ -117,7 +117,6 @@ void test('autofill-payment-form: positive brownfield matches', async (suiteCont
   });
 
   await suiteContext.test('flags JSX cardholder name input in CheckoutForm component', () => {
-    const project = createInMemoryProject();
     const code = `
       export function CheckoutForm() {
         return (
@@ -127,8 +126,9 @@ void test('autofill-payment-form: positive brownfield matches', async (suiteCont
         );
       }
     `;
-    const sourceFile = project.createSourceFile('CheckoutForm.tsx', code);
-    const matches = scanJsx('CheckoutForm.tsx', sourceFile, [matcher]);
+    const matches = withVirtualSourceFile('CheckoutForm.tsx', code, (sourceFile) =>
+            scanJsx('CheckoutForm.tsx', sourceFile, [matcher]),
+          );
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /cc-name/);
   });
@@ -211,7 +211,6 @@ void test('autofill-payment-form: negative / exempt cases', async (suiteContext)
   });
 
   await suiteContext.test('exempts JSX input with spread attributes', () => {
-    const project = createInMemoryProject();
     const code = `
       export function CustomCardInput(props: any) {
         return (
@@ -221,8 +220,9 @@ void test('autofill-payment-form: negative / exempt cases', async (suiteContext)
         );
       }
     `;
-    const sourceFile = project.createSourceFile('CustomCardInput.tsx', code);
-    const matches = scanJsx('CustomCardInput.tsx', sourceFile, [matcher]);
+    const matches = withVirtualSourceFile('CustomCardInput.tsx', code, (sourceFile) =>
+            scanJsx('CustomCardInput.tsx', sourceFile, [matcher]),
+          );
     assert.equal(matches.length, 0);
   });
 

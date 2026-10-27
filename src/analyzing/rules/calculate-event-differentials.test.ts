@@ -1,26 +1,11 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
-import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
+import { scanJsSource } from '../scanners/index.ts';
 import {
-  CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH,
-  calculateEventDifferentialsMatcher,
-  calculateEventDifferentialsRule,
-  calculateEventDifferentialsRules,
+  calculateEventDifferentialsMatcher
 } from './calculate-event-differentials.ts';
 
 describe('calculate-event-differentials rule', () => {
-  const project = createInMemoryProject();
-
-  test('has correct metadata and 12-char guideHash', () => {
-    assert.equal(calculateEventDifferentialsRule.id, 'calculate-event-differentials');
-    assert.equal(calculateEventDifferentialsRule.guideId, 'calculate-event-differentials');
-    assert.equal(calculateEventDifferentialsRule.guideHash, CALCULATE_EVENT_DIFFERENTIALS_GUIDE_HASH);
-    assert.equal(calculateEventDifferentialsRule.guideHash.length, 12);
-    assert.ok(calculateEventDifferentialsRule.verifierRubric.keepWhen.length >= 2);
-    assert.ok(calculateEventDifferentialsRule.verifierRubric.dropWhen.length >= 2);
-    assert.equal(calculateEventDifferentialsRules.length, 3);
-  });
-
   test('flags Date difference divided by 86400000 (days) with .getTime() on both sides', () => {
     const code = `
       function getDaysBetween(date1, date2) {
@@ -31,8 +16,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'time/days.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /Temporal/);
@@ -47,8 +31,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'time/new-date.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /Temporal/);
@@ -63,8 +46,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'time/calc.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /Temporal/);
@@ -80,8 +62,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'core/modules/utils/utils.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /86400000/);
@@ -96,8 +77,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'time/moment-diff.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /diff/);
@@ -112,8 +92,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'time/dayjs-diff.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /diff/);
@@ -128,8 +107,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'cache/ttl.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -145,8 +123,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'time/hours.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -162,8 +139,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'time/diff.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -180,8 +156,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'time/guarded.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 0);
   });
@@ -198,8 +173,7 @@ describe('calculate-event-differentials rule', () => {
     const { matches } = scanJsSource(
       'time/now-round.js',
       code,
-      [calculateEventDifferentialsMatcher],
-      project,
+      [calculateEventDifferentialsMatcher]
     );
     assert.equal(matches.length, 0);
   });

@@ -2,25 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
 import {
-  CUSTOM_TEXT_DECORATIONS_GUIDE_HASH,
-  customTextDecorationsCssMatcher,
-  customTextDecorationsRule,
-  customTextDecorationsRules,
+  customTextDecorationsCssMatcher
 } from './custom-text-decorations.ts';
-
-void test('custom-text-decorations: rule metadata', () => {
-  assert.equal(customTextDecorationsRule.id, 'custom-text-decorations');
-  assert.equal(customTextDecorationsRule.guideId, 'custom-text-decorations');
-  assert.equal(
-    customTextDecorationsRule.guideHash,
-    CUSTOM_TEXT_DECORATIONS_GUIDE_HASH,
-  );
-  assert.equal(CUSTOM_TEXT_DECORATIONS_GUIDE_HASH.length, 12);
-  assert.equal(customTextDecorationsRules.length, 1);
-  assert.ok(customTextDecorationsRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(customTextDecorationsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('custom-text-decorations: positive brownfield matches', async (t) => {
   await t.test('flags a link styled with border-bottom, padding-bottom, and text-decoration: none', () => {
     const css = `

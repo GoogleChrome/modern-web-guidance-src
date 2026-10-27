@@ -2,17 +2,15 @@ import {
   Node,
   SyntaxKind,
   type CallExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
   isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveCallableNode,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -96,29 +94,11 @@ function matchScrollProgressListener(callExpr: CallExpression): string | null {
   return 'Scroll listener computing scroll progress ratio to update a progress bar can be modernized with CSS Scroll-Driven Animations (animation-timeline: scroll()).';
 }
 
-export const scrollProgressIndicatorMatcher: JsRuleMatcher = {
-  kind: 'js',
+export const scrollProgressIndicatorMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['scrollHeight', 'documentHeight', 'offsetHeight'],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      const message = matchScrollProgressListener(node);
-      if (message && !isGuardedByScrollTimelineSupport(node)) {
-        matches.push({
-          line: node.getStartLineNumber(),
-          message,
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  isGuarded: (node) => isGuardedByScrollTimelineSupport(node),
+  matchCall: (node) => matchScrollProgressListener(node),
+});
 
 export const scrollProgressIndicatorRule: AnalyzerRule = {
   id: 'scroll-progress-indicator',

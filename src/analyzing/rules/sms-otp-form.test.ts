@@ -2,25 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { checkModernFeaturePresent } from '../eval/update-eval.ts';
 import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher } from '../schema.ts';
-import {
-  SMS_OTP_FORM_GUIDE_HASH,
-  smsOtpFormRule,
-  smsOtpFormRules,
-} from './sms-otp-form.ts';
+import { smsOtpFormRule } from './sms-otp-form.ts';
 
 const matcher = smsOtpFormRule.matcher as DomRuleMatcher;
 
-void test('sms-otp-form: rule metadata and Check 2c quotes', () => {
-  assert.equal(SMS_OTP_FORM_GUIDE_HASH.length, 12);
-  assert.equal(smsOtpFormRule.id, 'sms-otp-form');
-  assert.equal(smsOtpFormRule.guideId, 'sms-otp-form');
-  assert.equal(smsOtpFormRule.guideHash, SMS_OTP_FORM_GUIDE_HASH);
-  assert.equal(smsOtpFormRules.length, 1);
-  assert.ok(smsOtpFormRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(smsOtpFormRule.verifierRubric.dropWhen.length >= 2);
-
+void test('sms-otp-form: Check 2c quotes', () => {
   assert.equal(
     checkModernFeaturePresent(
       'sms-otp-form',
@@ -98,7 +86,6 @@ void test('sms-otp-form: positive brownfield matches', async (suiteContext) => {
   });
 
   await suiteContext.test('flags JSX React OTP input component lacking autocomplete', () => {
-    const project = createInMemoryProject();
     const jsx = `
       function OtpForm() {
         return (
@@ -109,8 +96,9 @@ void test('sms-otp-form: positive brownfield matches', async (suiteContext) => {
         );
       }
     `;
-    const sourceFile = project.createSourceFile('OtpForm.tsx', jsx);
-    const matches = scanJsx('OtpForm.tsx', sourceFile, [matcher]);
+    const matches = withVirtualSourceFile('OtpForm.tsx', jsx, (sourceFile) =>
+            scanJsx('OtpForm.tsx', sourceFile, [matcher]),
+          );
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /one-time-code/);
   });

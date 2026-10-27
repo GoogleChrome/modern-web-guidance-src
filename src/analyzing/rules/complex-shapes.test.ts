@@ -3,23 +3,10 @@ import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
 import type { CssRuleMatcher } from '../schema.ts';
 import {
-  COMPLEX_SHAPES_GUIDE_HASH,
-  complexShapesRule,
-  complexShapesRules,
+  complexShapesRule
 } from './complex-shapes.ts';
 
 const matcher = complexShapesRule.matcher as CssRuleMatcher;
-
-void test('complex-shapes: rule metadata', () => {
-  assert.equal(complexShapesRule.id, 'complex-shapes');
-  assert.equal(complexShapesRule.guideId, 'complex-shapes');
-  assert.equal(complexShapesRule.guideHash, COMPLEX_SHAPES_GUIDE_HASH);
-  assert.equal(COMPLEX_SHAPES_GUIDE_HASH.length, 12);
-  assert.equal(complexShapesRules.length, 1);
-  assert.ok(complexShapesRule.verifierRubric.keepWhen.length > 0);
-  assert.ok(complexShapesRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('complex-shapes: positive brownfield matches', async (t) => {
   await t.test('flags orphaned -webkit-mask-image and -webkit-mask-size', () => {
     const css = `

@@ -1,9 +1,9 @@
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 import type {
   AnalyzerRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
 } from '../schema.ts';
 
@@ -16,20 +16,12 @@ const RESPONSIVE_TABLE_PACKAGES = [
   'jquery-basictable',
 ] as const;
 
-export const responsiveTablePackageMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: RESPONSIVE_TABLE_PACKAGES,
-  matchPackage: (
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ) => {
-    return {
-      message:
-        `Legacy responsive table package "${pkgName}" (${versionRange}) can be modernized with native CSS Container Queries and stacked/scroll-snap mobile table layouts.`,
-    };
-  },
-};
+export const responsiveTablePackageMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    RESPONSIVE_TABLE_PACKAGES,
+    (pkgName, versionRange) =>
+      `Legacy responsive table package "${pkgName}" (${versionRange}) can be modernized with native CSS Container Queries and stacked/scroll-snap mobile table layouts.`,
+  );
 
 const TD_BEFORE_REGEX = /(?:^|[,\s>+~])td::?before\b/i;
 const ATTR_DATA_REGEX = /attr\s*\(\s*(?:data-label|data-th|data-title)\s*\)/i;

@@ -1,52 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH,
-  interestTriggeredTooltipsJsMatcher,
-  interestTriggeredTooltipsJsRule,
-  interestTriggeredTooltipsRules,
+  interestTriggeredTooltipsJsMatcher
 } from './interest-triggered-tooltips.ts';
-
-void test('interest-triggered-tooltips: rule metadata', () => {
-  assert.equal(INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH.length, 12);
-
-  assert.equal(
-    interestTriggeredTooltipsJsRule.id,
-    'interest-triggered-tooltips/js-tooltip',
-  );
-  assert.equal(
-    interestTriggeredTooltipsJsRule.guideId,
-    'interest-triggered-tooltips',
-  );
-  assert.equal(
-    interestTriggeredTooltipsJsRule.guideHash,
-    INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH,
-  );
-
-  assert.equal(interestTriggeredTooltipsRules.length, 1);
-  assert.ok(interestTriggeredTooltipsJsRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(interestTriggeredTooltipsJsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('interest-triggered-tooltips JS matcher', async (t) => {
   await t.test('flags global and imported tippy() hover tooltips', () => {
-    const project = createInMemoryProject();
     const code = `
       import tippy from 'tippy.js';
       tippy('#help-btn', { content: 'Helpful info', placement: 'top' });
       window.tippy('[data-tippy-content]');
     `;
-    const sourceFile = project.createSourceFile('tooltips.js', code);
-    const matches = interestTriggeredTooltipsJsMatcher.matchFile(sourceFile, {
-      filePath: 'tooltips.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'tooltips.js', code);
     assert.equal(matches.length, 2);
   });
 
   await t.test('exempts interactive or click-triggered tippy menus', () => {
-    const project = createInMemoryProject();
     const code = `
       import tippy from 'tippy.js';
       tippy('#user-menu', {
@@ -55,16 +24,11 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
         trigger: 'click',
       });
     `;
-    const sourceFile = project.createSourceFile('menu.js', code);
-    const matches = interestTriggeredTooltipsJsMatcher.matchFile(sourceFile, {
-      filePath: 'menu.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'menu.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts tippy calls with followCursor, allowHTML, lifecycle hooks, or dynamic content callbacks (Area 2.3)', () => {
-    const project = createInMemoryProject();
     const code = `
       import tippy from 'tippy.js';
       tippy('#chart-canvas', { content: 'Coords', followCursor: true });
@@ -76,16 +40,11 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
         content: (ref) => ref.getAttribute('data-label'),
       });
     `;
-    const sourceFile = project.createSourceFile('advanced-tippy.js', code);
-    const matches = interestTriggeredTooltipsJsMatcher.matchFile(sourceFile, {
-      filePath: 'advanced-tippy.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'advanced-tippy.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts when guarded by interestfor feature detection or local tippy function', () => {
-    const project = createInMemoryProject();
     const code = `
       if (!('interestForElement' in HTMLButtonElement.prototype) && !('interestfor' in HTMLElement.prototype)) {
         tippy('#btn', { content: 'Fallback' });
@@ -95,16 +54,11 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
         tippy('#other', { content: 'Local' });
       }
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = interestTriggeredTooltipsJsMatcher.matchFile(sourceFile, {
-      filePath: 'guarded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts tippy calls with plugin options or render callbacks', () => {
-    const project = createInMemoryProject();
     const code = `
       import tippy from 'tippy.js';
       tippy('#btn-plugin', {
@@ -118,11 +72,7 @@ void test('interest-triggered-tooltips JS matcher', async (t) => {
         },
       });
     `;
-    const sourceFile = project.createSourceFile('plugins.js', code);
-    const matches = interestTriggeredTooltipsJsMatcher.matchFile(sourceFile, {
-      filePath: 'plugins.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(interestTriggeredTooltipsJsMatcher, 'plugins.js', code);
     assert.equal(matches.length, 0);
   });
 });

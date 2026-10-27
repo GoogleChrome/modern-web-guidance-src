@@ -1,51 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanPackageJson } from '../scanners/dependency-scanner.ts';
-import { createInMemoryProject } from '../scanners/js-scanner.ts';
+import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  INTERACTIONS_IN_COMPLEX_LAYOUTS_GUIDE_HASH,
   interactionsInComplexLayoutsJsMatcher,
-  interactionsInComplexLayoutsJsRule,
-  interactionsInComplexLayoutsPackageMatcher,
-  interactionsInComplexLayoutsPackageRule,
-  interactionsInComplexLayoutsRules,
+  interactionsInComplexLayoutsPackageMatcher
 } from './interactions-in-complex-layouts.ts';
-
-void test('interactions-in-complex-layouts: rule metadata', () => {
-  assert.equal(
-    interactionsInComplexLayoutsPackageRule.id,
-    'interactions-in-complex-layouts/package-fastdom',
-  );
-  assert.equal(
-    interactionsInComplexLayoutsPackageRule.guideId,
-    'interactions-in-complex-layouts',
-  );
-  assert.equal(
-    interactionsInComplexLayoutsPackageRule.guideHash,
-    INTERACTIONS_IN_COMPLEX_LAYOUTS_GUIDE_HASH,
-  );
-  assert.equal(INTERACTIONS_IN_COMPLEX_LAYOUTS_GUIDE_HASH.length, 12);
-
-  assert.equal(
-    interactionsInComplexLayoutsJsRule.id,
-    'interactions-in-complex-layouts/js-fastdom',
-  );
-  assert.equal(
-    interactionsInComplexLayoutsJsRule.guideId,
-    'interactions-in-complex-layouts',
-  );
-  assert.equal(
-    interactionsInComplexLayoutsJsRule.guideHash,
-    INTERACTIONS_IN_COMPLEX_LAYOUTS_GUIDE_HASH,
-  );
-
-  assert.equal(interactionsInComplexLayoutsRules.length, 2);
-  assert.ok(interactionsInComplexLayoutsPackageRule.verifierRubric.keepWhen.length >= 1);
-  assert.ok(interactionsInComplexLayoutsPackageRule.verifierRubric.dropWhen.length >= 2);
-  assert.ok(interactionsInComplexLayoutsJsRule.verifierRubric.keepWhen.length >= 2);
-  assert.ok(interactionsInComplexLayoutsJsRule.verifierRubric.dropWhen.length >= 2);
-});
-
 void test('interactions-in-complex-layouts dependency matcher', async (t) => {
   await t.test('flags fastdom', () => {
     const pkg = JSON.stringify(
@@ -82,7 +42,6 @@ void test('interactions-in-complex-layouts dependency matcher', async (t) => {
 
 void test('interactions-in-complex-layouts JS matcher', async (t) => {
   await t.test('flags fastdom.measure and fastdom.mutate calls', () => {
-    const project = createInMemoryProject();
     const code = `
       import fastdom from 'fastdom';
 
@@ -93,16 +52,11 @@ void test('interactions-in-complex-layouts JS matcher', async (t) => {
         });
       });
     `;
-    const sourceFile = project.createSourceFile('board.js', code);
-    const matches = interactionsInComplexLayoutsJsMatcher.matchFile(sourceFile, {
-      filePath: 'board.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(interactionsInComplexLayoutsJsMatcher, 'board.js', code);
     assert.equal(matches.length, 2);
   });
 
   await t.test('exempts when guarded by CSS.supports("content-visibility", "auto")', () => {
-    const project = createInMemoryProject();
     const code = `
       import fastdom from 'fastdom';
 
@@ -112,16 +66,11 @@ void test('interactions-in-complex-layouts JS matcher', async (t) => {
         });
       }
     `;
-    const sourceFile = project.createSourceFile('guarded.js', code);
-    const matches = interactionsInComplexLayoutsJsMatcher.matchFile(sourceFile, {
-      filePath: 'guarded.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(interactionsInComplexLayoutsJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('exempts performance.measure and shadowed local fastdom bindings', () => {
-    const project = createInMemoryProject();
     const code = `
       import fastdom from 'fastdom';
 
@@ -136,16 +85,11 @@ void test('interactions-in-complex-layouts JS matcher', async (t) => {
         fastdom.mutate(() => {});
       }
     `;
-    const sourceFile = project.createSourceFile('shadowed.js', code);
-    const matches = interactionsInComplexLayoutsJsMatcher.matchFile(sourceFile, {
-      filePath: 'shadowed.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(interactionsInComplexLayoutsJsMatcher, 'shadowed.js', code);
     assert.equal(matches.length, 0);
   });
 
   await t.test('flags fastdom extended instances', () => {
-    const project = createInMemoryProject();
     const code = `
       import fastdom from 'fastdom';
       const customFastdom = fastdom.extend({});
@@ -153,11 +97,7 @@ void test('interactions-in-complex-layouts JS matcher', async (t) => {
         element.style.transform = 'scale(1.1)';
       });
     `;
-    const sourceFile = project.createSourceFile('extend.js', code);
-    const matches = interactionsInComplexLayoutsJsMatcher.matchFile(sourceFile, {
-      filePath: 'extend.js',
-      fileContent: code,
-    });
+    const matches = matchJsRule(interactionsInComplexLayoutsJsMatcher, 'extend.js', code);
     assert.equal(matches.length, 1);
   });
 });

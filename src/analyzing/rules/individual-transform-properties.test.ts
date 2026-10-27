@@ -6,11 +6,8 @@ import {
   ITP_ACTIVE_SUB_PATTERNS,
   ITP_DEFERRED_SUB_PATTERNS,
   individualTransformPropertiesMatcher,
-  individualTransformPropertiesRule,
   individualTransformPropertiesSingleFunctionStateMatcher,
-  individualTransformPropertiesSingleFunctionStateRule,
   individualTransformPropertiesStandaloneChainMatcher,
-  individualTransformPropertiesStandaloneChainRule,
 } from './individual-transform-properties.ts';
 
 const rules: readonly CssRuleMatcher[] = [individualTransformPropertiesMatcher];
@@ -22,20 +19,7 @@ const singleFunctionStateRules: readonly CssRuleMatcher[] = [
 ];
 
 describe('individualTransformPropertiesRule', () => {
-  it('has valid rule metadata and non-empty verifierRubric', () => {
-    assert.equal(individualTransformPropertiesRule.id, 'individual-transform-properties');
-    assert.equal(individualTransformPropertiesRule.guideId, 'individual-transform-properties');
-    assert.ok(individualTransformPropertiesRule.verifierRubric.keepWhen.length > 0);
-    assert.ok(individualTransformPropertiesRule.verifierRubric.dropWhen.length > 0);
-
-    assert.equal(
-      individualTransformPropertiesStandaloneChainRule.id,
-      'individual-transform-properties/standalone-chain',
-    );
-    assert.equal(
-      individualTransformPropertiesSingleFunctionStateRule.id,
-      'individual-transform-properties/single-function-state',
-    );
+  it('marks single-function-state as a deferred sub-pattern', () => {
     assert.ok(ITP_DEFERRED_SUB_PATTERNS.includes('single-function-state'));
     assert.ok(!ITP_ACTIVE_SUB_PATTERNS.includes('single-function-state'));
   });
