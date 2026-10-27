@@ -67,7 +67,7 @@ document.addEventListener('command', (event) => {
 
 - **One element for sighted and screen reader users:** `report()` sets `data-copied` (or `data-failed`) on the button and writes the message into the bubble, which is both the visible feedback and the live region. Sighted and screen reader users then get the same message for both outcomes. Keep messages short ("Copied", "Copy failed").
 - **Show and hide the bubble with `opacity`,** not `display: none` or `visibility: hidden`, which take it out of the accessibility tree so the text is not announced.
-- **Announce repeats:** VoiceOver skips a message identical to the previous one, even if the region was emptied in between and even if it comes from a different region. Track the last message once for the whole page (not per button, and not by reading the bubble, which is cleared) and, when a message repeats, append a no-break space (`\u00A0`) so it differs. It is not read aloud. Do not use `ariaNotify()` for this.
+- **Announce repeats:** VoiceOver skips a message identical to the previous one from the same region, even if the region was emptied in between. Track the last message in a variable (not by reading the bubble, which is cleared) and, when a message repeats, append a no-break space (`\u00A0`) so it differs. It is not read aloud. One page-wide value is the simplest way to track it: a message from another button's bubble gets the space too, which is harmless. Do not use `ariaNotify()` for this.
 - **Clean up:** after a short timeout, remove the state attributes and clear the bubble's text, so no stale "Copied" is left for screen reader browse mode.
 - **Not color alone:** swap the icon (copy to check) on success and use the bubble text for both outcomes.
 - **Repeat clicks:** clear the pending timeout and restart the animation instead of stacking timers. DO NOT disable the button while showing feedback: copying is idempotent, and disabling drops keyboard focus, announces a misleading unavailable state, and blocks retrying after a failure.
@@ -75,7 +75,7 @@ document.addEventListener('command', (event) => {
 
 ```js
 const timers = new WeakMap();
-let lastMessage = ''; // page-wide: VoiceOver compares with the previous message across regions
+let lastMessage = ''; // One page-wide value is the simplest way to track repeats; VoiceOver skips a repeat from the same region
 
 function report(button, ok) {
   const tip = button.nextElementSibling; // the role="status" bubble
@@ -97,7 +97,7 @@ function report(button, ok) {
 }
 ```
 
-{# Maintainer note: the no-break space workaround is for a VoiceOver bug (WebKit bug 222189, rdar://74532730) and is what WordPress's a11y package does (packages/a11y/src/shared/filter-message.ts). ariaNotify() was tried and rejected: missing in a Safari that should have it, and on iPhone VoiceOver read the button name over the announcement. Revisit when it is dependable. #}
+{# Maintainer note: the no-break space workaround is for a VoiceOver bug (WebKit bug 222189, rdar://74532730) and is what WordPress's a11y package does (packages/a11y/src/shared/filter-message.ts). A tester found that in Chrome and Safari TP VoiceOver does read a repeat from a different region and skips only a repeat from the same bubble, so the guide no longer claims it skips across regions. ariaNotify() was tried and rejected: missing in a Safari that should have it, and on iPhone VoiceOver read the button name over the announcement. Revisit when it is dependable. #}
 
 ### 3. Copy the current selection (optional)
 
