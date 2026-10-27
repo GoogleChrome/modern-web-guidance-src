@@ -5,4 +5,7 @@
 - When the `commandfor` target is a multi-line code block, the copied text preserves its line breaks.
 - Every copy button has a non-empty accessible name that is exposed in the accessibility tree even when the button shows only an icon.
 - A live region (`role="status"` or `aria-live`) exists on the page, and its text becomes non-empty after a successful copy.
+- The live region is not a descendant of any copy button.
+- When the clipboard write fails, the live region reports a failure message and the button does not gain its copied state.
+- Each copy button is at least 24 by 24 CSS pixels.
 - After a successful copy the clicked button gains a visual copied state (such as a `data-copied` attribute or class) that is removed again after a timeout.

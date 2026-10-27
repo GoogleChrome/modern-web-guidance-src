@@ -5,6 +5,9 @@ web-feature-ids:
   - invoker-commands
   - async-clipboard
   - popover
+  - prefers-reduced-motion
+  - logical-properties
+  - focus-within
 guides:
   - icons
 ---
