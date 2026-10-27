@@ -39,19 +39,19 @@ Found 2 modernization opportunities across 2 guides:
 Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.
 Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
 
+* autofill-sign-in-form [qualified] (1 finding)
+  Password input in sign-in or credential form should specify autocomplete="current-password" or autocomplete="new-password".
+  Keep when: The password input is part of a user-facing authentication, current-password verification, or sign-in form.;…
+  Drop when: The password input is disabled, readonly, hidden, or a non-interactive display widget.; The password input al…
+  - src/templates/pad.html:109
+    <input id='passwordinput' type='password' name='password'><input type='submit'…
+
 * form-fields-automatically-fit-contents [qualified] (1 finding)
   Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.
   Keep when: A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/wi…
   Drop when: The code is guarded by a feature query checking CSS.supports("field-sizing", "content") or field-sizing suppo…
   - src/static/js/admin/settings.js:30
     $('.settings').autosize();
-
-* scrollspy [qualified] (1 finding)
-  Manual JavaScript scrollspy observers and plugins should be replaced with CSS scroll-target-group: auto and :target-current.
-  Keep when: The code initializes a scrollspy plugin or IntersectionObserver/scroll listener that toggles active navigation l…
-  Drop when: The stylesheet already uses scroll-target-group: auto and :target-current.; The code tracks scroll position for…
-  - src/static/js/nav.js:42
-    $('body').scrollspy({ target: '#navbar' });
 
 Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
 ```
@@ -261,11 +261,11 @@ Every web platform standard in the catalog is classified across two orthogonal a
 
 | Guide ID | Matcher Kind | Split | Yield | Sampled ($n$ / kept $n$) | Static Matcher Precision (95% Wilson CI) | Post-Verifier Precision (95% Wilson CI) | Modern Platform Target |
 | :--- | :--- | :---: | :---: | :---: | :--- | :--- | :--- |
-| `autofill-address-form` | DOM | `held-out` | 18 | 18 / 18 | 100.0% ([82.4%, 100.0%]) | 100.0% ([82.4%, 100.0%]) | Standard `autocomplete` attributes on address form inputs |
-| `styling-web-components` | CSS & JS | `held-out` | 92 | 19 / 19 | 100.0% ([83.2%, 100.0%]) | 100.0% ([83.2%, 100.0%]) | `::part()`, `:host`, and constructable stylesheets (`adoptedStyleSheets`) |
+| `autofill-address-form` | DOM | `held-out` | 18 | 18 / 17 | 100.0% ([82.4%, 100.0%]) | 100.0% ([81.6%, 100.0%]) | Standard `autocomplete` attributes on address form inputs |
+| `styling-web-components` | CSS & JS | `held-out` | 92 | 19 / 14 | 100.0% ([83.2%, 100.0%]) | 100.0% ([78.5%, 100.0%]) | `::part()`, `:host`, and constructable stylesheets (`adoptedStyleSheets`) |
 | `scrollspy` | Dependency & JS | `held-out` | 121 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | CSS `scroll-target-group: auto` and `:target-current` |
 | `scroll-entry-exit-effects` | Dependency & JS | `held-out` | 48 | 35 / 35 | 97.1% ([85.5%, 99.5%]) | 97.1% ([85.5%, 99.5%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
-| `custom-text-decorations` | CSS | `held-out` | 34 | 28 / 27 | 96.4% ([82.3%, 99.4%]) | 100.0% ([87.5%, 100.0%]) | `text-decoration-thickness`, `text-underline-offset`, and `text-decoration-color` |
+| `custom-text-decorations` | CSS | `held-out` | 34 | 28 / 26 | 96.4% ([82.3%, 99.4%]) | 100.0% ([87.1%, 100.0%]) | `text-decoration-thickness`, `text-underline-offset`, and `text-decoration-color` |
 | `form-fields-automatically-fit-contents` | Dependency & JS | `held-out` | 26 | 26 / 25 | 96.2% ([81.1%, 99.3%]) | 100.0% ([86.7%, 100.0%]) | CSS `field-sizing: content` |
 | `interest-triggered-tooltips` | Dependency, DOM & JS | `held-out` | 50 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
 | `checkbox` | CSS, DOM & JS | `held-out` | 175 | 35 / 32 | 85.7% ([70.6%, 93.7%]) | 93.8% ([79.9%, 98.3%]) | Native `<input type="checkbox">`, `accent-color`, and `:indeterminate` |
