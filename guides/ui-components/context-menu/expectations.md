@@ -1,9 +1,9 @@
-- The context menu container uses the `popover` attribute.
-- The context menu uses a container with `focusgroup="menu"` for keyboard navigation.
+- Each context menu container uses the `popover` attribute with a unique `id` per target item rather than sharing a single menu across multiple items.
+- Each context menu contains a nested container with `focusgroup="menu nomemory"` and `<button type="button">` action items.
+- Each context menu has an accessible name via `aria-labelledby` (when paired with a visible trigger button) or `aria-label` (when right-click only).
+- The context menu popover resets `margin: 0` and `inset: auto`, aligns to its anchor using `position-area`, and prevents viewport overflow using `position-try` or `position-try-fallbacks`.
 - The browser's default context menu is suppressed via `preventDefault()` on the `contextmenu` event.
-- The context menu is opened on right-click (or equivalent long-press if supported).
-- The context menu is positioned at the cursor coordinates using CSS Anchor Positioning.
-- An implicit anchor relationship is established using `showPopover({source})`.
-- The context menu can be dismissed by clicking outside or pressing Escape (native Popover behavior).
-- A visible discovery button is provided that toggles the same context menu.
-- A manual fallback for positioning is provided for browsers that do not support CSS Anchor Positioning.
+- Right-clicking (on `mouseup` or `pointerup`) positions a zero-sized `position: absolute` anchor element at the cursor coordinates relative to the target container and opens the menu with `showPopover({ source })`.
+- A visible discovery `<button type="button">` toggles the context menu using `command="toggle-popover"` and `commandfor`, sets `aria-haspopup="menu"`, `aria-expanded`, and an accessible label, and is placed immediately before the popover element.
+- When a context menu supports both right-click and a visible discovery button, a `beforetoggle` listener checks `event.source` and sets a `source` attribute on the popover to adjust `position-area` styling for button-triggered opens.
+- A JavaScript coordinate fallback (`left` and `top`) positions the popover when CSS Anchor Positioning (`positionArea` in `document.documentElement.style`) is not supported.

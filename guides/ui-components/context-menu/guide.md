@@ -10,17 +10,23 @@ web-feature-ids:
 
 # Context Menu
 
-A context menu provides quick access to actions related to a specific element or region. As a secondary interaction triggered by right-clicking or long-pressing, they allow the primary click or touch action to remain dedicated to tasks like selection, navigation, or drag-and-drop.
+A context menu provides quick access to actions related to a specific item or region. In a list of items, they are triggered by a single button. They can also be a secondary interaction, triggered by right-clicking or long-pressing, and allow the primary click or touch action to remain dedicated to tasks like selection, navigation, or drag-and-drop.
+
+- **Right-click + Visible Menu Button (Recommended):** Needed when the menu is the primary way to reach those actions on the current view, and supports touch, keyboard, and discoverability.
+- **Right-click Only:** Only valid when the same actions are already accessible elsewhere (e.g., on the item's detail page or a persistent toolbar).
+- **Visible Menu Button Only:** Use if Right-click behavior is not needed.
 
 ## Implementation
 
-### 1. Define the Menu Structure
+### 1. Shared foundation
 
-Use the `popover` attribute to create a container that can be promoted to the top layer. Refer to the separate menu button variant in {{ GUIDE_REF("menu") }} for the full menu structure and keyboard navigation requirements.
+Use the `popover` attribute to create a container that can be promoted to the top layer. Refer to the separate menu button variant in {{ GUIDE_REF("menu") }} for the full menu structure and keyboard navigation requirements. Use `aria-labelledby` if there is a visible button, and `aria-label` if not.
+
+A context menu should not be reused across multiple items, and each must have a unique ID.
 
 ```html
 <!-- The menu container -->
-<div popover id="context-menu">
+<div popover id="context-menu" aria-label="Context Menu">
   <div focusgroup="menu nomemory">
     <button type="button">Edit</button>
     <button type="button">Share</button>
@@ -29,9 +35,26 @@ Use the `popover` attribute to create a container that can be promoted to the to
 </div>
 ```
 
-### 2. Positioning at the Cursor
+Use CSS Anchor Positioning to align the popover to its anchor while also preventing the popover from overflowing.
 
-To position the menu exactly at the cursor, use an invisible anchor element placed with JavaScript when the user right-clicks or long presses. Then, use anchor positioning to align the popover to that anchor while also preventing the popover from overflowing.
+```css
+/* Position the popover relative to its anchor */
+#context-menu {
+  margin: 0;
+  inset: auto;
+  /* Use position-area to align the menu relative to the anchor */
+  position-area: block-end span-inline-end;
+  position-try: flip-inline, flip-block, flip-start;
+}
+```
+
+### 2. Method A: Right-Click Trigger (Cursor-Anchored)
+
+To position the menu exactly at the cursor, use an invisible anchor element placed with JavaScript when the user right-clicks or long presses. Put this element inside the element that triggers the context menu.
+
+```html
+<span class="menu-anchor"></span>
+```
 
 ```css
 /* An invisible anchor that follows the cursor */
@@ -40,21 +63,11 @@ To position the menu exactly at the cursor, use an invisible anchor element plac
   inline-size: 0;
   block-size: 0;
 }
-
-/* Position the popover relative to its anchor */
-#context-menu {
-  margin: 0;
-  /* Use position-area to align the menu relative to the anchor */
-  position-area: block-end span-inline-end;
-  position-try: flip-inline, flip-block, flip-start;
-}
 ```
-
-### 3. Triggering the Menu
 
 Listen for the `contextmenu` event to prevent the browser's default menu, and use `mouseup` (or `pointerup`) to capture the coordinates and open the popover.
 
-{# Popovers can not be shown from within a `contextmenu` event, except in Chrome > 153. See https://github.com/whatwg/html/issues/10905 }
+{# Popovers can not be shown from within a `contextmenu` event, except in Chrome > 153. See https://github.com/whatwg/html/issues/10905 #}
 ```js
 const card = document.querySelector('.card');
 const menuAnchor = card.querySelector('.menu-anchor');
@@ -79,26 +92,32 @@ card.addEventListener('mouseup', (e) => {
   menuAnchor.style.left = `${x}px`;
   menuAnchor.style.top = `${y}px`;
 
-  // Open the popover and associate it with the anchor source
-  // MANDATORY: Use showPopover({source}) to establish the implicit anchor
+  // Open the popover and associate it with the anchor source.
+  // MANDATORY: Use showPopover({source}) to establish the implicit anchor.
   popover.showPopover({ source: menuAnchor });
 });
 ```
 
-### 4. Optional: Discovery Button
+### 3. Method B: Visible Menu Button (Element-Anchored)
 
-Actions in a context menu MUST be accessible in another way for users who cannot trigger a context menu. For touch users or general discovery, add a visible button that toggles the same popover. Use the `command` and `commandfor` attributes for a declarative approach.
+For touch users or general discovery, add a visible button that toggles the same popover. Use the `command` and `commandfor` attributes for a declarative approach. Place the popover element immediately after this `<button>`.
 
 ```html
 <button type="button" 
   command="toggle-popover" 
-  commandfor="context-menu" 
+  commandfor="context-menu"
+  aria-haspopup="menu" aria-expanded="false"
   aria-label="Open context menu">
   <!-- Visual trigger (e.g. three dots icon) -->
 </button>
 ```
 
-The `command` attribute sets the popover's implicit anchor position, in the same way as the source in `showPopover({source})`. It can be used as an anchor without setting an `anchor-name` or `position-anchor`. To differentiate between the source, for instance to adjust the positioning, check `event.source` in the popover's `beforetoggle` event, and set an attribute that can be used for styling.
+The `command` attribute sets the popover's implicit anchor position, in the same way as the source in `showPopover({source})`. It can be used as an anchor without setting an `anchor-name` or `position-anchor`. 
+
+
+### 4. Combining both methods
+
+To differentiate between the source, for instance to adjust the positioning, check `event.source` in the popover's `beforetoggle` event, and set an attribute that can be used for styling.
 
 ```js
 popover.addEventListener('beforetoggle', (event)=>{
@@ -118,11 +137,9 @@ popover.addEventListener('beforetoggle', (event)=>{
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ BASELINE_STATUS("focusgroup") }}
 
-{{ FEATURE_FALLBACKS("focusgroup") }}
-
-{{ FEATURE_FALLBACKS("invoker-commands") }}
+{{ BASELINE_STATUS("invoker-commands") }}
 
 ### Fallback for Anchor Positioning
 
