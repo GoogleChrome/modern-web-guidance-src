@@ -82,14 +82,9 @@ async function main() {
       }));
       await getLogger().logSearchResult(arg, latencyMs, true, searchItems);
 
-      if (results.length === 0) {
-        console.log("[]");
-      } else {
-        // Do a ~compressed output so users can see some of the results in their coding agent.
-        // Also fewer tokens. :p
-        const jsonLines = results.map(r => JSON.stringify(r));
-        console.log("[" + jsonLines.join(",\n") + "]");
-      }
+      // Compact format: return only id and description to minimize token usage with top-10 results.
+      const jsonLines = results.map(({ id, description }) => JSON.stringify({ id, description }));
+      console.log("[" + jsonLines.join(",\n") + "]");
     } catch (error) {
       const latencyMs = Date.now() - startTime;
       await getLogger().logSearchResult(arg, latencyMs, false, []);
@@ -99,12 +94,9 @@ async function main() {
   } else if (command === "list") {
     const startTime = Date.now();
     try {
-      const catalog = USE_CASES.map(u => ({
-        id: u.id,
-        category: u.category,
-        description: u.description,
-      }));
-      console.log(JSON.stringify(catalog, null, 2));
+      // Compact format: return only id and description to minimize token usage, one per line.
+      const jsonLines = USE_CASES.map(({ id, description }) => JSON.stringify({ id, description }));
+      console.log("[" + jsonLines.join(",\n") + "]");
       await getLogger().logToolCommand(Date.now() - startTime, true, CommandType.LIST);
     } catch (error) {
       await getLogger().logToolCommand(Date.now() - startTime, false, CommandType.LIST);

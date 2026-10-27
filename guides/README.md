@@ -28,6 +28,8 @@ This will automatically execute the 5-step pipeline:
 4. **Agent Evaluations**: Executes guided and unguided agent runs against the target apps to measure pass rates and guidance tool consumption.
 5. **Evaluation Report (`report.md`)**: Invokes an evaluator agent to analyze failed assertions, diagnose root causes, and output actionable recommendations into `results/guides/<category>/<slug>/report.md`.
 
+When run from `main`, `gd dev` first switches to a new `gd-dev/<guide-name>` branch and commits the generated artifacts and any post-report fixes as separate commits.
+
 To skip agent evaluations and report generation after calibration, add `--no-test`:
 
 ```bash
@@ -57,11 +59,11 @@ This will automatically:
 4. Analyze `report.md` to automatically detect and apply PR labels:
    - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
    - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`.
-5. Open a new Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch, removing any `needs-eval-gen` or `needs-eval-run` rerun labels) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
+5. Open a new Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch, removing the `needs-dev-rerun` label) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
 
 ### Fixing Missing Evals: `gd dev-gap`
 
-`gd dev-gap` scans `guides/` on disk for non-draft guides that have populated `guide.md` and `expectations.md` but are missing evals (`grader.ts` or `task.md`, in legacy format or `targets/`), then runs `gd dev` (defaulting to `--targets daily-grind`) and `gd pr` for each guide in turn. It also reruns open `gd pr` PRs labeled `needs-eval-gen` or `needs-eval-run`.
+`gd dev-gap` scans `guides/` on disk for non-draft guides that have populated `guide.md` and `expectations.md` but are missing evals (`grader.ts` or `task.md`, in legacy format or `targets/`), then runs `gd dev` (defaulting to `--targets daily-grind`) and `gd pr` for each guide in turn. It also reruns open `gd pr` PRs labeled `needs-dev-rerun`.
 
 ```bash
 gd dev-gap --dry-run                           # show which guides/PRs would run and why any are skipped
@@ -72,23 +74,13 @@ gd dev-gap                                     # process all of them
 
 Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens or updates a PR on its `gd-dev/<guide-name>` branch, then returns to `main` and deletes the local branch. If a guide fails, its changes are discarded and the batch moves on; it stops only if it can't get back to a clean `main`.
 
-It skips guides that already have an open `grader updates: <guide-name>` PR (unless labeled `needs-eval-gen` or `needs-eval-run`) and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` without an open PR (delete the branch to retry).
+It skips guides that already have an open `grader updates: <guide-name>` PR (unless labeled `needs-dev-rerun`) and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` without an open PR (delete the branch to retry).
 
-To rerun an open `gd pr` PR after editing `guide.md`, `expectations.md`, `task.md`, or `grader.ts` on the PR branch:
-- Label the PR **`needs-eval-gen`** to delete `targets/<target>/` for the configured target(s), regenerate solutions, tasks, and graders, and re-run evaluations.
-- Label the PR **`needs-eval-run`** to keep existing target evals and re-run calibration, agent evaluations, and report generation.
+When an evaluation report in a PR is unhealthy, `gd dev` applies recommended fixes directly to the files in the PR (committed as a separate post-report commit from the initial target generation).
+Reviewers can inspect the file diffs in the PR, leave inline comments or push adjustments, and trigger the next automated pass:
+- Label the PR **`needs-dev-rerun`**. `gd dev` regenerates whatever changed since the solution patches were generated: `guide.md` or `expectations.md` wipes `targets/<target>/` and regenerates everything; `task.md` regenerates the solution patches and `grader.ts`; `grader.ts` alone re-runs calibration and agent evaluation. Local `gd dev` runs behave the same way.
 
-Separately, `src/ci/expectations-watch.ts` files an "Expectations changed for the \<guide-name\> guide" issue (label `expectations-changed`) whenever a push edits `expectations.md` on a guide that already has evals without updating them.
-
-### Checking Status: `gd audit`
-
-You can use `gd audit` to see exactly where every guide sits in the Kanban board pipeline:
-
-```bash
-gd audit
-```
-
-This will output a categorized table sorted into the 6 maturity stages (`Stub`, `Incomplete`, `Needs expectations`, `Needs calibration`, `Needs test`, `Eval-ready`), along with recommended next steps.
+Separately, `src/ci/sync-pipeline-issue.ts` maintains the canonical [Content & Eval Pipeline issue (#1815)](https://github.com/GoogleChrome/modern-web-guidance-src/issues/1815), including flagging guides under **Stale evals** whenever `expectations.md` has substantive changes newer than `grader.ts` or `targets/`.
 
 ### Manual Piece-wise execution
 

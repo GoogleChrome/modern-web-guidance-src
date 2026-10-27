@@ -97,6 +97,12 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
     }
     fs.writeFileSync(codexMarketplacePath, JSON.stringify(codexMarketplaceData, null, 2) + '\n');
   }
+
+  // Agent Plugins
+  const agentPluginPath = path.join(publishCliDir, "plugin.json");
+  const agentPluginData = JSON.parse(fs.readFileSync(agentPluginPath, 'utf8'));
+  agentPluginData.version = newVersion;
+  fs.writeFileSync(agentPluginPath, JSON.stringify(agentPluginData, null, 2) + '\n');
 }
 
 export function processSkills(publishRoot: string) {
@@ -373,15 +379,16 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 }
 
 function getLatestVersion() {
-  const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-  const tag = getLatestGitTag();
-  const version = tag.startsWith('v') ? tag.slice(1) : tag;
-  return version;
+  const output = execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname', {
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
+  const [tag = ''] = output.trim().split('\n');
+  return tag.startsWith('v') ? tag.slice(1) : tag;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let version;
-  // Not sure why but in CI this command sometimes fails. Even though we fetched tags. shrug.
   try {
     version = getLatestVersion();
   } catch (err) {

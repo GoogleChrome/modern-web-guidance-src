@@ -7,10 +7,10 @@ web-feature-ids:
 
 # Compare and validate web origins and sites
 
-While comparing `event.origin` against a fixed, port-normalized string literal (such as `event.origin === 'https://trusted.example.com'`) works for simple allowlists, manual string comparisons and regular expressions break down when validating arbitrary URLs, DOM link elements, cross-subdomain redirects, or sandboxed messages:
+While comparing `event.origin` against a fixed, port-normalized string literal (such as `event.origin === 'https://app.example.com'`) works for simple allowlists, manual string comparisons and regular expressions break down when validating arbitrary URLs, DOM link elements, cross-subdomain redirects, or sandboxed messages:
 
-- **Prefix and substring spoofing:** Checking `url.startsWith('https://trusted.example.com')` is bypassed by `'https://trusted.example.com.attacker.example'`.
-- **Unnormalized URLs:** Full URLs with paths, query strings, or explicit default ports (`'https://trusted.example.com:443/path'`) do not match `'https://trusted.example.com'` under string equality without first parsing and normalizing.
+- **Prefix and substring spoofing:** Checking `url.startsWith('https://app.example.com')` is bypassed by `'https://app.example.com.attacker.example'`.
+- **Unnormalized URLs:** Full URLs with paths, query strings, or explicit default ports (`'https://app.example.com:443/path'`) do not match `'https://app.example.com'` under string equality without first parsing and normalizing.
 - **Public Suffix List mistakes:** Splitting hostnames on `.` to check same-site relationships fails on multi-label public suffixes (such as `.co.uk` or shared hosting domains like `.github.io`) and ignores scheme mismatches (`http:` vs. `https:`).
 - **Opaque `"null"` origin collisions:** Sandboxed iframes (`<iframe sandbox="allow-scripts">`) and `data:` URLs serialize `event.origin` to the literal string `"null"`. Comparing two serialized runtime origins with `originA === originB` falsely equates two unrelated opaque contexts (`"null" === "null"`).
 
@@ -28,7 +28,7 @@ Use `Origin.from()` to extract an `Origin` object and compare it against a trust
 
 - **Both sides must be `Origin` instances:** `isSameOrigin(other)` and `isSameSite(other)` only accept an `Origin` object—passing a raw string throws a `TypeError`.
 - **Supported `Origin.from()` inputs:**
-  - Serialized URL strings (for example, `'https://trusted.example.com:443/path'`). Note that any invalid URL string—for instance `'example'`, or the `'null'` string serialized by `event.origin` for opaque origins—causes `Origin.from()` to throw a `TypeError`.
+  - Serialized URL strings (for example, `'https://app.example.com:443/path'`). Note that any invalid URL string—for instance `'example'`, or the `'null'` string serialized by `event.origin` for opaque origins—causes `Origin.from()` to throw a `TypeError`.
   - Platform objects that define origin-extraction steps in the HTML specification: `Origin`, `URL`, `HTMLAnchorElement` (`<a>`), `HTMLAreaElement` (`<area>`), same-origin `Window` or `WorkerGlobalScope` (`Origin.from(self)`), and browser-dispatched `MessageEvent` instances (`Origin.from(event)`).
   - Objects such as `Location`, `WorkerLocation`, `Document`, `Request`, and `Response` do **not** define origin-extraction steps and throw a `TypeError` if passed directly to `Origin.from()`—pass `self` (for the current context) or `request.url` / `response.url` instead.
 - **Handle both browser-dispatched and synthetic `MessageEvent` instances:** Real browser `postMessage` events carry an internal origin extracted by `Origin.from(event)`, whereas synthetic `new MessageEvent('message', { origin })` events created in unit tests only populate the `event.origin` string and throw on `Origin.from(event)`. Falling back to `Origin.from(event.origin)` inside a `try...catch` handles both cleanly while still rejecting invalid or `"null"` strings.

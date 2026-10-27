@@ -25,7 +25,7 @@ Use a labeled `<input type="range">` rather than recreating a slider with `<div>
 <input type="range" id="range-slider" value="70"/>
 ```
 
-If the value requires a formatted label or unit, expose it in ordinary DOM content and update `aria-valuetext` when changed. Do not use `::before` or `::after` on slider pseudo-elements, as generated content on form controls is not interoperable. If a tooltip that follows the thumb is required, use the {{ GUIDE_REF("slider-tooltip") }} guide.
+If the value requires a formatted label or unit, expose it in ordinary DOM content and update `aria-valuetext` when changed. Do not use `::before` or `::after` on slider pseudo-elements, as generated content on form controls is not interoperable. If a tooltip that follows the thumb is required, anchor it to the thumb with CSS anchor positioning; see {{ GUIDE_REF("position-aware-tooltips") }} for tooltips that stay correctly oriented when they flip.
 
 ## Choose the styling approach
 

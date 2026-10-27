@@ -99,19 +99,37 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
     expect(hasUntil, 'Must use the .until() method on a Temporal instance').toBe(true);
   });
 
-  // 7. Specify largestUnit in duration operations
-  test('Should specify largestUnit in duration calculations', () => {
-    const hasLargestUnit = /largestUnit\s*:/.test(scriptContent);
-    expect(hasLargestUnit, 'Must specify largestUnit in the options for duration calculations').toBe(true);
+  // 7. Use Duration.sign or Temporal.ZonedDateTime.compare for status checks
+  test('Should use Duration .sign or Temporal.ZonedDateTime.compare for comparisons', () => {
+    const hasCompare = /Temporal\.ZonedDateTime\.compare\(/.test(scriptContent);
+    const hasSign = /\.sign\b/.test(scriptContent);
+    expect(hasCompare || hasSign, 'Must use the Duration .sign property or Temporal.ZonedDateTime.compare to determine past/future status').toBe(true);
   });
 
-  // 9. Use Temporal.ZonedDateTime.compare
-  test('Should use Temporal.ZonedDateTime.compare for comparisons', () => {
-    const hasCompare = /ZonedDateTime\.compare\(/.test(scriptContent);
-    expect(hasCompare, 'Must use Temporal.ZonedDateTime.compare to compare date-time points').toBe(true);
+  // 8. Combine date and time inputs by chaining Temporal methods, not string interpolation
+  test('Should combine date and time inputs with PlainDate.toPlainDateTime() instead of string interpolation', () => {
+    const usesInterpolatedIso = /Plain(?:Date)?Time\.from\(\s*`[^`]*\$\{[^}]+\}T\$\{/.test(scriptContent) ||
+                                /PlainDateTime\.from\(\s*[\w.]+\s*\+\s*['"]T['"]/.test(scriptContent);
+    expect(usesInterpolatedIso, 'Must not build an ISO string from separate date and time inputs; chain Temporal methods instead').toBe(false);
+    const usesChain = /\.toPlainDateTime\(|\.toZonedDateTime\(\s*\{[^}]*plainTime/.test(scriptContent);
+    expect(usesChain, 'Must combine date and time inputs with Temporal methods (e.g. PlainDate.toPlainDateTime() or toZonedDateTime({ timeZone, plainTime }))').toBe(true);
   });
 
-  // 10. No legacy Date for core calculations
+  // 9. Format durations for display with toLocaleString()
+  test('Should format durations with toLocaleString() instead of manual unit concatenation', () => {
+    const usesLocaleString = /\.toLocaleString\(/.test(scriptContent);
+    expect(usesLocaleString, 'Must format durations for display with Temporal.Duration.prototype.toLocaleString()').toBe(true);
+    const manualUnitString = /\$\{\s*\w+\.(?:years|months|days|hours|minutes)\s*\}\s*(?:y|mo|m|d|h|days?|hours?|minutes?)\b/.test(scriptContent);
+    expect(manualUnitString, 'Must not hand-assemble duration strings from individual unit fields').toBe(false);
+  });
+
+  // 10. No brittle .slice(0, 5) for PlainTime formatting
+  test('Should not use .slice(0, 5) to format PlainTime values', () => {
+    const usesSlice = /\.slice\(\s*0\s*,\s*5\s*\)/.test(scriptContent);
+    expect(usesSlice, 'Must use toPlainTime().toString({ smallestUnit: "minute" }) instead of .slice(0, 5)').toBe(false);
+  });
+
+  // 11. No legacy Date for core calculations
   test('Should not use legacy Date for core calculations', () => {
     const usesDateForCalc = /new\s+Date\(\)[\s\S]*\.getTime\(\)/.test(scriptContent) || 
                             /new\s+Date\(.*\.value\)/.test(scriptContent);
@@ -147,11 +165,9 @@ test.describe(`Temporal API Guidance Expectations: ${fileName}`, () => {
 
   // Browser assertions: Verify that immutability is respected if date arithmetic is performed
   test('Should use immutability correctly if performing date arithmetic', async () => {
-    const usesDateMath = /add\(|subtract\(/.test(scriptContent);
-    if (usesDateMath) {
-      // Check that they don't just call add/subtract on a standalone line without using the result
-      const isAssignedOrChained = /(=|return|\bconst\b|\blet\b|\bvar\b|\.add\(.*?\)\.|\.subtract\(.*?\)\.)/.test(scriptContent);
-      expect(isAssignedOrChained, 'Must use the returned instance of add() or subtract() because Temporal objects are immutable').toBe(true);
-    }
+    const usesTemporal = /\bTemporal\b/.test(scriptContent);
+    const mutatesTemporalProps = /\.(?:year|month|day|hour|minute|second|millisecond|epochMilliseconds|epochNanoseconds)\s*=[^=]/.test(scriptContent);
+    const hasUncapturedAddSubtract = /(?:^|[;\n{])\s*[a-zA-Z_$][\w$]*\.(?:add|subtract)\s*\([^)]*\)\s*;/.test(scriptContent);
+    expect(usesTemporal && !mutatesTemporalProps && !hasUncapturedAddSubtract, 'Must use the returned instance of add() or subtract() because Temporal objects are immutable').toBe(true);
   });
 });

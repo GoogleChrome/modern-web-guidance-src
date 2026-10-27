@@ -20,7 +20,7 @@
 - The implementation MUST NOT disable scrolling on `<iframe>` elements via `scrolling="no"` or `overflow: hidden`.
 - The implementation MUST define custom keyboard focus styles using `:focus-visible` paired with `outline` and `outline-offset` rather than `:focus`.
 - The implementation MUST NOT remove focus outlines (`outline: none`) without providing a visible, high-contrast focus indicator.
-- The implementation MUST ensure interactive touch targets meet a minimum size of `24px` by `24px` using `min-inline-size` and `min-block-size` or padding.
+- The implementation MUST ensure interactive targets meet a minimum size of `24px` by `24px` using `min-inline-size` and `min-block-size` or padding.
 - The implementation MUST NOT apply `touch-action: none` to scrollable containers when axis-specific values (`pan-x` or `pan-y`) suffice.
 - The implementation MUST NOT use positive `tabindex` values (`tabindex="1"` or greater).
 - The implementation MUST NOT apply `aria-hidden="true"` to focusable elements or their ancestors, and MUST NOT apply `role="presentation"` or `role="none"` directly to focusable elements.

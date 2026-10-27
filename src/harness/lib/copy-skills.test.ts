@@ -7,20 +7,20 @@ import { createIsolatedHome, copySkills, cleanupIsolatedHome } from './agent-sha
 import { Agents } from '../config.ts';
 import { parseGeminiStreamOutput } from '../agents/gemini-cli-agent.ts';
 import { rootDir } from '../../core/paths.ts';
+import type { CompactSearchResult } from '../../rag/search.ts';
+
 function assertSearchResults(output: string) {
-    const results = JSON.parse(output);
+    const results = JSON.parse(output) as CompactSearchResult[];
     assert.ok(Array.isArray(results), 'Output should be a JSON array');
-    assert.ok(results.length > 0, 'Search should find some results');
+    assert.strictEqual(results.length, 10, 'Default CLI search should return top-10 results');
     
-    // Find if 'autofill-address-form' is in the results
-    const hasAddressForm = results.some((r: any) => r.id === 'autofill-address-form');
+    const hasAddressForm = results.some(r => r.id === 'autofill-address-form');
     assert.ok(hasAddressForm, 'Results should contain autofill-address-form');
     
-    // Verify structure of the first item
     const topResult = results[0];
     assert.ok(topResult.id, 'Top result should have an id');
     assert.ok(topResult.description, 'Top result should have a description');
-    assert.ok(topResult.similarity, 'Top result should have a similarity');
+    assert.deepStrictEqual(Object.keys(topResult).sort(), ['description', 'id']);
 }
 
 test('copySkills sets up the isolated environment with the skill and its data', async () => {

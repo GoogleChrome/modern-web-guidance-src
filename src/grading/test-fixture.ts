@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test';
+import { test as base, type Page, type BrowserContext } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, spawnSync } from 'child_process';
@@ -6,7 +6,7 @@ import * as net from 'net';
 import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
 import { Project } from 'ts-morph';
-import { parse, CSSStyleSheet } from 'cssomnom';
+import { parse, CSSStyleSheet, CSSStyleDeclaration } from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
 
 export { expect } from '@playwright/test';
@@ -28,13 +28,79 @@ async function getFreePort(): Promise<number> {
   });
 }
 
-export const test = base.extend<{}, ServerWorkerFixtures>({
+export const test = base.extend<{ page: Page; context: BrowserContext }, ServerWorkerFixtures>({
+  // devtools-times loads a live analytics beacon (intentionally janky; it's a DevTools demo, and some
+  // graders inspect its <script>). It POSTs to a Cloud Function whose CORS allowlist excludes localhost,
+  // so every browser test logged a CORS error + failed request. Answer it locally so grading stays
+  // hermetic and console/network errors only show real problems. The script itself still loads and runs.
+  context: async ({ context }, use) => {
+    await context.route('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/analytics', (route) =>
+      route.fulfill({
+        status: 204,
+        headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' },
+      }));
+    await use(context);
+  },
+
+  page: async ({ page }, use, testInfo) => {
+    const diagnostics: string[] = [];
+
+    page.on('console', (msg) => {
+      const type = msg.type();
+      if (type === 'error' || type === 'warning') {
+        const loc = msg.location();
+        const locSuffix = loc.url ? ` (${loc.url}:${loc.lineNumber})` : '';
+        diagnostics.push(`[console.${type}] ${msg.text()}${locSuffix}`);
+      }
+    });
+
+    page.on('pageerror', (err) => {
+      diagnostics.push(`[pageerror] ${err.stack || err.message || String(err)}`);
+    });
+
+    page.on('requestfailed', (req) => {
+      const failure = req.failure();
+      diagnostics.push(`[requestfailed] ${req.method()} ${req.url()}: ${failure?.errorText || 'failed'}`);
+    });
+
+    page.on('response', (res) => {
+      if (res.status() >= 400) {
+        diagnostics.push(`[response ${res.status()}] ${res.request().method()} ${res.url()} ${res.statusText()}`);
+      }
+    });
+
+    try {
+      await use(page);
+    } finally {
+      const failed = (testInfo.status !== 'passed' && testInfo.status !== 'skipped') || testInfo.errors.length > 0;
+      if (failed) {
+        if (diagnostics.length > 0) {
+          await testInfo.attach('browser-errors', {
+            body: diagnostics.join('\n'),
+            contentType: 'text/plain',
+          });
+        }
+        if (!page.isClosed()) {
+          // A crashed or hung page can't be snapshotted. Record why rather than failing fixture teardown.
+          const body = await page.locator('body').ariaSnapshot({ timeout: 2000 })
+            .catch((err: Error) => `(page snapshot unavailable: ${err.message})`);
+          await testInfo.attach('page-snapshot', { body, contentType: 'text/plain' });
+        }
+      }
+    }
+  },
   // eslint-disable-next-line no-empty-pattern
   TARGET_URL: [async ({}, use) => {
     const targetDir = process.cwd();
 
     const pkgJsonPath = path.join(targetDir, 'package.json');
     if (!fs.existsSync(pkgJsonPath)) {
+      if (process.env.TARGET_FILE) {
+        const fallbackUrl = `http://localhost/${path.basename(process.env.TARGET_FILE)}`;
+        process.env.TARGET_URL = fallbackUrl;
+        await use(fallbackUrl);
+        return;
+      }
       throw new Error(`package.json not found in target directory: ${targetDir}`);
     }
 
@@ -150,7 +216,8 @@ export function getTargetFiles(testFileUrl: string): string[] {
 
 const HTML_EXTS = /\.(html|htm|astro)$/i;
 const CSS_EXTS = /\.css$/i;
-const JS_EXTS = /\.(js|ts|tsx|jsx)$/i;
+const JS_EXTS = /\.(m?js|cjs|ts|tsx|jsx)$/i;
+const TEST_FILE_EXTS = /\.(test|spec)\.(m?js|cjs|ts|tsx|jsx)$/i;
 
 function parseHtmlDocument(file: string, content: string): any {
   const normalized = file.endsWith('.astro')
@@ -169,6 +236,30 @@ function parseHtmlDocument(file: string, content: string): any {
   return document;
 }
 
+function unwrapGlobalPseudo(css: string): string {
+  let result = css;
+  const token = ':global(';
+  let idx = result.indexOf(token);
+  while (idx !== -1) {
+    let depth = 1;
+    let i = idx + token.length;
+    while (i < result.length && depth > 0) {
+      if (result[i] === '(') depth++;
+      else if (result[i] === ')') depth--;
+      i++;
+    }
+    if (depth === 0) {
+      const inner = result.slice(idx + token.length, i - 1);
+      result = result.slice(0, idx) + inner + result.slice(i);
+      idx = result.indexOf(token, idx + inner.length);
+    } else {
+      break;
+    }
+  }
+  return result;
+}
+
+
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
  * and inline styles into a CSSOMNom CSSStyleSheet object.
@@ -182,19 +273,37 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
     if (CSS_EXTS.test(file)) {
       cssBlocks.push(content);
     } else if (HTML_EXTS.test(file)) {
+      // Exclude <template> elements to avoid extracting inert component template styles as global page styles
+      const withoutTemplates = content.replace(/<template\b[^>]*>[\s\S]*?<\/template>/gi, '');
       try {
         const document = parseHtmlDocument(file, content);
+        document.querySelectorAll('template').forEach((el: any) => el.remove());
         document.querySelectorAll('style').forEach((style: any) => {
           if (style.textContent) cssBlocks.push(style.textContent);
         });
         document.querySelectorAll('[style]').forEach((el: any) => {
           const inlineStyle = el.getAttribute('style')?.trim();
-          if (inlineStyle && !inlineStyle.startsWith('{')) {
-            cssBlocks.push(`[style] { ${inlineStyle} }`);
+          if (!inlineStyle) return;
+          // Parse through CSSStyleDeclaration so unparsed JSX expressions (e.g. `{expr}`) yield
+          // no declarations and are skipped, and valid ones serialize with balanced braces/strings.
+          const decl = new CSSStyleDeclaration();
+          decl.cssText = inlineStyle;
+          if (decl.length > 0) {
+            cssBlocks.push(`[style] { ${decl.cssText} }`);
+          }
+        });
+        // Also extract <style> blocks from <script> tags (e.g. shadowRoot.innerHTML in web components)
+        document.querySelectorAll('script').forEach((script: any) => {
+          const scriptText = script.textContent || '';
+          const styleMatches = scriptText.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+          if (styleMatches) {
+            for (const match of styleMatches) {
+              cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
+            }
           }
         });
       } catch {
-        const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+        const styleMatches = withoutTemplates.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
         if (styleMatches) {
           for (const match of styleMatches) {
             cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
@@ -210,12 +319,18 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
       }
     }
   }
-  return parse(cssBlocks.join('\n'));
+  // Parse each block in isolation so CSS EOF error recovery closes any unterminated
+  // block, string, url(, or comment at its own boundary instead of swallowing later blocks.
+  const isolatedRules = cssBlocks.flatMap((block) =>
+    Array.from(parse(unwrapGlobalPseudo(block)).cssRules, (rule) => rule.cssText)
+  );
+  return parse(isolatedRules.join('\n'));
 }
 
 export function populateJsProject(project: Project, files: string[]): void {
   for (const file of files) {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
+    if (TEST_FILE_EXTS.test(file)) continue;
     const content = fs.readFileSync(file, 'utf8');
 
     if (JS_EXTS.test(file) && !HTML_EXTS.test(file)) {

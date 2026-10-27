@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import matter from "gray-matter";
+import matter from "@11ty/gray-matter";
 import { marked } from "marked";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
@@ -16,12 +16,22 @@ export interface StoreUseCase {
   vector?: number[];
   distance?: number;
 }
-import { replaceMacros, type BuildTarget, formatTitle } from "../core/macros.ts";
 
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub } from "../core/guide-validation.ts";
+export interface StaticSiteGuideMetadata {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  webFeatureIds: string[];
+}
+import { replaceMacros, type BuildTarget } from "../core/macros.ts";
+
+import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub, stripLeadingH1 } from "../core/guide-validation.ts";
+import { isTmpFeature } from "../core/feature-parser.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
 import { rootDir, outDir } from "../core/paths.ts";
+import { toDevsiteMarkdown } from "./devsite-markdown.ts";
 
 const WORKSPACE_ROOT = rootDir;
 
@@ -102,6 +112,7 @@ async function computePipelineHash(
     path.join(rootDir, "src/core/macros.ts"),
     path.join(rootDir, "src/rag/transformers-embedder.ts"),
     path.join(rootDir, "src/core/guide-validation.ts"),
+    path.join(rootDir, "src/build/devsite-markdown.ts"),
   ];
 
   for (const dep of deps) {
@@ -207,6 +218,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
 
   const useCases: UseCase[] = [];
   const storeUseCases: StoreUseCase[] = [];
+  const staticSiteGuides: StaticSiteGuideMetadata[] = [];
 
   let embedder: any = null;
   if (TARGET !== 'static-site') {
@@ -237,7 +249,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
   console.log("Generating embeddings…");
   for (const inv of readyGuides) {
     const guidePath = getGuideMarkdownPath(inv);
-    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder);
+    await processSingleGuideFile(guidePath, inv.category, inv.name, useCases, storeUseCases, embedder, staticSiteGuides);
   }
 
   if (TARGET !== 'static-site') {
@@ -247,6 +259,10 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     const jsonContent = JSON.stringify(storeUseCases);
     const compressed = zlib.gzipSync(jsonContent);
     fs.writeFileSync(cachePaths.cachedVectors, compressed);
+  } else {
+    const manifestPath = path.join(BUILD_GUIDES_DIR, 'manifest.json');
+    fs.writeFileSync(manifestPath, JSON.stringify(staticSiteGuides, null, 2) + '\n');
+    console.log(`Generated static-site manifest with ${staticSiteGuides.length} guides to ${path.relative(WORKSPACE_ROOT, manifestPath)}`);
   }
 
   fs.writeFileSync(cachePaths.cachedManifest, JSON.stringify({ hash: currentHash }, null, 2));
@@ -259,16 +275,21 @@ export function chunkMarkdown(markdown: string): string[] {
   const tokens = marked.lexer(markdown);
   const chunks: string[] = [];
   let currentChunk: string[] = [];
+  let hasNonHeadingContent = false;
 
   for (const token of tokens) {
     if (token.type === 'heading') {
-      if (currentChunk.length > 0) {
+      if (currentChunk.length > 0 && hasNonHeadingContent) {
         chunks.push(currentChunk.join("\n\n"));
         currentChunk = [];
+        hasNonHeadingContent = false;
       }
       currentChunk.push(token.raw);
     } else {
       currentChunk.push(token.raw);
+      if (token.type !== 'space') {
+        hasNonHeadingContent = true;
+      }
     }
   }
 
@@ -279,13 +300,29 @@ export function chunkMarkdown(markdown: string): string[] {
   return chunks.filter(chunk => chunk.trim().length > 0);
 }
 
+function writeBuiltGuide(category: string, id: string, content: string): string {
+  const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
+  fs.mkdirSync(buildCategoryDir, { recursive: true });
+  const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
+  fs.writeFileSync(buildFilePath, content);
+  return buildFilePath;
+}
+
+function requireTitle(title: unknown, filePath: string): string {
+  if (typeof title !== "string" || !title.trim()) {
+    throw new Error(`Guide has no H1 heading or frontmatter title: ${path.relative(WORKSPACE_ROOT, filePath)}`);
+  }
+  return title.trim();
+}
+
 async function processSingleGuideFile(
   filePath: string,
   category: string,
   id: string,
   useCases: UseCase[],
   storeUseCases: StoreUseCase[],
-  embedder?: any
+  embedder?: any,
+  staticSiteGuides?: StaticSiteGuideMetadata[]
 ) {
   const content = fs.readFileSync(filePath, "utf-8");
   const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
@@ -303,22 +340,35 @@ async function processSingleGuideFile(
 
   if (TARGET === 'static-site') {
     const h1Title = extractH1Heading(processedMarkdown);
-    const title = h1Title || data.title || formatTitle(id);
+    const title = requireTitle(h1Title || data.title, filePath);
+    const featureIds: string[] = (data['web-feature-ids'] || []).filter(
+      (fid: string) => !isTmpFeature(fid)
+    );
     const genericFrontmatter = `---
 title: ${JSON.stringify(title)}
 description: ${JSON.stringify(data.description)}
 category: ${category}
+web-feature-ids: ${JSON.stringify(featureIds)}
 ---`;
-    const bodyWithoutH1 = processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
-    const finalContent = `${genericFrontmatter}\n\n# ${title}\n\n${bodyWithoutH1}\n`;
-
-    const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
-    if (!fs.existsSync(buildCategoryDir)) {
-      fs.mkdirSync(buildCategoryDir, { recursive: true });
+    const resumedSteps: number[] = [];
+    const devsiteMarkdown = toDevsiteMarkdown(processedMarkdown, stepNumber => resumedSteps.push(stepNumber));
+    if (resumedSteps.length > 0) {
+      console.warn(`⚠️  ${path.relative(WORKSPACE_ROOT, filePath)}: folded unindented blocks into ordered lists (resumed at steps ${resumedSteps.join(", ")}).`);
     }
+    const bodyWithoutH1 = stripLeadingH1(devsiteMarkdown);
+    const finalContent = `${genericFrontmatter}\n\n# ${title}\n\n${bodyWithoutH1}\n`;
+    const buildFilePath = writeBuiltGuide(category, id, finalContent);
+    console.log(`Exported static-site guide: ${path.relative(WORKSPACE_ROOT, buildFilePath)}`);
 
-    const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
-    fs.writeFileSync(buildFilePath, finalContent);
+    if (staticSiteGuides) {
+      staticSiteGuides.push({
+        id,
+        title,
+        description: data.description,
+        category,
+        webFeatureIds: featureIds,
+      });
+    }
     return;
   }
 
@@ -334,9 +384,13 @@ category: ${category}
     tokenCount,
   });
 
+  const h1Title = extractH1Heading(processedMarkdown);
+  const title = requireTitle(h1Title || data.title, filePath);
+  const summaryChunk = `# ${title}\n\n${data.description}`;
+
   const chunks = IS_NO_CHUNKING
-    ? [`${frontmatter}\n\n${processedMarkdown}`]
-    : [...chunkMarkdown(processedMarkdown), frontmatter];
+    ? [`${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`]
+    : [...chunkMarkdown(processedMarkdown), summaryChunk];
 
   for (const chunk of chunks) {
     const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
@@ -353,15 +407,7 @@ category: ${category}
     });
   }
 
-  // Create category dir in build/guides
-  const buildCategoryDir = path.join(BUILD_GUIDES_DIR, category);
-  if (!fs.existsSync(buildCategoryDir)) {
-    fs.mkdirSync(buildCategoryDir, { recursive: true });
-  }
-
-  // Write clean markdown to build dir
-  const buildFilePath = path.join(buildCategoryDir, `${id}.md`);
-  fs.writeFileSync(buildFilePath, processedMarkdown.trimStart());
+  writeBuiltGuide(category, id, processedMarkdown.trimStart());
 }
 
 // Only run automatically if executed directly

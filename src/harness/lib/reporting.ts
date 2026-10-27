@@ -2,6 +2,31 @@ import fs from 'fs';
 import path from 'path';
 import type { Metrics, RunResult, ScenarioCheck, EvalsReport } from './metrics.ts';
 
+function pickDisplayRun(runs: RunResult[] | undefined, medianPassRate: number): RunResult | undefined {
+  if (!runs || runs.length === 0) return undefined;
+  const medianRunIndex = runs.findIndex((run: RunResult) => {
+    const checks = run.results;
+    const passCount = checks.filter((c: ScenarioCheck) => c.passed).length;
+    const totalCount = checks.length;
+    const rate = totalCount > 0 ? Math.round((passCount / totalCount) * 100) : 0;
+    return rate === medianPassRate;
+  });
+  return medianRunIndex >= 0 ? runs[medianRunIndex] : runs[0];
+}
+
+function escapeMarkdownCell(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatPassRates(runPassRates: number[] | undefined): string {
+  return runPassRates && runPassRates.length > 0 ? `${runPassRates.join('%, ')}%` : 'N/A';
+}
+
 export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, RunResult[]>): string {
   const { summary, testStats, sortedKeys } = metrics;
   let md = `| Group | Pass Rate | Test Runs |
@@ -11,51 +36,94 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
 
 `;
 
-  // Generate detailed sections for each test
+  const seenPrefixes = new Set<string>();
+  const prefixes: string[] = [];
   for (const name of sortedKeys) {
-    const runs = allResults[name];
-    const stats = testStats[name];
-    
-    md += `## ${name.toUpperCase()} (Median: ${stats.medianPassRate}%)\n\n`;
-    md += `**Pass rates across runs:** ${stats.runPassRates.join('%, ')}%\n\n`;
-
-    // Show the median run's detailed results
-    const medianRunIndex = runs.findIndex((run: RunResult) => {
-      const checks = run.results;
-      const passCount = checks.filter((c: ScenarioCheck) => c.passed).length;
-      const totalCount = checks.length;
-      const rate = Math.round((passCount / totalCount) * 100);
-      return rate === stats.medianPassRate;
-    });
-
-    const displayRun = medianRunIndex >= 0 ? runs[medianRunIndex] : runs[0];
-    const checks = displayRun.results;
-    const groupPass = checks.filter((c: ScenarioCheck) => c.passed).length;
-    const groupTotal = checks.length;
-
-    if (displayRun.guidesUsed && displayRun.guidesUsed.length > 0) {
-      md += `**Guides Consumed:** ${displayRun.guidesUsed.join(', ')}\n\n`;
+    const prefix = name.replace(/ - (guided|unguided)$/, '');
+    if (!seenPrefixes.has(prefix)) {
+      seenPrefixes.add(prefix);
+      prefixes.push(prefix);
     }
-    if (displayRun.guidanceToolsUsed && displayRun.guidanceToolsUsed.length > 0) {
-      md += `**Tools Used:** ${displayRun.guidanceToolsUsed.join(', ')}\n\n`;
+  }
+
+  for (const prefix of prefixes) {
+    const unguidedKey = `${prefix} - unguided`;
+    const guidedKey = `${prefix} - guided`;
+    const unguidedStats = testStats[unguidedKey];
+    const guidedStats = testStats[guidedKey];
+    const unguidedDisplay = unguidedStats ? pickDisplayRun(allResults[unguidedKey], unguidedStats.medianPassRate) : undefined;
+    const guidedDisplay = guidedStats ? pickDisplayRun(allResults[guidedKey], guidedStats.medianPassRate) : undefined;
+
+    md += `## ${prefix.toUpperCase()}\n\n`;
+
+    const activeStats = [
+      unguidedStats ? { label: 'Unguided', stats: unguidedStats } : null,
+      guidedStats ? { label: 'Guided', stats: guidedStats } : null,
+    ].filter((x): x is { label: string; stats: NonNullable<typeof unguidedStats> } => x !== null);
+
+    const hasEmptyPassRates = activeStats.some(s => s.stats.runPassRates.length === 0);
+    if (summary.runsPerTest > 1 || hasEmptyPassRates) {
+      if (activeStats.length === 1) {
+        md += `**Pass rates across runs:** ${formatPassRates(activeStats[0].stats.runPassRates)}\n\n`;
+      } else if (activeStats.length > 1) {
+        const parts = activeStats.map(
+          s => `${s.label}: ${formatPassRates(s.stats.runPassRates)} (Median: ${s.stats.medianPassRate}%)`
+        );
+        md += `**Pass rates across runs:** ${parts.join(' | ')}\n\n`;
+      }
     }
 
-    md += `### Run ${displayRun.runNumber} Details (${groupPass}/${groupTotal})\n\n`;
+    if (guidedDisplay?.guidesUsed && guidedDisplay.guidesUsed.length > 0) {
+      md += `**Guides Consumed:** ${guidedDisplay.guidesUsed.join(', ')}\n\n`;
+    }
+    if (guidedDisplay?.guidanceToolsUsed && guidedDisplay.guidanceToolsUsed.length > 0) {
+      md += `**Tools Used:** ${guidedDisplay.guidanceToolsUsed.join(', ')}\n\n`;
+    }
 
-    const tableHeader = '| Status | Expectation |\n|---|---|\n';
-    let tableRows = '';
+    if (unguidedDisplay && guidedDisplay) {
+      const uChecks = unguidedDisplay.results;
+      const gChecks = guidedDisplay.results;
+      const uPass = uChecks.filter((c: ScenarioCheck) => c.passed).length;
+      const gPass = gChecks.filter((c: ScenarioCheck) => c.passed).length;
 
-    checks.forEach((check: ScenarioCheck) => {
-      const symbol = check.passed ? '✅' : '❌';
-      const safeMessage = (check.message || '').replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-      tableRows += `| ${symbol} | ${safeMessage} |\n`;
-    });
+      const rows = new Map<string, { message: string; unguided?: ScenarioCheck; guided?: ScenarioCheck }>();
+      uChecks.forEach((check: ScenarioCheck, idx: number) => {
+        const key = check.message || check.id || `u-${idx}`;
+        rows.set(key, { message: check.message || '', unguided: check });
+      });
+      gChecks.forEach((check: ScenarioCheck, idx: number) => {
+        const key = check.message || check.id || `g-${idx}`;
+        const existing = rows.get(key);
+        if (existing && !existing.guided) {
+          existing.guided = check;
+        } else {
+          rows.set(`${key}#g-${idx}`, { message: check.message || '', guided: check });
+        }
+      });
 
-    md += tableHeader + tableRows + '\n';
+      md += `| Unguided (${uPass}/${uChecks.length}) | Guided (${gPass}/${gChecks.length}) | Expectation |\n`;
+      md += `|:---:|:---:|---|\n`;
+      for (const row of rows.values()) {
+        const uSym = row.unguided ? (row.unguided.passed ? '✅' : '❌') : '—';
+        const gSym = row.guided ? (row.guided.passed ? '✅' : '❌') : '—';
+        md += `| ${uSym} | ${gSym} | ${escapeMarkdownCell(row.message)} |\n`;
+      }
+      md += '\n';
+    } else {
+      const singleDisplay = guidedDisplay || unguidedDisplay;
+      const singleLabel = guidedDisplay ? 'Guided' : 'Unguided';
+      if (singleDisplay) {
+        const checks = singleDisplay.results;
+        const passCount = checks.filter((c: ScenarioCheck) => c.passed).length;
+        md += `| ${singleLabel} (${passCount}/${checks.length}) | Expectation |\n`;
+        md += `|:---:|---|\n`;
+        for (const check of checks) {
+          const sym = check.passed ? '✅' : '❌';
+          md += `| ${sym} | ${escapeMarkdownCell(check.message || '')} |\n`;
+        }
+        md += '\n';
+      }
+    }
   }
 
   return md;
