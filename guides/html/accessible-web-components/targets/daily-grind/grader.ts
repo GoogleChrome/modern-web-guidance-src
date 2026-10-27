@@ -3,296 +3,332 @@ import {
   expect,
   getTargetFiles,
   getJsProject,
-  getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind } from 'ts-morph';
-import type { Page } from '@playwright/test';
+import {
+  SyntaxKind,
+  type ClassDeclaration,
+  type PropertyAccessExpression,
+} from 'ts-morph';
 
-// @ts-ignore
+// @ts-ignore - import.meta.url is supported at runtime by Playwright/ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('daily-grind Target Grader', () => {
-
-  // --- STATIC ASSERTIONS ---
-
-  test('Default semantic role is exposed via ElementInternals and never set on the host', () => {
-    const project = getJsProject(targetFiles);
-    const htmlDocs = getHtmlDocuments(targetFiles);
-
-    const customElementsInHtml = htmlDocs.flatMap(d =>
-      Array.from(d.document.querySelectorAll('*')).filter((el: any) => el.tagName.includes('-'))
-    );
-
-    const setsRoleViaInternals = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      const callsAttachInternals = text.includes('attachInternals()');
-      const assignsRole = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some(expr => {
-        const left = expr.getLeft().getText();
-        const op = expr.getOperatorToken().getText();
-        return left.endsWith('.role') && op === '=';
-      });
-      return callsAttachInternals && assignsRole;
+function getCustomElementClasses(): ClassDeclaration[] {
+  const project = getJsProject(targetFiles);
+  return project
+    .getSourceFiles()
+    .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.ClassDeclaration))
+    .filter((cls) => {
+      const ext = cls.getExtends();
+      return ext ? /\bHTMLElement\b/.test(ext.getText()) : false;
     });
+}
 
-    const htmlHasHostRole = customElementsInHtml.some((el: any) => el.hasAttribute('role'));
-
-    const passed = customElementsInHtml.length > 0 && setsRoleViaInternals && !htmlHasHostRole;
-    expect(passed).toBe(true);
-  });
-
-  test('Initial state is exposed via ElementInternals without matching aria-* attribute on host', () => {
-    const project = getJsProject(targetFiles);
-    const htmlDocs = getHtmlDocuments(targetFiles);
-
-    const customElementsInHtml = htmlDocs.flatMap(d =>
-      Array.from(d.document.querySelectorAll('*')).filter((el: any) => el.tagName.includes('-'))
-    );
-
-    const setsStateViaInternals = project.getSourceFiles().some(sf => {
-      return sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some(expr => {
-        const left = expr.getLeft().getText();
-        const op = expr.getOperatorToken().getText();
-        return (
-          op === '=' &&
-          (left.endsWith('.ariaChecked') || left.endsWith('.ariaPressed') || left.endsWith('.ariaExpanded'))
-        );
-      });
+function getPropertyAccessAssignments(
+  cls: ClassDeclaration,
+  propPattern: RegExp
+): PropertyAccessExpression[] {
+  return cls
+    .getDescendantsOfKind(SyntaxKind.BinaryExpression)
+    .filter((bin) => bin.getOperatorToken().getText() === '=')
+    .map((bin) => bin.getLeft())
+    .filter((left): left is PropertyAccessExpression => {
+      if (left.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
+      return propPattern.test((left as PropertyAccessExpression).getName());
     });
+}
 
-    const htmlHasHostAriaState = customElementsInHtml.some((el: any) =>
-      el.hasAttribute('aria-checked') || el.hasAttribute('aria-pressed') || el.hasAttribute('aria-expanded')
-    );
+test.describe('accessible-web-components Target Grader', () => {
+  test('Places interactive control host in tab order (tabIndex = 0 in connectedCallback when no tabindex attribute exists, not in constructor)', () => {
+    const classes = getCustomElementClasses();
+    const validTabIndexInConnectedCallback = classes.some((cls) => {
+      const ctor = cls.getConstructors()[0];
+      const ctorSetsTabIndex = ctor
+        ? ctor
+            .getDescendantsOfKind(SyntaxKind.BinaryExpression)
+            .some(
+              (bin) =>
+                bin.getOperatorToken().getText() === '=' &&
+                bin.getLeft().getKind() ===
+                  SyntaxKind.PropertyAccessExpression &&
+                (bin.getLeft() as PropertyAccessExpression).getName() ===
+                  'tabIndex'
+            )
+        : false;
 
-    const passed = customElementsInHtml.length > 0 && setsStateViaInternals && !htmlHasHostAriaState;
-    expect(passed).toBe(true);
-  });
+      const connectedCb = cls.getMethod('connectedCallback');
+      if (!connectedCb) return false;
 
-  test('Host tabIndex is set in connectedCallback with guard and not in constructor or static elements', () => {
-    const project = getJsProject(targetFiles);
-    const classes = project.getSourceFiles().flatMap(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.ClassDeclaration).concat(sf.getDescendantsOfKind(SyntaxKind.ClassExpression) as any)
-    );
-
-    let tabIndexValid = false;
-    if (classes.length > 0) {
-      const isInteractiveHostClass = (cls: any) => {
-        const text = cls.getText();
-        return (
-          text.includes('attachInternals') &&
-          !text.includes('delegatesFocus: true') &&
-          !text.includes('delegatesFocus:true') &&
-          (/\.role\s*=|setHostRole\s*\(/.test(text) ||
-            /\.aria(Checked|Pressed|Expanded)\s*=|setHostAria(Checked|Pressed|Expanded)\s*\(/.test(text))
-        );
-      };
-
-      const interactiveClasses = classes.filter(isInteractiveHostClass);
-
-      const allInteractiveValid = interactiveClasses.length > 0 && interactiveClasses.every(cls => {
-        const constructor = cls.getConstructors()[0];
-        const constructorSetsTabIndex = constructor ? constructor.getText().includes('this.tabIndex') : false;
-        const connectedCallback = cls.getMethod('connectedCallback');
-        const connectedText = connectedCallback ? connectedCallback.getText() : '';
-        const connectedSetsTabIndex = connectedText.includes('tabIndex') && connectedText.includes('tabindex');
-
-        return !constructorSetsTabIndex && connectedSetsTabIndex;
-      });
-
-      const staticClasses = classes.filter(cls => !isInteractiveHostClass(cls));
-      const staticDoNotSetTabIndex = staticClasses.every(cls => !cls.getText().includes('this.tabIndex'));
-
-      tabIndexValid = allInteractiveValid && staticDoNotSetTabIndex;
-    }
-
-    expect(tabIndexValid).toBe(true);
-  });
-
-  test('When accessible name comes from aria-labelledby, referenced ID is in the same tree', () => {
-    const htmlDocs = getHtmlDocuments(targetFiles);
-    const customElementsInHtml = htmlDocs.flatMap(d =>
-      Array.from(d.document.querySelectorAll('*')).filter((el: any) => el.tagName.includes('-'))
-    );
-
-    let valid = false;
-    if (customElementsInHtml.length > 0) {
-      valid = htmlDocs.every(({ document }) => {
-        const labelledEls = Array.from(document.querySelectorAll('*')).filter((el: any) =>
-          el.tagName.includes('-') && el.hasAttribute('aria-labelledby')
-        );
-        return labelledEls.every((el: any) => {
-          const id = el.getAttribute('aria-labelledby');
-          return Boolean(document.getElementById(id));
+      const checksTabindexAttr = connectedCb
+        .getDescendantsOfKind(SyntaxKind.CallExpression)
+        .some((call) => {
+          const expr = call.getExpression();
+          const args = call.getArguments();
+          return (
+            expr.getKind() === SyntaxKind.PropertyAccessExpression &&
+            (expr as PropertyAccessExpression).getName() === 'hasAttribute' &&
+            args.length > 0 &&
+            args[0].getText().replace(/['"`]/g, '').toLowerCase() === 'tabindex'
+          );
         });
-      });
-    }
 
-    expect(valid).toBe(true);
+      const setsTabIndexZero = connectedCb
+        .getDescendantsOfKind(SyntaxKind.BinaryExpression)
+        .some(
+          (bin) =>
+            bin.getOperatorToken().getText() === '=' &&
+            bin.getLeft().getKind() === SyntaxKind.PropertyAccessExpression &&
+            (bin.getLeft() as PropertyAccessExpression).getName() ===
+              'tabIndex' &&
+            bin.getRight().getText() === '0'
+        );
+
+      return !ctorSetsTabIndex && checksTabindexAttr && setsTabIndexZero;
+    });
+
+    expect(validTabIndexInConnectedCallback).toBe(true);
   });
-
-  // --- BROWSER ASSERTIONS (E2E) ---
 
   test.describe('Browser tests', () => {
-
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
-      await page.evaluate(async () => {
-        const customTag = Array.from(document.querySelectorAll('*'))
-          .map(el => el.tagName.toLowerCase())
-          .find(tag => tag.includes('-'));
-        if (customTag && window.customElements) {
-          await window.customElements.whenDefined(customTag);
-        }
-      });
     });
 
-    async function getInteractiveControl(page: Page) {
-      const session = await page.context().newCDPSession(page);
-      try {
-        const { root } = await session.send('DOM.getDocument', { depth: -1 });
-        const { nodes: axNodes } = await session.send('Accessibility.getFullAXTree');
-
-        const elements = await page.evaluate(() => {
-          const els = Array.from(document.querySelectorAll('*')).filter(el => el.tagName.includes('-'));
-          return els.map((el, idx) => {
-            if (!el.id) {
-              el.setAttribute('data-grader-idx', String(idx));
-            }
-            return {
-              tagName: el.tagName.toLowerCase(),
-              id: el.id,
-              selector: el.id ? `#${el.id}` : `${el.tagName.toLowerCase()}[data-grader-idx="${idx}"]`,
-            };
+    test('Exposes default semantic role via ElementInternals without setting a role attribute on the host element', async ({
+      page,
+    }) => {
+      const classes = getCustomElementClasses();
+      const setsRoleViaInternals = classes.some((cls) => {
+        const hasAttachInternals = cls
+          .getDescendantsOfKind(SyntaxKind.CallExpression)
+          .some((call) => {
+            const expr = call.getExpression();
+            return (
+              expr.getKind() === SyntaxKind.PropertyAccessExpression &&
+              (expr as PropertyAccessExpression).getName() === 'attachInternals'
+            );
           });
-        });
+        const assignsRole =
+          getPropertyAccessAssignments(cls, /^role$/).length > 0;
+        return hasAttachInternals && assignsRole;
+      });
 
-        for (const item of elements) {
-          const { nodeId } = await session.send('DOM.querySelector', { nodeId: root.nodeId, selector: item.selector });
-          if (!nodeId) continue;
-          const { node: domNode } = await session.send('DOM.describeNode', { nodeId });
-          const axNode = axNodes.find((n: any) => n.backendDOMNodeId === domNode.backendNodeId);
-          if (!axNode) continue;
-          const stateProp = axNode.properties?.find((p: any) => ['checked', 'pressed', 'expanded'].includes(p.name));
-          if (stateProp) {
-            return {
-              selector: item.selector,
-              tagName: item.tagName,
-              role: axNode.role?.value,
-              name: axNode.name?.value,
-              stateProp: stateProp.name,
-              stateValue: String(stateProp.value?.value),
-            };
-          }
-        }
-        return null;
-      } finally {
-        await session.detach();
-      }
-    }
+      const runtimeCheck = await page.evaluate(() => {
+        const hosts = Array.from(document.querySelectorAll('*')).filter((el) =>
+          el.tagName.includes('-')
+        );
+        return (
+          hosts.length > 0 && hosts.every((el) => !el.hasAttribute('role'))
+        );
+      });
 
-    async function getControlState(page: Page, selector: string) {
-      const session = await page.context().newCDPSession(page);
-      try {
-        const { root } = await session.send('DOM.getDocument', { depth: -1 });
-        const { nodes: axNodes } = await session.send('Accessibility.getFullAXTree');
-        const { nodeId } = await session.send('DOM.querySelector', { nodeId: root.nodeId, selector });
-        if (!nodeId) return null;
-        const { node: domNode } = await session.send('DOM.describeNode', { nodeId });
-        const axNode = axNodes.find((n: any) => n.backendDOMNodeId === domNode.backendNodeId);
-        if (!axNode) return null;
-        const stateProp = axNode.properties?.find((p: any) => ['checked', 'pressed', 'expanded'].includes(p.name));
-        return {
-          role: axNode.role?.value,
-          name: axNode.name?.value,
-          stateProp: stateProp?.name,
-          stateValue: stateProp ? String(stateProp.value?.value) : null,
-        };
-      } finally {
-        await session.detach();
-      }
-    }
-
-    test('Host element receives focus and is in the tab order', async ({ page }) => {
-      const control = await getInteractiveControl(page);
-      let focusOnHost = false;
-      if (control) {
-        focusOnHost = await page.evaluate((sel: string) => {
-          const el = document.querySelector(sel) as HTMLElement | null;
-          if (!el) return false;
-          el.focus();
-          return document.activeElement === el;
-        }, control.selector);
-      }
-      const passed = Boolean(control && focusOnHost);
-      expect(passed).toBe(true);
+      expect(setsRoleViaInternals && runtimeCheck).toBe(true);
     });
 
-    test('Clicking the control toggles its state in the accessibility tree', async ({ page }) => {
-      const control = await getInteractiveControl(page);
-      let afterState = null;
-      if (control) {
-        await page.evaluate((sel: string) => {
-          const el = document.querySelector(sel) as HTMLElement | null;
-          el?.click();
-        }, control.selector);
-        afterState = await getControlState(page, control.selector);
-      }
-      const passed = Boolean(
-        control &&
-        afterState &&
-        control.stateValue !== null &&
-        afterState.stateValue !== null &&
-        control.stateValue !== afterState.stateValue
+    test('Exposes initial state (checked, pressed, or expanded) in the accessibility tree via ElementInternals without a matching aria-* attribute on the host', async ({
+      page,
+    }) => {
+      const classes = getCustomElementClasses();
+      const setsStateViaInternals = classes.some(
+        (cls) =>
+          getPropertyAccessAssignments(
+            cls,
+            /^(ariaChecked|ariaPressed|ariaExpanded)$/
+          ).length > 0
       );
-      expect(passed).toBe(true);
+
+      const runtimeStateCheck = await page.evaluate(() => {
+        const hosts = Array.from(document.querySelectorAll('*')).filter((el) =>
+          el.tagName.includes('-')
+        );
+        if (hosts.length === 0) return false;
+        return hosts.every(
+          (el) =>
+            !el.hasAttribute('aria-checked') &&
+            !el.hasAttribute('aria-pressed') &&
+            !el.hasAttribute('aria-expanded')
+        );
+      });
+
+      const snapshot = await page.locator('body').ariaSnapshot();
+      const hasInitialRoleInTree = /\b(switch|checkbox|button)\b/.test(snapshot);
+
+      expect(
+        setsStateViaInternals && runtimeStateCheck && hasInitialRoleInTree
+      ).toBe(true);
     });
 
-    test('Pressing Space while focused toggles state in the accessibility tree', async ({ page }) => {
-      const control = await getInteractiveControl(page);
-      let afterState = null;
-      if (control) {
-        await page.evaluate((sel: string) => {
-          const el = document.querySelector(sel) as HTMLElement | null;
-          el?.focus();
-        }, control.selector);
+    test('Interactive control host element receives focus directly', async ({
+      page,
+    }) => {
+      const hostReceivesFocus = await page.evaluate(() => {
+        const hosts = Array.from(document.querySelectorAll('*')).filter(
+          (el): el is HTMLElement =>
+            el instanceof HTMLElement && el.tagName.includes('-')
+        );
+        if (hosts.length === 0) return false;
+        const host = hosts[0];
+        if (host.tabIndex !== 0) return false;
+        host.focus();
+        return (
+          document.activeElement === host &&
+          (!host.shadowRoot || host.shadowRoot.activeElement === null)
+        );
+      });
+
+      expect(hostReceivesFocus).toBe(true);
+    });
+
+    test('Clicking the custom element control toggles its state in the accessibility tree', async ({
+      page,
+    }) => {
+      const hostTag = await page.evaluate(() => {
+        const el = Array.from(document.querySelectorAll('*')).find((node) =>
+          node.tagName.includes('-')
+        );
+        return el ? el.tagName.toLowerCase() : null;
+      });
+
+      const hostLocator = page
+        .locator(hostTag || 'non-existent-custom-element')
+        .first();
+      const beforeSnapshot = await hostLocator.ariaSnapshot().catch(() => '');
+      if (hostTag) {
+        await hostLocator.click();
+      }
+      const afterClickSnapshot = await hostLocator
+        .ariaSnapshot()
+        .catch(() => '');
+      const beforeChecked = /\[checked\]|\[pressed\]|\[expanded\]/.test(
+        beforeSnapshot
+      );
+      const afterChecked = /\[checked\]|\[pressed\]|\[expanded\]/.test(
+        afterClickSnapshot
+      );
+
+      expect(Boolean(hostTag) && beforeChecked !== afterChecked).toBe(true);
+    });
+
+    test('Pressing Space while the custom element control has focus toggles its state in the accessibility tree', async ({
+      page,
+    }) => {
+      const hostTag = await page.evaluate(() => {
+        const el = Array.from(document.querySelectorAll('*')).find(
+          (node): node is HTMLElement =>
+            node instanceof HTMLElement && node.tagName.includes('-')
+        );
+        if (el) el.focus();
+        return el ? el.tagName.toLowerCase() : null;
+      });
+
+      const hostLocator = page
+        .locator(hostTag || 'non-existent-custom-element')
+        .first();
+      const beforeSnapshot = await hostLocator.ariaSnapshot().catch(() => '');
+      if (hostTag) {
         await page.keyboard.press('Space');
-        afterState = await getControlState(page, control.selector);
       }
-      const passed = Boolean(
-        control &&
-        afterState &&
-        control.stateValue !== null &&
-        afterState.stateValue !== null &&
-        control.stateValue !== afterState.stateValue
+      const afterSpaceSnapshot = await hostLocator
+        .ariaSnapshot()
+        .catch(() => '');
+      const beforeChecked = /\[checked\]|\[pressed\]|\[expanded\]/.test(
+        beforeSnapshot
       );
-      expect(passed).toBe(true);
+      const afterChecked = /\[checked\]|\[pressed\]|\[expanded\]/.test(
+        afterSpaceSnapshot
+      );
+
+      expect(Boolean(hostTag) && beforeChecked !== afterChecked).toBe(true);
     });
 
-    test('No aria-* state attribute is added to the host when state changes', async ({ page }) => {
-      const control = await getInteractiveControl(page);
-      let hostHasAriaState = false;
-      let stateToggled = false;
-      if (control) {
-        await page.evaluate((sel: string) => {
-          const el = document.querySelector(sel) as HTMLElement | null;
-          el?.click();
-        }, control.selector);
-        const afterState = await getControlState(page, control.selector);
-        stateToggled = Boolean(afterState && control.stateValue !== afterState.stateValue);
-        hostHasAriaState = await page.evaluate((sel: string) => {
-          const el = document.querySelector(sel);
-          return Boolean(
-            el && (el.hasAttribute('aria-checked') || el.hasAttribute('aria-pressed') || el.hasAttribute('aria-expanded'))
-          );
-        }, control.selector);
+    test('No aria-* state attribute is added to the host when the state changes', async ({
+      page,
+    }) => {
+      const hostTag = await page.evaluate(() => {
+        const el = Array.from(document.querySelectorAll('*')).find((node) =>
+          node.tagName.includes('-')
+        );
+        return el ? el.tagName.toLowerCase() : null;
+      });
+
+      const hostLocator = page
+        .locator(hostTag || 'non-existent-custom-element')
+        .first();
+      if (hostTag) {
+        await hostLocator.click();
+        await hostLocator.focus();
+        await page.keyboard.press('Space');
+        await hostLocator.click();
       }
-      const passed = Boolean(control && stateToggled && !hostHasAriaState);
-      expect(passed).toBe(true);
+
+      const noAriaStateAttributes = await page.evaluate(() => {
+        const hosts = Array.from(document.querySelectorAll('*')).filter(
+          (node) => node.tagName.includes('-')
+        );
+        if (hosts.length === 0) return false;
+        return hosts.every(
+          (el) =>
+            !el.hasAttribute('aria-checked') &&
+            !el.hasAttribute('aria-pressed') &&
+            !el.hasAttribute('aria-expanded')
+        );
+      });
+
+      expect(noAriaStateAttributes).toBe(true);
     });
 
-    test('Custom element has a non-empty accessible name', async ({ page }) => {
-      const control = await getInteractiveControl(page);
-      const passed = Boolean(control && control.name && control.name.trim().length > 0);
-      expect(passed).toBe(true);
+    test('Interactive custom element has a non-empty accessible name and valid same-tree or outward cross-boundary ARIA label references', async ({
+      page,
+    }) => {
+      const hostTag = await page.evaluate(() => {
+        const el = Array.from(document.querySelectorAll('*')).find((node) =>
+          node.tagName.includes('-')
+        );
+        return el ? el.tagName.toLowerCase() : null;
+      });
+
+      const hostLocator = page
+        .locator(hostTag || 'non-existent-custom-element')
+        .first();
+      const snapshot = await hostLocator.ariaSnapshot().catch(() => '');
+      const hasAccessibleName = /"[^"]+"/.test(snapshot);
+
+      const validLabelRefs = await page.evaluate(() => {
+        const hosts = Array.from(document.querySelectorAll('*')).filter(
+          (node) => node.tagName.includes('-')
+        );
+        if (hosts.length === 0) return false;
+
+        return hosts.every((host) => {
+          const ariaLabelledBy = host.getAttribute('aria-labelledby');
+          if (ariaLabelledBy) {
+            const root = host.getRootNode() as Document | ShadowRoot;
+            const ids = ariaLabelledBy.trim().split(/\s+/);
+            const allInSameTree = ids.every((id) =>
+              Boolean(root.getElementById(id))
+            );
+            if (!allInSameTree) return false;
+          }
+
+          const labelledByEls = (
+            host as HTMLElement & { ariaLabelledByElements?: Element[] | null }
+          ).ariaLabelledByElements;
+          if (labelledByEls && labelledByEls.length > 0) {
+            const pointsIntoOwnShadow = Array.from(labelledByEls).some(
+              (target) =>
+                host.shadowRoot !== null &&
+                target.getRootNode() === host.shadowRoot
+            );
+            if (pointsIntoOwnShadow) return false;
+          }
+
+          return true;
+        });
+      });
+
+      expect(Boolean(hostTag) && hasAccessibleName && validLabelRefs).toBe(
+        true
+      );
     });
   });
 });
