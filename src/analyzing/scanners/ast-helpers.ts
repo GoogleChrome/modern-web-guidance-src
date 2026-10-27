@@ -7,7 +7,6 @@ import {
   type ExportDeclaration,
   type FunctionDeclaration,
   type FunctionExpression,
-  type IfStatement,
   type ImportDeclaration,
   type MethodDeclaration,
   type ParameterDeclaration,
@@ -46,30 +45,6 @@ function isCallableScope(
   );
 }
 
-/**
- * Searches statements for a variable declaration initializer matching `name`.
- */
-function findVariableInitializerInStatements(
-  statements: readonly Statement[],
-  name: string,
-  beforePos: number,
-): Node | null {
-  for (const stmt of statements) {
-    if (stmt.getStart() >= beforePos) {
-      break;
-    }
-    if (!Node.isVariableStatement(stmt)) {
-      continue;
-    }
-    for (const decl of stmt.getDeclarationList().getDeclarations()) {
-      if (decl.getName() === name) {
-        return decl.getInitializer() ?? null;
-      }
-    }
-  }
-  return null;
-}
-
 function getForLoopDeclarations(scope: Node): readonly VariableDeclaration[] {
   if (
     Node.isForStatement(scope) ||
@@ -84,73 +59,127 @@ function getForLoopDeclarations(scope: Node): readonly VariableDeclaration[] {
   return [];
 }
 
-function isDeclarationBindingName(decl: VariableDeclaration, targetName: string): boolean {
-  const nameNode = decl.getNameNode();
+function bindingNameContains(nameNode: Node, targetName: string): boolean {
   if (Node.isIdentifier(nameNode)) {
     return nameNode.getText() === targetName;
   }
-  return nameNode
-    .getDescendantsOfKind(SyntaxKind.Identifier)
-    .some((id) => id.getText() === targetName);
+  if (Node.isObjectBindingPattern(nameNode) || Node.isArrayBindingPattern(nameNode)) {
+    return nameNode
+      .getElements()
+      .some((el) => Node.isBindingElement(el) && bindingNameContains(el.getNameNode(), targetName));
+  }
+  return false;
 }
 
-/**
- * Checks whether `name` is a parameter in a callable scope.
- */
-function isParameterInScope(scope: Node, name: string): boolean {
-  if (!isCallableScope(scope)) {
-    return false;
-  }
-  return scope.getParameters().some((param) => param.getName() === name);
+function hasBindingName(
+  decl: VariableDeclaration | ParameterDeclaration,
+  targetName: string,
+): boolean {
+  return bindingNameContains(decl.getNameNode(), targetName);
 }
 
-function findInEnclosingScopes<T>(
-  startNode: Node,
-  name: string,
-  matchStatements: (statements: readonly Statement[]) => T | null,
-  matchForDecl?: (decl: VariableDeclaration) => T | null,
-): T | null {
-  let currentScope: Node | undefined = startNode.getParent();
+interface ResolvedImport {
+  readonly declaration: ImportDeclaration;
+  readonly importedName: string;
+  readonly isNamespace: boolean;
+}
 
-  while (currentScope) {
-    if (isParameterInScope(currentScope, name)) {
-      return null;
+function findImportBinding(sourceFile: SourceFile, localName: string): ResolvedImport | null {
+  for (const declaration of sourceFile.getImportDeclarations()) {
+    if (declaration.getDefaultImport()?.getText() === localName) {
+      return { declaration, importedName: 'default', isNamespace: false };
     }
-
-    for (const decl of getForLoopDeclarations(currentScope)) {
-      if (isDeclarationBindingName(decl, name)) {
-        return matchForDecl ? matchForDecl(decl) : null;
+    if (declaration.getNamespaceImport()?.getText() === localName) {
+      return { declaration, importedName: '*', isNamespace: true };
+    }
+    for (const named of declaration.getNamedImports()) {
+      const boundName = named.getAliasNode()?.getText() ?? named.getName();
+      if (boundName === localName) {
+        return { declaration, importedName: named.getName(), isNamespace: false };
       }
     }
-
-    if (Node.isBlock(currentScope) || Node.isSourceFile(currentScope)) {
-      const match = matchStatements(currentScope.getStatements());
-      if (match) {
-        return match;
-      }
-    }
-
-    currentScope = currentScope.getParent();
   }
-
   return null;
 }
 
+type LexicalBinding =
+  | { readonly kind: 'variable'; readonly node: VariableDeclaration }
+  | { readonly kind: 'function'; readonly node: FunctionDeclaration }
+  | { readonly kind: 'import'; readonly importBinding: ResolvedImport }
+  | { readonly kind: 'other' };
+
 /**
- * Searches the lexical ancestor blocks preceding `startNode` for a local `const` or `let`
- * initializer matching `name`.
+ * Walks enclosing lexical scopes from `startNode` up to `SourceFile` and returns
+ * the innermost binding for `name` (or `null` if `name` is unbound / global).
  */
-function findLocalInitializer(startNode: Node, name: string): Node | null {
-  const beforePos = startNode.getStart();
-  return findInEnclosingScopes(
-    startNode,
-    name,
-    (statements) => findVariableInitializerInStatements(statements, name, beforePos),
-    (decl) =>
-      decl.getStart() < beforePos && decl.getName() === name
-        ? (decl.getInitializer() ?? null)
-        : null,
-  );
+function resolveLexicalBinding(
+  startNode: Node,
+  name: string,
+  beforePos?: number,
+): LexicalBinding | null {
+  let current: Node | undefined = startNode.getParent();
+
+  while (current) {
+    if (isCallableScope(current)) {
+      if (current.getParameters().some((param) => hasBindingName(param, name))) {
+        return { kind: 'other' };
+      }
+      if (
+        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
+        current.getName() === name
+      ) {
+        return Node.isFunctionDeclaration(current)
+          ? { kind: 'function', node: current }
+          : { kind: 'other' };
+      }
+    }
+
+    if (Node.isCatchClause(current)) {
+      const catchVar = current.getVariableDeclaration();
+      if (catchVar && hasBindingName(catchVar, name)) {
+        return { kind: 'other' };
+      }
+    }
+
+    for (const decl of getForLoopDeclarations(current)) {
+      if (hasBindingName(decl, name)) {
+        if (beforePos !== undefined && decl.getStart() >= beforePos) {
+          return { kind: 'other' };
+        }
+        return { kind: 'variable', node: decl };
+      }
+    }
+
+    if (Node.isBlock(current) || Node.isSourceFile(current)) {
+      for (const stmt of current.getStatements()) {
+        if (Node.isVariableStatement(stmt)) {
+          if (beforePos !== undefined && stmt.getStart() >= beforePos) {
+            continue;
+          }
+          for (const decl of stmt.getDeclarationList().getDeclarations()) {
+            if (hasBindingName(decl, name)) {
+              return { kind: 'variable', node: decl };
+            }
+          }
+        } else if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
+          return { kind: 'function', node: stmt };
+        } else if (Node.isClassDeclaration(stmt) && stmt.getName() === name) {
+          return { kind: 'other' };
+        }
+      }
+    }
+
+    if (Node.isSourceFile(current)) {
+      const importBinding = findImportBinding(current, name);
+      if (importBinding) {
+        return { kind: 'import', importBinding };
+      }
+    }
+
+    current = current.getParent();
+  }
+
+  return null;
 }
 
 /**
@@ -158,107 +187,35 @@ function findLocalInitializer(startNode: Node, name: string): Node | null {
  */
 export function resolveLocalExpression(node: Node, maxHops: number = 1): Node {
   let current = unwrapExpression(node);
-  let hops = 0;
-
-  while (hops < maxHops && Node.isIdentifier(current)) {
-    const identifierName = current.getText();
-    const resolved = findLocalInitializer(current, identifierName);
-    if (!resolved || resolved === current) {
+  for (let hops = 0; hops < maxHops && Node.isIdentifier(current); hops++) {
+    const name = current.getText();
+    const binding = resolveLexicalBinding(current, name, current.getStart());
+    const init =
+      binding?.kind === 'variable' && binding.node.getName() === name
+        ? binding.node.getInitializer()
+        : undefined;
+    if (!init || init === current) {
       break;
     }
-    current = unwrapExpression(resolved);
-    hops++;
+    current = unwrapExpression(init);
   }
-
   return current;
 }
 
 /**
- * Searches lexical ancestor scopes for a local FunctionDeclaration matching `name`.
- */
-function findLocalFunctionDeclaration(startNode: Node, name: string): Node | null {
-  return findInEnclosingScopes(startNode, name, (statements) => {
-    for (const stmt of statements) {
-      if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
-        return stmt;
-      }
-    }
-    return null;
-  });
-}
-
-/**
- * Extends resolveLocalExpression(node, maxHops): if `node` (after unwrapping) is an
+ * Extends resolveLocalExpression(node, maxHops): if `node` (or its resolved target) is an
  * Identifier that resolves to a local FunctionDeclaration in the enclosing block/file,
  * returns that FunctionDeclaration; otherwise returns resolveLocalExpression(node, maxHops).
  */
 export function resolveCallableNode(node: Node, maxHops: number = 1): Node {
-  const unwrapped = unwrapExpression(node);
-  if (Node.isIdentifier(unwrapped)) {
-    const fnDecl = findLocalFunctionDeclaration(unwrapped, unwrapped.getText());
-    if (fnDecl) {
-      return fnDecl;
-    }
-  }
-
   const resolved = resolveLocalExpression(node, maxHops);
-  if (Node.isIdentifier(resolved) && resolved !== unwrapped) {
-    const fnDecl = findLocalFunctionDeclaration(resolved, resolved.getText());
-    if (fnDecl) {
-      return fnDecl;
+  if (Node.isIdentifier(resolved)) {
+    const binding = resolveLexicalBinding(resolved, resolved.getText());
+    if (binding?.kind === 'function') {
+      return binding.node;
     }
   }
-
   return resolved;
-}
-
-/**
- * Checks whether `globalName` is bound by any statement in the scope.
- */
-function isShadowedByStatements(
-  statements: readonly Statement[],
-  globalName: string,
-): boolean {
-  for (const stmt of statements) {
-    if (Node.isVariableStatement(stmt)) {
-      for (const decl of stmt.getDeclarationList().getDeclarations()) {
-        if (isDeclarationBindingName(decl, globalName)) {
-          return true;
-        }
-      }
-    } else if (Node.isFunctionDeclaration(stmt) || Node.isClassDeclaration(stmt)) {
-      if (stmt.getName() === globalName) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * Checks whether `globalName` is shadowed by an import declaration.
- */
-function isShadowedByImports(sourceFile: SourceFile, globalName: string): boolean {
-  for (const imp of sourceFile.getImportDeclarations()) {
-    const def = imp.getDefaultImport();
-    if (def && def.getText() === globalName) {
-      return true;
-    }
-    for (const named of imp.getNamedImports()) {
-      const alias = named.getAliasNode();
-      if (alias && alias.getText() === globalName) {
-        return true;
-      }
-      if (named.getName() === globalName) {
-        return true;
-      }
-    }
-    const ns = imp.getNamespaceImport();
-    if (ns && ns.getText() === globalName) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**
@@ -266,43 +223,10 @@ function isShadowedByImports(sourceFile: SourceFile, globalName: string): boolea
  * is an unshadowed global and not bound by a local variable, parameter, or import.
  */
 export function isUnshadowedGlobal(node: Node, globalName: string): boolean {
-  let currentScope: Node | undefined = node.getParent();
-
-  while (currentScope) {
-    if (isParameterInScope(currentScope, globalName)) {
-      return false;
-    }
-
-    if (Node.isCatchClause(currentScope)) {
-      const catchVar = currentScope.getVariableDeclaration();
-      if (catchVar && isDeclarationBindingName(catchVar, globalName)) {
-        return false;
-      }
-    }
-
-    if (
-      getForLoopDeclarations(currentScope).some((decl) =>
-        isDeclarationBindingName(decl, globalName),
-      )
-    ) {
-      return false;
-    }
-
-    if (Node.isBlock(currentScope) || Node.isSourceFile(currentScope)) {
-      if (isShadowedByStatements(currentScope.getStatements(), globalName)) {
-        return false;
-      }
-    }
-
-    if (Node.isSourceFile(currentScope) && isShadowedByImports(currentScope, globalName)) {
-      return false;
-    }
-
-    currentScope = currentScope.getParent();
-  }
-
-  return true;
+  return resolveLexicalBinding(node, globalName) === null;
 }
+
+const GLOBAL_ROOT_IDENTIFIERS = new Set(['window', 'globalThis', 'self']);
 
 /**
  * Unwraps `node` and returns `true` if it refers to `globalName` as an unshadowed global,
@@ -317,40 +241,37 @@ export function isGlobalReference(node: Node, globalName: string): boolean {
     return unwrapped.getText() === globalName && isUnshadowedGlobal(unwrapped, globalName);
   }
 
-  if (Node.isPropertyAccessExpression(unwrapped)) {
-    if (unwrapped.getName() !== globalName) {
-      return false;
-    }
+  if (Node.isPropertyAccessExpression(unwrapped) && unwrapped.getName() === globalName) {
     const rootExpr = unwrapExpression(unwrapped.getExpression());
     if (Node.isIdentifier(rootExpr)) {
       const rootName = rootExpr.getText();
-      if (rootName === 'window' || rootName === 'globalThis' || rootName === 'self') {
-        return isUnshadowedGlobal(rootExpr, rootName);
-      }
+      return GLOBAL_ROOT_IDENTIFIERS.has(rootName) && isUnshadowedGlobal(rootExpr, rootName);
     }
   }
 
   return false;
 }
 
+const NEGATIVE_COMPARISON_VALUES = new Set([
+  "'undefined'",
+  '"undefined"',
+  'undefined',
+  'null',
+  'false',
+]);
+
 /**
  * Checks for negative equality comparisons like `typeof Feature === 'undefined'` or `Feature == null`.
  */
 function checkBinaryComparisonPolarity(expr: BinaryExpression): 'positive' | 'negative' | null {
   const op = expr.getOperatorToken().getKind();
-  const rightText = expr.getRight().getText();
-  const isEquality =
-    op === SyntaxKind.EqualsEqualsToken ||
-    op === SyntaxKind.EqualsEqualsEqualsToken;
-  const isInequality =
-    op === SyntaxKind.ExclamationEqualsToken ||
-    op === SyntaxKind.ExclamationEqualsEqualsToken;
-
-  const negativeValues = new Set(["'undefined'", '"undefined"', 'undefined', 'null', 'false']);
-  if (isEquality && negativeValues.has(rightText)) {
+  if (!NEGATIVE_COMPARISON_VALUES.has(expr.getRight().getText())) {
+    return null;
+  }
+  if (op === SyntaxKind.EqualsEqualsToken || op === SyntaxKind.EqualsEqualsEqualsToken) {
     return 'negative';
   }
-  if (isInequality && negativeValues.has(rightText)) {
+  if (op === SyntaxKind.ExclamationEqualsToken || op === SyntaxKind.ExclamationEqualsEqualsToken) {
     return 'positive';
   }
   return null;
@@ -380,8 +301,7 @@ function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): 
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
-    const op = unwrapped.getOperatorToken().getKind();
-    if (op === SyntaxKind.InKeyword) {
+    if (unwrapped.getOperatorToken().getKind() === SyntaxKind.InKeyword) {
       return true;
     }
     return (
@@ -391,40 +311,30 @@ function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): 
   }
 
   if (Node.isTypeOfExpression(unwrapped)) {
-    const operand = unwrapExpression(unwrapped.getExpression());
-    if (Node.isIdentifier(operand)) {
-      return featureTokens.some((token) => isGlobalReference(operand, token));
-    }
-    return isValidFeatureCondition(operand, featureTokens);
+    return isValidFeatureCondition(unwrapped.getExpression(), featureTokens);
   }
 
   if (Node.isCallExpression(unwrapped)) {
     const callee = unwrapExpression(unwrapped.getExpression());
-    if (Node.isPropertyAccessExpression(callee)) {
+    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'supports') {
       const obj = unwrapExpression(callee.getExpression());
-      if (Node.isIdentifier(obj) && obj.getText() === 'CSS' && callee.getName() === 'supports') {
-        return true;
-      }
+      return Node.isIdentifier(obj) && obj.getText() === 'CSS';
     }
     return false;
   }
 
   if (Node.isPropertyAccessExpression(unwrapped)) {
-    let current: Node = unwrapped;
-    while (Node.isPropertyAccessExpression(current)) {
-      current = unwrapExpression(current.getExpression());
+    let root: Node = unwrapped;
+    while (Node.isPropertyAccessExpression(root)) {
+      root = unwrapExpression(root.getExpression());
     }
-    if (Node.isIdentifier(current)) {
-      const rootText = current.getText();
-      if (BROWSER_GLOBAL_ROOTS.has(rootText) && isUnshadowedGlobal(current, rootText)) {
-        return true;
-      }
-      const propName = unwrapped.getName();
-      if (featureTokens.includes(propName)) {
-        return true;
-      }
+    if (Node.isIdentifier(root)) {
+      const rootText = root.getText();
+      return (
+        (BROWSER_GLOBAL_ROOTS.has(rootText) && isUnshadowedGlobal(root, rootText)) ||
+        featureTokens.includes(unwrapped.getName())
+      );
     }
-    return false;
   }
 
   return false;
@@ -443,36 +353,20 @@ function conditionCheckPolarity(
     Node.isPrefixUnaryExpression(unwrapped) &&
     unwrapped.getOperatorToken() === SyntaxKind.ExclamationToken
   ) {
-    const innerPolarity = conditionCheckPolarity(
-      unwrapped.getOperand(),
-      featureTokens,
-    );
-    if (innerPolarity === 'positive') {
-      return 'negative';
-    }
-    if (innerPolarity === 'negative') {
-      return 'positive';
-    }
-    return null;
+    const inner = conditionCheckPolarity(unwrapped.getOperand(), featureTokens);
+    return inner === 'positive' ? 'negative' : inner === 'negative' ? 'positive' : null;
   }
 
   const condText = unwrapped.getText();
-  const mentionsFeature = featureTokens.some((token) =>
-    condText.includes(token),
-  );
-  if (!mentionsFeature) {
-    return null;
-  }
-
-  if (!isValidFeatureCondition(unwrapped, featureTokens)) {
+  if (
+    !featureTokens.some((token) => condText.includes(token)) ||
+    !isValidFeatureCondition(unwrapped, featureTokens)
+  ) {
     return null;
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
-    const binPolarity = checkBinaryComparisonPolarity(unwrapped);
-    if (binPolarity) {
-      return binPolarity;
-    }
+    return checkBinaryComparisonPolarity(unwrapped) ?? 'positive';
   }
 
   return 'positive';
@@ -490,53 +384,32 @@ function statementAlwaysExits(stmt: Node): boolean {
     return true;
   }
   if (Node.isBlock(stmt)) {
-    const statements = stmt.getStatements();
-    if (statements.length === 0) {
-      return false;
-    }
-    const last = statements[statements.length - 1];
+    const last = stmt.getStatements().at(-1);
     return last ? statementAlwaysExits(last) : false;
   }
   return false;
 }
 
-/**
- * Checks whether container node contains the target node by start/end positions.
- */
-function nodeContains(container: Node, target: Node): boolean {
-  return (
-    container === target ||
-    (target.getStart() >= container.getStart() &&
-      target.getEnd() <= container.getEnd())
-  );
-}
-
-/**
- * Evaluates whether an IfStatement branch guards the current node.
- */
-function isGuardedByIfStatement(
-  ifStmt: IfStatement,
-  target: Node,
+function hasPositiveEarlyReturn(
+  statements: readonly Statement[],
   featureTokens: readonly string[],
+  beforePos: number = Infinity,
 ): boolean {
-  const polarity = conditionCheckPolarity(ifStmt.getExpression(), featureTokens);
-  if (polarity === 'positive') {
-    const elseStmt = ifStmt.getElseStatement();
-    if (elseStmt && nodeContains(elseStmt, target)) {
-      return true;
+  for (const stmt of statements) {
+    if (stmt.getStart() >= beforePos) {
+      break;
     }
-  } else if (polarity === 'negative') {
-    const thenStmt = ifStmt.getThenStatement();
-    if (nodeContains(thenStmt, target)) {
+    if (
+      Node.isIfStatement(stmt) &&
+      conditionCheckPolarity(stmt.getExpression(), featureTokens) === 'positive' &&
+      statementAlwaysExits(stmt.getThenStatement())
+    ) {
       return true;
     }
   }
   return false;
 }
 
-/**
- * Checks whether a callable node's body contains an early return checking any of `featureTokens`.
- */
 function isGuardedByCallableEarlyReturn(
   callable: Node,
   featureTokens: readonly string[],
@@ -545,82 +418,9 @@ function isGuardedByCallableEarlyReturn(
     return false;
   }
   const body = callable.getBody();
-  if (body && Node.isBlock(body)) {
-    for (const stmt of body.getStatements()) {
-      if (Node.isIfStatement(stmt)) {
-        const polarity = conditionCheckPolarity(stmt.getExpression(), featureTokens);
-        if (polarity === 'positive' && statementAlwaysExits(stmt.getThenStatement())) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * Checks if a prior early-return if-statement in the block guards subsequent code.
- */
-function isGuardedByPrecedingEarlyReturn(
-  statements: readonly Statement[],
-  target: Node,
-  featureTokens: readonly string[],
-): boolean {
-  for (const stmt of statements) {
-    if (stmt.getStart() >= target.getStart()) {
-      break;
-    }
-    if (!Node.isIfStatement(stmt)) {
-      continue;
-    }
-    const polarity = conditionCheckPolarity(stmt.getExpression(), featureTokens);
-    if (polarity === 'positive' && statementAlwaysExits(stmt.getThenStatement())) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Checks whether a ternary conditional expression guards the current node.
- */
-function isGuardedByTernary(
-  parent: Node,
-  current: Node,
-  featureTokens: readonly string[],
-): boolean {
-  if (!Node.isConditionalExpression(parent)) {
-    return false;
-  }
-  const polarity = conditionCheckPolarity(parent.getCondition(), featureTokens);
-  if (polarity === 'positive') {
-    return nodeContains(parent.getWhenFalse(), current);
-  }
-  if (polarity === 'negative') {
-    return nodeContains(parent.getWhenTrue(), current);
-  }
-  return false;
-}
-
-/**
- * Checks whether a binary logical expression (|| or ??) guards the current node as a fallback.
- */
-function isGuardedByLogicalFallback(
-  parent: Node,
-  current: Node,
-  featureTokens: readonly string[],
-): boolean {
-  if (!Node.isBinaryExpression(parent)) {
-    return false;
-  }
-  const op = parent.getOperatorToken().getKind();
-  if (op !== SyntaxKind.BarBarToken && op !== SyntaxKind.QuestionQuestionToken) {
-    return false;
-  }
-  if (!nodeContains(parent.getRight(), current)) {
-    return false;
-  }
-  return conditionCheckPolarity(parent.getLeft(), featureTokens) === 'positive';
+  return Boolean(
+    body && Node.isBlock(body) && hasPositiveEarlyReturn(body.getStatements(), featureTokens),
+  );
 }
 
 const sourceFileTokenCache = new WeakMap<SourceFile, Map<string, boolean>>();
@@ -639,9 +439,7 @@ function sourceFileContainsAnyToken(
   for (const token of tokens) {
     let hasToken = cache.get(token);
     if (hasToken === undefined) {
-      if (sfText === undefined) {
-        sfText = sf.getFullText();
-      }
+      sfText ??= sf.getFullText();
       hasToken = sfText.includes(token);
       cache.set(token, hasToken);
     }
@@ -668,47 +466,66 @@ export function isProtectedByFeatureGuard(
   // If node is a CallExpression (e.g. addEventListener) or BinaryExpression (e.g. onscroll = handler),
   // check if any callable argument/RHS contains an early-return guard checking featureTokens.
   if (Node.isCallExpression(node)) {
-    for (const arg of node.getArguments()) {
-      const callable = resolveCallableNode(arg);
-      if (isGuardedByCallableEarlyReturn(callable, featureTokens)) {
-        return true;
-      }
-    }
-  } else if (Node.isBinaryExpression(node)) {
-    const callable = resolveCallableNode(node.getRight());
-    if (isGuardedByCallableEarlyReturn(callable, featureTokens)) {
-      return true;
-    }
-  }
-
-  let current: Node | undefined = node;
-
-  while (current) {
-    const parent: Node | undefined = current.getParent();
-    if (!parent) {
-      break;
-    }
-
-    if (Node.isIfStatement(parent) && isGuardedByIfStatement(parent, current, featureTokens)) {
-      return true;
-    }
-
-    if (isGuardedByTernary(parent, current, featureTokens)) {
-      return true;
-    }
-
-    if (isGuardedByLogicalFallback(parent, current, featureTokens)) {
-      return true;
-    }
-
     if (
-      (Node.isBlock(parent) || Node.isSourceFile(parent)) &&
-      isGuardedByPrecedingEarlyReturn(parent.getStatements(), current, featureTokens)
+      node
+        .getArguments()
+        .some((arg) => isGuardedByCallableEarlyReturn(resolveCallableNode(arg), featureTokens))
     ) {
       return true;
     }
+  } else if (
+    Node.isBinaryExpression(node) &&
+    isGuardedByCallableEarlyReturn(resolveCallableNode(node.getRight()), featureTokens)
+  ) {
+    return true;
+  }
 
-    current = parent;
+  for (
+    let current: Node = node, parent = current.getParent();
+    parent;
+    current = parent, parent = current.getParent()
+  ) {
+    if (Node.isIfStatement(parent)) {
+      const expectedPolarity =
+        current === parent.getElseStatement()
+          ? 'positive'
+          : current === parent.getThenStatement()
+            ? 'negative'
+            : null;
+      if (
+        expectedPolarity &&
+        conditionCheckPolarity(parent.getExpression(), featureTokens) === expectedPolarity
+      ) {
+        return true;
+      }
+    } else if (Node.isConditionalExpression(parent)) {
+      const expectedPolarity =
+        current === parent.getWhenFalse()
+          ? 'positive'
+          : current === parent.getWhenTrue()
+            ? 'negative'
+            : null;
+      if (
+        expectedPolarity &&
+        conditionCheckPolarity(parent.getCondition(), featureTokens) === expectedPolarity
+      ) {
+        return true;
+      }
+    } else if (Node.isBinaryExpression(parent)) {
+      const op = parent.getOperatorToken().getKind();
+      if (
+        (op === SyntaxKind.BarBarToken || op === SyntaxKind.QuestionQuestionToken) &&
+        current === parent.getRight() &&
+        conditionCheckPolarity(parent.getLeft(), featureTokens) === 'positive'
+      ) {
+        return true;
+      }
+    } else if (
+      (Node.isBlock(parent) || Node.isSourceFile(parent)) &&
+      hasPositiveEarlyReturn(parent.getStatements(), featureTokens, current.getStart())
+    ) {
+      return true;
+    }
   }
 
   return false;
@@ -726,6 +543,16 @@ export interface MatchedEventListener {
   readonly eventName: string;
   readonly handlerNode: Node;
   readonly targetNode: Node | undefined;
+}
+
+function getStaticStringValue(node: Node | undefined): string | null {
+  if (!node) {
+    return null;
+  }
+  const unwrapped = unwrapExpression(node);
+  return Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)
+    ? unwrapped.getLiteralText()
+    : null;
 }
 
 /**
@@ -746,120 +573,92 @@ export function matchEventListenerCall(
   const targetNode = expr.getExpression();
   const args = node.getArguments();
 
-  // 1. Native .addEventListener('event', handler)
-  if (methodName === 'addEventListener') {
-    if (args.length < 2) {
-      return null;
+  if (methodName === 'addEventListener' && args.length >= 2) {
+    const evName = getStaticStringValue(args[0]);
+    if (evName && eventNames.includes(evName)) {
+      return { eventName: evName, handlerNode: resolveCallableNode(args[1]), targetNode };
     }
-    const eventArg = unwrapExpression(args[0]);
-    if (!Node.isStringLiteral(eventArg) && !Node.isNoSubstitutionTemplateLiteral(eventArg)) {
-      return null;
-    }
-    const evName = eventArg.getLiteralText();
-    if (!eventNames.includes(evName)) {
-      return null;
-    }
-    const handlerNode = resolveCallableNode(args[1]);
-    return { eventName: evName, handlerNode, targetNode };
+    return null;
   }
 
-  // 2. jQuery .on('event', [selector,] handler)
-  if (methodName === 'on') {
-    if (args.length < 2) {
+  if (methodName === 'on' && args.length >= 2) {
+    const rawEventText = getStaticStringValue(args[0])?.trim();
+    if (!rawEventText) {
       return null;
     }
-    const eventArg = unwrapExpression(args[0]);
-    if (!Node.isStringLiteral(eventArg) && !Node.isNoSubstitutionTemplateLiteral(eventArg)) {
-      return null;
-    }
-    const rawEventText = eventArg.getLiteralText().trim();
-    // Support namespaced events e.g. "scroll.myPlugin" -> "scroll"
-    const parsedEvents = rawEventText.split(/\s+/).map((e) => e.split('.')[0]);
-    const matchedEvent = parsedEvents.find((e) => eventNames.includes(e));
+    const matchedEvent = rawEventText
+      .split(/\s+/)
+      .map((e) => e.split('.')[0])
+      .find((e): e is string => Boolean(e && eventNames.includes(e)));
     if (!matchedEvent) {
       return null;
     }
-    const rawHandler = args[args.length - 1];
-    const handlerNode = resolveCallableNode(rawHandler);
-    return { eventName: matchedEvent, handlerNode, targetNode };
+    return {
+      eventName: matchedEvent,
+      handlerNode: resolveCallableNode(args[args.length - 1]),
+      targetNode,
+    };
   }
 
-  // 3. jQuery shorthand methods: .scroll(handler), .keydown(handler), etc.
-  if (JQUERY_EVENT_SHORTHANDS.has(methodName) && eventNames.includes(methodName)) {
-    if (args.length === 0) {
-      // Shorthand with 0 args is a trigger/action, not an event listener
-      return null;
-    }
-    const rawHandler = args[args.length - 1];
-    const handlerNode = resolveCallableNode(rawHandler);
-    return { eventName: methodName, handlerNode, targetNode };
+  if (
+    args.length > 0 &&
+    JQUERY_EVENT_SHORTHANDS.has(methodName) &&
+    eventNames.includes(methodName)
+  ) {
+    return {
+      eventName: methodName,
+      handlerNode: resolveCallableNode(args[args.length - 1]),
+      targetNode,
+    };
   }
 
   return null;
 }
 
+const CLASS_LIST_MUTATION_METHODS = new Set(['add', 'remove', 'toggle', 'replace']);
+const DIRECT_DOM_MUTATION_METHODS = new Set([
+  'setAttribute',
+  'removeAttribute',
+  'toggleAttribute',
+  'addClass',
+  'removeClass',
+  'toggleClass',
+]);
+
 function isDirectClassOrAttrMutation(n: Node): boolean {
-  // 1. className assignment: el.className = '...' or el.className += '...'
   if (Node.isBinaryExpression(n)) {
     const op = n.getOperatorToken().getKind();
     if (op === SyntaxKind.EqualsToken || op === SyntaxKind.PlusEqualsToken) {
       const left = unwrapExpression(n.getLeft());
-      if (Node.isPropertyAccessExpression(left) && left.getName() === 'className') {
-        return true;
-      }
+      return Node.isPropertyAccessExpression(left) && left.getName() === 'className';
     }
     return false;
   }
 
-  // 2. Call expressions
-  if (Node.isCallExpression(n)) {
-    const expr = unwrapExpression(n.getExpression());
-    if (!Node.isPropertyAccessExpression(expr)) {
-      return false;
-    }
-    const methodName = expr.getName();
+  if (!Node.isCallExpression(n)) {
+    return false;
+  }
+  const expr = unwrapExpression(n.getExpression());
+  if (!Node.isPropertyAccessExpression(expr)) {
+    return false;
+  }
+  const methodName = expr.getName();
 
-    // classList.add, remove, toggle, replace
-    if (
-      methodName === 'add' ||
-      methodName === 'remove' ||
-      methodName === 'toggle' ||
-      methodName === 'replace'
-    ) {
-      const caller = unwrapExpression(expr.getExpression());
-      if (Node.isPropertyAccessExpression(caller) && caller.getName() === 'classList') {
-        return true;
-      }
-    }
+  if (DIRECT_DOM_MUTATION_METHODS.has(methodName)) {
+    return true;
+  }
 
-    // setAttribute, removeAttribute, toggleAttribute
-    if (
-      methodName === 'setAttribute' ||
-      methodName === 'removeAttribute' ||
-      methodName === 'toggleAttribute'
-    ) {
-      return true;
-    }
+  if (CLASS_LIST_MUTATION_METHODS.has(methodName)) {
+    const caller = unwrapExpression(expr.getExpression());
+    return Node.isPropertyAccessExpression(caller) && caller.getName() === 'classList';
+  }
 
-    // jQuery .addClass, .removeClass, .toggleClass
-    if (
-      methodName === 'addClass' ||
-      methodName === 'removeClass' ||
-      methodName === 'toggleClass'
-    ) {
-      return true;
-    }
-
-    // jQuery .attr(name, value) or .attr({ name: value })
-    if (methodName === 'attr') {
-      const args = n.getArguments();
-      if (args.length >= 2) {
-        return true;
-      }
-      if (args.length === 1 && Node.isObjectLiteralExpression(unwrapExpression(args[0]))) {
-        return true;
-      }
-    }
+  if (methodName === 'attr') {
+    const args = n.getArguments();
+    return (
+      args.length >= 2 ||
+      (args.length === 1 && Node.isObjectLiteralExpression(unwrapExpression(args[0])))
+    );
   }
 
   return false;
@@ -871,17 +670,10 @@ function isDirectClassOrAttrMutation(n: Node): boolean {
  * .removeAttribute(...), .toggleAttribute(...), or jQuery .addClass/.removeClass/.toggleClass/.attr.
  */
 export function isDomClassOrAttrMutation(node: Node): boolean {
-  if (isDirectClassOrAttrMutation(node)) {
-    return true;
-  }
-  let found = false;
-  node.forEachDescendant((desc, traversal) => {
-    if (isDirectClassOrAttrMutation(desc)) {
-      found = true;
-      traversal.stop();
-    }
-  });
-  return found;
+  return (
+    isDirectClassOrAttrMutation(node) ||
+    Boolean(node.forEachDescendant((desc) => isDirectClassOrAttrMutation(desc) || undefined))
+  );
 }
 
 /**
@@ -891,15 +683,8 @@ export function isDomClassOrAttrMutation(node: Node): boolean {
 export function getSafeModuleSpecifier(
   decl: ImportDeclaration | ExportDeclaration,
 ): string | null {
-  const moduleSpecifier = decl.getModuleSpecifier();
-  if (!moduleSpecifier) {
-    return null;
-  }
-  const compilerNode = moduleSpecifier.compilerNode;
-  if (ts.isStringLiteral(compilerNode)) {
-    return compilerNode.text;
-  }
-  return null;
+  const spec = decl.compilerNode.moduleSpecifier;
+  return spec && ts.isStringLiteral(spec) ? spec.text : null;
 }
 
 /**
@@ -942,10 +727,7 @@ export function isRequireOfPackage(
   ) {
     return matchesPackageSpec(firstArg.getLiteralText(), packages);
   }
-  if (options?.allowCurriedRequire && isRequireOfPackage(callee, packages, options)) {
-    return true;
-  }
-  return false;
+  return Boolean(options?.allowCurriedRequire && isRequireOfPackage(callee, packages, options));
 }
 
 export interface LibraryReferenceOptions {
@@ -971,32 +753,6 @@ export interface LibraryReferenceOptions {
   readonly globalNamespaces?: readonly string[];
 }
 
-function isParameterBindingName(param: ParameterDeclaration, localName: string): boolean {
-  const paramNameNode = param.getNameNode();
-  if (Node.isIdentifier(paramNameNode) && paramNameNode.getText() === localName) {
-    return true;
-  }
-  for (const el of paramNameNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
-    if (el.getText() === localName) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function isShadowedByCallableScope(scope: Node, localName: string): boolean {
-  if (!isCallableScope(scope)) {
-    return false;
-  }
-  if (
-    (Node.isFunctionDeclaration(scope) || Node.isFunctionExpression(scope)) &&
-    scope.getName() === localName
-  ) {
-    return true;
-  }
-  return scope.getParameters().some((param) => isParameterBindingName(param, localName));
-}
-
 function matchesExpectedPropertyName(
   propName: string,
   identName: string,
@@ -1005,155 +761,55 @@ function matchesExpectedPropertyName(
   return propName === identName || (allowDefaultImport && propName === 'default');
 }
 
-function checkVariableDeclarationBinding(
+function isRequireExportExpression(
+  expr: Node,
+  identName: string,
+  packages: readonly string[],
+  allowDefaultImport: boolean,
+  requireOpts: RequirePackageOptions | undefined,
+): boolean {
+  const resolved = resolveLocalExpression(expr, 2);
+  if (allowDefaultImport && isRequireOfPackage(resolved, packages, requireOpts)) {
+    return true;
+  }
+  return (
+    Node.isPropertyAccessExpression(resolved) &&
+    matchesExpectedPropertyName(resolved.getName(), identName, allowDefaultImport) &&
+    isRequireOfPackage(resolveLocalExpression(resolved.getExpression(), 2), packages, requireOpts)
+  );
+}
+
+function matchesRequireVariableDeclaration(
   decl: VariableDeclaration,
   localName: string,
   identName: string,
   packages: readonly string[],
   allowDefaultImport: boolean,
   requireOpts: RequirePackageOptions | undefined,
-): 'matched' | 'shadowed' | 'none' {
+): boolean {
   const nameNode = decl.getNameNode();
+  const init = decl.getInitializer();
+  if (!init) {
+    return false;
+  }
 
   if (Node.isIdentifier(nameNode)) {
-    if (nameNode.getText() !== localName) {
-      return 'none';
-    }
-    const init = decl.getInitializer();
-    if (!init) {
-      return 'shadowed';
-    }
-    const resolvedInit = resolveLocalExpression(init, 2);
-    if (allowDefaultImport && isRequireOfPackage(resolvedInit, packages, requireOpts)) {
-      return 'matched';
-    }
-    if (
-      Node.isPropertyAccessExpression(resolvedInit) &&
-      matchesExpectedPropertyName(resolvedInit.getName(), identName, allowDefaultImport) &&
-      isRequireOfPackage(resolveLocalExpression(resolvedInit.getExpression(), 2), packages, requireOpts)
-    ) {
-      return 'matched';
-    }
-    return 'shadowed';
+    return isRequireExportExpression(init, identName, packages, allowDefaultImport, requireOpts);
   }
 
   if (Node.isObjectBindingPattern(nameNode)) {
-    for (const el of nameNode.getElements()) {
-      if (el.getName() !== localName) {
-        continue;
-      }
-      const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
-      const init = decl.getInitializer();
-      if (
-        init &&
-        matchesExpectedPropertyName(propName, identName, allowDefaultImport) &&
-        isRequireOfPackage(resolveLocalExpression(init, 2), packages, requireOpts)
-      ) {
-        return 'matched';
-      }
-      return 'shadowed';
+    const el = nameNode.getElements().find((e) => e.getName() === localName);
+    if (!el) {
+      return false;
     }
-    return 'none';
+    const propName = el.getPropertyNameNode()?.getText() ?? el.getName();
+    return (
+      matchesExpectedPropertyName(propName, identName, allowDefaultImport) &&
+      isRequireOfPackage(resolveLocalExpression(init, 2), packages, requireOpts)
+    );
   }
 
-  if (Node.isArrayBindingPattern(nameNode)) {
-    for (const el of nameNode.getElements()) {
-      if (Node.isBindingElement(el) && el.getName() === localName) {
-        return 'shadowed';
-      }
-    }
-  }
-
-  return 'none';
-}
-
-function checkEnclosingBindings(
-  identNode: Node,
-  localName: string,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean,
-  requireOpts: RequirePackageOptions | undefined,
-): 'matched' | 'shadowed' | 'none' {
-  let current: Node | undefined = identNode.getParent();
-  while (current) {
-    if (isShadowedByCallableScope(current, localName)) {
-      return 'shadowed';
-    }
-
-    for (const decl of getForLoopDeclarations(current)) {
-      const status = checkVariableDeclarationBinding(
-        decl,
-        localName,
-        identName,
-        packages,
-        allowDefaultImport,
-        requireOpts,
-      );
-      if (status !== 'none') {
-        return status;
-      }
-    }
-
-    if (Node.isBlock(current) || Node.isSourceFile(current)) {
-      for (const stmt of current.getStatements()) {
-        if (
-          (Node.isFunctionDeclaration(stmt) || Node.isClassDeclaration(stmt)) &&
-          stmt.getName() === localName
-        ) {
-          return 'shadowed';
-        }
-        if (!Node.isVariableStatement(stmt)) {
-          continue;
-        }
-        for (const decl of stmt.getDeclarationList().getDeclarations()) {
-          const status = checkVariableDeclarationBinding(
-            decl,
-            localName,
-            identName,
-            packages,
-            allowDefaultImport,
-            requireOpts,
-          );
-          if (status !== 'none') {
-            return status;
-          }
-        }
-      }
-    }
-
-    current = current.getParent();
-  }
-  return 'none';
-}
-
-function checkImportDeclarations(
-  sourceFile: SourceFile,
-  localName: string,
-  identName: string,
-  packages: readonly string[],
-  allowDefaultImport: boolean,
-): boolean | null {
-  for (const imp of sourceFile.getImportDeclarations()) {
-    const matchesPkg = matchesPackageSpec(getSafeModuleSpecifier(imp), packages);
-    if (
-      imp.getDefaultImport()?.getText() === localName ||
-      imp.getNamespaceImport()?.getText() === localName
-    ) {
-      return allowDefaultImport && matchesPkg;
-    }
-    for (const named of imp.getNamedImports()) {
-      const importedName = named.getName();
-      const boundName = named.getAliasNode()?.getText() ?? importedName;
-      if (boundName === localName) {
-        return (
-          matchesPkg &&
-          matchesExpectedPropertyName(importedName, identName, allowDefaultImport)
-        );
-      }
-    }
-  }
-  return null;
+  return false;
 }
 
 /**
@@ -1175,57 +831,46 @@ export function isLibraryReference(
 
   const unwrapped = unwrapExpression(node);
 
-  if (allowDefaultImport && isRequireOfPackage(unwrapped, packages, requireOpts)) {
-    return true;
-  }
-
-  if (Node.isPropertyAccessExpression(unwrapped)) {
-    if (matchesExpectedPropertyName(unwrapped.getName(), identName, allowDefaultImport)) {
-      const receiver = unwrapped.getExpression();
-      if (isRequireOfPackage(resolveLocalExpression(receiver, 2), packages, requireOpts)) {
-        return true;
-      }
-      if (
-        allowGlobal &&
-        options?.globalNamespaces?.some((ns) => isGlobalReference(receiver, ns))
-      ) {
-        return true;
-      }
-    }
-  }
-
   if (Node.isIdentifier(unwrapped)) {
     const localName = unwrapped.getText();
-    const bindingStatus = checkEnclosingBindings(
-      unwrapped,
-      localName,
-      identName,
-      packages,
-      allowDefaultImport,
-      requireOpts,
-    );
-    if (bindingStatus === 'matched') {
-      return true;
+    const binding = resolveLexicalBinding(unwrapped, localName);
+    if (!binding) {
+      return allowGlobal && localName === identName;
     }
-    if (bindingStatus === 'shadowed') {
-      return false;
+    if (binding.kind === 'variable') {
+      return matchesRequireVariableDeclaration(
+        binding.node,
+        localName,
+        identName,
+        packages,
+        allowDefaultImport,
+        requireOpts,
+      );
     }
-
-    const importMatch = checkImportDeclarations(
-      unwrapped.getSourceFile(),
-      localName,
-      identName,
-      packages,
-      allowDefaultImport,
-    );
-    if (importMatch !== null) {
-      return importMatch;
+    if (binding.kind === 'import') {
+      const { declaration, importedName, isNamespace } = binding.importBinding;
+      if (!matchesPackageSpec(getSafeModuleSpecifier(declaration), packages)) {
+        return false;
+      }
+      return isNamespace
+        ? allowDefaultImport
+        : matchesExpectedPropertyName(importedName, identName, allowDefaultImport);
     }
+    return false;
   }
 
-  if (allowGlobal && isGlobalReference(unwrapped, identName)) {
+  if (isRequireExportExpression(unwrapped, identName, packages, allowDefaultImport, requireOpts)) {
     return true;
   }
 
-  return false;
+  if (
+    allowGlobal &&
+    Node.isPropertyAccessExpression(unwrapped) &&
+    matchesExpectedPropertyName(unwrapped.getName(), identName, allowDefaultImport) &&
+    options?.globalNamespaces?.some((ns) => isGlobalReference(unwrapped.getExpression(), ns))
+  ) {
+    return true;
+  }
+
+  return allowGlobal && isGlobalReference(unwrapped, identName);
 }
