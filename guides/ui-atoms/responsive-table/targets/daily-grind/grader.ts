@@ -15,7 +15,7 @@ import {
 import type { CSSRule, CSSStyleSheet } from 'cssomnom';
 import type { Document } from 'linkedom';
 
-// @ts-expect-error import.meta.url is supported by the test runner
+// @ts-ignore import.meta.url is supported by the test runner
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 function getTopLevelStyleRules(rules: CSSRule[]): CSSStyleRule[] {
@@ -159,7 +159,7 @@ test.describe('responsive-table Target Grader', () => {
       const theadTh = document.querySelector('table thead th');
       if (!thead && !theadTh) return false;
 
-      const targets = [thead, theadTh].filter(Boolean);
+      const targets = [thead, theadTh].filter((el): el is NonNullable<typeof el> => el !== null);
       const matchedViaCascade = targets.some((el) => {
         const cascaded = getCascadedStyle(el, topRules);
         return (
