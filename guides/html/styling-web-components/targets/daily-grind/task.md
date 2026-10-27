@@ -1,1 +1,1 @@
-- Refactor the seasonal favorite cards into a web component and style it so that the component and its internal elements can be themed and customized from the page stylesheet, while adapting responsively to its container size.
+- Turn the Seasonal Favorites cards into a reusable card web component that other pages on the site can drop in and restyle to match their own look, including colors, buttons, and other parts of the card, and that rearranges itself when it's placed in narrow or wide spots.
