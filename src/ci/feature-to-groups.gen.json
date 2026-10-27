@@ -189,6 +189,9 @@
   "column-span": [
     "css"
   ],
+  "column-wrap": [
+    "css"
+  ],
   "conic-gradients": [
     "css"
   ],
@@ -1120,9 +1123,6 @@
     "css"
   ],
   "tmp-calc-dimensions": [
-    "css"
-  ],
-  "tmp-column-wrap": [
     "css"
   ],
   "tmp-display-state": [

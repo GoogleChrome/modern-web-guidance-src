@@ -1,0 +1,248 @@
+diff --git a/index.html b/index.html
+index 66c9173..0ef3c77 100644
+--- a/index.html
++++ b/index.html
+@@ -4,8 +4,61 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
++
++  <link
++    rel="preload"
++    as="font"
++    type="font/woff2"
++    href="https://cdn.example.com/fonts@1.0.0/brand-sans.woff2"
++    integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  >
++  <link
++    rel="stylesheet"
++    href="https://cdn.example.com/theme@1.2.0/tokens.css"
++    integrity="sha384-bs0EksOYBbU/g0IAHMXbSyH1Mgw83GKn+EZlSI+VE+zVchXmSbLwhVLrPzsOWnc5"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  >
++  <link
++    rel="stylesheet"
++    href="https://cdn.example.com/ui@2.4.0/styles.css"
++    integrity="sha384-bs0EksOYBbU/g0IAHMXbSyH1Mgw83GKn+EZlSI+VE+zVchXmSbLwhVLrPzsOWnc5"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++  >
++  <script
++    src="https://cdn.example.com/ui@2.4.0/bundle.min.js"
++    integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
++    crossorigin="anonymous"
++    referrerpolicy="no-referrer"
++    defer
++  ></script>
++
+   <style>
++    @font-face {
++      font-family: "BrandSans";
++      /* 1. Parse-time fallback for browsers without url() modifier support */
++      src: url("https://cdn.example.com/fonts@1.0.0/brand-sans.woff2") format("woff2");
++      /* 2. Parse-time fallback for browsers supporting cross-origin() and referrer-policy() */
++      src: url(
++        "https://cdn.example.com/fonts@1.0.0/brand-sans.woff2"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      ) format("woff2");
++      /* 3. Full protection in browsers supporting cross-origin(), referrer-policy(), and integrity() */
++      src: url(
++        "https://cdn.example.com/fonts@1.0.0/brand-sans.woff2"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC")
++      ) format("woff2");
++      font-display: swap;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -21,7 +74,7 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: "BrandSans", 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+@@ -75,8 +128,22 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://cdn.example.com/media@1.0.0/hero-coffee.jpg");
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++          "https://cdn.example.com/media@1.0.0/hero-coffee.jpg"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++        );
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++          "https://cdn.example.com/media@1.0.0/hero-coffee.jpg"
++          cross-origin(anonymous)
++          referrer-policy(no-referrer)
++          integrity("sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91")
++        );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -115,6 +182,81 @@
+       text-align: center;
+     }
+ 
++    .card-media {
++      height: 160px;
++      border-radius: 6px;
++      margin-bottom: 15px;
++      background-color: var(--secondary);
++      background-size: cover;
++      background-position: center;
++    }
++
++    .card-media-maple {
++      background-image: url("https://cdn.example.com/media@1.0.0/maple-oat-latte.jpg");
++      background-image: url(
++        "https://cdn.example.com/media@1.0.0/maple-oat-latte.jpg"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      );
++      background-image: url(
++        "https://cdn.example.com/media@1.0.0/maple-oat-latte.jpg"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91")
++      );
++    }
++
++    .card-media-espresso {
++      background-image: url("https://cdn.example.com/media@1.0.0/dark-roast-espresso.jpg");
++      background-image: url(
++        "https://cdn.example.com/media@1.0.0/dark-roast-espresso.jpg"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      );
++      background-image: url(
++        "https://cdn.example.com/media@1.0.0/dark-roast-espresso.jpg"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-bs0EksOYBbU/g0IAHMXbSyH1Mgw83GKn+EZlSI+VE+zVchXmSbLwhVLrPzsOWnc5")
++      );
++    }
++
++    .card-media-coldbrew {
++      background-image: url("https://cdn.example.com/media@1.0.0/cold-brew.jpg");
++      background-image: url(
++        "https://cdn.example.com/media@1.0.0/cold-brew.jpg"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      );
++      background-image: url(
++        "https://cdn.example.com/media@1.0.0/cold-brew.jpg"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC")
++      );
++    }
++
++    .verified-graphic {
++      display: inline-block;
++      width: 24px;
++      height: 24px;
++      vertical-align: middle;
++      background-repeat: no-repeat;
++      background-size: contain;
++      background-image: url("https://cdn.example.com/media@1.0.0/badge.svg");
++      background-image: url(
++        "https://cdn.example.com/media@1.0.0/badge.svg"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      );
++      background-image: url(
++        "https://cdn.example.com/media@1.0.0/badge.svg"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91")
++      );
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -176,19 +318,22 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 style="text-align: center;">Seasonal Favorites <span class="verified-graphic" aria-hidden="true"></span></h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-media card-media-maple" role="img" aria-label="Maple Oat Latte"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-media card-media-espresso" role="img" aria-label="Dark Roast Espresso"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-media card-media-coldbrew" role="img" aria-label="Cold Brew"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -207,6 +352,41 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    export function getCssUrlModifierSupport() {
++      const supportsCrossOriginAndReferrer =
++        typeof CSS !== 'undefined' &&
++        typeof CSS.supports === 'function' &&
++        CSS.supports(
++          'background-image',
++          'url("https://example.com/a.svg" cross-origin(anonymous) referrer-policy(no-referrer))',
++        );
++
++      const supportsUrlIntegrity =
++        typeof CSS !== 'undefined' &&
++        typeof CSS.supports === 'function' &&
++        CSS.supports(
++          'background-image',
++          'url("https://example.com/a.svg" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91"))',
++        );
++
++      return { supportsCrossOriginAndReferrer, supportsUrlIntegrity };
++    }
++
++    export async function loadSeasonalManifest() {
++      const response = await fetch('https://cdn.example.com/ui@2.4.0/manifest.json', {
++        integrity: 'sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC',
++        mode: 'cors',
++        credentials: 'omit',
++        referrerPolicy: 'no-referrer',
++      });
++      return response.json();
++    }
++
++    document.documentElement.dataset.cssUrlIntegrity = String(
++      getCssUrlModifierSupport().supportsUrlIntegrity,
++    );
++  </script>
+ </body>
+ 
+ </html>

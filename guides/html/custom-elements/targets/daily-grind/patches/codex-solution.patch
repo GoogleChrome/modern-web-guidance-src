@@ -1,0 +1,234 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..8264def 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,20 @@
+       background: #3e2723;
+     }
+ 
++    coffee-order {
++      display: block;
++      margin-top: 24px;
++    }
++
++    coffee-order:not(:defined) {
++      opacity: 0;
++      animation: coffee-order-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes coffee-order-fallback {
++      to { opacity: 1; }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +208,10 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <coffee-order label="Maple Oat Latte" count="1">
++        <p>Order Maple Oat Latte from our online menu.</p>
++        <a href="/order-online" class="btn">Order coffee</a>
++      </coffee-order>
+     </section>
+   </main>
+ 
+@@ -207,6 +225,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./dist/coffee-order.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..2262860 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,12 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "devDependencies": {
++    "typescript": "^5.9.3"
++  },
+   "scripts": {
++    "build": "tsc --project tsconfig.json",
++    "prestart": "npm run build",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/src/coffee-order.ts b/src/coffee-order.ts
+new file mode 100644
+index 0000000..f30bda3
+--- /dev/null
++++ b/src/coffee-order.ts
+@@ -0,0 +1,139 @@
++/** An attribute-backed order control, usable from HTML and JavaScript. */
++export class CoffeeOrder extends HTMLElement {
++  static observedAttributes = ['label', 'count', 'disabled'];
++
++  #label: HTMLHeadingElement;
++  #summary: HTMLParagraphElement;
++  #decrease: HTMLButtonElement;
++  #increase: HTMLButtonElement;
++  #order: HTMLAnchorElement;
++
++  constructor() {
++    super();
++    // Only initialize our own shadow DOM here; markup is read on upgrade/connect.
++    const shadow = this.attachShadow({ mode: 'open' });
++    shadow.innerHTML = `
++      <style>
++        :host { display: block; }
++        .order { padding: 20px; background: white; border-radius: 8px;
++          box-shadow: 0 2px 5px rgb(0 0 0 / 10%); text-align: center; }
++        h3 { margin: 0 0 10px; color: var(--primary, #4e342e); }
++        p { margin: 10px 0; }
++        .controls { display: flex; align-items: center; justify-content: center; gap: 16px; }
++        button, a { font: inherit; border-radius: 5px; }
++        button { width: 44px; height: 44px; border: 1px solid var(--secondary, #d7ccc8);
++          background: white; color: var(--text, #3e2723); cursor: pointer; }
++        button:disabled { opacity: .5; cursor: default; }
++        a { display: inline-block; margin-top: 10px; padding: 10px 20px;
++          background: var(--primary, #4e342e); color: white; text-decoration: none; }
++        a[aria-disabled="true"] { opacity: .5; cursor: default; }
++        button:focus-visible, a:focus-visible { outline: 3px solid var(--accent, #ffab40);
++          outline-offset: 3px; }
++      </style>
++      <section class="order" aria-labelledby="order-label">
++        <h3 id="order-label"></h3>
++        <div class="controls">
++          <button type="button" aria-label="Remove one coffee">−</button>
++          <p aria-live="polite" aria-atomic="true"></p>
++          <button type="button" aria-label="Add one coffee">+</button>
++        </div>
++        <a href="/order-online">Order coffee</a>
++      </section>`;
++
++    // The template above always provides these elements.
++    this.#label = shadow.querySelector('h3')!;
++    this.#summary = shadow.querySelector('p')!;
++    const buttons = shadow.querySelectorAll('button');
++    this.#decrease = buttons[0]!;
++    this.#increase = buttons[1]!;
++    this.#order = shadow.querySelector('a')!;
++
++    // Local listeners are installed once, so reconnects cannot duplicate them.
++    this.#decrease.addEventListener('click', () => {
++      if (!this.disabled && this.count > 0) this.count -= 1;
++    });
++    this.#increase.addEventListener('click', () => {
++      if (!this.disabled && this.count < Number.MAX_SAFE_INTEGER) this.count += 1;
++    });
++    this.#order.addEventListener('click', (event) => {
++      if (this.disabled || this.count === 0) event.preventDefault();
++    });
++  }
++
++  get label(): string {
++    return this.getAttribute('label') ?? '';
++  }
++
++  set label(value: string) {
++    this.setAttribute('label', String(value));
++  }
++
++  get count(): number {
++    const value = Number(this.getAttribute('count'));
++    return Number.isFinite(value)
++      ? Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(value)))
++      : 0;
++  }
++
++  set count(value: number) {
++    this.setAttribute('count', String(value));
++  }
++
++  get disabled(): boolean {
++    return this.hasAttribute('disabled');
++  }
++
++  set disabled(value: boolean) {
++    this.toggleAttribute('disabled', Boolean(value));
++  }
++
++  connectedCallback(): void {
++    // Recover properties assigned before registration, which otherwise shadow
++    // the reflected accessors. This is safe on every subsequent connection.
++    this.#upgradeProperty('label');
++    this.#upgradeProperty('count');
++    this.#upgradeProperty('disabled');
++    this.#render();
++  }
++
++  connectedMoveCallback(): void {
++    // Moving the control preserves its shadow DOM, state and local listeners.
++  }
++
++  attributeChangedCallback(
++    _name: string, oldValue: string | null, newValue: string | null,
++  ): void {
++    if (oldValue !== newValue) this.#render();
++  }
++
++  #upgradeProperty(key: 'label' | 'count' | 'disabled'): void {
++    if (!Object.prototype.hasOwnProperty.call(this, key)) return;
++    const value = this[key];
++    Reflect.deleteProperty(this, key);
++    if (key === 'label') this.label = String(value);
++    else if (key === 'count') this.count = Number(value);
++    else this.disabled = Boolean(value);
++  }
++
++  #render(): void {
++    this.#label.textContent = this.label || 'Your coffee order';
++    this.#summary.textContent = `${this.count} ${this.count === 1 ? 'coffee' : 'coffees'}`;
++    this.#decrease.disabled = this.disabled || this.count === 0;
++    this.#increase.disabled = this.disabled || this.count === Number.MAX_SAFE_INTEGER;
++    const unavailable = this.disabled || this.count === 0;
++    this.#order.setAttribute('aria-disabled', String(unavailable));
++    this.#order.tabIndex = unavailable ? -1 : 0;
++    const params = new URLSearchParams({ coffee: this.label, quantity: String(this.count) });
++    this.#order.href = `/order-online?${params}`;
++  }
++}
++
++if (!customElements.get('coffee-order')) {
++  customElements.define('coffee-order', CoffeeOrder);
++}
++
++declare global {
++  interface HTMLElementTagNameMap {
++    'coffee-order': CoffeeOrder;
++  }
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..b585835
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,14 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ES2022",
++    "lib": ["ES2022", "DOM"],
++    "types": [],
++    "strict": true,
++    "noEmitOnError": true,
++    "outDir": "dist",
++    "rootDir": "src",
++    "forceConsistentCasingInFileNames": true
++  },
++  "include": ["src/**/*.ts"]
++}
