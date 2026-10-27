@@ -9,6 +9,7 @@ import {
   type ClassDeclaration,
   type PropertyAccessExpression,
 } from 'ts-morph';
+import type { Page } from '@playwright/test';
 
 // @ts-ignore - import.meta.url is supported at runtime by Playwright/ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -36,6 +37,94 @@ function getPropertyAccessAssignments(
       if (left.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
       return propPattern.test((left as PropertyAccessExpression).getName());
     });
+}
+
+async function getInteractiveControl(page: Page) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    const { root } = await session.send('DOM.getDocument', { depth: -1 });
+    const { nodes: axNodes } = await session.send('Accessibility.getFullAXTree');
+
+    const elements = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll('*')).filter((el) =>
+        el.tagName.includes('-')
+      );
+      return els.map((el, idx) => {
+        if (!el.id) {
+          el.setAttribute('data-grader-idx', String(idx));
+        }
+        return {
+          tagName: el.tagName.toLowerCase(),
+          id: el.id,
+          selector: el.id
+            ? `#${el.id}`
+            : `${el.tagName.toLowerCase()}[data-grader-idx="${idx}"]`,
+        };
+      });
+    });
+
+    for (const item of elements) {
+      const { nodeId } = await session.send('DOM.querySelector', {
+        nodeId: root.nodeId,
+        selector: item.selector,
+      });
+      if (!nodeId) continue;
+      const { node: domNode } = await session.send('DOM.describeNode', {
+        nodeId,
+      });
+      const axNode = axNodes.find(
+        (n: any) => n.backendDOMNodeId === domNode.backendNodeId
+      );
+      if (!axNode) continue;
+      const stateProp = axNode.properties?.find((p: any) =>
+        ['checked', 'pressed', 'expanded'].includes(p.name)
+      );
+      if (stateProp) {
+        return {
+          selector: item.selector,
+          tagName: item.tagName,
+          role: axNode.role?.value,
+          name: axNode.name?.value,
+          stateProp: stateProp.name,
+          stateValue: String(stateProp.value?.value),
+        };
+      }
+    }
+    return null;
+  } finally {
+    await session.detach();
+  }
+}
+
+async function getControlState(page: Page, selector: string) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    const { root } = await session.send('DOM.getDocument', { depth: -1 });
+    const { nodes: axNodes } = await session.send('Accessibility.getFullAXTree');
+    const { nodeId } = await session.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector,
+    });
+    if (!nodeId) return null;
+    const { node: domNode } = await session.send('DOM.describeNode', {
+      nodeId,
+    });
+    const axNode = axNodes.find(
+      (n: any) => n.backendDOMNodeId === domNode.backendNodeId
+    );
+    if (!axNode) return null;
+    const stateProp = axNode.properties?.find((p: any) =>
+      ['checked', 'pressed', 'expanded'].includes(p.name)
+    );
+    return {
+      role: axNode.role?.value,
+      name: axNode.name?.value,
+      stateProp: stateProp?.name,
+      stateValue: stateProp ? String(stateProp.value?.value) : null,
+    };
+  } finally {
+    await session.detach();
+  }
 }
 
 test.describe('accessible-web-components Target Grader', () => {
@@ -92,6 +181,14 @@ test.describe('accessible-web-components Target Grader', () => {
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
+      await page.evaluate(async () => {
+        const customTag = Array.from(document.querySelectorAll('*'))
+          .map((el) => el.tagName.toLowerCase())
+          .find((tag) => tag.includes('-'));
+        if (customTag && window.customElements) {
+          await window.customElements.whenDefined(customTag);
+        }
+      });
     });
 
     test('Exposes default semantic role via ElementInternals without setting a role attribute on the host element', async ({
@@ -150,11 +247,18 @@ test.describe('accessible-web-components Target Grader', () => {
         );
       });
 
-      const snapshot = await page.locator('body').ariaSnapshot();
-      const hasInitialRoleInTree = /\b(switch|checkbox|button)\b/.test(snapshot);
+      const control = await getInteractiveControl(page);
+      const hasInitialRoleAndStateInTree = Boolean(
+        control &&
+          control.role &&
+          control.stateProp &&
+          (control.stateValue === 'true' || control.stateValue === 'false')
+      );
 
       expect(
-        setsStateViaInternals && runtimeStateCheck && hasInitialRoleInTree
+        setsStateViaInternals &&
+          runtimeStateCheck &&
+          hasInitialRoleAndStateInTree
       ).toBe(true);
     });
 
@@ -182,116 +286,93 @@ test.describe('accessible-web-components Target Grader', () => {
     test('Clicking the custom element control toggles its state in the accessibility tree', async ({
       page,
     }) => {
-      const hostTag = await page.evaluate(() => {
-        const el = Array.from(document.querySelectorAll('*')).find((node) =>
-          node.tagName.includes('-')
-        );
-        return el ? el.tagName.toLowerCase() : null;
-      });
-
-      const hostLocator = page
-        .locator(hostTag || 'non-existent-custom-element')
-        .first();
-      const beforeSnapshot = await hostLocator.ariaSnapshot().catch(() => '');
-      if (hostTag) {
-        await hostLocator.click();
+      const control = await getInteractiveControl(page);
+      let afterState = null;
+      if (control) {
+        await page.evaluate((sel: string) => {
+          const el = document.querySelector(sel) as HTMLElement | null;
+          el?.click();
+        }, control.selector);
+        afterState = await getControlState(page, control.selector);
       }
-      const afterClickSnapshot = await hostLocator
-        .ariaSnapshot()
-        .catch(() => '');
-      const beforeChecked = /\[checked\]|\[pressed\]|\[expanded\]/.test(
-        beforeSnapshot
-      );
-      const afterChecked = /\[checked\]|\[pressed\]|\[expanded\]/.test(
-        afterClickSnapshot
+
+      const passed = Boolean(
+        control &&
+          afterState &&
+          control.stateValue !== null &&
+          afterState.stateValue !== null &&
+          control.stateValue !== afterState.stateValue
       );
 
-      expect(Boolean(hostTag) && beforeChecked !== afterChecked).toBe(true);
+      expect(passed).toBe(true);
     });
 
     test('Pressing Space while the custom element control has focus toggles its state in the accessibility tree', async ({
       page,
     }) => {
-      const hostTag = await page.evaluate(() => {
-        const el = Array.from(document.querySelectorAll('*')).find(
-          (node): node is HTMLElement =>
-            node instanceof HTMLElement && node.tagName.includes('-')
-        );
-        if (el) el.focus();
-        return el ? el.tagName.toLowerCase() : null;
-      });
-
-      const hostLocator = page
-        .locator(hostTag || 'non-existent-custom-element')
-        .first();
-      const beforeSnapshot = await hostLocator.ariaSnapshot().catch(() => '');
-      if (hostTag) {
+      const control = await getInteractiveControl(page);
+      let afterState = null;
+      if (control) {
+        await page.evaluate((sel: string) => {
+          const el = document.querySelector(sel) as HTMLElement | null;
+          el?.focus();
+        }, control.selector);
         await page.keyboard.press('Space');
+        afterState = await getControlState(page, control.selector);
       }
-      const afterSpaceSnapshot = await hostLocator
-        .ariaSnapshot()
-        .catch(() => '');
-      const beforeChecked = /\[checked\]|\[pressed\]|\[expanded\]/.test(
-        beforeSnapshot
-      );
-      const afterChecked = /\[checked\]|\[pressed\]|\[expanded\]/.test(
-        afterSpaceSnapshot
+
+      const passed = Boolean(
+        control &&
+          afterState &&
+          control.stateValue !== null &&
+          afterState.stateValue !== null &&
+          control.stateValue !== afterState.stateValue
       );
 
-      expect(Boolean(hostTag) && beforeChecked !== afterChecked).toBe(true);
+      expect(passed).toBe(true);
     });
 
     test('No aria-* state attribute is added to the host when the state changes', async ({
       page,
     }) => {
-      const hostTag = await page.evaluate(() => {
-        const el = Array.from(document.querySelectorAll('*')).find((node) =>
-          node.tagName.includes('-')
+      const control = await getInteractiveControl(page);
+      let stateToggled = false;
+      let noAriaStateAttributes = false;
+      if (control) {
+        await page.evaluate((sel: string) => {
+          const el = document.querySelector(sel) as HTMLElement | null;
+          el?.click();
+        }, control.selector);
+        const afterState = await getControlState(page, control.selector);
+        stateToggled = Boolean(
+          afterState && control.stateValue !== afterState.stateValue
         );
-        return el ? el.tagName.toLowerCase() : null;
-      });
-
-      const hostLocator = page
-        .locator(hostTag || 'non-existent-custom-element')
-        .first();
-      if (hostTag) {
-        await hostLocator.click();
-        await hostLocator.focus();
-        await page.keyboard.press('Space');
-        await hostLocator.click();
+        noAriaStateAttributes = await page.evaluate(() => {
+          const hosts = Array.from(document.querySelectorAll('*')).filter(
+            (node) => node.tagName.includes('-')
+          );
+          if (hosts.length === 0) return false;
+          return hosts.every(
+            (el) =>
+              !el.hasAttribute('aria-checked') &&
+              !el.hasAttribute('aria-pressed') &&
+              !el.hasAttribute('aria-expanded')
+          );
+        });
       }
 
-      const noAriaStateAttributes = await page.evaluate(() => {
-        const hosts = Array.from(document.querySelectorAll('*')).filter(
-          (node) => node.tagName.includes('-')
-        );
-        if (hosts.length === 0) return false;
-        return hosts.every(
-          (el) =>
-            !el.hasAttribute('aria-checked') &&
-            !el.hasAttribute('aria-pressed') &&
-            !el.hasAttribute('aria-expanded')
-        );
-      });
-
-      expect(noAriaStateAttributes).toBe(true);
+      expect(Boolean(control && stateToggled && noAriaStateAttributes)).toBe(
+        true
+      );
     });
 
     test('Interactive custom element has a non-empty accessible name and valid same-tree or outward cross-boundary ARIA label references', async ({
       page,
     }) => {
-      const hostTag = await page.evaluate(() => {
-        const el = Array.from(document.querySelectorAll('*')).find((node) =>
-          node.tagName.includes('-')
-        );
-        return el ? el.tagName.toLowerCase() : null;
-      });
-
-      const hostLocator = page
-        .locator(hostTag || 'non-existent-custom-element')
-        .first();
-      const snapshot = await hostLocator.ariaSnapshot().catch(() => '');
-      const hasAccessibleName = /"[^"]+"/.test(snapshot);
+      const control = await getInteractiveControl(page);
+      const hasAccessibleName = Boolean(
+        control && control.name && control.name.trim().length > 0
+      );
 
       const validLabelRefs = await page.evaluate(() => {
         const hosts = Array.from(document.querySelectorAll('*')).filter(
@@ -326,7 +407,7 @@ test.describe('accessible-web-components Target Grader', () => {
         });
       });
 
-      expect(Boolean(hostTag) && hasAccessibleName && validLabelRefs).toBe(
+      expect(Boolean(control) && hasAccessibleName && validLabelRefs).toBe(
         true
       );
     });
