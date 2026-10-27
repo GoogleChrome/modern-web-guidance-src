@@ -20,6 +20,8 @@
 - Interactive carousel controls, markers, and fallback buttons have a visible `:focus-visible` indicator.
 - A polite live region (`role="status"` or `aria-live="polite"`) announces the current slide position after scrolling settles.
 - The polite live status is announced on initial load to reflect the first visible slide.
+- Without JavaScript, the first slide is the one in view when the page loads.
+- The track and the fallback buttons set `touch-action: manipulation`.
 - The carousel track remains scrollable via touch, pointer, and native keyboard scrolling without requiring JavaScript.
 - Native controls retain their keyboard behavior; custom key handling does not intercept keys from focused links, form fields, scroll buttons, or markers.
 - Keyboard users can Tab sequentially through controls without encountering a keyboard trap.

@@ -67,11 +67,12 @@
         --current: 0;
       }
 
-      .carousel-track > * {
-        order: calc(
-          clamp(0, 1 - (sibling-index() - 1), 1) * clamp(0, var(--current) - (sibling-count() - 3), 1)
-          - clamp(0, 1 - (sibling-count() - sibling-index()), 1) * clamp(0, 2 - var(--current), 1)
-        );
+      .carousel-track > :first-child {
+        order: clamp(0, var(--current) - (sibling-count() - 3), 1);
+      }
+
+      .carousel-track > :last-child {
+        order: calc(-1 * clamp(0, 2 - var(--current), 1));
       }
     }
 
