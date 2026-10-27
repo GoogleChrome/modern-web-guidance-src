@@ -3,9 +3,12 @@
   "include": [
     "nightly-*-claude_code",
     "nightly-*-codex_cli",
-    "nightly-*-antigravity_cli"
+    "nightly-*-antigravity_cli",
+    "pi-devstral-2512-skills-fix-2026-10-26_14-43-32"
   ],
   "exclude": [],
   "overrides": [],
-  "releasedModels": []
+  "releasedModels": [
+    "gemini-3.8-flash"
+  ]
 }
