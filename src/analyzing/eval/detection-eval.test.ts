@@ -36,6 +36,7 @@ import {
 
 const SAMPLE_GUIDE_SUMMARY: GuideSummaryInfo = {
   guideId: 'calculate-event-differentials',
+  problem: 'Date subtraction suffers from daylight saving and leap second drift.',
   markdownBody:
     '# Calculate Event Differentials\n\nDate subtraction suffers from daylight saving and leap second drift.\n\n## Before\nManual subtraction.\n\n## Now\nTemporal.ZonedDateTime.',
 };
@@ -572,6 +573,7 @@ describe('guide summary extraction from markdown', () => {
   it('hashes exact prompt markdownBody bytes in promptGuideHash and rejects sentinels or missing markdownBody', () => {
     const rawWithFrontmatter = `---\nname: sample\ndescription: Frontmatter desc\n---\n\n# Sample Title\n\n{{macro_token}}\n\nBody text sent to model.\n`;
     const parsed = parseGuideSummaryMarkdown(rawWithFrontmatter, 'sample');
+    assert.equal(parsed.problem, 'Frontmatter desc');
     assert.ok(parsed.guideHash);
     assert.ok(parsed.promptGuideHash);
     assert.notEqual(parsed.promptGuideHash, parsed.guideHash);

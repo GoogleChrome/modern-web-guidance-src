@@ -195,6 +195,7 @@ export interface GuideSummaryInfo {
   guideId: string;
   guideHash?: string;
   promptGuideHash?: string;
+  problem: string;
   markdownBody?: string;
   readonly explainerContext?: string;
   readonly explainerContextHash?: string;
@@ -820,11 +821,56 @@ export function parseGuideSummaryMarkdown(
   markdown: string,
   guideId: string,
 ): GuideSummaryInfo {
+  const fmMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
+  const fm = fmMatch ? fmMatch[1] : '';
+  const descMatch = fm.match(/^description:\s*(.+)$/m);
+  const fmDescription = descMatch ? descMatch[1].trim() : '';
+
   const body = markdown.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
-  const cleanBody = body
-    .replace(/\{\{[^}]+\}\}/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  const titleMatch = body.match(/^#\s+(.+)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : guideId;
+  const bodyWithoutTitle = body.replace(/^#\s+[^\n]+\n*/, '').trim();
+
+  const lines = bodyWithoutTitle.split('\n');
+  const sections: Array<{ header: string; content: string }> = [];
+  let currentHeader = 'Introduction';
+  let currentLines: string[] = [];
+
+  for (const line of lines) {
+    const hMatch = line.match(/^#{2,3}\s+(.+)$/);
+    if (hMatch) {
+      if (currentLines.length > 0 || currentHeader !== 'Introduction') {
+        sections.push({ header: currentHeader, content: currentLines.join('\n').trim() });
+      }
+      currentHeader = hMatch[1].trim();
+      currentLines = [];
+    } else {
+      currentLines.push(line);
+    }
+  }
+  if (currentLines.length > 0) {
+    sections.push({ header: currentHeader, content: currentLines.join('\n').trim() });
+  }
+
+  const introSection =
+    sections.find((s) => s.header === 'Introduction')?.content ?? sections[0]?.content ?? '';
+
+  let problem = '';
+  for (const s of sections) {
+    const h = s.header.toLowerCase();
+    if (h.includes('problem') && !problem) {
+      problem = s.content;
+    }
+  }
+
+  if (!problem) {
+    problem = fmDescription || introSection.split('\n\n')[0] || title;
+  }
+
+  const clean = (str: string): string =>
+    str.replace(/\{\{[^}]+\}\}/g, '').replace(/\n{3,}/g, '\n\n').trim();
+
+  const cleanBody = clean(body);
   const maxBodyLength = 6000;
   const markdownBody =
     cleanBody.length > maxBodyLength
@@ -840,6 +886,7 @@ export function parseGuideSummaryMarkdown(
     guideId,
     guideHash: computeGuideHash(markdown),
     ...(promptGuideHash ? { promptGuideHash } : {}),
+    problem: clean(problem),
     markdownBody: finalMarkdownBody,
   };
 }
