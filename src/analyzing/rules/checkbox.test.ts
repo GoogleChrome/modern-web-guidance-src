@@ -69,7 +69,7 @@ void test('checkbox: positive brownfield matches', async (t) => {
       .accordion [type="checkbox"]:checked + label::before {
         content: "✓";
       }
-      .tab-panel input[type="checkbox"]:checked + label::before {
+      .tab-panel input[type="checkbox"]:checked + label:before {
         content: "✓";
       }
     `;
@@ -221,6 +221,15 @@ void test('checkbox: negative / exempt cases', async (t) => {
       input.accordion[type="checkbox"]:checked + label::after {
         content: "-";
       }
+      .accordion[type="checkbox"]:checked + label::after {
+        content: "-";
+      }
+      input.foldable[type="checkbox"]:checked + label::before {
+        content: "+";
+      }
+      [type="checkbox"]:checked + label.arrow::before {
+        content: "▸";
+      }
       .payment-tab-trigger > input:checked ~ label::before {
         border-color: green;
       }
@@ -296,5 +305,40 @@ void test('checkbox: negative / exempt cases', async (t) => {
     `;
     const matches = scanCss('fallback.css', css, [matcher]);
     assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts commented/excluded sibling rules and non-subject opacity: 0 on ::before or descendants', () => {
+    const commentedAndExcludedSiblingCss = `
+      /* input[type="checkbox"] + label::before { content: "✓"; } */
+      .switch input[type="checkbox"] + span::before {
+        content: "";
+      }
+      input[type="checkbox"] {
+        appearance: none;
+        width: 18px;
+        height: 18px;
+      }
+      input[type="checkbox"]::before {
+        content: "";
+        opacity: 0;
+      }
+      input[type="checkbox"]:checked::before {
+        opacity: 1;
+      }
+    `;
+    assert.equal(scanCss('modern-with-comment.css', commentedAndExcludedSiblingCss, [matcher]).length, 0);
+
+    const nonSubjectOpacityCss = `
+      input[type="checkbox"] + label {
+        cursor: pointer;
+      }
+      input[type="checkbox"]:not(:checked) + label .checkmark {
+        opacity: 0;
+      }
+      .custom-checkbox label {
+        opacity: 0;
+      }
+    `;
+    assert.equal(scanCss('non-subject.css', nonSubjectOpacityCss, [matcher]).length, 0);
   });
 });

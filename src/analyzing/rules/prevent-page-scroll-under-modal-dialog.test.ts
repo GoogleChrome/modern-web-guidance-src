@@ -66,10 +66,12 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.match(matches[0].message, /overscroll-behavior/);
   });
 
-  test('flags document.documentElement.style.overflow = "hidden"', () => {
+  test('flags document.documentElement.style.overflow = "hidden" with prefix camelCase modal cue', () => {
     const code = `
-      function lockScroll() {
-        document.documentElement.style.overflow = 'hidden';
+      function syncViewport(modalOpen) {
+        if (modalOpen) {
+          document.documentElement.style.overflow = 'hidden';
+        }
       }
     `;
     const { matches } = scanJsSource(
@@ -272,6 +274,89 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
       project,
     );
     assert.equal(matches.length, 0);
+  });
+
+  test('exempts self-referential lockScroll / scroll-lock utilities, descendant CSS selectors, and PerfectScrollbar layout hooks', () => {
+    const genericScrollUtil = `
+      export function lockScroll(open) {
+        if (open) {
+          document.documentElement.style.overflow = 'hidden';
+        }
+      }
+      export function addBodyScrollLock() {
+        document.body.classList.add('scroll-lock');
+      }
+      export function updateModalityState() {
+        document.body.style.overflow = 'hidden';
+      }
+    `;
+    assert.equal(
+      scanJsSource(
+        'assets/js/mixins/miscellaneous.js',
+        genericScrollUtil,
+        [preventPageScrollUnderModalDialogMatcher],
+        project,
+      ).matches.length,
+      0,
+    );
+
+    const rtlLayoutCode = `
+      import React from 'react';
+      import PerfectScrollbar from 'perfect-scrollbar';
+      import Sidebar from 'components/Sidebar/Sidebar.js';
+
+      export default function RTL() {
+        const [mobileOpen, setMobileOpen] = React.useState(false);
+        const handleDrawerToggle = () => {
+          setMobileOpen(!mobileOpen);
+        };
+        React.useEffect(() => {
+          const ps = new PerfectScrollbar(document.body);
+          document.body.style.overflow = 'hidden';
+          return () => ps.destroy();
+        }, []);
+        return <Sidebar open={mobileOpen} handleDrawerToggle={handleDrawerToggle} />;
+      }
+    `;
+    assert.equal(
+      scanJsSource(
+        'layouts/RTL.js',
+        rtlLayoutCode,
+        [preventPageScrollUnderModalDialogMatcher],
+        project,
+      ).matches.length,
+      0,
+    );
+
+    const descendantModalCss = `
+      body.modal-open .modal-content {
+        overflow: hidden;
+      }
+      .no-scroll > .inner-panel {
+        overflow: hidden;
+      }
+      body.modal-open::before {
+        overflow: hidden;
+      }
+    `;
+    assert.equal(
+      scanCss('styles/modal.css', descendantModalCss, [
+        preventPageScrollUnderModalDialogCssMatcher,
+      ]).length,
+      0,
+    );
+
+    const scrollLockUtilityCss = `
+      .scroll-lock {
+        overflow: hidden;
+      }
+    `;
+    assert.equal(
+      scanCss('styles/layout.css', scrollLockUtilityCss, [
+        preventPageScrollUnderModalDialogCssMatcher,
+      ]).length,
+      0,
+    );
   });
 
   test('flags package.json dependencies on scroll lock packages', () => {

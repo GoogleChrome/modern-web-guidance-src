@@ -23,13 +23,50 @@ export const PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH = '7d10dd62dcbc';
 const FULLSCREEN_ONLY_REGEX = /fullscreen/i;
 
 const MODAL_OR_OVERLAY_WORD_REGEX =
-  /\b(?:dialog|modal|drawer|lightbox|popup|overlay|showmodal|lockscroll|scrolllock|disablescroll)\b/i;
+  /\b(?:dialog|modal|drawer|lightbox|popup|overlay|showmodal)\b/i;
 
 const MODAL_OR_OVERLAY_CAMEL_REGEX =
-  /[a-z](?:Dialog|Modal|Drawer|Lightbox|Popup|Overlay|ShowModal|LockScroll|ScrollLock)(?![a-z])|\bdisableScroll[A-Z]/;
+  /[a-z](?:Dialog|Modal|Drawer|Lightbox|Popup|Overlay|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[dD]rawer|[lL]ightbox|[pP]opup|[oO]verlay|[sS]howModal)[A-Z]/;
+
+const NON_DRAWER_MODAL_WORD_REGEX =
+  /\b(?:dialog|modal|lightbox|popup|overlay|showmodal)\b/i;
+
+const NON_DRAWER_MODAL_CAMEL_REGEX =
+  /[a-z](?:Dialog|Modal|Lightbox|Popup|Overlay|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[lL]ightbox|[pP]opup|[oO]verlay|[sS]howModal)[A-Z]/;
+
+function hasNonDrawerModalName(text: string): boolean {
+  return NON_DRAWER_MODAL_WORD_REGEX.test(text) || NON_DRAWER_MODAL_CAMEL_REGEX.test(text);
+}
+
+const SIDEBAR_NAVIGATION_DRAWER_REGEX = /\b(?:PerfectScrollbar|Sidebar|mobileOpen)\b/;
 
 function hasModalOrOverlayName(text: string): boolean {
   return MODAL_OR_OVERLAY_WORD_REGEX.test(text) || MODAL_OR_OVERLAY_CAMEL_REGEX.test(text);
+}
+
+function getCallableOrClassName(node: Node): string {
+  if (
+    Node.isFunctionDeclaration(node) ||
+    Node.isMethodDeclaration(node) ||
+    Node.isClassDeclaration(node)
+  ) {
+    return node.getName() ?? '';
+  }
+  const parent = node.getParent();
+  if (!parent) {
+    return '';
+  }
+  if (Node.isVariableDeclaration(parent) || Node.isPropertyAssignment(parent)) {
+    return parent.getName();
+  }
+  if (
+    Node.isBinaryExpression(parent) &&
+    parent.getOperatorToken().getKind() === SyntaxKind.EqualsToken &&
+    parent.getRight() === node
+  ) {
+    return parent.getLeft().getText();
+  }
+  return '';
 }
 
 const FULLSCREEN_CANVAS_GAME_REGEX =
@@ -51,8 +88,33 @@ function isImmediatelyInvokedFunction(fnNode: Node): boolean {
   return unwrapExpression(parent.getExpression()) === fnNode;
 }
 
+const EFFECT_HOOK_NAMES = new Set([
+  'useEffect',
+  'useLayoutEffect',
+  'watch',
+  'watchEffect',
+]);
+
+function isEffectHookCallback(fnNode: Node): boolean {
+  const parent = fnNode.getParent();
+  if (!parent || !Node.isCallExpression(parent)) {
+    return false;
+  }
+  const callee = unwrapExpression(parent.getExpression());
+  if (Node.isIdentifier(callee)) {
+    return EFFECT_HOOK_NAMES.has(callee.getText());
+  }
+  if (Node.isPropertyAccessExpression(callee)) {
+    return EFFECT_HOOK_NAMES.has(callee.getName());
+  }
+  return false;
+}
+
 function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
   let current: Node | undefined = node.getParent();
+  let callableDepth = 0;
+  let steppedFromEffectHook = false;
+
   while (current && !Node.isSourceFile(current)) {
     if (
       Node.isFunctionDeclaration(current) ||
@@ -68,16 +130,45 @@ function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
       if (text.length > 8_000) {
         break;
       }
+      if (/\bPerfectScrollbar\b/.test(text)) {
+        return false;
+      }
       if (FULLSCREEN_CANVAS_GAME_REGEX.test(text) && !hasModalOrOverlayName(text)) {
         return false;
       }
-      if (
-        hasModalOrOverlayName(text) ||
-        text.includes('showModal') ||
-        text.includes('<dialog')
-      ) {
-        return true;
+
+      if (callableDepth === 0 || (callableDepth === 1 && steppedFromEffectHook)) {
+        const hasCue =
+          hasModalOrOverlayName(text) ||
+          text.includes('showModal') ||
+          text.includes('<dialog');
+        if (hasCue) {
+          if (
+            !hasNonDrawerModalName(text) &&
+            !text.includes('<dialog') &&
+            SIDEBAR_NAVIGATION_DRAWER_REGEX.test(text)
+          ) {
+            return false;
+          }
+          return true;
+        }
+      } else {
+        const scopeName = getCallableOrClassName(current);
+        if (hasModalOrOverlayName(scopeName)) {
+          if (
+            !hasNonDrawerModalName(scopeName) &&
+            SIDEBAR_NAVIGATION_DRAWER_REGEX.test(text)
+          ) {
+            return false;
+          }
+          return true;
+        }
       }
+
+      if (callableDepth === 0) {
+        steppedFromEffectHook = isEffectHookCallback(current);
+      }
+      callableDepth++;
     }
     current = current.getParent();
   }
@@ -100,6 +191,20 @@ const MODAL_SCROLL_LOCK_CLASSES = new Set([
   'overflow-hidden',
 ]);
 
+const SAME_ELEMENT_SELECTOR_TAIL = '(?:\\.[a-z0-9_-]+|:(?!:)[a-z-]+(?:\\([^)]*\\))?)*$';
+const ROOT_MODAL_OPEN_SELECTOR_REGEX = new RegExp(
+  `^(?:body|html)?\\.(?:modal-open|dialog-open)${SAME_ELEMENT_SELECTOR_TAIL}`,
+  'i',
+);
+const EXPLICIT_ROOT_LOCK_SELECTOR_REGEX = new RegExp(
+  `^(?:body|html)\\.(?:no-scroll|scroll-lock|overflow-hidden)${SAME_ELEMENT_SELECTOR_TAIL}`,
+  'i',
+);
+const BARE_SCROLL_LOCK_CLASS_REGEX = new RegExp(
+  `^\\.(?:no-scroll|scroll-lock)${SAME_ELEMENT_SELECTOR_TAIL}`,
+  'i',
+);
+
 function isScrollLockSelector(
   selectorText: string,
   styleRule: CssRuleView,
@@ -108,13 +213,13 @@ function isScrollLockSelector(
   const parts = selectorText.split(',');
   for (const rawPart of parts) {
     const part = rawPart.trim();
-    if (/^(?:body|html)?\.(?:modal-open|dialog-open)(?![-\w])/i.test(part)) {
+    if (ROOT_MODAL_OPEN_SELECTOR_REGEX.test(part)) {
       return true;
     }
-    if (/^(?:body|html)\.(?:no-scroll|scroll-lock|overflow-hidden)(?![-\w])/i.test(part)) {
+    if (EXPLICIT_ROOT_LOCK_SELECTOR_REGEX.test(part)) {
       return true;
     }
-    if (/^\.(?:no-scroll|scroll-lock)(?![-\w])/i.test(part)) {
+    if (BARE_SCROLL_LOCK_CLASS_REGEX.test(part)) {
       if (
         styleRule.getPropertyValue('-ms-overflow-style') ||
         styleRule.getPropertyValue('scrollbar-width') ||
