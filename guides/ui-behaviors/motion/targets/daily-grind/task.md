@@ -1,1 +1,1 @@
-- Animate the UI across the application, keeping motion smooth and performant while respecting reduced-motion preferences.
+- Polish the UI animations and hover transitions across the Daily Grind homepage (including the navigation links, "Wake Up Your Senses" hero call-to-action, and "Seasonal Favorites" drink cards) so motion stays smooth on the compositor and respects users' reduced-motion preferences.

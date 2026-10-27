@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Dialog Component</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+
+      --bg-page: light-dark(#f8fafc, #0f172a);
+      --bg-card: light-dark(#ffffff, #1e293b);
+      --text-main: light-dark(#0f172a, #f8fafc);
+      --text-muted: light-dark(#64748b, #94a3b8);
+      --border-color: light-dark(#e2e8f0, #334155);
+      --focus-ring-color: light-dark(#2563eb, #3b82f6);
+      --btn-bg: light-dark(#f1f5f9, #334155);
+      --btn-bg-hover: light-dark(#e2e8f0, #475569);
+      --btn-text: light-dark(#475569, #cbd5e1);
+      /* White text on --accent and --danger text on both button backgrounds must reach 4.5:1 in each scheme */
+      --accent: #2563eb;
+      --danger: light-dark(#b91c1c, #fecaca);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 3rem 2rem;
+      background: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 44rem;
+      margin-inline: auto;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.025em;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin: 0 0 0.25rem;
+    }
+
+    .lede,
+    .note {
+      color: var(--text-muted);
+      margin: 0 0 1rem;
+      font-size: 0.9rem;
+    }
+
+    section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-block: 1.25rem;
+    }
+
+    code {
+      font-size: 0.85em;
+    }
+
+    output {
+      display: block;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Buttons */
+    button {
+      font: inherit;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--btn-bg);
+      color: var(--btn-text);
+      cursor: pointer;
+
+      &:hover {
+        background: var(--btn-bg-hover);
+      }
+
+      &.primary {
+        background: var(--accent);
+        border-color: transparent;
+        color: #fff;
+      }
+
+      &.danger {
+        color: var(--danger);
+      }
+    }
+
+    /* visibility (not display) keeps the space reserved so showing the message shifts nothing */
+    #unsaved-note:not([data-show]) { visibility: hidden; }
+
+    :focus-visible {
+      outline: 2px solid var(--focus-ring-color);
+      outline-offset: 2px;
+    }
+
+    /* Dialog */
+    dialog {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: min(28rem, calc(100% - 2rem));
+      box-shadow: 0 20px 40px rgb(0 0 0 / 0.25);
+
+      & blockquote {
+        margin: 0.75rem 0;
+        padding-inline-start: 1rem;
+        border-inline-start: 3px solid var(--border-color);
+        font-style: italic;
+      }
+
+      & form {
+        margin: 0;
+      }
+
+      & label {
+        display: block;
+        font-size: 0.85rem;
+        margin-block: 0.5rem 0.25rem;
+      }
+
+      & textarea,
+      & input {
+        width: 100%;
+        font: inherit;
+        padding: 0.5rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-page);
+        color: inherit;
+      }
+
+      & .actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+        margin-top: 1rem;
+      }
+    }
+
+    /* 8. ::backdrop styling and scroll containment: both rules are needed to stop the page scrolling behind a modal */
+    dialog:modal {
+      overscroll-behavior: contain;
+    }
+    dialog::backdrop {
+      overflow: hidden; /* ::backdrop is not a scroll container by default, so it would ignore overscroll-behavior */
+      overscroll-behavior: contain;
+      background: light-dark(rgb(15 23 42 / 0.45), rgb(0 0 0 / 0.65));
+      backdrop-filter: blur(3px);
+    }
+
+    /* Modal and popover dialogs are centered by the UA (fixed, inset: 0, margin: auto).
+       A dialog opened with show() sits in normal flow, so opt in to the same centering. */
+    dialog:not(:modal, [popover]) {
+      position: fixed;
+      inset: 0;
+      margin: auto;
+    }
+
+    /* Popover menu */
+    [popover].menu {
+      margin: 0;
+      position-area: block-end span-inline-end;
+      position-anchor: --menu-trigger;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-card);
+      color: var(--text-main);
+
+      list-style: none;
+
+      & li {
+        padding: 0.25rem 0.75rem;
+      }
+    }
+
+    #menu-trigger {
+      anchor-name: --menu-trigger;
+    }
+
+    footer {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Dialog</h1>
+    <p class="lede">Excerpts from Mary Shelley's <cite>Frankenstein</cite> (1818). Animation, dragging and
+      reparenting have their own guides: <code>animate-to-from-top-layer</code>, <code>drag</code>,
+      <code>persistent-top-layer-ui</code>.
+    </p>
+
+    <!-- 1 -->
+    <section>
+      <h2>1. Modal confirmation (declarative)</h2>
+      <p class="note"><code>command="show-modal"</code>, <code>aria-labelledby</code>,
+        <code>&lt;form method="dialog"&gt;</code>, <code>autofocus</code> on the safe action.
+      </p>
+      <button type="button" class="danger" command="show-modal" commandfor="confirm-dlg">Destroy the
+        creature…</button>
+      <dialog id="confirm-dlg" aria-labelledby="confirm-title">
+        <form method="dialog">
+          <h2 id="confirm-title">Abandon the work?</h2>
+          <blockquote>“I beheld the wretch—the miserable monster whom I had created.”</blockquote>
+          <div class="actions">
+            <button value="destroy" class="danger">Destroy</button>
+            <button value="keep" class="primary" autofocus>Keep it</button>
+          </div>
+        </form>
+      </dialog>
+    </section>
+
+    <!-- 2 -->
+    <section>
+      <h2>2. Modal form with <code>returnValue</code></h2>
+      <p class="note">A <code>close</code> listener reads <code>dialog.returnValue</code>, then resets it. Pressing
+        <kbd>Esc</kbd> sets no value, so it reads <code>""</code> (dismissed) instead of the previous button. Closing
+        returns focus to the trigger.</p>
+      <button type="button" command="show-modal" commandfor="form-dlg">Write to Margaret</button>
+      <dialog id="form-dlg" aria-labelledby="form-title">
+        <form method="dialog">
+          <h2 id="form-title">Letter to Margaret</h2>
+          <label for="letter">Your letter</label>
+          <textarea id="letter" name="letter" rows="3" required>It is a pleasant thing to be on my way to St. Petersburgh.</textarea>
+          <div class="actions">
+            <button value="cancel" formnovalidate>Cancel</button>
+            <button value="send" class="primary">Send</button>
+          </div>
+        </form>
+      </dialog>
+      <output id="form-out">No result yet.</output>
+    </section>
+
+    <!-- 3 -->
+    <section>
+      <h2>3. <code>closedby="any"</code> (light dismiss)</h2>
+      <p class="note">Clicking the backdrop closes it natively. Where <code>closedby</code> is unsupported, a feature-tested
+        pointer fallback does the same.</p>
+      <button type="button" command="show-modal" commandfor="any-dlg">Open the ice sea</button>
+      <dialog id="any-dlg" closedby="any" aria-labelledby="any-title">
+        <h2 id="any-title">The sea of ice</h2>
+        <blockquote>“The sea, however, was in a state of ice, and the vast plains stretched before me.”</blockquote>
+        <p class="note">Click outside, or press Esc, to dismiss.</p>
+        <div class="actions"><button type="button" command="close" commandfor="any-dlg">Close</button></div>
+      </dialog>
+    </section>
+
+    <!-- 4 -->
+    <section>
+      <h2>4. <code>closedby="none"</code> with unsaved changes</h2>
+      <p class="note">Cancel uses <code>request-close</code>, so the <code>cancel</code> handler can ask for
+        confirmation: it shows a message and focuses Discard, which references the message with
+        <code>aria-describedby</code> so a screen reader reads it. Discard appears where no button moves, so a second
+        click on Cancel cannot discard. Only the developer-controlled Discard button force-closes.</p>
+      <button type="button" command="show-modal" commandfor="none-dlg">Edit the journal</button>
+      <dialog id="none-dlg" closedby="none" aria-labelledby="none-title">
+        <form method="dialog" id="journal-form">
+          <h2 id="none-title">Captain's journal</h2>
+          <label for="journal">Entry</label>
+          <textarea id="journal" rows="3">I have no friend, Margaret.</textarea>
+          <!-- Space for this message is always reserved, so showing it does not resize the dialog -->
+          <p class="note" id="unsaved-note">You have unsaved changes. Discard them, or keep editing.</p>
+          <div class="actions">
+            <!-- First in a right-aligned row, so revealing it moves neither Cancel nor Save -->
+            <button type="button" class="danger" command="close" commandfor="none-dlg" id="discard" aria-describedby="unsaved-note" hidden>Discard</button>
+            <button type="button" command="request-close" commandfor="none-dlg">Cancel</button>
+            <button value="save" class="primary">Save</button>
+          </div>
+        </form>
+      </dialog>
+    </section>
+
+    <!-- 5 -->
+    <section>
+      <h2>5. Non-modal <code>&lt;dialog popover&gt;</code></h2>
+      <p class="note">Top layer, page stays interactive, visible close button.</p>
+      <button type="button" popovertarget="pop-dlg">Toggle panel</button>
+      <dialog id="pop-dlg" popover aria-labelledby="pop-title">
+        <h2 id="pop-title">Note</h2>
+        <p>“Beware; for I am fearless, and therefore powerful.”</p>
+        <div class="actions">
+          <button type="button" popovertarget="pop-dlg" popovertargetaction="hide">Close</button>
+        </div>
+      </dialog>
+    </section>
+
+    <!-- 6 -->
+    <section>
+      <h2>6. Non-modal <code>dialog.show()</code></h2>
+      <p class="note">For contrast: not in the top layer, no backdrop, and <code>closedby</code> defaults to
+        <code>none</code>, so this one opts in with <code>closedby="any"</code>. Use it only when the panel must not be in
+        the top layer.</p>
+      <button type="button" id="show-btn">Show inline dialog</button>
+      <dialog id="show-dlg" aria-labelledby="show-title" closedby="any">
+        <h2 id="show-title">Inline</h2>
+        <p>“Nothing is so painful to the human mind as a great and sudden change.”</p>
+        <div class="actions"><button type="button" command="close" commandfor="show-dlg">Close</button></div>
+      </dialog>
+    </section>
+
+    <!-- 7 -->
+    <section>
+      <h2>7. Plain <code>[popover]</code> for a menu</h2>
+      <p class="note">Not everything is a dialog: no modality, no focus trap, just light-dismiss.</p>
+      <button type="button" id="menu-trigger" popovertarget="menu">Chapters</button>
+      <ul id="menu" popover class="menu">
+        <li><a href="#letter-1">Letter 1</a></li>
+        <li><a href="#chapter-1">Chapter 1</a></li>
+        <li><a href="#chapter-5">Chapter 5</a></li>
+      </ul>
+    </section>
+
+    <footer>8. <code>::backdrop</code> is styled above; modal dialogs 1–4 use it.</footer>
+  </main>
+
+  <script>
+    // Fallbacks: load each polyfill only where native support is missing (CDN URLs are for the demo; prefer bundling)
+    (async () => {
+      try {
+        if (!('popover' in HTMLElement.prototype)) {
+          await import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
+        }
+        if (!('commandForElement' in HTMLButtonElement.prototype)) {
+          await import('https://esm.run/invokers-polyfill');
+        }
+      } catch (err) {
+        console.error('Polyfill failed to load:', err);
+      }
+    })();
+
+    // 2. returnValue
+    const formDlg = document.getElementById('form-dlg');
+    formDlg.addEventListener('close', () => {
+      document.getElementById('form-out').textContent =
+        `returnValue: "${formDlg.returnValue}"`;
+      // Esc sets no value and browsers differ on clearing the old one, so reset after reading
+      formDlg.returnValue = '';
+    });
+
+    // 3. Fallback light dismiss where closedby is unsupported
+    const anyDlg = document.getElementById('any-dlg');
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+      // Test the pointer position, not event.target: the <dialog> is also the target for its own
+      // padding and the gaps between its children
+      const outside = (e, dialog) => {
+        const r = dialog.getBoundingClientRect();
+        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      };
+      let pressedOutside = false;
+      anyDlg.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, anyDlg); });
+      // Require press and release outside so text selection drags don't dismiss
+      anyDlg.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, anyDlg)) anyDlg.close(); });
+    }
+
+    // 4. Unsaved changes guard
+    const noneDlg = document.getElementById('none-dlg');
+    const journal = document.getElementById('journal');
+    const discard = document.getElementById('discard');
+    const unsavedNote = document.getElementById('unsaved-note');
+    const initial = journal.value;
+    noneDlg.addEventListener('cancel', (e) => {
+      if (journal.value !== initial) {
+        e.preventDefault();
+        // Say why it stayed open: the message is visible, and Discard's aria-describedby makes a
+        // screen reader read it when focus moves there (focus alone would announce only "Discard, button")
+        unsavedNote.toggleAttribute('data-show', true);
+        discard.hidden = false;
+        discard.focus();
+      }
+    });
+    noneDlg.addEventListener('close', () => {
+      unsavedNote.toggleAttribute('data-show', false);
+      discard.hidden = true;
+      journal.value = initial;
+    });
+
+    // 6. Non-modal show()
+    const showDlg = document.getElementById('show-dlg');
+    document.getElementById('show-btn').addEventListener('click', () => showDlg.show());
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites coffee cards in `index.html` so their styling and visual appearance automatically adapt based on the semantic theme or category context of their parent section using CSS.
