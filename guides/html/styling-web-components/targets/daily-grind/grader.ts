@@ -3,8 +3,11 @@ import {
   expect,
   getTargetFiles,
   getCssStyleSheet,
+  getJsProject,
+  getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
 import {
+  parse,
   CSSStyleRule,
   CSSGroupingRule,
   CSSContainerRule,
@@ -25,8 +28,61 @@ function collectAllRules(rules: Iterable<CSSRule>): CSSRule[] {
   return result;
 }
 
-function getAllStyleRules(sheet: CSSStyleSheet): CSSStyleRule[] {
-  return collectAllRules(sheet.cssRules).filter(
+function getAllRulesFromFiles(files: string[]): CSSRule[] {
+  const rules: CSSRule[] = [...collectAllRules(getCssStyleSheet(files).cssRules)];
+
+  const parseCssChunk = (css: string) => {
+    try {
+      const sheet: CSSStyleSheet = parse(css);
+      rules.push(...collectAllRules(sheet.cssRules));
+    } catch {}
+  };
+
+  const extractStyleTagRules = (text: string) => {
+    const styleMatches = text.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+    if (styleMatches) {
+      for (const m of styleMatches) {
+        const css = m.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, '');
+        parseCssChunk(css);
+      }
+    }
+  };
+
+  const extractConstructableRules = (text: string) => {
+    const replaceMatches = text.matchAll(
+      /\.replace(?:Sync)?\s*\(\s*(`(?:\\[\s\S]|[^`])*`|'(?:\\[\s\S]|[^'])*'|"(?:\\[\s\S]|[^"])*")\s*\)/g
+    );
+    for (const m of replaceMatches) {
+      parseCssChunk(m[1].slice(1, -1));
+    }
+  };
+
+  const project = getJsProject(files);
+  for (const sf of project.getSourceFiles()) {
+    const text = sf.getFullText();
+    extractStyleTagRules(text);
+    extractConstructableRules(text);
+  }
+
+  const docs = getHtmlDocuments(files);
+  for (const { document } of docs) {
+    document.querySelectorAll('template').forEach((tmpl: any) => {
+      const templateHtml =
+        tmpl.innerHTML || tmpl.content?.innerHTML || tmpl.textContent || '';
+      extractStyleTagRules(templateHtml);
+    });
+    document.querySelectorAll('script').forEach((script: any) => {
+      const scriptText = script.textContent || script.innerHTML || '';
+      extractStyleTagRules(scriptText);
+      extractConstructableRules(scriptText);
+    });
+  }
+
+  return rules;
+}
+
+function getAllStyleRules(files: string[]): CSSStyleRule[] {
+  return getAllRulesFromFiles(files).filter(
     (rule): rule is CSSStyleRule => rule instanceof CSSStyleRule
   );
 }
@@ -36,6 +92,10 @@ function isPlainHostSelector(selectorText: string): boolean {
     .split(',')
     .map((s) => s.trim())
     .some((s) => s === ':host');
+}
+
+function isHostSelector(selectorText: string): boolean {
+  return /(^|[\s,(]):host\b/.test(selectorText);
 }
 
 function extractVarReferences(value: string): Array<{ prop: string; fallback: string }> {
@@ -72,8 +132,7 @@ function extractVarReferences(value: string): Array<{ prop: string; fallback: st
 
 test.describe('styling-web-components Target Grader', () => {
   test('The component shadow stylesheet sets the host display with a :host rule', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet);
+    const styleRules = getAllStyleRules(targetFiles);
     const hasHostDisplay = styleRules.some(
       (rule) =>
         isPlainHostSelector(rule.selectorText) &&
@@ -83,10 +142,9 @@ test.describe('styling-web-components Target Grader', () => {
   });
 
   test('The component shadow stylesheet does not use :host-context()', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet);
+    const styleRules = getAllStyleRules(targetFiles);
     const hasHostComponent = styleRules.some((rule) =>
-      /\b:host\b/.test(rule.selectorText)
+      isHostSelector(rule.selectorText)
     );
     const usesHostContext = styleRules.some((rule) =>
       rule.selectorText.includes(':host-context(')
@@ -95,10 +153,9 @@ test.describe('styling-web-components Target Grader', () => {
   });
 
   test('Public theming custom properties are read with a var() fallback and are not declared on :host', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet);
+    const styleRules = getAllStyleRules(targetFiles);
     const hostRules = styleRules.filter((rule) =>
-      /\b:host\b/.test(rule.selectorText)
+      isHostSelector(rule.selectorText)
     );
 
     const declaredOnHost = new Set<string>();
@@ -139,8 +196,7 @@ test.describe('styling-web-components Target Grader', () => {
   });
 
   test('The element given container-type: inline-size has a display property other than inline or contents and a @container rule in the shadow stylesheet', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllRules(stylesheet.cssRules);
+    const allRules = getAllRulesFromFiles(targetFiles);
     const styleRules = allRules.filter(
       (rule): rule is CSSStyleRule => rule instanceof CSSStyleRule
     );
