@@ -1,66 +1,101 @@
 diff --git a/index.html b/index.html
-index 66c9173..87aa596 100644
+index 66c9173..fd7208e 100644
 --- a/index.html
 +++ b/index.html
-@@ -103,11 +103,17 @@
-     .grid {
-       display: grid;
-       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
--      gap: 20px;
-+      gap: 0 20px;
-       margin-top: 20px;
+@@ -152,6 +152,143 @@
+       text-decoration: none;
+       font-size: 0.85rem;
      }
- 
-     .card {
++
++    /* Seasonal favorite cards */
++    .grid {
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
++    }
++
++    article.card {
 +      container-type: inline-size;
 +      display: grid;
 +      grid-row: span 4;
 +      grid-template-rows: subgrid;
-+      row-gap: 0;
++      row-gap: 10px;
++      padding: 0;
++      overflow: hidden;
 +      align-content: start;
-       background: white;
-       padding: 20px;
-       border-radius: 8px;
-@@ -115,11 +121,69 @@
-       text-align: center;
-     }
- 
-+    .card > img,
-+    .card > picture,
-+    .card > video,
-+    .card > svg {
-+      grid-row: 1;
++    }
++
++    article.card > :not(img) {
++      margin-inline: 20px;
++    }
++
++    article.card > img {
 +      width: 100%;
-+      aspect-ratio: 16 / 9;
++      aspect-ratio: 4 / 3;
 +      object-fit: cover;
-+      border-radius: 4px;
-+      margin-bottom: 15px;
++      display: block;
 +    }
 +
-+    .card > :is(h2, h3, h4, hgroup, header) {
-+      grid-row: 2;
++    article.card > h3 {
++      margin: 10px 20px 0;
 +    }
 +
-+    .card > :not(img, picture, video, svg, h2, h3, h4, hgroup, header, footer) {
-+      grid-row: 3;
-+    }
-+
-+    .card > footer {
-+      grid-row: 4;
++    article.card > footer {
 +      background: none;
 +      padding: 0;
 +      margin-top: 0;
-+      text-align: inherit;
-+      align-self: end;
++      margin-bottom: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: stretch;
++      gap: 10px;
++      text-align: center;
 +    }
 +
-     .card h3 {
-       margin-bottom: 10px;
-       color: var(--primary);
-     }
- 
-+    .card > footer .btn span,
-+    .card .visually-hidden {
++    article.card .order-form {
++      display: flex;
++      flex-direction: column;
++      gap: 10px;
++    }
++
++    article.card label {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 8px;
++    }
++
++    article.card select {
++      font: inherit;
++      padding: 6px 10px;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++    }
++
++    article.card .btn {
++      margin-top: 0;
++      border: 2px solid var(--primary);
++      font: inherit;
++      cursor: pointer;
++      text-align: center;
++    }
++
++    article.card .btn-secondary {
++      background: transparent;
++      color: var(--primary);
++    }
++
++    article.card .btn-secondary:hover {
++      background: var(--secondary);
++    }
++
++    article.card .btn:focus-visible,
++    article.card select:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .visually-hidden {
 +      position: absolute;
 +      width: 1px;
 +      height: 1px;
@@ -69,71 +104,136 @@ index 66c9173..87aa596 100644
 +      white-space: nowrap;
 +    }
 +
-+    /* Narrow cards: tighter spacing, full-width action */
-+    @container (max-width: 260px) {
-+      .card > footer .btn {
-+        display: block;
-+        padding: 10px;
++    .order-status {
++      text-align: center;
++      margin-top: 20px;
++      min-height: 1.6em;
++    }
++
++    .card:has(> img) {
++      grid-template-columns: 40% 1fr;
++    }
++
++    @container (max-width: 419.98px) {
++      .card:has(> img) > * {
++        grid-column: 1 / -1;
 +      }
 +    }
 +
-+    /* Wide cards with media: media in a side column */
-+    @container (min-width: 480px) {
-+      .card:has(> img) > img {
++    @container (min-width: 420px) {
++      .card > img {
 +        grid-column: 1;
-+        grid-row: 1 / -1;
++        grid-row: 1 / span 4;
 +        height: 100%;
-+        margin-bottom: 0;
 +        aspect-ratio: auto;
 +      }
++
++      .card > :not(img) {
++        grid-column: 2;
++      }
++
++      article.card > :not(img),
++      article.card > footer {
++        text-align: left;
++      }
 +    }
 +
-     .btn {
-       display: inline-block;
-       background: var(--primary);
-@@ -135,7 +199,7 @@
-       background: #3e2723;
-     }
++    @container (max-width: 260px) {
++      .card > p {
++        font-size: 0.9rem;
++      }
++    }
+   </style>
+ </head>
  
--    footer {
-+    body > footer {
-       background: var(--secondary);
-       text-align: center;
-       padding: 40px 20px;
-@@ -178,21 +242,27 @@
+@@ -178,22 +315,62 @@
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
 -        <div class="card">
 +        <article class="card">
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="A maple oat latte with latte art in a ceramic cup" loading="lazy">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
 -        </div>
 -        <div class="card">
 +          <footer>
-+            <a href="/menu/seasonal" class="btn">View Details<span> about Maple Oat Latte</span></a>
++            <form class="order-form">
++              <label>Size
++                <select name="size">
++                  <option value="small">Small</option>
++                  <option value="medium" selected>Medium</option>
++                  <option value="large">Large</option>
++                </select>
++              </label>
++              <button type="submit" class="btn" data-drink="Maple Oat Latte">Add to Order</button>
++            </form>
++            <a href="/menu/seasonal" class="btn btn-secondary">View Details<span class="visually-hidden"> for Maple Oat Latte</span></a>
 +          </footer>
 +        </article>
 +        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80" alt="A shot of dark roast espresso in a small cup" loading="lazy">
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
 -        </div>
 -        <div class="card">
 +          <footer>
-+            <a href="/menu/espresso" class="btn">View Details<span> about Dark Roast Espresso</span></a>
++            <form class="order-form">
++              <label>Size
++                <select name="size">
++                  <option value="small">Small</option>
++                  <option value="medium" selected>Medium</option>
++                  <option value="large">Large</option>
++                </select>
++              </label>
++              <button type="submit" class="btn" data-drink="Dark Roast Espresso">Add to Order</button>
++            </form>
++            <a href="/menu/espresso" class="btn btn-secondary">View Details<span class="visually-hidden"> for Dark Roast Espresso</span></a>
 +          </footer>
 +        </article>
 +        <article class="card">
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="A tall glass of iced cold brew coffee" loading="lazy">
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
 -        </div>
 +          <footer>
-+            <a href="/menu/cold-brew" class="btn">View Details<span> about Cold Brew</span></a>
++            <form class="order-form">
++              <label>Size
++                <select name="size">
++                  <option value="small">Small</option>
++                  <option value="medium" selected>Medium</option>
++                  <option value="large">Large</option>
++                </select>
++              </label>
++              <button type="submit" class="btn" data-drink="Cold Brew">Add to Order</button>
++            </form>
++            <a href="/menu/cold-brew" class="btn btn-secondary">View Details<span class="visually-hidden"> for Cold Brew</span></a>
 +          </footer>
 +        </article>
        </div>
++      <p class="order-status" role="status" aria-live="polite"></p>
      </section>
    </main>
+ 
+@@ -207,6 +384,18 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++
++  <script>
++    const status = document.querySelector('.order-status');
++    document.querySelectorAll('.order-form').forEach((form) => {
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        const drink = form.querySelector('button').dataset.drink;
++        const size = form.elements.size.value;
++        status.textContent = `Added one ${size} ${drink} to your order.`;
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

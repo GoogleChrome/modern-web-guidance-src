@@ -1,140 +1,18 @@
 diff --git a/index.html b/index.html
-index 66c9173..2fafc3d 100644
+index 66c9173..33d603e 100644
 --- a/index.html
 +++ b/index.html
-@@ -108,18 +108,145 @@
+@@ -102,22 +102,177 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+       gap: 20px;
+       margin-top: 20px;
      }
  
-     .card {
-+      container-type: inline-size;
-+      display: grid;
-+      grid-row: span 4;
-+      grid-template-rows: subgrid;
-+      gap: 10px;
-       background: white;
-       padding: 20px;
-       border-radius: 8px;
-+      border: 2px solid transparent;
-       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-       text-align: center;
-+      align-items: start;
-+      transition: box-shadow 0.3s, border-color 0.3s;
-+    }
-+
-+    .card:has(> :checked) {
-+      border-color: var(--accent);
-+    }
-+
-+    .card > :is(img, picture, video, svg, .media) {
-+      grid-row: 1;
-+    }
-+
-+    .card > :is(img, picture, video) {
-+      width: 100%;
-+      aspect-ratio: 16 / 9;
-+      object-fit: cover;
-+      display: block;
-+      border-radius: 4px;
-+    }
-+
-+    .card > picture > img {
-+      width: 100%;
-+      height: 100%;
-+      aspect-ratio: 16 / 9;
-+      object-fit: cover;
-+      display: block;
-+      border-radius: 4px;
-+    }
-+
-+    .card > .media {
-+      aspect-ratio: 16 / 9;
-+    }
-+
-+    .card > :is(h1, h2, h3, h4, h5, h6, hgroup, header) {
-+      grid-row: 2;
-+    }
-+
-+    .card > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer, input) {
-+      grid-row: 3;
-+    }
-+
-+    .card > footer {
-+      grid-row: 4;
-+      align-self: end;
-+      background: transparent;
-+      padding: 0;
-+      margin-top: 0;
-+    }
-+
-+    .card:has(> :is(img, picture, video, svg, .media)) {
-+      grid-auto-columns: minmax(140px, 1fr) 2fr;
-+    }
-+
-+    @container (min-width: 400px) {
-+      .card:has(> :is(img, picture, video, svg, .media)) {
-+        grid-template-columns: minmax(140px, 1fr) 2fr;
-+      }
-+
-+      .card:has(> :is(img, picture, video, svg, .media)) > :is(img, picture, video, svg, .media) {
-+        grid-column: 1;
-+        grid-row: 1 / -1;
-+        height: 100%;
-+      }
-+
-+      .card:has(> :is(img, picture, video, svg, .media)) > :not(img, picture, video, svg, .media) {
-+        grid-column: 2;
-+      }
-+
-+      .card > :is(h1, h2, h3, h4, h5, h6, hgroup, header),
-+      .card > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer, input),
-+      .card > footer {
-+        text-align: start;
-+        justify-self: start;
-+      }
-     }
- 
-     .card h3 {
--      margin-bottom: 10px;
-+      margin-bottom: 0;
-       color: var(--primary);
-     }
- 
-+    .card:has(a.card-link) {
-+      position: relative;
-+    }
-+
-+    .card a.card-link {
-+      color: inherit;
-+      text-decoration: none;
-+    }
-+
-+    .card a.card-link::after {
-+      content: "";
-+      position: absolute;
-+      inset: 0;
-+      border-radius: inherit;
-+    }
-+
-+    .card a.card-link:focus-visible {
-+      outline: none;
-+    }
-+
-+    .card:has(a.card-link:focus-visible) {
-+      outline: 2px solid var(--accent);
-+      outline-offset: 2px;
-+    }
-+
-+    .card:has(a.card-link:hover) {
-+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-+    }
-+
-+    .card:has(a.card-link) :is(a:not(.card-link), button, input, select, textarea, x-button) {
-+      position: relative;
-+      z-index: 1;
-+    }
-+
-+    .visually-hidden,
-+    .card footer a span {
++    .visually-hidden {
 +      position: absolute;
 +      width: 1px;
 +      height: 1px;
@@ -146,34 +24,262 @@ index 66c9173..2fafc3d 100644
 +      border: 0;
 +    }
 +
+     .card {
++      container-type: inline-size;
++      display: grid;
++      grid-row: span 4;
++      grid-template-rows: subgrid;
++      gap: 0.75rem;
+       background: white;
+-      padding: 20px;
++      padding: 1.25rem;
+       border-radius: 8px;
++      border: 2px solid transparent;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++      text-align: left;
++      align-items: start;
++      transition: box-shadow 0.2s ease, border-color 0.2s ease;
++
++      & > :is(img, picture, video, svg, .media) {
++        grid-row: 1;
++      }
++
++      & > :is(h1, h2, h3, h4, h5, h6, hgroup, header) {
++        grid-row: 2;
++      }
++
++      & > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer) {
++        grid-row: 3;
++      }
++
++      & > footer {
++        grid-row: 4;
++        align-self: end;
++      }
++
++      & > :is(img, video) {
++        width: 100%;
++        aspect-ratio: 16 / 10;
++        object-fit: cover;
++        border-radius: 6px;
++        display: block;
++      }
++
++      & > .media {
++        aspect-ratio: 16 / 10;
++      }
++
++      &:has(> :is(img, picture, video, svg, .media)) {
++        grid-template-columns: minmax(160px, 38%) 1fr;
++      }
++
++      & > * {
++        grid-column: 1 / -1;
++      }
++
++      &:has(a.card-link) {
++        position: relative;
++
++        a:not(.card-link),
++        button,
++        input,
++        select,
++        textarea,
++        label,
++        x-button {
++          position: relative;
++          z-index: 1;
++        }
++      }
++
++      a.card-link {
++        color: inherit;
++        text-decoration: none;
++
++        &::after {
++          content: "";
++          position: absolute;
++          inset: 0;
++          border-radius: inherit;
++        }
++
++        &:focus-visible {
++          outline: none;
++        }
++      }
++
++      &:has(a.card-link:focus-visible) {
++        outline: 3px solid var(--accent);
++        outline-offset: 2px;
++      }
++
++      &:has(a.card-link:hover) {
++        box-shadow: 0 6px 16px rgba(62, 39, 35, 0.18);
++        border-color: var(--secondary);
++      }
++
++      &:has(> :checked) {
++        border-color: var(--accent);
++      }
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
+       color: var(--primary);
++      font-size: 1.2rem;
++      line-height: 1.3;
++    }
++
++    .card > footer {
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
++      padding-top: 0.25rem;
++    }
++
++    .size-picker {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 0.5rem;
++      display: grid;
++      grid-template-columns: repeat(3, 1fr);
++      gap: 0.35rem;
++    }
++
++    .size-picker legend {
++      font-size: 0.8rem;
++      font-weight: 600;
++      color: var(--primary);
++      padding: 0 0.35rem;
++    }
++
++    .size-picker label {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.3rem;
++      padding: 0.35rem 0.4rem;
++      border-radius: 4px;
++      border: 2px solid transparent;
++      font-size: 0.85rem;
++      cursor: pointer;
++      background: var(--light);
++      transition: border-color 0.2s ease, background-color 0.2s ease;
++
++      &:has(:checked) {
++        border-color: var(--accent);
++        background-color: #fff3e0;
++      }
++
++      &:hover {
++        background-color: #f3ecea;
++      }
++    }
++
++    .size-picker input[type="radio"] {
++      accent-color: var(--primary);
++      margin: 0;
++      cursor: pointer;
+     }
+ 
      .btn {
-       display: inline-block;
-       background: var(--primary);
-@@ -127,7 +254,7 @@
+@@ -126,8 +281,13 @@
+       color: white;
        padding: 10px 20px;
        text-decoration: none;
++      border: none;
        border-radius: 5px;
 -      margin-top: 15px;
-+      margin-top: 5px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      font-weight: 600;
++      cursor: pointer;
++      text-align: center;
        transition: background 0.3s;
      }
  
-@@ -135,7 +262,7 @@
+@@ -135,7 +295,71 @@
        background: #3e2723;
      }
  
 -    footer {
++    .btn:focus-visible,
++    .details-link:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .hero .btn {
++      margin-top: 15px;
++    }
++
++    .details-link {
++      color: var(--primary);
++      font-size: 0.9rem;
++      font-weight: 600;
++      text-underline-offset: 3px;
++      text-align: center;
++    }
++
++    .details-link:hover {
++      color: var(--text);
++    }
++
++    @container (min-width: 20rem) {
++      .card > footer {
++        flex-direction: row;
++        flex-wrap: wrap;
++        align-items: center;
++        justify-content: space-between;
++      }
++
++      .card > footer > .size-picker {
++        flex: 1 1 100%;
++      }
++
++      .card > footer > .btn {
++        flex: 1 1 auto;
++      }
++    }
++
++    @container (min-width: 26rem) {
++      .card:has(> :is(img, picture, video, svg, .media)) > :is(img, picture, video, svg, .media) {
++        grid-column: 1;
++        grid-row: 1 / -1;
++        height: 100%;
++        aspect-ratio: auto;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > :is(h1, h2, h3, h4, h5, h6, hgroup, header) {
++        grid-column: 2;
++        grid-row: 1;
++        font-size: 1.35rem;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > :not(img, picture, video, svg, .media, h1, h2, h3, h4, h5, h6, hgroup, header, footer) {
++        grid-column: 2;
++        grid-row: 2;
++      }
++
++      .card:has(> :is(img, picture, video, svg, .media)) > footer {
++        grid-column: 2;
++        grid-row: 3 / -1;
++      }
++    }
++
 +    body > footer {
        background: var(--secondary);
        text-align: center;
        padding: 40px 20px;
-@@ -178,21 +305,27 @@
+@@ -178,21 +402,78 @@
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
 -        <div class="card">
 -          <h3>Maple Oat Latte</h3>
 +        <article class="card">
++          <img src="https://images.unsplash.com/photo-1572442388796-11668a67e53d?auto=format&fit=crop&w=600&q=80" alt="Steaming maple oat latte with latte art in a ceramic mug">
 +          <h3><a href="/menu/seasonal" class="card-link">Maple Oat Latte</a></h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
@@ -181,10 +287,27 @@ index 66c9173..2fafc3d 100644
 -        <div class="card">
 -          <h3>Dark Roast Espresso</h3>
 +          <footer>
-+            <a href="/menu/seasonal" class="btn">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
++            <fieldset class="size-picker">
++              <legend>Size</legend>
++              <label>
++                <input type="radio" name="size-maple-oat-latte" value="small">
++                Small
++              </label>
++              <label>
++                <input type="radio" name="size-maple-oat-latte" value="medium" checked>
++                Medium
++              </label>
++              <label>
++                <input type="radio" name="size-maple-oat-latte" value="large">
++                Large
++              </label>
++            </fieldset>
++            <button type="button" class="btn">Add to Order</button>
++            <a href="/menu/seasonal" class="details-link">View Details<span class="visually-hidden"> about Maple Oat Latte</span></a>
 +          </footer>
 +        </article>
 +        <article class="card">
++          <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="Rich dark roast espresso shot with golden crema in a demitasse cup">
 +          <h3><a href="/menu/espresso" class="card-link">Dark Roast Espresso</a></h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
@@ -192,16 +315,49 @@ index 66c9173..2fafc3d 100644
 -        <div class="card">
 -          <h3>Cold Brew</h3>
 +          <footer>
-+            <a href="/menu/espresso" class="btn">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
++            <fieldset class="size-picker">
++              <legend>Size</legend>
++              <label>
++                <input type="radio" name="size-dark-roast-espresso" value="small">
++                Small
++              </label>
++              <label>
++                <input type="radio" name="size-dark-roast-espresso" value="medium" checked>
++                Medium
++              </label>
++              <label>
++                <input type="radio" name="size-dark-roast-espresso" value="large">
++                Large
++              </label>
++            </fieldset>
++            <button type="button" class="btn">Add to Order</button>
++            <a href="/menu/espresso" class="details-link">View Details<span class="visually-hidden"> about Dark Roast Espresso</span></a>
 +          </footer>
 +        </article>
 +        <article class="card">
++          <img src="https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80" alt="Iced cold brew coffee poured over ice in a tall glass">
 +          <h3><a href="/menu/cold-brew" class="card-link">Cold Brew</a></h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
 -        </div>
 +          <footer>
-+            <a href="/menu/cold-brew" class="btn">View Details<span class="visually-hidden"> about Cold Brew</span></a>
++            <fieldset class="size-picker">
++              <legend>Size</legend>
++              <label>
++                <input type="radio" name="size-cold-brew" value="small">
++                Small
++              </label>
++              <label>
++                <input type="radio" name="size-cold-brew" value="medium" checked>
++                Medium
++              </label>
++              <label>
++                <input type="radio" name="size-cold-brew" value="large">
++                Large
++              </label>
++            </fieldset>
++            <button type="button" class="btn">Add to Order</button>
++            <a href="/menu/cold-brew" class="details-link">View Details<span class="visually-hidden"> about Cold Brew</span></a>
 +          </footer>
 +        </article>
        </div>
