@@ -3,16 +3,13 @@ import { Node, type JsxOpeningElement, type JsxSelfClosingElement, type SourceFi
 import type { AnalyzerMatch, DomElementView, DomMatcherContext, DomRuleMatcher } from '../schema.ts';
 import { matchesFastTokens } from './js-scanner.ts';
 
-export interface HtmlTagToken {
+interface HtmlTagToken {
   readonly tagName: string;
   readonly line: number;
   readonly column: number;
   readonly attributes: Readonly<Record<string, string>>;
 }
 
-/**
- * Advances past an HTML comment, tracking line and column numbers.
- */
 function skipComment(
   html: string,
   startIndex: number,
@@ -40,9 +37,6 @@ function skipComment(
   return { index: i, line, col };
 }
 
-/**
- * Advances past a simple closing tag or doctype until `>`.
- */
 function skipUntilGreaterThan(
   html: string,
   startIndex: number,
@@ -70,9 +64,6 @@ function skipUntilGreaterThan(
   return { index: i, line, col };
 }
 
-/**
- * Skips whitespace characters and advances line/col positions.
- */
 function skipWhitespace(
   html: string,
   startIndex: number,
@@ -96,9 +87,6 @@ function skipWhitespace(
   return { index: i, line, col };
 }
 
-/**
- * Reads an attribute value (quoted or unquoted) starting at `=` character.
- */
 function readAttributeValue(
   html: string,
   startIndex: number,
@@ -143,9 +131,6 @@ function readAttributeValue(
   return { value, index: i, line, col };
 }
 
-/**
- * Parses all attributes inside an opening tag until `>` or `/>`.
- */
 function parseTagAttributes(
   html: string,
   startIndex: number,

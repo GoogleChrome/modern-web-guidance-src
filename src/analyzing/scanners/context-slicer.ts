@@ -1,17 +1,13 @@
 import { Node, type SourceFile } from 'ts-morph';
 
-export const MAX_CONTEXT_LINES = 120;
-export const CODE_SNIPPET_RADIUS = 15;
-export const JS_SURROUNDING_RADIUS = 30;
-export const MAX_SFC_CONTEXT_LINES = 40;
-export const PACKAGE_JSON_FULL_MAX_LINES = 200;
-export const PACKAGE_JSON_HEADER_LINES = 35;
-export const PACKAGE_JSON_WINDOW_RADIUS = 30;
-export const MAX_COMMONJS_REQUIRE_LINE = 50;
+const MAX_CONTEXT_LINES = 120;
+const CODE_SNIPPET_RADIUS = 15;
+const JS_SURROUNDING_RADIUS = 30;
+const MAX_SFC_CONTEXT_LINES = 40;
+const PACKAGE_JSON_FULL_MAX_LINES = 200;
+const PACKAGE_JSON_HEADER_LINES = 35;
+const PACKAGE_JSON_WINDOW_RADIUS = 30;
 
-/**
- * Formats a block of text lines with line numbers and a `>` marker pointing to the target line.
- */
 export function formatNumberedLines(
   lines: readonly string[],
   startLineNumber: number,
@@ -364,7 +360,7 @@ export function sliceJsAstContext(
  * (showing "name", "bin", "scripts", "dependencies") plus `...` plus a +-30 line window
  * around `targetLine` when > 200 lines.
  */
-export function slicePackageJsonContext(
+function slicePackageJsonContext(
   fileContent: string,
   targetLine: number,
 ): string {
@@ -413,24 +409,14 @@ export function sliceStructuredBlock(
   return formatNumberedLines(blockLines, start + 1, targetLine);
 }
 
-/**
- * Extracts compact code snippet (~15 lines) around targetLine.
- */
 export function extractCompactSnippet(
   fileContent: string,
   targetLine: number,
   radius: number = CODE_SNIPPET_RADIUS,
 ): string {
-  const lines = fileContent.split('\n');
-  const start = Math.max(0, targetLine - 1 - radius);
-  const end = Math.min(lines.length, targetLine + radius);
-
-  return formatNumberedLines(lines.slice(start, end), start + 1, targetLine);
+  return sliceStructuredBlock(fileContent, targetLine, radius);
 }
 
-/**
- * Generates both the compact `codeSnippet` and the structured `contextSlice`.
- */
 export function sliceStructuredContext(
   filePath: string,
   fileContent: string,

@@ -1,3 +1,4 @@
+import { posix } from 'node:path';
 import type {
   AnalyzerMatch,
   DependencyMatcherContext,
@@ -27,12 +28,6 @@ const EXTENSIONS_TO_STRIP: readonly string[] = [
 ];
 
 const VERSION_SUFFIX_REGEX = /[-._]v?\d+(?:\.\d+)*(?:[-._][a-z0-9.]+)?$/i;
-
-function extractBasename(relPath: string): string {
-  const normalized = relPath.replace(/\\/g, '/');
-  const lastSlashIndex = normalized.lastIndexOf('/');
-  return lastSlashIndex >= 0 ? normalized.slice(lastSlashIndex + 1) : normalized;
-}
 
 function stripKnownExtension(filename: string): string {
   const lower = filename.toLowerCase();
@@ -233,7 +228,7 @@ function bannerIdentifiesPackage(bannerSlice: string, pkgName: string): boolean 
   ]);
 
   if (pkgNorm.base.includes('-')) {
-    wordsToTryAddNoHyphen(wordsToMatch, pkgNorm.base);
+    wordsToMatch.add(pkgNorm.base.replace(/-/g, ''));
   }
 
   for (const word of wordsToMatch) {
@@ -252,10 +247,6 @@ function bannerIdentifiesPackage(bannerSlice: string, pkgName: string): boolean 
   }
 
   return false;
-}
-
-function wordsToTryAddNoHyphen(targetSet: Set<string>, hyphenatedWord: string): void {
-  targetSet.add(hyphenatedWord.replace(/-/g, ''));
 }
 
 function matchesVendoredPackage(
@@ -338,7 +329,7 @@ export function scanVendoredLibraryFile(
     return [];
   }
 
-  const baseName = extractBasename(relPath);
+  const baseName = posix.basename(relPath.replace(/\\/g, '/'));
   const matches: AnalyzerMatch[] = [];
 
   for (const matcher of matchers) {
@@ -412,7 +403,7 @@ export function createDependencyMatcher(
   };
 }
 
-export const FRONTEND_FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
+const FRONTEND_FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
   'react',
   'react-dom',
   'vue',
@@ -431,7 +422,7 @@ export const FRONTEND_FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
   'alpinejs',
 ]);
 
-export const BACKEND_SERVER_PACKAGES: ReadonlySet<string> = new Set([
+const BACKEND_SERVER_PACKAGES: ReadonlySet<string> = new Set([
   'express',
   'fastify',
   'koa',
@@ -619,9 +610,6 @@ interface MatchPackageParams {
   readonly ctx: DependencyMatcherContext;
 }
 
-/**
- * Evaluates dependency rules against a single package entry.
- */
 function matchPackageAgainstRules(params: MatchPackageParams): AnalyzerMatch[] {
   const matches: AnalyzerMatch[] = [];
   const { pkgName, versionRange, packageJsonContent, rules, ctx } = params;
@@ -692,8 +680,17 @@ export function scanPackageJson(
 
   const matches: AnalyzerMatch[] = [];
   const optInDevRules = rules.filter(ruleIncludesDevDependencies);
+  const sectionTargets: ReadonlyArray<{
+    readonly field: string;
+    readonly activeRules: readonly DependencyRuleMatcher[];
+  }> = [
+    ...RUNTIME_DEPENDENCY_FIELDS.map((field) => ({ field, activeRules: rules })),
+    ...(optInDevRules.length > 0
+      ? [{ field: 'devDependencies', activeRules: optInDevRules }]
+      : []),
+  ];
 
-  for (const field of RUNTIME_DEPENDENCY_FIELDS) {
+  for (const { field, activeRules } of sectionTargets) {
     const deps = getDependencyObject(pkgRecord, field);
     if (!deps) {
       continue;
@@ -701,35 +698,15 @@ export function scanPackageJson(
 
     for (const [pkgName, versionVal] of Object.entries(deps)) {
       const versionRange = typeof versionVal === 'string' ? versionVal : '*';
-      const pkgMatches = matchPackageAgainstRules({
-        pkgName,
-        versionRange,
-        packageJsonContent,
-        rules,
-        ctx,
-      });
-      for (const m of pkgMatches) {
-        matches.push(m);
-      }
-    }
-  }
-
-  if (optInDevRules.length > 0) {
-    const devDeps = getDependencyObject(pkgRecord, 'devDependencies');
-    if (devDeps) {
-      for (const [pkgName, versionVal] of Object.entries(devDeps)) {
-        const versionRange = typeof versionVal === 'string' ? versionVal : '*';
-        const pkgMatches = matchPackageAgainstRules({
+      matches.push(
+        ...matchPackageAgainstRules({
           pkgName,
           versionRange,
           packageJsonContent,
-          rules: optInDevRules,
+          rules: activeRules,
           ctx,
-        });
-        for (const m of pkgMatches) {
-          matches.push(m);
-        }
-      }
+        }),
+      );
     }
   }
 

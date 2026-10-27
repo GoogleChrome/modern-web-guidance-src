@@ -1,11 +1,15 @@
 import {
   Node,
   SyntaxKind,
+  type ArrowFunction,
   type BinaryExpression,
   type CallExpression,
   type ExportDeclaration,
+  type FunctionDeclaration,
+  type FunctionExpression,
   type IfStatement,
   type ImportDeclaration,
+  type MethodDeclaration,
   type ParameterDeclaration,
   type SourceFile,
   type Statement,
@@ -19,22 +23,27 @@ import ts from 'typescript';
  */
 export function unwrapExpression(expr: Node): Node {
   let current = expr;
-  while (true) {
-    if (Node.isParenthesizedExpression(current)) {
-      current = current.getExpression();
-    } else if (Node.isAsExpression(current)) {
-      current = current.getExpression();
-    } else if (Node.isTypeAssertion(current)) {
-      current = current.getExpression();
-    } else if (Node.isNonNullExpression(current)) {
-      current = current.getExpression();
-    } else if (Node.isSatisfiesExpression(current)) {
-      current = current.getExpression();
-    } else {
-      break;
-    }
+  while (
+    Node.isParenthesizedExpression(current) ||
+    Node.isAsExpression(current) ||
+    Node.isTypeAssertion(current) ||
+    Node.isNonNullExpression(current) ||
+    Node.isSatisfiesExpression(current)
+  ) {
+    current = current.getExpression();
   }
   return current;
+}
+
+function isCallableScope(
+  scope: Node,
+): scope is FunctionDeclaration | FunctionExpression | ArrowFunction | MethodDeclaration {
+  return (
+    Node.isFunctionDeclaration(scope) ||
+    Node.isFunctionExpression(scope) ||
+    Node.isArrowFunction(scope) ||
+    Node.isMethodDeclaration(scope)
+  );
 }
 
 /**
@@ -65,22 +74,17 @@ function findVariableInitializerInStatements(
  * Checks whether `name` is a parameter in a callable scope.
  */
 function isParameterInScope(scope: Node, name: string): boolean {
-  if (
-    !Node.isFunctionDeclaration(scope) &&
-    !Node.isFunctionExpression(scope) &&
-    !Node.isArrowFunction(scope) &&
-    !Node.isMethodDeclaration(scope)
-  ) {
+  if (!isCallableScope(scope)) {
     return false;
   }
   return scope.getParameters().some((param) => param.getName() === name);
 }
 
-/**
- * Searches the lexical ancestor blocks preceding `startNode` for a local `const` or `let`
- * initializer matching `name`.
- */
-function findLocalInitializer(startNode: Node, name: string): Node | null {
+function findInEnclosingScopes<T>(
+  startNode: Node,
+  name: string,
+  matchStatements: (statements: readonly Statement[]) => T | null,
+): T | null {
   let currentScope: Node | undefined = startNode.getParent();
 
   while (currentScope) {
@@ -89,13 +93,9 @@ function findLocalInitializer(startNode: Node, name: string): Node | null {
     }
 
     if (Node.isBlock(currentScope) || Node.isSourceFile(currentScope)) {
-      const init = findVariableInitializerInStatements(
-        currentScope.getStatements(),
-        name,
-        startNode.getStart(),
-      );
-      if (init) {
-        return init;
+      const match = matchStatements(currentScope.getStatements());
+      if (match) {
+        return match;
       }
     }
 
@@ -103,6 +103,17 @@ function findLocalInitializer(startNode: Node, name: string): Node | null {
   }
 
   return null;
+}
+
+/**
+ * Searches the lexical ancestor blocks preceding `startNode` for a local `const` or `let`
+ * initializer matching `name`.
+ */
+function findLocalInitializer(startNode: Node, name: string): Node | null {
+  const beforePos = startNode.getStart();
+  return findInEnclosingScopes(startNode, name, (statements) =>
+    findVariableInitializerInStatements(statements, name, beforePos),
+  );
 }
 
 /**
@@ -129,25 +140,14 @@ export function resolveLocalExpression(node: Node, maxHops: number = 1): Node {
  * Searches lexical ancestor scopes for a local FunctionDeclaration matching `name`.
  */
 function findLocalFunctionDeclaration(startNode: Node, name: string): Node | null {
-  let currentScope: Node | undefined = startNode.getParent();
-
-  while (currentScope) {
-    if (isParameterInScope(currentScope, name)) {
-      return null;
-    }
-
-    if (Node.isBlock(currentScope) || Node.isSourceFile(currentScope)) {
-      for (const stmt of currentScope.getStatements()) {
-        if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
-          return stmt;
-        }
+  return findInEnclosingScopes(startNode, name, (statements) => {
+    for (const stmt of statements) {
+      if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
+        return stmt;
       }
     }
-
-    currentScope = currentScope.getParent();
-  }
-
-  return null;
+    return null;
+  });
 }
 
 /**
@@ -496,17 +496,10 @@ function isGuardedByCallableEarlyReturn(
   callable: Node,
   featureTokens: readonly string[],
 ): boolean {
-  let body: Node | undefined;
-  if (
-    Node.isFunctionDeclaration(callable) ||
-    Node.isFunctionExpression(callable) ||
-    Node.isMethodDeclaration(callable)
-  ) {
-    body = callable.getBody();
-  } else if (Node.isArrowFunction(callable)) {
-    body = callable.getBody();
+  if (!isCallableScope(callable)) {
+    return false;
   }
-
+  const body = callable.getBody();
   if (body && Node.isBlock(body)) {
     for (const stmt of body.getStatements()) {
       if (Node.isIfStatement(stmt)) {
@@ -587,7 +580,7 @@ function isGuardedByLogicalFallback(
 
 const sourceFileTokenCache = new WeakMap<SourceFile, Map<string, boolean>>();
 
-export function sourceFileContainsAnyToken(
+function sourceFileContainsAnyToken(
   sf: SourceFile,
   tokens: readonly string[],
 ): boolean {
@@ -947,12 +940,7 @@ function isParameterBindingName(param: ParameterDeclaration, localName: string):
 }
 
 function isShadowedByCallableScope(scope: Node, localName: string): boolean {
-  if (
-    !Node.isFunctionDeclaration(scope) &&
-    !Node.isFunctionExpression(scope) &&
-    !Node.isArrowFunction(scope) &&
-    !Node.isMethodDeclaration(scope)
-  ) {
+  if (!isCallableScope(scope)) {
     return false;
   }
   if (

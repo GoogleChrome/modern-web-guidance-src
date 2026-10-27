@@ -5,14 +5,13 @@ import {
   hasVendoredLicenseHeader,
   isDocsOrTestsPath,
   isExcludedCorpusNonAppPath,
-  isIgnoredPath,
   isMinifiedContent,
   isVendoredOrGeneratedPath,
   shouldScanFile,
 } from './file-filter.ts';
 
 describe('file-filter vendored and hashed asset exclusions', () => {
-  it('excludes unminified vendored library filenames regardless of directory', () => {
+  it('excludes unminified vendored library filenames regardless of directory', async (t) => {
     const vendoredFiles = [
       'public/js/bootstrap.js',
       'assets/js/bootstrap.bundle.js',
@@ -43,30 +42,15 @@ describe('file-filter vendored and hashed asset exclusions', () => {
     ];
 
     for (const filePath of vendoredFiles) {
-      assert.equal(
-        isExcludedCorpusNonAppPath(filePath),
-        true,
-        `expected isExcludedCorpusNonAppPath(${filePath}) to be true`,
-      );
-      assert.equal(
-        isIgnoredPath(filePath),
-        true,
-        `expected isIgnoredPath(${filePath}) to be true`,
-      );
-      assert.equal(
-        isVendoredOrGeneratedPath(filePath),
-        true,
-        `expected isVendoredOrGeneratedPath(${filePath}) to be true`,
-      );
-      assert.equal(
-        shouldScanFile(filePath),
-        false,
-        `expected shouldScanFile(${filePath}) to be false`,
-      );
+      await t.test(filePath, () => {
+        assert.equal(isExcludedCorpusNonAppPath(filePath), true);
+        assert.equal(isVendoredOrGeneratedPath(filePath), true);
+        assert.equal(shouldScanFile(filePath), false);
+      });
     }
   });
 
-  it('excludes vendored library directory segments', () => {
+  it('excludes vendored library directory segments', async (t) => {
     const vendoredDirPaths = [
       'src/libs/dayjs/esm/index.js',
       'src/libs/dayjs/plugin/utc.js',
@@ -79,20 +63,14 @@ describe('file-filter vendored and hashed asset exclusions', () => {
     ];
 
     for (const filePath of vendoredDirPaths) {
-      assert.equal(
-        isExcludedCorpusNonAppPath(filePath),
-        true,
-        `expected isExcludedCorpusNonAppPath(${filePath}) to be true`,
-      );
-      assert.equal(
-        shouldScanFile(filePath),
-        false,
-        `expected shouldScanFile(${filePath}) to be false`,
-      );
+      await t.test(filePath, () => {
+        assert.equal(isExcludedCorpusNonAppPath(filePath), true);
+        assert.equal(shouldScanFile(filePath), false);
+      });
     }
   });
 
-  it('excludes framework-published hashed asset directories (/assets/<hex>/)', () => {
+  it('excludes framework-published hashed asset directories (/assets/<hex>/)', async (t) => {
     const hashedAssetPaths = [
       'web/assets/a09b59a8/js/bootstrap.js',
       'public/assets/9f8e7d6c/datepicker.js',
@@ -100,16 +78,10 @@ describe('file-filter vendored and hashed asset exclusions', () => {
     ];
 
     for (const filePath of hashedAssetPaths) {
-      assert.equal(
-        isExcludedCorpusNonAppPath(filePath),
-        true,
-        `expected isExcludedCorpusNonAppPath(${filePath}) to be true`,
-      );
-      assert.equal(
-        shouldScanFile(filePath),
-        false,
-        `expected shouldScanFile(${filePath}) to be false`,
-      );
+      await t.test(filePath, () => {
+        assert.equal(isExcludedCorpusNonAppPath(filePath), true);
+        assert.equal(shouldScanFile(filePath), false);
+      });
     }
   });
 
@@ -209,7 +181,7 @@ describe('file-filter vendored and hashed asset exclusions', () => {
     assert.equal(shouldScanFile('dist/bundle.js'), false);
   });
 
-  it('skips docs, examples, demo, test, spec, and fixtures paths and test/spec files', () => {
+  it('skips docs, examples, demo, test, spec, and fixtures paths and test/spec files', async (t) => {
     // Check all segments defined in DOCS_AND_TESTS_DIR_SEGMENTS
     const expectedSegments = [
       'docs',
@@ -227,20 +199,11 @@ describe('file-filter vendored and hashed asset exclusions', () => {
       '__fixtures__',
     ];
     for (const seg of expectedSegments) {
-      assert.ok(
-        DOCS_AND_TESTS_DIR_SEGMENTS.has(seg),
-        `expected DOCS_AND_TESTS_DIR_SEGMENTS to contain ${seg}`,
-      );
-      assert.equal(
-        isDocsOrTestsPath(`${seg}/file.ts`),
-        true,
-        `expected isDocsOrTestsPath(${seg}/file.ts) to be true`,
-      );
-      assert.equal(
-        isDocsOrTestsPath(`sub/${seg}/file.js`),
-        true,
-        `expected isDocsOrTestsPath(sub/${seg}/file.js) to be true`,
-      );
+      await t.test(`segment: ${seg}`, () => {
+        assert.ok(DOCS_AND_TESTS_DIR_SEGMENTS.has(seg));
+        assert.equal(isDocsOrTestsPath(`${seg}/file.ts`), true);
+        assert.equal(isDocsOrTestsPath(`sub/${seg}/file.js`), true);
+      });
     }
 
     // Check *.test.* and *.spec.* file patterns, including standalone test.js/ts and spec.js/ts
@@ -260,13 +223,11 @@ describe('file-filter vendored and hashed asset exclusions', () => {
       'lib/spec.js',
     ];
     for (const f of testSpecFiles) {
-      assert.equal(isDocsOrTestsPath(f), true, `expected isDocsOrTestsPath(${f}) to be true`);
-      assert.equal(shouldScanFile(f), false, `expected shouldScanFile(${f}) to be false by default`);
-      assert.equal(
-        shouldScanFile(f, undefined, { includeDocsAndTests: true }),
-        true,
-        `expected shouldScanFile(${f}, ..., includeDocsAndTests) to be true`,
-      );
+      await t.test(`test/spec file: ${f}`, () => {
+        assert.equal(isDocsOrTestsPath(f), true);
+        assert.equal(shouldScanFile(f), false);
+        assert.equal(shouldScanFile(f, undefined, { includeDocsAndTests: true }), true);
+      });
     }
 
     // Lookalike names that are not test/spec files

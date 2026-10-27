@@ -1,3 +1,5 @@
+import { posix } from 'node:path';
+
 export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'node_modules',
   'dist',
@@ -27,7 +29,7 @@ export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'extracted_snapshots',
 ]);
 
-export const CHECKED_IN_VENDOR_DIR_SEGMENTS: ReadonlySet<string> = new Set([
+const CHECKED_IN_VENDOR_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'vendor',
   'third_party',
   'third-party',
@@ -39,7 +41,7 @@ export const CHECKED_IN_VENDOR_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'non-npm',
 ]);
 
-export const VENDORED_DIR_SEGMENTS: ReadonlySet<string> = new Set([
+const VENDORED_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   ...BUILD_OR_INSTALL_DIR_SEGMENTS,
   ...CHECKED_IN_VENDOR_DIR_SEGMENTS,
 ]);
@@ -106,7 +108,7 @@ const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.d.ts',
 ];
 
-export const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
+const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   '.js',
   '.mjs',
   '.cjs',
@@ -127,7 +129,7 @@ export const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
 /**
  * Well-known vendored third-party library filenames (unminified copies checked into repos).
  */
-export const VENDORED_LIBRARY_FILENAMES: ReadonlySet<string> = new Set([
+const VENDORED_LIBRARY_FILENAMES: ReadonlySet<string> = new Set([
   'bundle.js',
   'bootstrap.js',
   'bootstrap.bundle.js',
@@ -164,7 +166,7 @@ const VENDORED_CHUI_STYLESHEET_RE = /^chui[.-].*\.css$/i;
 /**
  * Vendored library directory segments that frequently appear in source trees.
  */
-export const VENDORED_DIRECTORY_SUBPATHS: readonly string[] = [
+const VENDORED_DIRECTORY_SUBPATHS: readonly string[] = [
   '/dayjs/esm/',
   '/dayjs/plugin/',
   '/codemirror/',
@@ -180,7 +182,7 @@ export const VENDORED_DIRECTORY_SUBPATHS: readonly string[] = [
  */
 const HASHED_ASSET_DIR_RE = /\/assets\/[0-9a-f]{7,16}\//i;
 
-export const MAX_UNMINIFIED_LINE_LENGTH = 1200;
+const MAX_UNMINIFIED_LINE_LENGTH = 1200;
 const STRING_LITERAL_REGEX =
   /"[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'|`[^`\\]*(?:\\.[^`\\]*)*`/g;
 const LEADING_COMMENT_BLOCK_RE =
@@ -203,8 +205,17 @@ export interface FileFilterOptions {
   readonly includeDocsAndTests?: boolean;
 }
 
-function isStringSet(value: unknown): value is ReadonlySet<string> {
-  return value instanceof Set;
+function hasPathSegment(
+  normalizedPath: string,
+  segmentsSet: ReadonlySet<string>,
+): boolean {
+  const segments = normalizedPath.split('/').filter(Boolean);
+  for (const segment of segments.slice(0, -1)) {
+    if (segmentsSet.has(segment)) {
+      return true;
+    }
+  }
+  return segments.length === 1 && segmentsSet.has(segments[0] ?? '');
 }
 
 /**
@@ -214,8 +225,7 @@ function isStringSet(value: unknown): value is ReadonlySet<string> {
 export function isExcludedCorpusNonAppPath(relPath: string): boolean {
   const normalized = relPath.replace(/\\/g, '/').toLowerCase();
   const withLeadingSlash = normalized.startsWith('/') ? normalized : `/${normalized}`;
-  const lastSlash = normalized.lastIndexOf('/');
-  const base = lastSlash >= 0 ? normalized.slice(lastSlash + 1) : normalized;
+  const base = posix.basename(normalized);
 
   if (
     VENDORED_LIBRARY_FILENAMES.has(base) ||
@@ -245,20 +255,12 @@ export function isExcludedCorpusNonAppPath(relPath: string): boolean {
  */
 export function isVendoredOrGeneratedPath(
   relPath: string,
-  optionsOrCustomDirs?: FileFilterOptions | ReadonlySet<string>,
+  options?: FileFilterOptions,
 ): boolean {
   const normalized = relPath.replace(/\\/g, '/').toLowerCase();
   const segments = normalized.split('/').filter(Boolean);
-
-  let ignoredDirs: ReadonlySet<string>;
-  let excludeCorpus = false;
-
-  if (isStringSet(optionsOrCustomDirs)) {
-    ignoredDirs = optionsOrCustomDirs;
-  } else {
-    ignoredDirs = optionsOrCustomDirs?.customIgnoredDirs ?? VENDORED_DIR_SEGMENTS;
-    excludeCorpus = optionsOrCustomDirs?.excludeCorpusNonAppDirs === true;
-  }
+  const ignoredDirs = options?.customIgnoredDirs ?? VENDORED_DIR_SEGMENTS;
+  const excludeCorpus = options?.excludeCorpusNonAppDirs === true;
 
   if (isExcludedCorpusNonAppPath(normalized)) {
     return true;
@@ -290,16 +292,6 @@ export function isVendoredOrGeneratedPath(
   }
 
   return false;
-}
-
-/**
- * Alias for `isVendoredOrGeneratedPath`.
- */
-export function isIgnoredPath(
-  relPath: string,
-  optionsOrCustomDirs?: FileFilterOptions | ReadonlySet<string>,
-): boolean {
-  return isVendoredOrGeneratedPath(relPath, optionsOrCustomDirs);
 }
 
 /**
@@ -339,20 +331,12 @@ export function isMinifiedContent(
     nonEmptyLines.push(line);
 
     if (line.length > maxLineLength) {
-      if (INLINE_ASSET_LINE_REGEX.test(line)) {
-        const collapsed = line.replace(STRING_LITERAL_REGEX, '');
-        if (
-          collapsed.length > maxLineLength &&
-          !trimmed.startsWith('<svg') &&
-          !trimmed.startsWith('data:')
-        ) {
-          longLineCount++;
-        }
-      } else {
-        const collapsed = line.replace(STRING_LITERAL_REGEX, '');
-        if (collapsed.length > maxLineLength) {
-          longLineCount++;
-        }
+      const collapsed = line.replace(STRING_LITERAL_REGEX, '');
+      const isInlineSvgOrData =
+        INLINE_ASSET_LINE_REGEX.test(line) &&
+        (trimmed.startsWith('<svg') || trimmed.startsWith('data:'));
+      if (collapsed.length > maxLineLength && !isInlineSvgOrData) {
+        longLineCount++;
       }
     }
   }
@@ -468,34 +452,20 @@ export function shouldScanFile(
  * (e.g. node_modules, dist, build, out, .cache) that should never be scanned.
  */
 export function isBuildOrInstallPath(relPath: string): boolean {
-  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
-  const segments = normalized.split('/').filter(Boolean);
-  for (const segment of segments.slice(0, -1)) {
-    if (BUILD_OR_INSTALL_DIR_SEGMENTS.has(segment)) {
-      return true;
-    }
-  }
-  if (segments.length === 1 && BUILD_OR_INSTALL_DIR_SEGMENTS.has(segments[0] ?? '')) {
-    return true;
-  }
-  return false;
+  return hasPathSegment(
+    relPath.replace(/\\/g, '/').toLowerCase(),
+    BUILD_OR_INSTALL_DIR_SEGMENTS,
+  );
 }
 
 /**
  * Returns true if the path is inside a checked-in vendor directory (e.g. vendor, third_party, libs).
  */
 export function isCheckedInVendorPath(relPath: string): boolean {
-  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
-  const segments = normalized.split('/').filter(Boolean);
-  for (const segment of segments.slice(0, -1)) {
-    if (CHECKED_IN_VENDOR_DIR_SEGMENTS.has(segment)) {
-      return true;
-    }
-  }
-  if (segments.length === 1 && CHECKED_IN_VENDOR_DIR_SEGMENTS.has(segments[0] ?? '')) {
-    return true;
-  }
-  return false;
+  return hasPathSegment(
+    relPath.replace(/\\/g, '/').toLowerCase(),
+    CHECKED_IN_VENDOR_DIR_SEGMENTS,
+  );
 }
 
 /**
@@ -503,16 +473,8 @@ export function isCheckedInVendorPath(relPath: string): boolean {
  */
 export function isCorpusNonAppPath(relPath: string): boolean {
   const normalized = relPath.replace(/\\/g, '/').toLowerCase();
-  const segments = normalized.split('/').filter(Boolean);
-  for (const segment of segments.slice(0, -1)) {
-    if (CORPUS_NON_APP_DIR_SEGMENTS.has(segment)) {
-      return true;
-    }
-  }
-  if (segments.length === 1 && CORPUS_NON_APP_DIR_SEGMENTS.has(segments[0] ?? '')) {
-    return true;
-  }
   return (
+    hasPathSegment(normalized, CORPUS_NON_APP_DIR_SEGMENTS) ||
     /(?:^|\/)(?:docs|doc|site|website|gh-pages)\//i.test(normalized) ||
     /(?:^|\/)content\/.*\/docs\//i.test(normalized)
   );

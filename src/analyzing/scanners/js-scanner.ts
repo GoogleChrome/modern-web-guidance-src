@@ -107,49 +107,31 @@ export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher 
       const visitedLines = config.dedupeLines ? new Set<number>() : null;
 
       sourceFile.forEachDescendant((node) => {
-        const matchCall = config.matchCall;
-        const matchNew = config.matchNew;
-        if (matchCall && Node.isCallExpression(node)) {
-          const line = node.getStartLineNumber();
-          if (visitedLines?.has(line)) {
-            return;
-          }
-          if (
-            config.featureGuardTokens &&
-            isProtectedByFeatureGuard(node, config.featureGuardTokens)
-          ) {
-            return;
-          }
-          if (config.isGuarded?.(node, sourceFile, ctx)) {
-            return;
-          }
-          const message = matchCall(node, sourceFile, ctx);
-          if (message) {
-            visitedLines?.add(line);
-            matches.push({ line, message });
-          }
+        if (!Node.isCallExpression(node) && !Node.isNewExpression(node)) {
           return;
         }
-
-        if (matchNew && Node.isNewExpression(node)) {
-          const line = node.getStartLineNumber();
-          if (visitedLines?.has(line)) {
-            return;
-          }
-          if (
-            config.featureGuardTokens &&
-            isProtectedByFeatureGuard(node, config.featureGuardTokens)
-          ) {
-            return;
-          }
-          if (config.isGuarded?.(node, sourceFile, ctx)) {
-            return;
-          }
-          const message = matchNew(node, sourceFile, ctx);
-          if (message) {
-            visitedLines?.add(line);
-            matches.push({ line, message });
-          }
+        if (Node.isCallExpression(node) ? !config.matchCall : !config.matchNew) {
+          return;
+        }
+        const line = node.getStartLineNumber();
+        if (visitedLines?.has(line)) {
+          return;
+        }
+        if (
+          config.featureGuardTokens &&
+          isProtectedByFeatureGuard(node, config.featureGuardTokens)
+        ) {
+          return;
+        }
+        if (config.isGuarded?.(node, sourceFile, ctx)) {
+          return;
+        }
+        const message = Node.isCallExpression(node)
+          ? config.matchCall?.(node, sourceFile, ctx)
+          : config.matchNew?.(node, sourceFile, ctx);
+        if (message) {
+          visitedLines?.add(line);
+          matches.push({ line, message });
         }
       });
 

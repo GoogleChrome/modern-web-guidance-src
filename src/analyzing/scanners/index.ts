@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { open, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import type { Node, Project, SourceFile, SyntaxKind } from 'ts-morph';
 import type {
   AnalyzerFinding,
+  AnalyzerMatch,
   AnalyzerRule,
   CssRuleMatcher,
   DependencyRuleMatcher,
@@ -54,6 +55,7 @@ import {
 import {
   extractScriptBlocks,
   extractStyleBlocks,
+  isMarkupPath,
   prepareHtmlForDomScan,
   type ScriptBlock,
 } from './sfc-extractor.ts';
@@ -67,7 +69,7 @@ export * from './file-filter.ts';
 export * from './js-scanner.ts';
 export * from './sfc-extractor.ts';
 
-export const GUIDE_HASH_HEX_LENGTH = 12;
+const GUIDE_HASH_HEX_LENGTH = 12;
 
 /**
  * Computes the 12-char SHA-256 hash of a guide.md content string.
@@ -79,12 +81,11 @@ export function computeGuideHash(guideContent: string): string {
     .slice(0, GUIDE_HASH_HEX_LENGTH);
 }
 
-export interface ScanOptions {
+export interface ScanOptions
+  extends Pick<FileFilterOptions, 'excludeCorpusNonAppDirs' | 'includeDocsAndTests'> {
   readonly repo?: string;
   readonly commit?: string;
   readonly fileFilterOptions?: FileFilterOptions;
-  readonly excludeCorpusNonAppDirs?: boolean;
-  readonly includeDocsAndTests?: boolean;
   readonly project?: Project;
 }
 
@@ -131,128 +132,74 @@ function createFinding(params: FindingParams): AnalyzerFinding {
   };
 }
 
+function materializeFindings(
+  ctx: FileContext,
+  rule: AnalyzerRule,
+  matches: readonly AnalyzerMatch[],
+  sourceFile?: SourceFile,
+  isVendoredLibrary?: boolean,
+): AnalyzerFinding[] {
+  return matches.map((match) => {
+    const { codeSnippet, contextSlice } = sliceStructuredContext(
+      ctx.relPath,
+      ctx.content,
+      match.line,
+      sourceFile,
+    );
+    return createFinding({
+      rule,
+      ctx,
+      line: match.line,
+      message: match.message,
+      codeSnippet,
+      contextSlice,
+      isVendoredLibrary,
+      subPattern: match.subPattern,
+    });
+  });
+}
+
 function processVendoredLibraryFile(
   ctx: FileContext,
   rules: readonly (AnalyzerRule & { matcher: DependencyRuleMatcher })[],
 ): AnalyzerFinding[] {
-  const findings: AnalyzerFinding[] = [];
-  for (const rule of rules) {
-    const matches = scanVendoredLibraryFile(ctx.relPath, ctx.content, [rule.matcher]);
-    for (const match of matches) {
-      const { codeSnippet, contextSlice } = sliceStructuredContext(
-        ctx.relPath,
-        ctx.content,
-        match.line,
-      );
-      findings.push(
-        createFinding({
-          rule,
-          ctx,
-          line: match.line,
-          message: match.message,
-          codeSnippet,
-          contextSlice,
-          isVendoredLibrary: true,
-          subPattern: match.subPattern,
-        }),
-      );
-    }
-  }
-  return findings;
+  return rules.flatMap((rule) =>
+    materializeFindings(
+      ctx,
+      rule,
+      scanVendoredLibraryFile(ctx.relPath, ctx.content, [rule.matcher]),
+      undefined,
+      true,
+    ),
+  );
 }
 
 function processPackageJsonFile(
   ctx: FileContext,
   rules: readonly (AnalyzerRule & { matcher: DependencyRuleMatcher })[],
 ): AnalyzerFinding[] {
-  const findings: AnalyzerFinding[] = [];
-  for (const rule of rules) {
-    const matches = scanPackageJson(ctx.relPath, ctx.content, [rule.matcher]);
-    for (const match of matches) {
-      const { codeSnippet, contextSlice } = sliceStructuredContext(
-        ctx.relPath,
-        ctx.content,
-        match.line,
-      );
-      findings.push(
-        createFinding({
-          rule,
-          ctx,
-          line: match.line,
-          message: match.message,
-          codeSnippet,
-          contextSlice,
-        subPattern: match.subPattern,
-        }),
-      );
-    }
-  }
-  return findings;
+  return rules.flatMap((rule) =>
+    materializeFindings(ctx, rule, scanPackageJson(ctx.relPath, ctx.content, [rule.matcher])),
+  );
 }
 
 function processCssFile(
   ctx: FileContext,
   rules: readonly (AnalyzerRule & { matcher: CssRuleMatcher })[],
 ): AnalyzerFinding[] {
-  const activeRules = rules.filter((rule) =>
-    matchesFastTokens(ctx.content, rule.matcher.fastTokens),
+  return scanCssRules(ctx.relPath, ctx.content, rules).flatMap(({ rule, match }) =>
+    materializeFindings(ctx, rule, [match]),
   );
-  if (activeRules.length === 0) {
-    return [];
-  }
-
-  const findings: AnalyzerFinding[] = [];
-  const results = scanCssRules(ctx.relPath, ctx.content, activeRules);
-  for (const { rule, match } of results) {
-    const { codeSnippet, contextSlice } = sliceStructuredContext(
-      ctx.relPath,
-      ctx.content,
-      match.line,
-    );
-    findings.push(
-      createFinding({
-        rule,
-        ctx,
-        line: match.line,
-        message: match.message,
-        codeSnippet,
-        contextSlice,
-      subPattern: match.subPattern,
-      }),
-    );
-  }
-  return findings;
 }
 
 function processHtmlFile(
   ctx: FileContext,
   rules: readonly (AnalyzerRule & { matcher: DomRuleMatcher })[],
 ): AnalyzerFinding[] {
-  const findings: AnalyzerFinding[] = [];
   const preparedHtml = prepareHtmlForDomScan(ctx.relPath, ctx.content);
-
-  for (const rule of rules) {
-    const matches = scanHtml(ctx.relPath, preparedHtml, [rule.matcher]);
-    for (const match of matches) {
-      const { codeSnippet, contextSlice } = sliceStructuredContext(
-        ctx.relPath,
-        ctx.content,
-        match.line,
-      );
-      findings.push(
-        createFinding({
-          rule,
-          ctx,
-          line: match.line,
-          message: match.message,
-          codeSnippet,
-          contextSlice,
-        subPattern: match.subPattern,
-        }),
-      );
-    }
-  }
-  return findings;
+  return rules.flatMap((rule) =>
+    materializeFindings(ctx, rule, scanHtml(ctx.relPath, preparedHtml, [rule.matcher])),
+  );
 }
 
 function processJsxFile(
@@ -260,30 +207,14 @@ function processJsxFile(
   sourceFile: SourceFile,
   rules: readonly (AnalyzerRule & { matcher: DomRuleMatcher })[],
 ): AnalyzerFinding[] {
-  const findings: AnalyzerFinding[] = [];
-  for (const rule of rules) {
-    const matches = scanJsx(ctx.relPath, sourceFile, [rule.matcher]);
-    for (const match of matches) {
-      const { codeSnippet, contextSlice } = sliceStructuredContext(
-        ctx.relPath,
-        ctx.content,
-        match.line,
-        sourceFile,
-      );
-      findings.push(
-        createFinding({
-          rule,
-          ctx,
-          line: match.line,
-          message: match.message,
-          codeSnippet,
-          contextSlice,
-        subPattern: match.subPattern,
-        }),
-      );
-    }
-  }
-  return findings;
+  return rules.flatMap((rule) =>
+    materializeFindings(
+      ctx,
+      rule,
+      scanJsx(ctx.relPath, sourceFile, [rule.matcher]),
+      sourceFile,
+    ),
+  );
 }
 
 /**
@@ -291,7 +222,7 @@ function processJsxFile(
  * so that 40+ active JS rules scanning the same file do not re-walk the TypeScript AST
  * or re-slice full source strings on every rule invocation.
  */
-export function memoizeSourceFileQueries(sourceFile: SourceFile): void {
+function memoizeSourceFileQueries(sourceFile: SourceFile): void {
   const origGetDescendantsOfKind = sourceFile.getDescendantsOfKind.bind(sourceFile);
   const descendantsCache = new Map<SyntaxKind, Node[]>();
 
@@ -367,25 +298,7 @@ function processJsFile(
   try {
     for (const rule of activeRules) {
       const matches = rule.matcher.matchFile(sourceFile, matcherCtx);
-      for (const match of matches) {
-        const { codeSnippet, contextSlice } = sliceStructuredContext(
-          ctx.relPath,
-          ctx.content,
-          match.line,
-          sourceFile,
-        );
-        findings.push(
-          createFinding({
-            rule,
-            ctx,
-            line: match.line,
-            message: match.message,
-            codeSnippet,
-            contextSlice,
-          subPattern: match.subPattern,
-          }),
-        );
-      }
+      findings.push(...materializeFindings(ctx, rule, matches, sourceFile));
     }
   } finally {
     if (!existingSourceFile) {
@@ -425,25 +338,7 @@ function processScriptBlock(
   try {
     for (const rule of activeRules) {
       const matches = rule.matcher.matchFile(sourceFile, matcherCtx);
-      for (const match of matches) {
-        const { codeSnippet, contextSlice } = sliceStructuredContext(
-          ctx.relPath,
-          ctx.content,
-          match.line,
-          sourceFile,
-        );
-        findings.push(
-          createFinding({
-            rule,
-            ctx,
-            line: match.line,
-            message: match.message,
-            codeSnippet,
-            contextSlice,
-          subPattern: match.subPattern,
-          }),
-        );
-      }
+      findings.push(...materializeFindings(ctx, rule, matches, sourceFile));
     }
   } finally {
     project.removeSourceFile(sourceFile);
@@ -459,34 +354,9 @@ function processStyleBlock(
   if (isMinifiedContent(blankedCss)) {
     return [];
   }
-  const activeRules = rules.filter((rule) =>
-    matchesFastTokens(blankedCss, rule.matcher.fastTokens),
+  return scanCssRules(ctx.relPath, blankedCss, rules).flatMap(({ rule, match }) =>
+    materializeFindings(ctx, rule, [match]),
   );
-  if (activeRules.length === 0) {
-    return [];
-  }
-
-  const findings: AnalyzerFinding[] = [];
-  const results = scanCssRules(ctx.relPath, blankedCss, activeRules);
-  for (const { rule, match } of results) {
-    const { codeSnippet, contextSlice } = sliceStructuredContext(
-      ctx.relPath,
-      ctx.content,
-      match.line,
-    );
-    findings.push(
-      createFinding({
-        rule,
-        ctx,
-        line: match.line,
-        message: match.message,
-        codeSnippet,
-        contextSlice,
-      subPattern: match.subPattern,
-      }),
-    );
-  }
-  return findings;
 }
 
 function processMultiBlockFile(
@@ -569,15 +439,6 @@ function processJavaScriptFile(
   return findings;
 }
 
-function ctxForVendored(
-  relPath: string,
-  content: string,
-  repo: string,
-  commit: string,
-): FileContext {
-  return { relPath, content, repo, commit };
-}
-
 function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | undefined {
   if (
     !options?.fileFilterOptions &&
@@ -637,18 +498,19 @@ export function scanFiles(
         continue;
       }
 
+      const ctx: FileContext = { relPath, content, repo, commit };
+
       if (!shouldScanFile(relPath, content, filterOpts)) {
         if (
           depRules.length > 0 &&
           !isBuildOrInstallPath(relPath) &&
           !(filterOpts?.excludeCorpusNonAppDirs && isCorpusNonAppPath(relPath))
         ) {
-          findings.push(...processVendoredLibraryFile(ctxForVendored(relPath, content, repo, commit), depRules));
+          findings.push(...processVendoredLibraryFile(ctx, depRules));
         }
         continue;
       }
 
-      const ctx: FileContext = { relPath, content, repo, commit };
       const lowerPath = relPath.toLowerCase();
 
       if (lowerPath.endsWith('package.json') && depRules.length > 0) {
@@ -661,15 +523,7 @@ export function scanFiles(
         continue;
       }
 
-      const isMultiBlock =
-        lowerPath.endsWith('.html') ||
-        lowerPath.endsWith('.htm') ||
-        lowerPath.endsWith('.php') ||
-        lowerPath.endsWith('.vue') ||
-        lowerPath.endsWith('.svelte') ||
-        lowerPath.endsWith('.astro');
-
-      if (isMultiBlock) {
+      if (isMarkupPath(relPath)) {
         findings.push(...processMultiBlockFile(ctx, ruleBundle, project));
         continue;
       }
@@ -744,26 +598,13 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
 
     if (entry.isFile()) {
       if (!state.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
-        const includeOptions = {
-          ...state.fileFilterOptions,
-          includeDocsAndTests: true,
-        };
-        const isScannableSource = shouldScanFile(relPath, undefined, includeOptions);
-        if (isScannableSource) {
-          try {
-            const fileStat = await stat(fullPath);
-            if (fileStat.size <= MAX_SOURCE_FILE_BYTES) {
-              const content = await readFile(fullPath, 'utf8');
-              if (
-                Buffer.byteLength(content, 'utf8') <= MAX_SOURCE_FILE_BYTES &&
-                shouldScanFile(relPath, content, includeOptions)
-              ) {
-                state.skippedDocsAndTestsCount++;
-              }
-            }
-          } catch {
-            // Unreadable or binary file
-          }
+        if (
+          shouldScanFile(relPath, undefined, {
+            ...state.fileFilterOptions,
+            includeDocsAndTests: true,
+          })
+        ) {
+          state.skippedDocsAndTestsCount++;
         }
         continue;
       }
@@ -773,18 +614,23 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
 
       if (isScannableSource || isVendoredCandidate) {
         try {
-          const fileStat = await stat(fullPath);
-          if (fileStat.size > MAX_SOURCE_FILE_BYTES) {
-            continue;
-          }
-          const content = await readFile(fullPath, 'utf8');
-          if (Buffer.byteLength(content, 'utf8') <= MAX_SOURCE_FILE_BYTES) {
-            if (
-              shouldScanFile(relPath, content, state.fileFilterOptions) ||
-              isCandidateVendoredFile(relPath, content)
-            ) {
-              state.fileMap.set(relPath, content);
+          const handle = await open(fullPath, 'r');
+          try {
+            const fileStat = await handle.stat();
+            if (fileStat.size > MAX_SOURCE_FILE_BYTES) {
+              continue;
             }
+            const content = await handle.readFile('utf8');
+            if (Buffer.byteLength(content, 'utf8') <= MAX_SOURCE_FILE_BYTES) {
+              if (
+                shouldScanFile(relPath, content, state.fileFilterOptions) ||
+                isCandidateVendoredFile(relPath, content)
+              ) {
+                state.fileMap.set(relPath, content);
+              }
+            }
+          } finally {
+            await handle.close();
           }
         } catch {
           // Unreadable or binary file
