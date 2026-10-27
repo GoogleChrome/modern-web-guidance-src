@@ -7,11 +7,7 @@ import { dashboardDir } from '../../core/paths.ts';
 /**
  * The public allowlist file (`src/dashboard/public-suites-allowlist.json`).
  * It is the only input that decides which suites, models, and guides reach the
- * public dashboard, so it is kept in the repository and changed by pull request.
- *
- * Shape is enforced by `public-suites-allowlist.schema.json` (one source of
- * truth for editors and the loader). The few rules a schema cannot express
- * live in `validateAllowlistPolicy`.
+ * public dashboard. Shape is enforced by `public-suites-allowlist.schema.json`.
  */
 export interface PublicAllowlist {
   /** Suite IDs or glob patterns (`*` and `?` only) that are eligible for publishing. */
