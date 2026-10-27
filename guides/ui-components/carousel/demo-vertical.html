@@ -325,8 +325,11 @@
     // Park an end slide beside the current one, then cancel the layout shift with an instant scroll.
     function park(item) {
       const before = offsetToCenter(item);
+      // Snapping off while the slides are reordered: Firefox otherwise re-snaps to another slide and loops
+      track.style.scrollSnapType = "none";
       track.style.setProperty("--current", slides.indexOf(item));
       track.scrollBy({ top: offsetToCenter(item) - before, behavior: "instant" });
+      track.style.scrollSnapType = "";
       // The parked slide is a visual-only neighbor, so keep it out of keyboard and AT reach.
       slides.forEach((s) => { s.inert = getComputedStyle(s).order !== "0"; });
     }
