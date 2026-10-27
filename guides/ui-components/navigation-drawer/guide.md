@@ -299,7 +299,7 @@ observer.observe(sheet);
 openBtn.addEventListener('click', openDrawer);
 
 // Close trigger.
-closeBtn.addEventListener('click', closeDrawer());
+closeBtn.addEventListener('click', closeDrawer);
 
 // Light-dismiss: a tap on the dimmed area (anywhere inside the
 // popover but outside the sheet) closes the drawer. We implement
