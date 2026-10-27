@@ -809,6 +809,8 @@ describe('evaluateJudgeStability', () => {
         ruleGuideHash: baseProv.ruleGuideHash,
         ruleHash: baseProv.ruleHash,
         provenance: baseProv,
+        rawResponse: `{"verdict":"${verdict}"}`,
+        error: 'transient-pass-warning',
       },
     ];
 
@@ -822,6 +824,10 @@ describe('evaluateJudgeStability', () => {
     assert.equal(split.consensusResults[0].facts.rawVerdict, 'unsure');
     assert.equal(split.consensusResults[0].promptGuideHash, baseProv.promptGuideHash);
     assert.equal(split.consensusResults[0].ruleHash, baseProv.ruleHash);
+    assert.equal(split.consensusResults[0].rawResponse, undefined);
+    assert.equal(split.consensusResults[0].error, undefined);
+    assert.equal('rawResponse' in split.consensusResults[0], false);
+    assert.equal('error' in split.consensusResults[0], false);
   });
 
   it('throws when the 3 stability runs disagree on input provenance or cardId', () => {
@@ -1166,6 +1172,10 @@ describe('mocked direct and batch judge runners', () => {
     assert.equal(consensusRow.ruleHash, 'rulehash1234');
     assert.deepStrictEqual(consensusRow.provenance, expectedProvenance);
     assert.deepStrictEqual(consensusRow.facts.provenance, expectedProvenance);
+    assert.equal(consensusRow.rawResponse, undefined);
+    assert.equal(consensusRow.error, undefined);
+    assert.equal('rawResponse' in consensusRow, false);
+    assert.equal('error' in consensusRow, false);
   });
 
   it('throws an explicit error when batch API returns an error response instead of falling back', async () => {

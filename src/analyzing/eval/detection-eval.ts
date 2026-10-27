@@ -997,8 +997,9 @@ export function evaluateJudgeStability(
     const provenanceSource =
       consensusVerdict === v1 && v0 !== v1 ? r1 : r0;
 
+    const { rawResponse: _rawResponse, error: _error, ...provenanceFields } = provenanceSource;
     consensusResults.push({
-      ...provenanceSource,
+      ...provenanceFields,
       verdict: consensusVerdict,
       facts: chosenFacts,
     });
