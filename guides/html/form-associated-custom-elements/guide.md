@@ -72,6 +72,15 @@ Key points:
 - Implement `formResetCallback`, `formDisabledCallback`, and `formStateRestoreCallback` so the element behaves like a native control on reset, `fieldset[disabled]`, and back/forward autofill restore. In `formDisabledCallback(disabled)`, disable internal controls (or remove them from the tab order and ignore input) rather than setting `disabled` on the host — setting the host attribute inside the callback prevents re-enabling when an ancestor `<fieldset>` is re-enabled, and the host already matches `:disabled` automatically.
 - Follow platform conventions for dispatched events and prefer the built-in `input` and `change` events over custom ones. `input` fires when the value changes as a direct result of user action (typing, dragging a slider); `change` fires once per stream of changes, when the user commits (releasing the slider, blurring the field). Construct them with `InputEvent` and `Event` respectively.
 
+## Accessibility considerations
+
+When creating custom elements, if the custom element directly handles interaction, or acts as a group for individual controls, ensure that the custom element has an accessible name, role, and conveys state information (in the case of handling interaction directly). This can be done by using the appropriate properties of ElementInternals.
+
+```js
+this.#internals.role = 'group';
+this.#internals.ariaLabel = "Star rating";
+```
+
 ## Fallback strategies
 
 {{ BASELINE_STATUS("form-associated-custom-elements") }}
