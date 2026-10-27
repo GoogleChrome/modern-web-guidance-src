@@ -1,1 +1,1 @@
-- Make custom elements accessible by default, setting their roles and states, managing focus properly, and keeping accessibility relationships within component boundaries.
+- Add a reusable custom element to each Seasonal Favorites drink card on the Daily Grind homepage that customers can switch on or off to mark the drink as a favorite.
