@@ -1,0 +1,171 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..9b62c40
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,5 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const outputDirectory = new URL('./dist/', import.meta.url);
++await mkdir(outputDirectory, { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', outputDirectory));
+diff --git a/index.html b/index.html
+index 66c9173..dcfbed7 100644
+--- a/index.html
++++ b/index.html
+@@ -107,6 +107,108 @@
+       margin-top: 20px;
+     }
+ 
++    /* Order and reward progress */
++    .progress-section {
++      margin-bottom: 40px;
++    }
++
++    .progress-section h2 {
++      text-align: center;
++    }
++
++    .progress-card {
++      background: white;
++      padding: 20px;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .progress-heading {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 4px 16px;
++      margin-bottom: 12px;
++    }
++
++    .progress-heading label {
++      font-weight: 600;
++    }
++
++    .progress-heading span,
++    .progress-card p {
++      font-size: 0.9rem;
++    }
++
++    .progress-card p {
++      margin-top: 12px;
++    }
++
++    progress {
++      --progress-bar-radius: 1e5px;
++      --progress-bar-track: #ece4e0;
++      --progress-bar-fill: var(--primary);
++      --progress-bar-indeterminate-size: 30%;
++      --progress-bar-indeterminate-animation-duration: 1.5s;
++      appearance: none;
++      border: 0 solid;
++      overflow: clip;
++      display: block;
++      inline-size: 100%;
++      block-size: 12px;
++      container-type: inline-size;
++      border-radius: var(--progress-bar-radius);
++      background: var(--progress-bar-track);
++      accent-color: var(--progress-bar-fill);
++      box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.1);
++    }
++
++    progress:indeterminate {
++      --progress-bar-animation: var(
++        --progress-bar-indeterminate-animation,
++        progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear
++      );
++    }
++
++    progress:dir(rtl) {
++      --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
++    }
++
++    progress::-webkit-progress-bar {
++      background: transparent;
++    }
++
++    progress::-webkit-progress-value {
++      background: var(--progress-bar-fill);
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    progress::-moz-progress-bar {
++      background: var(--progress-bar-fill);
++      border-radius: var(--progress-bar-radius);
++      transition: inline-size 0.3s;
++      animation: var(--progress-bar-animation, revert-rule);
++    }
++
++    @keyframes progress-bar-indeterminate {
++      from, to {
++        inline-size: var(--progress-bar-indeterminate-size);
++        margin-right: auto;
++      }
++
++      from { translate: -100%; }
++      to { translate: 100cqi; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      progress {
++        --progress-bar-indeterminate-animation-duration: 10s;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+@@ -175,6 +277,27 @@
+   </header>
+ 
+   <main class="container">
++    <section class="progress-section" aria-labelledby="progress-title">
++      <h2 id="progress-title">Your Daily Progress</h2>
++      <div class="grid">
++        <div class="progress-card">
++          <div class="progress-heading">
++            <label for="reward-progress">Your next coffee reward</label>
++            <span>6 of 10 visits · 60%</span>
++          </div>
++          <progress id="reward-progress" value="6" max="10" aria-describedby="reward-description"></progress>
++          <p id="reward-description">Just 4 more visits until your free coffee.</p>
++        </div>
++        <div class="progress-card">
++          <div class="progress-heading">
++            <label for="order-progress">Order confirmation</label>
++            <span>Checking with the café…</span>
++          </div>
++          <progress id="order-progress" aria-describedby="order-description"></progress>
++          <p id="order-description" role="status">Waiting for confirmation before tracking your order’s progress.</p>
++        </div>
++      </div>
++    </section>
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
