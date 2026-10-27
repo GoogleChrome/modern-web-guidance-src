@@ -2,7 +2,8 @@
 
 What the public builder publishes, where, and in what shape. This is the
 interface any front-end (the current dashboard's `public` source, or the new
-one) reads from. Nothing here requires authentication.
+one) reads from. Nothing here requires authentication. For how to change what
+is published, see [RUNBOOK.md](./RUNBOOK.md).
 
 ## Where
 
