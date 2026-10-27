@@ -461,6 +461,7 @@
         button.removeAttribute('data-copied');
         button.removeAttribute('data-failed');
         tip.textContent = ''; // leave no stale text for screen reader browse mode
+        if (button.closest('[popover]') === popover) releasePress();
       }, FEEDBACK_MS));
     }
 
@@ -513,7 +514,7 @@
 
       if (sel.isCollapsed || !text) {
         // Don't dismiss while the user is interacting with the popover itself
-        if (!popover.matches(':focus-within') && popover.matches(':popover-open')) {
+        if (!pressing && !popover.matches(':focus-within') && popover.matches(':popover-open')) {
           popover.hidePopover();
         }
         return;
@@ -536,13 +537,23 @@
     // Focus leaving the popover may have been the only reason it stayed open. Only ever hide here:
     // re-running updatePopover() would re-show a popover that Escape just dismissed.
     popover.addEventListener('focusout', () => setTimeout(() => {
-      if (getSelection().isCollapsed && !popover.matches(':focus-within') && popover.matches(':popover-open')) {
+      if (getSelection().isCollapsed && !pressing && !popover.matches(':focus-within') && popover.matches(':popover-open')) {
         popover.hidePopover();
       }
     }, 0));
 
-    // Keep selection when pressing the button
-    popover.addEventListener('pointerdown', (e) => e.preventDefault());
+    // Keep selection when pressing the button. Safari on iPhone does not focus a tapped button and clears the
+    // selection anyway, so :focus-within is false: mark the popover as pressed until the copy feedback ends
+    let pressing = false;
+    function releasePress() {
+      pressing = false;
+      setTimeout(updatePopover, 0); // Hides only if the selection is collapsed and focus is not inside
+    }
+    popover.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      pressing = true;
+    });
+    popover.addEventListener('pointercancel', releasePress);
 
     document.addEventListener('pointerdown', (e) => {
       if (!popover.contains(e.target)) pointerDown = true;
