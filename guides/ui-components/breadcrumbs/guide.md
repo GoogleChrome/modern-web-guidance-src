@@ -122,12 +122,14 @@ Add when ancestors have meaningful siblings (e.g. docs sections); skip for simpl
 - Rotate the trigger chevron while open: `.trigger:has(+ :popover-open)`.
 - Wrap entry/exit fades in `prefers-reduced-motion: no-preference`.
 - For pills, join link and trigger into one shape by squaring the touching corners (`border-start-end-radius: 0` etc., using logical properties).
-- Close an open menu when keyboard focus leaves it. `popover` light dismiss covers clicks outside and `Esc`, but not `Tab`, and a menu left open can cover the next focused control. This also applies to the "…" list in section 4.
+- Close an open menu when keyboard focus leaves it. `popover` light dismiss covers clicks outside and `Esc`, but not `Tab`, and a menu left open can cover the next focused control. This also applies to the "…" list in section 4. Scope it to the breadcrumb's own menus so it never closes unrelated popovers, such as a toast or tooltip.
 
 ```js
-// Close an open menu once focus lands outside it and its own trigger (the trigger is excluded so toggling it still works)
+// Close an open breadcrumb menu once focus lands outside it and its own trigger (the trigger is excluded so toggling it still works).
+// Scope to the breadcrumb <nav> (use your own selector) so unrelated popovers stay open.
+const trail = document.querySelector('nav[aria-label="Breadcrumbs"]');
 document.addEventListener('focusin', ({ target }) => {
-  for (const menu of document.querySelectorAll('[popover]:popover-open')) {
+  for (const menu of trail.querySelectorAll('[popover]:popover-open')) {
     if (!menu.contains(target) && !target.closest(`[popovertarget="${menu.id}"]`)) menu.hidePopover();
   }
 });
