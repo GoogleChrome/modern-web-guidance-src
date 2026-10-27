@@ -43,7 +43,7 @@
       border-radius: 0.5rem;
     }
 
-    .carousel-item {
+    .carousel-track > * {
       flex: 0 0 100%;
       scroll-snap-align: center;
       display: grid;
@@ -67,7 +67,7 @@
         --current: 0;
       }
 
-      .carousel-item {
+      .carousel-track > * {
         order: calc(
           clamp(0, 1 - (sibling-index() - 1), 1) * clamp(0, var(--current) - (sibling-count() - 3), 1)
           - clamp(0, 1 - (sibling-count() - sibling-index()), 1) * clamp(0, 2 - var(--current), 1)
@@ -75,7 +75,7 @@
       }
     }
 
-    .carousel-item:first-child {
+    .carousel-track > :first-child {
       scroll-initial-target: nearest;
     }
 
@@ -85,7 +85,7 @@
       }
 
       @supports (animation-timeline: view()) {
-        .carousel-item {
+        .carousel-track > * {
           animation: fade-in linear both;
           animation-timeline: view(inline);
           animation-range: entry 0% cover 40%;
@@ -151,7 +151,7 @@
         margin-block: 0.8rem;
       }
 
-      .carousel-item::scroll-marker {
+      .carousel-track > *::scroll-marker {
         content: "" / attr(data-marker-name);
         inline-size: 0.8rem;
         block-size: 0.8rem;
@@ -161,13 +161,13 @@
         cursor: pointer;
       }
 
-      .carousel-item::scroll-marker:target-current {
+      .carousel-track > *::scroll-marker:target-current {
         background: var(--accent);
       }
 
       /* Without :target-current, the settled-scroll handler marks the current slide */
       @supports not selector(:target-current) {
-        .carousel-item[data-current]::scroll-marker {
+        .carousel-track > *[data-current]::scroll-marker {
           background: var(--accent);
         }
       }
@@ -262,13 +262,13 @@
     </div>
 
     <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
-      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="1 of 4"
+      <div role="group" aria-roledescription="slide" aria-label="1 of 4"
         data-marker-name="Go to slide 1">Slide 1</div>
-      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="2 of 4"
+      <div role="group" aria-roledescription="slide" aria-label="2 of 4"
         data-marker-name="Go to slide 2">Slide 2</div>
-      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="3 of 4"
+      <div role="group" aria-roledescription="slide" aria-label="3 of 4"
         data-marker-name="Go to slide 3">Slide 3</div>
-      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="4 of 4"
+      <div role="group" aria-roledescription="slide" aria-label="4 of 4"
         data-marker-name="Go to slide 4">Slide 4</div>
     </div>
 
@@ -281,7 +281,7 @@
 
   <script type="module">
     const track = document.querySelector(".carousel-track");
-    const slides = [...track.querySelectorAll(".carousel-item")];
+    const slides = [...track.children];
     const status = document.querySelector('.carousel [role="status"]');
     const controls = document.querySelector(".fallback-controls");
     const markerNav = document.querySelector(".fallback-markers");
