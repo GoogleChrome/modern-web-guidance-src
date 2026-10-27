@@ -147,18 +147,39 @@ Use for trails with more than ~4 items.
 
 - Make the `<nav>` a size container (`container-type: inline-size`, in the snippet below) so it responds to its own width, not the viewport.
 - Keep the first item and the last two. Add a "…" `<li>` after the first item, containing a `[popover]` button that lists the hidden links. Give the button `aria-label="Show N more breadcrumbs"`.
-- Hide the middle items (every item except the first, the last two and the "…" item) in a container query, scoped to trails that contain the "…" item so a short trail never loses an item. Show the "…" item only then (`display: none` by default).
-- Render the middle links a second time inside the popover, generated from the same data. CSS cannot move an element between the trail and the popover as the width changes, so a copy keeps this free of script on resize. Moving the real links with script on resize avoids the duplicate but needs a `ResizeObserver` and focus handling.
+- Show the "…" item only when collapsed (`display: none` by default, `display: flex` in a container query). The container query is the single source of truth for when the trail is collapsed; no rule hides the middle items.
+- Move the real middle `<li>` links into the popover's list when the "…" item is visible, and back into the trail when it is not. Don't duplicate them. A `ResizeObserver` on the `<nav>` re-checks on resize, and the check reads `getComputedStyle(overflow).display`. The "…" item's `display` depends only on the container's width, so moving items cannot cause a resize loop. Without script, the full trail stays visible and the "…" item stays hidden.
+- Moving a link drops focus if it had it, so restore focus afterwards. Close the popover when expanding back to the full trail.
 
 ```css
 .breadcrumb { container-type: inline-size; }
 .breadcrumb .overflow { display: none; }
 /* 40rem is an example breakpoint */
 @container (inline-size < 40rem) {
-  /* No class on the middle items; the :has() guard keeps a trail without a "…" item intact */
-  .breadcrumb ol:has(> .overflow) > li:not(:first-child, :nth-last-child(-n+2), .overflow) { display: none; }
   .breadcrumb .overflow { display: flex; }
 }
+```
+
+```js
+const nav = document.querySelector('nav[aria-label="Breadcrumbs"]');
+const trail = nav.querySelector('ol');
+const overflow = trail.querySelector('.overflow');
+const menu = overflow.querySelector('[popover] ul');
+
+function sync() {
+  const collapsed = getComputedStyle(overflow).display !== 'none';
+  // Middle items: everything except the first, the last two and the "…" item
+  const items = [...trail.children].filter((li, i, all) =>
+    li !== overflow && i !== 0 && i < all.length - 2);
+  const focused = document.activeElement;
+  if (collapsed) menu.append(...items);
+  else if (menu.children.length) {
+    overflow.querySelector('[popover]').hidePopover();
+    overflow.after(...menu.children);
+  }
+  focused?.isConnected && focused.focus();
+}
+new ResizeObserver(sync).observe(nav);
 ```
 
 - Optional, for very narrow containers: show only the parent link with a leading "‹" (decorative, empty alt text) by hiding every `<li>` except `:nth-last-child(2)`.
