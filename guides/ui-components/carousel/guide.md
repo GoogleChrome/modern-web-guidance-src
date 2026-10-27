@@ -150,6 +150,7 @@ Write these to fit the design:
 
 - Style the markers as dots in a centered flex row with a gap, using the pointer cursor.
 - Show a clear `:focus-visible` outline on scroll buttons, markers, and buttons.
+- Known Chrome limitation: after a native marker is activated with an arrow key or `Enter`, focus can leave the marker, so repeated arrow-key navigation across markers stops. This reproduces without any script, so do not work around it with custom key handling. `Tab`, the previous/next scroll buttons, and scrolling the track stay fully operable.
 - Hide `.fallback-controls` and `.fallback-markers` while their `hidden` attribute is set, and keep the status region visually hidden without removing it from the accessibility tree.
 - Enable `scroll-behavior: smooth` on the track only inside `@media (prefers-reduced-motion: no-preference)`.
 
