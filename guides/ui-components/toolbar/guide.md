@@ -143,7 +143,7 @@ Add a trailing "More actions" menu when the toolbar has secondary actions or mus
 * Sync `aria-expanded` from the popover `toggle` event and focus the first item on open.
 * `ArrowDown`/`ArrowUp` move between items with wrapping; `Home`/`End` jump to the ends.
 * Close the menu after a `menuitem` is activated. For a `menuitemcheckbox`, `Enter` or a click toggles and closes, but `Space` toggles and keeps the menu open so several options can be changed in one visit (APG).
-* Announce the result before closing, using the same live region as the toolbar's action buttons (for example "Strikethrough on" or "Formatting cleared"). Once the menu closes, focus is back on the trigger and the item's new state is out of reach for a screen reader. Skip the message only when `Space` keeps the menu open, because the focused item's `aria-checked` change is announced on its own.
+* Announce the result on every activation, using the same live region as the toolbar's action buttons (for example "Strikethrough on" or "Formatting cleared"), including after `Space` on a checkbox. A screen reader does not reliably announce an `aria-checked` change made from script, so the live region is what confirms the new state. For `Enter` and clicks, announce before closing: once the menu closes, focus is back on the trigger and the item's new state is out of reach.
 * Anchor the menu to the trigger with `position-area` plus `position-try-fallbacks`.
 
 ```js
@@ -157,7 +157,10 @@ menu.addEventListener("keydown", (e) => {
   // Space on a checkbox toggles without closing; preventDefault stops the button's click
   if (e.key !== " " || e.target.getAttribute("role") !== "menuitemcheckbox") return;
   e.preventDefault();
-  e.target.setAttribute("aria-checked", String(e.target.getAttribute("aria-checked") !== "true"));
+  const on = e.target.getAttribute("aria-checked") !== "true";
+  e.target.setAttribute("aria-checked", String(on));
+  // Space needs the live region too: the aria-checked change alone is not reliably announced
+  document.querySelector('[role="status"]').textContent = `${e.target.textContent.trim()} ${on ? "on" : "off"}`;
 });
 ```
 

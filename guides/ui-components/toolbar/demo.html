@@ -494,7 +494,9 @@
       // Space on a checkbox toggles without closing (APG); Enter and click fall through to the click handler and close
       if (e.key === " " && e.target.getAttribute("role") === "menuitemcheckbox") {
         e.preventDefault();
-        flag(e.target, "aria-checked", e.target.getAttribute("aria-checked") !== "true");
+        const on = e.target.getAttribute("aria-checked") !== "true";
+        flag(e.target, "aria-checked", on);
+        say(`${e.target.textContent.trim()} ${on ? "on" : "off"}`); // The live region confirms the state; the aria-checked change alone is not reliably announced
         return;
       }
       const at = menuItems.indexOf(document.activeElement);
