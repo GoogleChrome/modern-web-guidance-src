@@ -6,6 +6,11 @@ web-feature-ids:
   - interest-invokers
   - popover-hint
   - anchor-positioning
+  - async-clipboard
+  - forced-colors
+  - focus-visible
+  - prefers-reduced-motion
+  - logical-properties
 guides:
   - overflow-popup
   - icons
@@ -175,6 +180,10 @@ menu.addEventListener("keydown", (e) => {
 {{ BASELINE_STATUS("popover-hint") }}
 
 The popover polyfill does not add `popover="hint"`. Where `popover` exists without `hint`, two tooltips can stay open at once (for example one opened by focus and one by hover). Treat this as graceful degradation: tooltips are supplementary because every icon-only button already has an `aria-label`, so no other fallback is needed.
+
+{{ BASELINE_STATUS("async-clipboard", "api.Clipboard.writeText") }}
+
+Where the Clipboard API is unavailable, `navigator.clipboard` is undefined and the call throws, so the `catch` branch in the feedback snippet reports the failure.
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 

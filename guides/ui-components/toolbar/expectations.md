@@ -9,4 +9,5 @@
 - Clicking a toggle button that is not part of a mutually exclusive set flips its `aria-pressed` value between `true` and `false`.
 - Action buttons that have no on/off state do not have an `aria-pressed` attribute.
 - Each icon-only toolbar button has an `interestfor` attribute whose value is the id of an element with `popover="hint"`.
+- In a horizontal toolbar, each tooltip hint is positioned along the block axis with `position-area` (`block-end` or `block-start`), not the inline axis.
 - No tooltip element or its invoker button sets `role="tooltip"`, `aria-describedby`, or `aria-details` manually.
