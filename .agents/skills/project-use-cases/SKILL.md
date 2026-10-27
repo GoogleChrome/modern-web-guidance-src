@@ -46,11 +46,11 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 1: Describe the use case**
 
-  You MUST choose a short (max 1024 characters), action-oriented description of the problem the feature solves. The description must be a single sentence, start with a verb, and answer the question: "What is the user trying to DO?"
+  You MUST choose a short (max 1024 characters), action-oriented `description` of the problem the feature solves. The description must be a single sentence, start with an imperative verb, and answer the question: "What is the user trying to DO?"
   
-  For example, a use case of the `fetch-priority` feature is "Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests."
+  For example, a use case of the `fetch-priority` feature is "Deprioritize background data requests to prevent network contention with user-initiated fetches."
 
-  **Match the scope of the slug and description.** Ensure the `name` and `description` cover the exact same scope—do not pair a narrow slug with a broad description (or vice versa).
+  **Match the scope of the guide ID and description.** Ensure `name` and `description` cover the exact same scope; do not pair a narrow guide ID with a broad description or vice versa.
 
 * **Step 2: Choose a category**
 
@@ -64,13 +64,17 @@ The following steps are REQUIRED for creating a new use case:
 
   **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are *verticals* nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. For example, `user-experience` holds only the holistic UX pillar guides rather than acting as a catch-all: individual components and behaviors belong in their own categories, such as `ui-components`, `ui-behaviors`, or `ui-atoms`.
 
-* **Step 3: Create the use case subdirectory**
+* **Step 3: Mint the guide ID and subdirectory**
 
-  Create a subdirectory under `guides/<category>/` for your use case. The subdirectory name MUST be a short, slugified version of the action-oriented use case. For example, for the use case in Step 1, the subdirectory name is `deprioritize-background-fetches`.
+  Create `guides/<category>/<guide-id>/`. The directory name and frontmatter `name` are the guide ID: the retrieval handle passed to `retrieve "<guide-id>"` and indexed alongside `description` in search. Split the jobs cleanly between the two fields: **`description` is an imperative task sentence; the guide ID is a concise noun phrase naming the subject.**
 
-  DO NOT prefix the slug with action verbs like `create-`, `build-`, or `add-`. Slugs are directory names scanned in lists—action verbs just add noise and make it harder to find what you're looking for.
-
-  **Keep slugs technology- and format-agnostic.** The "WHAT not HOW" principle applies to directory names as well. Do not prefix or brand the slug with underlying technologies, APIs, or file formats—name the user experience goal or pattern, not the mechanism (unless the technology itself is the explicit subject of a reference guide).
+  * **Noun phrases or `-ing` gerunds, never imperative verbs or clauses.** Save verbs and articles for `description`.
+    * UI components use the singular component noun: `dialog`, `combobox`, `toast`, `tabs`.
+    * Patterns and behaviors use a 2-4 word noun phrase: ~~`deprioritize-background-fetches`~~ `background-fetch-priority`, ~~`prevent-page-scroll-under-modal-dialog`~~ `modal-scroll-lock`, ~~`light-dismiss-a-dialog`~~ `dialog-light-dismiss`, `2d-panning`.
+  * **Name the user pattern or domain concept, not the API.** Keep CSS selectors, JS methods, file formats, and spec names out of use-case IDs unless the technology itself is the subject of a reference hub: ~~`style-parent-with-has`~~ `invalid-field-container-styling`, ~~`anchor-positioning-tab-underline`~~ `sliding-tab-indicator`, ~~`css-custom-highlights`~~ `highlight-text-ranges`.
+  * **Calibrate specificity with modifiers.** Add adjective modifiers when a bare noun is too broad or collides with siblings (`viewport-aware-dropdowns`, `drag-to-reorder`), without narrowing to a mock scenario or abstracting away the domain noun (~~`capture-location-agnostic-data`~~ `timezone-agnostic-dates`).
+  * **Cut aspirational filler.** Drop quality adjectives that apply to every guide, such as `resilient-`, `faster-`, `modern-`, `smart-`, `efficient-`, and `proper-`.
+  * **Check for keyword shadowing.** Do not include the name of an adjacent component or web feature unless this guide owns it, so unrelated slugs don't hijack search queries meant for other guides.
 
 * **Step 4: Create the `guide.md` stub**
 
@@ -78,16 +82,16 @@ The following steps are REQUIRED for creating a new use case:
 
   The required YAML frontmatter fields are:
 
-  - **name**: Short, slugified name of the use case.
-  - **description**: Action-oriented description of the use case.
+  - **name**: Guide ID matching the `<guide-id>` subdirectory name.
+  - **description**: Action-oriented imperative sentence describing the use case.
   - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
 
   For example:
 
   ```yaml
   ---
-  name: deprioritize-background-fetches
-  description: Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests.
+  name: background-fetch-priority
+  description: Deprioritize background data requests to prevent network contention with user-initiated fetches.
   web-feature-ids:
     - fetch-priority
     - fetch
