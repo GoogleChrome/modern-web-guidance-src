@@ -66,6 +66,11 @@
         margin-block-end: 1rem;
       }
 
+      /* The toggle only runs script, so hide it without scripting */
+      @media (scripting: none) {
+        .toggle-loading { display: none; }
+      }
+
       .cards {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
@@ -475,7 +480,7 @@
     const collection = document.querySelector('.skeleton');
     const status = document.querySelector('.loading-status');
     const toggle = document.querySelector('.toggle-loading');
-    const sample = { H2: 'Card title', P: 'A short paragraph of loaded content.', LI: 'A list item' };
+    const sample = { H2: 'Card title', P: 'Loaded content fills the three lines the skeleton reserved, so the card keeps its height.', LI: 'A list item' };
     let announceTimer;
     let lastMessage = '';
 
