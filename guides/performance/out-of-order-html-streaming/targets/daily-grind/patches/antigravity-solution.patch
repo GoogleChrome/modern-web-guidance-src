@@ -1,346 +1,184 @@
 diff --git a/index.html b/index.html
-index 66c9173..32a56e3 100644
+index 66c9173..fdef205 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,7 +152,84 @@
-       text-decoration: none;
-       font-size: 0.85rem;
-     }
-+
-+    .skeleton-card {
-+      background: white;
-+      padding: 20px;
-+      border-radius: 8px;
-+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-+      text-align: center;
-+      min-height: 170px;
-+      display: flex;
-+      flex-direction: column;
-+      justify-content: center;
-+      align-items: center;
-+      gap: 12px;
-+    }
-+
-+    .skeleton-line {
-+      height: 18px;
-+      width: 75%;
-+      background: linear-gradient(90deg, #efebe9 25%, #d7ccc8 50%, #efebe9 75%);
-+      background-size: 200% 100%;
-+      animation: shimmer 1.5s infinite;
-+      border-radius: 4px;
-+    }
-+
-+    .skeleton-line.title {
-+      height: 24px;
-+      width: 55%;
-+    }
-+
-+    .skeleton-btn {
-+      height: 40px;
-+      width: 120px;
-+      background: #d7ccc8;
-+      border-radius: 5px;
-+      margin-top: 8px;
-+    }
-+
-+    @keyframes shimmer {
-+      0% {
-+        background-position: 200% 0;
-+      }
-+      100% {
-+        background-position: -200% 0;
-+      }
-+    }
-+
-+    .section-controls {
-+      display: flex;
-+      justify-content: center;
-+      gap: 12px;
-+      margin-top: 15px;
-+      flex-wrap: wrap;
-+    }
-+
-+    .btn-outline {
-+      background: transparent;
-+      color: var(--primary);
-+      border: 2px solid var(--primary);
-+      cursor: pointer;
-+      font-family: inherit;
-+      font-size: 0.9rem;
-+      margin-top: 0;
-+    }
-+
-+    .btn-outline:hover {
-+      background: var(--primary);
-+      color: white;
-+    }
-+
-+    button.btn {
-+      border: none;
-+      cursor: pointer;
-+      font-family: inherit;
-+      font-size: 0.9rem;
-+    }
-   </style>
-+  <script type="module" src="https://unpkg.com/template-for-polyfill"></script>
-+  <script type="module" src="https://unpkg.com/html-setters-polyfill"></script>
- </head>
- 
- <body>
-@@ -175,24 +252,40 @@
+@@ -174,25 +174,30 @@
+     <a href="/order-online" class="btn">Order Now</a>
    </header>
  
-   <main class="container">
+-  <main class="container">
 -    <section>
--      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <main class="container" aria-live="polite">
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
 -        <div class="card">
 -          <h3>Maple Oat Latte</h3>
 -          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
--        </div>
++      <div class="grid" id="seasonal-cards">
++        <?start name="seasonal-favorites">
++        <div class="card skeleton" style="min-height: 160px;">
++          <h3>Loading...</h3>
++          <p>Preparing seasonal blend...</p>
+         </div>
 -        <div class="card">
 -          <h3>Dark Roast Espresso</h3>
 -          <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
--        </div>
++        <div class="card skeleton" style="min-height: 160px;">
++          <h3>Loading...</h3>
++          <p>Preparing seasonal blend...</p>
+         </div>
 -        <div class="card">
 -          <h3>Cold Brew</h3>
 -          <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
-+    <section id="seasonal-favorites" aria-live="polite">
-+      <?start name="seasonal-favorites">
-+        <h2 style="text-align: center;">Seasonal Favorites</h2>
-+        <div class="grid" id="seasonal-grid">
-+          <?start name="card-maple-oat-latte">
-+            <div class="card skeleton-card" aria-busy="true">
-+              <div class="skeleton-line title"></div>
-+              <div class="skeleton-line"></div>
-+              <div class="skeleton-btn"></div>
-+              <span style="font-size: 0.8rem; color: #795548;">Loading Maple Oat Latte...</span>
-+            </div>
-+          <?end>
-+          <?start name="card-dark-roast-espresso">
-+            <div class="card skeleton-card" aria-busy="true">
-+              <div class="skeleton-line title"></div>
-+              <div class="skeleton-line"></div>
-+              <div class="skeleton-btn"></div>
-+              <span style="font-size: 0.8rem; color: #795548;">Loading Dark Roast Espresso...</span>
-+            </div>
-+          <?end>
-+          <?start name="card-cold-brew">
-+            <div class="card skeleton-card" aria-busy="true">
-+              <div class="skeleton-line title"></div>
-+              <div class="skeleton-line"></div>
-+              <div class="skeleton-btn"></div>
-+              <span style="font-size: 0.8rem; color: #795548;">Loading Cold Brew...</span>
-+            </div>
-+          <?end>
-+          <?marker name="additional-seasonal-cards">
++        <div class="card skeleton" style="min-height: 160px;">
++          <h3>Loading...</h3>
++          <p>Preparing seasonal blend...</p>
          </div>
-+      <?end>
-+      <div class="section-controls">
-+        <button type="button" id="refresh-seasonal-btn" class="btn btn-outline">Stream Seasonal Update</button>
-+        <button type="button" id="add-special-btn" class="btn btn-outline">Add Roaster's Special</button>
++        <?end>
++      </div>
++      <div id="customer-reviews" style="margin-top: 20px;">
++        <?marker name="customer-reviews">
++      </div>
++      <div id="cms-promo" style="margin-top: 20px;">
++        <?marker name="cms-promo">
        </div>
      </section>
    </main>
-@@ -207,6 +300,199 @@
+@@ -207,6 +212,134 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <!-- Out-of-Order (OOO) Streamed Content Patching -->
++  <!-- Streamed Out-of-Order Content -->
 +  <template for="seasonal-favorites">
-+    <?start name="seasonal-favorites">
-+      <h2 style="text-align: center;">Seasonal Favorites</h2>
-+      <div class="grid" id="seasonal-grid">
-+        <?start name="card-maple-oat-latte">
-+          <div class="card skeleton-card" aria-busy="true">
-+            <div class="skeleton-line title"></div>
-+            <div class="skeleton-line"></div>
-+            <div class="skeleton-btn"></div>
-+          </div>
-+        <?end>
-+        <?start name="card-dark-roast-espresso">
-+          <div class="card skeleton-card" aria-busy="true">
-+            <div class="skeleton-line title"></div>
-+            <div class="skeleton-line"></div>
-+            <div class="skeleton-btn"></div>
-+          </div>
-+        <?end>
-+        <?start name="card-cold-brew">
-+          <div class="card skeleton-card" aria-busy="true">
-+            <div class="skeleton-line title"></div>
-+            <div class="skeleton-line"></div>
-+            <div class="skeleton-btn"></div>
-+          </div>
-+        <?end>
-+        <?marker name="additional-seasonal-cards">
-+      </div>
-+    <?end>
++    <div class="card">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </div>
 +  </template>
 +
-+  <template for="card-maple-oat-latte">
-+    <?start name="card-maple-oat-latte">
-+      <div class="card" id="card-maple-oat-latte" data-card="maple-oat-latte">
-+        <h3>Maple Oat Latte</h3>
-+        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+        <a href="/menu/seasonal" class="btn">View Details</a>
-+      </div>
-+    <?end>
++  <template for="customer-reviews">
++    <div class="card">
++      <h3>Customer Reviews</h3>
++      <p>"The Maple Oat Latte is the best seasonal drink in town!" &mdash; Alex R.</p>
++    </div>
 +  </template>
 +
-+  <template for="card-dark-roast-espresso">
-+    <?start name="card-dark-roast-espresso">
-+      <div class="card" id="card-dark-roast-espresso" data-card="dark-roast-espresso">
-+        <h3>Dark Roast Espresso</h3>
-+        <p>Bold, smokey, and perfect for a morning boost.</p>
-+        <a href="/menu/espresso" class="btn">View Details</a>
-+      </div>
-+    <?end>
++  <template for="cms-promo">
++    <div class="card">
++      <h3>Rewards Promo</h3>
++      <p>Double points on all seasonal drinks this week!</p>
++    </div>
 +  </template>
 +
-+  <template for="card-cold-brew">
-+    <?start name="card-cold-brew">
-+      <div class="card" id="card-cold-brew" data-card="cold-brew">
-+        <h3>Cold Brew</h3>
-+        <p>Steeped for 18 hours for maximum smoothness.</p>
-+        <a href="/menu/cold-brew" class="btn">View Details</a>
-+      </div>
-+    <?end>
-+  </template>
++  <script type="module">
++    const cardsContainer = document.getElementById('seasonal-cards');
++    const reviewsContainer = document.getElementById('customer-reviews');
++    const promoContainer = document.getElementById('cms-promo');
 +
-+  <script>
-+    /**
-+     * Imperative updates for the Seasonal Favorites section and individual coffee cards
-+     * using the native HTML setters and streaming setters APIs.
-+     */
-+    const seasonalSection = document.getElementById('seasonal-favorites');
-+
-+    // Update an individual coffee card in-place using setHTML / replaceWithHTML or streamHTML
-+    async function updateCoffeeCard(cardSelector, htmlOrStream, options = {}) {
-+      const card = document.querySelector(cardSelector);
-+      if (!card) return;
-+
-+      if (typeof htmlOrStream === 'string') {
-+        if (options.replace) {
-+          if (options.unsafe) {
-+            card.replaceWithHTMLUnsafe(htmlOrStream, options);
-+          } else {
-+            card.replaceWithHTML(htmlOrStream, options);
-+          }
-+        } else {
-+          if (options.unsafe) {
-+            card.setHTMLUnsafe(htmlOrStream, options);
-+          } else {
-+            card.setHTML(htmlOrStream, options);
-+          }
-+        }
-+      } else if (htmlOrStream && typeof htmlOrStream.pipeTo === 'function') {
-+        const writable = options.replace
-+          ? (options.unsafe ? card.streamReplaceWithHTMLUnsafe(options) : card.streamReplaceWithHTML(options))
-+          : (options.unsafe ? card.streamHTMLUnsafe(options) : card.streamHTML(options));
-+        await htmlOrStream.pipeTo(writable);
-+      }
-+    }
-+
-+    // Stream or set updates into the Seasonal Favorites grid or section
-+    async function streamSeasonalFavorites(urlOrChunks, options = {}) {
-+      const grid = document.getElementById('seasonal-grid') || seasonalSection;
-+      if (!grid) return;
-+
-+      if (typeof urlOrChunks === 'string') {
-+        const response = await fetch(urlOrChunks);
-+        if (typeof response.textStream === 'function') {
-+          await response.textStream().pipeTo(
-+            options.unsafe ? grid.streamHTMLUnsafe(options) : grid.streamHTML(options)
-+          );
-+        } else if (response.body) {
-+          await response.body
-+            .pipeThrough(new TextDecoderStream())
-+            .pipeTo(options.unsafe ? grid.streamHTMLUnsafe(options) : grid.streamHTML(options));
-+        }
-+        return;
-+      }
-+
-+      if (Array.isArray(urlOrChunks)) {
-+        const stream = new ReadableStream({
-+          async start(controller) {
-+            for (const chunk of urlOrChunks) {
-+              controller.enqueue(chunk);
-+            }
-+            controller.close();
-+          }
-+        });
-+        await stream.pipeTo(
-+          options.unsafe ? grid.streamHTMLUnsafe(options) : grid.streamHTML(options)
-+        );
-+      }
-+    }
-+
-+    // Append a new coffee card to the seasonal grid using appendHTML / streamAppendHTML
-+    async function appendCoffeeCard(htmlOrStream, options = {}) {
-+      const grid = document.getElementById('seasonal-grid');
-+      if (!grid) return;
-+
-+      if (typeof htmlOrStream === 'string') {
-+        if (options.unsafe) {
-+          grid.appendHTMLUnsafe(htmlOrStream, options);
-+        } else {
-+          grid.appendHTML(htmlOrStream, options);
-+        }
-+      } else if (htmlOrStream && typeof htmlOrStream.pipeTo === 'function') {
-+        const writable = options.unsafe
-+          ? grid.streamAppendHTMLUnsafe(options)
-+          : grid.streamAppendHTML(options);
-+        await htmlOrStream.pipeTo(writable);
-+      }
-+    }
-+
-+    // Wire up interactive controls for imperative updates
-+    document.getElementById('refresh-seasonal-btn')?.addEventListener('click', async () => {
-+      const chunks = [
-+        `<div class="card" id="card-maple-oat-latte" data-card="maple-oat-latte">
-+          <h3>Spiced Maple Oat Latte</h3>
-+          <p>Creamy oat milk infused with Vermont maple syrup and warm autumn spices.</p>
-+          <a href="/menu/seasonal" class="btn">View Details</a>
-+        </div>`,
-+        `<div class="card" id="card-dark-roast-espresso" data-card="dark-roast-espresso">
-+          <h3>Single-Origin Dark Espresso</h3>
-+          <p>Bold, smokey notes of dark chocolate for the ultimate morning boost.</p>
-+          <a href="/menu/espresso" class="btn">View Details</a>
-+        </div>`,
-+        `<div class="card" id="card-cold-brew" data-card="cold-brew">
-+          <h3>Vanilla Bean Cold Brew</h3>
-+          <p>Steeped for 18 hours and finished with Madagascar vanilla bean.</p>
-+          <a href="/menu/cold-brew" class="btn">View Details</a>
-+        </div>`
-+      ];
-+      await streamSeasonalFavorites(chunks);
-+    });
-+
-+    document.getElementById('add-special-btn')?.addEventListener('click', async () => {
-+      const existingSpecial = document.getElementById('card-roasters-special');
-+      const specialHTML = `
-+        <div class="card" id="card-roasters-special" data-card="roasters-special">
-+          <h3>Cardamom Honey Cortado</h3>
-+          <p>Equal parts rich espresso and steamed milk with wildflower honey.</p>
-+          <a href="/menu/specials" class="btn">View Details</a>
-+        </div>
-+      `;
-+      if (existingSpecial) {
-+        await updateCoffeeCard('#card-roasters-special', specialHTML, { replace: true });
++    // Refresh coffee cards with fresh HTML Stream from the server whenever the menu changes
++    export async function refreshSeasonalMenu(url = '/api/seasonal-favorites') {
++      const response = await fetch(url);
++      if (response.textStream) {
++        await response.textStream().pipeTo(cardsContainer.streamHTML());
++      } else if (response.body) {
++        await response.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(cardsContainer.streamHTML());
 +      } else {
-+        await appendCoffeeCard(specialHTML);
++        const html = await response.text();
++        cardsContainer.setHTML(html);
++      }
++    }
++
++    // Safely render customer-submitted reviews (untrusted user content stripped of scripts via built-in sanitizer)
++    export function renderCustomerReviews(reviewsHtml) {
++      reviewsContainer.setHTML(reviewsHtml);
++    }
++
++    export async function streamCustomerReviews(url = '/api/reviews') {
++      const response = await fetch(url);
++      if (response.textStream) {
++        await response.textStream().pipeTo(reviewsContainer.streamHTML());
++      } else if (response.body) {
++        await response.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(reviewsContainer.streamHTML());
++      }
++    }
++
++    // Render trusted CMS promo block including its embedded widget script
++    export function renderCmsPromo(promoHtml) {
++      promoContainer.setHTMLUnsafe(promoHtml, { runScripts: true });
++    }
++
++    export async function streamCmsPromo(url = '/api/cms-promo') {
++      const response = await fetch(url);
++      if (response.textStream) {
++        await response
++          .textStream()
++          .pipeTo(promoContainer.streamHTMLUnsafe({ runScripts: true }));
++      } else if (response.body) {
++        await response.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(promoContainer.streamHTMLUnsafe({ runScripts: true }));
++      }
++    }
++
++    // Listen for menu change events to refresh cards in place
++    window.addEventListener('menu-change', (event) => {
++      if (event.detail && event.detail.html) {
++        cardsContainer.setHTML(event.detail.html);
++      } else {
++        refreshSeasonalMenu(event.detail?.url);
 +      }
 +    });
 +
-+    // Expose imperative update helpers for programmatic usage
-+    window.dailyGrindUpdates = {
-+      updateCoffeeCard,
-+      streamSeasonalFavorites,
-+      appendCoffeeCard
-+    };
++    // Expose helpers globally for interactive updates
++    Object.assign(window, {
++      refreshSeasonalMenu,
++      renderCustomerReviews,
++      streamCustomerReviews,
++      renderCmsPromo,
++      streamCmsPromo,
++    });
++
++    // Initialize default customer reviews (safe) and CMS promo block with embedded widget script (unsafe + runScripts)
++    if (typeof reviewsContainer.setHTML === 'function') {
++      renderCustomerReviews(`
++        <div class="card">
++          <h3>Customer Reviews</h3>
++          <p>"The Maple Oat Latte is the best seasonal drink in town!" &mdash; Alex R.</p>
++          <p>"Smooth Cold Brew every single morning." &mdash; Jamie L.</p>
++        </div>
++      `);
++    }
++
++    if (typeof promoContainer.setHTMLUnsafe === 'function') {
++      renderCmsPromo(`
++        <div class="card" id="cms-promo-widget">
++          <h3>Seasonal Rewards Promo</h3>
++          <p>Earn 2x points on all Seasonal Favorites this week!</p>
++          <script>
++            document.getElementById('cms-promo-widget')?.setAttribute('data-widget-initialized', 'true');
++          <\/script>
++        </div>
++      `);
++    }
 +  </script>
  </body>
  

@@ -8,737 +8,384 @@ index 0000000..b947077
 +dist/
 diff --git a/README.md b/README.md
 new file mode 100644
-index 0000000..e5531b9
+index 0000000..e41ea17
 --- /dev/null
 +++ b/README.md
-@@ -0,0 +1,64 @@
-+# Daily Grind partial updates
+@@ -0,0 +1,28 @@
++Daily Grind uses native declarative partial updates with bundled
++`template-for-polyfill` and `html-setters-polyfill` for older browsers.
++Run `pnpm install` and `npm run build`; deploy `dist/` as the site root.
++The source root also works after building. No development server is required.
 +
-+`npm run build` checks the polyfill JavaScript and copies the static site to
-+`dist/`, preserving processing instructions verbatim. No server is needed to build.
++The initial response contains the seasonal skeleton range followed by its
++`template for` patch. A production server can flush the shell before producing
++the patch; a static host delivers the same document without an artificial delay.
 +
-+The final template in `index.html` can be streamed after the page shell. It replaces
-+the loading state inside `seasonal-favorites-content`. The persistent heading and
-+polite live region label and announce updates. Cards reserve their initial height;
-+without JavaScript or native patching, the original menu is available via `noscript`.
++Server integration:
 +
-+Later server payloads can target `seasonal-favorites`, `maple-oat-latte`,
-+`dark-roast-espresso`, or `cold-brew`. Each replacement must include its own
-+`<?start name="…">` / `<?end>` range again to allow repeated updates. A whole-section
-+replacement should also retain the card IDs and their ranges.
++- `/partials/menu.html` returns fresh coffee card HTML with `Content-Type: text/html`.
++  The refresh button fetches it without caching. The provided file is a static
++  example; connect this route to the menu datastore for live menu updates.
++- `/api/menu/events` is an optional SSE endpoint (`text/event-stream`). Emit
++  `event: menu-changed` followed by `data: {}` and a blank line after a menu
++  change. The client also accepts `document.dispatchEvent(new Event('menu-changed'))`.
++  Static hosting has no SSE endpoint; the refresh button remains available.
++- `/partials/reviews.html` contains customer-submitted HTML. It always uses safe
++  setters, with DOMPurify when the browser lacks `setHTML` and the Sanitizer API.
++- `/partials/promo.html` must be exclusively trusted first-party CMS output. Its
++  unsafe streaming setter explicitly enables embedded widget scripts. Never put
++  customer input in this endpoint. With Trusted Types enforcement, configure an
++  audited policy for this trusted CMS path before allowing executable HTML.
 +
-+For example, append this after the initial template in the same HTML response:
++Native streaming setters render incrementally. The setters polyfill buffers
++until the stream completes. The static sample includes a review and CMS widget
++so both paths work without a backend.
+diff --git a/app.ts b/app.ts
+new file mode 100644
+index 0000000..2677ed3
+--- /dev/null
++++ b/app.ts
+@@ -0,0 +1,128 @@
++import { supportsNativeSafeHTML } from './html-support';
++import 'html-setters-polyfill';
++import 'template-for-polyfill';
++import DOMPurify from 'dompurify';
 +
-+```html
-+<template for="cold-brew">
-+  <?start name="cold-brew">
-+  <h3>Cold Brew</h3>
-+  <p>Steeped for 18 hours for maximum smoothness.</p>
-+  <a href="/menu/cold-brew" class="btn">View Details</a>
-+  <?end>
-+</template>
-+```
++// The setters polyfill cannot supply the Sanitizer API on older browsers.
++// Use DOMPurify only for that safe fallback; never enable scripts for user content.
++type HTMLTarget = HTMLElement & {
++  setHTML?: (html: string) => void;
++  streamHTML: () => WritableStream<string>;
++  streamHTMLUnsafe: (options: { runScripts: boolean }) => WritableStream<string>;
++};
 +
-+After the deferred polyfills have loaded (`DOMContentLoaded`), JavaScript can use
-+the native setters directly on the persistent section or card containers:
++function target(id: string): HTMLTarget {
++  const element = document.getElementById(id);
++  if (!(element instanceof HTMLElement)) throw new Error(`Missing element: ${id}`);
++  return element as HTMLTarget;
++}
 +
-+```js
-+const card = document.getElementById('cold-brew');
-+if (!(card instanceof HTMLElement)) throw new Error('Cold Brew card is unavailable');
++async function fetchHTML(element: HTMLElement, signal?: AbortSignal): Promise<Response> {
++  const url = new URL(element.dataset.source ?? '', location.href);
++  if (url.origin !== location.origin) throw new Error('HTML sources must be same-origin');
++  const response = await fetch(url, {
++    signal, cache: 'no-store', headers: { Accept: 'text/html' }, credentials: 'same-origin',
++    redirect: 'error',
++  });
++  if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) {
++    throw new Error('HTML is unavailable');
++  }
++  return response;
++}
 +
-+// Application-controlled HTML only. Retain the range for later declarative patches.
-+card.setHTMLUnsafe(`<?start name="cold-brew">
-+  <h3>Cold Brew</h3>
-+  <p>Steeped for 18 hours for maximum smoothness.</p>
-+  <a href="/menu/cold-brew" class="btn">View Details</a>
-+<?end>`);
++async function safeHTML(element: HTMLTarget, response: Response, signal?: AbortSignal): Promise<void> {
++  if (supportsNativeSafeHTML && element.setHTML && response.body) {
++    await response.body.pipeThrough(new TextDecoderStream()).pipeTo(element.streamHTML(), { signal });
++  } else {
++    const html = await response.text();
++    signal?.throwIfAborted();
++    element.replaceChildren(DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true }));
++  }
++}
 +
-+// A trusted endpoint may instead supply the same marked-up card content in chunks.
-+// This endpoint is illustrative; the static site does not provide an API.
-+const response = await fetch('/api/seasonal/cold-brew');
-+if (!response.ok || !response.body) throw new Error('Seasonal update failed');
-+await response.body.pipeThrough(new TextDecoderStream()).pipeTo(card.streamHTMLUnsafe());
-+```
++const cards = target('seasonal-cards');
++const status = target('menu-status');
++const refresh = target('refresh-menu');
++let activeRefresh: AbortController | undefined;
 +
-+Use `seasonal-favorites-content` for whole-section setters (the grid and card ranges
-+belong inside its content). These unsafe setters preserve processing instructions;
-+use them only for trusted application markup, with script execution left disabled.
-+For untrusted content, use a supported safe `setHTML()` / `streamHTML()` sanitizer
-+instead, and do not rely on it preserving patch markers. Under enforced Trusted
-+Types, provide the application's approved `TrustedHTML` rather than a plain string.
++async function refreshMenu(): Promise<void> {
++  activeRefresh?.abort();
++  const controller = new AbortController();
++  activeRefresh = controller;
++  refresh.setAttribute('aria-disabled', 'true');
++  cards.setAttribute('aria-busy', 'true');
++  status.textContent = 'Refreshing seasonal favorites…';
++  // Keep existing cards until the response is available. Focus returns to the
++  // persistent refresh control only when an update would remove the focused card.
++  const previous = cards.cloneNode(true);
++  try {
++    const response = await fetchHTML(cards, controller.signal);
++    if (cards.contains(document.activeElement)) refresh.focus();
++    await safeHTML(cards, response, controller.signal);
++    status.textContent = 'Seasonal favorites are up to date.';
++  } catch {
++    if (controller.signal.aborted) return;
++    cards.replaceChildren(...Array.from(previous.childNodes));
++    status.textContent = 'Could not refresh the menu. Please try again.';
++  } finally {
++    if (activeRefresh === controller) {
++      cards.removeAttribute('aria-busy');
++      refresh.removeAttribute('aria-disabled');
++      activeRefresh = undefined;
++    }
++  }
++}
 +
-+Avoid replacing content containing keyboard focus; defer such updates until focus
-+leaves the affected container. Background updates should not move focus.
++refresh.addEventListener('click', () => { void refreshMenu(); });
++document.addEventListener('menu-changed', () => { void refreshMenu(); });
 +
-+The local Apache-2.0 polyfills are pinned to version 0.1.1 from
-+[html-setters-polyfill](https://github.com/GoogleChromeLabs/html-setters-polyfill) and
-+[template-for-polyfill](https://github.com/GoogleChromeLabs/template-for-polyfill).
-+The template fallback uses mutation observers; the setters fallback buffers streams
-+until close and requires native `setHTML` for safe setters. Supporting browsers use
-+native streaming. The local copies avoid a runtime CDN dependency.
++// The server emits a named SSE event after a menu change. Manual refresh still
++// works on static hosts. EventSource reconnects automatically after disconnects.
++const eventsURL = cards.dataset.events;
++if (eventsURL && 'EventSource' in window) {
++  let events: EventSource;
++  const connect = (): void => {
++    events = new EventSource(eventsURL);
++    events.addEventListener('menu-changed', () => { void refreshMenu(); });
++  };
++  connect();
++  window.addEventListener('pagehide', () => events.close());
++  window.addEventListener('pageshow', (event) => { if (event.persisted) connect(); });
++}
++
++async function loadReviews(): Promise<void> {
++  const reviews = target('customer-reviews');
++  try {
++    await safeHTML(reviews, await fetchHTML(reviews));
++  } catch {
++    reviews.textContent = 'Customer reviews are currently unavailable.';
++  }
++}
++
++async function loadPromo(): Promise<void> {
++  const promo = target('cms-promo');
++  try {
++    // This endpoint must contain only trusted, first-party CMS output. Never
++    // combine reviews or other customer input with this executable HTML stream.
++    const response = await fetchHTML(promo);
++    if (!response.body) throw new Error('Missing promo stream');
++    await response.body.pipeThrough(new TextDecoderStream())
++      .pipeTo(promo.streamHTMLUnsafe({ runScripts: true }));
++  } catch {
++    promo.textContent = 'Our latest offer is currently unavailable.';
++  }
++}
++
++// Polyfilled declarative patches run through a MutationObserver. Observe the
++// actual card insertion rather than assuming when a late template will arrive.
++function markInitialCardsReady(): void {
++  if (!cards.querySelector('.skeleton')) {
++    if (!activeRefresh) status.textContent = 'Seasonal favorites are ready.';
++    initialCardsObserver.disconnect();
++  }
++}
++const initialCardsObserver = new MutationObserver(markInitialCardsReady);
++initialCardsObserver.observe(cards, { childList: true, subtree: true });
++markInitialCardsReady();
++void loadReviews();
++void loadPromo();
 diff --git a/build.mjs b/build.mjs
 new file mode 100644
-index 0000000..7575d67
+index 0000000..ee7d17b
 --- /dev/null
 +++ b/build.mjs
-@@ -0,0 +1,6 @@
-+import { cp, mkdir } from 'node:fs/promises';
+@@ -0,0 +1,9 @@
++import { build } from 'esbuild';
++import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 +
-+// Copy HTML verbatim: processing instructions must survive the build.
-+await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
-+await cp(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
-+await cp(new URL('./vendor/', import.meta.url), new URL('./dist/vendor/', import.meta.url), { recursive: true });
++await mkdir('dist', { recursive: true });
++await build({ entryPoints: ['app.ts'], bundle: true, format: 'esm', target: 'es2022', outfile: 'dist/app.js' });
++const html = await readFile('index.html', 'utf8');
++await writeFile('dist/index.html', html.replace('./dist/app.js', './app.js'));
++await cp('partials', 'dist/partials', { recursive: true });
++console.log('Built Daily Grind in dist/');
+diff --git a/html-support.ts b/html-support.ts
+new file mode 100644
+index 0000000..ba90624
+--- /dev/null
++++ b/html-support.ts
+@@ -0,0 +1,4 @@
++// Capture this before template-for-polyfill wraps setHTML, including in browsers
++// that do not implement the underlying safe setter at all.
++export const supportsNativeSafeHTML = 'setHTML' in Element.prototype
++  && typeof Element.prototype.setHTML === 'function';
 diff --git a/index.html b/index.html
-index 66c9173..3c515b0 100644
+index 66c9173..64cb19a 100644
 --- a/index.html
 +++ b/index.html
-@@ -5,6 +5,9 @@
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>The Daily Grind | Artisanal Coffee</title>
-+  <!-- Pinned local fallbacks; native implementations are used when available. -->
-+  <script defer src="./vendor/html-setters-polyfill.js"></script>
-+  <script defer src="./vendor/template-for-polyfill.js"></script>
-   <style>
-     :root {
-       --primary: #4e342e;
-@@ -113,6 +116,27 @@
-       border-radius: 8px;
-       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-       text-align: center;
-+      min-height: 204px;
-+    }
-+
-+    .seasonal-loading {
-+      position: relative;
-+    }
-+
-+    .seasonal-loading > p {
-+      position: absolute;
-+      top: 1rem;
-+      width: 100%;
-+      text-align: center;
-+      z-index: 1;
-+    }
-+
-+    .seasonal-loading .card {
-+      background: linear-gradient(110deg, var(--secondary), white);
-+    }
-+
-+    #seasonal-favorites-content {
-+      min-height: 224px;
+@@ -108,6 +108,7 @@
      }
  
-     .card h3 {
-@@ -175,24 +199,39 @@
+     .card {
++      min-height: 210px;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -120,6 +121,12 @@
+       color: var(--primary);
+     }
+ 
++    .skeleton { background: var(--secondary); }
++    .skeleton p { margin-top: 3rem; }
++    .section-heading { text-align: center; }
++    #menu-status { min-height: 1.6em; text-align: center; }
++    #customer-reviews, #cms-promo { margin-top: 20px; }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,9 +182,47 @@
    </header>
  
    <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
--        <div class="card">
--          <h3>Maple Oat Latte</h3>
--          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
--          <a href="/menu/seasonal" class="btn">View Details</a>
--        </div>
--        <div class="card">
--          <h3>Dark Roast Espresso</h3>
--          <p>Bold, smokey, and perfect for a morning boost.</p>
--          <a href="/menu/espresso" class="btn">View Details</a>
--        </div>
--        <div class="card">
--          <h3>Cold Brew</h3>
--          <p>Steeped for 18 hours for maximum smoothness.</p>
--          <a href="/menu/cold-brew" class="btn">View Details</a>
-+    <section id="seasonal-favorites" aria-labelledby="seasonal-heading">
-+      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
-+      <div id="seasonal-favorites-content" aria-live="polite" aria-relevant="additions text">
-+        <?start name="seasonal-favorites">
-+        <div class="seasonal-loading">
-+          <p role="status">Loading seasonal favorites…</p>
-+          <div class="grid" aria-hidden="true">
-+            <div class="card"></div>
-+            <div class="card"></div>
-+            <div class="card"></div>
-+          </div>
-         </div>
-+        <noscript>
-+          <style>.seasonal-loading { display: none; }</style>
-+          <div class="grid">
-+            <div class="card">
-+              <h3>Maple Oat Latte</h3>
-+              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+              <a href="/menu/seasonal" class="btn">View Details</a>
-+            </div>
-+            <div class="card">
-+              <h3>Dark Roast Espresso</h3>
-+              <p>Bold, smokey, and perfect for a morning boost.</p>
-+              <a href="/menu/espresso" class="btn">View Details</a>
-+            </div>
-+            <div class="card">
-+              <h3>Cold Brew</h3>
-+              <p>Steeped for 18 hours for maximum smoothness.</p>
-+              <a href="/menu/cold-brew" class="btn">View Details</a>
-+            </div>
-+          </div>
-+        </noscript>
-+        <?end>
-       </div>
-     </section>
-   </main>
-@@ -207,6 +246,37 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
- 
-+  <!-- This payload may arrive in a later chunk of the same HTML response.
-+       Reintroduce consumed ranges so subsequent payloads can update them again.
-+       Keep the section heading and live region outside the replaced range. -->
-+  <template for="seasonal-favorites">
-+    <?start name="seasonal-favorites">
-+    <div class="grid" id="seasonal-coffees">
-+      <div class="card" id="maple-oat-latte">
-+        <?start name="maple-oat-latte">
-+        <h3>Maple Oat Latte</h3>
-+        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+        <a href="/menu/seasonal" class="btn">View Details</a>
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-heading">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <button type="button" class="btn" id="refresh-menu">Refresh menu</button>
++      </div>
++      <p id="menu-status" role="status">Loading seasonal favorites…</p>
++      <div id="seasonal-cards" class="grid" aria-live="polite" aria-label="Seasonal coffees"
++        data-source="/partials/menu.html" data-events="/api/menu/events">
++        <?start name="seasonal-cards">
++        <div class="card skeleton"><p>Loading coffee…</p></div>
++        <div class="card skeleton" aria-hidden="true"><p>Loading coffee…</p></div>
++        <div class="card skeleton" aria-hidden="true"><p>Loading coffee…</p></div>
 +        <?end>
 +      </div>
-+      <div class="card" id="dark-roast-espresso">
-+        <?start name="dark-roast-espresso">
-+        <h3>Dark Roast Espresso</h3>
-+        <p>Bold, smokey, and perfect for a morning boost.</p>
-+        <a href="/menu/espresso" class="btn">View Details</a>
-+        <?end>
++      <noscript><p>Enable JavaScript for updates in browsers without native partial updates.
++        <a href="/menu">Browse the full menu</a>.</p></noscript>
++    </section>
++    <section aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading">From our customers</h2>
++      <div id="customer-reviews" aria-live="polite" data-source="/partials/reviews.html">
++        <p>Loading customer reviews…</p>
 +      </div>
-+      <div class="card" id="cold-brew">
-+        <?start name="cold-brew">
-+        <h3>Cold Brew</h3>
-+        <p>Steeped for 18 hours for maximum smoothness.</p>
-+        <a href="/menu/cold-brew" class="btn">View Details</a>
-+        <?end>
-+      </div>
-+    </div>
-+    <?end>
-+  </template>
++    </section>
++    <aside id="cms-promo" aria-label="Coffee promotion" data-source="/partials/promo.html">
++      <p>Loading our latest offer…</p>
++    </aside>
++  </main>
 +
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <!-- The server can flush the shell above before sending this later in the same response.
++       Only application-owned markup belongs in declarative patches. Reviews use safe setters. -->
++  <template for="seasonal-cards">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -193,19 +238,8 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  </template>
++  <script type="module" src="./dist/app.js"></script>
+ 
  </body>
  
- </html>
 diff --git a/package.json b/package.json
-index 2bd4d77..8eb8ea0 100644
+index 2bd4d77..85f2a7f 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,6 +2,7 @@
+@@ -2,9 +2,20 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "node --check vendor/html-setters-polyfill.js && node --check vendor/template-for-polyfill.js && node build.mjs",
++    "build": "tsc --noEmit && node build.mjs",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {
-diff --git a/vendor/LICENSE b/vendor/LICENSE
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "dompurify": "^3.4.17",
++    "html-setters-polyfill": "^0.1.1",
++    "template-for-polyfill": "^0.1.1"
++  },
++  "devDependencies": {
++    "@types/node": "^26.6.5",
++    "esbuild": "^0.28.2",
++    "typescript": "^7.0.2"
+   }
+ }
+diff --git a/partials/menu.html b/partials/menu.html
 new file mode 100644
-index 0000000..d645695
+index 0000000..01af71f
 --- /dev/null
-+++ b/vendor/LICENSE
-@@ -0,0 +1,202 @@
-+
-+                                 Apache License
-+                           Version 2.0, January 2004
-+                        http://www.apache.org/licenses/
-+
-+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
-+
-+   1. Definitions.
-+
-+      "License" shall mean the terms and conditions for use, reproduction,
-+      and distribution as defined by Sections 1 through 9 of this document.
-+
-+      "Licensor" shall mean the copyright owner or entity authorized by
-+      the copyright owner that is granting the License.
-+
-+      "Legal Entity" shall mean the union of the acting entity and all
-+      other entities that control, are controlled by, or are under common
-+      control with that entity. For the purposes of this definition,
-+      "control" means (i) the power, direct or indirect, to cause the
-+      direction or management of such entity, whether by contract or
-+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
-+      outstanding shares, or (iii) beneficial ownership of such entity.
-+
-+      "You" (or "Your") shall mean an individual or Legal Entity
-+      exercising permissions granted by this License.
-+
-+      "Source" form shall mean the preferred form for making modifications,
-+      including but not limited to software source code, documentation
-+      source, and configuration files.
-+
-+      "Object" form shall mean any form resulting from mechanical
-+      transformation or translation of a Source form, including but
-+      not limited to compiled object code, generated documentation,
-+      and conversions to other media types.
-+
-+      "Work" shall mean the work of authorship, whether in Source or
-+      Object form, made available under the License, as indicated by a
-+      copyright notice that is included in or attached to the work
-+      (an example is provided in the Appendix below).
-+
-+      "Derivative Works" shall mean any work, whether in Source or Object
-+      form, that is based on (or derived from) the Work and for which the
-+      editorial revisions, annotations, elaborations, or other modifications
-+      represent, as a whole, an original work of authorship. For the purposes
-+      of this License, Derivative Works shall not include works that remain
-+      separable from, or merely link (or bind by name) to the interfaces of,
-+      the Work and Derivative Works thereof.
-+
-+      "Contribution" shall mean any work of authorship, including
-+      the original version of the Work and any modifications or additions
-+      to that Work or Derivative Works thereof, that is intentionally
-+      submitted to Licensor for inclusion in the Work by the copyright owner
-+      or by an individual or Legal Entity authorized to submit on behalf of
-+      the copyright owner. For the purposes of this definition, "submitted"
-+      means any form of electronic, verbal, or written communication sent
-+      to the Licensor or its representatives, including but not limited to
-+      communication on electronic mailing lists, source code control systems,
-+      and issue tracking systems that are managed by, or on behalf of, the
-+      Licensor for the purpose of discussing and improving the Work, but
-+      excluding communication that is conspicuously marked or otherwise
-+      designated in writing by the copyright owner as "Not a Contribution."
-+
-+      "Contributor" shall mean Licensor and any individual or Legal Entity
-+      on behalf of whom a Contribution has been received by Licensor and
-+      subsequently incorporated within the Work.
-+
-+   2. Grant of Copyright License. Subject to the terms and conditions of
-+      this License, each Contributor hereby grants to You a perpetual,
-+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-+      copyright license to reproduce, prepare Derivative Works of,
-+      publicly display, publicly perform, sublicense, and distribute the
-+      Work and such Derivative Works in Source or Object form.
-+
-+   3. Grant of Patent License. Subject to the terms and conditions of
-+      this License, each Contributor hereby grants to You a perpetual,
-+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
-+      (except as stated in this section) patent license to make, have made,
-+      use, offer to sell, sell, import, and otherwise transfer the Work,
-+      where such license applies only to those patent claims licensable
-+      by such Contributor that are necessarily infringed by their
-+      Contribution(s) alone or by combination of their Contribution(s)
-+      with the Work to which such Contribution(s) was submitted. If You
-+      institute patent litigation against any entity (including a
-+      cross-claim or counterclaim in a lawsuit) alleging that the Work
-+      or a Contribution incorporated within the Work constitutes direct
-+      or contributory patent infringement, then any patent licenses
-+      granted to You under this License for that Work shall terminate
-+      as of the date such litigation is filed.
-+
-+   4. Redistribution. You may reproduce and distribute copies of the
-+      Work or Derivative Works thereof in any medium, with or without
-+      modifications, and in Source or Object form, provided that You
-+      meet the following conditions:
-+
-+      (a) You must give any other recipients of the Work or
-+          Derivative Works a copy of this License; and
-+
-+      (b) You must cause any modified files to carry prominent notices
-+          stating that You changed the files; and
-+
-+      (c) You must retain, in the Source form of any Derivative Works
-+          that You distribute, all copyright, patent, trademark, and
-+          attribution notices from the Source form of the Work,
-+          excluding those notices that do not pertain to any part of
-+          the Derivative Works; and
-+
-+      (d) If the Work includes a "NOTICE" text file as part of its
-+          distribution, then any Derivative Works that You distribute must
-+          include a readable copy of the attribution notices contained
-+          within such NOTICE file, excluding those notices that do not
-+          pertain to any part of the Derivative Works, in at least one
-+          of the following places: within a NOTICE text file distributed
-+          as part of the Derivative Works; within the Source form or
-+          documentation, if provided along with the Derivative Works; or,
-+          within a display generated by the Derivative Works, if and
-+          wherever such third-party notices normally appear. The contents
-+          of the NOTICE file are for informational purposes only and
-+          do not modify the License. You may add Your own attribution
-+          notices within Derivative Works that You distribute, alongside
-+          or as an addendum to the NOTICE text from the Work, provided
-+          that such additional attribution notices cannot be construed
-+          as modifying the License.
-+
-+      You may add Your own copyright statement to Your modifications and
-+      may provide additional or different license terms and conditions
-+      for use, reproduction, or distribution of Your modifications, or
-+      for any such Derivative Works as a whole, provided Your use,
-+      reproduction, and distribution of the Work otherwise complies with
-+      the conditions stated in this License.
-+
-+   5. Submission of Contributions. Unless You explicitly state otherwise,
-+      any Contribution intentionally submitted for inclusion in the Work
-+      by You to the Licensor shall be under the terms and conditions of
-+      this License, without any additional terms or conditions.
-+      Notwithstanding the above, nothing herein shall supersede or modify
-+      the terms of any separate license agreement you may have executed
-+      with Licensor regarding such Contributions.
-+
-+   6. Trademarks. This License does not grant permission to use the trade
-+      names, trademarks, service marks, or product names of the Licensor,
-+      except as required for reasonable and customary use in describing the
-+      origin of the Work and reproducing the content of the NOTICE file.
-+
-+   7. Disclaimer of Warranty. Unless required by applicable law or
-+      agreed to in writing, Licensor provides the Work (and each
-+      Contributor provides its Contributions) on an "AS IS" BASIS,
-+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-+      implied, including, without limitation, any warranties or conditions
-+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
-+      PARTICULAR PURPOSE. You are solely responsible for determining the
-+      appropriateness of using or redistributing the Work and assume any
-+      risks associated with Your exercise of permissions under this License.
-+
-+   8. Limitation of Liability. In no event and under no legal theory,
-+      whether in tort (including negligence), contract, or otherwise,
-+      unless required by applicable law (such as deliberate and grossly
-+      negligent acts) or agreed to in writing, shall any Contributor be
-+      liable to You for damages, including any direct, indirect, special,
-+      incidental, or consequential damages of any character arising as a
-+      result of this License or out of the use or inability to use the
-+      Work (including but not limited to damages for loss of goodwill,
-+      work stoppage, computer failure or malfunction, or any and all
-+      other commercial damages or losses), even if such Contributor
-+      has been advised of the possibility of such damages.
-+
-+   9. Accepting Warranty or Additional Liability. While redistributing
-+      the Work or Derivative Works thereof, You may choose to offer,
-+      and charge a fee for, acceptance of support, warranty, indemnity,
-+      or other liability obligations and/or rights consistent with this
-+      License. However, in accepting such obligations, You may act only
-+      on Your own behalf and on Your sole responsibility, not on behalf
-+      of any other Contributor, and only if You agree to indemnify,
-+      defend, and hold each Contributor harmless for any liability
-+      incurred by, or claims asserted against, such Contributor by reason
-+      of your accepting any such warranty or additional liability.
-+
-+   END OF TERMS AND CONDITIONS
-+
-+   APPENDIX: How to apply the Apache License to your work.
-+
-+      To apply the Apache License to your work, attach the following
-+      boilerplate notice, with the fields enclosed by brackets "[]"
-+      replaced with your own identifying information. (Don't include
-+      the brackets!)  The text should be enclosed in the appropriate
-+      comment syntax for the file format. We also recommend that a
-+      file or class name and description of purpose be included on the
-+      same "printed page" as the copyright notice for easier
-+      identification within third-party archives.
-+
-+   Copyright [yyyy] [name of copyright owner]
-+
-+   Licensed under the Apache License, Version 2.0 (the "License");
-+   you may not use this file except in compliance with the License.
-+   You may obtain a copy of the License at
-+
-+       http://www.apache.org/licenses/LICENSE-2.0
-+
-+   Unless required by applicable law or agreed to in writing, software
-+   distributed under the License is distributed on an "AS IS" BASIS,
-+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-+   See the License for the specific language governing permissions and
-+   limitations under the License.
-diff --git a/vendor/html-setters-polyfill.js b/vendor/html-setters-polyfill.js
++++ b/partials/menu.html
+@@ -0,0 +1,15 @@
++<div class="card">
++  <h3>Maple Oat Latte</h3>
++  <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++  <a href="/menu/seasonal" class="btn">View Details</a>
++</div>
++<div class="card">
++  <h3>Dark Roast Espresso</h3>
++  <p>Bold, smokey, and perfect for a morning boost.</p>
++  <a href="/menu/espresso" class="btn">View Details</a>
++</div>
++<div class="card">
++  <h3>Cold Brew</h3>
++  <p>Steeped for 18 hours for maximum smoothness.</p>
++  <a href="/menu/cold-brew" class="btn">View Details</a>
++</div>
+diff --git a/partials/promo.html b/partials/promo.html
 new file mode 100644
-index 0000000..ecaf427
+index 0000000..c138a32
 --- /dev/null
-+++ b/vendor/html-setters-polyfill.js
-@@ -0,0 +1,279 @@
-+/**
-+ *  @license
-+ * Copyright 2026 Google LLC
-+ * SPDX-License-Identifier: Apache-2.0
-+ */
-+
-+/**
-+ * @typedef {Object} SetHTMLUnsafeOptions
-+ * @property {boolean} [runScripts]
-+ */
-+
-+/**
-+ * @typedef {Object} SetHTMLOptions
-+ * @property {any} [sanitizer]
-+ */
-+
-+(function () {
-+  'use strict';
-+
-+  const nativeElementSetHTMLUnsafe = Element.prototype.setHTMLUnsafe;
-+  const nativeShadowSetHTMLUnsafe = ShadowRoot.prototype.setHTMLUnsafe;
-+
-+  function applyDeclarativeShadowDOM(root) {
-+    const templates = root.querySelectorAll('template[shadowrootmode]');
-+    for (const template of templates) {
-+      const mode = template.getAttribute('shadowrootmode');
-+      const host = template.parentNode;
-+      if (host && (mode === 'open' || mode === 'closed')) {
-+        const shadowRoot = host.attachShadow({ mode });
-+        shadowRoot.appendChild(template.content);
-+        template.remove();
-+        applyDeclarativeShadowDOM(shadowRoot);
-+      }
-+    }
-+  }
-+
-+  /**
-+   * @param {string} html
-+   * @param {boolean} runScripts
-+   * @param {"safe" | "unsafe"} safety
-+   * @param {Node} context
-+   * @returns {DocumentFragment}
-+   */
-+  function parseHTML(htmlStr, runScripts, safety, context, options = {}) {
-+    const safe = safety === 'safe';
-+
-+    let contextEl = context;
-+    if (context instanceof ShadowRoot) {
-+      contextEl = context.host;
-+    }
-+    const tagName = (contextEl instanceof Element) ? contextEl.tagName : 'DIV';
-+
-+    if (runScripts && !safe) {
-+      const range = document.createRange();
-+      if (context instanceof Element) {
-+        range.selectNodeContents(context);
-+      } else if (context instanceof ShadowRoot) {
-+        range.selectNodeContents(context.host);
-+      } else {
-+        const body = context.ownerDocument?.body || document.body;
-+        range.selectNodeContents(body);
-+      }
-+      const fragment = range.createContextualFragment(htmlStr);
-+      applyDeclarativeShadowDOM(fragment);
-+      return fragment;
-+    }
-+
-+    const parser = new DOMParser();
-+    const doc = parser.parseFromString('<!DOCTYPE html><html><body></body></html>', 'text/html');
-+    const placeholder = doc.createElement(tagName);
-+    doc.body.appendChild(placeholder);
-+
-+    if (safe) {
-+      if ('setHTML' in placeholder) {
-+        placeholder.setHTML(htmlStr, options);
-+      } else {
-+        throw new Error('Safe parsing requested but setHTML is not available.');
-+      }
-+    } else if ('setHTMLUnsafe' in placeholder) {
-+      placeholder.setHTMLUnsafe(htmlStr);
-+    } else {
-+      placeholder.innerHTML = htmlStr;
-+    }
-+
-+    const fragment = document.createDocumentFragment();
-+    while (placeholder.firstChild) {
-+      fragment.appendChild(document.adoptNode(placeholder.firstChild));
-+    }
-+    return fragment;
-+  }
-+
-+  /**
-+   * @param {Element | ShadowRoot} target
-+   * @param {string} htmlStr
-+   * @param {SetHTMLUnsafeOptions} [options]
-+   */
-+  /**
-+   * @param {Element | ShadowRoot} target
-+   * @param {any} htmlStr
-+   * @param {"safe" | "unsafe"} safety
-+   * @param {SetHTMLUnsafeOptions | SetHTMLOptions} [options]
-+   * @param {'replaceChildren' | 'before' | 'prepend' | 'append' | 'after' | 'replaceWith'} position
-+   */
-+  function insertHTML(target, htmlStr, safety, options = {}, position) {
-+    const safe = safety === 'safe';
-+    const runScripts = !!options.runScripts;
-+
-+    if (position === 'replaceChildren') {
-+      if (safe) {
-+        if ('setHTML' in target) {
-+          target.setHTML(htmlStr, options);
-+          return;
-+        } else {
-+          throw new Error('Safe setting requested but setHTML is not available.');
-+        }
-+      }
-+
-+      if (runScripts) {
-+        const fragment = parseHTML(htmlStr, true, 'unsafe', target, options);
-+        target.replaceChildren(fragment);
-+      } else {
-+        const nativeSet = (target instanceof ShadowRoot) ? nativeShadowSetHTMLUnsafe : nativeElementSetHTMLUnsafe;
-+        if (nativeSet) {
-+          nativeSet.call(target, htmlStr);
-+        } else {
-+          target.innerHTML = htmlStr;
-+        }
-+      }
-+      return;
-+    }
-+
-+    const fragment = parseHTML(htmlStr, runScripts, safety, target, options);
-+
-+    switch (position) {
-+      case 'replaceWith':
-+        target.replaceWith(fragment);
-+        break;
-+      case 'before':
-+        target.before(fragment);
-+        break;
-+      case 'prepend':
-+        target.prepend(fragment);
-+        break;
-+      case 'append':
-+        target.append(fragment);
-+        break;
-+      case 'after':
-+        target.after(fragment);
-+        break;
-+    }
-+  }
-+
-+  /**
-+   * @param {Element | ShadowRoot} target
-+   * @param {"safe" | "unsafe"} safety
-+   * @param {SetHTMLUnsafeOptions | SetHTMLOptions} options
-+   * @param {'set' | 'before' | 'prepend' | 'append' | 'after' | 'replaceWith'} position
-+   * @returns {WritableStream}
-+   */
-+  function createHTMLStream(target, safety, options = {}, position) {
-+    let buffer = '';
-+    return new WritableStream({
-+      write(chunk) {
-+        buffer += chunk;
-+      },
-+      close() {
-+        insertHTML(target, buffer, safety, options, position);
-+      }
-+    });
-+  }
-+
-+  for (const proto of [Element.prototype, ShadowRoot.prototype]) {
-+    // Unsafe methods
-+    const nativeSet = proto.setHTMLUnsafe;
-+    proto.setHTMLUnsafe = function (html, options) {
-+      if (options && options.runScripts) {
-+        insertHTML(this, html, 'unsafe', options, 'replaceChildren');
-+      } else if (nativeSet) {
-+        nativeSet.call(this, html);
-+      } else {
-+        insertHTML(this, html, 'unsafe', options, 'replaceChildren');
-+      }
-+    };
-+    proto.appendHTMLUnsafe ??= function (html, options) {
-+      insertHTML(this, html, 'unsafe', options, 'append');
-+    };
-+    proto.prependHTMLUnsafe ??= function (html, options) {
-+      insertHTML(this, html, 'unsafe', options, 'prepend');
-+    };
-+
-+    // Streaming methods
-+    proto.streamHTMLUnsafe ??= function (options) {
-+      return createHTMLStream(this, 'unsafe', options, 'replaceChildren');
-+    };
-+    proto.streamAppendHTMLUnsafe ??= function (options) {
-+      return createHTMLStream(this, 'unsafe', options, 'append');
-+    };
-+    proto.streamPrependHTMLUnsafe ??= function (options) {
-+      return createHTMLStream(this, 'unsafe', options, 'prepend');
-+    };
-+
-+    // Safe methods (only if setHTML is available)
-+    if (!('setHTML' in Element.prototype)) continue;
-+
-+    proto.appendHTML ??= function (html, options) {
-+      insertHTML(this, html, 'safe', options, 'append');
-+    };
-+    proto.prependHTML ??= function (html, options) {
-+      insertHTML(this, html, 'safe', options, 'prepend');
-+    };
-+    proto.streamHTML ??= function (options) {
-+      return createHTMLStream(this, 'safe', options, 'replaceChildren');
-+    };
-+    proto.streamAppendHTML ??= function (options) {
-+      return createHTMLStream(this, 'safe', options, 'append');
-+    };
-+    proto.streamPrependHTML ??= function (options) {
-+      return createHTMLStream(this, 'safe', options, 'prepend');
-+    };
-+  }
-+
-+  // ChildNode variants
-+  for (const proto of [Element.prototype, CharacterData.prototype, DocumentType.prototype]) {
-+    // Sync methods
-+    proto.beforeHTMLUnsafe ??= function (html, options) {
-+      insertHTML(this, html, 'unsafe', options, 'before');
-+    };
-+    proto.afterHTMLUnsafe ??= function (html, options) {
-+      insertHTML(this, html, 'unsafe', options, 'after');
-+    };
-+    proto.replaceWithHTMLUnsafe ??= function (html, options) {
-+      insertHTML(this, html, 'unsafe', options, 'replaceWith');
-+    };
-+
-+    proto.streamBeforeHTMLUnsafe ??= function (options) {
-+      if (!this.parentNode) throw new Error('Node has no parent');
-+      return createHTMLStream(this, 'unsafe', options, 'before');
-+    };
-+    proto.streamAfterHTMLUnsafe ??= function (options) {
-+      if (!this.parentNode) throw new Error('Node has no parent');
-+      return createHTMLStream(this, 'unsafe', options, 'after');
-+    };
-+    proto.streamReplaceWithHTMLUnsafe ??= function (options) {
-+      if (!this.parentNode) throw new Error('Node has no parent');
-+      return createHTMLStream(this, 'unsafe', options, 'replaceWith');
-+    };
-+
-+    // Safe methods (only if setHTML is available)
-+    if (!('setHTML' in Element.prototype)) continue;
-+
-+    proto.beforeHTML ??= function (html, options) {
-+      insertHTML(this, html, 'safe', options, 'before');
-+    };
-+    proto.afterHTML ??= function (html, options) {
-+      insertHTML(this, html, 'safe', options, 'after');
-+    };
-+    proto.replaceWithHTML ??= function (html, options) {
-+      insertHTML(this, html, 'safe', options, 'replaceWith');
-+    };
-+
-+    proto.streamBeforeHTML ??= function (options) {
-+      if (!this.parentNode) throw new Error('Node has no parent');
-+      return createHTMLStream(this, 'safe', options, 'before');
-+    };
-+    proto.streamAfterHTML ??= function (options) {
-+      if (!this.parentNode) throw new Error('Node has no parent');
-+      return createHTMLStream(this, 'safe', options, 'after');
-+    };
-+    proto.streamReplaceWithHTML ??= function (options) {
-+      if (!this.parentNode) throw new Error('Node has no parent');
-+      return createHTMLStream(this, 'safe', options, 'replaceWith');
-+    };
-+  }
-+
-+
-+
-+
-+
-+})();
-diff --git a/vendor/template-for-polyfill.js b/vendor/template-for-polyfill.js
++++ b/partials/promo.html
+@@ -0,0 +1,11 @@
++<div class="card" data-rewards-promo>
++  <h3>Make your next coffee more rewarding</h3>
++  <p>Join Daily Grind Rewards for our latest seasonal offers.</p>
++  <button type="button" class="btn" data-rewards-widget>Explore Rewards</button>
++</div>
++<script>
++  // Self-contained CMS widget: no dependency on other deferred blocks.
++  document.querySelectorAll('[data-rewards-widget]').forEach((button) => {
++    button.addEventListener('click', () => { window.location.assign('/rewards'); });
++  });
++</script>
+diff --git a/partials/reviews.html b/partials/reviews.html
 new file mode 100644
-index 0000000..fd4ba7e
+index 0000000..f5f6692
 --- /dev/null
-+++ b/vendor/template-for-polyfill.js
-@@ -0,0 +1,6 @@
-+/**
-+ *  @license
-+ * Copyright 2026 Google LLC
-+ * SPDX-License-Identifier: Apache-2.0
-+ */
-+(()=>{if("htmlFor"in HTMLTemplateElement.prototype)return;console.log("Loading templates for polyfill...");const e=(e,t,o,n=null,r)=>{if(!(r.parentNode instanceof Document&&"loading"===document.readyState)||t.nextElementSibling&&o.nextElementSibling&&(!n||n.nextElementSibling)){if("marker"!==e){let e=o.nextSibling;for(;e;){if(e===n){e.remove();break}const t=e.nextSibling;e.remove(),e=t}}o.replaceWith(t.content.cloneNode(!0)),t.remove()}},t=t=>{if(!t||t.hasAttribute("data-no-patch")||!t.parentElement)return;const o=t.getAttribute("for");if(!o)return;const n=t.parentElement===document.body?document.documentElement:t.parentElement,r=document.createTreeWalker(n,NodeFilter.SHOW_COMMENT|NodeFilter.SHOW_PROCESSING_INSTRUCTION);let l,a=null,i=0,m=0;for(;l=r.nextNode();){let r=null;if(l.nodeType===Node.COMMENT_NODE?r=l.data.replace(/^\?(start|end|marker)\b/gi,e=>e.toLowerCase()):l.nodeType===Node.PROCESSING_INSTRUCTION_NODE&&(r=`?${l.target.toLowerCase()}`,l.data&&(r=`${r} ${l.data}`)),r&&!(r.length<=1))if(r.toLowerCase().startsWith("?marker")){if(new RegExp(`\\bname *= *(["']?)${o}\\1`).test(r))return void e("marker",t,l,null,n)}else if(r.toLowerCase().startsWith("?start")){i++;const e=new RegExp(`\\bname *= *(["']?)${o}\\1`);!a&&e.test(r)&&(a=l,m=i)}else if(r.toLowerCase().startsWith("?end")&&a){if(i<=m){const o=a.parentElement===l.parentElement?l:null;return void e("range",t,a,o,n)}i>1&&i--}}i>0&&a&&e("range",t,a,null,n)},o=Element.prototype.setHTML;function n(){document.querySelectorAll("template[for]").forEach(e=>{t(e)}),document.querySelectorAll("*").forEach(e=>{e.shadowRoot&&e.shadowRoot.querySelectorAll("template[for]").forEach(e=>{e.parentElement&&t(e)})})}Element.prototype.setHTML=function(e){const n=(e=>{const o=(new DOMParser).parseFromString(e,"text/html");return o.querySelectorAll("template[for]").forEach(e=>{t(e)}),o.querySelectorAll("template[for]").forEach(e=>e.setAttribute("data-no-patch","")),o.body.innerHTML})(e);o.call(this,n)},n(),window.addEventListener("DOMContentLoaded",()=>{n()});new MutationObserver(e=>{for(const o of e)for(const e of Array.from(o.addedNodes))e instanceof HTMLTemplateElement&&e.hasAttribute("for")?e.parentElement&&t(e):e instanceof HTMLElement&&e.shadowRoot?e.shadowRoot.querySelectorAll("template[for]").forEach(e=>{e.parentElement&&t(e)}):document.querySelectorAll("template[for]").forEach(e=>{e.parentElement&&t(e)})}).observe(document,{childList:!0,subtree:!0})})();
++++ b/partials/reviews.html
+@@ -0,0 +1,5 @@
++<article class="card">
++  <h3>A smooth start to the day</h3>
++  <blockquote><p>The maple oat latte is my new seasonal favorite.</p></blockquote>
++  <p>— Alex, customer</p>
++</article>
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..e0a4eb4
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "skipLibCheck": true,
++    "noEmit": true
++  },
++  "include": ["app.ts"]
++}
