@@ -31,23 +31,25 @@ import { computeGuideHash } from '../scanners/index.ts';
 import type { AnalyzerRule, JudgeVerdict, CanonicalJudgeVerdict } from '../schema.ts';
 export { type JudgeVerdict, type CanonicalJudgeVerdict, CANONICAL_VERDICTS } from '../schema.ts';
 export { getGeminiApiKey, findGuideMarkdownPath, loadRawGuideMarkdown } from '../llm-verifier.ts';
-import { getGeminiApiKey, findGuideMarkdownPath, loadRawGuideMarkdown } from '../llm-verifier.ts';
+import { getGeminiApiKey } from '../llm-verifier.ts';
 
 const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 
-const RULES_BY_ID: ReadonlyMap<string, AnalyzerRule> = new Map(
-  ALL_RULES.map((rule) => [rule.id, rule]),
-);
-const RULES_BY_GUIDE_ID: ReadonlyMap<string, AnalyzerRule> = (() => {
+const RULES_INDEX: ReadonlyMap<string, AnalyzerRule> = (() => {
   const map = new Map<string, AnalyzerRule>();
   for (const rule of ALL_RULES) {
+    map.set(rule.id, rule);
     if (!map.has(rule.guideId)) {
       map.set(rule.guideId, rule);
     }
   }
   return map;
 })();
+
+function findMatchingRule(ruleId: string | undefined, guideId: string): AnalyzerRule | undefined {
+  return (ruleId ? RULES_INDEX.get(ruleId) : undefined) ?? RULES_INDEX.get(guideId);
+}
 
 /**
  * Resolves the directory containing offline evaluation datasets and human calibration labels.
@@ -79,18 +81,6 @@ export function repoDir(entry: RepoConfigEntry, root: string = join(homedir(), '
 
 export const JUDGE_MODEL = 'gemini-3.8-flash';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-
-/**
- * Canonical 7-verdict evaluation taxonomy for grading detected findings.
- * - `'legit-modernize-target'`: Genuine legacy pattern where applying the guide is a clean win (the code matches the legacy/"Before" pattern or library workaround replaced by this guide, is not an intentional fallback, covers needed capabilities, and has meaningful payoff).
- * - `'not-old-pattern'`: Matcher misfired — this code isn't even doing the legacy pattern the guide replaces (matcher misfire / token collision).
- * - `'fallback-or-guard'`: Intentional fallback, `@supports` check, feature guard, ponyfill, or polyfill.
- * - `'loses-behavior'`: Old pattern, but modern feature lacks capabilities used here (non-1:1 library component migration, custom side effects, order-dependent geometry, incompatible API contract, or unsupported library feature).
- * - `'no-payoff'`: Matches old syntax and modern feature applies, but rewriting here changes nothing meaningful (no-op syntax swap / zero-payoff syntax swap).
- * - `'guide-wrong'`: The guide's advice is bad or overstates what the feature does for this case (the guide itself is wrong to call this pattern a problem).
- * - `'unsure'`: Insufficient context in snippet/file to tell.
- */
-
 
 export const VALID_VERDICTS: ReadonlySet<string> = new Set([
   'legit-modernize-target',
@@ -153,22 +143,11 @@ export function verdictsAgree(humanVerdict: string, judgeVerdict: string): boole
   }
   const normH = normalizeJudgeVerdict(humanVerdict);
   const normJ = normalizeJudgeVerdict(judgeVerdict);
-  if (normH && normJ && normH === normJ) {
-    return true;
-  }
-  if (
-    (humanVerdict === 'leave-it' || humanVerdict === 'leave-it-be' || normH === 'leave-it') &&
-    isLeaveItFamily(judgeVerdict)
-  ) {
-    return true;
-  }
-  if (
-    (judgeVerdict === 'leave-it' || judgeVerdict === 'leave-it-be' || normJ === 'leave-it') &&
-    isLeaveItFamily(humanVerdict)
-  ) {
-    return true;
-  }
-  return false;
+  return (
+    (normH !== null && normH === normJ) ||
+    (normH === 'leave-it' && isLeaveItFamily(judgeVerdict)) ||
+    (normJ === 'leave-it' && isLeaveItFamily(humanVerdict))
+  );
 }
 
 export interface JudgeInputProvenance {
@@ -216,12 +195,7 @@ export interface GuideSummaryInfo {
   guideId: string;
   guideHash?: string;
   promptGuideHash?: string;
-  problem: string;
-  before: string;
-  now: string;
   markdownBody?: string;
-  oldWayExamples?: string[];
-  readonly ruleSummary?: undefined;
   readonly explainerContext?: string;
   readonly explainerContextHash?: string;
 }
@@ -329,10 +303,7 @@ export function computeJudgeInputProvenance(
     card.guideId,
   );
   const explainerContextHash = computeExplainerContextHash(card.guideSummary?.explainerContext);
-  const matchedRule =
-    (card.ruleId ? RULES_BY_ID.get(card.ruleId) : undefined) ??
-    RULES_BY_ID.get(card.guideId) ??
-    RULES_BY_GUIDE_ID.get(card.guideId);
+  const matchedRule = findMatchingRule(card.ruleId, card.guideId);
   const ruleId = (card.ruleId || matchedRule?.id || card.guideId || '').trim();
   if (!ruleId) {
     throw new Error(
@@ -360,12 +331,7 @@ export function attachJudgeInputProvenance(
   const provenance = computeJudgeInputProvenance(card, judgeVersion);
   return {
     ...result,
-    judgeVersion: provenance.judgeVersion,
-    promptGuideHash: provenance.promptGuideHash,
-    explainerContextHash: provenance.explainerContextHash,
-    ruleId: provenance.ruleId,
-    ruleGuideHash: provenance.ruleGuideHash,
-    ruleHash: provenance.ruleHash,
+    ...provenance,
     provenance,
     facts: {
       ...result.facts,
@@ -411,10 +377,7 @@ export interface JudgeEvaluationMetrics {
 
 export interface JudgeRunOptions {
   apiKey?: string;
-  mode?: 'batch' | 'direct';
   concurrency?: number;
-  pollIntervalMs?: number;
-  timeoutMs?: number;
   fetchFn?: typeof fetch;
   temperature?: number;
 }
@@ -443,16 +406,7 @@ export function buildGeminiRequestBody(card: BlindCardPayload, temperature = 0.2
 }
 
 /**
- * Cross-checks and computes unambiguous judge verdict from the 4 boolean facts:
- * - llmVerdict === 'guide-wrong' -> 'guide-wrong'
- * - !matches_before_syntax -> 'not-old-pattern'
- * - has_fallback_or_feature_guard -> 'fallback-or-guard'
- * - !modern_feature_applies_here -> 'loses-behavior'
- * - has_meaningful_payoff === false or llmVerdict === 'no-payoff' -> 'no-payoff'
- * - llmVerdict === 'loses-behavior' -> 'loses-behavior'
- * - llmVerdict === 'fallback-or-guard' -> 'fallback-or-guard'
- * - llmVerdict === 'unsure' -> 'unsure'
- * - Otherwise -> 'legit-modernize-target'
+ * Cross-checks and computes unambiguous judge verdict from the 4 boolean facts.
  */
 export function deriveJudgeVerdictFromFacts(
   facts: {
@@ -529,64 +483,6 @@ export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeRes
     rawResponse: rawText,
   };
 }
-
-interface InlinedGeminiResponseItem {
-  response?: {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{ text?: string }>;
-      };
-    }>;
-  };
-  error?: {
-    message?: string;
-  };
-}
-
-interface BatchStatusResponse {
-  name: string;
-  done?: boolean;
-  state?: string;
-  metadata?: {
-    state?: string;
-    output?: {
-      inlinedResponses?: {
-        inlinedResponses?: InlinedGeminiResponseItem[];
-      };
-      inlined_responses?: {
-        inlined_responses?: InlinedGeminiResponseItem[];
-      };
-      responsesFile?: string;
-      responses_file?: string;
-    };
-  };
-  output?: {
-    inlinedResponses?: {
-      inlinedResponses?: InlinedGeminiResponseItem[];
-    };
-    inlined_responses?: {
-      inlined_responses?: InlinedGeminiResponseItem[];
-    };
-    responsesFile?: string;
-    responses_file?: string;
-  };
-  response?: {
-    output?: {
-      inlinedResponses?: {
-        inlinedResponses?: InlinedGeminiResponseItem[];
-      };
-      inlined_responses?: {
-        inlined_responses?: InlinedGeminiResponseItem[];
-      };
-    };
-  };
-  error?: {
-    message?: string;
-    code?: number;
-  };
-}
-
-
 
 export async function fetchWithRetry(
   url: string,
@@ -687,185 +583,15 @@ export async function runJudgeDirect(
   return results;
 }
 
-interface PollBatchContext {
-  batchName: string;
-  apiKey: string;
-  cards: BlindCardPayload[];
-  judgeVersion: string;
-  timeoutMs: number;
-  pollIntervalMs: number;
-  customFetch: typeof fetch;
-}
-
-/**
- * Polls a batch operation until finished or timeout.
- * Throws explicit error on any failure or HTTP non-200.
- */
-async function pollBatchUntilDone(ctx: PollBatchContext): Promise<JudgeResult[]> {
-  const startTime = Date.now();
-  const fields = 'name,done,error,response';
-  const pollUrl = `${GEMINI_API_BASE}/${ctx.batchName}?key=${ctx.apiKey}&fields=${encodeURIComponent(fields)}`;
-
-  while (Date.now() - startTime < ctx.timeoutMs) {
-    await new Promise((r) => setTimeout(r, ctx.pollIntervalMs));
-
-    let pollRes: Response;
-    try {
-      pollRes = await ctx.customFetch(pollUrl);
-    } catch (err: unknown) {
-      throw new Error(`Gemini Batch polling network error: ${String(err)}`);
-    }
-
-    if (!pollRes.ok) {
-      const errText = await pollRes.text();
-      throw new Error(
-        `Gemini Batch API polling failed with HTTP ${pollRes.status}: ${errText}`,
-      );
-    }
-
-    const batchData = (await pollRes.json()) as BatchStatusResponse;
-    const state =
-      batchData.state ??
-      batchData.metadata?.state ??
-      (batchData.done ? 'BATCH_STATE_SUCCEEDED' : 'BATCH_STATE_RUNNING');
-
-    if (
-      state === 'BATCH_STATE_FAILED' ||
-      state === 'BATCH_STATE_CANCELLED' ||
-      state === 'BATCH_STATE_EXPIRED'
-    ) {
-      throw new Error(
-        `Gemini Batch failed with state ${state}: ${batchData.error?.message ?? 'No error details'}`,
-      );
-    }
-
-    if (state === 'BATCH_STATE_SUCCEEDED' || batchData.done) {
-      const rawOutput = (batchData.output ??
-        batchData.metadata?.output ??
-        batchData.response?.output ??
-        (batchData as { response?: unknown }).response) as
-        | {
-            inlinedResponses?: { inlinedResponses?: InlinedGeminiResponseItem[] };
-            inlined_responses?: { inlined_responses?: InlinedGeminiResponseItem[] };
-          }
-        | undefined;
-
-      const inlinedList: InlinedGeminiResponseItem[] | undefined =
-        rawOutput?.inlinedResponses?.inlinedResponses ??
-        rawOutput?.inlined_responses?.inlined_responses;
-
-      if (inlinedList && inlinedList.length === ctx.cards.length) {
-        return inlinedList.map((item: InlinedGeminiResponseItem, idx: number) => {
-          const card = ctx.cards[idx];
-          const text = item.response?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-          return attachJudgeInputProvenance(
-            parseJudgeJsonContent(text, card.cardId),
-            card,
-            ctx.judgeVersion,
-          );
-        });
-      }
-      throw new Error(
-        `Gemini Batch output missing or response count mismatch (expected ${ctx.cards.length}, got ${inlinedList?.length ?? 0})`,
-      );
-    }
-  }
-
-  throw new Error(`Gemini Batch polling timed out after ${ctx.timeoutMs}ms`);
-}
-
-/**
- * Runs judge evaluation using the Gemini Batch API (batchGenerateContent + polling).
- * Never silently falls back to direct execution: fails fast with explicit error on failure.
- * When mode: 'direct' is explicitly passed, executes directly.
- */
-export async function runJudgeBatch(
-  cards: BlindCardPayload[],
-  options: JudgeRunOptions = {},
-): Promise<JudgeResult[]> {
-  if (cards.length === 0) {
-    return [];
-  }
-
-  if (options.mode === 'direct') {
-    return runJudgeDirect(cards, options);
-  }
-
-  const apiKey = getGeminiApiKey(options);
-  const customFetch = options.fetchFn ?? fetch;
-  const pollIntervalMs = options.pollIntervalMs ?? 2000;
-  const timeoutMs = options.timeoutMs ?? 180000;
-  const effectiveJudgeVersion =
-    options.temperature === undefined
-      ? JUDGE_VERSION
-      : computeJudgePromptVersion(options.temperature);
-
-  // Prepare batch requests
-  const requests = cards.map((card) => ({
-    request: buildGeminiRequestBody(card, options.temperature),
-    metadata: { cardId: card.cardId },
-  }));
-
-  const batchCreatePayload = {
-    batch: {
-      displayName: `judge-eval-${Date.now()}`,
-      inputConfig: {
-        requests: {
-          requests,
-        },
-      },
-    },
-  };
-
-  const createUrl = `${GEMINI_API_BASE}/models/${JUDGE_MODEL}:batchGenerateContent?key=${apiKey}`;
-  const createRes = await customFetch(createUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(batchCreatePayload),
-  });
-
-  if (!createRes.ok) {
-    const errText = await createRes.text();
-    throw new Error(
-      `Gemini Batch API creation failed with HTTP ${createRes.status}: ${errText}`,
-    );
-  }
-
-  const createData = (await createRes.json()) as { name?: string };
-  const batchName = createData.name;
-  if (!batchName) {
-    throw new Error('Gemini Batch API creation succeeded but returned no batch name');
-  }
-
-  return pollBatchUntilDone({
-    batchName,
-    apiKey,
-    cards,
-    judgeVersion: effectiveJudgeVersion,
-    timeoutMs,
-    pollIntervalMs,
-    customFetch,
-  });
-}
-
 /**
  * Checks canary items with known ground-truth labels against judge results.
- * Verified: ensures judge catches negative controls and confirmed positives.
  */
 export function checkCanaries(
   results: ReadonlyArray<JudgeResult> | ReadonlyMap<string, JudgeVerdict>,
   canaries: ReadonlyArray<CanaryCard>,
 ): CanaryCheckResult {
-  const verdictMap = new Map<string, JudgeVerdict>();
-  if (Array.isArray(results)) {
-    for (const r of results) {
-      verdictMap.set(r.cardId, r.verdict);
-    }
-  } else {
-    for (const [k, v] of (results as ReadonlyMap<string, JudgeVerdict>).entries()) {
-      verdictMap.set(k, v);
-    }
-  }
+  const verdictMap: ReadonlyMap<string, JudgeVerdict> =
+    'get' in results ? results : new Map(results.map((r) => [r.cardId, r.verdict]));
 
   const pairs: Array<{ humanRight: boolean; judgeRight: boolean }> = [];
   const violations: CanaryCheckResult['violations'] = [];
@@ -875,9 +601,10 @@ export function checkCanaries(
     if (!actual) {
       continue;
     }
-    const isHumanRight = isPositiveVerdict(canary.expectedVerdict);
-    const isJudgeRight = isPositiveVerdict(actual);
-    pairs.push({ humanRight: isHumanRight, judgeRight: isJudgeRight });
+    pairs.push({
+      humanRight: isPositiveVerdict(canary.expectedVerdict),
+      judgeRight: isPositiveVerdict(actual),
+    });
 
     if (!verdictsAgree(canary.expectedVerdict, actual)) {
       violations.push({
@@ -889,8 +616,7 @@ export function checkCanaries(
   }
 
   const { tpr, tnr, positives, negatives } = sensitivitySpecificity(pairs);
-  // Canary pass rule: all negative controls (false positives) must be rejected (TNR = 1.0)
-  const passed = tnr >= 1.0 && violations.filter((v) => !isPositiveVerdict(v.expected)).length === 0;
+  const passed = tnr >= 1.0 && !violations.some((v) => !isPositiveVerdict(v.expected));
 
   return {
     passed,
@@ -901,6 +627,15 @@ export function checkCanaries(
     violations,
   };
 }
+
+const PROVENANCE_IDENTITY_KEYS = [
+  'judgeVersion',
+  'promptGuideHash',
+  'explainerContextHash',
+  'ruleId',
+  'ruleGuideHash',
+  'ruleHash',
+] as const;
 
 /**
  * Evaluates 3-run judge stability and derives consensus majority verdicts.
@@ -925,14 +660,8 @@ export function evaluateJudgeStability(
   let exactMatchCount = 0;
   const consensusResults: JudgeResult[] = [];
 
-  const extractProvenanceIdentity = (r: JudgeResult) => ({
-    judgeVersion: r.judgeVersion ?? r.provenance?.judgeVersion,
-    promptGuideHash: r.promptGuideHash ?? r.provenance?.promptGuideHash,
-    explainerContextHash: r.explainerContextHash ?? r.provenance?.explainerContextHash,
-    ruleId: r.ruleId ?? r.provenance?.ruleId,
-    ruleGuideHash: r.ruleGuideHash ?? r.provenance?.ruleGuideHash,
-    ruleHash: r.ruleHash ?? r.provenance?.ruleHash,
-  });
+  const getProvField = (r: JudgeResult, key: (typeof PROVENANCE_IDENTITY_KEYS)[number]) =>
+    r[key] ?? r.provenance?.[key];
 
   for (let i = 0; i < n; i++) {
     const r0 = run0[i];
@@ -945,20 +674,13 @@ export function evaluateJudgeStability(
       );
     }
 
-    const p0 = extractProvenanceIdentity(r0);
-    const p1 = extractProvenanceIdentity(r1);
-    const p2 = extractProvenanceIdentity(r2);
-    for (const key of [
-      'judgeVersion',
-      'promptGuideHash',
-      'explainerContextHash',
-      'ruleId',
-      'ruleGuideHash',
-      'ruleHash',
-    ] as const) {
-      if (p0[key] !== p1[key] || p0[key] !== p2[key]) {
+    for (const key of PROVENANCE_IDENTITY_KEYS) {
+      const p0 = getProvField(r0, key);
+      const p1 = getProvField(r1, key);
+      const p2 = getProvField(r2, key);
+      if (p0 !== p1 || p0 !== p2) {
         throw new Error(
-          `Stability run provenance mismatch on card ${r0.cardId} field "${key}": run0=${String(p0[key])}, run1=${String(p1[key])}, run2=${String(p2[key])}`,
+          `Stability run provenance mismatch on card ${r0.cardId} field "${key}": run0=${String(p0)}, run1=${String(p1)}, run2=${String(p2)}`,
         );
       }
     }
@@ -975,7 +697,6 @@ export function evaluateJudgeStability(
       exactMatchCount++;
     }
 
-    // Determine majority verdict
     let consensusVerdict: JudgeVerdict;
     let chosenFacts: DetectionEvalFactCheck;
 
@@ -994,9 +715,7 @@ export function evaluateJudgeStability(
       };
     }
 
-    const provenanceSource =
-      consensusVerdict === v1 && v0 !== v1 ? r1 : r0;
-
+    const provenanceSource = consensusVerdict === v1 && v0 !== v1 ? r1 : r0;
     const { rawResponse: _rawResponse, error: _error, ...provenanceFields } = provenanceSource;
     consensusResults.push({
       ...provenanceFields,
@@ -1005,34 +724,32 @@ export function evaluateJudgeStability(
     });
   }
 
-  const alpha01 = krippendorffAlphaNominal(pairs01);
-  const alpha12 = krippendorffAlphaNominal(pairs12);
-  const alpha02 = krippendorffAlphaNominal(pairs02);
-  const avgAlpha = (alpha01 + alpha12 + alpha02) / 3;
-
-  const ac101 = gwetAc1Nominal(pairs01);
-  const ac112 = gwetAc1Nominal(pairs12);
-  const ac102 = gwetAc1Nominal(pairs02);
-  const avgAc1 = (ac101 + ac112 + ac102) / 3;
+  const pairwiseAlphas: readonly [number, number, number] = [
+    krippendorffAlphaNominal(pairs01),
+    krippendorffAlphaNominal(pairs12),
+    krippendorffAlphaNominal(pairs02),
+  ];
+  const pairwiseAc1s: readonly [number, number, number] = [
+    gwetAc1Nominal(pairs01),
+    gwetAc1Nominal(pairs12),
+    gwetAc1Nominal(pairs02),
+  ];
 
   return {
     stabilityRate: n > 0 ? exactMatchCount / n : null,
-    krippendorffAlpha: avgAlpha,
-    gwetAc1: avgAc1,
-    pairwiseAlphas: [alpha01, alpha12, alpha02],
-    pairwiseAc1s: [ac101, ac112, ac102],
+    krippendorffAlpha: (pairwiseAlphas[0] + pairwiseAlphas[1] + pairwiseAlphas[2]) / 3,
+    gwetAc1: (pairwiseAc1s[0] + pairwiseAc1s[1] + pairwiseAc1s[2]) / 3,
+    pairwiseAlphas,
+    pairwiseAc1s,
     consensusResults,
   };
 }
 
 function collapseToLeaveItFamily(v: string): string {
-  if (v === 'fallback-or-guard' || v === 'loses-behavior' || v === 'no-payoff' || v === 'leave-it') {
+  if (isLeaveItFamily(v)) {
     return 'leave-it';
   }
-  if (v === 'right' || v === 'legit-modernize-target') {
-    return 'legit-modernize-target';
-  }
-  return v;
+  return normalizeJudgeVerdict(v) ?? v;
 }
 
 /**
@@ -1065,15 +782,11 @@ export function evaluateJudgeMetrics(
         });
       }
 
-      const humanIsMisfire = humanLabel === 'not-old-pattern';
-      const judgeIsMisfire = j.verdict === 'not-old-pattern';
-      if (humanIsMisfire === judgeIsMisfire) {
+      if ((humanLabel === 'not-old-pattern') === (j.verdict === 'not-old-pattern')) {
         misfireAgreementCount++;
       }
 
-      const humanIsActionable = isPositiveVerdict(humanLabel);
-      const judgeIsActionable = isPositiveVerdict(j.verdict);
-      if (humanIsActionable === judgeIsActionable) {
+      if (isPositiveVerdict(humanLabel) === isPositiveVerdict(j.verdict)) {
         actionabilityAgreementCount++;
       }
     }
@@ -1086,185 +799,38 @@ export function evaluateJudgeMetrics(
     }
   }
 
-  const alpha = krippendorffAlphaNominal(nominalPairs);
-  const ac1 = gwetAc1Nominal(nominalPairs);
-  const sensSpec = sensitivitySpecificity(binaryPairs);
-  const misfireAgreement = nominalPairs.length > 0 ? misfireAgreementCount / nominalPairs.length : null;
-  const actionabilityAgreement = nominalPairs.length > 0 ? actionabilityAgreementCount / nominalPairs.length : null;
-
-  const retainedDroppedRate =
-    totalDroppedEvaluated > 0 ? retainedDroppedCount / totalDroppedEvaluated : null;
-
+  const nPaired = nominalPairs.length;
   return {
-    krippendorffAlpha: alpha,
-    gwetAc1: ac1,
-    sensitivitySpecificity: sensSpec,
-    misfireAgreement,
-    actionabilityAgreement,
-    retainedDroppedRate,
-    nPaired: nominalPairs.length,
+    krippendorffAlpha: krippendorffAlphaNominal(nominalPairs),
+    gwetAc1: gwetAc1Nominal(nominalPairs),
+    sensitivitySpecificity: sensitivitySpecificity(binaryPairs),
+    misfireAgreement: nPaired > 0 ? misfireAgreementCount / nPaired : null,
+    actionabilityAgreement: nPaired > 0 ? actionabilityAgreementCount / nPaired : null,
+    retainedDroppedRate:
+      totalDroppedEvaluated > 0 ? retainedDroppedCount / totalDroppedEvaluated : null,
+    nPaired,
     unsureCount,
   };
 }
 
 /**
- * Loads human grades from the canonical grades file into a Map.
- */
-export async function loadHumanGrades(
-  gradesFilePath?: string,
-): Promise<Map<string, string>> {
-  const resolvedPath =
-    gradesFilePath ??
-    process.env.GRADES_PATH ??
-    join(getAnalyzerEvalDataDir(), 'labels', 'grades.jsonl');
-  const content = await readFile(resolvedPath, 'utf8');
-  const lines = content.trim().split('\n').filter(Boolean);
-  const map = new Map<string, string>();
-
-  for (const line of lines) {
-    const parsed = JSON.parse(line) as { cardId: string; verdict: string };
-    if (parsed.cardId && parsed.verdict) {
-      map.set(parsed.cardId, parsed.verdict);
-    }
-  }
-
-  return map;
-}
-
-/**
- * Deterministically locates the guide.md file for a given guideId under guidesRootDir.
- */
-
-
-/**
- * Parses raw guide.md text into a GuideSummaryInfo directly from frontmatter and markdown sections.
- * Zero hand-tuned examples, zero card-fitting.
+ * Parses raw guide.md text into a GuideSummaryInfo directly from markdown body.
  */
 export function parseGuideSummaryMarkdown(
   markdown: string,
   guideId: string,
 ): GuideSummaryInfo {
-  // 1. Extract frontmatter
-  const fmMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
-  const fm = fmMatch ? fmMatch[1] : '';
-  const descMatch = fm.match(/^description:\s*(.+)$/m);
-  const fmDescription = descMatch ? descMatch[1].trim() : '';
-
-  // 2. Remove frontmatter and extract title
   const body = markdown.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
-  const titleMatch = body.match(/^#\s+(.+)$/m);
-  const title = titleMatch ? titleMatch[1].trim() : guideId;
-  const bodyWithoutTitle = body.replace(/^#\s+[^\n]+\n*/, '').trim();
-
-  // 3. Split into sections by Markdown headers (## or ###)
-  const lines = bodyWithoutTitle.split('\n');
-  const sections: Array<{ header: string; content: string }> = [];
-  let currentHeader = 'Introduction';
-  let currentLines: string[] = [];
-
-  for (const line of lines) {
-    const hMatch = line.match(/^#{2,3}\s+(.+)$/);
-    if (hMatch) {
-      if (currentLines.length > 0 || currentHeader !== 'Introduction') {
-        sections.push({ header: currentHeader, content: currentLines.join('\n').trim() });
-      }
-      currentHeader = hMatch[1].trim();
-      currentLines = [];
-    } else {
-      currentLines.push(line);
-    }
-  }
-  if (currentLines.length > 0) {
-    sections.push({ header: currentHeader, content: currentLines.join('\n').trim() });
-  }
-
-  const introSection = sections.find((s) => s.header === 'Introduction')?.content ?? sections[0]?.content ?? '';
-
-  let problem = '';
-  let before = '';
-  let now = '';
-
-  for (const s of sections) {
-    const h = s.header.toLowerCase();
-    if (h.includes('problem') && !problem) {
-      problem = s.content;
-    }
-    if ((h === 'before' || h.includes('legacy pattern') || h.startsWith('before')) && !before) {
-      before = s.content;
-    }
-    if (
-      (h === 'now' ||
-        h.includes('modern replacement') ||
-        h.startsWith('now') ||
-        h.includes('the solution')) &&
-      !now
-    ) {
-      now = s.content;
-    }
-  }
-
-  if (!problem) {
-    problem = fmDescription || introSection.split('\n\n')[0] || title;
-  }
-
-  if (!before || !now) {
-    const overviewSection = sections.find((s) => s.header.toLowerCase().includes('overview'));
-    const sourceText = `${introSection}\n${overviewSection ? overviewSection.content : ''}`.trim();
-    const sentences = sourceText.split(/(?<=[.?!])\s+/).map((s) => s.trim()).filter(Boolean);
-
-    const beforeParts: string[] = [];
-    const nowParts: string[] = [];
-
-    for (const sent of sentences) {
-      if (
-        /\b(past|historically|previously|traditionally|legacy|prior to|older|earlier)\b/i.test(sent)
-      ) {
-        beforeParts.push(sent);
-      } else {
-        nowParts.push(sent);
-      }
-    }
-
-    if (!before) {
-      if (beforeParts.length > 0) {
-        before = beforeParts.join(' ');
-      } else {
-        before = `Legacy approach prior to ${title}: ${problem}`;
-      }
-    }
-
-    if (!now) {
-      if (nowParts.length > 0) {
-        now = nowParts.join(' ');
-      } else {
-        const implSection = sections.find((s) => {
-          const h = s.header.toLowerCase();
-          return h.includes('implement') || h.includes('usage') || h.includes('solution');
-        });
-        if (implSection) {
-          now = `${title}: ${implSection.content.slice(0, 300)}...`;
-        } else {
-          now = `Use modern web platform standards for ${title}.`;
-        }
-      }
-    }
-  }
-
-  const clean = (str: string): string =>
-    str.replace(/\{\{[^}]+\}\}/g, '').replace(/\n{3,}/g, '\n\n').trim();
-
-  // Verbatim markdown body (frontmatter stripped, up to ~6,000 chars) preserving
-  // all explanations, avoid/prefer headings, and code examples.
-  const cleanBody = clean(body);
+  const cleanBody = body
+    .replace(/\{\{[^}]+\}\}/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   const maxBodyLength = 6000;
   const markdownBody =
     cleanBody.length > maxBodyLength
       ? cleanBody.slice(0, maxBodyLength) + '\n\n... (guide content truncated)'
       : cleanBody;
 
-  const cleanedProblem = clean(problem);
-  const cleanedBefore = clean(before);
-  const cleanedNow = clean(now);
   const finalMarkdownBody = markdownBody.trim().length > 0 ? markdownBody : undefined;
   const promptGuideHash = finalMarkdownBody
     ? computePromptGuideHash(finalMarkdownBody, 'summary-parse', guideId)
@@ -1274,23 +840,82 @@ export function parseGuideSummaryMarkdown(
     guideId,
     guideHash: computeGuideHash(markdown),
     ...(promptGuideHash ? { promptGuideHash } : {}),
-    problem: cleanedProblem,
-    before: cleanedBefore,
-    now: cleanedNow,
     markdownBody: finalMarkdownBody,
   };
 }
 
+export interface ExplainerContextEntry {
+  readonly combinedExcerpt: string;
+  readonly explainerContextHash: string;
+}
+
 /**
- * Loads a guide summary deterministically from guide.md.
+ * Loads the guide explainer context map from disk.
+ * Resolves path lazily via getAnalyzerEvalDataDir() when not provided,
+ * failing fast if the evaluation data directory is not set or file cannot be read.
  */
-export async function loadGuideSummaryFromMarkdown(
-  guideId: string,
-  guidesRootDir: string = GUIDES_DIR,
-): Promise<GuideSummaryInfo> {
-  const guidePath = await findGuideMarkdownPath(guideId, guidesRootDir);
-  const content = await readFile(guidePath, 'utf8');
-  return parseGuideSummaryMarkdown(content, guideId);
+export async function loadExplainerContextMap(
+  explainersJsonPath?: string,
+): Promise<Map<string, ExplainerContextEntry>> {
+  const resolvedPath =
+    explainersJsonPath ??
+    join(getAnalyzerEvalDataDir(), 'findings', '2026-10-19-guide-explainers-171.json');
+  const content = await readFile(resolvedPath, 'utf8');
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch (err: unknown) {
+    throw new Error(`Failed to parse guide explainers JSON at ${resolvedPath}: ${String(err)}`);
+  }
+
+  const list = Array.isArray(parsed)
+    ? parsed
+    : typeof parsed === 'object' &&
+        parsed !== null &&
+        Array.isArray((parsed as { guides?: unknown }).guides)
+      ? (parsed as { guides: unknown[] }).guides
+      : null;
+
+  if (!list || list.length === 0) {
+    throw new Error(
+      `Invalid explainers file ${resolvedPath}: expected a non-empty array of guide explainer records.`,
+    );
+  }
+
+  const map = new Map<string, ExplainerContextEntry>();
+  for (let idx = 0; idx < list.length; idx++) {
+    const item = list[idx];
+    if (
+      typeof item !== 'object' ||
+      item === null ||
+      typeof (item as { guideId?: unknown }).guideId !== 'string' ||
+      !(item as { guideId: string }).guideId.trim()
+    ) {
+      throw new Error(
+        `Invalid explainer entry at index ${idx} in ${resolvedPath}: missing non-empty string guideId.`,
+      );
+    }
+    const rec = item as Record<string, unknown>;
+    const guideId = (rec.guideId as string).trim();
+    const rawExcerpt =
+      typeof rec.combinedExcerpt === 'string'
+        ? rec.combinedExcerpt
+        : typeof rec.explainerContext === 'string'
+          ? rec.explainerContext
+          : typeof rec.excerpt === 'string'
+            ? rec.excerpt
+            : '';
+    const combinedExcerpt = rawExcerpt.trim();
+    if (combinedExcerpt) {
+      map.set(guideId, {
+        combinedExcerpt,
+        explainerContextHash: computeExplainerContextHash(combinedExcerpt),
+      });
+    }
+  }
+
+  return map;
 }
 
 export interface LoadGuideSummariesOptions {
@@ -1302,121 +927,47 @@ export interface LoadGuideSummariesOptions {
   readonly explainersPath?: string;
 }
 
-function extractExplainerEntries(
-  parsed: unknown,
-  explainersJsonPath: string,
-): ReadonlyArray<Record<string, unknown>> {
-  const list = Array.isArray(parsed)
-    ? parsed
-    : typeof parsed === 'object' &&
-        parsed !== null &&
-        Array.isArray((parsed as { guides?: unknown }).guides)
-      ? (parsed as { guides: unknown[] }).guides
-      : null;
-
-  if (!list || list.length === 0) {
-    throw new Error(
-      `Invalid explainers file ${explainersJsonPath}: expected a non-empty array of guide explainer records.`,
-    );
-  }
-
-  return list.map((item, idx) => {
-    if (
-      typeof item !== 'object' ||
-      item === null ||
-      typeof (item as { guideId?: unknown }).guideId !== 'string' ||
-      !(item as { guideId: string }).guideId.trim()
-    ) {
-      throw new Error(
-        `Invalid explainer entry at index ${idx} in ${explainersJsonPath}: missing non-empty string guideId.`,
-      );
-    }
-    return item as Record<string, unknown>;
-  });
-}
-
 /**
  * Loads guide summaries directly from markdown files into a map indexed by guideId,
  * enriched only with external upstream feature explainers (never rule-writer triage text).
- * Fails fast on missing/unreadable guide directories, malformed JSON, empty guide sets,
+ * Fails fast on missing/unreadable guide directories, empty guide sets,
  * or missing/corrupt explainer datasets.
  */
 export async function loadGuideSummariesMap(
-  guidesRootDirOrFile: string = GUIDES_DIR,
+  guidesRootDir: string = GUIDES_DIR,
   options: LoadGuideSummariesOptions = {},
 ): Promise<Map<string, GuideSummaryInfo>> {
   const map = new Map<string, GuideSummaryInfo>();
 
-  if (guidesRootDirOrFile.endsWith('.json')) {
-    const content = await readFile(guidesRootDirOrFile, 'utf8');
-    const parsedJson = JSON.parse(content) as unknown;
-    if (!Array.isArray(parsedJson)) {
-      throw new Error(
-        `Invalid guide summaries JSON in ${guidesRootDirOrFile}: expected a JSON array.`,
-      );
-    }
-    for (const item of parsedJson) {
-      if (
-        typeof item !== 'object' ||
-        item === null ||
-        typeof (item as { guideId?: unknown }).guideId !== 'string' ||
-        !(item as { guideId: string }).guideId.trim()
-      ) {
-        throw new Error(
-          `Invalid guide summary entry in ${guidesRootDirOrFile}: missing non-empty guideId.`,
-        );
-      }
-      const typedItem = item as GuideSummaryInfo;
-      const promptGuideHash = typedItem.markdownBody?.trim()
-        ? computePromptGuideHash(typedItem.markdownBody, 'summary-map', typedItem.guideId)
-        : undefined;
-      map.set(typedItem.guideId, {
-        ...typedItem,
-        ...(promptGuideHash ? { promptGuideHash } : {}),
-      });
-    }
-  } else {
-    async function walk(dir: string): Promise<void> {
-      const entries = await readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = join(dir, entry.name);
-        if (entry.isDirectory()) {
-          await walk(fullPath);
-        } else if (entry.isFile() && entry.name === 'guide.md') {
-          const guideId = basename(dir);
-          const content = await readFile(fullPath, 'utf8');
-          const summary = parseGuideSummaryMarkdown(content, guideId);
-          map.set(guideId, summary);
-        }
+  async function walk(dir: string): Promise<void> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+      } else if (entry.isFile() && entry.name === 'guide.md') {
+        const guideId = basename(dir);
+        const content = await readFile(fullPath, 'utf8');
+        map.set(guideId, parseGuideSummaryMarkdown(content, guideId));
       }
     }
-
-    await walk(guidesRootDirOrFile);
   }
+
+  await walk(guidesRootDir);
 
   if (map.size === 0) {
     throw new Error(
-      `loadGuideSummariesMap loaded 0 guides from ${guidesRootDirOrFile}. Failing fast.`,
+      `loadGuideSummariesMap loaded 0 guides from ${guidesRootDir}. Failing fast.`,
     );
   }
 
-  let explainersJsonPath: string;
-  if (options.explainersPath) {
-    explainersJsonPath = options.explainersPath;
-  } else if (options.allowMissingExplainers && !process.env.ANALYZER_EVAL_DATA_DIR) {
+  if (options.allowMissingExplainers && !options.explainersPath && !process.env.ANALYZER_EVAL_DATA_DIR) {
     return map;
-  } else {
-    const evalDataDir = getAnalyzerEvalDataDir();
-    explainersJsonPath = join(
-      evalDataDir,
-      'findings',
-      '2026-10-19-guide-explainers-171.json',
-    );
   }
 
-  let explainersContent: string;
+  let explainersMap: Map<string, ExplainerContextEntry>;
   try {
-    explainersContent = await readFile(explainersJsonPath, 'utf8');
+    explainersMap = await loadExplainerContextMap(options.explainersPath);
   } catch (err: unknown) {
     if (
       options.allowMissingExplainers &&
@@ -1426,50 +977,21 @@ export async function loadGuideSummariesMap(
     ) {
       return map;
     }
-    throw new Error(
-      `Failed to read required guide explainers file at ${explainersJsonPath}: ${String(err)}`,
-    );
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(explainersContent) as unknown;
-  } catch (err: unknown) {
-    throw new Error(
-      `Failed to parse guide explainers JSON at ${explainersJsonPath}: ${String(err)}`,
-    );
-  }
-
-  const explainerEntries = extractExplainerEntries(parsed, explainersJsonPath);
-  for (const rec of explainerEntries) {
-    const guideId = (rec.guideId as string).trim();
-    const excerpt =
-      typeof rec.combinedExcerpt === 'string'
-        ? rec.combinedExcerpt
-        : typeof rec.explainerContext === 'string'
-          ? rec.explainerContext
-          : typeof rec.excerpt === 'string'
-            ? rec.excerpt
-            : '';
-    const existing = map.get(guideId);
-    if (existing) {
-      const trimmedExcerpt = excerpt.trim();
-      map.set(guideId, {
-        ...existing,
-        ...(trimmedExcerpt ? { explainerContext: trimmedExcerpt } : {}),
-        explainerContextHash: computeExplainerContextHash(trimmedExcerpt),
-      });
+    if (typeof err === 'object' && err !== null && 'code' in err) {
+      throw new Error(
+        `Failed to read required guide explainers file at ${options.explainersPath ?? ''}: ${String(err)}`,
+      );
     }
+    throw err;
   }
 
-  // Ensure every loaded guide has deterministic explainerContextHash once explainers loaded cleanly
   for (const [guideId, existing] of map.entries()) {
-    if (existing.explainerContextHash === undefined) {
-      map.set(guideId, {
-        ...existing,
-        explainerContextHash: computeExplainerContextHash(existing.explainerContext),
-      });
-    }
+    const explainer = explainersMap.get(guideId);
+    map.set(guideId, {
+      ...existing,
+      ...(explainer?.combinedExcerpt ? { explainerContext: explainer.combinedExcerpt } : {}),
+      explainerContextHash: computeExplainerContextHash(explainer?.combinedExcerpt),
+    });
   }
 
   return map;
@@ -1480,6 +1002,16 @@ export interface PaulIrishGradesResult {
   humanVerdicts: Map<string, JudgeVerdict>;
 }
 
+const STUB_OR_RETIRED_GUIDE_IDS: ReadonlySet<string> = new Set([
+  'copy-button',
+  'dialog',
+  'css-layout',
+  'accessible-error-announcement',
+  'stack-drill-down',
+  'shadow-dom',
+  'model-partial-time-concepts',
+]);
+
 /**
  * Loads canonical human-graded cards from grades.jsonl and cards directory.
  * Returns only the scored cards (excluding 'unsure').
@@ -1488,7 +1020,7 @@ export async function loadPaulIrishScoredCards(
   gradesPath?: string,
   cardsDir?: string,
 ): Promise<PaulIrishGradesResult> {
-  const evalDataDir = (!gradesPath || !cardsDir) ? getAnalyzerEvalDataDir() : '';
+  const evalDataDir = !gradesPath || !cardsDir ? getAnalyzerEvalDataDir() : '';
   const resolvedGradesPath =
     gradesPath ??
     process.env.GRADES_PATH ??
@@ -1527,12 +1059,6 @@ export async function loadPaulIrishScoredCards(
     }
   }
 
-  // Load known deck paths if they exist
-  await ingestJsonFile(join(resolvedCardsDir, 'calibration-deck.json'));
-  await ingestJsonFile(join(resolvedCardsDir, 'm3-spotcheck-deck.json'));
-  await ingestJsonFile(join(resolvedCardsDir, '_calibration-deck.json'));
-  await ingestJsonFile(join(resolvedCardsDir, '_m3-spotcheck-deck.json'));
-
   async function scanDirectory(dir: string, maxDepth = 3): Promise<void> {
     if (maxDepth < 0) return;
     try {
@@ -1551,7 +1077,7 @@ export async function loadPaulIrishScoredCards(
   }
 
   await scanDirectory(resolvedCardsDir);
-  await scanDirectory(dirname(resolvedCardsDir), 1);
+  await scanDirectory(dirname(resolvedCardsDir), 0);
 
   const scoredCards: CalibrationDeckItem[] = [];
   const scoredVerdicts = new Map<string, JudgeVerdict>();
@@ -1564,17 +1090,9 @@ export async function loadPaulIrishScoredCards(
     if (!card) {
       throw new Error(`Card ${cardId} in ${resolvedGradesPath} not found in ${resolvedCardsDir}`);
     }
-    // Skip stub guides, retired guides (except the 2 canonical negative canary cards), and LLM Verifier drop cards
     const isCanaryCard = cardId === '2547b2ba6d74' || cardId === '7f2a96f62a4c';
-    const isStubOrRetiredGuide =
-      card.guideId === 'copy-button' ||
-      card.guideId === 'dialog' ||
-      card.guideId === 'css-layout' ||
-      card.guideId === 'accessible-error-announcement' ||
-      card.guideId === 'stack-drill-down' ||
-      card.guideId === 'shadow-dom' ||
-      card.guideId === 'model-partial-time-concepts';
-    if (!isCanaryCard && (isStubOrRetiredGuide || (card.verifierDecision ?? card.phase2Decision) === 'drop')) {
+    const isDropped = (card.verifierDecision ?? card.phase2Decision) === 'drop';
+    if (!isCanaryCard && (STUB_OR_RETIRED_GUIDE_IDS.has(card.guideId) || isDropped)) {
       continue;
     }
     scoredCards.push(card);
@@ -1616,19 +1134,6 @@ export interface CalibrationDeckItem {
 }
 
 /**
- * Loads calibration deck from JSON file.
- */
-export async function loadCalibrationDeck(
-  deckFilePath?: string,
-): Promise<CalibrationDeckItem[]> {
-  const resolvedPath =
-    deckFilePath ??
-    join(getAnalyzerEvalDataDir(), 'labels', 'cards', 'calibration-deck.json');
-  const content = await readFile(resolvedPath, 'utf8');
-  return JSON.parse(content) as CalibrationDeckItem[];
-}
-
-/**
  * Slices out code snippet around a line from file content.
  */
 export function extractCodeSnippet(fileContent: string, targetLine: number, radius = 15): string {
@@ -1654,11 +1159,17 @@ export async function prepareBlindCards(
   guideSummaries: ReadonlyMap<string, GuideSummaryInfo>,
   reposConfigPath?: string,
 ): Promise<BlindCardPayload[]> {
-  const resolvedReposPath =
-    reposConfigPath ?? join(getAnalyzerEvalDataDir(), 'repos.json');
-  const reposContent = await readFile(resolvedReposPath, 'utf8');
-  const repoEntries = JSON.parse(reposContent) as RepoConfigEntry[];
-  const repoMap = new Map(repoEntries.map((r) => [r.repo, r]));
+  let repoMap: Map<string, RepoConfigEntry> | undefined;
+  const getRepoEntry = async (repo: string): Promise<RepoConfigEntry | undefined> => {
+    if (!repoMap) {
+      const resolvedReposPath =
+        reposConfigPath ?? join(getAnalyzerEvalDataDir(), 'repos.json');
+      const reposContent = await readFile(resolvedReposPath, 'utf8');
+      const repoEntries = JSON.parse(reposContent) as RepoConfigEntry[];
+      repoMap = new Map(repoEntries.map((r) => [r.repo, r]));
+    }
+    return repoMap.get(repo);
+  };
 
   const blindCards: BlindCardPayload[] = [];
 
@@ -1670,10 +1181,9 @@ export async function prepareBlindCards(
 
     let snippet = item.code ?? '';
     if (!snippet) {
-      const repoEntry = repoMap.get(item.repo);
+      const repoEntry = await getRepoEntry(item.repo);
       if (repoEntry) {
-        const rDir = repoDir(repoEntry);
-        const fullPath = join(rDir, item.file);
+        const fullPath = join(repoDir(repoEntry), item.file);
         try {
           const content = await readFile(fullPath, 'utf8');
           snippet = extractCodeSnippet(content, item.line);
@@ -1689,10 +1199,7 @@ export async function prepareBlindCards(
       item.guideId,
     );
     const effectiveRuleId = item.sourceId || item.guideId;
-    const matchedRule =
-      RULES_BY_ID.get(effectiveRuleId) ??
-      RULES_BY_ID.get(item.guideId) ??
-      RULES_BY_GUIDE_ID.get(item.guideId);
+    const matchedRule = findMatchingRule(effectiveRuleId, item.guideId);
     const computedRuleHash = matchedRule ? computeRuleHash(matchedRule) : 'unregistered';
     blindCards.push({
       cardId: item.cardId,

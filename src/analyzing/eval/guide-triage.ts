@@ -1,7 +1,34 @@
-import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { getGeminiApiKey, getAnalyzerEvalDataDir } from './detection-eval.ts';
+import {
+  GEMINI_API_BASE,
+  computeExplainerContextHash,
+  fetchWithRetry,
+  getGeminiApiKey,
+  loadExplainerContextMap,
+  type ExplainerContextEntry,
+} from './detection-eval.ts';
+import {
+  GUIDE_TRIAGE_PROMPT_VERSION,
+  GUIDE_TRIAGE_RESPONSE_SCHEMA,
+  GUIDE_TRIAGE_SYSTEM_PROMPT,
+  GUIDE_TRIAGE_THINKING_BUDGET,
+  PROMPT_MODEL,
+  computeGuideTriagePromptVersion,
+  formatGuideTriagePrompt,
+} from './prompts.ts';
+
+export {
+  GEMINI_API_BASE,
+  GUIDE_TRIAGE_PROMPT_VERSION,
+  GUIDE_TRIAGE_RESPONSE_SCHEMA,
+  GUIDE_TRIAGE_SYSTEM_PROMPT,
+  GUIDE_TRIAGE_THINKING_BUDGET,
+  computeGuideTriagePromptVersion,
+  formatGuideTriagePrompt,
+  loadExplainerContextMap,
+  type ExplainerContextEntry,
+};
+
+export const GUIDE_TRIAGE_MODEL = PROMPT_MODEL;
 
 /**
  * Guide Triage bucket classifying whether a published feature guide has a statically detectable brownfield target:
@@ -40,116 +67,6 @@ export interface GuideTriageEntry {
   readonly groundingSources?: readonly string[];
 }
 
-import {
-  GUIDE_TRIAGE_PROMPT_VERSION,
-  GUIDE_TRIAGE_RESPONSE_SCHEMA,
-  GUIDE_TRIAGE_SYSTEM_PROMPT,
-  GUIDE_TRIAGE_THINKING_BUDGET,
-  computeGuideTriagePromptVersion,
-  formatGuideTriagePrompt,
-} from './prompts.ts';
-
-export {
-  GUIDE_TRIAGE_PROMPT_VERSION,
-  GUIDE_TRIAGE_RESPONSE_SCHEMA,
-  GUIDE_TRIAGE_SYSTEM_PROMPT,
-  GUIDE_TRIAGE_THINKING_BUDGET,
-  computeGuideTriagePromptVersion,
-  formatGuideTriagePrompt,
-};
-
-export const GUIDE_TRIAGE_MODEL = 'gemini-3.8-flash';
-export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-
-export function getDefaultExplainersJsonPath(): string {
-  return join(
-    getAnalyzerEvalDataDir(),
-    'findings',
-    '2026-10-19-guide-explainers-171.json',
-  );
-}
-
-export interface ExplainerContextEntry {
-  readonly combinedExcerpt: string;
-  readonly explainerContextHash: string;
-}
-
-/**
- * Loads the guide explainer context map from disk.
- * Resolves path lazily via getAnalyzerEvalDataDir() when not provided,
- * failing fast if the evaluation data directory is not set or file cannot be read.
- */
-export async function loadExplainerContextMap(
-  explainersJsonPath?: string,
-): Promise<Map<string, ExplainerContextEntry>> {
-  const resolvedPath = explainersJsonPath ?? getDefaultExplainersJsonPath();
-  const content = await readFile(resolvedPath, 'utf8');
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (err: unknown) {
-    throw new Error(`Failed to parse explainers JSON from ${resolvedPath}: ${String(err)}`);
-  }
-
-  if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error(`Invalid explainers JSON format at ${resolvedPath}: expected array or record`);
-  }
-
-  const map = new Map<string, ExplainerContextEntry>();
-
-  // Support either an array of objects or an object map
-  if (Array.isArray(parsed)) {
-    for (const item of parsed) {
-      if (typeof item === 'object' && item !== null) {
-        const rec = item as Record<string, unknown>;
-        const guideId = typeof rec.guideId === 'string' ? rec.guideId : undefined;
-        const combinedExcerpt =
-          typeof rec.combinedExcerpt === 'string'
-            ? rec.combinedExcerpt
-            : typeof rec.explainerContext === 'string'
-              ? rec.explainerContext
-              : typeof rec.excerpt === 'string'
-                ? rec.excerpt
-                : '';
-        if (guideId && combinedExcerpt.trim()) {
-          const explainerContextHash =
-            typeof rec.explainerContextHash === 'string' && rec.explainerContextHash
-              ? rec.explainerContextHash
-              : createHash('sha256').update(combinedExcerpt.trim()).digest('hex').slice(0, 12);
-          map.set(guideId, { combinedExcerpt: combinedExcerpt.trim(), explainerContextHash });
-        }
-      }
-    }
-  } else {
-    for (const [guideId, val] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof val === 'string' && val.trim()) {
-        const hash = createHash('sha256').update(val.trim()).digest('hex').slice(0, 12);
-        map.set(guideId, { combinedExcerpt: val.trim(), explainerContextHash: hash });
-      } else if (typeof val === 'object' && val !== null) {
-        const rec = val as Record<string, unknown>;
-        const combinedExcerpt =
-          typeof rec.combinedExcerpt === 'string'
-            ? rec.combinedExcerpt
-            : typeof rec.explainerContext === 'string'
-              ? rec.explainerContext
-              : typeof rec.excerpt === 'string'
-                ? rec.excerpt
-                : '';
-        if (combinedExcerpt.trim()) {
-          const hash =
-            typeof rec.explainerContextHash === 'string' && rec.explainerContextHash
-              ? rec.explainerContextHash
-              : createHash('sha256').update(combinedExcerpt.trim()).digest('hex').slice(0, 12);
-          map.set(guideId, { combinedExcerpt: combinedExcerpt.trim(), explainerContextHash: hash });
-        }
-      }
-    }
-  }
-
-  return map;
-}
-
 export interface GuideTriageInput {
   readonly guideId: string;
   readonly category: string;
@@ -169,13 +86,6 @@ export interface GuideTriageOptions {
 
 export function buildGuideTriageRequestBody(guide: GuideTriageInput, options?: GuideTriageOptions): unknown {
   const enableSearchGrounding = options?.enableSearchGrounding ?? true;
-  const guidePromptInput = {
-    guideId: guide.guideId,
-    category: guide.category,
-    markdownContent: guide.markdownContent,
-    guideHash: guide.guideHash,
-    explainerContext: guide.explainerContext,
-  };
   const body: Record<string, unknown> = {
     systemInstruction: {
       parts: [{ text: GUIDE_TRIAGE_SYSTEM_PROMPT }],
@@ -183,7 +93,7 @@ export function buildGuideTriageRequestBody(guide: GuideTriageInput, options?: G
     contents: [
       {
         role: 'user',
-        parts: [{ text: formatGuideTriagePrompt(guidePromptInput) }],
+        parts: [{ text: formatGuideTriagePrompt(guide) }],
       },
     ],
     generationConfig: {
@@ -200,6 +110,14 @@ export function buildGuideTriageRequestBody(guide: GuideTriageInput, options?: G
 
   return body;
 }
+
+const VALID_EVIDENCE_SOURCES: ReadonlySet<GuideTriageEvidenceSource> = new Set([
+  'guide',
+  'explainer',
+  'search',
+  'ecosystem-knowledge',
+  'none',
+]);
 
 export function parseGuideTriageResponse(
   rawText: string,
@@ -241,42 +159,28 @@ export function parseGuideTriageResponse(
   if (!Array.isArray(rec.candidateTechniques)) {
     throw new Error(`Guide Triage response missing array 'candidateTechniques' for guide ${guideId}`);
   }
-  const candidateTechniques = rec.candidateTechniques.map((t) => {
-    if (typeof t !== 'string') {
-      throw new Error(`Guide Triage candidateTechnique must be string for guide ${guideId}`);
-    }
-    return t.trim();
-  });
 
-  let replaces: string[] | undefined;
-  if (Array.isArray(rec.replaces)) {
-    replaces = rec.replaces.map((t) => {
+  const toTrimmedStrings = (arr: unknown[], label: string): string[] =>
+    arr.map((t) => {
       if (typeof t !== 'string') {
-        throw new Error(`Guide Triage replaces must be string for guide ${guideId}`);
+        throw new Error(`Guide Triage ${label} must be string for guide ${guideId}`);
       }
       return t.trim();
     });
-  }
 
-  let doesNotReplace: string[] | undefined;
-  if (Array.isArray(rec.doesNotReplace)) {
-    doesNotReplace = rec.doesNotReplace.map((t) => {
-      if (typeof t !== 'string') {
-        throw new Error(`Guide Triage doesNotReplace must be string for guide ${guideId}`);
-      }
-      return t.trim();
-    });
-  }
+  const candidateTechniques = toTrimmedStrings(rec.candidateTechniques, 'candidateTechnique');
+  const replaces = Array.isArray(rec.replaces) ? toTrimmedStrings(rec.replaces, 'replaces') : undefined;
+  const doesNotReplace = Array.isArray(rec.doesNotReplace)
+    ? toTrimmedStrings(rec.doesNotReplace, 'doesNotReplace')
+    : undefined;
 
   if (typeof rec.borderline !== 'boolean') {
     throw new Error(`Guide Triage response missing boolean 'borderline' for guide ${guideId}`);
   }
-  const borderline = rec.borderline;
 
   if (typeof rec.brownfieldTarget !== 'string' || !rec.brownfieldTarget.trim()) {
     throw new Error(`Guide Triage response missing string 'brownfieldTarget' for guide ${guideId}`);
   }
-  const brownfieldTarget = rec.brownfieldTarget.trim();
 
   if (typeof rec.evidenceFromGuide !== 'string') {
     throw new Error(`Guide Triage response missing string 'evidenceFromGuide' for guide ${guideId}`);
@@ -286,62 +190,23 @@ export function parseGuideTriageResponse(
     throw new Error(`Guide Triage response missing string 'reason' for guide ${guideId}`);
   }
 
-  let evidenceSource: GuideTriageEvidenceSource | undefined;
-  if (typeof rec.evidenceSource === 'string') {
-    const validSources = ['guide', 'explainer', 'search', 'ecosystem-knowledge', 'none'] as const;
-    if (validSources.includes(rec.evidenceSource as GuideTriageEvidenceSource)) {
-      evidenceSource = rec.evidenceSource as GuideTriageEvidenceSource;
-    }
-  }
+  const evidenceSource =
+    typeof rec.evidenceSource === 'string' &&
+    VALID_EVIDENCE_SOURCES.has(rec.evidenceSource as GuideTriageEvidenceSource)
+      ? (rec.evidenceSource as GuideTriageEvidenceSource)
+      : undefined;
 
   return {
     classification,
     candidateTechniques,
     ...(replaces ? { replaces } : {}),
     ...(doesNotReplace ? { doesNotReplace } : {}),
-    borderline,
-    brownfieldTarget,
+    borderline: rec.borderline,
+    brownfieldTarget: rec.brownfieldTarget.trim(),
     evidenceFromGuide: rec.evidenceFromGuide.trim(),
     reason: rec.reason.trim(),
     ...(evidenceSource ? { evidenceSource } : {}),
   };
-}
-
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  customFetch: typeof fetch,
-  maxRetries = 8,
-): Promise<Response> {
-  let attempt = 0;
-  let delayMs = 1500;
-
-  while (true) {
-    attempt++;
-    try {
-      const res = await customFetch(url, options);
-      if (
-        (res.status === 429 ||
-          res.status === 500 ||
-          res.status === 502 ||
-          res.status === 503 ||
-          res.status === 504) &&
-        attempt <= maxRetries
-      ) {
-        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 1000));
-        delayMs = Math.min(delayMs * 2, 16000);
-        continue;
-      }
-      return res;
-    } catch (err: unknown) {
-      if (attempt <= maxRetries) {
-        await new Promise((r) => setTimeout(r, delayMs + Math.random() * 1000));
-        delayMs = Math.min(delayMs * 2, 16000);
-        continue;
-      }
-      throw err;
-    }
-  }
 }
 
 /**
@@ -402,25 +267,19 @@ export async function triageGuide(
 
   const webSearchQueries = candidate?.groundingMetadata?.webSearchQueries ?? [];
   const groundingSources: string[] = [];
-  if (Array.isArray(candidate?.groundingMetadata?.groundingChunks)) {
-    for (const chunk of candidate.groundingMetadata.groundingChunks) {
-      const uri = chunk.web?.uri?.trim();
-      const title = chunk.web?.title?.trim();
-      if (uri) {
-        groundingSources.push(uri);
-      } else if (title) {
-        groundingSources.push(title);
-      }
+  for (const chunk of candidate?.groundingMetadata?.groundingChunks ?? []) {
+    const source = chunk.web?.uri?.trim() || chunk.web?.title?.trim();
+    if (source) {
+      groundingSources.push(source);
     }
   }
 
   const parsed = parseGuideTriageResponse(text, guide.guideId);
-  const enableSearchGrounding = options?.enableSearchGrounding ?? true;
-
+  const promptVersion = computeGuideTriagePromptVersion(0.0, options?.enableSearchGrounding ?? true);
   const explainerContextHash =
     guide.explainerContextHash ??
     (guide.explainerContext?.trim()
-      ? createHash('sha256').update(guide.explainerContext.trim()).digest('hex').slice(0, 12)
+      ? computeExplainerContextHash(guide.explainerContext)
       : undefined);
 
   return {
@@ -434,8 +293,8 @@ export async function triageGuide(
     brownfieldTarget: parsed.brownfieldTarget,
     evidenceFromGuide: parsed.evidenceFromGuide,
     reason: parsed.reason,
-    triagePromptVersion: computeGuideTriagePromptVersion(0.0, enableSearchGrounding),
-    gate0PromptVersion: computeGuideTriagePromptVersion(0.0, enableSearchGrounding),
+    triagePromptVersion: promptVersion,
+    gate0PromptVersion: promptVersion,
     ...(parsed.evidenceSource ? { evidenceSource: parsed.evidenceSource } : {}),
     ...(explainerContextHash ? { explainerContextHash } : {}),
     webSearchQueries,

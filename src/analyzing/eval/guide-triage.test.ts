@@ -6,47 +6,12 @@ import {
   GUIDE_TRIAGE_RESPONSE_SCHEMA,
   GUIDE_TRIAGE_SYSTEM_PROMPT,
   buildGuideTriageRequestBody,
-  formatGuideTriagePrompt,
   loadExplainerContextMap,
   parseGuideTriageResponse,
   triageGuide,
 } from './guide-triage.ts';
 
-void test('guide-triage: canonical symbol definitions', async (t) => {
-  await t.test('exports GUIDE_TRIAGE_MODEL and core functions', () => {
-    assert.equal(GUIDE_TRIAGE_MODEL, 'gemini-3.8-flash');
-    assert.equal(typeof buildGuideTriageRequestBody, 'function');
-    assert.equal(typeof parseGuideTriageResponse, 'function');
-    assert.equal(typeof triageGuide, 'function');
-  });
-});
-
-void test('guide-triage: prompt formatting and request body construction', async (t) => {
-  await t.test('formatGuideTriagePrompt includes guideId, category, and full markdown', () => {
-    const prompt = formatGuideTriagePrompt({
-      guideId: 'temporal-now',
-      category: 'javascript',
-      guideHash: '1234567890ab',
-      markdownContent: '# Temporal Guide\n\nReplaces moment timezone.',
-    });
-
-    assert.ok(prompt.includes('## Guide: temporal-now (Category: javascript)'));
-    assert.ok(prompt.includes('Replaces moment timezone.'));
-  });
-
-  await t.test('formatGuideTriagePrompt appends explainer context when supplied', () => {
-    const prompt = formatGuideTriagePrompt({
-      guideId: 'temporal-now',
-      category: 'javascript',
-      guideHash: '1234567890ab',
-      markdownContent: '# Temporal Guide',
-      explainerContext: 'TC39 proposal motivation: developers currently rely on moment-timezone.',
-    });
-
-    assert.ok(prompt.includes('### Upstream W3C / TC39 / ChromeStatus Explainer & Motivation Context:'));
-    assert.ok(prompt.includes('developers currently rely on moment-timezone.'));
-  });
-
+void test('guide-triage: request body construction', async (t) => {
   await t.test('buildGuideTriageRequestBody creates temperature 0 request with schema and default search grounding', () => {
     const body = buildGuideTriageRequestBody({
       guideId: 'temporal-now',
@@ -118,37 +83,37 @@ void test('guide-triage: parseGuideTriageResponse validation', async (t) => {
     );
   });
 
-  await t.test('throws on malformed JSON', () => {
+  await t.test('throws on malformed JSON, invalid classification, or missing required fields', () => {
     assert.throws(
       () => parseGuideTriageResponse('{ invalid json', 'test-guide'),
       /Guide Triage response JSON parse error for guide test-guide/,
     );
-  });
-
-  await t.test('throws on invalid classification literal', () => {
-    const raw = JSON.stringify({
-      classification: 'invalid-bucket',
-      brownfieldTarget: 'something',
-      evidenceFromGuide: 'some evidence',
-      reason: 'some reason',
-    });
     assert.throws(
-      () => parseGuideTriageResponse(raw, 'test-guide'),
+      () =>
+        parseGuideTriageResponse(
+          JSON.stringify({
+            classification: 'invalid-bucket',
+            brownfieldTarget: 'something',
+            evidenceFromGuide: 'some evidence',
+            reason: 'some reason',
+          }),
+          'test-guide',
+        ),
       /Guide Triage response invalid classification 'invalid-bucket' for guide test-guide/,
     );
-  });
-
-  await t.test('throws on missing required fields', () => {
-    const raw = JSON.stringify({
-      classification: 'detectable',
-      candidateTechniques: ['technique'],
-      borderline: false,
-      brownfieldTarget: '',
-      evidenceFromGuide: 'evidence',
-      reason: 'reason',
-    });
     assert.throws(
-      () => parseGuideTriageResponse(raw, 'test-guide'),
+      () =>
+        parseGuideTriageResponse(
+          JSON.stringify({
+            classification: 'detectable',
+            candidateTechniques: ['technique'],
+            borderline: false,
+            brownfieldTarget: '',
+            evidenceFromGuide: 'evidence',
+            reason: 'reason',
+          }),
+          'test-guide',
+        ),
       /Guide Triage response missing string 'brownfieldTarget' for guide test-guide/,
     );
   });
