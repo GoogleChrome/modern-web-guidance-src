@@ -221,6 +221,11 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     /** @type {Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>} */
     const suiteGuideA11y = {};
     /**
+     * Per-task accessibility check totals for multi-target guides.
+     * @type {Record<string, Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>>}
+     */
+    const suiteGuideTaskA11y = {};
+    /**
      * Per-task totals, so multi-target guides stay distinguishable after summing to guide level.
      * @type {Record<string, Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>>}
      */
@@ -267,7 +272,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         if (isGuided) guidedTotalRuns += runs.length;
         else if (isUnguided) unguidedTotalRuns += runs.length;
 
-        runs.forEach(run => {
+        runs.forEach((/** @type {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} */ run) => {
             if (isEarlyFailureRun(run.results)) {
                 if (isGuided) guidedEarlyFailures++;
                 else if (isUnguided) unguidedEarlyFailures++;
@@ -298,7 +303,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
                     // Accessibility check classification
                     (run.results || []).forEach(check => {
-                        const cls = classifyScenarioCheck(check, guide);
+                        const cls = classifyScenarioCheck(check, guide, run.discipline);
                         if (cls.isAccessibility && cls.subCategory) {
                             a11yGuides.add(guide);
                             if (!suiteGuideA11y[guide]) {
@@ -309,6 +314,18 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
                             }
                             suiteGuideA11y[guide][runType].total += 1;
                             if (check.passed) suiteGuideA11y[guide][runType].passed += 1;
+
+                            if (task) {
+                                if (!suiteGuideTaskA11y[guide]) suiteGuideTaskA11y[guide] = {};
+                                if (!suiteGuideTaskA11y[guide][task]) {
+                                    suiteGuideTaskA11y[guide][task] = {
+                                        guided: { passed: 0, total: 0 },
+                                        unguided: { passed: 0, total: 0 }
+                                    };
+                                }
+                                suiteGuideTaskA11y[guide][task][runType].total += 1;
+                                if (check.passed) suiteGuideTaskA11y[guide][task][runType].passed += 1;
+                            }
 
                             if (runType === 'guided') {
                                 a11yGuidedTotal += 1;
@@ -368,20 +385,22 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     });
 
     /**
-     * @param {{ guided: {passed: number, total: number}, unguided: {passed: number, total: number} }} stats
+     * @param {{ guided: {passed: number, total: number}, unguided: {passed: number, total: number} }} t
      * @returns {GuideSummary}
      */
-    const formatStats = (stats) => {
-        const guidedRate = stats.guided.total > 0 ? Math.round((stats.guided.passed / stats.guided.total) * 100) : 0;
-        const unguidedRate = stats.unguided.total > 0 ? Math.round((stats.unguided.passed / stats.unguided.total) * 100) : 0;
+    const formatStats = (t) => {
+        const gExact = t.guided.total > 0 ? (t.guided.passed / t.guided.total) * 100 : 0;
+        const uExact = t.unguided.total > 0 ? (t.unguided.passed / t.unguided.total) * 100 : 0;
+        const guidedRate = Math.round(gExact);
+        const unguidedRate = Math.round(uExact);
         return {
-            guidedPassed: stats.guided.passed,
-            guidedTotal: stats.guided.total,
+            guidedPassed: t.guided.passed,
+            guidedTotal: t.guided.total,
             guidedRate,
-            unguidedPassed: stats.unguided.passed,
-            unguidedTotal: stats.unguided.total,
+            unguidedPassed: t.unguided.passed,
+            unguidedTotal: t.unguided.total,
             unguidedRate,
-            uplift: guidedRate - unguidedRate
+            uplift: (t.guided.total > 0 && t.unguided.total > 0) ? Math.round(gExact - uExact) : (guidedRate - unguidedRate)
         };
     };
 
@@ -405,13 +424,22 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
         /** @type {Record<string, GuideSummary>} */
         const tasks = {};
-        taskNames.forEach(task => { tasks[task] = formatStats(suiteGuideTasks[guide][task]); });
+        taskNames.forEach(task => {
+            const taskStats = formatStats(suiteGuideTasks[guide][task]);
+            const taskA11y = suiteGuideTaskA11y[guide]?.[task];
+            tasks[task] = (taskA11y && (taskA11y.guided.total > 0 || taskA11y.unguided.total > 0))
+                ? { ...taskStats, a11y: formatStats(taskA11y) }
+                : taskStats;
+        });
         guidesFormatted[guide] = { ...base, tasks };
     });
 
     // Build a11yStats
     const a11yGuidedRate = a11yGuidedTotal > 0 ? Math.round((a11yGuidedPassed / a11yGuidedTotal) * 100) : 0;
     const a11yUnguidedRate = a11yUnguidedTotal > 0 ? Math.round((a11yUnguidedPassed / a11yUnguidedTotal) * 100) : 0;
+    const a11yUplift = (a11yGuidedTotal > 0 && a11yUnguidedTotal > 0)
+        ? Math.round(((a11yGuidedPassed / a11yGuidedTotal) - (a11yUnguidedPassed / a11yUnguidedTotal)) * 100)
+        : (a11yGuidedRate - a11yUnguidedRate);
     /** @type {Record<import('./a11y-classifier.js').A11ySubCategory, SubCategoryA11yStats>} */
     const bySubCategory = /** @type {any} */ ({});
     A11Y_SUBCATEGORIES.forEach(sc => {
@@ -425,7 +453,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         unguidedPassed: a11yUnguidedPassed,
         unguidedTotal: a11yUnguidedTotal,
         unguidedRate: a11yUnguidedRate,
-        uplift: a11yGuidedRate - a11yUnguidedRate,
+        uplift: a11yUplift,
         guideCount: a11yGuides.size,
         bySubCategory
     };

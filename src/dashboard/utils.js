@@ -132,12 +132,13 @@ export function getRunStats(checks) {
  * Computes pass rate and check list filtered strictly to cross-cutting accessibility checks.
  * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
  * @param {string} guideName
+ * @param {string} [discipline='']
  * @returns {{ rate: number, passed: number, total: number, checks: Array<import('../harness/lib/metrics.ts').ScenarioCheck & { a11y: ReturnType<typeof classifyScenarioCheck> }> }}
  */
-export function getA11yRunStats(checks, guideName) {
+export function getA11yRunStats(checks, guideName, discipline = '') {
     if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0, checks: [] };
     const classified = checks
-        .map(c => ({ ...c, a11y: classifyScenarioCheck(c, guideName) }))
+        .map(c => ({ ...c, a11y: classifyScenarioCheck(c, guideName, discipline) }))
         .filter(c => c.a11y.isAccessibility);
     const passed = classified.filter(c => c.passed).length;
     const total = classified.length;
@@ -293,7 +294,7 @@ export function getEligibleScenarioIds(results) {
  */
 
 /**
- * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
+ * @param {Record<string, Array<import('../harness/lib/metrics.ts').RunResult & { discipline?: string }>>} results
  * @param {{ onlyA11y?: boolean, eligibleScenarios?: Set<string> } | Set<string>} [optionsOrEligible={}]
  * @returns {{
  *   labels: string[],
@@ -373,7 +374,7 @@ export function calculateChartData(results, optionsOrEligible = {}) {
             if (isEarlyFailureRun(r.results)) {
                 earlyFailureCount++;
             } else if (onlyA11y) {
-                const a11yStats = getA11yRunStats(r.results, guide);
+                const a11yStats = getA11yRunStats(r.results, guide, r.discipline);
                 passed += a11yStats.passed;
                 total += a11yStats.total;
             } else {
@@ -391,7 +392,9 @@ export function calculateChartData(results, optionsOrEligible = {}) {
             apps[scenario][errRateKey] = Math.round((earlyFailureCount / runs.length) * 100);
         }
 
-        apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
+        if (!onlyA11y || total > 0) {
+            apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
+        }
 
         const totalTokens = runs.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).total, 0);
         const uncachedTokens = runs.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).uncached, 0);

@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const guideName = params.get('guide');
     const taskName = params.get('task');
     const source = params.get('source');
+    const isA11yMode = params.get('mode') === 'a11y';
     if (!guideName) {
         window.location.href = source ? `./?source=${encodeURIComponent(source)}` : './';
         return;
@@ -23,6 +24,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     $('#guide-name-header').textContent = taskName ? `${guideName} — ${taskName}` : guideName;
+    const subtitleEl = document.querySelector('.guide-subtitle');
+    if (subtitleEl) {
+        if (isA11yMode) {
+            subtitleEl.innerHTML = 'Guided vs. unguided <strong>accessibility subscore</strong> over time, by agent and model combination <span class="mode-badge-inline">Accessibility checks</span>';
+        } else {
+            subtitleEl.textContent = 'Guided vs. unguided pass rate over time, by agent and model combination';
+        }
+    }
     setupTimelineFilterControls(guideName);
 
     try {
@@ -184,14 +193,20 @@ function setupTimelineFilterControls(guideName) {
 function setupNavigationControls(currentGuide) {
     const params = new URLSearchParams(window.location.search);
     const source = params.get('source');
-    const sourceSuffix = source ? `&source=${encodeURIComponent(source)}` : '';
+    const isA11yMode = params.get('mode') === 'a11y';
+    const sourceSuffix = `${source ? `&source=${encodeURIComponent(source)}` : ''}${isA11yMode ? '&mode=a11y' : ''}`;
 
     const guideSet = new Set();
     Object.values(allTestData).forEach(run => {
         if (run.guides) {
-            Object.keys(run.guides).forEach(g => guideSet.add(g));
+            Object.keys(run.guides).forEach(g => {
+                if (!isA11yMode || run.guides[g]?.a11y) {
+                    guideSet.add(g);
+                }
+            });
         }
     });
+    if (currentGuide) guideSet.add(currentGuide);
     const allGuides = [...guideSet].sort();
 
     const prevBtn = /** @type {HTMLButtonElement} */ ($('#prev-guide-btn'));
@@ -331,21 +346,30 @@ function renderGraphs(guideName) {
     const params = new URLSearchParams(window.location.search);
     const highlightTestId = params.get('testId');
     const activeTask = params.get('task');
+    const isA11yMode = params.get('mode') === 'a11y';
 
     const testKeys = Object.keys(allTestData);
 
     /**
      * The requested target's stats, or the guide roll-up when no target is requested.
+     * When `?mode=a11y` is active, returns the `.a11y` subscore breakdown.
      * @param {GuideSuiteSummary} run
      * @returns {any}
      */
     const getStats = (run) => {
         const guideStats = run.guides?.[guideName];
         if (!guideStats) return null;
-        if (!activeTask) return guideStats;
-        // Single-task guides store only the name; the roll-up is that task's data.
-        if (guideStats.tasks) return guideStats.tasks[activeTask];
-        return guideStats.taskName === activeTask ? guideStats : null;
+        let targetStats = guideStats;
+        if (activeTask) {
+            // Single-task guides store only the name; the roll-up is that task's data.
+            if (guideStats.tasks) {
+                targetStats = guideStats.tasks[activeTask];
+            } else {
+                targetStats = guideStats.taskName === activeTask ? guideStats : null;
+            }
+        }
+        if (!targetStats) return null;
+        return isA11yMode ? (targetStats.a11y || null) : targetStats;
     };
 
     // Filter out suites that don't have this guide, or have 0 trials for it
@@ -470,7 +494,7 @@ function renderGraphs(guideName) {
                 ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> ${escapeHtml(model)}
             </div>
             <div class="guide-card-subtitle">
-                ${runs.length} chronological trials
+                ${runs.length} chronological trials${isA11yMode ? ' · Accessibility checks' : ''}
             </div>
         `;
         card.appendChild(header);
@@ -623,11 +647,11 @@ function renderGraphs(guideName) {
                     <div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div>
                     <div class="guide-tooltip-rows">
                         <div class="guide-tooltip-row">
-                            <span>Guided Pass Rate:</span>
+                            <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span>
                             <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span>
                         </div>
                         <div class="guide-tooltip-row">
-                            <span>Unguided Pass Rate:</span>
+                            <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span>
                             <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span>
                         </div>
                         <div class="guide-tooltip-uplift-row">
@@ -663,7 +687,9 @@ function renderGraphs(guideName) {
                 if (!combKey || !testId) return;
                 const runData = combinations[combKey].find(r => r.testId === testId);
                 if (runData) {
-                    window.location.href = `dashboard.html?testId=${encodeURIComponent(runData.testId)}&source=${encodeURIComponent(runData.source)}#guide-${encodeURIComponent(guideName)}`;
+                    const taskParam = activeTask ? `&task=${encodeURIComponent(activeTask)}` : '';
+                    const modeParam = isA11yMode ? '&mode=a11y' : '';
+                    window.location.href = `dashboard.html?testId=${encodeURIComponent(runData.testId)}&source=${encodeURIComponent(runData.source)}${taskParam}${modeParam}#guide-${encodeURIComponent(guideName)}`;
                 }
             };
 

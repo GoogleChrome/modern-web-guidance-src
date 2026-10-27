@@ -1577,7 +1577,8 @@ function renderPivotInsights() {
             let effSummary = '';
 
             if (filterKey === 'guide') {
-                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${sourceQuery}">${escapeHtml(key)}</a>`;
+                const modeQuery = onlyA11y ? '&mode=a11y' : '';
+                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${sourceQuery}${modeQuery}">${escapeHtml(key)}</a>`;
                 effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
             } else if (filterKey === 'dimension') {
                 const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);

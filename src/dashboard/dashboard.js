@@ -251,8 +251,10 @@ async function loadDashboardData(testId) {
         const hash = window.location.hash;
         if (hash && hash.startsWith('#guide-')) {
             const targetGuide = hash.substring(7); // remove '#guide-'
+            const targetTask = params.get('task');
             setTimeout(() => {
-                const accordionEl = document.querySelector(`.task-accordion[data-guide="${targetGuide}"]`);
+                const accordionEl = (targetTask && document.querySelector(`.task-accordion[data-guide="${targetGuide}"][data-task="${targetTask}"]`))
+                    || document.querySelector(`.task-accordion[data-guide="${targetGuide}"]`);
                 if (accordionEl) {
                     accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                     if (!accordionEl.classList.contains('open')) {
@@ -882,9 +884,9 @@ function renderGrid(data, testId) {
      * @property {number | null} unguidedAvg
      * @property {number | null} guidedAvg
      * @property {number | null} uplift
-     * @property {number} a11yUnguidedAvg
-     * @property {number} a11yGuidedAvg
-     * @property {number} a11yUplift
+     * @property {number | null} a11yUnguidedAvg
+     * @property {number | null} a11yGuidedAvg
+     * @property {number | null} a11yUplift
      * @property {number} a11yCheckCount
      * @property {number} uRuntimeMs
      * @property {number} gRuntimeMs
@@ -925,21 +927,27 @@ function renderGrid(data, testId) {
 
             /**
              * @param {DashboardRunResult[] | undefined} runs
-             * @returns {{ rate: number, count: number }}
+             * @returns {{ rate: number | null, count: number }}
              */
             const getA11yAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: 0, count: 0 };
+                if (!runs || runs.length === 0) return { rate: null, count: 0 };
                 let passed = 0;
                 let total = 0;
+                let validRuns = 0;
                 let maxChecksInRun = 0;
                 runs.forEach(run => {
-                    const s = getA11yRunStats(run.results, guide);
+                    if (isEarlyFailureRun(run.results)) return;
+                    validRuns++;
+                    const s = getA11yRunStats(run.results, guide, run.discipline);
                     passed += s.passed;
                     total += s.total;
                     if (s.total > maxChecksInRun) maxChecksInRun = s.total;
                 });
+                if (validRuns === 0 || total === 0) {
+                    return { rate: null, count: maxChecksInRun };
+                }
                 return {
-                    rate: total > 0 ? Math.round((passed / total) * 100) : 0,
+                    rate: Math.round((passed / total) * 100),
                     count: maxChecksInRun
                 };
             };
@@ -990,7 +998,9 @@ function renderGrid(data, testId) {
             const a11yCheckCount = Math.max(uA11y.count, gA11y.count);
             const a11yUnguidedAvg = uA11y.rate;
             const a11yGuidedAvg = gA11y.rate;
-            const a11yUplift = a11yGuidedAvg - a11yUnguidedAvg;
+            const a11yUplift = (a11yUnguidedAvg !== null && a11yGuidedAvg !== null)
+                ? a11yGuidedAvg - a11yUnguidedAvg
+                : null;
 
             const uRuntimeMs = getAvgRuntime(unguidedRuns);
             const gRuntimeMs = getAvgRuntime(guidedRuns);
@@ -1046,7 +1056,7 @@ function renderGrid(data, testId) {
     } else if (currentTaskSort === 'uplift-asc') {
         filteredScenarios.sort((a, b) => ((a.uplift ?? 999) - (b.uplift ?? 999)) || ((a.guidedAvg ?? 999) - (b.guidedAvg ?? 999)));
     } else if (currentTaskSort === 'a11y-desc') {
-        filteredScenarios.sort((a, b) => (b.a11yCheckCount > 0 ? 1 : 0) - (a.a11yCheckCount > 0 ? 1 : 0) || (b.a11yUplift - a.a11yUplift) || (b.a11yCheckCount - a.a11yCheckCount));
+        filteredScenarios.sort((a, b) => (b.a11yCheckCount > 0 ? 1 : 0) - (a.a11yCheckCount > 0 ? 1 : 0) || ((b.a11yUplift ?? -999) - (a.a11yUplift ?? -999)) || (b.a11yCheckCount - a.a11yCheckCount));
     } else if (currentTaskSort === 'time-saved') {
         filteredScenarios.sort((a, b) => a.runtimeDeltaMs - b.runtimeDeltaMs);
     } else if (currentTaskSort === 'time-overhead') {
@@ -1075,13 +1085,15 @@ function renderGrid(data, testId) {
         accordion.className = 'task-accordion';
         accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
         accordion.setAttribute('data-guide', guide);
+        accordion.setAttribute('data-task', appName);
 
         const minVal = Math.min(displayU ?? 0, displayG ?? 0);
         const maxVal = Math.max(displayU ?? 0, displayG ?? 0);
         // Percent positions so the track can shrink on narrow screens (dots use translateX(-50%)).
         const scale = (/** @type {number} */ val) => `${val}%`;
 
-        const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
+        const modeParam = currentMetricMode === 'a11y' ? '&mode=a11y' : '';
+        const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}${modeParam}`;
         const trendLinkHtml = `
             <a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(formatTestName(scenarioName))}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1091,12 +1103,16 @@ function renderGrid(data, testId) {
             </a>
         `;
 
-        const a11yPillHtml = a11yCheckCount > 0 ? `
+        const a11yPillHtml = a11yCheckCount > 0 ? (a11yUplift !== null ? `
             <span class="a11y-task-pill">
                 ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp)
                 <span class="visually-hidden">accessibility checks: unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%</span>
             </span>
-        ` : '';
+        ` : `
+            <span class="a11y-task-pill">
+                ${a11yCheckCount} a11y
+            </span>
+        `) : '';
 
         const metaChipsHtml = `
             <div class="task-efficiency-meta">
@@ -1187,8 +1203,8 @@ function renderGrid(data, testId) {
 /**
  * @param {HTMLElement} container
  * @param {string} scenarioName
- * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} unguidedRuns
- * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} guidedRuns
+ * @param {DashboardRunResult[] | undefined} unguidedRuns
+ * @param {DashboardRunResult[] | undefined} guidedRuns
  * @param {string} testId
  */
 async function fillAccordionDetails(container, scenarioName, unguidedRuns, guidedRuns, testId) {
@@ -1331,7 +1347,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         }
 
         assertionMap.forEach((status, message) => {
-            const a11yInfo = classifyAccessibilityCheck('', guideName, message);
+            const a11yInfo = classifyAccessibilityCheck(sampleRun?.discipline || '', guideName, message);
             const subCatMeta = a11yInfo.subCategory ? A11Y_SUBCATEGORY_MAP[a11yInfo.subCategory] : null;
             const a11yBadge = a11yInfo.isAccessibility && subCatMeta
                 ? ` <span class="a11y-check-badge">A11y · ${escapeHtml(subCatMeta.shortLabel)}<span class="visually-hidden"> — ${escapeHtml(subCatMeta.label)}: ${escapeHtml(a11yInfo.rationale)}</span></span>`
@@ -1994,8 +2010,9 @@ function renderDashboardDumbbellChart(data) {
             if (originalKey) {
                 const parsed = parseResultKey(originalKey);
                 if (parsed) {
-                    const guide = parsed.guide;
-                    const accordionEl = document.querySelector(`.task-accordion[data-guide="${guide}"]`);
+                    const { guide, task } = parsed;
+                    const accordionEl = (task && document.querySelector(`.task-accordion[data-guide="${guide}"][data-task="${task}"]`))
+                        || document.querySelector(`.task-accordion[data-guide="${guide}"]`);
                     if (accordionEl) {
                         accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                         if (!accordionEl.classList.contains('open')) {

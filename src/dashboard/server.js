@@ -443,7 +443,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     let filePath;
-    if (checkPath === 'features-mapping.gen.js' || checkPath === 'features_mapping.gen.js' || checkPath === 'grouped-tasks.gen.json' || checkPath === 'suites.gen.json') {
+    if (
+      checkPath === 'features-mapping.gen.js' ||
+      checkPath === 'features_mapping.gen.js' ||
+      checkPath === 'grouped-tasks.gen.json' ||
+      checkPath === 'suites.gen.json' ||
+      checkPath === 'suites.slim.gen.json' ||
+      checkPath === 'headline-insights.gen.json'
+    ) {
       const canonicalCheckPath = checkPath === 'features_mapping.gen.js' ? 'features-mapping.gen.js' : checkPath;
       filePath = path.join(outDir, 'dashboard', canonicalCheckPath);
     } else if (checkPath.startsWith('base_apps/')) {
@@ -473,7 +480,14 @@ const server = http.createServer(async (req, res) => {
 
   let filePath;
   // Serve generated manifests from out/dashboard
-  if (decodedPath === '/features-mapping.gen.js' || decodedPath === '/features_mapping.gen.js' || decodedPath === '/grouped-tasks.gen.json' || decodedPath === '/suites.gen.json') {
+  if (
+    decodedPath === '/features-mapping.gen.js' ||
+    decodedPath === '/features_mapping.gen.js' ||
+    decodedPath === '/grouped-tasks.gen.json' ||
+    decodedPath === '/suites.gen.json' ||
+    decodedPath === '/suites.slim.gen.json' ||
+    decodedPath === '/headline-insights.gen.json'
+  ) {
     const canonicalName = decodedPath === '/features_mapping.gen.js' ? 'features-mapping.gen.js' : decodedPath.substring(1);
     filePath = path.join(outDir, 'dashboard', canonicalName);
   } else if (decodedPath.startsWith('/base_apps/')) {

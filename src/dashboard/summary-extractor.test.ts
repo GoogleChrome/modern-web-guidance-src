@@ -198,3 +198,68 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
     assert.deepStrictEqual(summary.chartData.guided_err_rate, [0]);
     assert.deepStrictEqual(summary.chartData.unguided_err_rate, [0]);
 });
+
+test('extractSuiteSummary computes uplift from unrounded exact rates and attaches per-task a11y breakdowns', () => {
+    const summary = extractSuiteSummary('run-rounding-and-task-a11y', {
+        results: {
+            'daily-grind - scrollspy - unguided': [{
+                discipline: 'ui-behaviors',
+                results: [
+                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: false, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: false, message: 'Scroll container has :focus-visible outline', testId: 's3' },
+                ],
+            }],
+            'daily-grind - scrollspy - guided': [{
+                discipline: 'ui-behaviors',
+                results: [
+                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: true, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: false, message: 'Scroll container has :focus-visible outline', testId: 's3' },
+                ],
+            }],
+            'devtools-times - scrollspy - unguided': [{
+                discipline: 'ui-behaviors',
+                results: [
+                    { passed: false, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: false, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: false, message: 'Scroll container has :focus-visible outline', testId: 's3' },
+                ],
+            }],
+            'devtools-times - scrollspy - guided': [{
+                discipline: 'ui-behaviors',
+                results: [
+                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: true, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: true, message: 'Scroll container has :focus-visible outline', testId: 's3' },
+                ],
+            }],
+        },
+    } as never);
+
+    assert.ok(summary);
+    const scrollspy = summary.guides.scrollspy;
+    const dg = scrollspy.tasks?.['daily-grind'];
+    const dt = scrollspy.tasks?.['devtools-times'];
+    assert.ok(dg && dt);
+
+    // 1/3 (33.33% -> 33%) to 2/3 (66.67% -> 67%): exact difference is 33.33 pp -> rounds to 33, not 67 - 33 = 34
+    assert.strictEqual(dg.unguidedRate, 33);
+    assert.strictEqual(dg.guidedRate, 67);
+    assert.strictEqual(dg.uplift, 33);
+
+    // Per-task a11y breakdown is populated on multi-target guides
+    assert.ok(dg.a11y);
+    assert.strictEqual(dg.a11y.unguidedPassed, 1);
+    assert.strictEqual(dg.a11y.unguidedTotal, 3);
+    assert.strictEqual(dg.a11y.guidedPassed, 2);
+    assert.strictEqual(dg.a11y.guidedTotal, 3);
+    assert.strictEqual(dg.a11y.uplift, 33);
+
+    assert.ok(dt.a11y);
+    assert.strictEqual(dt.a11y.unguidedPassed, 0);
+    assert.strictEqual(dt.a11y.unguidedTotal, 3);
+    assert.strictEqual(dt.a11y.guidedPassed, 3);
+    assert.strictEqual(dt.a11y.guidedTotal, 3);
+    assert.strictEqual(dt.a11y.uplift, 100);
+});
