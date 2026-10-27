@@ -677,15 +677,8 @@ export function isDomClassOrAttrMutation(node: Node): boolean {
 export function getSafeModuleSpecifier(
   decl: ImportDeclaration | ExportDeclaration,
 ): string | null {
-  const moduleSpecifier = decl.getModuleSpecifier();
-  if (!moduleSpecifier) {
-    return null;
-  }
-  const compilerNode = moduleSpecifier.compilerNode;
-  if (ts.isStringLiteral(compilerNode)) {
-    return compilerNode.text;
-  }
-  return null;
+  const spec = decl.compilerNode.moduleSpecifier;
+  return spec && ts.isStringLiteral(spec) ? spec.text : null;
 }
 
 /**

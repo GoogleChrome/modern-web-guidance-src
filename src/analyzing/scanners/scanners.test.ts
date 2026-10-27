@@ -638,6 +638,15 @@ void test('ast-helpers: AST combinators and branch-aware feature guards', async 
     const imp1 = normalSource.getImportDeclarations()[0];
     assert.ok(imp1);
     assert.equal(getSafeModuleSpecifier(imp1), './bar.ts');
+
+    const templateSource = project.createSourceFile(
+      'import2.ts',
+      'import { foo } from <%= path %>;',
+      { overwrite: true },
+    );
+    const imp2 = templateSource.getImportDeclarations()[0];
+    assert.ok(imp2);
+    assert.equal(getSafeModuleSpecifier(imp2), null);
   });
 });
 
