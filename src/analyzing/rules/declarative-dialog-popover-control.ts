@@ -571,7 +571,7 @@ export const declarativeDialogPopoverControlDomRule: AnalyzerRule =
 export const declarativeDialogPopoverControlJsRule: AnalyzerRule =
   declarativeDialogPopoverControlClickListenerRule;
 
-export const declarativeDialogPopoverControlRules: readonly AnalyzerRule[] = [
+export default [
   declarativeDialogPopoverControlRule,
   declarativeDialogPopoverControlClickListenerRule,
-];
+] satisfies readonly AnalyzerRule[];

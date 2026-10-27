@@ -197,6 +197,6 @@ export const sanitizeUntrustedHtmlJsRule: AnalyzerRule = {
   },
 };
 
-export const sanitizeUntrustedHtmlRules: readonly AnalyzerRule[] = [
+export default [
   sanitizeUntrustedHtmlJsRule,
-];
+] satisfies readonly AnalyzerRule[];

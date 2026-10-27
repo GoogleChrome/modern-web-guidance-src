@@ -406,6 +406,6 @@ export const imeSafeEnterSubmitRule: AnalyzerRule = {
   },
 };
 
-export const imeSafeEnterSubmitRules: readonly AnalyzerRule[] = [
+export default [
   imeSafeEnterSubmitRule,
-];
+] satisfies readonly AnalyzerRule[];

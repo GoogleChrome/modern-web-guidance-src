@@ -604,8 +604,8 @@ export const formatHumanReadableDurationsJsRule: AnalyzerRule = {
   verifierRubric: formatHumanReadableDurationsPackageRule.verifierRubric,
 };
 
-export const calculateEventDifferentialsRules: readonly AnalyzerRule[] = [
+export default [
   calculateEventDifferentialsRule,
   formatHumanReadableDurationsPackageRule,
   formatHumanReadableDurationsJsRule,
-];
+] satisfies readonly AnalyzerRule[];

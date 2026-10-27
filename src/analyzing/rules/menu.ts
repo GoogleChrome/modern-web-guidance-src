@@ -213,4 +213,4 @@ export const menuDomRule: AnalyzerRule = {
 
 export const menuRule: AnalyzerRule = menuJsRule;
 
-export const menuRules: readonly AnalyzerRule[] = [menuJsRule, menuDomRule];
+export default [menuJsRule, menuDomRule] satisfies readonly AnalyzerRule[];

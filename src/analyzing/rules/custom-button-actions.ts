@@ -216,6 +216,6 @@ export const customButtonActionsRule: AnalyzerRule = {
   },
 };
 
-export const customButtonActionsRules: readonly AnalyzerRule[] = [
+export default [
   customButtonActionsRule,
-];
+] satisfies readonly AnalyzerRule[];

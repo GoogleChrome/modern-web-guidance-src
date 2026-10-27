@@ -447,6 +447,6 @@ export const detectInitialVisibilityStateRule: AnalyzerRule = {
   },
 };
 
-export const detectInitialVisibilityStateRules: readonly AnalyzerRule[] = [
+export default [
   detectInitialVisibilityStateRule,
-];
+] satisfies readonly AnalyzerRule[];

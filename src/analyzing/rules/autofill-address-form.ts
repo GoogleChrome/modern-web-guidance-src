@@ -243,6 +243,6 @@ export const autofillAddressFormRule: AnalyzerRule = {
   },
 };
 
-export const autofillAddressFormRules: readonly AnalyzerRule[] = [
+export default [
   autofillAddressFormRule,
-];
+] satisfies readonly AnalyzerRule[];

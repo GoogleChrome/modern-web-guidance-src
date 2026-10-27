@@ -392,6 +392,6 @@ export const platformControlsDismissDialogRule: AnalyzerRule = {
   },
 };
 
-export const platformControlsDismissDialogRules: readonly AnalyzerRule[] = [
+export default [
   platformControlsDismissDialogRule,
-];
+] satisfies readonly AnalyzerRule[];

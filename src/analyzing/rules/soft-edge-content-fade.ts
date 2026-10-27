@@ -56,6 +56,6 @@ export const softEdgeContentFadeRule: AnalyzerRule = {
   },
 };
 
-export const softEdgeContentFadeRules: readonly AnalyzerRule[] = [
+export default [
   softEdgeContentFadeRule,
-];
+] satisfies readonly AnalyzerRule[];

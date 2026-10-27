@@ -617,8 +617,8 @@ export const preventPageScrollUnderModalDialogDependencyRule: AnalyzerRule = {
   },
 };
 
-export const preventPageScrollUnderModalDialogRules: readonly AnalyzerRule[] = [
+export default [
   preventPageScrollUnderModalDialogDependencyRule,
   preventPageScrollUnderModalDialogRule,
   preventPageScrollUnderModalDialogCssRule,
-];
+] satisfies readonly AnalyzerRule[];

@@ -147,6 +147,6 @@ export const animateToIntrinsicSizesRule: AnalyzerRule = {
   },
 };
 
-export const animateToIntrinsicSizesRules: readonly AnalyzerRule[] = [
+export default [
   animateToIntrinsicSizesRule,
-];
+] satisfies readonly AnalyzerRule[];

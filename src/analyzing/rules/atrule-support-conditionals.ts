@@ -279,6 +279,6 @@ export const atruleSupportConditionalsJsRule: AnalyzerRule = {
   },
 };
 
-export const atruleSupportConditionalsRules: readonly AnalyzerRule[] = [
+export default [
   atruleSupportConditionalsJsRule,
-];
+] satisfies readonly AnalyzerRule[];

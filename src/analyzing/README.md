@@ -103,11 +103,6 @@ Coding agents receive structured JSON containing exact file coordinates, confide
       ]
     }
   ],
-  "suspendedGuides": [
-    "complex-shapes",
-    "interactions-in-complex-layouts",
-    "language-detection"
-  ],
   "skippedDocsAndTestsCount": 53
 }
 ```

@@ -112,6 +112,6 @@ export const scrollSnapRealtimeFeedbackRule: AnalyzerRule = {
   },
 };
 
-export const scrollSnapRealtimeFeedbackRules: readonly AnalyzerRule[] = [
+export default [
   scrollSnapRealtimeFeedbackRule,
-];
+] satisfies readonly AnalyzerRule[];

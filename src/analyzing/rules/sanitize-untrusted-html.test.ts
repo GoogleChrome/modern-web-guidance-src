@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { matchJsRule } from '../scanners/js-scanner.ts';
-import { sanitizerJsMatcher, sanitizeUntrustedHtmlRules } from './sanitize-untrusted-html.ts';
+import sanitizeUntrustedHtmlRules, { sanitizerJsMatcher } from './sanitize-untrusted-html.ts';
 
 const jsMatcher = sanitizerJsMatcher;
 

@@ -76,6 +76,6 @@ export const autofillSignUpFormRule: AnalyzerRule = {
   },
 };
 
-export const autofillSignUpFormRules: readonly AnalyzerRule[] = [
+export default [
   autofillSignUpFormRule,
-];
+] satisfies readonly AnalyzerRule[];

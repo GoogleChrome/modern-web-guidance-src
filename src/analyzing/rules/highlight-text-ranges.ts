@@ -153,7 +153,7 @@ export const highlightTextRangesJsRule: AnalyzerRule = {
   },
 };
 
-export const highlightTextRangesRules: readonly AnalyzerRule[] = [
+export default [
   highlightTextRangesPackageRule,
   highlightTextRangesJsRule,
-];
+] satisfies readonly AnalyzerRule[];

@@ -199,7 +199,7 @@ export const darkModeJsMatchMediaRule: AnalyzerRule = {
   },
 };
 
-export const darkModeRules: readonly AnalyzerRule[] = [
+export default [
   darkModeCssRule,
   darkModeJsMatchMediaRule,
-];
+] satisfies readonly AnalyzerRule[];

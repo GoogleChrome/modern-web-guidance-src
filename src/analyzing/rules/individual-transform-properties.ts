@@ -642,7 +642,7 @@ export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher
   },
 };
 
-const individualTransformPropertiesStandaloneChainRule: AnalyzerRule = {
+export const individualTransformPropertiesStandaloneChainRule: AnalyzerRule = {
   id: 'individual-transform-properties/standalone-chain',
   guideId: 'individual-transform-properties',
   guideHash: '42af807594e8',
@@ -668,7 +668,7 @@ export const individualTransformPropertiesSingleFunctionStateMatcher: CssRuleMat
   },
 };
 
-const individualTransformPropertiesSingleFunctionStateRule: AnalyzerRule = {
+export const individualTransformPropertiesSingleFunctionStateRule: AnalyzerRule = {
   id: 'individual-transform-properties/single-function-state',
   guideId: 'individual-transform-properties',
   guideHash: '42af807594e8',
@@ -711,13 +711,8 @@ export const individualTransformPropertiesRule: AnalyzerRule = {
 export const individualTransformPropertiesCssRule: AnalyzerRule =
   individualTransformPropertiesRule;
 
-export const individualTransformPropertiesDeferredRules: readonly AnalyzerRule[] = [
-  // opt-in sub-pattern: standalone multi-function transform without paired state selectors or keyframes has no composition payoff
-  individualTransformPropertiesStandaloneChainRule,
-  // opt-in sub-pattern: isolated single-function state rule (:hover/:focus/:active) with no paired transform rule is a 1-to-1 syntax swap
-  individualTransformPropertiesSingleFunctionStateRule,
-];
-
-export const individualTransformPropertiesRules: readonly AnalyzerRule[] = [
+export default [
   individualTransformPropertiesRule,
-];
+  individualTransformPropertiesStandaloneChainRule,
+  individualTransformPropertiesSingleFunctionStateRule,
+] satisfies readonly AnalyzerRule[];

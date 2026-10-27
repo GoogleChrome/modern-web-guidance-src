@@ -128,6 +128,6 @@ export const clientSideEncryptionJsRule: AnalyzerRule = {
   },
 };
 
-export const clientSideEncryptionRules: readonly AnalyzerRule[] = [
+export default [
   clientSideEncryptionJsRule,
-];
+] satisfies readonly AnalyzerRule[];

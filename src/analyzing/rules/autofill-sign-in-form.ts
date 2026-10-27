@@ -60,6 +60,6 @@ export const autofillSignInFormRule: AnalyzerRule = {
   },
 };
 
-export const autofillSignInFormRules: readonly AnalyzerRule[] = [
+export default [
   autofillSignInFormRule,
-];
+] satisfies readonly AnalyzerRule[];

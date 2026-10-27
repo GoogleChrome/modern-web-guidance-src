@@ -278,7 +278,7 @@ export const improveNextPageLoadPerformanceJsRule: AnalyzerRule = {
   },
 };
 
-export const improveNextPageLoadPerformanceRules: readonly AnalyzerRule[] = [
+export default [
   improveNextPageLoadPerformancePackageRule,
   improveNextPageLoadPerformanceJsRule,
-];
+] satisfies readonly AnalyzerRule[];

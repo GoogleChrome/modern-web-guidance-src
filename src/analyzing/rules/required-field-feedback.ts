@@ -166,7 +166,7 @@ export const requiredFieldFeedbackJsRule: AnalyzerRule = {
   },
 };
 
-export const requiredFieldFeedbackRules: readonly AnalyzerRule[] = [
+export default [
   requiredFieldFeedbackCssRule,
   requiredFieldFeedbackJsRule,
-];
+] satisfies readonly AnalyzerRule[];

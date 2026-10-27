@@ -161,6 +161,6 @@ export const positionAwareTooltipsJsRule: AnalyzerRule = {
   },
 };
 
-export const positionAwareTooltipsRules: readonly AnalyzerRule[] = [
+export default [
   positionAwareTooltipsJsRule,
-];
+] satisfies readonly AnalyzerRule[];

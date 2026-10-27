@@ -104,7 +104,7 @@ const brandedSelectStylingJsMatcher: JsRuleMatcher = createJsCallMatcher({
   matchCall: matchSelectCall,
 });
 
-const brandedSelectStylingRule: AnalyzerRule = {
+export const brandedSelectStylingRule: AnalyzerRule = {
   id: 'branded-select-styling',
   guideId: 'branded-select-styling',
   guideHash: BRANDED_SELECT_STYLING_GUIDE_HASH,
@@ -134,11 +134,7 @@ export const brandedSelectStylingJsRule: AnalyzerRule = {
   verifierRubric: brandedSelectStylingRule.verifierRubric,
 };
 
-export const brandedSelectStylingDeferredRules: readonly AnalyzerRule[] = [
-  // unregistered in a76520de2, reason not recorded; pending rule-writing measurement
+export default [
   brandedSelectStylingRule,
-];
-
-export const brandedSelectStylingRules: readonly AnalyzerRule[] = [
   brandedSelectStylingJsRule,
-];
+] satisfies readonly AnalyzerRule[];

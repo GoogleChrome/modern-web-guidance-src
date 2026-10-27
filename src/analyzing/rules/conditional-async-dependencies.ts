@@ -232,7 +232,7 @@ export const conditionalAsyncDependenciesJsRule: AnalyzerRule = {
   },
 };
 
-export const conditionalAsyncDependenciesRules: readonly AnalyzerRule[] = [
+export default [
   conditionalAsyncDependenciesPackageRule,
   conditionalAsyncDependenciesJsRule,
-];
+] satisfies readonly AnalyzerRule[];

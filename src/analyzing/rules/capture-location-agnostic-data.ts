@@ -384,8 +384,8 @@ export const manageRecurringIntervalsRule: AnalyzerRule = {
   },
 };
 
-export const captureLocationAgnosticDataRules: readonly AnalyzerRule[] = [
+export default [
   captureLocationAgnosticDataPackageRule,
   captureLocationAgnosticDataJsRule,
   manageRecurringIntervalsRule,
-];
+] satisfies readonly AnalyzerRule[];

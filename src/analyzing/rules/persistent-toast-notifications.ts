@@ -503,6 +503,6 @@ export const persistentToastNotificationsJsRule: AnalyzerRule = {
   },
 };
 
-export const persistentToastNotificationsRules: readonly AnalyzerRule[] = [
+export default [
   persistentToastNotificationsJsRule,
-];
+] satisfies readonly AnalyzerRule[];

@@ -401,7 +401,7 @@ export const scrollspyRule: AnalyzerRule = {
   },
 };
 
-const scrollspyJsRule: AnalyzerRule = {
+export const scrollspyJsRule: AnalyzerRule = {
   id: 'scrollspy/js',
   guideId: 'scrollspy',
   guideHash: SCROLLSPY_GUIDE_HASH,
@@ -411,9 +411,4 @@ const scrollspyJsRule: AnalyzerRule = {
   verifierRubric: scrollspyRule.verifierRubric,
 };
 
-export const scrollspyDeferredRules: readonly AnalyzerRule[] = [
-  // opt-in sub-pattern: deferred from default production scan until CSS scroll-target-group and :target-current reach Baseline
-  scrollspyJsRule,
-];
-
-export const scrollspyRules: readonly AnalyzerRule[] = [scrollspyRule];
+export default [scrollspyRule, scrollspyJsRule] satisfies readonly AnalyzerRule[];

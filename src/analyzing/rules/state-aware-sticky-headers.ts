@@ -194,6 +194,6 @@ export const stateAwareStickyHeadersRule: AnalyzerRule = {
   },
 };
 
-export const stateAwareStickyHeadersRules: readonly AnalyzerRule[] = [
+export default [
   stateAwareStickyHeadersRule,
-];
+] satisfies readonly AnalyzerRule[];

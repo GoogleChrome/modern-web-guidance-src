@@ -192,7 +192,7 @@ export const contrastColorCssRule: AnalyzerRule = {
 
 export const contrastColorRule: AnalyzerRule = contrastColorJsRule;
 
-export const contrastColorRules: readonly AnalyzerRule[] = [
+export default [
   contrastColorJsRule,
   contrastColorCssRule,
-];
+] satisfies readonly AnalyzerRule[];

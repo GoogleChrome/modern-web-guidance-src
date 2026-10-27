@@ -132,6 +132,6 @@ export const scrollabilityAffordanceHintsRule: AnalyzerRule = {
   },
 };
 
-export const scrollabilityAffordanceHintsRules: readonly AnalyzerRule[] = [
+export default [
   scrollabilityAffordanceHintsRule,
-];
+] satisfies readonly AnalyzerRule[];

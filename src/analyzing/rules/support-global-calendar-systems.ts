@@ -107,7 +107,7 @@ export const supportGlobalCalendarSystemsJsRule: AnalyzerRule = {
   },
 };
 
-export const supportGlobalCalendarSystemsRules: readonly AnalyzerRule[] = [
+export default [
   supportGlobalCalendarSystemsPackageRule,
   supportGlobalCalendarSystemsJsRule,
-];
+] satisfies readonly AnalyzerRule[];

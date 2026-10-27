@@ -4,11 +4,11 @@ import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { matchJsRule } from '../scanners/js-scanner.ts';
 import type { DependencyRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
-  brandedSelectStylingDeferredRules,
   brandedSelectStylingJsRule,
+  brandedSelectStylingRule,
 } from './branded-select-styling.ts';
 
-const depMatcher = brandedSelectStylingDeferredRules[0]!.matcher as DependencyRuleMatcher;
+const depMatcher = brandedSelectStylingRule.matcher as DependencyRuleMatcher;
 const jsMatcher = brandedSelectStylingJsRule.matcher as JsRuleMatcher;
 void test('branded-select-styling dependency: positive brownfield matches', async (t) => {
   await t.test('flags select2 in dependencies', () => {
