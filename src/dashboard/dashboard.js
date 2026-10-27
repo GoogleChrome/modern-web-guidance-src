@@ -905,13 +905,15 @@ function renderGrid(data, testId) {
      * @property {number} a11yCheckCount
      * @property {number} uRuntimeMs
      * @property {number} gRuntimeMs
-     * @property {number} runtimeDeltaMs
+     * @property {number | null} runtimeDeltaMs
      * @property {number} uUncachedTokens
      * @property {number} gUncachedTokens
-     * @property {number} uncachedDeltaTokens
+     * @property {number | null} uncachedDeltaTokens
      * @property {number} infraErrorCount
      * @property {boolean} hasInfraError
      * @property {boolean} hasBuildFailure
+     * @property {number} leakCount
+     * @property {boolean} hasLeak
      * @property {boolean} hasFailure
      */
 
@@ -1019,11 +1021,11 @@ function renderGrid(data, testId) {
 
             const uRuntimeMs = getAvgRuntime(unguidedRuns);
             const gRuntimeMs = getAvgRuntime(guidedRuns);
-            const runtimeDeltaMs = gRuntimeMs - uRuntimeMs;
+            const runtimeDeltaMs = (uRuntimeMs > 0 && gRuntimeMs > 0) ? gRuntimeMs - uRuntimeMs : null;
 
             const uUncachedTokens = getAvgUncached(unguidedRuns);
             const gUncachedTokens = getAvgUncached(guidedRuns);
-            const uncachedDeltaTokens = gUncachedTokens - uUncachedTokens;
+            const uncachedDeltaTokens = (uUncachedTokens > 0 && gUncachedTokens > 0) ? gUncachedTokens - uUncachedTokens : null;
 
             /**
              * @param {DashboardRunResult[] | undefined} runs
@@ -1077,11 +1079,11 @@ function renderGrid(data, testId) {
     } else if (currentTaskSort === 'a11y-desc') {
         filteredScenarios.sort((a, b) => (b.a11yCheckCount > 0 ? 1 : 0) - (a.a11yCheckCount > 0 ? 1 : 0) || ((b.a11yUplift ?? -999) - (a.a11yUplift ?? -999)) || (b.a11yCheckCount - a.a11yCheckCount));
     } else if (currentTaskSort === 'time-saved') {
-        filteredScenarios.sort((a, b) => a.runtimeDeltaMs - b.runtimeDeltaMs);
+        filteredScenarios.sort((a, b) => ((a.runtimeDeltaMs ?? 999999999) - (b.runtimeDeltaMs ?? 999999999)));
     } else if (currentTaskSort === 'time-overhead') {
-        filteredScenarios.sort((a, b) => b.runtimeDeltaMs - a.runtimeDeltaMs);
+        filteredScenarios.sort((a, b) => ((b.runtimeDeltaMs ?? -999999999) - (a.runtimeDeltaMs ?? -999999999)));
     } else if (currentTaskSort === 'tokens-saved') {
-        filteredScenarios.sort((a, b) => a.uncachedDeltaTokens - b.uncachedDeltaTokens);
+        filteredScenarios.sort((a, b) => ((a.uncachedDeltaTokens ?? 999999999) - (b.uncachedDeltaTokens ?? 999999999)));
     }
 
     filteredScenarios.forEach(item => {

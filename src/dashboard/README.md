@@ -2,7 +2,7 @@
 
 The Eval-View Dashboard lets you visualize test results from the Modern Web Guidance eval harness.
 
-The dashboard can be view in two different ways:
+The dashboard can be viewed in two different ways:
 
 1. Locally, with `gd dashboard`, via `server.js`.
 2. Remotely, with GitHub Pages at **[https://googlechrome.github.io/modern-web-guidance-src/](https://googlechrome.github.io/modern-web-guidance-src/)** (static hosting).
@@ -47,10 +47,12 @@ STATIC=true gd dashboard
 
 ## Page Structure
 
-The landing page (`index.html`) has two layers:
+The landing page (`index.html`) is structured into four progressive stages:
 
-1. **Hero / headline takeaways** (`hero.js`, `hero.css`): four number-forward cards (overall pass-rate uplift in pp, accessibility-subscore uplift in pp, median uncached tokens, median agent time), a per-agent-family table, and a "How we measure" disclosure. All numbers come from `computeHeadlineInsights()` in `insights.js`, which pools the latest N (default 3) `nightly-*` suites per agent family (`claude_code`, `codex_cli`, `antigravity_cli` + its predecessor `jetski_cli`). Rates are pooled counts; time and token figures are pooled per-task medians over paired tasks; cross-family medians are never shown. Runtime is agent time only (grader time excluded); "uncached tokens" = total − cached.
-2. **Browse all runs** (`landing.js`, `landing.css`): the sortable suites table (nightly suites by default, ad-hoc runs behind a toggle), the per-guide hover preview, and the collapsed "Breakdowns by model and guide" drawer. Each suite links to `dashboard.html` (per-suite summary cards plus the full task/check diagnostics) and each guide to `guide.html`.
+1. **Stage 1 — Headline takeaways & hero** (`hero.js`, `hero.css`): two number-forward cards (overall pass-rate uplift in pp and accessibility-subscore uplift in pp), a per-agent-family table, and a "How we measure" disclosure. All numbers come from `computeHeadlineInsights()` in `insights.js`, which pools recent nightly suites per agent family (`claude_code`, `codex_cli`, `antigravity_cli` + its predecessor `jetski_cli`).
+2. **Stage 2 — A/B task spotlight** (`showcase.js`, `showcase.css`): interactive side-by-side comparison of guided versus unguided implementations with live diffs, verdict highlights, and deterministic grader check inspection.
+3. **Stage 3 — Browse all runs** (`landing.js`, `landing.css`): the sortable suites table (nightly suites by default, ad-hoc runs behind a toggle), per-guide hover previews, and unguided leak rate tracking.
+4. **Stage 4 — Detailed run diagnostics** (`dashboard.js`, `dashboard.css`): per-suite summary cards and detailed per-task accordion diagnostics linked from individual suite runs.
 
 Both layers load data through `ApiClient` in `api.js`:
 

@@ -14,6 +14,13 @@ import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 const manifestCache = new Map();
 
 export class ApiClient {
+    /**
+     * Clears the in-memory manifest promise cache.
+     */
+    static clearCache() {
+        manifestCache.clear();
+    }
+
     constructor() {
         const params = new URLSearchParams(window.location.search);
         const sourceParam = params.get('source');

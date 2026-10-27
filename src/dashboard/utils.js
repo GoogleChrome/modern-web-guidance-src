@@ -184,11 +184,11 @@ export function getColor(percentage) {
 
 /**
  * @param {string | undefined | null} text
- * @returns {string | undefined | null}
+ * @returns {string}
  */
 export function escapeHtml(text) {
-    if (!text) return text;
-    return text
+    if (!text) return '';
+    return String(text)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")

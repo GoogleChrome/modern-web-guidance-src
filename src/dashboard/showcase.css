@@ -17,10 +17,6 @@
   contain: layout style;
 }
 
-.ab-spotlight[hidden] {
-  display: none;
-}
-
 /* Header & top control bar ------------------------------------------------ */
 
 .ab-spotlight-header {

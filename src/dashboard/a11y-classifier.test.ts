@@ -63,6 +63,14 @@ test('classifyAccessibilityCheck classifies cross-cutting ARIA, focus, keyboard,
     assert.strictEqual(focusCheck.isAccessibility, true);
     assert.strictEqual(focusCheck.subCategory, 'focus_inert');
 
+    const modalFocusable = classifyAccessibilityCheck('ui-components', 'dialog', 'While a modal dialog is open, content outside it is not focusable');
+    assert.strictEqual(modalFocusable.isAccessibility, true);
+    assert.strictEqual(modalFocusable.subCategory, 'focus_inert');
+
+    const swipeFocusable = classifyAccessibilityCheck('ui-behaviors', 'swipe-to-reveal', 'Revealed action controls or side-menu items are focusable DOM elements inside the swipe-to-reveal container');
+    assert.strictEqual(swipeFocusable.isAccessibility, true);
+    assert.strictEqual(swipeFocusable.subCategory, 'focus_inert');
+
     const keyboardCheck = classifyAccessibilityCheck('ui-components', 'modal-dialog', 'Pressing the Escape key closes the dialog');
     assert.strictEqual(keyboardCheck.isAccessibility, true);
     assert.strictEqual(keyboardCheck.subCategory, 'keyboard');

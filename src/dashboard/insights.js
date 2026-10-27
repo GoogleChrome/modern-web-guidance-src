@@ -118,7 +118,7 @@ export const AGENT_FAMILIES = [
  * @property {RuntimeSuitePoint} latest Per-suite medians of the latest selected suite.
  * @property {RuntimeSuitePoint[]} perSuite Newest first.
  * @property {number} suitesFaster Number of selected suites whose guided median was lower.
- * @property {'faster' | 'slower' | 'mixed'} direction `faster`/`slower` only when every selected suite agrees.
+ * @property {'faster' | 'slower' | 'mixed' | 'flat'} direction `faster`/`slower` only when every selected suite agrees.
  */
 
 /**
@@ -157,7 +157,7 @@ export const AGENT_FAMILIES = [
  * @property {TokenSuitePoint} latest
  * @property {TokenSuitePoint[]} perSuite Newest first.
  * @property {number} suitesFewer Number of selected suites whose guided uncached median was lower.
- * @property {'fewer' | 'more' | 'mixed'} direction
+ * @property {'fewer' | 'more' | 'mixed' | 'flat'} direction
  */
 
 /**
@@ -529,7 +529,12 @@ function buildFamilyInsight(family, suites) {
         const rtPoints = withEfficiency.map(toRuntimePoint);
         const tkPoints = withEfficiency.map(toTokenPoint);
         const suitesFaster = rtPoints.filter(p => p.guidedMedianMs < p.unguidedMedianMs).length;
+        const suitesSlower = rtPoints.filter(p => p.guidedMedianMs > p.unguidedMedianMs).length;
+        const rtDirection = suitesFaster === rtPoints.length ? 'faster' : (suitesSlower === rtPoints.length ? 'slower' : (suitesFaster === 0 && suitesSlower === 0 ? 'flat' : 'mixed'));
+
         const suitesFewer = tkPoints.filter(p => p.guidedUncachedMedian < p.unguidedUncachedMedian).length;
+        const suitesMore = tkPoints.filter(p => p.guidedUncachedMedian > p.unguidedUncachedMedian).length;
+        const tkDirection = suitesFewer === tkPoints.length ? 'fewer' : (suitesMore === tkPoints.length ? 'more' : (suitesFewer === 0 && suitesMore === 0 ? 'flat' : 'mixed'));
 
         // Pool per-task pairs across suites when every selected suite carries chartData runtime/token arrays.
         const perSuitePairs = withEfficiency.map(pairedTaskValues);
@@ -555,7 +560,7 @@ function buildFamilyInsight(family, suites) {
                 latest: rtPoints[0],
                 perSuite: rtPoints,
                 suitesFaster,
-                direction: suitesFaster === rtPoints.length ? 'faster' : (suitesFaster === 0 ? 'slower' : 'mixed')
+                direction: rtDirection
             };
 
             const uTok = Math.round(median(tkPairs.map(p => p[0])));
@@ -580,7 +585,7 @@ function buildFamilyInsight(family, suites) {
                 latest: tkPoints[0],
                 perSuite: tkPoints,
                 suitesFewer,
-                direction: suitesFewer === tkPoints.length ? 'fewer' : (suitesFewer === 0 ? 'more' : 'mixed')
+                direction: tkDirection
             };
         } else {
             // No per-task data: medians from the latest suite, paired counts summed from efficiencyStats.
@@ -596,7 +601,7 @@ function buildFamilyInsight(family, suites) {
                 latest: rtPoints[0],
                 perSuite: rtPoints,
                 suitesFaster,
-                direction: suitesFaster === rtPoints.length ? 'faster' : (suitesFaster === 0 ? 'slower' : 'mixed')
+                direction: rtDirection
             };
             tokens = {
                 unguidedUncachedMedian: tkPoints[0].unguidedUncachedMedian,
@@ -615,7 +620,7 @@ function buildFamilyInsight(family, suites) {
                 latest: tkPoints[0],
                 perSuite: tkPoints,
                 suitesFewer,
-                direction: suitesFewer === tkPoints.length ? 'fewer' : (suitesFewer === 0 ? 'more' : 'mixed')
+                direction: tkDirection
             };
         }
     }

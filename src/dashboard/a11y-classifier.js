@@ -284,7 +284,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
 
     // 6. Focus management, focus indicators, tab order, and inertness
     if (
-        /\bfocus(?:ed)?\b|:focus-visible/.test(ml) ||
+        /\bfocus(?:ed|able|ing|es)?\b|:focus-visible/.test(ml) ||
         ml.includes('avoid tab order when hidden') ||
         (ml.includes('inert') &&
             (gName === 'navigation-drawer' ||

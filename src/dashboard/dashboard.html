@@ -114,11 +114,8 @@
   <script src="features-mapping.gen.js"></script>
 
   <script type="module">
-    // Conditional, pinned polyfills for popover / interestfor / anchor positioning
+    // Conditional, pinned polyfills for interestfor / anchor positioning
     // (same pattern as index.html; only loaded where the native feature is missing).
-    if (!("popover" in HTMLElement.prototype)) {
-      import("https://unpkg.com/@oddbird/popover-polyfill@0.7.3/dist/popover.min.js").catch(() => {});
-    }
     if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
       import("https://unpkg.com/interestfor@1.0.10").catch(() => {});
     }

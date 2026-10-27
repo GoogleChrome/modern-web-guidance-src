@@ -38,10 +38,6 @@
   white-space: nowrap;
 }
 
-#auth-btn[hidden] {
-  display: none;
-}
-
 @media (width < 40rem) {
   .auth-btn-long {
     display: none;
@@ -122,10 +118,6 @@
   background: var(--color-surface-container-low);
   font-size: 0.875rem;
   color: var(--color-on-surface-variant);
-}
-
-.hero-status[hidden] {
-  display: none;
 }
 
 .hero-status .primary-btn {

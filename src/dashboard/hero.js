@@ -264,8 +264,8 @@ function renderTakeaways(insights) {
             figureText: `${signed(o.upliftPp, 0)} percentage points`,
             statement: 'pass-rate lift across all tasks',
             visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
-            qualifier: `<span class="range">${pct(o.unguidedRate)} → ${pct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} graded checks per mode. ${familyNames}; ${runsPhrase}.`,
-            short: `<span class="visually-hidden">${pct(o.unguidedRate)} → ${pct(o.guidedRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
+            qualifier: `<span class="range">${fmtPct(o.unguidedRate)} → ${fmtPct(o.guidedRate)}</span> of ~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} graded checks per mode. ${familyNames}; ${runsPhrase}.`,
+            short: `<span class="visually-hidden">${fmtPct(o.unguidedRate)} → ${fmtPct(o.guidedRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
         }));
     }
 
@@ -279,9 +279,9 @@ function renderTakeaways(insights) {
             metric: 'a11y',
             primary: false,
             label: 'Accessibility',
-            figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${pct(a.unguidedRate)} → <strong>${pct(a.guidedRate)}</strong>)</span>`,
-            figureText: `${signed(a.upliftPp, 0)} percentage points (${pct(a.unguidedRate)} to ${pct(a.guidedRate)})`,
-            qualifier: `<span class="range">${pct(a.unguidedRate)} → ${pct(a.guidedRate)}</span> across ~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} accessibility checks${a.guideCount ? ` in ${a.guideCount} guides` : ''}.`,
+            figure: `<span class="figure-val">${signed(a.upliftPp, 0)}</span><span class="unit"> pp</span> <span class="secondary-pair">(${fmtPct(a.unguidedRate)} → <strong>${fmtPct(a.guidedRate)}</strong>)</span>`,
+            figureText: `${signed(a.upliftPp, 0)} percentage points (${fmtPct(a.unguidedRate)} to ${fmtPct(a.guidedRate)})`,
+            qualifier: `<span class="range">${fmtPct(a.unguidedRate)} → ${fmtPct(a.guidedRate)}</span> across ~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} accessibility checks${a.guideCount ? ` in ${a.guideCount} guides` : ''}.`,
             short: `<a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">${a11yShortText} <span aria-hidden="true">→</span></a>`
         }));
     }
@@ -359,7 +359,7 @@ function rateCell(r) {
     if (!r || (r.guidedTotal === 0 && r.unguidedTotal === 0)) return naCell();
     return `
         <div class="metric-main">
-            <span class="metric-pair">${pct(r.unguidedRate)} → <strong>${pct(r.guidedRate)}</strong></span>
+            <span class="metric-pair">${fmtPct(r.unguidedRate)} → <strong>${fmtPct(r.guidedRate)}</strong></span>
             ${deltaChip(r.upliftPp, 'pp', 'higher')}
         </div>`;
 }
@@ -463,7 +463,7 @@ function roundAbs(v) {
 }
 
 /** @param {number} v */
-function pct(v) {
+function fmtPct(v) {
     return `${Math.round(v || 0)}%`;
 }
 

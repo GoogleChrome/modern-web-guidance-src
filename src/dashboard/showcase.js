@@ -498,14 +498,14 @@ function renderChecks(task, pair) {
         : `Show all ${totalChecks} checks`;
     const toggleHtml = canCollapse
         ? `<div class="ab-checks-toggle-bar">
-             <button type="button" id="ab-checks-toggle" class="ab-checks-toggle" aria-expanded="${checksExpanded}">
+             <button type="button" id="ab-checks-toggle" class="ab-checks-toggle" aria-expanded="${checksExpanded}" aria-controls="ab-checks-table-wrap">
                ${checksExpanded ? 'Show fewer checks' : collapsedLabel}
              </button>
            </div>`
         : '';
 
     container.innerHTML = `
-        <div class="ab-checks-table-wrap${collapsed ? ' is-collapsed' : ''}" tabindex="0" role="region" aria-label="Deterministic grader checks for ${escapeHtml(task.label)}">
+        <div id="ab-checks-table-wrap" class="ab-checks-table-wrap${collapsed ? ' is-collapsed' : ''}" tabindex="0" role="region" aria-label="Deterministic grader checks for ${escapeHtml(task.label)}">
             <table class="ab-checks-table">
                 <caption class="visually-hidden">Playwright grader assertions comparing unguided and guided runs for ${escapeHtml(task.label)} on ${escapeHtml(pair.agentLabel)}</caption>
                 <thead>

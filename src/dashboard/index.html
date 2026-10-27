@@ -87,8 +87,8 @@
           </div>
 
           <div class="ab-scorecard-grid">
-            <div id="ab-score-unguided" class="ab-score-card unguided" aria-label="Unguided run evaluation result"></div>
-            <div id="ab-score-guided" class="ab-score-card guided" aria-label="Guided run evaluation result"></div>
+            <div id="ab-score-unguided" class="ab-score-card unguided" role="region" aria-label="Unguided run evaluation result"></div>
+            <div id="ab-score-guided" class="ab-score-card guided" role="region" aria-label="Guided run evaluation result"></div>
           </div>
 
           <div id="ab-checks-content"></div>
@@ -276,9 +276,6 @@
   <script type="module">
     // Progressive enhancement for Newly Available / Limited features (MWG interest-triggered-tooltips guide).
     // Versions are pinned so a public Pages deploy cannot silently pick up breaking upgrades.
-    if (!("popover" in HTMLElement.prototype)) {
-      import("https://unpkg.com/@oddbird/popover-polyfill@0.7.3/dist/popover.min.js").catch(() => {});
-    }
     if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
       import("https://unpkg.com/interestfor@1.0.10").catch(() => {});
     }
