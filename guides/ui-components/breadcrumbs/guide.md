@@ -141,9 +141,9 @@ document.addEventListener('focusin', ({ target }) => {
 });
 ```
 
-## 4. Collapsing long trails (optional)
+## 4. Collapsing long trails
 
-Use for trails with more than ~4 items.
+Collapse any trail with more than 3 items on narrow containers instead of letting it wrap; wrapped trails take 2-3 rows on a phone.
 
 - Make the `<nav>` a size container (`container-type: inline-size`, in the snippet below) so it responds to its own width, not the viewport.
 - Keep the first item and the last two. Add a "…" `<li>` after the first item, containing a `[popover]` button that lists the hidden links. Give the button `aria-label="Show N more breadcrumbs"`.
