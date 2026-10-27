@@ -1,82 +1,280 @@
 diff --git a/app.js b/app.js
 new file mode 100644
-index 0000000..914ad16
+index 0000000..53de788
 --- /dev/null
 +++ b/app.js
-@@ -0,0 +1,63 @@
-+// Outbound fetch helper that handles requests blocked by the connection policy.
-+async function fetchWithPolicyHandling(url, { statusElement, ...fetchOptions } = {}) {
-+  const el = statusElement || (typeof document !== 'undefined' ? (document.getElementById('network-status') || document.getElementById('status')) : null);
-+  try {
-+    const response = await fetch(url, fetchOptions);
-+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-+    const body = await response.text();
-+    const msg = `Allowed: Loaded ${url} (${body.length} bytes).`;
-+    if (el) {
-+      el.textContent = msg;
+@@ -0,0 +1,88 @@
++import { fetchWithPolicyHandling } from './policy.js';
++
++const form = document.getElementById('newsletter-form');
++const emailInput = document.getElementById('newsletter-email');
++const statusEl = document.getElementById('newsletter-status');
++const submitBtn = document.getElementById('newsletter-submit');
++
++function showStatus(type, message) {
++  if (!statusEl) return;
++  statusEl.hidden = false;
++  statusEl.dataset.state = type;
++  statusEl.className = `newsletter-status status-${type}`;
++  statusEl.textContent = message;
++}
++
++if (form) {
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    const email = emailInput ? emailInput.value.trim() : '';
++    if (!email) {
++      showStatus('error', 'Please enter a valid email address to subscribe.');
++      return;
 +    }
-+    if (typeof document !== 'undefined') {
-+      const s1 = document.getElementById('network-status');
-+      const s2 = document.getElementById('status');
-+      if (s1 && s1 !== el) s1.textContent = msg;
-+      if (s2 && s2 !== el) s2.textContent = msg;
++
++    // Use the form's action attribute (defaults to '/api/newsletter' on our own server,
++    // or if an injected script tampers with form.action or target endpoint, Connection-Allowlist
++    // and CSP will block any unauthorized outbound destination).
++    const endpoint = form.getAttribute('action') || '/api/newsletter';
++
++    if (submitBtn) submitBtn.disabled = true;
++    showStatus('pending', 'Sending your subscription request...');
++
++    const result = await fetchWithPolicyHandling(endpoint, {
++      method: 'POST',
++      headers: {
++        'Content-Type': 'application/json',
++        Accept: 'application/json',
++      },
++      body: JSON.stringify({ email }),
++      statusElement: statusEl,
++    });
++
++    if (submitBtn) submitBtn.disabled = false;
++
++    if (result.ok) {
++      const msg =
++        result.data?.message ||
++        `Thanks for subscribing! Confirmation sent for ${email}.`;
++      showStatus('allowed', msg);
++      form.reset();
++    } else {
++      const errDetail =
++        result.error instanceof Error ? result.error.message : String(result.error);
++      showStatus(
++        'blocked',
++        `Sorry, your request to ${endpoint} could not go through because it was blocked by our outbound connection security policy (${errDetail}).`,
++      );
 +    }
-+    return { ok: true, body, error: null };
-+  } catch (error) {
-+    const message = error instanceof Error ? error.message : String(error);
-+    const feedback = `Blocked: Request to ${url} was rejected by the outbound connection policy (${message}).`;
-+    if (el) {
-+      el.textContent = feedback;
-+    }
-+    if (typeof document !== 'undefined') {
-+      const s1 = document.getElementById('network-status');
-+      const s2 = document.getElementById('status');
-+      if (s1 && s1 !== el) s1.textContent = feedback;
-+      if (s2 && s2 !== el) s2.textContent = feedback;
-+    }
-+    return { ok: false, body: null, error };
++  });
++}
++
++// Expose helper on window so tests or interactive diagnostics can invoke outbound requests
++// and observe the customer-facing message when a request cannot go through.
++window.fetchWithPolicyHandling = fetchWithPolicyHandling;
++window.submitNewsletterRequest = async function submitNewsletterRequest(
++  email,
++  targetUrl = '/api/newsletter',
++) {
++  if (statusEl) statusEl.hidden = false;
++  const result = await fetchWithPolicyHandling(targetUrl, {
++    method: 'POST',
++    headers: {
++      'Content-Type': 'application/json',
++      Accept: 'application/json',
++    },
++    body: JSON.stringify({ email }),
++    statusElement: statusEl,
++  });
++  if (!result.ok) {
++    const errDetail =
++      result.error instanceof Error ? result.error.message : String(result.error);
++    showStatus(
++      'blocked',
++      `Sorry, your request to ${targetUrl} could not go through because it was blocked by our outbound connection security policy (${errDetail}).`,
++    );
 +  }
-+}
-+
-+if (typeof window !== 'undefined') {
-+  window.fetchWithPolicyHandling = fetchWithPolicyHandling;
-+}
-+if (typeof globalThis !== 'undefined') {
-+  globalThis.fetchWithPolicyHandling = fetchWithPolicyHandling;
-+}
-+
-+if (typeof document !== 'undefined') {
-+  const statusElement = document.getElementById('network-status') || document.getElementById('status');
-+
-+  document.getElementById('check-network')?.addEventListener('click', async () => {
-+    await fetchWithPolicyHandling('/', { statusElement });
-+    const own = statusElement ? statusElement.textContent : '';
-+    await fetchWithPolicyHandling('https://third-party.example.net/collect', { statusElement });
-+    if (statusElement) {
-+      statusElement.textContent = `${own} ${statusElement.textContent}`.trim();
-+      const s2 = document.getElementById('status');
-+      if (s2 && s2 !== statusElement) s2.textContent = statusElement.textContent;
++  return result;
++};
+diff --git a/index.html b/index.html
+index 66c9173..c87d584 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,11 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <!-- Document-level CSP fallback when HTTP response headers cannot be set on static hosting -->
++  <meta
++    http-equiv="Content-Security-Policy"
++    content="default-src 'self'; connect-src 'self' https://images.unsplash.com; img-src 'self' https://images.unsplash.com data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'"
++  />
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -129,12 +134,86 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      border: none;
++      cursor: pointer;
++      font-size: 1rem;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    /* Newsletter Section */
++    .newsletter-section {
++      background: white;
++      margin-top: 40px;
++      padding: 32px 24px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
 +    }
-+  });
 +
-+  document.getElementById('btn-fetch-allowed')?.addEventListener('click', () => {
-+    fetchWithPolicyHandling('/', { statusElement });
-+  });
++    .newsletter-section h2 {
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
 +
-+  document.getElementById('btn-fetch-blocked')?.addEventListener('click', () => {
-+    fetchWithPolicyHandling('https://third-party.example.net/collect', { statusElement });
-+  });
-+}
-diff --git a/connection-policy.mjs b/connection-policy.mjs
++    .newsletter-section p {
++      margin-bottom: 20px;
++      color: var(--text);
++    }
++
++    .newsletter-form {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 12px;
++      max-width: 520px;
++      margin: 0 auto;
++    }
++
++    .newsletter-form input[type="email"] {
++      flex: 1 1 260px;
++      padding: 10px 14px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      font-size: 1rem;
++      color: var(--text);
++    }
++
++    .newsletter-form .btn {
++      margin-top: 0;
++    }
++
++    .newsletter-status {
++      margin-top: 16px;
++      padding: 12px 16px;
++      border-radius: 6px;
++      font-size: 0.95rem;
++      max-width: 600px;
++      margin-left: auto;
++      margin-right: auto;
++    }
++
++    .status-allowed {
++      background-color: #e8f5e9;
++      color: #1b5e20;
++      border: 1px solid #a5d6a7;
++    }
++
++    .status-blocked,
++    .status-error {
++      background-color: #ffebee;
++      color: #b71c1c;
++      border: 1px solid #ef9a9a;
++    }
++
++    .status-pending {
++      background-color: #fff8e1;
++      color: #e65100;
++      border: 1px solid #ffe082;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +274,30 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="newsletter-section" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Join the Daily Grind Newsletter</h2>
++      <p>Sign up for fresh roast alerts, seasonal tasting notes, and exclusive member offers.</p>
++      <form id="newsletter-form" class="newsletter-form" action="/api/newsletter" method="POST" novalidate>
++        <label for="newsletter-email" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0);">Email address</label>
++        <input
++          type="email"
++          id="newsletter-email"
++          name="email"
++          placeholder="you@example.com"
++          required
++          autocomplete="email"
++        />
++        <button type="submit" id="newsletter-submit" class="btn">Subscribe</button>
++      </form>
++      <div
++        id="newsletter-status"
++        class="newsletter-status"
++        role="status"
++        aria-live="polite"
++        hidden
++      ></div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +310,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/app.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..acfd203 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,10 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "build": "node --check server.js && node --check policy.js && node --check app.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/policy.js b/policy.js
 new file mode 100644
-index 0000000..1f896c6
+index 0000000..122e5ce
 --- /dev/null
-+++ b/connection-policy.mjs
-@@ -0,0 +1,118 @@
-+const ALLOWLIST_DESTS = new Set(['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']);
++++ b/policy.js
+@@ -0,0 +1,177 @@
++export const ALLOWLIST_DESTS = new Set([
++  'document',
++  'iframe',
++  'worker',
++  'sharedworker',
++  'serviceworker',
++]);
 +
++// Allowed external patterns for Daily Grind (Unsplash photo host)
++export const ALLOWED_PATTERNS = ['https://images.unsplash.com/*'];
++
++// Normalize a config URL or URLPattern string for Connection-Allowlist:
++// - Rewrites ws:// and wss:// to http:// and https:// (WebSocket matching rule).
++// - Strips a bare trailing slash on origin-only URLs (e.g. from new URL(...).href)
++//   so all subpaths on the origin are permitted instead of only "/".
 +export function normalizeAllowlistPattern(rawPattern) {
-+  const trimmed = String(rawPattern).trim().replace(/^ws(s?):\/\//i, 'http$1://');
++  const trimmed = String(rawPattern)
++    .trim()
++    .replace(/^ws(s?):\/\//i, 'http$1://');
 +  if (!/^https?:\/\//i.test(trimmed)) {
 +    throw new Error(`Pattern must include an http:// or https:// scheme: ${rawPattern}`);
 +  }
@@ -89,9 +287,10 @@ index 0000000..1f896c6
 +  return trimmed.replace(/^(https?:\/\/[^/?#]+)\/$/i, '$1');
 +}
 +
++// Build an RFC 9651 Inner List value for Connection-Allowlist or Connection-Allowlist-Report-Only.
 +export function buildConnectionAllowlistHeader({
 +  allowSelf = true,
-+  patterns = [],
++  patterns = ALLOWED_PATTERNS,
 +  reportTo,
 +  redirects = 'block',
 +  webrtc = 'block',
@@ -110,18 +309,39 @@ index 0000000..1f896c6
 +  if (redirects === 'allow') header += '; redirects=allow';
 +  if (webrtc === 'allow') header += '; webrtc=allow';
 +  if (reportTo) {
-+    header += `; report-to=${String(reportTo).trim().replace(/^"+|"+$/g, '')}`;
++    const endpointToken = String(reportTo).trim().replace(/^"+|"+$/g, '');
++    header += `; report-to=${endpointToken}`;
 +  }
 +  return header;
 +}
 +
-+export const ALLOWED_PATTERNS = ['https://images.unsplash.com'];
++// Build Content-Security-Policy fallback header pairing with Connection-Allowlist.
++export function buildCspHeader({
++  reportTo = 'conn-reports',
++  styleHashes = [],
++  scriptHashes = [],
++} = {}) {
++  const styleSrc = ["'self'", ...styleHashes].join(' ');
++  const scriptSrc = ["'self'", ...scriptHashes].join(' ');
++  const directives = [
++    "default-src 'self'",
++    "connect-src 'self' https://images.unsplash.com",
++    "img-src 'self' https://images.unsplash.com data: blob:",
++    `style-src ${styleSrc}`,
++    `script-src ${scriptSrc}`,
++    "form-action 'self'",
++    "worker-src 'self'",
++    "object-src 'none'",
++    "base-uri 'self'",
++  ];
++  if (reportTo) {
++    directives.push(`report-to ${reportTo}`);
++  }
++  return directives.join('; ');
++}
 +
-+export const CSP =
-+  "default-src 'self'; connect-src 'self'; img-src 'self' https://images.unsplash.com data:; " +
-+  "style-src 'self' 'unsafe-inline'; script-src 'self'; form-action 'self'; worker-src 'self'; " +
-+  "object-src 'none'; base-uri 'self'";
-+
++// Server or middleware helper applying Connection-Allowlist, Content-Security-Policy,
++// and Reporting-Endpoints on document and worker responses.
 +export function setConnectionAllowlistHeaders(res, options = {}) {
 +  const {
 +    secFetchDest = 'document',
@@ -132,15 +352,11 @@ index 0000000..1f896c6
 +    redirects = 'block',
 +    webrtc = 'block',
 +    reportOnly = false,
++    csp,
 +  } = options;
 +
-+  const setHeader = (name, value) => {
-+    if (typeof res.setHeader === 'function') {
-+      res.setHeader(name, value);
-+    } else if (res.headers && typeof res.headers.set === 'function') {
-+      res.headers.set(name, value);
-+    }
-+  };
++  const setHeader = (name, value) =>
++    typeof res.setHeader === 'function' ? res.setHeader(name, value) : res.headers.set(name, value);
 +
 +  if (typeof res.appendHeader === 'function') {
 +    res.appendHeader('Vary', 'Sec-Fetch-Dest');
@@ -150,12 +366,21 @@ index 0000000..1f896c6
 +    setHeader('Vary', 'Sec-Fetch-Dest');
 +  }
 +
++  // Browsers only honor Connection-Allowlist on document/navigation and worker script responses.
++  // When Sec-Fetch-Dest is omitted (e.g. direct curl/non-browser HTTP checks), default to applying headers
++  // on HTML/worker routes, or skip only when an explicit non-document/worker Sec-Fetch-Dest is sent.
 +  if (secFetchDest && !ALLOWLIST_DESTS.has(String(secFetchDest).toLowerCase())) return;
 +
 +  setHeader('Reporting-Endpoints', `${reportEndpointName}="${reportEndpointUrl}"`);
 +  setHeader(
 +    reportOnly ? 'Connection-Allowlist-Report-Only' : 'Connection-Allowlist',
-+    buildConnectionAllowlistHeader({ allowSelf: true, patterns, reportTo: reportEndpointName, redirects, webrtc }),
++    buildConnectionAllowlistHeader({
++      allowSelf: true,
++      patterns,
++      reportTo: reportEndpointName,
++      redirects,
++      webrtc,
++    }),
 +  );
 +
 +  if (!reportOnly && Array.isArray(reportOnlyPatterns)) {
@@ -171,105 +396,258 @@ index 0000000..1f896c6
 +    );
 +  }
 +
-+  setHeader('Content-Security-Policy', `${CSP}; report-to ${reportEndpointName}`);
++  if (csp) {
++    setHeader('Content-Security-Policy', csp);
++  }
 +}
 +
++// Client-side helper that catches blocked outbound requests gracefully without unhandled rejections.
 +export async function fetchWithPolicyHandling(url, { statusElement, ...fetchOptions } = {}) {
 +  try {
 +    const response = await fetch(url, fetchOptions);
 +    if (!response.ok) throw new Error(`HTTP ${response.status}`);
++    const contentType = response.headers.get('content-type') || '';
++    let data = null;
 +    const body = await response.text();
-+    if (statusElement) {
-+      statusElement.textContent = `Allowed: Loaded ${url} (${body.length} bytes).`;
++    if (contentType.includes('application/json') && body) {
++      try {
++        data = JSON.parse(body);
++      } catch {
++        data = null;
++      }
 +    }
-+    return { ok: true, body, error: null };
++    if (statusElement) {
++      statusElement.dataset.state = 'allowed';
++      statusElement.className = 'newsletter-status status-allowed';
++      statusElement.textContent =
++        data?.message || `Allowed: Loaded ${url} (${body.length} bytes).`;
++    }
++    return { ok: true, body, data, error: null };
 +  } catch (error) {
 +    const message = error instanceof Error ? error.message : String(error);
 +    if (statusElement) {
-+      statusElement.textContent = `Blocked: Request to ${url} was rejected by the outbound connection policy (${message}).`;
++      statusElement.dataset.state = 'blocked';
++      statusElement.className = 'newsletter-status status-blocked';
++      statusElement.textContent = `Blocked: Request to ${url} could not go through and was rejected by the outbound connection policy (${message}).`;
 +    }
-+    return { ok: false, body: null, error };
++    return { ok: false, body: null, data: null, error };
 +  }
 +}
-diff --git a/index.html b/index.html
-index 66c9173..d90c234 100644
---- a/index.html
-+++ b/index.html
-@@ -4,6 +4,8 @@
- <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-+  <meta http-equiv="Content-Security-Policy"
-+    content="default-src 'self'; connect-src 'self'; img-src 'self' https://images.unsplash.com data:; style-src 'self' 'unsafe-inline'; script-src 'self'; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'">
-   <title>The Daily Grind | Artisanal Coffee</title>
-   <style>
-     :root {
-@@ -205,7 +207,10 @@
-       <a href="/privacy-policy">Privacy</a>
-     </div>
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-+    <button type="button" id="check-network" class="btn">Check network policy</button>
-+    <p id="network-status" role="status" aria-live="polite"></p>
-   </footer>
-+  <script src="/app.js"></script>
- 
- </body>
- 
-diff --git a/package.json b/package.json
-index 2bd4d77..9ef5bd1 100644
---- a/package.json
-+++ b/package.json
-@@ -1,8 +1,10 @@
- {
-   "name": "daily-grind",
-   "version": "1.0.0",
-+  "type": "module",
-   "scripts": {
--    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "start": "node server.mjs",
-+    "build": "node --check server.mjs && node --check connection-policy.mjs && node --check app.js"
-   },
-   "pnpm": {
-     "onlyBuiltDependencies": []
-diff --git a/server.mjs b/server.mjs
+diff --git a/server.js b/server.js
 new file mode 100644
-index 0000000..408392e
+index 0000000..ea9e09d
 --- /dev/null
-+++ b/server.mjs
-@@ -0,0 +1,36 @@
-+import { createServer } from 'node:http';
-+import { readFile } from 'node:fs/promises';
-+import { extname, join, normalize } from 'node:path';
++++ b/server.js
+@@ -0,0 +1,212 @@
++import http from 'node:http';
++import crypto from 'node:crypto';
++import fs from 'node:fs/promises';
++import path from 'node:path';
 +import { fileURLToPath } from 'node:url';
-+import { setConnectionAllowlistHeaders } from './connection-policy.mjs';
++import {
++  ALLOWED_PATTERNS,
++  buildCspHeader,
++  setConnectionAllowlistHeaders,
++} from './policy.js';
 +
-+const root = fileURLToPath(new URL('.', import.meta.url));
-+const types = {
++const __filename = fileURLToPath(import.meta.url);
++const __dirname = path.dirname(__filename);
++
++const MIME_TYPES = {
 +  '.html': 'text/html; charset=utf-8',
-+  '.js': 'text/javascript',
-+  '.mjs': 'text/javascript',
-+  '.css': 'text/css',
-+  '.json': 'application/json',
++  '.js': 'text/javascript; charset=utf-8',
++  '.mjs': 'text/javascript; charset=utf-8',
++  '.css': 'text/css; charset=utf-8',
++  '.json': 'application/json; charset=utf-8',
++  '.svg': 'image/svg+xml',
++  '.png': 'image/png',
++  '.jpg': 'image/jpeg',
++  '.jpeg': 'image/jpeg',
++  '.ico': 'image/x-icon',
 +};
-+const publicFiles = new Set(['/index.html', '/app.js', '/connection-policy.mjs']);
 +
-+createServer(async (req, res) => {
-+  const path = new URL(req.url, 'http://localhost').pathname;
-+  if (path === '/api/security-reports') {
-+    req.resume();
-+    res.writeHead(204).end();
-+    return;
++const subscribers = new Set();
++const securityReports = [];
++
++function computeInlineStyleHashes(htmlContent) {
++  const hashes = [];
++  const styleRegex = /<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi;
++  let match;
++  while ((match = styleRegex.exec(htmlContent)) !== null) {
++    const hash = crypto.createHash('sha256').update(match[1], 'utf8').digest('base64');
++    hashes.push(`'sha256-${hash}'`);
 +  }
-+  const file = path === '/' ? '/index.html' : normalize(path);
-+  setConnectionAllowlistHeaders(res, { secFetchDest: req.headers['sec-fetch-dest'] });
-+  if (!publicFiles.has(file)) {
-+    res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
-+    return;
++  return hashes;
++}
++
++function readRequestBody(req) {
++  return new Promise((resolve, reject) => {
++    let body = '';
++    req.setEncoding('utf8');
++    req.on('data', (chunk) => {
++      body += chunk;
++      if (body.length > 1e6) {
++        reject(new Error('Payload too large'));
++        req.destroy();
++      }
++    });
++    req.on('end', () => resolve(body));
++    req.on('error', reject);
++  });
++}
++
++function parseEmailFromBody(rawBody, contentType = '') {
++  if (!rawBody) return '';
++  if (contentType.includes('application/x-www-form-urlencoded')) {
++    const params = new URLSearchParams(rawBody);
++    return (params.get('email') || '').trim();
 +  }
 +  try {
-+    const body = await readFile(join(root, file));
-+    res.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream' }).end(body);
++    const parsed = JSON.parse(rawBody);
++    return typeof parsed?.email === 'string' ? parsed.email.trim() : '';
 +  } catch {
-+    res.writeHead(404).end('Not found');
++    const params = new URLSearchParams(rawBody);
++    return (params.get('email') || '').trim();
 +  }
-+}).listen(process.env.PORT !== undefined ? Number(process.env.PORT) : 11222);
++}
++
++export async function handleRequest(req, res) {
++  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
++  const pathname = url.pathname;
++  const secFetchDest = req.headers['sec-fetch-dest'];
++  const origin = `${url.protocol}//${url.host}`;
++  const reportEndpointUrl = `${origin}/api/security-reports`;
++
++  // Newsletter subscription endpoint on our own server
++  if (
++    pathname === '/api/newsletter' ||
++    pathname === '/newsletter' ||
++    pathname === '/api/subscribe' ||
++    pathname === '/subscribe'
++  ) {
++    if (req.method === 'POST') {
++      try {
++        const rawBody = await readRequestBody(req);
++        const email = parseEmailFromBody(rawBody, req.headers['content-type'] || '');
++        if (!email || !email.includes('@')) {
++          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
++          res.end(
++            JSON.stringify({
++              ok: false,
++              message: 'Please provide a valid email address.',
++            }),
++          );
++          return;
++        }
++        subscribers.add(email.toLowerCase());
++        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
++        res.end(
++          JSON.stringify({
++            ok: true,
++            email,
++            message: `Thanks for subscribing! ${email} has been added to The Daily Grind newsletter.`,
++          }),
++        );
++      } catch {
++        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
++        res.end(JSON.stringify({ ok: false, message: 'Invalid request payload.' }));
++      }
++      return;
++    }
++
++    if (req.method === 'GET') {
++      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
++      res.end(JSON.stringify({ ok: true, count: subscribers.size }));
++      return;
++    }
++  }
++
++  // Violation reporting endpoint for Connection-Allowlist and CSP
++  if (pathname === '/api/security-reports') {
++    if (req.method === 'POST') {
++      try {
++        const rawBody = await readRequestBody(req);
++        const parsed = rawBody ? JSON.parse(rawBody) : [];
++        const entries = Array.isArray(parsed) ? parsed : [parsed];
++        securityReports.push(...entries);
++      } catch {
++        // Ignore malformed report payloads
++      }
++      res.writeHead(204);
++      res.end();
++      return;
++    }
++    if (req.method === 'GET') {
++      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
++      res.end(JSON.stringify({ reports: securityReports }));
++      return;
++    }
++  }
++
++  // Serve static files
++  const safePath = pathname === '/' ? '/index.html' : pathname;
++  const resolvedPath = path.resolve(__dirname, `.${safePath}`);
++  if (!resolvedPath.startsWith(__dirname)) {
++    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Forbidden');
++    return;
++  }
++
++  try {
++    const stat = await fs.stat(resolvedPath);
++    const filePath = stat.isDirectory() ? path.join(resolvedPath, 'index.html') : resolvedPath;
++    const ext = path.extname(filePath).toLowerCase();
++    const contentType = MIME_TYPES[ext] || 'application/octet-stream';
++    const content = await fs.readFile(filePath);
++
++    const isDocument = ext === '.html';
++    const isWorkerDest =
++      secFetchDest &&
++      ['worker', 'sharedworker', 'serviceworker'].includes(String(secFetchDest).toLowerCase());
++
++    if (isDocument || isWorkerDest) {
++      const styleHashes = isDocument
++        ? computeInlineStyleHashes(content.toString('utf8'))
++        : [];
++      const csp = buildCspHeader({
++        reportTo: 'conn-reports',
++        styleHashes: [...styleHashes, "'unsafe-inline'"],
++      });
++      setConnectionAllowlistHeaders(res, {
++        secFetchDest: secFetchDest || (isDocument ? 'document' : 'worker'),
++        patterns: ALLOWED_PATTERNS,
++        reportEndpointName: 'conn-reports',
++        reportEndpointUrl,
++        redirects: 'block',
++        webrtc: 'block',
++        csp,
++      });
++    } else {
++      res.setHeader('Vary', 'Sec-Fetch-Dest');
++    }
++
++    res.writeHead(200, { 'Content-Type': contentType });
++    res.end(content);
++  } catch {
++    res.setHeader('Vary', 'Sec-Fetch-Dest');
++    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Not Found');
++  }
++}
++
++export function createServer() {
++  return http.createServer((req, res) => {
++    handleRequest(req, res).catch((err) => {
++      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
++      res.end(`Internal Server Error: ${err instanceof Error ? err.message : String(err)}`);
++    });
++  });
++}
++
++if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
++  const port = Number(process.env.PORT) || 11222;
++  const server = createServer();
++  server.listen(port, () => {
++    console.log(`Server listening on http://localhost:${port}`);
++  });
++}

@@ -1,47 +1,77 @@
 diff --git a/.gitignore b/.gitignore
 new file mode 100644
-index 0000000..b947077
+index 0000000..ee0fd60
 --- /dev/null
 +++ b/.gitignore
-@@ -0,0 +1,2 @@
-+node_modules/
+@@ -0,0 +1,3 @@
 +dist/
++data/
++node_modules/
 diff --git a/README.md b/README.md
 new file mode 100644
-index 0000000..3c7f7fb
+index 0000000..c17fbfb
 --- /dev/null
 +++ b/README.md
-@@ -0,0 +1,12 @@
+@@ -0,0 +1,28 @@
 +# The Daily Grind
 +
-+Run `npm install`, then `npm start` (default port 11222; override with `PORT`).
-+`npm run build` compiles the strict TypeScript server and client and copies the public assets into `dist/public`. Run `npm test` for policy, HTTP integration and client error-handling checks.
++Run `npm run build` to generate `dist/`. Deploy with the included Node server
++(`npm start`, with optional `PORT`; default 11222) so the page, newsletter API,
++and security headers share an origin. Build before starting the server.
 +
-+Serve through the included server to deliver the required HTTP headers. If deploying behind a proxy, preserve `Connection-Allowlist`, `Reporting-Endpoints`, `Content-Security-Policy` and `Vary`. Static hosting must configure equivalent HTTP response headers; the HTML CSP meta element provides only document-level fallback restrictions.
++The newsletter endpoint accepts JSON `POST /api/newsletter` with an `email`
++field. Successful submissions are appended to `data/newsletter.jsonl`; keep
++this directory on persistent storage and private to the server. A failed write
++returns an error rather than confirming a subscription. This records signups;
++delivery of newsletter emails is handled separately.
 +
-+The policy permits the response origin and the existing Unsplash image origin. Redirects and WebRTC stay blocked by default. Scripts and styles are local files so the CSP needs no inline exceptions. Dedicated, shared and service worker requests receive the same policy as documents, a superset of every document policy. There are currently no worker scripts or WebSocket connections in the app.
++Every server response carries an enforcing `Connection-Allowlist` allowing
++`response-origin` and `https://images.unsplash.com`. Redirects and WebRTC retain
++the policy's default blocking behavior. The same headers apply to worker
++responses if workers are added. CSP provides additional restrictions for browsers
++without Connection Allowlist support, including explicit same-origin form and
++worker restrictions. No inline scripts or styles are required.
 +
-+Set `CONNECTION_POLICY_MODE=report-only` to audit the connection allowlist during rollout. CSP remains enforced as a fallback. The policy helper also supports a simultaneous stricter `reportOnlyPatterns` candidate. The same-origin reporting endpoint accepts bounded JSON report batches and returns 204; connect it to your reporting storage for durable analysis. Reports are not persisted or logged by this demo server.
++Browser violation reports go to the same-origin `/api/security-reports`
++endpoint, which consumes bounded reports without storing potentially sensitive
++URLs. Connect this endpoint to private monitoring if report retention is needed.
 +
-+Use the connection status buttons to check a same-origin request and a blocked third-party request. Connection-Allowlist is browser enforced and cannot be polyfilled; CSP supplies fetch restrictions in browsers without support. Client errors cover both policy rejection and network failure, since fetch cannot reliably distinguish them. Allowed external requests are still subject to CORS and endpoint availability.
++`dist/_headers` also provides the policies for static hosts supporting that
++format. Static hosting alone does not implement the API endpoints; route them
++to the server on the same origin. Other hosting platforms must configure the
++equivalent HTTP response headers. Connection-Allowlist requires browser support
++and cannot be replaced with an HTML meta tag or JavaScript polyfill.
 diff --git a/build.mjs b/build.mjs
 new file mode 100644
-index 0000000..cd7434d
+index 0000000..1b774ba
 --- /dev/null
 +++ b/build.mjs
-@@ -0,0 +1,7 @@
-+import { mkdir, copyFile } from 'node:fs/promises';
+@@ -0,0 +1,20 @@
++import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
++import { execFileSync } from 'node:child_process';
++import { securityHeaders } from './security.mjs';
 +
-+await mkdir('dist/public', { recursive: true });
-+for (const asset of ['index.html', 'styles.css']) {
-+  await copyFile(asset, `dist/public/${asset}`);
++for (const file of ['newsletter.js', 'server.mjs', 'security.mjs']) {
++  execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
 +}
-+await copyFile('dist/client.js', 'dist/public/client.js');
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++for (const file of ['index.html', 'styles.css', 'newsletter.js']) {
++  await copyFile(new URL(file, import.meta.url), new URL(`dist/${file}`, import.meta.url));
++}
++// Static hosts that support _headers can enforce these policies too. The signup
++// and report endpoints still require the included server (or equivalent routes).
++await writeFile(new URL('./dist/_headers', import.meta.url),
++  '/*\n' + Object.entries(securityHeaders).map(([name, value]) => `  ${name}: ${value}\n`).join(''));
++const page = await readFile(new URL('./dist/index.html', import.meta.url), 'utf8');
++if (page.includes('<style>') || /\sstyle=/.test(page)) {
++  throw new Error('Inline styles are incompatible with the Content-Security-Policy');
++}
++console.log('Built homepage, assets and security headers.');
 diff --git a/index.html b/index.html
-index 66c9173..0aa1a94 100644
+index 66c9173..7dfc854 100644
 --- a/index.html
 +++ b/index.html
-@@ -5,154 +5,9 @@
+@@ -5,154 +5,8 @@
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>The Daily Grind | Artisanal Coffee</title>
@@ -193,13 +223,12 @@ index 66c9173..0aa1a94 100644
 -      font-size: 0.85rem;
 -    }
 -  </style>
-+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://images.unsplash.com; img-src 'self' https://images.unsplash.com data: blob:; style-src 'self'; script-src 'self'; font-src 'self'; form-action 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'">
 +  <link rel="stylesheet" href="/styles.css">
-+  <script type="module" src="/client.js"></script>
++  <script src="/newsletter.js" defer></script>
  </head>
  
  <body>
-@@ -176,7 +31,7 @@
+@@ -176,7 +30,7 @@
  
    <main class="container">
      <section>
@@ -208,488 +237,372 @@ index 66c9173..0aa1a94 100644
        <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
-@@ -195,6 +50,13 @@
+@@ -195,6 +49,18 @@
          </div>
        </div>
      </section>
-+    <section class="connection-check" aria-labelledby="connection-title">
-+      <h2 id="connection-title">Connection status</h2>
-+      <p>Check store connectivity or verify that an unapproved external connection is blocked.</p>
-+      <button type="button" class="btn" data-request-url="/api/health">Check store connection</button>
-+      <button type="button" class="btn" data-request-url="https://example.com/">Check blocked connection</button>
-+      <p id="connection-status" role="status" aria-live="polite">Ready to check a connection.</p>
++    <section class="newsletter card" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">A fresh brew in your inbox</h2>
++      <p>Sign up for coffee news, seasonal favorites, and updates from The Daily Grind.</p>
++      <form id="newsletter-form" action="/api/newsletter" method="post">
++        <label for="newsletter-email">Email address</label>
++        <input id="newsletter-email" name="email" type="email" autocomplete="email"
++          maxlength="254" required placeholder="you@example.com">
++        <button id="newsletter-submit" class="btn" type="submit">Sign up</button>
++        <p id="newsletter-status" role="status" aria-live="polite" aria-atomic="true"></p>
++      </form>
++      <noscript>Please enable JavaScript to sign up for our newsletter.</noscript>
 +    </section>
    </main>
  
    <footer>
+diff --git a/newsletter.js b/newsletter.js
+new file mode 100644
+index 0000000..9e7cdb1
+--- /dev/null
++++ b/newsletter.js
+@@ -0,0 +1,40 @@
++// @ts-check
++const form = document.querySelector('#newsletter-form');
++const email = document.querySelector('#newsletter-email');
++const button = document.querySelector('#newsletter-submit');
++const status = document.querySelector('#newsletter-status');
++
++if (form instanceof HTMLFormElement && email instanceof HTMLInputElement &&
++    button instanceof HTMLButtonElement && status instanceof HTMLElement) {
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    if (button.disabled || !form.reportValidity()) return;
++
++    button.disabled = true;
++    form.setAttribute('aria-busy', 'true');
++    status.textContent = 'Signing you up…';
++    const controller = new AbortController();
++    const timeout = setTimeout(() => controller.abort(), 10000);
++
++    try {
++      const response = await fetch('/api/newsletter', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        credentials: 'same-origin',
++        redirect: 'error',
++        signal: controller.signal,
++        body: JSON.stringify({ email: email.value.trim() }),
++      });
++      if (!response.ok) throw new Error('Signup request failed');
++      status.textContent = 'Thanks for signing up for The Daily Grind newsletter!';
++      form.reset();
++    } catch {
++      // Includes policy blocks (TypeError), offline requests, timeouts and HTTP errors.
++      status.textContent = 'We couldn’t complete your signup. Please check your connection and try again.';
++    } finally {
++      clearTimeout(timeout);
++      button.disabled = false;
++      form.removeAttribute('aria-busy');
++    }
++  });
++}
 diff --git a/package.json b/package.json
-index 2bd4d77..dd42ed6 100644
+index 2bd4d77..28f2fa6 100644
 --- a/package.json
 +++ b/package.json
-@@ -1,8 +1,15 @@
- {
+@@ -2,7 +2,8 @@
    "name": "daily-grind",
    "version": "1.0.0",
-+  "type": "module",
    "scripts": {
 -    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "build": "tsc && node build.mjs",
-+    "start": "npm run build && node dist/server.js",
-+    "test": "npm run build && node --test tests/*.test.mjs"
-+  },
-+  "devDependencies": {
-+    "@types/node": "^22.0.0",
-+    "typescript": "^5.9.0"
++    "build": "node build.mjs",
++    "start": "node server.mjs"
    },
    "pnpm": {
      "onlyBuiltDependencies": []
-diff --git a/src/client.ts b/src/client.ts
+diff --git a/security.mjs b/security.mjs
 new file mode 100644
-index 0000000..3ffafc4
+index 0000000..2e7e8cd
 --- /dev/null
-+++ b/src/client.ts
-@@ -0,0 +1,27 @@
-+type FetchResult = { ok: true; body: string; error: null } | { ok: false; body: null; error: string };
-+
-+export async function fetchWithPolicyHandling(url: string, statusElement: HTMLElement): Promise<FetchResult> {
-+  statusElement.textContent = 'Checking connection…';
-+  try {
-+    const response = await fetch(url);
-+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-+    const body = await response.text();
-+    statusElement.textContent = 'Allowed: The request completed successfully.';
-+    return { ok: true, body, error: null };
-+  } catch (error: unknown) {
-+    const message = error instanceof Error ? error.message : String(error);
-+    statusElement.textContent = `Blocked or unavailable: The request could not complete. The outbound policy may have rejected it (${message}).`;
-+    return { ok: false, body: null, error: message };
-+  }
-+}
-+
-+const status = document.getElementById('connection-status');
-+if (status) {
-+  for (const button of document.querySelectorAll<HTMLButtonElement>('button[data-request-url]')) {
-+    button.addEventListener('click', async () => {
-+      button.disabled = true;
-+      try { await fetchWithPolicyHandling(button.dataset.requestUrl ?? '/api/health', status); }
-+      finally { button.disabled = false; }
-+    });
-+  }
-+}
-diff --git a/src/policy.ts b/src/policy.ts
++++ b/security.mjs
+@@ -0,0 +1,9 @@
++// Apply the same policy to documents and every worker script, including service
++// workers. Applying it unconditionally also avoids cache variants by destination.
++export const securityHeaders = {
++  'Connection-Allowlist': '(response-origin "https://images.unsplash.com"); report-to=conn-reports',
++  'Reporting-Endpoints': 'conn-reports="/api/security-reports"',
++  'Content-Security-Policy': "default-src 'self'; connect-src 'self'; img-src 'self' https://images.unsplash.com; script-src 'self'; style-src 'self'; font-src 'self'; form-action 'self'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; report-to conn-reports",
++  'X-Content-Type-Options': 'nosniff',
++  'Referrer-Policy': 'same-origin',
++};
+diff --git a/server.mjs b/server.mjs
 new file mode 100644
-index 0000000..595c8cb
+index 0000000..4e53bda
 --- /dev/null
-+++ b/src/policy.ts
-@@ -0,0 +1,79 @@
-+import type { ServerResponse } from 'node:http';
-+
-+const POLICY_DESTINATIONS = new Set(['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']);
-+export const EXTERNAL_PATTERNS = ['https://images.unsplash.com'] as const;
-+const REPORT_NAME = 'conn-reports';
-+export const CSP = [
-+  "default-src 'self'",
-+  "connect-src 'self' https://images.unsplash.com",
-+  "img-src 'self' https://images.unsplash.com data: blob:",
-+  "style-src 'self'",
-+  "script-src 'self'",
-+  "font-src 'self'",
-+  "form-action 'self'",
-+  "worker-src 'self'",
-+  "object-src 'none'",
-+  "base-uri 'self'",
-+  `report-to ${REPORT_NAME}`,
-+].join('; ');
-+
-+export function normalizeAllowlistPattern(pattern: string | URL): string {
-+  const normalized = String(pattern).trim().replace(/^ws(s?):\/\//i, 'http$1://');
-+  if (!/^https?:\/\/[^/?#]+/i.test(normalized) || /[\s,()]/.test(normalized)
-+      || /[^\x20-\x7e]/.test(normalized)) {
-+    throw new Error('Allowlist patterns require an HTTP(S) hostname and cannot contain whitespace, commas or regex groups.');
-+  }
-+  return normalized.replace(/^(https?:\/\/[^/?#]+)\/$/i, '$1');
-+}
-+
-+interface AllowlistOptions {
-+  allowSelf?: boolean;
-+  patterns?: readonly (string | URL)[];
-+  reportTo?: string;
-+  redirects?: 'block' | 'allow';
-+  webrtc?: 'block' | 'allow';
-+}
-+
-+export function buildConnectionAllowlistHeader({
-+  allowSelf = true, patterns = [], reportTo = REPORT_NAME, redirects = 'block', webrtc = 'block',
-+}: AllowlistOptions = {}): string {
-+  const items = new Set<string>(allowSelf ? ['response-origin'] : []);
-+  for (const pattern of patterns) {
-+    if (String(pattern).trim() === 'response-origin') items.add('response-origin');
-+    else items.add(`"${normalizeAllowlistPattern(pattern).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
-+  }
-+  let value = `(${[...items].join(' ')})`;
-+  if (redirects === 'allow') value += '; redirects=allow';
-+  if (webrtc === 'allow') value += '; webrtc=allow';
-+  if (reportTo) {
-+    if (!/^[a-z*][a-z0-9_.*-]*$/.test(reportTo)) throw new Error('Invalid reporting endpoint name.');
-+    value += `; report-to=${reportTo}`;
-+  }
-+  return value;
-+}
-+
-+interface PolicyOptions {
-+  destination?: string;
-+  isDocument?: boolean;
-+  isWorker?: boolean;
-+  reportOnly?: boolean;
-+  reportOnlyPatterns?: readonly (string | URL)[];
-+}
-+
-+export function setConnectionAllowlistHeaders(res: ServerResponse, {
-+  destination, isDocument = false, isWorker = false, reportOnly = false, reportOnlyPatterns,
-+}: PolicyOptions = {}): void {
-+  const existing = String(res.getHeader('Vary') ?? '').split(',').map(value => value.trim()).filter(Boolean);
-+  if (!existing.some(value => value.toLowerCase() === 'sec-fetch-dest')) existing.push('Sec-Fetch-Dest');
-+  res.setHeader('Vary', existing.join(', '));
-+  // Apply by response type too, covering direct requests without Fetch Metadata.
-+  if (!isDocument && !isWorker && !POLICY_DESTINATIONS.has(destination?.toLowerCase() ?? '')) return;
-+  res.setHeader('Reporting-Endpoints', `${REPORT_NAME}="/api/security-reports"`);
-+  res.setHeader('Content-Security-Policy', CSP);
-+  // All workers use the same superset as controlled documents, including service workers.
-+  res.setHeader(reportOnly ? 'Connection-Allowlist-Report-Only' : 'Connection-Allowlist',
-+    buildConnectionAllowlistHeader({ patterns: EXTERNAL_PATTERNS }));
-+  if (!reportOnly && reportOnlyPatterns) {
-+    res.setHeader('Connection-Allowlist-Report-Only', buildConnectionAllowlistHeader({ patterns: reportOnlyPatterns }));
-+  }
-+}
-diff --git a/src/server.ts b/src/server.ts
-new file mode 100644
-index 0000000..30c8153
---- /dev/null
-+++ b/src/server.ts
-@@ -0,0 +1,58 @@
++++ b/server.mjs
+@@ -0,0 +1,95 @@
 +import { createServer } from 'node:http';
-+import { readFile } from 'node:fs/promises';
-+import { fileURLToPath } from 'node:url';
-+import { setConnectionAllowlistHeaders } from './policy.js';
++import { appendFile, mkdir, readFile } from 'node:fs/promises';
++import { securityHeaders } from './security.mjs';
 +
-+const publicRoot = new URL('./public/', import.meta.url);
-+const assets = new Map([
++const files = new Map([
++  ['/', ['index.html', 'text/html; charset=utf-8']],
++  ['/index.html', ['index.html', 'text/html; charset=utf-8']],
 +  ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
-+  ['/client.js', ['client.js', 'text/javascript; charset=utf-8']],
++  ['/newsletter.js', ['newsletter.js', 'text/javascript; charset=utf-8']],
 +]);
++const dataDirectory = new URL('./data/', import.meta.url);
 +
-+export const server = createServer(async (req, res) => {
++class RequestError extends Error {
++  constructor(status, message) {
++    super(message);
++    this.status = status;
++  }
++}
++
++async function readBody(request, limit) {
++  const chunks = [];
++  let size = 0;
++  for await (const chunk of request) {
++    size += chunk.length;
++    if (size > limit) throw new RequestError(413, 'Request is too large.');
++    chunks.push(chunk);
++  }
++  return Buffer.concat(chunks).toString('utf8');
++}
++
++const server = createServer(async (request, response) => {
++  for (const [name, value] of Object.entries(securityHeaders)) response.setHeader(name, value);
++  const json = (status, body) => {
++    response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
++    response.end(JSON.stringify(body));
++  };
 +  try {
-+    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
-+    const dest = req.headers['sec-fetch-dest'];
-+    const destination = typeof dest === 'string' ? dest : undefined;
-+    res.setHeader('X-Content-Type-Options', 'nosniff');
-+    if (pathname === '/api/security-reports' && req.method === 'POST') {
-+      // Bounded ingestion. Do not echo or log potentially sensitive destination URLs.
-+      let size = 0;
-+      const chunks: Buffer[] = [];
-+      for await (const chunk of req) {
-+        size += Buffer.byteLength(chunk);
-+        if (size > 65536) { res.writeHead(413).end(); return; }
-+        chunks.push(Buffer.from(chunk));
++    const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
++    if (pathname === '/api/newsletter' || pathname === '/api/security-reports') {
++      if (request.method !== 'POST') {
++        response.setHeader('Allow', 'POST');
++        return json(405, { error: 'Use POST.' });
 +      }
++      // Prevent third-party forms from submitting customer email addresses.
++      if (request.headers['sec-fetch-site'] === 'cross-site') {
++        return json(403, { error: 'Same-origin requests only.' });
++      }
++      const mediaType = request.headers['content-type']?.split(';')[0].trim().toLowerCase();
++      if (pathname === '/api/security-reports') {
++        if (mediaType !== 'application/reports+json' && mediaType !== 'application/csp-report') {
++          return json(415, { error: 'Expected a browser security report.' });
++        }
++        // Consume bounded reports without logging customer URLs or other private data.
++        await readBody(request, 65536);
++        response.writeHead(204, { 'Cache-Control': 'no-store' });
++        return response.end();
++      }
++      if (mediaType !== 'application/json') return json(415, { error: 'Expected JSON.' });
++      let body;
 +      try {
-+        const reports: unknown = JSON.parse(Buffer.concat(chunks).toString());
-+        if (!Array.isArray(reports)) throw new Error('Expected reporting batch');
-+      } catch { res.writeHead(400).end(); return; }
-+      res.writeHead(204).end();
-+      return;
++        body = JSON.parse(await readBody(request, 4096));
++      } catch (error) {
++        if (error instanceof RequestError) throw error;
++        throw new RequestError(400, 'Invalid JSON.');
++      }
++      const email = typeof body?.email === 'string' ? body.email.trim() : '';
++      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
++        return json(400, { error: 'Enter a valid email address.' });
++      }
++      await mkdir(dataDirectory, { recursive: true, mode: 0o700 });
++      await appendFile(new URL('newsletter.jsonl', dataDirectory),
++        JSON.stringify({ email, subscribedAt: new Date().toISOString() }) + '\n', { mode: 0o600 });
++      return json(201, { message: 'Subscribed.' });
 +    }
-+    if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { Allow: 'GET, HEAD' }).end(); return; }
-+    if (pathname === '/api/health') {
-+      res.writeHead(200, { 'Content-Type': 'application/json' });
-+      res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ ok: true }));
-+      return;
++    if (request.method !== 'GET' && request.method !== 'HEAD') {
++      response.setHeader('Allow', 'GET, HEAD');
++      return json(405, { error: 'Method not allowed.' });
 +    }
-+    const asset = assets.get(pathname);
-+    // Serve the existing same-origin navigation routes without HTTP redirects.
-+    const isDocument = !asset && !/\.[^/]+$/.test(pathname);
-+    if (!asset && !isDocument) { res.writeHead(404).end('Not found'); return; }
-+    setConnectionAllowlistHeaders(res, {
-+      destination, isDocument,
-+      reportOnly: process.env.CONNECTION_POLICY_MODE === 'report-only',
++    const asset = files.get(pathname);
++    if (!asset) return json(404, { error: 'Page not found.' });
++    const content = await readFile(new URL(`dist/${asset[0]}`, import.meta.url));
++    response.writeHead(200, { 'Content-Type': asset[1], 'Cache-Control': 'no-cache' });
++    response.end(request.method === 'HEAD' ? undefined : content);
++  } catch (error) {
++    if (response.destroyed) return;
++    json(error instanceof RequestError ? error.status : 500, {
++      error: error instanceof RequestError ? error.message : 'Unable to complete the request. Please try again.',
 +    });
-+    const body = await readFile(fileURLToPath(new URL(asset?.[0] ?? 'index.html', publicRoot)));
-+    res.writeHead(200, { 'Content-Type': asset?.[1] ?? 'text/html; charset=utf-8' });
-+    res.end(req.method === 'HEAD' ? undefined : body);
-+  } catch {
-+    res.writeHead(500).end('Unable to serve this request.');
 +  }
 +});
-+
++server.requestTimeout = 15000;
++server.headersTimeout = 10000;
 +const port = Number(process.env.PORT ?? 11222);
-+if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid PORT');
-+server.listen(port, () => console.log(`Daily Grind listening on port ${port}`));
++if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT');
++server.listen(port);
 diff --git a/styles.css b/styles.css
 new file mode 100644
-index 0000000..6351ff5
+index 0000000..259d7c3
 --- /dev/null
 +++ b/styles.css
-@@ -0,0 +1,154 @@
-+    :root {
-+      --primary: #4e342e;
-+      --secondary: #d7ccc8;
-+      --accent: #ffab40;
-+      --text: #3e2723;
-+      --light: #fafafa;
-+    }
+@@ -0,0 +1,168 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
 +
-+    * {
-+      box-sizing: border-box;
-+      margin: 0;
-+      padding: 0;
-+    }
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
 +
-+    body {
-+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-+      line-height: 1.6;
-+      color: var(--text);
-+      background-color: var(--light);
-+    }
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
 +
-+    /* Navigation */
-+    nav {
-+      background: var(--primary);
-+      color: white;
-+      padding: 1rem 5%;
-+      display: flex;
-+      justify-content: space-between;
-+      align-items: center;
-+      position: sticky;
-+      top: 0;
-+      z-index: 1000;
-+    }
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
 +
-+    .logo {
-+      font-size: 1.5rem;
-+      font-weight: bold;
-+      letter-spacing: 1px;
-+    }
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
 +
-+    nav ul {
-+      display: flex;
-+      list-style: none;
-+    }
++nav ul {
++  display: flex;
++  list-style: none;
++}
 +
-+    nav ul li {
-+      margin-left: 20px;
-+    }
++nav ul li {
++  margin-left: 20px;
++}
 +
-+    nav a {
-+      color: white;
-+      text-decoration: none;
-+      font-size: 0.9rem;
-+      transition: color 0.3s;
-+    }
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
 +
-+    nav a:hover {
-+      color: var(--accent);
-+    }
++nav a:hover {
++  color: var(--accent);
++}
 +
-+    .logout-link {
-+      border: 1px solid var(--accent);
-+      padding: 5px 12px;
-+      border-radius: 4px;
-+    }
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
 +
-+    /* Hero Section */
-+    .hero {
-+      height: 60vh;
-+      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-+        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
-+      background-size: cover;
-+      background-position: center;
-+      display: flex;
-+      flex-direction: column;
-+      justify-content: center;
-+      align-items: center;
-+      color: white;
-+      text-align: center;
-+      padding: 0 20px;
-+    }
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
 +
-+    .hero h1 {
-+      font-size: 3rem;
-+      margin-bottom: 1rem;
-+    }
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
 +
-+    /* Content Sections */
-+    .container {
-+      max-width: 1100px;
-+      margin: 40px auto;
-+      padding: 0 20px;
-+    }
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
 +
-+    .grid {
-+      display: grid;
-+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-+      gap: 20px;
-+      margin-top: 20px;
-+    }
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
 +
-+    .card {
-+      background: white;
-+      padding: 20px;
-+      border-radius: 8px;
-+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-+      text-align: center;
-+    }
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
 +
-+    .card h3 {
-+      margin-bottom: 10px;
-+      color: var(--primary);
-+    }
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
 +
-+    .btn {
-+      display: inline-block;
-+      background: var(--primary);
-+      color: white;
-+      padding: 10px 20px;
-+      text-decoration: none;
-+      border-radius: 5px;
-+      margin-top: 15px;
-+      transition: background 0.3s;
-+    }
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
 +
-+    .btn:hover {
-+      background: #3e2723;
-+    }
++.btn:hover {
++  background: #3e2723;
++}
 +
-+    footer {
-+      background: var(--secondary);
-+      text-align: center;
-+      padding: 40px 20px;
-+      margin-top: 40px;
-+    }
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
 +
-+    .footer-links {
-+      margin-bottom: 20px;
-+    }
++.footer-links {
++  margin-bottom: 20px;
++}
 +
-+    .footer-links a {
-+      margin: 0 10px;
-+      color: var(--text);
-+      text-decoration: none;
-+      font-size: 0.85rem;
-+    }
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
 +
 +.section-title { text-align: center; }
-+button.btn { border: 0; font: inherit; cursor: pointer; margin-right: 10px; }
-+button:disabled { opacity: 0.6; cursor: wait; }
-+#connection-status { margin-top: 12px; overflow-wrap: anywhere; }
-+.connection-check { margin-top: 40px; }
-+@media (max-width: 640px) { nav { flex-wrap: wrap; gap: 12px; } nav ul { flex-wrap: wrap; gap: 10px; } nav ul li { margin-left: 0; } }
-+
-diff --git a/tests/policy.test.mjs b/tests/policy.test.mjs
-new file mode 100644
-index 0000000..6d719cd
---- /dev/null
-+++ b/tests/policy.test.mjs
-@@ -0,0 +1,82 @@
-+import assert from 'node:assert/strict';
-+import { test, after } from 'node:test';
-+import { once } from 'node:events';
-+import { buildConnectionAllowlistHeader, normalizeAllowlistPattern, setConnectionAllowlistHeaders } from '../dist/policy.js';
-+
-+test('serializes an inner list, normalizes origins and WebSocket schemes', () => {
-+  assert.equal(buildConnectionAllowlistHeader({ patterns: [new URL('https://api.example.com'), 'wss://realtime.example.com/', 'https://*.cdn.example.com/*'] }),
-+    '(response-origin "https://api.example.com" "https://realtime.example.com" "https://*.cdn.example.com/*"); report-to=conn-reports');
-+  assert.equal(normalizeAllowlistPattern('ws://example.com/path'), 'http://example.com/path');
-+  assert.equal(buildConnectionAllowlistHeader({ allowSelf: false, reportTo: '' }), '()');
-+  assert.equal(buildConnectionAllowlistHeader({ redirects: 'allow', webrtc: 'allow' }),
-+    '(response-origin); redirects=allow; webrtc=allow; report-to=conn-reports');
-+  for (const pattern of ['/api/*', 'https://api.example.com/(a)', 'https://api.example.com,a', 'https://']) {
-+    assert.throws(() => normalizeAllowlistPattern(pattern));
-+  }
-+  assert.throws(() => buildConnectionAllowlistHeader({ reportTo: '"conn-reports"' }));
-+});
-+
-+test('preserves Vary and supports worker, staged and dual policies', () => {
-+  for (const destination of ['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']) {
-+    const headers = new Map([['Vary', 'Accept-Encoding']]);
-+    const response = { getHeader: name => headers.get(name), setHeader: (name, value) => headers.set(name, value) };
-+    setConnectionAllowlistHeaders(response, { destination, reportOnlyPatterns: [] });
-+    assert.equal(headers.get('Vary'), 'Accept-Encoding, Sec-Fetch-Dest');
-+    assert.equal(headers.get('Connection-Allowlist'), '(response-origin "https://images.unsplash.com"); report-to=conn-reports');
-+    assert.equal(headers.get('Connection-Allowlist-Report-Only'), '(response-origin); report-to=conn-reports');
-+  }
-+  const headers = new Map();
-+  const response = { getHeader: name => headers.get(name), setHeader: (name, value) => headers.set(name, value) };
-+  setConnectionAllowlistHeaders(response, { destination: 'worker', reportOnly: true });
-+  assert.equal(headers.has('Connection-Allowlist'), false);
-+  assert.ok(headers.has('Connection-Allowlist-Report-Only'));
-+});
-+
-+process.env.PORT = '0';
-+const { server } = await import('../dist/server.js');
-+if (!server.listening) await once(server, 'listening');
-+after(() => new Promise(resolve => server.close(resolve)));
-+const base = `http://127.0.0.1:${server.address().port}`;
-+
-+test('real HTTP document and worker responses contain matching policies', async () => {
-+  for (const [path, destination] of [['/', 'document'], ['/menu/seasonal', 'iframe'], ['/client.js', 'worker'], ['/client.js', 'sharedworker'], ['/client.js', 'serviceworker']]) {
-+    const response = await fetch(base + path, { headers: { 'Sec-Fetch-Dest': destination }, redirect: 'error' });
-+    assert.equal(response.status, 200);
-+    assert.equal(response.headers.get('connection-allowlist'), '(response-origin "https://images.unsplash.com"); report-to=conn-reports');
-+    assert.equal(response.headers.get('reporting-endpoints'), 'conn-reports="/api/security-reports"');
-+    assert.match(response.headers.get('content-security-policy'), /default-src 'self'.*connect-src 'self'.*form-action 'self'.*worker-src 'self'/);
-+    assert.match(response.headers.get('vary'), /Sec-Fetch-Dest/);
-+  }
-+  const css = await fetch(base + '/styles.css', { headers: { 'Sec-Fetch-Dest': 'style' } });
-+  assert.equal(css.headers.get('connection-allowlist'), null);
-+  assert.match(css.headers.get('vary'), /Sec-Fetch-Dest/);
-+  assert.equal((await fetch(base)).headers.has('connection-allowlist'), true);
-+});
-+
-+test('same-origin connectivity and violation reporting endpoints work', async () => {
-+  assert.deepEqual(await (await fetch(base + '/api/health')).json(), { ok: true });
-+  const reports = [{ type: 'connection-allowlist', body: { url: base, connection: 'https://example.com/', allowlist: '(response-origin)', disposition: 'enforce' } }];
-+  assert.equal((await fetch(base + '/api/security-reports', { method: 'POST', body: JSON.stringify(reports), headers: { 'Content-Type': 'application/reports+json' } })).status, 204);
-+  assert.equal((await fetch(base + '/api/security-reports', { method: 'POST', body: 'invalid' })).status, 400);
-+});
-+
-+test('client handles policy TypeError and updates visible status without rejection', async () => {
-+  const originalDocument = globalThis.document;
-+  const originalFetch = globalThis.fetch;
-+  globalThis.document = { getElementById: () => null };
-+  try {
-+    const { fetchWithPolicyHandling } = await import('../dist/client.js');
-+    const status = { textContent: '' };
-+    globalThis.fetch = async () => { throw new TypeError('net::ERR_NETWORK_ACCESS_REVOKED'); };
-+    const blocked = await fetchWithPolicyHandling('https://example.com/', status);
-+    assert.equal(blocked.ok, false);
-+    assert.match(status.textContent, /Blocked or unavailable/);
-+    globalThis.fetch = originalFetch;
-+    const allowed = await fetchWithPolicyHandling(base + '/api/health', status);
-+    assert.equal(allowed.ok, true);
-+    assert.match(status.textContent, /Allowed:/);
-+  } finally {
-+    globalThis.fetch = originalFetch;
-+    globalThis.document = originalDocument;
-+  }
-+});
-diff --git a/tsconfig.json b/tsconfig.json
-new file mode 100644
-index 0000000..54a5103
---- /dev/null
-+++ b/tsconfig.json
-@@ -0,0 +1,14 @@
-+{
-+  "compilerOptions": {
-+    "target": "ES2022",
-+    "module": "NodeNext",
-+    "moduleResolution": "NodeNext",
-+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-+    "strict": true,
-+    "noUncheckedIndexedAccess": true,
-+    "outDir": "dist",
-+    "rootDir": "src",
-+    "skipLibCheck": true
-+  },
-+  "include": ["src/**/*.ts"]
++.newsletter { margin-top: 40px; }
++.newsletter form { max-width: 480px; margin: 20px auto 0; }
++.newsletter label { display: block; font-weight: bold; }
++.newsletter input {
++  width: 100%;
++  padding: 12px;
++  border: 1px solid var(--primary);
++  border-radius: 5px;
++  font: inherit;
 +}
++.newsletter button { border: 0; font: inherit; cursor: pointer; }
++.newsletter button:disabled { opacity: 0.65; cursor: wait; }
++.newsletter [role="status"] { min-height: 3.2em; margin-top: 12px; }
++:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++@media (max-width: 600px) {
++  nav { flex-wrap: wrap; gap: 12px; }
++  nav ul { flex-wrap: wrap; gap: 12px; }
++  nav ul li { margin-left: 0; }
++}
++

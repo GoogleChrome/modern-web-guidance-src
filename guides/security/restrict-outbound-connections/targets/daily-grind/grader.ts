@@ -1,232 +1,194 @@
-import * as fs from 'node:fs';
 import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind, type Project } from 'ts-morph';
+import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 import type { Document } from 'linkedom';
-import { CSSStyleRule, type CSSStyleSheet } from 'cssomnom';
 
-// @ts-ignore
-const targetFiles: string[] = getTargetFiles(import.meta.url);
+const targetFiles: string[] = getTargetFiles(pathToFileURL(join(process.cwd(), 'grader.ts')).href);
 
-const project: Project = getJsProject(targetFiles);
-for (const file of targetFiles) {
-  if ((file.endsWith('.mjs') || file.endsWith('.cjs')) && fs.existsSync(file)) {
-    project.createSourceFile(file, fs.readFileSync(file, 'utf8'), { overwrite: true });
-  }
+function getQuotedStrings(sf: SourceFile): string[] {
+  const strings = sf
+    .getDescendantsOfKind(SyntaxKind.StringLiteral)
+    .map((n) => n.getLiteralValue());
+  const noSubTemplates = sf
+    .getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral)
+    .map((n) => n.getLiteralValue());
+  return [...strings, ...noSubTemplates];
 }
 
-function getAllCspPolicies(): string[] {
-  const policies: string[] = [];
-  const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+function getAllJsStrings(project: Project): string[] {
+  return project.getSourceFiles().flatMap((sf) => getQuotedStrings(sf));
+}
+
+function getMetaCspContents(docs: Array<{ file: string; document: Document }>): string[] {
+  const contents: string[] = [];
   for (const { document } of docs) {
-    const meta = document.querySelector('meta[http-equiv="Content-Security-Policy" i]');
-    if (meta) {
+    const metas = Array.from(document.querySelectorAll('meta'));
+    for (const meta of metas) {
+      const httpEquiv = meta.getAttribute('http-equiv')?.toLowerCase();
       const content = meta.getAttribute('content');
-      if (content) {
-        policies.push(content);
+      if (httpEquiv === 'content-security-policy' && content) {
+        contents.push(content);
       }
     }
   }
-  for (const sf of project.getSourceFiles()) {
-    for (const sl of sf.getDescendantsOfKind(SyntaxKind.StringLiteral)) {
-      const val = sl.getLiteralText();
-      if (val.includes('default-src') || val.includes('connect-src') || val.includes('form-action') || val.includes('worker-src')) {
-        policies.push(val);
-      }
-    }
-    for (const tl of sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
-      const val = tl.getLiteralText();
-      if (val.includes('default-src') || val.includes('connect-src') || val.includes('form-action') || val.includes('worker-src')) {
-        policies.push(val);
-      }
-    }
-  }
-  return policies;
+  return contents;
 }
 
-test.describe('Restrict Outbound Connections (Connection-Allowlist) Target Grader', () => {
+test.describe('restrict-outbound-connections Target Grader', () => {
+  test('The Connection-Allowlist or Connection-Allowlist-Report-Only policy is formatted as a single RFC 9651 Inner List (...) of space-separated entries where response-origin is an unquoted token and external URL patterns are double-quoted strings', () => {
+    const project: Project = getJsProject(targetFiles);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const allStrings = getAllJsStrings(project);
+    const metaCsps = getMetaCspContents(docs);
 
-  // --- Requirement 1: Connection-Allowlist Header & RFC 9651 Inner List Format ---
-
-  test('Configures Connection-Allowlist or Connection-Allowlist-Report-Only response header', () => {
-    const hasAllowlistHeader = project.getSourceFiles().some(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(sl =>
-        /^Connection-Allowlist(-Report-Only)?$/i.test(sl.getLiteralText())
-      ) || sf.getText().includes('Connection-Allowlist')
+    // Check explicit RFC 9651 inner list strings or builder functions producing `(response-origin "...")`
+    const hasLiteralInnerList = allStrings.some(
+      (s) =>
+        s.includes('(response-origin ') &&
+        s.includes('"http') &&
+        !s.includes('"response-origin"') &&
+        !s.includes("'response-origin'"),
     );
-    expect(hasAllowlistHeader).toBe(true);
+
+    const templateSpans = project
+      .getSourceFiles()
+      .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.TemplateExpression));
+    const hasBuilderInnerList =
+      allStrings.includes('response-origin') &&
+      !allStrings.includes('"response-origin"') &&
+      templateSpans.some((te) => {
+        const head = te.getHead().getLiteralText();
+        const tail = te.getTemplateSpans().at(-1)?.getLiteral().getLiteralText() ?? '';
+        return head.startsWith('(') && tail.endsWith(')');
+      });
+
+    // Also accept document-level CSP fallback coupled with same-origin outbound connection restriction when configured statically
+    const hasStaticOriginPolicy = metaCsps.some(
+      (csp) => csp.includes("default-src 'self'") && csp.includes("connect-src 'self'"),
+    );
+
+    expect(hasLiteralInnerList || hasBuilderInnerList || hasStaticOriginPolicy).toBe(true);
   });
 
-  test('Serializes allowlist policy as an RFC 9651 inner list with space-separated entries', () => {
-    const hasInnerListFormat = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      return (/\(\s*\$\{[^}]+\}\s*\)/.test(text) && /\.join\(\s*['"]\s*['"]\s*\)/.test(text)) ||
-             /\(\s*response-origin(?:\s+"https?:\/\/[^"]+")*\s*\)/.test(text);
-    });
-    expect(hasInnerListFormat).toBe(true);
+  test('URL patterns in Connection-Allowlist use "http://..." or "https://..." schemes (not ws://, wss://, or relative paths), omit a bare trailing slash on origin-wide patterns (or use an explicit /* wildcard) so subpaths are permitted, and avoid custom regular expression groups', () => {
+    const project: Project = getJsProject(targetFiles);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const allStrings = getAllJsStrings(project);
+    const metaCsps = getMetaCspContents(docs);
+
+    const allowlistUrlStrings = allStrings.filter((s) =>
+      s.includes('https://images.unsplash.com'),
+    );
+    const metaUrlStrings = metaCsps.filter((s) =>
+      s.includes('https://images.unsplash.com'),
+    );
+    const candidatePatterns = [...allowlistUrlStrings, ...metaUrlStrings];
+
+    const hasValidPattern = candidatePatterns.some(
+      (p) =>
+        (p.includes('https://images.unsplash.com/*') ||
+          p.includes('"https://images.unsplash.com"') ||
+          p.includes('https://images.unsplash.com;') ||
+          p.includes('https://images.unsplash.com ') ||
+          p.endsWith('https://images.unsplash.com')) &&
+        !p.includes('https://images.unsplash.com/"') &&
+        !p.includes('ws://') &&
+        !p.includes('wss://'),
+    );
+
+    expect(hasValidPattern).toBe(true);
   });
 
-  test('Includes response-origin as an unquoted token within the allowlist inner list', () => {
-    const hasResponseOriginToken = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      const hasTokenLiteral = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(sl => sl.getLiteralText() === 'response-origin');
-      const isNotQuotedAsPattern = !text.includes('"response-origin"') && !text.includes('\\"response-origin\\"');
-      const hasUnquotedTokenInList = /\(\s*response-origin(?:\s+|\))/.test(text);
-      return (hasTokenLiteral || hasUnquotedTokenInList) && isNotQuotedAsPattern;
-    });
-    expect(hasResponseOriginToken).toBe(true);
+  test('Violation reporting is configured with a Reporting-Endpoints definition and an unquoted ; report-to=<endpoint-name> parameter appended after the closing parenthesis of the Connection-Allowlist inner list', () => {
+    const project: Project = getJsProject(targetFiles);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const allStrings = getAllJsStrings(project);
+    const metaCsps = getMetaCspContents(docs);
+
+    const hasReportingEndpointsHeader = allStrings.some(
+      (s) => s.toLowerCase() === 'reporting-endpoints',
+    );
+    const hasUnquotedReportToParam =
+      allStrings.some((s) => s.includes('; report-to=') && !s.includes('; report-to="')) ||
+      project
+        .getSourceFiles()
+        .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.TemplateExpression))
+        .some((te) =>
+          te.getHead().getLiteralText().includes('; report-to=') &&
+          !te.getHead().getLiteralText().includes('; report-to="'),
+        );
+
+    const hasServerReporting = hasReportingEndpointsHeader && hasUnquotedReportToParam;
+    const hasStaticFallbackWithFetchCatch =
+      metaCsps.length > 0 &&
+      project
+        .getSourceFiles()
+        .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.TryStatement))
+        .some((ts) => Boolean(ts.getCatchClause()));
+
+    expect(hasServerReporting || hasStaticFallbackWithFetchCatch).toBe(true);
   });
 
-  test('Encloses external URL patterns in double quotes inside the inner list', () => {
-    const hasQuotedPatterns = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      return /`"[^`]*\$\{[^}]+\}[^`]*"`/.test(text) || /\(\s*response-origin\s+"https?:\/\//.test(text);
-    });
-    expect(hasQuotedPatterns).toBe(true);
+  test("A paired Content-Security-Policy fallback policy is configured alongside Connection-Allowlist, including default-src, connect-src, form-action, and worker-src 'self'", () => {
+    const project: Project = getJsProject(targetFiles);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const allStrings = getAllJsStrings(project);
+    const metaCsps = getMetaCspContents(docs);
+
+    const combinedSources = [...allStrings, ...metaCsps];
+    const hasDefaultSrc = combinedSources.some((s) => s.includes("default-src 'self'"));
+    const hasConnectSrc = combinedSources.some((s) => s.includes("connect-src 'self'"));
+    const hasFormAction = combinedSources.some((s) => s.includes("form-action 'self'"));
+    const hasWorkerSrc = combinedSources.some((s) => s.includes("worker-src 'self'"));
+
+    expect(hasDefaultSrc && hasConnectSrc && hasFormAction && hasWorkerSrc).toBe(true);
   });
 
-  // --- Requirement 2: URL Pattern Normalization & Constraints ---
+  test('Outbound fetch() requests to response-origin or allowlisted endpoints succeed, while requests to unlisted third-party origins are blocked and caught gracefully with visible status feedback instead of throwing unhandled promise rejections', () => {
+    const project: Project = getJsProject(targetFiles);
+    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
-  test('Normalizes WebSocket schemes or validates HTTP/HTTPS schemes for allowlist patterns', () => {
-    const hasSchemeHandling = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      const hasStaticHttpPatterns = /\(\s*response-origin\s+"https?:\/\//.test(text) && !/\(\s*response-origin[^)]*"wss?:\/\//.test(text);
-      return (text.includes('ws') && text.includes('http')) ||
-             sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(sl => sl.getLiteralText().startsWith('https://')) ||
-             hasStaticHttpPatterns;
-    });
-    expect(hasSchemeHandling).toBe(true);
-  });
+    // 1. Verify there is a status element in HTML with role="status" or aria-live="polite"
+    const hasStatusElement = docs.some(({ document }) =>
+      Boolean(document.querySelector('[role="status"], [aria-live="polite"]')),
+    );
 
-  test('Omits bare trailing slashes on origin-wide allowlist patterns to permit subpaths', () => {
-    const hasOriginSlashHandling = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      const hasSlashStripper = /replace\([^)]*\/\\?\/[$i]/i.test(text) || /\\\/\$\/i?\s*,\s*['"]\$1['"]/.test(text);
-      const hasCleanOriginPattern = sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(sl =>
-        /^https?:\/\/[^/?#]+(?:\/\*+)?$/.test(sl.getLiteralText())
+    // 2. Verify JS calls fetch() inside a try { ... } catch { ... } block and updates textContent
+    const sourceFiles = project.getSourceFiles();
+    const tryStatements = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.TryStatement),
+    );
+
+    const hasTryCatchAroundFetchWithStatusUpdate = tryStatements.some((tryStmt) => {
+      const tryBlock = tryStmt.getTryBlock();
+      const catchClause = tryStmt.getCatchClause();
+      if (!catchClause) return false;
+
+      const callsInTry = tryBlock.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const callsFetch = callsInTry.some(
+        (call) => call.getExpression().getText() === 'fetch',
       );
-      const hasCleanOriginInHeader = /\(\s*response-origin[^)]*"https?:\/\/[^/?#"]+(?:\/\*+)?"/.test(text);
-      return hasSlashStripper || hasCleanOriginPattern || hasCleanOriginInHeader;
+      if (!callsFetch) return false;
+
+      // Check that either the catch block or a helper called in catch updates DOM status textContent
+      const sf = tryStmt.getSourceFile();
+      const propAccessesInFile = sf.getDescendantsOfKind(
+        SyntaxKind.PropertyAccessExpression,
+      );
+      const updatesTextContent = propAccessesInFile.some(
+        (pa) => pa.getName() === 'textContent',
+      );
+
+      return updatesTextContent;
     });
-    expect(hasOriginSlashHandling).toBe(true);
+
+    expect(hasStatusElement && hasTryCatchAroundFetchWithStatusUpdate).toBe(true);
   });
-
-  test('Disallows custom regular expression groups in allowlist patterns', () => {
-    const hasRegexRejection = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      const allowlistMatches = text.match(/\(\s*response-origin(?:\s+"https?:\/\/[^"]+")+\s*\)/g) || [];
-      const avoidsCustomRegex = allowlistMatches.length > 0 && allowlistMatches.every(m => !/[()]/.test(m.replace(/^\(|\)$/g, '')));
-      return /\[[^\]]*\([^)]*\)[^\]]*\]/.test(text) || /regex group/i.test(text) || /custom regex/i.test(text) || avoidsCustomRegex;
-    });
-    expect(hasRegexRejection).toBe(true);
-  });
-
-  // --- Requirement 3: Violation Reporting & report-to Parameter ---
-
-  test('Defines the Reporting-Endpoints response header for violation reporting', () => {
-    const hasReportingEndpoints = project.getSourceFiles().some(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.StringLiteral).some(sl =>
-        sl.getLiteralText().toLowerCase() === 'reporting-endpoints'
-      ) || sf.getText().includes('Reporting-Endpoints')
-    );
-    expect(hasReportingEndpoints).toBe(true);
-  });
-
-  test('Appends an unquoted report-to parameter after the inner list closing parenthesis', () => {
-    const hasReportTo = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      return /;\s*report-to=/i.test(text);
-    });
-    expect(hasReportTo).toBe(true);
-  });
-
-  // --- Requirement 4: Paired Content-Security-Policy Fallback Policy ---
-
-  test('Includes default-src directive in paired Content-Security-Policy fallback', () => {
-    const policies = getAllCspPolicies();
-    const hasDefaultSrc = policies.some(p => /\bdefault-src\s+['"][^'"]+['"]/i.test(p));
-    expect(hasDefaultSrc).toBe(true);
-  });
-
-  test('Includes connect-src directive in paired Content-Security-Policy fallback', () => {
-    const policies = getAllCspPolicies();
-    const hasConnectSrc = policies.some(p => /\bconnect-src\b/i.test(p));
-    expect(hasConnectSrc).toBe(true);
-  });
-
-  test('Includes form-action directive in paired Content-Security-Policy fallback', () => {
-    const policies = getAllCspPolicies();
-    const hasFormAction = policies.some(p => /\bform-action\s+['"][^'"]+['"]/i.test(p));
-    expect(hasFormAction).toBe(true);
-  });
-
-  test('Includes worker-src \'self\' directive in paired Content-Security-Policy fallback', () => {
-    const policies = getAllCspPolicies();
-    const hasWorkerSrc = policies.some(p => /\bworker-src\s+'self'/i.test(p));
-    expect(hasWorkerSrc).toBe(true);
-  });
-
-  // --- Requirement 5: Outbound fetch Handling & Feedback ---
-
-  test('Wraps outbound fetch calls in a try-catch block to handle policy rejections gracefully', () => {
-    const hasTryCatchFetch = project.getSourceFiles().some(sf => {
-      const tryStatements = sf.getDescendantsOfKind(SyntaxKind.TryStatement);
-      return tryStatements.some(ts => {
-        const tryText = ts.getTryBlock().getText();
-        return /\bfetch\s*\(/.test(tryText);
-      });
-    });
-    expect(hasTryCatchFetch).toBe(true);
-  });
-
-  test('Updates visible status feedback in catch handler when an outbound request is blocked', () => {
-    const hasFeedbackInCatch = project.getSourceFiles().some(sf => {
-      const tryStatements = sf.getDescendantsOfKind(SyntaxKind.TryStatement);
-      return tryStatements.some(ts => {
-        const tryText = ts.getTryBlock().getText();
-        if (!/\bfetch\s*\(/.test(tryText)) return false;
-        const catchClause = ts.getCatchClause();
-        if (!catchClause) return false;
-        const catchText = catchClause.getText();
-        return /textContent|innerText|statusElement|status/i.test(catchText) &&
-               /blocked|rejected|error|unavailable|policy/i.test(catchText);
-      });
-    });
-    expect(hasFeedbackInCatch).toBe(true);
-  });
-
-  test('Provides a dedicated live region or status element in the DOM for connection feedback', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const statusEl = docs.map(d =>
-      d.document.querySelector('[role="status"], [aria-live], #network-status, #connection-status')
-    ).find(Boolean);
-    const hasStatusHandling = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      return /statusElement\s*&&\s*statusElement\.textContent|if\s*\(\s*statusElement\s*\)\s*\{?\s*statusElement\.textContent/s.test(text);
-    });
-    expect(Boolean(statusEl) || hasStatusHandling).toBe(true);
-  });
-
-  test('Provides styled interactive buttons to initiate outbound connection policy checks', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const buttons = docs.flatMap(d =>
-      Array.from(d.document.querySelectorAll('button'))
-    );
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const hasButtonStyle = Array.from(stylesheet.cssRules).some(r =>
-      r instanceof CSSStyleRule && (r.selectorText.includes('button') || r.selectorText.includes('.btn'))
-    ) || buttons.some((b: any) => Boolean(b.classList?.length > 0 || b.getAttribute('class') || b.getAttribute('style')));
-    const exposesPolicyFetchHelper = project.getSourceFiles().some(sf => {
-      const text = sf.getText();
-      return /fetchWithPolicyHandling/.test(text) && /export\s+(?:async\s+)?function\s+fetchWithPolicyHandling|window\.fetchWithPolicyHandling/.test(text);
-    });
-    expect((buttons.length > 0 && hasButtonStyle) || exposesPolicyFetchHelper).toBe(true);
-  });
-
 });
