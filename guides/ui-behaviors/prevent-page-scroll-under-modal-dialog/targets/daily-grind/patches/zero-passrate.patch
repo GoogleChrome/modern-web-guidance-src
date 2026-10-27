@@ -1,0 +1,53 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,20 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    body.modal-open {
++      overflow: hidden;
++      position: fixed;
++    }
++
++    dialog {
++      overflow: visible;
++    }
++
++    dialog::backdrop {
++      overflow: visible;
++      background: rgba(0, 0, 0, 0.5);
++    }
+   </style>
+ </head>
+ 
+@@ -197,6 +211,13 @@
+     </section>
+   </main>
+ 
++
++  <dialog id="notice-dialog">
++    <h2>Special Notice</h2>
++    <p>Our patio is open for the season.</p>
++    <button type="button" id="close-notice" class="btn">Close</button>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +228,14 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const noticeDialog = document.getElementById("notice-dialog");
++    if (noticeDialog) {
++      noticeDialog.show();
++      document.body.classList.add("modal-open");
++      document.body.style.overflow = "hidden";
++    }
++  </script>
+ </body>
+ 
+ </html>

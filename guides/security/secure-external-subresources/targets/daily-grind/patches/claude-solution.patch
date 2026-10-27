@@ -1,0 +1,176 @@
+diff --git a/index.html b/index.html
+index 66c9173..38c6e80 100644
+--- a/index.html
++++ b/index.html
+@@ -4,6 +4,10 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
++  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css"
++    integrity="sha384-Gu3KVV2H9d+yA4QDpVB7VcOyhJlAVrcXd0thEjr4KznfaFPLe0xQJyonVxONa4ZC" crossorigin="anonymous"
++    referrerpolicy="no-referrer">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
+@@ -27,6 +31,24 @@
+       background-color: var(--light);
+     }
+ 
++    @font-face {
++      font-family: "Playfair Display";
++      font-weight: 700;
++      src: url("https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/files/playfair-display-latin-700-normal.woff2") format("woff2");
++      src: url(
++        "https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/files/playfair-display-latin-700-normal.woff2"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      ) format("woff2");
++      src: url(
++        "https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/files/playfair-display-latin-700-normal.woff2"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-YKFULmSzsvq8mSQim3ybWTX3BG9e7uBjdnYXId8lQagJd1K7X32V8+KGTxxfYdEy")
++      ) format("woff2");
++      font-display: swap;
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -75,8 +97,21 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80");
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++        "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      );
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        url(
++        "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?fm=jpg&fit=crop&w=1350&q=80"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-MkCawIXxkhKfMCsafNM9LontDHX3W8n8sYbKwfQ5NE+0xJOWg9RoQMv3OfOjdF4b")
++      );
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -89,6 +124,7 @@
+     }
+ 
+     .hero h1 {
++      font-family: 'Playfair Display', Georgia, serif;
+       font-size: 3rem;
+       margin-bottom: 1rem;
+     }
+@@ -115,6 +151,59 @@
+       text-align: center;
+     }
+ 
++    .card-img {
++      height: 180px;
++      margin: -20px -20px 15px;
++      border-radius: 8px 8px 0 0;
++      background-size: cover;
++      background-position: center;
++    }
++
++    .card-img.maple {
++      background-image: url("https://images.unsplash.com/photo-1561882468-9110e03e0f78?fm=jpg&fit=crop&w=600&h=400&q=80");
++      background-image: url(
++        "https://images.unsplash.com/photo-1561882468-9110e03e0f78?fm=jpg&fit=crop&w=600&h=400&q=80"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      );
++      background-image: url(
++        "https://images.unsplash.com/photo-1561882468-9110e03e0f78?fm=jpg&fit=crop&w=600&h=400&q=80"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-HkvHjio3RhgJuO5Hp4Jx7numLq8NFzlPkPrUzyySVjdgyrxs1V1DB4+rfKuH3MjD")
++      );
++    }
++
++    .card-img.espresso {
++      background-image: url("https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?fm=jpg&fit=crop&w=600&h=400&q=80");
++      background-image: url(
++        "https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?fm=jpg&fit=crop&w=600&h=400&q=80"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      );
++      background-image: url(
++        "https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?fm=jpg&fit=crop&w=600&h=400&q=80"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-Yl309C3L1ztIQVEAWthyto6bmQ0NCfR6Fh0FKlo8X3ivrTz/hzKSRVHh4ZXfJ2SX")
++      );
++    }
++
++    .card-img.cold-brew {
++      background-image: url("https://images.unsplash.com/photo-1461023058943-07fcbe16d735?fm=jpg&fit=crop&w=600&h=400&q=80");
++      background-image: url(
++        "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?fm=jpg&fit=crop&w=600&h=400&q=80"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++      );
++      background-image: url(
++        "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?fm=jpg&fit=crop&w=600&h=400&q=80"
++        cross-origin(anonymous)
++        referrer-policy(no-referrer)
++        integrity("sha384-x2K/bA51pQugUJAdiAyKc3oWHrr4/9gsaNZcD9LJa6aOD7gBgsdD6mqy1z7Ziqsu")
++      );
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -169,7 +258,7 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="animate__animated animate__fadeInDown">Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -179,16 +268,19 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-img maple" role="img" aria-label="Maple Oat Latte"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-img espresso" role="img" aria-label="Dark Roast Espresso"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-img cold-brew" role="img" aria-label="Cold Brew"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+@@ -206,6 +298,14 @@
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
++  <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.8.1/dist/vanilla-tilt.min.js"
++    integrity="sha384-0k1dj5tm+KUH/4vkNk/i90XsjDA8Ltmt+ybcrFoH4t0dgv/WZsPpVBnkhcroX8UL" crossorigin="anonymous"
++    referrerpolicy="no-referrer"></script>
++  <script>
++    if (window.VanillaTilt) {
++      VanillaTilt.init(document.querySelectorAll('.card'), { max: 5, speed: 400 });
++    }
++  </script>
+ 
+ </body>
+ 
