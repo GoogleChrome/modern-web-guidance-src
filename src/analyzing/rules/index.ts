@@ -172,12 +172,11 @@ export interface RuleRegistryEntry {
   readonly guideId: string;
   readonly lifecycle: RuleLifecycle;
   readonly rules: readonly AnalyzerRule[];
-  readonly postSelectionTuned?: boolean;
 }
 
 /**
  * Hand-curated canonical rule registry keyed by guideId.
- * Single source of truth for rule lifecycle, existence, and tuning state.
+ * Single source of truth for rule lifecycle and existence.
  */
 export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   {
@@ -189,7 +188,6 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     guideId: 'animate-element-entry-exit',
     lifecycle: { status: 'experimental' },
     rules: animateElementEntryExitRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'animate-to-from-top-layer',
@@ -218,15 +216,13 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   },
   {
     guideId: 'autofill-payment-form',
-    lifecycle: { status: 'experimental' },
+    lifecycle: { status: 'qualified' },
     rules: autofillPaymentFormRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'autofill-sign-in-form',
-    lifecycle: { status: 'suspended', reason: "Changed after qualifying; re-qualifying on fresh held-out shards after the DOM template scanner fix." },
+    lifecycle: { status: 'qualified' },
     rules: autofillSignInFormRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'autofill-sign-up-form',
@@ -252,7 +248,6 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     guideId: 'calculate-event-differentials',
     lifecycle: { status: 'experimental' },
     rules: calculateEventDifferentialsRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'capture-location-agnostic-data',
@@ -261,9 +256,8 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   },
   {
     guideId: 'checkbox',
-    lifecycle: { status: 'experimental' },
+    lifecycle: { status: 'qualified' },
     rules: checkboxRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'child-state-based-styling',
@@ -307,15 +301,13 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   },
   {
     guideId: 'custom-text-decorations',
-    lifecycle: { status: 'experimental' },
+    lifecycle: { status: 'qualified' },
     rules: customTextDecorationsRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'customize-scrollbar-color-and-thickness',
     lifecycle: { status: 'experimental' },
     rules: customizeScrollbarColorAndThicknessRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'dark-mode',
@@ -326,7 +318,6 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     guideId: 'declarative-dialog-popover-control',
     lifecycle: { status: 'experimental' },
     rules: declarativeDialogPopoverControlRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'defer-work-until-scroll-ends',
@@ -357,7 +348,6 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     guideId: 'equal-width-text-lines',
     lifecycle: { status: 'experimental' },
     rules: equalWidthTextLinesRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'export-html-media-from-canvas',
@@ -406,7 +396,7 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   },
   {
     guideId: 'interest-triggered-tooltips',
-    lifecycle: { status: 'experimental' },
+    lifecycle: { status: 'qualified' },
     rules: interestTriggeredTooltipsRules,
   },
   {
@@ -468,7 +458,6 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     guideId: 'prevent-page-scroll-under-modal-dialog',
     lifecycle: { status: 'experimental' },
     rules: preventPageScrollUnderModalDialogRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'progress-ring',
@@ -487,7 +476,7 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   },
   {
     guideId: 'responsive-table',
-    lifecycle: { status: 'qualified' },
+    lifecycle: { status: 'experimental' },
     rules: responsiveTableRules,
   },
   {
@@ -572,9 +561,8 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
   },
   {
     guideId: 'styling-web-components',
-    lifecycle: { status: 'experimental' },
+    lifecycle: { status: 'qualified' },
     rules: stylingWebComponentsRules,
-    postSelectionTuned: true,
   },
   {
     guideId: 'support-global-calendar-systems',
@@ -615,7 +603,6 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     guideId: 'manage-recurring-intervals',
     lifecycle: { status: 'retired', reason: "Consolidated into capture-location-agnostic-data" },
     rules: [],
-    postSelectionTuned: true,
   },
   {
     guideId: 'resilient-context-menus-and-nested-dropdowns',
@@ -655,13 +642,6 @@ export const QUALIFIED_GUIDE_IDS: readonly string[] = RULE_REGISTRY
  */
 export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] = RULE_REGISTRY
   .filter((e) => e.lifecycle.status === 'suspended')
-  .map((e) => e.guideId);
-
-/**
- * Guides that were tuned after initial held-out inspection.
- */
-export const POST_SELECTION_TUNED_GUIDE_IDS: readonly string[] = RULE_REGISTRY
-  .filter((e) => Boolean(e.postSelectionTuned))
   .map((e) => e.guideId);
 
 /**
