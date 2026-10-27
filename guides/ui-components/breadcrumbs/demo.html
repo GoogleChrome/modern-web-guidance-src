@@ -308,6 +308,9 @@
 
   @media (forced-colors: active) {
     .breadcrumb a[aria-current="page"] { text-decoration: underline; }
+
+    /* The chevron is a masked background, which forced colors replaces: opt it out and use a system color */
+    .breadcrumb[data-sep="chevron"] > ol > li + li::before { forced-color-adjust: none; color: CanvasText; }
     .bc-shaped > ol > li > a, .bc-pills a, .bc-trigger, .bc-menu { border: 1px solid LinkText; }
 
     /* Without border-shape the shape comes from clip-path, which cuts the slanted sides off a border, and forced

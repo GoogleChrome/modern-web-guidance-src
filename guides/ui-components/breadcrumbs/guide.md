@@ -47,7 +47,7 @@ This is not for switching between views of the same page (tabs) or for site-wide
 - Custom palettes must meet WCAG AA contrast (4.5:1 for text) for links, hover, and the current page against their actual backgrounds (e.g. dark red on light gray). Keep a non-color cue on the current page, such as font weight.
 - Provide a clear `:focus-visible` outline. For shaped or clipped segments use a negative `outline-offset` or a background/color change, since outlines get clipped.
 - Lift the focused control above its neighbors (`position: relative; z-index: 1` on `a:focus-visible, button:focus-visible`). Neighbors that overlap it (shaped segments) or touch it (a joined dropdown trigger) are painted later and cover an outside ring.
-- In `forced-colors: active`, restore borders and an underline on `[aria-current="page"]` since backgrounds are removed.
+- In `forced-colors: active`, restore borders and an underline on `[aria-current="page"]` since backgrounds are removed. An icon divider drawn as a masked background also needs `forced-color-adjust: none` and a system color such as `CanvasText`, since forced colors replaces the background.
 
 ### Shaped segments (slant or arrow)
 
