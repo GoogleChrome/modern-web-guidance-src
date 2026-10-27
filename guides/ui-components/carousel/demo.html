@@ -369,7 +369,7 @@
     markerNav.hidden = hasMarkers;
     if (!hasMarkers) {
       markers = slides.map((slide, i) => {
-        const button = Object.assign(document.createElement("button"), { type: "button", textContent: i + 1 });
+        const button = Object.assign(document.createElement("button"), { type: "button" });
         button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
         button.addEventListener("click", () => show(slide));
         markerNav.append(button);
