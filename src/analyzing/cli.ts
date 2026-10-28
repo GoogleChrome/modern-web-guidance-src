@@ -1,21 +1,21 @@
-/* oxlint-disable max-lines-per-function */
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import {
   ALL_RULES,
-  QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
+  RULE_REGISTRY_BY_GUIDE_ID,
 } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
-import type { AnalyzerFinding, AnalyzerRule, VerifierRubric } from './schema.ts';
+import type { AnalyzerRule, VerifierRubric } from './schema.ts';
 
 export type GuideConfidenceTier = 'qualified' | 'experimental';
 
 export function getGuideConfidenceTier(guideId: string): GuideConfidenceTier {
-  if (QUALIFIED_GUIDE_IDS.includes(guideId)) return 'qualified';
-  return 'experimental';
+  return RULE_REGISTRY_BY_GUIDE_ID.get(guideId)?.lifecycle.status === 'qualified'
+    ? 'qualified'
+    : 'experimental';
 }
 
 export interface AnalyzeCliFinding {
@@ -53,7 +53,6 @@ export interface AnalyzeJsonOutput {
   readonly guides: readonly AnalyzeCliGuideGroup[];
   readonly activeRuleCount?: number;
   readonly activeGuideCount?: number;
-  readonly statusNotice?: string;
   readonly error?: string;
   readonly skippedDocsAndTestsCount?: number;
 }
@@ -71,7 +70,6 @@ export interface AnalyzeCliResult {
 }
 
 export interface FormatHumanReadableOptions {
-  readonly activeRuleCount?: number;
   readonly activeGuideCount?: number;
   readonly isDefaultQualifiedMode?: boolean;
   readonly color?: boolean;
@@ -98,61 +96,28 @@ export function elideText(text: string, maxLen = 110): string {
 export function extractTargetCodeLine(codeSnippet: string, maxLen = 80): string {
   if (!codeSnippet) return '';
   const lines = codeSnippet.split('\n');
-  const markedLine = lines.find((l) => l.trimStart().startsWith('>'));
-  let target = markedLine ?? lines.find((l) => l.trim().length > 0) ?? '';
-  target = target.replace(/^\s*>\s*(?:\d+\s*\|\s*)?/, '');
-  if (!markedLine) {
-    target = target.replace(/^\s*\d+\s*\|\s*/, '');
-  }
-  target = target.trim().replace(/\s+/g, ' ');
-  return elideText(target, maxLen);
+  const raw =
+    lines.find((l) => l.trimStart().startsWith('>')) ??
+    lines.find((l) => l.trim().length > 0) ??
+    '';
+  return elideText(raw.replace(/^\s*>?\s*(?:\d+\s*\|\s*)?/, ''), maxLen);
 }
 
 export function sampleDiversifiedFindings(
   findings: readonly AnalyzeCliFinding[],
   maxTotal = 5,
-  maxPerFileInitial = 2,
 ): AnalyzeCliFinding[] {
-  if (findings.length <= maxTotal) {
-    return [...findings];
-  }
-  const byFile = new Map<string, AnalyzeCliFinding[]>();
-  for (const f of findings) {
-    const list = byFile.get(f.file) ?? [];
-    list.push(f);
-    byFile.set(f.file, list);
-  }
+  if (findings.length <= maxTotal) return [...findings];
+  const fileLists = Array.from(Map.groupBy(findings, (f) => f.file).values());
   const sampled: AnalyzeCliFinding[] = [];
-  const fileEntries = Array.from(byFile.values());
-  const fileIndices = new Map<AnalyzeCliFinding[], number>();
-
-  // Pass 1: Round-robin up to maxPerFileInitial per file
-  for (let round = 0; round < maxPerFileInitial; round++) {
-    for (const list of fileEntries) {
-      const idx = fileIndices.get(list) ?? 0;
-      if (idx < list.length) {
-        sampled.push(list[idx]);
-        fileIndices.set(list, idx + 1);
-        if (sampled.length >= maxTotal) return sampled;
+  for (let round = 0; sampled.length < maxTotal; round++) {
+    for (const list of fileLists) {
+      if (round < list.length) {
+        sampled.push(list[round]!);
+        if (sampled.length === maxTotal) return sampled;
       }
     }
   }
-
-  // Pass 2: If still under maxTotal, fill from remaining findings
-  while (sampled.length < maxTotal) {
-    let addedAny = false;
-    for (const list of fileEntries) {
-      const idx = fileIndices.get(list) ?? 0;
-      if (idx < list.length) {
-        sampled.push(list[idx]);
-        fileIndices.set(list, idx + 1);
-        addedAny = true;
-        if (sampled.length >= maxTotal) return sampled;
-      }
-    }
-    if (!addedAny) break;
-  }
-
   return sampled;
 }
 
@@ -167,25 +132,46 @@ Arguments:
 Options:
   --json                    Output findings as structured JSON for coding agents
   --guide <guideId>         Filter analysis to a specific guide ID
-  --experimental            Include all experimental rules (alias: --all-rules)
+  --all                     Include all experimental rules
   --include-docs-and-tests  Include documentation, example, demo, and test files in analysis
   -h, --help                Show this help message
 `.trim();
 
-export function buildQualificationStatusNotice(
-  activeRuleCount: number,
-  _activeGuideCount?: number,
-): string | undefined {
-  if (activeRuleCount === 0) {
-    return `0 qualified rules are currently configured for default scanning; pass --experimental (or --all-rules) for experimental findings.`;
+function appendFindingGroupBlock(
+  lines: string[],
+  group: {
+    readonly summary: string;
+    readonly verifierRubric?: VerifierRubric;
+    readonly findings: readonly AnalyzeCliFinding[];
+  },
+  indent: string,
+  fmt: (style: TextStyle, text: string) => string,
+): void {
+  lines.push(`${indent}${group.summary}`);
+  if (group.verifierRubric) {
+    const keep = elideText(group.verifierRubric.keepWhen.join('; '), 110);
+    const drop = elideText(group.verifierRubric.dropWhen.join('; '), 110);
+    lines.push(`${indent}${fmt('dim', `Keep when: ${keep}`)}`);
+    lines.push(`${indent}${fmt('dim', `Drop when: ${drop}`)}`);
   }
-  return undefined;
+  const displayed = sampleDiversifiedFindings(group.findings, 5);
+  for (const f of displayed) {
+    lines.push(`${indent}- ${f.file}:${f.line}`);
+    const preview = extractTargetCodeLine(f.codeSnippet, 80);
+    if (preview) {
+      lines.push(`${indent}  ${fmt('dim', preview)}`);
+    }
+  }
+  const remaining = group.findings.length - displayed.length;
+  if (remaining > 0) {
+    lines.push(`${indent}... and ${remaining} more finding${remaining === 1 ? '' : 's'}`);
+  }
 }
 
 /**
  * Formats findings into human-readable terminal output.
  * Renders modern styled header, provisional verification notice, visible keepWhen / dropWhen rubric lines,
- * file-diversified findings list with code preview (up to 5 findings per guide, max 2 per file first),
+ * file-diversified findings list with code preview (up to 5 findings per guide),
  * and single bottom footer.
  */
 export function formatHumanReadable(
@@ -196,173 +182,86 @@ export function formatHumanReadable(
   formatOptions?: FormatHumanReadableOptions,
 ): string {
   const isDefaultMode = formatOptions?.isDefaultQualifiedMode ?? false;
-  const activeRuleCount = formatOptions?.activeRuleCount;
   const activeGuideCount = formatOptions?.activeGuideCount ?? 0;
   const skippedDocsAndTestsCount = formatOptions?.skippedDocsAndTestsCount ?? 0;
   const colorEnabled = shouldEnableColor(formatOptions?.color);
 
-  const prevForce = process.env.FORCE_COLOR;
-  const prevNoColor = process.env.NO_COLOR;
-  if (colorEnabled) {
-    delete process.env.NO_COLOR;
-    process.env.FORCE_COLOR = '1';
-  }
+  const fmt = (style: TextStyle, text: string): string =>
+    colorEnabled ? styleText(style, text, { validateStream: false }) : text;
 
-  const fmt = (style: TextStyle, text: string): string => {
-    if (!colorEnabled) return text;
-    return styleText(style, text);
-  };
-
-  try {
-    if (totalFindings === 0) {
-      if (isDefaultMode && activeRuleCount === 0) {
-        return [
-          `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
-          `0 qualified rules are currently configured for default scanning.`,
-          `Pass --experimental (or --all-rules) for experimental findings across ${ALL_RULES.length} rules.`,
-          '',
-        ].join('\n');
-      }
-      if (isDefaultMode) {
-        const lines = [
-          `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
-          `0 findings from ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide' : 'guides'} (pass --experimental to include experimental guides).`,
-        ];
-        if (skippedDocsAndTestsCount > 0) {
-          lines.push(
-            fmt(
-              'dim',
-              `Skipped ${skippedDocsAndTestsCount} docs and test ${skippedDocsAndTestsCount === 1 ? 'file' : 'files'} (pass --include-docs-and-tests to scan).`,
-            ),
-          );
-        }
-        lines.push('');
-        return lines.join('\n');
-      }
-      const filterNote = guideFilter ? ` for guide "${guideFilter}"` : '';
-      const lines: string[] = [];
-      if (skippedDocsAndTestsCount > 0) {
-        lines.push(
-          fmt(
-            'dim',
-            `Skipped ${skippedDocsAndTestsCount} docs and test ${skippedDocsAndTestsCount === 1 ? 'file' : 'files'} (pass --include-docs-and-tests to scan).`,
-          ),
-        );
-      }
-      lines.push(`No modernization opportunities found in ${targetDir}${filterNote}.\n`);
-      return lines.join('\n');
-    }
-
-    const lines: string[] = [
-      `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
-      `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}:`,
-      fmt('dim', 'Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.'),
-    ];
-
-    if (skippedDocsAndTestsCount > 0) {
-      lines.push(
-        fmt(
+  const skippedNotice =
+    skippedDocsAndTestsCount > 0
+      ? fmt(
           'dim',
           `Skipped ${skippedDocsAndTestsCount} docs and test ${skippedDocsAndTestsCount === 1 ? 'file' : 'files'} (pass --include-docs-and-tests to scan).`,
-        ),
+        )
+      : undefined;
+
+  if (totalFindings === 0) {
+    if (isDefaultMode) {
+      const lines = [
+        `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
+        `0 findings from ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide' : 'guides'} (pass --all to include experimental guides).`,
+      ];
+      if (skippedNotice) lines.push(skippedNotice);
+      lines.push('');
+      return lines.join('\n');
+    }
+    const filterNote = guideFilter ? ` for guide "${guideFilter}"` : '';
+    const lines: string[] = [];
+    if (skippedNotice) lines.push(skippedNotice);
+    lines.push(`No modernization opportunities found in ${targetDir}${filterNote}.\n`);
+    return lines.join('\n');
+  }
+
+  const lines: string[] = [
+    `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
+    `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}:`,
+    fmt('dim', 'Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.'),
+  ];
+  if (skippedNotice) lines.push(skippedNotice);
+  lines.push('');
+
+  for (const g of guides) {
+    const tierBadge =
+      g.tier === 'experimental'
+        ? ` ${fmt('yellow', '[experimental]')}`
+        : ` ${fmt('dim', '[qualified]')}`;
+
+    if (!g.rules || g.rules.length <= 1) {
+      lines.push(
+        `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'})`)}`,
       );
-    }
-    lines.push('');
-
-    for (const g of guides) {
-      const hasMultipleRules = Boolean(g.rules && g.rules.length > 1);
-      const tierBadge =
-        g.tier === 'experimental'
-          ? ` ${fmt('yellow', '[experimental]')}`
-          : ` ${fmt('dim', '[qualified]')}`;
-
-      if (!hasMultipleRules) {
-        lines.push(
-          `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'})`)}`,
-        );
-        lines.push(`  ${g.summary}`);
-
-        if (g.verifierRubric) {
-          const keepRaw = Array.isArray(g.verifierRubric.keepWhen)
-            ? g.verifierRubric.keepWhen.join('; ')
-            : String(g.verifierRubric.keepWhen);
-          const dropRaw = Array.isArray(g.verifierRubric.dropWhen)
-            ? g.verifierRubric.dropWhen.join('; ')
-            : String(g.verifierRubric.dropWhen);
-          lines.push(`  ${fmt('dim', `Keep when: ${elideText(keepRaw, 110)}`)}`);
-          lines.push(`  ${fmt('dim', `Drop when: ${elideText(dropRaw, 110)}`)}`);
-        }
-
-        const displayedFindings = sampleDiversifiedFindings(g.findings, 5, 2);
-        for (const f of displayedFindings) {
-          lines.push(`  - ${f.file}:${f.line}`);
-          const codePreview = extractTargetCodeLine(f.codeSnippet, 80);
-          if (codePreview) {
-            lines.push(`    ${fmt('dim', codePreview)}`);
-          }
-        }
-
-        if (g.findings.length > displayedFindings.length) {
-          const remaining = g.findings.length - displayedFindings.length;
-          lines.push(`  ... and ${remaining} more finding${remaining === 1 ? '' : 's'}`);
-        }
-
+      appendFindingGroupBlock(lines, g, '  ', fmt);
+      lines.push('');
+    } else {
+      lines.push(
+        `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'} across ${g.rules.length} rules)`)}`,
+      );
+      for (const rg of g.rules) {
         lines.push('');
-      } else {
-        const ruleCount = g.rules!.length;
         lines.push(
-          `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'} across ${ruleCount} rules)`)}`,
+          `  ${fmt('bold', rg.ruleId)} ${fmt('dim', `(${rg.count} finding${rg.count === 1 ? '' : 's'})`)}`,
         );
-
-        for (const rg of g.rules!) {
-          lines.push('');
-          lines.push(
-            `  ${fmt('bold', rg.ruleId)} ${fmt('dim', `(${rg.count} finding${rg.count === 1 ? '' : 's'})`)}`,
-          );
-          lines.push(`    ${rg.summary}`);
-
-          if (rg.verifierRubric) {
-            const keepRaw = Array.isArray(rg.verifierRubric.keepWhen)
-              ? rg.verifierRubric.keepWhen.join('; ')
-              : String(rg.verifierRubric.keepWhen);
-            const dropRaw = Array.isArray(rg.verifierRubric.dropWhen)
-              ? rg.verifierRubric.dropWhen.join('; ')
-              : String(rg.verifierRubric.dropWhen);
-            lines.push(`    ${fmt('dim', `Keep when: ${elideText(keepRaw, 110)}`)}`);
-            lines.push(`    ${fmt('dim', `Drop when: ${elideText(dropRaw, 110)}`)}`);
-          }
-
-          const displayedFindings = sampleDiversifiedFindings(rg.findings, 5, 2);
-          for (const f of displayedFindings) {
-            lines.push(`    - ${f.file}:${f.line}`);
-            const codePreview = extractTargetCodeLine(f.codeSnippet, 80);
-            if (codePreview) {
-              lines.push(`      ${fmt('dim', codePreview)}`);
-            }
-          }
-
-          if (rg.findings.length > displayedFindings.length) {
-            const remaining = rg.findings.length - displayedFindings.length;
-            lines.push(`    ... and ${remaining} more finding${remaining === 1 ? '' : 's'}`);
-          }
-        }
-
-        lines.push('');
+        appendFindingGroupBlock(lines, rg, '    ', fmt);
       }
-    }
-
-    lines.push(
-      `Retrieve a guide: ${fmt('cyan', 'npx modern-web-guidance retrieve <guide-id>')} (or pass ${fmt('cyan', '--json')} for coding agents)`,
-    );
-
-    return lines.join('\n').trimEnd() + '\n';
-  } finally {
-    if (colorEnabled) {
-      if (prevForce === undefined) delete process.env.FORCE_COLOR;
-      else process.env.FORCE_COLOR = prevForce;
-      if (prevNoColor !== undefined) process.env.NO_COLOR = prevNoColor;
+      lines.push('');
     }
   }
+
+  lines.push(
+    `Retrieve a guide: ${fmt('cyan', 'npx modern-web-guidance retrieve <guide-id>')} (or pass ${fmt('cyan', '--json')} for coding agents)`,
+  );
+
+  return lines.join('\n').trimEnd() + '\n';
+}
+
+function errorCliResult(error: string, isJson: boolean, targetDir = '.'): AnalyzeCliResult {
+  if (isJson) {
+    const data: AnalyzeJsonOutput = { targetDir, totalFindings: 0, guides: [], error };
+    return { exitCode: 1, output: JSON.stringify(data, null, 2) + '\n', data };
+  }
+  return { exitCode: 1, output: `Error: ${error}\n` };
 }
 
 /**
@@ -375,24 +274,33 @@ export async function runAnalyzeCli(
 ): Promise<AnalyzeCliResult> {
   const cleanArgs = args[0] === 'analyze' ? args.slice(1) : args;
 
-  const parsed = parseArgs({
-    args: [...cleanArgs],
-    options: {
-      json: { type: 'boolean' },
-      guide: { type: 'string' },
-      'all-rules': { type: 'boolean' },
-      experimental: { type: 'boolean' },
-      'include-docs-and-tests': { type: 'boolean' },
-      help: { type: 'boolean', short: 'h' },
-    },
-    allowPositionals: true,
-    strict: false,
-  });
+  let parsed: ReturnType<typeof parseArgs>;
+  try {
+    parsed = parseArgs({
+      args: [...cleanArgs],
+      options: {
+        json: { type: 'boolean' },
+        guide: { type: 'string' },
+        all: { type: 'boolean' },
+        'include-docs-and-tests': { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' },
+      },
+      allowPositionals: true,
+      strict: true,
+    });
+  } catch (err: unknown) {
+    const rawMsg = err instanceof Error ? err.message : String(err);
+    const retiredMatch = rawMsg.match(/Unknown option '(--(?:experimental|all-rules))'/);
+    const error = retiredMatch ? `${retiredMatch[1]} was renamed to --all` : rawMsg;
+    const isJson = cleanArgs.includes('--json');
+    const targetDir = cleanArgs.find((a) => !a.startsWith('-')) || '.';
+    return errorCliResult(error, isJson, targetDir);
+  }
 
   const isJson = Boolean(parsed.values.json);
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
   const isHelp = Boolean(parsed.values.help);
-  const useAllRules = Boolean(parsed.values['all-rules'] || parsed.values.experimental);
+  const useAllRules = Boolean(parsed.values.all);
   const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
   const targetDir = parsed.positionals[0] || '.';
 
@@ -406,23 +314,12 @@ export async function runAnalyzeCli(
   const baseCwd = options?.cwd ?? process.cwd();
   const resolvedDir = resolve(baseCwd, targetDir);
 
-  try {
-    const s = await stat(resolvedDir);
-    if (!s.isDirectory()) {
-      const err = `Target path is not a directory: ${targetDir}`;
-      if (isJson) {
-        const data: AnalyzeJsonOutput = { targetDir, totalFindings: 0, guides: [], error: err };
-        return { exitCode: 1, output: JSON.stringify(data, null, 2) + '\n', data };
-      }
-      return { exitCode: 1, output: `Error: ${err}\n` };
-    }
-  } catch {
-    const err = `Target directory not found: ${targetDir}`;
-    if (isJson) {
-      const data: AnalyzeJsonOutput = { targetDir, totalFindings: 0, guides: [], error: err };
-      return { exitCode: 1, output: JSON.stringify(data, null, 2) + '\n', data };
-    }
-    return { exitCode: 1, output: `Error: ${err}\n` };
+  const dirStat = await stat(resolvedDir).catch(() => null);
+  if (!dirStat?.isDirectory()) {
+    const error = dirStat
+      ? `Target path is not a directory: ${targetDir}`
+      : `Target directory not found: ${targetDir}`;
+    return errorCliResult(error, isJson, targetDir);
   }
 
   const isDefaultQualifiedMode =
@@ -437,13 +334,9 @@ export async function runAnalyzeCli(
     : activeRulesList;
 
   const activeRuleCount = activeRules.length;
-  const activeGuideIds = new Set(activeRules.map((r) => r.guideId));
-  const activeGuideCount = activeGuideIds.size;
-  const statusNotice = isDefaultQualifiedMode
-    ? buildQualificationStatusNotice(activeRuleCount, activeGuideCount)
-    : undefined;
+  const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
 
-  const scanStats = { skippedDocsAndTestsCount: 0 };
+  const scanStats: { skippedDocsAndTestsCount?: number } = {};
   const findings =
     activeRuleCount > 0
       ? await scanRepoFiles(resolvedDir, activeRules, {
@@ -452,102 +345,71 @@ export async function runAnalyzeCli(
           stats: scanStats,
         })
       : [];
-  const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount;
+  const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount ?? 0;
 
-  const findingsByGuide = new Map<string, AnalyzerFinding[]>();
-  for (const f of findings) {
-    const list = findingsByGuide.get(f.guideId) ?? [];
-    list.push(f);
-    findingsByGuide.set(f.guideId, list);
-  }
-
-  const ruleMap = new Map<string, AnalyzerRule>();
-  for (const r of ALL_RULES) {
-    ruleMap.set(r.id, r);
-  }
-  if (options?.rules) {
-    for (const r of options.rules) {
-      ruleMap.set(r.id, r);
-    }
-  }
-
+  const ruleMap = new Map(activeRules.map((r) => [r.id, r]));
+  const findingsByGuide = Map.groupBy(findings, (f) => f.guideId);
   const sortedGuideIds = Array.from(findingsByGuide.keys()).sort();
 
   const guides: AnalyzeCliGuideGroup[] = sortedGuideIds.map((gid) => {
-    const guideFindings = findingsByGuide.get(gid) ?? [];
-    guideFindings.sort((a, b) => {
-      const cmpFile = a.file.localeCompare(b.file);
-      if (cmpFile !== 0) return cmpFile;
-      if (a.line !== b.line) return a.line - b.line;
-      return a.ruleId.localeCompare(b.ruleId);
-    });
+    const guideFindings = findingsByGuide.get(gid)!;
+    guideFindings.sort(
+      (a, b) =>
+        a.file.localeCompare(b.file) ||
+        a.line - b.line ||
+        a.ruleId.localeCompare(b.ruleId),
+    );
 
-    const ruleIdsInFindings = Array.from(new Set(guideFindings.map((f) => f.ruleId))).sort();
-
-    const ruleGroups: AnalyzeCliRuleGroup[] = ruleIdsInFindings.map((rid) => {
-      const rule = ruleMap.get(rid);
+    const cliFindings: AnalyzeCliFinding[] = guideFindings.map((f) => {
+      const rule = ruleMap.get(f.ruleId);
       if (!rule) {
-        throw new Error(`Rule definition not found for ruleId "${rid}" (guide "${gid}")`);
+        throw new Error(`Rule definition not found for ruleId "${f.ruleId}" (guide "${gid}")`);
       }
-      if (!rule.summary || !rule.summary.trim()) {
+      if (!rule.summary?.trim()) {
         throw new Error(`Rule "${rule.id}" is missing a required summary string`);
       }
-      const rf = guideFindings.filter((f) => f.ruleId === rid);
       return {
-        ruleId: rid,
+        ruleId: f.ruleId,
+        file: f.file,
+        line: f.line,
+        message: f.message,
+        codeSnippet: f.codeSnippet || f.contextSlice,
         summary: rule.summary,
         ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
-        count: rf.length,
-        findings: rf.map((f) => ({
-          ruleId: f.ruleId,
-          file: f.file,
-          line: f.line,
-          message: f.message,
-          codeSnippet: f.codeSnippet || f.contextSlice,
-          summary: rule.summary,
-          ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
-        })),
       };
     });
 
-    const tier = getGuideConfidenceTier(gid);
-    const isSingleRule = ruleGroups.length === 1;
-    const primaryRule = ruleGroups[0];
-    if (!primaryRule) {
-      throw new Error(`No rules with findings found for guide "${gid}"`);
-    }
+    const byRule = Map.groupBy(cliFindings, (f) => f.ruleId);
+    const ruleGroups: AnalyzeCliRuleGroup[] = Array.from(byRule.keys())
+      .sort()
+      .map((rid) => {
+        const rf = byRule.get(rid)!;
+        const rule = ruleMap.get(rid)!;
+        return {
+          ruleId: rid,
+          summary: rule.summary,
+          ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
+          count: rf.length,
+          findings: rf,
+        };
+      });
 
-    const summary = isSingleRule
-      ? primaryRule.summary
-      : ruleGroups.map((rg) => rg.summary).join('; ');
-    const verifierRubric = isSingleRule ? primaryRule.verifierRubric : undefined;
+    const primaryRule = ruleGroups[0]!;
+    const isSingleRule = ruleGroups.length === 1;
 
     return {
       guideId: gid,
-      tier,
-      summary,
+      tier: getGuideConfidenceTier(gid),
+      summary: isSingleRule
+        ? primaryRule.summary
+        : ruleGroups.map((rg) => rg.summary).join('; '),
       retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
-      ...(verifierRubric ? { verifierRubric } : {}),
-      count: guideFindings.length,
-      findings: guideFindings.map((f) => {
-        const rule = ruleMap.get(f.ruleId);
-        if (!rule) {
-          throw new Error(`Rule definition not found for ruleId "${f.ruleId}" (guide "${gid}")`);
-        }
-        if (!rule.summary || !rule.summary.trim()) {
-          throw new Error(`Rule "${rule.id}" is missing a required summary string`);
-        }
-        return {
-          ruleId: f.ruleId,
-          file: f.file,
-          line: f.line,
-          message: f.message,
-          codeSnippet: f.codeSnippet || f.contextSlice,
-          summary: rule.summary,
-          ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
-        };
-      }),
-      ...(ruleGroups.length > 1 ? { rules: ruleGroups } : {}),
+      ...(isSingleRule && primaryRule.verifierRubric
+        ? { verifierRubric: primaryRule.verifierRubric }
+        : {}),
+      count: cliFindings.length,
+      findings: cliFindings,
+      ...(isSingleRule ? {} : { rules: ruleGroups }),
     };
   });
 
@@ -558,7 +420,6 @@ export async function runAnalyzeCli(
     guides,
     activeRuleCount,
     activeGuideCount,
-    ...(statusNotice ? { statusNotice } : {}),
     ...(skippedDocsAndTestsCount > 0 ? { skippedDocsAndTestsCount } : {}),
   };
 
@@ -571,7 +432,6 @@ export async function runAnalyzeCli(
   }
 
   const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter, {
-    activeRuleCount,
     activeGuideCount,
     isDefaultQualifiedMode,
     skippedDocsAndTestsCount,
@@ -579,24 +439,23 @@ export async function runAnalyzeCli(
   return { exitCode: 0, output, data };
 }
 
+export function writeAnalyzeCliResult(result: AnalyzeCliResult): number {
+  const stream =
+    result.exitCode === 0 || result.data !== undefined ? process.stdout : process.stderr;
+  stream.write(result.output);
+  process.exitCode = result.exitCode;
+  return result.exitCode;
+}
+
 const isMainModule =
   Boolean(import.meta.main) ||
   (Boolean(process.argv[1]) &&
-    (process.argv[1].endsWith('cli.ts') ||
-      process.argv[1].endsWith('analyze.mjs') ||
-      (typeof import.meta.url === 'string' &&
-        process.argv[1] === fileURLToPath(import.meta.url))));
+    (resolve(process.argv[1]) === fileURLToPath(import.meta.url) ||
+      process.argv[1].endsWith('analyze.mjs')));
 
 if (isMainModule) {
   runAnalyzeCli(process.argv.slice(2))
-    .then((result) => {
-      if (result.exitCode === 0 || result.data !== undefined) {
-        process.stdout.write(result.output);
-      } else {
-        process.stderr.write(result.output);
-      }
-      process.exitCode = result.exitCode;
-    })
+    .then(writeAnalyzeCliResult)
     .catch((err: unknown) => {
       console.error('Modern Web Guidance Analyzer error:', err);
       process.exitCode = 1;

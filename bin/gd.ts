@@ -36,14 +36,13 @@ const ALL_OPTIONS = {
   targets: { type: 'string', desc: 'Target base app(s), comma-separated (e.g. daily-grind,devtools-times)' },
   json: { type: 'boolean', desc: 'Output analyzer findings in structured JSON format' },
   guide: { type: 'string', desc: 'Filter analyzer to a specific guide ID' },
-  experimental: { type: 'boolean', desc: 'Run all rules including experimental rules' },
-  'all-rules': { type: 'boolean', desc: 'Run all rules including experimental rules (alias for --experimental)' },
+  all: { type: 'boolean', desc: 'Run all rules including experimental rules' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
-  analyze: { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'experimental', 'all-rules'] },
+  analyze: { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'all'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
   'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
   eval: { desc: 'Run the full evaluation suite, or specific tasks', flags: ['config', 'ui'] },
@@ -256,13 +255,9 @@ async function main() {
   const command = positionals[0];
 
   if (command === 'analyze') {
-    const { runAnalyzeCli } = await import('../src/analyzing/cli.ts');
+    const { runAnalyzeCli, writeAnalyzeCliResult } = await import('../src/analyzing/cli.ts');
     const result = await runAnalyzeCli(process.argv.slice(3));
-    if (result.exitCode === 0 || result.data !== undefined) {
-      process.stdout.write(result.output);
-    } else {
-      process.stderr.write(result.output);
-    }
+    writeAnalyzeCliResult(result);
     process.exit(result.exitCode);
   }
 

@@ -9,6 +9,7 @@ import {
   formatHumanReadable,
   runAnalyzeCli,
   sampleDiversifiedFindings,
+  writeAnalyzeCliResult,
   type AnalyzeCliFinding,
   type AnalyzeJsonOutput,
 } from './cli.ts';
@@ -38,10 +39,42 @@ describe('runAnalyzeCli', () => {
 
     const resJson = await runAnalyzeCli([nonExistentPath, '--json']);
     assert.equal(resJson.exitCode, 1);
+    assert.ok(resJson.data, 'Expected data payload on --json error');
     const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
     assert.equal(parsed.totalFindings, 0);
     assert.equal(parsed.guides.length, 0);
     assert.match(parsed.error ?? '', /Target directory not found/);
+
+    const stdoutChunks: string[] = [];
+    const stderrChunks: string[] = [];
+    const origStdoutWrite = process.stdout.write.bind(process.stdout);
+    const origStderrWrite = process.stderr.write.bind(process.stderr);
+    const origExitCode = process.exitCode;
+    try {
+      process.stdout.write = ((chunk: string | Uint8Array) => {
+        stdoutChunks.push(String(chunk));
+        return true;
+      }) as typeof process.stdout.write;
+      process.stderr.write = ((chunk: string | Uint8Array) => {
+        stderrChunks.push(String(chunk));
+        return true;
+      }) as typeof process.stderr.write;
+
+      assert.equal(writeAnalyzeCliResult(resHuman), 1);
+      assert.equal(process.exitCode, 1);
+      assert.equal(stdoutChunks.length, 0);
+      assert.equal(stderrChunks.length, 1);
+
+      process.exitCode = 0;
+      assert.equal(writeAnalyzeCliResult(resJson), 1);
+      assert.equal(process.exitCode, 1);
+      assert.equal(stdoutChunks.length, 1);
+      assert.equal(stderrChunks.length, 1);
+    } finally {
+      process.stdout.write = origStdoutWrite;
+      process.stderr.write = origStderrWrite;
+      process.exitCode = origExitCode;
+    }
   });
 
   it('reports zero findings cleanly in default qualified mode', async () => {
@@ -52,7 +85,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(resDefault.exitCode, 0);
       assert.match(
         resDefault.output,
-        new RegExp(`0 findings from ${QUALIFIED_GUIDE_IDS.length} qualified guides \\(pass --experimental to include experimental guides\\)\\.`),
+        new RegExp(`0 findings from ${QUALIFIED_GUIDE_IDS.length} qualified guides \\(pass --all to include experimental guides\\)\\.`),
       );
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
@@ -64,8 +97,8 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
 
-      // With --all-rules on an actually empty directory, reports no modernization opportunities found
-      const resAllEmpty = await runAnalyzeCli([emptyDir, '--all-rules']);
+      // With --all on an actually empty directory, reports no modernization opportunities found
+      const resAllEmpty = await runAnalyzeCli([emptyDir, '--all']);
       assert.equal(resAllEmpty.exitCode, 0);
       assert.match(resAllEmpty.output, /No modernization opportunities found/);
       assert.doesNotMatch(resAllEmpty.output, /provisional and need verification/);
@@ -76,11 +109,10 @@ describe('runAnalyzeCli', () => {
 
   it('reports zero findings in human-readable output in default mode', () => {
     const reducedZeroOutput = formatHumanReadable('/tmp/project', 0, [], undefined, {
-      activeRuleCount: 1,
       activeGuideCount: 1,
       isDefaultQualifiedMode: true,
     });
-    assert.match(reducedZeroOutput, /0 findings from 1 qualified guide \(pass --experimental to include experimental guides\)\./);
+    assert.match(reducedZeroOutput, /0 findings from 1 qualified guide \(pass --all to include experimental guides\)\./);
     assert.doesNotMatch(reducedZeroOutput, /suspended pending re-validation/);
   });
 
@@ -108,7 +140,7 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'accordion.css'), cssContent, 'utf8');
 
-      const res = await runAnalyzeCli(['analyze', testDir, '--all-rules']);
+      const res = await runAnalyzeCli(['analyze', testDir, '--all']);
       assert.equal(res.exitCode, 0);
 
       // Check header and provisional notice
@@ -152,7 +184,7 @@ describe('runAnalyzeCli', () => {
 </form>`;
       await writeFile(join(testDir, 'auth.html'), htmlContent, 'utf8');
 
-      const res = await runAnalyzeCli([testDir, '--all-rules', '--json']);
+      const res = await runAnalyzeCli([testDir, '--all', '--json']);
       assert.equal(res.exitCode, 0);
 
       const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
@@ -241,7 +273,7 @@ describe('runAnalyzeCli', () => {
     }
   });
 
-  it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all-rules', async () => {
+  it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all', async () => {
     const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
     try {
       // 1. Create a pattern from an experimental guide: complex-shapes
@@ -265,10 +297,30 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
-      assert.equal(parsedDefault.statusNotice, undefined);
 
-      // Opt-in run with --all-rules (or --experimental)
-      const resAll = await runAnalyzeCli([testDir, '--all-rules', '--json']);
+      // Retired flags (--experimental, --all-rules) and typo flags fail fast with exit code 1
+      const resExperimentalHuman = await runAnalyzeCli([testDir, '--experimental']);
+      assert.equal(resExperimentalHuman.exitCode, 1);
+      assert.equal(resExperimentalHuman.data, undefined);
+      assert.match(resExperimentalHuman.output, /Error: --experimental was renamed to --all/);
+
+      const resExperimentalJson = await runAnalyzeCli([testDir, '--experimental', '--json']);
+      assert.equal(resExperimentalJson.exitCode, 1);
+      assert.ok(resExperimentalJson.data);
+      const parsedExpJson = JSON.parse(resExperimentalJson.output) as AnalyzeJsonOutput;
+      assert.equal(parsedExpJson.error, '--experimental was renamed to --all');
+
+      const resAllRulesHuman = await runAnalyzeCli([testDir, '--all-rules']);
+      assert.equal(resAllRulesHuman.exitCode, 1);
+      assert.match(resAllRulesHuman.output, /Error: --all-rules was renamed to --all/);
+
+      const resTypo = await runAnalyzeCli([testDir, '--jsno']);
+      assert.equal(resTypo.exitCode, 1);
+      assert.equal(resTypo.data, undefined);
+      assert.match(resTypo.output, /Error: Unknown option '--jsno'/);
+
+      // Opt-in run with --all
+      const resAll = await runAnalyzeCli([testDir, '--all', '--json']);
       assert.equal(resAll.exitCode, 0);
       const parsedAll = JSON.parse(resAll.output) as AnalyzeJsonOutput;
       assert.equal(parsedAll.activeRuleCount, ALL_RULES.length);
@@ -277,24 +329,15 @@ describe('runAnalyzeCli', () => {
 
       assert.ok(
         allGuideIds.includes('complex-shapes'),
-        'All-rules includes experimental rule complex-shapes',
+        '--all includes experimental rule complex-shapes',
       );
       assert.ok(
         allGuideIds.includes('break-up-long-tasks'),
-        'All-rules includes experimental rule break-up-long-tasks',
+        '--all includes experimental rule break-up-long-tasks',
       );
       assert.ok(
         allGuideIds.includes('coordinate-global-events'),
-        'All-rules includes experimental rule coordinate-global-events',
-      );
-
-      // Verify --experimental alias also works
-      const resExperimental = await runAnalyzeCli([testDir, '--experimental', '--json']);
-      assert.equal(resExperimental.exitCode, 0);
-      const parsedExp = JSON.parse(resExperimental.output) as AnalyzeJsonOutput;
-      assert.ok(
-        parsedExp.guides.some((g) => g.guideId === 'break-up-long-tasks'),
-        '--experimental alias enables experimental rules',
+        '--all includes experimental rule coordinate-global-events',
       );
     } finally {
       await rm(testDir, { recursive: true, force: true });
@@ -312,14 +355,14 @@ describe('runAnalyzeCli', () => {
         await writeFile(join(testDir, `form${i}.html`), html, 'utf8');
       }
 
-      const res = await runAnalyzeCli([testDir, '--all-rules']);
+      const res = await runAnalyzeCli([testDir, '--all']);
       assert.equal(res.exitCode, 0);
 
       // Terminal output should cap findings at 5 and print overflow line
       assert.match(res.output, /\.\.\. and 3 more findings/);
 
       // Verify JSON output still has all 8 findings un-truncated
-      const resJson = await runAnalyzeCli([testDir, '--all-rules', '--json']);
+      const resJson = await runAnalyzeCli([testDir, '--all', '--json']);
       assert.equal(resJson.exitCode, 0);
       const parsedJson = JSON.parse(resJson.output) as AnalyzeJsonOutput;
       assert.equal(parsedJson.totalFindings, 8);
@@ -355,7 +398,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(extractTargetCodeLine(''), '');
     });
 
-    it('sampleDiversifiedFindings diversifies max 2 findings per file first up to cap', () => {
+    it('sampleDiversifiedFindings diversifies findings across files round-robin up to cap', () => {
       const makeFinding = (file: string, id: string): AnalyzeCliFinding => ({
         ruleId: 'r1',
         file,
@@ -377,7 +420,7 @@ describe('runAnalyzeCli', () => {
         makeFinding('c.ts', 'c3'),
       ];
 
-      const sampled = sampleDiversifiedFindings(findings, 5, 2);
+      const sampled = sampleDiversifiedFindings(findings, 5);
       assert.equal(sampled.length, 5);
 
       // Round 0 takes a1, b1, c1; Round 1 takes a2, b2 -> total 5
