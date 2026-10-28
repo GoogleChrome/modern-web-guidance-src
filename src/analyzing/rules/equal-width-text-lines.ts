@@ -34,26 +34,51 @@ const SINGLE_LINE_ENCLOSING_NAME_REGEX =
   /\b(?:initSingle|fitSingle(?:Line)?|singleLine|circleType|circletype)\b/i;
 
 const SINGLE_LINE_SELECTOR_REGEX =
-  /(?:^|[\s>+~])(?:h[1-6](?:\.[a-z0-9_-]+)*|a|\.biglink|\.r-fit-text)\s*$/i;
+  /(?:^|[\s>+~])\.r-fit-text\s*$/i;
 
-const EXPLICIT_PER_LINE_SELECTOR_REGEX =
-  /(?:^|[\s>+~])(?:span|em|\.?(?:fit-?line|poster-?line|slab-?line|line-?item|lines))\b/i;
+const HEADING_OR_TITLE_CONTEXT_REGEX =
+  /(?:^|[\s>+~.#'"`_-])(?:h[1-6]|headline|heading|title)\b/i;
 
-function hasFluidClampOptions(call: CallExpression): boolean {
+function hasMinMaxFontSizeOption(call: CallExpression): boolean {
   for (const arg of call.getArguments()) {
     const resolved = resolveLocalExpression(arg, 2);
     if (Node.isObjectLiteralExpression(resolved)) {
       if (
         resolved.getProperty('minFontSize') ||
-        resolved.getProperty('maxFontSize') ||
-        resolved.getProperty('minSize') ||
-        resolved.getProperty('maxSize')
+        resolved.getProperty('maxFontSize')
       ) {
         return true;
       }
     }
   }
   return false;
+}
+
+function hasHeadingOrTitleContext(text: string): boolean {
+  return HEADING_OR_TITLE_CONTEXT_REGEX.test(text);
+}
+
+function countFitTextCallsInFile(sourceFile: SourceFile): number {
+  let count = 0;
+  for (const call of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+    const expr = unwrapExpression(call.getExpression());
+    if (Node.isPropertyAccessExpression(expr)) {
+      const name = expr.getName();
+      if (name === 'fitText' || name === 'fittext') {
+        const target = unwrapExpression(expr.getExpression());
+        const isJQueryCaller =
+          (Node.isIdentifier(target) &&
+            (target.getText().startsWith('$') || target.getText() === 'jQuery')) ||
+          Node.isCallExpression(target) ||
+          (Node.isPropertyAccessExpression(target) &&
+            (target.getName().startsWith('$') || target.getName() === 'jQuery'));
+        if (isJQueryCaller || call.getArguments().length > 0) {
+          count++;
+        }
+      }
+    }
+  }
+  return count;
 }
 
 function isSingleLineOption(call: CallExpression): boolean {
@@ -130,16 +155,11 @@ function extractLastSelectorLiteral(text: string): string | null {
 }
 
 function isSingleLineSelectorTarget(text: string): boolean {
-  if (/\bthis\.\$el\b/.test(text) || /\.r-fit-text\b/.test(text)) {
+  if (/\.r-fit-text\b/.test(text)) {
     return true;
   }
   const selector = extractLastSelectorLiteral(text);
   return selector !== null && SINGLE_LINE_SELECTOR_REGEX.test(selector);
-}
-
-function isExplicitPerLineSelectorTarget(text: string): boolean {
-  const selector = extractLastSelectorLiteral(text);
-  return selector !== null && EXPLICIT_PER_LINE_SELECTOR_REGEX.test(selector);
 }
 
 function isFitTextCall(
@@ -154,7 +174,7 @@ function isFitTextCall(
   ) {
     return false;
   }
-  const hasClampOpts = hasFluidClampOptions(call);
+  const hasMinMaxOpts = hasMinMaxFontSizeOption(call);
   const expr = unwrapExpression(call.getExpression());
   if (Node.isIdentifier(expr)) {
     const name = expr.getText();
@@ -176,14 +196,13 @@ function isFitTextCall(
         return false;
       }
       if (
-        hasClampOpts &&
-        !isExplicitPerLineSelectorTarget(firstText) &&
-        !isExplicitPerLineSelectorTarget(resolvedFirstText)
+        hasMinMaxOpts &&
+        (hasHeadingOrTitleContext(firstText) ||
+          hasHeadingOrTitleContext(resolvedFirstText)) &&
+        countFitTextCallsInFile(sourceFile) === 1
       ) {
         return false;
       }
-    } else if (hasClampOpts) {
-      return false;
     }
     if (!isGlobalReference(expr, name)) {
       const hasPkgImport = sourceFile.getImportDeclarations().some((imp) => {
@@ -220,9 +239,10 @@ function isFitTextCall(
       return false;
     }
     if (
-      hasClampOpts &&
-      !isExplicitPerLineSelectorTarget(targetText) &&
-      !isExplicitPerLineSelectorTarget(resolvedTargetText)
+      hasMinMaxOpts &&
+      (hasHeadingOrTitleContext(targetText) ||
+        hasHeadingOrTitleContext(resolvedTargetText)) &&
+      countFitTextCallsInFile(sourceFile) === 1
     ) {
       return false;
     }

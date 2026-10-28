@@ -310,7 +310,7 @@ export const selectMenuInteractionCssRule: AnalyzerRule = {
       'The stylesheet already uses :user-invalid or guards select:invalid inside @supports not selector(:user-invalid).',
       'The rule declarations solely reset browser default :invalid styles (only setting box-shadow: none or outline: none with no border, background, or error color styling) or only dim unselected placeholder text color/opacity to muted gray tones.',
       'Every select:invalid selector in the rule is already gated by a post-interaction or submitted state class (.was-validated, .touched, .dirty, .submitted) or targets a custom select widget library (.select2, .chosen-container, .choices, .ts-wrapper).',
-      'The selector explicitly combines :required:invalid or [required]:invalid across both input/textarea and select (owned by required-field-feedback); plain input:invalid, select:invalid without :required belongs to this rule and should be KEPT.',
+      'The selector explicitly combines :required:invalid or [required]:invalid across both input/textarea and select (owned by required-field-feedback).',
     ],
   },
 };

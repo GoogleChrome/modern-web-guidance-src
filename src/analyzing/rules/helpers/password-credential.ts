@@ -7,7 +7,7 @@ const PASSWORD_INPUT_TAG_REGEX =
   /<(?:input|Input)\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\})*)>/g;
 
 const NON_CREDENTIAL_SECRET_REGEX =
-  /(?:smtp|ssh|ftp|database|\bdb\b|api[-_]?key|secret|token|wifi|psk|cvv|cvc|csc|pin\b|mqtt|hass|homewizard|domoticz|somfy|openhab|fhem|moziot|homegenie|bridge[-_]?settings|\bsvn\b|passphrase|encrypt|decrypt|wallet|keystore|openpass)/i;
+  /(?:smtp|ssh|ftp|database|\bdb\b|api[-_]?key|secret[-_]?key|secret|token|wifi|psk|cvv|cvc|csc|pin\b|mqtt|bridge[-_]?settings|\bsvn\b|passphrase|encrypt|decrypt|wallet|keystore)/i;
 
 const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
   ':autocomplete',
@@ -510,19 +510,36 @@ export function isNewCredentialPasswordField(
   return formPairsGenericPasswordWithConfirm(enclosingForm.body);
 }
 
-const NON_SIGNUP_PASSWORD_FILE_REGEX =
-  /(?:^|[\\/._-])(?:change[-_]?pass(?:word|wd|w)?|update[-_]?pass(?:word|wd|w)?|edit[-_]?pass(?:word|wd|w|pwd)?|reset[-_]?pass(?:word|wd|w)?|pass(?:word|wd)?[-_]?reset(?:[-_]?confirm)?|pass(?:word|wd)?[-_]?change|pass(?:word|wd)?[-_]?update|forgot[-_]?pass(?:word|wd)?|forgotten[-_]?pass(?:word|wd)?|forgot[-_]?reset|response[-_]?reset|set[-_]?up[-_]?new[-_]?password|set[-_]?password|set[-_]?passphrase|change[-_]?message|reset[-_]?user[-_]?info|resetpage|profile(?:[-_]?page|tab)?|account[-_]?settings|member[-_]?settings|usercenter[-_]?info|usercenter[-_]?fav|mixeduserprofile|my[-_]?account)(?:[\\/._-]|$)/i;
+const NON_SIGNUP_CHANGE_OR_PROFILE_PATH_REGEX =
+  /(?:^|[\\/._-])(?:change[-_]?pass(?:word|wd|w)?|update[-_]?pass(?:word|wd|w)?|edit[-_]?pass(?:word|wd|w|pwd)?|pass(?:word|wd)?[-_]?change|pass(?:word|wd)?[-_]?update|set[-_]?passphrase|profile(?:[-_]?page|tab)?|account[-_]?settings|member[-_]?settings|my[-_]?account)(?:[\\/._-]|$)/i;
 
-const NON_SIGNUP_PATH_SEGMENT_REGEX =
-  /(?:[\\/](?:account[\\/]password|profile[\\/]password|profile[\\/]settings|views[\\/]auth[\\/]reset|pages[\\/]remind|views[\\/]manage\.html|WebContent[\\/]pass\.html|encryption[\\/]encrypt)|(?:^|[\\/])(?:admin[\\/](?:user|views|templates)|themes[\\/]admin[\\/]user|maintainer[\\/]edit|user[\\/]edit\.html|admin_add\.html|add-doctor\.html|devops-1[\\/]cmdb[\\/]user|components[\\/]Users\.vue)|(?:^|[\\/._-])(?:form[-_]?elements?|html[-_]?components|forms[\\/]layouts|dashboard[\\/]validation|password[-_]?strength[-_]?test|backoffice_assets[\\/]plugins[\\/](?:charts|data-table))(?:[\\/._-]|$))/i;
+const NON_SIGNUP_ADMIN_OR_SHOWCASE_PATH_REGEX =
+  /(?:[\\/](?:account[\\/]password|profile[\\/]password|profile[\\/]settings|encryption[\\/]encrypt)|(?:^|[\\/])(?:admin[\\/](?:user|views|templates)|themes[\\/]admin[\\/]user|maintainer[\\/]edit|user[\\/]edit\.html|admin_add\.html)|(?:^|[\\/._-])(?:form[-_]?elements?|html[-_]?components|forms[\\/]layouts|dashboard[\\/]validation|password[-_]?strength[-_]?test)(?:[\\/._-]|$))/i;
 
-const NON_SIGNUP_BINDING_REGEX =
-  /\b(?:jsResetPwd|resetUserInfo|passwordSettings|onChangeSignupPassword|updatePass)\b/i;
+function countExistingPasswordInputs(passwordInputs: readonly string[]): number {
+  let existingFieldCount = 0;
+  for (const attrs of passwordInputs) {
+    if (/原始密码|当前密码|旧密码|原密码/.test(attrs)) {
+      existingFieldCount++;
+      continue;
+    }
+    const idAndNameMatches = [
+      ...attrs.matchAll(/\b(?:name|id|placeholder|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi),
+    ];
+    const words = tokenizeIdentifierWords(
+      idAndNameMatches.map((m) => m[1] ?? m[2] ?? '').join(' '),
+    );
+    if (words.some((w) => EXISTING_PASSWORD_WORDS.has(w))) {
+      existingFieldCount++;
+    }
+  }
+  return existingFieldCount;
+}
 
 /**
- * Checks whether an input classified as `isNewCredential: true` belongs to a
- * password-change, password-reset, profile/account settings, admin CRUD, UI-kit
- * showcase, or dual-mode login/signup form rather than a dedicated sign-up form.
+ * Checks whether an input classified as `isNewCredential: true` belongs to an
+ * authenticated password-change, profile/account settings, admin CRUD, UI-kit
+ * showcase, or dual-mode login/signup form rather than a sign-up form.
  */
 export function isExcludedFromSignUpForm(
   element: DomElementView,
@@ -542,24 +559,9 @@ export function isExcludedFromSignUpForm(
   }
 
   const passwordInputs = getPasswordInputAttrList(enclosingForm.body);
-  let existingFieldCount = 0;
-  for (const attrs of passwordInputs) {
-    if (/原始密码|当前密码|旧密码|原密码/.test(attrs)) {
-      existingFieldCount++;
-      continue;
-    }
-    const idAndNameMatches = [
-      ...attrs.matchAll(/\b(?:name|id|placeholder|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi),
-    ];
-    const words = tokenizeIdentifierWords(
-      idAndNameMatches.map((m) => m[1] ?? m[2] ?? '').join(' '),
-    );
-    if (words.some((w) => EXISTING_PASSWORD_WORDS.has(w))) {
-      existingFieldCount++;
-    }
-  }
+  const existingFieldCount = countExistingPasswordInputs(passwordInputs);
 
-  // Real-world change-password forms have 1 (or 2) old/current password fields alongside new/confirm;
+  // Authenticated change-password forms have 1 (or 2) old/current password fields alongside new/confirm;
   // preserve synthetic 4-existing-field disjointness test in password-credential.test.ts.
   if (existingFieldCount >= 1 && existingFieldCount <= 2) {
     return true;
@@ -567,12 +569,10 @@ export function isExcludedFromSignUpForm(
 
   const filePath = ctx.filePath;
   const isSyntheticDisjointTest = existingFieldCount >= 4;
-  const isTestFormsPath = /(?:^|[\\/])test-forms[\\/]/i.test(filePath);
   if (
     !isSyntheticDisjointTest &&
-    !isTestFormsPath &&
-    (NON_SIGNUP_PASSWORD_FILE_REGEX.test(filePath) ||
-      NON_SIGNUP_PATH_SEGMENT_REGEX.test(filePath))
+    (NON_SIGNUP_CHANGE_OR_PROFILE_PATH_REGEX.test(filePath) ||
+      NON_SIGNUP_ADMIN_OR_SHOWCASE_PATH_REGEX.test(filePath))
   ) {
     return true;
   }
@@ -580,18 +580,7 @@ export function isExcludedFromSignUpForm(
   const name = element.getAttribute('name') ?? '';
   const id = element.getAttribute('id') ?? '';
   const placeholder = element.getAttribute('placeholder') ?? '';
-  const ngModel =
-    element.getAttribute('ng-model') ??
-    element.getAttribute('data-ng-model') ??
-    element.getAttribute('v-model') ??
-    element.getAttribute('formControlName') ??
-    element.getAttribute('data-bind') ??
-    '';
-
-  if (
-    NON_SIGNUP_BINDING_REGEX.test(`${name} ${id} ${ngModel} ${enclosingForm.attrs}`) ||
-    /登录密码/.test(placeholder)
-  ) {
+  if (/登录密码/.test(placeholder)) {
     return true;
   }
 
@@ -677,6 +666,15 @@ export function classifyPasswordCredentialElement(
     element.column,
   );
   if (enclosingForm === null) {
+    return null;
+  }
+
+  // Multi-section system/device configuration forms with >= 4 non-existing password fields
+  const formPasswordInputs = getPasswordInputAttrList(enclosingForm.body);
+  if (
+    formPasswordInputs.length >= 4 &&
+    countExistingPasswordInputs(formPasswordInputs) === 0
+  ) {
     return null;
   }
 

@@ -117,7 +117,7 @@ void test('autofill-sign-up-form: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts authenticated change-password modals, password-reset pages, device settings, and dual-mode login/signup forms', () => {
+  await t.test('exempts authenticated change-password modals, device settings, and dual-mode login/signup forms while allowing password-reset forms without old password', () => {
     const changePwdHtml = `
       <form action="/account/password" method="post">
         <input type="password" name="old_password" placeholder="Current password">
@@ -133,7 +133,7 @@ void test('autofill-sign-up-form: negative / exempt cases', async (t) => {
         <input type="password" name="new_password2" placeholder="Repeat password">
       </form>
     `;
-    assert.equal(scanHtml('password_reset_confirm.html', resetHtml, [matcher]).length, 0);
+    assert.equal(scanHtml('password_reset_confirm.html', resetHtml, [matcher]).length, 2);
 
     const deviceHtml = `
       <form>

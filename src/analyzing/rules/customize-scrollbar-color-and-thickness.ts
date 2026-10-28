@@ -40,7 +40,7 @@ const WEBKIT_THUMB_NON_HOVER_STATE_REGEX =
   /::-webkit-scrollbar-thumb\s*:(?:active|focus|window-inactive)\b/i;
 const HOVER_WEBKIT_SCROLLBAR_REGEX = /:hover::-webkit-scrollbar(?![-\w])/i;
 const CUSTOM_SCROLLBAR_WIDGET_SELECTOR_REGEX =
-  /(?:\.CodeMirror-scroll|\.el-scrollbar__wrap|\.ps(?:\b|__)|\.simplebar-|\.os-viewport|\.nice-select\b|\.win-navbarcontainer)/i;
+  /(?:\.CodeMirror-scroll|\.el-scrollbar__wrap|\.ps(?:\b|__)|\.simplebar-|\.os-viewport|\.nice-select\b)/i;
 const INSET_PADDING_CLIP_REGEX = /^(?:padding-box|content-box)$/i;
 const GRADIENT_VALUE_REGEX =
   /(?:(?:-webkit-|-moz-|-o-)?(?:repeating-)?(?:linear|radial|conic)-gradient|-webkit-gradient)\s*\(/i;
@@ -112,13 +112,18 @@ function extractScrollbarSelectorPrefix(selectorText: string): string {
     .trim();
 }
 
+function normalizeScrollbarSelectorPrefix(prefix: string): string {
+  const lowered = prefix.trim().toLowerCase();
+  if (lowered === '' || lowered === '*' || lowered === 'html' || lowered === 'body') {
+    return '';
+  }
+  return lowered;
+}
+
 function areScrollbarPrefixesCompatible(prefixA: string, prefixB: string): boolean {
   return (
-    prefixA === prefixB ||
-    prefixA === '' ||
-    prefixA === '*' ||
-    prefixB === '' ||
-    prefixB === '*'
+    normalizeScrollbarSelectorPrefix(prefixA) ===
+    normalizeScrollbarSelectorPrefix(prefixB)
   );
 }
 
