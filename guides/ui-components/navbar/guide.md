@@ -21,7 +21,7 @@ guides:
 
 Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover on narrow containers, becomes an inline navigation on wide containers, and identifies the current page.
 
-This guide describes site-navigation integration. It is navigation, not an application menu: links stay in the `Tab` order, with no `focusgroup`, `role="menu"`, `role="menuitem"`, `aria-haspopup="menu"` or arrow-key handling. For positioning and animating the popover, see {{ GUIDE_REF("menu") }}. Use only those popover techniques, not its `focusgroup` and arrow-key menu model. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
+This guide describes site-navigation integration. It is navigation, not an application menu: links stay in the `Tab` order, with no `focusgroup`, `role="menu"`, `role="menuitem"`, `aria-haspopup="menu"` or arrow-key handling. For opening, positioning, hover preview and animating popovers, see {{ GUIDE_REF("menu") }}. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
 
 For component-driven layouts, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}.
 
@@ -204,7 +204,7 @@ Do not add document-level click-outside, Escape or focus-restoration handlers. T
 
 ### Hover preview
 
-As well as click and keyboard opening, preview the submenu on hover in the wide layout. Call `submenu.showPopover({ source: trigger })` on `pointerenter` of the wrapping `<li>` and `hidePopover()` on `pointerleave`. Keep any margin between the trigger and the submenu hoverable with a transparent `::before` that fills it (the submenu needs `overflow: visible`, since a popover clips by default), so the pointer never leaves the `<li>` while crossing and no close delay is needed. Run it only when `matchMedia("(hover: hover)").matches` and the submenu is a popover, ignore touch pointers, and close only a submenu the hover opened. A click on the trigger while the preview is open should keep it open: call `preventDefault()` on that click, because the native toggle would otherwise close it. Do not preview on focus: keyboard users open the submenu with `Enter` or `Space` on the button.
+In the wide layout, preview the submenu on hover as described in {{ GUIDE_REF("menu") }}. Do not preview on focus: keyboard users open the submenu with `Enter` or `Space` on the button.
 
 Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_REF("menu") }}, including its viewport-overflow fallbacks. For collision-aware positioning of a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. This submenu opens below its trigger, so use the top-level `position-area` there, not the menu guide's side-by-side submenu placement. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 
@@ -259,12 +259,7 @@ For the mobile menu, put an absolute fallback declaration before the `anchor()` 
 }
 ```
 
-The wide floating submenu is different: without Anchor Positioning a popover falls back to centered viewport placement and detaches from its trigger, which a single declaration cannot fix. Position it from script instead, and gate the overrides with `@supports not (position-area: block-end)` so browsers with Anchor Positioning are unaffected:
-
-- In the submenu's `toggle` handler, when it opens and `CSS.supports("position-area", "block-end")` is false, place it below the trigger, flipping above and clamping to the viewport when it would overflow.
-- Apply the result as `left` and `top`, with `position: fixed`, `inset: auto` and `margin: 0` so the coordinates are viewport-relative.
-
-If `showPopover({ source })` is unavailable for the hover preview, give the trigger an `anchor-name` and the submenu a matching `position-anchor` instead of relying on the implicit anchor.
+For the wide floating submenu, use the Anchor Positioning fallbacks in {{ GUIDE_REF("menu") }}.
 
 {{ BASELINE_STATUS("starting-style") }}
 
