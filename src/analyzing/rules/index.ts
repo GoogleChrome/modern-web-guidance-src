@@ -25,6 +25,7 @@ import contentBasedStyling from './content-based-styling.ts';
 import contrastColor from './contrast-color.ts';
 import coordinateGlobalEvents from './coordinate-global-events.ts';
 import customButtonActions from './custom-button-actions.ts';
+import customListMarkers from './custom-list-markers.ts';
 import customSelectPickerLayouts from './custom-select-picker-layouts.ts';
 import customTextDecorations from './custom-text-decorations.ts';
 import customizeScrollbarColorAndThickness from './customize-scrollbar-color-and-thickness.ts';
@@ -113,6 +114,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   contrastColor,
   coordinateGlobalEvents,
   customButtonActions,
+  customListMarkers,
   customSelectPickerLayouts,
   customTextDecorations,
   customizeScrollbarColorAndThickness,
@@ -218,6 +220,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'contrast-color/css': 'experimental',
   'coordinate-global-events': 'experimental',
   'custom-button-actions': 'experimental',
+  'custom-list-markers': 'experimental',
   'custom-select-picker-layouts/js-custom-select': 'experimental',
   'custom-text-decorations': 'qualified',
   'customize-scrollbar-color-and-thickness': 'experimental',
