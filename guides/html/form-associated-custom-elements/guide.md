@@ -74,12 +74,13 @@ Key points:
 
 ## Accessibility considerations
 
-When creating custom elements, if the custom element directly handles interaction, or acts as a group for individual controls, ensure that the custom element has an accessible name, role, and conveys state information (in the case of handling interaction directly). This can be done by using the appropriate properties of ElementInternals.
+When creating custom elements, if the custom element directly handles interaction, or acts as a group for individual controls, ensure that the custom element has a role, and conveys state information (in the case of handling interaction directly). This can be done by using the appropriate properties of ElementInternals.
 
 ```js
 this.#internals.role = 'group';
-this.#internals.ariaLabel = "Star rating";
 ```
+
+Unless the custom element contains its own visible label (which may be applicable for single checkbox-like custom elements), then don't apply an accessible name directly using the ElementInternals. This is because this would likely override any accessible name set when using the custom element, such as by labelling the element using a HTML label's `for` attribute.
 
 ## Fallback strategies
 
