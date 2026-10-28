@@ -291,6 +291,18 @@ describe('fixEvalGaps', () => {
     assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/scrollspy', 'reset scrollspy', 'delete gd-dev/scrollspy']);
   });
 
+  it('still opens a PR when gd dev fails but writes a report (e.g. CALIBRATION_FAILED)', async () => {
+    const guide = tempGuide('scrollspy');
+    evalGapFixCli.runDevGuide = async inv => {
+      fs.mkdirSync(resultsDir(inv), { recursive: true });
+      fs.writeFileSync(path.join(resultsDir(inv), REPORT_FILE), '# Calibration failed report\n');
+      return false;
+    };
+
+    assert.strictEqual(await run([guide]), true);
+    assert.deepStrictEqual(calls, ['pull', ...prCalls('scrollspy')]);
+  });
+
   it('drops the branch and continues when gd pr fails', async () => {
     const first = tempGuide('scrollspy');
     const second = tempGuide('spinner');
