@@ -5,7 +5,7 @@ import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
 import { secureExternalSubresourcesMatcher } from './secure-external-subresources.ts';
 
 void test('secure-external-subresources DOM matcher', async (t) => {
-  await t.test('flags versioned third-party CDN <script> and <link rel="stylesheet"> missing integrity', () => {
+  await t.test('flags versioned third-party CDN <script> and <link rel="stylesheet"> missing integrity and deduplicates to 1 finding per file', () => {
     const html = `
       <head>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -14,10 +14,22 @@ void test('secure-external-subresources DOM matcher', async (t) => {
       </head>
     `;
     const matches = scanHtml('index.html', html, [secureExternalSubresourcesMatcher]);
-    assert.equal(matches.length, 3);
+    assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 3);
-    assert.equal(matches[1]?.line, 4);
-    assert.equal(matches[2]?.line, 5);
+  });
+
+  await t.test('flags external cross-origin <script> or <link> with integrity="sha..." when crossorigin is missing', () => {
+    const html = `
+      <head>
+        <script
+          src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"
+          integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
+        ></script>
+      </head>
+    `;
+    const matches = scanHtml('missing-cors.html', html, [secureExternalSubresourcesMatcher]);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0]?.line, 3);
   });
 
   await t.test('flags JSX CDN <script> missing integrity', () => {
@@ -32,7 +44,7 @@ void test('secure-external-subresources DOM matcher', async (t) => {
     assert.equal(matches.length, 1);
   });
 
-  await t.test('exempts CDN resources that already have integrity or unversioned/same-origin URLs', () => {
+  await t.test('exempts CDN resources that already have integrity+crossorigin, importance attributes, or unversioned/same-origin URLs', () => {
     const html = `
       <head>
         <link
@@ -42,6 +54,8 @@ void test('secure-external-subresources DOM matcher', async (t) => {
           crossorigin="anonymous"
           referrerpolicy="no-referrer"
         >
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" importance="high">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" importance="low"></script>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap">
         <script src="https://cdn.jsdelivr.net/npm/vue@latest/dist/vue.global.js"></script>
         <script src="/assets/app.bundle.js"></script>

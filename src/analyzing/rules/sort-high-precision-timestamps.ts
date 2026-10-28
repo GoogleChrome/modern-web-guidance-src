@@ -21,12 +21,22 @@ export const SORT_HIGH_PRECISION_TIMESTAMPS_GUIDE_HASH = '3e333eb82a0d';
 
 const TEMPORAL_GUARD_TOKENS = ['Temporal', 'Temporal.Instant'] as const;
 
-const HIGH_PRECISION_TIMESTAMP_PROP_REGEX =
-  /^(?:timestamp|timestampIso|isoTimestamp|transactionTimestamp|eventTimestamp|logTimestamp|eventTime|occurredAt|recordedAt|loggedAt|traceTime|spanTime|createdAt|updatedAt|created_at|updated_at|occurred_at|recorded_at|event_time|ts|iso|time)$/;
+const EXPLICIT_HIGH_PRECISION_PROP_REGEX =
+  /^(?:nanoTimestamp|microTimestamp|highPrecisionTimestamp|highResTimestamp|hrTimestamp|hrtime|traceTime|traceTimestamp|spanTime|spanTimestamp|logTimestamp|logEntryTimestamp|nanoseconds|microseconds|isoNano|isoMicro)$/i;
+
+const CONTEXTUAL_TIMESTAMP_PROP_REGEX =
+  /^(?:timestamp|timestampIso|isoTimestamp|transactionTimestamp|eventTimestamp|eventTime|occurredAt|recordedAt|loggedAt|ts|iso|time|occurred_at|recorded_at|event_time|log_timestamp|trace_time|span_time)$/;
+
+const SUB_MS_OR_TRACE_LOG_CONTEXT_REGEX =
+  /\b(?:nanosecond|nanoseconds|microsecond|microseconds|sub-?millisecond|subms|highRes|hrtime|epochNanoseconds|trace|traces|span|spans|logEntry|logEntries|auditLog|auditLogs|cloudwatch)\b|\d{2}:\d{2}:\d{2}\.\d{4,9}Z?\b/i;
+
+const LOG_STREAM_IDENTIFIER_REGEX =
+  /\b(?:logs|logStream|logEvents|traceEvents|spanEvents|auditEvents)\b/;
 
 interface ParsedTimestampAccess {
   readonly paramName: string;
   readonly propName: string;
+  readonly isExplicitHighPrecision: boolean;
 }
 
 function extractParamTimestampProperty(argNode: Node): ParsedTimestampAccess | null {
@@ -35,14 +45,15 @@ function extractParamTimestampProperty(argNode: Node): ParsedTimestampAccess | n
     return null;
   }
   const propName = unwrapped.getName();
-  if (!HIGH_PRECISION_TIMESTAMP_PROP_REGEX.test(propName)) {
+  const isExplicitHighPrecision = EXPLICIT_HIGH_PRECISION_PROP_REGEX.test(propName);
+  if (!isExplicitHighPrecision && !CONTEXTUAL_TIMESTAMP_PROP_REGEX.test(propName)) {
     return null;
   }
   const obj = unwrapExpression(unwrapped.getExpression());
   if (!Node.isIdentifier(obj)) {
     return null;
   }
-  return { paramName: obj.getText(), propName };
+  return { paramName: obj.getText(), propName, isExplicitHighPrecision };
 }
 
 function extractDateMsOperand(operandNode: Node): ParsedTimestampAccess | null {
@@ -133,7 +144,51 @@ function findComparatorSubtraction(bodyNode: Node): BinaryExpression | null {
   return null;
 }
 
-function matchTimestampSortCall(callExpr: CallExpression): AnalyzerMatch | null {
+function hasDownstreamNumericPropertySubtraction(
+  scopeNode: Node,
+  sortSubtraction: BinaryExpression,
+  propName: string,
+): boolean {
+  for (const bin of scopeNode.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+    if (bin === sortSubtraction) {
+      continue;
+    }
+    if (bin.getOperatorToken().getKind() !== SyntaxKind.MinusToken) {
+      continue;
+    }
+    const text = bin.getText();
+    if (text.includes(`.${propName}`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasSubMsOrTraceLogContext(
+  callExpr: CallExpression,
+  filePath: string,
+  fileContent: string,
+): boolean {
+  if (SUB_MS_OR_TRACE_LOG_CONTEXT_REGEX.test(fileContent)) {
+    return true;
+  }
+  if (/(?:^|\/)(?:logs?|traces?|telemetry)\//i.test(filePath)) {
+    return true;
+  }
+  const enclosingFn =
+    callExpr.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration) ??
+    callExpr.getFirstAncestorByKind(SyntaxKind.MethodDeclaration) ??
+    callExpr.getFirstAncestorByKind(SyntaxKind.FunctionExpression) ??
+    callExpr.getFirstAncestorByKind(SyntaxKind.ArrowFunction);
+  const scopeText = enclosingFn ? enclosingFn.getText() : callExpr.getText();
+  return LOG_STREAM_IDENTIFIER_REGEX.test(scopeText);
+}
+
+function matchTimestampSortCall(
+  callExpr: CallExpression,
+  sourceFile: SourceFile,
+  ctx: JsMatcherContext,
+): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(expr)) {
     return null;
@@ -186,13 +241,34 @@ function matchTimestampSortCall(callExpr: CallExpression): AnalyzerMatch | null 
     return null;
   }
 
+  if (
+    !leftAccess.isExplicitHighPrecision &&
+    !hasSubMsOrTraceLogContext(callExpr, ctx.filePath, ctx.fileContent)
+  ) {
+    return null;
+  }
+
+  const enclosingScope =
+    callExpr.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration) ??
+    callExpr.getFirstAncestorByKind(SyntaxKind.MethodDeclaration) ??
+    sourceFile;
+  if (
+    hasDownstreamNumericPropertySubtraction(
+      enclosingScope,
+      subtraction,
+      leftAccess.propName,
+    )
+  ) {
+    return null;
+  }
+
   if (isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS)) {
     return null;
   }
 
   return {
     line: callExpr.getStartLineNumber(),
-    message: `Sorting timestamp property '${leftAccess.propName}' via Date millisecond parsing truncates sub-millisecond precision; parse ISO timestamps with Temporal.Instant.from() and order with Temporal.Instant.compare().`,
+    message: `Sorting high-precision timestamp property '${leftAccess.propName}' via Date millisecond parsing truncates sub-millisecond precision; parse ISO timestamps with Temporal.Instant.from() and order with Temporal.Instant.compare().`,
   };
 }
 
@@ -210,7 +286,7 @@ export const sortHighPrecisionTimestampsMatcher: JsRuleMatcher = {
 
     const matches: AnalyzerMatch[] = [];
     for (const callExpr of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-      const match = matchTimestampSortCall(callExpr);
+      const match = matchTimestampSortCall(callExpr, sourceFile, ctx);
       if (match) {
         matches.push(match);
       }
@@ -224,15 +300,15 @@ export const sortHighPrecisionTimestampsRule: AnalyzerRule = {
   guideId: 'sort-high-precision-timestamps',
   guideHash: SORT_HIGH_PRECISION_TIMESTAMPS_GUIDE_HASH,
   summary:
-    'Replace Date.parse() or new Date().getTime() subtraction in .sort() / .toSorted() timestamp comparators with Temporal.Instant.compare() to preserve sub-millisecond ordering.',
+    'Replace Date.parse() or new Date().getTime() subtraction in .sort() / .toSorted() high-precision timestamp comparators with Temporal.Instant.compare() to preserve sub-millisecond ordering.',
   matcher: sortHighPrecisionTimestampsMatcher,
   verifierRubric: {
     keepWhen: [
-      'An Array .sort() or .toSorted() comparator parses ISO 8601 timestamp properties (such as timestamp, ts, eventTime, occurredAt, createdAt, updatedAt, iso, or time) with Date.parse(), new Date(...).getTime(), or +new Date(...) to order events, logs, traces, messages, or timeline entries instead of Temporal.Instant.compare().',
+      'An Array .sort() or .toSorted() comparator parses sub-millisecond, microsecond, or nanosecond ISO 8601 timestamp strings (or high-frequency trace, span, or log-entry timestamps) with Date.parse(), new Date(...).getTime(), or +new Date(...) instead of Temporal.Instant.compare().',
     ],
     dropWhen: [
-      'Sorting coarse calendar dates (such as birthDate, dueDate, deadlineDate, releaseDate, year, month, or day) where sub-millisecond precision is irrelevant.',
-      'Sorting numeric epoch millisecond numbers directly (such as a.timestamp - b.timestamp without Date.parse or new Date) or using performance.now() intervals.',
+      'Sorting ordinary millisecond or second database/UI timestamps (such as createdAt, updatedAt, publishedAt) or coarse calendar dates (birthDate, dueDate, releaseDate) where sub-millisecond precision is irrelevant.',
+      'Sorting numeric epoch millisecond numbers directly or code that performs numeric subtraction arithmetic (t2 - t1) downstream on the parsed timestamp value.',
       'Code already using Temporal.Instant.compare() or guarded by a Temporal feature check.',
     ],
   },

@@ -38,7 +38,6 @@ import exportHtmlMediaFromCanvas from './export-html-media-from-canvas.ts';
 import flickerFreeClientSideAbTesting from './flicker-free-client-side-ab-testing.ts';
 import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-contents.ts';
 import highlightTextRanges from './highlight-text-ranges.ts';
-import identifyHeavyScripts from './identify-heavy-scripts.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
 import improveNextPageLoadPerformance from './improve-next-page-load-performance.ts';
 import improveTextLayoutAndLegibility from './improve-text-layout-and-legibility.ts';
@@ -127,7 +126,6 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   flickerFreeClientSideAbTesting,
   formFieldsAutomaticallyFitContents,
   highlightTextRanges,
-  identifyHeavyScripts,
   imeSafeEnterSubmit,
   improveNextPageLoadPerformance,
   improveTextLayoutAndLegibility,
@@ -239,7 +237,6 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'form-fields-automatically-fit-contents': 'qualified',
   'highlight-text-ranges/package-markjs': 'experimental',
   'highlight-text-ranges/js-markjs': 'experimental',
-  'identify-heavy-scripts': 'experimental',
   'ime-safe-enter-submit': 'experimental',
   'improve-next-page-load-performance/package-prefetch': 'experimental',
   'improve-next-page-load-performance/js-quicklink': 'experimental',
