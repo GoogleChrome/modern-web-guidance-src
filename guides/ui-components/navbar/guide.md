@@ -167,7 +167,7 @@ Do not add document-level click-outside, Escape or focus-restoration handlers. T
 
 ### Hover preview
 
-In the wide layout, preview the submenu on hover as described in {{ GUIDE_REF("menu") }}. Do not preview on focus: keyboard users open the submenu with `Enter` or `Space` on the button.
+In the wide layout, preview the submenu on hover as described in {{ GUIDE_REF("menu") }}. Also preview it when the trigger receives keyboard focus (`:focus-visible` only, so a pointer click is not toggled twice); `Enter` or `Space` still toggles it.
 
 Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_REF("menu") }}, including its viewport-overflow fallbacks. For collision-aware positioning of a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. This submenu opens below its trigger, so use the top-level `position-area` there, not the menu guide's side-by-side submenu placement. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 
