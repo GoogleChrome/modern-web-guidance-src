@@ -519,7 +519,7 @@ export function getBaselineTargetsForGrader(graderPath: string): BaselineTarget[
   if (!fs.existsSync(graderPath)) return [];
   const content = fs.readFileSync(graderPath, 'utf8');
   const extraTargets = new Set<BaselineTarget>();
-  const skipUnlessRegex = /\bskipUnless\s*\(\s*\{\s*unsupported\s*:\s*(['"`])([\s\S]*?)\1\s*,?\s*\}\s*\)/g;
+  const skipUnlessRegex = /\bskipUnless\s*\(\s*\{\s*unsupported\s*:\s*(['"])([\s\S]*?)\1\s*,?\s*\}\s*\)/g;
   let match: RegExpExecArray | null;
   while ((match = skipUnlessRegex.exec(content)) !== null) {
     const tokens = match[2]
