@@ -54,15 +54,15 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
   </div>
 
   <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
-    <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3"
+    <div role="group" aria-roledescription="slide" aria-label="1 of 3"
         data-marker-name="Go to slide 1">
       <h3>Product one</h3>
     </div>
-    <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="2 of 3"
+    <div role="group" aria-roledescription="slide" aria-label="2 of 3"
         data-marker-name="Go to slide 2">
       <h3>Product two</h3>
     </div>
-    <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="3 of 3"
+    <div role="group" aria-roledescription="slide" aria-label="3 of 3"
         data-marker-name="Go to slide 3">
       <h3>Product three</h3>
     </div>
@@ -89,7 +89,7 @@ The track is a flex row that scrolls on the inline axis and snaps to slides. Eac
   scroll-snap-type: x mandatory;
 }
 
-.carousel-slide {
+.carousel-track > * {
   flex: 0 0 100%; /* one slide per view; use a smaller basis for a peek layout */
   scroll-snap-align: center;
 }
@@ -133,12 +133,12 @@ Place the marker group after the track, give each marker an accessible name from
     scroll-marker-group: after;
   }
 
-  .carousel-slide::scroll-marker {
+  .carousel-track > *::scroll-marker {
     /* Empty glyph, accessible name taken from the slide's data attribute */
     content: "" / attr(data-marker-name);
   }
 
-  .carousel-slide::scroll-marker:target-current {
+  .carousel-track > *::scroll-marker:target-current {
     background: #0a5; /* example color; any clear contrast with the other markers works */
   }
 }
@@ -244,12 +244,12 @@ For previous/next that wrap from the last slide to the first and back, keep the 
 
 ```css
 /* The first slide parks after the last while --current is the last or second-to-last index. */
-.carousel-slide:first-child {
+.carousel-track > :first-child {
   order: clamp(0, var(--current) - (sibling-count() - 3), 1);
 }
 
 /* The last slide parks before the first while --current is 0 or 1. */
-.carousel-slide:last-child {
+.carousel-track > :last-child {
   order: calc(-1 * clamp(0, 2 - var(--current), 1));
 }
 ```
