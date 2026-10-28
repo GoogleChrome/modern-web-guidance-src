@@ -1,0 +1,318 @@
+diff --git a/index.html b/index.html
+index 66c9173..268bb6f 100644
+--- a/index.html
++++ b/index.html
+@@ -6,12 +6,166 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    @property --icon-start {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --icon-end {
++      syntax: "*";
++      inherits: false;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      /* Icon design tokens (inline SVG data URIs) */
++      --icon-style-size: 1em;
++      --icon-style-spacing: 0.35em;
++      --icon-style-voffset: -0.02em;
++
++      --icon-menu: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 8h1a4 4 0 1 1 0 8h-1'/%3E%3Cpath d='M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z'/%3E%3Cline x1='6' y1='2' x2='6' y2='4'/%3E%3Cline x1='10' y1='2' x2='10' y2='4'/%3E%3Cline x1='14' y1='2' x2='14' y2='4'/%3E%3C/svg%3E");
++      --icon-location: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E");
++      --icon-rewards: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
++      --icon-account: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
++      --icon-logout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpolyline points='16 17 21 12 16 7'/%3E%3Cline x1='21' y1='12' x2='9' y2='12'/%3E%3C/svg%3E");
++      --icon-leaf: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z'/%3E%3Cpath d='M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/%3E%3C/svg%3E");
++      --icon-flame: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z'/%3E%3C/svg%3E");
++      --icon-snowflake: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cline x1='12' y1='2' x2='12' y2='22'/%3E%3Cpath d='m20 16-4-4 4-4'/%3E%3Cpath d='m4 8 4 4-4 4'/%3E%3Cpath d='m16 4-4 4-4-4'/%3E%3Cpath d='m8 20 4-4 4 4'/%3E%3C/svg%3E");
++      --icon-bag: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'/%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M16 10a4 4 0 0 1-8 0'/%3E%3C/svg%3E");
++      --icon-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3Cpath d='m12 5 7 7-7 7'/%3E%3C/svg%3E");
++      --icon-external: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E");
++    }
++
++    /* CSS-Driven Icon Engine */
++    .icon:empty {
++      --icon-start: var(--icon);
++    }
++
++    @container style(--icon-start) {
++      ::before {
++        --icon-start: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-start) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::before {
++        margin-inline-end: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    @container style(--icon-end) {
++      ::after {
++        --icon-end: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-end) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::after {
++        margin-inline-start: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    /* Fallback hooks for browsers without Container Style Queries */
++    @supports not (container-type: normal) {
++      :where(.icon-start, .icon:empty)::before {
++        content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-start) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(.icon-start)::before {
++        --icon-start: inherit;
++      }
++
++      :where(.icon:empty)::before {
++        --icon-start: var(--icon);
++      }
++
++      :where(.icon-start:not(.icon, :empty))::before {
++        margin-inline-end: var(--icon-style-spacing, 0.3em);
++      }
++
++      :where(.icon-end)::after {
++        --icon-end: inherit;
++        content: image-set(linear-gradient(transparent 0 100%), var(--icon-end)) / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        mask: var(--icon-end) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(.icon-end:not(.icon, :empty))::after {
++        margin-inline-start: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    /* Safari browser workarounds */
++    @keyframes webkit-301609 {}
++
++    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
++      @layer webkit-301609-fix {
++        ::before,
++        ::after {
++          animation: webkit-301609 0s;
++        }
++      }
++
++      @property --icon-start {
++        syntax: "*";
++        inherits: true;
++      }
++
++      @property --icon-end {
++        syntax: "*";
++        inherits: true;
++      }
++
++      @layer webkit-325900-fix {
++        @container style(--icon-start) {
++          * {
++            --icon-start: initial;
++          }
++        }
++
++        @container style(--icon-end) {
++          * {
++            --icon-end: initial;
++          }
++        }
++      }
+     }
+ 
+     * {
+@@ -70,6 +224,28 @@
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      --icon-start: var(--icon-logout);
++    }
++
++    /* Navigation Icons */
++    nav a[href="/menu"] {
++      --icon-start: var(--icon-menu);
++    }
++
++    nav a[href="/locations"] {
++      --icon-start: var(--icon-location);
++    }
++
++    nav a[href="/rewards"] {
++      --icon-start: var(--icon-rewards);
++    }
++
++    nav a[href="/account"] {
++      --icon-start: var(--icon-account);
++    }
++
++    .logo {
++      --icon-start: var(--icon-menu);
+     }
+ 
+     /* Hero Section */
+@@ -113,6 +289,26 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      --icon-style-color: var(--primary);
++    }
++
++    .card-seasonal {
++      --icon: var(--icon-leaf);
++    }
++
++    .card-espresso {
++      --icon: var(--icon-flame);
++    }
++
++    .card-cold-brew {
++      --icon: var(--icon-snowflake);
++    }
++
++    .card .icon {
++      display: inline-block;
++      margin-bottom: 10px;
++      --icon-style-size: 2rem;
++      --icon-style-color: var(--accent);
+     }
+ 
+     .card h3 {
+@@ -120,6 +316,18 @@
+       color: var(--primary);
+     }
+ 
++    .card-seasonal h3 {
++      --icon-start: var(--icon-leaf);
++    }
++
++    .card-espresso h3 {
++      --icon-start: var(--icon-flame);
++    }
++
++    .card-cold-brew h3 {
++      --icon-start: var(--icon-snowflake);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -129,6 +337,11 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      --icon-end: var(--icon-arrow-right);
++    }
++
++    .hero .btn {
++      --icon-start: var(--icon-bag);
+     }
+ 
+     .btn:hover {
+@@ -158,40 +371,43 @@
+ <body>
+ 
+   <nav>
+-    <div class="logo">THE DAILY GRIND</div>
++    <div class="logo icon-start">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="icon-start">Menu</a></li>
++      <li><a href="/locations" class="icon-start">Locations</a></li>
++      <li><a href="/rewards" class="icon-start">Rewards</a></li>
++      <li><a href="/account" class="icon-start">My Account</a></li>
++      <li><a href="/logout" class="logout-link icon-start">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn icon-start icon-end">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <div class="card card-seasonal">
++          <span class="icon" style="--icon: var(--icon-leaf);" role="img" aria-label="Seasonal Special"></span>
++          <h3 class="icon-start">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn icon-end">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        <div class="card card-espresso">
++          <span class="icon" style="--icon: var(--icon-flame);" role="img" aria-label="Freshly Roasted"></span>
++          <h3 class="icon-start">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn icon-end">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        <div class="card card-cold-brew">
++          <span class="icon" style="--icon: var(--icon-snowflake);" role="img" aria-label="Chilled Cold Brew"></span>
++          <h3 class="icon-start">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn icon-end">View Details</a>
+         </div>
+       </div>
+     </section>

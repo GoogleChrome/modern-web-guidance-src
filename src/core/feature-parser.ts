@@ -62,3 +62,7 @@ export function stripTmpPrefix(id: string): string {
   return id.replace(/^tmp-/, '');
 }
 
+export function isTmpFeature(id: string): boolean {
+  return id.startsWith('tmp-');
+}
+

@@ -34,7 +34,7 @@ Use the `view-transition-name` CSS property to tell the browser which elements s
 
 You can use multiple `view-transition-name`s to morph multiple pairs of elements. For example, you may want to transition both the product image and title with separate transitions.
 
-Because there are multiple items on the list view, you can not give the all of them the same `view-transition-name`. This can be solved in two ways in a SPA.
+Because there are multiple items on the list view, you cannot give all of them the same `view-transition-name`. This can be solved in two ways in a SPA.
 
 1. **Dynamic detail page:** Assign each item on the list page a unique `view-transition-name`, and then dynamically apply that name to the matching element on the detail page when the list item is selected, as shown here.
 
