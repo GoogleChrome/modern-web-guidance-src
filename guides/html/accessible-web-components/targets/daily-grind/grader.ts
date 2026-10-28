@@ -14,6 +14,8 @@ import type { Page } from '@playwright/test';
 // @ts-ignore - import.meta.url is supported at runtime by Playwright/ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
+const TOGGLE_ROLES = ['switch', 'checkbox', 'button', 'menuitemcheckbox'];
+
 function getCustomElementClasses(): ClassDeclaration[] {
   const project = getJsProject(targetFiles);
   return project
@@ -50,15 +52,10 @@ async function getInteractiveControl(page: Page) {
         el.tagName.includes('-')
       );
       return els.map((el, idx) => {
-        if (!el.id) {
-          el.setAttribute('data-grader-idx', String(idx));
-        }
+        el.setAttribute('data-grader-idx', String(idx));
         return {
           tagName: el.tagName.toLowerCase(),
-          id: el.id,
-          selector: el.id
-            ? `#${el.id}`
-            : `${el.tagName.toLowerCase()}[data-grader-idx="${idx}"]`,
+          selector: `[data-grader-idx="${idx}"]`,
         };
       });
     });
@@ -87,6 +84,10 @@ async function getInteractiveControl(page: Page) {
           name: axNode.name?.value,
           stateProp: stateProp.name,
           stateValue: String(stateProp.value?.value),
+          nameSources: (axNode.name?.sources ?? []) as Array<{
+            attribute?: string;
+            invalid?: boolean;
+          }>,
         };
       }
     }
@@ -182,12 +183,20 @@ test.describe('accessible-web-components Target Grader', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
       await page.evaluate(async () => {
-        const customTag = Array.from(document.querySelectorAll('*'))
-          .map((el) => el.tagName.toLowerCase())
-          .find((tag) => tag.includes('-'));
-        if (customTag && window.customElements) {
-          await window.customElements.whenDefined(customTag);
-        }
+        if (!window.customElements) return;
+        const undefinedTags = new Set(
+          Array.from(document.querySelectorAll(':not(:defined)'))
+            .map((el) => el.tagName.toLowerCase())
+            .filter((tag) => tag.includes('-'))
+        );
+        await Promise.race([
+          Promise.all(
+            Array.from(undefinedTags).map((tag) =>
+              window.customElements.whenDefined(tag)
+            )
+          ),
+          new Promise((resolve) => setTimeout(resolve, 3000)),
+        ]);
       });
     });
 
@@ -250,7 +259,7 @@ test.describe('accessible-web-components Target Grader', () => {
       const control = await getInteractiveControl(page);
       const hasInitialRoleAndStateInTree = Boolean(
         control &&
-          control.role &&
+          TOGGLE_ROLES.includes(control.role) &&
           control.stateProp &&
           (control.stateValue === 'true' || control.stateValue === 'false')
       );
@@ -265,20 +274,19 @@ test.describe('accessible-web-components Target Grader', () => {
     test('Interactive control host element receives focus directly', async ({
       page,
     }) => {
-      const hostReceivesFocus = await page.evaluate(() => {
-        const hosts = Array.from(document.querySelectorAll('*')).filter(
-          (el): el is HTMLElement =>
-            el instanceof HTMLElement && el.tagName.includes('-')
-        );
-        if (hosts.length === 0) return false;
-        const host = hosts[0];
-        if (host.tabIndex !== 0) return false;
-        host.focus();
-        return (
-          document.activeElement === host &&
-          (!host.shadowRoot || host.shadowRoot.activeElement === null)
-        );
-      });
+      const control = await getInteractiveControl(page);
+      const hostReceivesFocus = control
+        ? await page.evaluate((sel: string) => {
+            const host = document.querySelector(sel);
+            if (!(host instanceof HTMLElement)) return false;
+            if (host.tabIndex !== 0) return false;
+            host.focus();
+            return (
+              document.activeElement === host &&
+              (!host.shadowRoot || host.shadowRoot.activeElement === null)
+            );
+          }, control.selector)
+        : false;
 
       expect(hostReceivesFocus).toBe(true);
     });
@@ -374,38 +382,15 @@ test.describe('accessible-web-components Target Grader', () => {
         control && control.name && control.name.trim().length > 0
       );
 
-      const validLabelRefs = await page.evaluate(() => {
-        const hosts = Array.from(document.querySelectorAll('*')).filter(
-          (node) => node.tagName.includes('-')
-        );
-        if (hosts.length === 0) return false;
-
-        return hosts.every((host) => {
-          const ariaLabelledBy = host.getAttribute('aria-labelledby');
-          if (ariaLabelledBy) {
-            const root = host.getRootNode() as Document | ShadowRoot;
-            const ids = ariaLabelledBy.trim().split(/\s+/);
-            const allInSameTree = ids.every((id) =>
-              Boolean(root.getElementById(id))
-            );
-            if (!allInSameTree) return false;
-          }
-
-          const labelledByEls = (
-            host as HTMLElement & { ariaLabelledByElements?: Element[] | null }
-          ).ariaLabelledByElements;
-          if (labelledByEls && labelledByEls.length > 0) {
-            const pointsIntoOwnShadow = Array.from(labelledByEls).some(
-              (target) =>
-                host.shadowRoot !== null &&
-                target.getRootNode() === host.shadowRoot
-            );
-            if (pointsIntoOwnShadow) return false;
-          }
-
-          return true;
-        });
-      });
+      // CDP reports aria-labelledby (attribute or ariaLabelledByElements)
+      // references that do not resolve to a valid same-tree or outward target
+      // (e.g. into the host's own shadow root) as an invalid name source.
+      const validLabelRefs = Boolean(
+        control &&
+          !control.nameSources.some(
+            (src) => src.attribute === 'aria-labelledby' && src.invalid
+          )
+      );
 
       expect(Boolean(control) && hasAccessibleName && validLabelRefs).toBe(
         true
