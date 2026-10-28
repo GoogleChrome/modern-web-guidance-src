@@ -147,12 +147,14 @@ popover.addEventListener('beforetoggle', (event)=>{
 
 If your Baseline target does not support Invoker Commands, use `popovertarget`.
 
+```html
 <button type="button" 
   popovertarget="context-menu"
   aria-haspopup="menu" aria-expanded="false"
   aria-label="Open context menu">
   <!-- Visual trigger (e.g. three dots icon) -->
 </button>
+```
 
 ### Fallback for Anchor Positioning
 
