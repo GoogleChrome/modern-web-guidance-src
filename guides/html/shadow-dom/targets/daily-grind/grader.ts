@@ -2,128 +2,24 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import {
-  Node,
-  SyntaxKind,
-  type CallExpression,
-  type ClassDeclaration,
-  type ObjectLiteralExpression,
-  type PropertyAssignment,
-  type SourceFile,
-  type StringLiteral,
-  type NoSubstitutionTemplateLiteral,
-} from 'ts-morph';
-import { parseHTML } from 'linkedom';
-import { parse, CSSStyleRule, type CSSStyleSheet } from 'cssomnom';
+import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getStringLiteralValue(node: any): string | undefined {
+function getStringLiteralValue(node: Node | undefined): string | undefined {
   if (!node) return undefined;
-  const kind = node.getKind?.();
-  if (
-    kind === SyntaxKind.StringLiteral ||
-    kind === SyntaxKind.NoSubstitutionTemplateLiteral
-  ) {
-    return (node as StringLiteral | NoSubstitutionTemplateLiteral).getLiteralValue();
+  if (Node.isStringLiteral(node) || Node.isNoSubstitutionTemplateLiteral(node)) {
+    return node.getLiteralValue();
   }
   return undefined;
 }
 
 function getAllSourceFiles(): SourceFile[] {
   return getJsProject(targetFiles).getSourceFiles();
-}
-
-function getAllTemplateDocuments(): any[] {
-  const htmlDocs = getHtmlDocuments(targetFiles);
-  const templateDocs: any[] = [];
-
-  for (const { document } of htmlDocs) {
-    const templates: any[] = Array.from(document.querySelectorAll('template'));
-    for (const tmpl of templates) {
-      const inner = tmpl.innerHTML || tmpl.textContent || '';
-      if (inner.trim()) {
-        templateDocs.push(parseHTML(inner).document);
-      }
-    }
-  }
-
-  const sourceFiles = getAllSourceFiles();
-  for (const sf of sourceFiles) {
-    const binaryExprs = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-    for (const expr of binaryExprs) {
-      if (expr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) continue;
-      const left = expr.getLeft();
-      if (
-        left.getKind() === SyntaxKind.PropertyAccessExpression &&
-        (left as any).getName() === 'innerHTML'
-      ) {
-        const rightVal = getStringLiteralValue(expr.getRight());
-        if (rightVal) {
-          templateDocs.push(parseHTML(rightVal).document);
-        }
-      }
-    }
-  }
-
-  return templateDocs;
-}
-
-function getTemplateStyleSheets(): CSSStyleSheet[] {
-  const sheets: CSSStyleSheet[] = [];
-  for (const doc of getAllTemplateDocuments()) {
-    const styleEls: any[] = Array.from(doc.querySelectorAll('style'));
-    for (const styleEl of styleEls) {
-      const css = styleEl.textContent || '';
-      if (css.trim()) {
-        sheets.push(parse(css));
-      }
-    }
-  }
-  return sheets;
-}
-
-function getConstructedStyleSheets(): CSSStyleSheet[] {
-  const sheets: CSSStyleSheet[] = [];
-  const sourceFiles = getAllSourceFiles();
-  for (const sf of sourceFiles) {
-    const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of calls) {
-      const expr = call.getExpression();
-      if (expr.getKind() === SyntaxKind.PropertyAccessExpression) {
-        const propName = (expr as any).getName();
-        if (propName === 'replaceSync' || propName === 'replace') {
-          const argVal = getStringLiteralValue(call.getArguments()[0]);
-          if (argVal) {
-            sheets.push(parse(argVal));
-          }
-        }
-      }
-    }
-  }
-
-  return sheets;
-}
-
-function getShadowStyleSheets(): CSSStyleSheet[] {
-  return [...getTemplateStyleSheets(), ...getConstructedStyleSheets()];
-}
-
-function collectStyleRules(rules: any[]): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-    } else if (rule && rule.cssRules) {
-      result.push(...collectStyleRules(Array.from(rule.cssRules)));
-    }
-  }
-  return result;
 }
 
 function unwrapExpression(node: Node | undefined): Node | undefined {
@@ -139,6 +35,36 @@ function unwrapExpression(node: Node | undefined): Node | undefined {
     current = current.getExpression();
   }
   return current;
+}
+
+// Classes that extend something (custom element classes), declared or passed inline to define().
+function getElementClasses(sourceFiles: SourceFile[]): Node[] {
+  return sourceFiles.flatMap((sf) =>
+    [
+      ...sf.getDescendantsOfKind(SyntaxKind.ClassDeclaration),
+      ...sf.getDescendantsOfKind(SyntaxKind.ClassExpression),
+    ].filter((cls) => Boolean(cls.getExtends()))
+  );
+}
+
+// True when `node` runs once per instance: inside a constructor, a non-static method/accessor,
+// or a non-static field initializer of a class.
+function isInPerInstanceCode(node: Node): boolean {
+  for (const ancestor of node.getAncestors()) {
+    if (Node.isConstructorDeclaration(ancestor)) return true;
+    if (
+      (Node.isMethodDeclaration(ancestor) ||
+        Node.isGetAccessorDeclaration(ancestor) ||
+        Node.isSetAccessorDeclaration(ancestor) ||
+        Node.isPropertyDeclaration(ancestor)) &&
+      !ancestor.isStatic()
+    ) {
+      return true;
+    }
+    if (Node.isClassStaticBlockDeclaration(ancestor)) return false;
+    if (Node.isClassDeclaration(ancestor) || Node.isClassExpression(ancestor)) return false;
+  }
+  return false;
 }
 
 const MAX_HANDLER_CALL_DEPTH = 3;
@@ -269,174 +195,66 @@ function getSlotchangeHandlerExpressions(sourceFiles: SourceFile[]): Node[] {
 }
 
 test.describe('shadow-dom Target Grader', () => {
-  test('The custom element attaches an open shadow root (mode: "open") to encapsulate its internal DOM subtree', () => {
-    const sourceFiles = getAllSourceFiles();
-    const calls = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
-    );
-
-    const hasOpenShadowRoot = calls.some((call: CallExpression) => {
-      const expr = call.getExpression();
-      if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
-      if ((expr as any).getName() !== 'attachShadow') return false;
-
-      const firstArg = call.getArguments()[0];
-      if (!firstArg || firstArg.getKind() !== SyntaxKind.ObjectLiteralExpression) {
-        return false;
-      }
-
-      const modeProp = (firstArg as ObjectLiteralExpression).getProperty('mode');
-      if (!modeProp || modeProp.getKind() !== SyntaxKind.PropertyAssignment) {
-        return false;
-      }
-
-      const init = (modeProp as PropertyAssignment).getInitializer();
-      return getStringLiteralValue(init) === 'open';
-    });
-
-    expect(hasOpenShadowRoot).toBe(true);
-  });
-
   test('The component defines a <template> once outside the constructor and builds each instance shadow root by cloning its .content without assigning innerHTML per instance', () => {
     const sourceFiles = getAllSourceFiles();
     const htmlDocs = getHtmlDocuments(targetFiles);
-
-    // Check that a <template> is defined either in HTML or via document.createElement('template') outside any constructor
-    const hasHtmlTemplate = htmlDocs.some(({ document }) =>
-      Boolean(document.querySelector('template'))
-    );
-
     const calls = sourceFiles.flatMap((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.CallExpression)
     );
 
-    const hasJsTemplateOutsideConstructor = calls.some((call) => {
-      const expr = call.getExpression();
-      if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
-      if ((expr as any).getName() !== 'createElement') return false;
+    // A <template> in markup, or document.createElement('template') outside per-instance code.
+    const hasHtmlTemplate = htmlDocs.some(({ document }) =>
+      Boolean(document.querySelector('template'))
+    );
+    const hasJsTemplateOutsideInstance = calls.some((call) => {
+      const callee = unwrapExpression(call.getExpression());
+      if (!Node.isPropertyAccessExpression(callee) || callee.getName() !== 'createElement') {
+        return false;
+      }
       const arg = getStringLiteralValue(call.getArguments()[0]);
-      if (arg?.toLowerCase() !== 'template') return false;
-      return !call.getFirstAncestorByKind(SyntaxKind.Constructor);
+      return arg?.toLowerCase() === 'template' && !isInPerInstanceCode(call);
     });
 
-    // Check that inside a custom element class (constructor or method), .content is cloned via cloneNode(true) or importNode(..., true)
-    const classes = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.ClassDeclaration)
-    );
-
-    const clonesTemplateWithoutPerInstanceInnerHTML = classes.some(
-      (cls: ClassDeclaration) => {
-        const classCalls = cls.getDescendantsOfKind(SyntaxKind.CallExpression);
-        const hasCloneCall = classCalls.some((call) => {
-          const expr = call.getExpression();
-          if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
-          const methodName = (expr as any).getName();
-
-          if (methodName === 'cloneNode') {
-            const receiver = (expr as any).getExpression();
-            const isContent =
-              receiver.getKind() === SyntaxKind.PropertyAccessExpression &&
-              receiver.getName() === 'content';
-            const firstArg = call.getArguments()[0];
-            const isTrue = firstArg?.getKind() === SyntaxKind.TrueKeyword;
-            return isContent && isTrue;
-          }
-
-          if (methodName === 'importNode') {
-            const args = call.getArguments();
-            const firstArg = args[0];
-            const secondArg = args[1];
-            const isContent =
-              firstArg?.getKind() === SyntaxKind.PropertyAccessExpression &&
-              (firstArg as any).getName() === 'content';
-            const isTrue = secondArg?.getKind() === SyntaxKind.TrueKeyword;
-            return isContent && isTrue;
-          }
-
-          return false;
-        });
-
-        const binaryExprs = cls.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-        const assignsInnerHtmlInInstance = binaryExprs.some((bin) => {
-          if (bin.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
-            return false;
-          }
-          // Ignore static initializers
-          if (bin.getFirstAncestorByKind(SyntaxKind.PropertyDeclaration)?.isStatic()) {
-            return false;
-          }
-          if (bin.getFirstAncestorByKind(SyntaxKind.ClassStaticBlockDeclaration)) {
-            return false;
-          }
-          const left = bin.getLeft();
-          return (
-            left.getKind() === SyntaxKind.PropertyAccessExpression &&
-            (left as any).getName() === 'innerHTML'
-          );
-        });
-
-        return hasCloneCall && !assignsInnerHtmlInInstance;
+    // <x>.content.cloneNode(true) or document.importNode(<x>.content, true)
+    const isContentAccess = (n: Node | undefined) => {
+      const u = unwrapExpression(n);
+      return Node.isPropertyAccessExpression(u) && u.getName() === 'content';
+    };
+    const clonesTemplateContent = calls.some((call) => {
+      const callee = unwrapExpression(call.getExpression());
+      if (!Node.isPropertyAccessExpression(callee)) return false;
+      const args = call.getArguments();
+      if (callee.getName() === 'cloneNode') {
+        return isContentAccess(callee.getExpression()) && args[0]?.getKind() === SyntaxKind.TrueKeyword;
       }
+      if (callee.getName() === 'importNode') {
+        return isContentAccess(args[0]) && args[1]?.getKind() === SyntaxKind.TrueKeyword;
+      }
+      return false;
+    });
+
+    // No `.innerHTML =` / `.innerHTML +=` inside per-instance code of a custom element class.
+    const assignsInnerHtmlPerInstance = getElementClasses(sourceFiles).some((cls) =>
+      cls.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
+        const op = bin.getOperatorToken().getKind();
+        if (op !== SyntaxKind.EqualsToken && op !== SyntaxKind.PlusEqualsToken) return false;
+        const left = unwrapExpression(bin.getLeft());
+        return (
+          Node.isPropertyAccessExpression(left) &&
+          left.getName() === 'innerHTML' &&
+          isInPerInstanceCode(bin)
+        );
+      })
     );
 
     expect(
-      (hasHtmlTemplate || hasJsTemplateOutsideConstructor) &&
-        clonesTemplateWithoutPerInstanceInnerHTML
+      (hasHtmlTemplate || hasJsTemplateOutsideInstance) &&
+        clonesTemplateContent &&
+        !assignsInnerHtmlPerInstance
     ).toBe(true);
   });
 
-  test('Light DOM children with slot attributes are projected into matching named <slot name="..."> elements inside the shadow root, while unslotted children are projected into the default <slot>', () => {
-    const htmlDocs = getHtmlDocuments(targetFiles);
-    const templateDocs = getAllTemplateDocuments();
-
-    // Verify Light DOM uses custom elements with slotted children
-    const lightSlottedEls = htmlDocs.flatMap(({ document }) =>
-      Array.from(document.querySelectorAll('[slot]'))
-    );
-    const usedSlotNames = new Set(
-      lightSlottedEls
-        .map((el: any) => el.getAttribute('slot')?.trim())
-        .filter(Boolean)
-    );
-
-    // Check if any custom element in Light DOM has unslotted element children
-    const customElementsInLightDom = htmlDocs.flatMap(({ document }) =>
-      Array.from(document.querySelectorAll('*')).filter((el: any) =>
-        el.tagName.includes('-')
-      )
-    );
-    const hasUnslottedLightChildren = customElementsInLightDom.some((ce: any) =>
-      Array.from(ce.children).some((child: any) => !child.hasAttribute('slot'))
-    );
-
-    // Verify template has matching named <slot name="..."> for every used slot name in Light DOM
-    const templateNamedSlots = new Set(
-      templateDocs.flatMap((doc) =>
-        Array.from(doc.querySelectorAll('slot[name]'))
-          .map((slot: any) => slot.getAttribute('name')?.trim())
-          .filter(Boolean)
-      )
-    );
-
-    const allUsedSlotsExistInTemplate =
-      usedSlotNames.size > 0 &&
-      Array.from(usedSlotNames).every((name) => templateNamedSlots.has(name));
-
-    const hasDefaultSlotInTemplate = templateDocs.some((doc) =>
-      Boolean(doc.querySelector('slot:not([name]), slot[name=""]'))
-    );
-
-    const defaultSlotSatisfied =
-      !hasUnslottedLightChildren || hasDefaultSlotInTemplate;
-
-    expect(
-      customElementsInLightDom.length > 0 &&
-        allUsedSlotsExistInTemplate &&
-        defaultSlotSatisfied
-    ).toBe(true);
-  });
-
-  test('Adding or removing a slotted Light DOM element after upgrade updates the component state, attributes, or rendered DOM via a slotchange listener using assignedElements() or filtered assignedNodes()', () => {
+  test('A slotchange listener reads the slot assignment via assignedElements() or filtered assignedNodes()', () => {
     const sourceFiles = getAllSourceFiles();
     const handlers = getSlotchangeHandlerExpressions(sourceFiles);
 
@@ -451,81 +269,84 @@ test.describe('shadow-dom Target Grader', () => {
     expect(handlerReadsAssignedContent).toBe(true);
   });
 
-  test('Component styles live in the shadow root via adoptedStyleSheets, a <style> element, or a <link rel="stylesheet"> inside the shadow tree', () => {
-    const templateDocs = getAllTemplateDocuments();
-    const sourceFiles = getAllSourceFiles();
-
-    const hasAdoptedStyleSheets = sourceFiles.some((sf) =>
-      sf
-        .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-        .some((prop) => prop.getName() === 'adoptedStyleSheets')
-    );
-    const adoptedSheetHasRules =
-      hasAdoptedStyleSheets &&
-      getConstructedStyleSheets().some((sheet) => sheet.cssRules.length > 0);
-
-    const shadowStyleHasRules = getTemplateStyleSheets().some(
-      (sheet) => sheet.cssRules.length > 0
-    );
-
-    const shadowHasStylesheetLink = templateDocs.some((doc) =>
-      Array.from(doc.querySelectorAll('link[rel]')).some(
-        (link: any) =>
-          String(link.getAttribute('rel')).toLowerCase().split(/\s+/).includes('stylesheet') &&
-          Boolean(link.getAttribute('href')?.trim())
-      )
-    );
-
-    expect(
-      adoptedSheetHasRules || shadowStyleHasRules || shadowHasStylesheetLink
-    ).toBe(true);
-  });
-
-  test('A Light DOM element outside the component that uses the same class name as an internal element does not receive the component styles', () => {
-    const globalSheet = getCssStyleSheet(targetFiles);
-    const globalRules = collectStyleRules(Array.from(globalSheet.cssRules));
-    const shadowSheets = getShadowStyleSheets();
-    const shadowRules = shadowSheets.flatMap((s) =>
-      collectStyleRules(Array.from(s.cssRules))
-    );
-
-    // The component's card styles (e.g. .card or article inside shadow root) must not remain leaked as global .card rules
-    const hasGlobalCardRule = globalRules.some((r) =>
-      r.selectorText
-        .split(',')
-        .some((sel) => sel.trim() === '.card' || sel.trim().startsWith('.card '))
-    );
-
-    const hasEncapsulatedCardRule = shadowRules.some(
-      (r) =>
-        r.style.getPropertyValue('background') !== '' ||
-        r.style.getPropertyValue('background-color') !== '' ||
-        r.style.getPropertyValue('border-radius') !== '' ||
-        r.style.getPropertyValue('box-shadow') !== ''
-    );
-
-    expect(!hasGlobalCardRule && hasEncapsulatedCardRule).toBe(true);
-  });
-
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
+      await page.evaluate(async () => {
+        // The card component: the custom element tag with the most upgraded, shadow-hosting
+        // instances in the page (open roots only; closed roots are not reachable here).
+        (window as any).__cardHosts = () => {
+          const byTag = new Map<string, Element[]>();
+          for (const el of Array.from(document.querySelectorAll('*'))) {
+            if (!el.localName.includes('-') || !el.shadowRoot) continue;
+            byTag.set(el.localName, [...(byTag.get(el.localName) ?? []), el]);
+          }
+          let best: Element[] = [];
+          for (const list of byTag.values()) if (list.length > best.length) best = list;
+          return best;
+        };
+        const tags = new Set(
+          Array.from(document.querySelectorAll('*'))
+            .map((el) => el.localName)
+            .filter((n) => n.includes('-'))
+        );
+        await Promise.race([
+          Promise.all(Array.from(tags, (t) => customElements.whenDefined(t))),
+          new Promise((r) => setTimeout(r, 2000)),
+        ]);
+      });
     });
 
-    test('Dynamic slotchange updates component state, attributes, or rendered DOM when slotted Light DOM element is added or removed, ignoring whitespace text nodes', async ({
+    test('The custom element attaches an open shadow root (mode: "open") to encapsulate its internal DOM subtree', async ({
+      page,
+    }) => {
+      const hasOpenShadowRoots = await page.evaluate(() => {
+        const hosts: Element[] = (window as any).__cardHosts();
+        // One component instance per Seasonal Favorites drink.
+        return hosts.length >= 3 && hosts.every((h) => h.shadowRoot!.mode === 'open');
+      });
+
+      expect(hasOpenShadowRoots).toBe(true);
+    });
+
+    test('Light DOM children with slot attributes are projected into matching named <slot name="..."> elements inside the shadow root, while unslotted children are projected into the default <slot>', async ({
+      page,
+    }) => {
+      const projectsCorrectly = await page.evaluate(() => {
+        const hosts: Element[] = (window as any).__cardHosts();
+        if (hosts.length < 3) return false;
+
+        const IGNORED = new Set(['script', 'template', 'style', 'link']);
+        let slottedCount = 0;
+        for (const host of hosts) {
+          for (const child of Array.from(host.children)) {
+            if (IGNORED.has(child.localName)) continue;
+            const slot = child.assignedSlot;
+            if (!slot || slot.getRootNode() !== host.shadowRoot) return false;
+            const wanted = child.getAttribute('slot')?.trim() ?? '';
+            if (wanted) slottedCount++;
+            // Named children land in the slot of that name; unslotted ones in the default slot.
+            if (slot.name !== wanted) return false;
+          }
+        }
+        // Card content is supplied from the page as slotted Light DOM children.
+        return slottedCount > 0;
+      });
+
+      expect(projectsCorrectly).toBe(true);
+    });
+
+    test('Adding or removing a slotted Light DOM element after upgrade updates the component state, attributes, or rendered DOM, ignoring whitespace-only text', async ({
       page,
     }) => {
       const updatedProperly = await page.evaluate(async () => {
-        const cards = Array.from(document.querySelectorAll('.grid > *')).filter(
-          (el) => el.shadowRoot
-        );
-        if (cards.length < 2) return false;
+        const hosts: Element[] = (window as any).__cardHosts();
+        if (hosts.length < 3) return false;
 
         // Use a fresh, childless instance of the component so the check does not depend on
         // how the page configures existing cards (attribute names, pre-slotted content).
-        const tagName = cards[0].localName;
-        const parent = cards[0].parentElement!;
-        await customElements.whenDefined(tagName);
+        const tagName = hosts[0].localName;
+        const parent = hosts[0].parentElement!;
         const settle = () => new Promise((r) => setTimeout(r, 50));
 
         const createFresh = async () => {
@@ -596,24 +417,83 @@ test.describe('shadow-dom Target Grader', () => {
       expect(updatedProperly).toBe(true);
     });
 
-    test('A Light DOM element outside the component with an internal class name does not receive the component shadow styles', async ({
+    test('Component styles live in the shadow root via adoptedStyleSheets, a <style> element, or a <link rel="stylesheet"> inside the shadow tree', async ({
+      page,
+    }) => {
+      const stylesInShadowRoot = await page.evaluate(() => {
+        const hosts: Element[] = (window as any).__cardHosts();
+        if (hosts.length < 3) return false;
+
+        return hosts.every((host) => {
+          const sr = host.shadowRoot!;
+          const adopted = sr.adoptedStyleSheets.some((s) => s.cssRules.length > 0);
+          const styleEl = Array.from(sr.querySelectorAll('style')).some(
+            (s) => (s.sheet?.cssRules.length ?? 0) > 0
+          );
+          const linkEl = Array.from(sr.querySelectorAll('link')).some(
+            (l) =>
+              l.relList.contains('stylesheet') &&
+              Boolean(l.getAttribute('href')?.trim())
+          );
+          return adopted || styleEl || linkEl;
+        });
+      });
+
+      expect(stylesInShadowRoot).toBe(true);
+    });
+
+    test('A Light DOM element outside the component that uses the same class name as an internal element does not receive the component styles', async ({
       page,
     }) => {
       const isIsolated = await page.evaluate(() => {
-        const host = Array.from(document.querySelectorAll('.grid > *')).find(
-          (el) => el.shadowRoot
+        const hosts: Element[] = (window as any).__cardHosts();
+        if (hosts.length < 3) return false;
+        const sr = hosts[0].shadowRoot!;
+
+        // Class names already used in the Light DOM may be styled by the page itself, so only
+        // probe class names that exist solely inside the component.
+        const lightClasses = new Set(
+          Array.from(document.querySelectorAll('[class]')).flatMap((el) =>
+            Array.from(el.classList)
+          )
         );
-        if (!host || !host.shadowRoot) return false;
+        const probes = new Map<string, string>(); // class -> tag of the internal element
+        for (const el of Array.from(sr.querySelectorAll('[class]'))) {
+          for (const cls of Array.from(el.classList)) {
+            if (!lightClasses.has(cls) && !probes.has(cls)) probes.set(cls, el.localName);
+          }
+        }
+        if (probes.size === 0) return false;
 
-        const probe = document.createElement('div');
-        probe.className = 'card';
-        document.body.appendChild(probe);
-        const probeStyle = window.getComputedStyle(probe);
-        const probeBoxShadow = probeStyle.boxShadow;
-        const probePadding = probeStyle.paddingTop;
-        probe.remove();
+        const PROPS = [
+          'background-color', 'background-image', 'box-shadow', 'border-top-left-radius',
+          'border-top-width', 'border-top-style', 'border-top-color', 'padding-top',
+          'padding-left', 'margin-top', 'color', 'font-size', 'font-weight', 'text-align',
+          'display', 'position', 'line-height',
+        ];
 
-        return probeBoxShadow === 'none' && probePadding === '0px';
+        // An outside element with the internal class must look exactly like the same element
+        // without the class.
+        const wrapper = document.createElement('div');
+        document.body.appendChild(wrapper);
+        try {
+          for (const [cls, tag] of probes) {
+            const probe = document.createElement(tag);
+            probe.className = cls;
+            const control = document.createElement(tag);
+            wrapper.append(probe, control);
+            const ps = getComputedStyle(probe);
+            const cs = getComputedStyle(control);
+            if (PROPS.some((p) => ps.getPropertyValue(p) !== cs.getPropertyValue(p))) {
+              return false;
+            }
+            probe.remove();
+            control.remove();
+          }
+          return true;
+        } finally {
+          wrapper.remove();
+        }
       });
 
       expect(isIsolated).toBe(true);
