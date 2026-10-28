@@ -164,6 +164,9 @@
       "prerendering-custom-elements": [
         "daily-grind"
       ],
+      "shadow-dom": [
+        "daily-grind"
+      ],
       "web-components": [
         "daily-grind"
       ]
