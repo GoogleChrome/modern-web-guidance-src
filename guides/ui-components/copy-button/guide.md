@@ -112,6 +112,33 @@ Add this only for long prose where users want a floating button on selection. Sk
 - Call `preventDefault()` on the popover's `pointerdown` to keep the selection. Hide on `Escape` and when the selection collapses, but not while focus is inside the popover (re-check when focus leaves it) or while a press on it is being handled. Safari on iPhone does not focus a tapped button and clears the selection anyway, so `:focus-within` is false and the popover would hide before the feedback shows. Set a flag on the popover's `pointerdown`, skip the hide while it is set, and clear it and re-check when the feedback ends (and on `pointercancel`).
 - DO NOT hide the popover when the copy feedback timeout ends: a keyboard user's focus is on its button, and hiding it drops focus to the page, so the next `Tab` starts from the top. If `Escape` hides it while focus is inside, first move focus to the container: set `tabindex="-1"` on it just before the move and remove it on `blur`. Do not leave it in the markup, because a focusable container makes `Tab` skip the copy button in Firefox after a click in the text.
 
+### 4. Buttons shown only on hover or focus (optional)
+
+Code blocks often keep the button hidden until the block is hovered. Reveal it for keyboard users too, and never make it hover-only.
+
+```css
+.code-block { position: relative; }
+.code-block .copy { position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; }
+
+/* Only hide where hover exists; touch devices keep the button visible */
+@media (hover: hover) {
+  .code-block .copy-button { opacity: 0; transition: opacity .15s; }
+  .code-block:hover .copy-button,
+  .code-block:focus-within .copy-button,
+  .code-block .copy-button:focus-visible,
+  .code-block .copy-button[data-copied],
+  .code-block .copy-button[data-failed] { opacity: 1; }
+}
+```
+
+- Hide with `opacity` only. `display: none` and `visibility: hidden` remove the button from the tab order, so keyboard users could never reach it.
+- Reveal on `:focus-within` of the container, as well as `:hover`, so the button shows when focus is on it or on focusable content in the block (such as a scrollable `<pre tabindex="0">`).
+- Keep it visible on `(hover: none)` devices, where there is no hover to reveal it.
+- Keep it visible while feedback shows (`data-copied` / `data-failed`), so the state does not vanish when the pointer leaves.
+- Keep the button's 24×24 px minimum size and its accessible name; a hidden-by-opacity button is still announced by screen readers.
+- DO NOT add `aria-hidden`, `inert` or `hidden` to the button to "hide" it, and do not toggle them on hover. Screen reader users (VoiceOver included) must be able to reach it with no hover, and focus moving onto it (including a screen reader cursor that moves focus) is what makes it visible.
+- Reserve space with end padding on the `<pre>` so the button never covers code.
+
 ## Fallbacks and browser support
 
 ### Invoker Commands

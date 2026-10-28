@@ -211,6 +211,36 @@
       }
     }
 
+    /* ---------- Example 5: reveal-on-hover button ---------- */
+
+    .code-block.reveal {
+      position: relative;
+
+      pre { padding-inline-end: 3.5rem; }
+
+      .copy {
+        position: absolute;
+        inset-block-start: .5rem;
+        inset-inline-end: .5rem;
+      }
+
+      /* Hidden with opacity only: display/visibility would remove the button from the tab order */
+      @media (hover: hover) {
+        .copy-button {
+          opacity: 0;
+          transition: opacity .15s, color .15s, background-color .15s, border-color .15s;
+        }
+
+        &:hover .copy-button,
+        &:focus-within .copy-button,
+        .copy-button:focus-visible,
+        .copy-button[data-copied],
+        .copy-button[data-failed] {
+          opacity: 1;
+        }
+      }
+    }
+
     /* ---------- Example 2: inline ---------- */
 
     .inline-copy {
@@ -409,6 +439,26 @@
           </button>
           <span class="tip" role="status"></span>
         </span>
+      </div>
+    </section>
+
+    <!-- 5. Reveal on hover or focus -->
+    <section aria-labelledby="h-reveal">
+      <h2 id="h-reveal">5. Button shown on hover or focus</h2>
+      <p style="margin-block-end: .75rem">
+        The button appears when you hover the block or Tab to it. On touch devices it is always visible.
+      </p>
+
+      <div class="code-block reveal">
+        <span class="copy">
+          <button type="button" class="copy-button"
+                  command="--copy" commandfor="snippet-js" aria-label="Copy JavaScript code">
+            <span class="icon" aria-hidden="true"></span>
+          </button>
+          <span class="tip" role="status"></span>
+        </span>
+        <pre><code id="snippet-js">const dialog = document.querySelector('dialog');
+dialog.showModal();</code></pre>
       </div>
     </section>
   </main>

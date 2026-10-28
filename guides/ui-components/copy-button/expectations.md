@@ -9,3 +9,5 @@
 - When the clipboard write fails, the live region reports a failure message and the button does not gain its copied state.
 - Each copy button is at least 24 by 24 CSS pixels.
 - After a successful copy the clicked button gains a visual copied state (such as a `data-copied` attribute or class) that is removed again after a timeout.
+- When a copy button is hidden until its container is hovered, it is hidden with `opacity` (not `display: none` or `visibility: hidden`), becomes visible (opacity 1) when the container or the button receives keyboard focus, and remains in the tab order.
+- On `(hover: none)` devices a hover-revealed copy button is visible without interaction.
