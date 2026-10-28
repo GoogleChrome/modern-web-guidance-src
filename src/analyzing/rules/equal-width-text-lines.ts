@@ -5,6 +5,7 @@ import {
   type SourceFile,
 } from 'ts-morph';
 import {
+  getSafeModuleSpecifier,
   isGlobalReference,
   resolveLocalExpression,
   unwrapExpression,
@@ -137,8 +138,11 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
     }
     if (!isGlobalReference(expr, name)) {
       const hasPkgImport = sourceFile.getImportDeclarations().some((imp) => {
-        const spec = imp.getModuleSpecifierValue();
-        return FITTEXT_PACKAGES.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`));
+        const spec = getSafeModuleSpecifier(imp);
+        return (
+          spec !== null &&
+          FITTEXT_PACKAGES.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
+        );
       });
       if (!hasPkgImport) {
         return false;

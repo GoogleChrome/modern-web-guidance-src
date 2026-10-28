@@ -11,12 +11,12 @@ import type {
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-  DependencyMatcherContext,
   DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 import { unwrapExpression } from '../scanners/ast-helpers.ts';
+import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 
 export const PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH = '7d10dd62dcbc';
 
@@ -584,20 +584,12 @@ export const preventPageScrollUnderModalDialogCssRule: AnalyzerRule = {
   },
 };
 
-export const preventPageScrollUnderModalDialogDependencyMatcher: DependencyRuleMatcher = {
-  kind: 'dependency',
-  packages: ['body-scroll-lock', 'scroll-lock', 'no-scroll'],
-  matchPackage(
-    pkgName: string,
-    versionRange: string,
-    _ctx: DependencyMatcherContext,
-  ): { message: string } | null {
-    return {
-      message:
-        `Legacy body scroll lock library "${pkgName}" (${versionRange}) can be replaced with native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
-    };
-  },
-};
+export const preventPageScrollUnderModalDialogDependencyMatcher: DependencyRuleMatcher =
+  createDependencyMatcher(
+    ['body-scroll-lock', 'scroll-lock', 'no-scroll'],
+    (pkgName, versionRange) =>
+      `Legacy body scroll lock library "${pkgName}" (${versionRange}) can be replaced with native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
+  );
 
 export const preventPageScrollUnderModalDialogDependencyRule: AnalyzerRule = {
   id: 'prevent-page-scroll-under-modal-dialog/package-scroll-lock',

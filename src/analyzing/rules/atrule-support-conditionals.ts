@@ -7,6 +7,7 @@ import {
   type SourceFile,
 } from 'ts-morph';
 import {
+  getSafeModuleSpecifier,
   isGlobalReference,
   isProtectedByFeatureGuard,
   resolveLocalExpression,
@@ -52,8 +53,8 @@ function isImportedOrRequiredFrom(
 ): boolean {
   const sourceFile = identNode.getSourceFile();
   for (const imp of sourceFile.getImportDeclarations()) {
-    const spec = imp.getModuleSpecifierValue();
-    if (!packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
+    const spec = getSafeModuleSpecifier(imp);
+    if (!spec || !packages.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))) {
       continue;
     }
     if (imp.getDefaultImport()?.getText() === identName) {

@@ -2,11 +2,11 @@ import {
   Node,
   Project,
   SyntaxKind,
+  ts,
   type CallExpression,
   type NewExpression,
   type SourceFile,
 } from 'ts-morph';
-import ts from 'typescript';
 import type { AnalyzerMatch, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
 import { isProtectedByFeatureGuard } from './ast-helpers.ts';
 

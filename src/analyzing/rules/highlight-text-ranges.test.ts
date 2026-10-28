@@ -87,4 +87,15 @@ void test('highlight-text-ranges JS matcher', async (t) => {
     const matches = matchJsRule(highlightTextRangesJsMatcher, 'perf.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('handles template imports without throwing', () => {
+    const code = `
+      import { helper } from <%= path %>;
+      import Mark from 'mark.js';
+      const instance = new Mark(document.body);
+      instance.mark('keyword');
+    `;
+    const matches = matchJsRule(highlightTextRangesJsMatcher, 'template-import.js', code);
+    assert.equal(matches.length, 1);
+  });
 });
