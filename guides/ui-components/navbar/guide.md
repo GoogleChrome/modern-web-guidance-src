@@ -13,7 +13,6 @@ web-feature-ids:
   - transition-behavior
 # - local-link
 guides:
-  - responsive-disclosure
   - icons
   - menu
 ---
@@ -22,7 +21,7 @@ guides:
 
 Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover on narrow containers, becomes an inline navigation on wide containers, and identifies the current page.
 
-This guide describes site-navigation integration. It is navigation, not an application menu: links stay in the `Tab` order, with no `focusgroup`, `role="menu"`, `role="menuitem"`, `aria-haspopup="menu"` or arrow-key handling. For positioning and animating the popover, see {{ GUIDE_REF("menu") }}. Use only those popover techniques, not its `focusgroup` and arrow-key menu model. For reusable responsive disclosure behavior, see {{ GUIDE_REF("responsive-disclosure") }}. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
+This guide describes site-navigation integration. It is navigation, not an application menu: links stay in the `Tab` order, with no `focusgroup`, `role="menu"`, `role="menuitem"`, `aria-haspopup="menu"` or arrow-key handling. For positioning and animating the popover, see {{ GUIDE_REF("menu") }}. Use only those popover techniques, not its `focusgroup` and arrow-key menu model. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
 
 For component-driven layouts, fluid sizing, and typographic line-wrapping, see {{ GUIDE_REF("size-aware-styling") }}, {{ GUIDE_REF("fluid-scaling") }}, and {{ GUIDE_REF("improve-text-layout-and-legibility") }}.
 
@@ -153,7 +152,7 @@ CSS changes the presentation, but JavaScript must also synchronize the `popover`
 
 Use a `<button>` with `aria-expanded` and `aria-controls` as the trigger for nested site navigation, followed immediately by the submenu list. DO NOT use `<details>` and `<summary>`: `<summary>` has no ARIA role mapping, so screen readers announce it inconsistently (for example as a "disclosure triangle") and some do not announce the open state.
 
-One list must be an inline disclosure when narrow and a floating popover when wide. A top-layer popover cannot render in flow, so `popover` is set only in the wide layout, where `popovertarget` opens it natively. In the narrow layout a small click handler toggles `hidden` and `aria-expanded`. Hide the narrow submenu from script, not in the markup, so its links stay visible without scripting. Keep the reusable disclosure behavior in {{ GUIDE_REF("responsive-disclosure") }}.
+One list must be an inline disclosure when narrow and a floating popover when wide. A top-layer popover cannot render in flow, so `popover` is set only in the wide layout, where `popovertarget` opens it natively. In the narrow layout a small click handler toggles `hidden` and `aria-expanded`. Hide the narrow submenu from script, not in the markup, so its links stay visible without scripting.
 
 Synchronize the `popover` attributes across the container breakpoint and keep `aria-expanded` in step with the submenu:
 
