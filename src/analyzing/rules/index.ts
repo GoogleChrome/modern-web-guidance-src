@@ -1,5 +1,6 @@
 import type { AnalyzerRule } from '../schema.ts';
 
+import accessibleWebComponents from './accessible-web-components.ts';
 import anchorPositioningTabUnderline from './anchor-positioning-tab-underline.ts';
 import animateElementEntryExit from './animate-element-entry-exit.ts';
 import animateToFromTopLayer from './animate-to-from-top-layer.ts';
@@ -18,7 +19,9 @@ import checkbox from './checkbox.ts';
 import childStateBasedStyling from './child-state-based-styling.ts';
 import clientSideEncryption from './client-side-encryption.ts';
 import complexShapes from './complex-shapes.ts';
+import componentSpecificLightDarkTheme from './component-specific-light-dark-theme.ts';
 import conditionalAsyncDependencies from './conditional-async-dependencies.ts';
+import contentBasedStyling from './content-based-styling.ts';
 import contrastColor from './contrast-color.ts';
 import coordinateGlobalEvents from './coordinate-global-events.ts';
 import customButtonActions from './custom-button-actions.ts';
@@ -33,6 +36,8 @@ import deprioritizeBackgroundFetches from './deprioritize-background-fetches.ts'
 import detectInitialVisibilityState from './detect-initial-visibility-state.ts';
 import digitalSignatures from './digital-signatures.ts';
 import drag from './drag.ts';
+import dynamicSiblingAnimations from './dynamic-sibling-animations.ts';
+import dynamicSiblingStyling from './dynamic-sibling-styling.ts';
 import equalWidthTextLines from './equal-width-text-lines.ts';
 import exportHtmlMediaFromCanvas from './export-html-media-from-canvas.ts';
 import flickerFreeClientSideAbTesting from './flicker-free-client-side-ab-testing.ts';
@@ -85,9 +90,11 @@ import stateAwareStickyHeaders from './state-aware-sticky-headers.ts';
 import stylingWebComponents from './styling-web-components.ts';
 import supportGlobalCalendarSystems from './support-global-calendar-systems.ts';
 import switchRuleModule from './switch.ts';
+import validateOrigins from './validate-origins.ts';
 import visuallyStableFontFallbacks from './visually-stable-font-fallbacks.ts';
 
 export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
+  accessibleWebComponents,
   anchorPositioningTabUnderline,
   animateElementEntryExit,
   animateToFromTopLayer,
@@ -106,7 +113,9 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   childStateBasedStyling,
   clientSideEncryption,
   complexShapes,
+  componentSpecificLightDarkTheme,
   conditionalAsyncDependencies,
+  contentBasedStyling,
   contrastColor,
   coordinateGlobalEvents,
   customButtonActions,
@@ -121,6 +130,8 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   detectInitialVisibilityState,
   digitalSignatures,
   drag,
+  dynamicSiblingAnimations,
+  dynamicSiblingStyling,
   equalWidthTextLines,
   exportHtmlMediaFromCanvas,
   flickerFreeClientSideAbTesting,
@@ -173,6 +184,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   stylingWebComponents,
   supportGlobalCalendarSystems,
   switchRuleModule,
+  validateOrigins,
   visuallyStableFontFallbacks,
 ];
 
@@ -186,6 +198,7 @@ export type RuleStatusValue = 'qualified' | 'experimental';
  *   (or Static Matcher Precision >= 90.0% at n >= 5 for rare patterns).
  */
 export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
+  'accessible-web-components': 'experimental',
   'anchor-positioning-tab-underline': 'experimental',
   'animate-element-entry-exit': 'experimental',
   'animate-to-from-top-layer': 'experimental',
@@ -209,8 +222,10 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'child-state-based-styling/js-parent-class': 'experimental',
   'client-side-encryption/js-crypto': 'experimental',
   'complex-shapes': 'experimental',
+  'component-specific-light-dark-theme': 'experimental',
   'conditional-async-dependencies/package-script-loader': 'experimental',
   'conditional-async-dependencies/js-script-loader': 'experimental',
+  'content-based-styling': 'experimental',
   'contrast-color/js': 'experimental',
   'contrast-color/css': 'experimental',
   'coordinate-global-events': 'experimental',
@@ -229,6 +244,10 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'digital-signatures/js-signature': 'experimental',
   'drag/package-drag-drop': 'experimental',
   'drag/js-mouse-touch-drag': 'experimental',
+  'dynamic-sibling-animations': 'experimental',
+  'dynamic-sibling-animations/js': 'experimental',
+  'dynamic-sibling-styling': 'experimental',
+  'dynamic-sibling-styling/css': 'experimental',
   'equal-width-text-lines/package-fittext': 'experimental',
   'equal-width-text-lines/js-fittext': 'experimental',
   'export-html-media-from-canvas/package-canvas-recorder': 'experimental',
@@ -305,6 +324,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'support-global-calendar-systems/package-calendar': 'experimental',
   'support-global-calendar-systems/js-calendar': 'experimental',
   'switch': 'experimental',
+  'validate-origins': 'experimental',
   'visually-stable-font-fallbacks/package-font-loader': 'experimental',
   'visually-stable-font-fallbacks/js-font-loader': 'experimental',
 };
