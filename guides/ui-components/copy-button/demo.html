@@ -216,12 +216,25 @@
     .code-block.reveal {
       position: relative;
 
+      /* Padding only clears the button at the end of the scroll range; the button's opaque background keeps it legible over long lines */
       pre { padding-inline-end: 3.5rem; }
 
       .copy {
         position: absolute;
         inset-block-start: .5rem;
         inset-inline-end: .5rem;
+      }
+
+      /* Opaque by default; translucent + blurred only where backdrop-filter is supported */
+      @supports (backdrop-filter: blur(1px)) {
+        .copy-button {
+          background: color-mix(in srgb, var(--surface) 85%, transparent);
+          backdrop-filter: blur(6px);
+        }
+
+        .copy-button:hover {
+          background: color-mix(in srgb, var(--surface-2) 85%, transparent);
+        }
       }
 
       /* Hidden with opacity only: display/visibility would remove the button from the tab order */
