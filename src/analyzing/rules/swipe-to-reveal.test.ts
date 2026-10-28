@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
   swipeToRevealMatcher,
-  swipeToRevealPackageMatcher,
 } from './swipe-to-reveal.ts';
 
-void test('swipe-to-reveal JS and package matchers', async (t) => {
+void test('swipe-to-reveal JS matcher', async (t) => {
   await t.test('flags touchmove/touchend handlers translating a row to reveal action buttons without deleting the item', () => {
     const code = `
       const actionWidth = 140;
@@ -29,18 +27,20 @@ void test('swipe-to-reveal JS and package matchers', async (t) => {
     assert.match(matches[0]?.message ?? '', /overscroll-behavior: chain/);
   });
 
-  await t.test('flags react-swipeable-list and rc-swipeout in package.json', () => {
-    const pkg = JSON.stringify({
-      name: 'list-app',
-      dependencies: {
-        'react-swipeable-list': '^1.8.0',
-      },
-    });
-    const matches = scanPackageJson('package.json', pkg, [swipeToRevealPackageMatcher]);
-    assert.equal(matches.length, 1);
-  });
+  await t.test('exempts off-canvas navigation drawers and swipe-to-remove files', () => {
+    const navDrawerCode = `
+      class SideNav {
+        _update() {
+          const translateX = Math.min(0, this._currentX - this._startX);
+          this._sideNavContainerEl.style.transform = \`translateX(\${translateX}px)\`;
+        }
+      }
+    `;
+    assert.equal(
+      matchJsRule(swipeToRevealMatcher, 'side-nav.js', navDrawerCode).length,
+      0,
+    );
 
-  await t.test('exempts swipe-to-remove files that delete the row via .remove()', () => {
     const removeCode = `
       const actionWidth = 140;
       row.addEventListener('touchmove', (e) => {

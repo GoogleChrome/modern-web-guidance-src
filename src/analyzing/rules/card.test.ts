@@ -1,16 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
   cardJsMatcher,
-  cardPackageMatcher,
 } from './card.ts';
 
-void test('card JS and package matchers', async (t) => {
-  await t.test('flags matchHeight() calls, equal-height card loops, and whole-card click listeners', () => {
+void test('card JS matcher', async (t) => {
+  await t.test('flags card matchHeight() calls (deduplicated), equal-height card loops, and whole-card click listeners', () => {
     const code = `
       $('.card').matchHeight();
+      $('.card-item').matchHeight();
 
       function equalizeCards() {
         const cards = document.querySelectorAll('.card');
@@ -33,20 +32,9 @@ void test('card JS and package matchers', async (t) => {
     assert.equal(matches.length, 3);
   });
 
-  await t.test('flags jquery-match-height in package.json', () => {
-    const pkg = JSON.stringify({
-      name: 'web-app',
-      dependencies: {
-        'jquery-match-height': '^0.7.2',
-      },
-    });
-    const matches = scanPackageJson('package.json', pkg, [cardPackageMatcher]);
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /subgrid/);
-  });
-
-  await t.test('exempts card button click handlers that do not navigate the whole card', () => {
+  await t.test('exempts generic non-card matchHeight() calls and card button click handlers', () => {
     const code = `
+      $('.CTA_section').children('.mheight').matchHeight();
       document.querySelector('.card-favorite-btn').addEventListener('click', (e) => {
         e.currentTarget.classList.toggle('is-favorited');
       });

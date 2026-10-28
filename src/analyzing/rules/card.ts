@@ -9,18 +9,14 @@ import {
   resolveCallableNode,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
-import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const CARD_GUIDE_HASH = 'f304675882cb';
-
-const CARD_PACKAGES = ['jquery-match-height'] as const;
 
 const CARD_SELECTOR_RE = /\bcards?\b|card[-_]/i;
 
@@ -98,19 +94,23 @@ export const cardJsMatcher: JsRuleMatcher = {
     }
     const matches: AnalyzerMatch[] = [];
     const reportedLines = new Set<number>();
+    let matchHeightReported = false;
 
     sourceFile.forEachDescendant((node) => {
       if (Node.isCallExpression(node)) {
         const expr = unwrapExpression(node.getExpression());
         const calleeName = Node.isPropertyAccessExpression(expr)
           ? expr.getName()
-          : Node.isIdentifier(expr)
-            ? expr.getText()
-            : '';
+          : '';
 
-        if (calleeName === 'matchHeight') {
+        if (
+          calleeName === 'matchHeight' &&
+          Node.isPropertyAccessExpression(expr) &&
+          CARD_SELECTOR_RE.test(expr.getExpression().getText())
+        ) {
           const line = node.getStartLineNumber();
-          if (!reportedLines.has(line)) {
+          if (!matchHeightReported && !reportedLines.has(line)) {
+            matchHeightReported = true;
             reportedLines.add(line);
             matches.push({
               line,
@@ -160,49 +160,26 @@ export const cardJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const cardPackageMatcher: DependencyRuleMatcher = createDependencyMatcher(
-  CARD_PACKAGES,
-  (pkgName, versionRange) =>
-    `Package "${pkgName}" (${versionRange}) synchronizes equal card heights in JavaScript; replace with CSS Grid and grid-template-rows: subgrid.`,
-);
-
-export const cardPackageRule: AnalyzerRule = {
-  id: 'card/package-match-height',
-  guideId: 'card',
-  guideHash: CARD_GUIDE_HASH,
-  summary:
-    'jquery-match-height package used for equal-height card rows should be replaced with CSS Grid and grid-template-rows: subgrid.',
-  matcher: cardPackageMatcher,
-  verifierRubric: {
-    keepWhen: [
-      'A package.json dependency on jquery-match-height used to synchronize equal heights across card elements.',
-    ],
-    dropWhen: [
-      'Unused legacy dependency not applied to card or grid layouts.',
-    ],
-  },
-};
-
 export const cardRule: AnalyzerRule = {
   id: 'card',
   guideId: 'card',
   guideHash: CARD_GUIDE_HASH,
   summary:
-    'JavaScript matchHeight() equal-height card loops and whole-card click listeners should be replaced with CSS subgrid and a stretched .card-link::after overlay.',
+    'JavaScript equal-height card synchronization loops and whole-card click listeners should be replaced with CSS subgrid and a stretched .card-link::after overlay.',
   matcher: cardJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'JavaScript synchronizes equal heights across card elements (matchHeight() or measuring offsetHeight/clientHeight with Math.max and assigning inline style.height/minHeight), which can be replaced by CSS subgrid.',
+      'JavaScript synchronizes equal heights across card elements (matchHeight() on card selectors or measuring offsetHeight/clientHeight with Math.max and assigning inline style.height/minHeight), which can be replaced by CSS subgrid.',
       'A JavaScript click listener on a .card container makes the whole card clickable by setting window.location or calling .querySelector("a").click(), which should be replaced by a native <a class="card-link"> stretched via ::after { position: absolute; inset: 0 }.',
     ],
     dropWhen: [
       'Clicking a button inside a card to open a modal, expand an accordion, or trigger an in-page mutation rather than navigating to a primary link destination.',
       'Dynamic height calculations for virtualized scroll lists, masonry positioning, or collapsible accordion animations.',
+      'Generic matchHeight() calls on non-card page sections or grid columns.',
     ],
   },
 };
 
 export default [
   cardRule,
-  cardPackageRule,
 ] satisfies readonly AnalyzerRule[];

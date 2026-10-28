@@ -7,21 +7,14 @@ import {
   resolveCallableNode,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
-import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  DependencyRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
 export const SWIPE_TO_REVEAL_GUIDE_HASH = '2890437c01db';
-
-const SWIPE_REVEAL_PACKAGES = [
-  'react-swipeable-list',
-  'rc-swipeout',
-] as const;
 
 const SWIPE_MOVE_END_EVENTS = [
   'touchmove',
@@ -39,7 +32,10 @@ const REMOVAL_IDENT_RE =
   /^(?:onDismiss|onRemove|onDelete|onSwipeToRemove|onSwipeDismiss|removeItem|deleteItem|dismissItem|handleDismiss|handleDelete|handleRemove)$/i;
 
 const REVEAL_CONTEXT_RE =
-  /\b(?:actionWidth|actionsWidth|panelWidth|menuWidth|drawerWidth|revealWidth|maxSwipe|openOffset|snapOpen|isRevealed|swipeActions|actionButtons|trailingActions|leadingActions|slideout|sideNav)\b/i;
+  /\b(?:actionWidth|actionsWidth|panelWidth|menuWidth|revealWidth|maxSwipe|openOffset|snapOpen|isRevealed|swipeActions|actionButtons|trailingActions|leadingActions)\b/i;
+
+const NAV_DRAWER_CARVEOUT_RE =
+  /\b(?:sideNav|side-nav|navDrawer|nav-drawer|offcanvas|off-canvas|navigation-drawer|slideout)\b/i;
 
 const CAROUSEL_OR_SLIDER_RE =
   /\b(?:carousel|swiper|slider|slideIndex|currentSlide|nextSlide|prevSlide|lightbox|gallery|multitrack)\b/i;
@@ -86,7 +82,10 @@ export const swipeToRevealMatcher: JsRuleMatcher = {
     ) {
       return [];
     }
-    if (CAROUSEL_OR_SLIDER_RE.test(content)) {
+    if (
+      CAROUSEL_OR_SLIDER_RE.test(content) ||
+      NAV_DRAWER_CARVEOUT_RE.test(content)
+    ) {
       return [];
     }
     if (!REVEAL_CONTEXT_RE.test(content)) {
@@ -144,43 +143,20 @@ export const swipeToRevealMatcher: JsRuleMatcher = {
   },
 };
 
-export const swipeToRevealPackageMatcher: DependencyRuleMatcher =
-  createDependencyMatcher(
-    SWIPE_REVEAL_PACKAGES,
-    (pkgName, versionRange) =>
-      `Package "${pkgName}" (${versionRange}) implements JavaScript swipe-to-reveal rows; replace with a two-column CSS Scroll Snap container (scroll-snap-type: x mandatory, overscroll-behavior: chain).`,
-  );
-
-export const swipeToRevealPackageRule: AnalyzerRule = {
-  id: 'swipe-to-reveal/package-swipeout',
-  guideId: 'swipe-to-reveal',
-  guideHash: SWIPE_TO_REVEAL_GUIDE_HASH,
-  summary:
-    'react-swipeable-list and rc-swipeout packages should be replaced with a two-column CSS Scroll Snap container (scroll-snap-type: x mandatory, overscroll-behavior: chain).',
-  matcher: swipeToRevealPackageMatcher,
-  verifierRubric: {
-    keepWhen: [
-      'A package.json dependency on react-swipeable-list or rc-swipeout used for swipeable action drawers.',
-    ],
-    dropWhen: [
-      'Unused dependency or full-screen carousel slider.',
-    ],
-  },
-};
-
 export const swipeToRevealRule: AnalyzerRule = {
   id: 'swipe-to-reveal',
   guideId: 'swipe-to-reveal',
   guideHash: SWIPE_TO_REVEAL_GUIDE_HASH,
   summary:
-    'Manual horizontal touch/pointer translateX swipe-to-reveal action drawers should be replaced with a CSS Scroll Snap container (scroll-snap-type: x mandatory, overscroll-behavior: chain).',
+    'Manual horizontal touch/pointer translateX swipe-to-reveal action trays should be replaced with a CSS Scroll Snap container (scroll-snap-type: x mandatory, overscroll-behavior: chain).',
   matcher: swipeToRevealMatcher,
   verifierRubric: {
     keepWhen: [
-      'A list row or content pane implements horizontal swipe-to-reveal by tracking touch/pointer clientX/pageX/deltaX coordinates and setting inline translateX(...) to snap open a secondary action button strip or side menu without automatically deleting the item.',
+      'A list row or content pane implements horizontal swipe-to-reveal by tracking touch/pointer clientX/pageX/deltaX coordinates and setting inline translateX(...) to snap open a secondary action button strip without automatically deleting the item.',
     ],
     dropWhen: [
       'Swipe-to-remove gestures that automatically delete or dismiss the item once swiped past a threshold.',
+      'Off-canvas navigation drawers (sideNav, navDrawer, offcanvas) owned by navigation-drawer.',
       'Full-width image carousels, slide decks, range sliders, or timeline scrubbers.',
     ],
   },
@@ -188,5 +164,4 @@ export const swipeToRevealRule: AnalyzerRule = {
 
 export default [
   swipeToRevealRule,
-  swipeToRevealPackageRule,
 ] satisfies readonly AnalyzerRule[];

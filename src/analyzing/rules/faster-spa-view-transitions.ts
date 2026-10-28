@@ -25,7 +25,7 @@ const CONTENT_VISIBILITY_GUARD_TOKENS = [
 ] as const;
 
 const SPA_VIEW_INACTIVE_SELECTOR_RE =
-  /(?:^|[\s>+~])(?:\.(?:spa-view|app-view|page-view|route-view|screen-view|view-pane|view-panel|view-container|tab-view)|\[data-(?:view|page|screen|route)(?:=[^\]]*)?\])(?:\.(?:inactive|is-inactive|is-hidden|hidden)|:not\(\.(?:active|is-active|current)\)|\[aria-hidden=["']true["']\])/i;
+  /(?:^|[\s>+~])(?:\.(?:spa-view|app-view|page-view|route-view|screen-view|view-pane|view-panel|view-container)|\[data-(?:view|page|screen|route)(?:=[^\]]*)?\])(?:\.(?:inactive|is-inactive|is-hidden|hidden)|:not\(\.(?:active|is-active|current)\)|\[aria-hidden=["']true["']\])/i;
 
 const VIEW_QUERY_SELECTOR_RE =
   /(?:\.(?:spa-view|app-view|page-view|route-view|screen-view|view-pane|view-panel|view-container|view\b)|\[data-(?:view|screen|route)\])/i;
@@ -41,7 +41,6 @@ export const fasterSpaViewTransitionsCssMatcher: CssRuleMatcher = {
     'view-pane',
     'view-panel',
     'view-container',
-    'tab-view',
     'data-view',
     'data-page',
     'data-screen',
@@ -179,7 +178,7 @@ export const fasterSpaViewTransitionsCssRule: AnalyzerRule = {
   matcher: fasterSpaViewTransitionsCssMatcher,
   verifierRubric: {
     keepWhen: [
-      'A CSS selector targeting inactive SPA views or tab panes uses display: none instead of content-visibility: hidden.',
+      'A CSS selector targeting inactive SPA views or route panes uses display: none instead of content-visibility: hidden.',
     ],
     dropWhen: [
       '@supports not (content-visibility: hidden) fallback blocks that provide display: none for unsupported browsers.',
@@ -197,7 +196,7 @@ export const fasterSpaViewTransitionsRule: AnalyzerRule = {
   matcher: fasterSpaViewTransitionsJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'A bounded SPA view or tab-pane switcher hides inactive view containers using style.display = "none", forcing the browser to recalculate layout and paint when switching back instead of caching rendering state with content-visibility: hidden.',
+      'A bounded SPA view or route-pane switcher hides inactive view containers using style.display = "none", forcing the browser to recalculate layout and paint when switching back instead of caching rendering state with content-visibility: hidden.',
     ],
     dropWhen: [
       'Small UI widgets (dropdowns, tooltips, modals, or form error banners) where display: none or [hidden] is appropriate and layout caching provides no benefit.',
