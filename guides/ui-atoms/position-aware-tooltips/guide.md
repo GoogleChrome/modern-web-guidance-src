@@ -26,9 +26,7 @@ Use the Popover API to create a tooltip. This creates an implicit anchor connect
 
 ```html
 <button popovertarget="tooltip" id="anchor" aria-describedby="tooltip">anchor</button>
-<div id="tooltip" popover role="tooltip">
-  <div class="tooltip-content-inner"></div>
-</div>
+<div id="tooltip" popover role="tooltip"></div>
 ```
 
 Reset the popover inset and margin styles for use with anchor positioning, but only if anchor positioning is supported.
@@ -72,7 +70,7 @@ Like all container queries, `@container` can only style **descendants** of the c
 ```css
 .tooltip-content::before {
   /* Default "down" arrow for the 'top' position */
-  content: "▼";
+  content: "▼" / "";
   position: absolute;
   inset-block-end: 0;
   inset-inline-start: 1rem;
@@ -81,7 +79,7 @@ Like all container queries, `@container` can only style **descendants** of the c
 /* Update to an "up" arrow when the 'flip-block' fallback (bottom) is active */
 @container anchored(fallback: flip-block) {
   .tooltip-content::before {
-    content: "▲";
+    content: "▲" / "";
     inset-block-start: 0;
     inset-block-end: auto;
   }
@@ -105,9 +103,16 @@ If you need to change properties on the container itself (like `margin` or `back
 }
 ```
 
-## 5. Styling the inner container
+## 5. Styling the inner container (optional)
 
-Style the inner container of the tooltip to ensure that, when visible, the tooltip will always fit between the trigger control and a side of the viewport. As an example, the following code will adhere to this when flipping the tooltip content on the block axis with `position-try: flip-block`.
+If the tooltip text is particularly long, use an inner container in the tooltip to ensure that, when visible, the tooltip will always fit between the trigger control and a side of the viewport. As an example, the following code will adhere to this when flipping the tooltip content on the block axis with `position-try: flip-block`.
+
+```html
+<button popovertarget="tooltip" id="anchor" aria-describedby="tooltip">anchor</button>
+<div id="tooltip" popover role="tooltip">
+  <div class="tooltip-content-inner"></div>
+</div>
+```
 
 ```css
 .tooltip-content-inner {
@@ -123,6 +128,8 @@ Style the inner container of the tooltip to ensure that, when visible, the toolt
 
 ## Accessibility considerations
 
+Using these tooltips may result in controls being obscured when they receive focus, which would result in a fail against WCAG 2.4.11 Focus Not Obscured (Minimum) (Level AA), as focused items cannot be completely obscured. While there may not be generic guidance to completely mitigate against this issue, consider strategies that adjust the position of the tooltip or its presence.
+
 Keyboard navigation does not close a `popover=auto` tooltip, so ensure that tooltips do not obscure interactive elements as they receive focus via keyboard. If the tooltip is likely to obscure an interactive element when it receives focus, either change the position of the tooltip to prevent focus being obscured, or dismiss the tooltip if it is no longer relevant to the user.
 
 ## Fallback strategies
@@ -134,7 +141,7 @@ Positioning the arrow based on the applied fallback is a progressive enhancement
 ```css
 @supports (container-type: anchored) {
   .tooltip-content::before {
-    content: "▼";
+    content: "▼" / "";
   }
 }
 ```
