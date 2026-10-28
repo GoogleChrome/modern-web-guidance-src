@@ -394,7 +394,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'scrollspy/js': 'experimental', // CSS scroll-target-group / :target-current is not yet Baseline
   'search-hidden-content': 'experimental',
   'secure-external-subresources': 'qualified',
-  'select-menu-interaction/css-select-invalid': 'experimental',
+  'select-menu-interaction/css-select-invalid': 'qualified',
   'select-menu-interaction/js-select-interaction': 'experimental',
   'size-aware-styling': 'experimental',
   'slider/js-slider': 'experimental',

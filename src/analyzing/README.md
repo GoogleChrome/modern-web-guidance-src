@@ -258,6 +258,7 @@ Every web platform standard in the catalog is classified across two orthogonal a
 | :--- | :--- | :--- | :---: | :---: | :---: | :--- | :--- | :--- |
 | `deliver-optimized-decorative-images` | `deliver-optimized-decorative-images` | CSS | `held-out` | 224 | 35 / 35 | 100.0% ([90.1%, 100.0%]) | 100.0% ([90.1%, 100.0%]) | Standard CSS `image-set()` for decorative backgrounds and masks |
 | `improve-text-layout-and-legibility` | `improve-text-layout-and-legibility/package-text-balance` | Dependency | `held-out` | 32 | 32 / 32 | 100.0% ([89.3%, 100.0%]) | 100.0% ([89.3%, 100.0%]) | CSS `text-wrap: balance` and `text-wrap: pretty` |
+| `select-menu-interaction` | `select-menu-interaction/css-select-invalid` | CSS | `held-out` | 29 | 29 / 29 | 100.0% ([88.3%, 100.0%]) | 100.0% ([88.3%, 100.0%]) | CSS `select:user-invalid` and `:user-valid` for post-interaction validation |
 | `styling-web-components` | `styling-web-components` | CSS & JS | `held-out` | 107 | 19 / 14 | 100.0% ([83.2%, 100.0%]) | 100.0% ([78.5%, 100.0%]) | `::part()`, `:host`, and constructable stylesheets (`adoptedStyleSheets`) |
 | `autofill-address-form` | `autofill-address-form` | DOM | `held-out` | 19 | 18 / 17 | 100.0% ([82.4%, 100.0%]) | 100.0% ([81.6%, 100.0%]) | Standard `autocomplete` attributes on address form inputs |
 | `dynamic-sibling-animations` | `dynamic-sibling-animations` | CSS | `held-out` | 15 | 11 / 11 | 100.0% ([74.1%, 100.0%]) | 100.0% ([74.1%, 100.0%]) | CSS `sibling-index()` and `sibling-count()` for staggered delays |
