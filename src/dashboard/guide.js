@@ -631,6 +631,16 @@ function renderGraphs(guideName) {
 
                 const stats = getStats(runData);
                 if (!stats) return;
+                if (guideTooltipHideTimer) {
+                    window.clearTimeout(guideTooltipHideTimer);
+                    guideTooltipHideTimer = null;
+                }
+                if (activePointGroup && activePointGroup !== group) {
+                    activePointGroup.removeAttribute('aria-describedby');
+                }
+                activePointGroup = group;
+                group.setAttribute('aria-describedby', 'tooltip-container');
+
                 const formattedDate = new Date(runData.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
                 const tooltip = $('#tooltip-container');
@@ -671,18 +681,21 @@ function renderGraphs(guideName) {
                 tooltip.classList.remove('hidden');
                 if (typeof anchorX === 'number' && typeof anchorY === 'number') {
                     const offset = 15;
+                    const tooltipWidth = tooltip.offsetWidth || 300;
+                    const tooltipHeight = tooltip.offsetHeight || 150;
                     let finalX = anchorX + offset;
-                    let finalY = anchorY + offset;
-                    const tooltipWidth = tooltip.clientWidth || 300;
-                    const tooltipHeight = tooltip.clientHeight || 150;
-                    if (finalX + tooltipWidth > window.innerWidth) {
+                    if (finalX + tooltipWidth > window.innerWidth - 8) {
                         finalX = anchorX - tooltipWidth - offset;
                     }
-                    if (finalY + tooltipHeight > window.innerHeight) {
+                    finalX = Math.max(8, Math.min(finalX, window.innerWidth - tooltipWidth - 8));
+
+                    let finalY = anchorY + offset;
+                    if (finalY + tooltipHeight > window.innerHeight - 8) {
                         finalY = anchorY - tooltipHeight - offset;
                     }
-                    tooltip.style.left = `${Math.max(8, finalX)}px`;
-                    tooltip.style.top = `${Math.max(8, finalY)}px`;
+                    finalY = Math.max(8, Math.min(finalY, window.innerHeight - tooltipHeight - 8));
+                    tooltip.style.left = `${finalX}px`;
+                    tooltip.style.top = `${finalY}px`;
                 }
             };
 
@@ -703,28 +716,8 @@ function renderGraphs(guideName) {
                 else showPointTooltip();
             });
 
-            group.addEventListener('mousemove', (e) => {
-                const tooltip = $('#tooltip-container');
-                const offset = 15;
-                let finalX = e.clientX + offset;
-                let finalY = e.clientY + offset;
-
-                const tooltipWidth = tooltip.clientWidth || 300;
-                const tooltipHeight = tooltip.clientHeight || 150;
-
-                if (finalX + tooltipWidth > window.innerWidth) {
-                    finalX = e.clientX - tooltipWidth - offset;
-                }
-                if (finalY + tooltipHeight > window.innerHeight) {
-                    finalY = e.clientY - tooltipHeight - offset;
-                }
-
-                tooltip.style.left = `${Math.max(8, finalX)}px`;
-                tooltip.style.top = `${Math.max(8, finalY)}px`;
-            });
-
             group.addEventListener('mouseleave', () => {
-                $('#tooltip-container').classList.add('hidden');
+                hideGuideTooltip();
             });
 
             group.addEventListener('focus', () => {
@@ -733,12 +726,12 @@ function renderGraphs(guideName) {
             });
 
             group.addEventListener('blur', () => {
-                $('#tooltip-container').classList.add('hidden');
+                hideGuideTooltip(true);
             });
 
             group.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
-                    $('#tooltip-container').classList.add('hidden');
+                    hideGuideTooltip(true);
                 } else if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     navigateToRun();
@@ -750,9 +743,48 @@ function renderGraphs(guideName) {
     });
 }
 
+/** @type {number | null} */
+let guideTooltipHideTimer = null;
+/** @type {SVGElement | null} */
+let activePointGroup = null;
+
+/**
+ * @param {boolean} [immediate]
+ */
+function hideGuideTooltip(immediate = false) {
+    const tooltip = document.getElementById('tooltip-container');
+    if (!tooltip) return;
+    if (guideTooltipHideTimer) {
+        window.clearTimeout(guideTooltipHideTimer);
+        guideTooltipHideTimer = null;
+    }
+    const doHide = () => {
+        if (activePointGroup) {
+            activePointGroup.removeAttribute('aria-describedby');
+            activePointGroup = null;
+        }
+        tooltip.classList.add('hidden');
+        guideTooltipHideTimer = null;
+    };
+    if (immediate) {
+        doHide();
+        return;
+    }
+    guideTooltipHideTimer = window.setTimeout(doHide, 150);
+}
+
+// WCAG 1.4.13 Hoverable & Dismissible: keep open while pointer is over tooltip, close on Escape
+const guideTooltipEl = document.getElementById('tooltip-container');
+guideTooltipEl?.addEventListener('mouseenter', () => {
+    if (guideTooltipHideTimer) {
+        window.clearTimeout(guideTooltipHideTimer);
+        guideTooltipHideTimer = null;
+    }
+});
+guideTooltipEl?.addEventListener('mouseleave', () => hideGuideTooltip());
+
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        const tooltip = document.getElementById('tooltip-container');
-        if (tooltip) tooltip.classList.add('hidden');
+        hideGuideTooltip(true);
     }
 });

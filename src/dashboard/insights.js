@@ -88,7 +88,7 @@ export const AGENT_FAMILIES = [
 
 /**
  * @typedef {Object} InsightOptions
- * @property {number} [perAgentRecentN=3]
+ * @property {number} [perAgentRecentN=1]
  * @property {boolean} [nightlyOnly=true]
  * @property {string | null} [before=null]
  * @property {AgentFamilyDef[]} [families=AGENT_FAMILIES]
@@ -140,7 +140,7 @@ export function hasHeadlineStats(suite) {
  * @returns {Map<AgentFamilyDef, ManifestSuite[]>}
  */
 export function selectRecentSuites(suites, options = {}) {
-    const { perAgentRecentN = 3, nightlyOnly = true, before = null, families = AGENT_FAMILIES } = options;
+    const { perAgentRecentN = 1, nightlyOnly = true, before = null, families = AGENT_FAMILIES } = options;
     const beforeMs = before ? Date.parse(before) : NaN;
 
     /** @type {Map<AgentFamilyDef, ManifestSuite[]>} */
@@ -161,10 +161,8 @@ export function selectRecentSuites(suites, options = {}) {
     });
 
     byFamily.forEach((list, family) => {
-        const hasGemini4 = list.some(s => /^gemini-4\b/i.test(s.model || ''));
-        const preferred = hasGemini4 ? list.filter(s => !/^gemini-3\./i.test(s.model || '')) : list;
-        preferred.sort((a, b) => Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a)));
-        byFamily.set(family, preferred.slice(0, perAgentRecentN));
+        list.sort((a, b) => Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a)));
+        byFamily.set(family, list.slice(0, perAgentRecentN));
     });
     return byFamily;
 }
@@ -265,7 +263,7 @@ function accumulate(suites) {
  * @returns {HeadlineInsights}
  */
 export function computeHeadlineInsights(suites, options = {}) {
-    const { perAgentRecentN = 3, nightlyOnly = true, before = null } = options;
+    const { perAgentRecentN = 1, nightlyOnly = true, before = null } = options;
     const selected = selectRecentSuites(suites, options);
 
     /** @type {FamilyInsight[]} */

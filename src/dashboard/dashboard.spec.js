@@ -34,6 +34,12 @@ test.describe('Eval View Dashboard', () => {
     
     const svg = page.locator('#tooltip-chart svg');
     await expect(svg).toBeVisible();
+
+    // WCAG 1.4.13 Hoverable & Dismissible: remains visible when hovered, dismisses on Escape
+    await tooltip.hover();
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
   });
 
 
@@ -66,6 +72,55 @@ test.describe('Eval View Dashboard', () => {
     await expect(dumbbellTooltip.locator('.dumbbell-tooltip')).toBeVisible();
     await expect(dumbbellTooltip.locator('.dumbbell-tooltip-title')).not.toBeEmpty();
     await expect(dumbbellTooltip.locator('.dumbbell-tooltip-uplift')).toContainText('%');
+
+    // WCAG 1.4.13 Hoverable & Dismissible: moving onto the tooltip keeps it open; Escape dismisses it
+    await dumbbellTooltip.hover();
+    await expect(dumbbellTooltip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dumbbellTooltip).toBeHidden();
+
+    // Verify both ? hint popovers open anchored near their trigger buttons and stay inside the viewport
+    const viewport = page.viewportSize() || { width: 1280, height: 720 };
+    const a11yHintBtn = page.locator('.anchor-dash-a11y');
+    const a11yPopover = page.locator('#dash-tooltip-a11y');
+    await a11yHintBtn.focus();
+    await expect(a11yPopover).toBeVisible();
+    const a11yBtnBox = await a11yHintBtn.boundingBox();
+    const a11yPopBox = await a11yPopover.boundingBox();
+    expect(a11yBtnBox).not.toBeNull();
+    expect(a11yPopBox).not.toBeNull();
+    if (a11yBtnBox && a11yPopBox) {
+      expect(a11yPopBox.x).toBeGreaterThanOrEqual(0);
+      expect(a11yPopBox.x + a11yPopBox.width).toBeLessThanOrEqual(viewport.width);
+      expect(Math.abs(a11yPopBox.x - a11yBtnBox.x)).toBeLessThan(20);
+    }
+
+    const tokensHintBtn = page.locator('.anchor-dash-tokens');
+    const tokensPopover = page.locator('#dash-tooltip-tokens');
+    await tokensHintBtn.focus();
+    await expect(tokensPopover).toBeVisible();
+    const tokensBtnBox = await tokensHintBtn.boundingBox();
+    const tokensPopBox = await tokensPopover.boundingBox();
+    expect(tokensBtnBox).not.toBeNull();
+    expect(tokensPopBox).not.toBeNull();
+    if (tokensBtnBox && tokensPopBox) {
+      expect(tokensPopBox.x).toBeGreaterThanOrEqual(0);
+      expect(tokensPopBox.x + tokensPopBox.width).toBeLessThanOrEqual(viewport.width);
+      expect(Math.abs((tokensPopBox.x + tokensPopBox.width) - (tokensBtnBox.x + tokensBtnBox.width))).toBeLessThan(20);
+    }
+
+    // Verify the 4 summary cards render in a 2x2 grid on desktop
+    const narrativeCards = page.locator('#summary-side-panel article.narrative-card');
+    await expect(narrativeCards).toHaveCount(4);
+    const c0 = await narrativeCards.nth(0).boundingBox();
+    const c1 = await narrativeCards.nth(1).boundingBox();
+    const c2 = await narrativeCards.nth(2).boundingBox();
+    const c3 = await narrativeCards.nth(3).boundingBox();
+    if (c0 && c1 && c2 && c3) {
+      expect(Math.abs(c0.y - c1.y)).toBeLessThan(2);
+      expect(Math.abs(c2.y - c3.y)).toBeLessThan(2);
+      expect(c2.y).toBeGreaterThan(c0.y + 40);
+    }
     // await page.screenshot({ path: '/tmp/dashboard-suite.png' });
   });
 
@@ -137,6 +192,12 @@ test.describe('Eval View Dashboard', () => {
     const tooltip = page.locator('#tooltip-container');
     await expect(tooltip).toBeVisible();
     await expect(page.locator('#tooltip-content')).toBeVisible();
+
+    // WCAG 1.4.13 Hoverable & Dismissible: remains visible when hovered, dismisses on Escape
+    await tooltip.hover();
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
     // await page.screenshot({ path: '/tmp/dashboard-guide-timeline.png' });
   });
 

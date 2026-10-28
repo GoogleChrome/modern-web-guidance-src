@@ -727,7 +727,7 @@ function renderSummary(data) {
 
     container.innerHTML = `
         <!-- Card 1: Overall Uplift & Adoption -->
-        <div class="header-meta-item dog-ear-card narrative-card">
+        <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
                 <span class="meta-label">Pass rate</span>
                 ${ratePill(upliftDelta, 'pass rate change')}
@@ -773,10 +773,10 @@ function renderSummary(data) {
                 </div>
                 ` : ''}
             </div>
-        </div>
+        </article>
 
         <!-- Card 2: Cross-Cutting Accessibility Subscore -->
-        <div class="header-meta-item dog-ear-card narrative-card">
+        <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
                 <span class="meta-label">Accessibility subscore</span>
                 ${ratePill(a11yUpliftPp, 'accessibility subscore change')}
@@ -788,10 +788,10 @@ function renderSummary(data) {
             <div class="a11y-dimensions-grid">
                 ${a11yDimensionsHtml}
             </div>
-        </div>
+        </article>
 
         <!-- Card 3: Completion Time (U → G) -->
-        <div class="header-meta-item dog-ear-card narrative-card">
+        <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
                 <span class="meta-label"><span aria-hidden="true">⏱</span> Median agent time</span>
                 ${hasRuntime ? deltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median agent time' }) : ''}
@@ -815,10 +815,10 @@ function renderSummary(data) {
                     <strong>${rt.unguidedTimeouts} unguided → ${rt.guidedTimeouts} guided</strong>
                 </div>
             </div>
-        </div>
+        </article>
 
         <!-- Card 4: Token Efficiency (U → G) -->
-        <div class="header-meta-item dog-ear-card narrative-card">
+        <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
                 <span class="meta-label"><span aria-hidden="true">🪙</span> Median uncached tokens</span>
                 ${hasTokens ? deltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' }) : ''}
@@ -842,7 +842,7 @@ function renderSummary(data) {
                     <strong>${tok.fewerUncachedTokensTaskPct}% (${tok.fewerUncachedTasksCount}/${rt.pairedTaskCount} tasks)</strong>
                 </div>
             </div>
-        </div>
+        </article>
     `;
 
     const jumpLink = container.querySelector('a[data-filter-a11y-guides]');

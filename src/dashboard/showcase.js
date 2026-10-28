@@ -24,15 +24,18 @@ const SHORT_TASK_LABELS = {
 /** @type {Record<string, string>} */
 const GUIDE_CATEGORY_MAP = {
     'accessibility': 'accessibility', 'animate-to-from-top-layer': 'ui-behaviors', 'css': 'css',
-    'dark-mode': 'visual-design', 'declarative-dialog-popover-control': 'ui-behaviors',
+    'css-layout': 'css', 'dark-mode': 'visual-design', 'declarative-dialog-popover-control': 'ui-behaviors',
+    'defer-rendering-heavy-content': 'performance', 'dialog': 'ui-components',
     'directional-navigation-transitions': 'ui-behaviors', 'faster-spa-view-transitions': 'performance',
     'flicker-free-client-side-ab-testing': 'performance', 'forms': 'forms',
-    'highlight-text-ranges': 'ui-behaviors', 'html': 'html', 'interest-triggered-tooltips': 'ui-behaviors',
-    'light-dismiss-a-dialog': 'ui-behaviors', 'motion': 'ui-behaviors',
-    'move-dom-element-without-losing-state': 'ui-behaviors', 'optimize-image-priority': 'performance',
-    'optimize-preload-priority': 'performance', 'performance': 'performance',
-    'position-aware-tooltips': 'ui-atoms', 'same-document-transitions': 'ui-behaviors',
-    'scrollspy': 'ui-components', 'search-hidden-content': 'ui-behaviors'
+    'highlight-text-ranges': 'ui-behaviors', 'hovercard': 'ui-components', 'html': 'html',
+    'interest-triggered-tooltips': 'ui-behaviors', 'light-dismiss-a-dialog': 'ui-behaviors',
+    'motion': 'ui-behaviors', 'move-dom-element-without-losing-state': 'ui-behaviors',
+    'optimize-image-priority': 'performance', 'optimize-preload-priority': 'performance',
+    'performance': 'performance', 'persistent-toast-notifications': 'ui-components',
+    'position-aware-tooltips': 'ui-atoms', 'prevent-page-scroll-under-modal-dialog': 'ui-behaviors',
+    'same-document-transitions': 'ui-behaviors', 'scrollspy': 'ui-components',
+    'search-hidden-content': 'ui-behaviors'
 };
 
 /** @type {Record<string, { unguided: string, guided: string }>} */
@@ -68,11 +71,20 @@ const TASK_PAIR_OVERRIDES = {
     'animate-to-from-top-layer:antigravity_cli': {
         unguided: 'Applied @starting-style, transition-behavior: allow-discrete, and ::backdrop transitions (8/9), but omitted the prefers-reduced-motion guard.'
     },
-    'animate-to-from-top-layer:codex_cli': {
-        guided: 'Applied @starting-style, transition-behavior: allow-discrete, ::backdrop fade, and prefers-reduced-motion on <dialog> (6/9 — omitted [popover] entry/exit transitions).'
-    },
     'flicker-free-client-side-ab-testing:codex_cli': {
         guided: 'Applied <script async blocking="render"> in <head> with feature detection (8/10), but omitted the fallback safety timeout and missed the variant timing check.'
+    },
+    'faster-spa-view-transitions:claude_code': {
+        guided: 'Retrieved both faster-spa-view-transitions and defer-rendering-heavy-content, applying content-visibility: auto instead of content-visibility: hidden on inactive views (3/6).'
+    },
+    'scrollspy:codex_cli': {
+        guided: 'Applied native scroll-target-group: auto, :target-current, non-color indicators, scrollend ARIA sync, and IntersectionObserver fallback (10/11 — missed only the fallback class selector).'
+    },
+    'interest-triggered-tooltips:antigravity_cli': {
+        guided: 'Declarative interestfor triggers with <div popover="hint">, CSS anchor(), position-try fallbacks, and WCAG 1.4.13 persistence (14/16 — paired anchor() with position-area and omitted 1 of 3 polyfills).'
+    },
+    'interest-triggered-tooltips:codex_cli': {
+        guided: 'Declarative interestfor triggers with <div popover="hint">, position-try fallbacks, and WCAG 1.4.13 persistence (12/16 — used position-area instead of anchor() and omitted 2 of 3 polyfills).'
     }
 };
 

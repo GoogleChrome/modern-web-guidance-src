@@ -175,7 +175,7 @@ export class ApiClient {
      * @returns {Promise<import('./insights.js').HeadlineInsights>}
      */
     async getHeadlineInsights(options = {}) {
-        const { perAgentRecentN = 3, onUpdate } = options;
+        const { perAgentRecentN = 1, onUpdate } = options;
         const insightOptions = { perAgentRecentN };
         const { suites = [] } = await this.getManifest();
         const insights = computeHeadlineInsights(suites, insightOptions);

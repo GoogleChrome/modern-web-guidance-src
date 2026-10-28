@@ -1104,6 +1104,8 @@ let tooltipChartInstance = null;
 let currentDumbbellKey = null;
 /** @type {number | null} */
 let hideTimeout = null;
+/** @type {HTMLElement | null} */
+let activeTooltipTrigger = null;
 const tooltipContainer = document.getElementById('tooltip-container');
 
 function setupRateCellHovers() {
@@ -1112,6 +1114,7 @@ function setupRateCellHovers() {
         if (!(cell instanceof HTMLElement)) return;
         const compoundKey = cell.dataset.compoundKey;
         if (!compoundKey) return;
+        const link = cell.querySelector('a');
 
         const show = () => {
             const testInfo = allTestData[compoundKey];
@@ -1120,15 +1123,19 @@ function setupRateCellHovers() {
                 clearTimeout(hideTimeout);
                 hideTimeout = null;
             }
+            if (activeTooltipTrigger && activeTooltipTrigger !== link) {
+                activeTooltipTrigger.removeAttribute('aria-describedby');
+            }
+            activeTooltipTrigger = link instanceof HTMLElement ? link : cell;
+            activeTooltipTrigger.setAttribute('aria-describedby', 'tooltip-container');
             const r = cell.getBoundingClientRect();
-            showTooltipChart(testInfo, r.right, r.top, compoundKey);
+            showTooltipChart(testInfo, r.right, r.top, compoundKey, r.left);
         };
 
         cell.addEventListener('mouseenter', () => show());
         cell.addEventListener('mouseleave', () => hideTooltipChart());
 
         // Keyboard parity: the same preview opens while the cell's link has focus.
-        const link = cell.querySelector('a');
         link?.addEventListener('focus', () => show());
         link?.addEventListener('blur', () => hideTooltipChart());
         // WCAG 1.4.13: the preview must be dismissible without moving focus.
@@ -1152,11 +1159,12 @@ tooltipContainer?.addEventListener('mouseleave', () => hideTooltipChart());
  * @param {number} x
  * @param {number} y
  * @param {string} compoundKey
+ * @param {number} [leftAnchor]
  */
-function showTooltipChart(testInfo, x, y, compoundKey) {
+function showTooltipChart(testInfo, x, y, compoundKey, leftAnchor = x) {
     if (!tooltipContainer) return;
     if (currentDumbbellKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
-        updateTooltipPosition(x, y);
+        updateTooltipPosition(x, y, leftAnchor);
         return;
     }
     currentDumbbellKey = compoundKey;
@@ -1174,7 +1182,6 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
     const { labels, guided, unguided, guided_failed, unguided_failed, guided_err_rate, unguided_err_rate } = chartData;
 
     tooltipContainer.classList.remove('hidden');
-    updateTooltipPosition(x, y);
 
     if (!tooltipChartInstance) {
         tooltipChartInstance = new DumbbellChart('tooltip-chart', {
@@ -1189,23 +1196,32 @@ function showTooltipChart(testInfo, x, y, compoundKey) {
             { label: 'Guided', data: guided, failed: guided_failed, errRate: guided_err_rate }
         ]
     });
+    updateTooltipPosition(x, y, leftAnchor);
 }
 
 /**
  * @param {number} x
  * @param {number} y
+ * @param {number} [leftAnchor]
  */
-function updateTooltipPosition(x, y) {
+function updateTooltipPosition(x, y, leftAnchor = x) {
     if (!tooltipContainer) return;
-    const offset = 20;
+    const offset = 16;
+    const tooltipWidth = tooltipContainer.offsetWidth || 300;
+    const tooltipHeight = tooltipContainer.offsetHeight || 300;
     let finalX = x + offset;
-    let finalY = y + offset;
-    const tooltipWidth = tooltipContainer.clientWidth || 330;
-    const tooltipHeight = tooltipContainer.clientHeight || 330;
-    if (finalX + tooltipWidth > window.innerWidth) finalX = x - tooltipWidth - offset;
-    if (finalY + tooltipHeight > window.innerHeight) finalY = y - tooltipHeight - offset;
-    tooltipContainer.style.left = `${Math.max(8, finalX)}px`;
-    tooltipContainer.style.top = `${Math.max(8, finalY)}px`;
+    if (finalX + tooltipWidth > window.innerWidth - 8) {
+        finalX = leftAnchor - tooltipWidth - offset;
+    }
+    finalX = Math.max(8, Math.min(finalX, window.innerWidth - tooltipWidth - 8));
+
+    let finalY = y;
+    if (finalY + tooltipHeight > window.innerHeight - 8) {
+        finalY = window.innerHeight - tooltipHeight - 8;
+    }
+    finalY = Math.max(8, finalY);
+    tooltipContainer.style.left = `${finalX}px`;
+    tooltipContainer.style.top = `${finalY}px`;
 }
 
 /** @param {boolean} [immediate] */
@@ -1214,6 +1230,10 @@ function hideTooltipChart(immediate = false) {
     if (hideTimeout) window.clearTimeout(hideTimeout);
     const hide = () => {
         currentDumbbellKey = null;
+        if (activeTooltipTrigger) {
+            activeTooltipTrigger.removeAttribute('aria-describedby');
+            activeTooltipTrigger = null;
+        }
         tooltipContainer.classList.add('hidden');
         hideTimeout = null;
     };
@@ -1221,7 +1241,7 @@ function hideTooltipChart(immediate = false) {
         hide();
         return;
     }
-    hideTimeout = window.setTimeout(hide, 50);
+    hideTimeout = window.setTimeout(hide, 150);
 }
 // Escape anywhere on the page also dismisses a hover-opened preview.
 document.addEventListener('keydown', (e) => {

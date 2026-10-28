@@ -279,6 +279,9 @@
     if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
       import("https://unpkg.com/interestfor@1.0.10").catch(() => {});
     }
+    if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+      import("https://unpkg.com/@oddbird/popover-polyfill@0.6.1").catch(() => {});
+    }
     if (!("anchorName" in document.documentElement.style)) {
       import("https://unpkg.com/@oddbird/css-anchor-positioning@0.10.2").catch(() => {});
     }

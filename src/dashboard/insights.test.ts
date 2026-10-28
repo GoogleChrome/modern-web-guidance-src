@@ -72,7 +72,12 @@ test('getAgentFamily and getSuiteTimestamp resolve family lineage and timestamps
     assert.strictEqual(getSuiteTimestamp({ testId: 'no-date' }), '');
 });
 
-test('selectRecentSuites keeps the latest N nightly suites per family and prefers Gemini 4', () => {
+test('selectRecentSuites defaults to the latest 1 nightly suite per family regardless of model', () => {
+    const defaultSelected = selectRecentSuites(manifest);
+    assert.deepStrictEqual((defaultSelected.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId]);
+    assert.deepStrictEqual((defaultSelected.get(AGENT_FAMILIES[0]) ?? []).map(s => s.testId), [claude1.testId]);
+    assert.deepStrictEqual(defaultSelected.get(AGENT_FAMILIES[1]), []);
+
     const selected = selectRecentSuites(manifest, { perAgentRecentN: 3 });
     assert.deepStrictEqual((selected.get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [gemini3.testId, gemini2.testId, gemini1.testId]);
     assert.deepStrictEqual((selected.get(AGENT_FAMILIES[0]) ?? []).map(s => s.testId), [claude1.testId]);
@@ -80,8 +85,8 @@ test('selectRecentSuites keeps the latest N nightly suites per family and prefer
 
     const g38 = suite('nightly-2026-10-19_07-00-02-antigravity_cli', 'antigravity_cli', 'gemini-3.8-flash', '2026-10-19T07:00:02Z', [{ name: 'accordion', passed: [1, 2] }]);
     const g4 = suite('nightly-2026-10-20_18-18-02-antigravity_cli', 'antigravity_cli', 'gemini-4-argon', '2026-10-20T18:18:02Z', [{ name: 'accordion', passed: [3, 4] }]);
-    assert.deepStrictEqual((selectRecentSuites([g38, g4], { perAgentRecentN: 3 }).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g4.testId]);
-    assert.deepStrictEqual((selectRecentSuites([g38, g4], { perAgentRecentN: 3, before: '2026-10-20' }).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g38.testId]);
+    assert.deepStrictEqual((selectRecentSuites([g38, g4]).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g4.testId]);
+    assert.deepStrictEqual((selectRecentSuites([g38, g4], { before: '2026-10-20' }).get(AGENT_FAMILIES[2]) ?? []).map(s => s.testId), [g38.testId]);
 });
 
 test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', () => {

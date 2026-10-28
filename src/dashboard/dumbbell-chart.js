@@ -49,6 +49,36 @@ import { escapeHtml } from './utils.js';
  * @property {(index: number, label: string) => void} [onClick]
  */
 
+/** @type {number | null} */
+let dumbbellHideTimer = null;
+/** @type {SVGElement | null} */
+let activeHitArea = null;
+
+/**
+ * @param {boolean} [immediate]
+ */
+function hideDumbbellTooltip(immediate = false) {
+  const tip = document.getElementById('dumbbell-tooltip');
+  if (!tip) return;
+  if (dumbbellHideTimer) {
+    window.clearTimeout(dumbbellHideTimer);
+    dumbbellHideTimer = null;
+  }
+  const doHide = () => {
+    if (activeHitArea) {
+      activeHitArea.removeAttribute('aria-describedby');
+      activeHitArea = null;
+    }
+    tip.style.display = 'none';
+    dumbbellHideTimer = null;
+  };
+  if (immediate) {
+    doHide();
+    return;
+  }
+  dumbbellHideTimer = window.setTimeout(doHide, 150);
+}
+
 /**
  * @property {HTMLElement} container
  * @property {Required<DumbbellChartOptions>} options
@@ -87,6 +117,10 @@ export class DumbbellChart {
 
   init() {
     this.container.innerHTML = '';
+    if (this.options.hideLabels) {
+      this.tooltip = null;
+      return;
+    }
     this.tooltip = document.getElementById('dumbbell-tooltip');
     if (!this.tooltip && document.body) {
       this.tooltip = document.createElement('div');
@@ -94,9 +128,17 @@ export class DumbbellChart {
       this.tooltip.className = 'chart-tooltip';
       this.tooltip.setAttribute('role', 'tooltip');
       document.body.appendChild(this.tooltip);
+      // WCAG 1.4.13 Hoverable & Dismissible: keep open while pointer is over tooltip, close on Escape
+      this.tooltip.addEventListener('mouseenter', () => {
+        if (dumbbellHideTimer) {
+          window.clearTimeout(dumbbellHideTimer);
+          dumbbellHideTimer = null;
+        }
+      });
+      this.tooltip.addEventListener('mouseleave', () => hideDumbbellTooltip());
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && this.tooltip) {
-          this.tooltip.style.display = 'none';
+        if (e.key === 'Escape') {
+          hideDumbbellTooltip(true);
         }
       });
     } else if (this.tooltip) {
@@ -471,6 +513,16 @@ export class DumbbellChart {
               return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`;
             };
 
+            if (dumbbellHideTimer) {
+              window.clearTimeout(dumbbellHideTimer);
+              dumbbellHideTimer = null;
+            }
+            if (activeHitArea && activeHitArea !== hitArea) {
+              activeHitArea.removeAttribute('aria-describedby');
+            }
+            activeHitArea = hitArea;
+            hitArea.setAttribute('aria-describedby', 'dumbbell-tooltip');
+
             this.tooltip.innerHTML = `
                 <div class="dumbbell-tooltip">
                     <div class="dumbbell-tooltip-left">
@@ -498,33 +550,42 @@ export class DumbbellChart {
                 </div>
             `;
             this.tooltip.style.display = 'block';
+            const offset = 14;
             const tipWidth = this.tooltip.offsetWidth || 330;
             const tipHeight = this.tooltip.offsetHeight || 110;
-            const maxLeft = Math.max(8, window.innerWidth - tipWidth - 8);
-            const nextTop = (clientY + 15 + tipHeight > window.innerHeight - 8)
-              ? Math.max(8, clientY - tipHeight - 12)
-              : Math.max(8, clientY + 15);
-            this.tooltip.style.left = Math.max(8, Math.min(clientX + 15, maxLeft)) + 'px';
-            this.tooltip.style.top = nextTop + 'px';
+            let nextLeft = clientX + offset;
+            if (nextLeft + tipWidth > window.innerWidth - 8) {
+              nextLeft = clientX - tipWidth - offset;
+            }
+            nextLeft = Math.max(8, Math.min(nextLeft, window.innerWidth - tipWidth - 8));
+
+            let nextTop = clientY + offset;
+            if (nextTop + tipHeight > window.innerHeight - 8) {
+              nextTop = clientY - tipHeight - offset;
+            }
+            nextTop = Math.max(8, Math.min(nextTop, window.innerHeight - tipHeight - 8));
+
+            this.tooltip.style.left = `${nextLeft}px`;
+            this.tooltip.style.top = `${nextTop}px`;
           };
 
-          hitArea.onmousemove = (e) => showTooltipAt(e.clientX, e.clientY);
-          hitArea.onmouseleave = () => { if (this.tooltip) this.tooltip.style.display = 'none'; };
-          hitArea.addEventListener('focus', () => {
+          if (!this.options.hideLabels) {
+            hitArea.addEventListener('mouseenter', (e) => showTooltipAt(e.clientX, e.clientY));
+            hitArea.addEventListener('mouseleave', () => hideDumbbellTooltip());
+            hitArea.addEventListener('focus', () => {
               const r = hitArea.getBoundingClientRect();
               showTooltipAt(r.left + r.width / 2, r.bottom);
-          });
-          hitArea.addEventListener('blur', () => {
-              if (this.tooltip) this.tooltip.style.display = 'none';
-          });
-          hitArea.addEventListener('keydown', (e) => {
-              if (e.key === 'Escape' && this.tooltip) {
-                  this.tooltip.style.display = 'none';
+            });
+            hitArea.addEventListener('blur', () => hideDumbbellTooltip(true));
+            hitArea.addEventListener('keydown', (e) => {
+              if (e.key === 'Escape') {
+                hideDumbbellTooltip(true);
               } else if ((e.key === 'Enter' || e.key === ' ') && guidedSet.onClick) {
-                  e.preventDefault();
-                  guidedSet.onClick(item.originalIndex, 'Guided');
+                e.preventDefault();
+                guidedSet.onClick(item.originalIndex, 'Guided');
               }
-          });
+            });
+          }
           if (guidedSet.onClick) {
               hitArea.onclick = () => guidedSet.onClick ? guidedSet.onClick(item.originalIndex, 'Guided') : null;
           }
