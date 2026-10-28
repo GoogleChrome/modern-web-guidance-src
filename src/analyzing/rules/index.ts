@@ -21,11 +21,13 @@ import complexShapes from './complex-shapes.ts';
 import conditionalAsyncDependencies from './conditional-async-dependencies.ts';
 import contrastColor from './contrast-color.ts';
 import coordinateGlobalEvents from './coordinate-global-events.ts';
+import crossDocumentTransitions from './cross-document-transitions.ts';
 import customButtonActions from './custom-button-actions.ts';
 import customSelectPickerLayouts from './custom-select-picker-layouts.ts';
 import customTextDecorations from './custom-text-decorations.ts';
 import customizeScrollbarColorAndThickness from './customize-scrollbar-color-and-thickness.ts';
 import darkMode from './dark-mode.ts';
+import darkModeToggle from './dark-mode-toggle.ts';
 import declarativeDialogPopoverControl from './declarative-dialog-popover-control.ts';
 import deferWorkUntilScrollEnds from './defer-work-until-scroll-ends.ts';
 import deliverOptimizedDecorativeImages from './deliver-optimized-decorative-images.ts';
@@ -41,6 +43,7 @@ import improveNextPageLoadPerformance from './improve-next-page-load-performance
 import improveTextLayoutAndLegibility from './improve-text-layout-and-legibility.ts';
 import individualTransformProperties from './individual-transform-properties.ts';
 import interactionsInComplexLayouts from './interactions-in-complex-layouts.ts';
+import interactiveContentReveal from './interactive-content-reveal.ts';
 import interestTriggeredActionPreviews from './interest-triggered-action-previews.ts';
 import interestTriggeredTooltips from './interest-triggered-tooltips.ts';
 import languageDetection from './language-detection.ts';
@@ -49,13 +52,16 @@ import lightDismissADialog from './light-dismiss-a-dialog.ts';
 import menu from './menu.ts';
 import navigationDrawer from './navigation-drawer.ts';
 import optimizeImagePriority from './optimize-image-priority.ts';
+import persistentAppTours from './persistent-app-tours.ts';
 import persistentToastNotifications from './persistent-toast-notifications.ts';
 import physicsBasedEasing from './physics-based-easing.ts';
 import platformControlsDismissDialog from './platform-controls-dismiss-dialog.ts';
 import positionAwareTooltips from './position-aware-tooltips.ts';
 import preciseTextAlignment from './precise-text-alignment.ts';
 import preventPageScrollUnderModalDialog from './prevent-page-scroll-under-modal-dialog.ts';
+import progress from './progress.ts';
 import progressRing from './progress-ring.ts';
+import pullToReveal from './pull-to-reveal.ts';
 import requiredFieldFeedback from './required-field-feedback.ts';
 import resolutionOptimizedPseudoElements from './resolution-optimized-pseudo-elements.ts';
 import responsiveTable from './responsive-table.ts';
@@ -68,12 +74,14 @@ import scrollSnapRealtimeFeedback from './scroll-snap-realtime-feedback.ts';
 import scrollSnapStateSync from './scroll-snap-state-sync.ts';
 import scrollTargetOnLoad from './scroll-target-on-load.ts';
 import scrollabilityAffordanceHints from './scrollability-affordance-hints.ts';
+import scrollytelling from './scrollytelling.ts';
 import scrollspy from './scrollspy.ts';
 import selectMenuInteraction from './select-menu-interaction.ts';
 import sizeAwareStyling from './size-aware-styling.ts';
 import slider from './slider.ts';
 import smsOtpForm from './sms-otp-form.ts';
 import softEdgeContentFade from './soft-edge-content-fade.ts';
+import spinner from './spinner.ts';
 import stateAwareStickyHeaders from './state-aware-sticky-headers.ts';
 import stylingWebComponents from './styling-web-components.ts';
 import supportGlobalCalendarSystems from './support-global-calendar-systems.ts';
@@ -102,11 +110,13 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   conditionalAsyncDependencies,
   contrastColor,
   coordinateGlobalEvents,
+  crossDocumentTransitions,
   customButtonActions,
   customSelectPickerLayouts,
   customTextDecorations,
   customizeScrollbarColorAndThickness,
   darkMode,
+  darkModeToggle,
   declarativeDialogPopoverControl,
   deferWorkUntilScrollEnds,
   deliverOptimizedDecorativeImages,
@@ -122,6 +132,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   improveTextLayoutAndLegibility,
   individualTransformProperties,
   interactionsInComplexLayouts,
+  interactiveContentReveal,
   interestTriggeredActionPreviews,
   interestTriggeredTooltips,
   languageDetection,
@@ -130,13 +141,16 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   menu,
   navigationDrawer,
   optimizeImagePriority,
+  persistentAppTours,
   persistentToastNotifications,
   physicsBasedEasing,
   platformControlsDismissDialog,
   positionAwareTooltips,
   preciseTextAlignment,
   preventPageScrollUnderModalDialog,
+  progress,
   progressRing,
+  pullToReveal,
   requiredFieldFeedback,
   resolutionOptimizedPseudoElements,
   responsiveTable,
@@ -149,12 +163,14 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   scrollSnapStateSync,
   scrollTargetOnLoad,
   scrollabilityAffordanceHints,
+  scrollytelling,
   scrollspy,
   selectMenuInteraction,
   sizeAwareStyling,
   slider,
   smsOtpForm,
   softEdgeContentFade,
+  spinner,
   stateAwareStickyHeaders,
   stylingWebComponents,
   supportGlobalCalendarSystems,
@@ -200,12 +216,16 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'contrast-color/js': 'experimental',
   'contrast-color/css': 'experimental',
   'coordinate-global-events': 'experimental',
+  'cross-document-transitions/package-page-transition': 'experimental',
+  'cross-document-transitions': 'experimental',
+  'cross-document-transitions/dom-meta': 'experimental',
   'custom-button-actions': 'experimental',
   'custom-select-picker-layouts/js-custom-select': 'experimental',
   'custom-text-decorations': 'qualified',
   'customize-scrollbar-color-and-thickness': 'experimental',
   'dark-mode': 'experimental',
   'dark-mode/js-match-media': 'experimental',
+  'dark-mode-toggle': 'experimental',
   'declarative-dialog-popover-control': 'experimental',
   'declarative-dialog-popover-control/click-listener': 'experimental',
   'defer-work-until-scroll-ends': 'experimental',
@@ -231,6 +251,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'individual-transform-properties/single-function-state': 'experimental',
   'interactions-in-complex-layouts/package-fastdom': 'experimental',
   'interactions-in-complex-layouts/js-fastdom': 'experimental',
+  'interactive-content-reveal': 'experimental',
   'interest-triggered-action-previews/package-hoverintent': 'experimental',
   'interest-triggered-action-previews/js-hover-preview': 'experimental',
   'interest-triggered-tooltips/js-tooltip': 'qualified',
@@ -244,6 +265,8 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'navigation-drawer': 'experimental',
   'navigation-drawer/dom': 'experimental',
   'optimize-image-priority': 'experimental',
+  'persistent-app-tours/package-tour': 'experimental',
+  'persistent-app-tours': 'experimental',
   'persistent-toast-notifications/js-toast': 'experimental',
   'physics-based-easing/js-spring': 'experimental',
   'platform-controls-dismiss-dialog': 'experimental',
@@ -254,8 +277,11 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'prevent-page-scroll-under-modal-dialog/package-scroll-lock': 'experimental',
   'prevent-page-scroll-under-modal-dialog': 'experimental',
   'prevent-page-scroll-under-modal-dialog/css': 'experimental',
+  'progress': 'experimental',
   'progress-ring': 'experimental',
   'progress-ring/dom': 'experimental',
+  'pull-to-reveal/package-pull-to-reveal': 'experimental',
+  'pull-to-reveal': 'experimental',
   'required-field-feedback/css-required-invalid': 'experimental',
   'required-field-feedback/js-blur-dirty-class': 'experimental',
   'resolution-optimized-pseudo-elements': 'experimental',
@@ -271,6 +297,8 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'scroll-snap-state-sync': 'experimental',
   'scroll-target-on-load': 'experimental',
   'scrollability-affordance-hints': 'experimental',
+  'scrollytelling/package-scrollytelling': 'experimental',
+  'scrollytelling': 'experimental',
   'scrollspy': 'qualified',
   'scrollspy/js': 'experimental', // CSS scroll-target-group / :target-current is not yet Baseline
   'select-menu-interaction/css-select-invalid': 'experimental',
@@ -279,6 +307,9 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'slider/js-slider': 'experimental',
   'sms-otp-form': 'experimental',
   'soft-edge-content-fade': 'experimental',
+  'spinner/package-spinner': 'experimental',
+  'spinner': 'experimental',
+  'spinner/dom': 'experimental',
   'state-aware-sticky-headers': 'experimental',
   'styling-web-components': 'qualified',
   'support-global-calendar-systems/package-calendar': 'experimental',
