@@ -143,6 +143,34 @@
       background: var(--canvas);
     }
 
+    .drag-handle:not(:is(:hover, :focus-visible, [aria-pressed="true"])) {
+      opacity: 0.6;
+    }
+
+    .task:has(> .drag-handle) {
+      position: relative;
+    }
+
+    /* Decorative key hint; the handle label and live region cover assistive technology. */
+    .task:has(> .drag-handle:focus-visible)::after,
+    .task:has(> .drag-handle[aria-pressed="true"])::after {
+      content: "Space to reorder" / "";
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline-end: 0.5rem;
+      translate: 0 -50%;
+      padding: 0.1rem 0.5rem;
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--canvas);
+      font-size: 0.75rem;
+      pointer-events: none;
+    }
+
+    .task:has(> .drag-handle[aria-pressed="true"])::after {
+      content: "Arrows to move · Space to drop · Esc to cancel" / "";
+    }
+
     .drag-handle[aria-pressed="true"] {
       border-radius: 4px;
       background: color-mix(in oklch, var(--accent) 20%, transparent);
