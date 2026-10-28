@@ -48,6 +48,6 @@ export async function handleSetAllowOriginTrials(opts: SetAllowOriginTrialsOptio
   }
 
   const targetPath = writeMwgrc({ allowOriginTrials: true }, opts.cwd);
-  console.log(`Enabled Origin Trial guidance for project in ${targetPath}`);
+  console.log(`Enabled Origin Trial guidance in ${targetPath}. Commit this file to share the opt-in.`);
   return 0;
 }

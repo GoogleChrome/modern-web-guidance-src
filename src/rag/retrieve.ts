@@ -23,7 +23,7 @@ function formatOriginTrialGateMessage(guideId: string, originTrials: OriginTrial
 > Ask the user if they want to opt in to Origin Trial guidance for this project. To authorize it, the user must run this command themselves in their terminal:
 >
 > \`\`\`sh
-> npx modern-web-guidance set-allow-origin-trials
+> npx modern-web-guidance@latest set-allow-origin-trials
 > \`\`\``;
 }
 

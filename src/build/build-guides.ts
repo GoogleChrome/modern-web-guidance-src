@@ -45,9 +45,7 @@ import { toDevsiteMarkdown } from "./devsite-markdown.ts";
 const WORKSPACE_ROOT = rootDir;
 
 
-import type { UseCase as BaseUseCase } from "../rag/guides.ts";
-
-type UseCase = Omit<BaseUseCase, "tokenCount"> & { tokenCount?: number };
+import type { UseCase } from "../rag/guides.ts";
 
 export interface BuildOptions {
   outputDir: string;

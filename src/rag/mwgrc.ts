@@ -25,20 +25,26 @@ function isNodeError(e: unknown): e is NodeJS.ErrnoException {
 }
 
 export function readMwgrc(startDir = process.cwd()): MwgConfig {
-  const filePath = startDir.endsWith(CONFIG_FILENAME) ? startDir : resolveMwgrcPath(startDir);
+  return readMwgrcFile(resolveMwgrcPath(startDir));
+}
+
+function readMwgrcFile(filePath: string): MwgConfig {
+  let parsed: unknown;
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (e: unknown) {
-    if (isNodeError(e) && e.code === 'ENOENT') {
-      return {};
-    }
-    throw e;
+    if (isNodeError(e) && e.code === 'ENOENT') return {};
+    throw new Error(`Invalid ${CONFIG_FILENAME} at ${filePath}: ${(e as Error).message}`);
   }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`Invalid ${CONFIG_FILENAME} at ${filePath}: expected a JSON object`);
+  }
+  return parsed as MwgConfig;
 }
 
 export function writeMwgrc(patch: Partial<MwgConfig>, startDir = process.cwd()): string {
   const targetPath = resolveMwgrcPath(startDir);
-  const existing = readMwgrc(targetPath);
+  const existing = readMwgrcFile(targetPath);
   fs.writeFileSync(targetPath, JSON.stringify({ ...existing, ...patch }, null, 2) + '\n', 'utf8');
   return targetPath;
 }

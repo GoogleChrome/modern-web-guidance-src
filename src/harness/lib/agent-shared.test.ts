@@ -219,6 +219,7 @@ describe('createWorkDir', () => {
     const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-suite-'));
     const templateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'template-test-'));
     fs.writeFileSync(path.join(templateDir, 'package.json'), '{"name":"test-app"}\n');
+    initGitRepo(templateDir); // suite templates already have .git (see setupWorkspaceBaseApp)
     try {
       const workDir = createWorkDir(templateDir, tempHome, 'guided');
       const mwgrcPath = path.join(workDir, '.mwgrc');
