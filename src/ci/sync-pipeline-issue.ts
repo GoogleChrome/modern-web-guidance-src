@@ -41,13 +41,8 @@ const CHART_Y_MIN = 100;
 const DAY_MS = 86_400_000;
 const BULK_EVAL_SWEEP_MIN_SLUGS = 5;
 
-/**
- * Computes a dynamic scale ceiling for pipeline charts: defaults to `minScale` (200),
- * and rounds up in `step` (50) increments once values exceed `minScale`.
- */
-export function computeScaleMax(maxVal: number, minScale: number = PIPELINE_SCALE_MAX, step: number = 50): number {
-  if (maxVal <= minScale) return minScale;
-  return Math.ceil(maxVal / step) * step;
+export function computeScaleMax(maxVal: number): number {
+  return Math.max(PIPELINE_SCALE_MAX, Math.ceil(maxVal / 50) * 50);
 }
 
 function parseGuidePath(filePath: string): { slug: string; guideName: string; relPath: string } | null {
@@ -531,7 +526,9 @@ export function renderTwoRowProgressBar(params: {
   // Column for guide count v: the first bar column is guide `baseline + 1`.
   const colFor = (v: number) => labelWidth + Math.max(0, v - baseline - 1);
   const ticks = [baseline];
-  for (let t = 150; t <= scaleMax; t += 50) ticks.push(t);
+  for (let t = 150; t <= scaleMax; t += 50) {
+    if (t > baseline) ticks.push(t);
+  }
   const width = colFor(scaleMax) + 1;
   const ticksArr = Array<string>(width).fill(' ');
   const numsArr = Array<string>(width + 2).fill(' ');
@@ -592,12 +589,12 @@ export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
   return points;
 }
 
-export function renderProgressChart(points: WeeklyProgressPoint[], options?: { scaleMax?: number }): string {
+export function renderProgressChart(points: WeeklyProgressPoint[], scaleMax?: number): string {
   const xLabels = points.map(p => `"${p.label}"`).join(', ');
   const contentBars = points.map(p => p.contentLanded).join(', ');
   const completeBars = points.map(p => p.complete).join(', ');
   const maxVal = Math.max(0, ...points.map(p => Math.max(p.contentLanded, p.complete)));
-  const scaleMax = options?.scaleMax ?? computeScaleMax(maxVal);
+  const effectiveScaleMax = scaleMax ?? computeScaleMax(maxVal);
 
   return [
     '```mermaid',
@@ -614,7 +611,7 @@ export function renderProgressChart(points: WeeklyProgressPoint[], options?: { s
     '---',
     'xychart-beta',
     `    x-axis [${xLabels}]`,
-    `    y-axis "Guides" ${CHART_Y_MIN} --> ${scaleMax}`,
+    `    y-axis "Guides" ${CHART_Y_MIN} --> ${effectiveScaleMax}`,
     `    bar "Guides landed" [${contentBars}]`,
     `    bar "Evals landed" [${completeBars}]`,
     '```',
@@ -729,7 +726,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     '### Progress since Jul 22',
     '',
-    renderProgressChart(data.weeklyProgressPoints, { scaleMax }),
+    renderProgressChart(data.weeklyProgressPoints, scaleMax),
     '',
     '---',
     '',
