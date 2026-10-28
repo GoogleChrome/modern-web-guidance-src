@@ -76,6 +76,7 @@ tourStep.querySelector('button').focus();
 The following requirements apply regardless of the use case:
 
 * Popovers should provide sufficient context around the features they're introducing, to be understood independently. **DON'T** make the content in a popover heavily reliant on content outside of it to be understood. For example: "New feature. Click here", relies heavily on visual information that people may not have, or may not be able to access (particularly if the content outside the popover is `inert`). Instead, something like: "New chat functionality. Start a chat to review items with fellow members", is much easier to understand when read in isolation.
+* Tour popovers should begin with a heading, so that as to provide context to the content in the popover, as well as to provide an easy way for people using screen readers to navigate to them, when used in a non-modal way.
 * Content in popovers must scale in size, and that all toast content remains visible when resizing text up to 200% to adhere to WCAG 1.4.4 Resize Text (Level AA).
 * Content in popovers must remain visible when adjusting text styling and spacing with CSS to adhere to 1.4.12 Text Spacing (Level AA).
 * Content in popovers must remain visible, or can be accessed still, when using a viewport sized to 320 by 256 CSS pixels to adhere to 1.4.10 Reflow (Level AA).
