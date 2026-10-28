@@ -183,12 +183,15 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'animate-to-intrinsic-sizes': 'experimental',
   'atrule-support-conditionals/js-modernizr': 'experimental',
   'autofill-address-form': 'qualified',
-  'autofill-highlight-inputs': 'experimental',
+  'autofill-highlight-inputs': {
+    experimental:
+      'Scored under de-admitted v6 judge; 0 human spot-check cards; low-prevalence no-op swap (D-041, D-042, D-062, D-065, in 82b8f81fe and 26710110f)',
+  },
   'autofill-payment-form': 'qualified',
   'autofill-sign-in-form': 'qualified',
   'autofill-sign-up-form': 'experimental',
   'batch-analytics-events': 'experimental',
-  'branded-select-styling': 'experimental', // single-signal CSS heuristic cannot distinguish option-list styling
+  'branded-select-styling': 'experimental', // reason not recorded (unregistered in a76520de2)
   'branded-select-styling/js': 'experimental',
   'break-up-long-tasks': 'experimental',
   'calculate-event-differentials': 'experimental',
@@ -198,11 +201,12 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'capture-location-agnostic-data/js-iso-lookup': 'experimental',
   'manage-recurring-intervals': 'experimental',
   'checkbox': 'qualified',
-  'child-state-based-styling': 'experimental', // CSS sibling combinator pattern is noisy (1/11 in Slice 5 audit)
+  'child-state-based-styling': 'experimental',
   'child-state-based-styling/js-parent-class': 'experimental',
   'client-side-encryption/js-crypto': 'experimental',
   'complex-shapes': {
-    experimental: 'Failed precision threshold in held-out validation; 0 human blind spot-check cards',
+    experimental:
+      'Failed precision threshold in held-out validation; 0 human blind spot-check cards (D-041, D-042, in 82b8f81fe and 26710110f)',
   },
   'conditional-async-dependencies/package-script-loader': 'experimental',
   'conditional-async-dependencies/js-script-loader': 'experimental',
@@ -218,10 +222,13 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'declarative-dialog-popover-control': 'experimental',
   'declarative-dialog-popover-control/click-listener': 'experimental',
   'defer-work-until-scroll-ends': 'experimental',
-  'deliver-optimized-decorative-images': 'experimental',
+  'deliver-optimized-decorative-images': {
+    experimental:
+      'Scored under de-admitted v6 judge with 0 human spot-check cards and CSS content: image-set(...) sizing defect; below held-out sample size bar at n = 13 (D-041, D-042, D-049, in 82b8f81fe and 3779a457b)',
+  },
   'detect-initial-visibility-state': 'experimental',
   'digital-signatures/js-signature': 'experimental',
-  'drag/package-drag-drop': 'experimental', // drag libraries also handle sortable lists and canvas pan/zoom
+  'drag/package-drag-drop': 'experimental', // reason not recorded (unregistered in a76520de2)
   'drag/js-mouse-touch-drag': 'experimental',
   'equal-width-text-lines/package-fittext': 'experimental',
   'equal-width-text-lines/js-fittext': 'experimental',
@@ -235,26 +242,29 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'improve-next-page-load-performance/js-quicklink': 'experimental',
   'improve-text-layout-and-legibility/package-text-balance': 'experimental',
   'improve-text-layout-and-legibility/js-text-balance': 'experimental',
-  'individual-transform-properties': 'experimental',
-  'individual-transform-properties/standalone-chain': 'experimental', // low-payoff single-declaration chains
-  'individual-transform-properties/single-function-state': 'experimental', // 0% precision in Slice 3 audit (0/7)
+  'individual-transform-properties': {
+    experimental:
+      '13/20 spot-check cards were isolated single-function state transforms (:hover { transform: scale(1.1) }) graded before leave-it was a top-level verdict; matcher rewritten in 4acd735d6 (D-041, D-042, in 82b8f81fe and 3779a457b)',
+  },
+  'individual-transform-properties/standalone-chain': 'experimental',
+  'individual-transform-properties/single-function-state': 'experimental',
   'interactions-in-complex-layouts/package-fastdom': {
-    experimental: 'Zero denominator (n = 0) on held-out corpus',
+    experimental: 'Zero denominator (n = 0) on held-out corpus (D-048, in 3779a457b and 26710110f)',
   },
   'interactions-in-complex-layouts/js-fastdom': {
-    experimental: 'Zero denominator (n = 0) on held-out corpus',
+    experimental: 'Zero denominator (n = 0) on held-out corpus (D-048, in 3779a457b and 26710110f)',
   },
   'interest-triggered-action-previews/package-hoverintent': 'experimental',
   'interest-triggered-action-previews/js-hover-preview': 'experimental',
   'interest-triggered-tooltips/js-tooltip': 'qualified',
   'language-detection/package-lang-detect': {
-    experimental: 'Zero denominator (n = 0) on held-out corpus',
+    experimental: 'Zero denominator (n = 0) on held-out corpus (D-048, in 3779a457b and 26710110f)',
   },
   'language-detection/js-lang-detect': {
-    experimental: 'Zero denominator (n = 0) on held-out corpus',
+    experimental: 'Zero denominator (n = 0) on held-out corpus (D-048, in 3779a457b and 26710110f)',
   },
-  'lazy-load-video-and-audio/js-media-observer': 'experimental', // JS dynamic src assignment has unrelated false positives
-  'lazy-load-video-and-audio/package-lazyload': 'experimental', // ~98% of vanilla-lazyload / lozad package.json occurrences are for <img> rather than <video>/<audio>
+  'lazy-load-video-and-audio/js-media-observer': 'experimental',
+  'lazy-load-video-and-audio/package-lazyload': 'experimental', // ~98% of vanilla-lazyload / lozad package.json occurrences are for <img> rather than <video>/<audio> (lazy-load-video-and-audio.ts@3cfdfc803)
   'light-dismiss-a-dialog': 'experimental',
   'menu/js': 'experimental',
   'menu/dom': 'experimental',
@@ -276,8 +286,14 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'required-field-feedback/css-required-invalid': 'experimental',
   'required-field-feedback/js-blur-dirty-class': 'experimental',
   'resolution-optimized-pseudo-elements': 'experimental',
-  'responsive-table/package-responsive-table': 'experimental',
-  'responsive-table/css-data-label-table': 'experimental',
+  'responsive-table/package-responsive-table': {
+    experimental:
+      'Demoted under D-065: 46.2% (6/13) human precision in R65 blind grading and 42.9% (15/35) multi-judge precision in Wave D (D-065, in a18b70b7e and ef6991e)',
+  },
+  'responsive-table/css-data-label-table': {
+    experimental:
+      'Demoted under D-065: 46.2% (6/13) human precision in R65 blind grading and 42.9% (15/35) multi-judge precision in Wave D (D-065, in a18b70b7e and ef6991e)',
+  },
   'sanitize-untrusted-html/js-dompurify-innerhtml': 'experimental',
   'scroll-completion-effects': 'experimental',
   'scroll-entry-exit-effects/package-scroll-reveal': 'qualified',
@@ -289,10 +305,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'scroll-target-on-load': 'experimental',
   'scrollability-affordance-hints': 'experimental',
   'scrollspy': 'qualified',
-  // CSS scroll-target-group / :target-current not yet Baseline
-  'scrollspy/js': {
-    experimental: 'CSS scroll-target-group / :target-current not yet Baseline (Slice 6 audit, a76520de2)',
-  },
+  'scrollspy/js': 'experimental', // Opt-in only until scroll-target-group is Baseline: retired from default production scan per Slice 6 audit (scrollspy.ts@3cfdfc803, in a76520de2)
   'select-menu-interaction/css-select-invalid': 'experimental',
   'select-menu-interaction/js-select-interaction': 'experimental',
   'size-aware-styling': 'experimental',
@@ -318,39 +331,47 @@ export interface RetiredGuideEntry {
  */
 export const RETIRED: Readonly<Record<string, RetiredGuideEntry>> = {
   'adapt-scrollbar-to-contrast-preferences': {
-    reason: 'No client-side legacy pattern; applicability depends on visual/semantic judgment',
-    decision: 'D-050',
+    reason:
+      'All 30 corpus hits were IE -ms-overflow-style boilerplate (0/30 genuine) unrelated to prefers-contrast (slice-7.md, emptied in a76520de2, deleted in 26710110f)',
+    decision: 'D-050', // pending Paul's ratification
   },
   'brand-consistent-forms': {
-    reason: 'Contradicts checkbox guide, 0/111 genuine like-for-like',
-    decision: 'D-050',
+    reason:
+      'Flags the appearance:none technique recommended by the checkbox guide; 0/111 genuine like-for-like swaps (slice-2.md, emptied in a76520de2, deleted in 26710110f)',
+    decision: 'D-050', // pending Paul's ratification
   },
   'schedule-tasks-by-priority': {
-    reason: 'rIC has deadline/timeout semantics, not 1:1 with postTask',
-    decision: 'D-050',
+    reason:
+      'requestIdleCallback has IdleDeadline/timeout semantics not 1:1 with scheduler.postTask (slice-4.md, emptied in a76520de2, deleted in 26710110f)',
+    decision: 'D-050', // pending Paul's ratification
   },
   'format-human-readable-durations': {
-    reason: 'Consolidated into calculate-event-differentials',
-    decision: 'D-050',
+    reason:
+      'Consolidated into calculate-event-differentials (guide synced in e2bf512d3, rule modules consolidated in b7ab867f1)',
+    decision: 'D-069',
   },
   'manage-recurring-intervals': {
-    reason: 'Consolidated into capture-location-agnostic-data',
-    decision: 'D-050',
+    reason:
+      'Consolidated into capture-location-agnostic-data (guide synced in e2bf512d3, rule modules consolidated in b7ab867f1)',
+    decision: 'D-069',
   },
   'resilient-context-menus-and-nested-dropdowns': {
-    reason: 'Guide renamed to viewport-aware-dropdowns; the old Bootstrap dropdown-toggle rule was removed.',
-    decision: 'D-052',
+    reason:
+      'Guide renamed to viewport-aware-dropdowns; the old Bootstrap dropdown-toggle rule was removed (in c95db4690)',
+    decision: 'D-069',
   },
   'shadow-dom': {
-    reason: "Removed: string templates in script tags aren't Shadow DOM targets.",
+    reason: "Removed: string templates in script tags aren't Shadow DOM targets (in c95db4690).",
     decision: 'D-027',
   },
   'copy-button': {
-    reason: "Guide is still a stub on this branch; restore the rule once the guide's content merges.",
+    reason:
+      "Guide is still a stub on this branch; restore the rule once the guide's content merges (in 01ed00281).",
     decision: 'D-053',
   },
   'accessible-error-announcement': {
-    reason: "Removed: static CSS selectors can't detect missing live-region announcements.",
+    reason:
+      "Removed: static CSS selectors can't detect missing live-region announcements (in c95db4690).",
     decision: 'D-027',
   },
 };
