@@ -37,10 +37,18 @@ const NEW_FEATURE_LABEL = 'new-feature';
 
 const PIPELINE_BASELINE_DATE = '2026-07-22';
 export const PIPELINE_SCALE_MAX = 200;
-const RULER_MID_TICK = 150;
 const CHART_Y_MIN = 100;
 const DAY_MS = 86_400_000;
 const BULK_EVAL_SWEEP_MIN_SLUGS = 5;
+
+/**
+ * Computes a dynamic scale ceiling for pipeline charts: defaults to `minScale` (200),
+ * and rounds up in `step` (50) increments once values exceed `minScale`.
+ */
+export function computeScaleMax(maxVal: number, minScale: number = PIPELINE_SCALE_MAX, step: number = 50): number {
+  if (maxVal <= minScale) return minScale;
+  return Math.ceil(maxVal / step) * step;
+}
 
 function parseGuidePath(filePath: string): { slug: string; guideName: string; relPath: string } | null {
   const match = /^guides\/([^/]+\/([^/]+))\/(.+)$/.exec(filePath);
@@ -494,8 +502,13 @@ export function renderTwoRowProgressBar(params: {
   openGuideGuides: number;
   baseline: number;
   staleEvalsCount: number;
+  scaleMax?: number;
 }): TwoRowProgressBar {
-  const scaleMax = PIPELINE_SCALE_MAX;
+  const neededMax = Math.max(
+    params.contentLanded + params.openGuideGuides,
+    params.complete + params.openEvalGuides
+  );
+  const scaleMax = params.scaleMax ?? computeScaleMax(neededMax);
   const baseline = params.baseline;
   const barWidth = Math.max(1, scaleMax - baseline);
 
@@ -517,7 +530,16 @@ export function renderTwoRowProgressBar(params: {
 
   // Column for guide count v: the first bar column is guide `baseline + 1`.
   const colFor = (v: number) => labelWidth + Math.max(0, v - baseline - 1);
-  const ticks = [baseline, RULER_MID_TICK, scaleMax].filter(v => v >= baseline && v <= scaleMax);
+  const ticks: number[] = [baseline];
+  const firstTick = Math.ceil((baseline + 1) / 50) * 50;
+  for (let t = firstTick; t <= scaleMax; t += 50) {
+    ticks.push(t);
+  }
+  if (scaleMax - ticks[ticks.length - 1] < 10) {
+    ticks[ticks.length - 1] = scaleMax;
+  } else if (!ticks.includes(scaleMax)) {
+    ticks.push(scaleMax);
+  }
   const width = colFor(scaleMax) + 1;
   const ticksArr = Array<string>(width).fill(' ');
   const numsArr = Array<string>(width + 2).fill(' ');
@@ -578,24 +600,29 @@ export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
   return points;
 }
 
-export function renderProgressChart(points: WeeklyProgressPoint[]): string {
+export function renderProgressChart(points: WeeklyProgressPoint[], options?: { scaleMax?: number }): string {
   const xLabels = points.map(p => `"${p.label}"`).join(', ');
   const contentBars = points.map(p => p.contentLanded).join(', ');
   const completeBars = points.map(p => p.complete).join(', ');
+  const maxVal = Math.max(0, ...points.map(p => Math.max(p.contentLanded, p.complete)));
+  const scaleMax = options?.scaleMax ?? computeScaleMax(maxVal);
 
   return [
     '```mermaid',
     '---',
     'config:',
     '  xyChart:',
+    '    width: 800',
     '    height: 200',
+    '    xAxis:',
+    '      labelFontSize: 10',
     '  themeVariables:',
     '    xyChart:',
     '      plotColorPalette: "#FBBC04, #4285F4"',
     '---',
     'xychart-beta',
     `    x-axis [${xLabels}]`,
-    `    y-axis "Guides" ${CHART_Y_MIN} --> ${PIPELINE_SCALE_MAX}`,
+    `    y-axis "Guides" ${CHART_Y_MIN} --> ${scaleMax}`,
     `    bar "Guides landed" [${contentBars}]`,
     `    bar "Evals landed" [${completeBars}]`,
     '```',
@@ -665,6 +692,12 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
   const blockedGuides = data.needsGuidanceIssues.filter(i => i.draft === 'blocked');
   const wipGuides = data.needsGuidanceIssues.filter(i => i.draft === 'wip');
   const notStarted = data.needsGuidanceIssues.filter(i => i.draft !== 'blocked' && i.draft !== 'wip');
+  const maxGuides = Math.max(
+    data.contentLandedCount + data.needsGuidancePrs.length,
+    data.completeCount + data.openEvalPrs.length,
+    ...data.weeklyProgressPoints.map(p => Math.max(p.contentLanded, p.complete))
+  );
+  const scaleMax = computeScaleMax(maxGuides);
   const progressBar = renderTwoRowProgressBar({
     complete: data.completeCount,
     openEvalGuides: data.openEvalPrs.length,
@@ -672,6 +705,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     openGuideGuides: data.needsGuidancePrs.length,
     baseline: data.baseline,
     staleEvalsCount: data.staleEvals.length,
+    scaleMax,
   });
   const funnel = renderFunnel({
     useCases: data.contentLandedCount + totalNeedsGuidance,
@@ -703,7 +737,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     '',
     '### Progress since Jul 22',
     '',
-    renderProgressChart(data.weeklyProgressPoints),
+    renderProgressChart(data.weeklyProgressPoints, { scaleMax }),
     '',
     '---',
     '',
