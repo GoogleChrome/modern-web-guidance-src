@@ -305,6 +305,9 @@
       "quick-sign-ins": [
         "daily-grind"
       ],
+      "restrict-outbound-connections": [
+        "daily-grind"
+      ],
       "secure-external-subresources": [
         "daily-grind"
       ],
