@@ -4,16 +4,7 @@ import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from './macros.ts';
-import { validateFeature, resolveFeatureId } from './baseline.ts';
-import {
-  BASELINE_TARGETS,
-  type BaselineTarget,
-  type ExpectationSupportMode,
-  parseExpectations,
-  parseExpectationBaselineTag,
-  validateExpectationsBaselineTags,
-  getBaselineTargetsForExpectations,
-} from './expectation-tags.ts';
+import { validateFeature, resolveFeatureId, getBaselineTargetsForGrader, type BaselineTarget } from './baseline.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
@@ -373,25 +364,52 @@ export function validateGuide(filePath: string): ValidationResult {
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
-  const expectationsPath = path.join(path.dirname(filePath), EXPECTATIONS_FILE);
-  if (fs.existsSync(expectationsPath)) {
-    const expectationsContent = readFileSafe(expectationsPath);
-    const relativeExpectationsPath = path.relative(REPO_ROOT, expectationsPath);
-    errors.push(...validateExpectationsBaselineTags(expectationsContent, relativeExpectationsPath));
-  }
-
   return { errors, data, body, filePath };
 }
 
-export {
-  BASELINE_TARGETS,
-  type BaselineTarget,
-  type ExpectationSupportMode,
-  parseExpectations,
-  parseExpectationBaselineTag,
-  validateExpectationsBaselineTags,
-  getBaselineTargetsForExpectations,
-};
+/**
+ * Parses expectations.md content into structured sections.
+ * Supports both the legacy flat bullet format (all items treated as mustPass)
+ * and the new structured format with ## Must pass / ## Must fail / ## App-agnostic rules sections.
+ */
+export function parseExpectations(content: string): {
+  mustPass: string[];
+  mustFail: string[];
+  appAgnostic: string[];
+} {
+  const hasStructuredHeadings = /^##\s+(Must pass|Must fail|App-agnostic rules)/im.test(content);
+
+  if (!hasStructuredHeadings) {
+    // Legacy format: treat all bullet items as mustPass
+    const bullets = content
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- '))
+      .map(l => l.slice(2).trim());
+    return { mustPass: bullets, mustFail: [], appAgnostic: [] };
+  }
+
+  const extract = (heading: string): string[] => {
+    const pattern = new RegExp(`^##\\s+${heading}\\s*$`, 'im');
+    const match = pattern.exec(content);
+    if (!match) return [];
+    const start = match.index + match[0].length;
+    const rest = content.slice(start);
+    const nextHeading = /^##\s/m.exec(rest);
+    const section = nextHeading ? rest.slice(0, nextHeading.index) : rest;
+    return section
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- '))
+      .map(l => l.slice(2).trim());
+  };
+
+  return {
+    mustPass: extract('Must pass'),
+    mustFail: extract('Must fail'),
+    appAgnostic: extract('App-agnostic rules'),
+  };
+}
 
 /**
  * Processes guide inventory entries: validates frontmatter, checks for missing
@@ -629,10 +647,6 @@ export function getTaskMap(): Map<string, TaskInfo> {
 
   function processBaseAppTasks(guideName: string, targetsDir: string, guideDir: string) {
     const supportedBaseApps = getSupportedBaseApps();
-    const expectationsPath = path.join(guideDir, EXPECTATIONS_FILE);
-    const extraBaselineTargets = fs.existsSync(expectationsPath)
-      ? getBaselineTargetsForExpectations(expectationsPath)
-      : [];
 
     for (const entry of fs.readdirSync(targetsDir, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name.startsWith('.') || !supportedBaseApps.includes(entry.name)) continue;
@@ -655,7 +669,8 @@ export function getTaskMap(): Map<string, TaskInfo> {
 
       taskMap.set(`${guideName}/${baseAppName}`, info);
 
-      for (const target of extraBaselineTargets) {
+      const graderPath = path.join(targetsDir, baseAppName, GRADER_FILE);
+      for (const target of getBaselineTargetsForGrader(graderPath)) {
         taskMap.set(`${guideName}/${baseAppName}-${target}`, {
           baseApp: baseAppName,
           prompt: prompt,

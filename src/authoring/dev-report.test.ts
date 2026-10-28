@@ -289,7 +289,7 @@ test('collectSpecs ignores skipped Playwright tests during calibration reporting
         tests: [{ status: 'expected', results: [{ status: 'passed' }] }],
       },
       {
-        title: '[unsupported: switch-control] Skipped test',
+        title: 'Skipped fallback test',
         ok: true,
         tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
       },
@@ -340,7 +340,7 @@ test('computeTargetSummary flags target when any baseline variant drops below 90
         {
           results: [
             { passed: true, message: 'Check 1' },
-            { passed: false, message: '[unsupported: switch-control] Check 2' },
+            { passed: false, message: 'Check 2' },
           ],
           guidanceToolsUsed: ['modern-web-guidance'],
           guidesUsed: ['switch'],

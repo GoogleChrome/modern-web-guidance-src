@@ -179,13 +179,13 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
                 },
                 {
                   id: 'spec-2',
-                  title: '[unsupported: switch-control] Skipped under limited',
+                  title: 'Skipped fallback check under limited',
                   ok: true,
                   tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
                 },
                 {
                   id: 'spec-3',
-                  title: '[unsupported: switch-control] Fallback check fails',
+                  title: 'Fallback check fails',
                   ok: false,
                   tests: [{ status: 'unexpected', results: [{ status: 'failed', errors: [{ message: 'Expected fallback' }] }] }],
                 },
@@ -221,7 +221,7 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
               specs: [
                 {
                   id: 'spec-1',
-                  title: '[unsupported: switch-control] Skipped fallback check',
+                  title: 'Skipped fallback check',
                   ok: true,
                   tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
                 },
