@@ -6,6 +6,8 @@ web-feature-ids:
   - anchor-positioning
   - focusgroup
   - invoker-commands
+guides:
+  menu
 ---
 
 # Context Menu
@@ -26,8 +28,8 @@ A context menu should not be reused across multiple items, and each must have a 
 
 ```html
 <!-- The menu container -->
-<div popover id="context-menu" aria-label="Context Menu">
-  <div focusgroup="menu nomemory">
+<div popover id="context-menu">
+  <div focusgroup="menu nomemory" aria-label="Context Menu">
     <button type="button">Edit</button>
     <button type="button">Share</button>
     <button type="button">Delete</button>
@@ -39,7 +41,7 @@ Use CSS Anchor Positioning to align the popover to its anchor while also prevent
 
 ```css
 /* Position the popover relative to its anchor */
-#context-menu {
+[popover] {
   margin: 0;
   inset: auto;
   /* Use position-area to align the menu relative to the anchor */
@@ -112,7 +114,7 @@ For touch users or general discovery, add a visible button that toggles the same
 </button>
 ```
 
-The `command` attribute sets the popover's implicit anchor position, in the same way as the source in `showPopover({source})`. It can be used as an anchor without setting an `anchor-name` or `position-anchor`. 
+The `command` attribute sets the popover's implicit anchor position, in the same way as the source in `showPopover({source})`. It can be used as an anchor without setting an `anchor-name` or `position-anchor`. Keep the value of `aria-expanded` in sync with the popover's state.
 
 
 ### 4. Combining both methods
@@ -137,9 +139,20 @@ popover.addEventListener('beforetoggle', (event)=>{
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ BASELINE_STATUS("focusgroup") }}
+{{ FEATURE_FALLBACKS("focusgroup") }}
+
+### Fallback for Invoker Commmands
 
 {{ BASELINE_STATUS("invoker-commands") }}
+
+If your Baseline target does not support Invoker Commands, use `popovertarget`.
+
+<button type="button" 
+  popovertarget="context-menu"
+  aria-haspopup="menu" aria-expanded="false"
+  aria-label="Open context menu">
+  <!-- Visual trigger (e.g. three dots icon) -->
+</button>
 
 ### Fallback for Anchor Positioning
 
