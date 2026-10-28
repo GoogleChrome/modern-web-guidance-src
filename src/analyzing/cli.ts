@@ -256,6 +256,14 @@ export function formatHumanReadable(
   return lines.join('\n').trimEnd() + '\n';
 }
 
+function errorCliResult(error: string, isJson: boolean, targetDir = '.'): AnalyzeCliResult {
+  if (isJson) {
+    const data: AnalyzeJsonOutput = { targetDir, totalFindings: 0, guides: [], error };
+    return { exitCode: 1, output: JSON.stringify(data, null, 2) + '\n', data };
+  }
+  return { exitCode: 1, output: `Error: ${error}\n` };
+}
+
 /**
  * Deterministic CLI runner for modern-web-guidance analyze.
  * Supports human-readable output, --json structured output, and --guide filtering.
@@ -266,18 +274,28 @@ export async function runAnalyzeCli(
 ): Promise<AnalyzeCliResult> {
   const cleanArgs = args[0] === 'analyze' ? args.slice(1) : args;
 
-  const parsed = parseArgs({
-    args: [...cleanArgs],
-    options: {
-      json: { type: 'boolean' },
-      guide: { type: 'string' },
-      all: { type: 'boolean' },
-      'include-docs-and-tests': { type: 'boolean' },
-      help: { type: 'boolean', short: 'h' },
-    },
-    allowPositionals: true,
-    strict: false,
-  });
+  let parsed: ReturnType<typeof parseArgs>;
+  try {
+    parsed = parseArgs({
+      args: [...cleanArgs],
+      options: {
+        json: { type: 'boolean' },
+        guide: { type: 'string' },
+        all: { type: 'boolean' },
+        'include-docs-and-tests': { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' },
+      },
+      allowPositionals: true,
+      strict: true,
+    });
+  } catch (err: unknown) {
+    const rawMsg = err instanceof Error ? err.message : String(err);
+    const retiredMatch = rawMsg.match(/Unknown option '(--(?:experimental|all-rules))'/);
+    const error = retiredMatch ? `${retiredMatch[1]} was renamed to --all` : rawMsg;
+    const isJson = cleanArgs.includes('--json');
+    const targetDir = cleanArgs.find((a) => !a.startsWith('-')) || '.';
+    return errorCliResult(error, isJson, targetDir);
+  }
 
   const isJson = Boolean(parsed.values.json);
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
@@ -301,11 +319,7 @@ export async function runAnalyzeCli(
     const error = dirStat
       ? `Target path is not a directory: ${targetDir}`
       : `Target directory not found: ${targetDir}`;
-    if (isJson) {
-      const data: AnalyzeJsonOutput = { targetDir, totalFindings: 0, guides: [], error };
-      return { exitCode: 1, output: JSON.stringify(data, null, 2) + '\n', data };
-    }
-    return { exitCode: 1, output: `Error: ${error}\n` };
+    return errorCliResult(error, isJson, targetDir);
   }
 
   const isDefaultQualifiedMode =

@@ -298,11 +298,26 @@ describe('runAnalyzeCli', () => {
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
 
-      // Removed flags (--experimental, --all-rules) are not aliased and do not activate experimental rules
-      const resRemovedFlag = await runAnalyzeCli([testDir, '--experimental', '--all-rules', '--json']);
-      assert.equal(resRemovedFlag.exitCode, 0);
-      const parsedRemovedFlag = JSON.parse(resRemovedFlag.output) as AnalyzeJsonOutput;
-      assert.equal(parsedRemovedFlag.activeRuleCount, QUALIFIED_RULES.length);
+      // Retired flags (--experimental, --all-rules) and typo flags fail fast with exit code 1
+      const resExperimentalHuman = await runAnalyzeCli([testDir, '--experimental']);
+      assert.equal(resExperimentalHuman.exitCode, 1);
+      assert.equal(resExperimentalHuman.data, undefined);
+      assert.match(resExperimentalHuman.output, /Error: --experimental was renamed to --all/);
+
+      const resExperimentalJson = await runAnalyzeCli([testDir, '--experimental', '--json']);
+      assert.equal(resExperimentalJson.exitCode, 1);
+      assert.ok(resExperimentalJson.data);
+      const parsedExpJson = JSON.parse(resExperimentalJson.output) as AnalyzeJsonOutput;
+      assert.equal(parsedExpJson.error, '--experimental was renamed to --all');
+
+      const resAllRulesHuman = await runAnalyzeCli([testDir, '--all-rules']);
+      assert.equal(resAllRulesHuman.exitCode, 1);
+      assert.match(resAllRulesHuman.output, /Error: --all-rules was renamed to --all/);
+
+      const resTypo = await runAnalyzeCli([testDir, '--jsno']);
+      assert.equal(resTypo.exitCode, 1);
+      assert.equal(resTypo.data, undefined);
+      assert.match(resTypo.output, /Error: Unknown option '--jsno'/);
 
       // Opt-in run with --all
       const resAll = await runAnalyzeCli([testDir, '--all', '--json']);
