@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>State-Aware Sticky Headers</title>
   <style>
-    html, body {
+    :root {
+      --header-height: 4rem;
+    }
+
+    html {
       /* Accounts for the height of the header */
-     scroll-padding-top: 4rem; 
+     scroll-padding-top: var(--header-height); ; 
     }
 
     body {
