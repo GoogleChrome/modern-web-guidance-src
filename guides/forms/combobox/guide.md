@@ -52,7 +52,15 @@ Place a hidden `<select>` with the same `name` and `<label>` next to the fallbac
 ```css
 .combo, .combo::picker(select) { appearance: base-select; }
 .combo option[hidden] { display: none; }
+
+.combo::picker(select) {
+  /* Fits the filter plus about 5-6 rows (example value); the list scrolls beyond it */
+  max-block-size: 18rem;
+  margin-block: 0.375rem;
+}
 ```
+
+DO NOT set `inset-block-start: anchor(bottom)` (or other `inset`/`top` anchoring) on `::picker(select)`. It disables the browser's built-in flip-when-out-of-space positioning, so near the bottom of a short viewport the picker is clipped to one or two rows instead of moving above the control. Use `margin` for spacing and leave placement to the platform.
 
 ### 3. Insert the filter input and "add" button with the DOM, not HTML
 
