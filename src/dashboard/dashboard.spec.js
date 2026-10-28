@@ -55,6 +55,17 @@ test.describe('Eval View Dashboard', () => {
     
     const count = await page.locator('.task-accordion-header').count();
     expect(count).toBeGreaterThan(0);
+
+    // Hover over a dumbbell chart row hit area and verify the tooltip renders its inner content
+    const hitArea = page.locator('#dumbbell-chart rect[role="button"]').first();
+    await expect(hitArea).toBeVisible();
+    await hitArea.hover();
+
+    const dumbbellTooltip = page.locator('#dumbbell-tooltip');
+    await expect(dumbbellTooltip).toBeVisible();
+    await expect(dumbbellTooltip.locator('.dumbbell-tooltip')).toBeVisible();
+    await expect(dumbbellTooltip.locator('.dumbbell-tooltip-title')).not.toBeEmpty();
+    await expect(dumbbellTooltip.locator('.dumbbell-tooltip-uplift')).toContainText('%');
     // await page.screenshot({ path: '/tmp/dashboard-suite.png' });
   });
 

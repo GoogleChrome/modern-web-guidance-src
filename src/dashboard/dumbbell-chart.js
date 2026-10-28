@@ -471,11 +471,6 @@ export class DumbbellChart {
               return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`;
             };
 
-            this.tooltip.style.display = 'block';
-            const maxLeft = Math.max(8, window.innerWidth - 330);
-            this.tooltip.style.left = Math.max(8, Math.min(clientX + 15, maxLeft)) + 'px';
-            this.tooltip.style.top = Math.max(8, clientY + 15) + 'px';
-
             this.tooltip.innerHTML = `
                 <div class="dumbbell-tooltip">
                     <div class="dumbbell-tooltip-left">
@@ -502,6 +497,15 @@ export class DumbbellChart {
                      </div>
                 </div>
             `;
+            this.tooltip.style.display = 'block';
+            const tipWidth = this.tooltip.offsetWidth || 330;
+            const tipHeight = this.tooltip.offsetHeight || 110;
+            const maxLeft = Math.max(8, window.innerWidth - tipWidth - 8);
+            const nextTop = (clientY + 15 + tipHeight > window.innerHeight - 8)
+              ? Math.max(8, clientY - tipHeight - 12)
+              : Math.max(8, clientY + 15);
+            this.tooltip.style.left = Math.max(8, Math.min(clientX + 15, maxLeft)) + 'px';
+            this.tooltip.style.top = nextTop + 'px';
           };
 
           hitArea.onmousemove = (e) => showTooltipAt(e.clientX, e.clientY);
