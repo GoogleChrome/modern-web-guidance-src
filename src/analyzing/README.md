@@ -254,18 +254,27 @@ Every web platform standard in the catalog is classified across two orthogonal a
 
 *Scores are multi-judge panel consensus estimates on the `held-out` split.*
 
-| Guide ID | Matcher Kind | Split | Yield | Sampled ($n$ / kept $n$) | Static Matcher Precision (95% Wilson CI) | Post-Verifier Precision (95% Wilson CI) | Modern Platform Target |
-| :--- | :--- | :---: | :---: | :---: | :--- | :--- | :--- |
-| `autofill-address-form` | DOM | `held-out` | 18 | 18 / 17 | 100.0% ([82.4%, 100.0%]) | 100.0% ([81.6%, 100.0%]) | Standard `autocomplete` attributes on address form inputs |
-| `styling-web-components` | CSS & JS | `held-out` | 92 | 19 / 14 | 100.0% ([83.2%, 100.0%]) | 100.0% ([78.5%, 100.0%]) | `::part()`, `:host`, and constructable stylesheets (`adoptedStyleSheets`) |
-| `scrollspy` | Dependency & JS | `held-out` | 121 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | CSS `scroll-target-group: auto` and `:target-current` |
-| `scroll-entry-exit-effects` | Dependency & JS | `held-out` | 48 | 35 / 35 | 97.1% ([85.5%, 99.5%]) | 97.1% ([85.5%, 99.5%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
-| `custom-text-decorations` | CSS | `held-out` | 34 | 28 / 26 | 96.4% ([82.3%, 99.4%]) | 100.0% ([87.1%, 100.0%]) | `text-decoration-thickness`, `text-underline-offset`, and `text-decoration-color` |
-| `form-fields-automatically-fit-contents` | Dependency & JS | `held-out` | 26 | 26 / 25 | 96.2% ([81.1%, 99.3%]) | 100.0% ([86.7%, 100.0%]) | CSS `field-sizing: content` |
-| `interest-triggered-tooltips` | Dependency, DOM & JS | `held-out` | 50 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
-| `checkbox` | CSS, DOM & JS | `held-out` | 175 | 35 / 32 | 85.7% ([70.6%, 93.7%]) | 93.8% ([79.9%, 98.3%]) | Native `<input type="checkbox">`, `accent-color`, and `:indeterminate` |
-| `autofill-sign-in-form` | DOM | `held-out` | 189 | 35 / 26 | 85.7% ([70.6%, 93.7%]) | 92.3% ([75.9%, 97.9%]) | Standard `autocomplete="username"` and `autocomplete="current-password"` |
-| `autofill-payment-form` | DOM & JS | `held-out` | 30 | 15 / 12 | 80.0% ([54.8%, 93.0%]) | 100.0% ([75.8%, 100.0%]) | Standard `cc-*` `autocomplete` attributes on payment inputs |
+| Guide ID | Rule ID | Matcher Kind | Split | Yield | Sampled ($n$ / kept $n$) | Static Matcher Precision (95% Wilson CI) | Post-Verifier Precision (95% Wilson CI) | Modern Platform Target |
+| :--- | :--- | :--- | :---: | :---: | :---: | :--- | :--- | :--- |
+| `deliver-optimized-decorative-images` | `deliver-optimized-decorative-images` | CSS | `held-out` | 224 | 35 / 35 | 100.0% ([90.1%, 100.0%]) | 100.0% ([90.1%, 100.0%]) | Standard CSS `image-set()` for decorative backgrounds and masks |
+| `improve-text-layout-and-legibility` | `improve-text-layout-and-legibility/package-text-balance` | Dependency | `held-out` | 32 | 32 / 32 | 100.0% ([89.3%, 100.0%]) | 100.0% ([89.3%, 100.0%]) | CSS `text-wrap: balance` and `text-wrap: pretty` |
+| `styling-web-components` | `styling-web-components` | CSS & JS | `held-out` | 107 | 19 / 14 | 100.0% ([83.2%, 100.0%]) | 100.0% ([78.5%, 100.0%]) | `::part()`, `:host`, and constructable stylesheets (`adoptedStyleSheets`) |
+| `autofill-address-form` | `autofill-address-form` | DOM | `held-out` | 19 | 18 / 17 | 100.0% ([82.4%, 100.0%]) | 100.0% ([81.6%, 100.0%]) | Standard `autocomplete` attributes on address form inputs |
+| `dynamic-sibling-animations` | `dynamic-sibling-animations` | CSS | `held-out` | 15 | 11 / 11 | 100.0% ([74.1%, 100.0%]) | 100.0% ([74.1%, 100.0%]) | CSS `sibling-index()` and `sibling-count()` for staggered delays |
+| `scroll-entry-exit-effects` | `scroll-entry-exit-effects/package-scroll-reveal` | Dependency | `held-out` | 16 | 10 / 10 | 100.0% ([72.2%, 100.0%]) | 100.0% ([72.2%, 100.0%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
+| `light-dismiss-a-dialog` | `light-dismiss-a-dialog` | JS | `held-out` | 5 | 5 / 5 | 100.0% ([56.6%, 100.0%]) | 100.0% ([56.6%, 100.0%]) | Declarative `<dialog closedby="any">` light dismiss |
+| `secure-external-subresources` | `secure-external-subresources` | DOM | `held-out` | 289 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | Subresource Integrity (`integrity` and `crossorigin`) on third-party scripts |
+| `scrollspy` | `scrollspy` | DOM | `held-out` | 122 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | CSS `scroll-target-group: auto` and `:target-current` |
+| `custom-text-decorations` | `custom-text-decorations` | CSS | `held-out` | 34 | 28 / 26 | 96.4% ([82.3%, 99.4%]) | 100.0% ([87.1%, 100.0%]) | `text-decoration-thickness`, `text-underline-offset`, and `text-decoration-color` |
+| `form-fields-automatically-fit-contents` | `form-fields-automatically-fit-contents` | Dependency & JS | `held-out` | 29 | 26 / 25 | 96.2% ([81.1%, 99.3%]) | 100.0% ([86.7%, 100.0%]) | CSS `field-sizing: content` |
+| `scroll-entry-exit-effects` | `scroll-entry-exit-effects/js-scroll-reveal` | JS | `held-out` | 44 | 25 / 25 | 96.0% ([80.5%, 99.3%]) | 96.0% ([80.5%, 99.3%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
+| `dark-mode` | `dark-mode` | CSS | `held-out` | 78 | 35 / 34 | 94.3% ([81.4%, 98.4%]) | 94.1% ([80.9%, 98.4%]) | `color-scheme: light dark` and `light-dark()` color function |
+| `interest-triggered-tooltips` | `interest-triggered-tooltips/js-tooltip` | JS | `held-out` | 56 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
+| `calculate-event-differentials` | `format-human-readable-durations/js-duration-formatter` | JS | `held-out` | 27 | 25 / 25 | 92.0% ([75.0%, 97.8%]) | 92.0% ([75.0%, 97.8%]) | Native `Temporal.Duration` and `Intl.DurationFormat` |
+| `sanitize-untrusted-html` | `sanitize-untrusted-html/js-dompurify-innerhtml` | JS | `held-out` | 13 | 10 / 10 | 90.0% ([59.6%, 98.2%]) | 90.0% ([59.6%, 98.2%]) | Native Sanitizer API (`element.setHTML()`) |
+| `checkbox` | `checkbox` | CSS, DOM & JS | `held-out` | 175 | 35 / 32 | 85.7% ([70.6%, 93.7%]) | 93.8% ([79.9%, 98.3%]) | Native `<input type="checkbox">`, `accent-color`, and `:indeterminate` |
+| `autofill-sign-in-form` | `autofill-sign-in-form` | DOM | `held-out` | 265 | 35 / 26 | 85.7% ([70.6%, 93.7%]) | 92.3% ([75.9%, 97.9%]) | Standard `autocomplete="username"` and `autocomplete="current-password"` |
+| `autofill-payment-form` | `autofill-payment-form` | DOM & JS | `held-out` | 27 | 15 / 12 | 80.0% ([54.8%, 93.0%]) | 100.0% ([75.7%, 100.0%]) | Standard `cc-*` `autocomplete` attributes on payment inputs |
 
 ---
 
