@@ -1,9 +1,9 @@
 ---
 name: webmcp
-description: Use this guide to implement WebMCP (Web Model Context Protocol) in browser applications, exposing client-side functionality as tools to AI agents via declarative or imperative APIs.
+description: Use this guide to implement WebMCP in browser applications, exposing client-side functionality as tools to AI agents via declarative or imperative APIs.
 ---
 
-# WebMCP (Web Model Context Protocol)
+# WebMCP
 
 WebMCP is a browser-native JavaScript API that allows web pages to expose their client-side functionality as structured "tools" to AI agents, browser assistants, and assistive technologies. 
 
