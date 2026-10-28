@@ -13,7 +13,9 @@ import batchAnalyticsEvents from './batch-analytics-events.ts';
 import brandedSelectStyling from './branded-select-styling.ts';
 import breakUpLongTasks from './break-up-long-tasks.ts';
 import calculateEventDifferentials from './calculate-event-differentials.ts';
+import calculateTotalForegroundTime from './calculate-total-foreground-time.ts';
 import captureLocationAgnosticData from './capture-location-agnostic-data.ts';
+import card from './card.ts';
 import checkbox from './checkbox.ts';
 import childStateBasedStyling from './child-state-based-styling.ts';
 import clientSideEncryption from './client-side-encryption.ts';
@@ -27,14 +29,18 @@ import customTextDecorations from './custom-text-decorations.ts';
 import customizeScrollbarColorAndThickness from './customize-scrollbar-color-and-thickness.ts';
 import darkMode from './dark-mode.ts';
 import declarativeDialogPopoverControl from './declarative-dialog-popover-control.ts';
+import deferRenderingHeavyContent from './defer-rendering-heavy-content.ts';
 import deferWorkUntilScrollEnds from './defer-work-until-scroll-ends.ts';
 import deliverOptimizedDecorativeImages from './deliver-optimized-decorative-images.ts';
 import detectInitialVisibilityState from './detect-initial-visibility-state.ts';
 import digitalSignatures from './digital-signatures.ts';
 import drag from './drag.ts';
+import efficientBackgroundProcessing from './efficient-background-processing.ts';
 import equalWidthTextLines from './equal-width-text-lines.ts';
 import exportHtmlMediaFromCanvas from './export-html-media-from-canvas.ts';
+import fasterSpaViewTransitions from './faster-spa-view-transitions.ts';
 import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-contents.ts';
+import fullSessionAnalytics from './full-session-analytics.ts';
 import highlightTextRanges from './highlight-text-ranges.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
 import improveNextPageLoadPerformance from './improve-next-page-load-performance.ts';
@@ -74,9 +80,12 @@ import sizeAwareStyling from './size-aware-styling.ts';
 import slider from './slider.ts';
 import smsOtpForm from './sms-otp-form.ts';
 import softEdgeContentFade from './soft-edge-content-fade.ts';
+import spatialNavigation from './spatial-navigation.ts';
 import stateAwareStickyHeaders from './state-aware-sticky-headers.ts';
 import stylingWebComponents from './styling-web-components.ts';
 import supportGlobalCalendarSystems from './support-global-calendar-systems.ts';
+import swipeToRemove from './swipe-to-remove.ts';
+import swipeToReveal from './swipe-to-reveal.ts';
 import switchRuleModule from './switch.ts';
 import visuallyStableFontFallbacks from './visually-stable-font-fallbacks.ts';
 
@@ -94,7 +103,9 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   brandedSelectStyling,
   breakUpLongTasks,
   calculateEventDifferentials,
+  calculateTotalForegroundTime,
   captureLocationAgnosticData,
+  card,
   checkbox,
   childStateBasedStyling,
   clientSideEncryption,
@@ -108,14 +119,18 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   customizeScrollbarColorAndThickness,
   darkMode,
   declarativeDialogPopoverControl,
+  deferRenderingHeavyContent,
   deferWorkUntilScrollEnds,
   deliverOptimizedDecorativeImages,
   detectInitialVisibilityState,
   digitalSignatures,
   drag,
+  efficientBackgroundProcessing,
   equalWidthTextLines,
   exportHtmlMediaFromCanvas,
+  fasterSpaViewTransitions,
   formFieldsAutomaticallyFitContents,
+  fullSessionAnalytics,
   highlightTextRanges,
   imeSafeEnterSubmit,
   improveNextPageLoadPerformance,
@@ -155,9 +170,12 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   slider,
   smsOtpForm,
   softEdgeContentFade,
+  spatialNavigation,
   stateAwareStickyHeaders,
   stylingWebComponents,
   supportGlobalCalendarSystems,
+  swipeToRemove,
+  swipeToReveal,
   switchRuleModule,
   visuallyStableFontFallbacks,
 ];
@@ -186,11 +204,14 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'branded-select-styling/js': 'experimental',
   'break-up-long-tasks': 'experimental',
   'calculate-event-differentials': 'experimental',
+  'calculate-total-foreground-time': 'experimental',
   'format-human-readable-durations/package-duration-formatter': 'experimental',
   'format-human-readable-durations/js-duration-formatter': 'experimental',
   'capture-location-agnostic-data/package-iso-lookup': 'experimental',
   'capture-location-agnostic-data/js-iso-lookup': 'experimental',
   'manage-recurring-intervals': 'experimental',
+  'card': 'experimental',
+  'card/package-match-height': 'experimental',
   'checkbox': 'qualified',
   'child-state-based-styling/js-parent-class': 'experimental',
   'client-side-encryption/js-crypto': 'experimental',
@@ -208,17 +229,22 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'dark-mode/js-match-media': 'experimental',
   'declarative-dialog-popover-control': 'experimental',
   'declarative-dialog-popover-control/click-listener': 'experimental',
+  'defer-rendering-heavy-content': 'experimental',
   'defer-work-until-scroll-ends': 'experimental',
   'deliver-optimized-decorative-images': 'experimental',
   'detect-initial-visibility-state': 'experimental',
   'digital-signatures/js-signature': 'experimental',
   'drag/package-drag-drop': 'experimental',
   'drag/js-mouse-touch-drag': 'experimental',
+  'efficient-background-processing': 'experimental',
   'equal-width-text-lines/package-fittext': 'experimental',
   'equal-width-text-lines/js-fittext': 'experimental',
   'export-html-media-from-canvas/package-canvas-recorder': 'experimental',
   'export-html-media-from-canvas/js-canvas-recorder': 'experimental',
+  'faster-spa-view-transitions': 'experimental',
+  'faster-spa-view-transitions/css': 'experimental',
   'form-fields-automatically-fit-contents': 'qualified',
+  'full-session-analytics': 'experimental',
   'highlight-text-ranges/package-markjs': 'experimental',
   'highlight-text-ranges/js-markjs': 'experimental',
   'ime-safe-enter-submit': 'experimental',
@@ -279,10 +305,14 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'slider/js-slider': 'experimental',
   'sms-otp-form': 'experimental',
   'soft-edge-content-fade': 'experimental',
+  'spatial-navigation': 'experimental',
   'state-aware-sticky-headers': 'experimental',
   'styling-web-components': 'qualified',
   'support-global-calendar-systems/package-calendar': 'experimental',
   'support-global-calendar-systems/js-calendar': 'experimental',
+  'swipe-to-remove': 'experimental',
+  'swipe-to-reveal': 'experimental',
+  'swipe-to-reveal/package-swipeout': 'experimental',
   'switch': 'experimental',
   'visually-stable-font-fallbacks/package-font-loader': 'experimental',
   'visually-stable-font-fallbacks/js-font-loader': 'experimental',
