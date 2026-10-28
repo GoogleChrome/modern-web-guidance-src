@@ -14,6 +14,8 @@ import brandedSelectStyling from './branded-select-styling.ts';
 import breakUpLongTasks from './break-up-long-tasks.ts';
 import calculateEventDifferentials from './calculate-event-differentials.ts';
 import captureLocationAgnosticData from './capture-location-agnostic-data.ts';
+import carouselSlideEffects from './carousel-slide-effects.ts';
+import carouselSnapHighlights from './carousel-snap-highlights.ts';
 import checkbox from './checkbox.ts';
 import childStateBasedStyling from './child-state-based-styling.ts';
 import clientSideEncryption from './client-side-encryption.ts';
@@ -31,10 +33,13 @@ import deferWorkUntilScrollEnds from './defer-work-until-scroll-ends.ts';
 import deliverOptimizedDecorativeImages from './deliver-optimized-decorative-images.ts';
 import detectInitialVisibilityState from './detect-initial-visibility-state.ts';
 import digitalSignatures from './digital-signatures.ts';
+import directionalNavigationTransitions from './directional-navigation-transitions.ts';
 import drag from './drag.ts';
 import equalWidthTextLines from './equal-width-text-lines.ts';
 import exportHtmlMediaFromCanvas from './export-html-media-from-canvas.ts';
+import fluidScaling from './fluid-scaling.ts';
 import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-contents.ts';
+import groupElementTransitions from './group-element-transitions.ts';
 import highlightTextRanges from './highlight-text-ranges.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
 import improveNextPageLoadPerformance from './improve-next-page-load-performance.ts';
@@ -49,6 +54,7 @@ import lightDismissADialog from './light-dismiss-a-dialog.ts';
 import menu from './menu.ts';
 import navigationDrawer from './navigation-drawer.ts';
 import optimizeImagePriority from './optimize-image-priority.ts';
+import parallaxScrollEffects from './parallax-scroll-effects.ts';
 import persistentToastNotifications from './persistent-toast-notifications.ts';
 import physicsBasedEasing from './physics-based-easing.ts';
 import platformControlsDismissDialog from './platform-controls-dismiss-dialog.ts';
@@ -60,6 +66,7 @@ import requiredFieldFeedback from './required-field-feedback.ts';
 import resolutionOptimizedPseudoElements from './resolution-optimized-pseudo-elements.ts';
 import responsiveTable from './responsive-table.ts';
 import sanitizeUntrustedHtml from './sanitize-untrusted-html.ts';
+import scopedComponentTransitions from './scoped-component-transitions.ts';
 import scrollCompletionEffects from './scroll-completion-effects.ts';
 import scrollEntryExitEffects from './scroll-entry-exit-effects.ts';
 import scrollPositionAwareElements from './scroll-position-aware-elements.ts';
@@ -69,6 +76,7 @@ import scrollSnapStateSync from './scroll-snap-state-sync.ts';
 import scrollTargetOnLoad from './scroll-target-on-load.ts';
 import scrollabilityAffordanceHints from './scrollability-affordance-hints.ts';
 import scrollspy from './scrollspy.ts';
+import searchHiddenContent from './search-hidden-content.ts';
 import selectMenuInteraction from './select-menu-interaction.ts';
 import sizeAwareStyling from './size-aware-styling.ts';
 import slider from './slider.ts';
@@ -78,6 +86,7 @@ import stateAwareStickyHeaders from './state-aware-sticky-headers.ts';
 import stylingWebComponents from './styling-web-components.ts';
 import supportGlobalCalendarSystems from './support-global-calendar-systems.ts';
 import switchRuleModule from './switch.ts';
+import viewportAwareDropdowns from './viewport-aware-dropdowns.ts';
 import visuallyStableFontFallbacks from './visually-stable-font-fallbacks.ts';
 
 export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
@@ -95,6 +104,8 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   breakUpLongTasks,
   calculateEventDifferentials,
   captureLocationAgnosticData,
+  carouselSlideEffects,
+  carouselSnapHighlights,
   checkbox,
   childStateBasedStyling,
   clientSideEncryption,
@@ -112,10 +123,13 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   deliverOptimizedDecorativeImages,
   detectInitialVisibilityState,
   digitalSignatures,
+  directionalNavigationTransitions,
   drag,
   equalWidthTextLines,
   exportHtmlMediaFromCanvas,
+  fluidScaling,
   formFieldsAutomaticallyFitContents,
+  groupElementTransitions,
   highlightTextRanges,
   imeSafeEnterSubmit,
   improveNextPageLoadPerformance,
@@ -130,6 +144,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   menu,
   navigationDrawer,
   optimizeImagePriority,
+  parallaxScrollEffects,
   persistentToastNotifications,
   physicsBasedEasing,
   platformControlsDismissDialog,
@@ -141,6 +156,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   resolutionOptimizedPseudoElements,
   responsiveTable,
   sanitizeUntrustedHtml,
+  scopedComponentTransitions,
   scrollCompletionEffects,
   scrollEntryExitEffects,
   scrollPositionAwareElements,
@@ -150,6 +166,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   scrollTargetOnLoad,
   scrollabilityAffordanceHints,
   scrollspy,
+  searchHiddenContent,
   selectMenuInteraction,
   sizeAwareStyling,
   slider,
@@ -159,6 +176,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   stylingWebComponents,
   supportGlobalCalendarSystems,
   switchRuleModule,
+  viewportAwareDropdowns,
   visuallyStableFontFallbacks,
 ];
 
@@ -190,6 +208,8 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'format-human-readable-durations/js-duration-formatter': 'experimental',
   'capture-location-agnostic-data/package-iso-lookup': 'experimental',
   'capture-location-agnostic-data/js-iso-lookup': 'experimental',
+  'carousel-slide-effects': 'experimental',
+  'carousel-snap-highlights': 'experimental',
   'manage-recurring-intervals': 'experimental',
   'checkbox': 'qualified',
   'child-state-based-styling/js-parent-class': 'experimental',
@@ -212,13 +232,17 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'deliver-optimized-decorative-images': 'experimental',
   'detect-initial-visibility-state': 'experimental',
   'digital-signatures/js-signature': 'experimental',
+  'directional-navigation-transitions': 'experimental',
+  'directional-navigation-transitions/css': 'experimental',
   'drag/package-drag-drop': 'experimental',
   'drag/js-mouse-touch-drag': 'experimental',
   'equal-width-text-lines/package-fittext': 'experimental',
   'equal-width-text-lines/js-fittext': 'experimental',
   'export-html-media-from-canvas/package-canvas-recorder': 'experimental',
   'export-html-media-from-canvas/js-canvas-recorder': 'experimental',
+  'fluid-scaling': 'experimental',
   'form-fields-automatically-fit-contents': 'qualified',
+  'group-element-transitions': 'experimental',
   'highlight-text-ranges/package-markjs': 'experimental',
   'highlight-text-ranges/js-markjs': 'experimental',
   'ime-safe-enter-submit': 'experimental',
@@ -244,6 +268,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'navigation-drawer': 'experimental',
   'navigation-drawer/dom': 'experimental',
   'optimize-image-priority': 'experimental',
+  'parallax-scroll-effects': 'experimental',
   'persistent-toast-notifications/js-toast': 'experimental',
   'physics-based-easing/js-spring': 'experimental',
   'platform-controls-dismiss-dialog': 'experimental',
@@ -262,6 +287,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'responsive-table/package-responsive-table': 'experimental',
   'responsive-table/css-data-label-table': 'experimental',
   'sanitize-untrusted-html/js-dompurify-innerhtml': 'experimental',
+  'scoped-component-transitions': 'experimental',
   'scroll-completion-effects': 'experimental',
   'scroll-entry-exit-effects/package-scroll-reveal': 'qualified',
   'scroll-entry-exit-effects/js-scroll-reveal': 'qualified',
@@ -273,6 +299,8 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'scrollability-affordance-hints': 'experimental',
   'scrollspy': 'qualified',
   'scrollspy/js': 'experimental', // CSS scroll-target-group / :target-current is not yet Baseline
+  'search-hidden-content': 'experimental',
+  'search-hidden-content/css': 'experimental',
   'select-menu-interaction/css-select-invalid': 'experimental',
   'select-menu-interaction/js-select-interaction': 'experimental',
   'size-aware-styling': 'experimental',
@@ -284,6 +312,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'support-global-calendar-systems/package-calendar': 'experimental',
   'support-global-calendar-systems/js-calendar': 'experimental',
   'switch': 'experimental',
+  'viewport-aware-dropdowns': 'experimental',
   'visually-stable-font-fallbacks/package-font-loader': 'experimental',
   'visually-stable-font-fallbacks/js-font-loader': 'experimental',
 };
