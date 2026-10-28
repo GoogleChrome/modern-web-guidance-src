@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, parseExpectationBaselineTag, validateExpectationsBaselineTags, getBaselineTargetsForExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments, validateMacros } from './macros.ts';
 
@@ -1140,111 +1140,6 @@ Body`, undefined, true);
     );
   });
 });
-
-describe('multi-baseline expectation tags', () => {
-  test('parseExpectationBaselineTag parses untagged, unsupported features, BCD keys, and rejects supported/invalid tags', () => {
-    assert.deepStrictEqual(parseExpectationBaselineTag('Standard untagged expectation.'), {
-      text: 'Standard untagged expectation.',
-    });
-
-    // switch-control is Limited availability (baseline: false) -> unsupported at widely & newly, supported at limited
-    assert.deepStrictEqual(parseExpectationBaselineTag('[unsupported: switch-control] Fallback expectation.'), {
-      mode: 'unsupported',
-      features: ['switch-control'],
-      targets: ['widely', 'newly'],
-      text: 'Fallback expectation.',
-      invalidTokens: undefined,
-      rawTag: '[unsupported: switch-control]',
-    });
-
-    assert.deepStrictEqual(parseExpectationBaselineTag('[unsupported: input:html.elements.input.autocomplete] BCD expectation.'), {
-      mode: 'unsupported',
-      features: ['input:html.elements.input.autocomplete'],
-      targets: [],
-      text: 'BCD expectation.',
-      invalidTokens: undefined,
-      rawTag: '[unsupported: input:html.elements.input.autocomplete]',
-    });
-
-    // [supported: ...], legacy [baseline: ...], or unknown tag prefixes / feature IDs are rejected
-    assert.deepStrictEqual(parseExpectationBaselineTag('[supported: switch-control] Supported is the default, no tag allowed.'), {
-      text: 'Supported is the default, no tag allowed.',
-      invalidTokens: ['[supported: switch-control]'],
-      rawTag: '[supported: switch-control]',
-    });
-
-    assert.deepStrictEqual(parseExpectationBaselineTag('[baseline: widely] Legacy syntax is disallowed.'), {
-      text: 'Legacy syntax is disallowed.',
-      invalidTokens: ['[baseline: widely]'],
-      rawTag: '[baseline: widely]',
-    });
-
-    assert.deepStrictEqual(parseExpectationBaselineTag('[support: switch-control] Typo tag prefix.'), {
-      text: 'Typo tag prefix.',
-      invalidTokens: ['[support: switch-control]'],
-      rawTag: '[support: switch-control]',
-    });
-
-    assert.deepStrictEqual(parseExpectationBaselineTag('[unsupported: non-existent-feature-xyz] Unknown feature.'), {
-      mode: 'unsupported',
-      features: undefined,
-      targets: undefined,
-      text: 'Unknown feature.',
-      invalidTokens: ['non-existent-feature-xyz'],
-      rawTag: '[unsupported: non-existent-feature-xyz]',
-    });
-  });
-
-  test('getBaselineTargetsForExpectations computes unique non-widely targets from feature statuses', () => {
-    // view-transitions is Newly, switch-control is Limited
-    const content = `## Must pass
-- Universal rule
-- [unsupported: view-transitions] Fallback rule for Newly feature
-- [unsupported: switch-control] Fallback rule for Limited feature
-`;
-    assert.deepStrictEqual(getBaselineTargetsForExpectations(content), ['newly', 'limited']);
-  });
-
-  test('validateExpectationsBaselineTags and validateGuide reject invalid feature tags', () => {
-    const invalidContent = `## Must pass
-- [baseline: widely] Legacy baseline tag
-- [supported: switch-control] Redundant supported tag
-- [unsupported: not-a-real-feature] Invalid feature ID
-- [unsupported: switch-control] Valid feature ID
-`;
-    const errors = validateExpectationsBaselineTags(invalidContent, 'guides/test/expectations.md');
-    assert.strictEqual(errors.length, 3);
-    assert.ok(errors[0].includes('Invalid feature or BCD key(s) "[baseline: widely]"'));
-    assert.ok(errors[1].includes('Invalid feature or BCD key(s) "[supported: switch-control]"'));
-    assert.ok(errors[2].includes('Invalid feature or BCD key(s) "not-a-real-feature"'));
-
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-exp-baseline-'));
-    const guideDir = path.join(tmpDir, 'test-guide');
-    fs.mkdirSync(guideDir, { recursive: true });
-    const guideFile = path.join(guideDir, 'guide.md');
-    const expFile = path.join(guideDir, 'expectations.md');
-
-    fs.writeFileSync(guideFile, `---
-name: test-guide
-description: Test description
-web-feature-ids: []
----
-
-# Test Feature
-
-Content here.
-`);
-    fs.writeFileSync(expFile, invalidContent);
-
-    try {
-      const res = validateGuide(guideFile);
-      assert.ok(res.errors.some(e => e.includes('Invalid feature or BCD key(s) "not-a-real-feature"')));
-    } finally {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
-  });
-});
-
 
 
 

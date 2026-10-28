@@ -3,7 +3,6 @@ import path from 'node:path';
 // Native ONNX (onnxruntime-node). TfjsEmbedder exists for the published bundle, which can't ship
 // native binaries, but its pure-JS CPU backend is ~100x slower here.
 import { Embedder } from '../rag/transformers-embedder.ts';
-import { parseExpectationBaselineTag } from './expectation-tags.ts';
 
 const embedCache = new Map<string, number[]>();
 
@@ -30,16 +29,9 @@ export function cosineSimilarity(vectorA: number[], vectorB: number[]): number {
   return dotProduct(vectorA, vectorB) / (normA * normB);
 }
 
-export function extractBaselineTag(text: string): string | null {
-  const parsed = parseExpectationBaselineTag(text);
-  if (!parsed.mode || !parsed.features || parsed.features.length === 0) return null;
-  return `${parsed.mode}:${[...parsed.features].sort().join(',')}`;
-}
-
 export function cleanText(text: string): string {
-  const withoutBullet = text.replace(/^\s*(?:\d+[.)]|-|\*)\s*/, ''); // Remove list bullets/numbering
-  const { text: withoutTag } = parseExpectationBaselineTag(withoutBullet); // Strip leading [unsupported: ...] tag
-  return withoutTag
+  return text
+    .replace(/^\s*(?:\d+[.)]|-|\*)\s*/, '') // Remove list bullets/numbering
     .replace(/^should\s+/i, '')              // Remove "should" prefix
     .replace(/[`"']/g, '')                   // Strip backticks/quotes
     .replace(/\s+/g, ' ')
@@ -166,13 +158,11 @@ export async function validateGraderExpectationCoverage(
 
   const rawTestVectors = await Promise.all(testTitles.map(getVec));
   const cleanedTestVectors = await Promise.all(testTitles.map(t => getVec(cleanText(t))));
-  const testTags = testTitles.map(extractBaselineTag);
 
   const expectationEntries = expectations.map(exp => {
     const firstSentence = exp.split(/[.!?]\s+/)[0];
     return {
       exp,
-      tag: extractBaselineTag(exp),
       cleanedClause: cleanText(firstSentence),
     };
   });
@@ -185,15 +175,11 @@ export async function validateGraderExpectationCoverage(
   for (let eIdx = 0; eIdx < expectations.length; eIdx++) {
     const rawExpVec = rawExpVectors[eIdx];
     const cleanedExpVec = cleanedExpVectors[eIdx];
-    const expTag = expectationEntries[eIdx].tag;
 
-    let bestScore = 0;
+    let bestScore = -1;
     let bestTestTitle = '';
 
     for (let i = 0; i < testTitles.length; i++) {
-      if (expTag !== testTags[i]) {
-        continue;
-      }
       const rawSim = cosineSimilarity(rawExpVec, rawTestVectors[i]);
       const cleanedSim = cosineSimilarity(cleanedExpVec, cleanedTestVectors[i]);
       const currentScore = Math.max(rawSim, cleanedSim);

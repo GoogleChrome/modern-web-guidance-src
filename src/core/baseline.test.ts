@@ -1,7 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature, getFeatureGroups, getOwnedFeatureToGroups, pendingFeatures } from './baseline.ts';
+import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature, getFeatureGroups, getOwnedFeatureToGroups, pendingFeatures, getBaselineTargetsForGrader } from './baseline.ts';
 describe('baseline data', () => {
   describe('getBaselineStatus', () => {
     it('returns Baseline since YYYY-MM-DD for known widely available features', () => {
@@ -240,6 +243,29 @@ describe('baseline data', () => {
       assert.strictEqual(checkBaseline('widely', 'css.properties.grid-template-columns'), true);
       assert.strictEqual(checkBaseline('Baseline 2017', 'grid:css.properties.grid-template-columns'), true);
       assert.strictEqual(checkBaseline('Baseline 2016', 'grid:css.properties.grid-template-columns'), false);
+    });
+  });
+
+  describe('getBaselineTargetsForGrader', () => {
+    it('extracts newly and limited targets from skipUnless({ unsupported }) calls in grader.ts', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'baseline-grader-test-'));
+      try {
+        const limitedGrader = path.join(tmpDir, 'limited.grader.ts');
+        fs.writeFileSync(
+          limitedGrader,
+          `test('fallback check', () => {\n  skipUnless({ unsupported: 'switch-control' });\n  expect(1).toBe(1);\n});\n`
+        );
+        assert.deepStrictEqual(getBaselineTargetsForGrader(limitedGrader), ['limited']);
+
+        const widelyGrader = path.join(tmpDir, 'widely.grader.ts');
+        fs.writeFileSync(
+          widelyGrader,
+          `test('universal check', () => {\n  expect(1).toBe(1);\n});\n`
+        );
+        assert.deepStrictEqual(getBaselineTargetsForGrader(widelyGrader), []);
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
   });
 });

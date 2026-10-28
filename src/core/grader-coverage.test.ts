@@ -5,7 +5,6 @@ import fs from 'node:fs';
 
 import {
   cleanText,
-  extractBaselineTag,
   parseVerifiableExpectations,
   extractTestTitles,
   validateGraderExpectationCoverage,
@@ -146,44 +145,5 @@ test(
     assert.ok(msg.includes('Closest test found: "should animate smoothly on click" (similarity: 0.22)'));
     assert.ok(msg.includes('Add a test case verifying this behavior'));
     assert.ok(msg.includes('Update/rephrase the test name in guides/cat/my-guide/targets/daily-grind/grader.ts'));
-  });
-
-  it('extracts and enforces matching [unsupported: ...] tags between expectations and tests', async () => {
-    assert.strictEqual(extractBaselineTag('Untagged expectation'), null);
-    assert.strictEqual(extractBaselineTag('[unsupported: switch-control] Fallback expectation'), 'unsupported:switch-control');
-    assert.strictEqual(extractBaselineTag('[unsupported: switch-control, view-transitions] Shared expectation'), 'unsupported:switch-control,view-transitions');
-    assert.strictEqual(extractBaselineTag('[unsupported: view-transitions, switch-control] Shared expectation'), 'unsupported:switch-control,view-transitions');
-    assert.strictEqual(cleanText('- [unsupported: switch-control] Uses role="switch" fallback'), 'Uses role=switch fallback');
-
-    const tempExp = path.join(import.meta.dirname, 'temp-baseline-tag-exp.md');
-    const tempGrader = path.join(import.meta.dirname, 'temp-baseline-tag-grader.ts');
-    fs.writeFileSync(
-      tempExp,
-      `- [unsupported: switch-control] Uses role="switch" fallback when native switch is unavailable.\n- Uses native switch attribute on checkbox inputs.\n`
-    );
-
-    try {
-      // Mismatched tag: test omits [unsupported: switch-control] prefix
-      fs.writeFileSync(
-        tempGrader,
-        `test('Uses role="switch" fallback when native switch is unavailable', () => {});\ntest('Uses native switch attribute on checkbox inputs', () => {});\n`
-      );
-      const mismatchRes = await validateGraderExpectationCoverage(tempExp, tempGrader);
-      assert.strictEqual(mismatchRes.isComplete, false);
-      assert.strictEqual(mismatchRes.missing.length, 1);
-      assert.ok(mismatchRes.missing[0].expectation.includes('[unsupported: switch-control]'));
-
-      // Matching tags: both covered
-      fs.writeFileSync(
-        tempGrader,
-        `test('[unsupported: switch-control] Uses role="switch" fallback when native switch is unavailable', () => {});\ntest('Uses native switch attribute on checkbox inputs', () => {});\n`
-      );
-      const matchRes = await validateGraderExpectationCoverage(tempExp, tempGrader);
-      assert.strictEqual(matchRes.isComplete, true);
-      assert.strictEqual(matchRes.missing.length, 0);
-    } finally {
-      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
-      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
-    }
   });
 });
