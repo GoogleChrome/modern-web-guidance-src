@@ -180,6 +180,31 @@ test('buildTargetGraderPrompt includes discipline scoping only for discipline gu
   assert.ok(!standardPrompt.includes('discipline guide'));
 });
 
+test('buildTargetGraderPrompt requires a test for every expectation only for non-discipline guides', () => {
+  const baseOpts = {
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
+    graderFile: 'grader.ts',
+    baseApp: 'devtools-times',
+    templateFile: 'template.grader.ts',
+  };
+  const coverageRule = 'Every top-level expectation in `expectations.md` must have at least one dedicated';
+
+  const standardPrompt = buildTargetGraderPrompt(baseOpts);
+  assert.ok(standardPrompt.includes(coverageRule));
+  assert.ok(standardPrompt.includes('Do not omit, merge, or skip any expectation'));
+
+  const retryPrompt = buildTargetGraderPrompt({ ...baseOpts, failureContext: 'Golden test failed' });
+  assert.ok(retryPrompt.includes(coverageRule));
+
+  const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(!disciplinePrompt.includes(coverageRule));
+});
+
 test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping only for discipline guides', () => {
   const baseSolutionOpts = {
     guideFile: 'guide.md',
@@ -252,8 +277,7 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('Evaluation Results'));
   assert.ok(prompt.includes('Diagnostic Analysis & Actionable Recommendations'));
   assert.ok(prompt.includes('ROOT-CAUSE DIAGNOSIS RULES'));
-  assert.ok(prompt.includes('needs-eval-gen'));
-  assert.ok(prompt.includes('needs-eval-run'));
+  assert.ok(prompt.includes('add the needs-dev-rerun label'));
   assert.ok(prompt.includes('```diff'));
   assert.ok(prompt.includes('DIRECT FILE UPDATES REQUIREMENT'));
 });
@@ -287,15 +311,15 @@ test('buildDevReportPrompt includes PR context and reviewer feedback instruction
   assert.ok(prompt.includes('without blindly overwriting human-authored changes'));
 });
 
-test('buildApplyReviewFeedbackPrompt formats context and includes needs-eval-gen note when applicable', () => {
+test('buildApplyReviewFeedbackPrompt explains needs-dev-rerun regeneration', () => {
   const prompt = buildApplyReviewFeedbackPrompt({
     guideName: 'dialog',
-    comments: 'Please fix selector',
-    rerunMode: 'needs-eval-gen',
+    comments: 'Please tighten the task',
+    rerunMode: 'needs-dev-rerun',
   });
-  assert.ok(prompt.includes('Please fix selector'));
-  assert.ok(prompt.includes('needs-eval-gen'));
-  assert.ok(prompt.includes('all target capsules under `targets/` will be wiped'));
+  assert.ok(prompt.includes('`needs-dev-rerun` mode'));
+  assert.ok(prompt.includes('the solution patches and `grader.ts` are regenerated from the new task'));
+  assert.ok(!prompt.includes('will be wiped'));
 });
 
 import { rootDir } from '../core/paths.ts';
