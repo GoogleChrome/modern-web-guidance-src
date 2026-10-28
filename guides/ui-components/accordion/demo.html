@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<meta name="color-scheme" content="light dark">
+<title>Accordion</title>
+<style>
+	[command="--toggle"]::before {
+		content: "+" / "";
+		margin-inline-end: 0.5ch;
+	}
+	[command="--toggle"][aria-expanded="true"]::before {
+		content: "−" / "";
+	}
+</style>
+
+<h1>Accordion</h1>
+
+<nav aria-labelledby="topics">
+	<h2 id="topics">Topics</h2>
+	<details name="topics">
+		<summary>Development</summary>
+		<p>Development contents</p>
+	</details>
+	<details name="topics">
+		<summary>Design</summary>
+		<p>Design contents</p>
+	</details>
+</nav>
+
+<div role="region" aria-labelledby="services">
+	<h2 id="services">Services</h2>
+	<div>
+		<h3>
+			<button type="button" commandfor="design" command="--toggle" aria-expanded="true">Design</button>
+		</h3>
+		<div id="design">
+			<p>Design contents</p>
+		</div>
+	</div>
+	<div>
+		<h3>
+			<button type="button" commandfor="development" command="--toggle" aria-expanded="false">Development</button>
+		</h3>
+		<div id="development" hidden="until-found">
+			<p>Development contents</p>
+		</div>
+	</div>
+</div>
+
+<script>
+document.addEventListener("command", event => {
+	if (event.command !== "--toggle") return;
+	const content = event.target;
+	const trigger = event.source;
+
+	content.hidden = content.hidden ? false : "until-found";
+	trigger.setAttribute("aria-expanded", !content.hidden);
+}, { capture: true });
+</script>
