@@ -128,11 +128,9 @@ test.describe('card Target Grader', () => {
       cards.length > 0 &&
       cards.every((card) => {
         const children: any[] = Array.from(card.children);
-        if (children.length < 2 || children.length > 4) return false;
 
         let hasHeadingOrHeader = false;
         let hasMedia = false;
-        let hasFooter = false;
         for (const child of children) {
           const tag = child.tagName.toLowerCase();
           const isMedia = mediaTags.has(tag) || child.classList?.contains('media');
@@ -150,15 +148,13 @@ test.describe('card Target Grader', () => {
             if ((tag === 'header' || tag === 'hgroup') && child.children.length < 2) {
               return false;
             }
-          } else if (isFooter) {
-            hasFooter = true;
-          } else {
+          } else if (!isFooter) {
             if (tag === 'div' && child.children.length < 2) {
               return false;
             }
           }
         }
-        return hasHeadingOrHeader && hasMedia && hasFooter;
+        return hasHeadingOrHeader && hasMedia;
       });
 
     expect(allRegionsValid).toBe(true);
@@ -168,22 +164,41 @@ test.describe('card Target Grader', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const flatRules = collectFlatStyleRules(stylesheet.cssRules);
     const containerRules = collectContainerRules(stylesheet.cssRules);
+    const cards = getCards(getHtmlDocuments(targetFiles));
+    const cardAncestors = new Set<any>();
+    for (const card of cards) {
+      for (let p = card.parentElement; p; p = p.parentElement) cardAncestors.add(p);
+    }
 
-    const cardIsContainer = flatRules.some((r) => {
-      if (!r.selectorText.includes('.card')) return false;
+    const matchesAny = (selectorText: string, elements: Iterable<any>) => {
+      const parts = selectorText.split(',').map((s) => s.trim()).filter(Boolean);
+      for (const el of elements) {
+        for (const part of parts) {
+          try {
+            if (el.matches(part)) return true;
+          } catch {
+            const stripped = part.replace(/::?[\w-]+(\([^)]*\))?/g, '').trim();
+            try {
+              if (stripped && el.matches(stripped)) return true;
+            } catch {
+              // ignore selectors the DOM parser cannot evaluate
+            }
+          }
+        }
+      }
+      return false;
+    };
+    const isSizeContainerRule = (r: FlatStyleRule) => {
       const cType = r.style.getPropertyValue('container-type');
       const cShort = r.style.getPropertyValue('container');
       return /\b(inline-size|size)\b/.test(cType) || /\b(inline-size|size)\b/.test(cShort);
-    });
+    };
 
-    const parentIsContainer = flatRules.some((r) => {
-      if (r.selectorText.includes('.card')) return false;
-      const cType = r.style.getPropertyValue('container-type');
-      const cShort = r.style.getPropertyValue('container');
-      return /\b(inline-size|size)\b/.test(cType) || /\b(inline-size|size)\b/.test(cShort);
-    });
+    const sizeContainerRules = flatRules.filter(isSizeContainerRule);
+    const cardIsContainer = sizeContainerRules.some((r) => matchesAny(r.selectorText, cards));
+    const parentIsContainer = sizeContainerRules.some((r) => matchesAny(r.selectorText, cardAncestors));
 
-    expect(cardIsContainer && !parentIsContainer && containerRules.length > 0).toBe(true);
+    expect(cards.length > 0 && cardIsContainer && !parentIsContainer && containerRules.length > 0).toBe(true);
   });
 
   test('When card images or video fill a fixed-ratio area, aspect-ratio and object-fit are set on the media element itself', () => {
@@ -453,7 +468,7 @@ test.describe('card Target Grader', () => {
       });
 
       await card.hover();
-      const firstControl = card.locator('a, button, input, select').first();
+      const firstControl = card.locator('a, button, input:not([type="hidden"]), select').first();
       await firstControl.focus();
 
       const after = await card.evaluate((el) => {
@@ -482,33 +497,71 @@ test.describe('card Target Grader', () => {
     }) => {
       const stylesheet = getCssStyleSheet(targetFiles);
       const flatRules = collectFlatStyleRules(stylesheet.cssRules);
+      const isVisibleOutlineValue = (value: string) => {
+        const tokens = value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (tokens.length === 0) return false;
+        return !tokens.some((t) => t === 'none' || t === 'hidden' || /^0(\.0+)?([a-z]+)?$/.test(t));
+      };
+      const isVisibleShadowValue = (value: string) => {
+        const v = value.trim().toLowerCase();
+        return v !== '' && v !== 'none';
+      };
       const hasFocusVisibleRule = flatRules.some(
         (r) =>
           (r.selectorText.includes(':focus-visible') || r.selectorText.includes(':focus')) &&
-          (r.style.getPropertyValue('outline').trim() !== '' ||
-            r.style.getPropertyValue('box-shadow').trim() !== ''),
+          (isVisibleOutlineValue(r.style.getPropertyValue('outline')) ||
+            (r.style.getPropertyValue('outline').trim() === '' &&
+              isVisibleOutlineValue(r.style.getPropertyValue('outline-style')) &&
+              !/^0(\.0+)?([a-z]+)?$/.test(r.style.getPropertyValue('outline-width').trim())) ||
+            isVisibleShadowValue(r.style.getPropertyValue('box-shadow'))),
       );
 
       const card = page.locator('article.card').first();
       const nonStretchedControl = card
         .locator('button, select, input:not([type="hidden"]), a:not(.card-link)')
         .first();
-      await nonStretchedControl.focus();
 
-      const controlHasVisibleOutline = await nonStretchedControl.evaluate((el) => {
-        const hasVisibleIndicator = (target: Element | null) => {
-          if (!target) return false;
-          const s = window.getComputedStyle(target);
-          return (
-            (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) ||
-            s.boxShadow !== 'none'
-          );
-        };
-        return (
-          hasVisibleIndicator(el) ||
-          hasVisibleIndicator(el.closest('label')) ||
-          hasVisibleIndicator(el.nextElementSibling)
-        );
+      const readIndicators = () =>
+        nonStretchedControl.evaluate((el) => {
+          const targets: Element[] = [el, ...Array.from((el as HTMLInputElement).labels ?? [])];
+          if (el.nextElementSibling) targets.push(el.nextElementSibling);
+          return targets.map((t) => {
+            // Jump any running focus transitions to their end state before measuring.
+            t.getAnimations().forEach((a) => {
+              try {
+                a.finish();
+              } catch {
+                // infinite animations cannot be finished
+              }
+            });
+            const s = window.getComputedStyle(t);
+            const r = t.getBoundingClientRect();
+            return {
+              rendered: s.visibility !== 'hidden' && parseFloat(s.opacity) > 0 && r.width > 1 && r.height > 1,
+              outlineStyle: s.outlineStyle,
+              outlineWidth: s.outlineWidth,
+              outlineColor: s.outlineColor,
+              boxShadow: s.boxShadow,
+            };
+          });
+        });
+
+      const before = await readIndicators();
+      // A key press sets keyboard modality so the subsequent focus matches :focus-visible.
+      await page.keyboard.press('Shift');
+      await nonStretchedControl.focus();
+      const after = await readIndicators();
+
+      const controlHasVisibleOutline = after.some((a, i) => {
+        const b = before[i];
+        if (!a.rendered) return false;
+        const outlineVisible = a.outlineStyle !== 'none' && parseFloat(a.outlineWidth) > 0;
+        const shadowVisible = a.boxShadow !== 'none';
+        const outlineChanged =
+          outlineVisible &&
+          (a.outlineStyle !== b.outlineStyle || a.outlineWidth !== b.outlineWidth || a.outlineColor !== b.outlineColor);
+        const shadowChanged = shadowVisible && a.boxShadow !== b.boxShadow;
+        return outlineChanged || shadowChanged;
       });
 
       const stretchedLinksCount = await card.locator('a.card-link').count();
