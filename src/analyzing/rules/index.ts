@@ -280,7 +280,6 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'progress': 'experimental',
   'progress-ring': 'experimental',
   'progress-ring/dom': 'experimental',
-  'pull-to-reveal/package-pull-to-reveal': 'experimental',
   'pull-to-reveal': 'experimental',
   'required-field-feedback/css-required-invalid': 'experimental',
   'required-field-feedback/js-blur-dirty-class': 'experimental',
