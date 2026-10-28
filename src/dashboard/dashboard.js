@@ -590,14 +590,14 @@ function renderSparkline(uRate, gRate, isSmall = false) {
     const rangeClass = isSmall ? 'sparkline-range small' : 'sparkline-range';
     const min = Math.min(uRate, gRate);
     const abs = Math.abs(gRate - uRate);
-    const leftOffset = uRate < gRate ? 3 : 4;
+    const regressedCls = gRate < uRate ? ' regressed' : '';
 
     // Decorative: the adjacent text ("U% → G%") is the accessible encoding.
     return `
         <div class="${barClass}" aria-hidden="true">
-            <div class="${dotClass} unguided" style="left: calc(${uRate}% - 3px);"></div>
-            <div class="${dotClass} guided" style="left: calc(${gRate}% - 4px);"></div>
-            <div class="${rangeClass}" style="left: calc(${min}% + ${leftOffset}px); width: calc(${abs}% - 7px);"></div>
+            <div class="${rangeClass}${regressedCls}" style="left: ${min}%; width: ${abs}%;"></div>
+            <div class="${dotClass} unguided" style="left: ${uRate}%;"></div>
+            <div class="${dotClass} guided" style="left: ${gRate}%;"></div>
         </div>
     `;
 }
@@ -692,10 +692,7 @@ function renderSummary(data) {
                     <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span>
                     <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${sc.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : ''}">(${deltaSign}${dimPp} pp)</span></span>
                 </div>
-                <div class="a11y-dim-track" aria-hidden="true">
-                    <div class="a11y-dim-fill-unguided" style="width: ${sc.unguidedRate}%;"></div>
-                    <div class="a11y-dim-fill-guided" style="width: ${sc.guidedRate}%;"></div>
-                </div>
+                ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)}
             </div>
         `;
     }).join('');
@@ -1138,7 +1135,7 @@ function renderGrid(data, testId) {
                 <div class="right-section">
                     ${metaChipsHtml}
                     <div class="mini-dumbbell-track" aria-hidden="true">
-                        ${displayValidPair ? `<div class="connector" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
+                        ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
                         ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
                         ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
                     </div>

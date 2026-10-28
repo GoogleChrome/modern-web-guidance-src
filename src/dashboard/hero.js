@@ -141,7 +141,10 @@ function renderHero(insights) {
     renderTakeaways(insights);
     renderAgentTable(insights);
     const el = document.getElementById('method-recent-n');
-    if (el) el.textContent = String(insights.options.perAgentRecentN);
+    const recentN = insights.options.perAgentRecentN;
+    if (el) {
+        el.textContent = recentN === 1 ? 'latest nightly run' : `most recent ${recentN} nightly runs`;
+    }
     const o = insights.pooled?.overall;
     announce(o ? `Latest results loaded: ${signed(o.upliftPp, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
 }
@@ -150,7 +153,7 @@ function renderPending() {
     const list = document.getElementById('hero-takeaways');
     if (list) {
         list.innerHTML = [
-            pendingCard('overall', 'Web best practices pass rate', 'pass-rate lift across all tasks', true),
+            pendingCard('overall', 'Change in aggregate pass rate of using best practices', 'percentage-point lift', true),
             pendingCard('a11y', 'Accessibility', '', false)
         ].join('');
     }
@@ -185,17 +188,31 @@ function renderTakeawayDumbbell(uRate, gRate) {
     const g = Math.max(0, Math.min(100, Math.round(gRate || 0)));
     const lo = Math.min(u, g);
     const span = Math.max(0, Math.abs(g - u));
+    const compactCls = span < 30 ? ' is-compact' : '';
+    const regressedCls = g < u ? ' regressed' : '';
+    const uAlignCls = u <= g ? ' align-start' : ' align-end';
+    const gAlignCls = g >= u ? ' align-end' : ' align-start';
     return `
-        <div class="takeaway-dumbbell" aria-hidden="true">
+        <div class="takeaway-dumbbell${compactCls}" aria-hidden="true">
+            <div class="takeaway-dumbbell-endpoints">
+                <div class="takeaway-endpoint unguided${uAlignCls}" style="--pos: ${u};">
+                    <span class="endpoint-rate">${u}%</span>
+                    <span class="endpoint-name">without MWG</span>
+                </div>
+                <div class="takeaway-endpoint guided${gAlignCls}" style="--pos: ${g};">
+                    <strong class="endpoint-rate">${g}%</strong>
+                    <span class="endpoint-name">with MWG</span>
+                </div>
+            </div>
             <div class="suite-dumbbell-track takeaway-track">
-                <div class="connector" style="left: ${lo}%; width: ${span}%;"></div>
+                <div class="connector${regressedCls}" style="left: ${lo}%; width: ${span}%;"></div>
                 <div class="dot unguided" style="left: ${u}%;"></div>
                 <div class="dot guided" style="left: ${g}%;"></div>
             </div>
-            <div class="takeaway-dumbbell-rates">
-                <span class="rate-u">${u}% without MWG</span>
-                <span class="rate-arrow">→</span>
-                <strong class="rate-g">${g}% with MWG</strong>
+            <div class="takeaway-dumbbell-scale">
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
             </div>
         </div>`;
 }
@@ -211,14 +228,21 @@ function renderTakeaways(insights) {
 
     if (pooled?.overall) {
         const o = pooled.overall;
-        const overallShortText = `~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${insights.pooled?.suiteCount || 0} nightly runs`;
+        const taskCounts = insights.families.flatMap(f => f.suites.map(s => s.taskCount || 0)).filter(n => n > 0);
+        const yTasks = taskCounts.length > 0 ? Math.max(...taskCounts) : 0;
+        const nRuns = pooled.suiteCount || 0;
+        const mAgents = pooled.familyCount || insights.families.length;
+        const scopeClause = yTasks > 0
+            ? `, across ${yTasks} ${yTasks === 1 ? 'task' : 'tasks'} over ${nRuns} ${nRuns === 1 ? 'run' : 'runs'} and ${mAgents} ${mAgents === 1 ? 'agent' : 'agents'}.`
+            : '';
+        const overallShortText = `~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${nRuns} nightly ${nRuns === 1 ? 'run' : 'runs'}`;
         cards.push(takeawayCard({
             metric: 'overall',
             primary: true,
-            label: 'Web best practices pass rate',
+            label: `Change in aggregate pass rate of using best practices${scopeClause}`,
             figure: `<span class="figure-val">${signed(o.upliftPp, 0)}</span><span class="unit"> pp</span>`,
             figureText: `${signed(o.upliftPp, 0)} percentage points`,
-            statement: 'pass-rate lift across all tasks',
+            statement: 'percentage-point lift',
             visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
             short: `<span class="visually-hidden">${fmtPct(o.unguidedRate)} → ${fmtPct(o.guidedRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
         }));

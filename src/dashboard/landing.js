@@ -1,6 +1,5 @@
-import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, formatDuration, formatTokens, isLocalDashboardHost, $, getAgentBadge, getScrollBehavior } from './utils.js';
+import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, formatDuration, formatTokens, isLocalDashboardHost, getAgentBadge, getScrollBehavior } from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
-import { DumbbellChart } from './dumbbell-chart.js';
 import { ApiClient } from './api.js';
 
 /**
@@ -355,6 +354,7 @@ function setupScrollRegion() {
     wrap.setAttribute('tabindex', '0');
     wrap.setAttribute('role', 'region');
     wrap.setAttribute('aria-label', 'All runs table (scrolls horizontally)');
+    setupBarbellTooltips(wrap);
 
     if ('ResizeObserver' in window) {
         const ro = new ResizeObserver(entries => {
@@ -455,7 +455,7 @@ function setupInsightsControls() {
     if (limitInput instanceof HTMLInputElement) {
         limitInput.addEventListener('change', () => {
             let val = parseInt(limitInput.value);
-            if (isNaN(val) || val < 1) val = 15;
+            if (isNaN(val) || val < 1) val = 5;
             limitInput.value = val.toString();
             renderPivotInsights();
         });
@@ -501,23 +501,38 @@ function setupInsightsControls() {
     const drawer = document.getElementById('breakdowns');
     if (drawer instanceof HTMLDetailsElement) {
         drawer.addEventListener('toggle', () => {
-            if (drawer.open) renderPivotInsights();
+            if (drawer.open) {
+                renderPivotInsights();
+            } else {
+                hideBarbellTooltip(true);
+            }
         });
     }
 
-    // Event delegation for pivot rows: model rows toggle the table filter.
+    // Event delegation for pivot rows: model rows toggle the table filter; barbell clicks forward to the row action.
     const container = document.getElementById('insights-container');
     container?.addEventListener('click', (e) => {
         const target = e.target;
         if (!(target instanceof Element)) return;
         const btn = target.closest('button[data-filter-key]');
-        if (!(btn instanceof HTMLButtonElement)) return;
-        const key = btn.dataset.filterKey;
-        const value = btn.dataset.filterValue;
-        if ((key === 'agent' || key === 'serving' || key === 'model') && value !== undefined) {
-            setInsightFilter(key, value);
+        if (btn instanceof HTMLButtonElement) {
+            const key = btn.dataset.filterKey;
+            const value = btn.dataset.filterValue;
+            if ((key === 'agent' || key === 'serving' || key === 'model') && value !== undefined) {
+                setInsightFilter(key, value);
+            }
+            return;
+        }
+        if (!target.closest('a, button')) {
+            const row = target.closest('tr.pivot-row');
+            const rowAction = row?.querySelector('a.pivot-link, button[data-filter-key]');
+            if (rowAction instanceof HTMLElement) {
+                rowAction.click();
+            }
         }
     });
+
+    setupBarbellTooltips(container);
 }
 
 /**
@@ -864,13 +879,14 @@ function sortSuiteKeys(keys) {
 function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
     const sign = delta > 0 ? '+' : '';
     const deltaClass = delta > 0 ? 'delta up' : (delta < 0 ? 'delta down' : 'delta flat');
+    const regressedCls = gRate < uRate ? ' regressed' : '';
     const uErrBand = uErr > 0 ? `<div class="variance-band unguided" style="left: ${(uRate * (1 - uErr / 100)).toFixed(1)}%; width: ${uErr}%;"></div>` : '';
     const gErrBand = gErr > 0 ? `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - gErr / 100)).toFixed(1)}%; width: ${gErr}%;"></div>` : '';
     return `
         <div class="suite-dumbbell-track" aria-hidden="true">
             ${uErrBand}
             ${gErrBand}
-            <div class="connector" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div>
+            <div class="connector${regressedCls}" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div>
             <div class="dot unguided" style="left: ${uRate}%;"></div>
             <div class="dot guided" style="left: ${gRate}%;"></div>
         </div>
@@ -926,6 +942,10 @@ function renderSuites() {
     renderSuitesCount(visibleKeys.length, filteredKeys.length, hiddenAdHoc, paged, pageSize);
     syncOptionalColumns();
 
+    if (activeBarbellCell && container.contains(activeBarbellCell)) {
+        hideBarbellTooltip(true);
+    }
+
     if (visibleKeys.length === 0) {
         const anyData = Object.keys(allTestData).length > 0;
         container.innerHTML = `
@@ -966,15 +986,43 @@ function renderSuites() {
         const scheduled = isScheduledSuite(testId);
         const { label, ldap } = formatSuiteLabel(testInfo);
         const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
+        const dateDisplay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-        const a11yCellHtml = a11y
-            ? `
+        const suiteBarbellTitle = scheduled
+            ? `${dateDisplay} · ${agentDisplay}`
+            : `${label || testId}${testInfo.agent && testInfo.agent !== 'unknown' ? ` · ${agentDisplay}` : ''}`;
+        const modelPart = testInfo.model && testInfo.model !== 'unknown' ? testInfo.model : '';
+        const overallScope = taskCount > 0 ? `${taskCount} ${taskCount === 1 ? 'task' : 'tasks'}${maxRuns > 1 ? ` ×${maxRuns}` : ''}` : 'single run';
+        const overallSub = ['Pass rate', modelPart, overallScope].filter(Boolean).join(' · ');
+        const uTotal = testInfo.unguidedStats?.total || 0;
+        const gTotal = testInfo.guidedStats?.total || 0;
+        const uDetail = uTotal > 0 ? `${(testInfo.unguidedStats?.passed || 0).toLocaleString('en-US')}/${uTotal.toLocaleString('en-US')} checks` : '';
+        const gDetail = gTotal > 0 ? `${(testInfo.guidedStats?.passed || 0).toLocaleString('en-US')}/${gTotal.toLocaleString('en-US')} checks` : '';
+        const overallErrAttr = uErr > 0 || gErr > 0 ? '1' : '';
+
+        let a11yCellAttrs = '';
+        let a11yCellHtml = '';
+        if (a11y) {
+            const a11yURate = toRate(a11y.u);
+            const a11yGRate = toRate(a11y.g);
+            const a11yPp = upliftPp(a11y.u, a11y.g);
+            const a11yGuideCount = testInfo.a11yStats?.guideCount || 0;
+            const a11yScope = a11yGuideCount > 0
+                ? `${a11yGuideCount} ${a11yGuideCount === 1 ? 'guide' : 'guides'}`
+                : overallScope;
+            const a11ySub = ['Accessibility subscore', modelPart, a11yScope].filter(Boolean).join(' · ');
+            const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
+            const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
+            a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate}" data-barbell-g="${a11yGRate}" data-barbell-uplift="${a11yPp}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
+            a11yCellHtml = `
                 <a href="${a11yLink}" class="a11y-link">
-                    ${renderRateComparison(toRate(a11y.u), toRate(a11y.g), upliftPp(a11y.u, a11y.g), 'Accessibility subscore')}
-                    <span class="visually-hidden">— open accessibility check results</span>
+                    ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Accessibility subscore')}
+                    <span class="visually-hidden"> (open accessibility check results)</span>
                 </a>
-            `
-            : renderNotAvailable('Accessibility subscore');
+            `;
+        } else {
+            a11yCellHtml = renderNotAvailable('Accessibility subscore');
+        }
 
         const timeCellHtml = hasRuntime && rt
             ? `
@@ -999,7 +1047,6 @@ function renderSuites() {
             isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''
         ].join('');
 
-        const dateDisplay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         const metaParts = [
             !scheduled && label ? escapeHtml(label) : '',
             taskCount > 0 ? `${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}` : '',
@@ -1018,13 +1065,13 @@ function renderSuites() {
                 <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
                 <td>${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)}</td>
                 <td class="model-cell">${escapeHtml(testInfo.model || '')}</td>
-                <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}">
+                <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate}" data-barbell-g="${gRate}" data-barbell-uplift="${overallPp}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
                     <a href="${localLink}" class="uplift-link">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate', uErr, gErr)}
-                        <span class="visually-hidden">— open per-guide results</span>
+                        <span class="visually-hidden"> (open per-guide results)</span>
                     </a>
                 </td>
-                <td class="a11y-cell metric-cell">${a11yCellHtml}</td>
+                <td class="a11y-cell metric-cell"${a11yCellAttrs}>${a11yCellHtml}</td>
                 <td class="metric-cell">${timeCellHtml}</td>
                 <td class="metric-cell tokens-cell">${tokenCellHtml}</td>
                 <td class="source-cell">${escapeHtml(testInfo.source)}</td>
@@ -1033,7 +1080,6 @@ function renderSuites() {
     });
 
     container.innerHTML = html;
-    setupRateCellHovers();
 
     const drawer = document.getElementById('breakdowns');
     if (!(drawer instanceof HTMLDetailsElement) || drawer.open) {
@@ -1096,160 +1142,6 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
     }
 }
 
-// ---- Hover/focus mini chart for the pass-rate cell ----
-
-/** @type {DumbbellChart | null} */
-let tooltipChartInstance = null;
-/** @type {string | null} */
-let currentDumbbellKey = null;
-/** @type {number | null} */
-let hideTimeout = null;
-/** @type {HTMLElement | null} */
-let activeTooltipTrigger = null;
-const tooltipContainer = document.getElementById('tooltip-container');
-
-function setupRateCellHovers() {
-    if (!tooltipContainer) return;
-    document.querySelectorAll('.uplift-cell').forEach(cell => {
-        if (!(cell instanceof HTMLElement)) return;
-        const compoundKey = cell.dataset.compoundKey;
-        if (!compoundKey) return;
-        const link = cell.querySelector('a');
-
-        const show = () => {
-            const testInfo = allTestData[compoundKey];
-            if (!testInfo) return;
-            if (hideTimeout) {
-                clearTimeout(hideTimeout);
-                hideTimeout = null;
-            }
-            if (activeTooltipTrigger && activeTooltipTrigger !== link) {
-                activeTooltipTrigger.removeAttribute('aria-describedby');
-            }
-            activeTooltipTrigger = link instanceof HTMLElement ? link : cell;
-            activeTooltipTrigger.setAttribute('aria-describedby', 'tooltip-container');
-            const r = cell.getBoundingClientRect();
-            showTooltipChart(testInfo, r.right, r.top, compoundKey, r.left);
-        };
-
-        cell.addEventListener('mouseenter', () => show());
-        cell.addEventListener('mouseleave', () => hideTooltipChart());
-
-        // Keyboard parity: the same preview opens while the cell's link has focus.
-        link?.addEventListener('focus', () => show());
-        link?.addEventListener('blur', () => hideTooltipChart());
-        // WCAG 1.4.13: the preview must be dismissible without moving focus.
-        link?.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') hideTooltipChart(true);
-        });
-    });
-}
-
-// WCAG 1.4.13 Hoverable: keep the tooltip open while the pointer is over it.
-tooltipContainer?.addEventListener('mouseenter', () => {
-    if (hideTimeout) {
-        clearTimeout(hideTimeout);
-        hideTimeout = null;
-    }
-});
-tooltipContainer?.addEventListener('mouseleave', () => hideTooltipChart());
-
-/**
- * @param {LandingSuiteSummary} testInfo
- * @param {number} x
- * @param {number} y
- * @param {string} compoundKey
- * @param {number} [leftAnchor]
- */
-function showTooltipChart(testInfo, x, y, compoundKey, leftAnchor = x) {
-    if (!tooltipContainer) return;
-    if (currentDumbbellKey === compoundKey && !tooltipContainer.classList.contains('hidden')) {
-        updateTooltipPosition(x, y, leftAnchor);
-        return;
-    }
-    currentDumbbellKey = compoundKey;
-
-    const headerDiv = $('#tooltip-header');
-    if (headerDiv) {
-        headerDiv.innerHTML = `
-            <div class="tooltip-title">${escapeHtml(testInfo.testId)}</div>
-            <div class="tooltip-subtitle">${escapeHtml(agentDisplayNames[testInfo.agent] || testInfo.agent)} • ${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)} • per-guide pass rate, unguided → guided</div>
-        `;
-    }
-
-    const chartData = testInfo.chartData;
-    if (!chartData || !chartData.labels || chartData.labels.length < 1) return;
-    const { labels, guided, unguided, guided_failed, unguided_failed, guided_err_rate, unguided_err_rate } = chartData;
-
-    tooltipContainer.classList.remove('hidden');
-
-    if (!tooltipChartInstance) {
-        tooltipChartInstance = new DumbbellChart('tooltip-chart', {
-            size: 270, maxHeight: 250, rowHeight: 20, margin: { top: 15, right: 15, bottom: 15, left: 15 }, hideLegend: true, hideLabels: true, hideSeparators: true, hideZeros: true, hideAxes: true
-        });
-    }
-
-    tooltipChartInstance.render({
-        labels,
-        datasets: [
-            { label: 'Unguided', data: unguided, failed: unguided_failed, errRate: unguided_err_rate },
-            { label: 'Guided', data: guided, failed: guided_failed, errRate: guided_err_rate }
-        ]
-    });
-    updateTooltipPosition(x, y, leftAnchor);
-}
-
-/**
- * @param {number} x
- * @param {number} y
- * @param {number} [leftAnchor]
- */
-function updateTooltipPosition(x, y, leftAnchor = x) {
-    if (!tooltipContainer) return;
-    const offset = 16;
-    const tooltipWidth = tooltipContainer.offsetWidth || 300;
-    const tooltipHeight = tooltipContainer.offsetHeight || 300;
-    let finalX = x + offset;
-    if (finalX + tooltipWidth > window.innerWidth - 8) {
-        finalX = leftAnchor - tooltipWidth - offset;
-    }
-    finalX = Math.max(8, Math.min(finalX, window.innerWidth - tooltipWidth - 8));
-
-    let finalY = y;
-    if (finalY + tooltipHeight > window.innerHeight - 8) {
-        finalY = window.innerHeight - tooltipHeight - 8;
-    }
-    finalY = Math.max(8, finalY);
-    tooltipContainer.style.left = `${finalX}px`;
-    tooltipContainer.style.top = `${finalY}px`;
-}
-
-/** @param {boolean} [immediate] */
-function hideTooltipChart(immediate = false) {
-    if (!tooltipContainer) return;
-    if (hideTimeout) window.clearTimeout(hideTimeout);
-    const hide = () => {
-        currentDumbbellKey = null;
-        if (activeTooltipTrigger) {
-            activeTooltipTrigger.removeAttribute('aria-describedby');
-            activeTooltipTrigger = null;
-        }
-        tooltipContainer.classList.add('hidden');
-        hideTimeout = null;
-    };
-    if (immediate) {
-        hide();
-        return;
-    }
-    hideTimeout = window.setTimeout(hide, 150);
-}
-// Escape anywhere on the page also dismisses a hover-opened preview.
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && tooltipContainer && !tooltipContainer.classList.contains('hidden')) {
-        hideTooltipChart(true);
-    }
-});
-
 // ==========================================
 // HELPERS
 // ==========================================
@@ -1300,6 +1192,197 @@ function formatSuiteLabel(testInfo) {
 // BREAKDOWNS (by model, by guide)
 // ==========================================
 
+/** @type {number | null} */
+let barbellHideTimeout = null;
+/** @type {HTMLElement | null} */
+let activeBarbellCell = null;
+/** @type {HTMLElement | null} */
+let activeBarbellTrigger = null;
+let barbellGlobalListenersBound = false;
+
+/**
+ * Wires hover, keyboard focus, and Escape dismissal for barbell summary cards
+ * inside a table or breakdown container.
+ * @param {HTMLElement | null} container
+ */
+function setupBarbellTooltips(container) {
+    if (!container) return;
+    const tooltip = document.getElementById('barbell-tooltip');
+    if (!tooltip) return;
+
+    if (!barbellGlobalListenersBound) {
+        barbellGlobalListenersBound = true;
+        tooltip.addEventListener('mouseenter', () => {
+            if (barbellHideTimeout) {
+                window.clearTimeout(barbellHideTimeout);
+                barbellHideTimeout = null;
+            }
+        });
+        tooltip.addEventListener('mouseleave', () => hideBarbellTooltip(false));
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !tooltip.classList.contains('hidden')) {
+                hideBarbellTooltip(true);
+            }
+        });
+    }
+
+    container.addEventListener('mousemove', (e) => {
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        const cell = target.closest('[data-barbell-title]');
+        if (cell instanceof HTMLElement && container.contains(cell)) {
+            showBarbellTooltip(cell, e.clientX, e.clientY);
+        } else if (activeBarbellCell && container.contains(activeBarbellCell)) {
+            hideBarbellTooltip(false);
+        }
+    });
+
+    container.addEventListener('mouseleave', () => {
+        if (activeBarbellCell && container.contains(activeBarbellCell)) {
+            hideBarbellTooltip(false);
+        }
+    });
+
+    container.addEventListener('focusin', (e) => {
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        const directCell = target.closest('[data-barbell-title]');
+        const cell = directCell || target.closest('tr.pivot-row')?.querySelector('[data-barbell-title]');
+        if (cell instanceof HTMLElement && container.contains(cell)) {
+            const rect = cell.getBoundingClientRect();
+            showBarbellTooltip(cell, rect.left + rect.width / 2, rect.bottom);
+        }
+    });
+
+    container.addEventListener('focusout', () => {
+        if (activeBarbellCell && container.contains(activeBarbellCell)) {
+            hideBarbellTooltip(false);
+        }
+    });
+    container.addEventListener('scroll', () => hideBarbellTooltip(true), { capture: true, passive: true });
+}
+
+/**
+ * @param {HTMLElement} cell
+ * @param {number} x
+ * @param {number} y
+ */
+function showBarbellTooltip(cell, x, y) {
+    const tooltip = document.getElementById('barbell-tooltip');
+    if (!tooltip) return;
+    if (barbellHideTimeout) {
+        window.clearTimeout(barbellHideTimeout);
+        barbellHideTimeout = null;
+    }
+
+    if (activeBarbellCell !== cell || tooltip.classList.contains('hidden')) {
+        activeBarbellCell = cell;
+        const triggerCandidate = cell.querySelector('a, button') || cell.closest('tr.pivot-row')?.querySelector('a, button');
+        const nextTrigger = triggerCandidate instanceof HTMLElement ? triggerCandidate : cell;
+        if (activeBarbellTrigger && activeBarbellTrigger !== nextTrigger) {
+            activeBarbellTrigger.removeAttribute('aria-describedby');
+        }
+        activeBarbellTrigger = nextTrigger;
+        activeBarbellTrigger.setAttribute('aria-describedby', 'barbell-tooltip');
+        const title = cell.dataset.barbellTitle || '';
+        const kind = cell.dataset.barbellKind || 'guide';
+        const metric = cell.dataset.barbellMetric || 'Pass rate';
+        const runs = parseInt(cell.dataset.barbellRuns || '0') || 0;
+        const uRate = parseInt(cell.dataset.barbellU || '0') || 0;
+        const gRate = parseInt(cell.dataset.barbellG || '0') || 0;
+        const uplift = parseInt(cell.dataset.barbellUplift || '0') || 0;
+        const uSd = cell.dataset.barbellUSd || '';
+        const gSd = cell.dataset.barbellGSd || '';
+        const uDetail = cell.dataset.barbellUDetail || '';
+        const gDetail = cell.dataset.barbellGDetail || '';
+        const hasErr = cell.dataset.barbellErr === '1';
+
+        const sign = uplift > 0 ? '+' : '';
+        const liftCls = uplift > 0 ? 'up' : (uplift < 0 ? 'down' : 'flat');
+        const runsText = `${runs} ${runs === 1 ? 'run' : 'runs'}`;
+        const subText = cell.dataset.barbellSub || `${metric} · median across ${runsText}`;
+
+        const uExtraHtml = uDetail !== ''
+            ? ` <span class="barbell-tooltip-sd">(${escapeHtml(uDetail)})</span>`
+            : (uSd !== '' ? ` <span class="barbell-tooltip-sd">(±${escapeHtml(uSd)} pp SD)</span>` : '');
+        const gExtraHtml = gDetail !== ''
+            ? ` <span class="barbell-tooltip-sd">(${escapeHtml(gDetail)})</span>`
+            : (gSd !== '' ? ` <span class="barbell-tooltip-sd">(±${escapeHtml(gSd)} pp SD)</span>` : '');
+
+        let liftLabel = 'Median lift';
+        let note = '';
+        if (kind === 'suite-overall') {
+            liftLabel = 'Pass-rate lift';
+            note = `Vertical ticks mark checks passed without MWG and with MWG in this suite run; the horizontal bar spans the pass-rate lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
+        } else if (kind === 'suite-a11y') {
+            liftLabel = 'Accessibility lift';
+            note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
+        } else if (kind === 'guide') {
+            note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across runs.' : ''}`;
+        } else if (kind === 'dimension') {
+            note = `Vertical ticks mark the median accessibility pass rate without MWG and with MWG across ${runsText} for this dimension; the horizontal bar spans the median lift.`;
+        } else {
+            note = `Vertical ticks mark this model’s median suite ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
+        }
+
+        tooltip.innerHTML = `
+            <div class="barbell-tooltip-title">${escapeHtml(title)}</div>
+            <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div>
+            <div class="barbell-tooltip-rows">
+                <div class="barbell-tooltip-row">
+                    <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span>
+                    <strong>${uRate}%${uExtraHtml}</strong>
+                </div>
+                <div class="barbell-tooltip-row">
+                    <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span>
+                    <strong class="rate-g">${gRate}%${gExtraHtml}</strong>
+                </div>
+                <div class="barbell-tooltip-row barbell-tooltip-lift">
+                    <span>${escapeHtml(liftLabel)}</span>
+                    <strong class="delta ${liftCls}">${sign}${uplift} pp</strong>
+                </div>
+            </div>
+            <p class="barbell-tooltip-note">${escapeHtml(note)}</p>
+        `;
+        tooltip.classList.remove('hidden');
+    }
+
+    const pad = 16;
+    const w = tooltip.offsetWidth || 290;
+    const h = tooltip.offsetHeight || 175;
+    let left = x + pad;
+    let top = y + pad;
+    if (left + w > window.innerWidth - 8) left = x - w - pad;
+    if (top + h > window.innerHeight - 8) top = y - h - pad;
+    tooltip.style.left = `${Math.max(8, Math.min(left, window.innerWidth - w - 8))}px`;
+    tooltip.style.top = `${Math.max(8, Math.min(top, window.innerHeight - h - 8))}px`;
+}
+
+/** @param {boolean} [immediate] */
+function hideBarbellTooltip(immediate = false) {
+    const tooltip = document.getElementById('barbell-tooltip');
+    if (!tooltip) return;
+    if (barbellHideTimeout) {
+        window.clearTimeout(barbellHideTimeout);
+        barbellHideTimeout = null;
+    }
+    const hide = () => {
+        activeBarbellCell = null;
+        if (activeBarbellTrigger) {
+            activeBarbellTrigger.removeAttribute('aria-describedby');
+            activeBarbellTrigger = null;
+        }
+        tooltip.classList.add('hidden');
+        barbellHideTimeout = null;
+    };
+    if (immediate) {
+        hide();
+        return;
+    }
+    barbellHideTimeout = window.setTimeout(hide, 150);
+}
+
 /**
  * Restricts the visible runs to the most recent N distinct run-dates (or all).
  * @returns {string[]}
@@ -1309,7 +1392,7 @@ function getInsightKeys() {
     const limitInput = document.getElementById('insights-limit-input');
     const showAllCheck = document.getElementById('insights-show-all-check');
     const showAll = showAllCheck instanceof HTMLInputElement ? showAllCheck.checked : false;
-    const limit = limitInput instanceof HTMLInputElement ? (parseInt(limitInput.value) || 15) : 15;
+    const limit = limitInput instanceof HTMLInputElement ? (parseInt(limitInput.value) || 5) : 5;
 
     if (!showAll && keys.length > 0) {
         const dayOf = (/** @type {string} */ k) => getSuiteDate(allTestData[k]).toISOString().slice(0, 10);
@@ -1508,9 +1591,13 @@ function renderPivotInsights() {
 
             let uBandHtml = '';
             let gBandHtml = '';
+            let uSD = 0;
+            let gSD = 0;
+            let avgUErr = 0;
+            let avgGErr = 0;
             if (showVariance) {
-                const uSD = calculateSD(items.map(i => i.uRate));
-                const gSD = calculateSD(items.map(i => i.gRate));
+                uSD = calculateSD(items.map(i => i.uRate));
+                gSD = calculateSD(items.map(i => i.gRate));
                 if (uSD > 0) {
                     const left = Math.max(0, uRate - uSD);
                     uBandHtml = `<div class="variance-band unguided" style="left: ${left}%; width: ${Math.min(100, uRate + uSD) - left}%;"></div>`;
@@ -1520,8 +1607,8 @@ function renderPivotInsights() {
                     gBandHtml = `<div class="variance-band guided" style="left: ${left}%; width: ${Math.min(100, gRate + gSD) - left}%;"></div>`;
                 }
             } else if (filterKey === 'model' && items.length > 0) {
-                const avgUErr = Math.round(items.reduce((s, it) => s + (it.uErr || 0), 0) / items.length);
-                const avgGErr = Math.round(items.reduce((s, it) => s + (it.gErr || 0), 0) / items.length);
+                avgUErr = Math.round(items.reduce((s, it) => s + (it.uErr || 0), 0) / items.length);
+                avgGErr = Math.round(items.reduce((s, it) => s + (it.gErr || 0), 0) / items.length);
                 if (avgUErr > 0) uBandHtml = `<div class="variance-band unguided" style="left: ${(uRate * (1 - avgUErr / 100)).toFixed(1)}%; width: ${avgUErr}%;"></div>`;
                 if (avgGErr > 0) gBandHtml = `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></div>`;
             }
@@ -1529,6 +1616,7 @@ function renderPivotInsights() {
             const isActive = filterKey === 'model' && currentModelFilter === key;
             let nameHtml = '';
             let effSummary = '';
+            let displayTitle = key;
 
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
@@ -1538,6 +1626,7 @@ function renderPivotInsights() {
                 const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);
                 const label = subMeta ? subMeta.label : key;
                 const desc = subMeta ? subMeta.description : '';
+                displayTitle = label;
                 nameHtml = `<span class="pivot-static-name">${escapeHtml(label)}</span>`;
                 effSummary = desc ? `<span class="pivot-trials">${escapeHtml(desc)}</span>` : '';
             } else {
@@ -1554,17 +1643,32 @@ function renderPivotInsights() {
             }
 
             const sign = medUplift > 0 ? '+' : '';
+            const regressedCls = gRate < uRate ? ' regressed' : '';
+            const uSdAttr = showVariance && items.length > 1 ? String(Math.round(uSD)) : '';
+            const gSdAttr = showVariance && items.length > 1 ? String(Math.round(gSD)) : '';
+            const errAttr = filterKey === 'model' && (avgUErr > 0 || avgGErr > 0) ? '1' : '';
+            const staticRowCls = filterKey === 'dimension' ? ' is-static' : '';
             rowsHtml += `
-                <tr class="pivot-row${isActive ? ' active-filter' : ''}">
+                <tr class="pivot-row${isActive ? ' active-filter' : ''}${staticRowCls}">
                     <th scope="row" class="pivot-name">
                         ${nameHtml}
                         ${effSummary}
                     </th>
-                    <td class="insight-dumbbell-cell">
+                    <td class="insight-dumbbell-cell"
+                        data-barbell-title="${escapeHtml(displayTitle)}"
+                        data-barbell-kind="${filterKey}"
+                        data-barbell-metric="${escapeHtml(metricName)}"
+                        data-barbell-runs="${items.length}"
+                        data-barbell-u="${uRate}"
+                        data-barbell-g="${gRate}"
+                        data-barbell-uplift="${medUplift}"
+                        data-barbell-u-sd="${uSdAttr}"
+                        data-barbell-g-sd="${gSdAttr}"
+                        data-barbell-err="${errAttr}">
                         <div class="insight-dumbbell-track" aria-hidden="true">
                             ${uBandHtml}
                             ${gBandHtml}
-                            <div class="connector" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div>
+                            <div class="connector${regressedCls}" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div>
                             <div class="dot unguided" style="left: ${uRate}%;"></div>
                             <div class="dot guided" style="left: ${gRate}%;"></div>
                         </div>

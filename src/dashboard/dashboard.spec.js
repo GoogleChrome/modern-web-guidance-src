@@ -23,17 +23,18 @@ test.describe('Eval View Dashboard', () => {
     expect(data).toHaveProperty('suites');
   });
   
-  test('should show dumbbell chart tooltip on rate-cell hover', async ({ page }) => {
+  test('should show barbell summary hover card on rate-cell hover', async ({ page }) => {
     await page.goto('/');
-    
+
     await page.waitForSelector('.uplift-cell');
     await page.locator('.uplift-cell').first().hover();
-    
-    const tooltip = page.locator('.tooltip-container');
+
+    const tooltip = page.locator('#barbell-tooltip');
     await expect(tooltip).toBeVisible();
-    
-    const svg = page.locator('#tooltip-chart svg');
-    await expect(svg).toBeVisible();
+    await expect(tooltip).toContainText('Without MWG');
+    await expect(tooltip).toContainText('With MWG');
+    await expect(tooltip).toContainText('Pass-rate lift');
+    await expect(tooltip).toContainText('Vertical ticks mark checks passed');
 
     // WCAG 1.4.13 Hoverable & Dismissible: remains visible when hovered, dismisses on Escape
     await tooltip.hover();
@@ -71,7 +72,7 @@ test.describe('Eval View Dashboard', () => {
     await expect(dumbbellTooltip).toBeVisible();
     await expect(dumbbellTooltip.locator('.dumbbell-tooltip')).toBeVisible();
     await expect(dumbbellTooltip.locator('.dumbbell-tooltip-title')).not.toBeEmpty();
-    await expect(dumbbellTooltip.locator('.dumbbell-tooltip-uplift')).toContainText('%');
+    await expect(dumbbellTooltip.locator('.dumbbell-tooltip-uplift')).toContainText('pp');
 
     // WCAG 1.4.13 Hoverable & Dismissible: moving onto the tooltip keeps it open; Escape dismisses it
     await dumbbellTooltip.hover();
@@ -302,6 +303,8 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
 
     const hero = page.locator('#hero');
     await expect(hero).toHaveAttribute('aria-busy', 'false');
+    await expect(hero.locator('#hero-heading')).toHaveText('Measurably better web code with Modern Web Guidance');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-label')).toContainText('across 153 tasks over 3 runs and 3 agents');
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('.takeaway-secondary[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('#hero-eyebrow')).toContainText(/3 recent runs across 3 agent families/);
@@ -320,6 +323,16 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     // Suites table & sorting
     const suiteRows = page.locator('.suite-table-row');
     await expect(suiteRows).toHaveCount(3);
+    const barbellTooltip = page.locator('#barbell-tooltip');
+    await suiteRows.first().locator('.uplift-cell').hover();
+    await expect(barbellTooltip).toBeVisible();
+    await expect(barbellTooltip).toContainText('Pass-rate lift');
+    await expect(barbellTooltip).toContainText('checks)');
+    await suiteRows.first().locator('.a11y-cell').hover();
+    await expect(barbellTooltip).toBeVisible();
+    await expect(barbellTooltip).toContainText('Accessibility lift');
+    await page.keyboard.press('Escape');
+    await expect(barbellTooltip).toBeHidden();
     const dateHeader = page.locator('.suites-table th:has(.sort-btn[data-sort="date"])');
     await expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
     await page.locator('.sort-btn[data-sort="date"]').click();
@@ -337,9 +350,18 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     // Clicking the Accessibility hero link opens the Breakdowns drawer in Accessibility mode
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     await expect(page.locator('#breakdowns')).toHaveAttribute('open', '');
+    await expect(page.locator('#insights-limit-input')).toHaveValue('5');
     await expect(page.locator('#insights-mode-a11y')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.insights-dimension-panel')).toBeVisible();
     await expect(page.locator('.insights-guide-drawer')).toBeVisible();
+
+    // Hovering a Breakdowns barbell cell shows the explanatory barbell tooltip; Escape dismisses it
+    const firstBarbellCell = page.locator('.insights-guide-drawer .insight-dumbbell-cell').first();
+    await firstBarbellCell.hover();
+    await expect(barbellTooltip).toBeVisible();
+    await expect(barbellTooltip).toContainText('Vertical ticks mark the median');
+    await page.keyboard.press('Escape');
+    await expect(barbellTooltip).toBeHidden();
 
     // Breakdown panel Uplift sort & Expand controls
     const modelSortBtn = page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]');
@@ -356,6 +378,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
 
     const spotlight = page.locator('#ab-spotlight');
     await expect(spotlight).toHaveAttribute('aria-busy', 'false');
+    await expect(spotlight.locator('.ab-spotlight-sub')).not.toContainText('—');
     const taskPills = spotlight.locator('#ab-task-pills .ab-task-pill');
     await expect(taskPills).toHaveCount(6);
     await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+8 checks');

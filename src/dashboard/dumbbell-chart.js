@@ -284,35 +284,37 @@ export class DumbbellChart {
       // Move legend dynamically above the first element based on your top margin settings
       legendG.setAttribute("transform", `translate(${scale(100) + 20}, ${this.options.margin.top - 5})`);
       
-      const unguidedCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      unguidedCircle.setAttribute("cx", "5");
-      unguidedCircle.setAttribute("cy", "-5");
-      unguidedCircle.setAttribute("r", "5");
-      unguidedCircle.setAttribute("fill", "transparent");
-      unguidedCircle.setAttribute("stroke", "var(--color-outline)");
-      unguidedCircle.setAttribute("stroke-width", "2");
+      const unguidedTick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      unguidedTick.setAttribute("x1", "5");
+      unguidedTick.setAttribute("y1", "-10");
+      unguidedTick.setAttribute("x2", "5");
+      unguidedTick.setAttribute("y2", "0");
+      unguidedTick.setAttribute("stroke", "var(--color-outline)");
+      unguidedTick.setAttribute("stroke-width", "2");
 
       const uText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      uText.setAttribute("x", "15");
+      uText.setAttribute("x", "13");
       uText.setAttribute("fill", "var(--color-on-surface)");
       uText.setAttribute("font-size", "0.75rem");
       uText.textContent = "Unguided";
       
-      const guidedCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      guidedCircle.setAttribute("cx", "80");
-      guidedCircle.setAttribute("cy", "-5");
-      guidedCircle.setAttribute("r", "5");
-      guidedCircle.setAttribute("fill", "var(--color-primary)");
+      const guidedTick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      guidedTick.setAttribute("x1", "80");
+      guidedTick.setAttribute("y1", "-11");
+      guidedTick.setAttribute("x2", "80");
+      guidedTick.setAttribute("y2", "1");
+      guidedTick.setAttribute("stroke", "var(--color-primary)");
+      guidedTick.setAttribute("stroke-width", "2.5");
 
       const gText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      gText.setAttribute("x", "90");
+      gText.setAttribute("x", "88");
       gText.setAttribute("fill", "var(--color-on-surface)");
       gText.setAttribute("font-size", "0.75rem");
       gText.textContent = "Guided";
 
-      legendG.appendChild(unguidedCircle);
+      legendG.appendChild(unguidedTick);
       legendG.appendChild(uText);
-      legendG.appendChild(guidedCircle);
+      legendG.appendChild(guidedTick);
       legendG.appendChild(gText);
       svg.appendChild(legendG);
     }
@@ -416,8 +418,21 @@ export class DumbbellChart {
 
           const isPositive = gVal >= uVal;
           const lineColor = isPositive ? "var(--color-primary)" : "var(--color-accent-failure)";
+          const trackHeight = Math.min(4, Math.max(2, offsetStep * 0.45));
+          const uHalf = Math.min(5, Math.max(2.75, offsetStep * 0.58));
+          const gHalf = Math.min(6, Math.max(3.25, offsetStep * 0.72));
 
-          // Manski Error Uncertainty Pills ([R * (1 - e), R * (1 - e) + e])
+          // 0%–100% baseline track matching landing page barbells
+          const track = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          track.setAttribute("x1", leftAxis.toString());
+          track.setAttribute("y1", y.toString());
+          track.setAttribute("x2", scale(100).toString());
+          track.setAttribute("y2", y.toString());
+          track.setAttribute("stroke", "var(--color-surface-container)");
+          track.setAttribute("stroke-width", trackHeight.toString());
+          svg.appendChild(track);
+
+          // Manski Error Uncertainty Bands ([R * (1 - e), R * (1 - e) + e])
           const bands = [
               { val: uVal, err: item.uErr, fill: "var(--color-outline)", opacity: "0.25" },
               { val: gVal, err: item.gErr, fill: "var(--color-accent-warning)", opacity: "0.35" }
@@ -427,44 +442,43 @@ export class DumbbellChart {
               const pill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
               const minVal = b.val * (1 - b.err / 100);
               pill.setAttribute("x", scale(minVal).toString());
-              pill.setAttribute("y", (y - 4).toString());
+              pill.setAttribute("y", (y - uHalf).toString());
               pill.setAttribute("width", ((b.err / 100) * chartWidth).toString());
-              pill.setAttribute("height", "8");
-              pill.setAttribute("rx", "4");
+              pill.setAttribute("height", (uHalf * 2).toString());
               pill.setAttribute("fill", b.fill);
               pill.setAttribute("opacity", b.opacity);
               svg.appendChild(pill);
           }
 
-          // Connecting Line (The Delta)
+          // Connecting Bar (The Delta)
           const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
           line.setAttribute("x1", uX.toString());
           line.setAttribute("y1", y.toString());
           line.setAttribute("x2", gX.toString());
           line.setAttribute("y2", y.toString());
           line.setAttribute("stroke", lineColor);
-          line.setAttribute("stroke-width", "1.5");
-          line.setAttribute("stroke-linecap", "round");
-
+          line.setAttribute("stroke-width", trackHeight.toString());
           svg.appendChild(line);
 
-          // Unguided Dot (Baseline)
-          const uDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-          uDot.setAttribute("cx", uX.toString());
-          uDot.setAttribute("cy", y.toString());
-          uDot.setAttribute("r", "3");
-          uDot.setAttribute("fill", "var(--color-surface-container-lowest)");
-          uDot.setAttribute("stroke", item.uFailed ? "var(--color-accent-warning)" : "var(--color-outline)");
-          uDot.setAttribute("stroke-width", "1.5");
-          svg.appendChild(uDot);
+          // Unguided Tick (Baseline)
+          const uTick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          uTick.setAttribute("x1", uX.toString());
+          uTick.setAttribute("y1", (y - uHalf).toString());
+          uTick.setAttribute("x2", uX.toString());
+          uTick.setAttribute("y2", (y + uHalf).toString());
+          uTick.setAttribute("stroke", item.uFailed ? "var(--color-accent-warning)" : "var(--color-outline)");
+          uTick.setAttribute("stroke-width", "2");
+          svg.appendChild(uTick);
 
-          // Guided Dot (Outcome)
-          const gDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-          gDot.setAttribute("cx", gX.toString());
-          gDot.setAttribute("cy", y.toString());
-          gDot.setAttribute("r", "3");
-          gDot.setAttribute("fill", item.gFailed ? "var(--color-accent-warning)" : "var(--color-primary)");
-          svg.appendChild(gDot);
+          // Guided Tick (Outcome)
+          const gTick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          gTick.setAttribute("x1", gX.toString());
+          gTick.setAttribute("y1", (y - gHalf).toString());
+          gTick.setAttribute("x2", gX.toString());
+          gTick.setAttribute("y2", (y + gHalf).toString());
+          gTick.setAttribute("stroke", item.gFailed ? "var(--color-accent-warning)" : "var(--color-primary)");
+          gTick.setAttribute("stroke-width", "2.5");
+          svg.appendChild(gTick);
 
           // Hit area for tooltip & keyboard focus (covers the specific sub-line)
           const hitArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -543,7 +557,7 @@ export class DumbbellChart {
                          ` : ''}
                     </div>
                     <div class="dumbbell-tooltip-right">
-                         <div class="dumbbell-tooltip-uplift ${delta >= 0 ? 'positive' : 'negative'}">Uplift: ${deltaSign}${delta}%</div>
+                         <div class="dumbbell-tooltip-uplift ${delta >= 0 ? 'positive' : 'negative'}">Uplift: ${deltaSign}${delta} pp</div>
                          <div class="dumbbell-tooltip-rate${item.gFailed ? ' text-warning' : ''}">Guided: ${Math.round(gVal)}% ${item.gErr > 0 ? `(${Math.round(gVal * (1 - item.gErr / 100))}%–${Math.round(gVal * (1 - item.gErr / 100) + item.gErr)}%, ${item.gErr}% err)` : (item.gFailed ? '(Infra Error excluded)' : '')}</div>
                          <div class="dumbbell-tooltip-rate${item.uFailed ? ' text-warning' : ''}">Unguided: ${Math.round(uVal)}% ${item.uErr > 0 ? `(${Math.round(uVal * (1 - item.uErr / 100))}%–${Math.round(uVal * (1 - item.uErr / 100) + item.uErr)}%, ${item.uErr}% err)` : (item.uFailed ? '(Infra Error excluded)' : '')}</div>
                      </div>

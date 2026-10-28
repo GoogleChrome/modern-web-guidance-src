@@ -45,12 +45,12 @@ const TASK_APPROACH_CONTRAST = {
         guided: 'Zero-DOM-mutation highlights via CSS.highlights.set() and ::highlight(), with a feature-detected <mark> fallback.'
     },
     'animate-to-from-top-layer': {
-        unguided: 'Standard opacity/transform transitions that snap shut on exit — missing @starting-style, allow-discrete, and reduced-motion guards.',
+        unguided: 'Standard opacity/transform transitions that snap shut on exit, missing @starting-style, allow-discrete, and reduced-motion guards.',
         guided: 'Smooth top-layer entry and exit transitions using @starting-style, transition-behavior: allow-discrete on display/overlay, and ::backdrop fade.'
     },
     'flicker-free-client-side-ab-testing': {
         unguided: 'Applied an unconditional opacity: 0 anti-flicker hack without blocking="render" or a safety timeout, penalizing every page load.',
-        guided: 'Native <script async blocking="render"> in <head> with feature-detected timeout fallback (9/10 — missed only the mock CDN timing assertion).'
+        guided: 'Native <script async blocking="render"> in <head> with feature-detected timeout fallback (9/10; missed only the mock CDN timing assertion).'
     },
     'faster-spa-view-transitions': {
         unguided: 'Toggled views without content-visibility: hidden, leaving inactive views exposed to the accessibility tree and losing focus state.',
@@ -62,7 +62,7 @@ const TASK_APPROACH_CONTRAST = {
     },
     'interest-triggered-tooltips': {
         unguided: 'CSS :hover tooltips with pointer-events: none that fail WCAG 1.4.13 hover persistence, Escape dismissal, and viewport flip fallbacks.',
-        guided: 'Declarative interestfor triggers with <div popover="hint">, CSS anchor(), position-try fallbacks, and WCAG 1.4.13 persistence (15/16 — omitted 1 of 3 polyfills).'
+        guided: 'Declarative interestfor triggers with <div popover="hint">, CSS anchor(), position-try fallbacks, and WCAG 1.4.13 persistence (15/16; omitted 1 of 3 polyfills).'
     }
 };
 
@@ -78,13 +78,13 @@ const TASK_PAIR_OVERRIDES = {
         guided: 'Retrieved both faster-spa-view-transitions and defer-rendering-heavy-content, applying content-visibility: auto instead of content-visibility: hidden on inactive views (3/6).'
     },
     'scrollspy:codex_cli': {
-        guided: 'Applied native scroll-target-group: auto, :target-current, non-color indicators, scrollend ARIA sync, and IntersectionObserver fallback (10/11 — missed only the fallback class selector).'
+        guided: 'Applied native scroll-target-group: auto, :target-current, non-color indicators, scrollend ARIA sync, and IntersectionObserver fallback (10/11; missed only the fallback class selector).'
     },
     'interest-triggered-tooltips:antigravity_cli': {
-        guided: 'Declarative interestfor triggers with <div popover="hint">, CSS anchor(), position-try fallbacks, and WCAG 1.4.13 persistence (14/16 — paired anchor() with position-area and omitted 1 of 3 polyfills).'
+        guided: 'Declarative interestfor triggers with <div popover="hint">, CSS anchor(), position-try fallbacks, and WCAG 1.4.13 persistence (14/16; paired anchor() with position-area and omitted 1 of 3 polyfills).'
     },
     'interest-triggered-tooltips:codex_cli': {
-        guided: 'Declarative interestfor triggers with <div popover="hint">, position-try fallbacks, and WCAG 1.4.13 persistence (12/16 — used position-area instead of anchor() and omitted 2 of 3 polyfills).'
+        guided: 'Declarative interestfor triggers with <div popover="hint">, position-try fallbacks, and WCAG 1.4.13 persistence (12/16; used position-area instead of anchor() and omitted 2 of 3 polyfills).'
     }
 };
 
@@ -341,7 +341,7 @@ function renderScorecard(task, pair) {
 
     const gMeterSegs = pair.checks.map(c => {
         const st = c.guidedPassed ? 'pass' : 'fail';
-        const label = `Check #${c.index} (${c.guidedPassed ? 'Pass' : 'Fail'}${c.flipped ? ' — flipped from Fail' : ''}): ${c.message}`;
+        const label = `Check #${c.index} (${c.guidedPassed ? 'Pass' : 'Fail'}${c.flipped ? ', flipped from Fail' : ''}): ${c.message}`;
         return `<span class="ab-meter-seg ${st}${c.flipped ? ' is-flipped' : ''}" title="${escapeHtml(label)}"></span>`;
     }).join('');
 
