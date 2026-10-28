@@ -129,14 +129,14 @@ The proportion of evaluated findings graded `not-old-pattern` ($\text{not-old-pa
 
 ### Experimental Rule
 
-An active rule in `ALL_RULES` available behind `--experimental` (`--all-rules`) that has not yet cleared the qualification criteria for default shipping.
+An active rule in `ALL_RULES` available behind `--all` that has not yet cleared the qualification criteria for default shipping.
 
 * _Reference_: `src/analyzing/rules/index.ts#ALL_RULES`
 * _Avoid_: `Active Rule`, `Unqualified Rule`, `Stage 1`, `PILOT_RULES`
 
 ### Qualified Rule
 
-A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Static Matcher Precision** $\ge 80\%$ and **Post-Verifier Precision** $\ge 90\%$ at $n \ge 10$, or **Static Matcher Precision** $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**, which runs only under `--experimental` (`--all-rules`).
+A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Static Matcher Precision** $\ge 80\%$ and **Post-Verifier Precision** $\ge 90\%$ at $n \ge 10$, or **Static Matcher Precision** $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**, which runs only under `--all`.
 
 * _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
 * _Avoid_: `Default Rule`, `Tier 1 Rule`, `Tier A / Tier B / Tier C`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`
