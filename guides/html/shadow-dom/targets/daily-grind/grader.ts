@@ -7,6 +7,7 @@ import {
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
 import {
+  Node,
   SyntaxKind,
   type CallExpression,
   type ClassDeclaration,
@@ -73,11 +74,9 @@ function getAllTemplateDocuments(): any[] {
   return templateDocs;
 }
 
-function getShadowStyleSheets(): CSSStyleSheet[] {
+function getTemplateStyleSheets(): CSSStyleSheet[] {
   const sheets: CSSStyleSheet[] = [];
-  const templateDocs = getAllTemplateDocuments();
-
-  for (const doc of templateDocs) {
+  for (const doc of getAllTemplateDocuments()) {
     const styleEls: any[] = Array.from(doc.querySelectorAll('style'));
     for (const styleEl of styleEls) {
       const css = styleEl.textContent || '';
@@ -86,7 +85,11 @@ function getShadowStyleSheets(): CSSStyleSheet[] {
       }
     }
   }
+  return sheets;
+}
 
+function getConstructedStyleSheets(): CSSStyleSheet[] {
+  const sheets: CSSStyleSheet[] = [];
   const sourceFiles = getAllSourceFiles();
   for (const sf of sourceFiles) {
     const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
@@ -107,18 +110,162 @@ function getShadowStyleSheets(): CSSStyleSheet[] {
   return sheets;
 }
 
+function getShadowStyleSheets(): CSSStyleSheet[] {
+  return [...getTemplateStyleSheets(), ...getConstructedStyleSheets()];
+}
+
 function collectStyleRules(rules: any[]): CSSStyleRule[] {
   const result: CSSStyleRule[] = [];
   for (const rule of rules) {
     if (rule instanceof CSSStyleRule) {
       result.push(rule);
-    } else if (rule && Array.isArray(rule.cssRules)) {
-      result.push(...collectStyleRules(Array.from(rule.cssRules)));
     } else if (rule && rule.cssRules) {
       result.push(...collectStyleRules(Array.from(rule.cssRules)));
     }
   }
   return result;
+}
+
+function unwrapExpression(node: Node | undefined): Node | undefined {
+  let current = node;
+  while (
+    current &&
+    (Node.isParenthesizedExpression(current) ||
+      Node.isAsExpression(current) ||
+      Node.isTypeAssertion(current) ||
+      Node.isSatisfiesExpression(current) ||
+      Node.isNonNullExpression(current))
+  ) {
+    current = current.getExpression();
+  }
+  return current;
+}
+
+const MAX_HANDLER_CALL_DEPTH = 3;
+
+// Resolves an event handler / callee expression to the function-like nodes whose bodies run.
+function resolveFunctionNodes(expr: Node | undefined): Node[] {
+  const node = unwrapExpression(expr);
+  if (!node) return [];
+
+  if (Node.isArrowFunction(node) || Node.isFunctionExpression(node)) {
+    return [node];
+  }
+
+  // handler.bind(this, ...)
+  if (Node.isCallExpression(node)) {
+    const callee = unwrapExpression(node.getExpression());
+    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'bind') {
+      return resolveFunctionNodes(callee.getExpression());
+    }
+    return [];
+  }
+
+  // this.method / this.#method
+  if (Node.isPropertyAccessExpression(node)) {
+    if (!Node.isThisExpression(unwrapExpression(node.getExpression()))) return [];
+    const cls = node.getFirstAncestor(
+      (a) => Node.isClassDeclaration(a) || Node.isClassExpression(a)
+    );
+    if (!cls || !(Node.isClassDeclaration(cls) || Node.isClassExpression(cls))) {
+      return [];
+    }
+    const name = node.getName();
+    const results: Node[] = [];
+    for (const member of cls.getMembers()) {
+      if (Node.isMethodDeclaration(member) && member.getName() === name) {
+        results.push(member);
+      } else if (Node.isPropertyDeclaration(member) && member.getName() === name) {
+        results.push(...resolveFunctionNodes(member.getInitializer()));
+      }
+    }
+    return results;
+  }
+
+  // Same-file named function or variable initialized with a function
+  if (Node.isIdentifier(node)) {
+    const name = node.getText();
+    const sf = node.getSourceFile();
+    const results: Node[] = [];
+    for (const fn of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+      if (fn.getName() === name) results.push(fn);
+    }
+    for (const decl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+      if (decl.getName() !== name) continue;
+      const init = unwrapExpression(decl.getInitializer());
+      if (init && (Node.isArrowFunction(init) || Node.isFunctionExpression(init))) {
+        results.push(init);
+      }
+    }
+    return results;
+  }
+
+  return [];
+}
+
+const ARRAY_FILTER_METHODS = new Set(['filter', 'some', 'every', 'find', 'findIndex']);
+
+// True if the function (or functions it calls, up to MAX_HANDLER_CALL_DEPTH) reads slot
+// assignments via assignedElements(), or via assignedNodes() combined with filtering.
+function handlerUsesAssignedContent(
+  fnNode: Node,
+  depth: number,
+  visited: Set<Node>
+): boolean {
+  if (visited.has(fnNode)) return false;
+  visited.add(fnNode);
+
+  const calls = fnNode.getDescendantsOfKind(SyntaxKind.CallExpression);
+  const filtersNodes =
+    calls.some((call) => {
+      const callee = unwrapExpression(call.getExpression());
+      return (
+        Node.isPropertyAccessExpression(callee) &&
+        (ARRAY_FILTER_METHODS.has(callee.getName()) || callee.getName() === 'trim')
+      );
+    }) ||
+    fnNode
+      .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+      .some((p) => p.getName() === 'nodeType');
+
+  for (const call of calls) {
+    const callee = unwrapExpression(call.getExpression());
+    if (!Node.isPropertyAccessExpression(callee)) continue;
+    const name = callee.getName();
+    if (name === 'assignedElements') return true;
+    if (name === 'assignedNodes' && filtersNodes) return true;
+  }
+
+  if (depth >= MAX_HANDLER_CALL_DEPTH) return false;
+
+  for (const call of calls) {
+    for (const target of resolveFunctionNodes(call.getExpression())) {
+      if (handlerUsesAssignedContent(target, depth + 1, visited)) return true;
+    }
+  }
+  return false;
+}
+
+function getSlotchangeHandlerExpressions(sourceFiles: SourceFile[]): Node[] {
+  const handlers: Node[] = [];
+  for (const sf of sourceFiles) {
+    for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+      const callee = unwrapExpression(call.getExpression());
+      if (!Node.isPropertyAccessExpression(callee)) continue;
+      if (callee.getName() !== 'addEventListener') continue;
+      const [eventArg, handlerArg] = call.getArguments();
+      if (getStringLiteralValue(eventArg) !== 'slotchange' || !handlerArg) continue;
+      handlers.push(handlerArg);
+    }
+    for (const bin of sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+      if (bin.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) continue;
+      const left = unwrapExpression(bin.getLeft());
+      if (Node.isPropertyAccessExpression(left) && left.getName() === 'onslotchange') {
+        handlers.push(bin.getRight());
+      }
+    }
+  }
+  return handlers;
 }
 
 test.describe('shadow-dom Target Grader', () => {
@@ -291,31 +438,20 @@ test.describe('shadow-dom Target Grader', () => {
 
   test('Adding or removing a slotted Light DOM element after upgrade updates the component state, attributes, or rendered DOM via a slotchange listener using assignedElements() or filtered assignedNodes()', () => {
     const sourceFiles = getAllSourceFiles();
-    const calls = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
+    const handlers = getSlotchangeHandlerExpressions(sourceFiles);
+
+    // The slotchange handler itself (or a method/function it calls) must read the slot's
+    // assigned content via assignedElements() or filtered assignedNodes().
+    const handlerReadsAssignedContent = handlers.some((handler) =>
+      resolveFunctionNodes(handler).some((fn) =>
+        handlerUsesAssignedContent(fn, 0, new Set())
+      )
     );
 
-    const hasSlotchangeListener = calls.some((call) => {
-      const expr = call.getExpression();
-      if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
-      if ((expr as any).getName() !== 'addEventListener') return false;
-      const eventName = getStringLiteralValue(call.getArguments()[0]);
-      if (eventName !== 'slotchange') return false;
-      return Boolean(call.getArguments()[1]);
-    });
-
-    const usesAssignedElementsOrFilteredNodes = calls.some((call) => {
-      const expr = call.getExpression();
-      if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
-      const mName = (expr as any).getName();
-      return mName === 'assignedElements' || mName === 'assignedNodes';
-    });
-
-    expect(hasSlotchangeListener && usesAssignedElementsOrFilteredNodes).toBe(true);
+    expect(handlerReadsAssignedContent).toBe(true);
   });
 
   test('Component styles live in the shadow root via adoptedStyleSheets, a <style> element, or a <link rel="stylesheet"> inside the shadow tree', () => {
-    const shadowSheets = getShadowStyleSheets();
     const templateDocs = getAllTemplateDocuments();
     const sourceFiles = getAllSourceFiles();
 
@@ -324,17 +460,24 @@ test.describe('shadow-dom Target Grader', () => {
         .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
         .some((prop) => prop.getName() === 'adoptedStyleSheets')
     );
+    const adoptedSheetHasRules =
+      hasAdoptedStyleSheets &&
+      getConstructedStyleSheets().some((sheet) => sheet.cssRules.length > 0);
 
-    const hasTemplateStyleOrLink = templateDocs.some((doc) =>
-      Boolean(doc.querySelector('style, link[rel="stylesheet"]'))
-    );
-
-    const hasRulesInShadow = shadowSheets.some(
+    const shadowStyleHasRules = getTemplateStyleSheets().some(
       (sheet) => sheet.cssRules.length > 0
     );
 
+    const shadowHasStylesheetLink = templateDocs.some((doc) =>
+      Array.from(doc.querySelectorAll('link[rel]')).some(
+        (link: any) =>
+          String(link.getAttribute('rel')).toLowerCase().split(/\s+/).includes('stylesheet') &&
+          Boolean(link.getAttribute('href')?.trim())
+      )
+    );
+
     expect(
-      (hasAdoptedStyleSheets || hasTemplateStyleOrLink) && hasRulesInShadow
+      adoptedSheetHasRules || shadowStyleHasRules || shadowHasStylesheetLink
     ).toBe(true);
   });
 
@@ -378,63 +521,76 @@ test.describe('shadow-dom Target Grader', () => {
         );
         if (cards.length < 2) return false;
 
-        // Pick a card that currently has no [slot="badge"] child and no limited/badge host attribute
-        const targetCard =
-          cards.find(
-            (c) =>
-              !c.querySelector('[slot="badge"]') &&
-              !c.hasAttribute('limited') &&
-              !c.hasAttribute('badge')
-          ) || cards[1];
-        const sr = targetCard.shadowRoot!;
-        const badgeSlot = sr.querySelector(
-          'slot[name="badge"]'
-        ) as HTMLSlotElement | null;
-        if (!badgeSlot) return false;
+        // Use a fresh, childless instance of the component so the check does not depend on
+        // how the page configures existing cards (attribute names, pre-slotted content).
+        const tagName = cards[0].localName;
+        const parent = cards[0].parentElement!;
+        await customElements.whenDefined(tagName);
+        const settle = () => new Promise((r) => setTimeout(r, 50));
 
-        const getSnapshot = () => {
-          const hostAttrs = targetCard
-            .getAttributeNames()
-            .sort()
-            .map((a) => `${a}=${targetCard.getAttribute(a)}`)
-            .join(';');
-          const shadowState = Array.from(sr.querySelectorAll('*'))
-            .map(
-              (el) =>
-                `${el.tagName}:${(el as HTMLElement).hidden}:${el.getAttribute('class') || ''}:${getComputedStyle(el).borderTopWidth}`
-            )
-            .join('|');
-          return `${hostAttrs}__${shadowState}`;
+        const createFresh = async () => {
+          const el = document.createElement(tagName);
+          parent.appendChild(el);
+          await settle();
+          return el;
         };
 
-        const initialSnap = getSnapshot();
+        const getSnapshot = (host: Element) => {
+          const sr = host.shadowRoot!;
+          const hostAttrs = host
+            .getAttributeNames()
+            .sort()
+            .map((a) => `${a}=${host.getAttribute(a)}`)
+            .join(';');
+          // Skip slot fallback content: the browser stops rendering it as soon as anything is
+          // assigned, which would register as a change even without a slotchange reaction.
+          const shadowDisplay = Array.from(sr.querySelectorAll('*'))
+            .filter((el) => !el.parentElement?.closest('slot'))
+            .map((el) => `${el.tagName}:${getComputedStyle(el).display}`)
+            .join('|');
+          return `${hostAttrs}__${getComputedStyle(host).display}__${sr.innerHTML}__${shadowDisplay}`;
+        };
 
-        // Append whitespace text node in the badge slot — should NOT trigger badge state
-        const wsNode = document.createTextNode('   \n  ');
-        targetCard.appendChild(wsNode);
-        await new Promise((r) => setTimeout(r, 50));
-        const afterWhitespaceSnap = getSnapshot();
-        wsNode.remove();
-        await new Promise((r) => setTimeout(r, 50));
+        // Whitespace-only text must not count as slotted content.
+        const wsHost = await createFresh();
+        if (!wsHost.shadowRoot) return false;
+        const wsInitial = getSnapshot(wsHost);
+        wsHost.appendChild(document.createTextNode('   \n  '));
+        await settle();
+        const whitespaceIsNoop = getSnapshot(wsHost) === wsInitial;
+        wsHost.remove();
 
-        // Now add a slotted badge element dynamically
-        const badgeEl = document.createElement('span');
-        badgeEl.setAttribute('slot', 'badge');
-        badgeEl.textContent = 'New';
-        targetCard.appendChild(badgeEl);
-        await new Promise((r) => setTimeout(r, 50));
-        const afterAddSnap = getSnapshot();
+        // Adding a slotted element to some named slot must change state; removing it must revert.
+        const slotNames = Array.from(
+          wsHost.shadowRoot.querySelectorAll('slot[name]')
+        )
+          .map((s) => s.getAttribute('name')!)
+          .filter((n) => n.trim());
 
-        // Remove the slotted badge element dynamically
-        badgeEl.remove();
-        await new Promise((r) => setTimeout(r, 50));
-        const afterRemoveSnap = getSnapshot();
+        let addRemoveUpdates = false;
+        for (const name of new Set(slotNames)) {
+          const host = await createFresh();
+          const initialSnap = getSnapshot(host);
 
-        return (
-          afterWhitespaceSnap === initialSnap &&
-          afterAddSnap !== initialSnap &&
-          afterRemoveSnap === initialSnap
-        );
+          const slotted = document.createElement('span');
+          slotted.setAttribute('slot', name);
+          slotted.textContent = 'New';
+          host.appendChild(slotted);
+          await settle();
+          const afterAddSnap = getSnapshot(host);
+
+          slotted.remove();
+          await settle();
+          const afterRemoveSnap = getSnapshot(host);
+          host.remove();
+
+          if (afterAddSnap !== initialSnap && afterRemoveSnap === initialSnap) {
+            addRemoveUpdates = true;
+            break;
+          }
+        }
+
+        return whitespaceIsNoop && addRemoveUpdates;
       });
 
       expect(updatedProperly).toBe(true);
