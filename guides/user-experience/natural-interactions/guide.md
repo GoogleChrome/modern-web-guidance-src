@@ -1,6 +1,6 @@
 ---
 name: natural-interactions
-description: Implement natural interactions with clear hover, focus, and press feedback, spring-like motion that grows from its trigger, swipeable content, and keyboard-reachable actions.
+description: Implement natural interactions with clear hover, focus, and press feedback, motion that opens from its trigger, swipeable content, and keyboard-reachable actions.
 web-feature-ids:
   - focus-visible
   - linear-easing
@@ -34,18 +34,15 @@ button:active { scale: 0.97; } /* example value */
 
 - Use `:focus-visible` so keyboard users always see a clear focus ring, without showing it on mouse clicks.
 - DO NOT remove focus outlines (`outline: none` or `outline: 0`) without providing an equally visible replacement with at least a 3:1 contrast ratio against the page (WCAG 1.4.11). `CanvasText` is the text color for the page's `color-scheme`, so it contrasts with the default page background in light mode, in dark mode (with `color-scheme: light dark`), and in forced colors. If you set your own page background, pick a ring color with 3:1 against it. `currentColor` fails when a button's text color matches the page.
+- Make each interaction state look different, including combinations: hover, press, pressing while hovering, and keyboard focus. In the example, hover adds a shadow, press a scale, and focus an outline, so any combination shows each of its parts.
 
-### Grow menus from their trigger
+### Open disclosures from their trigger
 
-Open menus and popovers with an animation scaling out from the edge or corner touching the trigger button. Place the menu next to its trigger, and align `transform-origin` with the corner that touches it. To flip dropdowns at viewport edges, see {{ GUIDE_REF("viewport-aware-dropdowns") }}.
+Popovers and dropdowns should visibly open from the control that triggered them: scale out from the corner touching the trigger, or slide out from its side. Menus and hovercards have their own open motion; follow {{ GUIDE_REF("menu") }} and {{ GUIDE_REF("hovercard") }}. For other popovers, place the popover next to its trigger and align `transform-origin` with the corner that touches it. To flip dropdowns at viewport edges, see {{ GUIDE_REF("viewport-aware-dropdowns") }}.
 
 ```css
-:root {
-  /* example spring curve */
-  --spring: linear(0, 0.45 15%, 1.08 35%, 0.97 55%, 1.01 75%, 1);
-}
-.menu {
-  /* popovertarget makes the trigger the menu's anchor. */
+.dropdown {
+  /* popovertarget makes the trigger the popover's anchor. */
   position-area: bottom span-right;
   inset: auto;
   margin: 0;
@@ -53,10 +50,11 @@ Open menus and popovers with an animation scaling out from the edge or corner to
   transform-origin: top left;
 }
 /* example durations */
-.menu:is(:popover-open, .\:popover-open) { animation: fade-in 150ms ease-out both; }
+.dropdown:is(:popover-open, .\:popover-open) { animation: fade-in 150ms ease-out both; }
 @media (prefers-reduced-motion: no-preference) {
-  .menu:is(:popover-open, .\:popover-open) {
-    animation: grow 300ms var(--spring) both, fade-in 150ms ease-out both;
+  .dropdown:is(:popover-open, .\:popover-open) {
+    /* optional example spring curve, written inline */
+    animation: grow 300ms linear(0, 0.45 15%, 1.08 35%, 0.97 55%, 1.01 75%, 1) both, fade-in 150ms ease-out both;
   }
 }
 @keyframes grow { from { scale: 0.9; } }
@@ -64,28 +62,30 @@ Open menus and popovers with an animation scaling out from the edge or corner to
 ```
 
 - Keep animations on the compositor (`transform`, its individual properties, and `opacity`) and respect reduced-motion preferences; see {{ GUIDE_REF("motion") }}. This example animates the opening only; for exit transitions, see {{ GUIDE_REF("animate-to-from-top-layer") }}.
-- Trigger popovers declaratively using `<button popovertarget="menu-id">` (see {{ GUIDE_REF("declarative-dialog-popover-control") }}) to get native click, keyboard, and dismiss behavior without JavaScript.
-- Spring curves created with `linear()` make scaling or translating elements feel physical; see {{ GUIDE_REF("physics-based-easing") }}. For menus, use a spring that overshoots slightly before settling, so at least one output value is above 1. Reserve the `linear` keyword for constant, non-accelerating motion such as spinners and progress bars.
+- Trigger popovers declaratively using `<button popovertarget="dropdown-id">` (see {{ GUIDE_REF("declarative-dialog-popover-control") }}) to get native click, keyboard, and dismiss behavior without JavaScript.
+- For a springy open, use a `linear()` curve that overshoots slightly before settling (an output value above 1); see {{ GUIDE_REF("physics-based-easing") }}.
 
-### Make horizontal content swipeable
+### Make horizontal scrollers swipeable
+
+Any horizontally scrollable row of items, such as a carousel, gallery, or row of chips, should scroll natively and snap to its items.
 
 ```css
-.carousel {
+.scroller {
   display: flex;
   gap: 1rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
 }
-.carousel > * {
-  flex: 0 0 85%; /* example width that shows a peek of the next item */
+.scroller > * {
+  flex: 0 0 85%; /* example item width */
   scroll-snap-align: start;
 }
 ```
 
-- Native overflow scrolling gives touch swiping its physics and momentum, and scroll snapping makes each swipe come to rest on an item, without custom touch listeners.
-- Ensure the carousel container is focusable and labeled (`<div class="carousel" role="region" aria-label="Featured items" tabindex="0">`) so keyboard users can scroll items using arrow keys.
-- To provide previous and next buttons or pagination indicators, coordinate them with scroll position in CSS or script.
-- For full off-canvas sheets and side menus that dismiss when swiped away, see {{ GUIDE_REF("navigation-drawer") }}.
+- Native overflow scrolling gives swiping its physics and momentum, and snapping makes each swipe come to rest on an item, with no touch listeners.
+- If none of the scroller's items contains a link, button, or other focusable element, make the scroller itself focusable and labeled (`<div class="scroller" role="region" aria-label="Featured items" tabindex="0">`), so keyboard users can reach it and scroll it with the arrow keys. When items are focusable, tabbing to them already scrolls them into view.
+- To highlight the item that snaps into place, see {{ GUIDE_REF("carousel-snap-highlights") }}. To swipe a list item aside to reveal actions, see {{ GUIDE_REF("swipe-to-reveal") }}. For side menus that close when swiped away, see {{ GUIDE_REF("navigation-drawer") }}.
+{# PENDING_GUIDE_REF: For carousel controls such as previous and next buttons and scroll markers, see {{ GUIDE_REF("carousel") }}. #}
 
 ### Add motion blur to large, fast movements (optional)
 
@@ -103,8 +103,8 @@ For large, rapid translations (such as a full-screen sheet sliding into view), a
 ### Make every action reachable without a mouse
 
 - Use `<button>` for actions and `<a>` with an `href` for navigation. Both receive keyboard focus and activate on <kbd>Enter</kbd>; buttons also activate on <kbd>Space</kbd>.
-- Never open menus or dialogs on hover alone; require an explicit click, tap, or keyboard activation.
-- If hovering over an element reveals controls or secondary information, reveal them on keyboard focus too, and display them by default on devices without hover (for tooltips or action previews triggered on hover, focus, or long-press, see {{ GUIDE_REF("interest-triggered-tooltips") }} and {{ GUIDE_REF("interest-triggered-action-previews") }}):
+- Menus and dropdowns may open on hover, but never only on hover: they also open on click, tap, and keyboard activation, stay open while the pointer moves onto them, and close with <kbd>Esc</kbd> (WCAG 2.1.1, 1.4.13).
+- Controls or details revealed in place on hover, such as card actions, must also appear on keyboard focus and be visible by default on devices without hover:
 
 ```css
 .card .actions { opacity: 0; }
@@ -115,6 +115,8 @@ For large, rapid translations (such as a full-screen sheet sliding into view), a
 }
 ```
 
+For tooltips and previews triggered on hover, focus, or long-press, see {{ GUIDE_REF("interest-triggered-tooltips") }} and {{ GUIDE_REF("interest-triggered-action-previews") }}.
+
 ## Fallback strategies
 
 {{ FEATURE_FALLBACKS("popover") }}
@@ -123,8 +125,10 @@ For large, rapid translations (such as a full-screen sheet sliding into view), a
 
 {{ BASELINE_STATUS("anchor-positioning", "html.elements.button.popovertarget.implicit_anchor_reference") }}
 
-Without support, `inset: auto` leaves the menu at the top-left corner of the viewport. When `CSS.supports('position-area: bottom')` is false, set the menu's `top` and `left` from the trigger's `getBoundingClientRect()` in a `beforetoggle` event listener.
+Without support, `inset: auto` leaves the popover at the top-left corner of the viewport. When `CSS.supports('position-area: bottom')` is false, set the popover's `top` and `left` from the trigger's `getBoundingClientRect()` in a `beforetoggle` event listener.
 
 ### Linear easing
 
 {{ BASELINE_STATUS("linear-easing") }}
+
+Browsers without `linear()` drop the declaration that uses it, so precede it with one that uses a keyword such as `ease-out`, as the fade-in above does. Write `linear()` inline, not through a custom property, or the earlier declaration is discarded too.
