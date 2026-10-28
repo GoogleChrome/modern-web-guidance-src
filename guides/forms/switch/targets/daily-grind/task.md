@@ -1,1 +1,1 @@
-- Build an accessible switch in the application.
+- Add an interactive toggle to filter or customize options in the application.
