@@ -271,9 +271,12 @@ Every web platform standard in the catalog is classified across two orthogonal a
 | `dark-mode` | `dark-mode` | CSS | `held-out` | 78 | 35 / 34 | 94.3% ([81.4%, 98.4%]) | 94.1% ([80.9%, 98.4%]) | `color-scheme: light dark` and `light-dark()` color function |
 | `interest-triggered-tooltips` | `interest-triggered-tooltips/js-tooltip` | JS | `held-out` | 56 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
 | `calculate-event-differentials` | `format-human-readable-durations/js-duration-formatter` | JS | `held-out` | 27 | 25 / 25 | 92.0% ([75.0%, 97.8%]) | 92.0% ([75.0%, 97.8%]) | Native `Temporal.Duration` and `Intl.DurationFormat` |
+| `autofill-sign-up-form` | `autofill-sign-up-form` | DOM | `held-out` | 134 | 35 / 29 | 91.4% ([77.6%, 97.0%]) | 96.6% ([82.8%, 99.4%]) | Standard `autocomplete="new-password"` on registration and sign-up password inputs |
+| `dark-mode-toggle` | `dark-mode-toggle` | JS | `held-out` | 64 | 21 / 21 | 90.5% ([71.1%, 97.3%]) | 90.5% ([71.1%, 97.3%]) | Theme toggle synchronizing `<meta name="color-scheme">` with CSS `light-dark()` |
 | `sanitize-untrusted-html` | `sanitize-untrusted-html/js-dompurify-innerhtml` | JS | `held-out` | 13 | 10 / 10 | 90.0% ([59.6%, 98.2%]) | 90.0% ([59.6%, 98.2%]) | Native Sanitizer API (`element.setHTML()`) |
 | `checkbox` | `checkbox` | CSS, DOM & JS | `held-out` | 175 | 35 / 32 | 85.7% ([70.6%, 93.7%]) | 93.8% ([79.9%, 98.3%]) | Native `<input type="checkbox">`, `accent-color`, and `:indeterminate` |
 | `autofill-sign-in-form` | `autofill-sign-in-form` | DOM | `held-out` | 265 | 35 / 26 | 85.7% ([70.6%, 93.7%]) | 92.3% ([75.9%, 97.9%]) | Standard `autocomplete="username"` and `autocomplete="current-password"` |
+| `progress` | `progress` | DOM | `held-out` | 86 | 26 / 24 | 84.6% ([66.5%, 93.9%]) | 91.7% ([74.2%, 97.7%]) | Native HTML `<progress>` element styled with CSS `accent-color` |
 | `autofill-payment-form` | `autofill-payment-form` | DOM & JS | `held-out` | 27 | 15 / 12 | 80.0% ([54.8%, 93.0%]) | 100.0% ([75.7%, 100.0%]) | Standard `cc-*` `autocomplete` attributes on payment inputs |
 
 ---
