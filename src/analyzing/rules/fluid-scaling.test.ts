@@ -4,41 +4,60 @@ import { scanCss } from '../scanners/css-scanner.ts';
 import { fluidScalingMatcher } from './fluid-scaling.ts';
 
 void test('fluid-scaling CSS matcher', async (t) => {
-  await t.test('flags component selector (.card, .widget, .panel) using vw inside clamp() or calc() for font-size/padding/gap', () => {
+  await t.test('flags typography/component selector stepping font-size across >= 3 @media breakpoints', () => {
     const css = `
       .card-title {
-        font-size: clamp(1rem, 0.75rem + 2vw, 1.75rem);
+        font-size: 14px;
       }
-      .card-body {
-        padding: clamp(0.75rem, 0.5rem + 1.5vw, 1.5rem);
+      @media (min-width: 480px) {
+        .card-title {
+          font-size: 28px;
+        }
+      }
+      @media (min-width: 768px) {
+        .card-title {
+          font-size: 56px;
+        }
+      }
+      @media (min-width: 1024px) {
+        .card-title {
+          font-size: 84px;
+        }
       }
     `;
     const matches = scanCss('card.css', css, [fluidScalingMatcher]);
     assert.equal(matches.length, 1);
   });
 
-  await t.test('exempts page-level typography, full-bleed 100vw math, and stylesheets already using cqi/container-type', () => {
-    const pageLevelCss = `
-      body {
-        font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
-      }
-      .hero-title {
-        font-size: clamp(2rem, 1rem + 4vw, 4.5rem);
-      }
-      .card-bleed {
-        padding-left: calc(100vw - 100%);
+  await t.test('does not flag clamp() with vw (the guide fallback), < 3 breakpoints, or layout rules', () => {
+    const clampFallbackCss = `
+      .component-title {
+        font-size: clamp(1rem, 5vw, 2.5rem);
       }
     `;
-    assert.equal(scanCss('layout.css', pageLevelCss, [fluidScalingMatcher]).length, 0);
+    assert.equal(scanCss('fallback.css', clampFallbackCss, [fluidScalingMatcher]).length, 0);
 
-    const modernCss = `
-      .card-wrapper {
-        container-type: inline-size;
+    const twoBreakpointsCss = `
+      @media (min-width: 768px) {
+        .card-title { font-size: 1.5rem; }
       }
-      .card-title {
-        font-size: clamp(1rem, 0.75rem + 3cqi, 1.75rem);
+      @media (min-width: 1024px) {
+        .card-title { font-size: 2rem; }
       }
     `;
-    assert.equal(scanCss('modern.css', modernCss, [fluidScalingMatcher]).length, 0);
+    assert.equal(scanCss('two.css', twoBreakpointsCss, [fluidScalingMatcher]).length, 0);
+
+    const layoutMediaCss = `
+      @media (min-width: 480px) {
+        .card-title { font-size: 1.25rem; display: flex; }
+      }
+      @media (min-width: 768px) {
+        .card-title { font-size: 1.5rem; display: flex; }
+      }
+      @media (min-width: 1024px) {
+        .card-title { font-size: 2rem; display: flex; }
+      }
+    `;
+    assert.equal(scanCss('layout.css', layoutMediaCss, [fluidScalingMatcher]).length, 0);
   });
 });

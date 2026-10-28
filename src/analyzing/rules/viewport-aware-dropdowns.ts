@@ -9,7 +9,7 @@ import type {
 export const VIEWPORT_AWARE_DROPDOWNS_GUIDE_HASH = '910cee5aac41';
 
 const DROPDOWN_SIGNAL_RE =
-  /\b(dropdown|dropdowns|menu|menus|submenu|popover|popup|listbox|combobox|picker|pk_menu|entry-menu|contextmenu|context-menu)\b|[a-z](?:Dropdown|Submenu|Menu|Popover|Popup|Picker)\b|\b(?:dropdown|submenu|menu|popover|popup|contextMenu)[A-Z_]/;
+  /\b(dropdown|dropdowns|menu|menus|submenu|popover|popup|listbox|combobox|picker|pk_menu)\b|[a-z](?:Dropdown|Submenu|Menu|Popover|Popup|Picker)\b|\b(?:dropdown|submenu|menu|popover|popup)[A-Z_]/;
 
 const VIEWPORT_BOUNDS_RE =
   /\b(?:window\s*\.\s*(?:innerWidth|innerHeight)|document\.documentElement\s*\.\s*(?:clientWidth|clientHeight)|visualViewport\s*\.\s*(?:width|height))\b/;
@@ -20,9 +20,9 @@ const DYNAMIC_STYLE_POSITION_RE =
 const BOUNDARY_COMPARISON_RE =
   /[<>]=?|\bMath\.(?:min|max)\b/;
 
-// Carve out position-aware-tooltips and non-dropdown positioning
+// Carve out position-aware-tooltips, pointer-coordinate contextmenu handlers, and drag/resize math
 const EXCLUSION_RE =
-  /\b(tooltip|tooltips|tippy|canvas|getContext|confetti|drag|dragging|onMouseMove|pointermove|touchmove|marginChild|resizeHandler|resizeHandlerY|isResizing|resizeConfig|updateResize|canResize|minWidth|largeMinWidth|__webpack_modules__|webpackBootstrap)\b/i;
+  /\b(tooltip|tooltips|tippy|contextmenu|context-menu|contextMenu|onContextMenu|elementFromPoint|clientX|clientY|pageX|pageY|offsetX|offsetY|screenX|screenY|canvas|getContext|confetti|drag|dragging|onMouseMove|pointermove|touchmove|marginChild|resizeHandler|resizeHandlerY|isResizing|resizeConfig|updateResize|canResize|minWidth|largeMinWidth|__webpack_modules__|webpackBootstrap)\b/i;
 
 function isAlreadyModern(fileContent: string): boolean {
   return (
@@ -68,12 +68,12 @@ export const viewportAwareDropdownsMatcher: JsRuleMatcher = {
       if (!VIEWPORT_BOUNDS_RE.test(fnText)) continue;
       if (!DYNAMIC_STYLE_POSITION_RE.test(fnText)) continue;
       if (!BOUNDARY_COMPARISON_RE.test(fnText)) continue;
-      if (EXCLUSION_RE.test(fnText)) continue;
 
       const enclosingClass = fn.getFirstAncestorByKind(SyntaxKind.ClassDeclaration);
-      const contextNameText = enclosingClass
-        ? `${enclosingClass.getName() ?? ''}\n${fnText}`
-        : fnText;
+      const enclosingVar = fn.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
+      const contextNameText = `${enclosingClass?.getName() ?? ''} ${enclosingVar?.getName() ?? ''}\n${fnText}`;
+
+      if (EXCLUSION_RE.test(contextNameText)) continue;
 
       if (!DROPDOWN_SIGNAL_RE.test(contextNameText)) {
         continue;
@@ -112,9 +112,10 @@ export const viewportAwareDropdownsRule: AnalyzerRule = {
   matcher: viewportAwareDropdownsMatcher,
   verifierRubric: {
     keepWhen: [
-      'Dropdown, menu, submenu, or popover positioning logic calling getBoundingClientRect(), comparing against viewport width/height, and setting inline style.top or style.left to flip or clamp within the viewport',
+      'Trigger-anchored dropdown, menu, submenu, or popover positioning logic calling getBoundingClientRect(), comparing against viewport width/height, and setting inline style.top or style.left to flip or clamp within the viewport',
     ],
     dropWhen: [
+      'Right-click contextmenu handlers or menus positioned at pointer coordinates (clientX, clientY, pageX, pageY)',
       'Hover/focus tooltip positioning (covered by position-aware-tooltips)',
       'Drag-and-drop, splitter resize, or canvas overlay coordinate math',
     ],

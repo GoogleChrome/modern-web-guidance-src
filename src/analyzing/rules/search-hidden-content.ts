@@ -2,9 +2,6 @@ import { SyntaxKind, type Node, type SourceFile } from 'ts-morph';
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  CssMatcherContext,
-  CssRuleMatcher,
-  CssRuleView,
   JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
@@ -98,47 +95,6 @@ export const searchHiddenContentMatcher: JsRuleMatcher = {
   },
 };
 
-const CSS_VENDOR_FILE_RE =
-  /(?:^|\/)(?:jquery|bootstrap|semantic|foundation|bulma|materialize|bitrix|ext\/)|_files\//i;
-
-const CSS_ACCORDION_PANEL_SELECTOR_RE =
-  /\.(?:[a-z0-9]+[-_])*(?:accordion|faq)[-_a-z0-9]*(?:content|panel|body|answer|details|collapse)\b/i;
-
-const CSS_HEADER_OR_ICON_EXCLUSION_RE =
-  /\b(?:header|heading|title|button|trigger|icon|arrow|toggle|summary|ui-accordion|w3-accordion)\b/i;
-
-export const searchHiddenContentCssMatcher: CssRuleMatcher = {
-  kind: 'css',
-  fastTokens: ['accordion', 'faq'] as const,
-  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
-    if (CSS_VENDOR_FILE_RE.test(ctx.filePath)) {
-      return null;
-    }
-
-    if (isAlreadyModern(ctx.stylesheetText)) {
-      return null;
-    }
-
-    const selector = styleRule.selectorText;
-    if (!CSS_ACCORDION_PANEL_SELECTOR_RE.test(selector)) {
-      return null;
-    }
-
-    if (CSS_HEADER_OR_ICON_EXCLUSION_RE.test(selector)) {
-      return null;
-    }
-
-    const displayVal = styleRule.getPropertyValue('display');
-    if (!displayVal || displayVal.trim().toLowerCase() !== 'none') {
-      return null;
-    }
-
-    return {
-      message: `Accordion/FAQ content rule '${selector}' uses display: none, which blocks browser find-in-page; use <details> or hidden="until-found" with a beforematch listener.`,
-    };
-  },
-};
-
 export const searchHiddenContentRule: AnalyzerRule = {
   id: 'search-hidden-content',
   guideId: 'search-hidden-content',
@@ -157,25 +113,4 @@ export const searchHiddenContentRule: AnalyzerRule = {
   },
 };
 
-export const searchHiddenContentCssRule: AnalyzerRule = {
-  id: 'search-hidden-content/css',
-  guideId: 'search-hidden-content',
-  guideHash: SEARCH_HIDDEN_CONTENT_GUIDE_HASH,
-  summary:
-    'Detects CSS rules on accordion or FAQ content panels that set display: none when collapsed, preventing browser find-in-page from matching collapsed text.',
-  matcher: searchHiddenContentCssMatcher,
-  verifierRubric: {
-    keepWhen: [
-      'CSS rule targeting a collapsed accordion or FAQ content/answer panel and setting display: none',
-    ],
-    dropWhen: [
-      'CSS rule hiding a decorative icon, arrow indicator, or toggle button rather than the searchable content panel',
-      'Navigation bar or dropdown menu collapse rule',
-    ],
-  },
-};
-
-export default [
-  searchHiddenContentRule,
-  searchHiddenContentCssRule,
-] satisfies readonly AnalyzerRule[];
+export default [searchHiddenContentRule] satisfies readonly AnalyzerRule[];

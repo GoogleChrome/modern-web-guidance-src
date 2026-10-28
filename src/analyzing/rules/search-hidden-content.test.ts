@@ -1,13 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanCss } from '../scanners/css-scanner.ts';
 import { matchJsRule } from '../scanners/js-scanner.ts';
-import {
-  searchHiddenContentCssMatcher,
-  searchHiddenContentMatcher,
-} from './search-hidden-content.ts';
+import { searchHiddenContentMatcher } from './search-hidden-content.ts';
 
-void test('search-hidden-content JS and CSS matchers', async (t) => {
+void test('search-hidden-content JS matcher', async (t) => {
   await t.test('flags JS/JSX accordion or FAQ components hiding collapsed panels with boolean hidden or display: none', () => {
     const code = `
       function toggleAccordionItem(button, panel) {
@@ -36,28 +32,5 @@ void test('search-hidden-content JS and CSS matchers', async (t) => {
       }
     `;
     assert.equal(matchJsRule(searchHiddenContentMatcher, 'navbar.js', navbarCode).length, 0);
-  });
-
-  await t.test('flags CSS accordion/FAQ content panel rules setting display: none', () => {
-    const css = `
-      .faq-answer-panel {
-        display: none;
-      }
-      .faq-answer-panel.is-open {
-        display: block;
-      }
-    `;
-    const matches = scanCss('faq.css', css, [searchHiddenContentCssMatcher]);
-    assert.equal(matches.length, 1);
-  });
-
-  await t.test('exempts CSS rules hiding accordion icons or headers', () => {
-    const css = `
-      .accordion-header-icon {
-        display: none;
-      }
-    `;
-    const matches = scanCss('icons.css', css, [searchHiddenContentCssMatcher]);
-    assert.equal(matches.length, 0);
   });
 });
