@@ -83,6 +83,13 @@ const commandRegistry = {
 *   **Shadow roots**: If the target may be in a shadow root, use `event.composedPath()[0]` instead of `event.target`.
 *   **Accessibility**: Custom commands have no inherent semantics, and you must explicitly apply any states.
 
+## Accessibility considerations
+
+* If the button displays additional content, use the `aria-expanded` attribute, set to `aria-expanded="false"` by default and `aria-expanded="true"` when the accompanying content is displayed
+* If the button facilitates an interaction itself (examples include toggle buttons which can play and pause, volume buttons which can mute and unmute), use the `aria-pressed` attribute, set to `aria-pressed="false"` when inactive, and `aria-pressed="true"` when active
+* If the button opens an element with a role of either `menu`, `listbox`, `tree`, `grid`, or `dialog`, then the control must have an `aria-haspopup` attribute, with a value set to the role of the element that it opens
+* If the button becomes disabled on activation, instead of using `disabled`, use `aria-disabled="true"` so that there is no loss of focus
+
 ## Fallback strategies
 
 {{ BASELINE_STATUS("invoker-commands") }}

@@ -46,7 +46,8 @@ const escapePolicy = trustedTypes.createPolicy('escape-html', {
 });
 ```
 
-> **Warning:** Character-level HTML escaping (`escapePolicy`) converts all markup into plain text and is **not** a context-aware HTML sanitizer. If you only need plain text, prefer `element.textContent` (which is not a Trusted Types sink). Never interpolate `escapePolicy.createHTML()` output into another HTML template string—such as an unquoted attribute (`<img src=${escaped}>`) or a URL attribute (`<a href="${escaped}">`, where `javascript:` URLs are not neutralized by entity escaping). Use a full HTML sanitizer (`DOMPurify` or `element.setHTML()`, covered in {{ GUIDE_REF("sanitize-untrusted-html") }}) whenever accepting HTML markup or attributes.
+> [!WARNING]
+> Character-level HTML escaping (`escapePolicy`) converts all markup into plain text and is **not** a context-aware HTML sanitizer. If you only need plain text, prefer `element.textContent` (which is not a Trusted Types sink). Never interpolate `escapePolicy.createHTML()` output into another HTML template string—such as an unquoted attribute (`<img src=${escaped}>`) or a URL attribute (`<a href="${escaped}">`, where `javascript:` URLs are not neutralized by entity escaping). Use a full HTML sanitizer (`DOMPurify` or `element.setHTML()`, covered in {{ GUIDE_REF("sanitize-untrusted-html") }}) whenever accepting HTML markup or attributes.
 
 ### 2. Using the Policy
 
