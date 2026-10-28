@@ -56,9 +56,9 @@ Set `container-type: scroll-state` on the `position: sticky` element, not on its
 Add `scroll-padding-top` to the `html` and `body` elements and set the value to be equal or greater than the sticky element's height. This approach should ensure that when controls receive focus, they'll be consistently visible below the sticky content, adhering to WCAG 2.4.11 Focus Not Obscured (Minimum), which requires that focused components are not fully obscured.
 
 ```css
-html, body {
+html {
   /* Accounts for the height of the header */
-  scroll-padding-top: 4rem; 
+  scroll-padding-top: var(--header-height); 
 }
 ```
 
