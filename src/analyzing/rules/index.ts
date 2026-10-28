@@ -164,10 +164,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   visuallyStableFontFallbacks,
 ];
 
-export type RuleStatusValue =
-  | 'qualified'
-  | 'experimental'
-  | { readonly experimental: string };
+export type RuleStatusValue = 'qualified' | 'experimental';
 
 /**
  * Per-rule lifecycle status map keyed by `AnalyzerRule['id']`.
@@ -183,15 +180,12 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'animate-to-intrinsic-sizes': 'experimental',
   'atrule-support-conditionals/js-modernizr': 'experimental',
   'autofill-address-form': 'qualified',
-  'autofill-highlight-inputs': {
-    experimental:
-      'Scored under de-admitted v6 judge; 0 human spot-check cards; low-prevalence no-op swap (D-041, D-042, D-062, D-065, in 82b8f81fe and 26710110f)',
-  },
+  'autofill-highlight-inputs': 'experimental',
   'autofill-payment-form': 'qualified',
   'autofill-sign-in-form': 'qualified',
   'autofill-sign-up-form': 'experimental',
   'batch-analytics-events': 'experimental',
-  'branded-select-styling': 'experimental', // reason not recorded (unregistered in a76520de2)
+  'branded-select-styling': 'experimental',
   'branded-select-styling/js': 'experimental',
   'break-up-long-tasks': 'experimental',
   'calculate-event-differentials': 'experimental',
@@ -204,10 +198,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'child-state-based-styling': 'experimental',
   'child-state-based-styling/js-parent-class': 'experimental',
   'client-side-encryption/js-crypto': 'experimental',
-  'complex-shapes': {
-    experimental:
-      'Failed precision threshold in held-out validation; 0 human blind spot-check cards (D-041, D-042, in 82b8f81fe and 26710110f)',
-  },
+  'complex-shapes': 'experimental',
   'conditional-async-dependencies/package-script-loader': 'experimental',
   'conditional-async-dependencies/js-script-loader': 'experimental',
   'contrast-color/js': 'experimental',
@@ -222,13 +213,10 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'declarative-dialog-popover-control': 'experimental',
   'declarative-dialog-popover-control/click-listener': 'experimental',
   'defer-work-until-scroll-ends': 'experimental',
-  'deliver-optimized-decorative-images': {
-    experimental:
-      'Scored under de-admitted v6 judge with 0 human spot-check cards and CSS content: image-set(...) sizing defect; below held-out sample size bar at n = 13 (D-041, D-042, D-049, in 82b8f81fe and 3779a457b)',
-  },
+  'deliver-optimized-decorative-images': 'experimental',
   'detect-initial-visibility-state': 'experimental',
   'digital-signatures/js-signature': 'experimental',
-  'drag/package-drag-drop': 'experimental', // reason not recorded (unregistered in a76520de2)
+  'drag/package-drag-drop': 'experimental',
   'drag/js-mouse-touch-drag': 'experimental',
   'equal-width-text-lines/package-fittext': 'experimental',
   'equal-width-text-lines/js-fittext': 'experimental',
@@ -242,29 +230,18 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'improve-next-page-load-performance/js-quicklink': 'experimental',
   'improve-text-layout-and-legibility/package-text-balance': 'experimental',
   'improve-text-layout-and-legibility/js-text-balance': 'experimental',
-  'individual-transform-properties': {
-    experimental:
-      '13/20 spot-check cards were isolated single-function state transforms (:hover { transform: scale(1.1) }) graded before leave-it was a top-level verdict; matcher rewritten in 4acd735d6 (D-041, D-042, in 82b8f81fe and 3779a457b)',
-  },
+  'individual-transform-properties': 'experimental',
   'individual-transform-properties/standalone-chain': 'experimental',
   'individual-transform-properties/single-function-state': 'experimental',
-  'interactions-in-complex-layouts/package-fastdom': {
-    experimental: 'Zero denominator (n = 0) on held-out corpus (D-048, in 3779a457b and 26710110f)',
-  },
-  'interactions-in-complex-layouts/js-fastdom': {
-    experimental: 'Zero denominator (n = 0) on held-out corpus (D-048, in 3779a457b and 26710110f)',
-  },
+  'interactions-in-complex-layouts/package-fastdom': 'experimental',
+  'interactions-in-complex-layouts/js-fastdom': 'experimental',
   'interest-triggered-action-previews/package-hoverintent': 'experimental',
   'interest-triggered-action-previews/js-hover-preview': 'experimental',
   'interest-triggered-tooltips/js-tooltip': 'qualified',
-  'language-detection/package-lang-detect': {
-    experimental: 'Zero denominator (n = 0) on held-out corpus (D-048, in 3779a457b and 26710110f)',
-  },
-  'language-detection/js-lang-detect': {
-    experimental: 'Zero denominator (n = 0) on held-out corpus (D-048, in 3779a457b and 26710110f)',
-  },
+  'language-detection/package-lang-detect': 'experimental',
+  'language-detection/js-lang-detect': 'experimental',
   'lazy-load-video-and-audio/js-media-observer': 'experimental',
-  'lazy-load-video-and-audio/package-lazyload': 'experimental', // ~98% of vanilla-lazyload / lozad package.json occurrences are for <img> rather than <video>/<audio> (lazy-load-video-and-audio.ts@3cfdfc803)
+  'lazy-load-video-and-audio/package-lazyload': 'experimental', // package.json matches are mostly lazy-loading images rather than video/audio
   'light-dismiss-a-dialog': 'experimental',
   'menu/js': 'experimental',
   'menu/dom': 'experimental',
@@ -286,14 +263,8 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'required-field-feedback/css-required-invalid': 'experimental',
   'required-field-feedback/js-blur-dirty-class': 'experimental',
   'resolution-optimized-pseudo-elements': 'experimental',
-  'responsive-table/package-responsive-table': {
-    experimental:
-      'Demoted under D-065: 46.2% (6/13) human precision in R65 blind grading and 42.9% (15/35) multi-judge precision in Wave D (D-065, in a18b70b7e and ef6991e)',
-  },
-  'responsive-table/css-data-label-table': {
-    experimental:
-      'Demoted under D-065: 46.2% (6/13) human precision in R65 blind grading and 42.9% (15/35) multi-judge precision in Wave D (D-065, in a18b70b7e and ef6991e)',
-  },
+  'responsive-table/package-responsive-table': 'experimental',
+  'responsive-table/css-data-label-table': 'experimental',
   'sanitize-untrusted-html/js-dompurify-innerhtml': 'experimental',
   'scroll-completion-effects': 'experimental',
   'scroll-entry-exit-effects/package-scroll-reveal': 'qualified',
@@ -305,7 +276,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'scroll-target-on-load': 'experimental',
   'scrollability-affordance-hints': 'experimental',
   'scrollspy': 'qualified',
-  'scrollspy/js': 'experimental', // Opt-in only until scroll-target-group is Baseline: retired from default production scan per Slice 6 audit (scrollspy.ts@3cfdfc803, in a76520de2)
+  'scrollspy/js': 'experimental', // CSS scroll-target-group / :target-current is not yet Baseline
   'select-menu-interaction/css-select-invalid': 'experimental',
   'select-menu-interaction/js-select-interaction': 'experimental',
   'size-aware-styling': 'experimental',
@@ -321,65 +292,34 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'visually-stable-font-fallbacks/js-font-loader': 'experimental',
 };
 
-export interface RetiredGuideEntry {
-  readonly reason: string;
-  readonly decision: string;
-}
-
 /**
  * Retired guides that have no active rule module on disk.
  */
-export const RETIRED: Readonly<Record<string, RetiredGuideEntry>> = {
-  'adapt-scrollbar-to-contrast-preferences': {
-    reason:
-      'All 30 corpus hits were IE -ms-overflow-style boilerplate (0/30 genuine) unrelated to prefers-contrast (slice-7.md, emptied in a76520de2, deleted in 26710110f)',
-    decision: 'D-050', // pending Paul's ratification
-  },
-  'brand-consistent-forms': {
-    reason:
-      'Flags the appearance:none technique recommended by the checkbox guide; 0/111 genuine like-for-like swaps (slice-2.md, emptied in a76520de2, deleted in 26710110f)',
-    decision: 'D-050', // pending Paul's ratification
-  },
-  'schedule-tasks-by-priority': {
-    reason:
-      'requestIdleCallback has IdleDeadline/timeout semantics not 1:1 with scheduler.postTask (slice-4.md, emptied in a76520de2, deleted in 26710110f)',
-    decision: 'D-050', // pending Paul's ratification
-  },
-  'format-human-readable-durations': {
-    reason:
-      'Consolidated into calculate-event-differentials (guide synced in e2bf512d3, rule modules consolidated in b7ab867f1)',
-    decision: 'D-069',
-  },
-  'manage-recurring-intervals': {
-    reason:
-      'Consolidated into capture-location-agnostic-data (guide synced in e2bf512d3, rule modules consolidated in b7ab867f1)',
-    decision: 'D-069',
-  },
-  'resilient-context-menus-and-nested-dropdowns': {
-    reason:
-      'Guide renamed to viewport-aware-dropdowns; the old Bootstrap dropdown-toggle rule was removed (in c95db4690)',
-    decision: 'D-069',
-  },
-  'shadow-dom': {
-    reason: "Removed: string templates in script tags aren't Shadow DOM targets (in c95db4690).",
-    decision: 'D-027',
-  },
-  'copy-button': {
-    reason:
-      "Guide is still a stub on this branch; restore the rule once the guide's content merges (in 01ed00281).",
-    decision: 'D-053',
-  },
-  'accessible-error-announcement': {
-    reason:
-      "Removed: static CSS selectors can't detect missing live-region announcements (in c95db4690).",
-    decision: 'D-027',
-  },
+export const RETIRED: Readonly<Record<string, string>> = {
+  'adapt-scrollbar-to-contrast-preferences':
+    'No client-side legacy pattern; applicability depends on visual/semantic judgment',
+  'brand-consistent-forms':
+    'Flags the appearance:none technique recommended by the checkbox guide',
+  'schedule-tasks-by-priority':
+    'requestIdleCallback has IdleDeadline/timeout semantics not 1:1 with scheduler.postTask',
+  'format-human-readable-durations':
+    'Consolidated into calculate-event-differentials',
+  'manage-recurring-intervals':
+    'Consolidated into capture-location-agnostic-data',
+  'resilient-context-menus-and-nested-dropdowns':
+    'Guide renamed to viewport-aware-dropdowns; the old Bootstrap dropdown-toggle rule was removed',
+  'shadow-dom':
+    "Removed: string templates in script tags aren't Shadow DOM targets",
+  'copy-button':
+    "Guide is still a stub on this branch; restore the rule once the guide's content merges",
+  'accessible-error-announcement':
+    "Removed: static CSS selectors can't detect missing live-region announcements",
 };
 
 export type RuleLifecycle =
   | { readonly status: 'qualified' }
-  | { readonly status: 'experimental'; readonly reason?: string }
-  | { readonly status: 'retired'; readonly reason: string; readonly decision: string };
+  | { readonly status: 'experimental' }
+  | { readonly status: 'retired'; readonly reason: string };
 
 export interface RuleRegistryEntry {
   readonly guideId: string;
@@ -390,12 +330,6 @@ export interface RuleRegistryEntry {
 function deriveModuleLifecycle(rules: readonly AnalyzerRule[]): RuleLifecycle {
   if (rules.some((rule) => STATUS[rule.id] === 'qualified')) {
     return { status: 'qualified' };
-  }
-  const demotedStatus = rules
-    .map((rule) => STATUS[rule.id])
-    .find((s): s is { readonly experimental: string } => typeof s === 'object' && s !== null && 'experimental' in s);
-  if (demotedStatus) {
-    return { status: 'experimental', reason: demotedStatus.experimental };
   }
   return { status: 'experimental' };
 }
@@ -409,9 +343,9 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     lifecycle: deriveModuleLifecycle(rules),
     rules,
   })),
-  ...Object.entries(RETIRED).map(([guideId, entry]): RuleRegistryEntry => ({
+  ...Object.entries(RETIRED).map(([guideId, reason]): RuleRegistryEntry => ({
     guideId,
-    lifecycle: { status: 'retired', reason: entry.reason, decision: entry.decision },
+    lifecycle: { status: 'retired', reason },
     rules: [],
   })),
 ];

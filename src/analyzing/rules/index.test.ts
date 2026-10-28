@@ -58,17 +58,10 @@ describe('rule registry architectural invariants', () => {
     );
 
     for (const [ruleId, statusVal] of Object.entries(STATUS)) {
-      if (typeof statusVal === 'object' && statusVal !== null) {
-        assert.ok(
-          typeof statusVal.experimental === 'string' && statusVal.experimental.trim().length > 0,
-          `Rule "${ruleId}" with object STATUS must provide a non-empty experimental reason`,
-        );
-      } else {
-        assert.ok(
-          statusVal === 'qualified' || statusVal === 'experimental',
-          `Rule "${ruleId}" has unexpected STATUS value "${String(statusVal)}"`,
-        );
-      }
+      assert.ok(
+        statusVal === 'qualified' || statusVal === 'experimental',
+        `Rule "${ruleId}" has unexpected STATUS value "${String(statusVal)}"`,
+      );
     }
   });
 
@@ -103,21 +96,16 @@ describe('rule registry architectural invariants', () => {
     }
   });
 
-  it('enforces that RETIRED entries have no file on disk and carry a non-empty reason plus a D-### decision ID', () => {
+  it('enforces that RETIRED entries have no file on disk and carry a non-empty plain-language reason', () => {
     const rulesDir = resolve(import.meta.dirname);
-    for (const [guideId, entry] of Object.entries(RETIRED)) {
+    for (const [guideId, reason] of Object.entries(RETIRED)) {
       assert.ok(
         !existsSync(join(rulesDir, `${guideId}.ts`)),
         `RETIRED module ${guideId}.ts should be deleted from disk`,
       );
       assert.ok(
-        entry.reason.trim().length > 0,
+        typeof reason === 'string' && reason.trim().length > 0,
         `RETIRED entry ${guideId} must have a non-empty reason`,
-      );
-      assert.match(
-        entry.decision,
-        /^D-\d{3}$/,
-        `RETIRED entry ${guideId} must have a D-### decision ID, got "${entry.decision}"`,
       );
     }
   });
