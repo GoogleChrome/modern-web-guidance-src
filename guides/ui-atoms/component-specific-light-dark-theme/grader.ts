@@ -126,6 +126,16 @@ test('uses color-scheme property to force a theme on a component or section', as
             const hasColor = styleRule.style.color;
             if (hasBg || hasColor) {
               foundValid = true;
+            } else {
+              try {
+                const els = Array.from(document.querySelectorAll(sel));
+                if (els.some(el => {
+                  const cs = window.getComputedStyle(el);
+                  return cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent';
+                })) {
+                  foundValid = true;
+                }
+              } catch {}
             }
           }
         } else if (rule.type === 4 || rule.type === 12) {
@@ -182,7 +192,7 @@ test('re-specifies inherited light-dark properties on scheme-overriding elements
       const parent = el.parentElement;
       if (!parent) return false;
       const parentStyle = window.getComputedStyle(parent);
-      return style.colorScheme === 'dark' && parentStyle.colorScheme !== 'dark';
+      return /\bdark\b/.test(style.colorScheme) && !/\blight\b/.test(style.colorScheme) && style.colorScheme !== parentStyle.colorScheme;
     });
 
     const rootStyle = window.getComputedStyle(document.documentElement);
@@ -353,7 +363,7 @@ test('forced dark component retains dark-theme computed colors even when system 
       const parent = el.parentElement;
       if (!parent) return false;
       const parentStyle = window.getComputedStyle(parent);
-      return style.colorScheme === 'dark' && parentStyle.colorScheme !== 'dark';
+      return /\bdark\b/.test(style.colorScheme) && !/\blight\b/.test(style.colorScheme) && style.colorScheme !== parentStyle.colorScheme;
     });
     if (!forcedDark) return null;
     

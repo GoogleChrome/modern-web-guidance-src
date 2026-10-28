@@ -1,1 +1,1 @@
-- Measure the time it takes for user interactions and client-side navigations to render new contentful updates on screen.
+- Add client-side performance monitoring to the Daily Grind homepage to measure how long it takes for user interactions on the navigation bar, "Order Now" button, and "Seasonal Favorites" cards, as well as client-side view navigations, to render new contentful updates on screen.

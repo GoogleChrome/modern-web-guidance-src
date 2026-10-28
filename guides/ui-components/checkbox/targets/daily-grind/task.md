@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites drink cards in `index.html` to include customization checkboxes styled to match The Daily Grind's theme with custom icons, layout, colors, and check/uncheck animations, while making sure their native checkbox behavior and accessibility remain fully intact.
