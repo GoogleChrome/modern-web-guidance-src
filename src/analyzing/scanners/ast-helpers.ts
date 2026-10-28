@@ -1,6 +1,7 @@
 import {
   Node,
   SyntaxKind,
+  ts,
   type ArrowFunction,
   type BinaryExpression,
   type CallExpression,
@@ -14,7 +15,6 @@ import {
   type Statement,
   type VariableDeclaration,
 } from 'ts-morph';
-import ts from 'typescript';
 
 /**
  * Strips parentheses, type assertions, non-null assertions, and satisfies wrappers
