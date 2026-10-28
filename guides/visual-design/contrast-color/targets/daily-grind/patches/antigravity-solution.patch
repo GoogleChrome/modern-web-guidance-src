@@ -1,0 +1,78 @@
+diff --git a/index.html b/index.html
+index 66c9173..8ce363e 100644
+--- a/index.html
++++ b/index.html
+@@ -31,6 +31,7 @@
+     nav {
+       background: var(--primary);
+       color: white;
++      color: contrast-color(var(--primary));
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -57,6 +58,7 @@
+ 
+     nav a {
+       color: white;
++      color: contrast-color(var(--primary));
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+@@ -124,6 +126,7 @@
+       display: inline-block;
+       background: var(--primary);
+       color: white;
++      color: contrast-color(var(--primary));
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;
+@@ -137,6 +140,8 @@
+ 
+     footer {
+       background: var(--secondary);
++      color: var(--text);
++      color: contrast-color(var(--secondary));
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -149,9 +154,40 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
++      color: contrast-color(var(--secondary));
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @supports (color: oklch(from red l c h)) {
++      nav,
++      nav a,
++      .btn {
++        --threshold: 0.623;
++        --l: max(0, sign(var(--threshold) - l));
++        color: oklch(from var(--primary) var(--l) 0 h);
++      }
++
++      footer,
++      .footer-links a {
++        --threshold: 0.623;
++        --l: max(0, sign(var(--threshold) - l));
++        color: oklch(from var(--secondary) var(--l) 0 h);
++      }
++    }
++
++    @supports (color: contrast-color(red)) {
++      nav,
++      nav a,
++      .btn {
++        color: contrast-color(var(--primary));
++      }
++
++      footer,
++      .footer-links a {
++        color: contrast-color(var(--secondary));
++      }
++    }
+   </style>
+ </head>
+ 

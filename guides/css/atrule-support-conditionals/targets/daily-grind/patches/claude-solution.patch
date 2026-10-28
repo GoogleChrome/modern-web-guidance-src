@@ -1,0 +1,36 @@
+diff --git a/index.html b/index.html
+index 66c9173..2ba5230 100644
+--- a/index.html
++++ b/index.html
+@@ -115,6 +115,31 @@
+       text-align: center;
+     }
+ 
++    .card {
++      /* Only apply view-transition naming where @view-transition is supported */
++      @supports at-rule(@view-transition) {
++        view-transition-class: card;
++        transition: transform 0.3s, box-shadow 0.3s;
++
++        &:hover {
++          transform: translateY(-4px);
++          box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
++        }
++      }
++    }
++
++    nav {
++      @supports at-rule(@view-transition) {
++        view-transition-name: site-nav;
++      }
++    }
++
++    .hero {
++      @supports at-rule(@view-transition) {
++        view-transition-name: hero;
++      }
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);

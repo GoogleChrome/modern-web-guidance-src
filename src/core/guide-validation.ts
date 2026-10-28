@@ -44,7 +44,6 @@ export const DISCIPLINE_GUIDES = new Set([
   'motion',
   'passkeys',
   'responsive-design',
-  'selector-atrule-combinations',
   'typography',
   'visual-effects',
   'web-components',
@@ -213,6 +212,7 @@ export interface GuideMetadata {
   draft?: DraftState;
   draftReason?: string;
   featureIds: string[];
+  title?: string;
 }
 
 export function parseGuideMetadata(
@@ -230,7 +230,9 @@ export function parseGuideMetadata(
   const hasGuide = hasContent && !isDraftStub(draft);
   const featureIds = Array.isArray(data['web-feature-ids']) ? data['web-feature-ids'] : [];
 
-  return { hasGuide, isStub, draft, draftReason, featureIds };
+  const title = (typeof data.title === 'string' && data.title.trim()) || extractH1Heading(content);
+
+  return { hasGuide, isStub, draft, draftReason, featureIds, title };
 }
 
 export function detectEvals(filePaths: Iterable<string>): { hasGrader: boolean; hasTask: boolean } {
@@ -354,8 +356,11 @@ export function validateGuide(filePath: string): ValidationResult {
   }
 
   const maskedBody = maskComments(body);
-  errors.push(...validateMacros(maskedBody, relativePath));
+  const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
+  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'static-site' } : {}));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
+  errors.push(...validateCallouts(maskedBody, relativePath));
+  errors.push(...validatePendingGuideRefs(body, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
@@ -565,6 +570,7 @@ export interface TargetInventory {
 export interface GuideInventory {
   dir: string;
   name: string;
+  title?: string;
   category: string;
   hasGuide: boolean;
   isStub: boolean;
@@ -686,6 +692,14 @@ export function stripAllComments(content: string): string {
   return stripComments(content).replace(/<!--[\s\S]*?-->/g, '');
 }
 
+export function isGuidePublished(hasContent: boolean, draft: unknown): boolean {
+  return Boolean(hasContent && !isDraftStub(draft) && !draft);
+}
+
+export function stripLeadingH1(markdown: string): string {
+  return markdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+}
+
 export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean }): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
@@ -756,6 +770,7 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   return {
     dir,
     name,
+    title: meta.title,
     category,
     hasGuide,
     isStub,
@@ -977,6 +992,64 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
     }
   }
 
+  return errors;
+}
+
+const PENDING_GUIDE_REF_PATTERN = /\{#\s*PENDING_GUIDE_REF:([\s\S]*?)#\}/g;
+const GUIDE_REF_SLUG_PATTERN = /GUIDE_REF\(\s*["']([^"']+)["']\s*\)/g;
+
+/**
+ * A `{# PENDING_GUIDE_REF: … {{ GUIDE_REF("slug") }} … #}` comment parks a link to a guide
+ * that isn't published yet. Once the target is published, the wrapper must be removed so
+ * the link goes live; a typo'd or missing slug is also an error.
+ */
+export function validatePendingGuideRefs(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const guides = getGuidesMap();
+  for (const [, inner] of body.matchAll(PENDING_GUIDE_REF_PATTERN)) {
+    const slugs = [...inner.matchAll(GUIDE_REF_SLUG_PATTERN)].map(m => m[1]);
+    if (slugs.length === 0) {
+      errors.push(`PENDING_GUIDE_REF comment in ${relativePath} contains no {{ GUIDE_REF("…") }}.`);
+    }
+    for (const slug of slugs) {
+      const target = guides.get(slug);
+      if (!target) {
+        errors.push(`PENDING_GUIDE_REF in ${relativePath} references unknown guide "${slug}".`);
+      } else if (target.isPublished) {
+        errors.push(`"${slug}" is now published. In ${relativePath}, remove the {# PENDING_GUIDE_REF: … #} wrapper to restore the link.`);
+      }
+    }
+  }
+  return errors;
+}
+
+export const GITHUB_ALERT_TYPES = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'] as const;
+export type GithubAlertType = typeof GITHUB_ALERT_TYPES[number];
+
+export function isGithubAlertType(type: string): type is GithubAlertType {
+  return (GITHUB_ALERT_TYPES as readonly string[]).includes(type);
+}
+
+export const ALERT_MARKER_PATTERN = /^> ?\[!(\w+)\]/;
+export const BOLD_CALLOUT_PATTERN = new RegExp(`^> ?\\*\\*(${GITHUB_ALERT_TYPES.join('|')})(?::\\*\\*|\\*\\*:)`, 'i');
+
+/**
+ * Callouts must use GitHub alert syntax (`> [!NOTE]`) with a known type, so the
+ * static-site build can map them to DevSite notices.
+ */
+export function validateCallouts(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  marked.walkTokens(marked.lexer(body), token => {
+    if (token.type !== 'blockquote') return;
+    const alertType = token.raw.match(ALERT_MARKER_PATTERN)?.[1];
+    if (alertType && !isGithubAlertType(alertType.toUpperCase())) {
+      errors.push(`Unsupported alert type "[!${alertType}]" in ${relativePath}. Use one of: ${GITHUB_ALERT_TYPES.join(', ')}.`);
+    }
+    const boldLabel = token.raw.match(BOLD_CALLOUT_PATTERN)?.[1];
+    if (boldLabel) {
+      errors.push(`Bold callout "> **${boldLabel}:**" in ${relativePath}. Use GitHub alert syntax instead: "> [!${boldLabel.toUpperCase()}]".`);
+    }
+  });
   return errors;
 }
 
