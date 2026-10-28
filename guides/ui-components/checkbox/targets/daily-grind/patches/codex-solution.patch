@@ -1,0 +1,206 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..8739bdf
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,4 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
+diff --git a/index.html b/index.html
+index 66c9173..15f640b 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,122 @@
+       color: var(--primary);
+     }
+ 
++    .customizations {
++      min-inline-size: 0;
++      margin-top: 20px;
++      border: 0;
++      text-align: left;
++    }
++
++    .customizations legend {
++      margin-bottom: 8px;
++      font-size: 0.9rem;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .customization-option {
++      display: flex;
++      align-items: center;
++      gap: 0.65rem;
++      min-block-size: 44px;
++      padding: 8px 12px;
++      margin-top: 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: #fffaf4;
++      cursor: pointer;
++    }
++
++    .customization-option:has(input:checked) {
++      border-color: var(--primary);
++      background: #fff0da;
++    }
++
++    .customization-option:has(input:disabled) {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .customization-checkbox {
++      --checkbox-size: 1.25em;
++      --checkbox-icon-size: 0.85em;
++      flex: 0 0 auto;
++      inline-size: var(--checkbox-size);
++      block-size: var(--checkbox-size);
++      margin: 0;
++      accent-color: var(--primary);
++      cursor: pointer;
++    }
++
++    .customization-checkbox:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .customization-checkbox:disabled {
++      cursor: not-allowed;
++    }
++
++    @supports (appearance: none) and (mask-image: linear-gradient(black, black)) {
++      .customization-checkbox {
++        --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 5L20 6'/%3E%3C/svg%3E");
++        --icon-dash: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' stroke='black' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
++        --checkbox-icon: var(--icon-check);
++        appearance: none;
++        display: inline-grid;
++        place-content: center;
++        border: 2px solid var(--primary);
++        border-radius: 0.3em;
++        background: white;
++      }
++
++      .customization-checkbox::before {
++        content: "";
++        inline-size: var(--checkbox-icon-size);
++        block-size: var(--checkbox-icon-size);
++        background: var(--primary);
++        mask: var(--checkbox-icon) no-repeat center / contain;
++        scale: 0;
++      }
++
++      .customization-checkbox:is(:checked, :indeterminate) {
++        background: var(--accent);
++      }
++
++      .customization-checkbox:indeterminate {
++        --checkbox-icon: var(--icon-dash);
++      }
++
++      .customization-checkbox:is(:checked, :indeterminate)::before {
++        scale: 1;
++      }
++
++      @media (prefers-reduced-motion: no-preference) {
++        .customization-checkbox {
++          transition: background-color 150ms ease;
++        }
++
++        .customization-checkbox::before {
++          transition: scale 150ms ease;
++        }
++      }
++    }
++
++    @media (forced-colors: active) {
++      .customization-checkbox {
++        appearance: auto;
++      }
++
++      .customization-checkbox::before {
++        content: none;
++      }
++
++      .customization-checkbox:focus-visible {
++        outline-color: Highlight;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -181,16 +297,49 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <fieldset class="customizations">
++            <legend>Customize your Maple Oat Latte</legend>
++            <label class="customization-option">
++              <input class="customization-checkbox" type="checkbox" name="maple-oat-latte" value="extra-maple">
++              <span>Extra maple syrup</span>
++            </label>
++            <label class="customization-option">
++              <input class="customization-checkbox" type="checkbox" name="maple-oat-latte" value="extra-shot">
++              <span>Add an espresso shot</span>
++            </label>
++          </fieldset>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <fieldset class="customizations">
++            <legend>Customize your Dark Roast Espresso</legend>
++            <label class="customization-option">
++              <input class="customization-checkbox" type="checkbox" name="dark-roast-espresso" value="extra-shot">
++              <span>Add an espresso shot</span>
++            </label>
++            <label class="customization-option">
++              <input class="customization-checkbox" type="checkbox" name="dark-roast-espresso" value="oat-milk">
++              <span>Add a splash of oat milk</span>
++            </label>
++          </fieldset>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <fieldset class="customizations">
++            <legend>Customize your Cold Brew</legend>
++            <label class="customization-option">
++              <input class="customization-checkbox" type="checkbox" name="cold-brew" value="oat-milk">
++              <span>Add a splash of oat milk</span>
++            </label>
++            <label class="customization-option">
++              <input class="customization-checkbox" type="checkbox" name="cold-brew" value="vanilla">
++              <span>Add vanilla syrup</span>
++            </label>
++          </fieldset>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

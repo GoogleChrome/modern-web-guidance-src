@@ -10,7 +10,11 @@ import {
   extractCodexCliModel,
   extractCodexCliTokenUsage
 } from '../lib/trajectory-normalizer.ts';
-import { extractCommandsFromCodexItem, parseCodexTrajectory } from './codex-cli-agent.ts';
+import {
+  ensureFreshHostCodexAuth,
+  extractCommandsFromCodexItem,
+  parseCodexTrajectory
+} from './codex-cli-agent.ts';
 import { extractModelFromResults } from '../lib/collection.ts';
 import { Agents } from '../config.ts';
 
@@ -629,4 +633,58 @@ test('parseCodexTrajectory extracts token usage from token_usage_record entries'
 
   const summary = parseCodexTrajectory(rollout);
   assert.deepStrictEqual(summary.tokenUsage, { total: 450, cached: 150 });
+});
+
+function makeFakeJwt(expSeconds: number): string {
+  const b64 = (obj: object) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  return `${b64({ alg: 'RS256' })}.${b64({ exp: expSeconds })}.sig`;
+}
+
+test('ensureFreshHostCodexAuth skips fresh tokens and rotates expiring tokens in-place', async () => {
+  const tempDir = createTempDir();
+  try {
+    const authPath = path.join(tempDir, 'auth.json');
+    const nowSec = Math.floor(Date.now() / 1000);
+    const writeAuth = (expOffsetSec: number, refreshAgeDays: number, refreshToken = 'rt_old') =>
+      fs.writeFileSync(authPath, JSON.stringify({
+        auth_mode: 'chatgpt',
+        tokens: { access_token: makeFakeJwt(nowSec + expOffsetSec), refresh_token: refreshToken, account_id: 'acc_1' },
+        last_refresh: new Date(Date.now() - refreshAgeDays * 86400_000).toISOString()
+      }));
+
+    // 1. Fresh token (9d remaining, refreshed 1h ago) -> no-op
+    writeAuth(9 * 86400, 1 / 24, 'rt_fresh');
+    let fetchCalls = 0;
+    const skipped = await ensureFreshHostCodexAuth(authPath, (async () => {
+      fetchCalls++;
+      throw new Error('Should not fetch when fresh');
+    }) as unknown as typeof fetch);
+    assert.strictEqual(skipped, false);
+    assert.strictEqual(fetchCalls, 0);
+
+    // 2. Expiring token (12h remaining, refreshed 9d ago) -> refreshes once and updates auth.json
+    writeAuth(12 * 3600, 9, 'rt_old');
+    const newAccessJwt = makeFakeJwt(nowSec + 10 * 86400);
+    const mockFetch = (async (_url: string, init?: RequestInit) => {
+      fetchCalls++;
+      assert.strictEqual(JSON.parse(String(init?.body)).refresh_token, 'rt_old');
+      return new Response(JSON.stringify({ id_token: 'id_new', access_token: newAccessJwt, refresh_token: 'rt_new' }));
+    }) as unknown as typeof fetch;
+
+    const [r1, r2] = await Promise.all([
+      ensureFreshHostCodexAuth(authPath, mockFetch),
+      ensureFreshHostCodexAuth(authPath, mockFetch)
+    ]);
+    assert.deepStrictEqual([r1, r2, fetchCalls], [true, true, 1]);
+
+    const saved = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+    assert.deepStrictEqual(saved.tokens, {
+      access_token: newAccessJwt,
+      refresh_token: 'rt_new',
+      id_token: 'id_new',
+      account_id: 'acc_1'
+    });
+  } finally {
+    removeTempDir(tempDir);
+  }
 });

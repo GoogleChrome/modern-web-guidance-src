@@ -1,0 +1,117 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..9c617e2
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,5 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', output));
+diff --git a/index.html b/index.html
+index 66c9173..15b20b0 100644
+--- a/index.html
++++ b/index.html
+@@ -57,12 +57,10 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:is(:hover, :focus-visible) {
+       color: var(--accent);
+     }
+ 
+@@ -149,9 +147,58 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Native lines follow wrapping and retain default ink skipping for descenders. */
++    :where(nav a, .footer-links a) {
++      text-decoration: underline solid currentColor max(1px, 0.08em);
++      text-underline-offset: 0.22em;
++      text-decoration-inset: 0.08em 0.08em;
++    }
++
++    :where(.footer-links a) {
++      text-underline-offset: 0.18em;
++      text-decoration-inset: 0.12em 0.12em;
++    }
++
++    :where(nav a, .footer-links a):focus-visible {
++      outline: 2px solid currentColor;
++      outline-offset: 5px;
++    }
++
++    /* Distinct heading treatments stay visible and do not imply interactivity. */
++    :where(.seasonal-heading) {
++      text-align: center;
++      text-decoration: underline double var(--primary) max(1px, 0.06em);
++      text-underline-offset: 0.18em;
++      text-decoration-inset: 0.3em 0.3em;
++    }
++
++    :where(.card h3) {
++      text-decoration: underline wavy var(--primary) max(1px, 0.06em);
++      text-underline-offset: 0.25em;
++      text-decoration-inset: 0.15em 0.15em;
++    }
++
++    /* Unsupported inset leaves the native underline fully visible.
++       Reduced motion also keeps the complete line, without a reveal. */
++    @supports (text-decoration-inset: 0 100%) {
++      @media (prefers-reduced-motion: no-preference) {
++        :where(nav a, .footer-links a) {
++          text-decoration-inset: 0.08em 100%;
++          transition: text-decoration-inset 0.25s ease-out;
++        }
++
++        :where(nav a, .footer-links a):is(:hover, :focus-visible) {
++          text-decoration-inset: 0.08em 0.08em;
++        }
++
++        :where(.footer-links a):is(:hover, :focus-visible) {
++          text-decoration-inset: 0.12em 0.12em;
++        }
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,7 +223,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="seasonal-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
