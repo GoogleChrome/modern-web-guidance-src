@@ -12,15 +12,17 @@ web-feature-ids:
   - prefers-reduced-motion
   - logical-properties
 guides:
-  - overflow-popup
+  # - overflow-popup
+  # - navbar
   - icons
-  - navbar
   - menu
 ---
 
 # Build a toolbar
 
-A toolbar groups related controls (formatting, alignment, view options) into one composite widget with a **single tab stop**. Users `Tab` into it once, move between controls with the arrow keys, and `Tab` out. Use it only for controls that act on something else (an editor, preview, canvas). For site navigation, see {{ GUIDE_REF("navbar") }}; for a dropdown or context menu of commands without a persistent row of controls, see {{ GUIDE_REF("menu") }}.
+A toolbar groups related controls (formatting, alignment, view options) into one composite widget with a **single tab stop**. Users `Tab` into it once, move between controls with the arrow keys, and `Tab` out. Use it only for controls that act on something else (an editor, preview, canvas). For site navigation use a navbar; for a dropdown or context menu of commands without a persistent row of controls, see {{ GUIDE_REF("menu") }}.
+
+{# PENDING_GUIDE_REF: For site navigation, see {{ GUIDE_REF("navbar") }}. #}
 
 ## Structure and semantics
 
@@ -140,7 +142,9 @@ MANDATORY: Position the hint on the axis the toolbar does not stack along: `posi
 
 ## Overflow menu for secondary actions (optional)
 
-Add a trailing "More actions" menu when the toolbar has secondary actions or must fit narrow containers; skip it if every control is common and fits. If items must move into the menu dynamically as space runs out, see {{ GUIDE_REF("overflow-popup") }}.
+Add a trailing "More actions" menu when the toolbar has secondary actions or must fit narrow containers; skip it if every control is common and fits. If items must move into the menu dynamically as space runs out, build that overflow behavior yourself.
+
+{# PENDING_GUIDE_REF: For dynamic overflow, see {{ GUIDE_REF("overflow-popup") }}. #}
 
 * The trigger has `aria-haspopup="menu"`, `aria-expanded`, and `popovertarget` pointing at a `popover` element with `role="menu"` and an `aria-label`.
 * Items are `role="menuitem"` (commands) or `role="menuitemcheckbox"` with `aria-checked` (toggles), each `tabindex="-1"`.
