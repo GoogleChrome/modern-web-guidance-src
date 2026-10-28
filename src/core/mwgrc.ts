@@ -8,6 +8,11 @@ export interface MwgConfig {
 
 const CONFIG_FILENAME = '.mwgrc';
 
+/**
+ * Resolves the path to the `.mwgrc` configuration file.
+ * Walks up from `startDir` and stops at the first directory containing `.mwgrc` or `.git`
+ * (without merging ancestor configs), falling back to `startDir/.mwgrc` outside git repos.
+ */
 export function resolveMwgrcPath(startDir = process.cwd()): string {
   let dir = path.resolve(startDir);
   while (true) {

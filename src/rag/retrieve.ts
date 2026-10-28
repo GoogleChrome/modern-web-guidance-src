@@ -1,6 +1,6 @@
 import { getGuide, getUseCase } from "./guides.ts";
 import { logToolResult } from "./logger.ts";
-import { readMwgrc } from "./mwgrc.ts";
+import { readMwgrc } from "../core/mwgrc.ts";
 import type { OriginTrialMetadata } from "../core/guide-validation.ts";
 
 export class OriginTrialGateError extends Error {

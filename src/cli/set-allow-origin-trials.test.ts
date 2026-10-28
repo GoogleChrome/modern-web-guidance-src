@@ -36,15 +36,20 @@ describe('handleSetAllowOriginTrials', () => {
   });
 
   test('creates .mwgrc with allowOriginTrials: true when confirmed', async () => {
+    let receivedTargetPath = '';
     const code = await handleSetAllowOriginTrials({
       isAgent: false,
       isTTY: true,
-      askConfirmation: async () => true,
+      askConfirmation: async (targetPath) => {
+        receivedTargetPath = targetPath;
+        return true;
+      },
       cwd: tempDir,
     });
 
     assert.strictEqual(code, 0);
     const mwgrcPath = path.join(tempDir, '.mwgrc');
+    assert.strictEqual(receivedTargetPath, mwgrcPath);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(mwgrcPath, 'utf8')), {
       allowOriginTrials: true,
     });

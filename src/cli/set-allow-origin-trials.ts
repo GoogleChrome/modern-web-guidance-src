@@ -5,23 +5,23 @@
  */
 
 import * as readline from "node:readline/promises";
-import { writeMwgrc } from "../rag/mwgrc.ts";
+import { resolveMwgrcPath, writeMwgrc } from "../core/mwgrc.ts";
 import { determineAgent } from "./telemetry/detect-agent.ts";
 
 export interface SetAllowOriginTrialsOptions {
   isAgent?: boolean;
   isTTY?: boolean;
-  askConfirmation?: () => Promise<boolean>;
+  askConfirmation?: (targetPath: string) => Promise<boolean>;
   cwd?: string;
 }
 
-async function defaultAskConfirmation(): Promise<boolean> {
+async function defaultAskConfirmation(targetPath: string): Promise<boolean> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
   try {
-    const answer = await rl.question("Enable experimental Origin Trial guidance for this project? [y/N] ");
+    const answer = await rl.question(`Enable experimental Origin Trial guidance for this project (${targetPath})? [y/N] `);
     return /^y(es)?$/i.test(answer.trim());
   } finally {
     rl.close();
@@ -29,25 +29,31 @@ async function defaultAskConfirmation(): Promise<boolean> {
 }
 
 export async function handleSetAllowOriginTrials(opts: SetAllowOriginTrialsOptions = {}): Promise<number> {
-  const isAgent = opts.isAgent ?? determineAgent().isAgent;
+  const detected = determineAgent();
+  const isAgent = opts.isAgent ?? detected.isAgent;
   const isTTY = opts.isTTY ?? Boolean(process.stdin.isTTY);
 
   if (isAgent || !isTTY) {
+    const reason = isAgent
+      ? `detected agent environment${detected.agent?.name ? `: ${detected.agent.name}` : ''}`
+      : 'non-interactive stdin';
     console.error(
-      "Error: `set-allow-origin-trials` must be run interactively by a human developer, not an AI agent.\n" +
-      "Ask the developer to run `npx modern-web-guidance set-allow-origin-trials` in their own terminal."
+      `Error: \`set-allow-origin-trials\` must be run interactively by a human developer, not an AI agent (${reason}).\n` +
+      `Ask the developer to run \`npx modern-web-guidance@latest set-allow-origin-trials\` in their own terminal.\n` +
+      `If your IDE terminal sets agent environment variables, run the command in an external terminal.`
     );
     return 1;
   }
 
+  const targetPath = resolveMwgrcPath(opts.cwd);
   const ask = opts.askConfirmation ?? defaultAskConfirmation;
-  const confirmed = await ask();
+  const confirmed = await ask(targetPath);
   if (!confirmed) {
     console.log("Aborted.");
     return 1;
   }
 
-  const targetPath = writeMwgrc({ allowOriginTrials: true }, opts.cwd);
+  writeMwgrc({ allowOriginTrials: true }, opts.cwd);
   console.log(`Enabled Origin Trial guidance in ${targetPath}. Commit this file to share the opt-in.`);
   return 0;
 }

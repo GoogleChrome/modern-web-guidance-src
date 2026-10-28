@@ -56,4 +56,19 @@ describe('mwgrc configuration utility', () => {
     assert.throws(() => writeMwgrc({ allowOriginTrials: true }, tempDir));
     assert.strictEqual(fs.readFileSync(configFile, 'utf8'), 'corrupt content {{{{');
   });
+
+  test('readMwgrc and writeMwgrc throw on non-object JSON (null, array)', () => {
+    const configFile = path.join(tempDir, '.mwgrc');
+    for (const invalidContent of ['null', '[]', '"string"', '123', 'true']) {
+      fs.writeFileSync(configFile, invalidContent, 'utf8');
+      assert.throws(
+        () => readMwgrc(tempDir),
+        /Invalid \.mwgrc at .*: expected a JSON object/
+      );
+      assert.throws(
+        () => writeMwgrc({ allowOriginTrials: true }, tempDir),
+        /Invalid \.mwgrc at .*: expected a JSON object/
+      );
+    }
+  });
 });

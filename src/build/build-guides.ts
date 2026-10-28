@@ -115,6 +115,7 @@ async function computePipelineHash(
     path.join(rootDir, "src/core/macros.ts"),
     path.join(rootDir, "src/rag/transformers-embedder.ts"),
     path.join(rootDir, "src/core/guide-validation.ts"),
+    path.join(rootDir, "features/origin-trials.json"),
     path.join(rootDir, "src/build/devsite-markdown.ts"),
   ];
 

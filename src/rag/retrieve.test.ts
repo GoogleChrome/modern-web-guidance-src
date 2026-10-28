@@ -6,6 +6,7 @@ import os from 'node:os';
 import child_process from 'node:child_process';
 import { retrieveUseCase, OriginTrialGateError } from './retrieve.ts';
 import { searchUseCases } from './search.ts';
+import { USE_CASES } from './guides.ts';
 
 const cliPath = path.resolve(import.meta.dirname, '../cli/modern-web.ts');
 
@@ -21,6 +22,9 @@ function runCli(args: string[], options: { cwd: string }): child_process.SpawnSy
   });
 }
 
+const otGuide = USE_CASES.find((u) => (u.originTrials?.length ?? 0) > 0)!;
+const nonOtGuide = USE_CASES.find((u) => !u.originTrials?.length)!;
+
 describe('retrieveUseCase and Origin Trial gate', () => {
   let tempDir: string;
 
@@ -34,13 +38,13 @@ describe('retrieveUseCase and Origin Trial gate', () => {
 
   test('rejects un-opted-in Origin Trial guide with CAUTION message', async () => {
     await assert.rejects(
-      () => retrieveUseCase('agentic-forms', { cwd: tempDir }),
+      () => retrieveUseCase(otGuide.id, { cwd: tempDir }),
       (err: unknown) => {
         assert.ok(err instanceof OriginTrialGateError);
         assert.ok(err.message.includes('> [!CAUTION]'));
-        assert.ok(err.message.includes('declarative-webmcp'));
-        assert.ok(err.message.includes('https://chromestatus.com/feature/5117755740913664'));
-        assert.ok(err.message.includes('npx modern-web-guidance set-allow-origin-trials'));
+        assert.ok(err.message.includes(otGuide.originTrials![0].id!));
+        assert.ok(err.message.includes(otGuide.originTrials![0].chromestatus_url!));
+        assert.ok(err.message.includes('npx modern-web-guidance@latest set-allow-origin-trials'));
         return true;
       }
     );
@@ -48,20 +52,20 @@ describe('retrieveUseCase and Origin Trial gate', () => {
 
   test('succeeds on Origin Trial guides when .mwgrc has allowOriginTrials: true', async () => {
     fs.writeFileSync(path.join(tempDir, '.mwgrc'), JSON.stringify({ allowOriginTrials: true }));
-    const guide = await retrieveUseCase('agentic-forms', { cwd: tempDir });
+    const guide = await retrieveUseCase(otGuide.id, { cwd: tempDir });
     assert.ok(guide.length > 0);
   });
 
   test('succeeds on regular non-OT guides without .mwgrc', async () => {
-    const guide = await retrieveUseCase('accessible-error-announcement', { cwd: tempDir });
+    const guide = await retrieveUseCase(nonOtGuide.id, { cwd: tempDir });
     assert.ok(guide.length > 0);
   });
 
   test('CLI retrieve comma-separated IDs prints non-OT guide, gates OT guide, without unhandled stack trace', () => {
-    const res = runCli(['retrieve', 'accessible-error-announcement,agentic-forms'], { cwd: tempDir });
+    const res = runCli(['retrieve', `${nonOtGuide.id},${otGuide.id}`], { cwd: tempDir });
 
     assert.strictEqual(res.status, 1);
-    assert.ok(res.stdout.includes('# Accessible Error Announcement'));
+    assert.ok(res.stdout.includes(`--- Guide for ${nonOtGuide.id} ---`));
     assert.ok(res.stderr.includes('> [!CAUTION]'));
     assert.ok(!res.stderr.includes('at retrieveUseCase'));
   });
@@ -71,12 +75,12 @@ describe('retrieveUseCase and Origin Trial gate', () => {
 
     assert.strictEqual(res.status, 0);
     const ids = (JSON.parse(res.stdout) as Array<{ id: string }>).map((u) => u.id);
-    assert.ok(ids.includes('agentic-forms'));
-    assert.ok(ids.includes('apply-webgl-shaders'));
+    assert.ok(ids.includes(otGuide.id));
+    assert.ok(ids.includes(nonOtGuide.id));
   });
 
   test('searchUseCases discovers Origin Trial guides when .mwgrc is absent', async () => {
-    const results = await searchUseCases('declarative webmcp agentic forms');
-    assert.ok(results.map((r) => r.id).includes('agentic-forms'));
+    const results = await searchUseCases(otGuide.description);
+    assert.ok(results.map((r) => r.id).includes(otGuide.id));
   });
 });
