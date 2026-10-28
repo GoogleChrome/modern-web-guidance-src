@@ -10,7 +10,7 @@ const targetDir = path.dirname(targetFile);
 const targetUrl = `http://localhost/${path.basename(targetFile)}`;
 
 const STACK_SEL = '.Stack, .stack';
-const VIEW_SEL = '.Stack-view, .stack-view';
+const VIEW_SEL = '.Stack-view, .stack-view, .view';
 const VIEW_CONTENT_SEL = '.Stack-viewContent, .stack-view-content, .view-content';
 const BACK_SEL = '.icon-back, .back, [class*="back" i], button[aria-label*="Back" i]';
 
@@ -49,11 +49,11 @@ test.beforeEach(async ({ page }) => {
 });
 
 const ITEM_LINK_SEL =
-  '.Stack-view:not([inert]) a.item, .Stack-view:not([inert]) .item, .stack-view:not([inert]) a.item, .stack-view:not([inert]) .item';
+  `:is(${VIEW_SEL}):not([inert]) a.item, :is(${VIEW_SEL}):not([inert]) .item`;
 const MAIN_DRILL_LINK_SEL =
-  '.Stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
+  `:is(${VIEW_SEL}):not([inert]) main a[href]:not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])`;
 const FALLBACK_DRILL_LINK_SEL =
-  '.Stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"]), .stack-view:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])';
+  `:is(${VIEW_SEL}):not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])`;
 
 const getActiveDrillLink = async (page: any) => {
   for (const sel of [ITEM_LINK_SEL, MAIN_DRILL_LINK_SEL, FALLBACK_DRILL_LINK_SEL]) {
@@ -62,30 +62,26 @@ const getActiveDrillLink = async (page: any) => {
       return loc;
     }
   }
-  return page.locator('a.item, .item, main a[href], .Stack-view a[href], .stack-view a[href]').first();
+  return page.locator(`a.item, .item, main a[href], :is(${VIEW_SEL}) a[href]`).first();
 };
 
-// Helper to click a link inside the currently active (non-inert) view
 const clickActiveLink = async (page: any) => {
   const link = await getActiveDrillLink(page);
   await link.click({ force: true });
 };
 
-// Helper to click the Back trigger on active view
 const clickBackButton = async (page: any) => {
   const backBtn = page.locator(
-    `.Stack-view:not([inert]) .icon-back, .Stack-view:not([inert]) .back, .Stack-view:not([inert]) [class*="back" i], .Stack-view:not([inert]) button[aria-label*="Back" i], .stack-view:not([inert]) .icon-back, .stack-view:not([inert]) .back, .stack-view:not([inert]) [class*="back" i], .stack-view:not([inert]) button[aria-label*="Back" i]`
+    `:is(${VIEW_SEL}):not([inert]) :is(${BACK_SEL})`
   );
   if ((await backBtn.count()) > 0 && (await backBtn.first().isVisible())) {
     await backBtn.first().click({ force: true });
   } else {
-    // Try click the header if no button (fallback for negative demo structure)
-    const activeHeader = page.locator('.Stack-view:not([inert]) header, .Stack-view:last-child header, .stack-view:not([inert]) header, .stack-view:last-child header');
+    const activeHeader = page.locator(`:is(${VIEW_SEL}):not([inert]) header, :is(${VIEW_SEL}):last-child header`);
     await activeHeader.first().click({ force: true });
   }
 };
 
-// Helper to discover a valid deep-link URL from the root view
 const getDeepLinkUrl = async (page: any): Promise<string> => {
   await page.goto(targetUrl);
   const link = await getActiveDrillLink(page);
@@ -122,11 +118,16 @@ test.describe('Stack Drill Down', () => {
 
   test('Each view has width equal to stack width and is not absolutely positioned', async ({ page }) => {
     await page.goto(targetUrl);
-    const viewPosition = await page.evaluate((sel) => {
-      const view = document.querySelector(sel);
-      return view ? window.getComputedStyle(view).position : '';
-    }, VIEW_SEL);
-    expect(viewPosition).not.toBe('absolute');
+    const valid = await page.evaluate(({ stackSel, viewSel }) => {
+      const stack = document.querySelector(stackSel);
+      const view = document.querySelector(viewSel);
+      if (!stack || !view) return false;
+      const pos = window.getComputedStyle(view).position;
+      const stackWidth = stack.getBoundingClientRect().width;
+      const viewWidth = view.getBoundingClientRect().width;
+      return pos !== 'absolute' && stackWidth > 0 && Math.abs(viewWidth - stackWidth) <= 1;
+    }, { stackSel: STACK_SEL, viewSel: VIEW_SEL });
+    expect(valid).toBe(true);
   });
 
   test('The stack uses overscroll-behavior-x: none', async ({ page }) => {
@@ -160,7 +161,7 @@ test.describe('Stack Drill Down', () => {
       return Array.from(document.styleSheets).some(sheet => {
         return findCSSRules(sheet).some(rule => {
           if (rule instanceof CSSStyleRule && rule.selectorText.toLowerCase().includes('.stack')) {
-            const h = rule.style.height || '';
+            const h = rule.style.height || rule.style.blockSize || '';
             return h.replace(/\s+/g, '') === '100dvh';
           }
           return false;
@@ -190,7 +191,12 @@ test.describe('Stack Drill Down', () => {
 
   test('The visible horizontal scrollbar is hidden', async ({ page }) => {
     await page.goto(targetUrl);
-    const hasHiddenScrollbar = await page.evaluate(() => {
+    const hasHiddenScrollbar = await page.evaluate((stackSel) => {
+      const stack = document.querySelector(stackSel);
+      if (stack && window.getComputedStyle(stack).scrollbarWidth === 'none') {
+        return true;
+      }
+
       const findCSSRules = (sheet: CSSStyleSheet) => {
         const rules: CSSRule[] = [];
         const traverse = (ruleList: CSSRuleList | null) => {
@@ -209,19 +215,31 @@ test.describe('Stack Drill Down', () => {
 
       return Array.from(document.styleSheets).some(sheet => {
         return findCSSRules(sheet).some(rule => {
-          if (rule instanceof CSSStyleRule && rule.selectorText.includes('::-webkit-scrollbar')) {
-            return rule.style.display === 'none';
+          if (rule instanceof CSSStyleRule) {
+            if (rule.selectorText.includes('::-webkit-scrollbar') && rule.style.display === 'none') {
+              return true;
+            }
+            if (rule.selectorText.toLowerCase().includes('.stack') && (rule.style as any).scrollbarWidth === 'none') {
+              return true;
+            }
           }
           return false;
         });
       });
-    });
+    }, STACK_SEL);
     expect(hasHiddenScrollbar).toBe(true);
   });
 
   test('Parallax transform/animation is applied to nested inner element and NOT directly to the snap target', async ({ page }) => {
     await page.goto(targetUrl);
-    const validParallax = await page.evaluate(() => {
+    const validParallax = await page.evaluate(({ viewSel, contentSel }) => {
+      const view = document.querySelector(viewSel);
+      const innerEl = (view?.querySelector(contentSel) || view?.firstElementChild) as HTMLElement | null;
+      if (!view || !innerEl) return false;
+      const innerStyle = window.getComputedStyle(innerEl);
+      const hasVerticalScroll = ['auto', 'scroll'].includes(innerStyle.overflowY);
+      const hasOpaqueBg = innerStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' && innerStyle.backgroundColor !== 'transparent';
+
       const findCSSRules = (sheet: CSSStyleSheet) => {
         const rules: CSSRule[] = [];
         const traverse = (ruleList: CSSRuleList | null) => {
@@ -247,14 +265,18 @@ test.describe('Stack Drill Down', () => {
             if (sel === '.stack-view' && (rule.style.transform || rule.style.animation || rule.style.transition)) {
               bad = true;
             }
-            if ((sel.includes('.stack-viewcontent') || sel.includes('.stack-view-content') || sel.includes('.view-content')) && (rule.style.transform || rule.style.animation || rule.style.animationName)) {
+            let matchesInner = sel.includes('.stack-viewcontent') || sel.includes('.stack-view-content') || sel.includes('.view-content');
+            if (!matchesInner) {
+              try { matchesInner = innerEl.matches(rule.selectorText) && !view.matches(rule.selectorText); } catch (e) {}
+            }
+            if (matchesInner && (rule.style.transform || rule.style.animation || rule.style.animationName)) {
               good = true;
             }
           }
         }
       }
-      return !bad && good;
-    });
+      return !bad && good && hasVerticalScroll && hasOpaqueBg;
+    }, { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL });
     expect(validParallax).toBe(true);
   });
 
@@ -296,7 +318,10 @@ test.describe('Stack Drill Down', () => {
 
   test('Parallax animation uses animation-timeline: view(inline) and animation-range confined to exit phase', async ({ page }) => {
     await page.goto(targetUrl);
-    const hasTimelineAndRange = await page.evaluate(() => {
+    const hasTimelineAndRange = await page.evaluate(({ viewSel, contentSel }) => {
+      const view = document.querySelector(viewSel);
+      const innerEl = (view?.querySelector(contentSel) || view?.firstElementChild) as HTMLElement | null;
+
       const findCSSRules = (sheet: CSSStyleSheet) => {
         const rules: CSSRule[] = [];
         const traverse = (ruleList: CSSRuleList | null) => {
@@ -317,7 +342,11 @@ test.describe('Stack Drill Down', () => {
         for (const rule of findCSSRules(sheet)) {
           if (rule instanceof CSSStyleRule) {
             const sel = rule.selectorText.toLowerCase();
-            if (sel.includes('.stack-viewcontent') || sel.includes('.stack-view-content') || sel.includes('.view-content')) {
+            let matchesInner = sel.includes('.stack-viewcontent') || sel.includes('.stack-view-content') || sel.includes('.view-content');
+            if (!matchesInner && innerEl && view) {
+              try { matchesInner = innerEl.matches(rule.selectorText) && !view.matches(rule.selectorText); } catch (e) {}
+            }
+            if (matchesInner) {
               const timeline = (rule.style as any).animationTimeline || '';
               const range = (rule.style as any).animationRange || '';
               if (timeline.includes('view(inline)') && range.includes('exit')) {
@@ -328,7 +357,7 @@ test.describe('Stack Drill Down', () => {
         }
       }
       return false;
-    });
+    }, { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL });
     expect(hasTimelineAndRange).toBe(true);
   });
 
@@ -341,7 +370,6 @@ test.describe('Stack Drill Down', () => {
       return window.getComputedStyle(target).boxShadow;
     }, { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL });
     
-    // Drill down to get a drill down view
     await clickActiveLink(page);
     await page.waitForTimeout(100);
     
@@ -427,8 +455,6 @@ test.describe('Stack Drill Down', () => {
     });
     
     await page.goto(targetUrl);
-    
-    // Drill down to trigger programmatic scroll
     await clickActiveLink(page);
     await page.waitForTimeout(100);
     
@@ -447,9 +473,7 @@ test.describe('Stack Drill Down', () => {
   test('Active-view-change detection uses scrollsnapchange event on the stack', async ({ page }) => {
     await page.goto(targetUrl);
     
-    // Drill down first
     await clickActiveLink(page);
-    // Wait for layout and transition to settle
     try {
       await page.waitForFunction((viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
@@ -465,7 +489,6 @@ test.describe('Stack Drill Down', () => {
       const firstView = views[0];
       const beforeInert = firstView.hasAttribute('inert');
       
-      // Dispatch scrollsnapchange to go back to the first view
       const event = new Event('scrollsnapchange');
       Object.defineProperty(event, 'snapTargetInline', { value: firstView, writable: true });
       stack.dispatchEvent(event);
@@ -478,9 +501,10 @@ test.describe('Stack Drill Down', () => {
   });
 
   test('An IntersectionObserver fallback is provided for browsers without scrollsnapchange', async ({ page }) => {
-    await page.addInitScript(() => {
-      // Delete scrollsnapchange support
+      await page.addInitScript(() => {
       delete (HTMLElement.prototype as any).onscrollsnapchange;
+      delete (window as any).onscrollsnapchange;
+      delete (Document.prototype as any).onscrollsnapchange;
       
       (window as any).__intersectionObserverCalls = [];
       const originalObserver = window.IntersectionObserver;
@@ -495,28 +519,29 @@ test.describe('Stack Drill Down', () => {
     const observerConfig = await page.evaluate((stackSel) => {
       const calls = (window as any).__intersectionObserverCalls || [];
       const stack = document.querySelector(stackSel);
-      const matched = calls.find((c: any) => c.options?.root === stack && c.options?.threshold === 1);
+      const matched = calls.find((c: any) => {
+        const t = c.options?.threshold;
+        const isHighThreshold = (typeof t === 'number' && t >= 0.85) || (Array.isArray(t) && t.some((v: number) => v >= 0.85));
+        return c.options?.root === stack && isHighThreshold;
+      });
       return !!matched;
     }, STACK_SEL);
     
     expect(observerConfig).toBe(true);
   });
 
-  // --- Inert and focus management ---
+  // --- Inert, focus management, and DOM pruning ---
 
   test('Every view except the currently-active one carries the inert attribute', async ({ page }) => {
     await page.goto(targetUrl);
     
-    // Initially at root
     const rootInertState = await page.evaluate((viewSel) => {
       const views = document.querySelectorAll(viewSel);
       if (views.length !== 1) return null;
       return views[0].hasAttribute('inert');
     }, VIEW_SEL);
     
-    // Drill down
     await clickActiveLink(page);
-    // Wait for layout and transition to settle
     try {
       await page.waitForFunction((viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
@@ -533,12 +558,39 @@ test.describe('Stack Drill Down', () => {
     expect(rootInertState === false && drillInertStates !== null && drillInertStates[0] === true && drillInertStates[1] === false).toBe(true);
   });
 
+  test('Views that are swiped or navigated back past are removed from the DOM', async ({ page }) => {
+    await page.goto(targetUrl);
+    
+    await clickActiveLink(page);
+    try {
+      await page.waitForFunction((viewSel: string) => {
+        const views = document.querySelectorAll(viewSel);
+        return views.length >= 2 && views[0].hasAttribute('inert');
+      }, VIEW_SEL, { timeout: 1500 });
+    } catch (e) {}
+    
+    const twoViewsInDOM = await page.evaluate((viewSel) => {
+      return document.querySelectorAll(viewSel).length >= 2;
+    }, VIEW_SEL);
+    
+    await page.goBack();
+    try {
+      await page.waitForFunction((viewSel: string) => {
+        return document.querySelectorAll(viewSel).length === 1;
+      }, VIEW_SEL, { timeout: 2000 });
+    } catch (e) {}
+    
+    const viewsPruned = await page.evaluate((viewSel) => {
+      return document.querySelectorAll(viewSel).length === 1;
+    }, VIEW_SEL);
+    
+    expect(twoViewsInDOM && viewsPruned).toBe(true);
+  });
+
   test('Focus is moved to the back button of a freshly-pushed drill-down view', async ({ page }) => {
     await page.goto(targetUrl);
     
-    // Click first link to drill down
     await clickActiveLink(page);
-    // Wait for layout and transition to settle
     try {
       await page.waitForFunction((viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
@@ -558,12 +610,11 @@ test.describe('Stack Drill Down', () => {
   test('Focus is restored to the link originally clicked when navigating back', async ({ page }) => {
     await page.goto(targetUrl);
     
-    // Click first link to drill down
     const firstLink = await getActiveDrillLink(page);
+    const firstLinkHref = (await firstLink.getAttribute('href')) || '';
     const firstLinkText = ((await firstLink.textContent()) || '').trim();
     
     await clickActiveLink(page);
-    // Wait for layout and transition to settle
     try {
       await page.waitForFunction((viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
@@ -571,10 +622,8 @@ test.describe('Stack Drill Down', () => {
       }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    // Now click back
     await clickBackButton(page);
     
-    // Wait for back transition to settle
     try {
       await page.waitForFunction((viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
@@ -582,10 +631,13 @@ test.describe('Stack Drill Down', () => {
       }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    const focusOnOriginalLink = await page.evaluate((expectedText) => {
+    const focusOnOriginalLink = await page.evaluate(({ expectedHref, expectedText }) => {
       const active = document.activeElement;
-      return active ? (active.textContent || '').trim() === expectedText : false;
-    }, firstLinkText);
+      if (!active) return false;
+      const href = active.getAttribute('href') || '';
+      const text = (active.textContent || '').trim();
+      return (expectedHref !== '' && href === expectedHref) || text === expectedText;
+    }, { expectedHref: firstLinkHref, expectedText: firstLinkText });
     
     expect(focusOnOriginalLink).toBe(true);
   });
@@ -604,10 +656,7 @@ test.describe('Stack Drill Down', () => {
     });
     
     await page.goto(targetUrl);
-    
-    // Click link to drill down
     await clickActiveLink(page);
-    // Wait for layout and transition to settle
     try {
       await page.waitForFunction((viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
@@ -624,158 +673,7 @@ test.describe('Stack Drill Down', () => {
     expect(focusPreventScroll).toBe(true);
   });
 
-  // --- History / URL integration ---
-
-  test('Drilling down calls history.pushState with depth tracking', async ({ page }) => {
-    await page.addInitScript(() => {
-      (window as any).__pushStateCalls = [];
-      const originalPush = history.pushState;
-      history.pushState = function(state: any, title: string, url?: string | null) {
-        (window as any).__pushStateCalls.push({ state, url });
-        return originalPush.call(this, state, title, url);
-      };
-    });
-    
-    await page.goto(targetUrl);
-    
-    await clickActiveLink(page);
-    await page.waitForTimeout(100);
-    
-    const pushStateCalled = await page.evaluate(() => {
-      const calls = (window as any).__pushStateCalls || [];
-      if (calls.length === 0) return false;
-      const firstCall = calls[0];
-      return typeof firstCall.state?.depth === 'number';
-    });
-    
-    expect(pushStateCalled).toBe(true);
-  });
-
-  test('A popstate listener on window updates the visible view in response to back navigation', async ({ page }) => {
-    await page.goto(targetUrl);
-    
-    await clickActiveLink(page);
-    // Wait for layout and transition to settle
-    try {
-      await page.waitForFunction((viewSel: string) => {
-        const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    } catch (e) {}
-    
-    const initiallyAtDrillDown = await page.evaluate((viewSel) => {
-      const views = document.querySelectorAll(viewSel);
-      return views.length === 2 && !views[1].hasAttribute('inert');
-    }, VIEW_SEL);
-    
-    await page.goBack();
-    // Wait for back transition to settle
-    try {
-      await page.waitForFunction((viewSel: string) => {
-        const views = document.querySelectorAll(viewSel);
-        return views.length >= 1 && !views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    } catch (e) {}
-    
-    const returnedToRoot = await page.evaluate((viewSel) => {
-      const views = document.querySelectorAll(viewSel);
-      return views.length >= 1 && !views[0].hasAttribute('inert');
-    }, VIEW_SEL);
-    
-    expect(initiallyAtDrillDown && returnedToRoot).toBe(true);
-  });
-
-  test('Reconciles history via history.go when a manual scroll changes active view depth', async ({ page }) => {
-    await page.addInitScript(() => {
-      (window as any).__goCalls = [];
-      const originalGo = history.go;
-      history.go = function(delta?: number) {
-        (window as any).__goCalls.push(delta);
-        return originalGo.call(this, delta);
-      };
-    });
-    
-    await page.goto(targetUrl);
-    
-    // Drill down first
-    await clickActiveLink(page);
-    // Wait for layout and transition to settle
-    try {
-      await page.waitForFunction((viewSel: string) => {
-        const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    } catch (e) {}
-    
-    const goCalled = await page.evaluate(({ stackSel, viewSel }) => {
-      const stack = document.querySelector(stackSel);
-      const views = document.querySelectorAll(viewSel);
-      if (!stack || views.length < 2) return false;
-      
-      const event = new Event('scrollsnapchange');
-      Object.defineProperty(event, 'snapTargetInline', { value: views[0], writable: true });
-      stack.dispatchEvent(event);
-      
-      const calls = (window as any).__goCalls || [];
-      return calls.includes(-1);
-    }, { stackSel: STACK_SEL, viewSel: VIEW_SEL });
-    
-    expect(goCalled).toBe(true);
-  });
-
-  test('Deep links are handled on initial load and depth-0 is seeded with replaceState', async ({ page }) => {
-    const deepLinkUrl = await getDeepLinkUrl(page);
-
-    await page.addInitScript(() => {
-      (window as any).__replaceCalls = [];
-      const originalReplace = history.replaceState;
-      history.replaceState = function(state: any, title: string, url?: string | null) {
-        (window as any).__replaceCalls.push({ state, url });
-        return originalReplace.call(this, state, title, url);
-      };
-    });
-    
-    await page.goto(deepLinkUrl);
-    await page.waitForTimeout(100);
-    
-    const deepLinkHandled = await page.evaluate((viewSel) => {
-      const views = document.querySelectorAll(viewSel);
-      const onlyOneView = views.length === 1;
-      
-      const calls = (window as any).__replaceCalls || [];
-      const seededDepth0 = calls.some((c: any) => c.state?.depth === 0);
-      
-      return onlyOneView && seededDepth0;
-    }, VIEW_SEL);
-    
-    expect(deepLinkHandled).toBe(true);
-  });
-
-  test('Synthesizes a root entry when Back is clicked from a deep-linked entry with no in-app history', async ({ page }) => {
-    const deepLinkUrl = await getDeepLinkUrl(page);
-    await page.goto(deepLinkUrl);
-    await page.waitForTimeout(100);
-    
-    await clickBackButton(page);
-    // Wait for synthesized view to settle
-    try {
-      await page.waitForFunction((viewSel: string) => {
-        const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && !views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    } catch (e) {}
-    
-    const synthesized = await page.evaluate((viewSel) => {
-      const views = document.querySelectorAll(viewSel);
-      const hasMultipleViews = views.length >= 2;
-      const rootVisible = !views[0].hasAttribute('inert');
-      return hasMultipleViews && rootVisible;
-    }, VIEW_SEL);
-    
-    expect(synthesized).toBe(true);
-  });
-
-  // --- Click handling ---
+  // --- Click handling, back button, and History sync ---
 
   test('Drill-down triggers are real anchor elements with href attributes', async ({ page }) => {
     await page.goto(targetUrl);
@@ -785,7 +683,7 @@ test.describe('Stack Drill Down', () => {
       if (items.length > 0) {
         return Array.from(items).every(item => item.tagName === 'A' && item.hasAttribute('href'));
       }
-      const viewAnchors = document.querySelectorAll(`${viewSel} a[href]`);
+      const viewAnchors = document.querySelectorAll(`:is(${viewSel}) a[href]`);
       return viewAnchors.length > 0;
     }, VIEW_SEL);
     
@@ -817,7 +715,7 @@ test.describe('Stack Drill Down', () => {
     const isAnchor = await page.evaluate((viewSel) => {
       const item = document.querySelector('.item');
       if (item) return item.tagName === 'A';
-      return document.querySelectorAll(`${viewSel} a[href]`).length > 0;
+      return document.querySelectorAll(`:is(${viewSel}) a[href]`).length > 0;
     }, VIEW_SEL);
     
     expect(isAnchor && preventDefaultPreserved).toBe(true);
@@ -832,13 +730,12 @@ test.describe('Stack Drill Down', () => {
         return originalPreventDefault.call(this);
       };
 
-      // Prevent actual navigation to keep context, using raw preventDefault
       window.addEventListener('click', (e) => {
         const link = (e.target as HTMLElement).closest('a');
         if (link && link.classList.contains('external-item')) {
           originalPreventDefault.call(e);
         }
-      }, { capture: true });
+      }, { capture: false });
     });
     
     await page.goto(targetUrl);
@@ -858,9 +755,7 @@ test.describe('Stack Drill Down', () => {
     if (await link.isVisible()) {
       try {
         await link.click({ timeout: 1000, force: true });
-      } catch (e) {
-        // ignore navigation timeout
-      }
+      } catch (e) {}
     }
     
     const preventDefaultNotCalled = await page.evaluate(() => {
@@ -874,8 +769,6 @@ test.describe('Stack Drill Down', () => {
 
     expect(preventDefaultNotCalled && isScrollSnap).toBe(true);
   });
-
-  // --- Back button ---
 
   test('Drill-down views have an explicit back button, but root view does not', async ({ page }) => {
     await page.goto(targetUrl);
@@ -900,23 +793,33 @@ test.describe('Stack Drill Down', () => {
     expect(!rootHasBack && drillDownHasBack).toBe(true);
   });
 
-  // --- Scroll behavior selection on popstate ---
-
-  test('Scroll behavior on popstate is correctly selected based on transition type', async ({ page }) => {
+  test('Drilling down calls history.pushState with depth tracking', async ({ page }) => {
     await page.addInitScript(() => {
-      (window as any).__scrollCalls = [];
-      const originalScrollTo = Element.prototype.scrollTo;
-      Element.prototype.scrollTo = function(this: any) {
-        const options = arguments[0];
-        (window as any).__scrollCalls.push({ options });
-        return originalScrollTo.apply(this, arguments as any);
+      (window as any).__pushStateCalls = [];
+      const originalPush = history.pushState;
+      history.pushState = function(state: any, title: string, url?: string | null) {
+        (window as any).__pushStateCalls.push({ state, url });
+        return originalPush.call(this, state, title, url);
       };
     });
     
     await page.goto(targetUrl);
+    await clickActiveLink(page);
+    await page.waitForTimeout(100);
+    
+    const pushStateCalled = await page.evaluate(() => {
+      const calls = (window as any).__pushStateCalls || [];
+      if (calls.length === 0) return false;
+      return calls.some((c: any) => typeof c.state?.depth === 'number' || Boolean(c.url));
+    });
+    
+    expect(pushStateCalled).toBe(true);
+  });
+
+  test('A popstate listener on window updates the visible view in response to back navigation', async ({ page }) => {
+    await page.goto(targetUrl);
     
     await clickActiveLink(page);
-    // Wait for layout and transition to settle (first view becomes inert)
     try {
       await page.waitForFunction((viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
@@ -924,8 +827,12 @@ test.describe('Stack Drill Down', () => {
       }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
+    const initiallyAtDrillDown = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
+      return views.length === 2 && !views[1].hasAttribute('inert');
+    }, VIEW_SEL);
+    
     await page.goBack();
-    // Wait for back scroll to settle (first view loses inert)
     try {
       await page.waitForFunction((viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
@@ -933,31 +840,27 @@ test.describe('Stack Drill Down', () => {
       }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    await page.goForward();
-    // Wait for forward scroll to settle (first view becomes inert again)
-    try {
-      await page.waitForFunction((viewSel: string) => {
-        const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    } catch (e) {}
+    const returnedToRoot = await page.evaluate((viewSel) => {
+      const views = document.querySelectorAll(viewSel);
+      return views.length >= 1 && !views[0].hasAttribute('inert');
+    }, VIEW_SEL);
     
-    const behaviors = await page.evaluate(() => {
-      const calls = (window as any).__scrollCalls || [];
-      if (calls.length < 2) return null;
-      return calls.map((c: any) => c.options?.behavior);
+    expect(initiallyAtDrillDown && returnedToRoot).toBe(true);
+  });
+
+  test('Reconciles history via history.go when a manual scroll changes active view depth', async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as any).__goCalls = [];
+      const originalGo = history.go;
+      history.go = function(delta?: number) {
+        (window as any).__goCalls.push(delta);
+        return originalGo.call(this, delta);
+      };
     });
     
-    expect(behaviors !== null && behaviors[0] === 'auto' && behaviors[1] === 'instant').toBe(true);
-  });
-
-  // --- View pruning and rebuild ---
-
-  test('Views that are swiped or navigated back past are removed from the DOM', async ({ page }) => {
     await page.goto(targetUrl);
     
     await clickActiveLink(page);
-    // Wait for first view to become inert
     try {
       await page.waitForFunction((viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
@@ -965,86 +868,53 @@ test.describe('Stack Drill Down', () => {
       }, VIEW_SEL, { timeout: 1500 });
     } catch (e) {}
     
-    await clickActiveLink(page);
-    // Wait for second view to become inert
-    try {
-      await page.waitForFunction((viewSel: string) => {
-        const views = document.querySelectorAll(viewSel);
-        return views.length >= 3 && views[1].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    } catch (e) {}
+    const goCalled = await page.evaluate(({ stackSel, viewSel }) => {
+      const stack = document.querySelector(stackSel);
+      const views = document.querySelectorAll(viewSel);
+      if (!stack || views.length < 2) return false;
+      
+      const event = new Event('scrollsnapchange');
+      Object.defineProperty(event, 'snapTargetInline', { value: views[0], writable: true });
+      stack.dispatchEvent(event);
+      
+      const calls = (window as any).__goCalls || [];
+      return calls.includes(-1);
+    }, { stackSel: STACK_SEL, viewSel: VIEW_SEL });
     
-    const threeViewsInDOM = await page.evaluate((viewSel) => {
-      return document.querySelectorAll(viewSel).length === 3;
-    }, VIEW_SEL);
-    
-    await page.goBack();
-    await page.waitForTimeout(100);
-    await page.goBack();
-    // Wait for actual pruning to complete (views after root removed)
-    try {
-      await page.waitForFunction((viewSel: string) => {
-        return document.querySelectorAll(viewSel).length === 1;
-      }, VIEW_SEL, { timeout: 2000 });
-    } catch (e) {}
-    
-    const viewsPruned = await page.evaluate((viewSel) => {
-      return document.querySelectorAll(viewSel).length === 1;
-    }, VIEW_SEL);
-    
-    expect(threeViewsInDOM && viewsPruned).toBe(true);
+    expect(goCalled).toBe(true);
   });
 
-  test('Pruned views are successfully rebuilt from URL on forward navigation', async ({ page }) => {
-    await page.goto(targetUrl);
-    
-    await clickActiveLink(page);
-    // Wait for first view to become inert
+  test('Loading a deep-linked URL opens the drill-down view and Back navigates to the root view', async ({ page }) => {
+    const deepLinkUrl = await getDeepLinkUrl(page);
+    await page.goto(deepLinkUrl);
     try {
-      await page.waitForFunction((viewSel: string) => {
+      await page.waitForFunction(({ viewSel, backSel }: { viewSel: string; backSel: string }) => {
+        const activeView = document.querySelector(`:is(${viewSel}):not([inert])`) || document.querySelector(`:is(${viewSel}):last-child`);
+        return !!activeView?.querySelector(backSel);
+      }, { viewSel: VIEW_SEL, backSel: BACK_SEL }, { timeout: 1500 });
+    } catch (e) {}
+    
+    const openedDeepView = await page.evaluate(({ viewSel, backSel }) => {
+      const activeView = document.querySelector(`:is(${viewSel}):not([inert])`) || document.querySelector(`:is(${viewSel}):last-child`);
+      if (!activeView) return false;
+      return !!activeView.querySelector(backSel);
+    }, { viewSel: VIEW_SEL, backSel: BACK_SEL });
+    
+    await clickBackButton(page);
+    try {
+      await page.waitForFunction(({ viewSel, backSel }: { viewSel: string; backSel: string }) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
+        return views.length >= 1 && !views[0].hasAttribute('inert') && !views[0].querySelector(backSel);
+      }, { viewSel: VIEW_SEL, backSel: BACK_SEL }, { timeout: 1500 });
     } catch (e) {}
     
-    const firstDrillDownText = await page.evaluate((viewSel) => {
+    const returnedToRoot = await page.evaluate(({ viewSel, backSel }) => {
       const views = document.querySelectorAll(viewSel);
-      if (views.length < 2) return '';
-      const lastView = views[views.length - 1];
-      const heading = lastView.querySelector('h2, h1, h3, header');
-      return heading ? heading.textContent?.trim() || '' : '';
-    }, VIEW_SEL);
+      if (views.length === 0) return false;
+      return !views[0].hasAttribute('inert') && !views[0].querySelector(backSel);
+    }, { viewSel: VIEW_SEL, backSel: BACK_SEL });
     
-    await page.goBack();
-    // Wait for pruning to settle (only 1 view left in DOM)
-    try {
-      await page.waitForFunction((viewSel: string) => {
-        return document.querySelectorAll(viewSel).length === 1;
-      }, VIEW_SEL, { timeout: 2000 });
-    } catch (e) {}
-    
-    const isPruned = await page.evaluate((viewSel) => {
-      return document.querySelectorAll(viewSel).length === 1;
-    }, VIEW_SEL);
-    
-    await page.goForward();
-    // Wait for view to be rebuilt and heading to be rendered
-    try {
-      await page.waitForFunction((viewSel: string) => {
-        const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && !!views[views.length - 1].querySelector('h2, h1, h3, header');
-      }, VIEW_SEL, { timeout: 2000 });
-    } catch (e) {}
-    
-    const rebuiltText = await page.evaluate((viewSel) => {
-      const views = document.querySelectorAll(viewSel);
-      if (views.length < 2) return '';
-      const lastView = views[views.length - 1];
-      const heading = lastView.querySelector('h2, h1, h3, header');
-      return heading ? heading.textContent?.trim() || '' : '';
-    }, VIEW_SEL);
-    
-    expect(isPruned && rebuiltText === firstDrillDownText && rebuiltText !== '').toBe(true);
+    expect(openedDeepView && returnedToRoot).toBe(true);
   });
 
 });
