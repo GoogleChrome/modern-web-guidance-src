@@ -30,7 +30,7 @@ This approach is preferred over JavaScript-driven `transform` animations because
 
 ### 1. Markup
 
-The drawer is a single popover containing a horizontal scroller, which contains the visible "sheet". The trigger button lives in the page content.
+The drawer is a single popover containing a horizontal scroller, which contains the visible "sheet". The trigger button lives in the page content. The drawer's close button has an `autofocus` attribute so that this control receives focus when the drawer is opened.
 
 ```html
 <!-- popover="manual" is REQUIRED. Do not use popover="auto" or "hint". -->
@@ -43,7 +43,7 @@ The drawer is a single popover containing a horizontal scroller, which contains 
          to the natural tab order. -->
     <nav class="Drawer-sheet" tabindex="-1">
       <!-- Close button that can be used to dismiss the drawer -->
-      <button id="drawer-close" aria-label="Close menu">
+      <button id="drawer-close" aria-label="Close menu" autofocus>
         <!-- close icon or blank if icon inserted via CSS -->
       </button>
       <ul>
@@ -265,7 +265,9 @@ function onDrawerClosed() {
   // so the slide-out is visible to the user.
   drawer.hidePopover();
   document.querySelector('main').inert = false;
-  drawer.setAttribute('aria-modal', 'false');
+  if (drawer.hasAttribute('aria-modal')) {
+    drawer.removeAttribute('aria-modal');
+  }
   openBtn.setAttribute('aria-expanded', 'false');
   openBtn.focus();
 }

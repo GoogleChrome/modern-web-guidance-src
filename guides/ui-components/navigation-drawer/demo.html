@@ -202,15 +202,16 @@
       main.inert = true;
       openBtn.setAttribute('aria-expanded', 'true');
       drawer.setAttribute('aria-modal', 'true');
-      sheet.focus();
     }
 
     function onDrawerClosed() {
       drawer.hidePopover();
       main.inert = false;
-      drawer.removeAttribute('aria-modal');
       openBtn.setAttribute('aria-expanded', 'false');
-      openBtn.focus();
+      if (drawer.hasAttribute('aria-modal')) {
+        drawer.removeAttribute('aria-modal');
+        openBtn.focus();
+      }
     }
 
     function observeButtonClicks() {
@@ -285,7 +286,7 @@
       <nav class="Drawer-sheet" tabindex="-1">
         <header>
           <h1 id="drawer-title">Swipe to close</h1>
-          <button id="drawer-close" aria-label="Close menu">
+          <button id="drawer-close" aria-label="Close menu" autofocus>
             <svg xmlns="http://www.w3.org/2000/svg" fill="#fff" viewBox="0 -960 960 960" aria-hidden="true">
               <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
             </svg>

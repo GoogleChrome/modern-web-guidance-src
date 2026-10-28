@@ -13,7 +13,7 @@
 - Pressing the Escape key while the drawer is open closes the drawer.
 - The main page content has the `inert` attribute applied while the drawer is open.
 - The main page content no longer has the `inert` attribute after the drawer is closed.
-- Keyboard focus is moved inside the drawer after it opens.
+- The drawer's close button has an `autofocus` attribute so that it receives focus when the drawer is opened.
 - After the drawer is closed, the menu trigger button's `aria-expanded` attribute returns to `false`.
 - After the drawer is closed, focus moves back to the menu trigger button.
 - When the drawer is closed, the `aria-modal="true"` attribute is removed
