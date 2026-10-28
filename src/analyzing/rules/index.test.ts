@@ -96,16 +96,34 @@ describe('rule registry architectural invariants', () => {
     }
   });
 
-  it('enforces that RETIRED entries have no file on disk and carry a non-empty plain-language reason', () => {
+  it('enforces that RETIRED entries have no active matcher on disk and carry a non-empty plain-language reason', () => {
     const rulesDir = resolve(import.meta.dirname);
-    for (const [guideId, reason] of Object.entries(RETIRED)) {
-      assert.ok(
-        !existsSync(join(rulesDir, `${guideId}.ts`)),
-        `RETIRED module ${guideId}.ts should be deleted from disk`,
-      );
+    const activeByGuide = new Map(
+      RULE_REGISTRY.filter((e) => e.lifecycle.status !== 'retired').map((e) => [e.guideId, e]),
+    );
+    for (const [id, reason] of Object.entries(RETIRED)) {
+      const guideId = id.split('/')[0]!;
+      const activeEntry = activeByGuide.get(guideId);
+      if (activeEntry) {
+        assert.ok(
+          !(id in STATUS) &&
+            activeEntry.rules.length > 0 &&
+            !activeEntry.rules.some((r) => r.id === id),
+          `Rule-level RETIRED entry "${id}" must be removed from STATUS and "${guideId}.ts" while keeping remaining rules`,
+        );
+      } else {
+        assert.ok(
+          !existsSync(join(rulesDir, `${guideId}.ts`)),
+          `RETIRED module ${guideId}.ts should be deleted from disk`,
+        );
+      }
       assert.ok(
         typeof reason === 'string' && reason.trim().length > 0,
-        `RETIRED entry ${guideId} must have a non-empty reason`,
+        `RETIRED entry ${id} must have a non-empty reason`,
+      );
+      assert.ok(
+        !/\bD-\d{3}\b/.test(reason),
+        `RETIRED entry ${id} reason must be plain-language without internal decision IDs`,
       );
     }
   });

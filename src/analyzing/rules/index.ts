@@ -6,7 +6,6 @@ import animateToFromTopLayer from './animate-to-from-top-layer.ts';
 import animateToIntrinsicSizes from './animate-to-intrinsic-sizes.ts';
 import atruleSupportConditionals from './atrule-support-conditionals.ts';
 import autofillAddressForm from './autofill-address-form.ts';
-import autofillHighlightInputs from './autofill-highlight-inputs.ts';
 import autofillPaymentForm from './autofill-payment-form.ts';
 import autofillSignInForm from './autofill-sign-in-form.ts';
 import autofillSignUpForm from './autofill-sign-up-form.ts';
@@ -88,7 +87,6 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   animateToIntrinsicSizes,
   atruleSupportConditionals,
   autofillAddressForm,
-  autofillHighlightInputs,
   autofillPaymentForm,
   autofillSignInForm,
   autofillSignUpForm,
@@ -180,7 +178,6 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'animate-to-intrinsic-sizes': 'experimental',
   'atrule-support-conditionals/js-modernizr': 'experimental',
   'autofill-address-form': 'qualified',
-  'autofill-highlight-inputs': 'experimental',
   'autofill-payment-form': 'qualified',
   'autofill-sign-in-form': 'qualified',
   'autofill-sign-up-form': 'experimental',
@@ -195,7 +192,6 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'capture-location-agnostic-data/js-iso-lookup': 'experimental',
   'manage-recurring-intervals': 'experimental',
   'checkbox': 'qualified',
-  'child-state-based-styling': 'experimental',
   'child-state-based-styling/js-parent-class': 'experimental',
   'client-side-encryption/js-crypto': 'experimental',
   'complex-shapes': 'experimental',
@@ -293,13 +289,18 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
 };
 
 /**
- * Retired guides that have no active rule module on disk.
+ * Retired guides and rules removed from active scanning.
+ * Keys may be a retired rule ID (when a guide retains other active rules) or a retired guide ID.
  */
 export const RETIRED: Readonly<Record<string, string>> = {
   'adapt-scrollbar-to-contrast-preferences':
     'No client-side legacy pattern; applicability depends on visual/semantic judgment',
+  'autofill-highlight-inputs':
+    'No payoff: browsers already alias :-webkit-autofill to :autofill, so the rewrite is a no-op',
   'brand-consistent-forms':
     'Flags the appearance:none technique recommended by the checkbox guide',
+  'child-state-based-styling':
+    'Syntax-only swap: rewriting working +/~ sibling combinators into :has() is more expensive in Chromium',
   'schedule-tasks-by-priority':
     'requestIdleCallback has IdleDeadline/timeout semantics not 1:1 with scheduler.postTask',
   'format-human-readable-durations':
@@ -334,6 +335,10 @@ function deriveModuleLifecycle(rules: readonly AnalyzerRule[]): RuleLifecycle {
   return { status: 'experimental' };
 }
 
+const ACTIVE_GUIDE_IDS: ReadonlySet<string> = new Set(
+  RULE_MODULES.map((rules) => rules[0].guideId),
+);
+
 /**
  * Canonical rule registry derived from `RULE_MODULES`, `STATUS`, and `RETIRED`.
  */
@@ -343,11 +348,13 @@ export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
     lifecycle: deriveModuleLifecycle(rules),
     rules,
   })),
-  ...Object.entries(RETIRED).map(([guideId, reason]): RuleRegistryEntry => ({
-    guideId,
-    lifecycle: { status: 'retired', reason },
-    rules: [],
-  })),
+  ...Object.entries(RETIRED)
+    .filter(([id]) => !ACTIVE_GUIDE_IDS.has(id.split('/')[0]!))
+    .map(([id, reason]): RuleRegistryEntry => ({
+      guideId: id.split('/')[0]!,
+      lifecycle: { status: 'retired', reason },
+      rules: [],
+    })),
 ];
 
 export const RULE_REGISTRY_BY_GUIDE_ID: ReadonlyMap<string, RuleRegistryEntry> = new Map(
