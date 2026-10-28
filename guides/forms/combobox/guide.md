@@ -10,7 +10,7 @@ web-feature-ids:
 
 A combobox pairs a text field with a popup list: the user types to narrow the options and can either pick one or submit their own free-form value. Build it on top of a customizable `<select>` (`appearance: base-select`) so the popup, keyboard handling, light dismiss, `Escape`, focus management, and form submission all come from the platform, and only the filter and "add" behavior is written in JavaScript. For browsers without customizable select, the same markup degrades to an `<input list>` bound to a `<datalist>`.
 
-If the user only needs to narrow a fixed list and never enter a value that is not already an option, use {{ GUIDE_REF("filterable-select") }} instead.
+If the user only needs to narrow a fixed list and never enter a value that is not already an option, build the same control without the "Add" button (steps 3–6 minus the `add` pieces) and drop the `<input list>` free-form fallback in favor of a plain `<select>`.
 
 {# Verified in Chrome 150 (Oct 2026). Design constraints that drove this guide: the HTML parser closes <select> on <input>/<button>; HTMLSelectElement has showPicker() but no hidePicker(); Chrome does not dispatch toggle on <select>; input type=search consumes Escape to clear itself. #}
 
