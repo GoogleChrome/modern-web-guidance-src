@@ -14,7 +14,9 @@ import batchAnalyticsEvents from './batch-analytics-events.ts';
 import brandedSelectStyling from './branded-select-styling.ts';
 import breakUpLongTasks from './break-up-long-tasks.ts';
 import calculateEventDifferentials from './calculate-event-differentials.ts';
+import calculateTotalForegroundTime from './calculate-total-foreground-time.ts';
 import captureLocationAgnosticData from './capture-location-agnostic-data.ts';
+import card from './card.ts';
 import carouselSlideEffects from './carousel-slide-effects.ts';
 import carouselSnapHighlights from './carousel-snap-highlights.ts';
 import checkbox from './checkbox.ts';
@@ -34,6 +36,7 @@ import customizeScrollbarColorAndThickness from './customize-scrollbar-color-and
 import darkMode from './dark-mode.ts';
 import darkModeToggle from './dark-mode-toggle.ts';
 import declarativeDialogPopoverControl from './declarative-dialog-popover-control.ts';
+import deferRenderingHeavyContent from './defer-rendering-heavy-content.ts';
 import deferWorkUntilScrollEnds from './defer-work-until-scroll-ends.ts';
 import deliverOptimizedDecorativeImages from './deliver-optimized-decorative-images.ts';
 import deprioritizeBackgroundFetches from './deprioritize-background-fetches.ts';
@@ -43,10 +46,15 @@ import directionalNavigationTransitions from './directional-navigation-transitio
 import drag from './drag.ts';
 import dynamicSiblingAnimations from './dynamic-sibling-animations.ts';
 import dynamicSiblingStyling from './dynamic-sibling-styling.ts';
+import efficientBackgroundProcessing from './efficient-background-processing.ts';
 import equalWidthTextLines from './equal-width-text-lines.ts';
 import exportHtmlMediaFromCanvas from './export-html-media-from-canvas.ts';
+import fasterSpaViewTransitions from './faster-spa-view-transitions.ts';
 import flickerFreeClientSideAbTesting from './flicker-free-client-side-ab-testing.ts';
+import fluidScaling from './fluid-scaling.ts';
+import formAssociatedCustomElements from './form-associated-custom-elements.ts';
 import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-contents.ts';
+import fullSessionAnalytics from './full-session-analytics.ts';
 import groupElementTransitions from './group-element-transitions.ts';
 import highlightTextRanges from './highlight-text-ranges.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
@@ -65,6 +73,8 @@ import navigationDrawer from './navigation-drawer.ts';
 import optimizeImagePriority from './optimize-image-priority.ts';
 import optimizePreloadPriority from './optimize-preload-priority.ts';
 import optimizeScriptPriority from './optimize-script-priority.ts';
+import parallaxScrollEffects from './parallax-scroll-effects.ts';
+import persistentAppTours from './persistent-app-tours.ts';
 import persistentToastNotifications from './persistent-toast-notifications.ts';
 import physicsBasedEasing from './physics-based-easing.ts';
 import platformControlsDismissDialog from './platform-controls-dismiss-dialog.ts';
@@ -90,6 +100,7 @@ import scrollTargetOnLoad from './scroll-target-on-load.ts';
 import scrollabilityAffordanceHints from './scrollability-affordance-hints.ts';
 import scrollytelling from './scrollytelling.ts';
 import scrollspy from './scrollspy.ts';
+import searchHiddenContent from './search-hidden-content.ts';
 import secureExternalSubresources from './secure-external-subresources.ts';
 import selectMenuInteraction from './select-menu-interaction.ts';
 import sizeAwareStyling from './size-aware-styling.ts';
@@ -97,11 +108,16 @@ import slider from './slider.ts';
 import smsOtpForm from './sms-otp-form.ts';
 import softEdgeContentFade from './soft-edge-content-fade.ts';
 import sortHighPrecisionTimestamps from './sort-high-precision-timestamps.ts';
+import spatialNavigation from './spatial-navigation.ts';
+import spinner from './spinner.ts';
 import stateAwareStickyHeaders from './state-aware-sticky-headers.ts';
 import stylingWebComponents from './styling-web-components.ts';
 import supportGlobalCalendarSystems from './support-global-calendar-systems.ts';
+import swipeToRemove from './swipe-to-remove.ts';
+import swipeToReveal from './swipe-to-reveal.ts';
 import switchRuleModule from './switch.ts';
 import validateOrigins from './validate-origins.ts';
+import viewportAwareDropdowns from './viewport-aware-dropdowns.ts';
 import visuallyStableFontFallbacks from './visually-stable-font-fallbacks.ts';
 
 export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
@@ -119,7 +135,9 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   brandedSelectStyling,
   breakUpLongTasks,
   calculateEventDifferentials,
+  calculateTotalForegroundTime,
   captureLocationAgnosticData,
+  card,
   carouselSlideEffects,
   carouselSnapHighlights,
   checkbox,
@@ -139,6 +157,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   darkMode,
   darkModeToggle,
   declarativeDialogPopoverControl,
+  deferRenderingHeavyContent,
   deferWorkUntilScrollEnds,
   deliverOptimizedDecorativeImages,
   deprioritizeBackgroundFetches,
@@ -148,10 +167,15 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   drag,
   dynamicSiblingAnimations,
   dynamicSiblingStyling,
+  efficientBackgroundProcessing,
   equalWidthTextLines,
   exportHtmlMediaFromCanvas,
+  fasterSpaViewTransitions,
   flickerFreeClientSideAbTesting,
+  fluidScaling,
+  formAssociatedCustomElements,
   formFieldsAutomaticallyFitContents,
+  fullSessionAnalytics,
   groupElementTransitions,
   highlightTextRanges,
   imeSafeEnterSubmit,
@@ -170,6 +194,8 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   optimizeImagePriority,
   optimizePreloadPriority,
   optimizeScriptPriority,
+  parallaxScrollEffects,
+  persistentAppTours,
   persistentToastNotifications,
   physicsBasedEasing,
   platformControlsDismissDialog,
@@ -195,6 +221,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   scrollabilityAffordanceHints,
   scrollytelling,
   scrollspy,
+  searchHiddenContent,
   secureExternalSubresources,
   selectMenuInteraction,
   sizeAwareStyling,
@@ -202,11 +229,16 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   smsOtpForm,
   softEdgeContentFade,
   sortHighPrecisionTimestamps,
+  spatialNavigation,
+  spinner,
   stateAwareStickyHeaders,
   stylingWebComponents,
   supportGlobalCalendarSystems,
+  swipeToRemove,
+  swipeToReveal,
   switchRuleModule,
   validateOrigins,
+  viewportAwareDropdowns,
   visuallyStableFontFallbacks,
 ];
 
@@ -235,6 +267,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'branded-select-styling/js': 'experimental',
   'break-up-long-tasks': 'experimental',
   'calculate-event-differentials': 'experimental',
+  'calculate-total-foreground-time': 'experimental',
   'format-human-readable-durations/package-duration-formatter': 'experimental',
   'format-human-readable-durations/js-duration-formatter': 'experimental',
   'capture-location-agnostic-data/package-iso-lookup': 'experimental',
@@ -242,6 +275,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'carousel-slide-effects': 'experimental',
   'carousel-snap-highlights': 'experimental',
   'manage-recurring-intervals': 'experimental',
+  'card': 'experimental',
   'checkbox': 'qualified',
   'child-state-based-styling/js-parent-class': 'experimental',
   'client-side-encryption/js-crypto': 'experimental',
@@ -265,6 +299,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'dark-mode-toggle': 'experimental',
   'declarative-dialog-popover-control': 'experimental',
   'declarative-dialog-popover-control/click-listener': 'experimental',
+  'defer-rendering-heavy-content': 'experimental',
   'defer-work-until-scroll-ends': 'experimental',
   'deliver-optimized-decorative-images': 'experimental',
   'deprioritize-background-fetches': 'experimental',
@@ -278,12 +313,18 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'dynamic-sibling-animations/js': 'experimental',
   'dynamic-sibling-styling': 'experimental',
   'dynamic-sibling-styling/css': 'experimental',
+  'efficient-background-processing': 'experimental',
   'equal-width-text-lines/package-fittext': 'experimental',
   'equal-width-text-lines/js-fittext': 'experimental',
   'export-html-media-from-canvas/package-canvas-recorder': 'experimental',
   'export-html-media-from-canvas/js-canvas-recorder': 'experimental',
+  'faster-spa-view-transitions': 'experimental',
+  'faster-spa-view-transitions/css': 'experimental',
   'flicker-free-client-side-ab-testing': 'experimental',
+  'fluid-scaling': 'experimental',
+  'form-associated-custom-elements': 'experimental',
   'form-fields-automatically-fit-contents': 'qualified',
+  'full-session-analytics': 'experimental',
   'group-element-transitions': 'experimental',
   'highlight-text-ranges/package-markjs': 'experimental',
   'highlight-text-ranges/js-markjs': 'experimental',
@@ -313,6 +354,9 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'optimize-image-priority': 'experimental',
   'optimize-preload-priority': 'experimental',
   'optimize-script-priority': 'experimental',
+  'parallax-scroll-effects': 'experimental',
+  'persistent-app-tours/package-tour': 'experimental',
+  'persistent-app-tours': 'experimental',
   'persistent-toast-notifications/js-toast': 'experimental',
   'physics-based-easing/js-spring': 'experimental',
   'platform-controls-dismiss-dialog': 'experimental',
@@ -348,6 +392,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'scrollytelling': 'experimental',
   'scrollspy': 'qualified',
   'scrollspy/js': 'experimental', // CSS scroll-target-group / :target-current is not yet Baseline
+  'search-hidden-content': 'experimental',
   'secure-external-subresources': 'experimental',
   'select-menu-interaction/css-select-invalid': 'experimental',
   'select-menu-interaction/js-select-interaction': 'experimental',
@@ -356,12 +401,19 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'sms-otp-form': 'experimental',
   'soft-edge-content-fade': 'experimental',
   'sort-high-precision-timestamps': 'experimental',
+  'spatial-navigation': 'experimental',
+  'spinner/package-spinner': 'experimental',
+  'spinner': 'experimental',
+  'spinner/dom': 'experimental',
   'state-aware-sticky-headers': 'experimental',
   'styling-web-components': 'qualified',
   'support-global-calendar-systems/package-calendar': 'experimental',
   'support-global-calendar-systems/js-calendar': 'experimental',
+  'swipe-to-remove': 'experimental',
+  'swipe-to-reveal': 'experimental',
   'switch': 'experimental',
   'validate-origins': 'experimental',
+  'viewport-aware-dropdowns': 'experimental',
   'visually-stable-font-fallbacks/package-font-loader': 'experimental',
   'visually-stable-font-fallbacks/js-font-loader': 'experimental',
 };
