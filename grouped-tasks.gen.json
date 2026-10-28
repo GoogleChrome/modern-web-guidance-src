@@ -523,6 +523,9 @@
       "browser-ui-theming": [
         "daily-grind"
       ],
+      "color": [
+        "daily-grind"
+      ],
       "complex-shapes": [
         "task"
       ],
