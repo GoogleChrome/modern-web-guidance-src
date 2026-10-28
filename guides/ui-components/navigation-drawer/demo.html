@@ -29,6 +29,7 @@
         background: #0002;
         font-size: 1.25em;
         font-weight: 400;
+        position: relative;
       }
 
       button {
@@ -121,6 +122,16 @@
         content: '';
         scroll-snap-align: end;
         scroll-initial-target: nearest;
+      }
+
+      #drawer-title {
+        margin-top: var(--gap);
+      }
+
+      #drawer-close {
+        position: absolute;
+        top: 1em;
+        right: 1em;
       }
 
       .Drawer-sheet {
