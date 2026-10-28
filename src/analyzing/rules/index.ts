@@ -29,13 +29,16 @@ import darkMode from './dark-mode.ts';
 import declarativeDialogPopoverControl from './declarative-dialog-popover-control.ts';
 import deferWorkUntilScrollEnds from './defer-work-until-scroll-ends.ts';
 import deliverOptimizedDecorativeImages from './deliver-optimized-decorative-images.ts';
+import deprioritizeBackgroundFetches from './deprioritize-background-fetches.ts';
 import detectInitialVisibilityState from './detect-initial-visibility-state.ts';
 import digitalSignatures from './digital-signatures.ts';
 import drag from './drag.ts';
 import equalWidthTextLines from './equal-width-text-lines.ts';
 import exportHtmlMediaFromCanvas from './export-html-media-from-canvas.ts';
+import flickerFreeClientSideAbTesting from './flicker-free-client-side-ab-testing.ts';
 import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-contents.ts';
 import highlightTextRanges from './highlight-text-ranges.ts';
+import identifyHeavyScripts from './identify-heavy-scripts.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
 import improveNextPageLoadPerformance from './improve-next-page-load-performance.ts';
 import improveTextLayoutAndLegibility from './improve-text-layout-and-legibility.ts';
@@ -49,11 +52,14 @@ import lightDismissADialog from './light-dismiss-a-dialog.ts';
 import menu from './menu.ts';
 import navigationDrawer from './navigation-drawer.ts';
 import optimizeImagePriority from './optimize-image-priority.ts';
+import optimizePreloadPriority from './optimize-preload-priority.ts';
+import optimizeScriptPriority from './optimize-script-priority.ts';
 import persistentToastNotifications from './persistent-toast-notifications.ts';
 import physicsBasedEasing from './physics-based-easing.ts';
 import platformControlsDismissDialog from './platform-controls-dismiss-dialog.ts';
 import positionAwareTooltips from './position-aware-tooltips.ts';
 import preciseTextAlignment from './precise-text-alignment.ts';
+import prerenderingCustomElements from './prerendering-custom-elements.ts';
 import preventPageScrollUnderModalDialog from './prevent-page-scroll-under-modal-dialog.ts';
 import progressRing from './progress-ring.ts';
 import requiredFieldFeedback from './required-field-feedback.ts';
@@ -69,11 +75,13 @@ import scrollSnapStateSync from './scroll-snap-state-sync.ts';
 import scrollTargetOnLoad from './scroll-target-on-load.ts';
 import scrollabilityAffordanceHints from './scrollability-affordance-hints.ts';
 import scrollspy from './scrollspy.ts';
+import secureExternalSubresources from './secure-external-subresources.ts';
 import selectMenuInteraction from './select-menu-interaction.ts';
 import sizeAwareStyling from './size-aware-styling.ts';
 import slider from './slider.ts';
 import smsOtpForm from './sms-otp-form.ts';
 import softEdgeContentFade from './soft-edge-content-fade.ts';
+import sortHighPrecisionTimestamps from './sort-high-precision-timestamps.ts';
 import stateAwareStickyHeaders from './state-aware-sticky-headers.ts';
 import stylingWebComponents from './styling-web-components.ts';
 import supportGlobalCalendarSystems from './support-global-calendar-systems.ts';
@@ -110,13 +118,16 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   declarativeDialogPopoverControl,
   deferWorkUntilScrollEnds,
   deliverOptimizedDecorativeImages,
+  deprioritizeBackgroundFetches,
   detectInitialVisibilityState,
   digitalSignatures,
   drag,
   equalWidthTextLines,
   exportHtmlMediaFromCanvas,
+  flickerFreeClientSideAbTesting,
   formFieldsAutomaticallyFitContents,
   highlightTextRanges,
+  identifyHeavyScripts,
   imeSafeEnterSubmit,
   improveNextPageLoadPerformance,
   improveTextLayoutAndLegibility,
@@ -130,11 +141,14 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   menu,
   navigationDrawer,
   optimizeImagePriority,
+  optimizePreloadPriority,
+  optimizeScriptPriority,
   persistentToastNotifications,
   physicsBasedEasing,
   platformControlsDismissDialog,
   positionAwareTooltips,
   preciseTextAlignment,
+  prerenderingCustomElements,
   preventPageScrollUnderModalDialog,
   progressRing,
   requiredFieldFeedback,
@@ -150,11 +164,13 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   scrollTargetOnLoad,
   scrollabilityAffordanceHints,
   scrollspy,
+  secureExternalSubresources,
   selectMenuInteraction,
   sizeAwareStyling,
   slider,
   smsOtpForm,
   softEdgeContentFade,
+  sortHighPrecisionTimestamps,
   stateAwareStickyHeaders,
   stylingWebComponents,
   supportGlobalCalendarSystems,
@@ -210,6 +226,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'declarative-dialog-popover-control/click-listener': 'experimental',
   'defer-work-until-scroll-ends': 'experimental',
   'deliver-optimized-decorative-images': 'experimental',
+  'deprioritize-background-fetches': 'experimental',
   'detect-initial-visibility-state': 'experimental',
   'digital-signatures/js-signature': 'experimental',
   'drag/package-drag-drop': 'experimental',
@@ -218,9 +235,11 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'equal-width-text-lines/js-fittext': 'experimental',
   'export-html-media-from-canvas/package-canvas-recorder': 'experimental',
   'export-html-media-from-canvas/js-canvas-recorder': 'experimental',
+  'flicker-free-client-side-ab-testing': 'experimental',
   'form-fields-automatically-fit-contents': 'qualified',
   'highlight-text-ranges/package-markjs': 'experimental',
   'highlight-text-ranges/js-markjs': 'experimental',
+  'identify-heavy-scripts': 'experimental',
   'ime-safe-enter-submit': 'experimental',
   'improve-next-page-load-performance/package-prefetch': 'experimental',
   'improve-next-page-load-performance/js-quicklink': 'experimental',
@@ -244,6 +263,8 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'navigation-drawer': 'experimental',
   'navigation-drawer/dom': 'experimental',
   'optimize-image-priority': 'experimental',
+  'optimize-preload-priority': 'experimental',
+  'optimize-script-priority': 'experimental',
   'persistent-toast-notifications/js-toast': 'experimental',
   'physics-based-easing/js-spring': 'experimental',
   'platform-controls-dismiss-dialog': 'experimental',
@@ -251,6 +272,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'precise-text-alignment/package-capsize': 'experimental',
   'precise-text-alignment/js-capsize': 'experimental',
   'precise-text-alignment/css-leading-trim': 'experimental',
+  'prerendering-custom-elements': 'experimental',
   'prevent-page-scroll-under-modal-dialog/package-scroll-lock': 'experimental',
   'prevent-page-scroll-under-modal-dialog': 'experimental',
   'prevent-page-scroll-under-modal-dialog/css': 'experimental',
@@ -273,12 +295,14 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'scrollability-affordance-hints': 'experimental',
   'scrollspy': 'qualified',
   'scrollspy/js': 'experimental', // CSS scroll-target-group / :target-current is not yet Baseline
+  'secure-external-subresources': 'experimental',
   'select-menu-interaction/css-select-invalid': 'experimental',
   'select-menu-interaction/js-select-interaction': 'experimental',
   'size-aware-styling': 'experimental',
   'slider/js-slider': 'experimental',
   'sms-otp-form': 'experimental',
   'soft-edge-content-fade': 'experimental',
+  'sort-high-precision-timestamps': 'experimental',
   'state-aware-sticky-headers': 'experimental',
   'styling-web-components': 'qualified',
   'support-global-calendar-systems/package-calendar': 'experimental',
