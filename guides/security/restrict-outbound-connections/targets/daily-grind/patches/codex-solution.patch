@@ -1,74 +1,29 @@
 diff --git a/.gitignore b/.gitignore
 new file mode 100644
-index 0000000..ee0fd60
+index 0000000..e129183
 --- /dev/null
 +++ b/.gitignore
 @@ -0,0 +1,3 @@
++node_modules/
 +dist/
 +data/
-+node_modules/
-diff --git a/README.md b/README.md
-new file mode 100644
-index 0000000..c17fbfb
---- /dev/null
-+++ b/README.md
-@@ -0,0 +1,28 @@
-+# The Daily Grind
-+
-+Run `npm run build` to generate `dist/`. Deploy with the included Node server
-+(`npm start`, with optional `PORT`; default 11222) so the page, newsletter API,
-+and security headers share an origin. Build before starting the server.
-+
-+The newsletter endpoint accepts JSON `POST /api/newsletter` with an `email`
-+field. Successful submissions are appended to `data/newsletter.jsonl`; keep
-+this directory on persistent storage and private to the server. A failed write
-+returns an error rather than confirming a subscription. This records signups;
-+delivery of newsletter emails is handled separately.
-+
-+Every server response carries an enforcing `Connection-Allowlist` allowing
-+`response-origin` and `https://images.unsplash.com`. Redirects and WebRTC retain
-+the policy's default blocking behavior. The same headers apply to worker
-+responses if workers are added. CSP provides additional restrictions for browsers
-+without Connection Allowlist support, including explicit same-origin form and
-+worker restrictions. No inline scripts or styles are required.
-+
-+Browser violation reports go to the same-origin `/api/security-reports`
-+endpoint, which consumes bounded reports without storing potentially sensitive
-+URLs. Connect this endpoint to private monitoring if report retention is needed.
-+
-+`dist/_headers` also provides the policies for static hosts supporting that
-+format. Static hosting alone does not implement the API endpoints; route them
-+to the server on the same origin. Other hosting platforms must configure the
-+equivalent HTTP response headers. Connection-Allowlist requires browser support
-+and cannot be replaced with an HTML meta tag or JavaScript polyfill.
 diff --git a/build.mjs b/build.mjs
 new file mode 100644
-index 0000000..1b774ba
+index 0000000..2336ba9
 --- /dev/null
 +++ b/build.mjs
-@@ -0,0 +1,20 @@
-+import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
-+import { execFileSync } from 'node:child_process';
-+import { securityHeaders } from './security.mjs';
+@@ -0,0 +1,9 @@
++// @ts-check
++import { copyFile, mkdir } from 'node:fs/promises';
 +
-+for (const file of ['newsletter.js', 'server.mjs', 'security.mjs']) {
-+  execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++for (const filename of ['index.html', 'styles.css', 'newsletter.js', 'server.mjs']) {
++  await copyFile(new URL(filename, import.meta.url), new URL(filename, output));
 +}
-+await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
-+for (const file of ['index.html', 'styles.css', 'newsletter.js']) {
-+  await copyFile(new URL(file, import.meta.url), new URL(`dist/${file}`, import.meta.url));
-+}
-+// Static hosts that support _headers can enforce these policies too. The signup
-+// and report endpoints still require the included server (or equivalent routes).
-+await writeFile(new URL('./dist/_headers', import.meta.url),
-+  '/*\n' + Object.entries(securityHeaders).map(([name, value]) => `  ${name}: ${value}\n`).join(''));
-+const page = await readFile(new URL('./dist/index.html', import.meta.url), 'utf8');
-+if (page.includes('<style>') || /\sstyle=/.test(page)) {
-+  throw new Error('Inline styles are incompatible with the Content-Security-Policy');
-+}
-+console.log('Built homepage, assets and security headers.');
++console.log('Built Daily Grind in dist/.');
 diff --git a/index.html b/index.html
-index 66c9173..7dfc854 100644
+index 66c9173..1ee8a96 100644
 --- a/index.html
 +++ b/index.html
 @@ -5,154 +5,8 @@
@@ -233,211 +188,272 @@ index 66c9173..7dfc854 100644
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
-+      <h2 class="section-title">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
        <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
-@@ -195,6 +49,18 @@
+@@ -195,6 +49,16 @@
          </div>
        </div>
      </section>
 +    <section class="newsletter card" aria-labelledby="newsletter-heading">
-+      <h2 id="newsletter-heading">A fresh brew in your inbox</h2>
-+      <p>Sign up for coffee news, seasonal favorites, and updates from The Daily Grind.</p>
++      <h2 id="newsletter-heading">Fresh news, brewed for you</h2>
++      <p>Sign up for seasonal favorites and news from The Daily Grind.</p>
 +      <form id="newsletter-form" action="/api/newsletter" method="post">
 +        <label for="newsletter-email">Email address</label>
-+        <input id="newsletter-email" name="email" type="email" autocomplete="email"
-+          maxlength="254" required placeholder="you@example.com">
-+        <button id="newsletter-submit" class="btn" type="submit">Sign up</button>
-+        <p id="newsletter-status" role="status" aria-live="polite" aria-atomic="true"></p>
++        <input id="newsletter-email" name="email" type="email" autocomplete="email" maxlength="254" required>
++        <button class="btn" type="submit">Subscribe</button>
 +      </form>
-+      <noscript>Please enable JavaScript to sign up for our newsletter.</noscript>
++      <p id="newsletter-status" role="status" aria-live="polite" aria-atomic="true"></p>
 +    </section>
    </main>
  
    <footer>
 diff --git a/newsletter.js b/newsletter.js
 new file mode 100644
-index 0000000..9e7cdb1
+index 0000000..ff0527a
 --- /dev/null
 +++ b/newsletter.js
-@@ -0,0 +1,40 @@
+@@ -0,0 +1,44 @@
 +// @ts-check
 +const form = document.querySelector('#newsletter-form');
-+const email = document.querySelector('#newsletter-email');
-+const button = document.querySelector('#newsletter-submit');
-+const status = document.querySelector('#newsletter-status');
++const emailInput = document.querySelector('#newsletter-email');
++const submitButton = document.querySelector('#newsletter-form button');
++const statusElement = document.querySelector('#newsletter-status');
 +
-+if (form instanceof HTMLFormElement && email instanceof HTMLInputElement &&
-+    button instanceof HTMLButtonElement && status instanceof HTMLElement) {
++if (form instanceof HTMLFormElement && emailInput instanceof HTMLInputElement &&
++    submitButton instanceof HTMLButtonElement && statusElement instanceof HTMLElement) {
++  let pending = false;
 +  form.addEventListener('submit', async (event) => {
 +    event.preventDefault();
-+    if (button.disabled || !form.reportValidity()) return;
-+
-+    button.disabled = true;
++    if (pending || !form.reportValidity()) return;
++    pending = true;
++    submitButton.disabled = true;
 +    form.setAttribute('aria-busy', 'true');
-+    status.textContent = 'Signing you up…';
-+    const controller = new AbortController();
-+    const timeout = setTimeout(() => controller.abort(), 10000);
++    statusElement.textContent = 'Signing you up…';
 +
 +    try {
-+      const response = await fetch('/api/newsletter', {
++      const response = await fetch(form.action, {
 +        method: 'POST',
 +        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ email: emailInput.value.trim() }),
 +        credentials: 'same-origin',
 +        redirect: 'error',
-+        signal: controller.signal,
-+        body: JSON.stringify({ email: email.value.trim() }),
++        signal: AbortSignal.timeout(15000),
 +      });
-+      if (!response.ok) throw new Error('Signup request failed');
-+      status.textContent = 'Thanks for signing up for The Daily Grind newsletter!';
++      if (!response.ok) {
++        statusElement.textContent = response.status === 400
++          ? 'Please enter a valid email address and try again.'
++          : 'We couldn’t sign you up right now. Please try again shortly.';
++        return;
++      }
++      statusElement.textContent = 'Thanks for subscribing! You’re on the list.';
 +      form.reset();
 +    } catch {
-+      // Includes policy blocks (TypeError), offline requests, timeouts and HTTP errors.
-+      status.textContent = 'We couldn’t complete your signup. Please check your connection and try again.';
++      // Network failures, policy blocks, redirects, and timeouts are all handled.
++      statusElement.textContent = 'Your signup request couldn’t get through. Please check your connection and try again.';
 +    } finally {
-+      clearTimeout(timeout);
-+      button.disabled = false;
++      pending = false;
++      submitButton.disabled = false;
 +      form.removeAttribute('aria-busy');
 +    }
 +  });
 +}
 diff --git a/package.json b/package.json
-index 2bd4d77..28f2fa6 100644
+index 2bd4d77..87a24b0 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,7 +2,8 @@
+@@ -2,9 +2,17 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
 -    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "build": "node build.mjs",
-+    "start": "node server.mjs"
++    "start": "node server.mjs",
++    "build": "tsc --noEmit && node build.mjs"
++  },
++  "engines": {
++    "node": ">=22"
    },
    "pnpm": {
      "onlyBuiltDependencies": []
-diff --git a/security.mjs b/security.mjs
-new file mode 100644
-index 0000000..2e7e8cd
---- /dev/null
-+++ b/security.mjs
-@@ -0,0 +1,9 @@
-+// Apply the same policy to documents and every worker script, including service
-+// workers. Applying it unconditionally also avoids cache variants by destination.
-+export const securityHeaders = {
-+  'Connection-Allowlist': '(response-origin "https://images.unsplash.com"); report-to=conn-reports',
-+  'Reporting-Endpoints': 'conn-reports="/api/security-reports"',
-+  'Content-Security-Policy': "default-src 'self'; connect-src 'self'; img-src 'self' https://images.unsplash.com; script-src 'self'; style-src 'self'; font-src 'self'; form-action 'self'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; report-to conn-reports",
-+  'X-Content-Type-Options': 'nosniff',
-+  'Referrer-Policy': 'same-origin',
-+};
++  },
++  "devDependencies": {
++    "@types/node": "^26.6.5",
++    "typescript": "^7.0.2"
+   }
+ }
 diff --git a/server.mjs b/server.mjs
 new file mode 100644
-index 0000000..4e53bda
+index 0000000..f614d80
 --- /dev/null
 +++ b/server.mjs
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,160 @@
++// @ts-check
 +import { createServer } from 'node:http';
-+import { appendFile, mkdir, readFile } from 'node:fs/promises';
-+import { securityHeaders } from './security.mjs';
++import { readFile, mkdir, appendFile } from 'node:fs/promises';
++import { resolve, join } from 'node:path';
++import { fileURLToPath, pathToFileURL } from 'node:url';
 +
-+const files = new Map([
++const root = fileURLToPath(new URL('.', import.meta.url));
++const dataDirectory = resolve(process.env.NEWSLETTER_DATA_DIR || join(root, 'data'));
++const assets = new Map([
 +  ['/', ['index.html', 'text/html; charset=utf-8']],
 +  ['/index.html', ['index.html', 'text/html; charset=utf-8']],
 +  ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
 +  ['/newsletter.js', ['newsletter.js', 'text/javascript; charset=utf-8']],
 +]);
-+const dataDirectory = new URL('./data/', import.meta.url);
++
++// Apply to every response, including any future document or worker response.
++// No redirect or WebRTC exceptions: both remain blocked by default.
++export const securityHeaders = {
++  'Connection-Allowlist': '(response-origin "https://images.unsplash.com"); report-to=conn-reports',
++  'Reporting-Endpoints': 'conn-reports="/api/security-reports"',
++  'Content-Security-Policy': [
++    "default-src 'self'",
++    "connect-src 'self'",
++    "img-src 'self' https://images.unsplash.com",
++    "script-src 'self'",
++    "style-src 'self'",
++    "font-src 'self'",
++    "form-action 'self'",
++    "worker-src 'self'",
++    "frame-src 'none'",
++    "frame-ancestors 'none'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    'report-to conn-reports',
++  ].join('; '),
++  'X-Content-Type-Options': 'nosniff',
++  'Referrer-Policy': 'no-referrer',
++  'X-DNS-Prefetch-Control': 'off',
++  'Cache-Control': 'no-store',
++};
 +
 +class RequestError extends Error {
++  /** @param {number} status @param {string} message */
 +  constructor(status, message) {
 +    super(message);
 +    this.status = status;
 +  }
 +}
 +
++/** @param {import('node:http').IncomingMessage} request @param {number} limit */
 +async function readBody(request, limit) {
-+  const chunks = [];
 +  let size = 0;
++  const chunks = [];
 +  for await (const chunk of request) {
-+    size += chunk.length;
-+    if (size > limit) throw new RequestError(413, 'Request is too large.');
-+    chunks.push(chunk);
++    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
++    size += bytes.length;
++    if (size > limit) throw new RequestError(413, 'Request too large.');
++    chunks.push(bytes);
 +  }
 +  return Buffer.concat(chunks).toString('utf8');
 +}
 +
-+const server = createServer(async (request, response) => {
-+  for (const [name, value] of Object.entries(securityHeaders)) response.setHeader(name, value);
-+  const json = (status, body) => {
-+    response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-+    response.end(JSON.stringify(body));
-+  };
++/** @param {string} raw @returns {unknown} */
++function parseJson(raw) {
 +  try {
-+    const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
++    return JSON.parse(raw);
++  } catch {
++    throw new RequestError(400, 'Invalid JSON.');
++  }
++}
++
++/** @param {import('node:http').ServerResponse} response @param {number} status @param {string} message */
++function sendJson(response, status, message) {
++  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
++  response.end(JSON.stringify({ message }));
++}
++
++/** @param {import('node:http').IncomingMessage} request @param {import('node:http').ServerResponse} response */
++export async function handleRequest(request, response) {
++  for (const [name, value] of Object.entries(securityHeaders)) response.setHeader(name, value);
++  try {
++    const pathname = new URL(request.url || '/', 'http://localhost').pathname;
 +    if (pathname === '/api/newsletter' || pathname === '/api/security-reports') {
 +      if (request.method !== 'POST') {
 +        response.setHeader('Allow', 'POST');
-+        return json(405, { error: 'Use POST.' });
++        return sendJson(response, 405, 'Use POST for this endpoint.');
 +      }
-+      // Prevent third-party forms from submitting customer email addresses.
 +      if (request.headers['sec-fetch-site'] === 'cross-site') {
-+        return json(403, { error: 'Same-origin requests only.' });
++        throw new RequestError(403, 'Cross-site requests are not accepted.');
 +      }
-+      const mediaType = request.headers['content-type']?.split(';')[0].trim().toLowerCase();
++      const contentType = request.headers['content-type']?.split(';')[0]?.trim().toLowerCase();
++      const raw = await readBody(request, pathname === '/api/newsletter' ? 4096 : 65536);
 +      if (pathname === '/api/security-reports') {
-+        if (mediaType !== 'application/reports+json' && mediaType !== 'application/csp-report') {
-+          return json(415, { error: 'Expected a browser security report.' });
++        if (contentType !== 'application/reports+json' && contentType !== 'application/json') {
++          throw new RequestError(415, 'Expected JSON reports.');
 +        }
-+        // Consume bounded reports without logging customer URLs or other private data.
-+        await readBody(request, 65536);
-+        response.writeHead(204, { 'Cache-Control': 'no-store' });
-+        return response.end();
++        const reports = parseJson(raw);
++        if (!Array.isArray(reports)) throw new RequestError(400, 'Expected a report array.');
++        // Only log aggregate counts; report URLs may contain private customer data.
++        const violations = reports.filter((report) => report && typeof report === 'object' &&
++          report.type === 'connection-allowlist').length;
++        if (violations > 0) console.warn(`Received ${violations} connection allowlist violation report(s).`);
++        response.writeHead(204);
++        response.end();
++        return;
 +      }
-+      if (mediaType !== 'application/json') return json(415, { error: 'Expected JSON.' });
-+      let body;
-+      try {
-+        body = JSON.parse(await readBody(request, 4096));
-+      } catch (error) {
-+        if (error instanceof RequestError) throw error;
-+        throw new RequestError(400, 'Invalid JSON.');
++
++      /** @type {unknown} */
++      let email;
++      if (contentType === 'application/json') {
++        const body = parseJson(raw);
++        email = body && typeof body === 'object' && 'email' in body ? body.email : undefined;
++      } else if (contentType === 'application/x-www-form-urlencoded') {
++        email = new URLSearchParams(raw).get('email');
++      } else {
++        throw new RequestError(415, 'Expected a JSON or form submission.');
 +      }
-+      const email = typeof body?.email === 'string' ? body.email.trim() : '';
-+      if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-+        return json(400, { error: 'Enter a valid email address.' });
++      if (typeof email !== 'string') throw new RequestError(400, 'Please enter a valid email address.');
++      const normalizedEmail = email.trim();
++      if (normalizedEmail.length > 254 || !/^[^\s@\u0000-\u001f\u007f]+@[^\s@\u0000-\u001f\u007f]+\.[^\s@\u0000-\u001f\u007f]+$/.test(normalizedEmail)) {
++        throw new RequestError(400, 'Please enter a valid email address.');
 +      }
 +      await mkdir(dataDirectory, { recursive: true, mode: 0o700 });
-+      await appendFile(new URL('newsletter.jsonl', dataDirectory),
-+        JSON.stringify({ email, subscribedAt: new Date().toISOString() }) + '\n', { mode: 0o600 });
-+      return json(201, { message: 'Subscribed.' });
++      await appendFile(join(dataDirectory, 'newsletter.jsonl'),
++        JSON.stringify({ email: normalizedEmail, subscribedAt: new Date().toISOString() }) + '\n', { mode: 0o600 });
++      if (contentType === 'application/x-www-form-urlencoded') {
++        response.writeHead(201, { 'Content-Type': 'text/html; charset=utf-8' });
++        response.end('<!doctype html><html lang="en"><meta charset="utf-8"><title>Subscribed | Daily Grind</title><h1>Thanks for subscribing!</h1><p>You’re on the list.</p><a href="/">Back to Daily Grind</a></html>');
++        return;
++      }
++      return sendJson(response, 201, 'Thanks for subscribing!');
 +    }
++
 +    if (request.method !== 'GET' && request.method !== 'HEAD') {
 +      response.setHeader('Allow', 'GET, HEAD');
-+      return json(405, { error: 'Method not allowed.' });
++      return sendJson(response, 405, 'Method not allowed.');
 +    }
-+    const asset = files.get(pathname);
-+    if (!asset) return json(404, { error: 'Page not found.' });
-+    const content = await readFile(new URL(`dist/${asset[0]}`, import.meta.url));
-+    response.writeHead(200, { 'Content-Type': asset[1], 'Cache-Control': 'no-cache' });
-+    response.end(request.method === 'HEAD' ? undefined : content);
++    const asset = assets.get(pathname);
++    if (!asset) return sendJson(response, 404, 'Page not found.');
++    const [filename, contentType] = asset;
++    const body = await readFile(join(root, filename));
++    response.writeHead(200, { 'Content-Type': contentType, 'Content-Length': body.length });
++    response.end(request.method === 'HEAD' ? undefined : body);
 +  } catch (error) {
 +    if (response.destroyed) return;
-+    json(error instanceof RequestError ? error.status : 500, {
-+      error: error instanceof RequestError ? error.message : 'Unable to complete the request. Please try again.',
-+    });
++    const status = error instanceof RequestError ? error.status : 500;
++    // Do not expose storage paths, submitted emails, or internal errors to clients.
++    sendJson(response, status, error instanceof RequestError ? error.message : 'Unable to complete your request. Please try again.');
 +  }
-+});
-+server.requestTimeout = 15000;
-+server.headersTimeout = 10000;
-+const port = Number(process.env.PORT ?? 11222);
-+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT');
-+server.listen(port);
++}
++
++// Importing the handler for checks never starts a server.
++if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
++  const port = Number(process.env.PORT || 11222);
++  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.');
++  const server = createServer((request, response) => { void handleRequest(request, response); });
++  server.requestTimeout = 30000;
++  server.headersTimeout = 10000;
++  server.listen(port, '0.0.0.0', () => console.log(`Daily Grind listening on port ${port}`));
++}
 diff --git a/styles.css b/styles.css
 new file mode 100644
-index 0000000..259d7c3
+index 0000000..9620d24
 --- /dev/null
 +++ b/styles.css
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,162 @@
 +:root {
 +  --primary: #4e342e;
 +  --secondary: #d7ccc8;
@@ -585,24 +601,38 @@ index 0000000..259d7c3
 +  font-size: 0.85rem;
 +}
 +
-+.section-title { text-align: center; }
++.section-heading { text-align: center; }
 +.newsletter { margin-top: 40px; }
-+.newsletter form { max-width: 480px; margin: 20px auto 0; }
-+.newsletter label { display: block; font-weight: bold; }
-+.newsletter input {
-+  width: 100%;
-+  padding: 12px;
-+  border: 1px solid var(--primary);
-+  border-radius: 5px;
-+  font: inherit;
-+}
-+.newsletter button { border: 0; font: inherit; cursor: pointer; }
-+.newsletter button:disabled { opacity: 0.65; cursor: wait; }
-+.newsletter [role="status"] { min-height: 3.2em; margin-top: 12px; }
++.newsletter form { max-width: 440px; margin: 20px auto 0; text-align: left; }
++.newsletter label { display: block; font-weight: 600; }
++.newsletter input { width: 100%; padding: 10px; border: 1px solid var(--primary); border-radius: 4px; font: inherit; }
++.newsletter button { border: 0; cursor: pointer; font: inherit; }
++.newsletter button:disabled { opacity: 0.6; cursor: wait; }
++#newsletter-status { margin-top: 15px; min-height: 1.6em; }
 +:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-+@media (max-width: 600px) {
-+  nav { flex-wrap: wrap; gap: 12px; }
-+  nav ul { flex-wrap: wrap; gap: 12px; }
++@media (max-width: 640px) {
++  nav { flex-direction: column; gap: 12px; }
++  nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
 +  nav ul li { margin-left: 0; }
++  .hero h1 { font-size: 2.3rem; }
 +}
-+
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..e0f3ec5
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,14 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "noEmit": true,
++    "strict": true,
++    "target": "ES2023",
++    "module": "NodeNext",
++    "moduleResolution": "NodeNext",
++    "lib": ["ES2023", "DOM"],
++    "types": ["node"]
++  },
++  "include": ["*.mjs", "newsletter.js"]
++}
