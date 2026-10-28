@@ -308,6 +308,9 @@
       "restrict-outbound-connections": [
         "daily-grind"
       ],
+      "sanitize-untrusted-html": [
+        "daily-grind"
+      ],
       "secure-external-subresources": [
         "daily-grind"
       ],
