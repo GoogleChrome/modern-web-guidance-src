@@ -1,0 +1,191 @@
+diff --git a/index.html b/index.html
+index 66c9173..e0bd70b 100644
+--- a/index.html
++++ b/index.html
+@@ -131,10 +131,59 @@
+       transition: background 0.3s;
+     }
+ 
++    button.btn {
++      border: 0;
++      font: inherit;
++      cursor: pointer;
++    }
++
+     .btn:hover {
+       background: #3e2723;
+     }
+ 
++    dialog:modal {
++      overscroll-behavior: contain;
++    }
++
++    dialog::backdrop {
++      overflow: hidden;
++      overscroll-behavior: contain;
++      background: rgba(0, 0, 0, 0.5);
++    }
++
++    dialog {
++      max-width: min(440px, calc(100vw - 40px));
++      padding: 24px;
++      border: 0;
++      border-radius: 8px;
++    }
++
++    dialog h2 {
++      color: var(--primary);
++      margin-bottom: 10px;
++    }
++
++    dialog label {
++      display: block;
++      margin-top: 15px;
++    }
++
++    dialog select {
++      font: inherit;
++      margin-left: 8px;
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 20px;
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,7 +220,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" command="show-modal" commandfor="dialog-order">Order Now</button>
+   </header>
+ 
+   <main class="container">
+@@ -181,17 +230,17 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-seasonal">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-espresso">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-cold-brew">View Details</button>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +256,96 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <dialog id="dialog-seasonal" aria-labelledby="dialog-seasonal-title" closedby="any">
++    <h2 id="dialog-seasonal-title">Maple Oat Latte</h2>
++    <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++    <form method="dialog">
++      <label>Size
++        <select name="size">
++          <option>Small</option>
++          <option selected>Medium</option>
++          <option>Large</option>
++        </select>
++      </label>
++      <div class="dialog-actions">
++        <button type="submit" class="btn" value="">Close</button>
++        <button type="submit" class="btn" value="order" autofocus>Add to Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <dialog id="dialog-espresso" aria-labelledby="dialog-espresso-title" closedby="any">
++    <h2 id="dialog-espresso-title">Dark Roast Espresso</h2>
++    <p>Bold, smokey, and perfect for a morning boost.</p>
++    <form method="dialog">
++      <label>Size
++        <select name="size">
++          <option>Small</option>
++          <option selected>Medium</option>
++          <option>Large</option>
++        </select>
++      </label>
++      <div class="dialog-actions">
++        <button type="submit" class="btn" value="">Close</button>
++        <button type="submit" class="btn" value="order" autofocus>Add to Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <dialog id="dialog-cold-brew" aria-labelledby="dialog-cold-brew-title" closedby="any">
++    <h2 id="dialog-cold-brew-title">Cold Brew</h2>
++    <p>Steeped for 18 hours for maximum smoothness.</p>
++    <form method="dialog">
++      <label>Size
++        <select name="size">
++          <option>Small</option>
++          <option selected>Medium</option>
++          <option>Large</option>
++        </select>
++      </label>
++      <div class="dialog-actions">
++        <button type="submit" class="btn" value="">Close</button>
++        <button type="submit" class="btn" value="order" autofocus>Add to Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <dialog id="dialog-order" aria-labelledby="dialog-order-title" closedby="any">
++    <h2 id="dialog-order-title">Order Online</h2>
++    <p>Pick your drink and size, and we will have it ready.</p>
++    <form method="dialog">
++      <label>Drink
++        <select name="drink" autofocus>
++          <option>Maple Oat Latte</option>
++          <option>Dark Roast Espresso</option>
++          <option>Cold Brew</option>
++        </select>
++      </label>
++      <label>Size
++        <select name="size">
++          <option>Small</option>
++          <option selected>Medium</option>
++          <option>Large</option>
++        </select>
++      </label>
++      <div class="dialog-actions">
++        <button type="submit" class="btn" value="">Close</button>
++        <button type="submit" class="btn" value="order">Place Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <script type="module">
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('https://esm.sh/invokers-polyfill');
++    }
++
++    for (const dialog of document.querySelectorAll('dialog')) {
++      dialog.addEventListener('close', () => {
++        dialog.returnValue = '';
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>
