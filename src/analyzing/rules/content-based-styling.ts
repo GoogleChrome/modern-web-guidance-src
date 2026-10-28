@@ -29,9 +29,27 @@ const FORM_EVENT_NAMES = new Set([
   'input',
 ]);
 
+const FORM_EVENT_HANDLER_PROPS = new Set([
+  'onfocus',
+  'onblur',
+  'onfocusin',
+  'onfocusout',
+  'onchange',
+  'oninput',
+]);
+
 function isEnclosedInFormEventHandler(node: Node): boolean {
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
+    if (Node.isBinaryExpression(current) && current.getOperatorToken().getText() === '=') {
+      const left = unwrapExpression(current.getLeft());
+      if (
+        Node.isPropertyAccessExpression(left) &&
+        FORM_EVENT_HANDLER_PROPS.has(left.getName().toLowerCase())
+      ) {
+        return true;
+      }
+    }
     if (Node.isCallExpression(current)) {
       const expr = unwrapExpression(current.getExpression());
       if (Node.isPropertyAccessExpression(expr)) {

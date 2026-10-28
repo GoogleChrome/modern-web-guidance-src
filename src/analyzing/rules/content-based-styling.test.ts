@@ -64,6 +64,16 @@ void test('content-based-styling: JS negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts onfocus/onblur/onchange/oninput property assignments', () => {
+    const code = `
+      input.onchange = () => {
+        el.classList.toggle('has-error', el.children.length > 0);
+      };
+    `;
+    const { matches } = scanJsSource('form-onchange.js', code, [jsMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts if blocks performing additional non-styling operations', () => {
     const code = `
       if (card.querySelector('img')) {
