@@ -7,6 +7,7 @@
 - Viewport-relative sizing on the navigation menu uses modern viewport units (`dvh` and `dvw`) instead of traditional `vh`/`vw`.
 - In a container too narrow for the links to fit inline, the navigation list is a native popover (`popover="auto"`) positioned relative to the trigger button with CSS Anchor Positioning (`anchor-name` and `anchor()`).
 - In a container wide enough for the links to fit inline, the trigger button is not displayed and the navigation list is laid out as a static, horizontal inline list.
+- The collapsed layout is chosen by measuring whether the inline row overflows, not by a hard-coded width such as a `45rem` container query.
 - JavaScript synchronizes the outer navigation's `popover` attribute with the header's responsive layout so the navigation is a native popover only in the narrow layout and becomes a normal inline element in the wide layout.
 - The current page link uses `[aria-current="page"]` as its styling hook, and the attribute is present on that link.
 - The CSS Anchor Positioning declarations for the narrow menu include a declaration-level fallback before the `anchor()` declaration for browsers that do not support CSS Anchor Positioning.

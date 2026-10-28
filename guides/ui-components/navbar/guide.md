@@ -4,7 +4,6 @@ description: Build a site navigation bar that adapts across screen sizes and ind
 web-feature-ids:
   - popover
   - anchor-positioning
-  - container-queries
   - viewport-units
   - logical-properties
   - focus-visible
@@ -21,7 +20,7 @@ guides:
 
 # Responsive Site Navigation
 
-Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover on narrow containers, becomes an inline navigation on wide containers, and identifies the current page.
+Build a site navigation bar that uses one semantic navigation tree at every size, presents a native popover when the links do not fit, becomes an inline navigation when they do, and identifies the current page.
 
 This guide describes site-navigation integration. It is navigation, not an application menu: links stay in the `Tab` order, with no `focusgroup`, `role="menu"`, `role="menuitem"`, `aria-haspopup="menu"` or arrow-key handling. For opening, positioning, hover preview and animating popovers, see {{ GUIDE_REF("menu") }}. For the menu and chevron icons, see {{ GUIDE_REF("icons") }}.
 
@@ -30,7 +29,7 @@ For component-driven layouts, fluid sizing, and typographic line-wrapping, see {
 
 ## Core Markup
 
-Use one `<nav>` landmark for narrow and wide layouts. Wrap it in a semantic `<header>` that acts as the layout query container with `container-type: inline-size`.
+Use one `<nav>` landmark for narrow and wide layouts. Wrap it in a semantic `<header>` whose `data-nav` attribute (`inline` or `collapsed`) selects the layout.
 
 ```html
 <header class="site-header">
@@ -78,19 +77,18 @@ The button declaratively controls the menu with `popovertarget` and `aria-contro
 
 ## Narrow Layout: Popover Navigation
 
-On narrow containers, keep `popover="auto"` on the navigation list. Anchor the fixed popover to the menu button and constrain its height so a long navigation can scroll without exceeding the viewport.
+When collapsed, keep `popover="auto"` on the navigation list. Anchor the fixed popover to the menu button and constrain its height so a long navigation can scroll without exceeding the viewport.
 
-The breakpoint is the container width at which the inline row (brand, actions and every link) stops fitting. The values below are examples: measure your own widest inline row and round up, in `rem` so text zoom scales it. A short navigation can collapse at a narrower width. When items are added, raise it: too low causes horizontal scrolling, too high collapses a navigation that would have fit.
-
-{# Maintainer note: @container conditions cannot use var(), so the breakpoint is repeated by hand in each query and in the script. #}
+There is no hard-coded breakpoint. Script collapses the navigation only when the inline row (brand, actions and every link) does not fit, so adding a link, a translation or larger text moves the point automatically. It sets `data-nav="collapsed"` on the header; without script the header keeps the inline layout.
 
 ```css
-.site-header {
-  container-type: inline-size;
+/* Keep the row's natural width measurable */
+.header-inner > * {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-/* Example value: use the width at which your inline row stops fitting */
-@container (inline-size < 45rem) {
+.site-header[data-nav="collapsed"] {
   .menu-button {
     anchor-name: --menu-button;
   }
@@ -115,11 +113,10 @@ The `anchor()` declaration places the menu below the button; see Fallbacks for b
 
 ## Wide Layout: Inline Navigation
 
-On wide containers, hide the narrow-layout trigger and reset the popover presentation so the same list participates in the header as an inline navigation.
+When the row fits, hide the collapsed-layout trigger and reset the popover presentation so the same list participates in the header as an inline navigation.
 
 ```css
-/* Same value as the narrow query */
-@container (inline-size >= 45rem) {
+.site-header:not([data-nav="collapsed"]) {
   .menu-button {
     display: none;
   }
@@ -147,7 +144,7 @@ On wide containers, hide the narrow-layout trigger and reset the popover present
 }
 ```
 
-CSS changes the presentation, but JavaScript must also synchronize the `popover` attribute with the header's container-query state. Keep the navigation as a popover only in the narrow layout; remove the attribute in the wide layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Use one shared layout-state function for the initial state and subsequent `ResizeObserver` updates; do not infer the layout from a hidden trigger or maintain a second breakpoint check.
+CSS changes the presentation, but JavaScript decides which layout applies and must also synchronize the `popover` attribute with it. Measure the inline row: show it inline, compare `scrollWidth` with `clientWidth` on the header's inner row, then set `data-nav`. Keep the navigation as a popover only in the collapsed layout; remove the attribute in the inline layout. Removing it closes an open popover, while restoring it leaves the menu closed until the trigger opens it. Run one shared function from a `ResizeObserver` (on width changes only, since collapsing changes the header's height) and again when `document.fonts.ready` resolves. Do not infer the layout from a hidden trigger.
 
 
 ## Nested Site Navigation
@@ -156,11 +153,12 @@ Use a `<button>` with `aria-expanded` and `aria-controls` as the trigger for nes
 
 One list must be an inline disclosure when narrow and a floating popover when wide. A top-layer popover cannot render in flow, so `popover` is set only in the wide layout, where `popovertarget` opens it natively. In the narrow layout a small click handler toggles `hidden` and `aria-expanded`. Hide the narrow submenu from script, not in the markup, so its links stay visible without scripting.
 
-Synchronize the layout state from the same `ResizeObserver` that handles the navigation list. When wide, set `popover="auto"` on the submenu, show it and let the native `toggle` event drive `aria-expanded`. When narrow, remove `popover`, set `hidden` from script and let a click handler toggle `hidden` and `aria-expanded`:
+Synchronize the layout state from the same function that handles the navigation list. When inline, set `popover="auto"` on the submenu, show it and let the native `toggle` event drive `aria-expanded`. When narrow, remove `popover`, set `hidden` from script and let a click handler toggle `hidden` and `aria-expanded`:
 
 ```js
-submenu.toggleAttribute("popover", isWide);
-submenu.hidden = !isWide;
+const wide = inner.scrollWidth <= inner.clientWidth; // measured with data-nav="inline"
+submenu.toggleAttribute("popover", wide);
+submenu.hidden = !wide;
 ```
 
 Do not add document-level click-outside, Escape or focus-restoration handlers. The native popover provides those interactions in the wide layout, and the narrow disclosure needs only the click handler. The declarative `popovertarget` makes the button the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
@@ -172,8 +170,7 @@ In the wide layout, preview the submenu on hover as described in {{ GUIDE_REF("m
 Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_REF("menu") }}, including its viewport-overflow fallbacks. For collision-aware positioning of a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. This submenu opens below its trigger, so use the top-level `position-area` there, not the menu guide's side-by-side submenu placement. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 
 ```css
-/* Same value as the narrow query */
-@container (inline-size >= 45rem) {
+.site-header:not([data-nav="collapsed"]) {
   .dropdown-list[popover] { /* Scoped to the popover, so the list stays inline without scripting */
     position: absolute;
     position-area: block-end span-inline-end;
@@ -206,7 +203,7 @@ Optional. In the narrow layout the submenu is an inline list toggled with `hidde
 
 - Keep the `[hidden]` list rendered with `display: grid` and `block-size: 0`, then transition `block-size` to `auto` with `interpolate-size: allow-keywords` and `overflow: clip`.
 - Include `content-visibility: hidden` with `allow-discrete` in the transition so the content stays rendered until the close finishes.
-- Scope it to the narrow container query and `prefers-reduced-motion: no-preference`; outside it, `[hidden]` must stay `display: none`. In the wide layout the submenu is a popover and must not be clipped.
+- Scope it to the collapsed layout and `prefers-reduced-motion: no-preference`; outside it, `[hidden]` must stay `display: none`. In the wide layout the submenu is a popover and must not be clipped.
 - For the general technique, see {{ GUIDE_REF("animate-to-intrinsic-sizes") }}.
 
 Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh` for viewport-relative limits, provide visible `:focus-visible` indicators, and adapt custom borders and current-page indicators under `forced-colors: active`.
@@ -221,8 +218,7 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 For the mobile menu, put an absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid. Without Anchor Positioning the menu still opens as a popover at a fixed offset from the top of the viewport.
 
 ```css
-/* Same value as the narrow query above */
-@container (inline-size < 45rem) {
+.site-header[data-nav="collapsed"] {
   .site-menu {
     /* Example-only offset: use roughly your header height. Browsers without anchor() keep this one. */
     inset-block-start: 4.75rem;

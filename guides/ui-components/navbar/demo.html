@@ -58,8 +58,7 @@
     .site-header {
       border-block-end: 1px solid var(--border);
       background: var(--page-background);
-      container-type: inline-size;
-      /* Core query container for navigation layouts */
+      /* data-nav="collapsed" is set by script when the inline row does not fit */
     }
 
     .header-inner {
@@ -71,6 +70,16 @@
       min-block-size: 4.5rem;
       margin-inline: auto;
       padding-inline: clamp(1rem, 4vw, 3rem);
+    }
+
+    .header-inner > *,
+    .site-menu a,
+    .dropdown-trigger {
+      white-space: nowrap; /* Keep the row's natural width measurable */
+    }
+
+    .header-inner > * {
+      flex-shrink: 0;
     }
 
     .site-logo {
@@ -264,7 +273,7 @@
       positioned below the menu button and aligned with its
       right edge.
     */
-    @container (inline-size < 45rem) {
+    .site-header[data-nav="collapsed"] {
       .site-menu {
         position: fixed;
         inset: auto;
@@ -306,7 +315,7 @@
       The same navigation element becomes part of the header
       rather than an overlay.
     */
-    @container (inline-size >=45rem) {
+    .site-header:not([data-nav="collapsed"]) {
       .menu-button {
         display: none;
       }
@@ -398,7 +407,7 @@
     }
 
     @media (prefers-reduced-motion: no-preference) {
-      @container (inline-size >= 45rem) {
+      .site-header:not([data-nav="collapsed"]) {
         .dropdown-list[popover] {
           opacity: 0;
           transform: translateY(-0.25rem);
@@ -420,7 +429,7 @@
         }
       }
 
-      @container (inline-size < 45rem) {
+      .site-header[data-nav="collapsed"] {
         .site-menu {
           transition:
             display 180ms allow-discrete,
@@ -645,28 +654,34 @@
       submenu.hidePopover();
     });
 
-    function syncLayoutState(width) {
-      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
-      const isWide = width >= 45 * rootFontSize;
+    const inner = header.querySelector(".header-inner");
+    let lastWidth = -1;
+    let isWide;
 
-      if (isWide && menu.hasAttribute("popover")) {
-        menu.removeAttribute("popover");
-        submenu.hidden = false;
-        submenu.setAttribute("popover", "auto");
-        setExpanded(false);
-      } else if (!isWide && !menu.hasAttribute("popover")) {
-        menu.setAttribute("popover", "auto");
-        submenu.removeAttribute("popover");
-        submenu.hidden = true;
-        setExpanded(false);
-      }
+    // Collapse only when the inline row does not fit: show it inline and check for overflow.
+    function syncLayoutState() {
+      menu.removeAttribute("popover");
+      header.dataset.nav = "inline";
+      const wide = inner.scrollWidth <= inner.clientWidth;
+      header.dataset.nav = wide ? "inline" : "collapsed";
+      if (!wide) menu.setAttribute("popover", "auto");
+
+      if (wide === isWide) return;
+      isWide = wide;
+      submenu.toggleAttribute("popover", wide);
+      if (wide) submenu.setAttribute("popover", "auto");
+      submenu.hidden = !wide;
+      setExpanded(false);
     }
 
-    const layoutObserver = new ResizeObserver(([entry]) => {
-      syncLayoutState(entry.contentRect.width);
-    });
+    // Height changes from collapsing also notify the observer; only react to width.
+    new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width === lastWidth) return;
+      lastWidth = entry.contentRect.width;
+      syncLayoutState();
+    }).observe(header);
 
-    layoutObserver.observe(header);
+    document.fonts.ready.then(syncLayoutState);
   </script>
 </body>
 
