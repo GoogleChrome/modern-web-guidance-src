@@ -33,7 +33,28 @@ const NON_TEXT_FIT_TARGETS =
 const SINGLE_LINE_ENCLOSING_NAME_REGEX =
   /\b(?:initSingle|fitSingle(?:Line)?|singleLine|circleType|circletype)\b/i;
 
-const SINGLE_LINE_SELECTOR_REGEX = /(?:^|[\s>+~])\.r-fit-text\s*$/i;
+const SINGLE_LINE_SELECTOR_REGEX =
+  /(?:^|[\s>+~])(?:h[1-6](?:\.[a-z0-9_-]+)*|a|\.biglink|\.r-fit-text)\s*$/i;
+
+const EXPLICIT_PER_LINE_SELECTOR_REGEX =
+  /(?:^|[\s>+~])(?:span|em|\.?(?:fit-?line|poster-?line|slab-?line|line-?item|lines))\b/i;
+
+function hasFluidClampOptions(call: CallExpression): boolean {
+  for (const arg of call.getArguments()) {
+    const resolved = resolveLocalExpression(arg, 2);
+    if (Node.isObjectLiteralExpression(resolved)) {
+      if (
+        resolved.getProperty('minFontSize') ||
+        resolved.getProperty('maxFontSize') ||
+        resolved.getProperty('minSize') ||
+        resolved.getProperty('maxSize')
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 function isSingleLineOption(call: CallExpression): boolean {
   for (const arg of call.getArguments()) {
@@ -96,26 +117,44 @@ function isInSingleLineContext(call: CallExpression, sourceFile: SourceFile): bo
   return false;
 }
 
-function isSingleLineSelectorTarget(text: string): boolean {
-  if (/\.r-fit-text\b/.test(text)) {
-    return true;
-  }
+function extractLastSelectorLiteral(text: string): string | null {
   const strMatches = text.match(/['"`]([^'"`]+)['"`]/g);
   if (!strMatches || strMatches.length === 0) {
-    return false;
+    return null;
   }
   const lastRaw = strMatches[strMatches.length - 1];
   if (!lastRaw) {
-    return false;
+    return null;
   }
-  const selector = lastRaw.slice(1, -1).trim();
-  return SINGLE_LINE_SELECTOR_REGEX.test(selector);
+  return lastRaw.slice(1, -1).trim();
 }
 
-function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
-  if (isSingleLineOption(call) || isInSingleLineContext(call, sourceFile)) {
+function isSingleLineSelectorTarget(text: string): boolean {
+  if (/\bthis\.\$el\b/.test(text) || /\.r-fit-text\b/.test(text)) {
+    return true;
+  }
+  const selector = extractLastSelectorLiteral(text);
+  return selector !== null && SINGLE_LINE_SELECTOR_REGEX.test(selector);
+}
+
+function isExplicitPerLineSelectorTarget(text: string): boolean {
+  const selector = extractLastSelectorLiteral(text);
+  return selector !== null && EXPLICIT_PER_LINE_SELECTOR_REGEX.test(selector);
+}
+
+function isFitTextCall(
+  call: CallExpression,
+  sourceFile: SourceFile,
+  fileContent: string,
+): boolean {
+  if (
+    isSingleLineOption(call) ||
+    isInSingleLineContext(call, sourceFile) ||
+    /white-space\s*:\s*nowrap/i.test(fileContent)
+  ) {
     return false;
   }
+  const hasClampOpts = hasFluidClampOptions(call);
   const expr = unwrapExpression(call.getExpression());
   if (Node.isIdentifier(expr)) {
     const name = expr.getText();
@@ -128,13 +167,23 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
     }
     const firstArg = args[0];
     if (firstArg) {
-      const resolvedFirst = resolveLocalExpression(firstArg, 2);
+      const firstText = firstArg.getText();
+      const resolvedFirstText = resolveLocalExpression(firstArg, 2).getText();
       if (
-        isSingleLineSelectorTarget(firstArg.getText()) ||
-        isSingleLineSelectorTarget(resolvedFirst.getText())
+        isSingleLineSelectorTarget(firstText) ||
+        isSingleLineSelectorTarget(resolvedFirstText)
       ) {
         return false;
       }
+      if (
+        hasClampOpts &&
+        !isExplicitPerLineSelectorTarget(firstText) &&
+        !isExplicitPerLineSelectorTarget(resolvedFirstText)
+      ) {
+        return false;
+      }
+    } else if (hasClampOpts) {
+      return false;
     }
     if (!isGlobalReference(expr, name)) {
       const hasPkgImport = sourceFile.getImportDeclarations().some((imp) => {
@@ -162,10 +211,18 @@ function isFitTextCall(call: CallExpression, sourceFile: SourceFile): boolean {
       return false;
     }
 
-    const resolvedTarget = resolveLocalExpression(target, 2);
+    const targetText = target.getText();
+    const resolvedTargetText = resolveLocalExpression(target, 2).getText();
     if (
-      isSingleLineSelectorTarget(target.getText()) ||
-      isSingleLineSelectorTarget(resolvedTarget.getText())
+      isSingleLineSelectorTarget(targetText) ||
+      isSingleLineSelectorTarget(resolvedTargetText)
+    ) {
+      return false;
+    }
+    if (
+      hasClampOpts &&
+      !isExplicitPerLineSelectorTarget(targetText) &&
+      !isExplicitPerLineSelectorTarget(resolvedTargetText)
     ) {
       return false;
     }
@@ -208,8 +265,8 @@ export const equalWidthTextLinesPackageMatcher: DependencyRuleMatcher =
 export const equalWidthTextLinesJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['fitty', 'fitText', 'fittext'],
   featureGuardTokens: ['text-fit', 'text-wrap'],
-  matchCall: (node, sourceFile) =>
-    isFitTextCall(node, sourceFile)
+  matchCall: (node, sourceFile, ctx) =>
+    isFitTextCall(node, sourceFile, ctx.fileContent)
       ? `Imperative text-fitting script call "${node.getExpression().getText()}" can be modernized with native CSS text-fit: grow per-line-all.`
       : null,
 });
@@ -246,7 +303,7 @@ export const equalWidthTextLinesJsRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The call is guarded by CSS.supports("text-fit", ...) or a progressive enhancement fallback check.',
-      'The call explicitly sets single-line mode (multiLine: false, singleLine: true, maxLines: 1) or targets Reveal.js .r-fit-text single-slide elements.',
+      'The call passes minFontSize/maxFontSize or minSize/maxSize fluid clamp options on a non-line selector, explicitly sets single-line mode (multiLine: false, singleLine: true, maxLines: 1, white-space: nowrap), or targets a single heading, link, or Reveal.js .r-fit-text slide element.',
       'The script curves text along a circular path (CircleType) or measures container aspect ratios or video dimensions rather than text typography lines.',
       'The sizing uses fluid viewport units (clamp, vw, cqi) without imperative line-scaling loops.',
     ],

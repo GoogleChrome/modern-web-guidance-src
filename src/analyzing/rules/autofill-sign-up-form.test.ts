@@ -116,4 +116,37 @@ void test('autofill-sign-up-form: negative / exempt cases', async (t) => {
     const matches = scanHtml('disabled.html', html, [matcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts authenticated change-password modals, password-reset pages, device settings, and dual-mode login/signup forms', () => {
+    const changePwdHtml = `
+      <form action="/account/password" method="post">
+        <input type="password" name="old_password" placeholder="Current password">
+        <input type="password" name="new_password" placeholder="New password">
+        <input type="password" name="confirm_password" placeholder="Confirm new password">
+      </form>
+    `;
+    assert.equal(scanHtml('account-change-password.html', changePwdHtml, [matcher]).length, 0);
+
+    const resetHtml = `
+      <form method="post">
+        <input type="password" name="new_password1" placeholder="New password">
+        <input type="password" name="new_password2" placeholder="Repeat password">
+      </form>
+    `;
+    assert.equal(scanHtml('password_reset_confirm.html', resetHtml, [matcher]).length, 0);
+
+    const deviceHtml = `
+      <form>
+        <input type="password" id="bridge-settings-new-mqtt-password">
+      </form>
+    `;
+    assert.equal(scanHtml('views/system.html', deviceHtml, [matcher]).length, 0);
+
+    const dualModeHtml = `
+      <form on:submit|preventDefault={(e) => (mode === 'login' ? login(e) : signup(e))}>
+        <input type="password" name="password" placeholder="Password">
+      </form>
+    `;
+    assert.equal(scanHtml('Login.svelte', dualModeHtml, [matcher]).length, 0);
+  });
 });

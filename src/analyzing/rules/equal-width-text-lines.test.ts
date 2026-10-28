@@ -69,7 +69,7 @@ void test('equal-width-text-lines JS matcher', async (t) => {
       $("#underBigTitle").fitText(2.5);
       $header.fitText();
       $('.content').find('.headline').fitText();
-      $("h1").fitText(1.2, { minFontSize: '16px', maxFontSize: '30px' });
+      $('.poster .fit-line').fitText(1.2, { minFontSize: '16px', maxFontSize: '72px' });
     `;
     const matches = matchJsRule(equalWidthTextLinesJsMatcher, 'header.js', code);
     assert.equal(matches.length, 5);
@@ -92,6 +92,11 @@ void test('equal-width-text-lines JS matcher', async (t) => {
       fitty('.single-line-badge', { multiLine: false });
       fitty('.single-line-heading', { singleLine: true });
       fitty('.one-liner', { maxLines: 1 });
+      fitty(this.$el, this.options);
+      $("h1").fitText(1.2, { minFontSize: '16px', maxFontSize: '30px' });
+      $("h1.responsive-headline").fitText(1.2, { minFontSize: '16px', maxFontSize: '30px' });
+      $(".biglink").fitText(1.5);
+      $(this).find(".card .front a").fitText(205);
       fitty(slide.querySelectorAll('.r-fit-text'), { minSize: 20, maxSize: 200 });
       Array.from(slide.querySelectorAll('.r-fit-text')).forEach((el) => {
         fitty(el, { minSize: 24, maxSize: 200 });

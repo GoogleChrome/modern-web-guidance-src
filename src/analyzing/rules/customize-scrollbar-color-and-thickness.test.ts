@@ -316,6 +316,36 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.match(matches[0]?.message ?? '', /customize scrollbar appearance/);
   });
 
+  await t.test('exempts standalone :hover thumb rules, :active/:window-inactive states, inset background-clip thumbs, and custom scrollbar widgets', () => {
+    const css = `
+      .standalone::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+      ::-webkit-scrollbar-thumb:active {
+        background: #333;
+      }
+      ::-webkit-scrollbar-thumb:window-inactive {
+        background: #999;
+      }
+      .jfk-scrollbar::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.2);
+        background-clip: padding-box;
+        border: 4px solid transparent;
+      }
+      .CodeMirror-scroll::-webkit-scrollbar {
+        display: none;
+      }
+      #portfolio::-webkit-scrollbar {
+        width: 5px;
+      }
+      .other-widget::-webkit-scrollbar-thumb {
+        background: transparent;
+      }
+    `;
+    const matches = scanCss('states-and-widgets.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts unrelated CSS rules', () => {
     const css = `
       .card {

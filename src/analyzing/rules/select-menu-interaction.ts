@@ -303,14 +303,14 @@ export const selectMenuInteractionCssRule: AnalyzerRule = {
   matcher: selectMenuInteractionCssMatcher,
   verifierRubric: {
     keepWhen: [
-      'A CSS rule uses select:invalid without :user-invalid to apply error styling (border, background, color, outline, box-shadow) or reveal an error message for a required <select> menu.',
+      'A CSS rule uses select:invalid (standalone or grouped with input:invalid / textarea:invalid without :required) without :user-invalid to apply validation error styling (border, border-color, background, background-color, error text color, or non-none outline/box-shadow).',
+      'A CSS rule uses select:invalid with an adjacent or general sibling combinator (+ or ~) to reveal or style a validation error message element before user interaction.',
     ],
     dropWhen: [
-      'The stylesheet already uses select:user-invalid or guards select:invalid inside @supports not selector(:user-invalid).',
-      'The rule only resets browser default :invalid styles (such as box-shadow: none or outline: none) or dims unselected placeholder option text.',
-      'The selector is already gated by a touched, dirty, or validated class (such as .was-validated, .touched, .dirty, form.invalid) or targets a custom select library (.select2, .chosen-container, .choices).',
-      'The rule is a multi-control :required:invalid rule combining input/textarea with select (covered by required-field-feedback).',
-      'The code styles multi-select inputs or async server-side validation responses.',
+      'The stylesheet already uses :user-invalid or guards select:invalid inside @supports not selector(:user-invalid).',
+      'The rule declarations solely reset browser default :invalid styles (only setting box-shadow: none or outline: none with no border, background, or error color styling) or only dim unselected placeholder text color/opacity to muted gray tones.',
+      'Every select:invalid selector in the rule is already gated by a post-interaction or submitted state class (.was-validated, .touched, .dirty, .submitted) or targets a custom select widget library (.select2, .chosen-container, .choices, .ts-wrapper).',
+      'The selector explicitly combines :required:invalid or [required]:invalid across both input/textarea and select (owned by required-field-feedback); plain input:invalid, select:invalid without :required belongs to this rule and should be KEPT.',
     ],
   },
 };

@@ -4,7 +4,10 @@ import type {
   DomMatcherContext,
   DomRuleMatcher,
 } from '../schema.ts';
-import { classifyPasswordCredentialElement } from './helpers/password-credential.ts';
+import {
+  classifyPasswordCredentialElement,
+  isExcludedFromSignUpForm,
+} from './helpers/password-credential.ts';
 
 export const AUTOFILL_SIGN_UP_FORM_GUIDE_HASH = '4e9ee5c2a3a0';
 
@@ -19,7 +22,11 @@ export const autofillSignUpFormMatcher: DomRuleMatcher = {
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     const classification = classifyPasswordCredentialElement(element, ctx);
-    if (!classification || !classification.isNewCredential) {
+    if (
+      !classification ||
+      !classification.isNewCredential ||
+      isExcludedFromSignUpForm(element, ctx)
+    ) {
       return null;
     }
 
@@ -60,17 +67,17 @@ export const autofillSignUpFormRule: AnalyzerRule = {
   guideId: 'autofill-sign-up-form',
   guideHash: AUTOFILL_SIGN_UP_FORM_GUIDE_HASH,
   summary:
-    'Password inputs in sign-up, registration, or password creation forms should specify autocomplete="new-password".',
+    'Password inputs in sign-up and account registration forms should specify autocomplete="new-password".',
   matcher: autofillSignUpFormMatcher,
   verifierRubric: {
     keepWhen: [
-      'The password input creates or confirms a new password in a registration, sign-up, account creation, password reset, or password change form.',
-      'The password input lacks an autocomplete attribute or specifies autocomplete="off" / autocomplete="current-password" on new credentials, preventing browser password manager autofill or causing credential collision.',
+      'The password input creates or confirms a new account password in a user sign-up, registration, or new-account creation form.',
+      'The password input lacks an autocomplete attribute or specifies autocomplete="off" / autocomplete="current-password" on new account credentials, preventing browser password manager generation and autofill.',
     ],
     dropWhen: [
       'The password input is disabled, readonly, hidden, or a non-interactive display widget.',
       'The password input already provides autocomplete="new-password".',
-      'The password input asks for an existing/old/current password in a login or change-password form (owned by autofill-sign-in-form).',
+      'The password input is part of a login/sign-in form (owned by autofill-sign-in-form), an authenticated password-change or profile-settings form, a password-reset/recovery form, an admin user-management CRUD form, or a device/encryption passphrase dialog.',
       'The component receives its autocomplete attribute dynamically via props, context, or JSX spread.',
     ],
   },

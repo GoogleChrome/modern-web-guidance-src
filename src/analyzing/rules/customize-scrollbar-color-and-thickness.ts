@@ -36,7 +36,12 @@ const WEBKIT_SCROLLBAR_REGEX = /::-webkit-scrollbar(?![-\w])/i;
 const WEBKIT_THUMB_REGEX = /::-webkit-scrollbar-thumb\b/i;
 const WEBKIT_THUMB_STATE_REGEX =
   /::-webkit-scrollbar-thumb\s*:(?:hover|active|focus|window-inactive)\b/i;
+const WEBKIT_THUMB_NON_HOVER_STATE_REGEX =
+  /::-webkit-scrollbar-thumb\s*:(?:active|focus|window-inactive)\b/i;
 const HOVER_WEBKIT_SCROLLBAR_REGEX = /:hover::-webkit-scrollbar(?![-\w])/i;
+const CUSTOM_SCROLLBAR_WIDGET_SELECTOR_REGEX =
+  /(?:\.CodeMirror-scroll|\.el-scrollbar__wrap|\.ps(?:\b|__)|\.simplebar-|\.os-viewport|\.nice-select\b|\.win-navbarcontainer)/i;
+const INSET_PADDING_CLIP_REGEX = /^(?:padding-box|content-box)$/i;
 const GRADIENT_VALUE_REGEX =
   /(?:(?:-webkit-|-moz-|-o-)?(?:repeating-)?(?:linear|radial|conic)-gradient|-webkit-gradient)\s*\(/i;
 
@@ -87,35 +92,80 @@ function hasValidColor(
   return isValidColorString(styleRule.getPropertyValue(prop));
 }
 
+function ruleHasInsetPaddingClip(styleRule: CssRuleView): boolean {
+  const bgClip = normalizeCssValue(styleRule.getPropertyValue('background-clip'));
+  const webkitBgClip = normalizeCssValue(styleRule.getPropertyValue('-webkit-background-clip'));
+  return INSET_PADDING_CLIP_REGEX.test(bgClip) || INSET_PADDING_CLIP_REGEX.test(webkitBgClip);
+}
+
 function ruleHasValidThumbColor(styleRule: CssRuleView): boolean {
+  if (ruleHasInsetPaddingClip(styleRule)) {
+    return false;
+  }
   return hasValidColor(styleRule, 'background') || hasValidColor(styleRule, 'background-color');
 }
 
-function stylesheetHasValidColoredThumb(ctx: CssMatcherContext): boolean {
+function extractScrollbarSelectorPrefix(selectorText: string): string {
+  return selectorText
+    .replace(/::-webkit-scrollbar.*$/i, '')
+    .replace(/:hover\s*$/i, '')
+    .trim();
+}
+
+function areScrollbarPrefixesCompatible(prefixA: string, prefixB: string): boolean {
+  return (
+    prefixA === prefixB ||
+    prefixA === '' ||
+    prefixA === '*' ||
+    prefixB === '' ||
+    prefixB === '*'
+  );
+}
+
+function stylesheetHasValidColoredThumb(
+  styleRule: CssRuleView,
+  ctx: CssMatcherContext,
+): boolean {
+  const targetPrefix = extractScrollbarSelectorPrefix(styleRule.selectorText);
   const allRules = ctx.styleRules ?? [];
-  const thumbRules = allRules.filter((r) => WEBKIT_THUMB_REGEX.test(r.selectorText));
+  const thumbRules = allRules.filter(
+    (r) =>
+      WEBKIT_THUMB_REGEX.test(r.selectorText) &&
+      areScrollbarPrefixesCompatible(
+        targetPrefix,
+        extractScrollbarSelectorPrefix(r.selectorText),
+      ),
+  );
   const baseThumbRules = thumbRules.filter(
     (r) => !WEBKIT_THUMB_STATE_REGEX.test(r.selectorText),
   );
   if (baseThumbRules.length > 0) {
     return baseThumbRules.some(ruleHasValidThumbColor);
   }
-  if (thumbRules.some(ruleHasValidThumbColor)) {
+  if (thumbRules.some((r) => !WEBKIT_THUMB_STATE_REGEX.test(r.selectorText) && ruleHasValidThumbColor(r))) {
     return true;
   }
 
   // Fallback for ::-webkit-scrollbar-thumb:vertical / :horizontal blocks skipped by cssomnom
-  const thumbBlockRe = /::-webkit-scrollbar-thumb[^{]*\{([^}]*)\}/gi;
+  const thumbBlockRe = /([^{};]*?)::-webkit-scrollbar-thumb([^{]*)\{([^}]*)\}/gi;
   let blockMatch: RegExpExecArray | null = thumbBlockRe.exec(ctx.stylesheetText);
   while (blockMatch !== null) {
-    const body = blockMatch[1] ?? '';
-    const bgRe = /(?:^|[;\s])background(?:-color)?\s*:\s*([^;}]+)/gi;
-    let bgMatch: RegExpExecArray | null = bgRe.exec(body);
-    while (bgMatch !== null) {
-      if (isValidColorString(bgMatch[1])) {
-        return true;
+    const rawPrefix = (blockMatch[1] ?? '').trim();
+    const stateSuffix = (blockMatch[2] ?? '').trim();
+    const body = blockMatch[3] ?? '';
+    if (
+      !/:(?:hover|active|focus|window-inactive)\b/i.test(stateSuffix) &&
+      !/background-clip\s*:\s*(?:padding-box|content-box)/i.test(body) &&
+      areScrollbarPrefixesCompatible(targetPrefix, rawPrefix)
+    ) {
+      const bgRe = /(?:^|[;\s])background(?:-color)?\s*:\s*([^;}]+)/gi;
+      let bgMatch: RegExpExecArray | null = bgRe.exec(body);
+      while (bgMatch !== null) {
+        if (isValidColorString(bgMatch[1])) {
+          return true;
+        }
+        bgMatch = bgRe.exec(body);
       }
-      bgMatch = bgRe.exec(body);
     }
     blockMatch = thumbBlockRe.exec(ctx.stylesheetText);
   }
@@ -156,23 +206,36 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       }
     }
 
+    // 4. Skip custom JS scrollbar widget containers (CodeMirror, Element UI, PerfectScrollbar, SimpleBar)
+    if (CUSTOM_SCROLLBAR_WIDGET_SELECTOR_REGEX.test(styleRule.selectorText)) {
+      return null;
+    }
+
     const isThumb = WEBKIT_THUMB_REGEX.test(styleRule.selectorText);
     const isScrollbar = WEBKIT_SCROLLBAR_REGEX.test(styleRule.selectorText);
 
     if (isThumb) {
-      // Must set visible non-gradient background or background-color
+      // Skip :active, :focus, and :window-inactive thumb state rules
+      if (WEBKIT_THUMB_NON_HOVER_STATE_REGEX.test(styleRule.selectorText)) {
+        return null;
+      }
+      // Must set visible non-gradient background or background-color without inset-padding clip
       if (!ruleHasValidThumbColor(styleRule)) {
         return null;
       }
-      // If this is a :hover/:active/:focus/:window-inactive thumb rule and the stylesheet defines
-      // base ::-webkit-scrollbar-thumb rules none of which have a valid solid color (e.g. gradient/image/box-shadow), skip
+      // For :hover thumb rules, require a base ::-webkit-scrollbar-thumb rule with a valid solid color
       if (WEBKIT_THUMB_STATE_REGEX.test(styleRule.selectorText)) {
+        const targetPrefix = extractScrollbarSelectorPrefix(styleRule.selectorText);
         const baseThumbRules = (ctx.styleRules ?? []).filter(
           (r) =>
             WEBKIT_THUMB_REGEX.test(r.selectorText) &&
-            !WEBKIT_THUMB_STATE_REGEX.test(r.selectorText),
+            !WEBKIT_THUMB_STATE_REGEX.test(r.selectorText) &&
+            areScrollbarPrefixesCompatible(
+              targetPrefix,
+              extractScrollbarSelectorPrefix(r.selectorText),
+            ),
         );
-        if (baseThumbRules.length > 0 && !baseThumbRules.some(ruleHasValidThumbColor)) {
+        if (!baseThumbRules.some(ruleHasValidThumbColor)) {
           return null;
         }
       }
@@ -200,7 +263,7 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       }
 
       // Non-zero thickness customization requires accompanying -webkit-scrollbar-thumb with a valid solid color
-      if (!hasCustomThickness || !stylesheetHasValidColoredThumb(ctx)) {
+      if (!hasCustomThickness || !stylesheetHasValidColoredThumb(styleRule, ctx)) {
         return null;
       }
     } else {
