@@ -86,4 +86,15 @@ void test('improve-next-page-load-performance JS matcher', async (t) => {
     const matches = matchJsRule(improveNextPageLoadPerformanceJsMatcher, 'server.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('handles template imports without throwing', () => {
+    const code = `
+      import { helper } from <%= path %>;
+      import quicklink, { listen } from 'quicklink';
+      quicklink.prefetch('/pricing');
+      listen();
+    `;
+    const matches = matchJsRule(improveNextPageLoadPerformanceJsMatcher, 'template-import.js', code);
+    assert.equal(matches.length, 2);
+  });
 });

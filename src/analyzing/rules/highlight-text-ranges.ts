@@ -3,6 +3,7 @@ import {
   type CallExpression,
 } from 'ts-morph';
 import {
+  getSafeModuleSpecifier,
   isGlobalReference,
   resolveLocalExpression,
   unwrapExpression,
@@ -37,8 +38,9 @@ function isMarkConstructorReference(node: Node): boolean {
   }
   const sourceFile = unwrapped.getSourceFile();
   for (const imp of sourceFile.getImportDeclarations()) {
-    const spec = imp.getModuleSpecifierValue();
+    const spec = getSafeModuleSpecifier(imp);
     if (
+      !spec ||
       !MARKJS_PACKAGES.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
     ) {
       continue;

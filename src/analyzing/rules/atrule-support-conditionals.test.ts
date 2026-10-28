@@ -54,4 +54,14 @@ void test('atrule-support-conditionals JS matcher', async (t) => {
     const matches = matchJsRule(atruleSupportConditionalsJsMatcher, 'html5.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('handles template imports without throwing', () => {
+    const code = `
+      import { helper } from <%= path %>;
+      import Modernizr from 'modernizr';
+      const hasKeyframes = Modernizr.atRule('@keyframes');
+    `;
+    const matches = matchJsRule(atruleSupportConditionalsJsMatcher, 'template-import.js', code);
+    assert.equal(matches.length, 1);
+  });
 });

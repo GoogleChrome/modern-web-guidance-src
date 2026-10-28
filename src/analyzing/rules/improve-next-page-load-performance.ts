@@ -5,6 +5,7 @@ import {
   type SourceFile,
 } from 'ts-morph';
 import {
+  getSafeModuleSpecifier,
   isGlobalReference,
   isProtectedByFeatureGuard,
   resolveLocalExpression,
@@ -149,7 +150,7 @@ function isGuardedBySpeculationRules(node: Node): boolean {
 
 function hasQuicklinkNamedImport(sourceFile: SourceFile, name: string): boolean {
   for (const imp of sourceFile.getImportDeclarations()) {
-    if (imp.getModuleSpecifierValue() !== 'quicklink') {
+    if (getSafeModuleSpecifier(imp) !== 'quicklink') {
       continue;
     }
     for (const named of imp.getNamedImports()) {
@@ -171,8 +172,8 @@ function isQuicklinkReference(node: Node, sourceFile: SourceFile): boolean {
     return false;
   }
   for (const imp of sourceFile.getImportDeclarations()) {
-    const spec = imp.getModuleSpecifierValue();
-    if (spec !== 'quicklink' && !spec.startsWith('quicklink/')) {
+    const spec = getSafeModuleSpecifier(imp);
+    if (!spec || (spec !== 'quicklink' && !spec.startsWith('quicklink/'))) {
       continue;
     }
     if (

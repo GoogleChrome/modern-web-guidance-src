@@ -122,4 +122,14 @@ void test('equal-width-text-lines JS matcher', async (t) => {
     const matches = matchJsRule(equalWidthTextLinesJsMatcher, 'guarded-wrap.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('handles template imports alongside imported fitty without throwing', () => {
+    const code = `
+      import { helper } from <%= path %>;
+      import fitty from 'fitty';
+      fitty('.lockup-line');
+    `;
+    const matches = matchJsRule(equalWidthTextLinesJsMatcher, 'template-import.js', code);
+    assert.equal(matches.length, 1);
+  });
 });
