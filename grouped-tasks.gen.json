@@ -478,6 +478,9 @@
       ]
     },
     "ui-components": {
+      "card": [
+        "daily-grind"
+      ],
       "checkbox": [
         "daily-grind"
       ],
