@@ -38,7 +38,7 @@ MANDATORY: Put `aria-busy="true"` on the container and scope every skeleton styl
 <p class="loading-status" role="status"></p>
 <section class="cards skeleton" aria-busy="true" inert aria-hidden="true">
   <article>
-    <div class="media"></div>
+    <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=640&q=80" alt="Mountain valley with a river under a warm evening sky" width="160" height="100">
     <h2></h2>
     <p></p>
     <a href="/more"></a>
