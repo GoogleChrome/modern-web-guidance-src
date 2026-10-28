@@ -107,7 +107,7 @@ If you need to change properties on the container itself (like `margin` or `back
 
 ## 5. Styling the inner container
 
-Style the inner container of the tooltip to ensure that, when visible, the tooltip will always fit between the trigger control and a side of the viewport. As an example, the following code will adhere to this, flipping the tooltip's content on the block axis.
+Style the inner container of the tooltip to ensure that, when visible, the tooltip will always fit between the trigger control and a side of the viewport. As an example, the following code will adhere to this when flipping the tooltip content on the block axis with `position-try: flip-block`.
 
 ```css
 .tooltip-content-inner {
@@ -123,7 +123,7 @@ Style the inner container of the tooltip to ensure that, when visible, the toolt
 
 ## Accessibility considerations
 
-Ensure that the positioning of tooltips will not obscure interactive elements as they receive focus. If the tooltip is likely to obscure an interactive element when it receives focus, either change the position of the tooltip to prevent focus being obscured, or dismiss the tooltip.
+Keyboard navigation does not close a `popover=auto` tooltip, so ensure that tooltips do not obscure interactive elements as they receive focus via keyboard. If the tooltip is likely to obscure an interactive element when it receives focus, either change the position of the tooltip to prevent focus being obscured, or dismiss the tooltip if it is no longer relevant to the user.
 
 ## Fallback strategies
 
