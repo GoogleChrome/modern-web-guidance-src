@@ -11,9 +11,11 @@ web-feature-ids:
   - forced-colors
   - starting-style
   - transition-behavior
+  - interpolate-size
 # - local-link
 guides:
   - icons
+  - animate-to-intrinsic-sizes
   - menu
 ---
 
@@ -198,6 +200,15 @@ Use `aria-current="page"` to identify the current page. Set it at build time or 
 
 If the navigation is animated (optional; add it when the abrupt open and close feels out of place), use `@starting-style` and `allow-discrete` for popover entry and exit, animate the popover with only `opacity` and `transform`, and respect `prefers-reduced-motion`. For the reusable transition pattern, see {{ GUIDE_REF("animate-element-entry-exit") }}. For a worked popover open and close transition, see {{ GUIDE_REF("menu") }}; use it for the wide floating submenu too.
 
+### Narrow submenu slide-down
+
+Optional. In the narrow layout the submenu is an inline list toggled with `hidden`, which opens instantly by default and is fully functional that way. To slide it open and closed:
+
+- Keep the `[hidden]` list rendered with `display: grid` and `block-size: 0`, then transition `block-size` to `auto` with `interpolate-size: allow-keywords` and `overflow: clip`.
+- Include `content-visibility: hidden` with `allow-discrete` in the transition so the content stays rendered until the close finishes.
+- Scope it to the narrow container query and `prefers-reduced-motion: no-preference`; outside it, `[hidden]` must stay `display: none`. In the wide layout the submenu is a popover and must not be clipped.
+- For the general technique, see {{ GUIDE_REF("animate-to-intrinsic-sizes") }}.
+
 Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh` for viewport-relative limits, provide visible `:focus-visible` indicators, and adapt custom borders and current-page indicators under `forced-colors: active`.
 
 
@@ -226,5 +237,7 @@ For the wide floating submenu, use the Anchor Positioning fallbacks in {{ GUIDE_
 
 {{ BASELINE_STATUS("transition-behavior") }}
 
-Without `@starting-style` or `transition-behavior: allow-discrete`, the optional popover transitions are skipped and the navigation and submenu open and close instantly, which is progressive enhancement and fully functional.
+{{ BASELINE_STATUS("interpolate-size") }}
+
+Without `@starting-style` or `transition-behavior: allow-discrete`, the optional popover transitions are skipped, and without `interpolate-size` the narrow submenu slide-down is skipped too; the navigation and submenu open and close instantly, which is progressive enhancement and fully functional.
 

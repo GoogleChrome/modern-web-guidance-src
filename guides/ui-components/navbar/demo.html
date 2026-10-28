@@ -294,6 +294,10 @@
         padding-inline-start: 1.5rem;
         /* Indented inline nested style for mobile */
       }
+
+      .dropdown-list[hidden] {
+        display: none;
+      }
     }
 
     /*
@@ -436,6 +440,22 @@
             opacity: 0;
             transform: translateY(-0.5rem);
           }
+        }
+
+        .dropdown-list {
+          interpolate-size: allow-keywords;
+          overflow: clip;
+          transition:
+            block-size 180ms ease,
+            padding-block 180ms ease,
+            content-visibility 180ms allow-discrete;
+        }
+
+        .dropdown-list[hidden] {
+          display: grid; /* Stay rendered so block-size can animate */
+          block-size: 0;
+          padding-block: 0;
+          content-visibility: hidden;
         }
       }
     }
