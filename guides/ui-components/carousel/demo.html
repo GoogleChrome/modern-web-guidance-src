@@ -380,11 +380,16 @@
       const before = offsetToCenter(item);
       // Snapping off while the slides are reordered: Firefox otherwise re-snaps to another slide and loops
       track.style.scrollSnapType = "none";
+      // Safari paints the reordered layout for a frame before the compensating scroll lands; locking overflow hides that flicker
+      track.style.overflowX = "hidden";
       track.style.setProperty("--current", slides.indexOf(item));
       track.scrollBy({ left: offsetToCenter(item) - before, behavior: "instant" });
       track.style.scrollSnapType = "";
+      requestAnimationFrame(() => requestAnimationFrame(() => { track.style.overflowX = ""; }));
       // The parked slide is a visual-only neighbor, so keep it out of keyboard and AT reach.
       slides.forEach((s) => { s.inert = getComputedStyle(s).order !== "0"; });
+      // Safari keeps the scroll-driven fade at its old progress after the instant scroll; restart it
+      slides.forEach((s) => s.getAnimations().forEach((a) => { a.cancel(); a.play(); }));
     }
 
     // The single code path for state: controls only scroll; this reflects where scrolling ended.
