@@ -530,16 +530,8 @@ export function renderTwoRowProgressBar(params: {
 
   // Column for guide count v: the first bar column is guide `baseline + 1`.
   const colFor = (v: number) => labelWidth + Math.max(0, v - baseline - 1);
-  const ticks: number[] = [baseline];
-  const firstTick = Math.ceil((baseline + 1) / 50) * 50;
-  for (let t = firstTick; t <= scaleMax; t += 50) {
-    ticks.push(t);
-  }
-  if (scaleMax - ticks[ticks.length - 1] < 10) {
-    ticks[ticks.length - 1] = scaleMax;
-  } else if (!ticks.includes(scaleMax)) {
-    ticks.push(scaleMax);
-  }
+  const ticks = [baseline];
+  for (let t = 150; t <= scaleMax; t += 50) ticks.push(t);
   const width = colFor(scaleMax) + 1;
   const ticksArr = Array<string>(width).fill(' ');
   const numsArr = Array<string>(width + 2).fill(' ');
