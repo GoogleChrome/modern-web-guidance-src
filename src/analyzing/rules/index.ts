@@ -15,6 +15,8 @@ import brandedSelectStyling from './branded-select-styling.ts';
 import breakUpLongTasks from './break-up-long-tasks.ts';
 import calculateEventDifferentials from './calculate-event-differentials.ts';
 import captureLocationAgnosticData from './capture-location-agnostic-data.ts';
+import carouselSlideEffects from './carousel-slide-effects.ts';
+import carouselSnapHighlights from './carousel-snap-highlights.ts';
 import checkbox from './checkbox.ts';
 import childStateBasedStyling from './child-state-based-styling.ts';
 import clientSideEncryption from './client-side-encryption.ts';
@@ -37,6 +39,7 @@ import deliverOptimizedDecorativeImages from './deliver-optimized-decorative-ima
 import deprioritizeBackgroundFetches from './deprioritize-background-fetches.ts';
 import detectInitialVisibilityState from './detect-initial-visibility-state.ts';
 import digitalSignatures from './digital-signatures.ts';
+import directionalNavigationTransitions from './directional-navigation-transitions.ts';
 import drag from './drag.ts';
 import dynamicSiblingAnimations from './dynamic-sibling-animations.ts';
 import dynamicSiblingStyling from './dynamic-sibling-styling.ts';
@@ -44,6 +47,7 @@ import equalWidthTextLines from './equal-width-text-lines.ts';
 import exportHtmlMediaFromCanvas from './export-html-media-from-canvas.ts';
 import flickerFreeClientSideAbTesting from './flicker-free-client-side-ab-testing.ts';
 import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-contents.ts';
+import groupElementTransitions from './group-element-transitions.ts';
 import highlightTextRanges from './highlight-text-ranges.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
 import improveNextPageLoadPerformance from './improve-next-page-load-performance.ts';
@@ -75,6 +79,7 @@ import requiredFieldFeedback from './required-field-feedback.ts';
 import resolutionOptimizedPseudoElements from './resolution-optimized-pseudo-elements.ts';
 import responsiveTable from './responsive-table.ts';
 import sanitizeUntrustedHtml from './sanitize-untrusted-html.ts';
+import scopedComponentTransitions from './scoped-component-transitions.ts';
 import scrollCompletionEffects from './scroll-completion-effects.ts';
 import scrollEntryExitEffects from './scroll-entry-exit-effects.ts';
 import scrollPositionAwareElements from './scroll-position-aware-elements.ts';
@@ -115,6 +120,8 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   breakUpLongTasks,
   calculateEventDifferentials,
   captureLocationAgnosticData,
+  carouselSlideEffects,
+  carouselSnapHighlights,
   checkbox,
   childStateBasedStyling,
   clientSideEncryption,
@@ -137,6 +144,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   deprioritizeBackgroundFetches,
   detectInitialVisibilityState,
   digitalSignatures,
+  directionalNavigationTransitions,
   drag,
   dynamicSiblingAnimations,
   dynamicSiblingStyling,
@@ -144,6 +152,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   exportHtmlMediaFromCanvas,
   flickerFreeClientSideAbTesting,
   formFieldsAutomaticallyFitContents,
+  groupElementTransitions,
   highlightTextRanges,
   imeSafeEnterSubmit,
   improveNextPageLoadPerformance,
@@ -175,6 +184,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   resolutionOptimizedPseudoElements,
   responsiveTable,
   sanitizeUntrustedHtml,
+  scopedComponentTransitions,
   scrollCompletionEffects,
   scrollEntryExitEffects,
   scrollPositionAwareElements,
@@ -229,6 +239,8 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'format-human-readable-durations/js-duration-formatter': 'experimental',
   'capture-location-agnostic-data/package-iso-lookup': 'experimental',
   'capture-location-agnostic-data/js-iso-lookup': 'experimental',
+  'carousel-slide-effects': 'experimental',
+  'carousel-snap-highlights': 'experimental',
   'manage-recurring-intervals': 'experimental',
   'checkbox': 'qualified',
   'child-state-based-styling/js-parent-class': 'experimental',
@@ -258,6 +270,8 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'deprioritize-background-fetches': 'experimental',
   'detect-initial-visibility-state': 'experimental',
   'digital-signatures/js-signature': 'experimental',
+  'directional-navigation-transitions': 'experimental',
+  'directional-navigation-transitions/css': 'experimental',
   'drag/package-drag-drop': 'experimental',
   'drag/js-mouse-touch-drag': 'experimental',
   'dynamic-sibling-animations': 'experimental',
@@ -270,6 +284,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'export-html-media-from-canvas/js-canvas-recorder': 'experimental',
   'flicker-free-client-side-ab-testing': 'experimental',
   'form-fields-automatically-fit-contents': 'qualified',
+  'group-element-transitions': 'experimental',
   'highlight-text-ranges/package-markjs': 'experimental',
   'highlight-text-ranges/js-markjs': 'experimental',
   'ime-safe-enter-submit': 'experimental',
@@ -319,6 +334,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'responsive-table/package-responsive-table': 'experimental',
   'responsive-table/css-data-label-table': 'experimental',
   'sanitize-untrusted-html/js-dompurify-innerhtml': 'experimental',
+  'scoped-component-transitions': 'experimental',
   'scroll-completion-effects': 'experimental',
   'scroll-entry-exit-effects/package-scroll-reveal': 'qualified',
   'scroll-entry-exit-effects/js-scroll-reveal': 'qualified',
