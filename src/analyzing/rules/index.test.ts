@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
@@ -10,8 +10,10 @@ import {
   ALL_RULES,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
+  RETIRED,
+  RULE_MODULES,
   RULE_REGISTRY,
-  SUSPENDED_QUALIFIED_GUIDE_IDS,
+  STATUS,
 } from './index.ts';
 
 function isAnalyzerRuleExport(value: unknown): value is AnalyzerRule {
@@ -28,6 +30,41 @@ function isAnalyzerRuleExport(value: unknown): value is AnalyzerRule {
 }
 
 describe('rule registry architectural invariants', () => {
+  it('enforces that STATUS keys equal the set of all rule IDs exported by rule modules', () => {
+    const moduleRuleIds = RULE_MODULES.flat().map((r) => r.id);
+    const statusRuleIds = Object.keys(STATUS);
+
+    const moduleRuleIdSet = new Set(moduleRuleIds);
+    const statusRuleIdSet = new Set(statusRuleIds);
+
+    assert.strictEqual(
+      moduleRuleIdSet.size,
+      moduleRuleIds.length,
+      'Rule IDs exported across RULE_MODULES must be globally unique',
+    );
+
+    const missingInStatus = moduleRuleIds.filter((id) => !statusRuleIdSet.has(id));
+    const extraInStatus = statusRuleIds.filter((id) => !moduleRuleIdSet.has(id));
+
+    assert.deepStrictEqual(
+      missingInStatus,
+      [],
+      `Rule IDs exported by rule modules but missing from STATUS: ${missingInStatus.join(', ')}`,
+    );
+    assert.deepStrictEqual(
+      extraInStatus,
+      [],
+      `Rule IDs in STATUS that do not exist in any rule module: ${extraInStatus.join(', ')}`,
+    );
+
+    for (const [ruleId, statusVal] of Object.entries(STATUS)) {
+      assert.ok(
+        statusVal === 'qualified' || statusVal === 'experimental',
+        `Rule "${ruleId}" has unexpected STATUS value "${String(statusVal)}"`,
+      );
+    }
+  });
+
   it('enforces that every rule module file on disk is registered in RULE_REGISTRY', () => {
     const rulesDir = resolve(import.meta.dirname);
     const untrackedFiles = new Set<string>();
@@ -55,6 +92,20 @@ describe('rule registry architectural invariants', () => {
       assert.ok(
         registryGuideIds.has(file),
         `Rule module on disk "${file}.ts" is not registered in RULE_REGISTRY in rules/index.ts`,
+      );
+    }
+  });
+
+  it('enforces that RETIRED entries have no file on disk and carry a non-empty plain-language reason', () => {
+    const rulesDir = resolve(import.meta.dirname);
+    for (const [guideId, reason] of Object.entries(RETIRED)) {
+      assert.ok(
+        !existsSync(join(rulesDir, `${guideId}.ts`)),
+        `RETIRED module ${guideId}.ts should be deleted from disk`,
+      );
+      assert.ok(
+        typeof reason === 'string' && reason.trim().length > 0,
+        `RETIRED entry ${guideId} must have a non-empty reason`,
       );
     }
   });
@@ -114,11 +165,8 @@ describe('rule registry architectural invariants', () => {
     assert.deepStrictEqual(QUALIFIED_GUIDE_IDS, qualifiedEntries.map((e) => e.guideId));
     assert.deepStrictEqual(
       QUALIFIED_RULES,
-      qualifiedEntries.flatMap((e) => e.rules),
+      ALL_RULES.filter((r) => STATUS[r.id] === 'qualified'),
     );
-
-    const suspendedEntries = RULE_REGISTRY.filter((e) => e.lifecycle.status === 'suspended');
-    assert.deepStrictEqual(SUSPENDED_QUALIFIED_GUIDE_IDS, suspendedEntries.map((e) => e.guideId));
 
     const activeEntries = RULE_REGISTRY.filter((e) => e.lifecycle.status !== 'retired');
     assert.deepStrictEqual(
@@ -127,16 +175,35 @@ describe('rule registry architectural invariants', () => {
     );
   });
 
-  it('validates rule properties for all registered and exported AnalyzerRule objects', async (t) => {
+  it('validates rule properties and default-export completeness for all rule modules', async (t) => {
     const rulesDir = resolve(import.meta.dirname);
     const seenRegisteredRuleIds = new Set<string>();
     for (const entry of RULE_REGISTRY) {
       if (entry.lifecycle.status === 'retired') {
         continue;
       }
-      const modUrl = pathToFileURL(join(rulesDir, `${entry.guideId}.ts`)).href;
+      const filePath = join(rulesDir, `${entry.guideId}.ts`);
+      const modUrl = pathToFileURL(filePath).href;
       const mod: Record<string, unknown> = await import(modUrl);
-      const exportedRules = [...new Set(Object.values(mod).filter(isAnalyzerRuleExport))];
+      assert.ok(
+        Array.isArray(mod.default) && mod.default.length > 0,
+        `Rule module "${entry.guideId}.ts" must default-export a non-empty rules array`,
+      );
+      assert.deepStrictEqual(
+        mod.default,
+        entry.rules,
+        `Default export of "${entry.guideId}.ts" must equal RULE_REGISTRY entry.rules`,
+      );
+
+      const exportedRules = [
+        ...new Set([
+          ...(mod.default as unknown[]).filter(isAnalyzerRuleExport),
+          ...Object.values(mod).filter(isAnalyzerRuleExport),
+          ...Object.entries(mod)
+            .filter(([k, v]) => k !== 'default' && Array.isArray(v))
+            .flatMap(([, v]) => (v as unknown[]).filter(isAnalyzerRuleExport)),
+        ]),
+      ];
       assert.ok(
         exportedRules.length > 0,
         `Rule module "${entry.guideId}.ts" must export at least one AnalyzerRule`,
@@ -144,15 +211,17 @@ describe('rule registry architectural invariants', () => {
       for (const exportedRule of exportedRules) {
         assert.ok(
           entry.rules.includes(exportedRule),
-          `Exported rule "${exportedRule.id}" in "${entry.guideId}.ts" is missing from RULE_REGISTRY entry.rules`,
+          `Exported rule "${exportedRule.id}" in "${entry.guideId}.ts" is missing from its default export`,
         );
       }
-      for (const registeredRule of entry.rules) {
-        assert.ok(
-          exportedRules.includes(registeredRule),
-          `Registered rule "${registeredRule.id}" for "${entry.guideId}" is not exported by "${entry.guideId}.ts"`,
-        );
-      }
+
+      const sourceText = readFileSync(filePath, 'utf8');
+      const definedRuleCount = (sourceText.match(/\bverifierRubric\s*:/g) ?? []).length;
+      assert.strictEqual(
+        entry.rules.length,
+        definedRuleCount,
+        `Module "${entry.guideId}.ts" defines ${definedRuleCount} AnalyzerRule object(s) (by verifierRubric:) but default-exports ${entry.rules.length}`,
+      );
 
       for (const rule of entry.rules) {
         assert.ok(!seenRegisteredRuleIds.has(rule.id), `duplicate rule id: ${rule.id}`);

@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import { createInMemoryProject, scanJsSource } from '../scanners/index.ts';
-import {
+import scrollPositionAwareElementsRules, {
   SCROLL_POSITION_AWARE_ELEMENTS_GUIDE_HASH,
   scrollPositionAwareElementsJsMatcher,
   scrollPositionAwareElementsRule,
-  scrollPositionAwareElementsRules,
 } from './scroll-position-aware-elements.ts';
 
 describe('scroll-position-aware-elements rule', () => {

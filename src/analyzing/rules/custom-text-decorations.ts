@@ -152,6 +152,6 @@ export const customTextDecorationsRule: AnalyzerRule = {
   },
 };
 
-export const customTextDecorationsRules: readonly AnalyzerRule[] = [
+export default [
   customTextDecorationsRule,
-];
+] satisfies readonly AnalyzerRule[];

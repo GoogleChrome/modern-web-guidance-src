@@ -428,6 +428,6 @@ export const deferWorkUntilScrollEndsRule: AnalyzerRule = {
   },
 };
 
-export const deferWorkUntilScrollEndsRules: readonly AnalyzerRule[] = [
+export default [
   deferWorkUntilScrollEndsRule,
-];
+] satisfies readonly AnalyzerRule[];

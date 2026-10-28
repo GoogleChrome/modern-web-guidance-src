@@ -254,6 +254,6 @@ export const scrollCompletionEffectsRule: AnalyzerRule = {
   },
 };
 
-export const scrollCompletionEffectsRules: readonly AnalyzerRule[] = [
+export default [
   scrollCompletionEffectsRule,
-];
+] satisfies readonly AnalyzerRule[];

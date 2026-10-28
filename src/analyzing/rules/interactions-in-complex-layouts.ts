@@ -162,7 +162,7 @@ export const interactionsInComplexLayoutsJsRule: AnalyzerRule = {
   },
 };
 
-export const interactionsInComplexLayoutsRules: readonly AnalyzerRule[] = [
+export default [
   interactionsInComplexLayoutsPackageRule,
   interactionsInComplexLayoutsJsRule,
-];
+] satisfies readonly AnalyzerRule[];

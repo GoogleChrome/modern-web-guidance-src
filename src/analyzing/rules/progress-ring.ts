@@ -226,7 +226,7 @@ export const progressRingDomRule: AnalyzerRule = {
   },
 };
 
-export const progressRingRules: readonly AnalyzerRule[] = [
+export default [
   progressRingRule,
   progressRingDomRule,
-];
+] satisfies readonly AnalyzerRule[];

@@ -112,6 +112,6 @@ export const animateToFromTopLayerRule: AnalyzerRule = {
   },
 };
 
-export const animateToFromTopLayerRules: readonly AnalyzerRule[] = [
+export default [
   animateToFromTopLayerRule,
-];
+] satisfies readonly AnalyzerRule[];

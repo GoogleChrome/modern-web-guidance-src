@@ -16,7 +16,6 @@ import {
   ALL_RULES,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
-  SUSPENDED_QUALIFIED_GUIDE_IDS,
 } from './rules/index.ts';
 import type { AnalyzerRule } from './schema.ts';
 
@@ -55,7 +54,6 @@ describe('runAnalyzeCli', () => {
         resDefault.output,
         new RegExp(`0 findings from ${QUALIFIED_GUIDE_IDS.length} qualified guides \\(pass --experimental to include experimental guides\\)\\.`),
       );
-      assert.doesNotMatch(resDefault.output, /suspended pending re-validation/);
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
       assert.equal(resDefaultJson.exitCode, 0);
@@ -246,7 +244,7 @@ describe('runAnalyzeCli', () => {
   it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all-rules', async () => {
     const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
     try {
-      // 1. Create a pattern from a suspended guide: complex-shapes
+      // 1. Create a pattern from an experimental guide: complex-shapes
       const maskCss = `.icon {\n  -webkit-mask-image: url('icon.svg');\n}`;
       await writeFile(join(testDir, 'mask.css'), maskCss, 'utf8');
 
@@ -260,14 +258,13 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'timezone.js'), timezoneJs, 'utf8');
 
-      // Default run (QUALIFIED_RULES only; neither suspended nor experimental patterns match default)
+      // Default run (QUALIFIED_RULES only; experimental patterns do not match default)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
-      assert.deepEqual(parsedDefault.suspendedGuides, [...SUSPENDED_QUALIFIED_GUIDE_IDS]);
       assert.equal(parsedDefault.statusNotice, undefined);
 
       // Opt-in run with --all-rules (or --experimental)
@@ -280,7 +277,7 @@ describe('runAnalyzeCli', () => {
 
       assert.ok(
         allGuideIds.includes('complex-shapes'),
-        'All-rules includes suspended rule complex-shapes',
+        'All-rules includes experimental rule complex-shapes',
       );
       assert.ok(
         allGuideIds.includes('break-up-long-tasks'),

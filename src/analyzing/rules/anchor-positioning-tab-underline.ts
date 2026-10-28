@@ -169,6 +169,6 @@ export const anchorPositioningTabUnderlineRule: AnalyzerRule = {
   },
 };
 
-export const anchorPositioningTabUnderlineRules: readonly AnalyzerRule[] = [
+export default [
   anchorPositioningTabUnderlineRule,
-];
+] satisfies readonly AnalyzerRule[];

@@ -2,15 +2,18 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { matchJsRule } from '../scanners/js-scanner.ts';
-import {
+import lazyLoadVideoAndAudioRules, {
   lazyLoadVideoAndAudioJsMatcher,
   lazyLoadVideoAndAudioJsRule,
   lazyLoadVideoAndAudioPackageMatcher,
-  lazyLoadVideoAndAudioRules,
+  lazyLoadVideoAndAudioPackageRule,
 } from './lazy-load-video-and-audio.ts';
 
-void test('lazy-load-video-and-audio: active rules export', () => {
-  assert.deepEqual(lazyLoadVideoAndAudioRules, [lazyLoadVideoAndAudioJsRule]);
+void test('lazy-load-video-and-audio: default rules export', () => {
+  assert.deepEqual(lazyLoadVideoAndAudioRules, [
+    lazyLoadVideoAndAudioJsRule,
+    lazyLoadVideoAndAudioPackageRule,
+  ]);
 });
 
 void test('lazy-load-video-and-audio dependency matcher', async (t) => {

@@ -4,11 +4,11 @@ import { scanCss } from '../scanners/css-scanner.ts';
 import { scanJsSource } from '../scanners/js-scanner.ts';
 import type { CssRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
-  childStateBasedStylingDeferredRules,
   childStateBasedStylingJsParentClassRule,
+  childStateBasedStylingRule,
 } from './child-state-based-styling.ts';
 
-const cssMatcher = childStateBasedStylingDeferredRules[0]!.matcher as CssRuleMatcher;
+const cssMatcher = childStateBasedStylingRule.matcher as CssRuleMatcher;
 const jsMatcher = childStateBasedStylingJsParentClassRule.matcher as JsRuleMatcher;
 
 void test('child-state-based-styling: CSS positive brownfield matches', async (t) => {

@@ -127,7 +127,7 @@ export const scrollEntryExitEffectsJsRule: AnalyzerRule = {
   },
 };
 
-export const scrollEntryExitEffectsRules: readonly AnalyzerRule[] = [
+export default [
   scrollEntryExitEffectsPackageRule,
   scrollEntryExitEffectsJsRule,
-];
+] satisfies readonly AnalyzerRule[];

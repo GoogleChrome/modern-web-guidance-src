@@ -72,4 +72,4 @@ export const deliverOptimizedDecorativeImagesRule: AnalyzerRule = {
   },
 };
 
-export const deliverOptimizedDecorativeImagesRules: readonly AnalyzerRule[] = [deliverOptimizedDecorativeImagesRule];
+export default [deliverOptimizedDecorativeImagesRule] satisfies readonly AnalyzerRule[];

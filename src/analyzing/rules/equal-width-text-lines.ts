@@ -249,7 +249,7 @@ export const equalWidthTextLinesJsRule: AnalyzerRule = {
   },
 };
 
-export const equalWidthTextLinesRules: readonly AnalyzerRule[] = [
+export default [
   equalWidthTextLinesPackageRule,
   equalWidthTextLinesJsRule,
-];
+] satisfies readonly AnalyzerRule[];

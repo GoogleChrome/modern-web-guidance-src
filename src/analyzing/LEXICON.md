@@ -141,16 +141,9 @@ A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx m
 * _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
 * _Avoid_: `Default Rule`, `Tier 1 Rule`, `Tier A / Tier B / Tier C`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`
 
-### Suspended Rule
-
-A previously qualified rule whose default shipping has been temporarily paused. Distinct from an **Experimental Rule** (never qualified) and a **Retired Guide** (permanently removed from active scanning).
-
-* _Reference_: `src/analyzing/rules/index.ts#SUSPENDED_QUALIFIED_GUIDE_IDS`
-* _Avoid_: `Quarantined Rule`, `Disabled Rule`
-
 ### Retired Guide
 
-A guide for which a rule was prototyped and subsequently retired in `RULE_REGISTRY` (with its module deleted on disk) because **Guide Triage** or human review determined it has `no-legacy-pattern` or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding, or a **Suspended Rule**.
+A guide for which a rule was prototyped and subsequently retired in `RULE_REGISTRY` (with its module deleted on disk) because **Guide Triage** or human review determined it has `no-legacy-pattern` or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding.
 
 * _Reference_: `src/analyzing/rules/index.ts#RULE_REGISTRY`, `src/analyzing/README.md`
 * _Avoid_: `Dropped Rule`

@@ -154,6 +154,6 @@ export const batchAnalyticsEventsRule: AnalyzerRule = {
   },
 };
 
-export const batchAnalyticsEventsRules: readonly AnalyzerRule[] = [
+export default [
   batchAnalyticsEventsRule,
-];
+] satisfies readonly AnalyzerRule[];

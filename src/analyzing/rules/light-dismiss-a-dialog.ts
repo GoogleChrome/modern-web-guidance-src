@@ -337,6 +337,6 @@ export const lightDismissADialogRule: AnalyzerRule = {
   },
 };
 
-export const lightDismissADialogRules: readonly AnalyzerRule[] = [
+export default [
   lightDismissADialogRule,
-];
+] satisfies readonly AnalyzerRule[];

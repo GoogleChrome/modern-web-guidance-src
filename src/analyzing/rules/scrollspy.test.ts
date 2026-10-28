@@ -4,12 +4,12 @@ import { scanHtml } from '../scanners/dom-scanner.ts';
 import { matchJsRule } from '../scanners/js-scanner.ts';
 import type { DomRuleMatcher, JsRuleMatcher } from '../schema.ts';
 import {
-  scrollspyDeferredRules,
+  scrollspyJsRule,
   scrollspyRule,
 } from './scrollspy.ts';
 
 const domMatcher = scrollspyRule.matcher as DomRuleMatcher;
-const jsMatcher = scrollspyDeferredRules[0]!.matcher as JsRuleMatcher;
+const jsMatcher = scrollspyJsRule.matcher as JsRuleMatcher;
 void test('scrollspy DOM: positive brownfield matches', async (t) => {
   await t.test('flags body element with data-spy="scroll"', () => {
     const html = `

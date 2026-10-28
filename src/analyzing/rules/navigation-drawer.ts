@@ -210,7 +210,7 @@ export const navigationDrawerDomRule: AnalyzerRule = {
   },
 };
 
-export const navigationDrawerRules: readonly AnalyzerRule[] = [
+export default [
   navigationDrawerRule,
   navigationDrawerDomRule,
-];
+] satisfies readonly AnalyzerRule[];

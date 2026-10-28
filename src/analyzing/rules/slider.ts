@@ -116,6 +116,6 @@ export const sliderJsRule: AnalyzerRule = {
   },
 };
 
-export const sliderRules: readonly AnalyzerRule[] = [
+export default [
   sliderJsRule,
-];
+] satisfies readonly AnalyzerRule[];

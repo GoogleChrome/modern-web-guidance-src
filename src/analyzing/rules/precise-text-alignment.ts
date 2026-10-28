@@ -201,8 +201,8 @@ export const preciseTextAlignmentCssRule: AnalyzerRule = {
   },
 };
 
-export const preciseTextAlignmentRules: readonly AnalyzerRule[] = [
+export default [
   preciseTextAlignmentPackageRule,
   preciseTextAlignmentJsRule,
   preciseTextAlignmentCssRule,
-];
+] satisfies readonly AnalyzerRule[];

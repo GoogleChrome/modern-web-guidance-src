@@ -243,4 +243,4 @@ export const checkboxRule: AnalyzerRule = {
   },
 };
 
-export const checkboxRules: readonly AnalyzerRule[] = [checkboxRule];
+export default [checkboxRule] satisfies readonly AnalyzerRule[];

@@ -95,6 +95,6 @@ export const stylingWebComponentsRule: AnalyzerRule = {
   },
 };
 
-export const stylingWebComponentsRules: readonly AnalyzerRule[] = [
+export default [
   stylingWebComponentsRule,
-];
+] satisfies readonly AnalyzerRule[];

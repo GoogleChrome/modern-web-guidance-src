@@ -76,6 +76,6 @@ export const autofillHighlightInputsRule: AnalyzerRule = {
   },
 };
 
-export const autofillHighlightInputsRules: readonly AnalyzerRule[] = [
+export default [
   autofillHighlightInputsRule,
-];
+] satisfies readonly AnalyzerRule[];

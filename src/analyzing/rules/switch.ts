@@ -56,4 +56,4 @@ export const switchRule: AnalyzerRule = {
   },
 };
 
-export const switchRules: readonly AnalyzerRule[] = [switchRule];
+export default [switchRule] satisfies readonly AnalyzerRule[];

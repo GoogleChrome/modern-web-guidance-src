@@ -187,6 +187,6 @@ export const scrollTargetOnLoadRule: AnalyzerRule = {
   },
 };
 
-export const scrollTargetOnLoadRules: readonly AnalyzerRule[] = [
+export default [
   scrollTargetOnLoadRule,
-];
+] satisfies readonly AnalyzerRule[];

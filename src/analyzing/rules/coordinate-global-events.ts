@@ -341,6 +341,6 @@ export const coordinateGlobalEventsRule: AnalyzerRule = {
 /**
  * Opt-in only until re-measured: retired from default production scan.
  */
-export const coordinateGlobalEventsRules: readonly AnalyzerRule[] = [
+export default [
   coordinateGlobalEventsRule,
-];
+] satisfies readonly AnalyzerRule[];

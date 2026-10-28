@@ -182,7 +182,7 @@ export const languageDetectionJsRule: AnalyzerRule = {
   },
 };
 
-export const languageDetectionRules: readonly AnalyzerRule[] = [
+export default [
   languageDetectionPackageRule,
   languageDetectionJsRule,
-];
+] satisfies readonly AnalyzerRule[];

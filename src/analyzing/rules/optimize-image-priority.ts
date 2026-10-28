@@ -119,6 +119,6 @@ export const optimizeImagePriorityRule: AnalyzerRule = {
   },
 };
 
-export const optimizeImagePriorityRules: readonly AnalyzerRule[] = [
+export default [
   optimizeImagePriorityRule,
-];
+] satisfies readonly AnalyzerRule[];

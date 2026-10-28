@@ -189,7 +189,7 @@ export const visuallyStableFontFallbacksJsRule: AnalyzerRule = {
   },
 };
 
-export const visuallyStableFontFallbacksRules: readonly AnalyzerRule[] = [
+export default [
   visuallyStableFontFallbacksPackageRule,
   visuallyStableFontFallbacksJsRule,
-];
+] satisfies readonly AnalyzerRule[];

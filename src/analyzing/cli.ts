@@ -7,7 +7,6 @@ import {
   ALL_RULES,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
-  SUSPENDED_QUALIFIED_GUIDE_IDS,
 } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerFinding, AnalyzerRule, VerifierRubric } from './schema.ts';
@@ -54,7 +53,6 @@ export interface AnalyzeJsonOutput {
   readonly guides: readonly AnalyzeCliGuideGroup[];
   readonly activeRuleCount?: number;
   readonly activeGuideCount?: number;
-  readonly suspendedGuides?: readonly string[];
   readonly statusNotice?: string;
   readonly error?: string;
   readonly skippedDocsAndTestsCount?: number;
@@ -75,7 +73,6 @@ export interface AnalyzeCliResult {
 export interface FormatHumanReadableOptions {
   readonly activeRuleCount?: number;
   readonly activeGuideCount?: number;
-  readonly suspendedGuides?: readonly string[];
   readonly isDefaultQualifiedMode?: boolean;
   readonly color?: boolean;
   readonly skippedDocsAndTestsCount?: number;
@@ -178,10 +175,9 @@ Options:
 export function buildQualificationStatusNotice(
   activeRuleCount: number,
   _activeGuideCount?: number,
-  _suspendedGuides: readonly string[] = [],
 ): string | undefined {
   if (activeRuleCount === 0) {
-    return `Default qualified guides are currently suspended pending re-validation. 0 rules were run; pass --experimental (or --all-rules) for experimental findings.`;
+    return `0 qualified rules are currently configured for default scanning; pass --experimental (or --all-rules) for experimental findings.`;
   }
   return undefined;
 }
@@ -222,7 +218,7 @@ export function formatHumanReadable(
       if (isDefaultMode && activeRuleCount === 0) {
         return [
           `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
-          `Default qualified guides are currently suspended pending re-validation; 0 rules were run.`,
+          `0 qualified rules are currently configured for default scanning.`,
           `Pass --experimental (or --all-rules) for experimental findings across ${ALL_RULES.length} rules.`,
           '',
         ].join('\n');
@@ -443,11 +439,8 @@ export async function runAnalyzeCli(
   const activeRuleCount = activeRules.length;
   const activeGuideIds = new Set(activeRules.map((r) => r.guideId));
   const activeGuideCount = activeGuideIds.size;
-  const suspendedGuides = isDefaultQualifiedMode
-    ? SUSPENDED_QUALIFIED_GUIDE_IDS.filter((gid) => !activeGuideIds.has(gid))
-    : [];
   const statusNotice = isDefaultQualifiedMode
-    ? buildQualificationStatusNotice(activeRuleCount, activeGuideCount, suspendedGuides)
+    ? buildQualificationStatusNotice(activeRuleCount, activeGuideCount)
     : undefined;
 
   const scanStats = { skippedDocsAndTestsCount: 0 };
@@ -565,7 +558,6 @@ export async function runAnalyzeCli(
     guides,
     activeRuleCount,
     activeGuideCount,
-    ...(suspendedGuides.length > 0 ? { suspendedGuides } : {}),
     ...(statusNotice ? { statusNotice } : {}),
     ...(skippedDocsAndTestsCount > 0 ? { skippedDocsAndTestsCount } : {}),
   };
@@ -581,7 +573,6 @@ export async function runAnalyzeCli(
   const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter, {
     activeRuleCount,
     activeGuideCount,
-    suspendedGuides,
     isDefaultQualifiedMode,
     skippedDocsAndTestsCount,
   });

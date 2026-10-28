@@ -127,7 +127,7 @@ export const lazyLoadVideoAndAudioJsMatcher: JsRuleMatcher = createJsCallMatcher
   matchNew: (node, sourceFile) => matchMediaLazyObserver(node, sourceFile),
 });
 
-const lazyLoadVideoAndAudioPackageRule: AnalyzerRule = {
+export const lazyLoadVideoAndAudioPackageRule: AnalyzerRule = {
   id: 'lazy-load-video-and-audio/package-lazyload',
   guideId: 'lazy-load-video-and-audio',
   guideHash: LAZY_LOAD_VIDEO_AND_AUDIO_GUIDE_HASH,
@@ -163,11 +163,7 @@ export const lazyLoadVideoAndAudioJsRule: AnalyzerRule = {
   },
 };
 
-export const lazyLoadVideoAndAudioDeferredRules: readonly AnalyzerRule[] = [
-  // ~98% of vanilla-lazyload / lozad package.json occurrences are for <img> rather than <video>/<audio>
-  lazyLoadVideoAndAudioPackageRule,
-];
-
-export const lazyLoadVideoAndAudioRules: readonly AnalyzerRule[] = [
+export default [
   lazyLoadVideoAndAudioJsRule,
-];
+  lazyLoadVideoAndAudioPackageRule,
+] satisfies readonly AnalyzerRule[];

@@ -172,6 +172,6 @@ export const digitalSignaturesJsRule: AnalyzerRule = {
   },
 };
 
-export const digitalSignaturesRules: readonly AnalyzerRule[] = [
+export default [
   digitalSignaturesJsRule,
-];
+] satisfies readonly AnalyzerRule[];

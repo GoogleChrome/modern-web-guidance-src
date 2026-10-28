@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import { createInMemoryProject, scanCss, scanJsSource, scanPackageJson } from '../scanners/index.ts';
-import {
+import preventPageScrollUnderModalDialogRules, {
   PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH,
   preventPageScrollUnderModalDialogCssMatcher,
   preventPageScrollUnderModalDialogCssRule,
@@ -9,7 +9,6 @@ import {
   preventPageScrollUnderModalDialogDependencyRule,
   preventPageScrollUnderModalDialogMatcher,
   preventPageScrollUnderModalDialogRule,
-  preventPageScrollUnderModalDialogRules,
 } from './prevent-page-scroll-under-modal-dialog.ts';
 
 describe('prevent-page-scroll-under-modal-dialog rule', () => {

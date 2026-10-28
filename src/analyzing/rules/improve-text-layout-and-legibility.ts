@@ -151,7 +151,7 @@ export const improveTextLayoutAndLegibilityJsRule: AnalyzerRule = {
   },
 };
 
-export const improveTextLayoutAndLegibilityRules: readonly AnalyzerRule[] = [
+export default [
   improveTextLayoutAndLegibilityPackageRule,
   improveTextLayoutAndLegibilityJsRule,
-];
+] satisfies readonly AnalyzerRule[];

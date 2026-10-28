@@ -178,7 +178,7 @@ export const interestTriggeredActionPreviewsJsRule: AnalyzerRule = {
   },
 };
 
-export const interestTriggeredActionPreviewsRules: readonly AnalyzerRule[] = [
+export default [
   interestTriggeredActionPreviewsPackageRule,
   interestTriggeredActionPreviewsJsRule,
-];
+] satisfies readonly AnalyzerRule[];

@@ -114,7 +114,7 @@ export const exportHtmlMediaFromCanvasJsRule: AnalyzerRule = {
   },
 };
 
-export const exportHtmlMediaFromCanvasRules: readonly AnalyzerRule[] = [
+export default [
   exportHtmlMediaFromCanvasPackageRule,
   exportHtmlMediaFromCanvasJsRule,
-];
+] satisfies readonly AnalyzerRule[];

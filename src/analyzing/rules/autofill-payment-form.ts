@@ -335,6 +335,6 @@ export const autofillPaymentFormRule: AnalyzerRule = {
   },
 };
 
-export const autofillPaymentFormRules: readonly AnalyzerRule[] = [
+export default [
   autofillPaymentFormRule,
-];
+] satisfies readonly AnalyzerRule[];

@@ -119,6 +119,6 @@ export const scrollProgressIndicatorRule: AnalyzerRule = {
   },
 };
 
-export const scrollProgressIndicatorRules: readonly AnalyzerRule[] = [
+export default [
   scrollProgressIndicatorRule,
-];
+] satisfies readonly AnalyzerRule[];

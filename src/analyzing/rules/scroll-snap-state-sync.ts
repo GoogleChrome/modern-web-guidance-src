@@ -117,6 +117,6 @@ export const scrollSnapStateSyncRule: AnalyzerRule = {
   },
 };
 
-export const scrollSnapStateSyncRules: readonly AnalyzerRule[] = [
+export default [
   scrollSnapStateSyncRule,
-];
+] satisfies readonly AnalyzerRule[];

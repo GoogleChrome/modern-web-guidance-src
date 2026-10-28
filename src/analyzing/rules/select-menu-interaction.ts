@@ -333,7 +333,7 @@ export const selectMenuInteractionJsRule: AnalyzerRule = {
   },
 };
 
-export const selectMenuInteractionRules: readonly AnalyzerRule[] = [
+export default [
   selectMenuInteractionCssRule,
   selectMenuInteractionJsRule,
-];
+] satisfies readonly AnalyzerRule[];

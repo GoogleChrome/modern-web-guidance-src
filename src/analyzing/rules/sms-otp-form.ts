@@ -376,4 +376,4 @@ export const smsOtpFormRule: AnalyzerRule = {
   },
 };
 
-export const smsOtpFormRules: readonly AnalyzerRule[] = [smsOtpFormRule];
+export default [smsOtpFormRule] satisfies readonly AnalyzerRule[];

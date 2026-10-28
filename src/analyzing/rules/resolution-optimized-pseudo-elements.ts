@@ -101,6 +101,6 @@ export const resolutionOptimizedPseudoElementsRule: AnalyzerRule = {
   },
 };
 
-export const resolutionOptimizedPseudoElementsRules: readonly AnalyzerRule[] = [
+export default [
   resolutionOptimizedPseudoElementsRule,
-];
+] satisfies readonly AnalyzerRule[];

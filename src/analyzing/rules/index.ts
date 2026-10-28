@@ -1,171 +1,324 @@
 import type { AnalyzerRule } from '../schema.ts';
 
-import { anchorPositioningTabUnderlineRules } from './anchor-positioning-tab-underline.ts';
-import { animateElementEntryExitRules } from './animate-element-entry-exit.ts';
-import { animateToFromTopLayerRules } from './animate-to-from-top-layer.ts';
-import { animateToIntrinsicSizesRules } from './animate-to-intrinsic-sizes.ts';
-import { atruleSupportConditionalsRules } from './atrule-support-conditionals.ts';
-import { autofillAddressFormRules } from './autofill-address-form.ts';
-import { autofillHighlightInputsRules } from './autofill-highlight-inputs.ts';
-import { autofillPaymentFormRules } from './autofill-payment-form.ts';
-import { autofillSignInFormRules } from './autofill-sign-in-form.ts';
-import { autofillSignUpFormRules } from './autofill-sign-up-form.ts';
-import { batchAnalyticsEventsRules } from './batch-analytics-events.ts';
-import { brandedSelectStylingRules } from './branded-select-styling.ts';
-import { breakUpLongTasksRules } from './break-up-long-tasks.ts';
-import { calculateEventDifferentialsRules } from './calculate-event-differentials.ts';
-import { captureLocationAgnosticDataRules } from './capture-location-agnostic-data.ts';
-import { checkboxRules } from './checkbox.ts';
-import { childStateBasedStylingRules } from './child-state-based-styling.ts';
-import { clientSideEncryptionRules } from './client-side-encryption.ts';
-import { complexShapesRules } from './complex-shapes.ts';
-import { conditionalAsyncDependenciesRules } from './conditional-async-dependencies.ts';
-import { contrastColorRules } from './contrast-color.ts';
-import { coordinateGlobalEventsRules } from './coordinate-global-events.ts';
-import { customButtonActionsRules } from './custom-button-actions.ts';
-import { customSelectPickerLayoutsRules } from './custom-select-picker-layouts.ts';
-import { customTextDecorationsRules } from './custom-text-decorations.ts';
-import { customizeScrollbarColorAndThicknessRules } from './customize-scrollbar-color-and-thickness.ts';
-import { darkModeRules } from './dark-mode.ts';
-import { declarativeDialogPopoverControlRules } from './declarative-dialog-popover-control.ts';
-import { deferWorkUntilScrollEndsRules } from './defer-work-until-scroll-ends.ts';
-import { deliverOptimizedDecorativeImagesRules } from './deliver-optimized-decorative-images.ts';
-import { detectInitialVisibilityStateRules } from './detect-initial-visibility-state.ts';
-import { digitalSignaturesRules } from './digital-signatures.ts';
-import { dragRules } from './drag.ts';
-import { equalWidthTextLinesRules } from './equal-width-text-lines.ts';
-import { exportHtmlMediaFromCanvasRules } from './export-html-media-from-canvas.ts';
-import { formFieldsAutomaticallyFitContentsRules } from './form-fields-automatically-fit-contents.ts';
-import { highlightTextRangesRules } from './highlight-text-ranges.ts';
-import { imeSafeEnterSubmitRules } from './ime-safe-enter-submit.ts';
-import { improveNextPageLoadPerformanceRules } from './improve-next-page-load-performance.ts';
-import { improveTextLayoutAndLegibilityRules } from './improve-text-layout-and-legibility.ts';
-import { individualTransformPropertiesRules } from './individual-transform-properties.ts';
-import { interactionsInComplexLayoutsRules } from './interactions-in-complex-layouts.ts';
-import { interestTriggeredActionPreviewsRules } from './interest-triggered-action-previews.ts';
-import { interestTriggeredTooltipsRules } from './interest-triggered-tooltips.ts';
-import { languageDetectionRules } from './language-detection.ts';
-import { lazyLoadVideoAndAudioRules } from './lazy-load-video-and-audio.ts';
-import { lightDismissADialogRules } from './light-dismiss-a-dialog.ts';
-import { menuRules } from './menu.ts';
-import { navigationDrawerRules } from './navigation-drawer.ts';
-import { optimizeImagePriorityRules } from './optimize-image-priority.ts';
-import { persistentToastNotificationsRules } from './persistent-toast-notifications.ts';
-import { physicsBasedEasingRules } from './physics-based-easing.ts';
-import { platformControlsDismissDialogRules } from './platform-controls-dismiss-dialog.ts';
-import { positionAwareTooltipsRules } from './position-aware-tooltips.ts';
-import { preciseTextAlignmentRules } from './precise-text-alignment.ts';
-import { preventPageScrollUnderModalDialogRules } from './prevent-page-scroll-under-modal-dialog.ts';
-import { progressRingRules } from './progress-ring.ts';
-import { requiredFieldFeedbackRules } from './required-field-feedback.ts';
-import { resolutionOptimizedPseudoElementsRules } from './resolution-optimized-pseudo-elements.ts';
-import { responsiveTableRules } from './responsive-table.ts';
-import { sanitizeUntrustedHtmlRules } from './sanitize-untrusted-html.ts';
-import { scrollCompletionEffectsRules } from './scroll-completion-effects.ts';
-import { scrollEntryExitEffectsRules } from './scroll-entry-exit-effects.ts';
-import { scrollPositionAwareElementsRules } from './scroll-position-aware-elements.ts';
-import { scrollProgressIndicatorRules } from './scroll-progress-indicator.ts';
-import { scrollSnapRealtimeFeedbackRules } from './scroll-snap-realtime-feedback.ts';
-import { scrollSnapStateSyncRules } from './scroll-snap-state-sync.ts';
-import { scrollTargetOnLoadRules } from './scroll-target-on-load.ts';
-import { scrollabilityAffordanceHintsRules } from './scrollability-affordance-hints.ts';
-import { scrollspyRules } from './scrollspy.ts';
-import { selectMenuInteractionRules } from './select-menu-interaction.ts';
-import { sizeAwareStylingRules } from './size-aware-styling.ts';
-import { sliderRules } from './slider.ts';
-import { smsOtpFormRules } from './sms-otp-form.ts';
-import { softEdgeContentFadeRules } from './soft-edge-content-fade.ts';
-import { stateAwareStickyHeadersRules } from './state-aware-sticky-headers.ts';
-import { stylingWebComponentsRules } from './styling-web-components.ts';
-import { supportGlobalCalendarSystemsRules } from './support-global-calendar-systems.ts';
-import { switchRules } from './switch.ts';
-import { visuallyStableFontFallbacksRules } from './visually-stable-font-fallbacks.ts';
+import anchorPositioningTabUnderline from './anchor-positioning-tab-underline.ts';
+import animateElementEntryExit from './animate-element-entry-exit.ts';
+import animateToFromTopLayer from './animate-to-from-top-layer.ts';
+import animateToIntrinsicSizes from './animate-to-intrinsic-sizes.ts';
+import atruleSupportConditionals from './atrule-support-conditionals.ts';
+import autofillAddressForm from './autofill-address-form.ts';
+import autofillHighlightInputs from './autofill-highlight-inputs.ts';
+import autofillPaymentForm from './autofill-payment-form.ts';
+import autofillSignInForm from './autofill-sign-in-form.ts';
+import autofillSignUpForm from './autofill-sign-up-form.ts';
+import batchAnalyticsEvents from './batch-analytics-events.ts';
+import brandedSelectStyling from './branded-select-styling.ts';
+import breakUpLongTasks from './break-up-long-tasks.ts';
+import calculateEventDifferentials from './calculate-event-differentials.ts';
+import captureLocationAgnosticData from './capture-location-agnostic-data.ts';
+import checkbox from './checkbox.ts';
+import childStateBasedStyling from './child-state-based-styling.ts';
+import clientSideEncryption from './client-side-encryption.ts';
+import complexShapes from './complex-shapes.ts';
+import conditionalAsyncDependencies from './conditional-async-dependencies.ts';
+import contrastColor from './contrast-color.ts';
+import coordinateGlobalEvents from './coordinate-global-events.ts';
+import customButtonActions from './custom-button-actions.ts';
+import customSelectPickerLayouts from './custom-select-picker-layouts.ts';
+import customTextDecorations from './custom-text-decorations.ts';
+import customizeScrollbarColorAndThickness from './customize-scrollbar-color-and-thickness.ts';
+import darkMode from './dark-mode.ts';
+import declarativeDialogPopoverControl from './declarative-dialog-popover-control.ts';
+import deferWorkUntilScrollEnds from './defer-work-until-scroll-ends.ts';
+import deliverOptimizedDecorativeImages from './deliver-optimized-decorative-images.ts';
+import detectInitialVisibilityState from './detect-initial-visibility-state.ts';
+import digitalSignatures from './digital-signatures.ts';
+import drag from './drag.ts';
+import equalWidthTextLines from './equal-width-text-lines.ts';
+import exportHtmlMediaFromCanvas from './export-html-media-from-canvas.ts';
+import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-contents.ts';
+import highlightTextRanges from './highlight-text-ranges.ts';
+import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
+import improveNextPageLoadPerformance from './improve-next-page-load-performance.ts';
+import improveTextLayoutAndLegibility from './improve-text-layout-and-legibility.ts';
+import individualTransformProperties from './individual-transform-properties.ts';
+import interactionsInComplexLayouts from './interactions-in-complex-layouts.ts';
+import interestTriggeredActionPreviews from './interest-triggered-action-previews.ts';
+import interestTriggeredTooltips from './interest-triggered-tooltips.ts';
+import languageDetection from './language-detection.ts';
+import lazyLoadVideoAndAudio from './lazy-load-video-and-audio.ts';
+import lightDismissADialog from './light-dismiss-a-dialog.ts';
+import menu from './menu.ts';
+import navigationDrawer from './navigation-drawer.ts';
+import optimizeImagePriority from './optimize-image-priority.ts';
+import persistentToastNotifications from './persistent-toast-notifications.ts';
+import physicsBasedEasing from './physics-based-easing.ts';
+import platformControlsDismissDialog from './platform-controls-dismiss-dialog.ts';
+import positionAwareTooltips from './position-aware-tooltips.ts';
+import preciseTextAlignment from './precise-text-alignment.ts';
+import preventPageScrollUnderModalDialog from './prevent-page-scroll-under-modal-dialog.ts';
+import progressRing from './progress-ring.ts';
+import requiredFieldFeedback from './required-field-feedback.ts';
+import resolutionOptimizedPseudoElements from './resolution-optimized-pseudo-elements.ts';
+import responsiveTable from './responsive-table.ts';
+import sanitizeUntrustedHtml from './sanitize-untrusted-html.ts';
+import scrollCompletionEffects from './scroll-completion-effects.ts';
+import scrollEntryExitEffects from './scroll-entry-exit-effects.ts';
+import scrollPositionAwareElements from './scroll-position-aware-elements.ts';
+import scrollProgressIndicator from './scroll-progress-indicator.ts';
+import scrollSnapRealtimeFeedback from './scroll-snap-realtime-feedback.ts';
+import scrollSnapStateSync from './scroll-snap-state-sync.ts';
+import scrollTargetOnLoad from './scroll-target-on-load.ts';
+import scrollabilityAffordanceHints from './scrollability-affordance-hints.ts';
+import scrollspy from './scrollspy.ts';
+import selectMenuInteraction from './select-menu-interaction.ts';
+import sizeAwareStyling from './size-aware-styling.ts';
+import slider from './slider.ts';
+import smsOtpForm from './sms-otp-form.ts';
+import softEdgeContentFade from './soft-edge-content-fade.ts';
+import stateAwareStickyHeaders from './state-aware-sticky-headers.ts';
+import stylingWebComponents from './styling-web-components.ts';
+import supportGlobalCalendarSystems from './support-global-calendar-systems.ts';
+import switchRuleModule from './switch.ts';
+import visuallyStableFontFallbacks from './visually-stable-font-fallbacks.ts';
 
-export * from './anchor-positioning-tab-underline.ts';
-export * from './animate-element-entry-exit.ts';
-export * from './animate-to-from-top-layer.ts';
-export * from './animate-to-intrinsic-sizes.ts';
-export * from './atrule-support-conditionals.ts';
-export * from './autofill-address-form.ts';
-export * from './autofill-highlight-inputs.ts';
-export * from './autofill-payment-form.ts';
-export * from './autofill-sign-in-form.ts';
-export * from './autofill-sign-up-form.ts';
-export * from './batch-analytics-events.ts';
-export * from './branded-select-styling.ts';
-export * from './break-up-long-tasks.ts';
-export * from './calculate-event-differentials.ts';
-export * from './capture-location-agnostic-data.ts';
-export * from './checkbox.ts';
-export * from './child-state-based-styling.ts';
-export * from './client-side-encryption.ts';
-export * from './complex-shapes.ts';
-export * from './conditional-async-dependencies.ts';
-export * from './contrast-color.ts';
-export * from './coordinate-global-events.ts';
-export * from './custom-button-actions.ts';
-export * from './custom-select-picker-layouts.ts';
-export * from './custom-text-decorations.ts';
-export * from './customize-scrollbar-color-and-thickness.ts';
-export * from './dark-mode.ts';
-export * from './declarative-dialog-popover-control.ts';
-export * from './defer-work-until-scroll-ends.ts';
-export * from './deliver-optimized-decorative-images.ts';
-export * from './detect-initial-visibility-state.ts';
-export * from './digital-signatures.ts';
-export * from './drag.ts';
-export * from './equal-width-text-lines.ts';
-export * from './export-html-media-from-canvas.ts';
-export * from './form-fields-automatically-fit-contents.ts';
-export * from './highlight-text-ranges.ts';
-export * from './ime-safe-enter-submit.ts';
-export * from './improve-next-page-load-performance.ts';
-export * from './improve-text-layout-and-legibility.ts';
-export * from './individual-transform-properties.ts';
-export * from './interactions-in-complex-layouts.ts';
-export * from './interest-triggered-action-previews.ts';
-export * from './interest-triggered-tooltips.ts';
-export * from './language-detection.ts';
-export * from './lazy-load-video-and-audio.ts';
-export * from './light-dismiss-a-dialog.ts';
-export * from './menu.ts';
-export * from './navigation-drawer.ts';
-export * from './optimize-image-priority.ts';
-export * from './persistent-toast-notifications.ts';
-export * from './physics-based-easing.ts';
-export * from './platform-controls-dismiss-dialog.ts';
-export * from './position-aware-tooltips.ts';
-export * from './precise-text-alignment.ts';
-export * from './prevent-page-scroll-under-modal-dialog.ts';
-export * from './progress-ring.ts';
-export * from './required-field-feedback.ts';
-export * from './resolution-optimized-pseudo-elements.ts';
-export * from './responsive-table.ts';
-export * from './sanitize-untrusted-html.ts';
-export * from './scroll-completion-effects.ts';
-export * from './scroll-entry-exit-effects.ts';
-export * from './scroll-position-aware-elements.ts';
-export * from './scroll-progress-indicator.ts';
-export * from './scroll-snap-realtime-feedback.ts';
-export * from './scroll-snap-state-sync.ts';
-export * from './scroll-target-on-load.ts';
-export * from './scrollability-affordance-hints.ts';
-export * from './scrollspy.ts';
-export * from './select-menu-interaction.ts';
-export * from './size-aware-styling.ts';
-export * from './slider.ts';
-export * from './sms-otp-form.ts';
-export * from './soft-edge-content-fade.ts';
-export * from './state-aware-sticky-headers.ts';
-export * from './styling-web-components.ts';
-export * from './support-global-calendar-systems.ts';
-export * from './switch.ts';
-export * from './visually-stable-font-fallbacks.ts';
+export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
+  anchorPositioningTabUnderline,
+  animateElementEntryExit,
+  animateToFromTopLayer,
+  animateToIntrinsicSizes,
+  atruleSupportConditionals,
+  autofillAddressForm,
+  autofillHighlightInputs,
+  autofillPaymentForm,
+  autofillSignInForm,
+  autofillSignUpForm,
+  batchAnalyticsEvents,
+  brandedSelectStyling,
+  breakUpLongTasks,
+  calculateEventDifferentials,
+  captureLocationAgnosticData,
+  checkbox,
+  childStateBasedStyling,
+  clientSideEncryption,
+  complexShapes,
+  conditionalAsyncDependencies,
+  contrastColor,
+  coordinateGlobalEvents,
+  customButtonActions,
+  customSelectPickerLayouts,
+  customTextDecorations,
+  customizeScrollbarColorAndThickness,
+  darkMode,
+  declarativeDialogPopoverControl,
+  deferWorkUntilScrollEnds,
+  deliverOptimizedDecorativeImages,
+  detectInitialVisibilityState,
+  digitalSignatures,
+  drag,
+  equalWidthTextLines,
+  exportHtmlMediaFromCanvas,
+  formFieldsAutomaticallyFitContents,
+  highlightTextRanges,
+  imeSafeEnterSubmit,
+  improveNextPageLoadPerformance,
+  improveTextLayoutAndLegibility,
+  individualTransformProperties,
+  interactionsInComplexLayouts,
+  interestTriggeredActionPreviews,
+  interestTriggeredTooltips,
+  languageDetection,
+  lazyLoadVideoAndAudio,
+  lightDismissADialog,
+  menu,
+  navigationDrawer,
+  optimizeImagePriority,
+  persistentToastNotifications,
+  physicsBasedEasing,
+  platformControlsDismissDialog,
+  positionAwareTooltips,
+  preciseTextAlignment,
+  preventPageScrollUnderModalDialog,
+  progressRing,
+  requiredFieldFeedback,
+  resolutionOptimizedPseudoElements,
+  responsiveTable,
+  sanitizeUntrustedHtml,
+  scrollCompletionEffects,
+  scrollEntryExitEffects,
+  scrollPositionAwareElements,
+  scrollProgressIndicator,
+  scrollSnapRealtimeFeedback,
+  scrollSnapStateSync,
+  scrollTargetOnLoad,
+  scrollabilityAffordanceHints,
+  scrollspy,
+  selectMenuInteraction,
+  sizeAwareStyling,
+  slider,
+  smsOtpForm,
+  softEdgeContentFade,
+  stateAwareStickyHeaders,
+  stylingWebComponents,
+  supportGlobalCalendarSystems,
+  switchRuleModule,
+  visuallyStableFontFallbacks,
+];
+
+export type RuleStatusValue = 'qualified' | 'experimental';
+
+/**
+ * Per-rule lifecycle status map keyed by `AnalyzerRule['id']`.
+ *
+ * Rules qualify for default terminal shipping when scored on held-out findings by the multi-judge panel:
+ * - Static Matcher Precision >= 80.0% and Post-Rubric Precision >= 90.0% at n >= 10 findings
+ *   (or Static Matcher Precision >= 90.0% at n >= 5 for rare patterns).
+ */
+export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
+  'anchor-positioning-tab-underline': 'experimental',
+  'animate-element-entry-exit': 'experimental',
+  'animate-to-from-top-layer': 'experimental',
+  'animate-to-intrinsic-sizes': 'experimental',
+  'atrule-support-conditionals/js-modernizr': 'experimental',
+  'autofill-address-form': 'qualified',
+  'autofill-highlight-inputs': 'experimental',
+  'autofill-payment-form': 'qualified',
+  'autofill-sign-in-form': 'qualified',
+  'autofill-sign-up-form': 'experimental',
+  'batch-analytics-events': 'experimental',
+  'branded-select-styling': 'experimental',
+  'branded-select-styling/js': 'experimental',
+  'break-up-long-tasks': 'experimental',
+  'calculate-event-differentials': 'experimental',
+  'format-human-readable-durations/package-duration-formatter': 'experimental',
+  'format-human-readable-durations/js-duration-formatter': 'experimental',
+  'capture-location-agnostic-data/package-iso-lookup': 'experimental',
+  'capture-location-agnostic-data/js-iso-lookup': 'experimental',
+  'manage-recurring-intervals': 'experimental',
+  'checkbox': 'qualified',
+  'child-state-based-styling': 'experimental',
+  'child-state-based-styling/js-parent-class': 'experimental',
+  'client-side-encryption/js-crypto': 'experimental',
+  'complex-shapes': 'experimental',
+  'conditional-async-dependencies/package-script-loader': 'experimental',
+  'conditional-async-dependencies/js-script-loader': 'experimental',
+  'contrast-color/js': 'experimental',
+  'contrast-color/css': 'experimental',
+  'coordinate-global-events': 'experimental',
+  'custom-button-actions': 'experimental',
+  'custom-select-picker-layouts/js-custom-select': 'experimental',
+  'custom-text-decorations': 'qualified',
+  'customize-scrollbar-color-and-thickness': 'experimental',
+  'dark-mode': 'experimental',
+  'dark-mode/js-match-media': 'experimental',
+  'declarative-dialog-popover-control': 'experimental',
+  'declarative-dialog-popover-control/click-listener': 'experimental',
+  'defer-work-until-scroll-ends': 'experimental',
+  'deliver-optimized-decorative-images': 'experimental',
+  'detect-initial-visibility-state': 'experimental',
+  'digital-signatures/js-signature': 'experimental',
+  'drag/package-drag-drop': 'experimental',
+  'drag/js-mouse-touch-drag': 'experimental',
+  'equal-width-text-lines/package-fittext': 'experimental',
+  'equal-width-text-lines/js-fittext': 'experimental',
+  'export-html-media-from-canvas/package-canvas-recorder': 'experimental',
+  'export-html-media-from-canvas/js-canvas-recorder': 'experimental',
+  'form-fields-automatically-fit-contents': 'qualified',
+  'highlight-text-ranges/package-markjs': 'experimental',
+  'highlight-text-ranges/js-markjs': 'experimental',
+  'ime-safe-enter-submit': 'experimental',
+  'improve-next-page-load-performance/package-prefetch': 'experimental',
+  'improve-next-page-load-performance/js-quicklink': 'experimental',
+  'improve-text-layout-and-legibility/package-text-balance': 'experimental',
+  'improve-text-layout-and-legibility/js-text-balance': 'experimental',
+  'individual-transform-properties': 'experimental',
+  'individual-transform-properties/standalone-chain': 'experimental',
+  'individual-transform-properties/single-function-state': 'experimental',
+  'interactions-in-complex-layouts/package-fastdom': 'experimental',
+  'interactions-in-complex-layouts/js-fastdom': 'experimental',
+  'interest-triggered-action-previews/package-hoverintent': 'experimental',
+  'interest-triggered-action-previews/js-hover-preview': 'experimental',
+  'interest-triggered-tooltips/js-tooltip': 'qualified',
+  'language-detection/package-lang-detect': 'experimental',
+  'language-detection/js-lang-detect': 'experimental',
+  'lazy-load-video-and-audio/js-media-observer': 'experimental',
+  'lazy-load-video-and-audio/package-lazyload': 'experimental', // package.json matches are mostly lazy-loading images rather than video/audio
+  'light-dismiss-a-dialog': 'experimental',
+  'menu/js': 'experimental',
+  'menu/dom': 'experimental',
+  'navigation-drawer': 'experimental',
+  'navigation-drawer/dom': 'experimental',
+  'optimize-image-priority': 'experimental',
+  'persistent-toast-notifications/js-toast': 'experimental',
+  'physics-based-easing/js-spring': 'experimental',
+  'platform-controls-dismiss-dialog': 'experimental',
+  'position-aware-tooltips/js-popper-tooltip': 'experimental',
+  'precise-text-alignment/package-capsize': 'experimental',
+  'precise-text-alignment/js-capsize': 'experimental',
+  'precise-text-alignment/css-leading-trim': 'experimental',
+  'prevent-page-scroll-under-modal-dialog/package-scroll-lock': 'experimental',
+  'prevent-page-scroll-under-modal-dialog': 'experimental',
+  'prevent-page-scroll-under-modal-dialog/css': 'experimental',
+  'progress-ring': 'experimental',
+  'progress-ring/dom': 'experimental',
+  'required-field-feedback/css-required-invalid': 'experimental',
+  'required-field-feedback/js-blur-dirty-class': 'experimental',
+  'resolution-optimized-pseudo-elements': 'experimental',
+  'responsive-table/package-responsive-table': 'experimental',
+  'responsive-table/css-data-label-table': 'experimental',
+  'sanitize-untrusted-html/js-dompurify-innerhtml': 'experimental',
+  'scroll-completion-effects': 'experimental',
+  'scroll-entry-exit-effects/package-scroll-reveal': 'qualified',
+  'scroll-entry-exit-effects/js-scroll-reveal': 'qualified',
+  'scroll-position-aware-elements/js-scroll-listener': 'experimental',
+  'scroll-progress-indicator': 'experimental',
+  'scroll-snap-realtime-feedback': 'experimental',
+  'scroll-snap-state-sync': 'experimental',
+  'scroll-target-on-load': 'experimental',
+  'scrollability-affordance-hints': 'experimental',
+  'scrollspy': 'qualified',
+  'scrollspy/js': 'experimental', // CSS scroll-target-group / :target-current is not yet Baseline
+  'select-menu-interaction/css-select-invalid': 'experimental',
+  'select-menu-interaction/js-select-interaction': 'experimental',
+  'size-aware-styling': 'experimental',
+  'slider/js-slider': 'experimental',
+  'sms-otp-form': 'experimental',
+  'soft-edge-content-fade': 'experimental',
+  'state-aware-sticky-headers': 'experimental',
+  'styling-web-components': 'qualified',
+  'support-global-calendar-systems/package-calendar': 'experimental',
+  'support-global-calendar-systems/js-calendar': 'experimental',
+  'switch': 'experimental',
+  'visually-stable-font-fallbacks/package-font-loader': 'experimental',
+  'visually-stable-font-fallbacks/js-font-loader': 'experimental',
+};
+
+/**
+ * Retired guides that have no active rule module on disk.
+ */
+export const RETIRED: Readonly<Record<string, string>> = {
+  'adapt-scrollbar-to-contrast-preferences':
+    'No client-side legacy pattern; applicability depends on visual/semantic judgment',
+  'brand-consistent-forms':
+    'Flags the appearance:none technique recommended by the checkbox guide',
+  'schedule-tasks-by-priority':
+    'requestIdleCallback has IdleDeadline/timeout semantics not 1:1 with scheduler.postTask',
+  'format-human-readable-durations':
+    'Consolidated into calculate-event-differentials',
+  'manage-recurring-intervals':
+    'Consolidated into capture-location-agnostic-data',
+  'resilient-context-menus-and-nested-dropdowns':
+    'Guide renamed to viewport-aware-dropdowns; the old Bootstrap dropdown-toggle rule was removed',
+  'shadow-dom':
+    "Removed: string templates in script tags aren't Shadow DOM targets",
+  'copy-button':
+    "Guide is still a stub on this branch; restore the rule once the guide's content merges",
+  'accessible-error-announcement':
+    "Removed: static CSS selectors can't detect missing live-region announcements",
+};
 
 export type RuleLifecycle =
   | { readonly status: 'qualified' }
   | { readonly status: 'experimental' }
-  | { readonly status: 'suspended'; readonly reason: string }
   | { readonly status: 'retired'; readonly reason: string };
 
 export interface RuleRegistryEntry {
@@ -174,456 +327,27 @@ export interface RuleRegistryEntry {
   readonly rules: readonly AnalyzerRule[];
 }
 
+function deriveModuleLifecycle(rules: readonly AnalyzerRule[]): RuleLifecycle {
+  if (rules.some((rule) => STATUS[rule.id] === 'qualified')) {
+    return { status: 'qualified' };
+  }
+  return { status: 'experimental' };
+}
+
 /**
- * Hand-curated canonical rule registry keyed by guideId.
- * Single source of truth for rule lifecycle and existence.
+ * Canonical rule registry derived from `RULE_MODULES`, `STATUS`, and `RETIRED`.
  */
 export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
-  {
-    guideId: 'anchor-positioning-tab-underline',
-    lifecycle: { status: 'experimental' },
-    rules: anchorPositioningTabUnderlineRules,
-  },
-  {
-    guideId: 'animate-element-entry-exit',
-    lifecycle: { status: 'experimental' },
-    rules: animateElementEntryExitRules,
-  },
-  {
-    guideId: 'animate-to-from-top-layer',
-    lifecycle: { status: 'experimental' },
-    rules: animateToFromTopLayerRules,
-  },
-  {
-    guideId: 'animate-to-intrinsic-sizes',
-    lifecycle: { status: 'experimental' },
-    rules: animateToIntrinsicSizesRules,
-  },
-  {
-    guideId: 'atrule-support-conditionals',
-    lifecycle: { status: 'experimental' },
-    rules: atruleSupportConditionalsRules,
-  },
-  {
-    guideId: 'autofill-address-form',
-    lifecycle: { status: 'qualified' },
-    rules: autofillAddressFormRules,
-  },
-  {
-    guideId: 'autofill-highlight-inputs',
-    lifecycle: { status: 'experimental' },
-    rules: autofillHighlightInputsRules,
-  },
-  {
-    guideId: 'autofill-payment-form',
-    lifecycle: { status: 'qualified' },
-    rules: autofillPaymentFormRules,
-  },
-  {
-    guideId: 'autofill-sign-in-form',
-    lifecycle: { status: 'qualified' },
-    rules: autofillSignInFormRules,
-  },
-  {
-    guideId: 'autofill-sign-up-form',
-    lifecycle: { status: 'experimental' },
-    rules: autofillSignUpFormRules,
-  },
-  {
-    guideId: 'batch-analytics-events',
-    lifecycle: { status: 'experimental' },
-    rules: batchAnalyticsEventsRules,
-  },
-  {
-    guideId: 'branded-select-styling',
-    lifecycle: { status: 'experimental' },
-    rules: brandedSelectStylingRules,
-  },
-  {
-    guideId: 'break-up-long-tasks',
-    lifecycle: { status: 'experimental' },
-    rules: breakUpLongTasksRules,
-  },
-  {
-    guideId: 'calculate-event-differentials',
-    lifecycle: { status: 'experimental' },
-    rules: calculateEventDifferentialsRules,
-  },
-  {
-    guideId: 'capture-location-agnostic-data',
-    lifecycle: { status: 'experimental' },
-    rules: captureLocationAgnosticDataRules,
-  },
-  {
-    guideId: 'checkbox',
-    lifecycle: { status: 'qualified' },
-    rules: checkboxRules,
-  },
-  {
-    guideId: 'child-state-based-styling',
-    lifecycle: { status: 'experimental' },
-    rules: childStateBasedStylingRules,
-  },
-  {
-    guideId: 'client-side-encryption',
-    lifecycle: { status: 'experimental' },
-    rules: clientSideEncryptionRules,
-  },
-  {
-    guideId: 'complex-shapes',
-    lifecycle: { status: 'suspended', reason: "Failed precision threshold in held-out validation; 0 human blind spot-check cards" },
-    rules: complexShapesRules,
-  },
-  {
-    guideId: 'conditional-async-dependencies',
-    lifecycle: { status: 'experimental' },
-    rules: conditionalAsyncDependenciesRules,
-  },
-  {
-    guideId: 'contrast-color',
-    lifecycle: { status: 'experimental' },
-    rules: contrastColorRules,
-  },
-  {
-    guideId: 'coordinate-global-events',
-    lifecycle: { status: 'experimental' },
-    rules: coordinateGlobalEventsRules,
-  },
-  {
-    guideId: 'custom-button-actions',
-    lifecycle: { status: 'experimental' },
-    rules: customButtonActionsRules,
-  },
-  {
-    guideId: 'custom-select-picker-layouts',
-    lifecycle: { status: 'experimental' },
-    rules: customSelectPickerLayoutsRules,
-  },
-  {
-    guideId: 'custom-text-decorations',
-    lifecycle: { status: 'qualified' },
-    rules: customTextDecorationsRules,
-  },
-  {
-    guideId: 'customize-scrollbar-color-and-thickness',
-    lifecycle: { status: 'experimental' },
-    rules: customizeScrollbarColorAndThicknessRules,
-  },
-  {
-    guideId: 'dark-mode',
-    lifecycle: { status: 'experimental' },
-    rules: darkModeRules,
-  },
-  {
-    guideId: 'declarative-dialog-popover-control',
-    lifecycle: { status: 'experimental' },
-    rules: declarativeDialogPopoverControlRules,
-  },
-  {
-    guideId: 'defer-work-until-scroll-ends',
-    lifecycle: { status: 'experimental' },
-    rules: deferWorkUntilScrollEndsRules,
-  },
-  {
-    guideId: 'deliver-optimized-decorative-images',
-    lifecycle: { status: 'experimental' },
-    rules: deliverOptimizedDecorativeImagesRules,
-  },
-  {
-    guideId: 'detect-initial-visibility-state',
-    lifecycle: { status: 'experimental' },
-    rules: detectInitialVisibilityStateRules,
-  },
-  {
-    guideId: 'digital-signatures',
-    lifecycle: { status: 'experimental' },
-    rules: digitalSignaturesRules,
-  },
-  {
-    guideId: 'drag',
-    lifecycle: { status: 'experimental' },
-    rules: dragRules,
-  },
-  {
-    guideId: 'equal-width-text-lines',
-    lifecycle: { status: 'experimental' },
-    rules: equalWidthTextLinesRules,
-  },
-  {
-    guideId: 'export-html-media-from-canvas',
-    lifecycle: { status: 'experimental' },
-    rules: exportHtmlMediaFromCanvasRules,
-  },
-  {
-    guideId: 'form-fields-automatically-fit-contents',
-    lifecycle: { status: 'qualified' },
-    rules: formFieldsAutomaticallyFitContentsRules,
-  },
-  {
-    guideId: 'highlight-text-ranges',
-    lifecycle: { status: 'experimental' },
-    rules: highlightTextRangesRules,
-  },
-  {
-    guideId: 'ime-safe-enter-submit',
-    lifecycle: { status: 'experimental' },
-    rules: imeSafeEnterSubmitRules,
-  },
-  {
-    guideId: 'improve-next-page-load-performance',
-    lifecycle: { status: 'experimental' },
-    rules: improveNextPageLoadPerformanceRules,
-  },
-  {
-    guideId: 'improve-text-layout-and-legibility',
-    lifecycle: { status: 'experimental' },
-    rules: improveTextLayoutAndLegibilityRules,
-  },
-  {
-    guideId: 'individual-transform-properties',
-    lifecycle: { status: 'experimental' },
-    rules: individualTransformPropertiesRules,
-  },
-  {
-    guideId: 'interactions-in-complex-layouts',
-    lifecycle: { status: 'suspended', reason: "Zero denominator (n = 0) on held-out corpus" },
-    rules: interactionsInComplexLayoutsRules,
-  },
-  {
-    guideId: 'interest-triggered-action-previews',
-    lifecycle: { status: 'experimental' },
-    rules: interestTriggeredActionPreviewsRules,
-  },
-  {
-    guideId: 'interest-triggered-tooltips',
-    lifecycle: { status: 'qualified' },
-    rules: interestTriggeredTooltipsRules,
-  },
-  {
-    guideId: 'language-detection',
-    lifecycle: { status: 'suspended', reason: "Zero denominator (n = 0) on held-out corpus" },
-    rules: languageDetectionRules,
-  },
-  {
-    guideId: 'lazy-load-video-and-audio',
-    lifecycle: { status: 'experimental' },
-    rules: lazyLoadVideoAndAudioRules,
-  },
-  {
-    guideId: 'light-dismiss-a-dialog',
-    lifecycle: { status: 'experimental' },
-    rules: lightDismissADialogRules,
-  },
-  {
-    guideId: 'menu',
-    lifecycle: { status: 'experimental' },
-    rules: menuRules,
-  },
-  {
-    guideId: 'navigation-drawer',
-    lifecycle: { status: 'experimental' },
-    rules: navigationDrawerRules,
-  },
-  {
-    guideId: 'optimize-image-priority',
-    lifecycle: { status: 'experimental' },
-    rules: optimizeImagePriorityRules,
-  },
-  {
-    guideId: 'persistent-toast-notifications',
-    lifecycle: { status: 'experimental' },
-    rules: persistentToastNotificationsRules,
-  },
-  {
-    guideId: 'physics-based-easing',
-    lifecycle: { status: 'experimental' },
-    rules: physicsBasedEasingRules,
-  },
-  {
-    guideId: 'platform-controls-dismiss-dialog',
-    lifecycle: { status: 'experimental' },
-    rules: platformControlsDismissDialogRules,
-  },
-  {
-    guideId: 'position-aware-tooltips',
-    lifecycle: { status: 'experimental' },
-    rules: positionAwareTooltipsRules,
-  },
-  {
-    guideId: 'precise-text-alignment',
-    lifecycle: { status: 'experimental' },
-    rules: preciseTextAlignmentRules,
-  },
-  {
-    guideId: 'prevent-page-scroll-under-modal-dialog',
-    lifecycle: { status: 'experimental' },
-    rules: preventPageScrollUnderModalDialogRules,
-  },
-  {
-    guideId: 'progress-ring',
-    lifecycle: { status: 'experimental' },
-    rules: progressRingRules,
-  },
-  {
-    guideId: 'required-field-feedback',
-    lifecycle: { status: 'experimental' },
-    rules: requiredFieldFeedbackRules,
-  },
-  {
-    guideId: 'resolution-optimized-pseudo-elements',
-    lifecycle: { status: 'experimental' },
-    rules: resolutionOptimizedPseudoElementsRules,
-  },
-  {
-    guideId: 'responsive-table',
-    lifecycle: { status: 'experimental' },
-    rules: responsiveTableRules,
-  },
-  {
-    guideId: 'sanitize-untrusted-html',
-    lifecycle: { status: 'experimental' },
-    rules: sanitizeUntrustedHtmlRules,
-  },
-  {
-    guideId: 'scroll-completion-effects',
-    lifecycle: { status: 'experimental' },
-    rules: scrollCompletionEffectsRules,
-  },
-  {
-    guideId: 'scroll-entry-exit-effects',
-    lifecycle: { status: 'qualified' },
-    rules: scrollEntryExitEffectsRules,
-  },
-  {
-    guideId: 'scroll-position-aware-elements',
-    lifecycle: { status: 'experimental' },
-    rules: scrollPositionAwareElementsRules,
-  },
-  {
-    guideId: 'scroll-progress-indicator',
-    lifecycle: { status: 'experimental' },
-    rules: scrollProgressIndicatorRules,
-  },
-  {
-    guideId: 'scroll-snap-realtime-feedback',
-    lifecycle: { status: 'experimental' },
-    rules: scrollSnapRealtimeFeedbackRules,
-  },
-  {
-    guideId: 'scroll-snap-state-sync',
-    lifecycle: { status: 'experimental' },
-    rules: scrollSnapStateSyncRules,
-  },
-  {
-    guideId: 'scroll-target-on-load',
-    lifecycle: { status: 'experimental' },
-    rules: scrollTargetOnLoadRules,
-  },
-  {
-    guideId: 'scrollability-affordance-hints',
-    lifecycle: { status: 'experimental' },
-    rules: scrollabilityAffordanceHintsRules,
-  },
-  {
-    guideId: 'scrollspy',
-    lifecycle: { status: 'qualified' },
-    rules: scrollspyRules,
-  },
-  {
-    guideId: 'select-menu-interaction',
-    lifecycle: { status: 'experimental' },
-    rules: selectMenuInteractionRules,
-  },
-  {
-    guideId: 'size-aware-styling',
-    lifecycle: { status: 'experimental' },
-    rules: sizeAwareStylingRules,
-  },
-  {
-    guideId: 'slider',
-    lifecycle: { status: 'experimental' },
-    rules: sliderRules,
-  },
-  {
-    guideId: 'sms-otp-form',
-    lifecycle: { status: 'experimental' },
-    rules: smsOtpFormRules,
-  },
-  {
-    guideId: 'soft-edge-content-fade',
-    lifecycle: { status: 'experimental' },
-    rules: softEdgeContentFadeRules,
-  },
-  {
-    guideId: 'state-aware-sticky-headers',
-    lifecycle: { status: 'experimental' },
-    rules: stateAwareStickyHeadersRules,
-  },
-  {
-    guideId: 'styling-web-components',
-    lifecycle: { status: 'qualified' },
-    rules: stylingWebComponentsRules,
-  },
-  {
-    guideId: 'support-global-calendar-systems',
-    lifecycle: { status: 'experimental' },
-    rules: supportGlobalCalendarSystemsRules,
-  },
-  {
-    guideId: 'switch',
-    lifecycle: { status: 'experimental' },
-    rules: switchRules,
-  },
-  {
-    guideId: 'visually-stable-font-fallbacks',
-    lifecycle: { status: 'experimental' },
-    rules: visuallyStableFontFallbacksRules,
-  },
-  {
-    guideId: 'adapt-scrollbar-to-contrast-preferences',
-    lifecycle: { status: 'retired', reason: "No client-side legacy pattern; applicability depends on visual/semantic judgment" },
+  ...RULE_MODULES.map((rules): RuleRegistryEntry => ({
+    guideId: rules[0].guideId,
+    lifecycle: deriveModuleLifecycle(rules),
+    rules,
+  })),
+  ...Object.entries(RETIRED).map(([guideId, reason]): RuleRegistryEntry => ({
+    guideId,
+    lifecycle: { status: 'retired', reason },
     rules: [],
-  },
-  {
-    guideId: 'brand-consistent-forms',
-    lifecycle: { status: 'retired', reason: "Contradicts checkbox guide, 0/111 genuine like-for-like" },
-    rules: [],
-  },
-  {
-    guideId: 'schedule-tasks-by-priority',
-    lifecycle: { status: 'retired', reason: "rIC has deadline/timeout semantics, not 1:1 with postTask" },
-    rules: [],
-  },
-  {
-    guideId: 'format-human-readable-durations',
-    lifecycle: { status: 'retired', reason: "Consolidated into calculate-event-differentials" },
-    rules: [],
-  },
-  {
-    guideId: 'manage-recurring-intervals',
-    lifecycle: { status: 'retired', reason: "Consolidated into capture-location-agnostic-data" },
-    rules: [],
-  },
-  {
-    guideId: 'resilient-context-menus-and-nested-dropdowns',
-    lifecycle: { status: 'retired', reason: "Guide renamed to viewport-aware-dropdowns; the old Bootstrap dropdown-toggle rule was removed." },
-    rules: [],
-  },
-  {
-    guideId: 'shadow-dom',
-    lifecycle: { status: 'retired', reason: "Removed: string templates in script tags aren't Shadow DOM targets." },
-    rules: [],
-  },
-  {
-    guideId: 'copy-button',
-    lifecycle: { status: 'retired', reason: "Guide is still a stub on this branch; restore the rule once the guide's content merges." },
-    rules: [],
-  },
-  {
-    guideId: 'accessible-error-announcement',
-    lifecycle: { status: 'retired', reason: "Removed: static CSS selectors can't detect missing live-region announcements." },
-    rules: [],
-  },
+  })),
 ];
 
 export const RULE_REGISTRY_BY_GUIDE_ID: ReadonlyMap<string, RuleRegistryEntry> = new Map(
@@ -631,33 +355,20 @@ export const RULE_REGISTRY_BY_GUIDE_ID: ReadonlyMap<string, RuleRegistryEntry> =
 );
 
 /**
- * Production shipping qualified guide IDs clearing the qualification standard.
- *
- * Rules qualify for default terminal shipping when scored on held-out findings by the multi-judge panel:
- * - Static Matcher Precision >= 80.0% and Post-Rubric Precision >= 90.0% at n >= 10 findings
- *   (or Static Matcher Precision >= 90.0% at n >= 5 for rare patterns).
+ * All active rules across qualified and experimental rules.
+ */
+export const ALL_RULES: readonly AnalyzerRule[] = RULE_MODULES.flat();
+
+/**
+ * Production rules gated to qualified status in `STATUS`.
+ */
+export const QUALIFIED_RULES: readonly AnalyzerRule[] = ALL_RULES.filter(
+  (rule) => STATUS[rule.id] === 'qualified',
+);
+
+/**
+ * Guide IDs that have at least one qualified rule in `STATUS`.
  */
 export const QUALIFIED_GUIDE_IDS: readonly string[] = RULE_REGISTRY
   .filter((e) => e.lifecycle.status === 'qualified')
   .map((e) => e.guideId);
-
-/**
- * Candidate guides temporarily suspended from default shipping qualification pending human spot-checks.
- */
-export const SUSPENDED_QUALIFIED_GUIDE_IDS: readonly string[] = RULE_REGISTRY
-  .filter((e) => e.lifecycle.status === 'suspended')
-  .map((e) => e.guideId);
-
-/**
- * Production rules gated to qualified guides only.
- */
-export const QUALIFIED_RULES: readonly AnalyzerRule[] = RULE_REGISTRY
-  .filter((e) => e.lifecycle.status === 'qualified')
-  .flatMap((e) => e.rules);
-
-/**
- * All active rules across qualified, experimental, and suspended guides.
- */
-export const ALL_RULES: readonly AnalyzerRule[] = RULE_REGISTRY
-  .filter((e) => e.lifecycle.status !== 'retired')
-  .flatMap((e) => e.rules);

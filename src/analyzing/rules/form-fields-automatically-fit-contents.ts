@@ -313,6 +313,6 @@ export const formFieldsAutomaticallyFitContentsRule: AnalyzerRule = {
   },
 };
 
-export const formFieldsAutomaticallyFitContentsRules: readonly AnalyzerRule[] = [
+export default [
   formFieldsAutomaticallyFitContentsRule,
-];
+] satisfies readonly AnalyzerRule[];
