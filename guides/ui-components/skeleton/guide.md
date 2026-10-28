@@ -38,7 +38,7 @@ MANDATORY: Put `aria-busy="true"` on the container and scope every skeleton styl
 <p class="loading-status" role="status"></p>
 <section class="cards skeleton" aria-busy="true" inert aria-hidden="true">
   <article>
-    <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=640&q=80" alt="Mountain valley with a river under a warm evening sky" width="160" height="100">
+    <img src="/images/launch-event.jpg" alt="Crowd at the product launch event" width="160" height="100">
     <h2></h2>
     <p></p>
     <a href="/more"></a>
@@ -147,27 +147,18 @@ Set the shape on `--bars` and read it with `border-shape: var(--bars)`. Do not c
 
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
-Draw the bullet as a shape, not with `::marker`: the `overflow: hidden` above clips an outside marker, and a marker cannot take the shimmer background. Remove the list's own padding and marker, and draw the dot inside the `li` box with a second function that draws a circle with two arcs, then start the bar at the real list's indent. This applies to bulleted lists; do not use the dot for a numbered list.
+Keep the real `::marker` for the bullet. Set `list-style-position: inside` so the `overflow: hidden` above does not clip it, and give it the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Keep the list's own padding so the box matches the real list, then start the bar at the real list's indent. This applies to numbered lists too.
 
 ```css
-@function --dot(--size <length>) {
-  result: move to 0 calc(var(--bar-height) / 2),
-    arc to var(--size) calc(var(--bar-height) / 2) of calc(var(--size) / 2) calc(var(--size) / 2) cw,
-    arc to 0 calc(var(--bar-height) / 2) of calc(var(--size) / 2) calc(var(--size) / 2) cw,
-    close;
-}
-
-.skeleton[aria-busy="true"] ul {
-  padding: 0;
-  list-style: none;
-}
-
 .skeleton[aria-busy="true"] li {
+  list-style-position: inside;
   --text-start: 1.25em; /* Same indent as the real list, so the text does not shift */
   --line-one: 72%;      /* Vary this per item */
-  --bars: shape(from 0 0,
-    --dot(calc(var(--bar-height) * .8)),
-    --bar(0, var(--line-one), var(--text-start)));
+  --bars: shape(from 0 0, --bar(0, var(--line-one), var(--text-start)));
+}
+
+.skeleton[aria-busy="true"] li::marker {
+  color: var(--skeleton-tone);
 }
 ```
 

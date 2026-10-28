@@ -204,14 +204,6 @@
           close;
       }
 
-      /* A list bullet: a circle drawn with two arcs, centered on the first bar. */
-      @function --dot(--size <length>) {
-        result: move to 0 calc(var(--bar-height) / 2),
-          arc to var(--size) calc(var(--bar-height) / 2) of calc(var(--size) / 2) calc(var(--size) / 2) cw,
-          arc to 0 calc(var(--bar-height) / 2) of calc(var(--size) / 2) calc(var(--size) / 2) cw,
-          close;
-      }
-
       /* Cap the visible cards with a fixed :nth-child() selector, which works
          without JavaScript. 7 is an example value (it shows six cards). Whole
          cards can be removed; in-card items may need visibility to reserve space. */
@@ -307,20 +299,18 @@
       }
 
 
-      /* Lists: a dot plus a bar per item. The dot is a circle drawn with two
-         arcs; the bar starts after it. A real ::marker is not used because
-         overflow: hidden clips it and it cannot take the shimmer background. */
-      .skeleton[aria-busy="true"] ul {
-        padding: 0;
-        list-style: none;
-      }
-
+      /* Lists: the real ::marker plus a bar per item. The marker sits inside the
+         li box so overflow: hidden does not clip it; it takes the flat tone
+         (a marker cannot take the shimmer), and the bar starts after it. */
       .skeleton[aria-busy="true"] li {
+        list-style-position: inside;
         --text-start: 1.25em; /* Same indent as the real list, so bars start where the real text does */
         --line-one: 72%;
-        --bars: shape(from 0 0,
-            --dot(calc(var(--bar-height) * .8)),
-            --bar(0, var(--line-one), var(--text-start)));
+        --bars: shape(from 0 0, --bar(0, var(--line-one), var(--text-start)));
+      }
+
+      .skeleton[aria-busy="true"] li::marker {
+        color: var(--skeleton-tone);
       }
 
       .skeleton[aria-busy="true"] li:nth-child(2) {
