@@ -289,18 +289,15 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
 };
 
 /**
- * Retired guides and rules removed from active scanning.
- * Keys may be a retired rule ID (when a guide retains other active rules) or a retired guide ID.
+ * Guides retired and removed from active scanning (no active rule module on disk).
  */
-export const RETIRED: Readonly<Record<string, string>> = {
+export const RETIRED_GUIDES: Readonly<Record<string, string>> = {
   'adapt-scrollbar-to-contrast-preferences':
     'No client-side legacy pattern; applicability depends on visual/semantic judgment',
   'autofill-highlight-inputs':
     'No payoff: browsers already alias :-webkit-autofill to :autofill, so the rewrite is a no-op',
   'brand-consistent-forms':
     'Flags the appearance:none technique recommended by the checkbox guide',
-  'child-state-based-styling':
-    'Syntax-only swap: rewriting working +/~ sibling combinators into :has() is more expensive in Chromium',
   'schedule-tasks-by-priority':
     'requestIdleCallback has IdleDeadline/timeout semantics not 1:1 with scheduler.postTask',
   'format-human-readable-durations':
@@ -317,6 +314,23 @@ export const RETIRED: Readonly<Record<string, string>> = {
     "Removed: static CSS selectors can't detect missing live-region announcements",
 };
 
+/**
+ * Individual rules retired from guides that retain other active rules on disk.
+ * Keyed by `AnalyzerRule['id']`.
+ */
+export const RETIRED_RULES: Readonly<Record<string, string>> = {
+  'child-state-based-styling':
+    'Syntax-only swap: rewriting working +/~ sibling combinators into :has() is more expensive in Chromium',
+};
+
+/**
+ * Combined map of retired guide IDs and retired rule IDs.
+ */
+export const RETIRED: Readonly<Record<string, string>> = {
+  ...RETIRED_GUIDES,
+  ...RETIRED_RULES,
+};
+
 export type RuleLifecycle =
   | { readonly status: 'qualified' }
   | { readonly status: 'experimental' }
@@ -326,6 +340,7 @@ export interface RuleRegistryEntry {
   readonly guideId: string;
   readonly lifecycle: RuleLifecycle;
   readonly rules: readonly AnalyzerRule[];
+  readonly retiredRules?: Readonly<Record<string, string>>;
 }
 
 function deriveModuleLifecycle(rules: readonly AnalyzerRule[]): RuleLifecycle {
@@ -335,26 +350,34 @@ function deriveModuleLifecycle(rules: readonly AnalyzerRule[]): RuleLifecycle {
   return { status: 'experimental' };
 }
 
-const ACTIVE_GUIDE_IDS: ReadonlySet<string> = new Set(
-  RULE_MODULES.map((rules) => rules[0].guideId),
-);
+function deriveRetiredRulesForGuide(
+  guideId: string,
+): Readonly<Record<string, string>> | undefined {
+  const entries = Object.entries(RETIRED_RULES).filter(
+    ([ruleId]) => ruleId === guideId || ruleId.startsWith(`${guideId}/`),
+  );
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
 
 /**
- * Canonical rule registry derived from `RULE_MODULES`, `STATUS`, and `RETIRED`.
+ * Canonical rule registry derived from `RULE_MODULES`, `STATUS`, `RETIRED_GUIDES`, and `RETIRED_RULES`.
  */
 export const RULE_REGISTRY: readonly RuleRegistryEntry[] = [
-  ...RULE_MODULES.map((rules): RuleRegistryEntry => ({
-    guideId: rules[0].guideId,
-    lifecycle: deriveModuleLifecycle(rules),
-    rules,
+  ...RULE_MODULES.map((rules): RuleRegistryEntry => {
+    const guideId = rules[0].guideId;
+    const retiredRules = deriveRetiredRulesForGuide(guideId);
+    return {
+      guideId,
+      lifecycle: deriveModuleLifecycle(rules),
+      rules,
+      ...(retiredRules ? { retiredRules } : {}),
+    };
+  }),
+  ...Object.entries(RETIRED_GUIDES).map(([guideId, reason]): RuleRegistryEntry => ({
+    guideId,
+    lifecycle: { status: 'retired', reason },
+    rules: [],
   })),
-  ...Object.entries(RETIRED)
-    .filter(([id]) => !ACTIVE_GUIDE_IDS.has(id.split('/')[0]!))
-    .map(([id, reason]): RuleRegistryEntry => ({
-      guideId: id.split('/')[0]!,
-      lifecycle: { status: 'retired', reason },
-      rules: [],
-    })),
 ];
 
 export const RULE_REGISTRY_BY_GUIDE_ID: ReadonlyMap<string, RuleRegistryEntry> = new Map(

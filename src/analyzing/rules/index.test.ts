@@ -11,6 +11,8 @@ import {
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
   RETIRED,
+  RETIRED_GUIDES,
+  RETIRED_RULES,
   RULE_MODULES,
   RULE_REGISTRY,
   STATUS,
@@ -96,36 +98,86 @@ describe('rule registry architectural invariants', () => {
     }
   });
 
-  it('enforces that RETIRED entries have no active matcher on disk and carry a non-empty plain-language reason', () => {
+  it('enforces that RETIRED_GUIDES and RETIRED_RULES are disjoint, represented in RULE_REGISTRY, and carry non-empty plain-language reasons', () => {
     const rulesDir = resolve(import.meta.dirname);
     const activeByGuide = new Map(
       RULE_REGISTRY.filter((e) => e.lifecycle.status !== 'retired').map((e) => [e.guideId, e]),
     );
-    for (const [id, reason] of Object.entries(RETIRED)) {
-      const guideId = id.split('/')[0]!;
-      const activeEntry = activeByGuide.get(guideId);
-      if (activeEntry) {
-        assert.ok(
-          !(id in STATUS) &&
-            activeEntry.rules.length > 0 &&
-            !activeEntry.rules.some((r) => r.id === id),
-          `Rule-level RETIRED entry "${id}" must be removed from STATUS and "${guideId}.ts" while keeping remaining rules`,
-        );
-      } else {
-        assert.ok(
-          !existsSync(join(rulesDir, `${guideId}.ts`)),
-          `RETIRED module ${guideId}.ts should be deleted from disk`,
-        );
-      }
+    const retiredByGuide = new Map(
+      RULE_REGISTRY.filter((e) => e.lifecycle.status === 'retired').map((e) => [e.guideId, e]),
+    );
+
+    for (const [guideId, reason] of Object.entries(RETIRED_GUIDES)) {
+      assert.ok(
+        !(guideId in RETIRED_RULES),
+        `RETIRED_GUIDES key "${guideId}" must not also appear in RETIRED_RULES`,
+      );
+      assert.ok(
+        !activeByGuide.has(guideId),
+        `RETIRED_GUIDES entry "${guideId}" must not be an active guide in RULE_REGISTRY`,
+      );
+      assert.ok(
+        !existsSync(join(rulesDir, `${guideId}.ts`)),
+        `RETIRED_GUIDES module ${guideId}.ts should be deleted from disk`,
+      );
+      const retiredEntry = retiredByGuide.get(guideId);
+      assert.ok(
+        retiredEntry &&
+          retiredEntry.lifecycle.status === 'retired' &&
+          retiredEntry.lifecycle.reason === reason,
+        `RETIRED_GUIDES entry "${guideId}" must appear in RULE_REGISTRY with lifecycle.status === 'retired' and matching reason`,
+      );
       assert.ok(
         typeof reason === 'string' && reason.trim().length > 0,
-        `RETIRED entry ${id} must have a non-empty reason`,
+        `RETIRED_GUIDES entry ${guideId} must have a non-empty reason`,
       );
       assert.ok(
         !/\bD-\d{3}\b/.test(reason),
-        `RETIRED entry ${id} reason must be plain-language without internal decision IDs`,
+        `RETIRED_GUIDES entry ${guideId} reason must be plain-language without internal decision IDs`,
       );
     }
+
+    for (const [ruleId, reason] of Object.entries(RETIRED_RULES)) {
+      const guideId = ruleId.split('/')[0]!;
+      const activeEntry = activeByGuide.get(guideId);
+      assert.ok(
+        activeEntry,
+        `RETIRED_RULES entry "${ruleId}" must belong to an active guide in RULE_REGISTRY (if the entire guide is retired, move "${guideId}" to RETIRED_GUIDES)`,
+      );
+      assert.ok(
+        !(ruleId in STATUS) &&
+          activeEntry.rules.length > 0 &&
+          !activeEntry.rules.some((r) => r.id === ruleId),
+        `RETIRED_RULES entry "${ruleId}" must be removed from STATUS and "${guideId}.ts" while keeping remaining rules`,
+      );
+      assert.strictEqual(
+        activeEntry.retiredRules?.[ruleId],
+        reason,
+        `Active guide "${guideId}" in RULE_REGISTRY must expose retiredRules["${ruleId}"] with its retirement reason`,
+      );
+      assert.ok(
+        typeof reason === 'string' && reason.trim().length > 0,
+        `RETIRED_RULES entry ${ruleId} must have a non-empty reason`,
+      );
+      assert.ok(
+        !/\bD-\d{3}\b/.test(reason),
+        `RETIRED_RULES entry ${ruleId} reason must be plain-language without internal decision IDs`,
+      );
+    }
+
+    const registryRetiredRules = Object.fromEntries(
+      RULE_REGISTRY.flatMap((e) => Object.entries(e.retiredRules ?? {})),
+    );
+    assert.deepStrictEqual(
+      registryRetiredRules,
+      RETIRED_RULES,
+      'RULE_REGISTRY entry.retiredRules across all entries must equal RETIRED_RULES',
+    );
+    assert.deepStrictEqual(
+      RETIRED,
+      { ...RETIRED_GUIDES, ...RETIRED_RULES },
+      'RETIRED must equal the union of RETIRED_GUIDES and RETIRED_RULES',
+    );
   });
 
   it('enforces that every non-retired entry has its module on disk and non-empty rules', () => {
