@@ -68,10 +68,7 @@
      * Without support the carousel stays a finite list.
      */
     @supports (order: mod(sibling-index(), 2)) {
-      .carousel-track {
-        --current: 0;
-      }
-
+      /* --current is deliberately not defined here: without JavaScript no slide is parked, so DOM order applies and the carousel starts on slide 1 */
       .carousel-track > :first-child {
         order: clamp(0, var(--current) - (sibling-count() - 3), 1);
       }
