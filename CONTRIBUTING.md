@@ -87,6 +87,8 @@ Before submitting a pull request, please ensure your changes pass lint, typechec
 pnpm preflight
 ```
 
+When using a coding agent to author changes or address PR review feedback, follow the workflows and PR review etiquette in [AGENTS.md](./AGENTS.md#pr-review-etiquette).
+
 ## Project Structure
 
 - **`guides/`**: Curated guide content organized by category (performance, css, forms, etc.).

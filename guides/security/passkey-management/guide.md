@@ -226,6 +226,7 @@ import 'webauthn-polyfills';
 ### Signal API Synchronization Fallback
 
 {{ BASELINE_STATUS("webauthn-signals") }}
+
 If the browser does not support `PublicKeyCredential.parseRequestOptionsFromJSON`, use the 'webauthn-polyfills': 
   
 ```html 
@@ -234,7 +235,7 @@ If the browser does not support `PublicKeyCredential.parseRequestOptionsFromJSON
      await import('https://unpkg.com/webauthn-polyfills'); 
    } 
  </script> 
- ``` 
+``` 
 
 This will also add support for `PublicKeyCredential.prototype.toJSON`.
 

@@ -1473,5 +1473,13 @@ describe('upsertDemoPreviewInBody', () => {
     // Removes block if subsequent commit drops demo changes
     assert.strictEqual(upsertDemoPreviewInBody('guides/ui-components/dialog', single, ['README.md']), body);
   });
+
+  it('does not touch PR body if no demos are modified and no preview block exists', () => {
+    const bodyWithNewline = '## Summary\n\nJust tooling changes.\n';
+    assert.strictEqual(
+      upsertDemoPreviewInBody('feat-branch', bodyWithNewline, ['src/ci/atl-triage.ts']),
+      bodyWithNewline
+    );
+  });
 });
 
