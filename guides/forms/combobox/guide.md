@@ -83,6 +83,8 @@ if (CSS.supports('appearance', 'base-select')) {
 
 On `input`, hide options that do not match, show the "Add" button only when the text is non-empty and does not exactly match an existing option, and update the live region.
 
+Steps 4–6 run inside the same `CSS.supports` block as step 3, so `select`, `filter`, and `add` are in scope.
+
 ```js
 const status = document.querySelector('[role="status"]');
 const options = () => [...select.querySelectorAll('option:not([value=""])')];
