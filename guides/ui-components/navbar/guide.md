@@ -154,53 +154,14 @@ Use a `<button>` with `aria-expanded` and `aria-controls` as the trigger for nes
 
 One list must be an inline disclosure when narrow and a floating popover when wide. A top-layer popover cannot render in flow, so `popover` is set only in the wide layout, where `popovertarget` opens it natively. In the narrow layout a small click handler toggles `hidden` and `aria-expanded`. Hide the narrow submenu from script, not in the markup, so its links stay visible without scripting.
 
-Synchronize the `popover` attributes across the container breakpoint and keep `aria-expanded` in step with the submenu:
+Synchronize the layout state from the same `ResizeObserver` that handles the navigation list. When wide, set `popover="auto"` on the submenu, show it and let the native `toggle` event drive `aria-expanded`. When narrow, remove `popover`, set `hidden` from script and let a click handler toggle `hidden` and `aria-expanded`:
 
 ```js
-const header = document.querySelector(".site-header");
-const menu = document.querySelector("#site-menu");
-const trigger = document.querySelector(".dropdown-trigger");
-const submenu = document.querySelector("#services-menu");
-
-const setExpanded = (open) => trigger.setAttribute("aria-expanded", String(open));
-
-// Narrow layout: an inline disclosure, hidden by script
-submenu.hidden = true;
-trigger.addEventListener("click", () => {
-  if (submenu.matches("[popover]")) return; // Wide layout: the native popover handles the click
-  submenu.hidden = !submenu.hidden;
-  setExpanded(!submenu.hidden);
-});
-
-// Wide layout: follow the native popover
-submenu.addEventListener("toggle", (event) => {
-  setExpanded(event.newState === "open");
-});
-
-function syncLayoutState(width) {
-  const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
-  const isWide = width >= 45 * rootFontSize; // Keep equal to the container query width
-
-  if (isWide && menu.hasAttribute("popover")) {
-    menu.removeAttribute("popover");
-    submenu.hidden = false;
-    submenu.setAttribute("popover", "auto");
-    setExpanded(false);
-  } else if (!isWide && !menu.hasAttribute("popover")) {
-    menu.setAttribute("popover", "auto");
-    submenu.removeAttribute("popover");
-    submenu.hidden = true;
-    setExpanded(false);
-  }
-}
-
-const layoutObserver = new ResizeObserver(([entry]) => {
-  syncLayoutState(entry.contentRect.width);
-});
-layoutObserver.observe(header);
+submenu.toggleAttribute("popover", isWide);
+submenu.hidden = !isWide;
 ```
 
-Do not add document-level click-outside, Escape or focus-restoration handlers. The native popover provides those interactions in the wide layout, and the narrow disclosure needs only the click handler above. The declarative `popovertarget` makes the button the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
+Do not add document-level click-outside, Escape or focus-restoration handlers. The native popover provides those interactions in the wide layout, and the narrow disclosure needs only the click handler. The declarative `popovertarget` makes the button the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
 
 ### Hover preview
 
