@@ -148,6 +148,9 @@
       ]
     },
     "html": {
+      "accessible-web-components": [
+        "daily-grind"
+      ],
       "custom-elements": [
         "daily-grind"
       ],
