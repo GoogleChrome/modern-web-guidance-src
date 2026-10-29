@@ -1,0 +1,190 @@
+diff --git a/index.html b/index.html
+index 66c9173..dd74fd1 100644
+--- a/index.html
++++ b/index.html
+@@ -195,6 +195,14 @@
+         </div>
+       </div>
+     </section>
++    <section style="text-align: center; margin-top: 40px;">
++      <h2>Join Our Newsletter</h2>
++      <form id="newsletter-form" action="/api/newsletter" method="post">
++        <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" aria-label="Email address" style="padding: 10px; border-radius: 5px; border: 1px solid var(--secondary);">
++        <button type="submit" class="btn" style="border: 0; cursor: pointer; margin-top: 0;">Subscribe</button>
++      </form>
++      <p id="newsletter-status" role="status" aria-live="polite"></p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +215,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/newsletter.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/newsletter.js b/newsletter.js
+new file mode 100644
+index 0000000..fe575ce
+--- /dev/null
++++ b/newsletter.js
+@@ -0,0 +1,27 @@
++const form = document.getElementById('newsletter-form');
++const status = document.getElementById('newsletter-status');
++
++form.addEventListener('submit', async (event) => {
++  event.preventDefault();
++  const email = form.elements.email.value.trim();
++  status.textContent = 'Signing you up…';
++  try {
++    const response = await fetch('/api/newsletter', {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ email }),
++    });
++    if (!response.ok) {
++      let message = `HTTP ${response.status}`;
++      try {
++        message = (await response.json()).error || message;
++      } catch {}
++      throw new Error(message);
++    }
++    status.textContent = 'Thanks for subscribing!';
++    form.reset();
++  } catch (error) {
++    const detail = error instanceof Error ? error.message : String(error);
++    status.textContent = `Sorry, we couldn't sign you up right now. Please try again later. (${detail})`;
++  }
++});
+diff --git a/package.json b/package.json
+index 2bd4d77..10f0792 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..aa8fbab
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,111 @@
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++
++const PORT = Number(process.env.PORT) || 11222;
++const ROOT = __dirname;
++
++const ALLOWLIST_DESTS = new Set(['document', 'iframe', 'worker', 'sharedworker', 'serviceworker']);
++const REPORT_ENDPOINT_NAME = 'conn-reports';
++const REPORT_ENDPOINT_PATH = '/api/security-reports';
++// Only our own origin (response-origin) and the Unsplash photo host.
++const EXTERNAL_PATTERNS = ['https://images.unsplash.com'];
++
++const STATIC_FILES = {
++  '/': { file: 'index.html', type: 'text/html; charset=utf-8' },
++  '/index.html': { file: 'index.html', type: 'text/html; charset=utf-8' },
++  '/newsletter.js': { file: 'newsletter.js', type: 'text/javascript; charset=utf-8' },
++};
++
++function buildConnectionAllowlistHeader(patterns, reportTo) {
++  const items = ['response-origin', ...patterns.map((p) => `"${p.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`)];
++  return `(${items.join(' ')}); report-to=${reportTo}`;
++}
++
++// CSP fallback for browsers without Connection-Allowlist support.
++const CSP = [
++  "default-src 'self'",
++  "connect-src 'self'",
++  "img-src 'self' https://images.unsplash.com data:",
++  "style-src 'self' 'unsafe-inline'",
++  "script-src 'self'",
++  "form-action 'self'",
++  "worker-src 'self'",
++  "object-src 'none'",
++  "base-uri 'self'",
++  `report-to ${REPORT_ENDPOINT_NAME}`,
++].join('; ');
++
++function applySecurityHeaders(req, res) {
++  res.appendHeader('Vary', 'Sec-Fetch-Dest');
++  const dest = String(req.headers['sec-fetch-dest'] || 'document').toLowerCase();
++  if (!ALLOWLIST_DESTS.has(dest)) return;
++  res.setHeader('Reporting-Endpoints', `${REPORT_ENDPOINT_NAME}="${REPORT_ENDPOINT_PATH}"`);
++  res.setHeader('Connection-Allowlist', buildConnectionAllowlistHeader(EXTERNAL_PATTERNS, REPORT_ENDPOINT_NAME));
++  res.setHeader('Content-Security-Policy', CSP);
++}
++
++function readBody(req, limit = 10_000) {
++  return new Promise((resolve, reject) => {
++    let data = '';
++    req.on('data', (chunk) => {
++      data += chunk;
++      if (data.length > limit) {
++        reject(new Error('Payload too large'));
++        req.destroy();
++      }
++    });
++    req.on('end', () => resolve(data));
++    req.on('error', reject);
++  });
++}
++
++function sendJson(res, status, body) {
++  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
++  res.end(JSON.stringify(body));
++}
++
++const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
++
++const server = http.createServer(async (req, res) => {
++  applySecurityHeaders(req, res);
++  const { pathname } = new URL(req.url, 'http://localhost');
++
++  try {
++    if (req.method === 'POST' && pathname === '/api/newsletter') {
++      const raw = await readBody(req);
++      let email = '';
++      try {
++        email = String(JSON.parse(raw).email || '').trim();
++      } catch {
++        return sendJson(res, 400, { error: 'Invalid request.' });
++      }
++      if (!EMAIL_RE.test(email) || email.length > 254) {
++        return sendJson(res, 400, { error: 'Please enter a valid email address.' });
++      }
++      console.log(`Newsletter signup: ${email}`);
++      return sendJson(res, 200, { ok: true });
++    }
++
++    if (req.method === 'POST' && pathname === REPORT_ENDPOINT_PATH) {
++      console.warn('Security report:', (await readBody(req, 100_000)).slice(0, 2000));
++      res.writeHead(204);
++      return res.end();
++    }
++
++    const entry = STATIC_FILES[pathname];
++    if (entry && (req.method === 'GET' || req.method === 'HEAD')) {
++      const content = await fs.promises.readFile(path.join(ROOT, entry.file));
++      res.writeHead(200, { 'Content-Type': entry.type });
++      return res.end(req.method === 'HEAD' ? undefined : content);
++    }
++
++    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
++    res.end('Not found');
++  } catch (err) {
++    if (!res.headersSent) sendJson(res, 500, { error: 'Server error.' });
++    else res.end();
++  }
++});
++
++server.listen(PORT, () => console.log(`Daily Grind listening on http://localhost:${PORT}`));
