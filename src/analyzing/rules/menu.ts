@@ -140,12 +140,28 @@ export const menuJsMatcher: JsRuleMatcher = {
   },
 };
 
+function getElementSnippet(element: DomElementView, ctx: DomMatcherContext): string {
+  const lines = ctx.documentText.split(/\r?\n/);
+  const startIdx = Math.max(0, element.line - 12);
+  return lines.slice(startIdx, element.line + 20).join('\n');
+}
+
 export const menuDomMatcher: DomRuleMatcher = {
   kind: 'dom',
-  selector: '[role="menu"]',
+  selector: 'div, ul, ol',
   fastTokens: ['role="menu"'] as const,
-  matchElement(element: DomElementView, _ctx: DomMatcherContext): { message: string } | null {
-    const lowerPath = _ctx.filePath.toLowerCase();
+  skipIfHasSpread: true,
+  matchElement(element: DomElementView, ctx: DomMatcherContext): { message: string } | null {
+    const tag = element.tagName.toLowerCase();
+    if (tag !== 'div' && tag !== 'ul' && tag !== 'ol') {
+      return null;
+    }
+
+    if ((element.getAttribute('role') ?? '').trim().toLowerCase() !== 'menu') {
+      return null;
+    }
+
+    const lowerPath = ctx.filePath.toLowerCase();
     if (
       lowerPath.includes('/test/') ||
       lowerPath.includes('/tests/') ||
@@ -162,9 +178,24 @@ export const menuDomMatcher: DomRuleMatcher = {
       return null;
     }
 
-    // Only flag container elements like div, ul, ol, nav
-    const tag = element.tagName.toLowerCase();
-    if (tag === 'select' || tag === 'option') {
+    const classAttr =
+      element.getAttribute('class') ?? element.getAttribute('className') ?? '';
+    if (
+      element.getAttribute('data-widget') === 'treeview' ||
+      /\b(?:nav-sidebar|nav-treeview|list-unstyled|dropdown-form)\b/i.test(classAttr)
+    ) {
+      return null;
+    }
+
+    const snippet = getElementSnippet(element, ctx);
+    if (
+      /<(?:form|input|textarea|select|datetimepicker|datepicker|TextField)\b/i.test(
+        snippet,
+      ) ||
+      /\b(?:input-group|dropdown-select)\b/i.test(snippet) ||
+      /@(?:keydown|keyup)\b|\bonKeyDown\b/i.test(snippet) ||
+      ctx.documentText.includes('{% highlight')
+    ) {
       return null;
     }
 
@@ -202,11 +233,13 @@ export const menuDomRule: AnalyzerRule = {
   matcher: menuDomMatcher,
   verifierRubric: {
     keepWhen: [
-      'Custom div or ul menu container with role="menu" lacking focusgroup',
+      'Custom <div>, <ul>, or <ol> popup/dropdown menu container with role="menu" lacking focusgroup that holds action buttons or menu links.',
     ],
     dropWhen: [
-      'Container already declaring focusgroup attribute',
-      'Standard native select elements',
+      'Container already declaring focusgroup attribute.',
+      'Standard native <select> elements or form/picker popovers (<form>, <input>, <select>, datepicker) inside a dropdown.',
+      'Persistent sidebar navigation treeviews (e.g., AdminLTE nav-sidebar / data-widget="treeview"), static footer link lists (list-unstyled), or trigger <button> elements.',
+      'Low-level positioning primitive wrappers (e.g., Radix PopperContent) or documentation code snippets.',
     ],
   },
 };

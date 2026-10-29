@@ -6,14 +6,14 @@ import {
 } from './animate-element-entry-exit.ts';
 
 describe('animate-element-entry-exit rule', () => {
-  test('flags imperative jQuery fadeIn/fadeOut and slideUp/slideDown', () => {
+  test('flags imperative jQuery fadeIn/fadeOut/slideDown/slideUp/fadeToggle', () => {
     const code = `
       function hideToast(toast) {
         $("#toast-msg").fadeIn(200);
         $("#quick-menu").slideUp("fast");
         $(".banner").fadeOut();
         $(element).slideDown(300);
-        $("#panel").slideToggle();
+        $("#panel").fadeToggle(300);
       }
     `;
     const { matches } = scanJsSource(
@@ -26,7 +26,29 @@ describe('animate-element-entry-exit rule', () => {
     assert.match(matches[1].message, /slideUp/);
     assert.match(matches[2].message, /fadeOut/);
     assert.match(matches[3].message, /slideDown/);
-    assert.match(matches[4].message, /slideToggle/);
+    assert.match(matches[4].message, /fadeToggle/);
+  });
+
+  test('ignores slideDown/slideUp/slideToggle accordion height animations, flash chains, helper fadeOut(el, ms), and delegated transitionend', () => {
+    const code = `
+      function toggleAccordion($tag, modal, tap_graph) {
+        $(this.content).slideDown(400);
+        $(this.content).slideUp(400);
+        $(this).next('.cd-faq-content').slideToggle(200);
+        $tag.hide().fadeIn();
+        utils.fadeOut(modal, 5);
+        tap_graph.parentNode.addEventListener('transitionend', function(e) {
+          var el = e.target;
+          el.parentNode.removeChild(el);
+        });
+      }
+    `;
+    const { matches } = scanJsSource(
+      'ui/accordion.js',
+      code,
+      [animateElementEntryExitMatcher]
+    );
+    assert.equal(matches.length, 0);
   });
 
   test('flags transitionend and animationend listeners removing DOM element', () => {

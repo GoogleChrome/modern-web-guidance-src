@@ -1,7 +1,9 @@
 import {
   Node,
+  SyntaxKind,
   type CallExpression,
   type ObjectLiteralExpression,
+  type SourceFile,
 } from 'ts-morph';
 import {
   isLibraryReference,
@@ -407,6 +409,58 @@ function isNotyfInstance(node: Node): boolean {
   return false;
 }
 
+function isInsideLoopOrMultiToastContext(callExpr: CallExpression): boolean {
+  // Check enclosing block for navigation or multiple stacked toastr calls in the same block
+  let block: Node | undefined = callExpr.getParent();
+  while (block && !Node.isBlock(block) && !Node.isSourceFile(block)) {
+    block = block.getParent();
+  }
+  if (block && Node.isBlock(block)) {
+    const blockText = block.getText();
+    if (
+      /\b(?:window\.location|location\.(?:href|replace|assign|reload)|history\.(?:push|replace|back|goBack|go)|\$router\.|console\.error\b|\$\.removeCookie\b)/.test(
+        blockText,
+      )
+    ) {
+      return true;
+    }
+    const toastrMatches = blockText.match(/\btoastr\.(?:info|success|warning|error)\s*\(/g);
+    if (toastrMatches && toastrMatches.length >= 2) {
+      return true;
+    }
+  }
+
+  // Walk ancestors to check for loop constructs or Promise .catch() error chains
+  let current: Node | undefined = callExpr.getParent();
+  while (current && !Node.isSourceFile(current)) {
+    if (
+      Node.isForStatement(current) ||
+      Node.isForInStatement(current) ||
+      Node.isForOfStatement(current) ||
+      Node.isWhileStatement(current)
+    ) {
+      return true;
+    }
+    if (
+      Node.isIfStatement(current) &&
+      /\btoastr\b/.test(current.getExpression().getText())
+    ) {
+      return true;
+    }
+    if (Node.isCallExpression(current)) {
+      const expr = unwrapExpression(current.getExpression());
+      if (Node.isPropertyAccessExpression(expr)) {
+        const name = expr.getName();
+        if (name === 'each' || name === 'forEach' || name === 'catch') {
+          return true;
+        }
+      }
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
 function matchToastCall(callExpr: CallExpression): string | null {
   const handRolledMsg = matchHandRolledToast(callExpr);
   if (handRolledMsg) {
@@ -451,6 +505,13 @@ function matchToastCall(callExpr: CallExpression): string | null {
     args.length <= 3 &&
     isLibraryReference(receiver, 'toastr', ['toastr'])
   ) {
+    const firstStatic = getStaticStringText(args[0]);
+    if (firstStatic !== null && firstStatic.trim() === '') {
+      return null;
+    }
+    if (isInsideLoopOrMultiToastContext(callExpr)) {
+      return null;
+    }
     for (const arg of args) {
       const resolvedArg = resolveLocalExpression(arg, 2);
       if (
@@ -466,18 +527,28 @@ function matchToastCall(callExpr: CallExpression): string | null {
   return null;
 }
 
-function fileUsesManualPopoverOrQueueManager(fileContent: string): boolean {
+function fileUsesManualPopoverOrQueueManager(
+  sourceFile: SourceFile,
+  fileContent: string,
+): boolean {
   return (
     /popover\s*=\s*["']manual["']/i.test(fileContent) ||
     fileContent.includes('showPopover') ||
     /\btoastr\.(?:options|clear|remove)\b/.test(fileContent) ||
-    /\bdismissAll\s*\(/.test(fileContent)
+    /\bdismissAll\s*\(/.test(fileContent) ||
+    (fileContent.match(/\btoastr\.(?:info|success|warning|error)\s*\(/g)?.length ?? 0) >= 4 ||
+    /\bextends\s+(?:React\.)?(?:Component|PureComponent)\b/.test(fileContent) ||
+    /\bthis\.\$(?:router|route|emit|refs|store|http)\b/.test(fileContent) ||
+    /@Component\s*\(|\bEventEmitter\b|\.emit\s*\(\s*\{/.test(fileContent) ||
+    sourceFile.getDescendantsOfKind(SyntaxKind.JsxElement).length > 0 ||
+    sourceFile.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement).length > 0
   );
 }
 
 export const persistentToastNotificationsJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['Toastify', 'Notyf', 'toastr', 'fadeOut', 'slideUp', 'delay'],
-  shouldSkipFile: (_sourceFile, ctx) => fileUsesManualPopoverOrQueueManager(ctx.fileContent),
+  fastTokens: ['Toastify', 'Notyf', 'toastr', 'fadeOut', 'slideUp'],
+  shouldSkipFile: (sourceFile, ctx) =>
+    fileUsesManualPopoverOrQueueManager(sourceFile, ctx.fileContent),
   dedupeLines: true,
   featureGuardTokens: TOAST_GUARD_TOKENS,
   matchCall: (node) => matchToastCall(node),
@@ -492,12 +563,14 @@ export const persistentToastNotificationsJsRule: AnalyzerRule = {
   matcher: persistentToastNotificationsJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'JavaScript invokes Toastify(...).showToast(), new Notyf().success/error(...), or toastr.info/success/warning/error(...) to display floating toast notifications without native popover="manual".',
+      'JavaScript invokes Toastify(...).showToast(), new Notyf().success/error(...), or toastr.info/success/warning/error(...) to display a standalone floating toast notification without native popover="manual".',
       'Hand-rolled toast notifications append to document.body or use position: fixed / viewport offsets combined with show/fadeIn and delay/fadeOut lifecycle.',
     ],
     dropWhen: [
       'The component already uses native <div popover="manual"> with showPopover() and hidePopover() or is guarded by a popover feature check.',
-      'The toast relies on multi-toast queue stacking, progress bars, interactive click/destination callbacks (onClick, destination, newWindow, callback), or imperative queue clearing (toastr.clear / dismissAll) that native popover="manual" does not provide.',
+      'The toast relies on multi-toast queue stacking (e.g. multiple consecutive toastr calls in the same block or inside a loop), progress bars, interactive click/destination callbacks (onClick, destination, newWindow, callback), or imperative queue clearing (toastr.clear / dismissAll) that native popover="manual" does not provide.',
+      'The toast call is immediately followed by page navigation or route change (e.g. window.location.href, history.goBack(), $router.back()) or is inside a React/Vue/TSX component.',
+      'The toast call is inside a keyboard shortcut/input handler (checking evt.key, evt.ctrlKey, or evt.altKey), an AJAX .error()/.fail()/.catch() callback, or an inline form/item-count validation branch (e.g. warning when maximum SKU/attribute count is reached).',
       'The code renders blocking modal dialogs (<dialog>) or inline form validation error banners.',
     ],
   },

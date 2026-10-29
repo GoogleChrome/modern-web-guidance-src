@@ -109,6 +109,9 @@ function getHandlerText(node: Node): string {
 }
 
 function isScrollSpyPluginInvocation(node: Node): boolean {
+  if (node.getFirstAncestorByKind(SyntaxKind.ClassDeclaration)?.getName() === 'ScrollSpy') {
+    return false;
+  }
   if (Node.isCallExpression(node)) {
     const expr = unwrapExpression(node.getExpression());
     if (Node.isPropertyAccessExpression(expr)) {
@@ -158,14 +161,16 @@ function isScrollSpyPluginInvocation(node: Node): boolean {
   return false;
 }
 
+const SECTION_GEOMETRY_RE =
+  /\b(?:offsetTop|getBoundingClientRect)\b|\.(?:offset|position)\s*\(/;
+
+const DOM_ACTIVE_MUTATION_RE =
+  /\b(?:classList\s*\.\s*(?:add|toggle)|addClass|toggleClass|className|setAttribute)\b|aria-current/;
+
 function isHandlerMeasuringSections(handlerNode: Node): boolean {
   const handlerText = getHandlerText(handlerNode);
-  const measuresPosition =
-    handlerText.includes('offsetTop') ||
-    handlerText.includes('getBoundingClientRect') ||
-    handlerText.includes('scrollTop') ||
-    handlerText.includes('scrollY') ||
-    handlerText.includes('pageYOffset');
+  const measuresSectionGeometry = SECTION_GEOMETRY_RE.test(handlerText);
+  const mutatesDomActiveState = DOM_ACTIVE_MUTATION_RE.test(handlerText);
 
   const modifiesActiveNav =
     (handlerText.includes('active') ||
@@ -178,7 +183,7 @@ function isHandlerMeasuringSections(handlerNode: Node): boolean {
       handlerText.includes('toc') ||
       handlerText.includes('href'));
 
-  return measuresPosition && modifiesActiveNav;
+  return measuresSectionGeometry && mutatesDomActiveState && modifiesActiveNav;
 }
 
 function isScrollEventListenerMeasuringSections(node: Node): boolean {
@@ -210,12 +215,12 @@ function isScrollEventListenerMeasuringSections(node: Node): boolean {
     const args = node.getArguments();
     if (args.length >= 2) {
       const first = unwrapExpression(args[0] as Node);
-      if (
-        Node.isStringLiteral(first) &&
-        first.getLiteralText().toLowerCase().includes('scroll')
-      ) {
-        isScroll = true;
-        handlerArg = args[args.length - 1];
+      if (Node.isStringLiteral(first)) {
+        const evText = first.getLiteralText().toLowerCase();
+        if (evText.includes('scroll') && !evText.includes('resize')) {
+          isScroll = true;
+          handlerArg = args[args.length - 1];
+        }
       }
     }
   } else if (methodName === 'scroll') {
@@ -258,9 +263,10 @@ function isIntersectionObserverScrollSpy(node: Node): boolean {
   }
 
   const togglesActive =
-    cbText.includes('active') ||
-    cbText.includes('aria-current') ||
-    cbText.includes('target-current');
+    DOM_ACTIVE_MUTATION_RE.test(cbText) &&
+    (cbText.includes('active') ||
+      cbText.includes('aria-current') ||
+      cbText.includes('target-current'));
   const targetsNavigation =
     cbText.includes('nav') ||
     cbText.includes('toc') ||
@@ -277,12 +283,28 @@ export const scrollspyJsMatcher: JsRuleMatcher = {
   fastTokens: [
     'scrollspy',
     'ScrollSpy',
-    'scroll',
-    'onscroll',
     'IntersectionObserver',
+    'offsetTop',
+    'getBoundingClientRect',
   ],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
+  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
+    // Skip jQuery scrollspy plugin definition files themselves
+    if (/\$\.fn\.scrollspy\s*=/i.test(ctx.fileContent)) {
+      return matches;
+    }
+    const hasPluginOrObserver =
+      ctx.fileContent.includes('scrollspy') ||
+      ctx.fileContent.includes('ScrollSpy') ||
+      ctx.fileContent.includes('IntersectionObserver');
+    const hasScrollActiveLoop =
+      ctx.fileContent.includes('scroll') &&
+      (ctx.fileContent.includes('active') ||
+        ctx.fileContent.includes('aria-current') ||
+        ctx.fileContent.includes('target-current'));
+    if (!hasPluginOrObserver && !hasScrollActiveLoop) {
+      return matches;
+    }
     const visitedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {

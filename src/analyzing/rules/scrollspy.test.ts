@@ -223,4 +223,33 @@ void test('scrollspy JS: negative / exempt cases', async (t) => {
     const matches = matchJsRule(jsMatcher, 'uikit.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts fixed-threshold header scroll listener that never reads section geometry', () => {
+    const code = `
+      $(window).scroll(function() {
+        var scroll = $(window).scrollTop();
+        if (scroll >= 50) {
+          $(".clearHeader").addClass("darkHeader");
+        } else {
+          $(".navbar-toggle").removeClass("active");
+        }
+      });
+    `;
+    const matches = matchJsRule(jsMatcher, 'header.js', code);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts Bootstrap ScrollSpy library definition itself', () => {
+    const code = `
+      class ScrollSpy {
+        static _jQueryInterface(config) {
+          return this.each(function () {
+            let data = new ScrollSpy(this, config);
+          });
+        }
+      }
+    `;
+    const matches = matchJsRule(jsMatcher, 'wwwroot/lib/bootstrap/js/src/scrollspy.js', code);
+    assert.equal(matches.length, 0);
+  });
 });

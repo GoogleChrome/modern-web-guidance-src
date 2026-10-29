@@ -10,7 +10,6 @@ const JQUERY_ANIM_METHODS = new Set([
   'fadeOut',
   'slideDown',
   'slideUp',
-  'slideToggle',
   'fadeToggle',
 ]);
 
@@ -382,6 +381,81 @@ function isToastAutoDismiss(
   return false;
 }
 
+function isChainedHideAndShowFlash(callExpr: CallExpression): boolean {
+  let root: Node = callExpr;
+  // Walk up property access / call chains
+  while (true) {
+    const parent = root.getParent();
+    if (parent && Node.isPropertyAccessExpression(parent)) {
+      const grandparent = parent.getParent();
+      if (grandparent && Node.isCallExpression(grandparent)) {
+        root = grandparent;
+        continue;
+      }
+    }
+    break;
+  }
+  const chainText = root.getText();
+  // Exclude `.append(...)` or `.appendTo(...)` where a newly created element is hidden then faded in,
+  // e.g. `$('<div>').appendTo('body')...show().delay(time).fadeOut()`, which is handled by isToastAutoDismiss.
+  if (/\.(?:append|appendTo|prepend|prependTo)\s*\(/.test(chainText)) {
+    return false;
+  }
+  const hasHide = /\.(?:hide|fadeOut)\s*\(/.test(chainText);
+  const hasShow = /\.(?:show|fadeIn)\s*\(/.test(chainText);
+  return hasHide && hasShow;
+}
+
+function isNonJQueryHelperFadeCall(callExpr: CallExpression): boolean {
+  const args = callExpr.getArguments();
+  if (args.length >= 2) {
+    const firstArg = unwrapExpression(args[0]);
+    const secondArg = unwrapExpression(args[1]);
+    // Helper utility pattern `fadeOut(element, 5)` where arg0 is a DOM element/call and arg1 is a numeric duration
+    if (
+      !Node.isNumericLiteral(firstArg) &&
+      !Node.isStringLiteral(firstArg) &&
+      Node.isNumericLiteral(secondArg)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isAccordionOrSubmenuHeightSlide(
+  callExpr: CallExpression,
+  methodName: string,
+  callerExpr: Node,
+): boolean {
+  if (methodName !== 'slideDown' && methodName !== 'slideUp') {
+    return false;
+  }
+  const callerText = callerExpr.getText();
+  // Skip submenu / accordion / collapsible panel height animations
+  if (
+    /\.(?:closest|next|prev|children|parent|parents|siblings)\s*\(/.test(callerText) ||
+    /\b(?:content|collapsible|accordion|submenu|sub-menu|dropdown|faq|panel)\b/i.test(callerText)
+  ) {
+    return true;
+  }
+  // Skip slideUp/slideDown inside a nested jQuery animation callback (e.g. fadeOut -> hide -> slideUp)
+  let current: Node | undefined = callExpr.getParent();
+  while (current && !Node.isSourceFile(current)) {
+    if (Node.isCallExpression(current)) {
+      const expr = unwrapExpression(current.getExpression());
+      if (
+        Node.isPropertyAccessExpression(expr) &&
+        /^(?:fadeIn|fadeOut|hide|show|slideUp|slideDown|animate)$/.test(expr.getName())
+      ) {
+        return true;
+      }
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
 function matchJQueryAnim(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(expr)) {
@@ -395,6 +469,18 @@ function matchJQueryAnim(callExpr: CallExpression): AnalyzerMatch | null {
 
   const callerExpr = unwrapExpression(expr.getExpression());
   if (isNonDomCaller(callerExpr)) {
+    return null;
+  }
+
+  if (isNonJQueryHelperFadeCall(callExpr)) {
+    return null;
+  }
+
+  if (isAccordionOrSubmenuHeightSlide(callExpr, methodName, callerExpr)) {
+    return null;
+  }
+
+  if (isChainedHideAndShowFlash(callExpr)) {
     return null;
   }
 
@@ -423,6 +509,17 @@ function matchTransitionEndListener(
 
   const methodName = expr.getName();
   if (!['addEventListener', 'on', 'one', 'bind'].includes(methodName)) {
+    return null;
+  }
+
+  // Skip delegated listeners attached to parentNode / parentElement / document / window
+  const receiverText = unwrapExpression(expr.getExpression()).getText().trim();
+  if (
+    /\.(?:parentNode|parentElement)$/.test(receiverText) ||
+    receiverText === 'document' ||
+    receiverText === 'window' ||
+    receiverText === 'document.body'
+  ) {
     return null;
   }
 
@@ -466,7 +563,6 @@ export const animateElementEntryExitMatcher: JsRuleMatcher = {
     'fadeOut',
     'slideDown',
     'slideUp',
-    'slideToggle',
     'fadeToggle',
     'transitionend',
     'animationend',
@@ -501,17 +597,21 @@ export const animateElementEntryExitRule: AnalyzerRule = {
   guideId: 'animate-element-entry-exit',
   guideHash: ANIMATE_ELEMENT_ENTRY_EXIT_GUIDE_HASH,
   summary:
-    'Flag imperative jQuery entry/exit animations (.fadeIn, .fadeOut, .slideDown, .slideUp, .slideToggle, .fadeToggle) or transitionend/animationend listeners that remove or hide elements instead of CSS @starting-style and transition-behavior: allow-discrete.',
+    'Flag imperative jQuery entry/exit fade animations (.fadeIn, .fadeOut, .fadeToggle) or transitionend/animationend listeners that remove or hide elements instead of CSS @starting-style and transition-behavior: allow-discrete.',
   matcher: animateElementEntryExitMatcher,
   verifierRubric: {
     keepWhen: [
-      'Imperative jQuery visibility animations (.fadeIn, .fadeOut, .slideDown, .slideUp, .slideToggle, .fadeToggle) used to show, hide, expand, or collapse DOM elements.',
-      'DOM event listeners on transitionend or animationend that remove an element from the DOM or set display: none / hidden to simulate discrete exit transitions.',
+      'Imperative jQuery visibility animations (.fadeIn, .fadeOut, .slideDown, .slideUp, .fadeToggle) used to show or hide DOM elements during entry or exit.',
+      'Direct DOM event listeners on transitionend or animationend on the animated element that remove the element from the DOM or set display: none / hidden to simulate discrete exit transitions.',
       'Element visibility transitions coordinated through manual JS event callbacks or timeout flushes instead of CSS @starting-style and transition-behavior: allow-discrete.',
     ],
     dropWhen: [
       'Audio, sound volume, or gain node fades (e.g. audio.fadeIn, sound.fadeOut).',
       'Canvas, WebGL, 3D camera, or game engine rendering transitions (e.g. camera.fadeIn, scene.fadeOut).',
+      'Accordion, collapsible panel, or dropdown submenu height toggle animations (.slideToggle, or .slideDown/.slideUp on accordion/submenu content) that interpolate height between 0 and auto.',
+      'Chained flash/attention effects on an already-present element (e.g. $tag.hide().fadeIn() or $el.fadeOut().fadeIn()).',
+      'Delegated transitionend listeners on parent containers (e.g. parentNode.addEventListener) or listeners with complex multi-step application state/counter logic.',
+      'Calls inside third-party vendor/plugin files or modal plugin internal lifecycle callbacks (e.g. $.modal.close, sweetAlert.close).',
       'Code already protected by @starting-style or allow-discrete feature guards.',
       'Generic transitionend / animationend event listeners that perform business logic or state updates without hiding or removing the DOM element.',
     ],

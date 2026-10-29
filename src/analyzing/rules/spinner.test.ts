@@ -62,4 +62,33 @@ void test('spinner: negative / exempt cases', async (t) => {
     const matches = scanHtml('progress.html', html, [spinnerDomMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts inline <span class="spinner-border"> inside a button', () => {
+    const html = `
+      <button class="btn btn-primary" type="button" disabled>
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        Saving...
+      </button>
+    `;
+    const matches = scanHtml('button.html', html, [spinnerDomMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts pulsing dot <div class="spinner-grow">', () => {
+    const html = `<div class="spinner-grow text-primary" role="status"></div>`;
+    const matches = scanHtml('pulse.html', html, [spinnerDomMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts component showcase gallery with >4 spinner-border demos', () => {
+    const html = `
+      <div class="spinner-border text-primary"></div>
+      <div class="spinner-border text-secondary"></div>
+      <div class="spinner-border text-success"></div>
+      <div class="spinner-border text-danger"></div>
+      <div class="spinner-border text-warning"></div>
+    `;
+    const matches = scanHtml('pages/components/spinners.html', html, [spinnerDomMatcher]);
+    assert.equal(matches.length, 0);
+  });
 });

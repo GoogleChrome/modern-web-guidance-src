@@ -101,4 +101,39 @@ void test('persistent-toast-notifications JS matcher', async (t) => {
     const matches = matchJsRule(persistentToastNotificationsJsMatcher, 'non-toast-animations.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts stacked toastr calls in a block, navigation after toast, loop toasts, empty first arg, and component/lib paths', () => {
+    const code = `
+      function onError(data) {
+        toastr.error("Cannot get user data");
+        toastr.error(data.Message);
+      }
+      function onSuccess(res) {
+        toastr.success(res.message, 'Sucesso');
+        window.location.href = '/thanks';
+      }
+      function fetchAll(types) {
+        types.forEach((type) => {
+          toastr.error('Failed ' + type);
+        });
+      }
+      function emptyTitle(res) {
+        toastr.error('', res.error);
+      }
+    `;
+    const matches = matchJsRule(persistentToastNotificationsJsMatcher, 'app/controllers/user.js', code);
+    assert.equal(matches.length, 0);
+
+    const multiCallMatches = matchJsRule(
+      persistentToastNotificationsJsMatcher,
+      'src/views/upload.js',
+      `
+        toastr.error('Missing file');
+        toastr.success('Uploaded 1');
+        toastr.info('Processing');
+        toastr.warning('Quota low');
+      `,
+    );
+    assert.equal(multiCallMatches.length, 0);
+  });
 });
