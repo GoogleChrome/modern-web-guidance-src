@@ -59,7 +59,7 @@ test.describe('<guide-name> Target Grader', () => {
 
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
   // Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright.
-  // Locate elements through base-app markup, hooks that task.md names, or platform semantics (element types, ARIA roles, standard attributes)—never invented routes, intercepted REST payloads, or IDs/classes that exist only in the golden patches.
+  // Locate elements through base-app markup, hooks that task.md names, or platform semantics (element types, ARIA roles, standard attributes); never invented routes, custom REST endpoints/payloads, or IDs/classes that exist only in the golden patches.
   // If no expectations require runtime browser checks, this entire `test.describe('Browser tests', ...)` section should be omitted.
   
   test.describe('Browser tests', () => {

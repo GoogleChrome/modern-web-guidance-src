@@ -44,10 +44,7 @@ export async function generateTargetGrader(
     });
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
-    const sourceTask = path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE);
-    if (fs.existsSync(sourceTask)) {
-      fs.copyFileSync(sourceTask, path.join(workDir, TASK_FILE));
-    }
+    fs.copyFileSync(path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE), path.join(workDir, TASK_FILE));
     
     // =========================================================================
     // 1. RUNTIME EXECUTION DEPENDENCIES (in tempHome)
