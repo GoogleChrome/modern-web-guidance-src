@@ -41,6 +41,10 @@ function matchJalaaliCall(callExpr: CallExpression): string | null {
     if (methodName !== 'toJalaali' && methodName !== 'toGregorian') {
       return null;
     }
+    const enclosingFn = callExpr.getFirstAncestor(Node.isFunctionDeclaration);
+    if (enclosingFn?.getName() === methodName) {
+      return null;
+    }
     const receiver = unwrapExpression(callee.getExpression());
     if (isLibraryReference(receiver, 'jalaali', ['jalaali-js'])) {
       return `jalaali.${methodName}() calendar conversion can be modernized with native Temporal calendar systems (Temporal.PlainDate.prototype.withCalendar()).`;

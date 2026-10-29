@@ -98,4 +98,16 @@ void test('highlight-text-ranges JS matcher', async (t) => {
     const matches = matchJsRule(highlightTextRangesJsMatcher, 'template-import.js', code);
     assert.equal(matches.length, 1);
   });
+
+  await t.test('exempts mark.js usage that queries <mark> DOM nodes for interactive listeners', () => {
+    const code = `
+      function markAndBind(marker, words) {
+        marker.mark(words);
+        const markers = document.querySelectorAll("mark");
+        markers.forEach((m) => m.addEventListener("click", () => marker.unmark()));
+      }
+    `;
+    const matches = matchJsRule(highlightTextRangesJsMatcher, 'interactive-mark.js', code);
+    assert.equal(matches.length, 0);
+  });
 });

@@ -30,28 +30,47 @@ const BODY_SCROLL_LOCK_REGEX =
 const CLASS_TOGGLE_REGEX =
   /classList\.(?:add|remove|toggle)\(['"](?:open|is-open|active|show|visible)['"]\)/i;
 
-function hasDrawerControllerSignals(scopeText: string): boolean {
-  if (!DRAWER_IDENTIFIER_REGEX.test(scopeText)) {
+const NON_DRAWER_TOKEN_REGEX =
+  /(?:^|[\s_-])(?:sidebar|static|persistent|collapse|dialog|modal|confirm|header|head|body|footer|content|item|pic|icon|button|btn|close|toggle|trigger|handle|row|list|title|label|backdrop|overlay|scrim|container|tools|col-(?:xs|sm|md|lg|xl)|offcanvas-(?:sm|md|lg|xl|xxl))(?:$|[\s_-])/i;
+
+function isCandidateCallable(node: Node): boolean {
+  if (
+    !Node.isFunctionDeclaration(node) &&
+    !Node.isFunctionExpression(node) &&
+    !Node.isArrowFunction(node) &&
+    !Node.isMethodDeclaration(node)
+  ) {
     return false;
   }
+  const parent = node.getParent();
+  if (
+    (Node.isFunctionExpression(node) || Node.isArrowFunction(node)) &&
+    (Node.isParenthesizedExpression(parent) ||
+      Node.isPrefixUnaryExpression(parent) ||
+      (Node.isCallExpression(parent) && parent.getExpression() === node))
+  ) {
+    return false;
+  }
+  const body = node.getBody();
+  if (Node.isBlock(body) && body.getStatements().some((s) => Node.isFunctionDeclaration(s))) {
+    const fnName = (Node.isFunctionDeclaration(node) || Node.isMethodDeclaration(node)) ? (node.getName() ?? '') : '';
+    const sig = `${fnName} ${node.getParameters().map((p) => p.getText()).join(' ')}`;
+    if (!DRAWER_IDENTIFIER_REGEX.test(sig)) return false;
+  }
+  return hasDrawerControllerSignals(node.getText().replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ''));
+}
 
+function hasDrawerControllerSignals(scopeText: string): boolean {
+  if (!DRAWER_IDENTIFIER_REGEX.test(scopeText) || scopeText.includes('touchmove')) {
+    return false;
+  }
   let signals = 0;
-
-  if (CLASS_TOGGLE_REGEX.test(scopeText) || scopeText.includes('style.transform')) {
+  if (CLASS_TOGGLE_REGEX.test(scopeText) || /style\.(?:transform|left|right)\s*=/.test(scopeText)) {
     signals++;
   }
-
-  if (BACKDROP_OR_OVERLAY_REGEX.test(scopeText)) {
-    signals++;
-  }
-
-  if (BODY_SCROLL_LOCK_REGEX.test(scopeText)) {
-    signals++;
-  }
-
-  if (scopeText.includes("'Escape'") || scopeText.includes('"Escape"')) {
-    signals++;
-  }
+  if (BACKDROP_OR_OVERLAY_REGEX.test(scopeText)) signals++;
+  if (BODY_SCROLL_LOCK_REGEX.test(scopeText)) signals++;
+  if (scopeText.includes("'Escape'") || scopeText.includes('"Escape"')) signals++;
 
   return signals >= 2;
 }
@@ -67,7 +86,8 @@ export const navigationDrawerJsMatcher: JsRuleMatcher = {
       lowerPath.includes('/test/data/') ||
       lowerPath.includes('/fixtures/') ||
       lowerPath.includes('/fixture/') ||
-      lowerPath.includes('__tests__')
+      lowerPath.includes('__tests__') ||
+      !DRAWER_IDENTIFIER_REGEX.test(ctx.fileContent)
     ) {
       return [];
     }
@@ -75,29 +95,26 @@ export const navigationDrawerJsMatcher: JsRuleMatcher = {
     const matches: AnalyzerMatch[] = [];
     const matchedLines = new Set<number>();
 
+    const candidates: Node[] = [];
     sourceFile.forEachDescendant((node: Node) => {
-      let isCandidateScope = false;
+      if (isCandidateCallable(node)) candidates.push(node);
+    });
+
+    for (const node of candidates) {
       if (
-        Node.isFunctionDeclaration(node) ||
-        Node.isFunctionExpression(node) ||
-        Node.isArrowFunction(node) ||
-        Node.isMethodDeclaration(node)
+        candidates.some(
+          (other) =>
+            other !== node &&
+            other.getStart() >= node.getStart() &&
+            other.getEnd() <= node.getEnd(),
+        )
       ) {
-        isCandidateScope = true;
-      }
-
-      if (!isCandidateScope) {
-        return;
-      }
-
-      const scopeText = node.getText();
-      if (!hasDrawerControllerSignals(scopeText)) {
-        return;
+        continue;
       }
 
       const lineNumber = node.getStartLineNumber();
       if (matchedLines.has(lineNumber)) {
-        return;
+        continue;
       }
       matchedLines.add(lineNumber);
 
@@ -106,7 +123,7 @@ export const navigationDrawerJsMatcher: JsRuleMatcher = {
         message:
           'Navigation drawer controller manually manages visibility classes, backdrop clicks, or body scroll locking; modernize with HTML popover="manual" or <dialog>.',
       });
-    });
+    }
 
     return matches;
   },
@@ -143,23 +160,25 @@ export const navigationDrawerDomMatcher: DomRuleMatcher = {
         combinedIdentifiers,
       );
 
-    if (!isDrawerContainer) {
+    if (!isDrawerContainer || NON_DRAWER_TOKEN_REGEX.test(combinedIdentifiers)) {
       return null;
     }
 
-    if (combinedIdentifiers.includes('sidebar-nav')) {
-      return null;
-    }
-
-    if (
-      combinedIdentifiers.includes('static') ||
-      combinedIdentifiers.includes('persistent') ||
-      combinedIdentifiers.includes('icon') ||
-      combinedIdentifiers.includes('handle') ||
-      combinedIdentifiers.includes('toggle') ||
-      combinedIdentifiers.includes('trigger')
-    ) {
-      return null;
+    if (!element.isJsx) {
+      const hasDrawerToken =
+        /(?:^|\s)(?:drawer|offcanvas)(?:\s|$)/i.test(elementClass) &&
+        /(?:drawer|offcanvas|menu)/i.test(elementId);
+      const hasInteractiveTrigger =
+        /data-(?:bs-)?toggle\s*=\s*["']offcanvas["']|data-drawer-(?:target|show)|data-action\s*=\s*["']open-drawer["']/i.test(
+          ctx.documentText,
+        );
+      if (
+        element.getAttribute('tabindex') !== '-1' &&
+        !hasInteractiveTrigger &&
+        !hasDrawerToken
+      ) {
+        return null;
+      }
     }
 
     return {

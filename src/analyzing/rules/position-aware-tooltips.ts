@@ -37,7 +37,7 @@ const POSITIONING_GLOBAL_NAMESPACES = {
 } as const;
 
 function hasTooltipContext(callExpr: CallExpression): boolean {
-  let hasNonTooltipWidgetArg = false;
+  let hasTooltipOrArrowArg = false;
   for (const arg of callExpr.getArguments()) {
     const argText = arg.getText();
     const resolvedText = resolveLocalExpression(arg, 2).getText();
@@ -45,16 +45,19 @@ function hasTooltipContext(callExpr: CallExpression): boolean {
       NON_TOOLTIP_WIDGET_REGEX.test(argText) ||
       NON_TOOLTIP_WIDGET_REGEX.test(resolvedText)
     ) {
-      hasNonTooltipWidgetArg = true;
-    } else if (
+      return false;
+    }
+    if (
       TOOLTIP_CONTEXT_REGEX.test(argText) ||
-      TOOLTIP_CONTEXT_REGEX.test(resolvedText)
+      TOOLTIP_CONTEXT_REGEX.test(resolvedText) ||
+      /\barrow\b/i.test(argText) ||
+      /\barrow\b/i.test(resolvedText)
     ) {
-      return true;
+      hasTooltipOrArrowArg = true;
     }
   }
 
-  if (hasNonTooltipWidgetArg) {
+  if (!hasTooltipOrArrowArg) {
     return false;
   }
 
@@ -71,14 +74,11 @@ function hasTooltipContext(callExpr: CallExpression): boolean {
       if (NON_TOOLTIP_WIDGET_REGEX.test(nameText)) {
         return false;
       }
-      if (TOOLTIP_CONTEXT_REGEX.test(nameText)) {
-        return true;
-      }
     }
     current = current.getParent();
   }
 
-  return false;
+  return true;
 }
 
 function isGuardedByAnchorSupport(node: Node): boolean {
@@ -105,7 +105,7 @@ function isGuardedByAnchorSupport(node: Node): boolean {
 
 function matchPopperTooltipCall(callExpr: CallExpression): string | null {
   const args = callExpr.getArguments();
-  if (args.length < 2) {
+  if (args.length < 3) {
     return null;
   }
 
@@ -137,8 +137,10 @@ function matchPopperTooltipCall(callExpr: CallExpression): string | null {
 
 export const positionAwareTooltipsJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['createPopper', 'computePosition'],
-  isGuarded: (node) => isGuardedByAnchorSupport(node),
-  matchCall: (node) => matchPopperTooltipCall(node),
+  matchCall: (node) => {
+    const msg = matchPopperTooltipCall(node);
+    return msg && !isGuardedByAnchorSupport(node) ? msg : null;
+  },
 });
 
 export const positionAwareTooltipsJsRule: AnalyzerRule = {

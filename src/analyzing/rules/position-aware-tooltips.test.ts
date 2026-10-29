@@ -80,6 +80,15 @@ void test('position-aware-tooltips JS matcher', async (t) => {
           createPopper(trigger, popup);
         }
       }
+
+      class DropdownMenuController {
+        #computeTooltip() {
+          computePosition(this.triggerTarget, this.contentTarget, {
+            placement: 'top',
+            middleware: [flip()],
+          });
+        }
+      }
     `;
     const matches = matchJsRule(positionAwareTooltipsJsMatcher, 'compound.js', code);
     assert.equal(matches.length, 0);

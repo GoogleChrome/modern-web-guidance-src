@@ -103,6 +103,18 @@ function matchMarkJsCall(callExpr: CallExpression): string | null {
     return null;
   }
 
+  const scope =
+    callExpr.getFirstAncestor(
+      (a) => Node.isFunctionLikeDeclaration(a) || Node.isBlock(a),
+    ) ?? callExpr.getSourceFile();
+  if (
+    /(?:querySelectorAll|getElementsByTagName)\s*\(\s*['"]mark['"]\s*\)/i.test(
+      scope.getText(),
+    )
+  ) {
+    return null;
+  }
+
   return `new Mark().${methodName}() mutates DOM nodes to highlight text; modernize with the CSS Custom Highlight API (new Highlight(), CSS.highlights.set(), and ::highlight()).`;
 }
 

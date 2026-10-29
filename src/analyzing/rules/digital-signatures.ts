@@ -40,17 +40,22 @@ function isNaclSignObject(node: Node): boolean {
 function isUnsupportedEllipticCurve(args: readonly Node[]): boolean {
   const firstArg = args[0];
   if (!firstArg) {
-    return false;
+    return true;
   }
   const directText = firstArg.getText();
   const resolvedText = resolveLocalExpression(firstArg, 2).getText();
-  return /secp256k1/i.test(directText) || /secp256k1/i.test(resolvedText);
+  const validCurve = /^['"](?:ed25519|p256|p384|p521)['"]$/i;
+  return !validCurve.test(directText) && !validCurve.test(resolvedText);
 }
 
 function matchSignatureNewExpression(newExpr: NewExpression): string | null {
   const callee = unwrapExpression(newExpr.getExpression());
 
   if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'Signature') {
+    const firstArgText = newExpr.getArguments()[0]?.getText() ?? '';
+    if (!/alg\s*:\s*['"]/.test(firstArgText)) {
+      return null;
+    }
     const cryptoObj = unwrapExpression(callee.getExpression());
     if (Node.isPropertyAccessExpression(cryptoObj) && cryptoObj.getName() === 'crypto') {
       const kjurNode = unwrapExpression(cryptoObj.getExpression());
@@ -125,14 +130,18 @@ function matchSignatureCallExpression(callExpr: CallExpression): string | null {
   }
 
   if (isNaclSignObject(callee)) {
-    return 'nacl.sign() digital signature call can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).';
+    return isGuardedByWebCryptoCheck(callExpr)
+      ? null
+      : 'nacl.sign() digital signature call can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).';
   }
 
   const methodName = callee.getName();
   const receiver = unwrapExpression(callee.getExpression());
 
   if (NACL_SIGN_METHODS.has(methodName) && isNaclSignObject(receiver)) {
-    return `nacl.sign.${methodName}() digital signature call can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).`;
+    return isGuardedByWebCryptoCheck(callExpr)
+      ? null
+      : `nacl.sign.${methodName}() digital signature call can be modernized with the native Web Cryptography API (crypto.subtle.sign / verify).`;
   }
 
   if (
@@ -141,17 +150,23 @@ function matchSignatureCallExpression(callExpr: CallExpression): string | null {
     receiver.getName() === 'detached' &&
     isNaclSignObject(receiver.getExpression())
   ) {
-    return 'nacl.sign.detached.verify() signature verification can be modernized with the native Web Cryptography API (crypto.subtle.verify).';
+    return isGuardedByWebCryptoCheck(callExpr)
+      ? null
+      : 'nacl.sign.detached.verify() signature verification can be modernized with the native Web Cryptography API (crypto.subtle.verify).';
   }
 
   return null;
 }
 
 export const digitalSignaturesJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['KJUR', 'nacl', 'elliptic', 'ec', 'EC', 'eddsa', 'EdDSA'],
-  isGuarded: (node) => isGuardedByWebCryptoCheck(node),
+  fastTokens: ['KJUR', 'nacl', 'elliptic'],
+  shouldSkipFile: (_sf, ctx) =>
+    /(?:from\s+|require\s*\(\s*)['"](?:node:[^'"]+|crypto|fs|path|os|url|assert|stream|util|worker_threads|child_process)['"]|KJUR\.jws/.test(
+      ctx.fileContent,
+    ),
   matchCall: (node) => matchSignatureCallExpression(node),
-  matchNew: (node) => matchSignatureNewExpression(node),
+  matchNew: (node) =>
+    isGuardedByWebCryptoCheck(node) ? null : matchSignatureNewExpression(node),
 });
 
 export const digitalSignaturesJsRule: AnalyzerRule = {
