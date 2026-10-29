@@ -165,6 +165,29 @@ describe('explicit heading IDs and anchor resolution (T2 & T3)', () => {
     assert.ok(headingIds.has('subhead_3'));
   });
 
+  it('maps duplicate headings so #sub points to the first heading and #sub-1 points to the second', () => {
+    const input = [
+      '# Doc',
+      '',
+      '[first](#sub)',
+      '[second](#sub-1)',
+      '',
+      '## Sub',
+      'First.',
+      '',
+      '## Sub',
+      'Second.',
+    ].join('\n');
+
+    const { headingMap } = buildHeadingMap(input);
+    assert.strictEqual(headingMap.get('sub'), 'sub');
+    assert.strictEqual(headingMap.get('sub-1'), 'sub_2');
+
+    const res = toDevsiteMarkdown(input);
+    assert.ok(res.markdown.includes('[first](#sub)'));
+    assert.ok(res.markdown.includes('[second](#sub_2)'));
+  });
+
   it('throws when an anchor cannot be resolved on the page', () => {
     const input = [
       '# Document Title',

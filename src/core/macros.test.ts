@@ -88,10 +88,10 @@ describe('replaceMacros (Functional with real data)', () => {
       assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}");
     });
 
-    it('formats BaselineStatus macro with BCD key for devsite target', () => {
+    it('falls back to text status with BCD key for devsite target', () => {
       const content = '{{ BASELINE_STATUS("grid", "css.properties.grid-template-columns") }}';
       const result = replaceMacros(content, 'test.md', { target: 'devsite' });
-      assert.strictEqual(result, "{{ macros.BaselineStatus('grid') }}");
+      assert.ok(result.includes('css.properties.grid-template-columns') && result.includes('Widely available'));
     });
 
     it('throws error for non-existent feature', () => {
