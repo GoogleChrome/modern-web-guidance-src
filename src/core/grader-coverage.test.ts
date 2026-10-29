@@ -7,6 +7,7 @@ import {
   cleanText,
   parseVerifiableExpectations,
   extractTestTitles,
+  extractManifestEntries,
   validateGraderExpectationCoverage,
   formatCoverageFailureMessage,
 } from './grader-coverage.ts';
@@ -17,6 +18,7 @@ describe('Grader Coverage Validation Utility', () => {
     assert.strictEqual(cleanText('1. Output must never be set via innerHTML'), 'Output must never be set via innerHTML');
     assert.strictEqual(cleanText('- should have `interpolate-size: allow-keywords`'), 'have interpolate-size: allow-keywords');
     assert.strictEqual(cleanText('* Should use `onINP` for metric collection'), 'use onINP for metric collection');
+    assert.strictEqual(cleanText('Expectation 6: The implementation uses :not()'), 'The implementation uses :not()');
   });
 
   it('parses top-level expectations and combines indented sub-bullets into their parent', () => {
@@ -145,5 +147,137 @@ test(
     assert.ok(msg.includes('Closest test found: "should animate smoothly on click" (similarity: 0.22)'));
     assert.ok(msg.includes('Add a test case verifying this behavior'));
     assert.ok(msg.includes('Update/rephrase the test name in guides/cat/my-guide/targets/daily-grind/grader.ts'));
+  });
+
+  it('covers tested expectations and manifest SKIPPED entries with a non-empty reason', async () => {
+    const tempExp = path.join(import.meta.dirname, 'temp-skip-reason-exp.md');
+    const tempGrader = path.join(import.meta.dirname, 'temp-skip-reason-grader.ts');
+    fs.writeFileSync(
+      tempExp,
+      [
+        '- The overlay is a `<dialog>` with a non-empty accessible name.',
+        '- When a dialog guards unsaved form changes, it has `closedby="none"`.',
+        '- A non-modal dialog panel leaves the page behind it interactive.',
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      tempGrader,
+      [
+        '// Expectation 1: TESTED - Verifies dialog accessible name.',
+        '// Expectation 2: SKIPPED: The target app and task have no form with unsaved changes.',
+        '// - Expectation 3: SKIPPED - The task only builds a modal dialog, not a non-modal panel.',
+        "test('The overlay is a <dialog> with a non-empty accessible name', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const entries = extractManifestEntries(tempGrader);
+      assert.strictEqual(entries.get(1)?.status, 'TESTED');
+      assert.strictEqual(entries.get(2)?.status, 'SKIPPED');
+      assert.strictEqual(entries.get(2)?.reason, 'The target app and task have no form with unsaved changes.');
+      assert.strictEqual(entries.get(3)?.status, 'SKIPPED');
+
+      const res = await validateGraderExpectationCoverage(tempExp, tempGrader);
+      assert.strictEqual(res.isComplete, true);
+      assert.strictEqual(res.missing.length, 0);
+      assert.strictEqual(res.matches[0].isCovered, true);
+      assert.strictEqual(res.matches[1].isCovered, true);
+      assert.strictEqual(res.matches[1].bestMatchTest, 'SKIPPED: The target app and task have no form with unsaved changes.');
+      assert.strictEqual(res.matches[2].isCovered, true);
+    } finally {
+      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
+  it('fails when a manifest SKIPPED entry has no reason, even if a test title is similar', async () => {
+    const tempExp = path.join(import.meta.dirname, 'temp-skip-noreason-exp.md');
+    const tempGrader = path.join(import.meta.dirname, 'temp-skip-noreason-grader.ts');
+    fs.writeFileSync(
+      tempExp,
+      [
+        '- A modal dialog is opened with `showModal()`.',
+        '- A modal dialog closes when Escape is pressed.',
+        '- When a dialog guards unsaved form changes, it has `closedby="none"`.',
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      tempGrader,
+      [
+        '// Expectation 1: TESTED - Opens modal dialog with showModal.',
+        '// Expectation 2: SKIPPED',
+        '// Expectation 3: SKIPPED -   ',
+        "test('A modal dialog is opened with showModal() and closes when Escape is pressed', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const res = await validateGraderExpectationCoverage(tempExp, tempGrader);
+      assert.strictEqual(res.isComplete, false);
+      assert.strictEqual(res.matches[0].isCovered, true);
+      assert.strictEqual(res.matches[1].isCovered, false);
+      assert.strictEqual(res.matches[1].bestMatchTest, 'SKIPPED (missing reason)');
+      assert.strictEqual(res.matches[2].isCovered, false);
+      assert.strictEqual(res.matches[2].bestMatchTest, 'SKIPPED (missing reason)');
+      assert.strictEqual(res.missing.length, 2);
+    } finally {
+      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
+  it('validates discipline guide graders without exempting them', async () => {
+    const cssExp = path.join(rootDir, 'guides', 'css', 'css', 'expectations.md');
+    const cssGrader = path.join(rootDir, 'guides', 'css', 'css', 'targets', 'daily-grind', 'grader.ts');
+    const htmlExp = path.join(rootDir, 'guides', 'html', 'html', 'expectations.md');
+    const htmlGrader = path.join(rootDir, 'guides', 'html', 'html', 'targets', 'daily-grind', 'grader.ts');
+
+    const cssRes = await validateGraderExpectationCoverage(cssExp, cssGrader);
+    assert.strictEqual(cssRes.isComplete, true, `css discipline grader should pass coverage: ${JSON.stringify(cssRes.missing)}`);
+
+    const htmlRes = await validateGraderExpectationCoverage(htmlExp, htmlGrader);
+    assert.strictEqual(htmlRes.isComplete, true, `html discipline grader should pass coverage: ${JSON.stringify(htmlRes.missing)}`);
+  });
+
+  it('allows a leaf guide grader to skip expectations whose preconditions are absent from the target app or task', async () => {
+    const dialogExp = path.join(rootDir, 'guides', 'ui-components', 'dialog', 'expectations.md');
+    const tempGrader = path.join(import.meta.dirname, 'temp-leaf-dialog-grader.ts');
+    fs.writeFileSync(
+      tempGrader,
+      [
+        '// Expectation 1: TESTED - Dialog has non-empty accessible name',
+        '// Expectation 2: TESTED - Modal dialog opened with showModal() or command="show-modal"',
+        '// Expectation 3: TESTED - Focus returns to invoking element on close',
+        '// Expectation 4: TESTED - Pressing Esc closes open modal dialog',
+        '// Expectation 5: TESTED - Clicking backdrop closes dialog when light dismiss is requested',
+        '// Expectation 6: TESTED - Backdrop-click fallback tracks press and release',
+        '// Expectation 7: SKIPPED: The daily-grind task only builds a read-only drink details modal without unsaved form edits.',
+        '// Expectation 8: SKIPPED: The daily-grind task only builds a read-only drink details modal without unsaved form edits.',
+        '// Expectation 9: SKIPPED: The daily-grind task only requests a modal dialog, not a non-modal dialog panel.',
+        '// Expectation 10: TESTED - Content outside open modal dialog is not focusable',
+        '// Expectation 11: TESTED - No <dialog> has redundant role="dialog" or aria-modal',
+        '// Expectation 12: TESTED - Scrolling over backdrop or inside modal dialog does not scroll page behind it',
+        "test('The overlay is a <dialog> with a non-empty accessible name (aria-labelledby or aria-label)', () => {});",
+        "test('A modal dialog is opened with showModal() or command=\"show-modal\", and :modal matches while it is open', () => {});",
+        "test('Focus returns to the invoking element when a modal dialog closes', () => {});",
+        "test('Pressing Esc closes an open modal dialog unless closedby=\"none\" is set', () => {});",
+        "test('When light dismiss is requested on a dialog, clicking the backdrop closes it', () => {});",
+        "test('A backdrop-click fallback, if present, does not close the dialog when a press starts inside the dialog and ends on the backdrop', () => {});",
+        "test('While a modal dialog is open, content outside it is not focusable', () => {});",
+        "test('No <dialog> has role=\"dialog\" or aria-modal', () => {});",
+        "test('While a modal dialog is open, scrolling over its backdrop or inside it does not scroll the page behind it', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const res = await validateGraderExpectationCoverage(dialogExp, tempGrader);
+      assert.strictEqual(res.isComplete, true, `leaf dialog grader with skips should pass coverage: ${JSON.stringify(res.missing)}`);
+      assert.strictEqual(res.matches[6].isCovered, true);
+      assert.ok(res.matches[6].bestMatchTest.startsWith('SKIPPED:'));
+      assert.strictEqual(res.matches[7].isCovered, true);
+      assert.strictEqual(res.matches[8].isCovered, true);
+    } finally {
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
   });
 });
