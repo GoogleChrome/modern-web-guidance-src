@@ -1,0 +1,184 @@
+diff --git a/index.html b/index.html
+index 66c9173..453390c 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,130 @@
+       background: #3e2723;
+     }
+ 
++    /* Nutritional and Pricing Breakdown Table */
++    .table-wrapper {
++      overflow: auto;
++      max-inline-size: 100%;
++      max-block-size: min(500px, 80vh);
++      container-type: inline-size;
++      margin-block-start: 2rem;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    table {
++      width: 100%;
++      border-collapse: separate;
++      border-spacing: 0;
++      text-align: left;
++    }
++
++    caption {
++      font-size: 1.25rem;
++      font-weight: bold;
++      color: var(--primary);
++      padding: 1rem;
++      text-align: left;
++      background: white;
++    }
++
++    th,
++    td {
++      padding: 0.75rem 1rem;
++      border-block-end: 1px solid var(--secondary);
++    }
++
++    /* Sticky column headers (desktop) */
++    thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1;
++      background: var(--primary);
++      color: white;
++    }
++
++    thead th {
++      background: var(--primary);
++      color: white;
++      font-weight: 600;
++    }
++
++    /* Sticky row headers (desktop) */
++    tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      background: white;
++      color: var(--primary);
++      font-weight: 600;
++    }
++
++    @container (width < 600px) {
++      table,
++      thead,
++      tbody,
++      tr,
++      th,
++      td {
++        display: block;
++      }
++
++      thead {
++        /* MANDATORY: Hide column header from layout and screen readers. */
++        display: none;
++      }
++
++      tr {
++        margin-block-end: 1.5rem;
++        border: 1px solid #ccc;
++      }
++
++      /* Sticky row headers at the top of each block/card */
++      tbody th {
++        position: sticky;
++        inset-block-start: 0;
++        z-index: 2;
++        background: #eee;
++        color: var(--primary);
++      }
++
++      /* Define column labels as CSS variables */
++      table {
++        --label-1: "Drink";
++        --label-2: "Size";
++        --label-3: "Calories";
++        --label-4: "Caffeine";
++        --label-5: "Sugar";
++        --label-6: "Price";
++      }
++
++      /* Inject labels */
++      td:nth-child(2)::before {
++        content: var(--label-2) ": ";
++        font-weight: 600;
++      }
++
++      td:nth-child(3)::before {
++        content: var(--label-3) ": ";
++        font-weight: 600;
++      }
++
++      td:nth-child(4)::before {
++        content: var(--label-4) ": ";
++        font-weight: 600;
++      }
++
++      td:nth-child(5)::before {
++        content: var(--label-5) ": ";
++        font-weight: 600;
++      }
++
++      td:nth-child(6)::before {
++        content: var(--label-6) ": ";
++        font-weight: 600;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -194,6 +318,48 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div tabindex="0" role="region" aria-labelledby="seasonal-nutrition-caption" class="table-wrapper">
++        <table>
++          <caption id="seasonal-nutrition-caption">Nutritional and Pricing Breakdown</caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Size</th>
++              <th scope="col">Calories</th>
++              <th scope="col">Caffeine</th>
++              <th scope="col">Sugar</th>
++              <th scope="col">Price</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>16 oz (Grande)</td>
++              <td>210 kcal</td>
++              <td>150 mg</td>
++              <td>18 g</td>
++              <td>$5.75</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>2 oz (Double)</td>
++              <td>10 kcal</td>
++              <td>165 mg</td>
++              <td>0 g</td>
++              <td>$3.50</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>16 oz (Grande)</td>
++              <td>15 kcal</td>
++              <td>205 mg</td>
++              <td>0 g</td>
++              <td>$4.75</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
+     </section>
+   </main>
+ 

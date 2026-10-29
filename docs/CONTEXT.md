@@ -25,13 +25,13 @@ Last updated: 2026-07-10.
 
 ```
 modern-web-guidance-src/
+  AGENTS.md                     # Entry-point instructions and skill routing for AI agents
   guides/                     # All guide content, organized by discipline
     performance/              # e.g. batch-analytics-events, optimize-image-priority
     overlays/                 # e.g. light-dismiss-dialog, declarative-dialog-popover-control
     css-layout/               # e.g. animate-to-intrinsic-sizes
     accessibility/            # (empty so far)
     security/                 # (empty so far)
-    AGENTS.md                 # Instructions for AI agents working in this repo
   features/                   # Feature definitions and snippets for transclusion
   skills-src/                 # Source files for standalone Agent Skills
   src/

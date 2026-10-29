@@ -1,0 +1,490 @@
+diff --git a/index.html b/index.html
+index 66c9173..6819cfe 100644
+--- a/index.html
++++ b/index.html
+@@ -126,8 +126,12 @@
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+       transition: background 0.3s;
+     }
+ 
+@@ -135,6 +139,176 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .btn-secondary {
++      background: var(--secondary);
++      color: var(--text);
++    }
++
++    .btn-secondary:hover {
++      background: #bcaaa4;
++    }
++
++    /* Dialog Styles */
++    /* MANDATORY (both rules): without them, scrolling over the backdrop or inside the dialog scrolls the page behind it */
++    dialog:modal {
++      overscroll-behavior: contain; /* stops scroll gestures in the dialog chaining to the page */
++      margin: auto;
++      max-width: 520px;
++      width: calc(100% - 40px);
++      border: none;
++      border-radius: 12px;
++      padding: 28px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
++    }
++
++    dialog::backdrop {
++      overflow: hidden; /* ::backdrop is not a scroll container by default, so it would ignore overscroll-behavior */
++      overscroll-behavior: contain;
++      background: rgba(62, 39, 35, 0.6);
++      backdrop-filter: blur(2px);
++    }
++
++    .dialog-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: flex-start;
++      gap: 16px;
++      margin-bottom: 12px;
++      border-bottom: 1px solid var(--secondary);
++      padding-bottom: 12px;
++    }
++
++    .dialog-header h2 {
++      color: var(--primary);
++      font-size: 1.5rem;
++      line-height: 1.3;
++    }
++
++    .dialog-close-btn {
++      background: transparent;
++      border: 1px solid var(--secondary);
++      color: var(--text);
++      width: 34px;
++      height: 34px;
++      border-radius: 50%;
++      font-size: 1.2rem;
++      line-height: 1;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      flex-shrink: 0;
++      transition: background 0.2s, border-color 0.2s;
++    }
++
++    .dialog-close-btn:hover {
++      background: var(--secondary);
++      border-color: var(--primary);
++    }
++
++    .dialog-close-btn:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .dialog-description {
++      margin-bottom: 16px;
++      color: var(--text);
++    }
++
++    .drink-specs {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      margin-bottom: 20px;
++      list-style: none;
++    }
++
++    .drink-specs li {
++      background: var(--light);
++      border: 1px solid var(--secondary);
++      border-radius: 20px;
++      padding: 4px 12px;
++      font-size: 0.85rem;
++      font-weight: 500;
++    }
++
++    .order-form {
++      display: grid;
++      gap: 14px;
++    }
++
++    .form-field {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++      text-align: left;
++    }
++
++    .form-field label {
++      font-weight: 600;
++      font-size: 0.9rem;
++      color: var(--primary);
++    }
++
++    .form-field select,
++    .form-field input {
++      padding: 10px 12px;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.95rem;
++      color: var(--text);
++      background: var(--light);
++    }
++
++    .form-field select:focus-visible,
++    .form-field input:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 1px;
++      border-color: var(--primary);
++    }
++
++    .dialog-actions {
++      display: flex;
++      justify-content: flex-end;
++      gap: 10px;
++      margin-top: 8px;
++      padding-top: 12px;
++      border-top: 1px solid var(--secondary);
++    }
++
++    .dialog-actions .btn {
++      margin-top: 0;
++    }
++
++    .order-status {
++      max-width: 1100px;
++      margin: 20px auto 0;
++      padding: 0 20px;
++    }
++
++    .order-status-banner {
++      background: #e8f5e9;
++      border: 1px solid #81c784;
++      color: #1b5e20;
++      padding: 12px 16px;
++      border-radius: 8px;
++      font-weight: 500;
++      text-align: center;
++    }
++
++    .order-status-banner[hidden] {
++      display: none;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,9 +345,13 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <button type="button" class="btn" command="show-modal" commandfor="dialog-order-now">Order Now</button>
+   </header>
+ 
++  <div class="order-status" aria-live="polite">
++    <p id="order-status-banner" class="order-status-banner" hidden></p>
++  </div>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -181,22 +359,204 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-maple-oat-latte">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-dark-roast-espresso">View Details</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="btn" command="show-modal" commandfor="dialog-cold-brew">View Details</button>
+         </div>
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Order Now Dialog -->
++  <dialog id="dialog-order-now" closedby="any" aria-labelledby="dialog-order-now-title">
++    <div class="dialog-header">
++      <h2 id="dialog-order-now-title">Order Artisanal Coffee</h2>
++      <button type="button" class="dialog-close-btn" command="close" commandfor="dialog-order-now" aria-label="Close Order Artisanal Coffee dialog">&times;</button>
++    </div>
++    <p class="dialog-description">Customize your fresh-roasted coffee order for quick in-store pickup or local delivery.</p>
++    <ul class="drink-specs">
++      <li>100% Fair Trade Arabica</li>
++      <li>Roasted Daily</li>
++      <li>Ready in 5–10 mins</li>
++    </ul>
++    <form method="dialog" class="order-form">
++      <div class="form-field">
++        <label for="order-now-drink">Select Drink</label>
++        <select id="order-now-drink" name="drink" autofocus>
++          <option value="Maple Oat Latte">Maple Oat Latte — $5.75</option>
++          <option value="Dark Roast Espresso">Dark Roast Espresso — $3.50</option>
++          <option value="Cold Brew">Cold Brew — $4.75</option>
++          <option value="House Pour-Over">House Pour-Over — $4.25</option>
++        </select>
++      </div>
++      <div class="form-field">
++        <label for="order-now-size">Size</label>
++        <select id="order-now-size" name="size">
++          <option value="Small (8 oz)">Small (8 oz)</option>
++          <option value="Medium (12 oz)" selected>Medium (12 oz)</option>
++          <option value="Large (16 oz)">Large (16 oz)</option>
++        </select>
++      </div>
++      <div class="form-field">
++        <label for="order-now-milk">Milk / Creamer Option</label>
++        <select id="order-now-milk" name="milk">
++          <option value="Barista Oat Milk">Barista Oat Milk</option>
++          <option value="Whole Milk">Whole Milk</option>
++          <option value="Almond Milk">Almond Milk</option>
++          <option value="None (Black)">None (Black)</option>
++        </select>
++      </div>
++      <div class="form-field">
++        <label for="order-now-fulfillment">Fulfillment Method</label>
++        <select id="order-now-fulfillment" name="fulfillment">
++          <option value="In-Store Pickup">In-Store Pickup (Downtown Roastery)</option>
++          <option value="Curbside Pickup">Curbside Pickup</option>
++          <option value="Local Bike Delivery">Local Bike Delivery</option>
++        </select>
++      </div>
++      <div class="dialog-actions">
++        <button type="submit" value="cancel" class="btn btn-secondary">Cancel</button>
++        <button type="submit" value="order-now" class="btn">Place Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <!-- Maple Oat Latte Details & Ordering Dialog -->
++  <dialog id="dialog-maple-oat-latte" closedby="any" aria-labelledby="dialog-maple-title">
++    <div class="dialog-header">
++      <h2 id="dialog-maple-title">Maple Oat Latte</h2>
++      <button type="button" class="dialog-close-btn" command="close" commandfor="dialog-maple-oat-latte" aria-label="Close Maple Oat Latte details">&times;</button>
++    </div>
++    <p class="dialog-description">Velvety steamed barista-grade oat milk layered over our signature double-shot espresso, finished with pure Grade-A Vermont amber maple syrup and a dusting of cinnamon.</p>
++    <ul class="drink-specs">
++      <li>$5.75</li>
++      <li>210 kcal (12 oz)</li>
++      <li>Notes: Toasted Pecan, Maple, Warm Spice</li>
++      <li>150 mg Caffeine</li>
++    </ul>
++    <form method="dialog" class="order-form">
++      <div class="form-field">
++        <label for="maple-size">Size</label>
++        <select id="maple-size" name="size" autofocus>
++          <option value="Small (8 oz)">Small (8 oz) — $5.25</option>
++          <option value="Medium (12 oz)" selected>Medium (12 oz) — $5.75</option>
++          <option value="Large (16 oz)">Large (16 oz) — $6.25</option>
++        </select>
++      </div>
++      <div class="form-field">
++        <label for="maple-temp">Preparation</label>
++        <select id="maple-temp" name="temperature">
++          <option value="Hot" selected>Hot (Steamed Oat Milk)</option>
++          <option value="Iced">Iced (Over Artisan Cubed Ice)</option>
++        </select>
++      </div>
++      <div class="form-field">
++        <label for="maple-sweetness">Maple Syrup Level</label>
++        <select id="maple-sweetness" name="sweetness">
++          <option value="Standard (2 pumps)" selected>Standard (2 pumps)</option>
++          <option value="Light (1 pump)">Light (1 pump)</option>
++          <option value="Extra Maple (3 pumps)">Extra Maple (3 pumps)</option>
++        </select>
++      </div>
++      <div class="dialog-actions">
++        <button type="submit" value="cancel" class="btn btn-secondary">Cancel</button>
++        <button type="submit" value="order-maple-oat-latte" class="btn">Add to Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <!-- Dark Roast Espresso Details & Ordering Dialog -->
++  <dialog id="dialog-dark-roast-espresso" closedby="any" aria-labelledby="dialog-espresso-title">
++    <div class="dialog-header">
++      <h2 id="dialog-espresso-title">Dark Roast Espresso</h2>
++      <button type="button" class="dialog-close-btn" command="close" commandfor="dialog-dark-roast-espresso" aria-label="Close Dark Roast Espresso details">&times;</button>
++    </div>
++    <p class="dialog-description">Full-bodied single-origin Sumatra and Colombian dark roast pulled at 9 bars for a rich golden crema, deep cocoa finish, and smokey intensity.</p>
++    <ul class="drink-specs">
++      <li>$3.50</li>
++      <li>15 kcal</li>
++      <li>Notes: Dark Chocolate, Cedar, Molasses</li>
++      <li>165 mg Caffeine</li>
++    </ul>
++    <form method="dialog" class="order-form">
++      <div class="form-field">
++        <label for="espresso-shots">Shot Pull</label>
++        <select id="espresso-shots" name="shots" autofocus>
++          <option value="Single Shot (1 oz)">Single Shot (1 oz) — $3.00</option>
++          <option value="Double Doppio (2 oz)" selected>Double Doppio (2 oz) — $3.50</option>
++          <option value="Triple Ristretto (2.25 oz)">Triple Ristretto (2.25 oz) — $4.25</option>
++        </select>
++      </div>
++      <div class="form-field">
++        <label for="espresso-style">Serving Style</label>
++        <select id="espresso-style" name="style">
++          <option value="Straight Espresso" selected>Straight in Demitasse</option>
++          <option value="Macchiato (Dollop of Foam)">Macchiato (Dollop of Foam)</option>
++          <option value="Cortado (Equal Parts Warm Milk)">Cortado (Equal Parts Warm Milk)</option>
++          <option value="With Sparkling Water Sidecar">With Sparkling Water Sidecar</option>
++        </select>
++      </div>
++      <div class="dialog-actions">
++        <button type="submit" value="cancel" class="btn btn-secondary">Cancel</button>
++        <button type="submit" value="order-dark-roast-espresso" class="btn">Add to Order</button>
++      </div>
++    </form>
++  </dialog>
++
++  <!-- Cold Brew Details & Ordering Dialog -->
++  <dialog id="dialog-cold-brew" closedby="any" aria-labelledby="dialog-coldbrew-title">
++    <div class="dialog-header">
++      <h2 id="dialog-coldbrew-title">Cold Brew</h2>
++      <button type="button" class="dialog-close-btn" command="close" commandfor="dialog-cold-brew" aria-label="Close Cold Brew details">&times;</button>
++    </div>
++    <p class="dialog-description">Coarse-ground Ethiopian Yirgacheffe beans steeped in cold filtered water for 18 hours, yielding an ultra-smooth, low-acid cup with natural stone-fruit sweetness.</p>
++    <ul class="drink-specs">
++      <li>$4.75</li>
++      <li>10 kcal (Black)</li>
++      <li>Notes: Sweet Berries, Milk Chocolate, Smooth Finish</li>
++      <li>200 mg Caffeine</li>
++    </ul>
++    <form method="dialog" class="order-form">
++      <div class="form-field">
++        <label for="coldbrew-size">Size</label>
++        <select id="coldbrew-size" name="size" autofocus>
++          <option value="Medium (12 oz)">Medium (12 oz) — $4.25</option>
++          <option value="Large (16 oz)" selected>Large (16 oz) — $4.75</option>
++          <option value="Extra Large (20 oz)">Extra Large (20 oz) — $5.50</option>
++        </select>
++      </div>
++      <div class="form-field">
++        <label for="coldbrew-ice">Ice Level</label>
++        <select id="coldbrew-ice" name="ice">
++          <option value="Regular Ice" selected>Regular Ice</option>
++          <option value="Light Ice">Light Ice</option>
++          <option value="No Ice (Chilled)">No Ice (Chilled)</option>
++        </select>
++      </div>
++      <div class="form-field">
++        <label for="coldbrew-topping">Cold Foam / Cream</label>
++        <select id="coldbrew-topping" name="topping">
++          <option value="Served Black" selected>Served Black</option>
++          <option value="Vanilla Sweet Cream Cold Foam">Vanilla Sweet Cream Cold Foam (+$0.75)</option>
++          <option value="Splash of Oat Milk">Splash of Oat Milk</option>
++          <option value="Splash of Half & Half">Splash of Half &amp; Half</option>
++        </select>
++      </div>
++      <div class="dialog-actions">
++        <button type="submit" value="cancel" class="btn btn-secondary">Cancel</button>
++        <button type="submit" value="order-cold-brew" class="btn">Add to Order</button>
++      </div>
++    </form>
++  </dialog>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +567,72 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // MANDATORY: feature detect on HTMLButtonElement.prototype and load only when native support is missing
++    if (!('commandForElement' in HTMLButtonElement.prototype)) {
++      import('invokers-polyfill').catch(() => {
++        document.addEventListener('click', (e) => {
++          const btn = e.target.closest('button[command][commandfor]');
++          if (!btn) return;
++          const target = document.getElementById(btn.getAttribute('commandfor'));
++          if (!target || !(target instanceof HTMLDialogElement)) return;
++          const cmd = btn.getAttribute('command');
++          if (cmd === 'show-modal') {
++            if (!target.open) target.showModal();
++          } else if (cmd === 'close') {
++            if (target.open) target.close();
++          } else if (cmd === 'request-close') {
++            if (target.open) {
++              if ('requestClose' in target) target.requestClose();
++              else target.close();
++            }
++          }
++        });
++      });
++    }
++
++    // Fallback for `closedby="any"` (`dialog-closedby`)
++    if (!('closedBy' in HTMLDialogElement.prototype)) {
++      // Test the pointer position, not event.target: the <dialog> is also the target for its own
++      // padding and the gaps between its children, so a target check would close on those clicks
++      const outside = (e, dialog) => {
++        const r = dialog.getBoundingClientRect();
++        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
++      };
++      for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
++        let pressedOutside = false;
++        dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, dialog); });
++        // Require the press and the release outside, so a text-selection drag that ends on the backdrop does not dismiss
++        dialog.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, dialog)) dialog.close(); });
++      }
++    }
++
++    // Read dialog.returnValue in a close listener to learn which button was used,
++    // then reset it with dialog.returnValue = '' to prevent stale values from leaking.
++    const statusBanner = document.getElementById('order-status-banner');
++    for (const dialog of document.querySelectorAll('dialog')) {
++      dialog.addEventListener('close', () => {
++        const action = dialog.returnValue;
++        dialog.returnValue = '';
++
++        if (!action || action === 'cancel') {
++          return;
++        }
++
++        const form = dialog.querySelector('form');
++        const heading = dialog.querySelector('h2');
++        const data = form ? new FormData(form) : null;
++        const drinkName = (data && data.get('drink')) || (heading ? heading.textContent : 'Coffee');
++        const size = (data && (data.get('size') || data.get('shots'))) || '';
++
++        if (statusBanner) {
++          statusBanner.textContent = `Added ${size ? size + ' ' : ''}${drinkName} to your order!`;
++          statusBanner.hidden = false;
++        }
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

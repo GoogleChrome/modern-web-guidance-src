@@ -1,0 +1,133 @@
+diff --git a/index.html b/index.html
+index 66c9173..68c2ebb 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,30 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++    .reviews {
++      margin-top: 1rem;
++      text-align: left;
++      border-top: 1px solid #ddd;
++      padding-top: 0.75rem;
++    }
++
++    .reviews textarea {
++      width: 100%;
++      box-sizing: border-box;
++      min-height: 4rem;
++      font: inherit;
++    }
++
++    .review-list {
++      list-style: none;
++      padding: 0;
++      margin: 0.75rem 0 0;
++    }
++
++    .review-list li {
++      padding: 0.4rem 0;
++      border-bottom: 1px solid #eee;
++    }
+   </style>
+ </head>
+ 
+@@ -182,16 +206,43 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="reviews" data-drink="Maple Oat Latte">
++            <h4>Customer Reviews</h4>
++            <form class="review-form">
++              <label for="review-seasonal">Share your feedback (basic HTML allowed)</label>
++              <textarea id="review-seasonal" required></textarea>
++              <button type="submit" class="btn">Submit Review</button>
++            </form>
++            <ul class="review-list" aria-live="polite"></ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="reviews" data-drink="Dark Roast Espresso">
++            <h4>Customer Reviews</h4>
++            <form class="review-form">
++              <label for="review-espresso">Share your feedback (basic HTML allowed)</label>
++              <textarea id="review-espresso" required></textarea>
++              <button type="submit" class="btn">Submit Review</button>
++            </form>
++            <ul class="review-list" aria-live="polite"></ul>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="reviews" data-drink="Cold Brew">
++            <h4>Customer Reviews</h4>
++            <form class="review-form">
++              <label for="review-cold-brew">Share your feedback (basic HTML allowed)</label>
++              <textarea id="review-cold-brew" required></textarea>
++              <button type="submit" class="btn">Submit Review</button>
++            </form>
++            <ul class="review-list" aria-live="polite"></ul>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +258,53 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Sanitizer config: rich text only, no scripts/handlers/styles.
++    const reviewElements = ['p', 'b', 'i', 'strong', 'em', 'u', 'br', 'ul', 'ol', 'li', 'blockquote', 'span', 'a'];
++    const reviewAttributes = ['class', 'href'];
++    let domPurifyPromise;
++
++    function loadDOMPurify() {
++      domPurifyPromise ??= import('https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.es.mjs')
++        .then((mod) => mod.default ?? mod);
++      return domPurifyPromise;
++    }
++
++    async function safeSetHTML(el, html) {
++      if ('setHTML' in Element.prototype) {
++        el.setHTML(html, { sanitizer: { elements: reviewElements, attributes: reviewAttributes } });
++      } else {
++        const DOMPurify = await loadDOMPurify();
++        el.innerHTML = DOMPurify.sanitize(html, {
++          ALLOWED_TAGS: [...reviewElements, '#text'],
++          ALLOWED_ATTR: reviewAttributes,
++          ALLOW_ARIA_ATTR: false,
++          ALLOW_DATA_ATTR: false,
++          KEEP_CONTENT: false
++        });
++      }
++    }
++
++    document.querySelectorAll('.reviews').forEach((box) => {
++      const form = box.querySelector('.review-form');
++      const textarea = form.querySelector('textarea');
++      const list = box.querySelector('.review-list');
++      form.addEventListener('submit', async (event) => {
++        event.preventDefault();
++        const html = textarea.value.trim();
++        if (!html) return;
++        const item = document.createElement('li');
++        try {
++          await safeSetHTML(item, html);
++        } catch {
++          return;
++        }
++        list.prepend(item);
++        textarea.value = '';
++      });
++    });
++  </script>
++
+ </body>
+ 
+ </html>
