@@ -57,6 +57,7 @@ import formFieldsAutomaticallyFitContents from './form-fields-automatically-fit-
 import fullSessionAnalytics from './full-session-analytics.ts';
 import groupElementTransitions from './group-element-transitions.ts';
 import highlightTextRanges from './highlight-text-ranges.ts';
+import icons from './icons.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
 import improveNextPageLoadPerformance from './improve-next-page-load-performance.ts';
 import improveTextLayoutAndLegibility from './improve-text-layout-and-legibility.ts';
@@ -116,6 +117,7 @@ import supportGlobalCalendarSystems from './support-global-calendar-systems.ts';
 import swipeToRemove from './swipe-to-remove.ts';
 import swipeToReveal from './swipe-to-reveal.ts';
 import switchRuleModule from './switch.ts';
+import validateInputAfterInteraction from './validate-input-after-interaction.ts';
 import validateOrigins from './validate-origins.ts';
 import viewportAwareDropdowns from './viewport-aware-dropdowns.ts';
 import visuallyStableFontFallbacks from './visually-stable-font-fallbacks.ts';
@@ -178,6 +180,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   fullSessionAnalytics,
   groupElementTransitions,
   highlightTextRanges,
+  icons,
   imeSafeEnterSubmit,
   improveNextPageLoadPerformance,
   improveTextLayoutAndLegibility,
@@ -237,6 +240,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   swipeToRemove,
   swipeToReveal,
   switchRuleModule,
+  validateInputAfterInteraction,
   validateOrigins,
   viewportAwareDropdowns,
   visuallyStableFontFallbacks,
@@ -328,6 +332,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'group-element-transitions': 'experimental',
   'highlight-text-ranges/package-markjs': 'experimental',
   'highlight-text-ranges/js-markjs': 'experimental',
+  'icons': 'experimental',
   'ime-safe-enter-submit': 'experimental',
   'improve-next-page-load-performance/package-prefetch': 'experimental',
   'improve-next-page-load-performance/js-quicklink': 'experimental',
@@ -412,6 +417,7 @@ export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'swipe-to-remove': 'experimental',
   'swipe-to-reveal': 'experimental',
   'switch': 'experimental',
+  'validate-input-after-interaction': 'experimental',
   'validate-origins': 'experimental',
   'viewport-aware-dropdowns': 'experimental',
   'visually-stable-font-fallbacks/package-font-loader': 'experimental',
