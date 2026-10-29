@@ -49,7 +49,7 @@
       }
 
       /* Style for the active link */
-      nav a:is(:target-current, .\:target-current) {
+      nav a:is(:target-current, .target-current) {
         color: var(--accent);
         border-bottom-color: var(--accent);
       }
@@ -135,7 +135,7 @@
                 const id = entry.target.getAttribute("id");
                 navLinks.forEach((link) => {
                   const isActive = link.getAttribute("href") === `#${id}`;
-                  link.classList.toggle("\:target-current", isActive);
+                  link.classList.toggle("target-current", isActive);
                   // In fallback mode, we update ARIA immediately since we're already observing
                   link.setAttribute("aria-current", isActive);
                 });

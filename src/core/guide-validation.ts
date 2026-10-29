@@ -46,7 +46,6 @@ export const DISCIPLINE_GUIDES = new Set([
   'motion',
   'passkeys',
   'responsive-design',
-  'selector-atrule-combinations',
   'typography',
   'visual-effects',
   'web-components',

@@ -8,13 +8,23 @@ import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import { replaceMacros, type BuildTarget } from "../core/macros.ts";
-import { scanAllGuides, type GuideInventory, getGuideMarkdownPath, extractH1Heading, stripAllComments, isDraftStub, stripLeadingH1 } from "../core/guide-validation.ts";
+import {
+  scanAllGuides,
+  type GuideInventory,
+  getGuideMarkdownPath,
+  extractH1Heading,
+  stripAllComments,
+  isDraftStub,
+  stripLeadingH1,
+  getGuideOriginTrials,
+} from "../core/guide-validation.ts";
 import { isTmpFeature } from "../core/feature-parser.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
 import { rootDir, outDir } from "../core/paths.ts";
 import { CATEGORIES } from "../core/categories.ts";
 import { toDevsiteMarkdown } from "./devsite-markdown.ts";
+import type { UseCase } from "../rag/guides.ts";
 
 const WORKSPACE_ROOT = rootDir;
 
@@ -37,14 +47,6 @@ export interface DevsiteGuideMetadata {
   webFeatureIds: string[];
   refreshDate: string;
   path: string;
-}
-
-interface UseCase {
-  id: string;
-  description: string;
-  category: string;
-  featuresUsed: string[];
-  tokenCount?: number;
 }
 
 export interface BuildOptions {
@@ -114,6 +116,7 @@ async function computePipelineHash(
     path.join(rootDir, "src/core/macros.ts"),
     path.join(rootDir, "src/rag/transformers-embedder.ts"),
     path.join(rootDir, "src/core/guide-validation.ts"),
+    path.join(rootDir, "features/origin-trials.json"),
     path.join(rootDir, "src/build/devsite-markdown.ts"),
     path.join(rootDir, "src/core/categories.ts"),
     path.join(rootDir, "src/core/headings.ts"),
@@ -622,6 +625,7 @@ async function processSingleGuideFile(
 
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
+  const originTrials = getGuideOriginTrials(featureIds);
   const tokenCount = await embedder.countTokens(processedMarkdown);
 
   useCases.push({
@@ -630,6 +634,7 @@ async function processSingleGuideFile(
     category,
     featuresUsed,
     tokenCount,
+    ...(originTrials.length > 0 ? { originTrials } : {}),
   });
 
   const h1Title = extractH1Heading(processedMarkdown);
