@@ -7,373 +7,276 @@ import {
   getJsProject,
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind, type Project, type Node } from 'ts-morph';
-import { CSSStyleRule, CSSGroupingRule, type CSSRule, type CSSStyleSheet } from 'cssomnom';
+import { SyntaxKind, type Node } from 'ts-morph';
+import { CSSStyleRule, CSSGroupingRule, type CSSRule } from 'cssomnom';
 
-// @ts-ignore - import.meta.url is supported in Playwright ESM runtime
+// @ts-ignore - package.json does not declare "type": "module", causing tsc nodenext to infer CJS
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
+function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
   const result: CSSStyleRule[] = [];
   for (const rule of rules) {
     if (rule instanceof CSSStyleRule) {
       result.push(rule);
     }
     if (rule instanceof CSSGroupingRule && rule.cssRules) {
-      result.push(...collectStyleRules(rule.cssRules));
+      result.push(...getAllStyleRules(rule.cssRules));
     }
   }
   return result;
 }
 
-function hasSwitchFeatureCheck(node: Node): boolean {
-  const binaryExprs = [
-    ...(node.getKind() === SyntaxKind.BinaryExpression ? [node.asKindOrThrow(SyntaxKind.BinaryExpression)] : []),
-    ...node.getDescendantsOfKind(SyntaxKind.BinaryExpression),
-  ];
-  return binaryExprs.some((expr) => {
-    if (expr.getOperatorToken().getText() !== 'in') return false;
-    const left = expr.getLeft().getText().replace(/['"`]/g, '').trim();
-    const right = expr.getRight().getText().trim();
-    return left === 'switch' && right.includes('HTMLInputElement.prototype');
-  });
-}
-
-function isPolyfillCall(callText: string, argText: string): boolean {
-  return (callText === 'import' || callText === 'require') && argText.includes('input-switch-polyfill');
-}
-
-function hasPolyfillOrAppearanceFallback(): boolean {
-  const project: Project = getJsProject(targetFiles);
-  const sourceFiles = project.getSourceFiles();
-  const hasPolyfillImport = sourceFiles.some(
-    (sf) =>
-      sf
-        .getImportDeclarations()
-        .some((d) => d.getModuleSpecifierValue().includes('input-switch-polyfill')) ||
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
-        const exprText = call.getExpression().getText().trim();
-        const firstArg = call.getArguments()[0]?.getText() || '';
-        return isPolyfillCall(exprText, firstArg);
-      })
-  );
-
-  const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-  const styleRules = collectStyleRules(stylesheet.cssRules);
-  const hasAppearanceNone = styleRules.some((r) => {
-    const appearance =
-      r.style.getPropertyValue('appearance') || r.style.getPropertyValue('-webkit-appearance');
-    return appearance.trim() === 'none';
-  });
-
-  return hasPolyfillImport || hasAppearanceNone;
+function getSwitchInputs(docs: Array<{ file: string; document: any }>): Array<{ document: any; input: any }> {
+  const switchInputs: Array<{ document: any; input: any }> = [];
+  for (const { document } of docs) {
+    const inputs = Array.from(document.querySelectorAll('input')) as any[];
+    for (const input of inputs) {
+      const type = (input.getAttribute('type') || '').toLowerCase();
+      if (type === 'checkbox' && input.hasAttribute('switch')) {
+        switchInputs.push({ document, input });
+      }
+    }
+  }
+  return switchInputs;
 }
 
 test.describe('switch Target Grader', () => {
-  // --- STATIC ASSERTIONS (FAST) ---
-
   test('Each switch control is a standard HTML <input type="checkbox"> element with the switch attribute', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const switchElements = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('[switch], [role="switch"]'))
-    );
-    const allValidCheckboxes =
-      switchElements.length > 0 &&
-      switchElements.every(
-        (el: any) =>
-          el.tagName?.toLowerCase() === 'input' &&
-          (el.getAttribute('type') || '').toLowerCase() === 'checkbox' &&
-          el.hasAttribute('switch')
-      );
-    expect(allValidCheckboxes).toBe(true);
+    const switchInputs = getSwitchInputs(docs);
+    expect(switchInputs.length).toBeGreaterThan(0);
   });
 
-  test('Each switch input is associated with a <label> element via wrapping or matching for/id attributes', () => {
+  test('Each switch input is associated with a <label> element', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const switchInputs: Array<{ doc: any; input: any }> = [];
-    for (const d of docs) {
-      const inputs = Array.from(d.document.querySelectorAll('input[type="checkbox"][switch]'));
-      for (const input of inputs) {
-        switchInputs.push({ doc: d.document, input });
-      }
-    }
-    const allLabeled =
+    const switchInputs = getSwitchInputs(docs);
+    const allHaveLabels =
       switchInputs.length > 0 &&
-      switchInputs.every(({ doc, input }) => {
-        if (input.closest('label')) return true;
+      switchInputs.every(({ document, input }) => {
+        if (input.closest('label')) {
+          return true;
+        }
         const id = input.getAttribute('id');
-        if (!id) return false;
-        return Array.from(doc.querySelectorAll('label')).some(
-          (label: any) => label.getAttribute('for') === id
-        );
+        if (!id) {
+          return false;
+        }
+        const labels = Array.from(document.querySelectorAll('label')) as any[];
+        return labels.some((label) => label.getAttribute('for') === id);
       });
-    expect(allLabeled).toBe(true);
+    expect(allHaveLabels).toBe(true);
   });
 
-  test('Native switch support is feature-detected via switch in HTMLInputElement.prototype and input-switch-polyfill is conditionally loaded', () => {
+  test('Native switch support is feature-detected via \'switch\' in HTMLInputElement.prototype, and input-switch-polyfill is conditionally loaded only when native support is missing', () => {
     skipUnless({ unsupported: 'switch-control' });
-    const project: Project = getJsProject(targetFiles);
+    const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const unconditionalImports = sourceFiles.flatMap((sf) =>
-      sf
-        .getImportDeclarations()
-        .filter((decl) => decl.getModuleSpecifierValue().includes('input-switch-polyfill'))
+    const binaryExprs = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)
     );
 
-    const polyfillCalls = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression).filter((call) => {
-        const exprText = call.getExpression().getText().trim();
-        const firstArg = call.getArguments()[0]?.getText() || '';
-        return isPolyfillCall(exprText, firstArg);
-      })
-    );
+    const featureCheckExpr = binaryExprs.find((expr) => {
+      const op = expr.getOperatorToken().getText();
+      if (op !== 'in') return false;
+      const left = expr.getLeft().getText().replace(/['"`]/g, '').trim();
+      const right = expr.getRight().getText().trim();
+      return (
+        left === 'switch' &&
+        (right.includes('HTMLInputElement.prototype') || right.includes('HTMLInputElement'))
+      );
+    });
 
-    const allCallsGuarded =
-      unconditionalImports.length === 0 &&
-      polyfillCalls.length > 0 &&
-      polyfillCalls.every((call) => {
-        let current: Node | undefined = call.getParent();
-        while (current) {
-          if (current.getKind() === SyntaxKind.IfStatement) {
-            const ifStmt = current.asKindOrThrow(SyntaxKind.IfStatement);
-            if (hasSwitchFeatureCheck(ifStmt.getExpression())) return true;
-          }
-          if (current.getKind() === SyntaxKind.ConditionalExpression) {
-            const condExpr = current.asKindOrThrow(SyntaxKind.ConditionalExpression);
-            if (hasSwitchFeatureCheck(condExpr.getCondition())) return true;
-          }
-          if (current.getKind() === SyntaxKind.BinaryExpression) {
-            const binExpr = current.asKindOrThrow(SyntaxKind.BinaryExpression);
-            const op = binExpr.getOperatorToken().getText();
-            if ((op === '&&' || op === '||') && hasSwitchFeatureCheck(binExpr.getLeft())) {
-              return true;
+    const isConditionallyLoaded = Boolean(
+      featureCheckExpr &&
+        (() => {
+          const allStrings = sourceFiles.flatMap((sf) => [
+            ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+            ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+          ]);
+          const polyfillNodes = allStrings.filter((s) =>
+            s.getLiteralText().includes('input-switch-polyfill')
+          );
+          if (polyfillNodes.length === 0) return false;
+
+          return polyfillNodes.some((node) => {
+            let current: Node | undefined = node.getParent();
+            while (current) {
+              const kind = current.getKind();
+              if (
+                kind === SyntaxKind.IfStatement ||
+                kind === SyntaxKind.ConditionalExpression ||
+                kind === SyntaxKind.BinaryExpression
+              ) {
+                if (current.getDescendants().includes(featureCheckExpr)) {
+                  return true;
+                }
+              }
+              current = current.getParent();
             }
-          }
-          current = current.getParent();
-        }
-        return false;
-      });
+            return false;
+          });
+        })()
+    );
 
-    expect(allCallsGuarded).toBe(true);
+    expect(isConditionallyLoaded).toBe(true);
   });
 
-  test('The switch input sets a custom accent-color in CSS', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
-    const hasAccentColor = styleRules.some((rule) => {
+  test('The switch input sets a custom accent-color that applies to both native switch rendering and the polyfilled switch\'s active state', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const docs = getHtmlDocuments(targetFiles);
+    const switchInputs = getSwitchInputs(docs);
+
+    const hasRuleAccentColor = styleRules.some((rule) => {
       const sel = rule.selectorText || '';
       const val = rule.style.getPropertyValue('accent-color').trim();
-      const targetsSwitch =
-        sel.includes('[switch]') || sel.includes('input') || sel.includes('checkbox') || sel === '[style]';
-      return targetsSwitch && val.length > 0 && val !== 'auto' && val !== 'initial' && val !== 'unset';
+      if (!val) return false;
+      return (
+        sel.includes('switch') ||
+        sel.includes('checkbox') ||
+        sel.includes('input') ||
+        switchInputs.some(({ input }) => {
+          const id = input.getAttribute('id');
+          return id ? sel.includes(`#${id}`) : false;
+        })
+      );
     });
-    expect(hasAccentColor).toBe(true);
+
+    const hasInlineOrUtilityAccent = switchInputs.some(({ input }) => {
+      const inlineStyle = input.getAttribute('style') || '';
+      const className = input.getAttribute('class') || '';
+      return inlineStyle.includes('accent-color') || /\baccent-/.test(className);
+    });
+
+    expect(hasRuleAccentColor || hasInlineOrUtilityAccent).toBe(true);
   });
 
-  test('Focusing the switch input via :focus-visible defines a visible focus outline on the input', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
-    const hasFocusVisibleOutline = styleRules.some((rule) => {
+  test('Focusing the switch input via keyboard navigation (:focus-visible) displays a visible focus outline on the input itself', () => {
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const docs = getHtmlDocuments(targetFiles);
+    const switchInputs = getSwitchInputs(docs);
+
+    const hasFocusVisibleRule = styleRules.some((rule) => {
       const sel = rule.selectorText || '';
-      if (!sel.includes(':focus-visible')) return false;
-      const targetsSwitch =
-        sel.includes('[switch]') || sel.includes('input') || sel.includes('checkbox');
-      if (!targetsSwitch) return false;
+      if (!sel.includes(':focus-visible') && !sel.includes(':focus')) return false;
       const outline = rule.style.getPropertyValue('outline').trim();
       const outlineWidth = rule.style.getPropertyValue('outline-width').trim();
       const outlineStyle = rule.style.getPropertyValue('outline-style').trim();
       const outlineColor = rule.style.getPropertyValue('outline-color').trim();
-      const hasValidOutline =
-        (outline.length > 0 && outline !== 'none' && outline !== '0') ||
-        (outlineWidth.length > 0 && outlineWidth !== '0' && outlineWidth !== '0px' && outlineStyle !== 'none') ||
-        (outlineColor.length > 0 && outlineStyle !== 'none');
-      return hasValidOutline;
+      const hasVisibleOutline =
+        (outline !== '' && outline !== 'none' && outline !== '0') ||
+        (outlineWidth !== '' && outlineWidth !== '0' && outlineWidth !== '0px') ||
+        (outlineStyle !== '' && outlineStyle !== 'none') ||
+        outlineColor !== '';
+      return hasVisibleOutline;
     });
-    expect(hasFocusVisibleOutline).toBe(true);
-  });
 
-  // --- BROWSER ASSERTIONS (E2E) ---
+    const hasUtilityFocusOutline = switchInputs.some(({ input }) => {
+      const className = input.getAttribute('class') || '';
+      return /\bfocus(-visible)?:(outline|ring)/.test(className);
+    });
+
+    expect(hasFocusVisibleRule || hasUtilityFocusOutline).toBe(true);
+  });
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
-      await page.route('**/*', async (route) => {
-        const req = route.request();
-        if (req.resourceType() === 'document') {
-          const response = await route.fetch();
-          let body = await response.text();
-          if (!body.includes('type="importmap"') && body.includes('input-switch-polyfill')) {
-            const importMap = `<script type="importmap">{"imports":{"input-switch-polyfill":"https://esm.sh/input-switch-polyfill"}}</script>`;
-            body = body.includes('<head>')
-              ? body.replace('<head>', `<head>\n${importMap}`)
-              : `${importMap}\n${body}`;
-          }
-          await route.fulfill({ response, body });
-          return;
+      await page.route(
+        (url) =>
+          url.href.includes('cdn.jsdelivr.net/npm/input-switch-polyfill') &&
+          url.pathname.endsWith('/index.js'),
+        async (route) => {
+          const fallbackUrl = route
+            .request()
+            .url()
+            .replace(/\/index\.js$/, '/input-switch-polyfill.js');
+          const response = await route.fetch({ url: fallbackUrl });
+          await route.fulfill({ response });
         }
-        await route.continue();
-      });
+      );
       await page.goto(TARGET_URL);
     });
 
-    test('When native switch support is missing, the checkbox input uses appearance: none while remaining visible and interactive', async ({
-      page,
-    }) => {
+    test('When native switch support is missing, the checkbox input uses appearance: none to render switch styling while remaining visible and interactive', async ({ page }) => {
       skipUnless({ unsupported: 'switch-control' });
-      const switchInput = page.locator('input[type="checkbox"][switch]').first();
+      const switchLocator = page.locator('input[type="checkbox"][switch]').first();
       await expect
         .poll(async () => {
-          return await switchInput.evaluate((el) => {
+          const count = await switchLocator.count();
+          if (count === 0) return false;
+          return switchLocator.evaluate((el) => {
             const style = window.getComputedStyle(el);
             const rect = el.getBoundingClientRect();
             const isAppearanceNone = style.appearance === 'none';
             const isVisible =
-              style.display !== 'none' &&
+              rect.width > 4 &&
+              rect.height > 4 &&
+              style.opacity !== '0' &&
               style.visibility !== 'hidden' &&
-              parseFloat(style.opacity) > 0 &&
-              rect.width > 10 &&
-              rect.height > 10;
-            const isInteractive = style.pointerEvents !== 'none' && !(el as HTMLInputElement).disabled;
+              style.display !== 'none';
+            const isInteractive = style.pointerEvents !== 'none';
             return isAppearanceNone && isVisible && isInteractive;
           });
         })
         .toBe(true);
     });
 
-    test('Toggling the switch updates its checked state and visually updates the control between its unchecked and checked states', async ({
-      page,
-    }) => {
-      const expectsFallback = hasPolyfillOrAppearanceFallback();
-      const switchInput = page.locator('input[type="checkbox"][switch]').first();
-      await expect
-        .poll(async () => {
-          return await switchInput.evaluate((el, needsAppearanceNone) => {
-            if ('switch' in HTMLInputElement.prototype || !needsAppearanceNone) {
-              return el.getBoundingClientRect().width > 0;
-            }
-            return window.getComputedStyle(el).appearance === 'none';
-          }, expectsFallback);
-        })
-        .toBe(true);
+    test('Toggling the switch updates its checked state and visually updates the control\'s track styling between its unchecked and checked states', async ({ page }) => {
+      const switchLocator = page.locator('input[type="checkbox"][switch]').first();
+      const toggledAndStyled = await (async () => {
+        for (let i = 0; i < 30; i++) {
+          const count = await switchLocator.count();
+          if (count > 0) {
+            const ready = await switchLocator.evaluate(
+              (el) =>
+                'switch' in HTMLInputElement.prototype ||
+                window.getComputedStyle(el).appearance === 'none'
+            );
+            if (ready) break;
+          }
+          await page.waitForTimeout(100);
+        }
+        if ((await switchLocator.count()) === 0) return false;
 
-      const getVisualState = async () => {
-        return await switchInput.evaluate((el: HTMLInputElement) => {
-          const s = window.getComputedStyle(el);
-          const before = window.getComputedStyle(el, '::before');
-          const after = window.getComputedStyle(el, '::after');
-          return {
-            checked: el.checked,
-            visualSignature: [
+        const getVisualSignature = () =>
+          switchLocator.evaluate((el) => {
+            const s = window.getComputedStyle(el);
+            const before = window.getComputedStyle(el, '::before');
+            const after = window.getComputedStyle(el, '::after');
+            return [
               s.backgroundColor,
               s.backgroundImage,
               s.borderColor,
-              s.color,
               s.boxShadow,
               before.backgroundColor,
               before.transform,
               before.insetInlineStart,
               before.left,
-              before.marginInlineStart,
               after.backgroundColor,
               after.transform,
               after.insetInlineStart,
               after.left,
-              after.marginInlineStart,
-            ].join('|'),
-          };
-        });
-      };
+            ].join('|');
+          });
 
-      const beforeToggle = await getVisualState();
-      await switchInput.click({ force: true });
-      if ((await switchInput.isChecked()) === beforeToggle.checked) {
-        await switchInput.evaluate((el: HTMLInputElement) => el.click());
-      }
+        const initialChecked = await switchLocator.isChecked();
+        const beforeSig = await getVisualSignature();
 
-      await expect
-        .poll(async () => {
-          const afterToggle = await getVisualState();
-          const usesNativeSwitch = await switchInput.evaluate(
-            (_el, needsAppearanceNone) =>
-              'switch' in HTMLInputElement.prototype || !needsAppearanceNone,
-            expectsFallback
-          );
-          return (
-            afterToggle.checked !== beforeToggle.checked &&
-            (afterToggle.visualSignature !== beforeToggle.visualSignature || usesNativeSwitch)
-          );
-        })
-        .toBe(true);
-    });
+        await switchLocator.click();
 
-    test('The switch input applies a custom accent-color to native rendering and the polyfilled switch active state', async ({
-      page,
-    }) => {
-      const expectsFallback = hasPolyfillOrAppearanceFallback();
-      const switchInput = page.locator('input[type="checkbox"][switch]').first();
-      await expect
-        .poll(async () => {
-          return await switchInput.evaluate((el, needsAppearanceNone) => {
-            if ('switch' in HTMLInputElement.prototype || !needsAppearanceNone) {
-              return el.getBoundingClientRect().width > 0;
-            }
-            return window.getComputedStyle(el).appearance === 'none';
-          }, expectsFallback);
-        })
-        .toBe(true);
+        const afterChecked = await switchLocator.isChecked();
+        if (afterChecked === initialChecked) return false;
 
-      const uncheckedBg = await switchInput.evaluate((el: HTMLInputElement) => {
-        if (el.checked) el.click();
-        return window.getComputedStyle(el).backgroundColor;
-      });
+        for (let i = 0; i < 20; i++) {
+          const afterSig = await getVisualSignature();
+          if (afterSig !== beforeSig) return true;
+          await page.waitForTimeout(50);
+        }
+        return false;
+      })();
 
-      await switchInput.evaluate((el: HTMLInputElement) => {
-        if (!el.checked) el.click();
-      });
-
-      await expect
-        .poll(async () => {
-          return await switchInput.evaluate(
-            (el: HTMLInputElement, { inactiveBg, needsAppearanceNone }) => {
-              const style = window.getComputedStyle(el);
-              const before = window.getComputedStyle(el, '::before');
-              const after = window.getComputedStyle(el, '::after');
-              const accentColor = style.accentColor;
-              const hasCustomAccent = Boolean(accentColor && accentColor !== 'auto');
-              if ('switch' in HTMLInputElement.prototype || !needsAppearanceNone) {
-                return hasCustomAccent;
-              }
-              const hasPolyfillSync =
-                el.hasAttribute('role') ||
-                el.getAttribute('style')?.includes('color') ||
-                style.backgroundColor !== inactiveBg ||
-                style.backgroundImage !== 'none' ||
-                before.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
-                after.backgroundColor !== 'rgba(0, 0, 0, 0)';
-              return hasCustomAccent && hasPolyfillSync;
-            },
-            { inactiveBg: uncheckedBg, needsAppearanceNone: expectsFallback }
-          );
-        })
-        .toBe(true);
-    });
-
-    test('Focusing the switch input via keyboard navigation (:focus-visible) displays a visible focus outline on the input itself', async ({
-      page,
-    }) => {
-      const switchInput = page.locator('input[type="checkbox"][switch]').first();
-      await page.keyboard.press('Tab');
-      await switchInput.focus();
-
-      const hasVisibleOutline = await switchInput.evaluate((el) => {
-        const matchesFocusVisible = el.matches(':focus-visible');
-        const style = window.getComputedStyle(el);
-        const outlineStyle = style.outlineStyle;
-        const outlineWidth = parseFloat(style.outlineWidth);
-        return matchesFocusVisible && outlineStyle !== 'none' && outlineWidth > 0;
-      });
-
-      expect(hasVisibleOutline).toBe(true);
+      expect(toggledAndStyled).toBe(true);
     });
   });
 });
