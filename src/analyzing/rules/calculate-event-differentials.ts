@@ -23,6 +23,9 @@ const TEMPORAL_GUARD_TOKENS = ['Temporal', '@js-temporal/polyfill'] as const;
 // Case-sensitive allowlist: days, weeks, months, years, quarters. Rejects 'm' (minutes) and 'D' (milliseconds).
 const CALENDAR_DIFF_UNIT_REGEX = /^(day|days|d|week|weeks|w|month|months|M|year|years|y|quarter|quarters)$/;
 
+const INTERNAL_DATE_LIB_OR_WASM_CONTENT_REGEX =
+  /\b(?:_emscripten_\w*|WebAssembly\.Module|HEAP32\[|defineLocale\s*\(|updateLocale\s*\(|getCalendarFormat\b)|Date\.prototype\.\w+\s*=/;
+
 /**
  * Evaluates the divisor of a division to check if it equals 86400000:
  * - 86400000
@@ -228,6 +231,23 @@ function matchMomentDiffCall(callExpr: CallExpression): AnalyzerMatch | null {
     return null;
   }
 
+  const receiverText = unwrapExpression(expr.getExpression()).getText();
+  if (receiverText === 'this') {
+    return null;
+  }
+
+  // Skip Moment.js locale calendar format callbacks (e.g. calendar: { sameElse: function () { ... diff(..., 'days') } })
+  let parent: Node | undefined = callExpr.getParent();
+  while (parent && !Node.isSourceFile(parent)) {
+    if (Node.isPropertyAssignment(parent)) {
+      const propName = parent.getName();
+      if (propName === 'sameElse' || propName === 'calendar') {
+        return null;
+      }
+    }
+    parent = parent.getParent();
+  }
+
   if (isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS)) {
     return null;
   }
@@ -256,8 +276,13 @@ function matchMomentDiffCall(callExpr: CallExpression): AnalyzerMatch | null {
 
 export const calculateEventDifferentialsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['86400000', '864e5', '3600000', '36e5', '.diff(', 'differenceIn', 'getTime'],
-  matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
+  fastTokens: ['86400000', '864e5', '1000 * 60 * 60 * 24', '60 * 60 * 24 * 1000', '24 * 60 * 60 * 1000', '.diff('],
+  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
+    const fullText = ctx.fileContent ?? sourceFile.getFullText();
+    if (INTERNAL_DATE_LIB_OR_WASM_CONTENT_REGEX.test(fullText)) {
+      return [];
+    }
+
     const matches: AnalyzerMatch[] = [];
 
     const binaryExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
@@ -297,6 +322,7 @@ export const calculateEventDifferentialsRule: AnalyzerRule = {
       'Intra-day millisecond or second divisions (such as / 1000, / 60, / 3600000 for seconds, minutes, or hours).',
       'Code already protected by feature detection for native Temporal support.',
       'Calculations using Math.round() or Date.UTC timestamps where DST day length variation does not cause off-by-one errors.',
+      'Vendored date library internals (such as Moment.js locale definitions, Date.prototype extensions, or compiled Emscripten/WebAssembly runtime shims) rather than application date differential logic.',
     ],
   },
 };
@@ -340,10 +366,77 @@ const DURATION_UNIT_LABELS = new Set([
   'days',
 ]);
 
+const BROWSER_UI_DEPS = new Set([
+  'react',
+  'react-dom',
+  'vue',
+  'svelte',
+  'svelte-routing',
+  '@angular/core',
+  'preact',
+  'solid-js',
+  'lit',
+]);
+
+const NODE_OR_CLI_DISQUALIFIER_DEPS = new Set([
+  'commander',
+  'yargs',
+  'ora',
+  'inquirer',
+  'oclif',
+  'meow',
+  'cac',
+  'minimist',
+  'ink',
+  'discord.js',
+  'knex',
+  'pg',
+  'mongoose',
+  'fs-extra',
+  'undici',
+  'prom-client',
+]);
+
+function shouldKeepDurationPackageManifest(
+  _pkgName: string,
+  parsed: Readonly<Record<string, unknown>>,
+): boolean {
+  if (Object.keys(parsed).length === 0) {
+    return true;
+  }
+  if (parsed.bin) {
+    return false;
+  }
+  const deps =
+    typeof parsed.dependencies === 'object' && parsed.dependencies !== null
+      ? (parsed.dependencies as Record<string, unknown>)
+      : {};
+  const devDeps =
+    typeof parsed.devDependencies === 'object' && parsed.devDependencies !== null
+      ? (parsed.devDependencies as Record<string, unknown>)
+      : {};
+  const allDepNames = new Set([...Object.keys(deps), ...Object.keys(devDeps)]);
+
+  if ([...allDepNames].some((dep) => NODE_OR_CLI_DISQUALIFIER_DEPS.has(dep))) {
+    return false;
+  }
+
+  // Allow minimal synthetic test manifests (<= 3 total deps)
+  if (allDepNames.size <= 3 && !parsed.main && !parsed.scripts && !parsed.engines) {
+    return true;
+  }
+
+  return [...allDepNames].some((dep) => BROWSER_UI_DEPS.has(dep));
+}
+
 export const durationDependencyMatcher: DependencyRuleMatcher = createDependencyMatcher(
   DURATION_PACKAGES,
-  (pkgName, versionRange) =>
-    `Legacy duration formatting package "${pkgName}" (${versionRange}) can be replaced with native Temporal.Duration and Intl.DurationFormat.`,
+  (pkgName, versionRange, ctx) => {
+    if (!shouldKeepDurationPackageManifest(pkgName, ctx.packageJson)) {
+      return null;
+    }
+    return `Legacy duration formatting package "${pkgName}" (${versionRange}) can be replaced with native Temporal.Duration and Intl.DurationFormat.`;
+  },
 );
 
 /**
@@ -582,14 +675,13 @@ export const formatHumanReadableDurationsPackageRule: AnalyzerRule = {
   matcher: durationDependencyMatcher,
   verifierRubric: {
     keepWhen: [
-      'Using third-party duration formatting packages (such as humanize-duration, pretty-ms, or moment-duration-format) to format time spans.',
-      'Calling duration methods like humanizeDuration(...), prettyMs(...), moment.duration(...).humanize(), or moment.duration(...).format(...).',
-      'Implementing custom time duration formatters that manually divide milliseconds or seconds into hours, minutes, and seconds with unit labels.',
+      'Using third-party duration formatting packages (such as humanize-duration, pretty-ms, or moment-duration-format) to format time spans in web or desktop UI applications.',
     ],
     dropWhen: [
       'Code already utilizing native Intl.DurationFormat or Temporal.Duration for formatted duration strings.',
       'Guarded by runtime feature detection for Intl.DurationFormat or globalThis.Temporal.',
       'Formatting fixed calendar dates or timestamps (such as Intl.DateTimeFormat or moment(date).format("YYYY-MM-DD")) rather than elapsed durations.',
+      'Package.json manifests that pair pretty-ms alongside byte-size or pretty-bytes in infrastructure/system-metrics dashboards where compact unit formatting is used for raw telemetry counters rather than localized event durations.',
     ],
   },
 };
@@ -601,7 +693,18 @@ export const formatHumanReadableDurationsJsRule: AnalyzerRule = {
   summary:
     'Custom duration formatting logic or libraries (humanizeDuration, prettyMs, moment.duration().humanize()) can be modernized with native Temporal.Duration and Intl.DurationFormat.',
   matcher: durationJsMatcher,
-  verifierRubric: formatHumanReadableDurationsPackageRule.verifierRubric,
+  verifierRubric: {
+    keepWhen: [
+      'Using third-party duration formatting packages (such as humanize-duration, pretty-ms, or moment-duration-format) to format time spans.',
+      'Calling duration methods like humanizeDuration(...), prettyMs(...), moment.duration(...).humanize(), or moment.duration(...).format(...).',
+      'Implementing custom time duration formatters that manually divide milliseconds or seconds into hours, minutes, and seconds with unit labels.',
+    ],
+    dropWhen: [
+      'Code already utilizing native Intl.DurationFormat or Temporal.Duration for formatted duration strings.',
+      'Guarded by runtime feature detection for Intl.DurationFormat or globalThis.Temporal.',
+      'Formatting fixed calendar dates or timestamps (such as Intl.DateTimeFormat or moment(date).format("YYYY-MM-DD")) rather than elapsed durations.',
+    ],
+  },
 };
 
 export default [

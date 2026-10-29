@@ -38,6 +38,7 @@ void test('animate-to-intrinsic-sizes: positive brownfield matches', async (t) =
     const css = `
       .card-body {
         max-height: 250px;
+        overflow: hidden;
         transition: all 0.3s ease-in-out;
       }
     `;
@@ -197,6 +198,27 @@ void test('animate-to-intrinsic-sizes: negative / exempt cases', async (t) => {
       }
     `;
     const matches = scanCss('small.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts transition: all with static max-height cap on img/textarea or without overflow: hidden / max-height: 0', () => {
+    const css = `
+      .sponsor img {
+        max-height: 80px;
+        transition: all 0.25s ease;
+      }
+      .gt-header-textarea {
+        max-height: 15em;
+        resize: vertical;
+        transition: all 0.25s ease;
+      }
+      .picker-frame {
+        max-height: 350px;
+        opacity: 0;
+        transition: all 0.15s ease-out;
+      }
+    `;
+    const matches = scanCss('static-cap.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
 });

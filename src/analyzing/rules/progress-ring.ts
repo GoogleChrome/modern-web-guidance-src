@@ -133,6 +133,11 @@ export const progressRingDomMatcher: DomRuleMatcher = {
       return null;
     }
 
+    const strokeAttr = element.getAttribute('stroke') ?? '';
+    if (/^\s*url\(/i.test(strokeAttr)) {
+      return null;
+    }
+
     const hasDashoffset =
       element.hasAttribute('stroke-dashoffset') ||
       element.hasAttribute('stroke-dasharray');

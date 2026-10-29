@@ -22,6 +22,37 @@ const SCROLLEND_GUARD_TOKENS = ['onscrollend', 'scrollend'] as const;
 
 const DEBOUNCE_FN_REGEX = /(^|\.)debounce$/i;
 
+const CONTINUOUS_SCROLL_OR_POSITION_WORK_REGEX =
+  /\b(?:scrollHeight|offsetTop|loadMore|useInfiniteScroll|prevScrollTop|scrollUp|fixedTop|is-fixed|sticky|max-height|dropup|MutationObserver)\b/;
+
+function hasMinimumDebounceDelay(delayNode: Node | undefined): boolean {
+  if (!delayNode) {
+    return false;
+  }
+  const text = unwrapExpression(delayNode).getText().trim();
+  const numericMatches = text.match(/\b\d+(?:\.\d+)?\b/g);
+  if (!numericMatches || numericMatches.length === 0) {
+    return true;
+  }
+  return numericMatches.some((numStr) => Number(numStr) >= 25);
+}
+
+function isInDirectFunctionScope(node: Node, fn: Node): boolean {
+  let current: Node | undefined = node.getParent();
+  while (current && current !== fn) {
+    if (
+      Node.isFunctionExpression(current) ||
+      Node.isArrowFunction(current) ||
+      Node.isFunctionDeclaration(current) ||
+      Node.isMethodDeclaration(current)
+    ) {
+      return false;
+    }
+    current = current.getParent();
+  }
+  return current === fn;
+}
+
 /**
  * Checks whether a node or its enclosing block contains a check for 'onscrollend' in window / document.
  */
@@ -63,8 +94,15 @@ function isDebounceCall(node: Node): boolean {
     return false;
   }
 
-  // Check options (leading, immediate, maxWait)
+  if (CONTINUOUS_SCROLL_OR_POSITION_WORK_REGEX.test(resolved.getText())) {
+    return false;
+  }
+
+  // Check options (leading, immediate, maxWait) and minimum delay
   const args = resolved.getArguments();
+  if (args.length >= 2 && !hasMinimumDebounceDelay(args[1])) {
+    return false;
+  }
   for (let idx = 1; idx < args.length; idx++) {
     const arg = unwrapExpression(args[idx]);
     if (arg.getKind() === SyntaxKind.TrueKeyword) {
@@ -102,7 +140,13 @@ function normalizeTimerName(exprText: string): string {
 function hasScrollEndDebouncePattern(
   fn: FunctionExpression | ArrowFunction | MethodDeclaration | FunctionDeclaration,
 ): boolean {
-  const calls = fn.getDescendantsOfKind(SyntaxKind.CallExpression);
+  if (CONTINUOUS_SCROLL_OR_POSITION_WORK_REGEX.test(fn.getText())) {
+    return false;
+  }
+
+  const calls = fn
+    .getDescendantsOfKind(SyntaxKind.CallExpression)
+    .filter((call) => isInDirectFunctionScope(call, fn));
   const clearedTimers = new Set<string>();
   const setTimerTargets = new Set<string>();
 
@@ -130,6 +174,11 @@ function hasScrollEndDebouncePattern(
         clearedTimers.add(normalizeTimerName(args[0].getText()));
       }
     } else if (callName === 'setTimeout') {
+      const args = call.getArguments();
+      if (args.length < 2 || !hasMinimumDebounceDelay(args[1])) {
+        continue;
+      }
+
       // Find what receives this setTimeout result
       let parent: Node | undefined = call.getParent();
       while (parent && parent !== fn) {
@@ -190,6 +239,7 @@ function resolveHandlerFunction(
   node: Node,
 ): FunctionExpression | ArrowFunction | MethodDeclaration | FunctionDeclaration | null {
   let unwrapped = unwrapExpression(node);
+  const callLine = node.getStartLineNumber();
 
   // If node is fn.bind(...)
   if (Node.isCallExpression(unwrapped)) {
@@ -213,6 +263,9 @@ function resolveHandlerFunction(
     const sourceFile = unwrapped.getSourceFile();
     const fnDecl = sourceFile.getFunction(name);
     if (fnDecl) {
+      if (Math.abs(fnDecl.getStartLineNumber() - callLine) > 20) {
+        return null;
+      }
       return fnDecl;
     }
   }
@@ -238,6 +291,12 @@ function resolveHandlerFunction(
     Node.isFunctionExpression(resolved) ||
     Node.isFunctionDeclaration(resolved)
   ) {
+    if (
+      Node.isIdentifier(unwrapped) &&
+      Math.abs(resolved.getStartLineNumber() - callLine) > 20
+    ) {
+      return null;
+    }
     return resolved;
   }
 
@@ -385,6 +444,18 @@ export const deferWorkUntilScrollEndsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: ['scroll', 'onscroll'],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
+    const fullText = sourceFile.getText();
+    if (
+      !fullText.includes('setTimeout') &&
+      !fullText.includes('debounce') &&
+      !fullText.includes('Debounce')
+    ) {
+      return [];
+    }
+    if (fullText.includes('onscrollend') || /['"`]scrollend['"`]/.test(fullText)) {
+      return [];
+    }
+
     const matches: AnalyzerMatch[] = [];
 
     const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);

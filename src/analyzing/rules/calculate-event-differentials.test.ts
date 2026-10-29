@@ -177,4 +177,30 @@ describe('calculate-event-differentials rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('ignores Moment.js internal library/locale files and Emscripten WASM runtimes', () => {
+    const momentInternalCode = `
+      function getCalendarFormat(myMoment, now) {
+        var diff = myMoment.diff(now, 'days', true);
+        return diff < -6 ? 'sameElse' : 'sameDay';
+      }
+    `;
+    const { matches: m1 } = scanJsSource(
+      'assets/vendors/moment/locale/zh-cn.js',
+      momentInternalCode,
+      [calculateEventDifferentialsMatcher]
+    );
+    assert.equal(m1.length, 0);
+
+    const wasmCode = `
+      var _emscripten_get_now = function() { return performance.now(); };
+      var days = (a.getTime() - b.getTime()) / 86400000;
+    `;
+    const { matches: m2 } = scanJsSource(
+      'public/plugin/ffmpeg-core.js',
+      wasmCode,
+      [calculateEventDifferentialsMatcher]
+    );
+    assert.equal(m2.length, 0);
+  });
 });

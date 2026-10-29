@@ -9,7 +9,16 @@ const ENTER_CHECK_REGEX =
   /(?:keyCode\s*===?\s*13|13\s*===?\s*keyCode|which\s*===?\s*13|13\s*===?\s*which|key\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*key|code\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*code|case\s+(?:13|['"]Enter['"]))/;
 
 const ACTION_TOKENS_REGEX =
-  /(?:submit|requestSubmit|click|dispatchEvent|trigger|fetch|axios|ajax|send|search|save|handleEnter|onEnter|add|create|post)/i;
+  /\b(?:submit\w*|requestSubmit|click|dispatchEvent|trigger|fetch|axios|ajax|\w*send\w*|\w*search\w*|\w*save\w*|handleEnter|onEnter|add\w*|create\w*|post\w*)\s*(?:\(|\.)/i;
+
+const SPACE_OR_BUTTON_KEY_REGEX =
+  /\b(?:Space|Spacebar)\b|['"] ['"]|(?:keyCode|which)\s*===?\s*32\b|\b32\s*===?\s*(?:keyCode|which)/;
+
+const WIDGET_NAVIGATION_KEYS_REGEX =
+  /\b(?:ArrowUp|ArrowDown|ArrowLeft|ArrowRight|PageUp|PageDown)\b|(?:keyCode|which)\s*===?\s*(?:32|33|34|37|38|39|40)\b|\b(?:32|33|34|37|38|39|40)\s*===?\s*(?:keyCode|which)|\bcase\s+(?:32|33|34|37|38|39|40)\s*:/;
+
+const SYNTHETIC_KEY_EVENT_REGEX =
+  /Event\s*\(\s*['"]key(?:press|down|up)['"]\s*\)/i;
 
 const ARIA_BUTTON_ROLES = new Set([
   'button',
@@ -75,7 +84,8 @@ function hasAriaButtonRoleAssignment(targetNode: Node, variableName: string): bo
 function requiresCtrlOrMetaModifier(condText: string): boolean {
   const hasPositiveCtrl = /(?:^|[^!.\w])(?:e|event|evt)?\.?ctrlKey\b(?!\s*===?\s*false)/.test(condText);
   const hasPositiveMeta = /(?:^|[^!.\w])(?:e|event|evt)?\.?metaKey\b(?!\s*===?\s*false)/.test(condText);
-  return hasPositiveCtrl || hasPositiveMeta;
+  const hasPositiveAlt = /(?:^|[^!.\w])(?:e|event|evt)?\.?altKey\b(?!\s*===?\s*false)/.test(condText);
+  return hasPositiveCtrl || hasPositiveMeta || hasPositiveAlt;
 }
 
 /**
@@ -97,6 +107,11 @@ function checkHandlerForUnsafeEnter(
     return null;
   }
 
+  // Skip listbox, dropdown, or grid navigation handlers that also handle arrow/space/page keys
+  if (WIDGET_NAVIGATION_KEYS_REGEX.test(handlerText)) {
+    return null;
+  }
+
   // Check if handler contains an Enter check
   if (!ENTER_CHECK_REGEX.test(handlerText)) {
     return null;
@@ -109,13 +124,17 @@ function checkHandlerForUnsafeEnter(
   for (const ifStmt of ifStatements) {
     const condText = ifStmt.getExpression().getText();
     if (ENTER_CHECK_REGEX.test(condText)) {
-      if (requiresCtrlOrMetaModifier(condText)) {
+      if (requiresCtrlOrMetaModifier(condText) || SPACE_OR_BUTTON_KEY_REGEX.test(condText)) {
         foundModifierGuardedEnter = true;
         continue;
       }
 
       const branchText = ifStmt.getThenStatement().getText();
-      if (!isSuppressOnlyBranch(branchText) && ACTION_TOKENS_REGEX.test(branchText)) {
+      if (
+        !isSuppressOnlyBranch(branchText) &&
+        !SYNTHETIC_KEY_EVENT_REGEX.test(branchText) &&
+        ACTION_TOKENS_REGEX.test(branchText)
+      ) {
         return {
           line: ifStmt.getStartLineNumber(),
           message:
@@ -136,7 +155,11 @@ function checkHandlerForUnsafeEnter(
           const caseExprText = clause.getExpression().getText();
           if (caseExprText === '13' || caseExprText === "'Enter'" || caseExprText === '"Enter"') {
             const clauseText = clause.getText();
-            if (!isSuppressOnlyBranch(clauseText) && ACTION_TOKENS_REGEX.test(clauseText)) {
+            if (
+              !isSuppressOnlyBranch(clauseText) &&
+              !SYNTHETIC_KEY_EVENT_REGEX.test(clauseText) &&
+              ACTION_TOKENS_REGEX.test(clauseText)
+            ) {
               return {
                 line: clause.getStartLineNumber(),
                 message:
@@ -348,6 +371,9 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
   fastTokens: ['keydown', 'onkeydown', 'onKeyDown'],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {
+      return [];
+    }
+    if (ctx.fileContent && !/(?:\b13\b|['"]Enter['"])/.test(ctx.fileContent)) {
       return [];
     }
 

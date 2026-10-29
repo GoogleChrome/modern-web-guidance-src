@@ -19,11 +19,14 @@ import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 export const DRAG_GUIDE_HASH = '9b55b34dd53b';
 
 const TARGET_DRAG_PACKAGES = [
-  'interactjs',
   'draggabilly',
   'react-draggable',
-  'dragula',
 ] as const;
+
+const NON_DRAG_INTERACTION_REGEX =
+  /\b(?:getContext\s*\(|WebGL\w*|raycast\w*|joystick\w*|wsSend\w*|canvas|resize\w*|resizing|splitter|slider\w*|knob\w*|timeline\w*|volume\w*|swipe\w*)\b/i;
+
+const RIGHT_CLICK_BUTTON_REGEX = /(?:\bbutton\s*===?\s*2|\bwhich\s*===?\s*3)\b/;
 
 const POINTER_GUARD_TOKENS = [
   'setPointerCapture',
@@ -190,8 +193,47 @@ function isNoOpOrPreventDefaultOnlyHandler(handlerNode: Node): boolean {
 
 export const dragDependencyMatcher: DependencyRuleMatcher = createDependencyMatcher(
   TARGET_DRAG_PACKAGES,
-  (pkgName, versionRange) =>
-    `Legacy drag-and-drop library "${pkgName}" (${versionRange}) can be modernized using Pointer Events (pointerdown, pointermove) and setPointerCapture().`,
+  (pkgName, versionRange, ctx) => {
+    const pkgJson = ctx.packageJson;
+    if (pkgJson && Object.keys(pkgJson).length > 0) {
+      const deps =
+        typeof pkgJson.dependencies === 'object' && pkgJson.dependencies !== null
+          ? (pkgJson.dependencies as Record<string, unknown>)
+          : {};
+      if (!Object.prototype.hasOwnProperty.call(deps, pkgName)) {
+        return null;
+      }
+      const allDeps = {
+        ...deps,
+        ...(typeof pkgJson.devDependencies === 'object' && pkgJson.devDependencies !== null
+          ? (pkgJson.devDependencies as Record<string, unknown>)
+          : {}),
+        ...(typeof pkgJson.peerDependencies === 'object' && pkgJson.peerDependencies !== null
+          ? (pkgJson.peerDependencies as Record<string, unknown>)
+          : {}),
+      };
+      for (const depName of Object.keys(allDeps)) {
+        if (
+          depName === 'react-dnd' ||
+          depName === 'react-beautiful-dnd' ||
+          depName.startsWith('@dnd-kit/') ||
+          depName === 'react-sortable-hoc' ||
+          depName === 'react-sortablejs' ||
+          depName === 'react-grid-layout' ||
+          depName === 'framer-motion' ||
+          depName === '@simonwep/selection-js' ||
+          depName === 'matter-js' ||
+          depName === 'three' ||
+          depName === 'react-motion' ||
+          depName === 'react-spring'
+        ) {
+          return null;
+        }
+      }
+    }
+
+    return `Legacy drag-and-drop library "${pkgName}" (${versionRange}) can be modernized using Pointer Events (pointerdown, pointermove) and setPointerCapture().`;
+  },
 );
 
 function matchDragStartListener(
@@ -203,7 +245,27 @@ function matchDragStartListener(
     return null;
   }
 
+  const firstArgText = node.getArguments()[0]?.getText() ?? '';
+  if (/\bclick\b/i.test(firstArgText)) {
+    return null;
+  }
+
   if (isNoOpOrPreventDefaultOnlyHandler(dragStartMatch.handlerNode)) {
+    return null;
+  }
+
+  const handlerText = dragStartMatch.handlerNode.getText();
+  if (
+    RIGHT_CLICK_BUTTON_REGEX.test(handlerText) ||
+    NON_DRAG_INTERACTION_REGEX.test(handlerText)
+  ) {
+    return null;
+  }
+
+  // A genuine drag start handler either reads initial coordinates or registers move/end listeners
+  const moveInHandler = hasMoveOrEndListener(dragStartMatch.handlerNode);
+  const coordsInHandler = hasCoordinateAccess(dragStartMatch.handlerNode);
+  if (!moveInHandler && !coordsInHandler) {
     return null;
   }
 
@@ -228,22 +290,45 @@ function matchDragStartListener(
     scope = sourceFile;
   }
 
+  if (!moveInHandler) {
+    const scopeLineSpan =
+      scope === sourceFile
+        ? sourceFile.getEndLineNumber()
+        : scope.getEndLineNumber() - scope.getStartLineNumber();
+    const maxSpan = scope === sourceFile ? 80 : 120;
+    if (scopeLineSpan > maxSpan) {
+      return null;
+    }
+    const scopeText = scope.getText();
+    if (
+      RIGHT_CLICK_BUTTON_REGEX.test(scopeText) ||
+      NON_DRAG_INTERACTION_REGEX.test(scopeText)
+    ) {
+      return null;
+    }
+  }
+
   // Check if this drag start handler or its enclosing scope contains move listeners, coordinate access, and style positioning
-  const moveInHandler = hasMoveOrEndListener(dragStartMatch.handlerNode);
-  const moveInScope = hasMoveOrEndListener(scope);
-  if (!moveInHandler && !moveInScope) {
+  const moveInScope = moveInHandler || hasMoveOrEndListener(scope);
+  if (!moveInScope) {
     return null;
   }
 
-  const coordsInHandler = hasCoordinateAccess(dragStartMatch.handlerNode);
-  const coordsInScope = hasCoordinateAccess(scope);
-  if (!coordsInHandler && !coordsInScope) {
+  const coordsInScope = coordsInHandler || hasCoordinateAccess(scope);
+  if (!coordsInScope) {
     return null;
   }
 
   const styleInHandler = hasPositionStyleMutation(dragStartMatch.handlerNode);
-  const styleInScope = hasPositionStyleMutation(scope);
-  if (!styleInHandler && !styleInScope) {
+  if (!moveInHandler && styleInHandler) {
+    // One-shot click/mousedown position jump without registering a move listener
+    return null;
+  }
+  if (moveInHandler && !styleInHandler && /\.scrollTop\s*=/.test(dragStartMatch.handlerNode.getText())) {
+    return null;
+  }
+  const styleInScope = styleInHandler || hasPositionStyleMutation(scope);
+  if (!styleInScope) {
     return null;
   }
 
@@ -254,14 +339,17 @@ export const dragJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
     'mousedown',
     'touchstart',
-    'mousemove',
-    'touchmove',
-    'clientX',
-    'clientY',
-    'pageX',
-    'pageY',
   ],
-  shouldSkipFile: (sourceFile) => sourceFile.getText().includes('setPointerCapture'),
+  shouldSkipFile: (sourceFile) => {
+    const text = sourceFile.getText();
+    if (text.includes('setPointerCapture')) {
+      return true;
+    }
+    if (!text.includes('mousemove') && !text.includes('touchmove')) {
+      return true;
+    }
+    return false;
+  },
   dedupeLines: true,
   featureGuardTokens: POINTER_GUARD_TOKENS,
   matchCall: matchDragStartListener,
@@ -272,16 +360,17 @@ export const dragPackageRule: AnalyzerRule = {
   guideId: 'drag',
   guideHash: DRAG_GUIDE_HASH,
   summary:
-    'Flag dependencies on legacy drag packages (interactjs, draggabilly, react-draggable, dragula) that should be replaced with Pointer Events and setPointerCapture.',
+    'Flag dependencies on legacy drag packages (draggabilly, react-draggable) that should be replaced with Pointer Events and setPointerCapture.',
   matcher: dragDependencyMatcher,
   verifierRubric: {
     keepWhen: [
-      'Projects depending on legacy drag packages like interactjs, draggabilly, react-draggable, or dragula for element dragging.',
+      'Projects depending on legacy drag packages like draggabilly or react-draggable for element dragging.',
     ],
     dropWhen: [
       'Pointer Events implementations utilizing setPointerCapture() and pointermove/lostpointercapture.',
       'Native HTML Drag and Drop API usage (dragstart, dragover, drop) for transferring data or files between targets rather than moving floating elements.',
       'Canvas, game loops, or charting libraries tracking cursor position for internal rendering rather than repositioning DOM elements.',
+      'Package.json manifests where react-draggable is paired with enterprise data grids (ag-grid), complex tree/resizable component suites, or WebGL/animation editors where a bare package.json dependency cannot be replaced in isolation without refactoring React component lifecycles.',
     ],
   },
 };
@@ -295,12 +384,13 @@ export const dragJsRule: AnalyzerRule = {
   matcher: dragJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'Draggable floating panels, palettes, toolbars, inspectors, or dialogs using imperative mousedown/mousemove/mouseup or touchstart/touchmove listeners to update style.left/top/transform.',
+      'Imperative mousedown/mousemove/mouseup or touchstart/touchmove listeners used to drag, pan, zoom, or reposition DOM elements or views by updating style.left, style.top, or style.transform (including standalone element drag handlers, pan/zoom containers, floating panels, dialogs, and custom drag utilities).',
+      'Touch or mouse drag handlers tracking coordinates (clientX, clientY, pageX, pageY, touches) and updating element position via inline styles or CSS transforms without setPointerCapture().',
     ],
     dropWhen: [
       'Pointer Events implementations utilizing setPointerCapture() and pointermove/lostpointercapture.',
       'Native HTML Drag and Drop API usage (dragstart, dragover, drop) for transferring data or files between targets rather than moving floating elements.',
-      'Canvas, game loops, or charting libraries tracking cursor position for internal rendering rather than repositioning DOM elements.',
+      'WebGL 3D scene cameras, game engines, or 2D <canvas> pixel-drawing tools calling canvas.getContext("2d" | "webgl") for internal rendering rather than panning or repositioning DOM elements.',
     ],
   },
 };
