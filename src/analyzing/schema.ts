@@ -40,8 +40,6 @@ export interface GuideTriage {
   readonly reason: string;
   readonly modernFeature?: string;
   readonly falsePositiveTraps?: readonly string[];
-  readonly changesSomethingForDeveloper?: boolean | string;
-  readonly isLikeForLikeSwapAtSite?: boolean | string;
   readonly category?: string;
   readonly provenance?: {
     readonly methodVersion: string;
