@@ -160,7 +160,7 @@ describe('runAnalyzeCli', () => {
 
       assert.match(
         res.output,
-        /\* animate-to-intrinsic-sizes \[experimental\] \(\d+ findings?\)/,
+        /\* animate-to-intrinsic-sizes \[qualified\] \(\d+ findings?\)/,
       );
       assert.match(res.output, /- accordion\.css:\d+/);
       assert.match(res.output, /\.accordion-panel \{/);
@@ -284,9 +284,9 @@ describe('runAnalyzeCli', () => {
       const yieldJs = `const yieldToMain = () => new Promise(r => setTimeout(r));`;
       await writeFile(join(testDir, 'yield.js'), yieldJs, 'utf8');
 
-      const timezoneJs = `function getLocalTimezoneOffset() {
-  const offsetMinutes = new Date().getTimezoneOffset();
-  return offsetMinutes * 60 * 1000;
+      const timezoneJs = `function convertToTargetZone(timestamp, targetTzOffset) {
+  const localOffsetMinutes = new Date().getTimezoneOffset();
+  return timestamp + (targetTzOffset - localOffsetMinutes) * 60 * 1000;
 }`;
       await writeFile(join(testDir, 'timezone.js'), timezoneJs, 'utf8');
 
