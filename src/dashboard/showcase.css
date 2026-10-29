@@ -23,10 +23,13 @@
 .ab-toolbar-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
 .ab-agent-pills {
+  position: relative;
   display: inline-flex;
   flex-wrap: wrap;
   gap: 2px;
+  margin: 0;
   padding: 2px;
+  min-inline-size: 0;
   border-radius: 8px;
   background: var(--color-surface-container-low);
   border: 1px solid var(--color-outline-variant);
@@ -34,6 +37,7 @@
 
 .ab-agent-pill {
   appearance: none;
+  position: relative;
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
@@ -51,8 +55,9 @@
 }
 
 .ab-agent-pill:hover { color: var(--color-on-surface); }
+.ab-agent-pill:has(> input[type="radio"]:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
-.ab-agent-pill[aria-pressed="true"] {
+.ab-agent-pill:has(> input[type="radio"]:checked) {
   background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface-container-lowest));
   color: var(--color-on-surface);
   border-color: color-mix(in srgb, var(--color-primary) 50%, var(--color-outline-variant));
@@ -60,15 +65,19 @@
 }
 
 .ab-task-pills {
+  position: relative;
   display: flex;
   flex-wrap: nowrap;
   align-items: stretch;
   gap: var(--space-4);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   background: linear-gradient(to top, var(--color-outline-variant) 1px, transparent 1px);
-  margin-block-end: var(--space-3);
 }
 
 .ab-task-pills::-webkit-scrollbar { display: none; }
@@ -99,7 +108,8 @@
 }
 
 .ab-task-pill:hover { color: var(--color-on-surface); }
-.ab-task-pill[aria-pressed="true"] { color: var(--color-on-surface); font-weight: 600; border-block-end-color: var(--color-primary); }
+.ab-task-pill:has(> input[type="radio"]:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: -2px; border-radius: 4px; }
+.ab-task-pill:has(> input[type="radio"]:checked) { color: var(--color-on-surface); font-weight: 600; border-block-end-color: var(--color-primary); }
 
 .ab-task-delta {
   font-size: 0.75rem;
@@ -359,5 +369,5 @@
 }
 
 @media (forced-colors: active) {
-  .ab-task-pill[aria-pressed="true"], .ab-agent-pill[aria-pressed="true"] { outline: 2px solid SelectedItem; }
+  :is(.ab-task-pill, .ab-agent-pill):has(> input[type="radio"]:checked) { outline: 2px solid SelectedItem; }
 }

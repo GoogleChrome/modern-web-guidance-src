@@ -352,7 +352,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     await expect(page.locator('#breakdowns')).toHaveAttribute('open', '');
     await expect(page.locator('#insights-limit-input')).toHaveValue('5');
-    await expect(page.locator('#insights-mode-a11y')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#insights-mode-a11y input[type="radio"]')).toBeChecked();
     await expect(page.locator('.insights-dimension-panel')).toBeVisible();
     await expect(page.locator('.insights-guide-drawer')).toBeVisible();
 

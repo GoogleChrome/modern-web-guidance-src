@@ -23,6 +23,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const data = await response.json();
     allGuides = data.guides || {};
     renderGuides(allGuides);
+    const tasksTable = /** @type {HTMLTableElement | null} */ (document.getElementById('tasks-table'));
+    updateHeaderChecks(tasksTable);
+    updateRowChecks(tasksTable);
     
     const skillsResponse = await fetch('/api/available-skills');
     const skillsData = await skillsResponse.json();
@@ -95,6 +98,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (guideHeader) {
       guideHeader.textContent = guideCount > 0 ? `Guide Tasks (${guideCount} selected)` : 'Guide Tasks';
     }
+
+    if (count > 0) {
+      const formError = document.getElementById('form-error');
+      if (formError) {
+        formError.hidden = true;
+        formError.textContent = '';
+      }
+    }
   }
 
   /**
@@ -105,10 +116,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     table.querySelectorAll('.header-check').forEach(headerCheck => {
       if (!(headerCheck instanceof HTMLInputElement)) return;
       const taskType = headerCheck.getAttribute('data-task');
-      const checkboxes = table.querySelectorAll(`.task-check[data-task="${CSS.escape(taskType || '')}"]`);
+      const checkboxes = Array.from(table.querySelectorAll(`.task-check[data-task="${CSS.escape(taskType || '')}"]`))
+        .filter((c) => c instanceof HTMLInputElement);
       if (checkboxes.length > 0) {
-        const allChecked = Array.from(checkboxes).every(c => c instanceof HTMLInputElement && c.checked);
+        const allChecked = checkboxes.every(c => c.checked);
+        const someChecked = checkboxes.some(c => c.checked);
         headerCheck.checked = allChecked;
+        headerCheck.indeterminate = someChecked && !allChecked;
       }
     });
   }
@@ -121,10 +135,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     table.querySelectorAll('.guide-check-all').forEach(rowCheck => {
       if (!(rowCheck instanceof HTMLInputElement)) return;
       const guide = rowCheck.getAttribute('data-guide');
-      const checkboxes = table.querySelectorAll(`.task-check[data-guide="${CSS.escape(guide || '')}"]`);
+      const checkboxes = Array.from(table.querySelectorAll(`.task-check[data-guide="${CSS.escape(guide || '')}"]`))
+        .filter((c) => c instanceof HTMLInputElement);
       if (checkboxes.length > 0) {
-        const allChecked = Array.from(checkboxes).every(c => c instanceof HTMLInputElement && c.checked);
+        const allChecked = checkboxes.every(c => c.checked);
+        const someChecked = checkboxes.some(c => c.checked);
         rowCheck.checked = allChecked;
+        rowCheck.indeterminate = someChecked && !allChecked;
       }
     });
   }
@@ -178,7 +195,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       headerHtml += `<th class="checkbox-header">
         <label class="custom-checkbox">
           <input type="checkbox" class="header-check" data-task="${safeH}" aria-label="${headerLabel}" ${isSelected ? 'checked' : ''}>
-          <span class="checkmark"></span>
+          <span class="checkmark" aria-hidden="true"></span>
         </label>
       </th>`;
     });
@@ -213,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="guide-cell-content">
               <label class="custom-checkbox">
                 <input type="checkbox" class="guide-check-all" data-guide="${safeKey}">
-                <span class="checkmark"></span>
+                <span class="checkmark" aria-hidden="true"></span>
                 ${safeName}
               </label>
             </div>
@@ -282,28 +299,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     tc.addEventListener('click', (e) => {
       e.stopPropagation();
     });
-    tc.addEventListener('change', (e) => {
-      const currentTarget = e.currentTarget;
-      if (!(currentTarget instanceof HTMLElement)) return;
-      const taskType = currentTarget.getAttribute('data-task');
-      const guideKey = currentTarget.getAttribute('data-guide');
-
-      // Update column header check!
-      const colCheckboxes = document.querySelectorAll(`.task-check[data-task="${CSS.escape(taskType || '')}"]`);
-      const headerCheck = document.querySelector(`.header-check[data-task="${CSS.escape(taskType || '')}"]`);
-      const allColChecked = Array.from(colCheckboxes).every(c => c instanceof HTMLInputElement && c.checked);
-      if (headerCheck instanceof HTMLInputElement) {
-        headerCheck.checked = allColChecked;
-      }
-
-      // Update row guide check!
-      const rowCheckboxes = document.querySelectorAll(`.task-check[data-guide="${CSS.escape(guideKey || '')}"]`);
-      const guideCheck = document.querySelector(`.guide-check-all[data-guide="${CSS.escape(guideKey || '')}"]`);
-      const allRowChecked = rowCheckboxes.length > 0 && Array.from(rowCheckboxes).every(c => c instanceof HTMLInputElement && c.checked);
-      if (guideCheck instanceof HTMLInputElement) {
-        guideCheck.checked = allRowChecked;
-      }
-    });
   });
 
   document.querySelectorAll('.category-toggle').forEach(toggle => {
@@ -352,6 +347,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     if (['action-all-default', 'action-all-negative', 'action-clear', 'action-clear-guides'].includes(target.id)) {
+      const table = /** @type {HTMLTableElement | null} */ (document.getElementById('tasks-table'));
+      updateHeaderChecks(table);
+      updateRowChecks(table);
       updateTaskCount();
     }
   });
@@ -371,7 +369,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       .filter(Boolean));
     
     if (selectedTasks.length === 0) {
-      alert('Please select at least one task to run!');
+      const formError = document.getElementById('form-error');
+      if (formError) {
+        formError.textContent = 'Please select at least one task to run.';
+        formError.hidden = false;
+        formError.scrollIntoView({ block: 'nearest' });
+      }
       return;
     }
 

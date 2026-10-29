@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         await loadSuites();
-        if (api.source === 'local' && !params.get('source') && Object.keys(allTestData).length === 0) {
+        if (api.source === 'local' && Object.keys(allTestData).length === 0) {
             api.source = 'remote';
             if (!getAccessToken()) {
                 setEmptyState('No local evaluation runs found. Sign in with Google to load remote runs.');
@@ -412,6 +412,18 @@ function syncSortHeaders() {
 }
 
 /**
+ * Syncs the checked state on the Breakdowns mode radio inputs.
+ * @param {InsightsMode} mode
+ */
+function syncInsightsModeButtons(mode) {
+    const modeAllInput = document.querySelector('#insights-mode-all input[type="radio"]');
+    const modeA11yInput = document.querySelector('#insights-mode-a11y input[type="radio"]');
+    const isAll = mode === 'all';
+    if (modeAllInput instanceof HTMLInputElement) modeAllInput.checked = isAll;
+    if (modeA11yInput instanceof HTMLInputElement) modeA11yInput.checked = !isAll;
+}
+
+/**
  * Opens the Breakdowns drawer, switches to the requested check scope (`'a11y'` or `'all'`),
  * sorts the By Guide panel by uplift, and optionally scrolls/focuses it.
  * @param {InsightsMode} mode
@@ -419,12 +431,9 @@ function syncSortHeaders() {
  */
 function openGuidesBreakdown(mode, scrollAndFocus = true) {
     const drawer = document.getElementById('breakdowns');
-    const modeAllBtn = document.getElementById('insights-mode-all');
-    const modeA11yBtn = document.getElementById('insights-mode-a11y');
 
     currentInsightsMode = mode;
-    modeAllBtn?.setAttribute('aria-pressed', String(mode === 'all'));
-    modeA11yBtn?.setAttribute('aria-pressed', String(mode === 'a11y'));
+    syncInsightsModeButtons(mode);
     currentGuideSort = 'uplift';
     currentGuideSortDir = 'desc';
 
@@ -460,7 +469,6 @@ function setupInsightsControls() {
     const limitInput = document.getElementById('insights-limit-input');
     const showAllCheck = document.getElementById('insights-show-all-check');
     const modeAllBtn = document.getElementById('insights-mode-all');
-    const modeA11yBtn = document.getElementById('insights-mode-a11y');
 
     if (limitInput instanceof HTMLInputElement) {
         limitInput.addEventListener('change', () => {
@@ -483,14 +491,14 @@ function setupInsightsControls() {
         });
     }
 
-    const setMode = (/** @type {InsightsMode} */ mode) => {
-        currentInsightsMode = mode;
-        modeAllBtn?.setAttribute('aria-pressed', String(mode === 'all'));
-        modeA11yBtn?.setAttribute('aria-pressed', String(mode === 'a11y'));
-        renderPivotInsights();
-    };
-    modeAllBtn?.addEventListener('click', () => setMode('all'));
-    modeA11yBtn?.addEventListener('click', () => setMode('a11y'));
+    const modeToggleGroup = modeAllBtn?.closest('.metric-mode-toggle');
+    modeToggleGroup?.addEventListener('change', (e) => {
+        const target = e.target;
+        if (target instanceof HTMLInputElement && (target.value === 'all' || target.value === 'a11y')) {
+            currentInsightsMode = target.value;
+            renderPivotInsights();
+        }
+    });
 
     // Delegate clicks on hero takeaway links (`data-open-guides="a11y" | "all"`).
     document.addEventListener('click', (e) => {
@@ -1567,10 +1575,6 @@ function renderPivotInsights() {
         return Math.sqrt(variance);
     };
 
-    const params = new URLSearchParams(window.location.search);
-    const effectiveSource = params.get('source') || api.source;
-    const sourceQuery = effectiveSource ? `&source=${encodeURIComponent(effectiveSource)}` : '';
-
     /**
      * @param {Record<string, PivotItem[]>} groupObj
      * @param {'model' | 'guide' | 'dimension'} filterKey
@@ -1682,7 +1686,7 @@ function renderPivotInsights() {
 
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
-                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${sourceQuery}${modeQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
+                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
                 effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
             } else if (filterKey === 'dimension') {
                 const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);
@@ -1790,8 +1794,15 @@ function renderPivotInsights() {
         const sortMode = currentPanelSorts[panelKey] || 'alpha';
         const isSorted = sortMode === 'uplift-desc' || sortMode === 'uplift-asc';
         const arrow = sortMode === 'uplift-desc' ? '↓' : (sortMode === 'uplift-asc' ? '↑' : '↕');
+        const sortStateLabel = sortMode === 'uplift-desc'
+            ? ' (sorted high to low)'
+            : (sortMode === 'uplift-asc' ? ' (sorted low to high)' : '');
         const panelNoun = panelKey === 'dimension' ? 'accessibility dimensions' : 'models';
-        const nextTitle = sortMode === 'alpha' ? `Sort ${panelNoun} by uplift (high to low)` : (sortMode === 'uplift-desc' ? `Sort ${panelNoun} by uplift (low to high)` : `Reset ${panelNoun} to alphabetical sort`);
+        const upliftHintText = sortMode === 'alpha'
+            ? `Sort ${panelNoun} by uplift (high to low)`
+            : (sortMode === 'uplift-desc'
+                ? `Sorted by uplift (high to low) — click to sort low to high`
+                : `Sorted by uplift (low to high) — click to reset to alphabetical sort`);
         // Interest-triggered hints (button[interestfor] + popover="hint") instead of title
         // attributes, so keyboard (focus) and touch (long-press) users can read them too.
         // No aria-label on the uplift button: the hint already becomes its description, so a
@@ -1804,11 +1815,11 @@ function renderPivotInsights() {
                     <button type="button" class="insights-panel-title-btn anchor-${alphaHintId}" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" interestfor="${alphaHintId}">${titleHtml}</button>
                 </h3>
                 <button type="button" class="insights-uplift-sort-btn anchor-${upliftHintId}${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-pressed="${isSorted}" interestfor="${upliftHintId}">
-                    <span>Uplift</span>
+                    <span>Uplift<span class="visually-hidden">${sortStateLabel}</span></span>
                     <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span>
                 </button>
                 <div id="${alphaHintId}" popover="hint" class="hint-popover">Sort ${panelNoun} alphabetically</div>
-                <div id="${upliftHintId}" popover="hint" class="hint-popover">${nextTitle}</div>
+                <div id="${upliftHintId}" popover="hint" class="hint-popover">${upliftHintText}</div>
             </div>
         `;
     };
@@ -1835,7 +1846,6 @@ function renderPivotInsights() {
         { value: 'guided', label: 'Guided rate' },
         { value: 'variance', label: 'Variance' }
     ];
-    const currentSortOption = sortOptions.find(opt => opt.value === currentGuideSort) || sortOptions[0];
     const sortOptionsHtml = sortOptions.map(opt =>
         `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`
     ).join('');
@@ -1882,11 +1892,10 @@ function renderPivotInsights() {
                         <label for="guide-sort-select" class="sort-label">Sort by:</label>
                         <div class="sort-combined-control">
                             <div class="sort-select-pill">
-                                <span class="sort-select-value">${currentSortOption.label}</span>
+                                <select id="guide-sort-select" class="sort-select">${sortOptionsHtml}</select>
                                 <svg class="sort-select-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
                                     <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
                                 </svg>
-                                <select id="guide-sort-select" class="sort-select">${sortOptionsHtml}</select>
                             </div>
                             <span class="sort-combined-divider" aria-hidden="true"></span>
                             <button id="guide-sort-dir-btn" class="sort-direction-btn" type="button" aria-label="Sort direction: ${dirLabel}. Toggle." aria-pressed="${currentGuideSortDir === 'desc'}">

@@ -71,8 +71,7 @@ async function loadAndRender() {
             }
         });
         if (seq !== heroLoadSeq) return;
-        const noSourceParam = !new URLSearchParams(window.location.search).get('source');
-        if (api.source === 'local' && noSourceParam && !insights.families.length) {
+        if (api.source === 'local' && !insights.families.length) {
             const { suites = [] } = await api.getManifest();
             if (seq !== heroLoadSeq) return;
             if (suites.length === 0) {

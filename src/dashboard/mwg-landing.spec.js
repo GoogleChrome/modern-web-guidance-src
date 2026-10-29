@@ -328,6 +328,99 @@ async function expectNextToBarbell(page, track) {
     await expect(page.locator('.ab-meter-seg').first()).toBeAttached();
     expect(await page.locator('.ab-meter-seg[title]').count()).toBe(0);
   });
+
+  test('switcher groups (#ab-agent-pills, #ab-task-pills, .metric-mode-toggle) use native fieldset/legend and pill-styled radio inputs with arrow-key selection', async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.goto('/');
+    await expect(page.locator('#ab-spotlight')).toHaveAttribute('aria-busy', 'false');
+
+    const agentGroup = page.locator('#ab-agent-pills');
+    const taskGroup = page.locator('#ab-task-pills');
+    await expect(page.getByRole('group', { name: 'Select coding agent' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Select evaluation task' })).toBeVisible();
+    await expect(agentGroup).toHaveAttribute('aria-controls', 'ab-comparison-frame');
+    await expect(taskGroup).toHaveAttribute('aria-controls', 'ab-comparison-frame');
+
+    const agentRadios = agentGroup.locator('input[type="radio"]');
+    await expect(agentRadios).toHaveCount(3);
+    await expect(agentRadios.nth(0)).toBeChecked();
+    await expect(agentRadios.nth(1)).not.toBeChecked();
+    await expect(agentRadios.nth(2)).not.toBeChecked();
+
+    // Focus the checked agent radio and use native ArrowRight / ArrowLeft (with wrap-around) to switch options.
+    await expect(page.locator('#ab-run-provenance')).toContainText('claude-fable-5-1');
+    await agentRadios.nth(0).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(agentRadios.nth(1)).toBeFocused();
+    await expect(agentRadios.nth(1)).toBeChecked();
+    await expect(agentRadios.nth(0)).not.toBeChecked();
+    await expect(page.locator('#ab-run-provenance')).toContainText('gemini-4-argon');
+
+    // Focus ring is drawn on the visible pill label when the visually hidden radio has :focus-visible.
+    const pillOutline = await agentRadios.nth(1).evaluate(el => getComputedStyle(/** @type {Element} */ (el.closest('.ab-agent-pill'))).outlineStyle);
+    expect(pillOutline).toBe('solid');
+
+    // Wrap from last (codex_cli) to first (claude_code) with ArrowRight, and back with ArrowLeft.
+    await page.keyboard.press('ArrowRight');
+    await expect(agentRadios.nth(2)).toBeFocused();
+    await expect(agentRadios.nth(2)).toBeChecked();
+    await page.keyboard.press('ArrowRight');
+    await expect(agentRadios.nth(0)).toBeFocused();
+    await expect(agentRadios.nth(0)).toBeChecked();
+    await page.keyboard.press('ArrowLeft');
+    await expect(agentRadios.nth(2)).toBeFocused();
+    await expect(agentRadios.nth(2)).toBeChecked();
+    await page.keyboard.press('ArrowRight');
+    await expect(agentRadios.nth(0)).toBeFocused();
+    await expect(agentRadios.nth(0)).toBeChecked();
+
+    // Single Tab stop: pressing Tab from #ab-agent-pills moves directly to the checked radio in #ab-task-pills.
+    const taskRadios = taskGroup.locator('input[type="radio"]');
+    await page.keyboard.press('Tab');
+    await expect(taskRadios.nth(0)).toBeFocused();
+    await expect(taskRadios.nth(0)).toBeChecked();
+
+    // ArrowRight in #ab-task-pills selects the next task and keeps focus on its radio input.
+    await page.keyboard.press('ArrowRight');
+    await expect(taskRadios.nth(1)).toBeFocused();
+    await expect(taskRadios.nth(1)).toBeChecked();
+    await expect(taskRadios.nth(0)).not.toBeChecked();
+
+    // Shift+Tab returns directly to the checked radio in #ab-agent-pills.
+    await page.keyboard.press('Shift+Tab');
+    await expect(agentRadios.nth(0)).toBeFocused();
+
+    // Breakdowns metric-mode-toggle is also a native radio group with arrow-key selection.
+    await page.locator('#breakdowns > summary').click();
+    await expect(page.getByRole('group', { name: 'Comparison check scope' })).toBeVisible();
+    const modeAllRadio = page.locator('#insights-mode-all input[type="radio"]');
+    const modeA11yRadio = page.locator('#insights-mode-a11y input[type="radio"]');
+    await expect(modeAllRadio).toBeChecked();
+    await expect(modeA11yRadio).not.toBeChecked();
+    await modeAllRadio.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(modeA11yRadio).toBeFocused();
+    await expect(modeA11yRadio).toBeChecked();
+    await expect(modeAllRadio).not.toBeChecked();
+
+    // #guide-sort-select is directly styled without a duplicate .sort-select-value overlay span.
+    await expect(page.locator('.sort-select-pill .sort-select-value')).toHaveCount(0);
+    await expect(page.locator('#guide-sort-select')).toHaveCSS('opacity', '1');
+
+    // 3-state uplift sort button exposes its active sort direction in both its accessible name and its hint popover.
+    const upliftSortBtn = page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]');
+    await expect(upliftSortBtn).toContainText('Uplift');
+    await expect(upliftSortBtn.locator('.visually-hidden')).toHaveText('');
+    await expect(page.locator('#hint-sort-uplift-model')).toHaveText('Sort models by uplift (high to low)');
+    await upliftSortBtn.click();
+    await expect(page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"] .visually-hidden')).toHaveText(' (sorted high to low)');
+    await expect(page.locator('#hint-sort-uplift-model')).toHaveText('Sorted by uplift (high to low) — click to sort low to high');
+    await page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]').click();
+    await expect(page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"] .visually-hidden')).toHaveText(' (sorted low to high)');
+    await expect(page.locator('#hint-sort-uplift-model')).toHaveText('Sorted by uplift (low to high) — click to reset to alphabetical sort');
+
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe('Guide trend page MWG compliance', () => {
@@ -341,10 +434,14 @@ test.describe('Guide trend page MWG compliance', () => {
 
     const input = page.locator('#guide-search');
     const list = page.locator('#autocomplete-list');
+    const status = page.locator('#autocomplete-status');
+    await expect(input).toHaveAttribute('type', 'text');
+    await expect(status).toHaveAttribute('role', 'status');
     await expect(list).toHaveAttribute('popover', 'auto');
     await input.fill('pre');
     await expect(list).toBeVisible();
     await expect(input).toHaveAttribute('aria-expanded', 'true');
+    await expect(status).toContainText('option');
     expect(await list.evaluate(el => el.matches(':popover-open'))).toBe(true);
 
     // Anchored directly under the input.
@@ -363,6 +460,7 @@ test.describe('Guide trend page MWG compliance', () => {
     await expect(list).toBeHidden();
     await expect(input).toHaveAttribute('aria-expanded', 'false');
     await expect(input).not.toHaveAttribute('aria-activedescendant', /.*/);
+    await expect(status).toHaveText('');
     expect(errors).toEqual([]);
   });
 

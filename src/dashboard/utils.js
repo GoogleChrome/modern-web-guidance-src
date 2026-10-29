@@ -217,7 +217,7 @@ export function setPopoverOpen(el, open) {
 
 /** @param {string} [hostname] */
 export function isLocalDashboardHost(hostname = (typeof window !== 'undefined' ? window.location.hostname : '')) {
-    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.googlers.com');
+    return hostname === 'localhost' || hostname === '127.0.0.1';
 }
 
 /** @returns {ScrollBehavior} */

@@ -486,8 +486,21 @@ tr:hover td {
 
 .footer-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 1rem;
   margin-top: 2rem;
+}
+
+.form-error {
+  margin: 0;
+  padding: 0.5rem 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .glass-panel {
@@ -595,6 +608,19 @@ tr:hover td {
   color: #fff;
   font-size: 0.8125rem;
   font-weight: 800;
+}
+
+.custom-checkbox input:indeterminate + .checkmark {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: var(--primary-fill);
+}
+
+.custom-checkbox input:indeterminate + .checkmark::after {
+  content: '−';
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 /* Switch toggle */

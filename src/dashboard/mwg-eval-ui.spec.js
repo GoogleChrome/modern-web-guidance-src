@@ -56,11 +56,34 @@ test.describe('Eval runner (MWG compliance)', () => {
     expect(pillOutline).toBe('solid');
 
     const rowCheck = page.getByRole('checkbox', { name: 'switch', exact: true });
+    // `switch` has `task` checked and `negative` unchecked, so its row checkbox starts indeterminate.
+    expect(await rowCheck.evaluate((el) => /** @type {HTMLInputElement} */ (el).indeterminate)).toBe(true);
+    // `grid` only has `task` (checked), so its row checkbox starts checked and not indeterminate.
+    const gridRowCheck = page.getByRole('checkbox', { name: 'grid', exact: true });
+    await expect(gridRowCheck).toBeChecked();
+    expect(await gridRowCheck.evaluate((el) => /** @type {HTMLInputElement} */ (el).indeterminate)).toBe(false);
+
+    // Unchecking one default task sets the column header checkbox to indeterminate.
+    await page.locator('.pill-checkbox', { has: taskInput }).click();
+    const defaultHeaderCheck = page.getByRole('checkbox', { name: 'Select all default tasks' });
+    expect(await defaultHeaderCheck.evaluate((el) => /** @type {HTMLInputElement} */ (el).indeterminate)).toBe(true);
+
     await rowCheck.focus();
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
     const markOutline = await rowCheck.evaluate((el) => getComputedStyle(/** @type {Element} */ (el.nextElementSibling)).outlineStyle);
     expect(markOutline).toBe('solid');
+
+    // Clearing all tasks and submitting shows an accessible role="alert" message instead of window.alert.
+    await page.locator('#action-clear-guides').click();
+    await expect(page.locator('#form-error')).toBeHidden();
+    await page.locator('#launch-btn').click();
+    await expect(page.locator('#form-error')).toBeVisible();
+    await expect(page.locator('#form-error')).toHaveAttribute('role', 'alert');
+    await expect(page.locator('#form-error')).toContainText('Please select at least one task to run.');
+    // Checking any task clears the inline error automatically.
+    await page.locator('.pill-checkbox', { has: taskInput }).click();
+    await expect(page.locator('#form-error')).toBeHidden();
   });
 
   test('category collapse is a button that hides rows', async ({ page }) => {
@@ -114,6 +137,7 @@ test.describe('Eval runner (MWG compliance)', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await openRunner(page);
     await expect(page.locator('meta[name="color-scheme"]')).toHaveAttribute('content', 'dark');
+    await expect(page.locator('meta[name="text-scale"]')).toHaveAttribute('content', 'scale');
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe('dark');
     const shine = await page.locator('#launch-btn').evaluate((el) => getComputedStyle(el, '::before').display);
     expect(shine).toBe('none');

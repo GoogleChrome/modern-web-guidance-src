@@ -472,20 +472,20 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .guide-sort-controls .sort-label { font-size: var(--font-sm); color: var(--text-secondary); font-weight: 500; white-space: nowrap; }
 .sort-combined-control { display: inline-flex; align-items: stretch; background: transparent; border: 1px solid var(--border-color); border-radius: 6px; height: 30px; box-sizing: border-box; transition: border-color 0.15s; }
 .sort-combined-control:hover, .sort-combined-control:focus-within { border-color: var(--text-secondary); }
-.sort-select-pill { position: relative; display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none; border-radius: 5px 0 0 5px; padding: 0 10px; height: 100%; box-sizing: border-box; cursor: pointer; transition: background-color 0.15s; }
+.sort-select-pill { position: relative; display: inline-flex; align-items: center; background: transparent; border: none; border-radius: 5px 0 0 5px; height: 100%; box-sizing: border-box; transition: background-color 0.15s; }
 .sort-select-pill:hover { background-color: var(--color-surface-container-low); }
 .sort-select-pill:has(.sort-select:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.sort-select-value { font-size: var(--font-base); font-weight: 600; color: var(--text-primary); line-height: 1; white-space: nowrap; }
-.sort-select-chevron { color: var(--text-secondary); flex-shrink: 0; pointer-events: none; }
-.sort-select-pill .sort-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; appearance: none; font-size: var(--font-base); }
+.sort-select-pill .sort-select { appearance: none; background: transparent; border: none; border-radius: 5px 0 0 5px; padding: 0 26px 0 10px; height: 100%; font: inherit; font-size: var(--font-base); font-weight: 600; color: var(--text-primary); line-height: 1; cursor: pointer; outline: none; }
+.sort-select-pill .sort-select option { background: var(--card-bg); color: var(--text-primary); }
+.sort-select-chevron { position: absolute; inset-inline-end: 8px; color: var(--text-secondary); pointer-events: none; }
 .sort-combined-divider { width: 1px; background-color: var(--border-color); align-self: stretch; }
 .sort-direction-btn { background: transparent; border: none; border-radius: 0 5px 5px 0; color: var(--text-primary); cursor: pointer; padding: 0; width: 28px; height: 100%; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.15s, color 0.15s; }
 .sort-direction-btn:hover { background-color: var(--color-surface-container-low); color: var(--color-primary); }
 .sort-dir-arrow { display: block; font-size: 0.9rem; font-weight: 700; line-height: 1; }
 
-.metric-mode-btn { background: transparent; border: none; color: var(--text-secondary); font: inherit; font-size: var(--font-base); font-weight: 600; padding: 4px 12px; border-radius: 4px; cursor: pointer; min-block-size: 26px; transition: background 0.15s, color 0.15s; }
+.metric-mode-btn { position: relative; display: inline-flex; align-items: center; background: transparent; border: none; color: var(--text-secondary); font: inherit; font-size: var(--font-base); font-weight: 600; padding: 4px 12px; border-radius: 4px; cursor: pointer; min-block-size: 26px; transition: background 0.15s, color 0.15s; }
 .metric-mode-btn:hover { color: var(--text-primary); }
-.metric-mode-btn[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); }
+.metric-mode-btn:has(> input[type="radio"]:checked) { background: var(--color-primary); color: var(--color-on-primary); }
 .mode-badge-inline { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: var(--font-xs); font-weight: 600; text-transform: none; letter-spacing: 0; border-radius: 4px; background: color-mix(in oklch, var(--color-primary) 16%, transparent); color: var(--color-primary); }
 
 .mobile-suites-controls { display: none; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-block-end: var(--space-2); }

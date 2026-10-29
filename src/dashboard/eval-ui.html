@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="text-scale" content="scale">
     <!-- The runner is dark-only; declaring it up front keeps native controls,
          scrollbars, and the initial canvas dark instead of flashing light. -->
     <meta name="color-scheme" content="dark">
@@ -103,6 +104,7 @@
             </section>
 
             <div class="footer-actions">
+                <p id="form-error" class="form-error" role="alert" hidden></p>
                 <button type="submit" class="btn-primary" id="launch-btn">
                     <span>Start Evaluation</span>
                     <svg class="run-icon" viewBox="0 0 24 24">

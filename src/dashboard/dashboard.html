@@ -59,10 +59,11 @@
         <div class="chart-toolbar">
           <div class="chart-toolbar-left">
             <span class="meta-label">Chart &amp; task view:</span>
-            <div class="metric-mode-toggle" role="group" aria-label="Evaluation check filter">
-              <button type="button" class="mode-toggle-btn" id="dash-mode-all-btn" aria-pressed="true">All checks</button>
-              <button type="button" class="mode-toggle-btn" id="dash-mode-a11y-btn" aria-pressed="false">Accessibility subscore</button>
-            </div>
+            <fieldset class="metric-mode-toggle">
+              <legend class="visually-hidden">Evaluation check filter</legend>
+              <label class="mode-toggle-btn" id="dash-mode-all-btn"><input type="radio" name="dash-mode" value="all" checked>All checks</label>
+              <label class="mode-toggle-btn" id="dash-mode-a11y-btn"><input type="radio" name="dash-mode" value="a11y">Accessibility subscore</label>
+            </fieldset>
             <button type="button" class="info-hint-btn anchor-dash-a11y" interestfor="dash-tooltip-a11y" aria-label="About the accessibility subscore">?</button>
           </div>
           <div class="chart-toolbar-right">

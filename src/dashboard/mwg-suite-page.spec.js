@@ -175,6 +175,8 @@ test.describe('Suite page MWG compliance', () => {
   test('collapsed task panels are findable, render assertions eagerly, and paint no empty band', async ({ page }) => {
     await page.goto('/dashboard.html?testId=example-result');
     const accordion = page.locator('.task-accordion').first();
+    // Accordion toggle is wrapped inside a level-3 heading so screen readers can jump between tasks.
+    await expect(accordion.locator('h3.task-accordion-heading > button.task-toggle')).toHaveCount(1);
     const content = accordion.locator('.task-accordion-content');
     await expect(content).toHaveAttribute('hidden', 'until-found');
     // Assertion text is in the DOM before the panel is ever opened (searchable by find-in-page)
@@ -460,12 +462,12 @@ test.describe('Suite page MWG compliance', () => {
     await page.goto('/dashboard.html?testId=example-result');
     await expect(page.locator('.task-accordion').first()).toBeVisible();
     const [highlight, highlightText, canvasText, grayText] = [await systemColor('Highlight'), await systemColor('HighlightText'), await systemColor('CanvasText'), await systemColor('GrayText')];
-    const pressed = page.locator('.mode-toggle-btn[aria-pressed="true"]');
+    const pressed = page.locator('.mode-toggle-btn:has(> input[type="radio"]:checked)');
     expect(await pressed.evaluate(el => [getComputedStyle(el).backgroundColor, getComputedStyle(el).color, getComputedStyle(el).forcedColorAdjust])).toEqual([highlight, highlightText, 'none']);
     // Visual check: Chromium paints a Canvas backplate behind forced-colors text, which once hid the
     // pressed label entirely. Screenshot the label's text box and require glyph pixels that stand
     // out from the dominant (fill) luminance; a hidden label scores ~0.
-    expect(await labelContrast(page, '.mode-toggle-btn[aria-pressed="true"]')).toBeGreaterThan(0.05);
+    expect(await labelContrast(page, '.mode-toggle-btn:has(> input[type="radio"]:checked)')).toBeGreaterThan(0.05);
     expect(await page.locator('.legend-line.regressed').evaluate(el => [getComputedStyle(el).borderTopStyle, getComputedStyle(el).borderTopColor])).toEqual(['dashed', canvasText]);
     expect(await page.locator('#dumbbell-chart .dc-gtick').first().evaluate(el => getComputedStyle(el).stroke)).toBe(highlight);
     // SVG fills aren't forced, so chart labels need an explicit CanvasText
@@ -509,13 +511,13 @@ test.describe('Suite page MWG compliance', () => {
 
     // The Breakdowns toggle shares the pressed rule; its label must be visible too.
     await page.evaluate(() => {
-      const btn = document.querySelector('.metric-mode-btn[aria-pressed="true"]');
+      const btn = document.querySelector('.metric-mode-btn:has(> input[type="radio"]:checked)');
       for (let el = btn?.closest('details'); el; el = el.parentElement?.closest('details')) el.open = true;
       btn?.scrollIntoView({ block: 'center' });
     });
-    const breakdownsPressed = page.locator('.metric-mode-btn[aria-pressed="true"]').first();
+    const breakdownsPressed = page.locator('.metric-mode-btn:has(> input[type="radio"]:checked)').first();
     await expect(breakdownsPressed).toBeVisible();
-    expect(await labelContrast(page, '.metric-mode-btn[aria-pressed="true"]')).toBeGreaterThan(0.05);
+    expect(await labelContrast(page, '.metric-mode-btn:has(> input[type="radio"]:checked)')).toBeGreaterThan(0.05);
 
     // Guide timeline: SVG labels and points map to system colors.
     await page.goto('/guide.html?guide=content-vis');

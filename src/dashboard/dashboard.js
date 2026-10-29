@@ -148,28 +148,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modeAllBtn = document.getElementById('dash-mode-all-btn');
     const modeA11yBtn = document.getElementById('dash-mode-a11y-btn');
     if (modeAllBtn && modeA11yBtn) {
-        modeAllBtn.setAttribute('aria-pressed', currentMetricMode === 'all' ? 'true' : 'false');
-        modeA11yBtn.setAttribute('aria-pressed', currentMetricMode === 'a11y' ? 'true' : 'false');
+        const modeAllInput = modeAllBtn.querySelector('input[type="radio"]');
+        const modeA11yInput = modeA11yBtn.querySelector('input[type="radio"]');
+        const syncDashModeButtons = (/** @type {'all' | 'a11y'} */ mode) => {
+            const isAll = mode === 'all';
+            if (modeAllInput instanceof HTMLInputElement) modeAllInput.checked = isAll;
+            if (modeA11yInput instanceof HTMLInputElement) modeA11yInput.checked = !isAll;
+        };
+        syncDashModeButtons(currentMetricMode);
 
         const setMode = (/** @type {'all' | 'a11y'} */ mode) => {
-            if (currentMetricMode === mode) return;
-            currentMetricMode = mode;
-            modeAllBtn.setAttribute('aria-pressed', mode === 'all' ? 'true' : 'false');
-            modeA11yBtn.setAttribute('aria-pressed', mode === 'a11y' ? 'true' : 'false');
-            const url = new URL(window.location.href);
-            if (mode === 'a11y') {
-                url.searchParams.set('mode', 'a11y');
-            } else {
-                url.searchParams.delete('mode');
-            }
-            window.history.replaceState({}, '', url);
-            if (allTestData && currentTestID) {
-                renderDashboardDumbbellChart(allTestData);
-                rerenderGrid(allTestData, currentTestID);
+            if (currentMetricMode !== mode) {
+                currentMetricMode = mode;
+                syncDashModeButtons(mode);
+                const url = new URL(window.location.href);
+                if (mode === 'a11y') {
+                    url.searchParams.set('mode', 'a11y');
+                } else {
+                    url.searchParams.delete('mode');
+                }
+                window.history.replaceState({}, '', url);
+                if (allTestData && currentTestID) {
+                    renderDashboardDumbbellChart(allTestData);
+                    rerenderGrid(allTestData, currentTestID);
+                }
             }
         };
-        modeAllBtn.addEventListener('click', () => setMode('all'));
-        modeA11yBtn.addEventListener('click', () => setMode('a11y'));
+        const modeToggleGroup = modeAllBtn.closest('.metric-mode-toggle');
+        modeToggleGroup?.addEventListener('change', (e) => {
+            const target = e.target;
+            if (target instanceof HTMLInputElement && (target.value === 'all' || target.value === 'a11y')) {
+                setMode(target.value);
+            }
+        });
     }
 
     // Wire up Task Sort dropdown
@@ -255,11 +266,30 @@ async function loadDashboardData(testId) {
     try {
         // The optional Jetski metadata doesn't depend on the evals, so fetch both at once instead
         // of adding a serial round trip (it's two requests: an existence check, then the fetch).
-        const jetskiPromise = api.getJetskiInfo(testId).catch((/** @type {unknown} */ e) => {
+        let jetskiPromise = api.getJetskiInfo(testId).catch((/** @type {unknown} */ e) => {
             console.log('Could not load Jetski info:', e);
             return null;
         });
-        const data = await api.getEvals(testId);
+        let data;
+        try {
+            data = await api.getEvals(testId);
+        } catch (err) {
+            if (api.source === 'local' && !new URLSearchParams(window.location.search).get('source')) {
+                api.source = 'remote';
+                initGoogleAuth(async () => {
+                    await loadDashboardData(testId);
+                });
+                const gcsBtn = document.getElementById('view-gcs-artifacts-btn');
+                if (gcsBtn) {
+                    gcsBtn.hidden = false;
+                    gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${encodeURIComponent(testId)}?project=chrome-kiwi-air-force-dev`, '_blank');
+                }
+                jetskiPromise = api.getJetskiInfo(testId).catch(() => null);
+                data = await api.getEvals(testId);
+            } else {
+                throw err;
+            }
+        }
         if (!data) {
             endLoadingReservations();
             const main = document.getElementById('main-content');
@@ -950,7 +980,7 @@ function renderSummary(data) {
     jumpLink?.addEventListener('click', (e) => {
         e.preventDefault();
         const modeA11yBtn = document.getElementById('dash-mode-a11y-btn');
-        if (modeA11yBtn instanceof HTMLButtonElement) {
+        if (modeA11yBtn instanceof HTMLElement) {
             modeA11yBtn.click();
         }
         const sortSelect = document.getElementById('task-sort-select');
@@ -1292,6 +1322,23 @@ async function renderGridOnce(data, testId) {
         accordionCache.nodes = new Map();
     }
     if (!guideGrid) return;
+
+    // Reorder already-mounted accordions with moveBefore() (MWG move-dom-element-without-losing-state)
+    // so keyboard focus, open hint popovers, and expanded panels survive sort changes.
+    const canMoveInPlace = 'moveBefore' in Element.prototype
+        && guideGrid.children.length === filteredScenarios.length
+        && filteredScenarios.every(item => accordionCache.nodes.get(item.scenarioName)?.parentElement === guideGrid);
+
+    if (canMoveInPlace) {
+        for (const item of filteredScenarios) {
+            const accordion = accordionCache.nodes.get(item.scenarioName);
+            if (accordion) {
+                /** @type {HTMLElement & { moveBefore(node: Node, child: Node | null): void }} */ (guideGrid).moveBefore(accordion, null);
+            }
+        }
+        return;
+    }
+
     guideGrid.replaceChildren();
 
     let fragment = document.createDocumentFragment();
@@ -1412,11 +1459,13 @@ function buildAccordion(item, testId) {
     accordion.innerHTML = `
         <div class="task-accordion-header">
             <div class="left-section">
-                <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}">
-                    <span class="chevron" aria-hidden="true">▶</span>
-                    <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
-                    <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
-                </button>
+                <h3 class="task-accordion-heading">
+                    <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}">
+                        <span class="chevron" aria-hidden="true">▶</span>
+                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
+                        <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
+                    </button>
+                </h3>
                 ${trendLinkHtml}
                 ${a11yPillHtml}
                 ${infraBadgeHtml}

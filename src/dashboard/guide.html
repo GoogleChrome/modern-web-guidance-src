@@ -268,9 +268,10 @@
 
           <div class="guide-search-wrap">
             <label for="guide-search" class="visually-hidden">Search guides</label>
-            <input type="search" id="guide-search" class="guide-search" placeholder="Search guides..." autocomplete="off"
+            <input type="text" id="guide-search" class="guide-search" placeholder="Search guides..." autocomplete="off"
                    role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="autocomplete-list">
             <div id="autocomplete-list" class="autocomplete-list" popover="auto" role="listbox" aria-label="Matching guides"></div>
+            <p id="autocomplete-status" class="visually-hidden" role="status" aria-live="polite"></p>
           </div>
           <button id="go-guide-btn" class="secondary-btn" type="button">Go</button>
         </nav>

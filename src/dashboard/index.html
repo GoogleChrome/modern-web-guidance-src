@@ -79,13 +79,17 @@
             <p class="ab-spotlight-sub">Side-by-side grader results from a single nightly run per agent on a synthetic benchmark task. Shows one run rather than an aggregate, including checks the guided run missed.</p>
           </div>
           <div class="ab-toolbar-controls">
-            <div id="ab-agent-pills" class="ab-agent-pills" role="group" aria-label="Select coding agent"></div>
+            <fieldset id="ab-agent-pills" class="ab-agent-pills" aria-controls="ab-comparison-frame">
+              <legend class="visually-hidden">Select coding agent</legend>
+            </fieldset>
           </div>
         </div>
 
-        <div id="ab-task-pills" class="ab-task-pills" role="group" aria-label="Select evaluation task"></div>
+        <fieldset id="ab-task-pills" class="ab-task-pills" aria-controls="ab-comparison-frame">
+          <legend class="visually-hidden">Select evaluation task</legend>
+        </fieldset>
 
-        <div class="ab-comparison-frame">
+        <div id="ab-comparison-frame" class="ab-comparison-frame">
           <div class="ab-prompt-banner">
             <span class="ab-prompt-kicker">Task prompt</span>
             <p id="ab-prompt-text" class="ab-prompt-text">Loading task prompt…</p>
@@ -138,10 +142,11 @@
                 <span>days of data</span>
                 <label class="toggle-label" for="insights-show-all-check"><input type="checkbox" id="insights-show-all-check"> Show all</label>
               </div>
-              <div class="metric-mode-toggle" role="group" aria-label="Comparison check scope">
-                <button type="button" id="insights-mode-all" class="metric-mode-btn" aria-pressed="true">All checks</button>
-                <button type="button" id="insights-mode-a11y" class="metric-mode-btn" aria-pressed="false">Accessibility subscore</button>
-              </div>
+              <fieldset class="metric-mode-toggle">
+                <legend class="visually-hidden">Comparison check scope</legend>
+                <label id="insights-mode-all" class="metric-mode-btn"><input type="radio" name="insights-mode" value="all" checked>All checks</label>
+                <label id="insights-mode-a11y" class="metric-mode-btn"><input type="radio" name="insights-mode" value="a11y">Accessibility subscore</label>
+              </fieldset>
             </div>
             <div id="insights-container" class="insights-grid"></div>
           </details>

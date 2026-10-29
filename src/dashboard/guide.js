@@ -8,19 +8,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
     const guideName = params.get('guide');
     const taskName = params.get('task');
-    const source = params.get('source');
     const isA11yMode = params.get('mode') === 'a11y';
     if (!guideName) {
-        window.location.href = source ? `./?source=${encodeURIComponent(source)}` : './';
+        window.location.href = './';
         return;
-    }
-
-    if (source) {
-        document.querySelectorAll('a[href="./"]').forEach(btn => {
-            if (btn instanceof HTMLAnchorElement) {
-                btn.href = `./?source=${encodeURIComponent(source)}`;
-            }
-        });
     }
 
     $('#guide-name-header').textContent = taskName ? `${guideName} — ${taskName}` : guideName;
@@ -191,14 +182,20 @@ function setupTimelineFilterControls(guideName) {
     });
 }
 
+/** @type {AbortController | null} */
+let navListenersAbort = null;
+
 /**
  * @param {string} currentGuide
  */
 function setupNavigationControls(currentGuide) {
+    navListenersAbort?.abort();
+    navListenersAbort = new AbortController();
+    const { signal } = navListenersAbort;
+
     const params = new URLSearchParams(window.location.search);
-    const source = params.get('source');
     const isA11yMode = params.get('mode') === 'a11y';
-    const sourceSuffix = `${source ? `&source=${encodeURIComponent(source)}` : ''}${isA11yMode ? '&mode=a11y' : ''}`;
+    const modeSuffix = isA11yMode ? '&mode=a11y' : '';
 
     const guideSet = new Set();
     Object.values(allTestData).forEach(run => {
@@ -217,6 +214,7 @@ function setupNavigationControls(currentGuide) {
     const nextBtn = /** @type {HTMLButtonElement} */ ($('#next-guide-btn'));
     const searchInput = /** @type {HTMLInputElement} */ ($('#guide-search'));
     const list = $('#autocomplete-list');
+    const statusEl = document.getElementById('autocomplete-status');
     const goBtn = /** @type {HTMLButtonElement} */ ($('#go-guide-btn'));
 
     if (allGuides.length <= 1) {
@@ -226,24 +224,24 @@ function setupNavigationControls(currentGuide) {
         const currentIndex = allGuides.indexOf(currentGuide);
         
         prevBtn.disabled = false;
-        prevBtn.onclick = () => {
+        prevBtn.addEventListener('click', () => {
             const prevIndex = (currentIndex - 1 + allGuides.length) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}${sourceSuffix}`;
-        };
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}${modeSuffix}`;
+        }, { signal });
 
         nextBtn.disabled = false;
-        nextBtn.onclick = () => {
+        nextBtn.addEventListener('click', () => {
             const nextIndex = (currentIndex + 1) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}${sourceSuffix}`;
-        };
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}${modeSuffix}`;
+        }, { signal });
     }
 
-    goBtn.onclick = () => {
+    goBtn.addEventListener('click', () => {
         const val = searchInput.value.trim();
         if (val) {
-            window.location.href = `guide.html?guide=${encodeURIComponent(val)}${sourceSuffix}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(val)}${modeSuffix}`;
         }
-    };
+    }, { signal });
 
     let currentFocus = -1;
 
@@ -252,6 +250,7 @@ function setupNavigationControls(currentGuide) {
         list.innerHTML = '';
         searchInput.setAttribute('aria-expanded', 'false');
         searchInput.removeAttribute('aria-activedescendant');
+        if (statusEl) statusEl.textContent = '';
         currentFocus = -1;
     };
     const closeList = () => {
@@ -260,10 +259,10 @@ function setupNavigationControls(currentGuide) {
     };
     // #autocomplete-list is popover="auto": the browser light-dismisses it on outside clicks
     // (replacing the old document click handler) and on Escape, so mirror those closes into
-    // the combobox ARIA state. Property assignment avoids stacking listeners on re-setup.
-    list.ontoggle = (e) => {
+    // the combobox ARIA state.
+    list.addEventListener('toggle', (e) => {
         if (/** @type {ToggleEvent} */ (e).newState === 'closed') resetComboboxState();
-    };
+    }, { signal });
     const openList = () => {
         if (isPopoverOpen(list)) return;
         try {
@@ -275,7 +274,7 @@ function setupNavigationControls(currentGuide) {
         }
     };
 
-    searchInput.oninput = () => {
+    searchInput.addEventListener('input', () => {
         const val = searchInput.value.trim().toLowerCase();
         list.innerHTML = '';
         currentFocus = -1;
@@ -288,11 +287,15 @@ function setupNavigationControls(currentGuide) {
         const matches = allGuides.filter(g => g.toLowerCase().includes(val)).slice(0, 10);
         if (matches.length === 0) {
             closeList();
+            if (statusEl) statusEl.textContent = 'No matching guides';
             return;
         }
 
         openList();
         searchInput.setAttribute('aria-expanded', 'true');
+        if (statusEl) {
+            statusEl.textContent = `${matches.length} option${matches.length === 1 ? '' : 's'} available`;
+        }
         matches.forEach((match, i) => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item';
@@ -300,23 +303,23 @@ function setupNavigationControls(currentGuide) {
             div.setAttribute('role', 'option');
             div.setAttribute('aria-selected', 'false');
             div.textContent = match;
-            div.onclick = () => {
+            div.addEventListener('click', () => {
                 searchInput.value = match;
                 closeList();
                 goBtn.click();
-            };
+            });
             list.appendChild(div);
         });
-    };
+    }, { signal });
 
     // Light dismiss treats a click on the input as "outside" the popover (Chromium doesn't count
     // a showPopover() `source` as an invoker for light dismiss), so re-open the matches when the
     // user clicks back into a non-empty field.
-    searchInput.onclick = () => {
+    searchInput.addEventListener('click', () => {
         if (searchInput.value.trim() && !isPopoverOpen(list)) searchInput.dispatchEvent(new Event('input'));
-    };
+    }, { signal });
 
-    searchInput.onkeydown = (e) => {
+    searchInput.addEventListener('keydown', (e) => {
         const isOpen = searchInput.getAttribute('aria-expanded') === 'true';
         const items = list.querySelectorAll('.autocomplete-item');
 
@@ -344,7 +347,7 @@ function setupNavigationControls(currentGuide) {
             if (isOpen) e.preventDefault();
             closeList();
         }
-    };
+    }, { signal });
 
     /**
      * @param {NodeListOf<Element>} items

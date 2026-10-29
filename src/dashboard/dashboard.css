@@ -823,9 +823,11 @@ dialog#modal.frame-modal {
 }
 
 .task-accordion-header h3 {
-  font-family: var(--font-serif);
   margin: 0;
-  font-size: 1.1rem;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
 }
 
 .task-accordion-header .right-section {
@@ -1693,10 +1695,25 @@ dialog#modal.frame-modal {
 /* Chart Toolbar, Metric Mode Toggle & Guide Controls */
 .chart-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; background: var(--color-surface-container-lowest); border: 1px solid var(--color-outline-variant); border-radius: var(--radius-default); }
 .chart-toolbar-left, .chart-toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.metric-mode-toggle { display: inline-flex; background: var(--color-surface-container); border: 1px solid var(--color-outline-variant); border-radius: 6px; padding: 2px; gap: 2px; }
-.mode-toggle-btn { appearance: none; border: none; background: transparent; color: var(--color-on-surface-variant); font-family: var(--font-sans); font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 4px; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease; }
-.mode-toggle-btn[aria-pressed="true"] { background: var(--color-primary); color: var(--color-on-primary); }
-.mode-toggle-btn:hover:not([aria-pressed="true"]) { background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
+.metric-mode-toggle { position: relative; display: inline-flex; margin: 0; min-inline-size: 0; background: var(--color-surface-container); border: 1px solid var(--color-outline-variant); border-radius: 6px; padding: 2px; gap: 2px; }
+.mode-toggle-btn { position: relative; display: inline-flex; align-items: center; appearance: none; border: none; background: transparent; color: var(--color-on-surface-variant); font-family: var(--font-sans); font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 4px; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease; }
+.mode-toggle-btn:has(> input[type="radio"]:checked) { background: var(--color-primary); color: var(--color-on-primary); }
+.mode-toggle-btn:hover:not(:has(> input[type="radio"]:checked)) { background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
+/* Pill-styled radio switchers: hide the native radio circle while keeping the input focusable and in the accessibility tree. */
+:is(.mode-toggle-btn, .metric-mode-btn, .ab-agent-pill, .ab-task-pill) > input[type="radio"] {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+:is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
 
 .guide-section-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
 .guide-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-inline-size: 0; }
@@ -1892,7 +1909,7 @@ dialog#modal.frame-modal {
      Highlight fill (white on white, or black on black). Every value here is a system color from
      the user's palette, so opting this one rule out of forcing is safe; the underline marks the
      state without relying on the fill alone. */
-  :root:root :is(.mode-toggle-btn, .metric-mode-btn)[aria-pressed="true"] {
+  :root:root :is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:checked) {
     forced-color-adjust: none;
     background: Highlight;
     color: HighlightText;
@@ -1900,7 +1917,7 @@ dialog#modal.frame-modal {
     text-decoration: underline 2px;
     text-underline-offset: 3px;
   }
-  :root:root :is(.mode-toggle-btn, .metric-mode-btn)[aria-pressed="true"]:focus-visible {
+  :root:root :is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:checked:focus-visible) {
     outline: 2px solid CanvasText;
     outline-offset: 2px;
   }

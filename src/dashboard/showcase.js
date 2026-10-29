@@ -164,6 +164,7 @@ function renderAll() {
 }
 
 let taskPillsListenersBound = false;
+let agentPillsListenersBound = false;
 
 /**
  * Updates directional edge-fade classes on #ab-task-pills based on scroll position.
@@ -182,22 +183,37 @@ function renderTaskPills(currentTask) {
     const container = document.getElementById('ab-task-pills');
     if (!container) return;
 
-    const prevScrollLeft = container.scrollLeft;
+    const existingPills = /** @type {HTMLElement[]} */ (Array.from(container.querySelectorAll('.ab-task-pill')));
+    const sameTasks = existingPills.length === tasks.length &&
+        existingPills.every((el, idx) => el.getAttribute('data-task-id') === tasks[idx].id);
 
-    container.innerHTML = tasks.map(t => {
-        const isCurrent = t.id === currentTask.id;
-        const shortLabel = SHORT_TASK_LABELS[t.id] || t.label;
-        const pair = t.agents[activeAgentId] || Object.values(t.agents)[0];
-        const deltaChecks = pair ? pair.guided.passed - pair.unguided.passed : 0;
-        const deltaHtml = (isCurrent && deltaChecks > 0)
+    if (!sameTasks) {
+        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend>` + tasks.map(t => {
+            const shortLabel = SHORT_TASK_LABELS[t.id] || t.label;
+            return `<label class="ab-task-pill" data-task-id="${escapeHtml(t.id)}"><input type="radio" name="ab-task" value="${escapeHtml(t.id)}"><span>${escapeHtml(shortLabel)}</span><span class="ab-task-delta-slot"></span></label>`;
+        }).join('');
+    }
+
+    container.querySelectorAll('.ab-task-pill').forEach(pill => {
+        const taskId = pill.getAttribute('data-task-id');
+        const task = tasks.find(t => t.id === taskId);
+        const isCurrent = taskId === currentTask.id;
+        const input = pill.querySelector('input[type="radio"]');
+        if (input instanceof HTMLInputElement) {
+            input.checked = isCurrent;
+        }
+        const deltaSlot = pill.querySelector('.ab-task-delta-slot');
+        if (deltaSlot && task) {
+            const pair = task.agents[activeAgentId] || Object.values(task.agents)[0];
+            const deltaChecks = pair ? pair.guided.passed - pair.unguided.passed : 0;
             // Visually hidden text instead of a title tooltip (MWG html: no title tooltips), so the
             // meaning of "+N" reaches screen reader, keyboard, and touch users too.
-            ? `<span class="ab-task-delta"><span aria-hidden="true">+${deltaChecks}</span><span class="visually-hidden">, ${deltaChecks} more passing ${deltaChecks === 1 ? 'check' : 'checks'} with MWG</span></span>`
-            : '';
-        return `<button type="button" class="ab-task-pill" data-task-id="${escapeHtml(t.id)}" aria-pressed="${isCurrent}"><span>${escapeHtml(shortLabel)}</span>${deltaHtml}</button>`;
-    }).join('');
+            deltaSlot.innerHTML = (isCurrent && deltaChecks > 0)
+                ? `<span class="ab-task-delta"><span aria-hidden="true">+${deltaChecks}</span><span class="visually-hidden">, ${deltaChecks} more passing ${deltaChecks === 1 ? 'check' : 'checks'} with MWG</span></span>`
+                : '';
+        }
+    });
 
-    container.scrollLeft = prevScrollLeft;
     syncTaskPillsScrollShadows(container);
 
     if (!taskPillsListenersBound) {
@@ -213,27 +229,23 @@ function renderTaskPills(currentTask) {
         };
         container.addEventListener('scroll', scheduleShadowSync, { passive: true });
         window.addEventListener('resize', scheduleShadowSync, { passive: true });
-    }
-
-    container.querySelectorAll('.ab-task-pill').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = btn.getAttribute('data-task-id');
+        container.addEventListener('change', (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLInputElement) || target.name !== 'ab-task') return;
+            const id = target.value;
             if (id && id !== activeTaskId) {
                 activeTaskId = id;
                 checksExpanded = false;
                 renderAll();
-                const activeBtn = /** @type {HTMLElement | null} */ (container.querySelector('.ab-task-pill[aria-pressed="true"]'));
-                if (activeBtn) {
-                    activeBtn.focus({ preventScroll: true });
-                    if (container.scrollWidth > container.clientWidth) {
-                        const targetLeft = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.offsetWidth / 2);
-                        container.scrollTo({ left: Math.max(0, targetLeft), behavior: getScrollBehavior() });
-                    }
-                }
                 announceSelection();
             }
+            const activePill = target.closest('.ab-task-pill');
+            if (activePill instanceof HTMLElement && container.scrollWidth > container.clientWidth) {
+                const targetLeft = activePill.offsetLeft - (container.clientWidth / 2) + (activePill.offsetWidth / 2);
+                container.scrollTo({ left: Math.max(0, targetLeft), behavior: getScrollBehavior() });
+            }
         });
-    });
+    }
 }
 
 /**
@@ -245,23 +257,38 @@ function renderAgentPills(currentTask, currentPair) {
     if (!container) return;
 
     const orderedIds = AGENT_ORDER.filter(id => currentTask.agents[id]);
-    container.innerHTML = orderedIds.map(id => {
-        const pair = currentTask.agents[id];
-        const isCurrent = id === currentPair.agentId;
-        return `<button type="button" class="ab-agent-pill" data-agent-id="${escapeHtml(id)}" aria-pressed="${isCurrent}">${getAgentBadge(id)}${escapeHtml(pair.agentLabel)}</button>`;
-    }).join('');
+    const existingPills = /** @type {HTMLElement[]} */ (Array.from(container.querySelectorAll('.ab-agent-pill')));
+    const sameAgents = existingPills.length === orderedIds.length &&
+        existingPills.every((el, idx) => el.getAttribute('data-agent-id') === orderedIds[idx]);
 
-    container.querySelectorAll('.ab-agent-pill').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = btn.getAttribute('data-agent-id');
+    if (!sameAgents) {
+        container.innerHTML = `<legend class="visually-hidden">Select coding agent</legend>` + orderedIds.map(id => {
+            const pair = currentTask.agents[id];
+            return `<label class="ab-agent-pill" data-agent-id="${escapeHtml(id)}"><input type="radio" name="ab-agent" value="${escapeHtml(id)}">${getAgentBadge(id)}${escapeHtml(pair.agentLabel)}</label>`;
+        }).join('');
+    }
+
+    container.querySelectorAll('.ab-agent-pill').forEach(pill => {
+        const id = pill.getAttribute('data-agent-id');
+        const input = pill.querySelector('input[type="radio"]');
+        if (input instanceof HTMLInputElement) {
+            input.checked = id === currentPair.agentId;
+        }
+    });
+
+    if (!agentPillsListenersBound) {
+        agentPillsListenersBound = true;
+        container.addEventListener('change', (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLInputElement) || target.name !== 'ab-agent') return;
+            const id = target.value;
             if (id && id !== activeAgentId) {
                 activeAgentId = id;
                 renderAll();
-                /** @type {HTMLElement | null} */ (container.querySelector('.ab-agent-pill[aria-pressed="true"]'))?.focus({ preventScroll: true });
                 announceSelection();
             }
         });
-    });
+    }
 }
 
 /**
@@ -279,11 +306,8 @@ function renderPromptBar(task, pair) {
         promptEl.textContent = `“${task.prompt}”`;
     }
     if (metaEl) {
-        const params = new URLSearchParams(window.location.search);
-        const source = params.get('source');
-        const sourceSuffix = source ? `&source=${encodeURIComponent(source)}` : '';
-        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}${sourceSuffix}#guide-${encodeURIComponent(task.id)}`;
-        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}${sourceSuffix}`;
+        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}#guide-${encodeURIComponent(task.id)}`;
+        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}`;
         const rawGuides = pair.guided.guidesUsed.length ? pair.guided.guidesUsed : [task.id];
         const cleanGuides = rawGuides.map(g => g.replace(/;+$/, '')).filter(Boolean);
         const guideLinksHtml = cleanGuides.map(slug => {
