@@ -286,13 +286,12 @@ export const accessibleWebComponentsRule: AnalyzerRule = {
   matcher: accessibleWebComponentsJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'A custom element class extending HTMLElement, LitElement, or CustomElementBase sets its default role or ARIA state on the host element via this.setAttribute("role", ...) or this.setAttribute("aria-*", ...) in constructor(), connectedCallback(), firstUpdated(), updated(), ready(), setup(), or attributeChangedCallback().',
+      'A custom element class extending HTMLElement, LitElement, PolymerElement, or CustomElementBase sets its default role or ARIA state on the host element via this.setAttribute("role", ...) or this.setAttribute("aria-*", ...) in constructor(), connectedCallback(), firstUpdated(), updated(), ready(), setup(), or attributeChangedCallback() (or a helper method invoked from one of those lifecycle callbacks).',
       'Using this.attachInternals() (e.g. internals.role and internals.ariaChecked) exposes default semantics to the accessibility tree without polluting Light DOM attributes or clobbering consumer overrides.',
     ],
     dropWhen: [
       'setAttribute is called on an internal shadow DOM child or light DOM child element rather than on the custom element host (this).',
       'The custom element already sets role or aria* properties on ElementInternals and only falls back to this.setAttribute() when ElementInternals ARIA properties are unsupported.',
-      'The code is a minified or bundled third-party vendor script (e.g. single-line minified class declarations with mangled 1-2 character class names).',
     ],
   },
 };

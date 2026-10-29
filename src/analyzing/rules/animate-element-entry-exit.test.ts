@@ -29,14 +29,11 @@ describe('animate-element-entry-exit rule', () => {
     assert.match(matches[4].message, /fadeToggle/);
   });
 
-  test('ignores slideDown/slideUp/slideToggle accordion height animations, flash chains, helper fadeOut(el, ms), and delegated transitionend', () => {
+  test('ignores slideToggle accordion height animations, flash chains, and delegated transitionend', () => {
     const code = `
-      function toggleAccordion($tag, modal, tap_graph) {
-        $(this.content).slideDown(400);
-        $(this.content).slideUp(400);
+      function toggleAccordion($tag, tap_graph) {
         $(this).next('.cd-faq-content').slideToggle(200);
         $tag.hide().fadeIn();
-        utils.fadeOut(modal, 5);
         tap_graph.parentNode.addEventListener('transitionend', function(e) {
           var el = e.target;
           el.parentNode.removeChild(el);

@@ -228,7 +228,6 @@ function resolveHandlerFunction(
   node: Node,
 ): FunctionExpression | ArrowFunction | MethodDeclaration | FunctionDeclaration | null {
   let unwrapped = unwrapExpression(node);
-  const callLine = node.getStartLineNumber();
 
   // If node is fn.bind(...)
   if (Node.isCallExpression(unwrapped)) {
@@ -252,9 +251,6 @@ function resolveHandlerFunction(
     const sourceFile = unwrapped.getSourceFile();
     const fnDecl = sourceFile.getFunction(name);
     if (fnDecl) {
-      if (Math.abs(fnDecl.getStartLineNumber() - callLine) > 20) {
-        return null;
-      }
       return fnDecl;
     }
   }
@@ -280,12 +276,6 @@ function resolveHandlerFunction(
     Node.isFunctionExpression(resolved) ||
     Node.isFunctionDeclaration(resolved)
   ) {
-    if (
-      Node.isIdentifier(unwrapped) &&
-      Math.abs(resolved.getStartLineNumber() - callLine) > 20
-    ) {
-      return null;
-    }
     return resolved;
   }
 

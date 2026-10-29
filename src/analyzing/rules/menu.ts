@@ -140,12 +140,6 @@ export const menuJsMatcher: JsRuleMatcher = {
   },
 };
 
-function getElementSnippet(element: DomElementView, ctx: DomMatcherContext): string {
-  const lines = ctx.documentText.split(/\r?\n/);
-  const startIdx = Math.max(0, element.line - 12);
-  return lines.slice(startIdx, element.line + 20).join('\n');
-}
-
 export const menuDomMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'div, ul, ol',
@@ -183,18 +177,6 @@ export const menuDomMatcher: DomRuleMatcher = {
     if (
       element.getAttribute('data-widget') === 'treeview' ||
       /\b(?:nav-sidebar|nav-treeview|list-unstyled|dropdown-form)\b/i.test(classAttr)
-    ) {
-      return null;
-    }
-
-    const snippet = getElementSnippet(element, ctx);
-    if (
-      /<(?:form|input|textarea|select|datetimepicker|datepicker)\b/i.test(
-        snippet,
-      ) ||
-      /\b(?:dropdown-select|navbar-nav)\b/i.test(snippet) ||
-      /<nav\b[^>]*\bcontextmenu\b/i.test(snippet) ||
-      ctx.documentText.includes('{% highlight')
     ) {
       return null;
     }

@@ -651,22 +651,7 @@ function matchSingleFunctionStateRule(
     return null;
   }
 
-  const hasVendorPrefix =
-    styleRule.hasProperty('-webkit-transform') ||
-    styleRule.hasProperty('-moz-transform') ||
-    styleRule.hasProperty('-ms-transform');
-  if (/:checked\b/i.test(styleRule.selectorText) && !hasVendorPrefix) {
-    return null;
-  }
   if (/::?(?:before|after)\b/i.test(styleRule.selectorText)) {
-    return null;
-  }
-  if (
-    !hasVendorPrefix &&
-    /:(?:nth-child|first-child|last-child|nth-of-type|first-of-type|last-of-type)\b/i.test(
-      styleRule.selectorText,
-    )
-  ) {
     return null;
   }
 
@@ -678,13 +663,6 @@ function matchSingleFunctionStateRule(
     if (other.transitionsTransform) {
       return null;
     }
-    return null;
-  }
-
-  if (
-    !hasVendorPrefix &&
-    (parsedCalls[0]?.name === 'rotatex' || parsedCalls[0]?.name === 'rotatey')
-  ) {
     return null;
   }
 
@@ -860,28 +838,14 @@ export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher
     // Require interactive state pseudo-class, compound modifier class, or transition declaration
     const hasPseudoElement = /::?(?:before|after)\b/i.test(styleRule.selectorText);
     const hasOwnTransition =
-      (transVal !== null && !/^\s*opacity\b/i.test(transVal)) ||
-      styleRule.hasProperty('transition-property');
+      transVal !== null || styleRule.hasProperty('transition-property');
     const hasStatePseudo = STATE_PSEUDO_TEST_RE.test(styleRule.selectorText);
     const hasCompoundModifier = selectorInfo.compoundPrefixSelectors.size > 0;
     if (!hasStatePseudo && !hasCompoundModifier && !hasOwnTransition) {
       return null;
     }
-    if (
-      /:(?:nth-child|nth-last-child|first-child|last-child|nth-of-type|first-of-type|last-of-type)\b/i.test(
-        styleRule.selectorText,
-      ) &&
-      !hasOwnTransition
-    ) {
+    if (hasPseudoElement && !hasStatePseudo && !hasOwnTransition) {
       return null;
-    }
-    if (hasPseudoElement) {
-      if (!hasStatePseudo && !hasOwnTransition) {
-        return null;
-      }
-      if (/:checked\b/i.test(styleRule.selectorText) && !hasOwnTransition) {
-        return null;
-      }
     }
 
     return {

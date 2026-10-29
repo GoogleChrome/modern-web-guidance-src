@@ -39,16 +39,15 @@ void test('icons CSS matcher', async (t) => {
     const matches = scanCss('modern-icons.css', css, [iconsCssMatcher]);
     assert.equal(matches.length, 0);
 
-    const devtoolsCss = `
-      devtools-record-menu-title {
-        --override-color-accent-red: #ed8796 !important;
-      }
-      .lh-report-icon::before {
-        filter: invert(77%) sepia(4%) saturate(1976%) hue-rotate(193deg) brightness(111%) contrast(92%);
+    const userstyleCss = `
+      @-moz-document domain("example.com") {
+        .lh-report-icon::before {
+          filter: invert(77%) sepia(4%) saturate(1976%) hue-rotate(193deg) brightness(111%) contrast(92%);
+        }
       }
     `;
     assert.equal(
-      scanCss('theme-overrides.css', devtoolsCss, [iconsCssMatcher]).length,
+      scanCss('userstyle.css', userstyleCss, [iconsCssMatcher]).length,
       0,
     );
   });

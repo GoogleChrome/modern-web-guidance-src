@@ -77,12 +77,8 @@ function matchDirtyClassBlurListener(callExpr: CallExpression): string | null {
   return `Imperative '${listener.eventName}' listener toggling touched/dirty classes to gate validation styling can be modernized with CSS :user-invalid.`;
 }
 
-const TOUCHED_DIRTY_TOKEN_REGEX =
-  /\b(?:is-|ng-|data-)?(touched|dirty|interacted|was-validated)\b/i;
-
 interface StylesheetValidationState {
   readonly isVendored: boolean;
-  readonly seenTouchedTokens: Set<string>;
 }
 
 const stylesheetValidationStateCache = new WeakMap<
@@ -101,7 +97,6 @@ function getStylesheetValidationState(
     );
     state = {
       isVendored: hasVendoredLicenseHeader(strippedCharset),
-      seenTouchedTokens: new Set<string>(),
     };
     stylesheetValidationStateCache.set(ctx, state);
   }
@@ -138,9 +133,8 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
 
     const selectorWithoutNot = selector.replace(/:not\([^)]*\)/gi, '');
     if (
-      selectorWithoutNot.split(',').length > 4 ||
-      (/\bselect\b/i.test(selectorWithoutNot) &&
-        !/\b(?:input|textarea)\b/i.test(selectorWithoutNot))
+      /\bselect\b/i.test(selectorWithoutNot) &&
+      !/\b(?:input|textarea)\b/i.test(selectorWithoutNot)
     ) {
       return null;
     }
@@ -185,13 +179,6 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
     }
 
     if (hasTouchedDirtyInvalid) {
-      const tokenMatch = TOUCHED_DIRTY_TOKEN_REGEX.exec(selectorWithoutNot);
-      const tokenKey = tokenMatch?.[1]?.toLowerCase() ?? 'touched';
-      if (sheetState.seenTouchedTokens.has(tokenKey)) {
-        return null;
-      }
-      sheetState.seenTouchedTokens.add(tokenKey);
-
       return {
         message:
           'CSS selector pairs :invalid with a touched/dirty class (e.g. .was-validated, .touched) to gate invalid styling until user interaction; modernize with native :user-invalid.',

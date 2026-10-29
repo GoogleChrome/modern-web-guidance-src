@@ -109,14 +109,9 @@ function isComponentDarkOverrideSelector(
 
 function hasSolidBackgroundAndForegroundOverride(
   rule: CssRuleView,
-  ctx: CssMatcherContext,
 ): boolean {
   let hasBackground = false;
   let hasForeground = false;
-  let hasStandardBgAndFg = false;
-  let hasStandardBg = false;
-  let hasStandardFg = false;
-  let customPropCount = 0;
 
   for (const decl of rule.declarations) {
     const prop = decl.property.toLowerCase().trim();
@@ -127,7 +122,6 @@ function hasSolidBackgroundAndForegroundOverride(
     }
 
     if (prop.startsWith('--')) {
-      customPropCount++;
       if (!val.includes('url(')) {
         const hasBgWord = /(?:^|-)(?:bg|background)(?:-|$)/i.test(prop);
         const hasTextWord = /(?:^|-)(?:text|fg|foreground)(?:-|$)/i.test(prop);
@@ -153,24 +147,11 @@ function hasSolidBackgroundAndForegroundOverride(
         val !== 'initial'
       ) {
         hasBackground = true;
-        hasStandardBg = true;
       }
     } else if (prop === 'color') {
       if (val !== 'inherit' && val !== 'initial' && val !== 'transparent') {
         hasForeground = true;
-        hasStandardFg = true;
       }
-    }
-  }
-
-  hasStandardBgAndFg = hasStandardBg && hasStandardFg;
-  if (!hasStandardBgAndFg && customPropCount > 8) {
-    const hasPairedLightRule =
-      /(?:\.light|\.theme-light|\.light-theme|\.light-mode|\[data-theme\s*=\s*['"]?light['"]?\]|\[data-color-scheme\s*=\s*['"]?light['"]?\])/i.test(
-        ctx.stylesheetText,
-      );
-    if (!hasPairedLightRule) {
-      return false;
     }
   }
 
@@ -209,7 +190,7 @@ const componentSpecificLightDarkThemeCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    if (!hasSolidBackgroundAndForegroundOverride(styleRule, ctx)) {
+    if (!hasSolidBackgroundAndForegroundOverride(styleRule)) {
       return null;
     }
 

@@ -63,20 +63,6 @@ function isModalDismissCallOrMutation(node: Node): boolean {
       // Native dialog.close(), popover.hidePopover(), or generic dismiss with modal receiver
       if (GENERIC_DISMISS_METHOD_REGEX.test(methodName)) {
         if (MODAL_IDENTIFIER_REGEX.test(receiverText)) {
-          // Skip custom hover/prompt widgets that close on mouseleave in an enclosing function
-          let anc: Node | undefined = node.getParent();
-          while (anc && !Node.isSourceFile(anc)) {
-            if (
-              (Node.isFunctionDeclaration(anc) ||
-                Node.isFunctionExpression(anc) ||
-                Node.isArrowFunction(anc) ||
-                Node.isMethodDeclaration(anc)) &&
-              /\baddEventListener\s*\(\s*['"]mouseleave['"]/.test(anc.getText())
-            ) {
-              return false;
-            }
-            anc = anc.getParent();
-          }
           return true;
         }
         if (receiverText === 'this') {
