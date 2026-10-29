@@ -106,10 +106,7 @@ export function buildHeadingMap(markdown: string): HeadingMapResult {
     headingMap.set(moonriseId, moonriseId);
     headingMap.set(githubId, moonriseId);
     headingMap.set(githubId.replace(/-+/g, "-"), moonriseId);
-    headingMap.set(baseGithubSlug, moonriseId);
-    headingMap.set(baseGithubSlug.replace(/-+/g, "-"), moonriseId);
     headingMap.set(githubId.replace(/-/g, "_"), moonriseId);
-    headingMap.set(baseGithubSlug.replace(/-/g, "_"), moonriseId);
   }
 
   return { headingMap, headingIds };

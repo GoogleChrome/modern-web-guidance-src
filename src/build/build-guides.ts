@@ -126,6 +126,7 @@ async function computePipelineHash(
   }
 
   hash.update(target);
+  if (target === 'devsite') hash.update(loadGitFileDates().sourceCommit);
   hash.update(noChunking.toString());
 
   if (target !== 'devsite') {

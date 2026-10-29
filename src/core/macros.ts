@@ -81,7 +81,7 @@ defineFeatureMacro("BASELINE_STATUS", {
       throw new MacroError(`Status not found for feature "${featureId}" (referenced in ${filePath}).`);
     }
 
-    if (options?.target === 'devsite') {
+    if (options?.target === 'devsite' && !bcdKey) {
       return `{{ macros.BaselineStatus('${featureId}') }}`;
     }
 
