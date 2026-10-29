@@ -119,7 +119,7 @@ export async function searchUseCases(
   }
 
   const fused = reciprocalRankFusion([
-    dense.map((r) => r.item.id),
+    topDenseSim < minSimilarity ? [] : dense.map((r) => r.item.id),
     bm25Matches.map((r) => r.id),
   ]);
 
