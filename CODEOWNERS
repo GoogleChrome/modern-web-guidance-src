@@ -1,5 +1,5 @@
 # Default owners for implementation and infra
-* @paulirish @micahjo7
+* @paulirish @micahjo7 @lusayaa
 
 # Blanket ownerless overrides for content (rely entirely on atl-triage bot instead)
 guides/
@@ -7,16 +7,16 @@ features/
 skills-src/
 
 # CODEOWNERS config
-CODEOWNERS @paulirish @rviscomi @micahjo7
+CODEOWNERS @paulirish @rviscomi @micahjo7 @lusayaa
 
 # Critical infra & workflow files (redundant but the explicitness is nice)
-.github/ @paulirish @micahjo7
-package.json @paulirish @micahjo7
-pnpm-lock.yaml @paulirish @micahjo7
-.github/atls.json @rviscomi @paulirish @micahjo7
+.github/ @paulirish @micahjo7 @lusayaa
+package.json @paulirish @micahjo7 @lusayaa
+pnpm-lock.yaml @paulirish @micahjo7 @lusayaa
+.github/atls.json @rviscomi @paulirish @micahjo7 @lusayaa
 
 # Eval files
-src/grading/ @TravenReese @micahjo7
-**/targets/ @TravenReese @micahjo7
-**/grader.ts @TravenReese @micahjo7
-**/tasks/task.md @TravenReese @micahjo7
+src/grading/ @TravenReese @micahjo7 @lusayaa
+**/targets/ @TravenReese @micahjo7 @lusayaa
+**/grader.ts @TravenReese @micahjo7 @lusayaa
+**/tasks/task.md @TravenReese @micahjo7 @lusayaa
