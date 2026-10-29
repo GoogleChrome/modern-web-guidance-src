@@ -37,7 +37,7 @@ Critically evaluate the guide's content against the authoring standards in [proj
     *   **`expectations.md` under review**: SHOULD encode the a11y patterns that the guide prescribes as testable expectations, but MUST NOT include prose-only or manual-verification-only requirements that the grader cannot assert.
 *   **Avoid Gating Critical Content**: Verify that the guide does not recommend interactive reveal patterns (e.g., following the cursor) that are inaccessible to non-pointer users. Ensure accessible alternatives are provided if such patterns are discussed.
 *   **Internal Consistency & Spec Rigor**: Verify API/CSS claims against primary specs and [project-guides](../project-guides/SKILL.md) (token economy, `{# ... #}` maintainer comments vs. inline rationale, `BASELINE_STATUS` vs. `FEATURE_FALLBACKS`, upfront `GUIDE_REF` disambiguation, and no hard-coded browser support claims).
-*   **Copy-Paste Safety**: Ensure that code examples are complete and safe to copy. If the text recommends a fallback or a constraint (like reduced motion), the code example **MUST** implement it.
+*   **Copy-Paste Safety**: Ensure that code examples are complete and safe to copy. If the text recommends a constraint (like reduced motion), the code example **MUST** implement it; if the guide recommends a fallback, this applies to the fallback section's code (main implementation snippets stay focused on the primary feature without cross-browser fallbacks).
 
 ## 3. Expectation Alignment
 
