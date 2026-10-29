@@ -44,4 +44,37 @@ void test('slider JS matcher', async (t) => {
     const matches = matchJsRule(sliderJsMatcher, 'unrelated.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts vertical sliders, pips, tooltips, formatters, non-linear ranges, and library docs', () => {
+    const code = `
+      noUiSlider.create(el1, {
+        start: [75],
+        orientation: 'vertical',
+        range: { min: [0], max: [100] },
+      });
+      noUiSlider.create(el2, {
+        start: [20],
+        range: { min: [60, 60], '30%': [3600, 3600], max: 31536000 },
+        pips: { mode: 'values', values: [60, 3600], density: 4 },
+      });
+      noUiSlider.create(el3, {
+        start: 0,
+        tooltips: true,
+        range: { min: 0, max: 150 },
+        format: { to: (v) => v, from: (v) => v },
+      });
+    `;
+    assert.equal(matchJsRule(sliderJsMatcher, 'advanced-sliders.js', code).length, 0);
+
+    const docCode = `
+      noUiSlider.create(rangeSlider, {
+        start: [4000],
+        range: { min: [2000], max: [10000] },
+      });
+    `;
+    assert.equal(
+      matchJsRule(sliderJsMatcher, 'documentation/slider-values/range.js', docCode).length,
+      0,
+    );
+  });
 });

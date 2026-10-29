@@ -2,6 +2,7 @@ import { Node, type CallExpression, type SourceFile, type Statement } from 'ts-m
 import {
   isProtectedByFeatureGuard,
   matchEventListenerCall,
+  resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
 import type {
@@ -37,7 +38,7 @@ const NON_DIALOG_CLOSE_RECEIVER_RE =
 const INVALID_RECEIVERS = new Set(['this', 'self', 'app', 'picker', 'interaction', 'window', 'document']);
 
 const EVENT_PURE_CALL_RE =
-  /^(?:e|evt|event)\s*\.\s*(?:preventDefault|stopPropagation|stopImmediatePropagation)\s*\(\s*\)$/;
+  /^(?:e|evt|event)\s*\.\s*(?:preventDefault|stopPropagation)\s*\(\s*\)$/;
 
 const LOCAL_LOOKUP_DECL_RE =
   /^(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:document\s*\.\s*(?:getElementById|querySelector)|[a-zA-Z_$][\w$]*\s*\.\s*closest)\s*\(\s*(['"`])([^'"`]*)\2\s*\)$/;
@@ -305,11 +306,7 @@ function isPureEventControlExpr(node: Node): boolean {
     return false;
   }
   const method = callee.getName();
-  if (
-    method !== 'preventDefault' &&
-    method !== 'stopPropagation' &&
-    method !== 'stopImmediatePropagation'
-  ) {
+  if (method !== 'preventDefault' && method !== 'stopPropagation') {
     return false;
   }
   return Node.isIdentifier(unwrapExpression(callee.getExpression()));
@@ -342,6 +339,19 @@ function matchPureDialogPopoverCallNode(
 
   if (INVALID_RECEIVERS.has(receiverText)) {
     return null;
+  }
+
+  // Reject receivers accessed off event objects (`event.data.dialog.close()`) unless `.closest(...)`
+  if (/^(?:e|evt|event)\s*\./.test(receiverText) && !/\.closest\s*\(/.test(receiverText)) {
+    return null;
+  }
+
+  // Reject custom JS class instances constructed with `new ...()` (e.g. `new AudioProcessingModal()`)
+  if (Node.isIdentifier(receiverExpr)) {
+    const resolvedReceiver = resolveLocalExpression(receiverExpr);
+    if (Node.isNewExpression(resolvedReceiver)) {
+      return null;
+    }
   }
 
   if (methodName === 'close') {
@@ -444,7 +454,19 @@ function extractPureDialogPopoverCallFromHandler(
 }
 
 const NON_BUTTON_LISTENER_TARGET_RE =
-  /\b(?:window|document|document\.body|body|overlay|backdrop|mask|scrim)\b/i;
+  /\b(?:window|document|document\.body|body|overlay|backdrop|mask|scrim|root)\b/i;
+
+function isDynamicDomLookupTarget(targetNode: Node): boolean {
+  const unwrapped = unwrapExpression(targetNode);
+  if (!Node.isIdentifier(unwrapped)) return false;
+  const resolved = resolveLocalExpression(unwrapped);
+  if (resolved === unwrapped || !Node.isCallExpression(resolved)) return false;
+  const callee = unwrapExpression(resolved.getExpression());
+  if (!Node.isPropertyAccessExpression(callee)) return false;
+  const method = callee.getName();
+  if (method !== 'getElementById' && method !== 'querySelector') return false;
+  return !isPureDomLookupExpr(resolved);
+}
 
 export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher = {
   kind: 'js',
@@ -497,10 +519,10 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
         return;
       }
 
-      // Check target node: reject window, document, body, overlay, backdrop, scrim
+      // Check target node: reject window, document, body, overlay, backdrop, scrim, root, or dynamic getElementById
       if (targetNode) {
         const targetText = targetNode.getText().trim();
-        if (NON_BUTTON_LISTENER_TARGET_RE.test(targetText)) {
+        if (NON_BUTTON_LISTENER_TARGET_RE.test(targetText) || isDynamicDomLookupTarget(targetNode)) {
           return;
         }
       }

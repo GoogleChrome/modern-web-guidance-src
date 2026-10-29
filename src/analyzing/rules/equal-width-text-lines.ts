@@ -318,14 +318,14 @@ export const equalWidthTextLinesJsRule: AnalyzerRule = {
   matcher: equalWidthTextLinesJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'Imperative JavaScript invokes fitty(), fitText(), or jQuery .fitText() to scale headline text lines to uniform container width without a CSS.supports("text-fit", ...) guard.',
-      'A script dynamically computes font-size scaling factors across heading lines using clientWidth or offsetWidth measurements.',
+      'Imperative JavaScript invokes fitty(), fitText(), or jQuery .fitText() to scale text or heading elements to fit their container width (including calls passing compressor numbers or minFontSize/maxFontSize bounds) without a CSS.supports("text-fit", ...) guard.',
+      'A script dynamically computes font-size scaling factors across text or heading elements using clientWidth or offsetWidth measurements.',
     ],
     dropWhen: [
       'The call is guarded by CSS.supports("text-fit", ...) or a progressive enhancement fallback check.',
-      'The call passes minFontSize/maxFontSize or minSize/maxSize fluid clamp options on a non-line selector, explicitly sets single-line mode (multiLine: false, singleLine: true, maxLines: 1, white-space: nowrap), or targets a single heading, link, or Reveal.js .r-fit-text slide element.',
-      'The script curves text along a circular path (CircleType) or measures container aspect ratios or video dimensions rather than text typography lines.',
-      'The sizing uses fluid viewport units (clamp, vw, cqi) without imperative line-scaling loops.',
+      'The call explicitly sets single-line mode (multiLine: false, singleLine: true, maxLines: 1, white-space: nowrap) or targets a Reveal.js .r-fit-text slide element.',
+      'The script curves text along a circular path (CircleType) or measures canvas, chart, or video dimensions rather than DOM typography.',
+      'The sizing uses pure CSS fluid viewport units (clamp, vw, cqi) without imperative JS text-fitting calls.',
     ],
   },
 };

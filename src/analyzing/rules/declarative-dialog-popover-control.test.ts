@@ -229,8 +229,32 @@ describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
       overlay.addEventListener('click', () => dialog.close());
       document.addEventListener('click', () => dialog.close());
       dialog.addEventListener('click', () => dialog.close());
+      dialog.root.addEventListener('click', function close_this() { dialog.close(); });
     `;
     const { matches } = scanJsSource('backdrop.js', js, jsRules);
+    assert.equal(matches.length, 0);
+  });
+
+  it('ignores stopImmediatePropagation, event.data.dialog, custom class instances, and dynamic getElementById targets', () => {
+    const js = `
+      menuItemElement.onclick = (pointerEvent) => {
+        browserExtensionsNotAllowedPopoverElement.togglePopover();
+        pointerEvent.preventDefault();
+        pointerEvent.stopImmediatePropagation();
+      };
+      $container.on('click', { dialog: this }, function(event) {
+        event.data.dialog.close();
+      });
+      const audioProcessingModal = new AudioProcessingModal();
+      openModalBtn.addEventListener('click', () => {
+        audioProcessingModal.showModal();
+      });
+      var showDialogButton = document.getElementById($(this).attr('id'));
+      showDialogButton.addEventListener('click', function() {
+        dialog.showModal();
+      });
+    `;
+    const { matches } = scanJsSource('exempt-patterns.js', js, jsRules);
     assert.equal(matches.length, 0);
   });
 });
