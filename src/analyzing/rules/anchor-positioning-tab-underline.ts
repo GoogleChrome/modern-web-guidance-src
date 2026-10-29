@@ -9,11 +9,29 @@ import type {
 
 export const ANCHOR_POSITIONING_TAB_UNDERLINE_GUIDE_HASH = '53899a3a65ac';
 
-const FAST_TOKENS: readonly string[] = [
-  'offsetLeft',
-  'offsetWidth',
-  'getBoundingClientRect',
-  'clientWidth',
+const FAST_TOKENS = [
+  ['offsetLeft', 'offsetWidth', 'getBoundingClientRect', 'clientWidth'],
+  [
+    'indicator',
+    'Indicator',
+    'underline',
+    'Underline',
+    'glider',
+    'Glider',
+    'tab-line',
+    'tab_line',
+    'tabLine',
+    'active-bar',
+    'active_bar',
+    'activeBar',
+    'tab-bar',
+    'tab_bar',
+    'tabBar',
+    'tab-slider',
+    'tab_slider',
+    'tabSlider',
+  ],
+  ['.style.', '.setProperty(', 'setIndicatorStyle', 'translateX('],
 ] as const;
 
 const FEATURE_TOKENS: readonly string[] = [

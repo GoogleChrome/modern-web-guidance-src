@@ -5,7 +5,9 @@ import type { AnalyzerRule } from '../schema.ts';
 import {
   createInMemoryProject,
   createJsCallMatcher,
+  matchesFastTokens,
   matchJsRule,
+  normalizeFastTokenGroups,
   scanFiles,
   scanJsSource,
   withVirtualSourceFile,
@@ -23,6 +25,7 @@ function createCallExpressionRule(id: string, guideId: string, targetCallee: str
     },
     matcher: {
       kind: 'js',
+      fastTokens: [targetCallee],
       matchFile(sourceFile: SourceFile) {
         const fullText = sourceFile.getFullText();
         const trimmedText = sourceFile.getText();
@@ -227,5 +230,39 @@ test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) =>
     const withProject = scanJsSource('sample.ts', 'legacyCall();', [matcher], callerProject);
     assert.equal(withProject.matches.length, 1);
     assert.equal(withProject.sourceFile?.wasForgotten(), false);
+  });
+
+  await t.test('normalizeFastTokenGroups and matchesFastTokens evaluate flat OR and nested CNF token groups', () => {
+    assert.deepEqual(normalizeFastTokenGroups(undefined), []);
+    assert.deepEqual(normalizeFastTokenGroups([]), []);
+    assert.deepEqual(normalizeFastTokenGroups(['a', 'b']), [['a', 'b']]);
+    assert.deepEqual(
+      normalizeFastTokenGroups([
+        ['a', 'b'],
+        ['c', 'd'],
+      ]),
+      [
+        ['a', 'b'],
+        ['c', 'd'],
+      ],
+    );
+
+    assert.equal(matchesFastTokens('anything', []), true);
+    assert.equal(matchesFastTokens('has alpha', ['alpha', 'beta']), true);
+    assert.equal(matchesFastTokens('has neither', ['alpha', 'beta']), false);
+    assert.equal(
+      matchesFastTokens('has alpha and delta', [
+        ['alpha', 'beta'],
+        ['gamma', 'delta'],
+      ]),
+      true,
+    );
+    assert.equal(
+      matchesFastTokens('has alpha only', [
+        ['alpha', 'beta'],
+        ['gamma', 'delta'],
+      ]),
+      false,
+    );
   });
 });

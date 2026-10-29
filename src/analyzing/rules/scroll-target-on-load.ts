@@ -162,7 +162,11 @@ function matchScrollTargetOnLoadListener(callExpr: CallExpression): string | nul
 }
 
 export const scrollTargetOnLoadMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['scrollIntoView', 'scrollTo'],
+  fastTokens: [
+    ['DOMContentLoaded', "'load'", '"load"', '`load`', '.load('],
+    ['scrollIntoView', 'scrollTo'],
+    ['location.hash', 'querySelector', 'getElementById', 'getElementsByClassName'],
+  ],
   isGuarded: (node) => isGuardedByScrollInitialTarget(node),
   matchCall: matchScrollTargetOnLoadListener,
 });

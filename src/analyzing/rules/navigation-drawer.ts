@@ -13,9 +13,19 @@ export const NAVIGATION_DRAWER_GUIDE_HASH = '3481f6feb2e8';
 
 const FAST_TOKENS: readonly string[] = [
   'drawer',
+  'Drawer',
   'sidenav',
+  'Sidenav',
+  'side-nav',
+  'side_nav',
+  'SideNav',
   'offcanvas',
-  'sidebar',
+  'Offcanvas',
+  'off-canvas',
+  'OffCanvas',
+  'sidebar-menu',
+  'sidebar_menu',
+  'sidebarMenu',
 ] as const;
 
 const DRAWER_IDENTIFIER_REGEX =
@@ -77,7 +87,10 @@ function hasDrawerControllerSignals(scopeText: string): boolean {
 
 export const navigationDrawerJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: FAST_TOKENS,
+  fastTokens: [
+    FAST_TOKENS,
+    ['classList', 'style.', 'backdrop', 'Backdrop', 'overlay', 'Overlay', 'scrim', 'mask', 'overflow', 'no-scroll', 'Escape'],
+  ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const lowerPath = ctx.filePath.toLowerCase();
     if (
@@ -132,7 +145,11 @@ export const navigationDrawerJsMatcher: JsRuleMatcher = {
 export const navigationDrawerDomMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'div, nav, aside',
-  fastTokens: FAST_TOKENS,
+  fastTokens: [
+    ['<div', '<Div', '<nav', '<Nav', '<aside', '<Aside'],
+    ['class=', 'className=', 'id='],
+    ['drawer', 'Drawer', 'sidenav', 'Sidenav', 'side-nav', 'SideNav', 'offcanvas', 'Offcanvas'],
+  ],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     const lowerPath = ctx.filePath.toLowerCase();
     if (

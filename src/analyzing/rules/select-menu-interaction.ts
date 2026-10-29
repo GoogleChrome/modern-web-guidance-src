@@ -236,7 +236,10 @@ function matchSelectValidationListener(callExpr: CallExpression): string | null 
 
 export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: [':invalid'],
+  fastTokens: [
+    [':invalid'],
+    ['select', 'Select'],
+  ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     const selector = styleRule.selectorText;
     if (
@@ -289,7 +292,22 @@ export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
 };
 
 export const selectMenuInteractionJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['blur', 'change'],
+  fastTokens: [
+    ["'blur'", '"blur"', '`blur`', "'change'", '"change"', '`change`', '.blur(', '.change(', 'onblur', 'onchange'],
+    ['select', 'Select'],
+    ['.value', 'checkValidity', 'validity'],
+    [
+      '.classList.',
+      '.addClass(',
+      '.removeClass(',
+      '.toggleClass(',
+      '.setAttribute(',
+      '.removeAttribute(',
+      '.toggleAttribute(',
+      '.className',
+    ],
+    ['invalid', 'Invalid', 'error', 'Error', 'touched', 'Touched', 'dirty', 'Dirty', 'valid', 'Valid'],
+  ],
   featureGuardTokens: USER_INVALID_GUARD_TOKENS,
   matchCall: matchSelectValidationListener,
 });

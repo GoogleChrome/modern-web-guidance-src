@@ -266,7 +266,10 @@ function isSimpleIndexInjectionLoop(node: Node): Node | undefined {
 
 const dynamicSiblingStylingJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['.style.setProperty'],
+  fastTokens: [
+    ['.style.setProperty'],
+    ['--sibling-index', '--sibling-count', '--item-index', '--item-count', '--index', '--i'],
+  ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     if (!/--(?:sibling-index|sibling-count|item-index|item-count|index|i)\b/i.test(ctx.fileContent)) {

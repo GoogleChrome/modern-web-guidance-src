@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { scanAllGuides } from '../../core/guide-validation.ts';
+import { normalizeFastTokenGroups } from '../scanners/js-scanner.ts';
 import type { AnalyzerRule } from '../schema.ts';
 import {
   ALL_RULES,
@@ -309,6 +310,123 @@ describe('rule registry architectural invariants', () => {
           assert.ok(rule.verifierRubric.dropWhen.length > 0, 'has dropWhen');
         });
       }
+    }
+  });
+
+  it('enforces structural FastTokenSpec / packages invariant on every rule in ALL_RULES', () => {
+    for (const rule of ALL_RULES) {
+      if (rule.matcher.kind === 'dependency') {
+        assert.ok(
+          Array.isArray(rule.matcher.packages) && rule.matcher.packages.length > 0,
+          `Dependency rule "${rule.id}" must declare a non-empty matcher.packages array`,
+        );
+        for (const pkg of rule.matcher.packages) {
+          assert.ok(
+            typeof pkg === 'string' && pkg.trim().length > 0,
+            `Dependency rule "${rule.id}" contains an empty package name`,
+          );
+        }
+        continue;
+      }
+
+      const groups = normalizeFastTokenGroups(rule.matcher.fastTokens);
+      assert.ok(
+        groups.length > 0,
+        `Rule "${rule.id}" (${rule.matcher.kind}) must declare non-empty matcher.fastTokens`,
+      );
+      for (let gIdx = 0; gIdx < groups.length; gIdx++) {
+        const group = groups[gIdx];
+        assert.ok(
+          group && group.length > 0,
+          `Rule "${rule.id}" fastTokens group[${gIdx}] must not be empty`,
+        );
+        for (const token of group) {
+          assert.ok(
+            typeof token === 'string' && token.length > 0,
+            `Rule "${rule.id}" fastTokens group[${gIdx}] contains an empty token`,
+          );
+        }
+      }
+    }
+  });
+
+  it('enforces anti-sponge selectivity gate on fastTokens across ALL_RULES', () => {
+    const bannedUltraGenericSingleGroupTokens = new Set([
+      'scroll',
+      'click',
+      'keydown',
+      'blur',
+      'change',
+      'mousedown',
+      'setAttribute',
+      'addEventListener',
+      'querySelector',
+      'classList',
+      'localStorage',
+      'IntersectionObserver',
+      'ResizeObserver',
+      'getBoundingClientRect',
+      'setTimeout',
+      'Promise',
+      'Math.round',
+      'Math.floor',
+      'transform',
+      'overflow',
+      ':invalid',
+      '@media',
+      'div',
+      'span',
+      'input',
+      'button',
+    ]);
+
+    const rulesDir = resolve(import.meta.dirname);
+    const ruleTestFiles = readdirSync(rulesDir)
+      .filter((f) => f.endsWith('.test.ts') && f !== 'index.test.ts')
+      .map((f) => ({
+        guideId: f.replace(/\.test\.ts$/, ''),
+        content: readFileSync(join(rulesDir, f), 'utf8'),
+      }));
+
+    assert.ok(
+      ruleTestFiles.length >= 50,
+      `Expected at least 50 rule test files for selectivity check, found ${ruleTestFiles.length}`,
+    );
+
+    for (const rule of ALL_RULES) {
+      if (rule.matcher.kind === 'dependency') {
+        continue;
+      }
+
+      const groups = normalizeFastTokenGroups(rule.matcher.fastTokens);
+      if (groups.length === 1) {
+        const singleGroup = groups[0] ?? [];
+        const allBanned = singleGroup.every((tok) =>
+          bannedUltraGenericSingleGroupTokens.has(tok.trim()),
+        );
+        assert.strictEqual(
+          allBanned,
+          false,
+          `Rule "${rule.id}" has a single-group fastTokens consisting solely of banned ultra-generic tokens: ${JSON.stringify(singleGroup)}`,
+        );
+      }
+
+      const unrelatedTestFiles = ruleTestFiles.filter((tf) => tf.guideId !== rule.guideId);
+      let matchedUnrelated = 0;
+      for (const tf of unrelatedTestFiles) {
+        const matchesAllGroups = groups.every((group) =>
+          group.some((tok) => tf.content.includes(tok)),
+        );
+        if (matchesAllGroups) {
+          matchedUnrelated++;
+        }
+      }
+
+      const matchRatio = matchedUnrelated / unrelatedTestFiles.length;
+      assert.ok(
+        matchRatio <= 0.15,
+        `Rule "${rule.id}" fastTokens ${JSON.stringify(rule.matcher.fastTokens)} is a sponge matching ${(matchRatio * 100).toFixed(1)}% (${matchedUnrelated}/${unrelatedTestFiles.length}) of unrelated rule test files (max 15%)`,
+      );
     }
   });
 });

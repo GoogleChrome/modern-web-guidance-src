@@ -904,6 +904,7 @@ const showMenu = true;
     const rule: DomRuleMatcher = {
       kind: 'dom',
       selector: 'input[type="password"]',
+      fastTokens: ['password'],
       skipIfHasSpread: true,
       matchElement: (el) => {
         if (!el.hasAttribute('autocomplete')) {
@@ -935,6 +936,7 @@ const showMenu = true;
     const rule: DomRuleMatcher = {
       kind: 'dom',
       selector: 'input[type="password"]',
+      fastTokens: ['password'],
       skipIfDynamicAttributes: ['autocomplete'],
       matchElement: () => ({ message: 'matched' }),
     };

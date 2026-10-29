@@ -69,7 +69,11 @@ function matchDeferredDomObserver(
 
 export const deferRenderingHeavyContentMatcher: JsRuleMatcher =
   createJsCallMatcher({
-    fastTokens: ['IntersectionObserver'],
+    fastTokens: [
+      ['IntersectionObserver'],
+      ['isIntersecting', 'intersectionRatio'],
+      ['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'cloneNode', 'importNode', 'replaceChildren'],
+    ],
     isGuarded: (node) =>
       isProtectedByFeatureGuard(node, CONTENT_VISIBILITY_GUARD_TOKENS),
     matchNew: (node, sourceFile) => matchDeferredDomObserver(node, sourceFile),

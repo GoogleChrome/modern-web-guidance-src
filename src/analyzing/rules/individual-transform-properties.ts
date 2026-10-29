@@ -680,7 +680,27 @@ function matchSingleFunctionStateRule(
 
 export const individualTransformPropertiesMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['transform'],
+  fastTokens: [
+    ['transform:'],
+    [
+      'translate(',
+      'translateX(',
+      'translateY(',
+      'translateZ(',
+      'translate3d(',
+      'rotate(',
+      'rotateX(',
+      'rotateY(',
+      'rotateZ(',
+      'rotate3d(',
+      'scale(',
+      'scaleX(',
+      'scaleY(',
+      'scaleZ(',
+      'scale3d(',
+    ],
+    [':hover', ':focus', ':active', ':checked', '@keyframes', 'keyframes', '.active', '.open', '.is-'],
+  ],
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string; subPattern?: string } | null {
     // a) Keep skipping if stylesheet already declares `scale`, `rotate`, or `translate` properties.
     if (
@@ -783,7 +803,45 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
 
 export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['transform'],
+  fastTokens: [
+    ['transform:'],
+    [
+      'translate(',
+      'translateX(',
+      'translateY(',
+      'translateZ(',
+      'translate3d(',
+      'rotate(',
+      'rotateX(',
+      'rotateY(',
+      'rotateZ(',
+      'rotate3d(',
+    ],
+    [
+      'translate(',
+      'translateX(',
+      'translateY(',
+      'translateZ(',
+      'translate3d(',
+      'scale(',
+      'scaleX(',
+      'scaleY(',
+      'scaleZ(',
+      'scale3d(',
+    ],
+    [
+      'rotate(',
+      'rotateX(',
+      'rotateY(',
+      'rotateZ(',
+      'rotate3d(',
+      'scale(',
+      'scaleX(',
+      'scaleY(',
+      'scaleZ(',
+      'scale3d(',
+    ],
+  ],
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string; subPattern?: string } | null {
     if (
       ctx.stylesheetHasProperty('scale') ||
@@ -875,7 +933,27 @@ export const individualTransformPropertiesStandaloneChainRule: AnalyzerRule = {
 
 export const individualTransformPropertiesSingleFunctionStateMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['transform'],
+  fastTokens: [
+    ['transform:'],
+    [
+      'translate(',
+      'translateX(',
+      'translateY(',
+      'translateZ(',
+      'translate3d(',
+      'rotate(',
+      'rotateX(',
+      'rotateY(',
+      'rotateZ(',
+      'rotate3d(',
+      'scale(',
+      'scaleX(',
+      'scaleY(',
+      'scaleZ(',
+      'scale3d(',
+    ],
+    [':hover', ':focus', ':active', ':checked'],
+  ],
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
     return matchSingleFunctionStateRule(styleRule, ctx);
   },

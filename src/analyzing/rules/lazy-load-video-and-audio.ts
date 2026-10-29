@@ -122,7 +122,11 @@ export const lazyLoadVideoAndAudioPackageMatcher: DependencyRuleMatcher =
   );
 
 export const lazyLoadVideoAndAudioJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['IntersectionObserver'],
+  fastTokens: [
+    ['IntersectionObserver'],
+    ['dataset.src', 'dataset.poster', 'data-src', 'data-poster'],
+    ['video', 'Video', 'audio', 'Audio', 'source', 'Source', '.load('],
+  ],
   isGuarded: (node) => isGuardedByLazyMediaSupport(node),
   matchNew: (node, sourceFile) => matchMediaLazyObserver(node, sourceFile),
 });

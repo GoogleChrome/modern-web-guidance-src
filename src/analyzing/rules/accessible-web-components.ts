@@ -191,7 +191,11 @@ function collectLifecycleMethods(
 
 const accessibleWebComponentsJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['setAttribute'],
+  fastTokens: [
+    ['setAttribute'],
+    ['role', 'aria-'],
+    ['HTMLElement', 'Element', 'CustomElement', 'customElements.define', '@customElement'],
+  ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     if (

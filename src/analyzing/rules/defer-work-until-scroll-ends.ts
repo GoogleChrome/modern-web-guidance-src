@@ -421,7 +421,11 @@ function matchOnscrollAssignment(binaryExpr: BinaryExpression): AnalyzerMatch | 
 
 export const deferWorkUntilScrollEndsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['scroll', 'onscroll'],
+  fastTokens: [
+    ["'scroll'", '"scroll"', '`scroll`', 'onscroll', '.scroll('],
+    ['setTimeout', 'debounce', 'Debounce'],
+    ['clearTimeout', 'debounce', 'Debounce'],
+  ],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const fullText = sourceFile.getText();
     if (

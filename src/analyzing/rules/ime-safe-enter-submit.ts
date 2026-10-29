@@ -372,7 +372,10 @@ function matchOnKeydownAssignment(sourceFile: SourceFile): AnalyzerMatch[] {
 
 export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['keydown', 'onkeydown', 'onKeyDown'],
+  fastTokens: [
+    ['keydown', 'onkeydown', 'onKeyDown'],
+    ['Enter', '13'],
+  ],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {
       return [];

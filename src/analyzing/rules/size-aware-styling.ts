@@ -71,10 +71,9 @@ function isWindowResizeListener(node: Node): node is CallExpression {
 const sizeAwareStylingJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    'ResizeObserver',
-    'offsetWidth',
-    'clientWidth',
-    'getBoundingClientRect',
+    ['ResizeObserver', 'resize'],
+    ['contentRect', 'borderBoxSize', 'offsetWidth', 'clientWidth', 'getBoundingClientRect'],
+    ['classList', 'addClass', 'removeClass', 'toggleClass', 'className'],
   ],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];

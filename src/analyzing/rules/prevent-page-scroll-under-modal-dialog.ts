@@ -345,13 +345,40 @@ function matchScrollLockCall(
 export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    'overflow',
-    'modal-open',
-    'no-scroll',
-    'scroll-lock',
-    'overflow-hidden',
-    'disableBodyScroll',
-    'enableBodyScroll',
+    [
+      '.style.overflow',
+      "'overflow'",
+      '"overflow"',
+      "'overflow-y'",
+      '"overflow-y"',
+      'modal-open',
+      'dialog-open',
+      'no-scroll',
+      'noscroll',
+      'scroll-lock',
+      'lock-scroll',
+      'overflow-hidden',
+      'disableBodyScroll',
+      'enableBodyScroll',
+    ],
+    [
+      'hidden',
+      'modal-open',
+      'dialog-open',
+      'no-scroll',
+      'noscroll',
+      'scroll-lock',
+      'lock-scroll',
+      'overflow-hidden',
+      'disableBodyScroll',
+      'enableBodyScroll',
+    ],
+    [
+      'body',
+      'documentElement',
+      'disableBodyScroll',
+      'enableBodyScroll',
+    ],
   ],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
@@ -390,7 +417,11 @@ export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
 
 export const preventPageScrollUnderModalDialogCssMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['overflow', 'modal-open', 'dialog-open', 'no-scroll', 'scroll-lock', 'overflow-hidden'],
+  fastTokens: [
+    ['overflow'],
+    ['hidden'],
+    ['modal-open', 'dialog-open', 'no-scroll', 'scroll-lock', 'overflow-hidden'],
+  ],
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
     if (ctx.stylesheetHasProperty('overscroll-behavior')) {
       return null;

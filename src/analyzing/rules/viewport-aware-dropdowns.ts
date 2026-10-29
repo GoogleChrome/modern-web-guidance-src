@@ -45,7 +45,27 @@ function getFunctionNodes(sourceFile: SourceFile): Node[] {
 
 export const viewportAwareDropdownsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['getBoundingClientRect'] as const,
+  fastTokens: [
+    ['getBoundingClientRect'],
+    ['innerWidth', 'innerHeight', 'clientWidth', 'clientHeight', 'visualViewport'],
+    ['style'],
+    [
+      'dropdown',
+      'Dropdown',
+      'menu',
+      'Menu',
+      'submenu',
+      'Submenu',
+      'popover',
+      'Popover',
+      'popup',
+      'Popup',
+      'listbox',
+      'combobox',
+      'picker',
+      'Picker',
+    ],
+  ] as const,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (isAlreadyModern(ctx.fileContent)) {
       return [];

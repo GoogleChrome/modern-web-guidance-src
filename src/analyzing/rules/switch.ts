@@ -37,7 +37,11 @@ function isTreeDisclosureHack(
 export const switchMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input[type="checkbox"][role="switch"]',
-  fastTokens: ['switch'],
+  fastTokens: [
+    ['<input', '<Input'],
+    ['checkbox'],
+    ['role="switch"', "role='switch'"],
+  ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['switch'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {

@@ -93,7 +93,11 @@ function matchScrollCall(
 
 export const parallaxScrollEffectsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['scroll', 'onscroll'] as const,
+  fastTokens: [
+    ['scroll', 'onscroll'],
+    ['scrollY', 'pageYOffset', 'scrollTop', 'getBoundingClientRect'],
+    ['translateY', 'translate3d', 'translate(', 'backgroundPosition', 'background-position'],
+  ] as const,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (isAlreadyModern(ctx.fileContent)) {
       return [];

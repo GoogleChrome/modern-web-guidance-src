@@ -94,7 +94,10 @@ function hasVisualErrorOrSiblingReveal(
 
 export const validateInputAfterInteractionCssMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: [':invalid'],
+  fastTokens: [
+    [':invalid'],
+    ['input', 'textarea'],
+  ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     const selector = styleRule.selectorText;
     if (

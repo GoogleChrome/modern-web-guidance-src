@@ -441,7 +441,10 @@ function matchMessageChannelYield(newExpr: NewExpression): AnalyzerMatch | null 
 
 export const breakUpLongTasksMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['Promise', 'setTimeout', 'setImmediate', 'MessageChannel'],
+  fastTokens: [
+    ['setImmediate', 'MessageChannel', 'Promise'],
+    ['setTimeout', 'setImmediate', 'MessageChannel'],
+  ],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (isTestOrNodeFile(sourceFile, ctx)) {
       return [];

@@ -143,7 +143,13 @@ function hasValidSiblingSelectorInRules(
 
 export const checkboxCssMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['checkbox', ':checked', ':indeterminate'],
+  fastTokens: [
+    ['checkbox', 'Checkbox', 'custom-control-input', 'custom-checkbox', ':checked'],
+    ['checkbox', 'Checkbox', 'custom-control-input', 'custom-checkbox', ':before', ':after'],
+    ['checkbox', 'Checkbox', 'custom-control-input', 'custom-checkbox', 'label', 'span'],
+    ['opacity:', 'appearance:', ':checked'],
+    ['opacity: 0', 'opacity:0', 'appearance: none', 'appearance:none', ':before', ':after'],
+  ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     // 1. If stylesheet already defines accent-color, skip
     if (ctx.stylesheetHasProperty('accent-color')) {

@@ -83,7 +83,10 @@ function matchEqualHeightCardSync(fnNode: Node): Node | null {
 
 export const cardJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['matchHeight', '.card'],
+  fastTokens: [
+    ['matchHeight', '.card'],
+    ['matchHeight', 'Math.max', 'click'],
+  ],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (
       !ctx.fileContent.includes('matchHeight') &&

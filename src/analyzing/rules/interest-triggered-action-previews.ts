@@ -134,7 +134,27 @@ export const interestTriggeredActionPreviewsPackageMatcher: DependencyRuleMatche
   );
 
 export const interestTriggeredActionPreviewsJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['hoverintent', 'hoverIntent', 'mouseenter', 'mouseover', 'focusin'],
+  fastTokens: [
+    ['hoverintent', 'hoverIntent', 'mouseenter', 'mouseover', 'focusin'],
+    ['hoverintent', 'hoverIntent', 'setTimeout'],
+    [
+      'hoverintent',
+      'hoverIntent',
+      'preview',
+      'Preview',
+      'hovercard',
+      'hoverCard',
+      'HoverCard',
+      'actionCard',
+      'ActionCard',
+      'quickview',
+      'quickView',
+      'QuickView',
+      'popover',
+      'Popover',
+      'dataset.effect',
+    ],
+  ],
   dedupeLines: true,
   isGuarded: (node, _sourceFile, ctx) => isGuardedByInterestInvoker(node, ctx.fileContent),
   matchCall: (node) => matchHoverPreviewCall(node),

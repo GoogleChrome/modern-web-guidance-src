@@ -7,7 +7,12 @@ import {
   type NewExpression,
   type SourceFile,
 } from 'ts-morph';
-import type { AnalyzerMatch, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
+import type {
+  AnalyzerMatch,
+  FastTokenSpec,
+  JsMatcherContext,
+  JsRuleMatcher,
+} from '../schema.ts';
 import { isProtectedByFeatureGuard } from './ast-helpers.ts';
 
 /**
@@ -67,7 +72,7 @@ export function matchJsRule(
 }
 
 export interface JsCallMatcherConfig {
-  readonly fastTokens?: readonly string[];
+  readonly fastTokens?: FastTokenSpec;
   readonly featureGuardTokens?: readonly string[];
   readonly dedupeLines?: boolean;
   readonly shouldSkipFile?: (
@@ -98,7 +103,7 @@ export interface JsCallMatcherConfig {
 export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher {
   return {
     kind: 'js',
-    ...(config.fastTokens ? { fastTokens: config.fastTokens } : {}),
+    fastTokens: config.fastTokens ?? [],
     matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
       if (config.shouldSkipFile?.(sourceFile, ctx)) {
         return [];
@@ -148,17 +153,42 @@ export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher 
   };
 }
 
+function isNestedTokenGroups(
+  fastTokens: FastTokenSpec,
+): fastTokens is readonly (readonly string[])[] {
+  return fastTokens.length > 0 && Array.isArray(fastTokens[0]);
+}
+
 /**
- * Pre-checks whether file content contains any of the required fast tokens for a rule.
+ * Normalizes a `FastTokenSpec` into CNF (`readonly (readonly string[])[]`):
+ * - empty -> `[]`
+ * - flat `readonly string[]` -> `[fastTokens]`
+ * - nested `readonly (readonly string[])[]` -> `fastTokens`
+ */
+export function normalizeFastTokenGroups(
+  fastTokens?: FastTokenSpec,
+): readonly (readonly string[])[] {
+  if (!fastTokens || fastTokens.length === 0) {
+    return [];
+  }
+  if (isNestedTokenGroups(fastTokens)) {
+    return fastTokens;
+  }
+  return [fastTokens];
+}
+
+/**
+ * Pre-checks whether file content satisfies all CNF token groups for a rule.
  */
 export function matchesFastTokens(
   content: string,
-  fastTokens?: readonly string[],
+  fastTokens?: FastTokenSpec,
 ): boolean {
-  if (!fastTokens || fastTokens.length === 0) {
+  const groups = normalizeFastTokenGroups(fastTokens);
+  if (groups.length === 0) {
     return true;
   }
-  return fastTokens.some((token) => content.includes(token));
+  return groups.every((group) => group.some((token) => content.includes(token)));
 }
 
 /**

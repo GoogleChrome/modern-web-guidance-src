@@ -17,6 +17,7 @@ const mockRule: AnalyzerRule = {
   summary: 'Detects old-pattern widgets and suggests modern HTML equivalents.',
   matcher: {
     kind: 'js',
+    fastTokens: ['fadeIn'],
     matchFile: () => [],
   },
   verifierRubric: {

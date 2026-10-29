@@ -208,14 +208,31 @@ export const declarativeDialogPopoverControlMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'button, input[type="button"]',
   fastTokens: [
-    'showModal',
-    'close(',
-    'showPopover',
-    'hidePopover',
-    'togglePopover',
-    'aria-controls',
-    'data-dialog-target',
-    'data-modal-target',
+    ['<button', '<Button', '<input', '<Input'],
+    [
+      'showModal',
+      'close(',
+      'showPopover',
+      'hidePopover',
+      'togglePopover',
+      'aria-controls',
+      'data-dialog-target',
+      'data-modal-target',
+    ],
+    [
+      'showModal',
+      'showPopover',
+      'hidePopover',
+      'togglePopover',
+      '.close(',
+      '<dialog',
+      'popover',
+      'dialog',
+      'Dialog',
+      'modal',
+      'Modal',
+      'dlg',
+    ],
   ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['commandfor', 'command', 'popovertarget'],
@@ -462,7 +479,10 @@ const NON_BUTTON_LISTENER_TARGET_RE =
 
 export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['showModal', 'showPopover', 'hidePopover', 'togglePopover', '.close()'],
+  fastTokens: [
+    ['click', 'onclick'],
+    ['showModal', 'showPopover', 'hidePopover', 'togglePopover', '.close()'],
+  ],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
     const seenPositions = new Set<number>();

@@ -16,7 +16,8 @@ import type {
 export const DARK_MODE_TOGGLE_GUIDE_HASH = 'e499ab00959e';
 
 const DARK_MODE_TOGGLE_FAST_TOKENS = [
-  'localStorage',
+  ['localStorage'],
+  ['theme', 'Theme', 'dark', 'Dark', 'color-scheme', 'colorScheme', 'mode', 'Mode'],
 ] as const;
 
 const DARK_MODE_TOGGLE_GUARD_TOKENS = [

@@ -293,7 +293,30 @@ function handlerDismissesOnPopstate(handler: Node): boolean {
 
 export const platformControlsDismissDialogJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['Escape', 'Esc', '27', 'popstate'] as const,
+  fastTokens: [
+    ['keydown', 'keyup', 'keypress', 'popstate'],
+    ['Escape', 'Esc', '27', 'popstate'],
+    [
+      'dialog',
+      'Dialog',
+      'dlg',
+      'Dlg',
+      'modal',
+      'Modal',
+      'drawer',
+      'Drawer',
+      'overlay',
+      'Overlay',
+      'sheet',
+      'Sheet',
+      'lightbox',
+      'Lightbox',
+      'hidePopover',
+      'this.close(',
+      'this.hide(',
+      'this.dismiss(',
+    ],
+  ] as const,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
 

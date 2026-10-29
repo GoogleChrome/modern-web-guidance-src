@@ -105,7 +105,10 @@ function getStylesheetValidationState(
 
 export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: [':invalid'],
+  fastTokens: [
+    [':invalid'],
+    ['required', 'touched', 'dirty', 'interacted', 'was-validated'],
+  ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     const selector = styleRule.selectorText;
     if (!selector.toLowerCase().includes(':invalid')) {
@@ -193,7 +196,11 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
 };
 
 export const requiredFieldFeedbackJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['blur', 'invalid', 'touched', 'dirty', 'interacted', 'was-validated'],
+  fastTokens: [
+    ['blur', 'invalid'],
+    ['touched', 'dirty', 'interacted', 'was-validated'],
+    ['classList', 'className', 'addClass', 'removeClass', 'toggleClass', 'setAttribute', 'toggleAttribute'],
+  ],
   featureGuardTokens: USER_INVALID_GUARD_TOKENS,
   matchCall: (node) => matchDirtyClassBlurListener(node),
 });

@@ -25,7 +25,10 @@ function isHrefReferencedInImgSrc(
 export const optimizeImagePriorityMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'link[rel="preload"][as="image"], img',
-  fastTokens: ['preload', 'loading', 'importance', 'fetchpriority', 'fetchPriority'],
+  fastTokens: [
+    ['<img', '<Img', '<link', '<Link'],
+    ['preload', 'importance', 'loading="eager"', "loading='eager'", 'loading="auto"', "loading='auto'", 'fetchpriority="high"', "fetchpriority='high'", 'fetchPriority="high"', "fetchPriority='high'"],
+  ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['fetchpriority', 'fetchPriority'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {

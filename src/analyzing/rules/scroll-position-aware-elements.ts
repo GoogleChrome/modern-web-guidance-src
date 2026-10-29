@@ -815,7 +815,21 @@ function isOwnedByStickyHeadersRule(rootNode: Node, handler: Node): boolean {
 
 export const scrollPositionAwareElementsJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['scroll'],
+  fastTokens: [
+    ["'scroll'", '"scroll"', '`scroll`', 'onscroll', '.scroll('],
+    ['scrollY', 'pageYOffset', 'scrollTop', '.offset().top'],
+    [
+      '.classList.',
+      '.addClass(',
+      '.removeClass(',
+      '.toggleClass(',
+      '.setAttribute(',
+      '.removeAttribute(',
+      '.toggleAttribute(',
+      '.style.',
+      '.css(',
+    ],
+  ],
   matchFile(sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
     const reportedLines = new Set<number>();

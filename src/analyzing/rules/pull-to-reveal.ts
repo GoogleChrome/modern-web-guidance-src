@@ -19,9 +19,33 @@ import type {
 export const PULL_TO_REVEAL_GUIDE_HASH = 'f9c09a067f0a';
 
 const PULL_TO_REVEAL_FAST_TOKENS = [
-  'scrollTop',
-  'offsetHeight',
-  'clientHeight',
+  ['.scrollTop', 'scrollTo('],
+  ['offsetHeight', 'clientHeight', 'getBoundingClientRect'],
+  [
+    'search',
+    'Search',
+    'header',
+    'Header',
+    'reveal',
+    'Reveal',
+    'toolbar',
+    'Toolbar',
+    'filter',
+    'Filter',
+    'banner',
+    'Banner',
+    'drawer',
+    'Drawer',
+    'pull',
+    'Pull',
+    'top-bar',
+    'top_bar',
+    'topBar',
+    'topbar',
+    'action-bar',
+    'action_bar',
+    'actionBar',
+  ],
 ] as const;
 
 const PULL_TO_REVEAL_GUARD_TOKENS = [
