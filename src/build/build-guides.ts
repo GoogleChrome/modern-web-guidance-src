@@ -645,8 +645,19 @@ async function processSingleGuideFile(
     ? [`${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`]
     : [...chunkMarkdown(processedMarkdown), summaryChunk];
 
+  const featureList = featureIds.map((fid) => {
+    const name = getFeatureName(fid);
+    const unsluggedFid = fid.replace(/-/g, " ");
+    const nameLower = name.toLowerCase();
+    if (nameLower === fid.toLowerCase()) return name;
+    const fidPart = nameLower === unsluggedFid.toLowerCase() ? fid : `${fid}, ${unsluggedFid}`;
+    return `${name} (${fidPart})`;
+  });
+  const featuresLine = featureList.length > 0 ? `Features: ${featureList.join(", ")}\n` : "";
+  const header = `${title}\n${id} (${category})\n${featuresLine}`.trimEnd();
+
   for (const chunk of chunks) {
-    const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
+    const embeddingText = `${header}\n\n${chunk}`;
     const vector = await embedder.embed(embeddingText);
 
     storeUseCases.push({
@@ -655,7 +666,7 @@ async function processSingleGuideFile(
       category,
       featuresUsed,
       tokenCount,
-      chunkContent: chunk,
+      chunkContent: embeddingText,
       vector
     });
   }
