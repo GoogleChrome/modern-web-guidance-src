@@ -38,40 +38,46 @@ function isChainedUtcLocal(callExpr: CallExpression): boolean {
   return false;
 }
 
-const MULTI_TIMEZONE_REGEX =
-  /(time_?zone|timezone|iana|target_?tz|dest_?tz|source_?tz|utc_?offset|tz_?offset|dst_?offset|zone_?name)/i;
+const EXCLUDED_DATE_METHODS = new Set([
+  'toISOString',
+  'toUTCString',
+  'setMinutes',
+  'setUTCMinutes',
+  'setHours',
+  'setUTCHours',
+  'now',
+  'fromNow',
+  'toNow',
+  'diff',
+  'cookie',
+]);
 
-const RELATIVE_TIME_OR_EXCLUDED_FN_REGEX =
-  /(time_?ago|from_?now|time_?since|duration|elapsed|cookie)/i;
+function hasExcludedDateOrLocalShiftAst(scope: Node): boolean {
+  for (const prop of scope.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)) {
+    if (EXCLUDED_DATE_METHODS.has(prop.getName())) {
+      return true;
+    }
+  }
+  for (const newExpr of scope.getDescendantsOfKind(SyntaxKind.NewExpression)) {
+    if (unwrapExpression(newExpr.getExpression()).getText() === 'Date') {
+      const args = newExpr.getArguments();
+      if (args.length === 1 && Node.isBinaryExpression(unwrapExpression(args[0]))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 function hasMultiTimezoneContext(callExpr: CallExpression): boolean {
   let stmt: Node | undefined = callExpr;
   while (stmt && !Node.isStatement(stmt)) {
     stmt = stmt.getParent();
   }
-
-  const stmtText = stmt ? stmt.getText() : '';
-
-  // 1. Drop simple .toISOString() local date formatting
-  if (stmtText.includes('.toISOString()')) {
+  if (stmt && hasExcludedDateOrLocalShiftAst(stmt)) {
     return false;
   }
 
-  // 2. Drop .setMinutes() or .setUTCMinutes() or .setHours() local shifting
-  if (
-    stmtText.includes('.setMinutes(') ||
-    stmtText.includes('.setUTCMinutes(') ||
-    stmtText.includes('.setHours(')
-  ) {
-    return false;
-  }
-
-  // 3. Drop cookie expiration / toUTCString
-  if (stmtText.includes('cookie') || stmtText.includes('.toUTCString()')) {
-    return false;
-  }
-
-  // 4. Find enclosing function or scope
   let fn: Node | undefined = callExpr;
   while (fn) {
     if (
@@ -85,45 +91,28 @@ function hasMultiTimezoneContext(callExpr: CallExpression): boolean {
     fn = fn.getParent();
   }
 
-  if (fn) {
-    if (
-      Node.isFunctionDeclaration(fn) ||
-      Node.isMethodDeclaration(fn)
-    ) {
-      const fnName = fn.getName() ?? '';
-      if (RELATIVE_TIME_OR_EXCLUDED_FN_REGEX.test(fnName)) {
-        return false;
-      }
-    }
-
-    const fnText = fn.getText();
-    if (RELATIVE_TIME_OR_EXCLUDED_FN_REGEX.test(fnText)) {
-      if (
-        fnText.includes('timeAgo') ||
-        fnText.includes('fromNow') ||
-        fnText.includes('timeSince')
-      ) {
-        return false;
-      }
-    }
-
-    // Check for explicit multi-timezone tokens in the function/statement
-    // Strip getTimezoneOffset itself to prevent tautological self-match
-    const sanitizedFn = fnText.replace(/getTimezoneOffset/g, '');
-    if (MULTI_TIMEZONE_REGEX.test(sanitizedFn)) {
-      return true;
-    }
+  if (!fn || hasExcludedDateOrLocalShiftAst(fn) || fn.getParameters().length !== 2) {
+    return false;
   }
 
-  // At statement level
-  if (stmt) {
-    const sanitizedStmt = stmtText.replace(/getTimezoneOffset/g, '');
-    if (MULTI_TIMEZONE_REGEX.test(sanitizedStmt)) {
-      return true;
-    }
+  const paramNames = new Set(fn.getParameters().map((p) => p.getName()));
+  const decl = callExpr.getParent();
+  if (decl && Node.isVariableDeclaration(decl)) {
+    const varName = decl.getName();
+    return fn.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
+      const op = bin.getOperatorToken().getKind();
+      if (op !== SyntaxKind.PlusToken && op !== SyntaxKind.MinusToken) return false;
+      const left = unwrapExpression(bin.getLeft());
+      const right = unwrapExpression(bin.getRight());
+      if (!Node.isIdentifier(left) || !Node.isIdentifier(right)) return false;
+      return (
+        (left.getText() === varName && paramNames.has(right.getText())) ||
+        (right.getText() === varName && paramNames.has(left.getText()))
+      );
+    });
   }
 
-  return false;
+  return isChainedUtcLocal(callExpr);
 }
 
 function isTimezoneArithmeticUsage(callExpr: CallExpression): boolean {
@@ -190,18 +179,20 @@ function isTimezoneArithmeticUsage(callExpr: CallExpression): boolean {
       scopeNode = scopeNode.getParent();
     }
     if (scopeNode) {
-      const scopeText = scopeNode.getText();
-      const arithmeticRegex = new RegExp(
-        `\\b${varName}\\s*(?:\\*|\\/|\\+|\\-)|(?:\\*|\\/|\\+|\\-)\\s*\\b${varName}\\b`,
-      );
-      if (arithmeticRegex.test(scopeText)) {
-        return true;
-      }
-      const dateMethodRegex = new RegExp(
-        `\\.(?:setMinutes|setHours|setTime|Date\\.UTC)\\s*\\([^)]*\\b${varName}\\b`,
-      );
-      if (dateMethodRegex.test(scopeText)) {
-        return true;
+      for (const id of scopeNode.getDescendantsOfKind(SyntaxKind.Identifier)) {
+        if (id.getText() !== varName || id === directParent.getNameNode()) continue;
+        const parent = id.getParent();
+        if (parent && Node.isBinaryExpression(parent)) {
+          const op = parent.getOperatorToken().getKind();
+          if (
+            op === SyntaxKind.AsteriskToken ||
+            op === SyntaxKind.PlusToken ||
+            op === SyntaxKind.MinusToken ||
+            op === SyntaxKind.SlashToken
+          ) {
+            return true;
+          }
+        }
       }
     }
   }
@@ -244,8 +235,16 @@ function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
     }
 
     const args = callExpr.getArguments();
-    // Exclude getter with 0 args like m.tz()
-    if (args.length === 0) {
+    // Exclude getter with 0 args like m.tz() or 3-arg custom format string parsers moment.tz(input, format, tz)
+    if (args.length === 0 || args.length >= 3) {
+      return null;
+    }
+
+    let stmt: Node | undefined = callExpr;
+    while (stmt && !Node.isStatement(stmt)) {
+      stmt = stmt.getParent();
+    }
+    if (stmt && hasExcludedDateOrLocalShiftAst(stmt)) {
       return null;
     }
 
@@ -271,9 +270,12 @@ function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
     };
   }
 
-  // 3. moment.utc(...).local() or chained utc/local
+  // 3. moment.utc(...).local() or chained utc/local in a multi-timezone context
   if (isChainedUtcLocal(callExpr)) {
-    if (isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS)) {
+    if (
+      isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS) ||
+      !hasMultiTimezoneContext(callExpr)
+    ) {
       return null;
     }
     return {

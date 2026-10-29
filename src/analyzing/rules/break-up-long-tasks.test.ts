@@ -233,4 +233,26 @@ describe('break-up-long-tasks rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('ignores one-off lifecycle Promise ticks, single-statement spinlocks, custom receiver .setImmediate(), and microtask polyfills', () => {
+    const code = `
+      async function mounted() {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      async function waitForLock(locals) {
+        while (locals.mut) await new Promise((r) => setTimeout(r, 0));
+      }
+      function onGesture(slider) {
+        for (let i = 0; i < 3; i++) {
+          slider.gesture.setImmediate(() => {});
+        }
+      }
+    `;
+    const { matches } = scanJsSource(
+      'ui/lifecycle.js',
+      code,
+      [breakUpLongTasksMatcher]
+    );
+    assert.equal(matches.length, 0);
+  });
 });

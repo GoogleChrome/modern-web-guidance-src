@@ -6,12 +6,12 @@ import {
 } from './coordinate-global-events.ts';
 
 describe('coordinate-global-events rule', () => {
-  test('flags legacy getTimezoneOffset() calls', () => {
+  test('flags legacy getTimezoneOffset() calls in multi-timezone conversions', () => {
     const code = `
-      function getLocalTimezoneOffset() {
-        const offsetMinutes = new Date().getTimezoneOffset();
-        const offsetMs = offsetMinutes * 60 * 1000;
-        return offsetMs;
+      function convertToTargetZone(timestamp, targetTzOffset) {
+        const localOffsetMinutes = new Date().getTimezoneOffset();
+        const deltaMs = (targetTzOffset - localOffsetMinutes) * 60 * 1000;
+        return timestamp + deltaMs;
       }
     `;
     const { matches } = scanJsSource(
@@ -26,7 +26,7 @@ describe('coordinate-global-events rule', () => {
   test('flags moment.tz() and moment().tz() conversions', () => {
     const code = `
       function formatInTimezone(timestamp, timeZone) {
-        const t1 = moment.tz(timestamp, "YYYY-MM-DD HH:mm:ss", "America/New_York");
+        const t1 = moment.tz(timestamp, "America/New_York");
         const t2 = moment(timestamp).tz(timeZone).format();
         return { t1, t2 };
       }
@@ -40,9 +40,9 @@ describe('coordinate-global-events rule', () => {
     assert.match(matches[0].message, /moment\.tz|\.tz\(\)/);
   });
 
-  test('flags chained moment.utc().local() conversions', () => {
+  test('flags chained moment.utc().local() conversions in multi-timezone context', () => {
     const code = `
-      function convertUtcToLocal(utcDateString) {
+      function convertUtcToLocal(utcDateString, timeZone) {
         return moment.utc(utcDateString).local().format("YYYY-MM-DD");
       }
     `;
@@ -57,9 +57,9 @@ describe('coordinate-global-events rule', () => {
 
   test('ignores getTimezoneOffset when protected by Temporal feature guard', () => {
     const code = `
-      function getOffset() {
+      function getOffset(targetTz) {
         if (typeof Temporal === 'undefined') {
-          return new Date().getTimezoneOffset();
+          return new Date().getTimezoneOffset() * 60000;
         }
         return 0;
       }
@@ -72,17 +72,24 @@ describe('coordinate-global-events rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('flags real-world pdfjs annotation_layer.js TIMEZONE_OFFSET fixture', () => {
+  test('ignores single-timezone local offset helpers and multi-statement local Date/ISO shifts', () => {
     const code = `
       const TIMEZONE_OFFSET = new Date().getTimezoneOffset() * 60 * 1000;
+      function getLocalOffset(date) {
+        const tzOffset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - tzOffset);
+      }
+      function toLocalIso(d, format) {
+        const offset = d.getTimezoneOffset() * 60000;
+        return new Date(Date.now() - offset).toISOString().slice(0, -1);
+      }
     `;
     const { matches } = scanJsSource(
-      'display/annotation_layer.js',
+      'display/local_offset.js',
       code,
       [coordinateGlobalEventsMatcher]
     );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /getTimezoneOffset/);
+    assert.equal(matches.length, 0);
   });
 
   test('ignores local ISO string formatting using toISOString()', () => {

@@ -82,4 +82,21 @@ void test('contrast-color: negative / exempt cases', async (t) => {
     const matches = scanCss('static.css', css, [contrastColorCssMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts outer module/IIFE wrappers and functions that only return luminance numbers or a single fallback color', () => {
+    const code = `
+      (function () {
+        function getLuminance(r, g, b) {
+          return 0.299 * r + 0.587 * g + 0.114 * b;
+        }
+        function getDefaultColor(bg) {
+          if (!bg) return 'black';
+          const status = 299;
+          return status > 200 ? 'white' : '#525c69';
+        }
+      })();
+    `;
+    const matches = matchJsRule(contrastColorJsMatcher, 'bundle.js', code);
+    assert.equal(matches.length, 0);
+  });
 });

@@ -6,9 +6,6 @@ export const BREAK_UP_LONG_TASKS_GUIDE_HASH = '18330b20e496';
 
 const SCHEDULER_YIELD_GUARD_TOKENS = ['scheduler', 'yield'] as const;
 
-const CHUNK_OR_LOOP_FN_REGEX =
-  /(chunk|batch|process|step|tick|yield|loop|runNext|schedule|work)/i;
-
 /**
  * Checks whether delay in setTimeout(fn, delay) is 0 or omitted.
  * Returns true if delay argument is missing, numeric 0, or literal '0'.
@@ -47,18 +44,22 @@ function isTestOrNodeFile(sourceFile: SourceFile, ctx?: JsMatcherContext): boole
   const text = ctx?.fileContent ?? sourceFile.getFullText();
   if (
     text.startsWith('#!') ||
-    text.includes("require('fs')") ||
-    text.includes('require("fs")') ||
-    text.includes("require('electron')") ||
-    text.includes('require("electron")') ||
-    text.includes("require('child_process')") ||
-    text.includes('require("child_process")') ||
+    /from\s+['"]node:|require\(['"](?:node:|fs|electron|child_process)['"]\)/.test(text) ||
     text.includes('process.argv')
   ) {
     return true;
   }
 
   return false;
+}
+
+function isPolyfillSchedulerScope(text: string): boolean {
+  return (
+    text.includes('MutationObserver') ||
+    text.includes('process.nextTick') ||
+    text.includes('importScripts') ||
+    text.includes('onreadystatechange')
+  );
 }
 
 /**
@@ -237,7 +238,7 @@ function matchPromiseYield(newExpr: NewExpression): AnalyzerMatch | null {
           continue;
         }
       }
-      if (isZeroOrOmittedDelay(callArgs)) {
+      if (isZeroOrOmittedDelay(callArgs) && isInsideLoopOrChunkProcessor(newExpr)) {
         return {
           line: newExpr.getStartLineNumber(),
           message:
@@ -245,11 +246,18 @@ function matchPromiseYield(newExpr: NewExpression): AnalyzerMatch | null {
         };
       }
     } else if (calleeName === 'setImmediate') {
-      return {
-        line: newExpr.getStartLineNumber(),
-        message:
-          'Explicit main-thread yielding via new Promise(resolve => setImmediate(resolve)) used instead of await scheduler.yield()',
-      };
+      const callArgs = call.getArguments();
+      if (
+        callArgs.length === 1 &&
+        (!resolveParamName || isResolveCallback(callArgs[0], resolveParamName)) &&
+        isInsideLoopOrChunkProcessor(newExpr)
+      ) {
+        return {
+          line: newExpr.getStartLineNumber(),
+          message:
+            'Explicit main-thread yielding via new Promise(resolve => setImmediate(resolve)) used instead of await scheduler.yield()',
+        };
+      }
     }
   }
 
@@ -269,6 +277,16 @@ function isInsideLoopOrChunkProcessor(node: Node): boolean {
       Node.isWhileStatement(current) ||
       Node.isDoStatement(current)
     ) {
+      const stmt = current.getStatement();
+      const stmts = Node.isBlock(stmt) ? stmt.getStatements() : [stmt];
+      if (
+        (stmts.length <= 1 && Node.isWhileStatement(current)) ||
+        node.getFirstAncestor(
+          (a) => Node.isNewExpression(a) && a.getExpression().getText().includes('ResizeObserver'),
+        )
+      ) {
+        return false;
+      }
       return true;
     }
 
@@ -278,21 +296,34 @@ function isInsideLoopOrChunkProcessor(node: Node): boolean {
       Node.isArrowFunction(current) ||
       Node.isMethodDeclaration(current)
     ) {
-      const fnName =
-        Node.isFunctionDeclaration(current) || Node.isMethodDeclaration(current)
-          ? current.getName() ?? ''
-          : '';
-      if (CHUNK_OR_LOOP_FN_REGEX.test(fnName)) {
+      const parent = node.getParent();
+      if (parent === current) {
         return true;
       }
-      // Check if function contains loops
-      const hasLoop =
-        current.getDescendantsOfKind(SyntaxKind.ForStatement).length > 0 ||
-        current.getDescendantsOfKind(SyntaxKind.WhileStatement).length > 0 ||
-        current.getDescendantsOfKind(SyntaxKind.ForOfStatement).length > 0;
-      if (hasLoop) {
-        return true;
+      const body = current.getBody();
+      if (parent && Node.isReturnStatement(parent) && body && Node.isBlock(body)) {
+        return body.getStatements().length === 1;
       }
+      if (Node.isCallExpression(node) && Node.isFunctionDeclaration(current)) {
+        const arg0 = node.getArguments()[0];
+        return (
+          current.getParameters().length === 0 &&
+          current.getDescendantsOfKind(SyntaxKind.IfStatement).length > 0 &&
+          current.getDescendantsOfKind(SyntaxKind.TrueKeyword).length > 0 &&
+          !!arg0 &&
+          Node.isIdentifier(arg0) &&
+          arg0.getText() !== (current.getName() ?? '')
+        );
+      }
+      if (Node.isNewExpression(node)) {
+        return current
+          .getDescendantsOfKind(SyntaxKind.ReturnStatement)
+          .some((ret) => {
+            const expr = ret.getExpression();
+            return !!expr && (Node.isArrowFunction(expr) || Node.isFunctionExpression(expr));
+          });
+      }
+      return false;
     }
 
     current = current.getParent();
@@ -305,21 +336,26 @@ function isInsideLoopOrChunkProcessor(node: Node): boolean {
  */
 function matchSetImmediateYield(callExpr: CallExpression): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
+  if (Node.isPropertyAccessExpression(expr)) {
+    const recv = unwrapExpression(expr.getExpression()).getText();
+    if (recv !== 'window' && recv !== 'self' && recv !== 'global' && recv !== 'globalThis') {
+      return null;
+    }
+  }
   const calleeName = Node.isIdentifier(expr)
     ? expr.getText()
     : Node.isPropertyAccessExpression(expr)
       ? expr.getName()
       : '';
 
-  if (calleeName !== 'setImmediate') {
+  if (calleeName !== 'setImmediate' || isSchedulerYieldGuarded(callExpr)) {
     return null;
   }
 
-  if (isSchedulerYieldGuarded(callExpr)) {
-    return null;
-  }
-
-  if (isInsideLoopOrChunkProcessor(callExpr)) {
+  if (
+    isInsideLoopOrChunkProcessor(callExpr) &&
+    !isPolyfillSchedulerScope(callExpr.getSourceFile().getFullText())
+  ) {
     return {
       line: callExpr.getStartLineNumber(),
       message:
@@ -384,24 +420,15 @@ function matchMessageChannelYield(newExpr: NewExpression): AnalyzerMatch | null 
   }
 
   const enclosingScope = scopeNode ?? newExpr.getSourceFile();
-  if (isMessageChannelTransferredOrRpc(newExpr, enclosingScope)) {
+  if (
+    isMessageChannelTransferredOrRpc(newExpr, enclosingScope) ||
+    isPolyfillSchedulerScope(enclosingScope.getText())
+  ) {
     return null;
   }
 
   // Check if enclosing scope or loop uses postMessage to yield tasks
   if (isInsideLoopOrChunkProcessor(newExpr)) {
-    return {
-      line: newExpr.getStartLineNumber(),
-      message:
-        'MessageChannel zero-delay task-yielding workaround used instead of await scheduler.yield()',
-    };
-  }
-
-  const scopeText = enclosingScope.getText();
-  if (
-    scopeText.includes('.port1.onmessage') &&
-    scopeText.includes('.port2.postMessage')
-  ) {
     return {
       line: newExpr.getStartLineNumber(),
       message:

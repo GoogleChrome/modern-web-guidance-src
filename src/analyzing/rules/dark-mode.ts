@@ -107,22 +107,14 @@ const darkModeJsMatcher: JsRuleMatcher = {
 
     // Check actual color-scheme property or property access, avoiding query literal (J-1)
     const hasColorScheme =
-      /(?:\.style\.colorScheme|\bcolor-scheme\s*:)/i.test(content);
+      /(?:\.style\.colorScheme|(?<![\w-])color-scheme\s*:)/i.test(content);
 
     // Skip user-override toggles like localStorage/sessionStorage/cookies (J-2)
     const hasStorageOverride =
-      content.includes('localStorage') ||
-      content.includes('sessionStorage') ||
-      content.includes('document.cookie');
-    if (hasStorageOverride) {
+      /\b(?:localStorage|sessionStorage|cookie|Cookies)\b/i.test(content);
+    if (hasStorageOverride || hasColorScheme) {
       return matches;
     }
-
-    const togglesDarkTheme =
-      content.includes('dark') &&
-      (content.includes('classList') ||
-        content.includes('className') ||
-        content.includes('setAttribute'));
 
     sourceFile.forEachDescendant((node) => {
       if (!Node.isCallExpression(node)) {
@@ -137,10 +129,31 @@ const darkModeJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      const lacksListener = !hasChangeListener;
-      const togglesThemeWithoutColorScheme = togglesDarkTheme && !hasColorScheme;
+      let scope: Node = node;
+      while (
+        scope.getParent() &&
+        !Node.isFunctionDeclaration(scope) &&
+        !Node.isFunctionExpression(scope) &&
+        !Node.isArrowFunction(scope) &&
+        !Node.isMethodDeclaration(scope) &&
+        !Node.isSourceFile(scope)
+      ) {
+        scope = scope.getParent()!;
+      }
+      if (
+        (Node.isFunctionExpression(scope) || Node.isArrowFunction(scope)) &&
+        Node.isParenthesizedExpression(scope.getParent())
+      ) {
+        return;
+      }
+      const scopeText = scope.getText();
+      const togglesDarkTheme =
+        scopeText.includes('dark') &&
+        /(?:classList\.(?:add|remove|toggle)|\.className\s*[+=]|\.setAttribute\s*\(|\.dataset\.)/.test(
+          scopeText,
+        );
 
-      if (!lacksListener && !togglesThemeWithoutColorScheme) {
+      if (!togglesDarkTheme || hasChangeListener) {
         return;
       }
 
