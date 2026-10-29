@@ -279,7 +279,7 @@ export const scrollCompletionEffectsJsMatcher: JsRuleMatcher = {
           line: call.getStartLineNumber(),
           column: call.getStartLinePos(),
           message:
-            'Programmatic smooth scroll uses setTimeout to guess animation completion; scroll methods return a Promise that resolves when scrolling settles (e.g. await element.scrollIntoView({ behavior: "smooth" })).',
+            'Programmatic smooth scroll uses setTimeout to guess animation completion; await the scroll-completion Promise returned by scroll methods (e.g. await element.scrollIntoView({ behavior: "smooth" })) with a scrollend fallback where needed.',
         });
       }
     }
@@ -293,7 +293,7 @@ export const scrollCompletionEffectsRule: AnalyzerRule = {
   guideId: 'scroll-completion-effects',
   guideHash: SCROLL_COMPLETION_EFFECTS_GUIDE_HASH,
   summary:
-    'Await the Promise returned by programmatic scroll methods (scrollIntoView, scrollTo, scrollBy) instead of guessing completion durations with setTimeout.',
+    'Await the scroll-completion Promise returned by programmatic scroll methods (scrollIntoView, scrollTo, scrollBy)—with a scrollend fallback where needed—instead of guessing completion durations with setTimeout.',
   matcher: scrollCompletionEffectsJsMatcher,
   verifierRubric: {
     keepWhen: [

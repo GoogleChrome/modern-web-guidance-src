@@ -8,10 +8,10 @@ import type {
 export const COMPONENT_SPECIFIC_LIGHT_DARK_THEME_GUIDE_HASH = '477bb587421e';
 
 const COMPOUND_COMPONENT_DARK_REGEX =
-  /^([a-z0-9_-]*\.[a-z0-9_-]+|pre|code|figure|dialog|aside|section|article|header|footer|nav|main)(?:\.dark|\.theme-dark|\.dark-theme|\.dark-mode|\[data-theme\s*=\s*['"]?dark['"]?\]|\[data-color-scheme\s*=\s*['"]?dark['"]?\]|\[data-bs-theme\s*=\s*['"]?dark['"]?\])$/i;
+  /^([a-z0-9_-]*\.[a-z0-9_-]+|pre|code|figure|dialog|aside|section|article|header|footer|nav|main)(?:\.dark|\.theme-dark|\.dark-theme|\.dark-mode|\[data-theme\s*=\s*['"]?dark['"]?\]|\[data-color-scheme\s*=\s*['"]?dark['"]?\])$/i;
 
 const DESCENDANT_COMPONENT_DARK_REGEX =
-  /^(?:\.dark|\.theme-dark|\.dark-theme|\.dark-mode|\[data-theme\s*=\s*['"]?dark['"]?\]|\[data-color-scheme\s*=\s*['"]?dark['"]?\]|\[data-bs-theme\s*=\s*['"]?dark['"]?\])\s+(\.[a-z0-9_-]+|pre|code)$/i;
+  /^(?:\.dark|\.theme-dark|\.dark-theme|\.dark-mode|\[data-theme\s*=\s*['"]?dark['"]?\]|\[data-color-scheme\s*=\s*['"]?dark['"]?\])\s+(\.[a-z0-9_-]+|pre|code)$/i;
 
 const SHALLOW_TAGS = new Set([
   ':root',
@@ -41,7 +41,7 @@ const SHALLOW_TAGS = new Set([
 ]);
 
 const SHALLOW_CLASS_REGEX =
-  /(?:^|[._-])(?:btn|button|badge|tag|pill|chip|link|icon|avatar|text|title|heading|label|input|control|field|searchbox|item|notice|spinner|loader|vars|is|has|mod|theme)(?:[._-]|$)/i;
+  /(?:^|[._-])(?:btn|button|badge|tag|pill|chip|link|icon|avatar|text|title|heading|label|input|control|field|searchbox|item|notice|spinner|loader)(?:[._-]|$)/i;
 
 const SURFACE_COMPONENT_CLASS_REGEX =
   /(?:^|[._-])(?:card|panel|preview|code|pre|player|audio|video|media|gallery|editor|embed|widget|dialog|modal|drawer|popover|dropdown-menu|sidebar|toolbar|terminal|console|viewer|canvas|chart|map)(?:[._-]|$)/i;
@@ -55,10 +55,10 @@ function stylesheetHasRootThemeRule(ctx: CssMatcherContext): boolean {
     return cached;
   }
   const hasRoot =
-    /(?:^|[},])\s*(?:html|body|:root)(?:\.dark|\.light|\.theme-dark|\.theme-light|\.dark-theme|\.light-theme|\.dark-mode|\.light-mode|\[data-(?:bs-)?theme|\[data-color-scheme)/i.test(
+    /(?:^|[},])\s*(?:html|body|:root)(?:\.dark|\.light|\.theme-dark|\.theme-light|\.dark-theme|\.light-theme|\.dark-mode|\.light-mode|\[data-theme|\[data-color-scheme)/i.test(
       ctx.stylesheetText,
     ) ||
-    /(?:^|[},])\s*(?:\.dark|\.light|\.theme-dark|\.theme-light|\.dark-theme|\.light-theme|\.dark-mode|\.light-mode|\[data-(?:bs-)?theme[^\]]*\]|\[data-color-scheme[^\]]*\])\s*[,{]/i.test(
+    /(?:^|[},])\s*(?:\.dark|\.light|\.theme-dark|\.theme-light|\.dark-theme|\.light-theme|\.dark-mode|\.light-mode|\[data-theme[^\]]*\]|\[data-color-scheme[^\]]*\])\s*[,{]/i.test(
       ctx.stylesheetText,
     );
   cachedHasRootTheme.set(ctx, hasRoot);
@@ -166,7 +166,7 @@ function hasSolidBackgroundAndForegroundOverride(
   hasStandardBgAndFg = hasStandardBg && hasStandardFg;
   if (!hasStandardBgAndFg && customPropCount > 8) {
     const hasPairedLightRule =
-      /(?:\.light|\.theme-light|\.light-theme|\.light-mode|\[data-(?:bs-)?theme\s*=\s*['"]?light['"]?\]|\[data-color-scheme\s*=\s*['"]?light['"]?\])/i.test(
+      /(?:\.light|\.theme-light|\.light-theme|\.light-mode|\[data-theme\s*=\s*['"]?light['"]?\]|\[data-color-scheme\s*=\s*['"]?light['"]?\])/i.test(
         ctx.stylesheetText,
       );
     if (!hasPairedLightRule) {
@@ -186,7 +186,6 @@ const componentSpecificLightDarkThemeCssMatcher: CssRuleMatcher = {
     'dark-mode',
     'data-theme',
     'data-color-scheme',
-    'data-bs-theme',
   ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     if (matchedCssContexts.has(ctx)) {

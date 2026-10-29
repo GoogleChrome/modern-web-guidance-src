@@ -95,7 +95,7 @@ void test('precise-text-alignment JS and CSS matchers', async (t) => {
     assert.equal(jsMatches.length, 0);
   });
 
-  await t.test('exempts React Native precomputeValues and classic/legacy plugin compatibility branches', () => {
+  await t.test('exempts React Native precomputeValues and files that already define CSS leading-trim / --cap-height-scale, while still flagging unrelated fallback branches', () => {
     const rnCode = `
       import { precomputeValues } from '@capsizecss/core';
       const values = precomputeValues({ fontSize: 16, fontMetrics: interMetrics });
@@ -111,12 +111,26 @@ void test('precise-text-alignment JS and CSS matchers', async (t) => {
         if (mode === 'classic') {
           return createStyleObject({ fontMetrics: config, fontSize: 16, leading: 24 });
         }
-        return {};
+        return { '--cap-height-scale': '0.72' };
       }
     `;
     assert.equal(
       matchJsRule(preciseTextAlignmentJsMatcher, 'plugin.ts', pluginCode).length,
       0,
+    );
+
+    const fallbackThemeCode = `
+      import capsize from 'capsize';
+      export function getHeadingStyle(useFallbackTheme: boolean) {
+        if (useFallbackTheme) {
+          return capsize({ fontMetrics: robotoMetrics, fontSize: 16, leading: 24 });
+        }
+        return {};
+      }
+    `;
+    assert.equal(
+      matchJsRule(preciseTextAlignmentJsMatcher, 'theme.ts', fallbackThemeCode).length,
+      1,
     );
   });
 });

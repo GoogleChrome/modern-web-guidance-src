@@ -39,6 +39,21 @@ void test('scroll-progress-indicator JS matcher', async (t) => {
           progress.style.transform = \`scaleX(\${progressPercentage})\`;
         });
       }
+
+      if (CSS.supports('animation-timeline', 'scroll()') === false) {
+        window.addEventListener('scroll', () => {
+          const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+          progressBar.style.width = pct + '%';
+        });
+      }
+
+      function initScrollProgress() {
+        if (CSS.supports('animation-timeline', 'scroll()')) return;
+        window.addEventListener('scroll', () => {
+          const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+          progressBar.style.width = pct + '%';
+        });
+      }
     `;
     const matches = matchJsRule(scrollProgressIndicatorMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);

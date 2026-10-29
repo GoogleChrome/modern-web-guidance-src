@@ -32,13 +32,24 @@ function isGuardedByScrollTimelineSupport(node: Node): boolean {
   while (current) {
     if (Node.isIfStatement(current)) {
       const condText = current.getExpression().getText();
-      if (
-        SCROLL_TIMELINE_GUARD_TOKENS.some((tok) => condText.includes(tok)) &&
-        current.getExpression().getDescendantsOfKind(SyntaxKind.ExclamationToken).length > 0 &&
-        node.getStart() >= current.getThenStatement().getStart() &&
-        node.getEnd() <= current.getThenStatement().getEnd()
-      ) {
+      if (SCROLL_TIMELINE_GUARD_TOKENS.some((tok) => condText.includes(tok))) {
         return true;
+      }
+    }
+    if (Node.isBlock(current) || Node.isSourceFile(current)) {
+      for (const stmt of current.getStatements()) {
+        if (stmt.getStart() >= node.getStart()) {
+          break;
+        }
+        if (Node.isIfStatement(stmt)) {
+          const condText = stmt.getExpression().getText();
+          if (
+            SCROLL_TIMELINE_GUARD_TOKENS.some((tok) => condText.includes(tok)) &&
+            stmt.getDescendantsOfKind(SyntaxKind.ReturnStatement).length > 0
+          ) {
+            return true;
+          }
+        }
       }
     }
     current = current.getParent();

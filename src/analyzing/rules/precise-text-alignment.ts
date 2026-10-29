@@ -35,6 +35,9 @@ const TEXT_BOX_GUARD_TOKENS = [
   'text-box',
   'text-box-trim',
   'textBoxTrim',
+  'leading-trim',
+  'text-edge',
+  '--cap-height-scale',
 ] as const;
 
 const CAPSIZE_FUNCTIONS = [
@@ -49,24 +52,6 @@ const CAPSIZE_CONFIG_KEYS: ReadonlySet<string> = new Set([
   'lineGap',
   'leading',
 ]);
-
-function isInsideLegacyCompatibilityBranch(node: Node): boolean {
-  let current: Node | undefined = node.getParent();
-  while (current) {
-    if (Node.isIfStatement(current)) {
-      const condText = current.getExpression().getText();
-      if (
-        /\b(?:classic|legacy|fallback)\b/i.test(condText) &&
-        node.getStart() >= current.getThenStatement().getStart() &&
-        node.getEnd() <= current.getThenStatement().getEnd()
-      ) {
-        return true;
-      }
-    }
-    current = current.getParent();
-  }
-  return false;
-}
 
 function hasCapsizeMetricsConfig(obj: ObjectLiteralExpression): boolean {
   for (const prop of obj.getProperties()) {
@@ -92,7 +77,8 @@ function matchCapsizeCall(callExpr: CallExpression): string | null {
     return null;
   }
 
-  if (isInsideLegacyCompatibilityBranch(callExpr)) {
+  const sfText = sf.getFullText();
+  if (TEXT_BOX_GUARD_TOKENS.some((tok) => sfText.includes(tok))) {
     return null;
   }
 
@@ -203,7 +189,7 @@ export const preciseTextAlignmentJsRule: AnalyzerRule = {
       'JavaScript calls createStyleObject(), createStyleString(), or capsize() with fontMetrics / capHeight to generate negative-margin leading-trim CSS styles.',
     ],
     dropWhen: [
-      'The call is guarded by a CSS.supports("text-box-trim", "trim-both") fallback check or sits inside a classic/legacy compatibility branch of a plugin.',
+      'The call is guarded by a CSS.supports("text-box-trim", "trim-both") fallback check or the file already defines CSS text-box-trim / leading-trim / --cap-height-scale styles.',
       'React Native files (.native.js/.ts/.tsx) or raw numeric precomputeValues() helpers that do not generate CSS ::before/::after leading-trim styles.',
       'The code uses standard vertical-align: middle or standard line-height body text leading.',
     ],
