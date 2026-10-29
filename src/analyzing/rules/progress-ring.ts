@@ -151,6 +151,16 @@ export const progressRingDomMatcher: DomRuleMatcher = {
 
     // Check circle element attributes for progress context
     const elementAttrs = `${elementClass} ${elementId} ${ariaLabel} ${role}`.toLowerCase();
+    if (elementAttrs.includes('indeterminate')) {
+      return null;
+    }
+    const lines = ctx.documentText.split('\n');
+    for (let i = element.line - 1; i >= 0 && i >= element.line - 6; i--) {
+      if ((lines[i] ?? '').toLowerCase().includes('indeterminate')) {
+        return null;
+      }
+    }
+
     let isProgress =
       elementAttrs.includes('progress') ||
       elementAttrs.includes('gauge') ||
@@ -159,7 +169,6 @@ export const progressRingDomMatcher: DomRuleMatcher = {
 
     if (!isProgress) {
       // Check enclosing <svg> tag attributes (up to 20 lines before circle)
-      const lines = ctx.documentText.split('\n');
       for (let i = element.line - 1; i >= 0 && i >= element.line - 20; i--) {
         const line = lines[i] ?? '';
         if (/<svg\b/i.test(line)) {
@@ -225,6 +234,7 @@ export const progressRingDomRule: AnalyzerRule = {
     dropWhen: [
       'The element defines pathLength="100".',
       'The circle is part of an SVG icon, avatar, or decorative border without progress semantics.',
+      'The SVG circle is an indeterminate loading spinner (e.g. --indeterminate) without a determinate progress percentage.',
     ],
   },
 };

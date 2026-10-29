@@ -99,4 +99,51 @@ void test('scroll-completion-effects: negative / exempt cases', async (t) => {
       0,
     );
   });
+
+  await t.test('exempts setTimeout resetting independent state or caret blink or following await', () => {
+    const caretResetCode = `
+      export const recordTest = (activeWordRef, caretRef) => {
+        const currWordEl = activeWordRef.current;
+        currWordEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const caret = caretRef.current;
+        caret.classList.remove('blink');
+        setTimeout(() => caret.classList.add('blink'), 500);
+      };
+    `;
+    assert.equal(
+      matchJsRule(scrollCompletionEffectsJsMatcher, 'record.ts', caretResetCode).length,
+      0,
+    );
+
+    const springResetCode = `
+      function onStudentChange(redirect, setSpring, initialSpring) {
+        document.body.scrollTo({ top: 0, behavior: 'smooth' });
+        if (redirect) {
+          setSpring({ immediate: true });
+        }
+        setTimeout(() => {
+          setSpring(initialSpring);
+        }, 100);
+      }
+    `;
+    assert.equal(
+      matchJsRule(scrollCompletionEffectsJsMatcher, 'Random.tsx', springResetCode).length,
+      0,
+    );
+
+    const awaitedValidationCode = `
+      const validateFetchedAddress = async (address) => {
+        setIsLoading(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        await validateAddress(address);
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 750);
+      };
+    `;
+    assert.equal(
+      matchJsRule(scrollCompletionEffectsJsMatcher, 'receive.tsx', awaitedValidationCode).length,
+      0,
+    );
+  });
 });

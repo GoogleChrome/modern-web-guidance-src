@@ -30,8 +30,12 @@ function isTreeDisclosureHack(
   const startIdx = Math.max(0, element.line - 1);
   const windowText = lines.slice(startIdx, Math.min(lines.length, startIdx + 20)).join('\n');
 
-  // CSS checkbox-hack toggling a sibling <ul>/<ol>/<nav> tree or menu after </label>
-  return /<\/label>\s*<(?:ul|ol|nav)\b/i.test(windowText);
+  // CSS checkbox-hack toggling a sibling <ul>/<ol>/<nav> tree or menu after </label>,
+  // or driving bespoke multi-layer SVG filter/gradient artwork inside <label>
+  return (
+    /<\/label>\s*<(?:ul|ol|nav)\b/i.test(windowText) ||
+    /<(?:filter|linearGradient)\b/i.test(windowText)
+  );
 }
 
 export const switchMatcher: DomRuleMatcher = {
@@ -56,7 +60,8 @@ export const switchMatcher: DomRuleMatcher = {
 
     if (
       element.hasAttribute('switch') ||
-      element.hasDynamicAttribute?.('switch')
+      element.hasDynamicAttribute?.('switch') ||
+      element.hasAttribute('v-bind')
     ) {
       return null;
     }

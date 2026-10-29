@@ -98,8 +98,18 @@ function areInMutuallyExclusiveBranches(a: Node, b: Node): boolean {
 
 function findPostScrollSetTimeout(scope: Node, scrollCall: CallExpression): CallExpression | null {
   const minStartPos = scrollCall.getEnd();
-  for (const call of scope.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+  const scrollCallee = unwrapExpression(scrollCall.getExpression());
+  const scrollReceiverText = Node.isPropertyAccessExpression(scrollCallee)
+    ? unwrapExpression(scrollCallee.getExpression()).getText()
+    : '';
+  const allCalls = scope.getDescendantsOfKind(SyntaxKind.CallExpression);
+  const allAwaits = scope.getDescendantsOfKind(SyntaxKind.AwaitExpression);
+
+  for (const call of allCalls) {
     if (call.getStart() <= minStartPos || areInMutuallyExclusiveBranches(scrollCall, call)) {
+      continue;
+    }
+    if (allAwaits.some((aw) => aw.getStart() >= minStartPos && aw.getEnd() <= call.getStart())) {
       continue;
     }
 
@@ -115,17 +125,34 @@ function findPostScrollSetTimeout(scope: Node, scrollCall: CallExpression): Call
     }
 
     if (fnName === 'setTimeout' && call.getArguments().length > 0) {
+      const priorCalls = allCalls.filter((c) => c !== scrollCall && c.getEnd() <= call.getStart());
       const callbackArg = resolveCallableNode(call.getArguments()[0]);
       let triggersEffect = false;
       callbackArg.forEachDescendant((child) => {
         if (triggersEffect || !Node.isCallExpression(child)) return;
         const childExpr = unwrapExpression(child.getExpression());
-        if (
-          Node.isIdentifier(childExpr) ||
-          (Node.isPropertyAccessExpression(childExpr) &&
-            POST_SCROLL_EFFECT_METHODS.has(childExpr.getName()))
+        if (Node.isIdentifier(childExpr)) {
+          const idText = childExpr.getText();
+          const alreadyCalled = priorCalls.some(
+            (pc) => unwrapExpression(pc.getExpression()).getText() === idText,
+          );
+          if (!alreadyCalled) triggersEffect = true;
+        } else if (
+          Node.isPropertyAccessExpression(childExpr) &&
+          POST_SCROLL_EFFECT_METHODS.has(childExpr.getName())
         ) {
-          triggersEffect = true;
+          const recvText = unwrapExpression(childExpr.getExpression()).getText();
+          const isUnrelatedReset =
+            (!scrollReceiverText || !recvText.startsWith(scrollReceiverText)) &&
+            priorCalls.some((pc) => {
+              if (pc.getStart() < minStartPos) return false;
+              const pcExpr = unwrapExpression(pc.getExpression());
+              return (
+                Node.isPropertyAccessExpression(pcExpr) &&
+                unwrapExpression(pcExpr.getExpression()).getText() === recvText
+              );
+            });
+          if (!isUnrelatedReset) triggersEffect = true;
         }
       });
       if (triggersEffect) return call;

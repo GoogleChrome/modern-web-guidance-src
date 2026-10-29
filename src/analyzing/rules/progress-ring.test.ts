@@ -132,4 +132,16 @@ void test('progress-ring: negative / exempt cases', async (suiteContext) => {
     const { matches } = scanJsSource('test/fixtures/ring.ts', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await suiteContext.test('exempts indeterminate circular loading spinners', () => {
+    const html = `
+      <div class="v-progress-circular v-progress-circular--indeterminate primary--text">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="21 21 42 42">
+          <circle fill="transparent" cx="42" cy="42" r="20" stroke-dasharray="125.664" stroke-dashoffset="125.664px" class="v-progress-circular__overlay"></circle>
+        </svg>
+      </div>
+    `;
+    const matches = scanHtml('spinner.html', html, [domMatcher]);
+    assert.equal(matches.length, 0);
+  });
 });
