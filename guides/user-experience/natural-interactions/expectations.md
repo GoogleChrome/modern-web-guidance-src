@@ -1,5 +1,5 @@
 - Hovering a button changes at least one of its computed `background-color`, `color`, `border-color`, `box-shadow`, `transform`, `scale`, or other individual transform property values.
-- Pressing the mouse button down on a button, before releasing it, changes at least one of its computed `background-color`, `box-shadow`, `transform`, `scale`, or other individual transform property values compared with its hover state.
+- Pressing the mouse button down on a button, before releasing it, changes at least one of its computed `background-color`, `color`, `border-color`, `box-shadow`, `transform`, `scale`, or other individual transform property values compared with its hover state.
 - Moving keyboard focus to a button or link with the Tab key gives it either the browser's native focus ring (a computed `outline-style` of `auto`), or a custom outline or `box-shadow` that differs from its unfocused state, in a color with a contrast ratio of at least 3:1 against the page background.
 - Clicking a button with the mouse does not give it the keyboard focus outline.
 - Shortly after a popover or dropdown that opens next to its trigger, other than a menu, starts opening, its computed `transform`, `scale`, or other individual transform property differs from its final settled value.
