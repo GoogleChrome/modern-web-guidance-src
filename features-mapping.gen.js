@@ -1094,5 +1094,9 @@ window.__featuresMapping = {
   ],
   "agentic-javascript-tools": [
     "document-modelcontext"
+  ],
+  "webmcp": [
+    "declarative-webmcp",
+    "document-modelcontext"
   ]
 };
