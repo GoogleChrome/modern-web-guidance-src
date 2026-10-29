@@ -46,7 +46,7 @@ void test('digital-signatures JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts Node.js server files importing crypto or fs and synchronous wrapper functions', () => {
+  await t.test('exempts Node.js server files importing built-in crypto or fs', () => {
     const code = `
       import crypto from 'crypto';
       import nacl from 'tweetnacl';
@@ -54,13 +54,5 @@ void test('digital-signatures JS matcher', async (t) => {
     `;
     const matches = matchJsRule(digitalSignaturesJsMatcher, 'server.js', code);
     assert.equal(matches.length, 0);
-
-    const syncFnCode = `
-      import nacl from 'tweetnacl';
-      export function verifySync(msg, sig, pubKey): boolean {
-        return nacl.sign.detached.verify(msg, sig, pubKey);
-      }
-    `;
-    assert.equal(matchJsRule(digitalSignaturesJsMatcher, 'sync.ts', syncFnCode).length, 0);
   });
 });

@@ -102,16 +102,6 @@ function matchSignatureNewExpression(newExpr: NewExpression): string | null {
 }
 
 function isGuardedByWebCryptoCheck(node: Node): boolean {
-  const fn = node.getFirstAncestor(
-    (a) =>
-      Node.isFunctionDeclaration(a) ||
-      Node.isFunctionExpression(a) ||
-      Node.isArrowFunction(a) ||
-      Node.isMethodDeclaration(a),
-  );
-  if (fn && !fn.isAsync() && Node.isBlock(fn.getBody())) {
-    return true;
-  }
   if (isProtectedByFeatureGuard(node, WEBCRYPTO_GUARD_TOKENS)) {
     return true;
   }
@@ -171,7 +161,7 @@ function matchSignatureCallExpression(callExpr: CallExpression): string | null {
 export const digitalSignaturesJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['KJUR', 'nacl', 'elliptic'],
   shouldSkipFile: (_sf, ctx) =>
-    /(?:from\s+|require\s*\(\s*)['"](?:node:[^'"]+|crypto|fs|path|os|url|assert|stream|util|worker_threads|child_process|ws|dotenv|react-native|sha3|next\/server|discord-api-types)['"]|KJUR\.jws/.test(
+    /(?:from\s+|require\s*\(\s*)['"](?:node:[^'"]+|crypto|fs|path|os|url|assert|stream|util|worker_threads|child_process)['"]|KJUR\.jws/.test(
       ctx.fileContent,
     ),
   matchCall: (node) => matchSignatureCallExpression(node),

@@ -31,7 +31,7 @@ const CLASS_TOGGLE_REGEX =
   /classList\.(?:add|remove|toggle)\(['"](?:open|is-open|active|show|visible)['"]\)/i;
 
 const NON_DRAWER_TOKEN_REGEX =
-  /(?:^|[\s_-])(?:sidebar|static|persistent|collapse|toc|notifications?|dialog|modal|confirm|header|head|body|footer|content|item|pic|icon|button|btn|close|toggle|trigger|handle|row|list|title|label|backdrop|overlay|scrim|container|tools|col-(?:xs|sm|md|lg|xl)|offcanvas-(?:sm|md|lg|xl|xxl))(?:$|[\s_-])/i;
+  /(?:^|[\s_-])(?:sidebar|static|persistent|collapse|dialog|modal|confirm|header|head|body|footer|content|item|pic|icon|button|btn|close|toggle|trigger|handle|row|list|title|label|backdrop|overlay|scrim|container|tools|col-(?:xs|sm|md|lg|xl)|offcanvas-(?:sm|md|lg|xl|xxl))(?:$|[\s_-])/i;
 
 function isCandidateCallable(node: Node): boolean {
   if (
@@ -42,7 +42,6 @@ function isCandidateCallable(node: Node): boolean {
   ) {
     return false;
   }
-  if (node.getEnd() - node.getStart() > 4000) return false;
   const parent = node.getParent();
   if (
     (Node.isFunctionExpression(node) || Node.isArrowFunction(node)) &&
@@ -52,8 +51,13 @@ function isCandidateCallable(node: Node): boolean {
   ) {
     return false;
   }
-  const scopeText = node.getText().replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
-  return hasDrawerControllerSignals(scopeText);
+  const body = node.getBody();
+  if (Node.isBlock(body) && body.getStatements().some((s) => Node.isFunctionDeclaration(s))) {
+    const fnName = (Node.isFunctionDeclaration(node) || Node.isMethodDeclaration(node)) ? (node.getName() ?? '') : '';
+    const sig = `${fnName} ${node.getParameters().map((p) => p.getText()).join(' ')}`;
+    if (!DRAWER_IDENTIFIER_REGEX.test(sig)) return false;
+  }
+  return hasDrawerControllerSignals(node.getText().replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, ''));
 }
 
 function hasDrawerControllerSignals(scopeText: string): boolean {
@@ -61,24 +65,12 @@ function hasDrawerControllerSignals(scopeText: string): boolean {
     return false;
   }
   let signals = 0;
-  if (
-    CLASS_TOGGLE_REGEX.test(scopeText) ||
-    /style\.(?:transform|left|right)\s*=/.test(scopeText)
-  ) {
+  if (CLASS_TOGGLE_REGEX.test(scopeText) || /style\.(?:transform|left|right)\s*=/.test(scopeText)) {
     signals++;
   }
-
-  if (BACKDROP_OR_OVERLAY_REGEX.test(scopeText)) {
-    signals++;
-  }
-
-  if (BODY_SCROLL_LOCK_REGEX.test(scopeText)) {
-    signals++;
-  }
-
-  if (scopeText.includes("'Escape'") || scopeText.includes('"Escape"')) {
-    signals++;
-  }
+  if (BACKDROP_OR_OVERLAY_REGEX.test(scopeText)) signals++;
+  if (BODY_SCROLL_LOCK_REGEX.test(scopeText)) signals++;
+  if (scopeText.includes("'Escape'") || scopeText.includes('"Escape"')) signals++;
 
   return signals >= 2;
 }
@@ -177,7 +169,7 @@ export const navigationDrawerDomMatcher: DomRuleMatcher = {
         /(?:^|\s)(?:drawer|offcanvas)(?:\s|$)/i.test(elementClass) &&
         /(?:drawer|offcanvas|menu)/i.test(elementId);
       const hasInteractiveTrigger =
-        /data-(?:bs-)?toggle\s*=\s*["']offcanvas["']|data-drawer-(?:target|show)|data-action\s*=\s*["']open-drawer["']|cs-site-overlay/i.test(
+        /data-(?:bs-)?toggle\s*=\s*["']offcanvas["']|data-drawer-(?:target|show)|data-action\s*=\s*["']open-drawer["']/i.test(
           ctx.documentText,
         );
       if (

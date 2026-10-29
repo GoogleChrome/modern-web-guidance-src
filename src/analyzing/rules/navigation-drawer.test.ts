@@ -164,7 +164,7 @@ void test('navigation-drawer: negative / exempt cases', async (suiteContext) => 
       <div class="drawer-item">Item</div>
       <div class="offcanvas-header">Header</div>
       <div class="col-sm-3 sidenav">Sidebar</div>
-      <div id="notifications" class="tile drawer animated">Alert</div>
+      <div class="offcanvas-md offcanvas-start" id="responsiveNav">Nav</div>
     `;
     const matches = scanHtml('page.html', html, [domMatcher]);
     assert.equal(matches.length, 0);
