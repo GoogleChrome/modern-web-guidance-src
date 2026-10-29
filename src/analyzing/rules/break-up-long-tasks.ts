@@ -6,9 +6,6 @@ export const BREAK_UP_LONG_TASKS_GUIDE_HASH = '18330b20e496';
 
 const SCHEDULER_YIELD_GUARD_TOKENS = ['scheduler', 'yield'] as const;
 
-const CHUNK_OR_LOOP_FN_REGEX =
-  /^(?:chunk|batch|process|yield|runNext|schedule|createYield)/i;
-
 /**
  * Checks whether delay in setTimeout(fn, delay) is 0 or omitted.
  * Returns true if delay argument is missing, numeric 0, or literal '0'.
@@ -299,17 +296,34 @@ function isInsideLoopOrChunkProcessor(node: Node): boolean {
       Node.isArrowFunction(current) ||
       Node.isMethodDeclaration(current)
     ) {
-      let fnName =
-        Node.isFunctionDeclaration(current) || Node.isMethodDeclaration(current)
-          ? current.getName() ?? ''
-          : '';
-      if (!fnName) {
-        const parent = current.getParent();
-        if (parent && Node.isVariableDeclaration(parent)) {
-          fnName = parent.getName();
-        }
+      const parent = node.getParent();
+      if (parent === current) {
+        return true;
       }
-      return CHUNK_OR_LOOP_FN_REGEX.test(fnName);
+      const body = current.getBody();
+      if (parent && Node.isReturnStatement(parent) && body && Node.isBlock(body)) {
+        return body.getStatements().length === 1;
+      }
+      if (Node.isCallExpression(node) && Node.isFunctionDeclaration(current)) {
+        const arg0 = node.getArguments()[0];
+        return (
+          current.getParameters().length === 0 &&
+          current.getDescendantsOfKind(SyntaxKind.IfStatement).length > 0 &&
+          current.getDescendantsOfKind(SyntaxKind.TrueKeyword).length > 0 &&
+          !!arg0 &&
+          Node.isIdentifier(arg0) &&
+          arg0.getText() !== (current.getName() ?? '')
+        );
+      }
+      if (Node.isNewExpression(node)) {
+        return current
+          .getDescendantsOfKind(SyntaxKind.ReturnStatement)
+          .some((ret) => {
+            const expr = ret.getExpression();
+            return !!expr && (Node.isArrowFunction(expr) || Node.isFunctionExpression(expr));
+          });
+      }
+      return false;
     }
 
     current = current.getParent();

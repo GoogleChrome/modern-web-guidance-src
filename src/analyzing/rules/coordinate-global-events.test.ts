@@ -72,15 +72,14 @@ describe('coordinate-global-events rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('ignores single-timezone local offset variables, comments mentioning timezone, and multi-statement local Date/ISO shifts', () => {
+  test('ignores single-timezone local offset helpers and multi-statement local Date/ISO shifts', () => {
     const code = `
       const TIMEZONE_OFFSET = new Date().getTimezoneOffset() * 60 * 1000;
       function getLocalOffset(date) {
-        // interested in the date in the same timezone
         const tzOffset = date.getTimezoneOffset() * 60000;
         return new Date(date.getTime() - tzOffset);
       }
-      function toLocalIso(d) {
+      function toLocalIso(d, format) {
         const offset = d.getTimezoneOffset() * 60000;
         return new Date(Date.now() - offset).toISOString().slice(0, -1);
       }

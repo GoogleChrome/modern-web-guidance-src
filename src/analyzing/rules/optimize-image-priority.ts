@@ -7,9 +7,6 @@ import type {
 
 export const OPTIMIZE_IMAGE_PRIORITY_GUIDE_HASH = '7ae520e19777';
 
-const HERO_LCP_TOKEN_REGEX =
-  /(?:^|[\s_-])(?:hero|lcp)(?:$|[\s_-])/i;
-
 function isHrefReferencedInImgSrc(
   documentText: string,
   href: string,
@@ -28,7 +25,7 @@ function isHrefReferencedInImgSrc(
 export const optimizeImagePriorityMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'link[rel="preload"][as="image"], img',
-  fastTokens: ['preload', 'loading', 'importance', 'fetchpriority', 'fetchPriority', 'hero', 'lcp'],
+  fastTokens: ['preload', 'loading', 'importance', 'fetchpriority', 'fetchPriority'],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['fetchpriority', 'fetchPriority'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
@@ -53,10 +50,7 @@ export const optimizeImagePriorityMatcher: DomRuleMatcher = {
         return null;
       }
       const href = (element.getAttribute('href') ?? '').trim();
-      if (
-        !isHrefReferencedInImgSrc(ctx.documentText, href) ||
-        (!element.hasAttribute('importance') && !/(?:hero|lcp)/i.test(href))
-      ) {
+      if (!isHrefReferencedInImgSrc(ctx.documentText, href)) {
         return null;
       }
       return {
@@ -99,24 +93,14 @@ export const optimizeImagePriorityMatcher: DomRuleMatcher = {
       };
     }
 
-    if (fetchPriority) {
+    if (fetchPriority || loading !== 'eager') {
       return null;
     }
 
-    if (loading !== 'eager') {
-      return null;
-    }
-
-    const classAttr = element.getAttribute('class') ?? element.getAttribute('classname') ?? '';
-    const idAttr = element.getAttribute('id') ?? '';
-    if (HERO_LCP_TOKEN_REGEX.test(classAttr) || HERO_LCP_TOKEN_REGEX.test(idAttr)) {
-      return {
-        message:
-          'Hero/LCP <img loading="eager"> lacks fetchpriority="high" to elevate Largest Contentful Paint loading priority.',
-      };
-    }
-
-    return null;
+    return {
+      message:
+        '<img loading="eager"> lacks fetchpriority="high" to elevate Largest Contentful Paint loading priority.',
+    };
   },
 };
 

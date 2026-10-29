@@ -73,7 +73,7 @@ void test('optimize-image-priority DOM matcher', async (t) => {
       <body>
         <img src="/hero.jpg" class="hero-image" loading="eager" fetchpriority="high" alt="Hero">
         <img src="/thumb.jpg" loading="lazy" alt="Thumb">
-        <img src="/avatar.jpg" loading="eager" class="user-avatar" alt="Avatar">
+        <img src="/avatar.jpg" loading="eager" fetchpriority="low" class="user-avatar" alt="Avatar">
       </body>
     `;
     const matches = scanHtml('modern.html', html, [optimizeImagePriorityMatcher]);
