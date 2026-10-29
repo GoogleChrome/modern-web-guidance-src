@@ -37,7 +37,7 @@ void test('switch DOM matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts CSS checkbox-hack tree navigation disclosure toggles and bespoke SVG filter art demos', () => {
+  await t.test('exempts CSS checkbox-hack tree navigation disclosure toggles', () => {
     const treeHtml = `
       <li class="toctree-l2 has-children">
         <a href="harl.html">Algorithms</a>
@@ -47,19 +47,5 @@ void test('switch DOM matcher', async (t) => {
       </li>
     `;
     assert.equal(scanHtml('nav.html', treeHtml, [switchMatcher]).length, 0);
-
-    const svgArtHtml = `
-      <label class="switch">
-        <input class="switch_input" type="checkbox" role="switch">
-        <span class="switch_base-outer"></span>
-        <svg class="switch_base-neon" viewBox="0 0 40 24">
-          <defs>
-            <filter id="switch-glow"><feGaussianBlur stddeviation="1"></feGaussianBlur></filter>
-            <linearGradient id="switch-gradient1"></linearGradient>
-          </defs>
-        </svg>
-      </label>
-    `;
-    assert.equal(scanHtml('neumorphism.html', svgArtHtml, [switchMatcher]).length, 0);
   });
 });

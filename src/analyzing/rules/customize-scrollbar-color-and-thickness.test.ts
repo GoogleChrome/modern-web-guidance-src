@@ -354,7 +354,7 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts bespoke thumb/track shadows, 1px hairline scrollbars, and styled scrollbar-button + track-piece sets', () => {
+  await t.test('exempts bespoke thumb/track shadows', () => {
     const css = `
       #coexpression_legend::-webkit-scrollbar {
         -webkit-appearance: none;
@@ -368,20 +368,6 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
       .scrollable::-webkit-scrollbar-thumb {
         background-color: rgba(0, 0, 0, 0.1);
         -webkit-box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.10), inset 0 -1px 0 rgba(0, 0, 0, 0.07);
-      }
-      ul::-webkit-scrollbar {
-        width: 10px;
-      }
-      ul::-webkit-scrollbar-button {
-        background: #ebebeb;
-        border-radius: 4px;
-      }
-      ul::-webkit-scrollbar-track-piece {
-        background: #ebebeb;
-      }
-      ul::-webkit-scrollbar-thumb {
-        border-radius: 3px;
-        background-color: gray;
       }
     `;
     assert.equal(scanCss('bespoke.css', css, [matcher]).length, 0);

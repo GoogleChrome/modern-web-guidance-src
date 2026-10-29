@@ -21,21 +21,18 @@ import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 export const PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH = '7d10dd62dcbc';
 
 const FULLSCREEN_ONLY_REGEX = /fullscreen/i;
-
 const MODAL_OR_DIALOG_WORD_REGEX = /\b(?:dialog|modal|showmodal)\b/i;
-
 const MODAL_OR_DIALOG_CAMEL_REGEX =
   /[a-z](?:Dialog|Modal|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[sS]howModal)[A-Z]/;
+const MODAL_OR_OVERLAY_WORD_REGEX = /\b(?:dialog|modal|lightbox|popup|overlay|showmodal)\b/i;
+const MODAL_OR_OVERLAY_CAMEL_REGEX =
+  /[a-z](?:Dialog|Modal|Lightbox|Popup|Overlay|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[lL]ightbox|[pP]opup|[oO]verlay|[sS]howModal)[A-Z]/;
+const FULLSCREEN_CANVAS_GAME_REGEX = /\b(?:fullscreen|canvas|game|slide|deck|threejs|pixi)\b/i;
+const CSS_MODAL_CONTEXT_REGEX = /(?:\b(?:dialog|modal|lightbox|popup|overlay)\b|::backdrop)/i;
 
 function hasModalOrDialogName(text: string): boolean {
   return MODAL_OR_DIALOG_WORD_REGEX.test(text) || MODAL_OR_DIALOG_CAMEL_REGEX.test(text);
 }
-
-const MODAL_OR_OVERLAY_WORD_REGEX =
-  /\b(?:dialog|modal|lightbox|popup|overlay|showmodal)\b/i;
-
-const MODAL_OR_OVERLAY_CAMEL_REGEX =
-  /[a-z](?:Dialog|Modal|Lightbox|Popup|Overlay|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[lL]ightbox|[pP]opup|[oO]verlay|[sS]howModal)[A-Z]/;
 
 function hasModalOrOverlayName(text: string): boolean {
   return MODAL_OR_OVERLAY_WORD_REGEX.test(text) || MODAL_OR_OVERLAY_CAMEL_REGEX.test(text);
@@ -50,9 +47,7 @@ function getCallableOrClassName(node: Node): string {
     return node.getName() ?? '';
   }
   const parent = node.getParent();
-  if (!parent) {
-    return '';
-  }
+  if (!parent) return '';
   if (Node.isVariableDeclaration(parent) || Node.isPropertyAssignment(parent)) {
     return parent.getName();
   }
@@ -66,11 +61,6 @@ function getCallableOrClassName(node: Node): string {
   return '';
 }
 
-const FULLSCREEN_CANVAS_GAME_REGEX =
-  /\b(?:fullscreen|canvas|game|slide|deck|threejs|pixi)\b/i;
-
-const CSS_MODAL_CONTEXT_REGEX = /(?:\b(?:dialog|modal|lightbox|popup|overlay)\b|::backdrop)/i;
-
 function isImmediatelyInvokedFunction(fnNode: Node): boolean {
   let parent: Node | undefined = fnNode.getParent();
   while (
@@ -79,56 +69,9 @@ function isImmediatelyInvokedFunction(fnNode: Node): boolean {
   ) {
     parent = parent.getParent();
   }
-  if (!parent || !Node.isCallExpression(parent)) {
-    return false;
-  }
-  return unwrapExpression(parent.getExpression()) === fnNode;
-}
-
-const EFFECT_HOOK_NAMES = new Set([
-  'useEffect',
-  'useLayoutEffect',
-  'watch',
-  'watchEffect',
-]);
-
-function isEffectHookCallback(fnNode: Node): boolean {
-  const parent = fnNode.getParent();
-  if (!parent || !Node.isCallExpression(parent)) {
-    return false;
-  }
-  const callee = unwrapExpression(parent.getExpression());
-  if (Node.isIdentifier(callee)) {
-    return EFFECT_HOOK_NAMES.has(callee.getText());
-  }
-  if (Node.isPropertyAccessExpression(callee)) {
-    return EFFECT_HOOK_NAMES.has(callee.getName());
-  }
-  return false;
-}
-
-const TIMER_OR_MOUNT_CALL_NAMES = new Set([
-  'setTimeout',
-  'setInterval',
-  'requestAnimationFrame',
-  'onMounted',
-  'onBeforeUnmount',
-  'onUnmounted',
-]);
-
-function isTimerOrMountCallback(fnNode: Node): boolean {
-  const parent = fnNode.getParent();
-  if (!parent || !Node.isCallExpression(parent)) {
-    return false;
-  }
-  const callee = unwrapExpression(parent.getExpression());
-  if (Node.isIdentifier(callee)) {
-    return TIMER_OR_MOUNT_CALL_NAMES.has(callee.getText());
-  }
-  if (Node.isPropertyAccessExpression(callee)) {
-    return TIMER_OR_MOUNT_CALL_NAMES.has(callee.getName());
-  }
-  return false;
+  return Boolean(
+    parent && Node.isCallExpression(parent) && unwrapExpression(parent.getExpression()) === fnNode,
+  );
 }
 
 function hasNativeDialogContext(
@@ -148,64 +91,34 @@ function hasNativeDialogContext(
       Node.isFunctionExpression(current) ||
       Node.isArrowFunction(current)
     ) {
-      if (isImmediatelyInvokedFunction(current)) {
-        break;
-      }
-      if (
-        Node.isClassDeclaration(current) ||
-        Node.isMethodDeclaration(current) ||
-        current.isAsync?.() ||
-        isTimerOrMountCallback(current)
-      ) {
-        return false;
-      }
+      if (isImmediatelyInvokedFunction(current)) break;
       const text = current.getText();
       if (text.length <= 8_000) {
-        if (
-          isEffectHookCallback(current) &&
-          /\baddEventListener\s*\(\s*['"`]keydown['"`]/.test(text)
-        ) {
-          return false;
-        }
         if (FULLSCREEN_CANVAS_GAME_REGEX.test(text) && !hasModalOrOverlayName(text)) {
           return false;
         }
-
         const nameCheck = requireModalOrDialog ? hasModalOrDialogName : hasModalOrOverlayName;
-        const scopeName = getCallableOrClassName(current);
-
-        if (nameCheck(scopeName)) {
+        if (nameCheck(getCallableOrClassName(current))) {
           matchedContext = true;
-        } else if (callableDepth === 0) {
-          const hasCue =
-            hasModalOrDialogName(text) ||
-            text.includes('showModal') ||
-            text.includes('<dialog');
-          if (hasCue) {
-            matchedContext = true;
-          }
+        } else if (
+          callableDepth === 0 &&
+          (hasModalOrDialogName(text) || text.includes('showModal') || text.includes('<dialog'))
+        ) {
+          matchedContext = true;
         }
       }
-
       callableDepth++;
     }
     current = current.getParent();
   }
 
-  if (matchedContext) {
-    return true;
-  }
-
+  if (matchedContext) return true;
   const fileNameCheck = requireModalOrDialog ? hasModalOrDialogName : hasModalOrOverlayName;
-  if (
+  return (
     callableDepth > 0 &&
     fileNameCheck(ctx.filePath) &&
     !FULLSCREEN_CANVAS_GAME_REGEX.test(ctx.filePath)
-  ) {
-    return true;
-  }
-
-  return false;
+  );
 }
 
 const MODAL_SCROLL_LOCK_CLASSES = new Set([
@@ -230,27 +143,16 @@ const BARE_SCROLL_LOCK_CLASS_REGEX = new RegExp(
   'i',
 );
 
-function isMinifiedCssLine(stylesheetText: string, lineNumber: number): boolean {
-  const lines = stylesheetText.split('\n');
-  const lineText = lines[lineNumber - 1] ?? '';
-  return lineText.length > 500;
-}
-
 function isScrollLockSelector(
   selectorText: string,
   styleRule: CssRuleView,
   ctx: CssMatcherContext,
 ): boolean {
-  if (isMinifiedCssLine(ctx.stylesheetText, styleRule.line)) {
-    return false;
-  }
-  const parts = selectorText.split(',');
-  for (const rawPart of parts) {
+  const lineText = ctx.stylesheetText.split('\n')[styleRule.line - 1] ?? '';
+  if (lineText.length > 500) return false;
+  for (const rawPart of selectorText.split(',')) {
     const part = rawPart.trim();
-    if (ROOT_MODAL_OPEN_SELECTOR_REGEX.test(part)) {
-      return true;
-    }
-    if (EXPLICIT_ROOT_LOCK_SELECTOR_REGEX.test(part)) {
+    if (ROOT_MODAL_OPEN_SELECTOR_REGEX.test(part) || EXPLICIT_ROOT_LOCK_SELECTOR_REGEX.test(part)) {
       return true;
     }
     if (BARE_SCROLL_LOCK_CLASS_REGEX.test(part)) {
@@ -272,34 +174,28 @@ function isScrollLockSelector(
   return false;
 }
 
+const DOCUMENT_ROOT_TEXTS = new Set([
+  'document.body',
+  'window.document.body',
+  'document.documentElement',
+  'window.document.documentElement',
+  'body',
+  'doc.body',
+  'd.body',
+]);
+
 function isDocumentRootElement(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
-  const text = unwrapped.getText();
-
-  if (
-    text === 'document.body' ||
-    text === 'window.document.body' ||
-    text === 'document.documentElement' ||
-    text === 'window.document.documentElement' ||
-    text === 'body' ||
-    text === 'doc.body' ||
-    text === 'd.body'
-  ) {
-    return true;
-  }
-
+  if (DOCUMENT_ROOT_TEXTS.has(unwrapped.getText())) return true;
   if (Node.isPropertyAccessExpression(unwrapped)) {
     const name = unwrapped.getName();
     if (name === 'body' || name === 'documentElement') {
-      const callerText = unwrapExpression(unwrapped.getExpression()).getText();
+      const caller = unwrapExpression(unwrapped.getExpression()).getText();
       return (
-        callerText === 'document' ||
-        callerText === 'window.document' ||
-        callerText === 'globalThis.document'
+        caller === 'document' || caller === 'window.document' || caller === 'globalThis.document'
       );
     }
   }
-
   return false;
 }
 
@@ -309,73 +205,49 @@ function isInsideFullscreenToggle(node: Node): boolean {
     if (
       Node.isFunctionDeclaration(current) ||
       Node.isMethodDeclaration(current) ||
-      Node.isClassDeclaration(current) ||
-      Node.isFunctionExpression(current) ||
-      Node.isArrowFunction(current)
+      Node.isClassDeclaration(current)
     ) {
-      let name = '';
-      if ('getName' in current && typeof current.getName === 'function') {
-        name = current.getName() ?? '';
-      }
-      if (FULLSCREEN_ONLY_REGEX.test(name)) {
-        return true;
-      }
+      if (FULLSCREEN_ONLY_REGEX.test(current.getName() ?? '')) return true;
     }
     current = current.getParent();
   }
   return false;
 }
 
+function isStringLiteralNode(node: Node | undefined): node is Node & { getLiteralText(): string } {
+  return Boolean(
+    node && (Node.isStringLiteral(node) || Node.isNoSubstitutionTemplateLiteral(node)),
+  );
+}
+
 function matchOverflowAssignment(
   binaryExpr: BinaryExpression,
   ctx: JsMatcherContext,
 ): AnalyzerMatch | null {
-  if (binaryExpr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
-    return null;
-  }
-
+  if (binaryExpr.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) return null;
   const left = unwrapExpression(binaryExpr.getLeft());
-  if (!Node.isPropertyAccessExpression(left)) {
-    return null;
-  }
-
+  if (!Node.isPropertyAccessExpression(left)) return null;
   const propName = left.getName();
-  if (propName !== 'overflow' && propName !== 'overflowY') {
-    return null;
-  }
+  if (propName !== 'overflow' && propName !== 'overflowY') return null;
 
   const styleAccess = unwrapExpression(left.getExpression());
   if (!Node.isPropertyAccessExpression(styleAccess) || styleAccess.getName() !== 'style') {
     return null;
   }
-
   const targetElement = unwrapExpression(styleAccess.getExpression());
-  if (!isDocumentRootElement(targetElement)) {
-    return null;
-  }
+  if (!isDocumentRootElement(targetElement)) return null;
 
   const right = unwrapExpression(binaryExpr.getRight());
-  if (!Node.isStringLiteral(right) && !Node.isNoSubstitutionTemplateLiteral(right)) {
+  if (!isStringLiteralNode(right) || right.getLiteralText().trim().toLowerCase() !== 'hidden') {
     return null;
   }
-
-  const val = right.getLiteralText().trim().toLowerCase();
-  if (val !== 'hidden') {
-    return null;
-  }
-
-  if (isInsideFullscreenToggle(binaryExpr)) {
-    return null;
-  }
-
-  if (!hasNativeDialogContext(binaryExpr, ctx)) {
+  if (isInsideFullscreenToggle(binaryExpr) || !hasNativeDialogContext(binaryExpr, ctx)) {
     return null;
   }
 
   return {
     line: binaryExpr.getStartLineNumber(),
-    message:
-      `Imperative body scroll lock (${targetElement.getText()}.style.${propName} = 'hidden') used for modal/overlay instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
+    message: `Imperative body scroll lock (${targetElement.getText()}.style.${propName} = 'hidden') used for modal/overlay instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
   };
 }
 
@@ -384,80 +256,51 @@ function matchSetPropertyCall(
   ctx: JsMatcherContext,
 ): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
-  if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'setProperty') {
-    return null;
-  }
-
+  if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'setProperty') return null;
   const styleAccess = unwrapExpression(expr.getExpression());
   if (!Node.isPropertyAccessExpression(styleAccess) || styleAccess.getName() !== 'style') {
     return null;
   }
-
   const targetElement = unwrapExpression(styleAccess.getExpression());
-  if (!isDocumentRootElement(targetElement)) {
-    return null;
-  }
+  if (!isDocumentRootElement(targetElement)) return null;
 
   const args = callExpr.getArguments();
-  if (args.length < 2) {
-    return null;
-  }
-
+  if (args.length < 2) return null;
   const propArg = unwrapExpression(args[0]);
   const valArg = unwrapExpression(args[1]);
-
-  if (!Node.isStringLiteral(propArg) && !Node.isNoSubstitutionTemplateLiteral(propArg)) {
-    return null;
-  }
-  if (!Node.isStringLiteral(valArg) && !Node.isNoSubstitutionTemplateLiteral(valArg)) {
-    return null;
-  }
+  if (!isStringLiteralNode(propArg) || !isStringLiteralNode(valArg)) return null;
 
   const propName = propArg.getLiteralText().toLowerCase();
-  if (propName !== 'overflow' && propName !== 'overflow-y') {
+  if (
+    (propName !== 'overflow' && propName !== 'overflow-y') ||
+    valArg.getLiteralText().trim().toLowerCase() !== 'hidden'
+  ) {
     return null;
   }
-
-  if (valArg.getLiteralText().trim().toLowerCase() !== 'hidden') {
-    return null;
-  }
-
-  if (isInsideFullscreenToggle(callExpr)) {
-    return null;
-  }
-
-  if (!hasNativeDialogContext(callExpr, ctx)) {
+  if (isInsideFullscreenToggle(callExpr) || !hasNativeDialogContext(callExpr, ctx)) {
     return null;
   }
 
   return {
     line: callExpr.getStartLineNumber(),
-    message:
-      `Imperative body scroll lock (${targetElement.getText()}.style.setProperty('${propName}', 'hidden')) used for modal/overlay instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
+    message: `Imperative body scroll lock (${targetElement.getText()}.style.setProperty('${propName}', 'hidden')) used for modal/overlay instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
   };
 }
 
 function matchClassListAdd(callExpr: CallExpression, ctx: JsMatcherContext): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
-  if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'add') {
-    return null;
-  }
-
+  if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'add') return null;
   const classListAccess = unwrapExpression(expr.getExpression());
   if (!Node.isPropertyAccessExpression(classListAccess) || classListAccess.getName() !== 'classList') {
     return null;
   }
-
   const targetElement = unwrapExpression(classListAccess.getExpression());
-  if (!isDocumentRootElement(targetElement)) {
-    return null;
-  }
+  if (!isDocumentRootElement(targetElement)) return null;
 
-  const args = callExpr.getArguments();
   let matchedClassName = '';
-  for (const arg of args) {
+  for (const arg of callExpr.getArguments()) {
     const unwrappedArg = unwrapExpression(arg);
-    if (Node.isStringLiteral(unwrappedArg) || Node.isNoSubstitutionTemplateLiteral(unwrappedArg)) {
+    if (isStringLiteralNode(unwrappedArg)) {
       const cls = unwrappedArg.getLiteralText().trim();
       if (MODAL_SCROLL_LOCK_CLASSES.has(cls)) {
         matchedClassName = cls;
@@ -465,23 +308,17 @@ function matchClassListAdd(callExpr: CallExpression, ctx: JsMatcherContext): Ana
       }
     }
   }
-
-  if (!matchedClassName) {
-    return null;
-  }
-
-  if (isInsideFullscreenToggle(callExpr)) {
-    return null;
-  }
-
-  if (!hasNativeDialogContext(callExpr, ctx)) {
+  if (
+    !matchedClassName ||
+    isInsideFullscreenToggle(callExpr) ||
+    !hasNativeDialogContext(callExpr, ctx)
+  ) {
     return null;
   }
 
   return {
     line: callExpr.getStartLineNumber(),
-    message:
-      `Imperative body scroll-lock class added (${targetElement.getText()}.classList.add('${matchedClassName}')) instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
+    message: `Imperative body scroll-lock class added (${targetElement.getText()}.classList.add('${matchedClassName}')) instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
   };
 }
 
@@ -490,28 +327,19 @@ function matchScrollLockCall(
   ctx: JsMatcherContext,
 ): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
-  let fnName = '';
-  if (Node.isIdentifier(expr)) {
-    fnName = expr.getText();
-  } else if (Node.isPropertyAccessExpression(expr)) {
-    fnName = expr.getName();
+  const fnName = Node.isIdentifier(expr)
+    ? expr.getText()
+    : Node.isPropertyAccessExpression(expr)
+      ? expr.getName()
+      : '';
+  if (fnName !== 'disableBodyScroll' && fnName !== 'enableBodyScroll') return null;
+  if (isInsideFullscreenToggle(callExpr) || !hasNativeDialogContext(callExpr, ctx, true)) {
+    return null;
   }
-
-  if (fnName === 'disableBodyScroll' || fnName === 'enableBodyScroll') {
-    if (isInsideFullscreenToggle(callExpr)) {
-      return null;
-    }
-    if (!hasNativeDialogContext(callExpr, ctx, true)) {
-      return null;
-    }
-    return {
-      line: callExpr.getStartLineNumber(),
-      message:
-        `Imperative body scroll lock call (${fnName}(...)) used for modal/overlay instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
-    };
-  }
-
-  return null;
+  return {
+    line: callExpr.getStartLineNumber(),
+    message: `Imperative body scroll lock call (${fnName}(...)) used for modal/overlay instead of native <dialog> (showModal()) and CSS overscroll-behavior: contain.`,
+  };
 }
 
 export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {

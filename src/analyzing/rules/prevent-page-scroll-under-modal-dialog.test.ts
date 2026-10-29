@@ -375,7 +375,7 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.match(matches[0].message, /body-scroll-lock/);
   });
 
-  test('exempts non-modal disableBodyScroll, drawer/sliding-pane effects, and framework lifecycle methods', () => {
+  test('exempts non-modal disableBodyScroll and drawer/sliding-pane effects while flagging React modal useEffect with keydown and class Modal methods', () => {
     const nonModalDisableScroll = `
       function openMobileMenu() {
         overlay.style.transitionDuration = '400ms';
@@ -412,26 +412,30 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
       0,
     );
 
-    const lifecycleModalCode = `
-      export default class Modal {
-        componentDidMount() {
-          if (this.props.isOpen) {
+    const reactModalWithKeydownAndClassModal = `
+      export function ModalDialog({ isOpen }) {
+        useEffect(() => {
+          if (isOpen) {
             document.body.style.overflow = 'hidden';
+            window.addEventListener('keydown', onEscape);
           }
-        }
-        created() {
-          document.body.classList.add('overflow-hidden');
+        }, [isOpen]);
+        return null;
+      }
+      export class CustomDialog {
+        async openModal() {
+          document.body.classList.add('modal-open');
         }
       }
     `;
     assert.equal(
       scanJsSource(
         'src/components/Modal/index.js',
-        lifecycleModalCode,
+        reactModalWithKeydownAndClassModal,
         [preventPageScrollUnderModalDialogMatcher],
         project,
       ).matches.length,
-      0,
+      2,
     );
   });
 });
