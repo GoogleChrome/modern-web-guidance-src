@@ -316,7 +316,7 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.match(matches[0]?.message ?? '', /customize scrollbar appearance/);
   });
 
-  await t.test('exempts standalone :hover thumb rules, :active/:window-inactive states, inset background-clip thumbs, and custom scrollbar widgets', () => {
+  await t.test('exempts standalone :hover thumb rules, :active/:window-inactive states, and inset background-clip thumbs', () => {
     const css = `
       .standalone::-webkit-scrollbar-thumb:hover {
         background: #555;
@@ -331,9 +331,6 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
         background-color: rgba(0, 0, 0, 0.2);
         background-clip: padding-box;
         border: 4px solid transparent;
-      }
-      .CodeMirror-scroll::-webkit-scrollbar {
-        display: none;
       }
       #portfolio::-webkit-scrollbar {
         width: 5px;

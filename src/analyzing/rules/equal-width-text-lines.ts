@@ -28,10 +28,7 @@ const FITTEXT_PACKAGES = [
 ] as const;
 
 const NON_TEXT_FIT_TARGETS =
-  /\b(?:canvas|ctx|context|chart|video|audio|player|camera|scene|game|threejs|circleType|circletype)\b/i;
-
-const SINGLE_LINE_ENCLOSING_NAME_REGEX =
-  /\b(?:initSingle|fitSingle(?:Line)?|singleLine|circleType|circletype)\b/i;
+  /\b(?:canvas|ctx|context|chart|video|audio|player|camera|scene|game|threejs)\b/i;
 
 const SINGLE_LINE_SELECTOR_REGEX =
   /(?:^|[\s>+~])\.r-fit-text\s*$/i;
@@ -111,25 +108,9 @@ function isSingleLineOption(call: CallExpression): boolean {
   return false;
 }
 
-function isInSingleLineContext(call: CallExpression, sourceFile: SourceFile): boolean {
-  const filePath = sourceFile.getFilePath();
-  if (/circletype/i.test(filePath)) {
-    return true;
-  }
-
+function isInSingleLineContext(call: CallExpression): boolean {
   let current: Node | undefined = call.getParent();
   while (current) {
-    if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isMethodDeclaration(current) ||
-      Node.isPropertyAssignment(current) ||
-      Node.isVariableDeclaration(current)
-    ) {
-      const name = current.getName?.() ?? '';
-      if (name && SINGLE_LINE_ENCLOSING_NAME_REGEX.test(name)) {
-        return true;
-      }
-    }
     if (
       Node.isCallExpression(current) &&
       /\.r-fit-text\b/.test(current.getExpression().getText())
@@ -169,7 +150,7 @@ function isFitTextCall(
 ): boolean {
   if (
     isSingleLineOption(call) ||
-    isInSingleLineContext(call, sourceFile) ||
+    isInSingleLineContext(call) ||
     /white-space\s*:\s*nowrap/i.test(fileContent)
   ) {
     return false;

@@ -33,9 +33,9 @@ const FEATURE_GUARD_TOKENS: readonly string[] = [
 
 const DIALOG_RECEIVER_HINT_RE = /\b(?:dialog|dlg|popover)\b/i;
 const NON_DIALOG_CLOSE_RECEIVER_RE =
-  /\b(?:window|self|document|ws|socket|stream|conn|connection|db|file|reader|writer|port|channel|context|audioCtx|peer|lightbox|drawer|sheet)\s*$/i;
+  /\b(?:window|self|document|ws|socket|stream|conn|connection|db|file|reader|writer|port|channel|context|audioCtx|peer)\s*$/i;
 
-const INVALID_RECEIVERS = new Set(['this', 'self', 'app', 'picker', 'interaction', 'window', 'document']);
+const INVALID_RECEIVERS = new Set(['this', 'self', 'window', 'document']);
 
 const EVENT_PURE_CALL_RE =
   /^(?:e|evt|event)\s*\.\s*(?:preventDefault|stopPropagation)\s*\(\s*\)$/;

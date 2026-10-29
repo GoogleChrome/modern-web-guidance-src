@@ -37,19 +37,6 @@ const MODAL_OR_OVERLAY_WORD_REGEX =
 const MODAL_OR_OVERLAY_CAMEL_REGEX =
   /[a-z](?:Dialog|Modal|Lightbox|Popup|Overlay|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[lL]ightbox|[pP]opup|[oO]verlay|[sS]howModal)[A-Z]/;
 
-const NON_DRAWER_MODAL_WORD_REGEX =
-  /\b(?:dialog|modal|lightbox|popup|overlay|showmodal)\b/i;
-
-const NON_DRAWER_MODAL_CAMEL_REGEX =
-  /[a-z](?:Dialog|Modal|Lightbox|Popup|Overlay|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[lL]ightbox|[pP]opup|[oO]verlay|[sS]howModal)[A-Z]/;
-
-function hasNonDrawerModalName(text: string): boolean {
-  return NON_DRAWER_MODAL_WORD_REGEX.test(text) || NON_DRAWER_MODAL_CAMEL_REGEX.test(text);
-}
-
-const SIDEBAR_NAVIGATION_DRAWER_REGEX =
-  /(?:\b(?:PerfectScrollbar|Sidebar|Drawer|mobileOpen|SlideOver\w*|slideOver\w*|SlidingPane|isPanelOpen|overscrollBehavior|FilesOverlay|overlayElement|search-pop-overlay|popup-trigger|insertAdjacentHTML)\b|translateY\(\s*['"`]100%['"`]\s*\))/;
-
 function hasModalOrOverlayName(text: string): boolean {
   return MODAL_OR_OVERLAY_WORD_REGEX.test(text) || MODAL_OR_OVERLAY_CAMEL_REGEX.test(text);
 }
@@ -120,17 +107,6 @@ function isEffectHookCallback(fnNode: Node): boolean {
   return false;
 }
 
-const LIFECYCLE_METHOD_NAMES = new Set([
-  'created',
-  'mounted',
-  'beforeDestroy',
-  'destroyed',
-  'unmounted',
-  'componentDidMount',
-  'componentDidUpdate',
-  'componentWillUnmount',
-]);
-
 const TIMER_OR_MOUNT_CALL_NAMES = new Set([
   'setTimeout',
   'setInterval',
@@ -160,16 +136,9 @@ function hasNativeDialogContext(
   ctx: JsMatcherContext,
   requireModalOrDialog = false,
 ): boolean {
-  if (
-    SIDEBAR_NAVIGATION_DRAWER_REGEX.test(ctx.filePath) ||
-    SIDEBAR_NAVIGATION_DRAWER_REGEX.test(node.getSourceFile().getFullText())
-  ) {
-    return false;
-  }
-
   let current: Node | undefined = node.getParent();
   let callableDepth = 0;
-  let steppedFromEffectHook = false;
+  let matchedContext = false;
 
   while (current && !Node.isSourceFile(current)) {
     if (
@@ -182,72 +151,56 @@ function hasNativeDialogContext(
       if (isImmediatelyInvokedFunction(current)) {
         break;
       }
-      if (isTimerOrMountCallback(current)) {
+      if (
+        Node.isClassDeclaration(current) ||
+        Node.isMethodDeclaration(current) ||
+        current.isAsync?.() ||
+        isTimerOrMountCallback(current)
+      ) {
         return false;
-      }
-      if (Node.isMethodDeclaration(current)) {
-        const methodName = current.getName();
-        if (LIFECYCLE_METHOD_NAMES.has(methodName)) {
-          return false;
-        }
-        if (current.getDecorators().length > 0) {
-          return false;
-        }
       }
       const text = current.getText();
-      if (text.length > 8_000) {
-        break;
-      }
-      if (SIDEBAR_NAVIGATION_DRAWER_REGEX.test(text)) {
-        return false;
-      }
-      if (
-        /\b(?:reserveScrollBarGap|clearAllBodyScrollLocks|_getScrollbarWidth|modal-scrollbar-measure|_modalsOpen|preventScrolling)\b/.test(
-          text,
-        )
-      ) {
-        return false;
-      }
-      if (
-        isEffectHookCallback(current) &&
-        /\baddEventListener\s*\(\s*['"`]keydown['"`]/.test(text)
-      ) {
-        return false;
-      }
-      if (FULLSCREEN_CANVAS_GAME_REGEX.test(text) && !hasModalOrOverlayName(text)) {
-        return false;
-      }
-
-      const nameCheck = requireModalOrDialog ? hasModalOrDialogName : hasModalOrOverlayName;
-
-      if (callableDepth === 0 || (callableDepth === 1 && steppedFromEffectHook)) {
-        const hasCue =
-          nameCheck(text) ||
-          text.includes('showModal') ||
-          text.includes('<dialog');
-        if (hasCue) {
-          return true;
+      if (text.length <= 8_000) {
+        if (
+          isEffectHookCallback(current) &&
+          /\baddEventListener\s*\(\s*['"`]keydown['"`]/.test(text)
+        ) {
+          return false;
         }
-      } else {
+        if (FULLSCREEN_CANVAS_GAME_REGEX.test(text) && !hasModalOrOverlayName(text)) {
+          return false;
+        }
+
+        const nameCheck = requireModalOrDialog ? hasModalOrDialogName : hasModalOrOverlayName;
         const scopeName = getCallableOrClassName(current);
+
         if (nameCheck(scopeName)) {
-          return true;
+          matchedContext = true;
+        } else if (callableDepth === 0) {
+          const hasCue =
+            hasModalOrDialogName(text) ||
+            text.includes('showModal') ||
+            text.includes('<dialog');
+          if (hasCue) {
+            matchedContext = true;
+          }
         }
       }
 
-      if (callableDepth === 0) {
-        steppedFromEffectHook = isEffectHookCallback(current);
-      }
       callableDepth++;
     }
     current = current.getParent();
   }
 
+  if (matchedContext) {
+    return true;
+  }
+
   const fileNameCheck = requireModalOrDialog ? hasModalOrDialogName : hasModalOrOverlayName;
   if (
+    callableDepth > 0 &&
     fileNameCheck(ctx.filePath) &&
-    !FULLSCREEN_CANVAS_GAME_REGEX.test(ctx.filePath) &&
-    !SIDEBAR_NAVIGATION_DRAWER_REGEX.test(node.getSourceFile().getFullText())
+    !FULLSCREEN_CANVAS_GAME_REGEX.test(ctx.filePath)
   ) {
     return true;
   }
@@ -647,6 +600,7 @@ export const preventPageScrollUnderModalDialogRule: AnalyzerRule = {
     ],
     dropWhen: [
       'Full-screen editor or canvas views (e.g. fullscreen toggle modes for code editors or games) that do not present a modal dialog or overlay layer.',
+      'Side-navigation drawers, sliding panels, mobile menus, or non-modal popovers/portals where native <dialog>.showModal() does not apply.',
       'Native <dialog> elements utilizing CSS overscroll-behavior: contain or body:has(dialog[open]) to contain scroll without imperative JS.',
       'CSS stylesheet declarations or internal container style assignments setting overflow: hidden on sub-elements rather than the root body or documentElement.',
     ],

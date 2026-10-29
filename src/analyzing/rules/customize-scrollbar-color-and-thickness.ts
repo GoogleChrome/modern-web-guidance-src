@@ -41,8 +41,6 @@ const WEBKIT_THUMB_STATE_REGEX =
 const WEBKIT_THUMB_NON_HOVER_STATE_REGEX =
   /::-webkit-scrollbar-thumb\s*:(?:active|focus|window-inactive)\b/i;
 const HOVER_WEBKIT_SCROLLBAR_REGEX = /:hover::-webkit-scrollbar(?![-\w])/i;
-const CUSTOM_SCROLLBAR_WIDGET_SELECTOR_REGEX =
-  /(?:\.CodeMirror-scroll|\.el-scrollbar__wrap|\.ps(?:\b|__)|\.simplebar-|\.os-viewport|\.nice-select\b)/i;
 const INSET_PADDING_CLIP_REGEX = /^(?:padding-box|content-box)$/i;
 const GRADIENT_VALUE_REGEX =
   /(?:(?:-webkit-|-moz-|-o-)?(?:repeating-)?(?:linear|radial|conic)-gradient|-webkit-gradient)\s*\(/i;
@@ -292,11 +290,6 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       }
     }
 
-    // 4. Skip custom JS scrollbar widget containers (CodeMirror, Element UI, PerfectScrollbar, SimpleBar)
-    if (CUSTOM_SCROLLBAR_WIDGET_SELECTOR_REGEX.test(styleRule.selectorText)) {
-      return null;
-    }
-
     const isThumb = WEBKIT_THUMB_REGEX.test(styleRule.selectorText);
     const isScrollbar = WEBKIT_SCROLLBAR_REGEX.test(styleRule.selectorText);
 
@@ -384,7 +377,7 @@ export const customizeScrollbarColorAndThicknessRule: AnalyzerRule = {
       'The rule only resets scrollbar properties using CSS cascade keywords (auto, inherit, initial, unset, revert) or sets transparent thumb backgrounds without hiding ::-webkit-scrollbar.',
       'The rule sets a CSS gradient (linear-gradient, radial-gradient, -webkit-gradient), image, or box-shadow (-webkit-box-shadow) on ::-webkit-scrollbar-thumb or ::-webkit-scrollbar-track, styles visible ::-webkit-scrollbar-button arrows, or styles ::-webkit-scrollbar thickness when the accompanying ::-webkit-scrollbar-thumb uses gradients, images, box-shadow, backdrop-filter, or transparent backgrounds.',
       'The rule targets ::-webkit-scrollbar for non-zero sizing without custom thumb styling, or only sets border-radius without color, thickness, or hiding.',
-      'The rule is inside a CSS reset stylesheet or an @supports not (scrollbar-width: ...) / @supports not (scrollbar-color: ...) fallback block.',
+      'The rule is inside a CSS reset stylesheet, targets a third-party custom JS scrollbar widget container that hides native scrollbars to render synthetic DOM scrollbars, or is inside an @supports not (scrollbar-width: ...) / @supports not (scrollbar-color: ...) fallback block.',
     ],
   },
 };
