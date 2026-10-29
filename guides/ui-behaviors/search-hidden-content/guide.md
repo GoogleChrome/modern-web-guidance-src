@@ -72,7 +72,7 @@ When handling mutually exclusive content regions, like an exclusive accordion, u
 In the `beforematch` event handler, you MUST synchronize related ARIA states such as setting `aria-expanded="true"` on the controlling button. If you don't intend to support hiding the content, use `aria-disabled` on the trigger control, rather than `disabled`, as to prevent a loss of focus.
 
 ```html
-<button aria-expanded="false">Hidden content</button>
+<button id="reveal-btn" aria-expanded="false">Hidden content</button>
 <!-- The browser automatically removes hidden="until-found" upon a search match -->
 <div id="hidden-panel" class="hidden-container" hidden="until-found">
   <p>This content is visually hidden.</p>
@@ -99,9 +99,9 @@ hiddenPanel.addEventListener('beforematch', () => {
 
 With mutually exclusive disclosures there's no way to semantically convey which control relates to which piece of hidden/expanded content, in a way that's announced by screen readers. As a result, this may cause WCAG 1.3.2 Meaningful Order issues, as the order in which content should be announced, may no longer be correct, and may affect the meaning of the content.
 
-See {{ GUIDE_REF("accordion") }} for accordion patterns, in which multiple disclosures are used in a way that is accessible.
+{# See {{ GUIDE_REF("accordion") }} for accordion patterns, in which multiple disclosures are used in a way that is accessible. #}
 
-See {{ GUIDE_REF("tabs") }} for tab patterns which hides content until a specific tab is selected, keeping the information displayed minimal, helping to reduce the amount of visual noise.
+{# See {{ GUIDE_REF("tabs") }} for tab patterns which hides content until a specific tab is selected, keeping the information displayed minimal, helping to reduce the amount of visual noise. #}
 
 ## Best practices for `hidden="until-found"`
 
