@@ -200,6 +200,7 @@ test('buildTargetGraderPrompt includes expectation coverage and skip manifest ru
     buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true }),
   ]) {
     assert.ok(prompt.includes('Skip an expectation only when its precondition is absent from both the target application and the task'));
+    assert.ok(prompt.includes('A state the grader can create or simulate (a permission state, a viewport width, a failed or denied request, a removed global) is never a missing precondition; test it.'));
     assert.ok(prompt.includes('SKIPPED: <missing precondition>'));
     assert.ok(prompt.includes('Do not omit, merge, or skip any applicable expectation'));
   }
