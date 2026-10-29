@@ -114,24 +114,17 @@ master.disabled = items.length === 0;
 
 ## 3. Styling
 
-Style the checkboxes (including the master) with `accent-color` for brand-consistent native rendering, and fall back to the custom `appearance: none` styling where `accent-color` is unsupported.
-
-{{ INCLUDE("guides/ui-components/checkbox/guide.md#native-customization-with-accent-color") }}
-
-Gate the custom styling below with `@supports not (accent-color: auto)` so it only applies as the fallback, with every rule scoped to the same checkbox class. To keep the fallback brand-consistent with the `accent-color` version, fill the `:checked` and `:indeterminate` states with the brand color and give the icon a contrasting color:
+Style the checkboxes (including the master) with `accent-color` for brand-consistent native rendering, or see {{ GUIDE_REF("checkbox") }} for custom `appearance: none` styling.
 
 ```css
-@supports not (accent-color: auto) {
-  /* Place the custom checkbox rules below inside this block; the :root icon variables stay outside it */
-  .checkbox:is(:checked, :indeterminate) {
-    color: #fff; /* Icon color, contrasting with the brand fill */
-    background-color: #1a73e8; /* Example brand color; match accent-color */
-    border-color: #1a73e8;
-  }
+.checkbox {
+  accent-color: #1a73e8;
+  inline-size: 1.25em;
+  aspect-ratio: 1;
+  margin: 0;
+  cursor: pointer;
 }
 ```
-
-{{ INCLUDE("guides/ui-components/checkbox/guide.md#fully-custom-styling-with-appearance-none") }}
 
 Also add a disabled style for options that are offline or unavailable, and dim the label to match:
 
