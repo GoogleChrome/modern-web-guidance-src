@@ -493,7 +493,9 @@ async function loadRequestedDatasets(
         );
         continue;
       }
-      if (options.split && options.split !== "all") {
+      const supportsSplit =
+        wild.queries.length > 0 && wild.queries.every((q) => q.split === "dev" || q.split === "test");
+      if (options.split && options.split !== "all" && supportsSplit) {
         wild = filterDatasetBySplit(wild, options.split);
       }
       loaded.push(wild);
@@ -517,7 +519,7 @@ async function main(): Promise<void> {
       "use-current-guides": { type: "boolean", default: false },
       json: { type: "string" },
       markdown: { type: "string" },
-      split: { type: "string", default: "all" },
+      split: { type: "string", default: "dev" },
       "wild-version": { type: "string" },
     },
   });
@@ -526,7 +528,7 @@ async function main(): Promise<void> {
   if (rawSplit !== undefined && rawSplit !== "dev" && rawSplit !== "test" && rawSplit !== "all") {
     throw new Error(`Invalid --split "${rawSplit}". Expected "dev", "test", or "all".`);
   }
-  const split = (rawSplit ?? "all") as "dev" | "test" | "all";
+  const split = (rawSplit ?? "dev") as "dev" | "test" | "all";
 
   const rawWildVersion = values["wild-version"];
   if (rawWildVersion !== undefined && (!rawWildVersion.trim() || rawWildVersion.includes("/"))) {
