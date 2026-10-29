@@ -123,11 +123,11 @@ const EXPLICIT_OTP_SINGLE_WORDS: ReadonlySet<string> = new Set([
 const OTP_FORM_CONTEXT_WORDS: ReadonlySet<string> = new Set([
   'otp',
   'totp',
-  'verification',
-  'verify',
   '2fa',
   'mfa',
   'twofactor',
+  'sms',
+  'passcode',
 ]);
 
 const SEGMENTED_SINGLE_CLASS_WORDS: ReadonlySet<string> = new Set([
@@ -363,13 +363,13 @@ export const smsOtpFormRule: AnalyzerRule = {
   matcher: smsOtpFormMatcher,
   verifierRubric: {
     keepWhen: [
-      'The input is an OTP or two-factor authentication verification code field that lacks autocomplete="one-time-code".',
+      'The input is an OTP, SMS, or two-factor authentication (2FA/MFA/TOTP) verification code entry field (such as a 6-digit code input) that lacks autocomplete="one-time-code".',
       'The OTP input uses type="number" or type="tel" instead of type="text" with inputmode="numeric".',
       'The form uses segmented multi-box inputs (maxlength="1" single-digit boxes) for OTP entry rather than a single input.',
     ],
     dropWhen: [
       'The input already specifies autocomplete="one-time-code".',
-      'The input is a phone/mobile number field, a TOTP setup secret key, or a standard password field.',
+      'The input is a phone/mobile number field, a shared secret/seed string for configuring a TOTP app (e.g. name="otp_secret" or maxlength="64"), or a standard password field.',
       'The input is a credit card CVV/CVC code or postal/zip code.',
       'The input is disabled, readonly, hidden, or a non-interactive display widget.',
     ],

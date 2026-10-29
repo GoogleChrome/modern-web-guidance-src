@@ -95,4 +95,36 @@ void test('component-specific-light-dark-theme: CSS negative / exempt cases', as
     const matches = scanCss('react-flow.css', css, [cssMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts descendant rules in stylesheets with standalone [data-theme] root rules and unpaired widget token dumps', () => {
+    const pageThemeCss = `
+      :root {
+        --bg-color: #0f172a;
+      }
+      [data-theme='light'] {
+        --bg-color: #f8fafc;
+      }
+      [data-theme='dark'] .render-preview {
+        background: #1e293b;
+        color: #e2e8f0;
+      }
+    `;
+    assert.equal(scanCss('markpaste.css', pageThemeCss, [cssMatcher]).length, 0);
+
+    const widgetPaletteCss = `
+      .dialect[data-theme="dark"] {
+        --dt-accent-brand: #dce85d !important;
+        --dt-accent-error: #ff4747;
+        --dt-accent-success: #09cbbf;
+        --dt-accent-warning: #ff9900;
+        --dt-bg-brand: #656564;
+        --dt-bg-primary: #111416 !important;
+        --dt-bg-secondary: #0c0f11 !important;
+        --dt-bg-tertiary: #2a2a2b;
+        --dt-text-accent: #dce85d !important;
+        --dt-text-primary: #ffffff;
+      }
+    `;
+    assert.equal(scanCss('globals.css', widgetPaletteCss, [cssMatcher]).length, 0);
+  });
 });

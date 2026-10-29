@@ -55,9 +55,12 @@ function stylesheetHasRootThemeRule(ctx: CssMatcherContext): boolean {
     return cached;
   }
   const hasRoot =
-    /(?:^|[},])\s*(?:html|body|:root)(?:\.dark|\.theme-dark|\.dark-theme|\.dark-mode|\[data-theme)/i.test(
+    /(?:^|[},])\s*(?:html|body|:root)(?:\.dark|\.light|\.theme-dark|\.theme-light|\.dark-theme|\.light-theme|\.dark-mode|\.light-mode|\[data-(?:bs-)?theme|\[data-color-scheme)/i.test(
       ctx.stylesheetText,
-    ) || /(?:^|[},])\s*\.theme-dark\s*[,{]/i.test(ctx.stylesheetText);
+    ) ||
+    /(?:^|[},])\s*(?:\.dark|\.light|\.theme-dark|\.theme-light|\.dark-theme|\.light-theme|\.dark-mode|\.light-mode|\[data-(?:bs-)?theme[^\]]*\]|\[data-color-scheme[^\]]*\])\s*[,{]/i.test(
+      ctx.stylesheetText,
+    );
   cachedHasRootTheme.set(ctx, hasRoot);
   return hasRoot;
 }
@@ -104,9 +107,16 @@ function isComponentDarkOverrideSelector(
   return false;
 }
 
-function hasSolidBackgroundAndForegroundOverride(rule: CssRuleView): boolean {
+function hasSolidBackgroundAndForegroundOverride(
+  rule: CssRuleView,
+  ctx: CssMatcherContext,
+): boolean {
   let hasBackground = false;
   let hasForeground = false;
+  let hasStandardBgAndFg = false;
+  let hasStandardBg = false;
+  let hasStandardFg = false;
+  let customPropCount = 0;
 
   for (const decl of rule.declarations) {
     const prop = decl.property.toLowerCase().trim();
@@ -117,6 +127,7 @@ function hasSolidBackgroundAndForegroundOverride(rule: CssRuleView): boolean {
     }
 
     if (prop.startsWith('--')) {
+      customPropCount++;
       if (!val.includes('url(')) {
         const hasBgWord = /(?:^|-)(?:bg|background)(?:-|$)/i.test(prop);
         const hasTextWord = /(?:^|-)(?:text|fg|foreground)(?:-|$)/i.test(prop);
@@ -142,11 +153,24 @@ function hasSolidBackgroundAndForegroundOverride(rule: CssRuleView): boolean {
         val !== 'initial'
       ) {
         hasBackground = true;
+        hasStandardBg = true;
       }
     } else if (prop === 'color') {
       if (val !== 'inherit' && val !== 'initial' && val !== 'transparent') {
         hasForeground = true;
+        hasStandardFg = true;
       }
+    }
+  }
+
+  hasStandardBgAndFg = hasStandardBg && hasStandardFg;
+  if (!hasStandardBgAndFg && customPropCount > 8) {
+    const hasPairedLightRule =
+      /(?:\.light|\.theme-light|\.light-theme|\.light-mode|\[data-(?:bs-)?theme\s*=\s*['"]?light['"]?\]|\[data-color-scheme\s*=\s*['"]?light['"]?\])/i.test(
+        ctx.stylesheetText,
+      );
+    if (!hasPairedLightRule) {
+      return false;
     }
   }
 
@@ -186,7 +210,7 @@ const componentSpecificLightDarkThemeCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    if (!hasSolidBackgroundAndForegroundOverride(styleRule)) {
+    if (!hasSolidBackgroundAndForegroundOverride(styleRule, ctx)) {
       return null;
     }
 
@@ -212,7 +236,8 @@ export const componentSpecificLightDarkThemeRule: AnalyzerRule = {
       'Setting color-scheme: dark on the component with light-dark() tokens modernizes the component subtree and adapts built-in browser UI (scrollbars, form controls) inside it.',
     ],
     dropWhen: [
-      'The rule targets page-root selectors (:root, html, body) or is inside @media (prefers-color-scheme: dark), which is page-wide dark mode rather than a component-specific theme.',
+      'The rule targets page-root selectors (:root, html, body), standalone root theme blocks ([data-theme="light"] { ... }), or is inside @media (prefers-color-scheme: dark), which is page-wide dark mode rather than a component-specific theme.',
+      'The rule overrides third-party embedded widget theme palettes via custom property lists without a paired light-theme component rule in the stylesheet.',
       'The element does not establish its own background surface (e.g. only setting text color or icon filter), where setting color-scheme is forbidden by the guide.',
       'The selector is a single-property utility class (such as Tailwind .dark .dark\\:bg-slate-800) rather than a component surface.',
     ],

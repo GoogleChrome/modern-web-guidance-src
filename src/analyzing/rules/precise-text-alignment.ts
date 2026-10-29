@@ -40,7 +40,6 @@ const TEXT_BOX_GUARD_TOKENS = [
 const CAPSIZE_FUNCTIONS = [
   'createStyleObject',
   'createStyleString',
-  'precomputeValues',
   'capsize',
 ] as const;
 
@@ -50,6 +49,24 @@ const CAPSIZE_CONFIG_KEYS: ReadonlySet<string> = new Set([
   'lineGap',
   'leading',
 ]);
+
+function isInsideLegacyCompatibilityBranch(node: Node): boolean {
+  let current: Node | undefined = node.getParent();
+  while (current) {
+    if (Node.isIfStatement(current)) {
+      const condText = current.getExpression().getText();
+      if (
+        /\b(?:classic|legacy|fallback)\b/i.test(condText) &&
+        node.getStart() >= current.getThenStatement().getStart() &&
+        node.getEnd() <= current.getThenStatement().getEnd()
+      ) {
+        return true;
+      }
+    }
+    current = current.getParent();
+  }
+  return false;
+}
 
 function hasCapsizeMetricsConfig(obj: ObjectLiteralExpression): boolean {
   for (const prop of obj.getProperties()) {
@@ -67,6 +84,15 @@ function hasCapsizeMetricsConfig(obj: ObjectLiteralExpression): boolean {
 function matchCapsizeCall(callExpr: CallExpression): string | null {
   const args = callExpr.getArguments();
   if (args.length === 0 || !args[0]) {
+    return null;
+  }
+
+  const sf = callExpr.getSourceFile();
+  if (/\.(?:native|ios|android)\.[jt]sx?$/i.test(sf.getFilePath())) {
+    return null;
+  }
+
+  if (isInsideLegacyCompatibilityBranch(callExpr)) {
     return null;
   }
 
@@ -117,7 +143,7 @@ export const preciseTextAlignmentPackageMatcher: DependencyRuleMatcher =
   );
 
 export const preciseTextAlignmentJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['createStyleObject', 'createStyleString', 'precomputeValues', 'capsize'],
+  fastTokens: ['createStyleObject', 'createStyleString', 'capsize'],
   featureGuardTokens: TEXT_BOX_GUARD_TOKENS,
   matchCall: (node) => matchCapsizeCall(node),
 });
@@ -174,10 +200,11 @@ export const preciseTextAlignmentJsRule: AnalyzerRule = {
   matcher: preciseTextAlignmentJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'JavaScript calls createStyleObject(), createStyleString(), precomputeValues(), or capsize() with fontMetrics / capHeight to generate negative-margin leading-trim styles.',
+      'JavaScript calls createStyleObject(), createStyleString(), or capsize() with fontMetrics / capHeight to generate negative-margin leading-trim CSS styles.',
     ],
     dropWhen: [
-      'The call is guarded by a CSS.supports("text-box-trim", "trim-both") fallback check.',
+      'The call is guarded by a CSS.supports("text-box-trim", "trim-both") fallback check or sits inside a classic/legacy compatibility branch of a plugin.',
+      'React Native files (.native.js/.ts/.tsx) or raw numeric precomputeValues() helpers that do not generate CSS ::before/::after leading-trim styles.',
       'The code uses standard vertical-align: middle or standard line-height body text leading.',
     ],
   },

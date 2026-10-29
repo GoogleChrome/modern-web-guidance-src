@@ -97,14 +97,53 @@ function isScrollCallAwaited(call: CallExpression): boolean {
   return false;
 }
 
+function areInMutuallyExclusiveBranches(a: Node, b: Node): boolean {
+  let curr: Node | undefined = a.getParent();
+  while (curr) {
+    if (Node.isConditionalExpression(curr)) {
+      const whenTrue = curr.getWhenTrue();
+      const whenFalse = curr.getWhenFalse();
+      const aInTrue =
+        a.getStart() >= whenTrue.getStart() && a.getEnd() <= whenTrue.getEnd();
+      const bInFalse =
+        b.getStart() >= whenFalse.getStart() && b.getEnd() <= whenFalse.getEnd();
+      if (aInTrue && bInFalse) {
+        return true;
+      }
+    } else if (Node.isIfStatement(curr)) {
+      const thenStmt = curr.getThenStatement();
+      const elseStmt = curr.getElseStatement();
+      if (elseStmt) {
+        const aInThen =
+          a.getStart() >= thenStmt.getStart() && a.getEnd() <= thenStmt.getEnd();
+        const bInElse =
+          b.getStart() >= elseStmt.getStart() && b.getEnd() <= elseStmt.getEnd();
+        if (aInThen && bInElse) {
+          return true;
+        }
+      }
+    }
+    curr = curr.getParent();
+  }
+  return false;
+}
+
 /**
  * Checks whether a function or block contains a setTimeout intended to fire after scrolling completes.
  */
-function findPostScrollSetTimeout(scope: Node, minStartPos: number): CallExpression | null {
+function findPostScrollSetTimeout(
+  scope: Node,
+  scrollCall: CallExpression,
+): CallExpression | null {
+  const minStartPos = scrollCall.getEnd();
   const callExpressions = scope.getDescendantsOfKind(SyntaxKind.CallExpression);
 
   for (const call of callExpressions) {
     if (call.getStart() <= minStartPos) {
+      continue;
+    }
+
+    if (areInMutuallyExclusiveBranches(scrollCall, call)) {
       continue;
     }
 
@@ -129,6 +168,19 @@ function findPostScrollSetTimeout(scope: Node, minStartPos: number): CallExpress
       if (args.length > 0) {
         const callbackArg = resolveCallableNode(args[0]);
 
+        const priorInsertedIdentifiers = new Set<string>();
+        for (const betweenCall of callExpressions) {
+          if (
+            betweenCall.getStart() > minStartPos &&
+            betweenCall.getEnd() < call.getStart()
+          ) {
+            const betweenExpr = unwrapExpression(betweenCall.getExpression());
+            if (Node.isIdentifier(betweenExpr)) {
+              priorInsertedIdentifiers.add(betweenExpr.getText());
+            }
+          }
+        }
+
         // Check if callback triggers focus, class change, highlight, or custom action
         let triggersEffect = false;
         callbackArg.forEachDescendant((child) => {
@@ -140,7 +192,10 @@ function findPostScrollSetTimeout(scope: Node, minStartPos: number): CallExpress
                 triggersEffect = true;
               }
             } else if (Node.isIdentifier(childExpr)) {
-              triggersEffect = true;
+              const idName = childExpr.getText();
+              if (!priorInsertedIdentifiers.has(idName)) {
+                triggersEffect = true;
+              }
             }
           }
         });
@@ -214,7 +269,7 @@ export const scrollCompletionEffectsJsMatcher: JsRuleMatcher = {
         continue;
       }
 
-      const timeoutCall = findPostScrollSetTimeout(currentScope, call.getEnd());
+      const timeoutCall = findPostScrollSetTimeout(currentScope, call);
       if (timeoutCall) {
         if (isProtectedByFeatureGuard(timeoutCall, SCROLL_PROMISE_FEATURE_TOKENS)) {
           continue;
@@ -248,6 +303,8 @@ export const scrollCompletionEffectsRule: AnalyzerRule = {
     dropWhen: [
       'Code already awaits scrollIntoView or scrollTo returned Promise',
       'Instant or non-smooth scroll operations (behavior: "auto" or omitted default instant scroll)',
+      'setTimeout is in a mutually exclusive branch (e.g. ternary else) or delays initiating a scroll rather than waiting for a smooth scroll to finish',
+      'setTimeout only resets an independent animation/state setter that was just invoked synchronously prior to the timer',
       'General scroll event debounce tracking user touch/wheel scrolling without programmatic scroll initiation',
       'Guarded by scroll method promise feature detection',
     ],

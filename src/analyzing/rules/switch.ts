@@ -7,13 +7,59 @@ import type {
 
 export const SWITCH_GUIDE_HASH = '0b0a9d49545e';
 
+const TREE_OR_ACCORDION_ID_REGEX =
+  /(?:^|[-_])(?:toctree|tree|accordion|collapse|collapsible|drawer|dropdown|submenu)(?:$|[-_0-9])/i;
+
+function isTreeDisclosureOrSvgArtHack(
+  element: DomElementView,
+  ctx: DomMatcherContext,
+): boolean {
+  if (/(?:^|\/)(?:_build|_site)\//i.test(ctx.filePath)) {
+    return true;
+  }
+
+  const classAttr =
+    element.getAttribute('class') ?? element.getAttribute('className') ?? '';
+  const idAttr = element.getAttribute('id') ?? '';
+  const nameAttr = element.getAttribute('name') ?? '';
+  if (
+    TREE_OR_ACCORDION_ID_REGEX.test(classAttr) ||
+    TREE_OR_ACCORDION_ID_REGEX.test(idAttr) ||
+    TREE_OR_ACCORDION_ID_REGEX.test(nameAttr)
+  ) {
+    return true;
+  }
+
+  const lines = ctx.documentText.split(/\r?\n/);
+  const startIdx = Math.max(0, element.line - 1);
+  const windowText = lines.slice(startIdx, Math.min(lines.length, startIdx + 20)).join('\n');
+
+  // CSS checkbox-hack toggling a sibling <ul>/<ol>/<nav> tree or menu after </label>
+  if (/<\/label>\s*<(?:ul|ol|nav)\b/i.test(windowText)) {
+    return true;
+  }
+
+  // Bespoke multi-layer SVG filter/gradient artwork inside the same <label> before </label>
+  const labelCloseIdx = windowText.search(/<\/label>/i);
+  const withinLabel =
+    labelCloseIdx >= 0 ? windowText.slice(0, labelCloseIdx) : windowText;
+  if (
+    /<svg\b/i.test(withinLabel) &&
+    /<(?:filter|linearGradient|radialGradient|feGaussianBlur)\b/i.test(withinLabel)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export const switchMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input[type="checkbox"][role="switch"]',
   fastTokens: ['switch'],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['switch'],
-  matchElement: (element: DomElementView, _ctx: DomMatcherContext) => {
+  matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     if (element.tagName !== 'input') {
       return null;
     }
@@ -28,6 +74,10 @@ export const switchMatcher: DomRuleMatcher = {
       element.hasAttribute('switch') ||
       element.hasDynamicAttribute?.('switch')
     ) {
+      return null;
+    }
+
+    if (isTreeDisclosureOrSvgArtHack(element, ctx)) {
       return null;
     }
 
@@ -52,6 +102,8 @@ export const switchRule: AnalyzerRule = {
     dropWhen: [
       'The <input type="checkbox"> already has the native switch attribute.',
       'Standard checkbox controls without role="switch" or three-state toggle buttons.',
+      'CSS checkbox-hack disclosure toggles that expand or collapse navigation trees, accordions, or sibling <ul> menus rather than rendering a switch control.',
+      'Bespoke multi-layer SVG art demos driving sibling <svg> filters, gradients, or stroke-dasharray animations via :checked ~ sibling selectors.',
     ],
   },
 };

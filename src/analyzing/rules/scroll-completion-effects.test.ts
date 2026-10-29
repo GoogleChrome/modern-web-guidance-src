@@ -83,4 +83,36 @@ void test('scroll-completion-effects: negative / exempt cases', async (t) => {
     const matches = matchJsRule(scrollCompletionEffectsJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts setTimeout in mutually exclusive ternary branch or resetting a state setter called immediately before', () => {
+    const ternaryCode = `
+      export const scrollToElement = (parentRef, selectedElement, shouldScrollToTop = false) => {
+        shouldScrollToTop
+          ? parentRef.current.scrollTo({ top: 0, left: 0, behavior: 'smooth' })
+          : setTimeout(() => {
+              scrollToCenter(parentRef?.current, selectedElement);
+            }, 100);
+      };
+    `;
+    assert.equal(
+      matchJsRule(scrollCompletionEffectsJsMatcher, 'scroll.util.js', ternaryCode).length,
+      0,
+    );
+
+    const springResetCode = `
+      function Page({ redirect, initialSpring, setSpring }) {
+        document.body.scrollTo({ top: 0, behavior: "smooth" });
+        if (redirect) {
+          setSpring({ ...initialSpring.from, immediate: true });
+        }
+        setTimeout(() => {
+          setSpring(initialSpring);
+        }, 100);
+      }
+    `;
+    assert.equal(
+      matchJsRule(scrollCompletionEffectsJsMatcher, 'Random.tsx', springResetCode).length,
+      0,
+    );
+  });
 });

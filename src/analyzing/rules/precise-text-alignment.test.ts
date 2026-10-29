@@ -94,4 +94,29 @@ void test('precise-text-alignment JS and CSS matchers', async (t) => {
     const jsMatches = matchJsRule(preciseTextAlignmentJsMatcher, 'local-capsize.ts', code);
     assert.equal(jsMatches.length, 0);
   });
+
+  await t.test('exempts React Native precomputeValues and classic/legacy plugin compatibility branches', () => {
+    const rnCode = `
+      import { precomputeValues } from '@capsizecss/core';
+      const values = precomputeValues({ fontSize: 16, fontMetrics: interMetrics });
+    `;
+    assert.equal(
+      matchJsRule(preciseTextAlignmentJsMatcher, 'typography.native.js', rnCode).length,
+      0,
+    );
+
+    const pluginCode = `
+      import { createStyleObject } from '@capsizecss/core';
+      export function setup({ mode = 'modern' } = {}) {
+        if (mode === 'classic') {
+          return createStyleObject({ fontMetrics: config, fontSize: 16, leading: 24 });
+        }
+        return {};
+      }
+    `;
+    assert.equal(
+      matchJsRule(preciseTextAlignmentJsMatcher, 'plugin.ts', pluginCode).length,
+      0,
+    );
+  });
 });
