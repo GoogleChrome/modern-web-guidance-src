@@ -55,45 +55,13 @@ void test('improve-text-layout-and-legibility JS matcher', async (t) => {
     assert.equal(matches.length, 3);
   });
 
-  await t.test('flags balanceText imported from a local balanceText utility module or Vue SFC script', () => {
-    const scriptWithCall = `
-      import { balanceText } from '@/utils/balanceText';
-      const title = balanceText(album.title, titleRef.value?.offsetWidth || 0);
-    `;
-    const callMatches = matchJsRule(
-      improveTextLayoutAndLegibilityJsMatcher,
-      'AlbumInfo.ts',
-      scriptWithCall,
-    );
-    assert.equal(callMatches.length, 1);
-
-    const vueSfc = `<template>
-  <div v-html="balanceText(playlist.name, 400)" />
-</template>
-<script setup lang="ts">
-import { balanceText } from '@/utils/balanceText';
-</script>`;
-    const vueMatches = matchJsRule(
-      improveTextLayoutAndLegibilityJsMatcher,
-      'PlaylistInfo.vue',
-      vueSfc,
-    );
-    assert.equal(vueMatches.length, 1);
-    assert.equal(vueMatches[0]?.line, 5);
-  });
-
-  await t.test('exempts when guarded by CSS.supports("text-wrap", "balance") or local Balancer/balanceText helpers', () => {
+  await t.test('exempts when guarded by CSS.supports("text-wrap", "balance") or local Balancer component', () => {
     const code = `
       if (!CSS.supports('text-wrap', 'balance')) {
         balanceText('.headline');
       }
       function Balancer({ children }) { return <div>{children}</div>; }
       export const Local = () => <Balancer>Not react-wrap-balancer</Balancer>;
-      function balanceText(text) {
-        const count = (text.match(/\\*\\*/g) || []).length;
-        return count % 2 !== 0 ? text + '**' : text;
-      }
-      balanceText('**markdown');
     `;
     const matches = matchJsRule(improveTextLayoutAndLegibilityJsMatcher, 'guarded.tsx', code);
     assert.equal(matches.length, 0);

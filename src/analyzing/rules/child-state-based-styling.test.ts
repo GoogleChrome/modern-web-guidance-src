@@ -55,15 +55,15 @@ void test('child-state-based-styling/js-parent-class: JS positive matches', asyn
   await t.test('flags jQuery focus/blur and validity parent state class toggles', () => {
     const code = `
       $('.form-control').on("focus", function() {
-        $(this).parent('.input-group').addClass("input-group-focus");
+        $(this).parent('.field').addClass("is-focused");
       }).on("blur", function() {
-        $(this).parent(".input-group").removeClass("input-group-focus");
+        $(this).parent(".field").removeClass("is-focused");
       });
 
       $('.form-control').focusin(function() {
-        $(this).parent().addClass('a-input-focus');
+        $(this).parent().addClass('focused');
       }).focusout(function() {
-        $(this).parent().removeClass('a-input-focus');
+        $(this).parent().removeClass('focused');
       });
 
       $inputs.on('blur input', function () {

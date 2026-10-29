@@ -27,12 +27,6 @@ const FORM_EVENT_NAMES = new Set([
 const PURE_STYLING_STATE_CLASS_REGEX =
   /^(?:is-|has-)?(?:focus|focused|active|checked|valid|invalid|empty|filled|value)$/i;
 
-const JQUERY_PARENT_STATE_CLASS_REGEX =
-  /^(?:(?:is|has|a|input|input-group|form|form-group|field)-){0,2}(?:focus|focused|valid|invalid)$/i;
-
-const JQUERY_CONTAINER_SELECTOR_REGEX =
-  /\b(?:form-group|input-group|form-line|field|input|label)\b/i;
-
 const JQUERY_FOCUS_EVENT_NAMES = new Set([
   'focus',
   'blur',
@@ -65,7 +59,7 @@ function isAllowedCallInsideNativeHandler(call: CallExpression): boolean {
   return false;
 }
 
-function hasDelegationOrStateManagement(node: Node): boolean {
+function hasDisallowedHandlerCalls(node: Node): boolean {
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
     if (
@@ -74,28 +68,13 @@ function hasDelegationOrStateManagement(node: Node): boolean {
       Node.isArrowFunction(current) ||
       Node.isMethodDeclaration(current)
     ) {
-      const text = current.getText();
-      // Skip general event delegation or app state management
-      if (
-        text.includes('.matches(') ||
-        text.includes('e.target.matches') ||
-        text.includes('setState(') ||
-        text.includes('dispatch(') ||
-        text.includes('router.') ||
-        text.includes('history.push')
-      ) {
-        return true;
-      }
       let hasDisallowedCall = false;
       current.forEachDescendant((desc) => {
         if (Node.isCallExpression(desc) && !isAllowedCallInsideNativeHandler(desc)) {
           hasDisallowedCall = true;
         }
       });
-      if (hasDisallowedCall) {
-        return true;
-      }
-      break;
+      return hasDisallowedCall;
     }
     current = current.getParent();
   }
@@ -219,6 +198,43 @@ function isJQuerySelfOrInputWrapper(node: Node): boolean {
   return false;
 }
 
+function inspectToggleConditionAst(condNode: Node): {
+  allowed: boolean;
+  usesValidity: boolean;
+} {
+  let hasDisallowedNode = false;
+  let usesValidity = false;
+  let usesEventType = false;
+
+  const checkNode = (n: Node) => {
+    if (Node.isCallExpression(n)) {
+      const callee = unwrapExpression(n.getExpression());
+      if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'checkValidity') {
+        usesValidity = true;
+      } else {
+        hasDisallowedNode = true;
+      }
+    } else if (Node.isPropertyAccessExpression(n)) {
+      const prop = n.getName();
+      if (prop === 'value' || prop === 'length') {
+        hasDisallowedNode = true;
+      } else if (prop === 'validity' || prop === 'valid') {
+        usesValidity = true;
+      } else if (prop === 'type') {
+        usesEventType = true;
+      }
+    }
+  };
+
+  checkNode(condNode);
+  condNode.forEachDescendant(checkNode);
+
+  return {
+    allowed: !hasDisallowedNode && (usesValidity || usesEventType),
+    usesValidity,
+  };
+}
+
 function isJQueryParentClassToggle(node: CallExpression): boolean {
   const callExpr = unwrapExpression(node.getExpression());
   if (!Node.isPropertyAccessExpression(callExpr)) {
@@ -239,7 +255,7 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
   const firstArg = unwrapExpression(firstArgNode);
   if (
     !Node.isStringLiteral(firstArg) ||
-    !JQUERY_PARENT_STATE_CLASS_REGEX.test(firstArg.getLiteralText().trim())
+    !/(?:focus|valid|invalid|checked)/i.test(firstArg.getLiteralText())
   ) {
     return false;
   }
@@ -250,15 +266,11 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
     if (method !== 'toggleClass') {
       return false;
     }
-    const condText = secondArgNode.getText();
-    if (condText.includes('value') || condText.includes('.val(')) {
+    const condInfo = inspectToggleConditionAst(secondArgNode);
+    if (!condInfo.allowed) {
       return false;
     }
-    usesValidityCheck = /\b(?:validity|checkValidity)\b/.test(condText);
-    const usesEventTypeCheck = /\b(?:e|event|evt)\.type\b/.test(condText);
-    if (!usesValidityCheck && !usesEventTypeCheck) {
-      return false;
-    }
+    usesValidityCheck = condInfo.usesValidity;
   }
 
   const parentCall = unwrapExpression(callExpr.getExpression());
@@ -285,20 +297,14 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
       return false;
     }
     const selArg = unwrapExpression(firstParentArg);
-    if (
-      !Node.isStringLiteral(selArg) ||
-      !JQUERY_CONTAINER_SELECTOR_REGEX.test(selArg.getLiteralText())
-    ) {
+    if (!Node.isStringLiteral(selArg) || selArg.getLiteralText().trim().length === 0) {
       return false;
     }
   } else if (parentArgs.length > 1) {
     return false;
   } else if (firstParentArg) {
     const selArg = unwrapExpression(firstParentArg);
-    if (
-      !Node.isStringLiteral(selArg) ||
-      !JQUERY_CONTAINER_SELECTOR_REGEX.test(selArg.getLiteralText())
-    ) {
+    if (!Node.isStringLiteral(selArg) || selArg.getLiteralText().trim().length === 0) {
       return false;
     }
   }
@@ -363,7 +369,7 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
       const delArg = unwrapExpression(secondBindArg);
       if (
         !Node.isStringLiteral(delArg) ||
-        !/\b(?:input|select|textarea|form-control|field)\b/i.test(delArg.getLiteralText())
+        !/\b(?:input|select|textarea)\b/i.test(delArg.getLiteralText())
       ) {
         return false;
       }
@@ -444,7 +450,7 @@ export const childStateBasedStylingJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      if (hasDelegationOrStateManagement(node)) {
+      if (hasDisallowedHandlerCalls(node)) {
         return;
       }
 
@@ -472,11 +478,11 @@ export const childStateBasedStylingJsParentClassRule: AnalyzerRule = {
   matcher: childStateBasedStylingJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'A JavaScript or jQuery event listener on a form control (focus, blur, focusin, focusout, change, or input) toggles state classes (e.g. focus, focused, input-group-focus, a-input-focus, is-focused, valid, invalid, is-valid, is-invalid, has-value) on parentElement, parentNode, closest(...), $(this).parent(...), or $(this).parents(...) to visually style the parent container.',
-      'The parent state synchronization can be replaced by the native CSS :has() selector on the container (e.g. .input-group:has(:focus) or .field:has(:invalid)).',
+      'A JavaScript or jQuery event listener on a form control (focus, blur, focusin, focusout, change, or input) toggles state classes (focus, focused, active, checked, valid, invalid, empty, filled, has-value) on parentElement, parentNode, closest(...), $(this).parent(...), or $(this).parents(...) to visually style the parent container.',
+      'The parent state synchronization can be replaced by the native CSS :has() selector on the container (e.g. .field:has(:focus) or .field:has(:invalid)).',
     ],
     dropWhen: [
-      'The listener also triggers imperative JavaScript animations (e.g. setTimeout letter animations), non-styling application state changes, form wizard navigation, or analytics.',
+      'The listener also triggers imperative JavaScript animations, non-styling application state changes, form wizard navigation, or analytics.',
       'The listener manages modal dialog or dropdown overlay opening/closing rather than form input container state styling.',
       'The code is guarded by a feature query checking support for CSS :has().',
     ],
