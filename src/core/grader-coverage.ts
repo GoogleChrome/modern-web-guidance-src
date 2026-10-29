@@ -203,15 +203,24 @@ export async function validateGraderExpectationCoverage(
 
   const matches: ExpectationMatch[] = [];
 
+  // Skips are keyed by bullet position, so honor them only when the manifest lists
+  // every expectation number 1..N.
+  const manifestIsComplete = manifestEntries.size === expectations.length
+    && [...manifestEntries.keys()].every(n => n >= 1 && n <= expectations.length);
+
   for (let eIdx = 0; eIdx < expectations.length; eIdx++) {
     const manifestEntry = manifestEntries.get(eIdx + 1);
     if (manifestEntry?.status === 'SKIPPED') {
       const hasReason = manifestEntry.reason.length > 0;
+      const isCovered = hasReason && manifestIsComplete;
+      let bestMatchTest = `SKIPPED: ${manifestEntry.reason}`;
+      if (!hasReason) bestMatchTest = 'SKIPPED (missing reason)';
+      else if (!manifestIsComplete) bestMatchTest = `SKIPPED, but the manifest lists ${manifestEntries.size} entries for ${expectations.length} expectations`;
       matches.push({
         expectation: expectations[eIdx],
-        isCovered: hasReason,
-        bestMatchTest: hasReason ? `SKIPPED: ${manifestEntry.reason}` : 'SKIPPED (missing reason)',
-        similarity: hasReason ? 1 : 0,
+        isCovered,
+        bestMatchTest,
+        similarity: isCovered ? 1 : 0,
       });
       continue;
     }
@@ -271,17 +280,20 @@ export function formatCoverageFailureMessage(result: GraderCoverageResult, repoR
 
   const header = `❌ Uncovered expectation(s) found in grader: ${relGrader}\nSpec: ${relExp}\n`;
 
+  const totalExpectations = result.matches.length;
   const details = result.missing.map((m, idx) => {
+    const expIdx = result.matches.indexOf(m);
+    const expNumber = expIdx >= 0 ? expIdx + 1 : idx + 1;
     const bestTestSnippet = m.bestMatchTest
       ? `"${m.bestMatchTest}" (similarity: ${m.similarity.toFixed(2)})`
       : 'None';
 
-    return `${idx + 1}. Expectation: "${m.expectation}"
+    return `${idx + 1}. Expectation ${expNumber}: "${m.expectation}"
    Closest test found: ${bestTestSnippet}
    👉 Action required:
       - If this requirement is NOT yet tested in this grader: Add a test case verifying this behavior.
       - If this requirement IS already tested: Update/rephrase the test name in ${relGrader} so it more clearly describes the requirement.
-      - If this requirement's precondition is absent from the target app or task: Add "// Expectation <N>: SKIPPED: <missing precondition>" to the manifest comment at the top of ${relGrader}.`;
+      - If this requirement's precondition is absent from both the target app and task: Ensure the top-of-file manifest in ${relGrader} lists all expectations (1..${totalExpectations || 'N'}) and records "// Expectation ${expNumber}: SKIPPED: <missing precondition>".`;
   }).join('\n\n');
 
   return `${header}\n${details}`;
