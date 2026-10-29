@@ -79,7 +79,7 @@ void test('required-field-feedback CSS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts z-index-only layering rules and background-image: none icon resets', () => {
+  await t.test('exempts z-index-only layering rules, background-image: none icon resets, sibling feedback rules, and @charset vendor stylesheets', () => {
     const css = `
       .was-validated .input-group .form-control:invalid:focus {
         z-index: 2;
@@ -87,11 +87,30 @@ void test('required-field-feedback CSS matcher', async (t) => {
       .was-validated .form-control:invalid {
         background-image: none;
       }
+      .was-validated :invalid ~ .invalid-feedback {
+        display: block;
+      }
+      .was-validated .form-control:invalid:focus {
+        border-color: #dc3545;
+      }
     `;
     const matches = scanCss('styles/validation.css', css, [
       requiredFieldFeedbackCssMatcher,
     ]);
     assert.equal(matches.length, 0);
+
+    const vendorCss = `@charset "UTF-8";
+/*!
+ * Vendor CSS v5.1.3
+ * Licensed under MIT
+ */
+.was-validated .form-control:invalid {
+  border-color: #dc3545;
+}`;
+    const vendorMatches = scanCss('styles/vendor-lib.css', vendorCss, [
+      requiredFieldFeedbackCssMatcher,
+    ]);
+    assert.equal(vendorMatches.length, 0);
   });
 });
 
