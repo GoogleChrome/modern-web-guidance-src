@@ -17,7 +17,7 @@ export const A11Y_SUBCATEGORIES = [
         id: 'motion_contrast_visual',
         label: 'Motion, Contrast & Visual A11y',
         shortLabel: 'Motion & Contrast',
-        description: 'prefers-reduced-motion, prefers-contrast: more, OS text-scale & reflow, WCAG 1.4.1 non-color cues, 48px targets, and WCAG 1.4.13'
+        description: 'prefers-reduced-motion, prefers-contrast: more, OS text-scale & reflow, WCAG 1.4.1 non-color cues, and minimum target size'
     },
     {
         id: 'aria_roles_live',
@@ -104,8 +104,10 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('multiple visual indicators') ||
         ml.includes('multiple visual state indicators') ||
         ml.includes('multiple visual cues') ||
-        ml.includes('wcag 1.4.13') ||
+        ml.includes('contrast ratio') ||
+        /\b\d+(?:\.\d+)?:1\s+contrast\b/.test(ml) ||
         ml.includes('tap targets must be at least 48px') ||
+        ml.includes('interactive targets meet a minimum size of 24px') ||
         ((gName === 'fluid-scaling' || gName.endsWith('/fluid-scaling')) &&
             ml.includes('maximum size in clamp() for font size is at most 2.5 times the minimum size'))
     ) {
@@ -116,6 +118,8 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     if (
         ml.includes('escape key') ||
         ml.includes('esc key') ||
+        /\bpressing esc(?:ape)?\b/.test(ml) ||
+        (ml.includes('arrowleft') && ml.includes('arrowright') && ml.includes('keyboard')) ||
         ml.includes('repositionable with keyboard arrow keys') ||
         ml.includes('keyboard arrow key navigation prevents default') ||
         ml.includes('use semantic html elements rather than non-semantic elements with click handlers or tabindex') ||
@@ -185,6 +189,7 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
         ml.includes('associated label') ||
         ml.includes('associated labels') ||
         ml.includes('associated with a label') ||
+        /\bassociated with a (?:\w+\s+)?<?label>?\b/.test(ml) ||
         ml.includes('labeled using a <label>') ||
         ml.includes('semantic <label>') ||
         ml.includes('labels must be visible') ||
@@ -213,12 +218,18 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
 
 /**
  * Convenience helper for ScenarioCheck objects from evals.json, excluding synthetic early-failure placeholders.
- * @param {{ message?: string, testId?: string, id?: string, isEarlyFailure?: boolean } | null | undefined} check
+ * @param {{ message?: string, testId?: string, id?: string, isEarlyFailure?: boolean, failureReason?: string } | null | undefined} check
  * @param {string | undefined | null} guideName
  * @param {string | undefined | null} [discipline]
  */
 export function classifyScenarioCheck(check, guideName, discipline = '') {
-    if (!check || check.isEarlyFailure || ('testId' in check && !check.testId)) {
+    if (
+        !check ||
+        check.isEarlyFailure ||
+        ('testId' in check && !check.testId) ||
+        (!check.testId && !check.id) ||
+        Boolean(check.failureReason && check.message === check.failureReason)
+    ) {
         return { isAccessibility: false, subCategory: null };
     }
     return classifyAccessibilityCheck(discipline, guideName, check.message || '');

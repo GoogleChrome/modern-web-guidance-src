@@ -1,4 +1,4 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, isLocalDashboardHost, $, getScrollBehavior } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, isLocalDashboardHost, $, getScrollBehavior, parseSuiteDate } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -248,6 +248,7 @@ function setupNavigationControls(currentGuide) {
     /** Combobox state: keep aria-expanded / aria-activedescendant in sync with the list. */
     const closeList = () => {
         list.classList.add('hidden');
+        list.innerHTML = '';
         searchInput.setAttribute('aria-expanded', 'false');
         searchInput.removeAttribute('aria-activedescendant');
         currentFocus = -1;
@@ -288,7 +289,19 @@ function setupNavigationControls(currentGuide) {
     };
 
     searchInput.onkeydown = (e) => {
+        const isOpen = searchInput.getAttribute('aria-expanded') === 'true';
         const items = list.querySelectorAll('.autocomplete-item');
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (isOpen && currentFocus > -1 && items[currentFocus]) {
+                /** @type {HTMLElement} */ (items[currentFocus]).click();
+            } else {
+                closeList();
+                goBtn.click();
+            }
+            return;
+        }
         if (items.length === 0) return;
 
         if (e.key === 'ArrowDown') {
@@ -299,16 +312,8 @@ function setupNavigationControls(currentGuide) {
             currentFocus--;
             setActive(items);
             e.preventDefault();
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (currentFocus > -1) {
-                if (items[currentFocus]) {
-                    /** @type {HTMLElement} */ (items[currentFocus]).click();
-                }
-            } else {
-                goBtn.click();
-            }
         } else if (e.key === 'Escape') {
+            if (isOpen) e.preventDefault();
             closeList();
         }
     };
@@ -341,10 +346,18 @@ function setupNavigationControls(currentGuide) {
     }
 }
 
+/** @type {number[]} */
+const highlightScrollTimers = [];
+
 /**
  * @param {string} guideName
  */
 function renderGraphs(guideName) {
+    hideGuideTooltip(true);
+    while (highlightScrollTimers.length > 0) {
+        const id = highlightScrollTimers.pop();
+        if (id !== undefined) window.clearTimeout(id);
+    }
     const grid = $('#graphs-grid');
     grid.innerHTML = '';
 
@@ -495,9 +508,9 @@ function renderGraphs(guideName) {
         
         const header = document.createElement('div');
         header.innerHTML = `
-            <div class="guide-card-title">
+            <h2 class="guide-card-title">
                 ${escapeHtml(agent)} <span class="guide-card-title-on">on</span> ${escapeHtml(model)}
-            </div>
+            </h2>
             <div class="guide-card-subtitle">
                 ${runs.length} chronological trials${isA11yMode ? ' · Accessibility checks' : ''}
             </div>
@@ -506,6 +519,9 @@ function renderGraphs(guideName) {
 
         const chartWrapper = document.createElement('div');
         chartWrapper.className = 'guide-chart-wrapper';
+        chartWrapper.setAttribute('tabindex', '0');
+        chartWrapper.setAttribute('role', 'region');
+        chartWrapper.setAttribute('aria-label', `${agent} on ${model} pass rate timeline`);
 
         const height = 230;
         const paddingX = 46;
@@ -605,12 +621,13 @@ function renderGraphs(guideName) {
         if (highlightTestId) {
             const highlightedEl = svg.querySelector(`[data-testid="${CSS.escape(highlightTestId)}"]`);
             if (highlightedEl) {
-                setTimeout(() => {
+                const timerId = window.setTimeout(() => {
                     const wrapperRect = chartWrapper.getBoundingClientRect();
                     const elRect = highlightedEl.getBoundingClientRect();
                     const targetScroll = chartWrapper.scrollLeft + (elRect.left - wrapperRect.left) - (wrapperRect.width / 2) + (elRect.width / 2);
                     chartWrapper.scrollTo({ left: targetScroll, behavior: getScrollBehavior() });
                 }, 200);
+                highlightScrollTimers.push(timerId);
             }
         } else if (chartWrapper.scrollWidth > chartWrapper.clientWidth) {
             chartWrapper.scrollLeft = chartWrapper.scrollWidth;
@@ -641,7 +658,10 @@ function renderGraphs(guideName) {
                 activePointGroup = group;
                 group.setAttribute('aria-describedby', 'tooltip-container');
 
-                const formattedDate = new Date(runData.timestamp).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const parsedDate = parseSuiteDate(runData.timestamp);
+                const formattedDate = parsedDate
+                    ? parsedDate.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : String(runData.timestamp || '');
 
                 const tooltip = $('#tooltip-container');
                 const header = $('#tooltip-header');
@@ -672,12 +692,14 @@ function renderGraphs(guideName) {
                         <div class="guide-tooltip-uplift-row">
                             <span>Uplift:</span>
                             <span class="guide-tooltip-uplift ${stats.uplift >= 0 ? 'positive' : 'negative'}">
-                                ${stats.uplift >= 0 ? '+' : ''}${stats.uplift}%
+                                ${stats.uplift >= 0 ? '+' : ''}${stats.uplift} pp
                             </span>
                         </div>
                     </div>
                 `;
 
+                tooltip.style.left = '0px';
+                tooltip.style.top = '0px';
                 tooltip.classList.remove('hidden');
                 if (typeof anchorX === 'number' && typeof anchorY === 'number') {
                     const offset = 15;
@@ -722,7 +744,7 @@ function renderGraphs(guideName) {
 
             group.addEventListener('focus', () => {
                 const r = group.getBoundingClientRect();
-                showPointTooltip(r.left + r.width / 2, r.top);
+                showPointTooltip(r.left + r.width / 2, r.bottom);
             });
 
             group.addEventListener('blur', () => {

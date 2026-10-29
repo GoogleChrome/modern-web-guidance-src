@@ -1,6 +1,63 @@
 /// <reference path="./evals.d.ts" />
 import { classifyScenarioCheck } from './a11y-classifier.js';
 
+/** @type {Record<string, string>} */
+export const SERVING_DISPLAY_NAMES = {
+    skills: 'Skills',
+    skills_cli: 'Skills (CLI)',
+    mcp: 'MCP',
+};
+
+/** @type {Record<string, string>} */
+export const AGENT_DISPLAY_NAMES = {
+    claude_code: 'Claude Code',
+    claude: 'Claude Code',
+    codex_cli: 'Codex CLI',
+    codex: 'Codex CLI',
+    antigravity_cli: 'Antigravity CLI',
+    jetski_cli: 'Jetski CLI',
+    gemini_cli: 'Gemini CLI',
+};
+
+/**
+ * Parses a suite timestamp safely across timezones, preferring full timestamps embedded in
+ * `testId` (`YYYY-MM-DD_HH-MM-SS`) when `timestamp` is missing, date-only, or midnight-only.
+ *
+ * @param {string | undefined | null} timestamp
+ * @param {string} [testId='']
+ * @returns {Date | null}
+ */
+export function parseSuiteDate(timestamp, testId = '') {
+    const rawTs = typeof timestamp === 'string' ? timestamp.trim() : '';
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(rawTs);
+    const isMidnight = /T00:00:00(?:\.0+)?Z?$/i.test(rawTs);
+
+    if ((!rawTs || isDateOnly || isMidnight) && testId) {
+        const fullMatch = testId.match(/(\d{4}-\d{2}-\d{2})[_T](\d{2})-(\d{2})-(\d{2})/);
+        if (fullMatch) {
+            const [, datePart, hh, mm, ss] = fullMatch;
+            if (hh !== '00' || mm !== '00' || ss !== '00' || !rawTs || isDateOnly) {
+                const fromId = new Date(`${datePart}T${hh}:${mm}:${ss}Z`);
+                if (!Number.isNaN(fromId.getTime())) return fromId;
+            }
+        }
+    }
+
+    if (rawTs) {
+        const candidate = isDateOnly ? new Date(`${rawTs}T00:00:00`) : new Date(rawTs);
+        if (!Number.isNaN(candidate.getTime())) return candidate;
+    }
+
+    if (testId) {
+        const dateMatch = testId.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+            const fallback = new Date(`${dateMatch[1]}T00:00:00`);
+            if (!Number.isNaN(fallback.getTime())) return fallback;
+        }
+    }
+    return null;
+}
+
 /** @param {string} [hostname] */
 export function isLocalDashboardHost(hostname = (typeof window !== 'undefined' ? window.location.hostname : '')) {
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.googlers.com');
@@ -42,18 +99,6 @@ export function getTokenBreakdown(tokenUsage) {
     const uncached = Math.max(0, total - cached);
     const cachedPct = total > 0 ? Math.round((cached / total) * 100) : 0;
     return { total, cached, uncached, cachedPct };
-}
-
-/**
- * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} run
- */
-export function getRunDurationMs(run) {
-    if (!run) return 0;
-    if (typeof run.runtimeMs === 'number' && run.runtimeMs > 0) return run.runtimeMs;
-    if (run.runtime && typeof run.runtime === 'object') {
-        return (run.runtime.agentRuntime || 0) + (run.runtime.graderRuntime || 0);
-    }
-    return 0;
 }
 
 /**
@@ -112,30 +157,33 @@ export function getA11yRunStats(checks, guideName, discipline = '') {
  * @returns {string}
  */
 export function getColor(percentage) {
+    if (!Number.isFinite(percentage)) {
+        return 'var(--color-on-surface-variant)';
+    }
     const p = Math.max(0, Math.min(100, percentage));
-    
-    const RED = 'oklch(45% 0.18 26)';
-    const YELLOW = 'oklch(45% 0.13 74)';
-    const GREEN = 'oklch(44% 0.13 145)';
+
+    const RED = 'light-dark(oklch(45% 0.18 26), oklch(75% 0.16 26))';
+    const YELLOW = 'light-dark(oklch(45% 0.13 74), oklch(82% 0.14 82))';
+    const GREEN = 'light-dark(oklch(44% 0.13 145), oklch(78% 0.15 145))';
 
     if (p <= 30) return RED;
     if (p >= 90) return GREEN;
-    
+
     if (p < 60) {
-        const mix = Math.round((p - 30) / 30 * 100);
+        const mix = Math.round(((p - 30) / 30) * 100);
         return `color-mix(in oklch, ${RED}, ${YELLOW} ${mix}%)`;
     }
-    
-    const mix = Math.round((p - 60) / 30 * 100);
+
+    const mix = Math.round(((p - 60) / 30) * 100);
     return `color-mix(in oklch, ${YELLOW}, ${GREEN} ${mix}%)`;
 }
 
 /**
- * @param {string | undefined | null} text
+ * @param {string | number | undefined | null} text
  * @returns {string}
  */
 export function escapeHtml(text) {
-    if (!text) return '';
+    if (text === undefined || text === null) return '';
     return String(text)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -323,20 +371,23 @@ export function calculateChartData(results, optionsOrEligible = {}) {
             apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
         }
 
-        const totalTokens = runs.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).total, 0);
-        const uncachedTokens = runs.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).uncached, 0);
-        const cachedTokens = runs.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).cached, 0);
-        const avgTokens = runs.length > 0 ? Math.round(totalTokens / runs.length) : 0;
-        const avgUncached = runs.length > 0 ? Math.round(uncachedTokens / runs.length) : 0;
+        const validRuns = runs.filter(r => !isEarlyFailureRun(r.results));
+        const totalTokens = validRuns.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).total, 0);
+        const uncachedTokens = validRuns.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).uncached, 0);
+        const cachedTokens = validRuns.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).cached, 0);
+        const avgTokens = validRuns.length > 0 ? Math.round(totalTokens / validRuns.length) : 0;
+        const avgUncached = validRuns.length > 0 ? Math.round(uncachedTokens / validRuns.length) : 0;
         const cachedPct = totalTokens > 0 ? Math.round((cachedTokens / totalTokens) * 100) : 0;
         // Agent-only time, consistent with efficiencyStats (grader time is harness overhead).
-        const totalRuntime = runs.reduce((acc, r) => acc + getAgentRuntimeMs(r), 0);
-        const avgRuntime = runs.length > 0 ? Math.round(totalRuntime / runs.length) : 0;
+        const totalRuntime = validRuns.reduce((acc, r) => acc + getAgentRuntimeMs(r), 0);
+        const avgRuntime = validRuns.length > 0 ? Math.round(totalRuntime / validRuns.length) : 0;
 
-        apps[scenario][tokensKey].push(avgTokens);
-        apps[scenario][uncachedKey].push(avgUncached);
-        apps[scenario][cachedPctKey].push(cachedPct);
-        apps[scenario][runtimeKey].push(avgRuntime);
+        if (validRuns.length > 0) {
+            apps[scenario][tokensKey].push(avgTokens);
+            apps[scenario][uncachedKey].push(avgUncached);
+            apps[scenario][cachedPctKey].push(cachedPct);
+            apps[scenario][runtimeKey].push(avgRuntime);
+        }
     });
     
     const labels = Object.keys(apps)
@@ -408,10 +459,15 @@ export function getAccessToken() {
     return accessToken;
 }
 
+/** @type {Set<() => void>} */
+const authSuccessCallbacks = new Set();
+let authInitialized = false;
+
 /**
  * @param {(() => void) | undefined} [onAuthSuccess]
  */
 export function initGoogleAuth(onAuthSuccess) {
+    if (onAuthSuccess) authSuccessCallbacks.add(onAuthSuccess);
     if (typeof document !== 'undefined' && !window.google?.accounts && !document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
         const script = document.createElement('script');
         script.src = 'https://accounts.google.com/gsi/client';
@@ -419,6 +475,12 @@ export function initGoogleAuth(onAuthSuccess) {
         script.defer = true;
         document.head.appendChild(script);
     }
+    if (authInitialized) {
+        const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
+        if (authBtn) authBtn.hidden = Boolean(accessToken);
+        return;
+    }
+    authInitialized = true;
     const init = () => {
         if (!window.google || !window.google.accounts) {
             // Wait for script to load
@@ -445,7 +507,12 @@ export function initGoogleAuth(onAuthSuccess) {
                 if (authBtn) {
                     authBtn.hidden = true;
                 }
-                if (onAuthSuccess) onAuthSuccess();
+                for (const cb of authSuccessCallbacks) {
+                    try { cb(); } catch (err) { console.error(err); }
+                }
+                if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+                    window.dispatchEvent(new CustomEvent('mwg:auth-changed', { detail: { authenticated: true } }));
+                }
             },
         });
 
@@ -480,6 +547,9 @@ export async function authenticatedFetch(url, options = {}) {
             authBtn.hidden = false;
             authBtn.textContent = 'Sign in with Google';
             authBtn.disabled = false;
+        }
+        if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+            window.dispatchEvent(new CustomEvent('mwg:auth-changed', { detail: { authenticated: false } }));
         }
     }
     return res;

@@ -317,6 +317,13 @@ function expandAndFocusA11yChecks(task, pair) {
     }
 }
 
+/** @param {number} rate */
+function scoreTone(rate) {
+    if (rate < 60) return 'low';
+    if (rate < 85) return 'mid';
+    return 'high';
+}
+
 /**
  * @param {ShowcaseTask} task
  * @param {ShowcaseAgentPair} pair
@@ -329,8 +336,10 @@ function renderScorecard(task, pair) {
     const u = pair.unguided;
     const g = pair.guided;
     const deltaChecks = g.passed - u.passed;
-    const deltaSign = deltaChecks > 0 ? `+${deltaChecks}` : String(deltaChecks);
+    const deltaSign = deltaChecks > 0 ? `+${deltaChecks}` : (deltaChecks < 0 ? `−${Math.abs(deltaChecks)}` : '0');
     const deltaWord = Math.abs(deltaChecks) === 1 ? 'check' : 'checks';
+    const deltaTone = deltaChecks > 0 ? 'good' : (deltaChecks < 0 ? 'cost' : 'flat');
+    const deltaGlyph = deltaChecks > 0 ? '▲' : (deltaChecks < 0 ? '▼' : '•');
     const contrast = getApproachContrast(task, pair);
 
     const uMeterSegs = pair.checks.map(c => {
@@ -345,7 +354,8 @@ function renderScorecard(task, pair) {
         return `<span class="ab-meter-seg ${st}${c.flipped ? ' is-flipped' : ''}" title="${escapeHtml(label)}"></span>`;
     }).join('');
 
-    const uTone = u.rate < 60 ? 'low' : 'mid';
+    const uTone = scoreTone(u.rate);
+    const gTone = scoreTone(g.rate);
     const uFailed = u.total - u.passed;
     const uA11yHtml = u.a11yTotal > 0
         ? `<button type="button" class="ab-score-a11y ${u.a11yPassed < u.a11yTotal ? 'fail' : 'pass'}" title="Show accessibility assertions">A11y ${u.a11yPassed}/${u.a11yTotal}</button>`
@@ -372,8 +382,8 @@ function renderScorecard(task, pair) {
         <div class="ab-score-header">
             <div class="ab-score-header-main">
                 <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span>
-                <span class="ab-score-pct high">${g.passed}<span class="ab-score-denom">/${g.total}</span></span>
-                <span class="delta ${deltaChecks > 0 ? 'good' : 'flat'}"><span class="glyph" aria-hidden="true">${deltaChecks > 0 ? '▲' : '•'}</span>${deltaSign} ${deltaWord}</span>
+                <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span>
+                <span class="delta ${deltaTone}"><span class="glyph" aria-hidden="true">${deltaGlyph}</span>${deltaSign} ${deltaWord}</span>
                 ${gA11yHtml}
             </div>
             <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)}</span>
@@ -400,7 +410,7 @@ function renderChecks(task, pair) {
     const previewCount = 3;
     const canCollapse = totalChecks > previewCount;
     const collapsed = canCollapse && !checksExpanded;
-    const a11yTotal = pair.guided.a11yTotal || 0;
+    const a11yTotal = pair.checks.filter(c => c.isA11y).length || pair.guided.a11yTotal || 0;
 
     const rowsHtml = pair.checks.map(c => {
         const uBadge = c.unguidedPassed

@@ -68,6 +68,8 @@ test('getAgentFamily and getSuiteTimestamp resolve family lineage and timestamps
     assert.strictEqual(AGENT_FAMILIES.length, 3);
 
     assert.strictEqual(getSuiteTimestamp({ testId: 'nightly-2026-10-09_07-00-02-antigravity_cli' }), '2026-10-09T07:00:02.000Z');
+    assert.strictEqual(getSuiteTimestamp({ testId: 'nightly-2026-10-09_18-30-00-codex_cli', timestamp: '2026-10-09' }), '2026-10-09T18:30:00.000Z');
+    assert.strictEqual(getSuiteTimestamp({ testId: 'custom', timestamp: '2026-10-09T14:20:00' }), '2026-10-09T14:20:00Z');
     assert.strictEqual(getSuiteTimestamp({ testId: 'x', timestamp: '2026-01-01T00:00:00.000Z' }), '2026-01-01T00:00:00.000Z');
     assert.strictEqual(getSuiteTimestamp({ testId: 'no-date' }), '');
 });
@@ -131,4 +133,25 @@ test('hydrateMissingStats recomputes summaries for selected suites lacking a11yS
     const result = await hydrateMissingStats([bare], async () => raw as never, { perAgentRecentN: 1 });
     assert.deepStrictEqual(result, { hydrated: [gemini3.testId], failed: [] });
     assert.ok((bare as Record<string, unknown>).a11yStats);
+});
+
+test('computeHeadlineInsights returns null a11y when suites have zero accessibility checks and unions distinct guides', () => {
+    const noA11ySuite = extractSuiteSummary('nightly-2026-10-12_07-00-00-codex_cli', {
+        agent: 'codex_cli',
+        model: 'gpt-x',
+        timestamp: '2026-10-12T07:00:00Z',
+        results: {
+            'task - preload-prerender - unguided': [{ results: [{ passed: false, message: 'Uses speculationrules', testId: '1' }] }],
+            'task - preload-prerender - guided': [{ results: [{ passed: true, message: 'Uses speculationrules', testId: '1' }] }],
+        },
+    } as never);
+    assert.ok(noA11ySuite);
+    const zeroInsights = computeHeadlineInsights([noA11ySuite]);
+    assert.strictEqual(zeroInsights.families[0].a11y, null);
+    assert.strictEqual(zeroInsights.pooled?.a11y, null);
+
+    const sA = suite('nightly-2026-10-11_07-00-00-codex_cli', 'codex_cli', 'gpt-x', '2026-10-11T07:00:00Z', [{ name: 'accordion', passed: [1, 4] }]);
+    const sB = suite('nightly-2026-10-10_07-00-00-codex_cli', 'codex_cli', 'gpt-x', '2026-10-10T07:00:00Z', [{ name: 'dialog', passed: [1, 4] }]);
+    const unionInsights = computeHeadlineInsights([sA, sB], { perAgentRecentN: 2 });
+    assert.strictEqual(unionInsights.families[0].a11y?.guideCount, 2);
 });

@@ -228,6 +228,23 @@
           </div>
         </div>
 
+        <div class="mobile-suites-controls" aria-label="Sort and filter runs">
+          <label for="mobile-sort-select" class="visually-hidden">Sort runs</label>
+          <select id="mobile-sort-select" class="header-filter-select header-filter-select-left">
+            <option value="date:desc">Sort: Newest</option>
+            <option value="date:asc">Sort: Oldest</option>
+            <option value="uplift:desc">Sort: Pass-rate lift</option>
+            <option value="a11y:desc">Sort: A11y lift</option>
+            <option value="time:asc">Sort: Fastest time</option>
+            <option value="tokens:asc">Sort: Fewest tokens</option>
+          </select>
+          <label for="mobile-filter-agent" class="visually-hidden">Filter runs by agent</label>
+          <select id="mobile-filter-agent" class="header-filter-select header-filter-select-left">
+            <option value="all">All agents</option>
+            <optgroup label="Select agent" id="mobile-filter-agent-group"></optgroup>
+          </select>
+        </div>
+
         <div class="suites-table-container">
           <table class="suites-table">
             <caption class="visually-hidden">Evaluation suite runs comparing unguided and guided results. Pass-rate change in percentage points (pp); time and token change in %, lower is better.</caption>
@@ -271,11 +288,8 @@
   <div id="barbell-tooltip" class="barbell-tooltip hidden" role="tooltip"></div>
 
   <script type="module">
-    // Progressive enhancement for Newly Available / Limited features (MWG interest-triggered-tooltips guide).
+    // Progressive enhancement for popover and CSS anchor positioning on #filter-menu.
     // Versions are pinned so a public Pages deploy cannot silently pick up breaking upgrades.
-    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
-      import("https://unpkg.com/interestfor@1.0.10").catch(() => {});
-    }
     if (!HTMLElement.prototype.hasOwnProperty("popover")) {
       import("https://unpkg.com/@oddbird/popover-polyfill@0.6.1").catch(() => {});
     }

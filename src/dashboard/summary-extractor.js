@@ -194,7 +194,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         const isUnguided = key.endsWith(' - unguided');
 
         if (parsedKey) {
-            distinctScenarios.add(parsedKey.task);
+            distinctScenarios.add(`${parsedKey.task} - ${parsedKey.guide}`);
             const { guide, task } = parsedKey;
             if (!suiteGuides[guide]) {
                 suiteGuides[guide] = {
@@ -304,36 +304,45 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
                 const runType = /** @type {'guided' | 'unguided'} */ (parsedKey.runType);
                 const { guide, task } = parsedKey;
 
-                // Runtime & token tracking (agent time only; the 600s threshold is the harness per-attempt timeout)
-                const pairKey = `${task}|||${guide}`;
-                const pairBucket = pairedTaskEfficiency[pairKey];
+                // Agent-only runtime & token tracking (exclude crashed/infra-errored runs from medians/means,
+                // while counting per-attempt harness timeouts even when they surface as early failures).
                 const runtimeMs = getAgentRuntimeMs(run);
-                if (runtimeMs > 0) {
-                    if (runType === 'guided') {
-                        guidedRuntimes.push(runtimeMs);
-                        if (runtimeMs >= TIMEOUT_MS) guidedTimeouts += 1;
-                        if (pairBucket) pairBucket.guidedMs.push(runtimeMs);
-                    } else {
-                        unguidedRuntimes.push(runtimeMs);
-                        if (runtimeMs >= TIMEOUT_MS) unguidedTimeouts += 1;
-                        if (pairBucket) pairBucket.unguidedMs.push(runtimeMs);
-                    }
+                const earlyFailed = isEarlyFailureRun(run.results);
+                const timedOut = runtimeMs >= TIMEOUT_MS ||
+                    (earlyFailed && (run.results || []).some(c => /timeout/i.test(c.message || '')));
+                if (timedOut) {
+                    if (runType === 'guided') guidedTimeouts += 1;
+                    else unguidedTimeouts += 1;
                 }
 
-                const tb = getTokenBreakdown(run.tokenUsage);
-                if (tb.total > 0) {
-                    if (runType === 'guided') {
-                        guidedUncachedTokens.push(tb.uncached);
-                        guidedTotalTokens.push(tb.total);
-                        guidedTotalTokenSum += tb.total;
-                        guidedCachedTokenSum += tb.cached;
-                        if (pairBucket) pairBucket.guidedUncached.push(tb.uncached);
-                    } else {
-                        unguidedUncachedTokens.push(tb.uncached);
-                        unguidedTotalTokens.push(tb.total);
-                        unguidedTotalTokenSum += tb.total;
-                        unguidedCachedTokenSum += tb.cached;
-                        if (pairBucket) pairBucket.unguidedUncached.push(tb.uncached);
+                if (isEligibleScenario && !earlyFailed) {
+                    const pairKey = `${task}|||${guide}`;
+                    const pairBucket = pairedTaskEfficiency[pairKey];
+                    if (runtimeMs > 0) {
+                        if (runType === 'guided') {
+                            guidedRuntimes.push(runtimeMs);
+                            if (pairBucket) pairBucket.guidedMs.push(runtimeMs);
+                        } else {
+                            unguidedRuntimes.push(runtimeMs);
+                            if (pairBucket) pairBucket.unguidedMs.push(runtimeMs);
+                        }
+                    }
+
+                    const tb = getTokenBreakdown(run.tokenUsage);
+                    if (tb.total > 0) {
+                        if (runType === 'guided') {
+                            guidedUncachedTokens.push(tb.uncached);
+                            guidedTotalTokens.push(tb.total);
+                            guidedTotalTokenSum += tb.total;
+                            guidedCachedTokenSum += tb.cached;
+                            if (pairBucket) pairBucket.guidedUncached.push(tb.uncached);
+                        } else {
+                            unguidedUncachedTokens.push(tb.uncached);
+                            unguidedTotalTokens.push(tb.total);
+                            unguidedTotalTokenSum += tb.total;
+                            unguidedCachedTokenSum += tb.cached;
+                            if (pairBucket) pairBucket.unguidedUncached.push(tb.uncached);
+                        }
                     }
                 }
             }

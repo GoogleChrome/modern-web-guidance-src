@@ -33,8 +33,10 @@
   --color-accent-success-bg: light-dark(rgba(22, 163, 74, 0.14), rgba(95, 211, 138, 0.16));
   --color-accent-failure: light-dark(#ba1a1a, #ff8a80);
   --color-accent-failure-bg: light-dark(rgba(186, 26, 26, 0.12), rgba(255, 138, 128, 0.16));
-  --color-accent-warning: light-dark(#9a6700, #d29922);
-  --color-accent-warning-bg: light-dark(rgba(154, 103, 0, 0.12), rgba(210, 153, 34, 0.16));
+  --color-accent-warning: light-dark(#7c5200, #d29922);
+  --color-accent-warning-bg: light-dark(rgba(124, 82, 0, 0.12), rgba(210, 153, 34, 0.16));
+  --color-accent-leak: light-dark(#6d28d9, #c4b5fd);
+  --color-accent-leak-bg: light-dark(rgba(109, 40, 217, 0.12), rgba(196, 181, 253, 0.16));
   --color-shadow: light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.55));
   --color-grid-dot: light-dark(rgba(196, 197, 215, 0.3), rgba(196, 197, 215, 0.08));
 
@@ -112,8 +114,10 @@
     --color-accent-success-bg: rgba(22, 163, 74, 0.14);
     --color-accent-failure: #ba1a1a;
     --color-accent-failure-bg: rgba(186, 26, 26, 0.12);
-    --color-accent-warning: #9a6700;
-    --color-accent-warning-bg: rgba(154, 103, 0, 0.12);
+    --color-accent-warning: #7c5200;
+    --color-accent-warning-bg: rgba(124, 82, 0, 0.12);
+    --color-accent-leak: #6d28d9;
+    --color-accent-leak-bg: rgba(109, 40, 217, 0.12);
     --color-shadow: rgba(0, 0, 0, 0.15);
     --color-grid-dot: rgba(196, 197, 215, 0.3);
     --glass-bg: rgba(255, 255, 255, 0.7);
@@ -138,6 +142,8 @@
       --color-accent-failure-bg: rgba(255, 138, 128, 0.16);
       --color-accent-warning: #d29922;
       --color-accent-warning-bg: rgba(210, 153, 34, 0.16);
+      --color-accent-leak: #c4b5fd;
+      --color-accent-leak-bg: rgba(196, 181, 253, 0.16);
       --color-shadow: rgba(0, 0, 0, 0.55);
       --color-grid-dot: rgba(196, 197, 215, 0.08);
       --glass-bg: rgba(27, 31, 37, 0.7);
@@ -647,6 +653,8 @@ dialog#modal.diff-modal {
 /* Dumbbell Chart & Tooltip */
 .chart-tooltip {
   position: fixed;
+  max-inline-size: min(460px, calc(100dvw - 16px));
+  box-sizing: border-box;
   background: var(--color-surface-container-lowest);
   color: var(--color-on-surface);
   padding: 8px 12px;
@@ -660,19 +668,9 @@ dialog#modal.diff-modal {
   line-height: 1.4;
 }
 
-#dumbbell-chart circle {
-  cursor: pointer;
-  transition: r 0.2s cubic-bezier(0.4, 0, 0.2, 1), stroke-width 0.2s ease;
-}
-
 #dumbbell-chart text {
-  cursor: pointer;
   transition: fill 0.2s ease, font-size 0.2s ease, filter 0.2s ease;
   user-select: none;
-}
-
-.legend-item {
-  cursor: pointer;
 }
 
 /* Accordion Task List */
@@ -1553,6 +1551,9 @@ dialog#modal.diff-modal {
 .text-success { color: var(--color-accent-success); }
 .text-failure { color: var(--color-accent-failure); }
 .infra-error-badge { color: var(--color-accent-warning); border-color: var(--color-accent-warning); background: var(--color-accent-warning-bg); }
+.text-leak { color: var(--color-accent-leak); }
+.leak-badge { background: var(--color-accent-leak-bg); color: var(--color-accent-leak); border-color: color-mix(in oklch, var(--color-accent-leak) 40%, transparent); }
+.run-chip-leak { font-size: 0.7rem; color: var(--color-accent-leak); background: var(--color-accent-leak-bg); border: 1px solid color-mix(in oklch, var(--color-accent-leak) 45%, transparent); padding: 1px 4px; border-radius: 4px; }
 .uplift-score.invalid { color: var(--color-accent-warning); font-size: 0.75rem; letter-spacing: 0.04em; }
 
 .tfoot-chip, .tfoot-chip-cell { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 4px; }
@@ -1570,9 +1571,9 @@ dialog#modal.diff-modal {
 .diff-missing-title { font-weight: bold; color: var(--color-accent-warning); }
 .diff-fallback-pre, .diff-raw-pre { white-space: pre-wrap; margin: 0; color: var(--text-primary); font-family: monospace; }
 
-.dumbbell-tooltip { display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; min-inline-size: min(310px, calc(100dvw - 32px)); color: var(--color-on-surface); }
-.dumbbell-tooltip-left { display: flex; flex-direction: column; gap: 4px; }
-.dumbbell-tooltip-title { font-weight: 700; font-size: 0.875rem; white-space: nowrap; }
+.dumbbell-tooltip { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: flex-start; justify-content: space-between; min-inline-size: min(310px, calc(100dvw - 40px)); color: var(--color-on-surface); }
+.dumbbell-tooltip-left { display: flex; flex-direction: column; gap: 4px; min-inline-size: 0; flex: 1 1 180px; }
+.dumbbell-tooltip-title { font-weight: 700; font-size: 0.875rem; overflow-wrap: anywhere; }
 .dumbbell-tooltip-feature { font-size: 0.72rem; color: var(--color-on-surface-variant); }
 .dumbbell-tooltip-metrics { font-size: 0.72rem; color: var(--color-on-surface-variant); margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
 .dumbbell-tooltip-metrics .text-success { font-weight: 600; }
@@ -1614,9 +1615,6 @@ dialog#modal.diff-modal {
 .a11y-dim-values { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .a11y-dim-delta { color: var(--color-accent-success); font-weight: 600; }
 .a11y-dim-delta.negative { color: var(--color-accent-failure); }
-.a11y-dim-track { position: relative; height: 6px; background: var(--color-surface-container); border-radius: 16px; overflow: hidden; }
-.a11y-dim-fill-unguided { position: absolute; inset-block: 0; left: 0; background: rgba(116, 118, 134, 0.35); z-index: 1; }
-.a11y-dim-fill-guided { position: absolute; inset-block: 0; left: 0; background: var(--color-primary); opacity: 0.85; z-index: 2; }
 
 /* Chart Toolbar, Metric Mode Toggle & Guide Controls */
 .chart-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; background: var(--color-surface-container-lowest); border: 1px solid var(--color-outline-variant); border-radius: var(--radius-default); }
@@ -1704,6 +1702,7 @@ dialog#modal.diff-modal {
 .suite-chart-section { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 .suite-chart-section.hidden { display: none; }
 .suite-dumbbell-chart { width: 100%; }
+.empty-chart-msg { padding: 16px; margin: 0; color: var(--color-on-surface-variant); }
 .guide-evals-heading { margin: 16px 0; color: var(--text-primary); }
 
 .dumbbell-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); margin: 0; font-size: var(--font-md); color: var(--text-secondary); }
@@ -1718,9 +1717,9 @@ dialog#modal.diff-modal {
 
 @media (pointer: coarse) {
   .info-hint-btn { inline-size: 44px; block-size: 44px; border: 10px solid transparent; background-clip: padding-box; box-shadow: inset 0 0 0 1px var(--color-outline); }
-  .trend-link { min-inline-size: 44px; min-block-size: 44px; }
-  .header-link, .ab-prov-link, .takeaway-action-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-agent-pill, .ab-task-pill, .ab-checks-toggle, .task-toggle, .secondary-btn, .sort-select, .tfoot-action-btn, .hero-drawers > details > summary, .toggle-label { min-block-size: 44px; }
-  .header-link, .ab-prov-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-checks-toggle, .secondary-btn { display: inline-flex; align-items: center; }
+  .trend-link, .sort-direction-btn { min-inline-size: 44px; min-block-size: 44px; }
+  .header-link, .ab-prov-link, .takeaway-action-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-agent-pill, .ab-task-pill, .ab-checks-toggle, .ab-score-a11y, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .task-toggle, .secondary-btn, .sort-select, .tfoot-action-btn, .hero-drawers > details > summary, .toggle-label { min-block-size: 44px; }
+  .header-link, .ab-prov-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-checks-toggle, .ab-score-a11y, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .secondary-btn { display: inline-flex; align-items: center; }
   .takeaway-action-link { display: inline-block; padding-block: 10px; }
   .guide-nav-controls .secondary-btn { min-inline-size: 44px; justify-content: center; }
   .toggle-label input[type="checkbox"], .filter-item input[type="checkbox"] { inline-size: 24px; block-size: 24px; }

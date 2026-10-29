@@ -167,6 +167,9 @@
 
 .ab-score-a11y {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 24px;
   border: 1px solid transparent;
   padding: 2px 8px;
   border-radius: 4px;

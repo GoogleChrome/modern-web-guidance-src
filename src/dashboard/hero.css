@@ -376,7 +376,7 @@
 .agent-table .metric-pair strong { color: var(--color-on-surface); }
 .agent-table .agent-meta-inline { font-size: 0.8125rem; color: var(--color-on-surface-variant); }
 
-.delta {
+:is(.agent-table, .ab-spotlight) .delta {
   display: inline-block;
   padding: 1px var(--space-2);
   border-radius: 4px;
@@ -384,16 +384,23 @@
   font-weight: 600;
   white-space: nowrap;
   border: 1px solid transparent;
+  margin-inline-start: 0;
 }
 
-.delta.good {
+:is(.agent-table, .ab-spotlight) .delta.good {
   background: var(--color-accent-success-bg, rgba(22, 163, 74, 0.14));
   color: var(--color-accent-success, #15803d);
   border-color: color-mix(in srgb, var(--color-accent-success, #15803d) 35%, transparent);
 }
 
-.delta.flat { background: var(--color-surface-container-low); color: var(--color-on-surface-variant); border-color: var(--color-outline-variant); }
-.delta .glyph { margin-inline-end: 2px; }
+:is(.agent-table, .ab-spotlight) .delta.cost {
+  background: var(--color-accent-failure-bg, rgba(220, 38, 38, 0.12));
+  color: var(--color-accent-failure, #b91c1c);
+  border-color: color-mix(in srgb, var(--color-accent-failure, #b91c1c) 35%, transparent);
+}
+
+:is(.agent-table, .ab-spotlight) .delta.flat { background: var(--color-surface-container-low); color: var(--color-on-surface-variant); border-color: var(--color-outline-variant); }
+:is(.agent-table, .ab-spotlight) .delta .glyph { margin-inline-end: 2px; }
 .na { color: var(--color-on-surface-variant); }
 
 @container (width < 42rem) {
@@ -405,9 +412,9 @@
   .agent-table { --agent-col-2: "Pass rate"; --agent-col-3: "Accessibility"; --agent-col-4: "Runs"; }
   .agent-table td { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-1) var(--space-2); padding-block: var(--space-1); }
   .agent-table .metric-main { flex-wrap: wrap; }
-  .agent-table td:nth-child(2)::before { content: var(--agent-col-2) ": " / var(--agent-col-2); }
-  .agent-table td:nth-child(3)::before { content: var(--agent-col-3) ": " / var(--agent-col-3); }
-  .agent-table td:nth-child(4)::before { content: var(--agent-col-4) ": " / var(--agent-col-4); }
+  .agent-table td:nth-child(2)::before { content: var(--agent-col-2) ": "; }
+  .agent-table td:nth-child(3)::before { content: var(--agent-col-3) ": "; }
+  .agent-table td:nth-child(4)::before { content: var(--agent-col-4) ": "; }
   .agent-table td::before { font-size: 0.75rem; font-weight: 600; color: var(--color-on-surface-variant); flex-shrink: 0; }
   .agent-table td:last-child { padding-block-end: var(--space-2); }
 }
@@ -468,18 +475,19 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .delta.good { border-color: color-mix(in srgb, var(--color-accent-success, #5fd38a) 40%, transparent); }
+  :is(.agent-table, .ab-spotlight) .delta.good { border-color: color-mix(in srgb, var(--color-accent-success, #5fd38a) 40%, transparent); }
+  :is(.agent-table, .ab-spotlight) .delta.cost { border-color: color-mix(in srgb, var(--color-accent-failure, #ff897d) 40%, transparent); }
 }
 
 @media (prefers-contrast: more) {
-  .hero-takeaways, .takeaway-primary, .takeaway-secondary, .agent-table-wrap, .hero-drawers > details, .hero-status, .delta { border-color: var(--color-outline); }
-  .delta.good { background: transparent; }
+  .hero-takeaways, .takeaway-primary, .takeaway-secondary, .agent-table-wrap, .hero-drawers > details, .hero-status, :is(.agent-table, .ab-spotlight) .delta { border-color: var(--color-outline); }
+  :is(.agent-table, .ab-spotlight) .delta.good, :is(.agent-table, .ab-spotlight) .delta.cost { background: transparent; }
   .hero-eyebrow, .takeaway-label, .takeaway-qualifier, .hero-agents-note, .agent-table thead th { color: var(--color-on-surface); }
 }
 
 @media (forced-colors: active) {
   .takeaway-figure .unit { color: CanvasText; }
-  .delta { border: 1px solid CanvasText; }
+  :is(.agent-table, .ab-spotlight) .delta { border: 1px solid CanvasText; }
 }
 
 @media print {

@@ -107,9 +107,30 @@ function pct(numerator, denominator) {
 
 /** @param {ManifestSuite} suite */
 export function getSuiteTimestamp(suite) {
-    if (suite.timestamp && !Number.isNaN(Date.parse(suite.timestamp))) return suite.timestamp;
     const m = /(\d{4}-\d{2}-\d{2})[_T](\d{2})-(\d{2})-(\d{2})/.exec(suite.testId || '');
-    if (m) return `${m[1]}T${m[2]}:${m[3]}:${m[4]}.000Z`;
+    const fromTestId = m ? `${m[1]}T${m[2]}:${m[3]}:${m[4]}.000Z` : '';
+    const hasNonMidnightIdTime = Boolean(m && (m[2] !== '00' || m[3] !== '00' || m[4] !== '00'));
+
+    if (typeof suite.timestamp === 'string' && suite.timestamp.trim()) {
+        const raw = suite.timestamp.trim();
+        const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(raw);
+        const isMidnight = /T00:00:00(?:\.0+)?Z?$/i.test(raw);
+
+        if ((isDateOnly || isMidnight) && fromTestId && (isDateOnly || hasNonMidnightIdTime)) {
+            return fromTestId;
+        }
+        if (isDateOnly) {
+            const isoDate = `${raw}T00:00:00.000Z`;
+            if (!Number.isNaN(Date.parse(isoDate))) return isoDate;
+        }
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(raw)) {
+            const utcRaw = `${raw}Z`;
+            if (!Number.isNaN(Date.parse(utcRaw))) return utcRaw;
+        }
+        if (!Number.isNaN(Date.parse(raw))) return raw;
+    }
+
+    if (fromTestId) return fromTestId;
     return '';
 }
 
@@ -161,7 +182,7 @@ export function selectRecentSuites(suites, options = {}) {
     });
 
     byFamily.forEach((list, family) => {
-        list.sort((a, b) => Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a)));
+        list.sort((a, b) => (Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a))) || b.testId.localeCompare(a.testId));
         byFamily.set(family, list.slice(0, perAgentRecentN));
     });
     return byFamily;
@@ -183,19 +204,25 @@ export async function hydrateMissingStats(suites, fetchEvals, options = {}) {
     const hydrated = [];
     /** @type {string[]} */
     const failed = [];
-    await Promise.all(targets.map(async suite => {
-        try {
-            const evals = await fetchEvals(suite.testId);
-            const summary = extractSuiteSummary(suite.testId, evals, suite.timestamp || null);
-            if (summary) {
-                Object.assign(suite, summary);
-                hydrated.push(suite.testId);
-                return;
+    const concurrency = Math.min(4, targets.length);
+    let cursor = 0;
+
+    await Promise.all(Array.from({ length: concurrency }, async () => {
+        while (cursor < targets.length) {
+            const suite = targets[cursor++];
+            try {
+                const evals = await fetchEvals(suite.testId);
+                const summary = extractSuiteSummary(suite.testId, evals, suite.timestamp || null);
+                if (summary) {
+                    Object.assign(suite, summary);
+                    hydrated.push(suite.testId);
+                    continue;
+                }
+            } catch {
+                // fall through
             }
-        } catch {
-            // fall through
+            failed.push(suite.testId);
         }
-        failed.push(suite.testId);
     }));
     return { hydrated, failed };
 }
@@ -238,21 +265,30 @@ function accumulate(suites) {
         a11yGuideCount: 0,
         tasksEvaluated: 0
     };
+    const distinctA11yGuides = new Set();
     suites.forEach(s => {
         acc.overall.unguidedPassed += s.unguidedStats?.passed || 0;
         acc.overall.unguidedTotal += s.unguidedStats?.total || 0;
         acc.overall.guidedPassed += s.guidedStats?.passed || 0;
         acc.overall.guidedTotal += s.guidedStats?.total || 0;
         acc.tasksEvaluated += s.taskCount || 0;
-        if (s.a11yStats) {
+        if (s.a11yStats && (s.a11yStats.guidedTotal > 0 || s.a11yStats.unguidedTotal > 0)) {
             acc.a11ySuites += 1;
             acc.a11y.unguidedPassed += s.a11yStats.unguidedPassed;
             acc.a11y.unguidedTotal += s.a11yStats.unguidedTotal;
             acc.a11y.guidedPassed += s.a11yStats.guidedPassed;
             acc.a11y.guidedTotal += s.a11yStats.guidedTotal;
             acc.a11yGuideCount = Math.max(acc.a11yGuideCount, s.a11yStats.guideCount || 0);
+            if (s.guides) {
+                for (const [slug, gStats] of Object.entries(s.guides)) {
+                    if (gStats?.a11y && (gStats.a11y.guidedTotal > 0 || gStats.a11y.unguidedTotal > 0)) {
+                        distinctA11yGuides.add(slug);
+                    }
+                }
+            }
         }
     });
+    acc.a11yGuideCount = Math.max(acc.a11yGuideCount, distinctA11yGuides.size);
     return acc;
 }
 
@@ -303,7 +339,7 @@ export function computeHeadlineInsights(suites, options = {}) {
         };
     }
 
-    const sortedAll = [...allSelected].sort((a, b) => Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a)));
+    const sortedAll = [...allSelected].sort((a, b) => (Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a))) || b.testId.localeCompare(a.testId));
     return {
         options: { perAgentRecentN, nightlyOnly, before },
         families,

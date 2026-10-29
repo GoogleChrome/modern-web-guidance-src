@@ -1,4 +1,4 @@
-import { escapeHtml } from './utils.js';
+import { escapeHtml, formatDuration } from './utils.js';
 
 /**
  * @typedef {Object} DumbbellChartOptions
@@ -57,7 +57,7 @@ let activeHitArea = null;
 /**
  * @param {boolean} [immediate]
  */
-function hideDumbbellTooltip(immediate = false) {
+export function hideDumbbellTooltip(immediate = false) {
   const tip = document.getElementById('dumbbell-tooltip');
   if (!tip) return;
   if (dumbbellHideTimer) {
@@ -247,11 +247,11 @@ export class DumbbellChart {
     let finalSvgHeight = totalNaturalHeight;
 
     if (this.options.maxHeight && totalNaturalHeight > this.options.maxHeight && naturalContentHeight > 0) {
-        const availableContentHeight = this.options.maxHeight - verticalMargins;
+        const availableContentHeight = Math.max(16, this.options.maxHeight - verticalMargins);
         const compressionFactor = availableContentHeight / naturalContentHeight;
         baseRowHeight *= compressionFactor;
         offsetStep *= compressionFactor;
-        finalSvgHeight = this.options.maxHeight;
+        finalSvgHeight = verticalMargins + availableContentHeight;
     }
 
     // If an explicit height is passed (like dashboard), use it. Otherwise use our tightly bounded finalSvgHeight.
@@ -399,8 +399,11 @@ export class DumbbellChart {
           text.setAttribute("aria-label", `${featureName} (had failed runs)`);
         }
         
-        // Add hover effects to highlight the row
-        text.style.cursor = "pointer";
+        // Add hover effects to highlight the row (and click navigation when wired)
+        if (guidedSet.onClick && items.length > 0) {
+          text.style.cursor = "pointer";
+          text.onclick = () => guidedSet.onClick?.(items[0].originalIndex, 'Guided');
+        }
         text.onmouseenter = () => rowBg.setAttribute("fill", "var(--hover-bg)");
         text.onmouseleave = () => rowBg.setAttribute("fill", "transparent");
         
@@ -521,11 +524,7 @@ export class DumbbellChart {
             const runtimeDeltaSign = runtimeDeltaPct > 0 ? "+" : "";
             const runtimeDeltaCls = runtimeDeltaPct <= 0 ? "text-success" : "";
 
-            const fmtTime = (/** @type {number} */ ms) => {
-              if (!ms || ms <= 0) return '-';
-              const sec = Math.round(ms / 1000);
-              return sec >= 60 ? `${Math.floor(sec / 60)}m ${sec % 60}s` : `${sec}s`;
-            };
+            const fmtTime = (/** @type {number} */ ms) => (ms && ms > 0) ? formatDuration(ms) : '-';
 
             if (dumbbellHideTimer) {
               window.clearTimeout(dumbbellHideTimer);
@@ -563,6 +562,8 @@ export class DumbbellChart {
                      </div>
                 </div>
             `;
+            this.tooltip.style.left = '0px';
+            this.tooltip.style.top = '0px';
             this.tooltip.style.display = 'block';
             const offset = 14;
             const tipWidth = this.tooltip.offsetWidth || 330;

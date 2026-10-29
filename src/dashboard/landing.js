@@ -1,4 +1,18 @@
-import { initGoogleAuth, getAccessToken, escapeHtml, timeAgo, formatDuration, formatTokens, isLocalDashboardHost, getAgentBadge, getScrollBehavior } from './utils.js';
+import {
+    initGoogleAuth,
+    getAccessToken,
+    escapeHtml,
+    timeAgo,
+    formatDuration,
+    formatTokens,
+    isLocalDashboardHost,
+    getAgentBadge,
+    getScrollBehavior,
+    SERVING_DISPLAY_NAMES,
+    AGENT_DISPLAY_NAMES,
+    parseSuiteDate,
+    median,
+} from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { ApiClient } from './api.js';
 
@@ -67,23 +81,8 @@ let currentInsightsMode = 'all';
 
 const api = new ApiClient();
 
-/** @type {Record<string, string>} */
-const servingDisplayNames = {
-    'skills': 'Skills',
-    'skills_cli': 'Skills (CLI)',
-    'mcp': 'MCP'
-};
-
-/** @type {Record<string, string>} */
-const agentDisplayNames = {
-    'claude_code': 'Claude Code',
-    'claude': 'Claude Code',
-    'codex_cli': 'Codex CLI',
-    'codex': 'Codex CLI',
-    'antigravity_cli': 'Antigravity CLI',
-    'jetski_cli': 'Jetski CLI',
-    'gemini_cli': 'Gemini CLI'
-};
+const servingDisplayNames = SERVING_DISPLAY_NAMES;
+const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
 function isRemoteDashboard() {
     return !isLocalDashboardHost();
@@ -112,23 +111,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupInsightsControls();
 
         const params = new URLSearchParams(window.location.search);
+        const reloadSuitesAfterAuth = async () => {
+            await loadSuites();
+            selectedTestIds = new Set(Object.keys(allTestData));
+            applyTestsParam(params.get('tests'));
+            renderFilterMenuItems();
+            renderSuites();
+            applyGuidesHash(window.location.hash, false);
+        };
+
+        window.addEventListener('mwg:auth-changed', (e) => {
+            const authenticated = Boolean(/** @type {CustomEvent<{ authenticated?: boolean }>} */ (e).detail?.authenticated);
+            if (!authenticated && api.source === 'remote') {
+                setEmptyState('Sign in with Google to load evaluation runs.');
+            }
+        });
 
         // Remote (GCS) needs a Google sign-in token; local/static load immediately.
         if (api.source === 'remote' && !getAccessToken()) {
             setEmptyState('Sign in with Google to load evaluation runs.');
             renderSuites();
-            initGoogleAuth(async () => {
-                await loadSuites();
-                selectedTestIds = new Set(Object.keys(allTestData));
-                applyTestsParam(params.get('tests'));
-                renderFilterMenuItems();
-                renderSuites();
-                applyGuidesHash(window.location.hash, false);
-            });
+            initGoogleAuth(reloadSuitesAfterAuth);
             return;
         }
         if (api.source === 'remote') {
-            initGoogleAuth(() => {});
+            initGoogleAuth(reloadSuitesAfterAuth);
         }
 
         await loadSuites();
@@ -137,17 +144,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!getAccessToken()) {
                 setEmptyState('No local evaluation runs found. Sign in with Google to load remote runs.');
                 renderSuites();
-                initGoogleAuth(async () => {
-                    await loadSuites();
-                    selectedTestIds = new Set(Object.keys(allTestData));
-                    applyTestsParam(params.get('tests'));
-                    renderFilterMenuItems();
-                    renderSuites();
-                    applyGuidesHash(window.location.hash, false);
-                });
+                initGoogleAuth(reloadSuitesAfterAuth);
                 return;
             }
-            initGoogleAuth(() => {});
+            initGoogleAuth(reloadSuitesAfterAuth);
             await loadSuites();
         }
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -304,7 +304,14 @@ function setupTableFilters() {
     /** @type {Record<string, (val: string) => void>} */
     const filters = {
         'filter-source': (val) => currentSourceFilter = /** @type {SourceFilter} */ (val),
-        'filter-agent': (val) => currentAgentFilter = val,
+        'filter-agent': (val) => {
+            currentAgentFilter = val;
+            const mobileAgent = document.getElementById('mobile-filter-agent');
+            if (mobileAgent instanceof HTMLSelectElement) {
+                mobileAgent.value = val;
+                syncSelectStyles(mobileAgent);
+            }
+        },
         'filter-serving': (val) => currentServingFilter = val,
         'filter-model': (val) => currentModelFilter = val
     };
@@ -322,6 +329,32 @@ function setupTableFilters() {
         });
         syncSelectStyles(el);
     });
+
+    const mobileAgent = document.getElementById('mobile-filter-agent');
+    if (mobileAgent instanceof HTMLSelectElement) {
+        mobileAgent.addEventListener('change', () => {
+            currentAgentFilter = mobileAgent.value;
+            syncSelectStyles(mobileAgent);
+            const desktopAgent = document.getElementById('filter-agent');
+            if (desktopAgent instanceof HTMLSelectElement) {
+                desktopAgent.value = mobileAgent.value;
+                syncSelectStyles(desktopAgent);
+            }
+            renderSuites();
+        });
+    }
+
+    const mobileSort = document.getElementById('mobile-sort-select');
+    if (mobileSort instanceof HTMLSelectElement) {
+        mobileSort.addEventListener('change', () => {
+            const [sortKey, sortDir] = mobileSort.value.split(':');
+            if (sortKey && (sortDir === 'asc' || sortDir === 'desc')) {
+                currentSuiteSort = /** @type {SuiteSortKey} */ (sortKey);
+                currentSuiteSortDir = sortDir;
+                renderSuites();
+            }
+        });
+    }
 }
 
 function setupScheduledToggle() {
@@ -388,7 +421,7 @@ function setupSortButtons() {
     syncSortHeaders();
 }
 
-/** Reflects the active sort in `aria-sort` so AT users hear the current order. */
+/** Reflects the active sort in `aria-sort` and the mobile sort select so AT and phone users stay in sync. */
 function syncSortHeaders() {
     document.querySelectorAll('.suites-table thead th').forEach(th => {
         const btn = th.querySelector('.sort-btn');
@@ -399,6 +432,13 @@ function syncSortHeaders() {
             th.removeAttribute('aria-sort');
         }
     });
+    const mobileSort = document.getElementById('mobile-sort-select');
+    if (mobileSort instanceof HTMLSelectElement) {
+        const targetVal = `${currentSuiteSort}:${currentSuiteSortDir}`;
+        if (Array.from(mobileSort.options).some(o => o.value === targetVal)) {
+            mobileSort.value = targetVal;
+        }
+    }
 }
 
 /**
@@ -679,7 +719,24 @@ function registerSuiteSummary(summary, source) {
     };
     updateFilterOptions('filter-model-group', 'model');
     updateFilterOptions('filter-agent-group', 'agent', agentDisplayNames);
+    updateFilterOptions('mobile-filter-agent-group', 'agent', agentDisplayNames);
     updateFilterOptions('filter-serving-group', 'serving', servingDisplayNames);
+    updateSourceFilterOptions();
+}
+
+function updateSourceFilterOptions() {
+    const group = document.querySelector('#filter-source optgroup');
+    if (!group) return;
+    const sourceLabels = { local: 'Local', remote: 'Remote', static: 'Static' };
+    const values = /** @type {Array<'local' | 'remote' | 'static'>} */ (
+        [...new Set(Object.values(allTestData).map(t => t.source).filter(Boolean))].sort()
+    );
+    if (values.length === 0) return;
+    const currentOptions = Array.from(group.querySelectorAll('option')).map(o => o.value);
+    if (JSON.stringify(currentOptions) === JSON.stringify(values)) return;
+    group.innerHTML = values.map(val =>
+        `<option value="${escapeHtml(val)}">${escapeHtml(sourceLabels[val] || val)}</option>`
+    ).join('');
 }
 
 /**
@@ -706,26 +763,12 @@ function updateFilterOptions(groupId, key, displayNames = {}) {
 // ==========================================
 
 /**
- * Resolves the suite's run date. Manifest timestamps that land exactly on midnight
- * usually mean only a date was recorded, so prefer the time embedded in the testId.
+ * Resolves the suite's run date via shared timezone-safe `parseSuiteDate`.
  * @param {LandingSuiteSummary} testInfo
  * @returns {Date}
  */
 function getSuiteDate(testInfo) {
-    let date = new Date(testInfo.timestamp);
-    const isMidnight = !isNaN(date.getTime()) && date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0;
-    if (isNaN(date.getTime()) || isMidnight) {
-        const isoLikeMatch = testInfo.testId.match(/(\d{4}-\d{2}-\d{2})[T_](\d{2})-(\d{2})-(\d{2})/);
-        const dateOnlyMatch = testInfo.testId.match(/(\d{4}-\d{2}-\d{2})/);
-        if (isoLikeMatch) {
-            const parsed = new Date(`${isoLikeMatch[1]}T${isoLikeMatch[2]}:${isoLikeMatch[3]}:${isoLikeMatch[4]}`);
-            if (!isNaN(parsed.getTime())) date = parsed;
-        } else if (dateOnlyMatch) {
-            const parsed = new Date(dateOnlyMatch[1]);
-            if (!isNaN(parsed.getTime())) date = parsed;
-        }
-    }
-    return isNaN(date.getTime()) ? new Date(0) : date;
+    return parseSuiteDate(testInfo.timestamp, testInfo.testId) || new Date(0);
 }
 
 /**
@@ -1198,6 +1241,8 @@ let barbellHideTimeout = null;
 let activeBarbellCell = null;
 /** @type {HTMLElement | null} */
 let activeBarbellTrigger = null;
+/** @type {HTMLElement | null} */
+let dismissedBarbellCell = null;
 let barbellGlobalListenersBound = false;
 
 /**
@@ -1222,23 +1267,57 @@ function setupBarbellTooltips(container) {
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !tooltip.classList.contains('hidden')) {
+                dismissedBarbellCell = activeBarbellCell;
                 hideBarbellTooltip(true);
             }
         });
     }
+
+    container.addEventListener('mouseover', (e) => {
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        const cell = target.closest('[data-barbell-title]');
+        if (cell instanceof HTMLElement && container.contains(cell)) {
+            if (dismissedBarbellCell && dismissedBarbellCell !== cell) {
+                dismissedBarbellCell = null;
+            }
+            if (cell !== dismissedBarbellCell) {
+                showBarbellTooltip(cell);
+            }
+        }
+    });
 
     container.addEventListener('mousemove', (e) => {
         const target = e.target;
         if (!(target instanceof Element)) return;
         const cell = target.closest('[data-barbell-title]');
         if (cell instanceof HTMLElement && container.contains(cell)) {
-            showBarbellTooltip(cell, e.clientX, e.clientY);
-        } else if (activeBarbellCell && container.contains(activeBarbellCell)) {
+            if (cell !== dismissedBarbellCell && (activeBarbellCell !== cell || tooltip.classList.contains('hidden'))) {
+                showBarbellTooltip(cell);
+            }
+        } else {
+            dismissedBarbellCell = null;
+            if (activeBarbellCell && container.contains(activeBarbellCell)) {
+                hideBarbellTooltip(false);
+            }
+        }
+    });
+
+    container.addEventListener('mouseout', (e) => {
+        const related = /** @type {MouseEvent} */ (e).relatedTarget;
+        if (related instanceof Node && (tooltip.contains(related) || (activeBarbellCell && activeBarbellCell.contains(related)))) {
+            return;
+        }
+        dismissedBarbellCell = null;
+        if (activeBarbellCell && container.contains(activeBarbellCell)) {
             hideBarbellTooltip(false);
         }
     });
 
-    container.addEventListener('mouseleave', () => {
+    container.addEventListener('mouseleave', (e) => {
+        const related = /** @type {MouseEvent} */ (e).relatedTarget;
+        if (related instanceof Node && tooltip.contains(related)) return;
+        dismissedBarbellCell = null;
         if (activeBarbellCell && container.contains(activeBarbellCell)) {
             hideBarbellTooltip(false);
         }
@@ -1250,8 +1329,8 @@ function setupBarbellTooltips(container) {
         const directCell = target.closest('[data-barbell-title]');
         const cell = directCell || target.closest('tr.pivot-row')?.querySelector('[data-barbell-title]');
         if (cell instanceof HTMLElement && container.contains(cell)) {
-            const rect = cell.getBoundingClientRect();
-            showBarbellTooltip(cell, rect.left + rect.width / 2, rect.bottom);
+            dismissedBarbellCell = null;
+            showBarbellTooltip(cell);
         }
     });
 
@@ -1264,11 +1343,11 @@ function setupBarbellTooltips(container) {
 }
 
 /**
+ * Anchors `#barbell-tooltip` directly beneath (or above) `cell` so moving the pointer
+ * onto the tooltip keeps it stationary per WCAG 1.4.13.
  * @param {HTMLElement} cell
- * @param {number} x
- * @param {number} y
  */
-function showBarbellTooltip(cell, x, y) {
+function showBarbellTooltip(cell) {
     const tooltip = document.getElementById('barbell-tooltip');
     if (!tooltip) return;
     if (barbellHideTimeout) {
@@ -1345,18 +1424,22 @@ function showBarbellTooltip(cell, x, y) {
             </div>
             <p class="barbell-tooltip-note">${escapeHtml(note)}</p>
         `;
+        tooltip.style.left = '0px';
+        tooltip.style.top = '0px';
         tooltip.classList.remove('hidden');
-    }
 
-    const pad = 16;
-    const w = tooltip.offsetWidth || 290;
-    const h = tooltip.offsetHeight || 175;
-    let left = x + pad;
-    let top = y + pad;
-    if (left + w > window.innerWidth - 8) left = x - w - pad;
-    if (top + h > window.innerHeight - 8) top = y - h - pad;
-    tooltip.style.left = `${Math.max(8, Math.min(left, window.innerWidth - w - 8))}px`;
-    tooltip.style.top = `${Math.max(8, Math.min(top, window.innerHeight - h - 8))}px`;
+        const rect = cell.getBoundingClientRect();
+        const gap = 6;
+        const w = tooltip.offsetWidth || 290;
+        const h = tooltip.offsetHeight || 175;
+        let left = rect.left + (rect.width / 2) - (w / 2);
+        let top = rect.bottom + gap;
+        if (top + h > window.innerHeight - 8 && rect.top - h - gap >= 8) {
+            top = rect.top - h - gap;
+        }
+        tooltip.style.left = `${Math.max(8, Math.min(left, window.innerWidth - w - 8))}px`;
+        tooltip.style.top = `${Math.max(8, Math.min(top, window.innerHeight - h - 8))}px`;
+    }
 }
 
 /** @param {boolean} [immediate] */
@@ -1413,6 +1496,10 @@ const expandedPanels = { model: false, dimension: false, guide: false };
 function renderPivotInsights() {
     const container = document.getElementById('insights-container');
     if (!container) return;
+
+    if (activeBarbellCell && container.contains(activeBarbellCell)) {
+        hideBarbellTooltip(true);
+    }
 
     /** @type {Record<string, number>} */
     const savedScrollPositions = {};
@@ -1499,8 +1586,7 @@ function renderPivotInsights() {
     /** @param {number[]} vals */
     const getMedianNumber = (vals) => {
         if (vals.length === 0) return null;
-        const sorted = [...vals].sort((a, b) => a - b);
-        return Math.round(sorted[Math.floor(sorted.length / 2)]);
+        return Math.round(median(vals));
     };
 
     /** @param {number[]} vals */
@@ -1512,8 +1598,8 @@ function renderPivotInsights() {
     };
 
     const params = new URLSearchParams(window.location.search);
-    const sourceParam = params.get('source');
-    const sourceQuery = sourceParam ? `&source=${encodeURIComponent(sourceParam)}` : '';
+    const effectiveSource = params.get('source') || api.source;
+    const sourceQuery = effectiveSource ? `&source=${encodeURIComponent(effectiveSource)}` : '';
 
     /**
      * @param {Record<string, PivotItem[]>} groupObj
@@ -1525,10 +1611,21 @@ function renderPivotInsights() {
             return '<p class="pivot-empty">No data for the current selection.</p>';
         }
 
+        const showVariance = filterKey === 'guide';
+        /** @type {Record<string, { medianItem: { uRate: number, gRate: number, uplift: number }, uSD: number, gSD: number }>} */
+        const statsByKey = {};
+        keys.forEach(k => {
+            const arr = groupObj[k];
+            const medianItem = getMedianItem(arr);
+            const uSD = showVariance ? calculateSD(arr.map(i => i.uRate)) : 0;
+            const gSD = showVariance ? calculateSD(arr.map(i => i.gRate)) : 0;
+            statsByKey[k] = { medianItem, uSD, gSD };
+        });
+
         if (filterKey === 'guide') {
             keys.sort((a, b) => {
-                const itemA = getMedianItem(groupObj[a]);
-                const itemB = getMedianItem(groupObj[b]);
+                const statA = statsByKey[a];
+                const statB = statsByKey[b];
                 /** @type {string | number} */
                 let valA = 0;
                 /** @type {string | number} */
@@ -1539,20 +1636,20 @@ function renderPivotInsights() {
                         valB = b.toLowerCase();
                         break;
                     case 'uplift':
-                        valA = itemA.uplift;
-                        valB = itemB.uplift;
+                        valA = statA.medianItem.uplift;
+                        valB = statB.medianItem.uplift;
                         break;
                     case 'unguided':
-                        valA = itemA.uRate;
-                        valB = itemB.uRate;
+                        valA = statA.medianItem.uRate;
+                        valB = statB.medianItem.uRate;
                         break;
                     case 'guided':
-                        valA = itemA.gRate;
-                        valB = itemB.gRate;
+                        valA = statA.medianItem.gRate;
+                        valB = statB.medianItem.gRate;
                         break;
                     case 'variance': {
-                        valA = Math.max(calculateSD(groupObj[a].map(i => i.uRate)), calculateSD(groupObj[a].map(i => i.gRate)));
-                        valB = Math.max(calculateSD(groupObj[b].map(i => i.uRate)), calculateSD(groupObj[b].map(i => i.gRate)));
+                        valA = Math.max(statA.uSD, statA.gSD);
+                        valB = Math.max(statB.uSD, statB.gSD);
                         break;
                     }
                     default: {
@@ -1563,14 +1660,14 @@ function renderPivotInsights() {
                 }
                 if (valA < valB) return currentGuideSortDir === 'asc' ? -1 : 1;
                 if (valA > valB) return currentGuideSortDir === 'asc' ? 1 : -1;
-                return 0;
+                return a.toLowerCase().localeCompare(b.toLowerCase());
             });
         } else {
             const sortMode = currentPanelSorts[filterKey] || 'alpha';
             keys.sort((a, b) => {
                 if (sortMode === 'uplift-desc' || sortMode === 'uplift-asc') {
-                    const upliftA = getMedianItem(groupObj[a]).uplift;
-                    const upliftB = getMedianItem(groupObj[b]).uplift;
+                    const upliftA = statsByKey[a].medianItem.uplift;
+                    const upliftB = statsByKey[b].medianItem.uplift;
                     if (upliftA !== upliftB) {
                         return sortMode === 'uplift-desc' ? upliftB - upliftA : upliftA - upliftB;
                     }
@@ -1579,25 +1676,20 @@ function renderPivotInsights() {
             });
         }
 
-        const showVariance = filterKey === 'guide';
         const metricName = onlyA11y ? 'Accessibility subscore' : 'Pass rate';
         const captionNoun = filterKey === 'guide' ? 'guide' : (filterKey === 'dimension' ? 'accessibility dimension' : 'model');
 
         let rowsHtml = '';
         keys.forEach(key => {
             const items = groupObj[key];
-            const medianItem = getMedianItem(items);
+            const { medianItem, uSD, gSD } = statsByKey[key];
             const { uRate, gRate, uplift: medUplift } = medianItem;
 
             let uBandHtml = '';
             let gBandHtml = '';
-            let uSD = 0;
-            let gSD = 0;
             let avgUErr = 0;
             let avgGErr = 0;
             if (showVariance) {
-                uSD = calculateSD(items.map(i => i.uRate));
-                gSD = calculateSD(items.map(i => i.gRate));
                 if (uSD > 0) {
                     const left = Math.max(0, uRate - uSD);
                     uBandHtml = `<div class="variance-band unguided" style="left: ${left}%; width: ${Math.min(100, uRate + uSD) - left}%;"></div>`;
@@ -1648,13 +1740,16 @@ function renderPivotInsights() {
             const gSdAttr = showVariance && items.length > 1 ? String(Math.round(gSD)) : '';
             const errAttr = filterKey === 'model' && (avgUErr > 0 || avgGErr > 0) ? '1' : '';
             const staticRowCls = filterKey === 'dimension' ? ' is-static' : '';
+            const focusCellAttrs = filterKey === 'dimension'
+                ? ` tabindex="0" aria-label="${escapeHtml(`${displayTitle}: median unguided ${uRate}%, guided ${gRate}% (${sign}${medUplift} pp)`)}"`
+                : '';
             rowsHtml += `
                 <tr class="pivot-row${isActive ? ' active-filter' : ''}${staticRowCls}">
                     <th scope="row" class="pivot-name">
                         ${nameHtml}
                         ${effSummary}
                     </th>
-                    <td class="insight-dumbbell-cell"
+                    <td class="insight-dumbbell-cell"${focusCellAttrs}
                         data-barbell-title="${escapeHtml(displayTitle)}"
                         data-barbell-kind="${filterKey}"
                         data-barbell-metric="${escapeHtml(metricName)}"
@@ -1683,10 +1778,21 @@ function renderPivotInsights() {
         });
 
         const colHeader = filterKey === 'guide' ? 'Guide' : (filterKey === 'dimension' ? 'Dimension' : 'Model');
+        let firstColAriaSort = '';
+        let secondColAriaSort = '';
+        if (filterKey === 'guide') {
+            const ariaDir = currentGuideSortDir === 'asc' ? 'ascending' : 'descending';
+            if (currentGuideSort === 'alphabetic') firstColAriaSort = ` aria-sort="${ariaDir}"`;
+            else secondColAriaSort = ` aria-sort="${ariaDir}"`;
+        } else {
+            const pSort = currentPanelSorts[filterKey] || 'alpha';
+            if (pSort === 'alpha') firstColAriaSort = ' aria-sort="ascending"';
+            else secondColAriaSort = ` aria-sort="${pSort === 'uplift-asc' ? 'ascending' : 'descending'}"`;
+        }
         const table = `
             <table class="insights-table">
                 <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption>
-                <thead class="${filterKey === 'guide' ? 'pivot-head' : 'visually-hidden'}"><tr><th scope="col">${escapeHtml(colHeader)}</th><th scope="col">${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead>
+                <thead class="${filterKey === 'guide' ? 'pivot-head' : 'visually-hidden'}"><tr><th scope="col"${firstColAriaSort}>${escapeHtml(colHeader)}</th><th scope="col"${secondColAriaSort}>${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead>
                 <tbody>${rowsHtml}</tbody>
             </table>
         `;
@@ -1704,13 +1810,14 @@ function renderPivotInsights() {
         const sortMode = currentPanelSorts[panelKey] || 'alpha';
         const isSorted = sortMode === 'uplift-desc' || sortMode === 'uplift-asc';
         const arrow = sortMode === 'uplift-desc' ? '↓' : (sortMode === 'uplift-asc' ? '↑' : '↕');
-        const nextTitle = sortMode === 'alpha' ? 'Sort by uplift (high to low)' : (sortMode === 'uplift-desc' ? 'Sort by uplift (low to high)' : 'Reset to alphabetical sort');
+        const panelNoun = panelKey === 'dimension' ? 'accessibility dimensions' : 'models';
+        const nextTitle = sortMode === 'alpha' ? `Sort ${panelNoun} by uplift (high to low)` : (sortMode === 'uplift-desc' ? `Sort ${panelNoun} by uplift (low to high)` : `Reset ${panelNoun} to alphabetical sort`);
         return `
             <div class="insights-panel-header">
                 <h3 class="insights-panel-title">
-                    <button type="button" class="insights-panel-title-btn" data-panel-title-sort="${panelKey}" title="Sort alphabetically">${titleHtml}</button>
+                    <button type="button" class="insights-panel-title-btn" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" title="Sort ${panelNoun} alphabetically">${titleHtml}</button>
                 </h3>
-                <button type="button" class="insights-uplift-sort-btn${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" title="${nextTitle}">
+                <button type="button" class="insights-uplift-sort-btn${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-label="${nextTitle}" aria-pressed="${isSorted}" title="${nextTitle}">
                     <span>Uplift</span>
                     <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span>
                 </button>

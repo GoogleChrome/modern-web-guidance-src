@@ -26,8 +26,9 @@ test.describe('Eval View Dashboard', () => {
   test('should show barbell summary hover card on rate-cell hover', async ({ page }) => {
     await page.goto('/');
 
-    await page.waitForSelector('.uplift-cell');
-    await page.locator('.uplift-cell').first().hover();
+    const firstUpliftCell = page.locator('.uplift-cell').first();
+    await expect(firstUpliftCell).toBeVisible();
+    await firstUpliftCell.hover();
 
     const tooltip = page.locator('#barbell-tooltip');
     await expect(tooltip).toBeVisible();
@@ -407,5 +408,60 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await page.locator('.task-accordion-header').first().click();
     await expect(page.locator('.truth-matrix').first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  });
+
+  test('supports keyboard-triggered barbell tooltips, mobile tooltip bounds, mode switching, and combobox Enter', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.route('**/api/suites*', route => route.fulfill({ json: NIGHTLY_FIXTURE }));
+    await page.goto('/');
+
+    // Keyboard focus on a suite uplift link shows #barbell-tooltip and wires aria-describedby
+    const upliftLink = page.locator('.uplift-link').first();
+    await expect(upliftLink).toBeVisible();
+    await upliftLink.focus();
+    const barbellTooltip = page.locator('#barbell-tooltip');
+    await expect(barbellTooltip).toBeVisible();
+    await expect(upliftLink).toHaveAttribute('aria-describedby', 'barbell-tooltip');
+    await page.keyboard.press('Escape');
+    await expect(barbellTooltip).toBeHidden();
+
+    // Breakdowns: non-guide rows (e.g. By Accessibility Dimension) are keyboard-focusable for tooltips
+    await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
+    const dimBarbell = page.locator('.insights-dimension-panel .insight-dumbbell-cell[tabindex="0"]').first();
+    await dimBarbell.focus();
+    await expect(barbellTooltip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(barbellTooltip).toBeHidden();
+
+    // Mobile 390px: dumbbell tooltip stays inside viewport and clears on metric mode switch
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/dashboard.html?testId=example-result');
+    const hitArea = page.locator('#dumbbell-chart rect[role="button"]').first();
+    await expect(hitArea).toBeVisible();
+    await hitArea.focus();
+    const dumbbellTooltip = page.locator('#dumbbell-tooltip');
+    await expect(dumbbellTooltip).toBeVisible();
+    const tipBox = await dumbbellTooltip.boundingBox();
+    expect(tipBox).not.toBeNull();
+    if (tipBox) {
+      expect(tipBox.x).toBeGreaterThanOrEqual(0);
+      expect(tipBox.x + tipBox.width).toBeLessThanOrEqual(390);
+    }
+    await page.locator('#dash-mode-a11y-btn').click();
+    await expect(dumbbellTooltip).toBeHidden();
+    await expect(page.locator('#dumbbell-chart')).toContainText('No accessibility checks recorded');
+
+    // Guide combobox: ArrowDown -> Escape -> Enter submits typed text cleanly
+    await page.unroute('**/api/suites*');
+    await page.goto('/guide.html?guide=content-vis');
+    await expect(page.locator('.timeline-point').first()).toBeVisible();
+    const searchInput = page.locator('#guide-search');
+    await searchInput.fill('preload-prerender');
+    await expect(page.locator('#autocomplete-list')).toBeVisible();
+    await searchInput.press('ArrowDown');
+    await searchInput.press('Escape');
+    await expect(page.locator('#autocomplete-list')).toBeHidden();
+    await searchInput.press('Enter');
+    await expect(page).toHaveURL(/guide=preload-prerender/);
   });
 });

@@ -7,10 +7,13 @@ import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 
 /** @type {Map<string, Promise<{ suites: import('./insights.js').ManifestSuite[] }>>} */
 const manifestCache = new Map();
+/** @type {Set<string>} */
+const failedHydrationIds = new Set();
 
 export class ApiClient {
     static clearCache() {
         manifestCache.clear();
+        failedHydrationIds.clear();
     }
 
     constructor() {
@@ -151,14 +154,14 @@ export class ApiClient {
         const promise = (async () => {
             const bust = `t=${Date.now()}`;
             if (this.source === 'local') {
-                const res = await fetch(`/api/suites?${bust}`);
+                const res = await fetch(`api/suites?${bust}`);
                 if (!res.ok) throw new Error('Failed to load local suites');
                 const data = await res.json();
                 return { suites: Array.isArray(data) ? data : (data.suites || []) };
             }
             const url = this.source === 'remote'
                 ? `${this.gcsPrefix}suites.gen.json?alt=media&${bust}`
-                : `/suites.gen.json?${bust}`;
+                : `suites.gen.json?${bust}`;
             const res = this.source === 'remote' ? await authenticatedFetch(url) : await fetch(url);
             if (!res.ok) throw new Error(`Failed to load suites.gen.json (${res.status})`);
             const suites = await res.json();
@@ -179,17 +182,46 @@ export class ApiClient {
         const insightOptions = { perAgentRecentN };
         const { suites = [] } = await this.getManifest();
         const insights = computeHeadlineInsights(suites, insightOptions);
-        if (insights.missingStats.length > 0) {
-            const hydrate = hydrateMissingStats(suites, id => this.getEvals(id), insightOptions)
+        const pendingMissing = insights.missingStats.filter(id => !failedHydrationIds.has(`${this.source}:${id}`));
+        if (pendingMissing.length > 0) {
+            const hydrate = hydrateMissingStats(
+                suites,
+                async (id) => {
+                    if (failedHydrationIds.has(`${this.source}:${id}`)) {
+                        throw new Error(`Skipping previously failed hydration for ${id}`);
+                    }
+                    try {
+                        return await this.getEvals(id);
+                    } catch (err) {
+                        failedHydrationIds.add(`${this.source}:${id}`);
+                        throw err;
+                    }
+                },
+                insightOptions
+            )
                 .then(() => {
+                    for (const id of pendingMissing) {
+                        const suite = suites.find(s => s.testId === id);
+                        if (!suite || !suite.a11yStats) {
+                            failedHydrationIds.add(`${this.source}:${id}`);
+                        }
+                    }
                     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
                         window.dispatchEvent(new CustomEvent('mwg:manifest-hydrated', { detail: { source: this.source, suites } }));
                     }
                     const updated = computeHeadlineInsights(suites, insightOptions);
                     if (onUpdate) onUpdate(updated);
                     return updated;
+                })
+                .catch(err => {
+                    console.warn('Headline insights hydration failed:', err);
+                    const fallback = computeHeadlineInsights(suites, insightOptions);
+                    if (onUpdate) onUpdate(fallback);
+                    return fallback;
                 });
             if (!onUpdate) return hydrate;
+        } else if (onUpdate && insights.missingStats.length > 0) {
+            queueMicrotask(() => onUpdate(insights));
         }
         return insights;
     }

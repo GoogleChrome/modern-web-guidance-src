@@ -2,7 +2,7 @@ import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioI
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
-import { DumbbellChart } from './dumbbell-chart.js';
+import { DumbbellChart, hideDumbbellTooltip } from './dumbbell-chart.js';
 import { loadStabilityTrend } from './stability-trend.js';
 
 /**
@@ -271,7 +271,7 @@ async function loadDashboardData(testId) {
         const message = (error instanceof Error) ? error.message : String(error);
 
         let errorHtml = `<div class="error-banner">
-            <h3>Error loading dashboard data</h3>
+            <h2>Error loading dashboard data</h2>
             <p>${escapeHtml(message)}</p>
         </div>`;
 
@@ -329,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (action === 'diff' && btn.dataset.setupPath !== undefined && btn.dataset.resultPath && btn.dataset.scenarioName && btn.dataset.runNumber) {
             viewDiff(btn.dataset.setupPath, btn.dataset.resultPath, btn.dataset.scenarioName, Number(btn.dataset.runNumber));
         } else if (action === 'app' && btn.dataset.appUrl) {
-            window.open(btn.dataset.appUrl, '_blank', 'noopener');
+            window.open(btn.dataset.appUrl, '_blank', 'noopener,noreferrer');
         }
     });
 
@@ -766,7 +766,7 @@ function renderSummary(data) {
                 ${unguidedLeaksCount > 0 ? `
                 <div class="narrative-metric-row">
                     <span>Unguided leaks</span>
-                    <strong style="color: #8b5cf6;">${unguidedLeakRate}% (${unguidedLeaksCount} run${unguidedLeaksCount === 1 ? '' : 's'})</strong>
+                    <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} run${unguidedLeaksCount === 1 ? '' : 's'})</strong>
                 </div>
                 ` : ''}
             </div>
@@ -836,7 +836,7 @@ function renderSummary(data) {
                 </div>
                 <div class="narrative-metric-row">
                     <span>Tasks with fewer or equal</span>
-                    <strong>${tok.fewerUncachedTokensTaskPct}% (${tok.fewerUncachedTasksCount}/${rt.pairedTaskCount} tasks)</strong>
+                    <strong>${tok.fewerUncachedTokensTaskPct}% (${tok.fewerUncachedTasksCount}/${tok.pairedTaskCount} tasks)</strong>
                 </div>
             </div>
         </article>
@@ -906,21 +906,23 @@ function renderGrid(data, testId) {
 
             /**
              * @param {DashboardRunResult[] | undefined} runs
-             * @returns {number | null}
+             * @returns {{ rate: number | null, exact: number | null }}
              */
             const getAvg = (runs) => {
-                if (!runs || runs.length === 0) return null;
+                if (!runs || runs.length === 0) return { rate: null, exact: null };
                 const totalPassed = runs.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
                 const totalChecks = runs.reduce((acc, run) => acc + getRunStats(run.results).total, 0);
-                return totalChecks > 0 ? Math.round((totalPassed / totalChecks) * 100) : null;
+                if (totalChecks <= 0) return { rate: null, exact: null };
+                const exact = (totalPassed / totalChecks) * 100;
+                return { rate: Math.round(exact), exact };
             };
 
             /**
              * @param {DashboardRunResult[] | undefined} runs
-             * @returns {{ rate: number | null, count: number }}
+             * @returns {{ rate: number | null, exact: number | null, count: number }}
              */
             const getA11yAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: null, count: 0 };
+                if (!runs || runs.length === 0) return { rate: null, exact: null, count: 0 };
                 let passed = 0;
                 let total = 0;
                 let validRuns = 0;
@@ -934,10 +936,12 @@ function renderGrid(data, testId) {
                     if (s.total > maxChecksInRun) maxChecksInRun = s.total;
                 });
                 if (validRuns === 0 || total === 0) {
-                    return { rate: null, count: maxChecksInRun };
+                    return { rate: null, exact: null, count: maxChecksInRun };
                 }
+                const exact = (passed / total) * 100;
                 return {
-                    rate: Math.round((passed / total) * 100),
+                    rate: Math.round(exact),
+                    exact,
                     count: maxChecksInRun
                 };
             };
@@ -951,6 +955,7 @@ function renderGrid(data, testId) {
                 let sum = 0;
                 let count = 0;
                 runs.forEach(r => {
+                    if (isEarlyFailureRun(r.results)) return;
                     const ms = getAgentRuntimeMs(r); // agent-only time, matching the hero and suites table
                     if (ms > 0) {
                         sum += ms;
@@ -969,6 +974,7 @@ function renderGrid(data, testId) {
                 let sum = 0;
                 let count = 0;
                 runs.forEach(r => {
+                    if (isEarlyFailureRun(r.results)) return;
                     const tb = getTokenBreakdown(r.tokenUsage);
                     if (tb.total > 0) {
                         sum += tb.uncached;
@@ -978,18 +984,21 @@ function renderGrid(data, testId) {
                 return count > 0 ? Math.round(sum / count) : 0;
             };
 
-            const unguidedAvg = getAvg(unguidedRuns);
-            const guidedAvg = getAvg(guidedRuns);
-            const isValidPair = unguidedAvg !== null && guidedAvg !== null;
-            const uplift = isValidPair ? guidedAvg - unguidedAvg : null;
+            const uAvgObj = getAvg(unguidedRuns);
+            const gAvgObj = getAvg(guidedRuns);
+            const unguidedAvg = uAvgObj.rate;
+            const guidedAvg = gAvgObj.rate;
+            const uplift = (uAvgObj.exact !== null && gAvgObj.exact !== null)
+                ? Math.round(gAvgObj.exact - uAvgObj.exact)
+                : null;
 
             const uA11y = getA11yAvg(unguidedRuns);
             const gA11y = getA11yAvg(guidedRuns);
             const a11yCheckCount = Math.max(uA11y.count, gA11y.count);
             const a11yUnguidedAvg = uA11y.rate;
             const a11yGuidedAvg = gA11y.rate;
-            const a11yUplift = (a11yUnguidedAvg !== null && a11yGuidedAvg !== null)
-                ? a11yGuidedAvg - a11yUnguidedAvg
+            const a11yUplift = (uA11y.exact !== null && gA11y.exact !== null)
+                ? Math.round(gA11y.exact - uA11y.exact)
                 : null;
 
             const uRuntimeMs = getAvgRuntime(unguidedRuns);
@@ -1077,7 +1086,7 @@ function renderGrid(data, testId) {
 
         const accordion = document.createElement('div');
         accordion.className = 'task-accordion';
-        accordion.id = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
+        accordion.id = `item-${scenarioName.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}`;
         accordion.setAttribute('data-guide', guide);
         accordion.setAttribute('data-task', appName);
 
@@ -1130,7 +1139,7 @@ function renderGrid(data, testId) {
                     ${a11yPillHtml}
                     ${hasInfraError ? `<span class="generation-failed-badge infra-error-badge" title="Infrastructure / CLI errors are excluded from pass rates">${infraErrorCount} Infra Error${infraErrorCount === 1 ? '' : 's'}</span>` : ''}
                     ${hasBuildFailure ? `<span class="generation-failed-badge" title="Agent produced a broken app or build that failed grading">Build Failed</span>` : ''}
-                    ${leakCount > 0 ? `<span class="generation-failed-badge" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6; border-color: rgba(139, 92, 246, 0.3);" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(guide)}">${leakCount > 1 ? `${leakCount} Unguided Leaks` : 'Unguided Leak'}</span>` : ''}
+                    ${leakCount > 0 ? `<span class="generation-failed-badge leak-badge" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(guide)}">${leakCount > 1 ? `${leakCount} Unguided Leaks` : 'Unguided Leak'}</span>` : ''}
                 </div>
                 <div class="right-section">
                     ${metaChipsHtml}
@@ -1168,8 +1177,13 @@ function renderGrid(data, testId) {
                 content.setAttribute('hidden', 'until-found');
             }
 
-            if (isOpen && content.querySelector('.expansion-loading')) {
-                await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
+            if (isOpen && content.querySelector('.expansion-loading') && content.dataset.loading !== 'true') {
+                content.dataset.loading = 'true';
+                try {
+                    await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
+                } finally {
+                    delete content.dataset.loading;
+                }
             }
         };
 
@@ -1336,7 +1350,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         }
         truthMatrixHtml += `</thead><tbody>`;
 
-        const guideName = scenarioName.split(' - ')[1] || '';
+        const guideName = scenarioGuide || scenarioName.split(' - ')[1] || '';
         if (assertionMap.size === 0) {
             const totalCols = maxRuns > 1 ? (maxRuns * 2 + 1) : 3;
             truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
@@ -1436,12 +1450,12 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  chips.push(`
                      <div class="tfoot-chip">
                          ${isEarlyFailure
-                             ? `<span class="tfoot-chip-error" title="${escapeHtml(earlyFailureMsg)}">ERROR</span>`
+                             ? `<span class="tfoot-chip-error" title="${escapeHtml(earlyFailureMsg)}">ERROR<span class="visually-hidden">: ${escapeHtml(earlyFailureMsg)}</span></span>`
                              : `<span class="tfoot-chip-rate" style="--rate-color: ${getColor(s.rate)};">${s.rate}%</span>`
                          }
-                         ${isLeak ? `<span class="run-chip-leak" style="font-size: 0.7rem; color: #8b5cf6; border: 1px solid #8b5cf6; padding: 1px 4px; border-radius: 4px;" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}">Unguided Leak</span>` : ''}
-                         ${buildFailureReason ? `<span class="tfoot-chip-build-failed" title="${escapeHtml(buildFailureReason)}">Build Failed</span>` : ''}
-                         ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent time: </span>${formatRuntime(taskRuntime)}</span>` : ''}
+                         ${isLeak ? `<span class="run-chip-leak" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}">Unguided Leak<span class="visually-hidden">: accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}</span></span>` : ''}
+                         ${buildFailureReason ? `<span class="tfoot-chip-build-failed" title="${escapeHtml(buildFailureReason)}">Build Failed<span class="visually-hidden">: ${escapeHtml(buildFailureReason)}</span></span>` : ''}
+                         ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent time: </span>${formatDuration(taskRuntime)}</span>` : ''}
                          ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)} uncached<span class="visually-hidden">, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
                          <div class="tfoot-chip-actions">
                              ${sessionFile ? `<button type="button" class="tfoot-action-btn" data-action="trajectory" data-base-path="${escapeHtml(usedBasePath)}" data-session-file="${escapeHtml(sessionFile)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
@@ -1649,8 +1663,9 @@ async function showDetails(testName, runs, stats, testId) {
 
     const parsed = parseResultKey(testName);
     const scenarioName = parsed ? `${parsed.task} - ${parsed.guide}` : testName.replace(/ - (guided|unguided)$/, '');
-    const accordionId = `item-${scenarioName.replace(/\s+/g, '-').toLowerCase()}`;
-    const accordionEl = document.getElementById(accordionId);
+    const accordionId = `item-${scenarioName.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}`;
+    const accordionEl = (parsed && document.querySelector(`.task-accordion[data-guide="${CSS.escape(parsed.guide)}"][data-task="${CSS.escape(parsed.task)}"]`))
+        || document.getElementById(accordionId);
 
     if (accordionEl) {
         accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
@@ -1923,6 +1938,7 @@ function renderDashboardDumbbellChart(data) {
 
     const container = document.getElementById('dumbbell-chart');
     if (!container) return;
+    hideDumbbellTooltip(true);
     container.innerHTML = ''; // Clear old content
 
     // Apply CSS columns layout to balance heights (1 column on phones, 2 on >=656px containers)
@@ -2047,6 +2063,16 @@ function renderDashboardDumbbellChart(data) {
         });
         chart.render({ labels, datasets });
     });
+
+    if (container.childElementCount === 0) {
+        container.style.columns = 'none';
+        const emptyMsg = document.createElement('p');
+        emptyMsg.className = 'empty-chart-msg';
+        emptyMsg.textContent = currentMetricMode === 'a11y'
+            ? 'No accessibility checks recorded in this suite.'
+            : 'No chart data available for this suite.';
+        container.appendChild(emptyMsg);
+    }
 }
 
 /**

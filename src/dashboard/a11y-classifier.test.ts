@@ -33,6 +33,11 @@ test('classifyAccessibilityCheck maps dedicated accessibility guides and cross-c
         ['forms', 'sms-otp-form', 'The OTP <input> element is programmatically associated with a visible <label> via matching for and id attributes, and any format hint linked via aria-describedby is positioned above the <input>', 'labels_forms'],
         ['ui-behaviors', 'drag', 'Drag handle is keyboard-focusable without assigning role="application"', 'focus_inert'],
         ['ui-behaviors', 'drag', 'Element is repositionable with keyboard arrow keys when the drag handle is focused', 'keyboard'],
+        ['css', 'dark-mode', 'Body text achieves a minimum 4.5:1 contrast ratio in both themes', 'motion_contrast_visual'],
+        ['ui-components', 'carousel', 'Interactive targets meet a minimum size of 24px by 24px', 'motion_contrast_visual'],
+        ['ui-components', 'popover', 'Pressing Esc dismisses the open popover', 'keyboard'],
+        ['ui-components', 'tabs', 'ArrowLeft and ArrowRight provide keyboard navigation across tabs', 'keyboard'],
+        ['forms', 'checkout', 'Input is associated with a visible <label> element', 'labels_forms'],
     ];
     for (const [disc, guide, msg, expected] of cases) {
         const res = classifyAccessibilityCheck(disc, guide, msg);
@@ -64,6 +69,9 @@ test('classifyAccessibilityCheck excludes known false-positive keyword collision
 test('classifyScenarioCheck ignores synthetic early-failure placeholder checks', () => {
     assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', isEarlyFailure: true, testId: 'chk-1' }, 'accordion').isAccessibility, false);
     assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', testId: '' }, 'accordion').isAccessibility, false);
+    assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"' }, 'accordion').isAccessibility, false);
+    assert.strictEqual(classifyScenarioCheck({ message: 'Infrastructure error in focus ring container', id: 'ef-1', failureReason: 'Infrastructure error in focus ring container' }, 'accordion').isAccessibility, false);
     assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', testId: 'chk-1' }, 'accordion').isAccessibility, true);
+    assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', id: 'chk-1' }, 'accordion').isAccessibility, true);
     assert.strictEqual(A11Y_SUBCATEGORIES.length, 5);
 });

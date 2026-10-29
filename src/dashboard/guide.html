@@ -127,6 +127,8 @@
       padding: 20px;
     }
     .guide-card-title {
+      margin: 0;
+      font-family: var(--font-sans);
       font-weight: 600;
       font-size: 1rem;
       color: var(--text-primary);
@@ -228,7 +230,7 @@
 
         <div class="timeline-filter-controls">
           <label for="timeline-limit-input">Show last</label>
-          <input type="number" id="timeline-limit-input" value="30" min="1">
+          <input type="number" id="timeline-limit-input" value="30" min="1" max="365">
           <span>days</span>
           <label class="toggle-label" for="timeline-show-all-check">
             <input type="checkbox" id="timeline-show-all-check">

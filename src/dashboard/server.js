@@ -267,6 +267,11 @@ const server = http.createServer(async (req, res) => {
               const cacheKey = `${evalsJsonPath}|${stat.mtimeMs}|${stat.size}`;
               let summary = suiteSummaryCache.get(cacheKey);
               if (summary === undefined) {
+                for (const existingKey of suiteSummaryCache.keys()) {
+                  if (existingKey.startsWith(`${evalsJsonPath}|`)) {
+                    suiteSummaryCache.delete(existingKey);
+                  }
+                }
                 const rawData = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
                 summary = extractSuiteSummary(d, rawData, timestamp) || null;
                 suiteSummaryCache.set(cacheKey, summary);

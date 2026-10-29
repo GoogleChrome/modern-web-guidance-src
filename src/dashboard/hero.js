@@ -12,6 +12,7 @@ const FAMILY_HINT = { antigravity_cli: 'Gemini' };
 
 const api = new ApiClient();
 const heroEl = /** @type {HTMLElement | null} */ (document.getElementById('hero'));
+let heroLoadSeq = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!heroEl) return;
@@ -22,31 +23,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (heroAuthBtn && authBtn) {
         heroAuthBtn.addEventListener('click', () => authBtn.click());
     }
-    if (authBtn) {
-        authBtn.addEventListener('click', () => waitForToken().then(ok => { if (ok) void loadAndRender(); }));
-    }
-});
-
-/** @param {number} [timeoutMs] @returns {Promise<boolean>} */
-function waitForToken(timeoutMs = 120000) {
-    const start = Date.now();
-    return new Promise(resolve => {
-        const tick = () => {
-            if (getAccessToken()) return resolve(true);
-            if (Date.now() - start > timeoutMs) return resolve(false);
-            setTimeout(tick, 400);
-        };
-        tick();
+    window.addEventListener('mwg:auth-changed', (e) => {
+        const authenticated = Boolean(/** @type {CustomEvent<{ authenticated?: boolean }>} */ (e).detail?.authenticated);
+        if (authenticated) {
+            void loadAndRender();
+        } else if (api.source === 'remote') {
+            renderPending();
+            setStatus('auth');
+            setBusy(false);
+        }
     });
-}
+});
 
 async function loadAndRender() {
     if (!heroEl) return;
+    const seq = ++heroLoadSeq;
     setBusy(true);
     setStatus(null);
 
-    const signedOut = api.source === 'remote' && !getAccessToken();
-    if (signedOut) {
+    const isSignedOut = () => api.source === 'remote' && !getAccessToken();
+    if (isSignedOut()) {
         renderPending();
         setStatus('auth');
         setBusy(false);
@@ -55,22 +51,30 @@ async function loadAndRender() {
 
     /** @param {HeadlineInsights} insights */
     const paint = (insights) => {
+        if (seq !== heroLoadSeq) return;
+        const signedOutNow = isSignedOut();
         if (!insights || !insights.families.length) {
             renderPending();
-            setStatus(signedOut ? 'auth' : 'empty');
+            setStatus(signedOutNow ? 'auth' : 'empty');
             return;
         }
         renderHero(insights);
-        setStatus(signedOut ? 'auth-snapshot' : null);
+        setStatus(signedOutNow ? 'auth-snapshot' : null);
     };
 
     try {
         const insights = await api.getHeadlineInsights({
-            onUpdate: (final) => { paint(final); setBusy(false); }
+            onUpdate: (final) => {
+                if (seq !== heroLoadSeq) return;
+                paint(final);
+                setBusy(false);
+            }
         });
+        if (seq !== heroLoadSeq) return;
         const noSourceParam = !new URLSearchParams(window.location.search).get('source');
         if (api.source === 'local' && noSourceParam && !insights.families.length) {
             const { suites = [] } = await api.getManifest();
+            if (seq !== heroLoadSeq) return;
             if (suites.length === 0) {
                 api.source = 'remote';
                 if (!getAccessToken()) {
@@ -80,8 +84,13 @@ async function loadAndRender() {
                     return;
                 }
                 const remoteInsights = await api.getHeadlineInsights({
-                    onUpdate: (final) => { paint(final); setBusy(false); }
+                    onUpdate: (final) => {
+                        if (seq !== heroLoadSeq) return;
+                        paint(final);
+                        setBusy(false);
+                    }
                 });
+                if (seq !== heroLoadSeq) return;
                 paint(remoteInsights);
                 if (remoteInsights.missingStats.length > 0) return;
                 setBusy(false);
@@ -91,11 +100,15 @@ async function loadAndRender() {
         paint(insights);
         if (insights.missingStats.length > 0) return;
     } catch (err) {
-        if (!signedOut) console.error('Hero: failed to load headline insights', err);
+        if (seq !== heroLoadSeq) return;
+        const signedOutNow = isSignedOut();
+        if (!signedOutNow) console.error('Hero: failed to load headline insights', err);
         renderPending();
-        setStatus(signedOut ? 'auth' : 'error');
+        setStatus(signedOutNow ? 'auth' : 'error');
     }
-    setBusy(false);
+    if (seq === heroLoadSeq) {
+        setBusy(false);
+    }
 }
 
 /** @param {boolean} busy */

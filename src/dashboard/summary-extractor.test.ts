@@ -178,3 +178,47 @@ test('extractSuiteSummary computes unguidedLeakRate when unguided run accesses e
     assert.strictEqual(summary.unguidedStats.passed, 5);
     assert.strictEqual(summary.unguidedStats.total, 10);
 });
+
+test('extractSuiteSummary counts distinct task-guide scenarios and excludes early failures from efficiency medians while counting timeouts', () => {
+    const summary = extractSuiteSummary('run-efficiency-hygiene', {
+        results: {
+            'task - preload-prerender - guided': [{
+                ...mockRun(4, 4),
+                runtime: { agentRuntime: 60000, graderRuntime: 5000 },
+                tokenUsage: { total: 100000, cached: 70000 },
+            }],
+            'task - preload-prerender - unguided': [{
+                ...mockRun(2, 4),
+                runtime: { agentRuntime: 90000, graderRuntime: 5000 },
+                tokenUsage: { total: 120000, cached: 70000 },
+            }],
+            'task - responsive-table - guided': [{
+                ...mockRun(4, 4),
+                runtime: { agentRuntime: 80000, graderRuntime: 5000 },
+                tokenUsage: { total: 110000, cached: 70000 },
+            }],
+            'task - responsive-table - unguided': [
+                {
+                    ...mockRun(1, 4),
+                    runtime: { agentRuntime: 110000, graderRuntime: 5000 },
+                    tokenUsage: { total: 130000, cached: 70000 },
+                },
+                {
+                    runNumber: 2,
+                    runtime: { agentRuntime: 2000, graderRuntime: 0 },
+                    tokenUsage: { total: 1500, cached: 0 },
+                    results: [{ id: 'ef-1', passed: false, message: 'TIMEOUT (10m)', isEarlyFailure: true }],
+                },
+            ],
+        },
+    } as never);
+
+    assert.ok(summary);
+    // Both guides use generic target slug "task", so distinct scenario count must be 2, not 1.
+    assert.strictEqual(summary.taskCount, 2);
+    // Early-failure run (2000ms, 1500 tokens) is excluded from medians, while TIMEOUT is still counted.
+    assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 100000);
+    assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 55000);
+    assert.strictEqual(summary.efficiencyStats.runtime.unguidedTimeouts, 1);
+    assert.strictEqual(summary.efficiencyStats.runtime.guidedTimeouts, 0);
+});
