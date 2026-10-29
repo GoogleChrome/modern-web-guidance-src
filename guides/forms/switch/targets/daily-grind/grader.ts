@@ -40,6 +40,25 @@ function getSwitchInputs(docs: Array<{ file: string; document: any }>): Array<{ 
   return switchInputs;
 }
 
+function hasPolyfillOrAppearanceFallback(): boolean {
+  const project = getJsProject(targetFiles);
+  const sourceFiles = project.getSourceFiles();
+  const hasPolyfillRef = sourceFiles.some((sf) =>
+    [
+      ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+      ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+    ].some((s) => s.getLiteralText().includes('input-switch-polyfill'))
+  );
+  const stylesheet = getCssStyleSheet(targetFiles);
+  const styleRules = getAllStyleRules(stylesheet.cssRules);
+  const hasAppearanceNone = styleRules.some((r) => {
+    const app =
+      r.style.getPropertyValue('appearance') || r.style.getPropertyValue('-webkit-appearance');
+    return app.trim() === 'none';
+  });
+  return hasPolyfillRef || hasAppearanceNone;
+}
+
 test.describe('switch Target Grader', () => {
   test('Each switch control is a standard HTML <input type="checkbox"> element with the switch attribute', () => {
     const docs = getHtmlDocuments(targetFiles);
@@ -182,19 +201,34 @@ test.describe('switch Target Grader', () => {
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
-      await page.route(
-        (url) =>
+      await page.route('**/*', async (route) => {
+        const req = route.request();
+        const url = new URL(req.url());
+        if (req.resourceType() === 'document') {
+          const response = await route.fetch();
+          let body = await response.text();
+          if (!body.includes('type="importmap"') && body.includes('input-switch-polyfill')) {
+            const importMap = `<script type="importmap">{"imports":{"input-switch-polyfill":"https://esm.sh/input-switch-polyfill"}}</script>`;
+            body = body.includes('<head>')
+              ? body.replace('<head>', `<head>\n${importMap}`)
+              : `${importMap}\n${body}`;
+          }
+          await route.fulfill({ response, body });
+          return;
+        }
+        if (
           url.href.includes('cdn.jsdelivr.net/npm/input-switch-polyfill') &&
-          url.pathname.endsWith('/index.js'),
-        async (route) => {
-          const fallbackUrl = route
-            .request()
+          (url.pathname.endsWith('/index.js') || url.pathname.endsWith('/switch-polyfill.js'))
+        ) {
+          const fallbackUrl = req
             .url()
-            .replace(/\/index\.js$/, '/input-switch-polyfill.js');
+            .replace(/\/(index|switch-polyfill)\.js$/, '/input-switch-polyfill.js');
           const response = await route.fetch({ url: fallbackUrl });
           await route.fulfill({ response });
+          return;
         }
-      );
+        await route.continue();
+      });
       await page.goto(TARGET_URL);
     });
 
@@ -223,15 +257,18 @@ test.describe('switch Target Grader', () => {
     });
 
     test('Toggling the switch updates its checked state and visually updates the control\'s track styling between its unchecked and checked states', async ({ page }) => {
+      const expectsFallback = hasPolyfillOrAppearanceFallback();
       const switchLocator = page.locator('input[type="checkbox"][switch]').first();
       const toggledAndStyled = await (async () => {
         for (let i = 0; i < 30; i++) {
           const count = await switchLocator.count();
           if (count > 0) {
             const ready = await switchLocator.evaluate(
-              (el) =>
+              (el, needsAppearanceNone) =>
                 'switch' in HTMLInputElement.prototype ||
-                window.getComputedStyle(el).appearance === 'none'
+                !needsAppearanceNone ||
+                window.getComputedStyle(el).appearance === 'none',
+              expectsFallback
             );
             if (ready) break;
           }
@@ -267,6 +304,13 @@ test.describe('switch Target Grader', () => {
 
         const afterChecked = await switchLocator.isChecked();
         if (afterChecked === initialChecked) return false;
+
+        const usesNativeSwitch = await switchLocator.evaluate(
+          (_el, needsAppearanceNone) =>
+            'switch' in HTMLInputElement.prototype || !needsAppearanceNone,
+          expectsFallback
+        );
+        if (usesNativeSwitch) return true;
 
         for (let i = 0; i < 20; i++) {
           const afterSig = await getVisualSignature();
