@@ -36,8 +36,50 @@ const TARGET_JS_METHODS: ReadonlySet<string> = new Set([
   'selectric',
 ]);
 
-const SEARCH_OR_COMPLEX_OPTIONS_REGEX =
-  /\b(?:multiple\s*:\s*true|ajax\s*:|tags\s*:|query\s*:|matcher\s*:|minimumInputLength\s*:|liveSearch\s*:|search_contains\s*:|allowClear\s*:|tokenSeparators\s*:|maximumSelectionLength\s*:|formatResult\s*:|templateResult\s*:)/i;
+const COMPLEX_SELECT_OPTION_NAMES: ReadonlySet<string> = new Set([
+  'ajax',
+  'tags',
+  'query',
+  'matcher',
+  'minimumInputLength',
+  'liveSearch',
+  'search_contains',
+  'allowClear',
+  'tokenSeparators',
+  'maximumSelectionLength',
+  'formatResult',
+  'templateResult',
+]);
+
+function hasComplexSelectOption(argNode: Node): boolean {
+  const unwrapped = unwrapExpression(argNode);
+  if (!Node.isObjectLiteralExpression(unwrapped)) {
+    return false;
+  }
+  for (const prop of unwrapped.getProperties()) {
+    if (
+      Node.isPropertyAssignment(prop) ||
+      Node.isShorthandPropertyAssignment(prop) ||
+      Node.isMethodDeclaration(prop)
+    ) {
+      const nameNode = prop.getNameNode();
+      const propName = Node.isStringLiteral(nameNode)
+        ? nameNode.getLiteralText()
+        : nameNode.getText();
+      if (COMPLEX_SELECT_OPTION_NAMES.has(propName)) {
+        return true;
+      }
+      if (
+        propName === 'multiple' &&
+        Node.isPropertyAssignment(prop) &&
+        prop.getInitializer()?.getText() === 'true'
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 function isJQueryIdentifierName(name: string): boolean {
   return name.startsWith('$') || name === 'jQuery' || name === 'mQuery';
@@ -101,8 +143,7 @@ function matchSelectCall(node: CallExpression): string | null {
         return null;
       }
     }
-    const argText = firstArg.getText();
-    if (SEARCH_OR_COMPLEX_OPTIONS_REGEX.test(argText)) {
+    if (hasComplexSelectOption(firstArg)) {
       return null;
     }
   }

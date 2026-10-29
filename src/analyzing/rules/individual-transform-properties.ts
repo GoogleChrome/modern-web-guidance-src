@@ -197,11 +197,8 @@ function parseValidTransformSequence(rawValue: string): ParsedTransformCall[] | 
 const STATE_PSEUDO_RE =
   /:(?:hover|focus-visible|focus-within|focus|active|visited|checked|disabled|target|open|popover-open|modal)\b/gi;
 
-const STATE_MODIFIER_CLASS_RE =
-  /\.(?:is-active|active|is-open|open|is-shown|show|is-visible|visible|is-selected|selected|is-expanded|expanded|is-collapsed|collapsed|is-disabled|disabled|hover|focus|focused)\b/gi;
-
-const STANDALONE_INTERACTIVE_SELECTOR_RE =
-  /:(?:hover|focus-visible|focus-within|focus|active|checked|target|open|popover-open|modal)\b|\.(?:is-active|active|is-open|open|opened|is-shown|show|shown|is-visible|visible|is-hidden|hidden|h5p-hidden|is-selected|selected|is-expanded|expanded|is-collapsed|collapsed|hover|focus|focused|toggled|modal-in|modal-out|js-next|js-prev)\b|(?:--|[-_])(?:active|enter-active|leave-active)\b/i;
+const COMPOUND_CLASS_MODIFIER_RE =
+  /(\.[a-zA-Z_-][a-zA-Z0-9_-]*)\.[a-zA-Z_-][a-zA-Z0-9_-]+(?=(?:::?(?:before|after))?$)/i;
 
 function isIdentityTransformCall(call: ParsedTransformCall): boolean {
   const compactArgs = call.args.replace(/\s+/g, '');
@@ -225,63 +222,59 @@ function isZeroHardwareAccelerationTransform(calls: readonly ParsedTransformCall
   );
 }
 
-function extractRightmostTargetToken(baseSel: string): string | null {
-  const withoutPseudoElements = baseSel.replace(/::?(?:before|after)\b/gi, '').trim();
-  const segments = withoutPseudoElements.split(/[\s>+~]+/).filter(Boolean);
-  const last = segments[segments.length - 1];
-  if (!last || last.length < 2) return null;
-  if ( segments.length >= 2 && /^[a-z]+$/i.test(last)) {
-    return `${segments[segments.length - 2]} ${last}`;
-  }
-  return last;
+interface SelectorAnalysis {
+  readonly baseSelectors: string[];
+  readonly exactBaseSelectors: Set<string>;
+  readonly pseudoStatefulSelectors: Set<string>;
+  readonly compoundPrefixSelectors: Set<string>;
 }
 
-function extractSelectorInfo(
-  selectorText: string,
-  includeTargetTokens = false,
-): {
-  baseSelectors: string[];
-  statefulBaseSelectors: Set<string>;
-  targetTokens: string[];
-} {
+function extractSelectorInfo(selectorText: string): SelectorAnalysis {
   const parts = selectorText.split(',');
   const baseSelectors: string[] = [];
-  const statefulBaseSelectors = new Set<string>();
-  const targetTokens: string[] = [];
+  const exactBaseSelectors = new Set<string>();
+  const pseudoStatefulSelectors = new Set<string>();
+  const compoundPrefixSelectors = new Set<string>();
+
+  const addBase = (sel: string): void => {
+    if (!baseSelectors.includes(sel)) {
+      baseSelectors.push(sel);
+    }
+  };
 
   for (const rawPart of parts) {
     const trimmed = rawPart.trim();
     if (!trimmed) continue;
 
-    let withoutPseudo = trimmed.replace(STATE_PSEUDO_RE, '').trim();
-    const hadPseudo = withoutPseudo !== trimmed;
-    const withoutModifier = withoutPseudo.replace(STATE_MODIFIER_CLASS_RE, '').trim();
-    let hadModifier = false;
-    if (withoutModifier.length > 0 && !/^[>+~]$/.test(withoutModifier)) {
-      hadModifier = withoutModifier !== withoutPseudo;
-      withoutPseudo = withoutModifier;
+    const withoutPseudo = trimmed.replace(STATE_PSEUDO_RE, '').replace(/\s+/g, ' ').trim();
+    if (!withoutPseudo) continue;
+
+    const hadPseudo = withoutPseudo !== trimmed.replace(/\s+/g, ' ').trim();
+    addBase(withoutPseudo);
+    if (hadPseudo) {
+      pseudoStatefulSelectors.add(withoutPseudo);
+    } else {
+      exactBaseSelectors.add(withoutPseudo);
     }
 
-    const normalized = withoutPseudo.replace(/\s+/g, ' ').trim();
-    if (normalized.length > 0) {
-      baseSelectors.push(normalized);
-      if (hadPseudo || hadModifier) {
-        statefulBaseSelectors.add(normalized);
-      }
-      if (includeTargetTokens) {
-        const targetToken = extractRightmostTargetToken(normalized);
-        if (targetToken && !targetTokens.includes(targetToken)) {
-          targetTokens.push(targetToken);
-        }
+    if (COMPOUND_CLASS_MODIFIER_RE.test(withoutPseudo)) {
+      const prefix = withoutPseudo
+        .replace(COMPOUND_CLASS_MODIFIER_RE, '$1')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (prefix.length > 0 && prefix !== withoutPseudo && !/^[>+~]$/.test(prefix)) {
+        addBase(prefix);
+        compoundPrefixSelectors.add(prefix);
       }
     }
   }
 
-  return { baseSelectors, statefulBaseSelectors, targetTokens };
-}
-
-function extractBaseSelectors(selectorText: string): string[] {
-  return extractSelectorInfo(selectorText).baseSelectors;
+  return {
+    baseSelectors,
+    exactBaseSelectors,
+    pseudoStatefulSelectors,
+    compoundPrefixSelectors,
+  };
 }
 
 function isKeyframeAtRule(parentAtRule: string | null | undefined): boolean {
@@ -296,16 +289,12 @@ function isKeyframeStepSelector(selectorText: string): boolean {
 
 interface AnalyzedStyleRule {
   readonly selectorText: string;
-  readonly baseSelectors: readonly string[];
-  readonly statefulBaseSelectors: ReadonlySet<string>;
-  readonly targetTokens: readonly string[];
+  readonly selectorInfo: SelectorAnalysis;
   readonly line: number;
   readonly parentAtRule: string | null;
   readonly transformValue: string | null;
   readonly parsedTransform: readonly ParsedTransformCall[] | null;
-  readonly hasVendorPrefixedTransform: boolean;
   readonly hasIndividualTransformProp: boolean;
-  readonly hasAnyTransition: boolean;
   readonly transitionsTransform: boolean;
   readonly animationValue: string | null;
 }
@@ -313,7 +302,6 @@ interface AnalyzedStyleRule {
 interface AnalyzedStylesheet {
   readonly normalRules: readonly AnalyzedStyleRule[];
   readonly rulesByBaseSelector: ReadonlyMap<string, readonly AnalyzedStyleRule[]>;
-  readonly rulesByTargetToken: ReadonlyMap<string, readonly AnalyzedStyleRule[]>;
   readonly keyframeGroups: ReadonlyMap<string, readonly AnalyzedStyleRule[]>;
   readonly keyframeGroupsByName: ReadonlyMap<string, readonly AnalyzedStyleRule[]>;
   readonly keyframeNamesWithTransform: ReadonlySet<string>;
@@ -354,22 +342,14 @@ function analyzeStylesheet(ctx: CssMatcherContext): AnalyzedStylesheet {
       const animationValue =
         view.getPropertyValue('animation') ?? view.getPropertyValue('animation-name');
 
-      const selectorInfo = extractSelectorInfo(
-        view.selectorText,
-        transformValue !== null || transitionsTransform,
-      );
       const analyzed: AnalyzedStyleRule = {
         selectorText: view.selectorText,
-        baseSelectors: selectorInfo.baseSelectors,
-        statefulBaseSelectors: selectorInfo.statefulBaseSelectors,
-        targetTokens: selectorInfo.targetTokens,
+        selectorInfo: extractSelectorInfo(view.selectorText),
         line: view.line,
         parentAtRule,
         transformValue,
         parsedTransform: transformValue !== null ? parseValidTransformSequence(transformValue) : null,
-        hasVendorPrefixedTransform: false,
         hasIndividualTransformProp,
-        hasAnyTransition: transVal !== null,
         transitionsTransform,
         animationValue,
       };
@@ -384,7 +364,11 @@ function analyzeStylesheet(ctx: CssMatcherContext): AnalyzedStylesheet {
           : `@keyframes`;
         let key = `${baseKey}#${anonymousKeyframeIndex}`;
         const currentGroup = keyframeMap.get(key);
-        if (parentAtRule && currentGroup && currentGroup.some((s) => s.selectorText.trim().toLowerCase() === stepLower)) {
+        if (
+          parentAtRule &&
+          currentGroup &&
+          currentGroup.some((s) => s.selectorText.trim().toLowerCase() === stepLower)
+        ) {
           anonymousKeyframeIndex++;
           key = `${baseKey}#${anonymousKeyframeIndex}`;
         }
@@ -413,21 +397,12 @@ function analyzeStylesheet(ctx: CssMatcherContext): AnalyzedStylesheet {
   }
 
   const rulesByBaseSelector = new Map<string, AnalyzedStyleRule[]>();
-  const rulesByTargetToken = new Map<string, AnalyzedStyleRule[]>();
   for (const rule of normalRules) {
-    for (const baseSel of rule.baseSelectors) {
+    for (const baseSel of rule.selectorInfo.baseSelectors) {
       let list = rulesByBaseSelector.get(baseSel);
       if (!list) {
         list = [];
         rulesByBaseSelector.set(baseSel, list);
-      }
-      list.push(rule);
-    }
-    for (const token of rule.targetTokens) {
-      let list = rulesByTargetToken.get(token);
-      if (!list) {
-        list = [];
-        rulesByTargetToken.set(token, list);
       }
       list.push(rule);
     }
@@ -436,7 +411,6 @@ function analyzeStylesheet(ctx: CssMatcherContext): AnalyzedStylesheet {
   const result: AnalyzedStylesheet = {
     normalRules,
     rulesByBaseSelector,
-    rulesByTargetToken,
     keyframeGroups: keyframeMap,
     keyframeGroupsByName,
     keyframeNamesWithTransform,
@@ -515,27 +489,6 @@ function getRepeatingKeyframeFirstLine(steps: readonly AnalyzedStyleRule[]): num
   return validSteps[0]?.line ?? null;
 }
 
-function getRelatedRulesByBaseSelector(
-  analysis: AnalyzedStylesheet,
-  currentBaseSelectors: readonly string[],
-): readonly AnalyzedStyleRule[] {
-  if (currentBaseSelectors.length === 0) return [];
-  const result: AnalyzedStyleRule[] = [];
-  const seen = new Set<AnalyzedStyleRule>();
-  for (const baseSel of currentBaseSelectors) {
-    const list = analysis.rulesByBaseSelector.get(baseSel);
-    if (list) {
-      for (const rule of list) {
-        if (!seen.has(rule)) {
-          seen.add(rule);
-          result.push(rule);
-        }
-      }
-    }
-  }
-  return result;
-}
-
 function extractReferencedKeyframeNames(
   animationValue: string | null,
   keyframeNames: ReadonlySet<string>,
@@ -601,6 +554,60 @@ function referencesDisjointTransformKeyframes(
   return false;
 }
 
+function areRulesPairedOnBaseSelector(
+  selfInfo: SelectorAnalysis,
+  otherInfo: SelectorAnalysis,
+  baseSel: string,
+): boolean {
+  const selfExact = selfInfo.exactBaseSelectors.has(baseSel);
+  const otherExact = otherInfo.exactBaseSelectors.has(baseSel);
+  const selfPseudo = selfInfo.pseudoStatefulSelectors.has(baseSel);
+  const otherPseudo = otherInfo.pseudoStatefulSelectors.has(baseSel);
+  const selfCompound = selfInfo.compoundPrefixSelectors.has(baseSel);
+  const otherCompound = otherInfo.compoundPrefixSelectors.has(baseSel);
+
+  if ((selfExact || selfPseudo) && (otherExact || otherPseudo) && (selfPseudo || otherPseudo)) {
+    return true;
+  }
+  if ((selfExact && otherCompound) || (selfCompound && otherExact)) {
+    return true;
+  }
+  return false;
+}
+
+function getPairedRules(
+  analysis: AnalyzedStylesheet,
+  styleRule: CssRuleView,
+  selfInfo: SelectorAnalysis,
+): readonly AnalyzedStyleRule[] {
+  const result: AnalyzedStyleRule[] = [];
+  const seen = new Set<AnalyzedStyleRule>();
+  for (const baseSel of selfInfo.baseSelectors) {
+    const list = analysis.rulesByBaseSelector.get(baseSel);
+    if (!list) continue;
+    for (const other of list) {
+      if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
+        continue;
+      }
+      if (
+        other.selectorText.replace(/\s+/g, ' ').trim() ===
+          styleRule.selectorText.replace(/\s+/g, ' ').trim() &&
+        other.parentAtRule !== styleRule.parentAtRule
+      ) {
+        continue;
+      }
+      if (!areRulesPairedOnBaseSelector(selfInfo, other.selectorInfo, baseSel)) {
+        continue;
+      }
+      if (!seen.has(other)) {
+        seen.add(other);
+        result.push(other);
+      }
+    }
+  }
+  return result;
+}
+
 function matchSingleFunctionStateRule(
   styleRule: CssRuleView,
   ctx: CssMatcherContext,
@@ -631,7 +638,6 @@ function matchSingleFunctionStateRule(
     return null;
   }
 
-  // Only match :hover, :focus, :focus-visible, :focus-within, :active, or :checked with vendor prefix
   if (!/:(?:hover|focus(?:-visible|-within)?|active|checked)\b/i.test(styleRule.selectorText)) {
     return null;
   }
@@ -645,7 +651,6 @@ function matchSingleFunctionStateRule(
     return null;
   }
 
-  // Reject pseudo-element icons/tooltips (::before/::after) or :nth-child/:first-child/:last-child unless vendor-prefixed :checked
   const hasVendorPrefix =
     styleRule.hasProperty('-webkit-transform') ||
     styleRule.hasProperty('-moz-transform') ||
@@ -653,69 +658,32 @@ function matchSingleFunctionStateRule(
   if (/:checked\b/i.test(styleRule.selectorText) && !hasVendorPrefix) {
     return null;
   }
+  if (/::?(?:before|after)\b/i.test(styleRule.selectorText)) {
+    return null;
+  }
   if (
     !hasVendorPrefix &&
-    /::?(?:before|after|nth-child|first-child|last-child|nth-of-type|first-of-type|last-of-type)\b/i.test(
+    /:(?:nth-child|first-child|last-child|nth-of-type|first-of-type|last-of-type)\b/i.test(
       styleRule.selectorText,
     )
   ) {
     return null;
   }
-  if (/::?(?:before|after)\b/i.test(styleRule.selectorText) && /:hover\b/i.test(styleRule.selectorText)) {
-    return null;
-  }
 
   const analysis = analyzeStylesheet(ctx);
-  const selectorInfo = extractSelectorInfo(styleRule.selectorText, true);
-  const relatedRules = getRelatedRulesByBaseSelector(analysis, selectorInfo.baseSelectors);
+  const selectorInfo = extractSelectorInfo(styleRule.selectorText);
+  const pairedRules = getPairedRules(analysis, styleRule, selectorInfo);
 
-  for (const other of relatedRules) {
+  for (const other of pairedRules) {
     if (other.transitionsTransform) {
       return null;
     }
-    if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
-      continue;
-    }
     return null;
   }
 
-  // Also check targetTokens for transition: transform or invalid transforms in the stylesheet
-  let targetHasValidBaseTransform = false;
-  for (const token of selectorInfo.targetTokens) {
-    const tokenRules = analysis.rulesByTargetToken.get(token) ?? [];
-    for (const tr of tokenRules) {
-      if (tr.transitionsTransform) {
-        return null;
-      }
-      if (tr.transformValue !== null && tr.parsedTransform === null) {
-        return null;
-      }
-      if (
-        tr.line !== styleRule.line &&
-        tr.parsedTransform !== null &&
-        !STATE_PSEUDO_TEST_RE.test(tr.selectorText)
-      ) {
-        targetHasValidBaseTransform = true;
-      }
-    }
-  }
-
-  // If the state pseudo-class is on an ancestor (e.g. `.parent:hover .child`),
-  // require either vendor-prefixed transform or a paired base transform on `.child`.
-  const isDescendantHover = styleRule.selectorText
-    .split(',')
-    .some((part) => /:(?:hover|focus|active)[^,\s]*\s+\S/i.test(part.trim()));
-  if (isDescendantHover && !hasVendorPrefix && !targetHasValidBaseTransform) {
-    return null;
-  }
-
-  // Reject 3D single-axis rotateX/rotateY or :active img hacks without vendor prefix or base transform
   if (
     !hasVendorPrefix &&
-    !targetHasValidBaseTransform &&
-    (parsedCalls[0]?.name === 'rotatex' ||
-      parsedCalls[0]?.name === 'rotatey' ||
-      /:active\s+img\b/i.test(styleRule.selectorText))
+    (parsedCalls[0]?.name === 'rotatex' || parsedCalls[0]?.name === 'rotatey')
   ) {
     return null;
   }
@@ -774,7 +742,7 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // c) Skip when paired with `transition: transform` on the same rule, shared base selector, or target token.
+    // c) Skip when paired with `transition: transform` on the same rule or a paired base selector.
     const transVal =
       styleRule.getPropertyValue('transition') ??
       styleRule.getPropertyValue('transition-property') ??
@@ -784,10 +752,9 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
     }
 
     const selectorInfo = extractSelectorInfo(styleRule.selectorText);
-    const currentBaseSelectors = selectorInfo.baseSelectors;
-    const relatedRules = getRelatedRulesByBaseSelector(analysis, currentBaseSelectors);
+    const pairedRules = getPairedRules(analysis, styleRule, selectorInfo);
 
-    for (const other of relatedRules) {
+    for (const other of pairedRules) {
       if (other.transitionsTransform) {
         return null;
       }
@@ -797,51 +764,23 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
     }
 
     // e) State and keyframe composition check on normal style rules:
-    // Only match when composed across paired rules sharing a base selector where at least one rule
-    // applies a state pseudo-class or state modifier class on that shared base selector.
-    for (const baseSel of currentBaseSelectors) {
-      const list = analysis.rulesByBaseSelector.get(baseSel) ?? [];
-      const selfIsStateful = selectorInfo.statefulBaseSelectors.has(baseSel);
-      for (const other of list) {
-        if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
-          continue;
-        }
-        if (
-          other.selectorText.replace(/\s+/g, ' ').trim() ===
-            styleRule.selectorText.replace(/\s+/g, ' ').trim() &&
-          other.parentAtRule !== styleRule.parentAtRule
-        ) {
-          continue;
-        }
-        const otherIsStateful = other.statefulBaseSelectors.has(baseSel);
-        if (
-          !selfIsStateful &&
-          !otherIsStateful &&
-          (other.selectorText.includes(',') || styleRule.selectorText.includes(','))
-        ) {
-          continue;
-        }
-        if (
-          isZeroHardwareAccelerationTransform(parsedCalls) &&
-          other.parsedTransform !== null &&
-          isZeroHardwareAccelerationTransform(other.parsedTransform)
-        ) {
-          continue;
-        }
-        if (
-          other.parsedTransform !== null ||
-          other.hasIndividualTransformProp ||
-          referencesDisjointTransformKeyframes(other.animationValue, parsedCalls, analysis)
-        ) {
-          const rawLine = ctx.stylesheetText.split('\n')[styleRule.line - 1] ?? '';
-          if (rawLine.length > 1000) {
-            return null;
-          }
-          return {
-            message: `CSS rule \`${styleRule.selectorText}\` composes \`transform: ${transformVal}\` across paired state selectors; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
-            subPattern: 'paired-state-composition',
-          };
-        }
+    for (const other of pairedRules) {
+      if (
+        isZeroHardwareAccelerationTransform(parsedCalls) &&
+        other.parsedTransform !== null &&
+        isZeroHardwareAccelerationTransform(other.parsedTransform)
+      ) {
+        continue;
+      }
+      if (
+        other.parsedTransform !== null ||
+        other.hasIndividualTransformProp ||
+        referencesDisjointTransformKeyframes(other.animationValue, parsedCalls, analysis)
+      ) {
+        return {
+          message: `CSS rule \`${styleRule.selectorText}\` composes \`transform: ${transformVal}\` across paired state selectors; consider using individual \`translate\`, \`rotate\`, and \`scale\` properties.`,
+          subPattern: 'paired-state-composition',
+        };
       }
     }
 
@@ -894,22 +833,20 @@ export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher
       return null;
     }
 
-    const distinctGroups = new Set(parsedCalls.map((c) => c.group));
-    if (distinctGroups.size < 2) {
+    const nonIdentityGroups = new Set(
+      parsedCalls.filter((c) => !isIdentityTransformCall(c)).map((c) => c.group),
+    );
+    if (nonIdentityGroups.size < 2) {
       return null;
     }
 
     const analysis = analyzeStylesheet(ctx);
-    const selectorInfo = extractSelectorInfo(styleRule.selectorText, true);
-    const currentBaseSelectors = selectorInfo.baseSelectors;
-    const relatedRules = getRelatedRulesByBaseSelector(analysis, currentBaseSelectors);
+    const selectorInfo = extractSelectorInfo(styleRule.selectorText);
+    const pairedRules = getPairedRules(analysis, styleRule, selectorInfo);
 
-    for (const other of relatedRules) {
+    for (const other of pairedRules) {
       if (other.transitionsTransform) {
         return null;
-      }
-      if (other.line === styleRule.line && other.selectorText === styleRule.selectorText) {
-        continue;
       }
       return null;
     }
@@ -920,51 +857,31 @@ export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher
       return null;
     }
 
-    // Skip static CSS checkmark pseudo-elements (:checked + ...::after / ::before with border)
-    if (
-      /:checked\b/i.test(styleRule.selectorText) &&
-      /::?(?:before|after)\b/i.test(styleRule.selectorText) &&
-      (styleRule.hasProperty('border-left') ||
-        styleRule.hasProperty('border-bottom') ||
-        styleRule.hasProperty('border'))
-    ) {
-      return null;
-    }
-
-    // Skip 2-function chains where one call is a 0deg identity rotation on :nth-last-child/:nth-child
-    if (
-      /:nth-(?:last-)?child\b/i.test(styleRule.selectorText) &&
-      parsedCalls.some((c) => c.group === 2 && isIdentityTransformCall(c))
-    ) {
-      return null;
-    }
-
-    // Require interactive state selector, transition declaration, or interactive override on the same target token
+    // Require interactive state pseudo-class, compound modifier class, or transition declaration
+    const hasPseudoElement = /::?(?:before|after)\b/i.test(styleRule.selectorText);
     const hasOwnTransition =
       (transVal !== null && !/^\s*opacity\b/i.test(transVal)) ||
       styleRule.hasProperty('transition-property');
-    const hasInteractiveSelector = STANDALONE_INTERACTIVE_SELECTOR_RE.test(styleRule.selectorText);
-    const selfHasPseudoElement = /::?(?:before|after)\b/i.test(styleRule.selectorText);
-    let hasInteractiveTargetOverride = false;
-    if (!hasInteractiveSelector && !hasOwnTransition && !selfHasPseudoElement) {
-      for (const token of selectorInfo.targetTokens) {
-        const tokenRules = analysis.rulesByTargetToken.get(token) ?? [];
-        if (
-          tokenRules.some(
-            (tr) =>
-              tr.line !== styleRule.line &&
-              tr.parsedTransform !== null &&
-              !/::?(?:before|after)\b/i.test(tr.selectorText) &&
-              STANDALONE_INTERACTIVE_SELECTOR_RE.test(tr.selectorText),
-          )
-        ) {
-          hasInteractiveTargetOverride = true;
-          break;
-        }
-      }
-    }
-    if (!hasInteractiveSelector && !hasOwnTransition && !hasInteractiveTargetOverride) {
+    const hasStatePseudo = STATE_PSEUDO_TEST_RE.test(styleRule.selectorText);
+    const hasCompoundModifier = selectorInfo.compoundPrefixSelectors.size > 0;
+    if (!hasStatePseudo && !hasCompoundModifier && !hasOwnTransition) {
       return null;
+    }
+    if (
+      /:(?:nth-child|nth-last-child|first-child|last-child|nth-of-type|first-of-type|last-of-type)\b/i.test(
+        styleRule.selectorText,
+      ) &&
+      !hasOwnTransition
+    ) {
+      return null;
+    }
+    if (hasPseudoElement) {
+      if (!hasStatePseudo && !hasOwnTransition) {
+        return null;
+      }
+      if (/:checked\b/i.test(styleRule.selectorText) && !hasOwnTransition) {
+        return null;
+      }
     }
 
     return {

@@ -84,9 +84,6 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
     if (!selector.toLowerCase().includes(':invalid')) {
       return null;
     }
-    if (/\/bootstrap\/|(?:^|\/)bootstrap(?:\.[a-z0-9_-]+)*\.css$/i.test(ctx.filePath)) {
-      return null;
-    }
     if (
       selector.includes(':user-invalid') ||
       ctx.stylesheetText.includes(':user-invalid')
@@ -109,23 +106,24 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // Skip checkbox/radio (.form-check-input), file inputs (.form-control-file/.custom-file-input), input-group z-index layering, and Parsley theme selectors
+    // Skip rules that only reset background-image: none or adjust z-index without styling error feedback,
+    // or framework rules that couple :invalid with manual .is-invalid classes in a comma list or sibling (~) combinators
+    const bgImage = styleRule.getPropertyValue('background-image')?.trim().toLowerCase();
+    const hasVisualErrorProperty =
+      styleRule.hasProperty('border-color') ||
+      styleRule.hasProperty('border') ||
+      styleRule.hasProperty('color') ||
+      styleRule.hasProperty('box-shadow') ||
+      styleRule.hasProperty('outline') ||
+      styleRule.hasProperty('background-color') ||
+      styleRule.hasProperty('display');
     if (
-      /\.(?:form-check-input|form-control-file|custom-file-input|input-group|parsley-error)\b/i.test(selectorWithoutNot) ||
-      (/\.custom-control-input\b/i.test(selectorWithoutNot) &&
-        !/:not\(\s*:checked\s*\)/i.test(selector))
+      !hasVisualErrorProperty &&
+      (bgImage === 'none' || styleRule.hasProperty('z-index'))
     ) {
       return null;
     }
-
-    // Skip rules that only hide validation background icons (background-image: none) without styling error feedback
-    const bgImage = styleRule.getPropertyValue('background-image')?.trim().toLowerCase();
-    if (
-      bgImage === 'none' &&
-      !styleRule.hasProperty('border-color') &&
-      !styleRule.hasProperty('color') &&
-      !styleRule.hasProperty('box-shadow')
-    ) {
+    if (selectorWithoutNot.includes(',') && /\.is-invalid\b/i.test(selectorWithoutNot)) {
       return null;
     }
 
@@ -133,12 +131,6 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
     const hasTouchedDirtyInvalid = TOUCHED_DIRTY_INVALID_SELECTOR_REGEX.test(selectorWithoutNot);
 
     if (!hasRequiredInvalid && !hasTouchedDirtyInvalid) {
-      return null;
-    }
-
-    // Skip minified single-line CSS bundles where snippet context is unreadable
-    const rawLine = ctx.stylesheetText.split('\n')[styleRule.line - 1] ?? '';
-    if (rawLine.length > 1000) {
       return null;
     }
 
@@ -175,7 +167,7 @@ export const requiredFieldFeedbackCssRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The stylesheet already uses :user-invalid or guards :invalid inside @supports not selector(:user-invalid).',
-      'The selector only negates :invalid inside :not(:invalid) or only sets background-image: none.',
+      'The selector only negates :invalid inside :not(:invalid) or only sets background-image: none or z-index without visual error styling.',
     ],
   },
 };
