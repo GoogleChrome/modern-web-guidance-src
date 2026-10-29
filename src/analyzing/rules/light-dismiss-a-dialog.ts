@@ -272,9 +272,9 @@ function findClickListeners(sourceFile: SourceFile): ClickCandidate[] {
 export const lightDismissADialogJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    ['click', '.onclick'],
-    ['.close(', 'close('],
-    ['.target', 'getBoundingClientRect'],
+    ['click', 'onclick'],
+    ['close'],
+    ['target', 'getBoundingClientRect'],
   ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     // If guarded by closedBy in file or feature check, skip

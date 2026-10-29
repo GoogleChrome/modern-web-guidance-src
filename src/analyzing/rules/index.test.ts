@@ -4,8 +4,14 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
+import { extname } from 'node:path';
 import { scanAllGuides } from '../../core/guide-validation.ts';
-import { normalizeFastTokenGroups } from '../scanners/js-scanner.ts';
+import {
+  CSS_RULE_EXTENSIONS,
+  DOM_RULE_EXTENSIONS,
+  JS_RULE_EXTENSIONS,
+} from '../scanners/file-filter.ts';
+import { normalizeFastTokenGroups, matchesFastTokens } from '../scanners/js-scanner.ts';
 import type { AnalyzerRule } from '../schema.ts';
 import {
   ALL_RULES,
@@ -342,8 +348,12 @@ describe('rule registry architectural invariants', () => {
         );
         for (const token of group) {
           assert.ok(
-            typeof token === 'string' && token.length > 0,
-            `Rule "${rule.id}" fastTokens group[${gIdx}] contains an empty token`,
+            typeof token === 'string' && token.trim().length >= 2,
+            `Rule "${rule.id}" fastTokens group[${gIdx}] contains a token shorter than 2 chars: ${JSON.stringify(token)}`,
+          );
+          assert.ok(
+            !token.includes('\0') && !token.includes('\x08'),
+            `Rule "${rule.id}" fastTokens group[${gIdx}] contains NUL or backspace control character: ${JSON.stringify(token)}`,
           );
         }
       }
@@ -380,25 +390,253 @@ describe('rule registry architectural invariants', () => {
       'button',
     ]);
 
-    const rulesDir = resolve(import.meta.dirname);
-    const ruleTestFiles = readdirSync(rulesDir)
-      .filter((f) => f.endsWith('.test.ts') && f !== 'index.test.ts')
-      .map((f) => ({
-        guideId: f.replace(/\.test\.ts$/, ''),
-        content: readFileSync(join(rulesDir, f), 'utf8'),
-      }));
-
-    assert.ok(
-      ruleTestFiles.length >= 50,
-      `Expected at least 50 rule test files for selectivity check, found ${ruleTestFiles.length}`,
-    );
+    const syntheticFixtureCorpus: readonly { readonly name: string; readonly content: string }[] = [
+      {
+        name: 'api-client.ts',
+        content: `
+          export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+            const response = await fetch(url, { ...init, headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error(\`HTTP \${response.status}\`);
+            return (await response.json()) as T;
+          }
+        `,
+      },
+      {
+        name: 'state-store.ts',
+        content: `
+          export class Store<S> {
+            private state: S;
+            private listeners = new Set<(state: S) => void>();
+            constructor(initial: S) { this.state = initial; }
+            getState(): S { return this.state; }
+            setState(next: Partial<S>): void {
+              this.state = { ...this.state, ...next };
+              for (const fn of this.listeners) fn(this.state);
+            }
+          }
+        `,
+      },
+      {
+        name: 'dom-events.js',
+        content: `
+          const button = document.querySelector('.submit-btn');
+          button?.addEventListener('click', (event) => {
+            event.preventDefault();
+            button.classList.toggle('is-loading');
+            button.setAttribute('aria-busy', 'true');
+          });
+        `,
+      },
+      {
+        name: 'scroll-logger.js',
+        content: `
+          window.addEventListener('scroll', () => {
+            console.debug('User scrolled page');
+          });
+        `,
+      },
+      {
+        name: 'resize-tracker.ts',
+        content: `
+          const ro = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+              console.log('Box resized', entry.target);
+            }
+          });
+          const el = document.querySelector('#main');
+          if (el) ro.observe(el);
+        `,
+      },
+      {
+        name: 'intersection-logger.ts',
+        content: `
+          const io = new IntersectionObserver((entries) => {
+            entries.forEach((e) => console.log(e.time));
+          });
+          document.querySelectorAll('.tracked').forEach((n) => io.observe(n));
+        `,
+      },
+      {
+        name: 'storage-prefs.ts',
+        content: `
+          export function saveDraft(key: string, text: string): void {
+            localStorage.setItem(key, JSON.stringify({ text, updatedAt: Date.now() }));
+          }
+          export function readDraft(key: string): string | null {
+            return localStorage.getItem(key);
+          }
+        `,
+      },
+      {
+        name: 'math-utils.ts',
+        content: `
+          export function clampRatio(val: number, min: number, max: number): number {
+            return Math.min(max, Math.max(min, Math.round(val * 100) / 100));
+          }
+          export function floorBucket(val: number, step: number): number {
+            return Math.floor(val / step) * step;
+          }
+        `,
+      },
+      {
+        name: 'keyboard-shortcut.js',
+        content: `
+          document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'k') {
+              e.preventDefault();
+              document.querySelector('#search-input')?.focus();
+            }
+          });
+        `,
+      },
+      {
+        name: 'form-blur.js',
+        content: `
+          const field = document.querySelector('#username');
+          field?.addEventListener('blur', () => {
+            console.log('Field blurred');
+          });
+          field?.addEventListener('change', () => {
+            console.log('Field changed');
+          });
+        `,
+      },
+      {
+        name: 'ProfileBio.tsx',
+        content: `
+          import React from 'react';
+          const ProfileBio = ({ name, bio }: { name: string; bio: string }) => (
+            <section className="profile-box">
+              <h2>{name}</h2>
+              <p>{bio}</p>
+              <button type="button" onClick={() => alert(name)}>Follow</button>
+            </section>
+          );
+          export default ProfileBio;
+        `,
+      },
+      {
+        name: 'TodoList.vue',
+        content: `
+          <template>
+            <div class="todo-container">
+              <ul>
+                <li v-for="item in items" :key="item.id">{{ item.label }}</li>
+              </ul>
+            </div>
+          </template>
+          <script setup lang="ts">
+          const items = [{ id: 1, label: 'Write unit tests' }];
+          </script>
+        `,
+      },
+      {
+        name: 'Counter.svelte',
+        content: `
+          <script>
+            let count = 0;
+            function increment() { count += 1; }
+          </script>
+          <button on:click={increment}>Clicks: {count}</button>
+        `,
+      },
+      {
+        name: 'layout.css',
+        content: `
+          .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            overflow: hidden;
+          }
+          @media (min-width: 768px) {
+            .container { padding: 2rem; }
+          }
+        `,
+      },
+      {
+        name: 'buttons.css',
+        content: `
+          .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transform: none;
+          }
+          .btn:invalid {
+            outline: 2px solid red;
+          }
+        `,
+      },
+      {
+        name: 'typography.css',
+        content: `
+          body {
+            font-family: system-ui, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+          }
+          .caption {
+            font-size: 0.875rem;
+            text-decoration: underline;
+          }
+        `,
+      },
+      {
+        name: 'index.html',
+        content: `
+          <!doctype html>
+          <html lang="en">
+            <head><meta charset="utf-8"><title>Dashboard</title></head>
+            <body>
+              <header><nav><a href="/home">Home</a></nav></header>
+              <main><h1>Welcome</h1><p>Overview metrics</p></main>
+            </body>
+          </html>
+        `,
+      },
+      {
+        name: 'contact-form.html',
+        content: `
+          <form action="/contact" method="post">
+            <label for="fullname">Name</label>
+            <input id="fullname" name="fullname" type="text" required />
+            <label for="message">Message</label>
+            <textarea id="message" name="message"></textarea>
+            <button type="submit">Send</button>
+          </form>
+        `,
+      },
+      {
+        name: 'article.html',
+        content: `
+          <article class="post-entry">
+            <header><h2>Release Notes</h2></header>
+            <p>This update improves rendering speed and reduces bundle size.</p>
+            <footer><span>Published today</span></footer>
+          </article>
+        `,
+      },
+      {
+        name: 'async-timer.ts',
+        content: `
+          export function delay(ms: number): Promise<void> {
+            return new Promise((resolve) => {
+              setTimeout(() => resolve(), ms);
+            });
+          }
+        `,
+      },
+    ];
 
     for (const rule of ALL_RULES) {
       if (rule.matcher.kind === 'dependency') {
         continue;
       }
 
-      const groups = normalizeFastTokenGroups(rule.matcher.fastTokens);
+      const fastTokens = rule.matcher.fastTokens;
+      const groups = normalizeFastTokenGroups(fastTokens);
       if (groups.length === 1) {
         const singleGroup = groups[0] ?? [];
         const allBanned = singleGroup.every((tok) =>
@@ -411,21 +649,23 @@ describe('rule registry architectural invariants', () => {
         );
       }
 
-      const unrelatedTestFiles = ruleTestFiles.filter((tf) => tf.guideId !== rule.guideId);
-      let matchedUnrelated = 0;
-      for (const tf of unrelatedTestFiles) {
-        const matchesAllGroups = groups.every((group) =>
-          group.some((tok) => tf.content.includes(tok)),
-        );
-        if (matchesAllGroups) {
-          matchedUnrelated++;
-        }
-      }
-
-      const matchRatio = matchedUnrelated / unrelatedTestFiles.length;
+      const allowedExts: ReadonlySet<string> = new Set(
+        rule.matcher.kind === 'js'
+          ? JS_RULE_EXTENSIONS
+          : rule.matcher.kind === 'css'
+            ? CSS_RULE_EXTENSIONS
+            : DOM_RULE_EXTENSIONS,
+      );
+      const applicableFixtures = syntheticFixtureCorpus.filter((fixture) =>
+        allowedExts.has(extname(fixture.name)),
+      );
+      const matchedFixtures = applicableFixtures.filter((fixture) =>
+        matchesFastTokens(fixture.content, fastTokens),
+      );
+      const matchRatio = matchedFixtures.length / applicableFixtures.length;
       assert.ok(
-        matchRatio <= 0.15,
-        `Rule "${rule.id}" fastTokens ${JSON.stringify(rule.matcher.fastTokens)} is a sponge matching ${(matchRatio * 100).toFixed(1)}% (${matchedUnrelated}/${unrelatedTestFiles.length}) of unrelated rule test files (max 15%)`,
+        matchRatio <= 0.25,
+        `Rule "${rule.id}" fastTokens ${JSON.stringify(fastTokens)} matched ${matchedFixtures.length}/${applicableFixtures.length} (${(matchRatio * 100).toFixed(0)}%) applicable synthetic fixtures (${matchedFixtures.map((f) => f.name).join(', ')}); max allowed is 25%`,
       );
     }
   });

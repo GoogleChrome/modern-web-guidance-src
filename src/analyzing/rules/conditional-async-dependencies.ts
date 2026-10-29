@@ -191,9 +191,8 @@ export const conditionalAsyncDependenciesPackageMatcher: DependencyRuleMatcher =
 
 export const conditionalAsyncDependenciesJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
-    ['loadjs', '$script', 'scriptjs', '.createElement('],
-    ['loadjs', '$script', 'scriptjs', "'script'", '"script"', '`script`'],
-    ['loadjs', '$script', 'scriptjs', '.src', "'src'", '"src"'],
+    ['loadjs', '$script', 'scriptjs', 'createElement'],
+    ['loadjs', '$script', 'scriptjs', 'script', 'Script', 'async', 'onload', 'addEventListener', 'src'],
   ],
   dedupeLines: true,
   matchCall: (node) => matchScriptLoaderCall(node),

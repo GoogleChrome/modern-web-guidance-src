@@ -15,10 +15,7 @@ const VALID_PASSWORD_AUTOCOMPLETE_TOKENS: ReadonlySet<string> = new Set([
 const autofillSignInFormMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input[type="password"]',
-  fastTokens: [
-    ['<input', '<Input'],
-    ['type="password"', "type='password'"],
-  ],
+  fastTokens: ['password'],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {

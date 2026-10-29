@@ -49,9 +49,8 @@ const BOX_SHAPE_PROPERTIES = new Set([
 export const customTextDecorationsCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: [
-    ['border-bottom:', 'border-bottom-width:'],
-    ['text-decoration:', 'text-decoration-line:', '.underline'],
-    ['text-decoration: none', 'text-decoration:none', 'text-decoration-line: none', 'text-decoration-line:none', '.underline'],
+    ['border-bottom'],
+    ['text-decoration', 'underline'],
   ] as const,
   matchRule(styleRule: CssRuleView, _ctx: CssMatcherContext): { message: string } | null {
     const selector = styleRule.selectorText.trim();

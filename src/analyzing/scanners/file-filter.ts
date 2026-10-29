@@ -120,6 +120,8 @@ export const JS_RULE_EXTENSIONS = [
   '.vue',
   '.svelte',
   '.astro',
+  '.html',
+  '.htm',
 ] as const;
 
 export const CSS_RULE_EXTENSIONS = [

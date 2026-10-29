@@ -286,7 +286,7 @@ const dynamicSiblingAnimationsJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
     ['animationDelay', 'transitionDelay', 'animation-delay', 'transition-delay'],
-    ['.style.', 'setProperty'],
+    ['style', 'setProperty'],
   ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];

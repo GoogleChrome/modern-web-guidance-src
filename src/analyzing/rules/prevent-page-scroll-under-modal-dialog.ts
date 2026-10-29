@@ -346,11 +346,7 @@ export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
     [
-      '.style.overflow',
-      "'overflow'",
-      '"overflow"',
-      "'overflow-y'",
-      '"overflow-y"',
+      'overflow',
       'modal-open',
       'dialog-open',
       'no-scroll',

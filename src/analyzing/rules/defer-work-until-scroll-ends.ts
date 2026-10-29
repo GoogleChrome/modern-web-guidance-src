@@ -422,7 +422,7 @@ function matchOnscrollAssignment(binaryExpr: BinaryExpression): AnalyzerMatch | 
 export const deferWorkUntilScrollEndsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    ["'scroll'", '"scroll"', '`scroll`', 'onscroll', '.scroll('],
+    ['scroll', 'onscroll'],
     ['setTimeout', 'debounce', 'Debounce'],
     ['clearTimeout', 'debounce', 'Debounce'],
   ],

@@ -275,7 +275,7 @@ function matchTimestampSortCall(
 export const sortHighPrecisionTimestampsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    ['.sort(', '.toSorted('],
+    ['sort', 'toSorted'],
     ['Date.parse', 'new Date'],
   ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {

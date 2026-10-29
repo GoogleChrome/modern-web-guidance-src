@@ -38,9 +38,8 @@ export const switchMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input[type="checkbox"][role="switch"]',
   fastTokens: [
-    ['<input', '<Input'],
     ['checkbox'],
-    ['role="switch"', "role='switch'"],
+    ['switch'],
   ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['switch'],

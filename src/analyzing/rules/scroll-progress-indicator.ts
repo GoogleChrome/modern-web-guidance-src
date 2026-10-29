@@ -154,8 +154,8 @@ export const scrollProgressIndicatorMatcher: JsRuleMatcher = createJsCallMatcher
   fastTokens: [
     ['scroll', 'onscroll'],
     ['scrollTop', 'scrollY', 'pageYOffset'],
-    ['scrollHeight', 'documentHeight', 'offsetHeight', '.height('],
-    ['clientHeight', 'innerHeight', '.height('],
+    ['scrollHeight', 'documentHeight', 'offsetHeight', 'height'],
+    ['clientHeight', 'innerHeight', 'height'],
     ['width', 'scale', 'setProperty'],
   ],
   isGuarded: (node) => isGuardedByScrollTimelineSupport(node),

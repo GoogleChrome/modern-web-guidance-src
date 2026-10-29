@@ -17,10 +17,7 @@ const SIGN_UP_SUB_PATTERN =
 export const autofillSignUpFormMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input[type="password"]',
-  fastTokens: [
-    ['<input', '<Input'],
-    ['type="password"', "type='password'"],
-  ],
+  fastTokens: ['password'],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {

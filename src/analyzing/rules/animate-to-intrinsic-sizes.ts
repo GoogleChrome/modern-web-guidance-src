@@ -79,8 +79,8 @@ function isIntrinsicSizeMaxHeight(styleRule: CssRuleView, stylesheetText: string
 const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: [
-    ['max-height:'],
-    ['transition:', 'transition-property:'],
+    ['max-height'],
+    ['transition'],
   ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     // 1. If stylesheet already opts into modern intrinsic sizing interpolation, skip

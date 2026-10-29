@@ -293,18 +293,18 @@ export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
 
 export const selectMenuInteractionJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
-    ["'blur'", '"blur"', '`blur`', "'change'", '"change"', '`change`', '.blur(', '.change(', 'onblur', 'onchange'],
+    ['blur', 'change', 'onblur', 'onchange'],
     ['select', 'Select'],
-    ['.value', 'checkValidity', 'validity'],
+    ['value', 'checkValidity', 'validity'],
     [
-      '.classList.',
-      '.addClass(',
-      '.removeClass(',
-      '.toggleClass(',
-      '.setAttribute(',
-      '.removeAttribute(',
-      '.toggleAttribute(',
-      '.className',
+      'classList',
+      'addClass',
+      'removeClass',
+      'toggleClass',
+      'setAttribute',
+      'removeAttribute',
+      'toggleAttribute',
+      'className',
     ],
     ['invalid', 'Invalid', 'error', 'Error', 'touched', 'Touched', 'dirty', 'Dirty', 'valid', 'Valid'],
   ],

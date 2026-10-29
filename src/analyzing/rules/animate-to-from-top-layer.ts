@@ -90,7 +90,7 @@ function matchTopLayerExitListener(callExpr: CallExpression): string | null {
 export const animateToFromTopLayerMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
     ['animationend', 'transitionend', 'webkitAnimationEnd', 'webkitTransitionEnd'],
-    ['.close(', '.hidePopover('],
+    ['close', 'hidePopover'],
   ],
   isGuarded: (node) => isGuardedByTopLayerSupport(node),
   matchCall: (node) => matchTopLayerExitListener(node),

@@ -19,7 +19,7 @@ import type {
 export const PULL_TO_REVEAL_GUIDE_HASH = 'f9c09a067f0a';
 
 const PULL_TO_REVEAL_FAST_TOKENS = [
-  ['.scrollTop', 'scrollTo('],
+  ['scrollTop', 'scrollTo'],
   ['offsetHeight', 'clientHeight', 'getBoundingClientRect'],
   [
     'search',

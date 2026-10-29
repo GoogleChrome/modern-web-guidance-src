@@ -11,9 +11,11 @@ import type {
 
 export const PROGRESS_RING_GUIDE_HASH = 'd83085aceb0f';
 
-const FAST_TOKENS = [
-  ['strokeDashoffset', 'strokeDasharray', 'stroke-dashoffset', 'stroke-dasharray'],
-  ['Math.PI', 'circumference', '/ 100', '* 0.01'],
+const FAST_TOKENS: readonly string[] = [
+  'strokeDashoffset',
+  'strokeDasharray',
+  'stroke-dashoffset',
+  'stroke-dasharray',
 ] as const;
 
 function isProgressRingCalculation(scopeText: string): boolean {
