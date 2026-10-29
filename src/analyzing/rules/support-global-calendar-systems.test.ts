@@ -94,6 +94,9 @@ void test('support-global-calendar-systems JS matcher', async (t) => {
       function convert(jalaali) {
         return jalaali.toGregorian(1404, 1, 1);
       }
+      function toJalaali(gy, gm, gd) {
+        return jalaali.toJalaali(gy, gm + 1, gd);
+      }
     `;
     const matches = matchJsRule(supportGlobalCalendarSystemsJsMatcher, 'intl-calendar.js', code);
     assert.equal(matches.length, 0);

@@ -76,4 +76,26 @@ void test('custom-button-actions: negative / exempt cases', async (t) => {
     const matches = matchJsRule(customButtonActionsJsMatcher, 'counter.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts non-button element listeners, self $element toggles, and native input Event dispatch', () => {
+    const code = `
+      annoteDlNode.addEventListener('click', (event) => {
+        const clickedEl = event.target;
+        if (clickedEl.dataset.targetCell) {
+          clickedEl.classList.add('code-annotation-active');
+        }
+      });
+
+      button.$element.addEventListener('click', () => {
+        button.$element.classList.toggle('is-active');
+      });
+
+      resetBtn.addEventListener('click', () => {
+        const target = document.getElementById('field');
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    `;
+    const matches = matchJsRule(customButtonActionsJsMatcher, 'non-invoker.js', code);
+    assert.equal(matches.length, 0);
+  });
 });

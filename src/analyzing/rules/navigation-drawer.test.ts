@@ -140,4 +140,33 @@ void test('navigation-drawer: negative / exempt cases', async (suiteContext) => 
     const matches = scanHtml('tests/fixtures/drawer.html', html, [domMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await suiteContext.test('exempts IIFEs and commented-out style.transform in JS', () => {
+    const code = `
+      (function(w, d) {
+        var drawer = d.getElementById('drawer');
+        drawer.classList.add('open');
+        d.body.style.overflow = 'hidden';
+      })(window, document);
+
+      function openMenu(drawer) {
+        // drawer.style.transform = 'translateX(0)';
+        const overlay = document.querySelector('.overlay');
+        return overlay;
+      }
+    `;
+    const { matches } = scanJsSource('bundle.js', code, [jsMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await suiteContext.test('exempts drawer sub-elements, Bootstrap grid columns, and static sidenav divs in HTML', () => {
+    const html = `
+      <div class="drawer-item">Item</div>
+      <div class="offcanvas-header">Header</div>
+      <div class="col-sm-3 sidenav">Sidebar</div>
+      <div id="notifications" class="tile drawer animated">Alert</div>
+    `;
+    const matches = scanHtml('page.html', html, [domMatcher]);
+    assert.equal(matches.length, 0);
+  });
 });

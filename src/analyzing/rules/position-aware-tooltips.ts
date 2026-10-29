@@ -105,7 +105,7 @@ function isGuardedByAnchorSupport(node: Node): boolean {
 
 function matchPopperTooltipCall(callExpr: CallExpression): string | null {
   const args = callExpr.getArguments();
-  if (args.length < 2) {
+  if (args.length < 3) {
     return null;
   }
 
@@ -131,14 +131,33 @@ function matchPopperTooltipCall(callExpr: CallExpression): string | null {
     return null;
   }
 
+  const sfText = callExpr.getSourceFile().getFullText();
+  const scope =
+    callExpr.getFirstAncestor((a) => Node.isFunctionLikeDeclaration(a)) ??
+    callExpr.getSourceFile();
+  if (
+    !TOOLTIP_CONTEXT_REGEX.test(callExpr.getText()) &&
+    !/\barrow\b/i.test(sfText)
+  ) {
+    return null;
+  }
+  if (
+    !/\b(?:arrow|fallbackPlacements)\b/i.test(scope.getText()) &&
+    /\b(?:shadowRoot|Teleport|useRef)\b/.test(sfText)
+  ) {
+    return null;
+  }
+
   const apiName = isPopper ? 'createPopper()' : 'computePosition()';
   return `JavaScript ${apiName} tooltip positioning can be modernized with CSS Anchor Positioning, position-try-fallbacks, and @container anchored(fallback: ...).`;
 }
 
 export const positionAwareTooltipsJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['createPopper', 'computePosition'],
-  isGuarded: (node) => isGuardedByAnchorSupport(node),
-  matchCall: (node) => matchPopperTooltipCall(node),
+  matchCall: (node) => {
+    const msg = matchPopperTooltipCall(node);
+    return msg && !isGuardedByAnchorSupport(node) ? msg : null;
+  },
 });
 
 export const positionAwareTooltipsJsRule: AnalyzerRule = {

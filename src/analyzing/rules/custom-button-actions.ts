@@ -22,6 +22,10 @@ const BUTTON_IDENTIFIER_REGEX =
 const TARGET_IDENTIFIER_REGEX =
   /\b(?:target|actionTarget|targetEl|element|box|panel|card|output)\b/i;
 
+const DELEGATED_ROOT_REGEX = /^(?:(?:window\.)?document(?:\.body)?|window)$/;
+const DELEGATED_SELECTOR_REGEX =
+  /(?:closest|matches)\s*\(\s*['"][^'"]*(?:button|data-action|data-command)/i;
+
 /**
  * Checks whether an expression references getElementById, querySelector, or a target element.
  */
@@ -51,8 +55,7 @@ function referencesTargetElement(node: Node): boolean {
       const parent = child.getParent();
       if (
         Node.isPropertyAccessExpression(parent) &&
-        (parent.getExpression().getText() === 'e' || parent.getExpression().getText() === 'event') &&
-        name === 'target'
+        parent.getNameNode() === child
       ) {
         return;
       }
@@ -69,19 +72,25 @@ function referencesTargetElement(node: Node): boolean {
 /**
  * Checks whether the handler triggers a custom action or mutates target state.
  */
-function triggersCustomAction(node: Node): boolean {
-  let found = false;
+function triggersCustomAction(node: Node, listenerTargetText: string): boolean {
+  let hasCustomEventDispatch = false;
+  let hasExternalClassList = false;
 
   node.forEachDescendant((child) => {
-    if (found) return;
-
     if (Node.isCallExpression(child)) {
       const expr = unwrapExpression(child.getExpression());
       if (Node.isPropertyAccessExpression(expr)) {
         const methodName = expr.getName();
         // Custom event dispatch on target
         if (methodName === 'dispatchEvent') {
-          found = true;
+          const firstArg = child.getArguments()[0];
+          const unwrappedArg = firstArg ? unwrapExpression(firstArg) : undefined;
+          if (unwrappedArg && Node.isNewExpression(unwrappedArg)) {
+            const ctor = unwrapExpression(unwrappedArg.getExpression()).getText();
+            if (ctor === 'CustomEvent' || ctor === 'CommandEvent') {
+              hasCustomEventDispatch = true;
+            }
+          }
           return;
         }
         // classList.toggle / add / remove
@@ -93,11 +102,13 @@ function triggersCustomAction(node: Node): boolean {
               classListTarget !== 'this' &&
               classListTarget !== 'e.target' &&
               classListTarget !== 'event.target' &&
+              classListTarget !== 'e.currentTarget' &&
+              classListTarget !== 'event.currentTarget' &&
               classListTarget !== 'btn' &&
-              classListTarget !== 'button'
+              classListTarget !== 'button' &&
+              classListTarget !== listenerTargetText
             ) {
-              found = true;
-              return;
+              hasExternalClassList = true;
             }
           }
         }
@@ -105,20 +116,13 @@ function triggersCustomAction(node: Node): boolean {
     }
   });
 
-  return found;
+  if (hasCustomEventDispatch) return true;
+  return hasExternalClassList && !node.getText().includes('createElement');
 }
 
 export const customButtonActionsJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: [
-    'addEventListener',
-    'click',
-    'commandfor',
-    'command',
-    'data-action',
-    'data-command',
-    'data-target',
-  ] as const,
+  fastTokens: ['classList', 'dispatchEvent'] as const,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
 
@@ -132,8 +136,13 @@ export const customButtonActionsJsMatcher: JsRuleMatcher = {
       return matches;
     }
 
-    // If file already uses commandfor attribute, skip
-    if (ctx.fileContent.includes('commandfor=') || ctx.fileContent.includes('commandFor')) {
+    // If file already uses commandfor attribute or lacks click listener, skip
+    if (
+      ctx.fileContent.includes('commandfor=') ||
+      ctx.fileContent.includes('commandFor') ||
+      !ctx.fileContent.includes('addEventListener') ||
+      !ctx.fileContent.includes('click')
+    ) {
       return matches;
     }
 
@@ -147,26 +156,22 @@ export const customButtonActionsJsMatcher: JsRuleMatcher = {
 
       const { targetNode, handlerNode } = matchedListener;
 
-      // Check whether target of listener is a button
+      const targetText = targetNode?.getText() ?? '';
       let isButtonTarget = false;
-      if (targetNode) {
-        const targetText = targetNode.getText();
-        if (
-          BUTTON_IDENTIFIER_REGEX.test(targetText) ||
+      if (
+        targetNode &&
+        (BUTTON_IDENTIFIER_REGEX.test(targetText) ||
           targetText.includes('button') ||
-          targetText.includes('btn')
-        ) {
-          isButtonTarget = true;
-        }
+          targetText.includes('btn'))
+      ) {
+        isButtonTarget = true;
       }
 
-      // Or delegated click on document matching button or data-action / data-target
+      // Or delegated click on document matching button or data-action / data-command
       const handlerText = handlerNode.getText();
       const isDelegatedButton =
-        handlerText.includes('button') ||
-        handlerText.includes('data-target') ||
-        handlerText.includes('data-action') ||
-        handlerText.includes('data-command');
+        DELEGATED_ROOT_REGEX.test(targetText) &&
+        DELEGATED_SELECTOR_REGEX.test(handlerText);
 
       if (!isButtonTarget && !isDelegatedButton) {
         continue;
@@ -181,7 +186,10 @@ export const customButtonActionsJsMatcher: JsRuleMatcher = {
         continue;
       }
 
-      if (referencesTargetElement(handlerNode) && triggersCustomAction(handlerNode)) {
+      if (
+        referencesTargetElement(handlerNode) &&
+        triggersCustomAction(handlerNode, targetText)
+      ) {
         matches.push({
           line: call.getStartLineNumber(),
           column: call.getStartLinePos(),
