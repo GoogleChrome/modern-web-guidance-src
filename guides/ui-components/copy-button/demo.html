@@ -478,7 +478,7 @@ dialog.showModal();</code></pre>
 
     let selectedText = '';
     const timers = new WeakMap();
-    // Page-wide: VoiceOver skips a message equal to the previous one, even from another region
+    // Page-wide: VoiceOver skips a repeat of the previous message from the same region; one shared value is simplest
     let lastMessage = '';
 
     /* ---------- Helpers ---------- */
