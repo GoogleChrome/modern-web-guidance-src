@@ -163,7 +163,7 @@ Write a Playwright test script named \`${opts.graderFile}\` that directly valida
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Requirements**: \`${opts.expectationsFile}\`
-3. **Developer Task**: \`${taskFile}\` (the request the solution agents received; use it only to find the hooks it names, never as a source of tests beyond \`${opts.expectationsFile}\`)
+3. **Developer Task**: \`${taskFile}\` (the request the solution agents received; it may name hooks you can use, but it is never a source of tests beyond \`${opts.expectationsFile}\`)
 4. **Golden Solution Diffs**:
 ${solutionList}
 5. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of tests)
