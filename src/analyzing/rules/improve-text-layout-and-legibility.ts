@@ -32,10 +32,61 @@ const TEXT_WRAP_GUARD_TOKENS = [
   'textWrap',
 ] as const;
 
-function matchBalanceTextCall(callExpr: CallExpression): string | null {
+function isBalanceTextModuleSpecifier(spec: string): boolean {
+  return (
+    spec === 'balance-text' ||
+    /(?:^|\/)balance-?text(?:\.[cm]?[jt]sx?)?$/i.test(spec)
+  );
+}
+
+function collectImportedBalanceTextIdentifiers(sourceFile: SourceFile): {
+  localNames: Set<string>;
+  importLines: number[];
+} {
+  const localNames = new Set<string>();
+  const importLines: number[] = [];
+
+  for (const importDecl of sourceFile.getImportDeclarations()) {
+    const spec = importDecl.getModuleSpecifierValue();
+    if (!isBalanceTextModuleSpecifier(spec)) {
+      continue;
+    }
+    if (isProtectedByFeatureGuard(importDecl, TEXT_WRAP_GUARD_TOKENS)) {
+      continue;
+    }
+
+    let matchedImport = false;
+    const defaultImport = importDecl.getDefaultImport();
+    if (defaultImport && /^balanceText$/i.test(defaultImport.getText())) {
+      localNames.add(defaultImport.getText());
+      matchedImport = true;
+    }
+
+    for (const namedImport of importDecl.getNamedImports()) {
+      if (namedImport.getName() === 'balanceText') {
+        localNames.add(namedImport.getAliasNode()?.getText() ?? namedImport.getName());
+        matchedImport = true;
+      }
+    }
+
+    if (matchedImport) {
+      importLines.push(importDecl.getStartLineNumber());
+    }
+  }
+
+  return { localNames, importLines };
+}
+
+function matchBalanceTextCall(
+  callExpr: CallExpression,
+  importedBalanceTextNames: ReadonlySet<string>,
+): string | null {
   const callee = unwrapExpression(callExpr.getExpression());
 
-  if (isLibraryReference(callee, 'balanceText', ['balance-text'])) {
+  if (
+    isLibraryReference(callee, 'balanceText', ['balance-text']) ||
+    (Node.isIdentifier(callee) && importedBalanceTextNames.has(callee.getText()))
+  ) {
     return 'balanceText() JavaScript line-balancing call can be modernized with native CSS text-wrap: balance and text-wrap: pretty.';
   }
 
@@ -85,6 +136,9 @@ export const improveTextLayoutAndLegibilityJsMatcher: JsRuleMatcher = {
   fastTokens: ['balanceText', 'Balancer'],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
+    const { localNames: importedBalanceTextNames, importLines } =
+      collectImportedBalanceTextIdentifiers(sourceFile);
+    let matchedBalanceTextCall = false;
 
     sourceFile.forEachDescendant((node) => {
       if (
@@ -99,17 +153,36 @@ export const improveTextLayoutAndLegibilityJsMatcher: JsRuleMatcher = {
         return;
       }
 
-      const msg = Node.isCallExpression(node)
-        ? matchBalanceTextCall(node)
-        : matchBalancerJsx(node);
+      if (Node.isCallExpression(node)) {
+        const msg = matchBalanceTextCall(node, importedBalanceTextNames);
+        if (msg) {
+          matchedBalanceTextCall = true;
+          matches.push({
+            line: node.getStartLineNumber(),
+            message: msg,
+          });
+        }
+        return;
+      }
 
-      if (msg) {
+      const jsxMsg = matchBalancerJsx(node);
+      if (jsxMsg) {
         matches.push({
           line: node.getStartLineNumber(),
-          message: msg,
+          message: jsxMsg,
         });
       }
     });
+
+    if (!matchedBalanceTextCall && importLines.length > 0) {
+      for (const line of importLines) {
+        matches.push({
+          line,
+          message:
+            'balanceText() JavaScript line-balancing import/call can be modernized with native CSS text-wrap: balance and text-wrap: pretty.',
+        });
+      }
+    }
 
     return matches;
   },
@@ -142,11 +215,11 @@ export const improveTextLayoutAndLegibilityJsRule: AnalyzerRule = {
   matcher: improveTextLayoutAndLegibilityJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'JavaScript calls balanceText(...) or renders <Balancer> from react-wrap-balancer to balance heading or text line breaks in the browser.',
+      'JavaScript imports or calls balanceText(...) (from balance-text or a balanceText utility module that splits text across lines by container width) or renders <Balancer> from react-wrap-balancer to balance heading or title line breaks in the browser.',
     ],
     dropWhen: [
       'The balanceText() call is guarded by a CSS.supports("text-wrap", "balance") fallback check.',
-      'The code uses native CSS text-wrap: balance / pretty or performs server-side typographic preprocessing.',
+      'The code uses native CSS text-wrap: balance / pretty or performs server-side typographic preprocessing or non-DOM string formatting.',
     ],
   },
 };

@@ -7,12 +7,14 @@ import type {
 
 export const FLICKER_FREE_CLIENT_SIDE_AB_TESTING_GUIDE_HASH = '514db845f27b';
 
-const ASYNC_HIDE_SELECTOR_REGEX = /\.async-hide(?![\w-])/i;
+const ANTI_FLICKER_SELECTOR_REGEX =
+  /(?:\.(?:async-hide|ab-loading|anti-flicker)|#_vis_opt_path_hides)(?![\w-])/i;
 const ZERO_OPACITY_VALUE_REGEX = /^0(?:\.0+)?(?:\s*!important)?$/i;
+const HIDDEN_VISIBILITY_VALUE_REGEX = /^hidden(?:\s*!important)?$/i;
 
 export const flickerFreeClientSideAbTestingMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['async-hide'],
+  fastTokens: ['async-hide', 'ab-loading', 'anti-flicker', '_vis_opt_path_hides'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     if (
       ctx.stylesheetText.includes('blocking="render"') ||
@@ -23,12 +25,16 @@ export const flickerFreeClientSideAbTestingMatcher: CssRuleMatcher = {
       return null;
     }
 
-    if (!ASYNC_HIDE_SELECTOR_REGEX.test(styleRule.selectorText)) {
+    if (!ANTI_FLICKER_SELECTOR_REGEX.test(styleRule.selectorText)) {
       return null;
     }
 
     const opacityValue = (styleRule.getPropertyValue('opacity') ?? '').trim();
-    if (!ZERO_OPACITY_VALUE_REGEX.test(opacityValue)) {
+    const visibilityValue = (styleRule.getPropertyValue('visibility') ?? '').trim();
+    if (
+      !ZERO_OPACITY_VALUE_REGEX.test(opacityValue) &&
+      !HIDDEN_VISIBILITY_VALUE_REGEX.test(visibilityValue)
+    ) {
       return null;
     }
 
@@ -48,7 +54,7 @@ export const flickerFreeClientSideAbTestingRule: AnalyzerRule = {
   matcher: flickerFreeClientSideAbTestingMatcher,
   verifierRubric: {
     keepWhen: [
-      'A stylesheet or inline <style> defines .async-hide { opacity: 0 !important } (the Google Optimize / GTM page-hiding anti-flicker snippet) without using blocking="render".',
+      'A stylesheet or inline <style> defines a page-hiding anti-flicker rule (such as .async-hide { opacity: 0 !important }, .ab-loading { opacity: 0 }, or #_vis_opt_path_hides) without using blocking="render".',
     ],
     dropWhen: [
       'The anti-flicker class is guarded as a fallback behind !Object.hasOwn(HTMLScriptElement.prototype, "blocking") alongside <script blocking="render">.',

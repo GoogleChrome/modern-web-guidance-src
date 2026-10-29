@@ -13,15 +13,19 @@ void test('flicker-free-client-side-ab-testing CSS matcher', async (t) => {
     assert.equal(matches[0]?.line, 2);
   });
 
-  await t.test('flags html.async-hide { opacity: 0 }', () => {
+  await t.test('flags html.async-hide and .ab-loading anti-flicker rules', () => {
     const css = `
       html.async-hide {
         opacity: 0 !important;
       }
+      html.ab-loading {
+        opacity: 0;
+      }
     `;
     const matches = scanCss('ab.css', css, [flickerFreeClientSideAbTestingMatcher]);
-    assert.equal(matches.length, 1);
+    assert.equal(matches.length, 2);
     assert.equal(matches[0]?.line, 2);
+    assert.equal(matches[1]?.line, 5);
   });
 
   await t.test('exempts unrelated opacity: 0 rules and tab-loading classes', () => {

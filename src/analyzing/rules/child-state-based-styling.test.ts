@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanJsSource } from '../scanners/js-scanner.ts';
-import type { JsRuleMatcher } from '../schema.ts';
 import {
-  childStateBasedStylingJsParentClassRule,
+  childStateBasedStylingJsMatcher,
 } from './child-state-based-styling.ts';
 
-const jsMatcher = childStateBasedStylingJsParentClassRule.matcher as JsRuleMatcher;
+const jsMatcher = childStateBasedStylingJsMatcher;
 
 void test('child-state-based-styling/js-parent-class: JS positive matches', async (t) => {
   await t.test('flags focus/blur event listeners adding/removing focused class on parentElement', () => {
@@ -51,6 +50,28 @@ void test('child-state-based-styling/js-parent-class: JS positive matches', asyn
     const { matches } = scanJsSource('onfocus.js', code, [jsMatcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 4);
+  });
+
+  await t.test('flags jQuery focus/blur and validity parent state class toggles', () => {
+    const code = `
+      $('.form-control').on("focus", function() {
+        $(this).parent('.input-group').addClass("input-group-focus");
+      }).on("blur", function() {
+        $(this).parent(".input-group").removeClass("input-group-focus");
+      });
+
+      $('.form-control').focusin(function() {
+        $(this).parent().addClass('a-input-focus');
+      }).focusout(function() {
+        $(this).parent().removeClass('a-input-focus');
+      });
+
+      $inputs.on('blur input', function () {
+        $(this).parent().toggleClass('invalid', !(this.validity && this.validity.valid));
+      });
+    `;
+    const { matches } = scanJsSource('jquery-parent-focus.js', code, [jsMatcher]);
+    assert.equal(matches.length, 5);
   });
 });
 
@@ -99,14 +120,42 @@ void test('child-state-based-styling/js-parent-class: JS negative / exempt cases
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts state management dispatch inside focus handler', () => {
+  await t.test('exempts state management dispatch or imperative JS animation inside focus handler', () => {
     const code = `
       input.addEventListener('focus', () => {
         dispatch({ type: 'INPUT_FOCUSED' });
         input.parentElement.classList.add('is-focused');
       });
+      inputs.forEach(function (el) {
+        var parent = el.parentNode;
+        el.addEventListener('focus', function () {
+          parent.classList.add('filled');
+          placeholderAnimationIn(parent, true);
+        }, false);
+        el.addEventListener('blur', function () {
+          if (el.value.length) return;
+          parent.classList.remove('filled');
+          placeholderAnimationIn(parent, false);
+        }, false);
+      });
     `;
     const { matches } = scanJsSource('redux-focus.js', code, [jsMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts jQuery custom validators, value.length checks, and non-form tab links', () => {
+    const code = `
+      $('#cardnumber').on('blur input', function () {
+        $(this).closest('span').toggleClass('valid', $.payment.validateCardNumber(this.value));
+      });
+      $input.on('focus blur', function (e) {
+        $(this).parents('.form-group').toggleClass('focused', (e.type === 'focus' || this.value.length > 0));
+      });
+      tabs.on('focus blur', 'a', function (e) {
+        $(this).parent().toggleClass('ui-state-focus', e.type === 'focusin');
+      });
+    `;
+    const { matches } = scanJsSource('jquery-negative.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 });
