@@ -78,4 +78,20 @@ void test('persistent-app-tours: negative / exempt cases', async (t) => {
     const matches = matchJsRule(persistentAppToursJsMatcher, 'db.ts', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts modal spotlight tours blocking interaction (disableInteraction: true) or chaining onbeforechange hooks', () => {
+    const code = `
+      import introJs from 'intro.js';
+      function initIntro() {
+        introJs().setOptions({
+          exitOnEsc: false,
+          disableInteraction: true,
+        }).onbeforechange(function(ele) {
+          ele.click();
+        }).start();
+      }
+    `;
+    const matches = matchJsRule(persistentAppToursJsMatcher, '_actions.js', code);
+    assert.equal(matches.length, 0);
+  });
 });

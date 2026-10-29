@@ -32,13 +32,24 @@ function isGuardedByScrollTimelineSupport(node: Node): boolean {
   while (current) {
     if (Node.isIfStatement(current)) {
       const condText = current.getExpression().getText();
-      if (
-        SCROLL_TIMELINE_GUARD_TOKENS.some((tok) => condText.includes(tok)) &&
-        current.getExpression().getDescendantsOfKind(SyntaxKind.ExclamationToken).length > 0 &&
-        node.getStart() >= current.getThenStatement().getStart() &&
-        node.getEnd() <= current.getThenStatement().getEnd()
-      ) {
+      if (SCROLL_TIMELINE_GUARD_TOKENS.some((tok) => condText.includes(tok))) {
         return true;
+      }
+    }
+    if (Node.isBlock(current) || Node.isSourceFile(current)) {
+      for (const stmt of current.getStatements()) {
+        if (stmt.getStart() >= node.getStart()) {
+          break;
+        }
+        if (Node.isIfStatement(stmt)) {
+          const condText = stmt.getExpression().getText();
+          if (
+            SCROLL_TIMELINE_GUARD_TOKENS.some((tok) => condText.includes(tok)) &&
+            stmt.getDescendantsOfKind(SyntaxKind.ReturnStatement).length > 0
+          ) {
+            return true;
+          }
+        }
       }
     }
     current = current.getParent();
@@ -46,12 +57,17 @@ function isGuardedByScrollTimelineSupport(node: Node): boolean {
   return false;
 }
 
-function computesScrollProgressRatio(text: string): boolean {
+function computesScrollProgressRatio(rawText: string): boolean {
+  const text = rawText.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, '');
   const readsScrollOffset = /\b(?:scrollTop|scrollY|pageYOffset)\b/.test(text);
-  const readsTotalHeight = /\b(?:scrollHeight|documentHeight|offsetHeight)\b/.test(
-    text,
-  );
-  const readsViewportHeight = /\b(?:clientHeight|innerHeight)\b/.test(text);
+  const readsTotalHeight =
+    /\b(?:scrollHeight|documentHeight|offsetHeight)\b|\$\(\s*document\s*\)\.height\s*\(/.test(
+      text,
+    );
+  const readsViewportHeight =
+    /\b(?:clientHeight|innerHeight)\b|\$\(\s*window\s*\)\.height\s*\(/.test(
+      text,
+    );
   const hasSubtractionAndDivision = text.includes('-') && text.includes('/');
 
   return (
@@ -63,7 +79,9 @@ function computesScrollProgressRatio(text: string): boolean {
 }
 
 function updatesProgressStyle(text: string): boolean {
-  const setsStyleWidth = /\.style\.width\s*=/.test(text);
+  const setsStyleWidth =
+    /\.style\.width\s*=/.test(text) ||
+    /\.css\s*\(\s*['"`]width['"`]\s*,[^)]*%/.test(text);
   const setsScale =
     /\.style\.(?:transform|scale)\s*=[\s\S]*?scale(?:X|3d)?\s*\(/.test(text);
   const setsProgressCustomProp =
@@ -74,13 +92,47 @@ function updatesProgressStyle(text: string): boolean {
   return setsStyleWidth || setsScale || setsProgressCustomProp;
 }
 
-function matchScrollProgressListener(callExpr: CallExpression): string | null {
+function updatesDomTextContent(text: string): boolean {
+  return /\.(?:innerText|textContent|innerHTML)\s*=/.test(text);
+}
+
+function resolveScrollHandlerNode(callExpr: CallExpression): Node | null {
   const listener = matchEventListenerCall(callExpr, ['scroll']);
-  if (!listener) {
+  if (listener) {
+    return resolveCallableNode(listener.handlerNode);
+  }
+
+  const expr = callExpr.getExpression();
+  const args = callExpr.getArguments();
+  if (args.length === 1 && Node.isPropertyAccessExpression(expr)) {
+    if (
+      expr.getName() === 'scroll' &&
+      /^(?:\$|jQuery)\s*\(/.test(expr.getExpression().getText())
+    ) {
+      return resolveCallableNode(args[0]!);
+    }
+  }
+
+  const isRafCall =
+    (Node.isIdentifier(expr) && expr.getText() === 'requestAnimationFrame') ||
+    (Node.isPropertyAccessExpression(expr) &&
+      expr.getName() === 'requestAnimationFrame');
+  if (isRafCall && args.length >= 1 && Node.isIdentifier(args[0]!)) {
+    const sfText = callExpr.getSourceFile().getFullText();
+    if (/addEventListener\s*\(\s*['"`]scroll['"`]|\.onscroll\s*=/.test(sfText)) {
+      return resolveCallableNode(args[0]!);
+    }
+  }
+
+  return null;
+}
+
+function matchScrollProgressListener(callExpr: CallExpression): string | null {
+  const handlerNode = resolveScrollHandlerNode(callExpr);
+  if (!handlerNode) {
     return null;
   }
 
-  const handlerNode = resolveCallableNode(listener.handlerNode);
   const handlerText = handlerNode.getText();
 
   if (!computesScrollProgressRatio(handlerText)) {
@@ -91,11 +143,15 @@ function matchScrollProgressListener(callExpr: CallExpression): string | null {
     return null;
   }
 
+  if (updatesDomTextContent(handlerText)) {
+    return null;
+  }
+
   return 'Scroll listener computing scroll progress ratio to update a progress bar can be modernized with CSS Scroll-Driven Animations (animation-timeline: scroll()).';
 }
 
 export const scrollProgressIndicatorMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['scrollHeight', 'documentHeight', 'offsetHeight'],
+  fastTokens: ['scrollHeight', 'documentHeight', 'offsetHeight', 'scrollTop'],
   isGuarded: (node) => isGuardedByScrollTimelineSupport(node),
   matchCall: (node) => matchScrollProgressListener(node),
 });
@@ -109,10 +165,11 @@ export const scrollProgressIndicatorRule: AnalyzerRule = {
   matcher: scrollProgressIndicatorMatcher,
   verifierRubric: {
     keepWhen: [
-      'A scroll event listener calculates the scroll progress ratio (e.g. scrollTop / (scrollHeight - clientHeight) or scrollY / (scrollHeight - innerHeight)) and updates a progress bar element via style.width, style.transform = scaleX(...), or a --scroll-progress CSS custom property.',
+      'A scroll event listener calculates the scroll progress ratio (e.g. scrollTop / (scrollHeight - clientHeight) or scrollY / (scrollHeight - innerHeight)) and updates a progress bar element via style.width, .css("width", ...), style.transform = scaleX(...), or a --scroll-progress CSS custom property.',
     ],
     dropWhen: [
       'The listener is guarded by CSS.supports("animation-timeline", "scroll()").',
+      'The scroll listener also formats and writes numeric scroll percentage text into DOM text nodes (e.g. .innerText = Math.round(scrollPercent) + "%"), which CSS animation-timeline: scroll() cannot replace.',
       'HTML <progress> form elements or file upload progress indicators unrelated to scroll progress.',
       'Infinite scroll pagination triggers or analytics scroll depth beacons.',
     ],

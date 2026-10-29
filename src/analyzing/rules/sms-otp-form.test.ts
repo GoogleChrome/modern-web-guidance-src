@@ -155,4 +155,21 @@ void test('sms-otp-form: negative and safe cases', async (suiteContext) => {
     const matches = scanHtml('noninteractive.html', html, [matcher]);
     assert.equal(matches.length, 0);
   });
+
+  await suiteContext.test('exempts generic email confirmation code inputs without OTP/SMS/2FA identifiers', () => {
+    const jsx = `
+      function EmailSignIn(props) {
+        return (
+          <form onSubmit={props.verifyCode}>
+            <p>An email with the code has been sent to {props.email}</p>
+            <input placeholder="Your Code" type="number" value={props.code} />
+          </form>
+        );
+      }
+    `;
+    const matches = withVirtualSourceFile('SignIn.tsx', jsx, (sourceFile) =>
+      scanJsx('SignIn.tsx', sourceFile, [matcher]),
+    );
+    assert.equal(matches.length, 0);
+  });
 });

@@ -97,12 +97,23 @@ function hasDriverStepsConfig(argNode: Node | undefined): boolean {
   });
 }
 
+function isModalOrStateMachineIntroTour(callExpr: CallExpression): boolean {
+  const callText = callExpr.getText();
+  if (
+    /disableInteraction\s*:\s*true/.test(callText) ||
+    /\.(?:onbeforechange|onafterchange|onchange)\s*\(/.test(callText)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function matchTourCall(callExpr: CallExpression): string | null {
   const callee = unwrapExpression(callExpr.getExpression());
 
   // 1. introJs() or introJs().setOptions(...).start()
   if (isLibraryReference(callee, 'introJs', ['intro.js'])) {
-    if (isChainedIntroJsCall(callExpr)) {
+    if (isChainedIntroJsCall(callExpr) || isModalOrStateMachineIntroTour(callExpr)) {
       return null;
     }
     return 'Intro.js onboarding tour call introJs() can be replaced with native HTML popover="manual" and CSS Anchor Positioning.';
@@ -114,7 +125,7 @@ function matchTourCall(callExpr: CallExpression): string | null {
     while (Node.isCallExpression(rootExpr)) {
       const innerCallee = unwrapExpression(rootExpr.getExpression());
       if (isLibraryReference(innerCallee, 'introJs', ['intro.js'])) {
-        if (isChainedIntroJsCall(callExpr)) {
+        if (isChainedIntroJsCall(callExpr) || isModalOrStateMachineIntroTour(callExpr)) {
           return null;
         }
         return 'Intro.js onboarding tour call introJs() can be replaced with native HTML popover="manual" and CSS Anchor Positioning.';
@@ -243,10 +254,11 @@ export const persistentAppToursRule: AnalyzerRule = {
   matcher: persistentAppToursJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'JavaScript initializes a multi-step onboarding tour or walkthrough (such as introJs(), new Shepherd.Tour(), or driver({ steps })) that tethers persistent floating callouts to page elements.',
+      'JavaScript initializes a persistent onboarding tour or walkthrough (such as introJs(), new Shepherd.Tour(), or driver({ steps })) that tethers persistent floating callouts to page elements while users interact with the UI.',
     ],
     dropWhen: [
       'The code already uses native HTML popover="manual" with CSS Anchor Positioning (anchor-name / position-anchor).',
+      'Modal spotlight tours that explicitly block user interaction with highlighted elements (disableInteraction: true) or rely on step-transition DOM mutation hooks (onbeforechange / onafterchange).',
       'The call is a database, WebDriver, or hardware driver unrelated to UI onboarding tours.',
     ],
   },
