@@ -9,7 +9,6 @@
 - The master checkbox state reflects the initially checked options on page load.
 - An `<output>` live region (or element with `aria-live`) inside the fieldset is updated with a count summary when the checked options change.
 - The master checkbox is `disabled` when there are no enabled option checkboxes.
-- Checkboxes are styled with the CSS `accent-color` property.
-- A `@supports not (accent-color: auto)` rule applies `appearance: none` and a `mask`-based `::before` indicator with an `:indeterminate` dash icon to checkboxes as the fallback.
+- Checkboxes are styled with the CSS `accent-color` property (or custom `appearance: none` styling).
 - The option list uses a grid layout whose rows use `grid-template-columns: subgrid`.
 - Disabled checkboxes have `cursor: not-allowed` and reduced opacity.
