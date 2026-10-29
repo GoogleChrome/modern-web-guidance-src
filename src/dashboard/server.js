@@ -77,6 +77,19 @@ if (STATIC) {
   });
 } else {
 
+const manifestOutDir = path.join(outDir, 'dashboard');
+if (
+  !fs.existsSync(path.join(manifestOutDir, 'features-mapping.gen.js')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'demos.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'grouped-tasks.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'suites.gen.json'))
+) {
+  const resultsSourceDir = process.env.USE_MOCK_RESULTS === 'true'
+    ? path.join(dashboardDir, 'mock-results')
+    : suitesDir;
+  await runAllManifests({ outputDir: manifestOutDir, resultsSourceDir });
+}
+
 /** @type {Record<string, string>} */
 const MIME_TYPES = {
   '.html': 'text/html',
