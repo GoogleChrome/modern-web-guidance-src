@@ -122,6 +122,12 @@
   gap: var(--space-1) var(--space-6);
 }
 
+/* CLS: the loaded card adds the dumbbell visual and a longer label than the static placeholder.
+   Reserve its measured final height (Playwright, 1280px viewport; see the container query below
+   for the stacked layout) only while the hero is aria-busy. hero.js clears aria-busy in the same
+   task that paints the data, so the floor never outlives loading or clips content. */
+.hero[aria-busy="true"] .takeaway-primary { min-block-size: 8.65rem; }
+
 .takeaway-primary .takeaway-label {
   grid-column: 1 / -1;
   font-size: 0.9375rem;
@@ -291,7 +297,8 @@
 .takeaway-dumbbell .takeaway-track .dot.unguided { inline-size: 2.5px; block-size: 14px; }
 .takeaway-dumbbell .takeaway-track .dot.guided { inline-size: 3px; block-size: 16px; }
 .takeaway-dumbbell .takeaway-track .connector { block-size: 4px; }
-.takeaway-dumbbell .takeaway-track .connector.regressed { background: var(--color-accent-failure); }
+/* Dashed like the suite chart's regressed connectors, so a regression isn't signaled by color alone. */
+.takeaway-dumbbell .takeaway-track .connector.regressed { background: repeating-linear-gradient(90deg, var(--color-accent-failure) 0 4px, transparent 4px 6px); }
 
 .takeaway-dumbbell-scale {
   display: flex;
@@ -349,6 +356,8 @@
   border-radius: 8px;
   background: var(--color-surface-container-lowest);
 }
+/* Keyboard-scrollable region (tabindex="0"), so it needs a visible focus indicator. */
+.agent-table-wrap:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
 .agent-table { inline-size: 100%; border-collapse: collapse; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
 .agent-table caption:not(.visually-hidden) { text-align: start; padding: var(--space-2) var(--space-3); font-size: 0.78rem; color: var(--color-on-surface-variant); }
@@ -388,15 +397,15 @@
 }
 
 :is(.agent-table, .ab-spotlight) .delta.good {
-  background: var(--color-accent-success-bg, rgba(22, 163, 74, 0.14));
-  color: var(--color-accent-success, #15803d);
-  border-color: color-mix(in srgb, var(--color-accent-success, #15803d) 35%, transparent);
+  background: var(--color-accent-success-bg);
+  color: var(--color-accent-success);
+  border-color: color-mix(in srgb, var(--color-accent-success) 35%, transparent);
 }
 
 :is(.agent-table, .ab-spotlight) .delta.cost {
-  background: var(--color-accent-failure-bg, rgba(220, 38, 38, 0.12));
-  color: var(--color-accent-failure, #b91c1c);
-  border-color: color-mix(in srgb, var(--color-accent-failure, #b91c1c) 35%, transparent);
+  background: var(--color-accent-failure-bg);
+  color: var(--color-accent-failure);
+  border-color: color-mix(in srgb, var(--color-accent-failure) 35%, transparent);
 }
 
 :is(.agent-table, .ab-spotlight) .delta.flat { background: var(--color-surface-container-low); color: var(--color-on-surface-variant); border-color: var(--color-outline-variant); }
@@ -469,14 +478,19 @@
   .eyebrow-detail { display: none; }
   .hero-takeaways { grid-template-columns: minmax(0, 1fr); padding: var(--space-3) var(--space-4); gap: var(--space-3); }
   .takeaway-primary { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+  /* Stacked layout: the dumbbell sits below the figure (measured at a 390px viewport). */
+  .hero[aria-busy="true"] .takeaway-primary { min-block-size: 14.95rem; }
   .takeaway-primary .takeaway-dumbbell,
   .takeaway-primary .takeaway-qualifier-short { grid-column: 1; grid-row: auto; max-inline-size: none; justify-self: stretch; text-align: start; }
   .takeaway-secondary { padding-inline-start: 0; border-inline-start: 0; padding-block-start: var(--space-3); border-block-start: 1px solid var(--color-outline-variant); }
 }
 
-@media (prefers-color-scheme: dark) {
-  :is(.agent-table, .ab-spotlight) .delta.good { border-color: color-mix(in srgb, var(--color-accent-success, #5fd38a) 40%, transparent); }
-  :is(.agent-table, .ab-spotlight) .delta.cost { border-color: color-mix(in srgb, var(--color-accent-failure, #ff897d) 40%, transparent); }
+/* Slightly stronger delta borders on dark surfaces. light-dark() follows the element's computed
+   color-scheme (not just the OS setting), like the rest of the token system. Gated by @supports
+   because a var()-containing declaration can't fall back to an earlier one. */
+@supports (color: light-dark(#000, #fff)) {
+  :is(.agent-table, .ab-spotlight) .delta.good { border-color: light-dark(color-mix(in srgb, var(--color-accent-success) 35%, transparent), color-mix(in srgb, var(--color-accent-success) 40%, transparent)); }
+  :is(.agent-table, .ab-spotlight) .delta.cost { border-color: light-dark(color-mix(in srgb, var(--color-accent-failure) 35%, transparent), color-mix(in srgb, var(--color-accent-failure) 40%, transparent)); }
 }
 
 @media (prefers-contrast: more) {

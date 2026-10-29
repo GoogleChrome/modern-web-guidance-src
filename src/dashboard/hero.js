@@ -1,7 +1,7 @@
 /**
  * Hero / headline takeaways for the landing page.
  */
-import { getAccessToken, escapeHtml, getAgentBadge } from './utils.js';
+import { getAccessToken, escapeHtml, getAgentBadge, parseSuiteDate, formatSuiteDate } from './utils.js';
 import { ApiClient } from './api.js';
 
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
@@ -325,7 +325,7 @@ function renderAgentTable(insights) {
         const metaParts = [
             `${f.suiteCount} ${f.suiteCount === 1 ? 'run' : 'runs'}`,
             f.models.length ? f.models.map(shortModelName).join(', ') : '',
-            f.latest?.date ? formatDateShort(f.latest.date) : ''
+            f.latest?.timestamp ? formatDateShort(f.latest.timestamp) : ''
         ].filter(Boolean).join(' · ');
 
         return `
@@ -366,7 +366,9 @@ function deltaChip(value) {
 
 /** @param {HeadlineInsights} insights */
 function latestDateOf(insights) {
-    return insights.latestTimestamp ? insights.latestTimestamp.slice(0, 10) : '';
+    // Keep the full instant: slicing to YYYY-MM-DD would show the UTC day, which can
+    // disagree with the runs table (viewer's zone) for the ~07:00 UTC nightly runs.
+    return insights.latestTimestamp || '';
 }
 
 /** @param {string} model */
@@ -376,9 +378,9 @@ function shortModelName(model) {
 
 /** @param {string} iso */
 function formatDateShort(iso) {
-    const d = new Date(`${iso.slice(0, 10)}T00:00:00`);
-    if (isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const d = parseSuiteDate(iso);
+    if (!d) return iso;
+    return formatSuiteDate(d, { month: 'short', day: 'numeric' });
 }
 
 /** @param {number} v */
@@ -408,7 +410,7 @@ function fmtPct(v) {
 
 /** @param {string} iso */
 function formatDate(iso) {
-    const d = new Date(`${iso.slice(0, 10)}T00:00:00`);
-    if (isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const d = parseSuiteDate(iso);
+    if (!d) return iso;
+    return formatSuiteDate(d, { month: 'short', day: 'numeric', year: 'numeric' });
 }

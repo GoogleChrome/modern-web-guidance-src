@@ -1,3 +1,7 @@
+// Module so it can share escapeHtml with the dashboard; modules are deferred, so
+// it no longer blocks the parser.
+import { escapeHtml } from './utils.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
   const tableBodyRaw = document.querySelector('#tasks-table tbody');
   const launchFormRaw = document.getElementById('launch-form');
@@ -7,19 +11,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tableBody = tableBodyRaw;
   const launchForm = launchFormRaw;
 
-  // Toggle button group for Agent
-  document.querySelectorAll('#agent-group .btn-toggle').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const currentTarget = e.currentTarget;
-      if (!(currentTarget instanceof HTMLElement)) return;
-      document.querySelectorAll('#agent-group .btn-toggle').forEach(b => b.classList.remove('active'));
-      currentTarget.classList.add('active');
-      const agentEl = document.getElementById('agent');
-      if (agentEl instanceof HTMLInputElement) {
-        agentEl.value = currentTarget.getAttribute('data-value') || '';
-      }
-    });
-  });
+  // The agent group is a native radio group in the markup, so no JS is needed
+  // to track or expose its selection.
 
   /** @type {Record<string, Record<string, string[]>>} */
   let allGuides = {};
@@ -57,26 +50,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     container.innerHTML = '';
 
     sortedSkills.forEach(skill => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn-toggle';
-      if (selectedSkills.has(skill)) {
-        btn.classList.add('active');
-      }
-      btn.setAttribute('data-value', skill);
-      btn.textContent = skill;
-      
-      btn.addEventListener('click', () => {
-        if (selectedSkills.has(skill)) {
-          selectedSkills.delete(skill);
-          btn.classList.remove('active');
-        } else {
+      // Native switches expose on/off state to assistive tech; the label
+      // wraps the input so the skill name is its accessible name.
+      const label = document.createElement('label');
+      label.className = 'btn-toggle';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.setAttribute('switch', '');
+      input.name = 'skills';
+      input.value = skill;
+      input.checked = selectedSkills.has(skill);
+
+      // Keep the Set as the source of truth so the launch payload (including
+      // its ordering and any default skill that isn't rendered) is unchanged.
+      input.addEventListener('change', () => {
+        if (input.checked) {
           selectedSkills.add(skill);
-          btn.classList.add('active');
+        } else {
+          selectedSkills.delete(skill);
         }
       });
-      
-      container.appendChild(btn);
+
+      label.append(input, skill);
+      container.appendChild(label);
     });
   }
 
@@ -109,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     table.querySelectorAll('.header-check').forEach(headerCheck => {
       if (!(headerCheck instanceof HTMLInputElement)) return;
       const taskType = headerCheck.getAttribute('data-task');
-      const checkboxes = table.querySelectorAll(`.task-check[data-task="${taskType}"]`);
+      const checkboxes = table.querySelectorAll(`.task-check[data-task="${CSS.escape(taskType || '')}"]`);
       if (checkboxes.length > 0) {
         const allChecked = Array.from(checkboxes).every(c => c instanceof HTMLInputElement && c.checked);
         headerCheck.checked = allChecked;
@@ -125,7 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     table.querySelectorAll('.guide-check-all').forEach(rowCheck => {
       if (!(rowCheck instanceof HTMLInputElement)) return;
       const guide = rowCheck.getAttribute('data-guide');
-      const checkboxes = table.querySelectorAll(`.task-check[data-guide="${guide}"]`);
+      const checkboxes = table.querySelectorAll(`.task-check[data-guide="${CSS.escape(guide || '')}"]`);
       if (checkboxes.length > 0) {
         const allChecked = Array.from(checkboxes).every(c => c instanceof HTMLInputElement && c.checked);
         rowCheck.checked = allChecked;
@@ -174,9 +170,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let headerHtml = `<th>Guide</th>`;
     headers.forEach(h => {
       const isSelected = h === 'task';
+      // Task type names come from the guides directory, so escape them. The
+      // column has no visible text, so the checkbox needs an explicit name.
+      const safeH = escapeHtml(h);
+      // The default type is literally named "task"; avoid "Select all task tasks".
+      const headerLabel = h === 'task' ? 'Select all default tasks' : `Select all ${safeH} tasks`;
       headerHtml += `<th class="checkbox-header">
         <label class="custom-checkbox">
-          <input type="checkbox" class="header-check" data-task="${h}" ${isSelected ? 'checked' : ''}>
+          <input type="checkbox" class="header-check" data-task="${safeH}" aria-label="${headerLabel}" ${isSelected ? 'checked' : ''}>
           <span class="checkmark"></span>
         </label>
       </th>`;
@@ -185,38 +186,50 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const totalCols = headers.length + 1;
 
+    let categoryIndex = 0;
     for (const [category, categoryGuides] of Object.entries(guides)) {
+      const rowIdPrefix = `category-${categoryIndex++}-row`;
+      const rowIds = Object.keys(categoryGuides).map((_, i) => `${rowIdPrefix}-${i}`);
       const headerRow = document.createElement('tr');
       headerRow.classList.add('category-header');
       headerRow.setAttribute('data-category', category);
-      headerRow.innerHTML = `<td colspan="${totalCols}"><span class="expand-icon">▼</span> ${category}</td>`;
+      // A real button makes collapse keyboard-operable and announces its state.
+      headerRow.innerHTML = `<td colspan="${totalCols}"><button type="button" class="category-toggle" aria-expanded="true" aria-controls="${rowIds.join(' ')}"><span class="expand-icon" aria-hidden="true">▼</span> ${escapeHtml(category)}</button></td>`;
       tableBody.appendChild(headerRow);
 
+      let guideIndex = 0;
       for (const [guideName, tasks] of Object.entries(categoryGuides)) {
         const fullKey = `${category}/${guideName}`;
+        const safeKey = escapeHtml(fullKey);
+        const safeName = escapeHtml(guideName);
         const row = document.createElement('tr');
+        row.id = rowIds[guideIndex++];
         row.classList.add('guide-row');
         row.setAttribute('data-category', category);
 
+        // The guide name sits inside the label so it names the row checkbox.
         let rowHtml = `
           <td class="guide-name">
             <div class="guide-cell-content">
               <label class="custom-checkbox">
-                <input type="checkbox" class="guide-check-all" data-guide="${fullKey}">
+                <input type="checkbox" class="guide-check-all" data-guide="${safeKey}">
                 <span class="checkmark"></span>
+                ${safeName}
               </label>
-              ${guideName}
             </div>
           </td>
         `;
 
         headers.forEach(h => {
           if (tasks.includes(h)) {
+            const safeH = escapeHtml(h);
+            // The visible pill text ("task", "negative") repeats on every row,
+            // so prefix the guide name to make each checkbox distinguishable.
             rowHtml += `
               <td class="checkbox-cell">
                 <label class="pill-checkbox">
-                  <input type="checkbox" name="tasks" value="${fullKey}" class="task-check" data-guide="${fullKey}" data-task="${h}" ${h === 'task' ? 'checked' : ''}>
-                  <span class="pill-label">${h}</span>
+                  <input type="checkbox" name="tasks" value="${safeKey}" class="task-check" data-guide="${safeKey}" data-task="${safeH}" aria-label="${safeName}: ${safeH}" ${h === 'task' ? 'checked' : ''}>
+                  <span class="pill-label">${safeH}</span>
                 </label>
               </td>
             `;
@@ -237,7 +250,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const currentTarget = e.currentTarget;
       if (!(currentTarget instanceof HTMLInputElement)) return;
       const guide = currentTarget.getAttribute('data-guide');
-      const checkboxes = document.querySelectorAll(`.task-check[data-guide="${guide}"]`);
+      const checkboxes = document.querySelectorAll(`.task-check[data-guide="${CSS.escape(guide || '')}"]`);
       checkboxes.forEach(tc => {
         if (tc instanceof HTMLInputElement) tc.checked = currentTarget.checked;
       });
@@ -256,7 +269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const taskType = currentTarget.getAttribute('data-task');
       const table = currentTarget.closest('table');
       if (!table || !(table instanceof HTMLTableElement)) return;
-      const checkboxes = table.querySelectorAll(`.task-check[data-task="${taskType}"]`);
+      const checkboxes = table.querySelectorAll(`.task-check[data-task="${CSS.escape(taskType || '')}"]`);
       checkboxes.forEach(tc => {
         if (tc instanceof HTMLInputElement) tc.checked = currentTarget.checked;
       });
@@ -276,16 +289,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       const guideKey = currentTarget.getAttribute('data-guide');
 
       // Update column header check!
-      const colCheckboxes = document.querySelectorAll(`.task-check[data-task="${taskType}"]`);
-      const headerCheck = document.querySelector(`.header-check[data-task="${taskType}"]`);
+      const colCheckboxes = document.querySelectorAll(`.task-check[data-task="${CSS.escape(taskType || '')}"]`);
+      const headerCheck = document.querySelector(`.header-check[data-task="${CSS.escape(taskType || '')}"]`);
       const allColChecked = Array.from(colCheckboxes).every(c => c instanceof HTMLInputElement && c.checked);
       if (headerCheck instanceof HTMLInputElement) {
         headerCheck.checked = allColChecked;
       }
 
       // Update row guide check!
-      const rowCheckboxes = document.querySelectorAll(`.task-check[data-guide="${guideKey}"]`);
-      const guideCheck = document.querySelector(`.guide-check-all[data-guide="${guideKey}"]`);
+      const rowCheckboxes = document.querySelectorAll(`.task-check[data-guide="${CSS.escape(guideKey || '')}"]`);
+      const guideCheck = document.querySelector(`.guide-check-all[data-guide="${CSS.escape(guideKey || '')}"]`);
       const allRowChecked = rowCheckboxes.length > 0 && Array.from(rowCheckboxes).every(c => c instanceof HTMLInputElement && c.checked);
       if (guideCheck instanceof HTMLInputElement) {
         guideCheck.checked = allRowChecked;
@@ -293,19 +306,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  document.querySelectorAll('.category-header').forEach(header => {
-    header.addEventListener('click', (e) => {
-      const currentTarget = e.currentTarget;
-      if (!(currentTarget instanceof HTMLElement)) return;
-      const cat = currentTarget.getAttribute('data-category');
-      const icon = currentTarget.querySelector('.expand-icon');
-      const rows = document.querySelectorAll(`.guide-row[data-category="${cat}"]`);
-      
-      rows.forEach(r => r.classList.toggle('collapsed'));
-      
-      const isCollapsed = rows[0]?.classList.contains('collapsed');
-      if (icon instanceof HTMLElement) {
-        icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+  document.querySelectorAll('.category-toggle').forEach(toggle => {
+    toggle.addEventListener('click', () => {
+      const expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!expanded));
+      // `hidden` removes collapsed rows from layout, the tab order, and the
+      // accessibility tree; the icon rotation is driven by aria-expanded in CSS.
+      for (const id of (toggle.getAttribute('aria-controls') || '').split(' ')) {
+        const row = id && document.getElementById(id);
+        if (row) row.hidden = expanded;
       }
     });
   });
@@ -369,7 +378,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nameEl = document.getElementById('name');
     const numRunsEl = document.getElementById('numRuns');
     const workerCountEl = document.getElementById('workerCount');
-    const agentEl = document.getElementById('agent');
+    const agentEl = document.querySelector('input[name="agent"]:checked');
 
     const payload = {
       name: (nameEl instanceof HTMLInputElement) ? nameEl.value || null : null,
@@ -401,7 +410,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (data.success) {
         [runBtn, headerBtn].forEach(btn => {
           if (btn instanceof HTMLButtonElement) {
-            btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+            // Darker greens keep the white label above 4.5:1 contrast.
+            btn.style.background = 'linear-gradient(135deg, #047857 0%, #065f46 100%)';
             btn.innerHTML = '<span>🚀 Started! Closing...</span>';
           }
         });

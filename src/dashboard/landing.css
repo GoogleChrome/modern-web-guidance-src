@@ -89,7 +89,7 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .not-available { color: var(--text-secondary); }
 
 /* ---------- Dumbbells & rate text ---------- */
-.suite-dumbbell-track, .insight-dumbbell-track { position: relative; block-size: 6px; border-radius: 4px; background: var(--color-surface-container); margin-inline: 4px; }
+.suite-dumbbell-track, .insight-dumbbell-track { display: block; position: relative; block-size: 6px; border-radius: 4px; background: var(--color-surface-container); margin-inline: 4px; }
 .suite-dumbbell-track { block-size: 4px; border-radius: 2px; max-inline-size: 108px; margin-inline: auto; }
 .insight-dumbbell-track { inline-size: 128px; }
 .suite-dumbbell-track .dot, .insight-dumbbell-track .dot { position: absolute; top: 50%; translate: -50% -50%; border-radius: 0; box-sizing: border-box; }
@@ -98,7 +98,8 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .insight-dumbbell-track .dot.unguided { inline-size: 2px; block-size: 10px; border: none; background: var(--color-outline); z-index: 1; }
 .insight-dumbbell-track .dot.guided { inline-size: 2.5px; block-size: 12px; border: none; background: var(--color-primary); z-index: 2; }
 .suite-dumbbell-track .connector, .insight-dumbbell-track .connector { position: absolute; top: 50%; translate: 0 -50%; block-size: 4px; background: var(--color-primary); }
-.suite-dumbbell-track .connector.regressed, .insight-dumbbell-track .connector.regressed { background: var(--color-accent-failure); }
+/* Dashed like the suite chart's regressed connectors (dashboard.css), so regressions don't rely on color alone. */
+.suite-dumbbell-track .connector.regressed, .insight-dumbbell-track .connector.regressed { background: repeating-linear-gradient(90deg, var(--color-accent-failure) 0 4px, transparent 4px 6px); }
 
 .rate-text { margin-top: 4px; font-size: var(--font-base); line-height: 1.25; color: var(--text-secondary); text-align: center; white-space: nowrap; }
 .rate-g { color: var(--text-primary); font-weight: 600; }
@@ -184,29 +185,35 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 #filter-btn-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .filter-runs-chevron { flex-shrink: 0; opacity: 0.65; transition: transform 0.15s ease; }
 .filter-runs-trigger[aria-expanded="true"] .filter-runs-chevron { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .filter-runs-chevron { transition: none; } }
 
 .filter-menu {
   margin: 0;
   padding: 0;
   border: 0;
   position: fixed;
-  position-anchor: --anchor-filter-btn;
   inset: auto;
-  top: calc(anchor(bottom) + 8px);
-  right: anchor(right);
-  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
   background: var(--color-surface-container-lowest);
   outline: 1px solid var(--border-color);
   border-radius: 6px;
   width: min(450px, calc(100dvw - 24px));
   max-width: calc(100dvw - 24px);
   box-shadow: 0 8px 24px var(--color-shadow);
-  z-index: 1000;
+}
+/* Anchored under the trigger only with native anchor positioning. The anchor polyfill adds the
+   scroll offset to this fixed popover (it opened off-screen in Firefox), so without native support
+   landing.js places it with measured viewport coordinates instead (placePopoverFallback). */
+@supports (anchor-name: --a) {
+  .filter-menu {
+    position-anchor: --anchor-filter-btn;
+    top: calc(anchor(bottom) + 8px);
+    right: anchor(right);
+    position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+  }
+  @media (width < 44rem) { .filter-menu { left: 12px; right: auto; width: calc(100dvw - 24px); } }
 }
 
 .filter-menu:is(:popover-open, .\:popover-open) { display: flex; flex-direction: column; }
-@media (width < 44rem) { .filter-menu { left: 12px; right: auto; width: calc(100dvw - 24px); } }
-.filter-menu.hidden { display: none; }
 
 .filter-header {
   padding: 12px;
@@ -224,7 +231,8 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .text-btn:hover { text-decoration: underline; }
 .filter-scheduled-row { padding: 8px 12px; border-bottom: 1px solid var(--border-color); background: var(--color-surface-container-lowest); }
 .filter-search-wrap { padding: 8px 12px; border-bottom: 1px solid var(--border-color); }
-.filter-search { width: 100%; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--color-surface-container-lowest); color: var(--text-primary); font: inherit; font-size: var(--font-lg); }
+/* Field borders need 3:1 non-text contrast; --border-color (outline-variant) is ~1.2:1. */
+.filter-search { width: 100%; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--color-field-border, var(--color-outline)); background: var(--color-surface-container-lowest); color: var(--text-primary); font: inherit; font-size: var(--font-lg); }
 .filter-list { max-height: min(300px, 50dvh); overflow-y: auto; padding: 8px 0; }
 .filter-item { display: flex; align-items: center; padding: 8px 12px; cursor: pointer; }
 .filter-item[hidden] { display: none; }
@@ -234,30 +242,34 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .filter-item-date { color: var(--text-secondary); font-size: var(--font-md); }
 
 /* ---------- Pass-rate preview (hover / focus) ---------- */
+/* Declared popover="hint" on guide.html, so it renders in the top layer (no z-index).
+   Reset the UA popover box (inset: 0; margin: auto; border) so it can be anchored (guide.html). */
 .tooltip-container {
   position: fixed;
-  z-index: 2000;
+  inset: auto;
+  margin: 0;
+  border: 0;
+  color: inherit;
   max-width: 300px;
   background: var(--card-bg);
   outline: 1px solid var(--border-color);
   border-radius: 12px;
   box-shadow: 0 8px 24px var(--color-shadow);
-  pointer-events: none;
   padding: 16px;
-  transition: opacity 0.2s ease, translate 0.2s ease;
-  translate: 0 8px;
 }
 
-.tooltip-container.hidden { opacity: 0; display: none; }
-.tooltip-container:not(.hidden) { opacity: 1; translate: 0 0; display: block; pointer-events: auto; }
 #tooltip-chart { max-height: 250px; overflow: hidden; }
 .tooltip-title { font-size: var(--font-lg); font-weight: 700; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
 .tooltip-subtitle { font-size: var(--font-sm); color: var(--text-secondary); margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
 
 /* ---------- Breakdowns barbell hover tooltip ---------- */
+/* Declared popover="hint" in index.html and opened by interestfor triggers: the top layer replaces
+   the old z-index: 2000. Reset the UA popover box (inset/margin) so it can be anchored. */
 .barbell-tooltip {
   position: fixed;
-  z-index: 2000;
+  inset: auto;
+  margin: 0;
+  border: 0;
   max-inline-size: min(300px, calc(100dvw - 24px));
   background: var(--card-bg);
   outline: 1px solid var(--border-color);
@@ -270,7 +282,24 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
   font-variant-numeric: tabular-nums;
 }
 
-.barbell-tooltip.hidden { display: none; }
+/* MWG interest-triggered-tooltips / hovercard: anchor to the active trigger's barbell track
+   (landing.js gives only that track anchor-name: --barbell-anchor, so pivot rows whose trigger is
+   the row-header link/button still get the preview next to the barbell) with anchor() insets (not
+   position-area, which the anchor polyfill can't handle): below it and centered on it, flipping
+   above when there's no room.
+   Without native anchor positioning, landing.js places it with measured coordinates instead,
+   so these rules are gated to keep the anchor polyfill from also trying to place it. */
+@supports (anchor-name: --a) {
+  .barbell-tooltip {
+    position-anchor: --barbell-anchor;
+    top: calc(anchor(bottom) + 6px);
+    justify-self: anchor-center;
+    /* Keeps the shifted-into-view box off the viewport edge on phones. */
+    margin-inline: 8px;
+    position-try-fallbacks: flip-block;
+  }
+}
+
 .barbell-tooltip-title { font-size: var(--font-md); font-weight: 700; color: var(--text-primary); word-break: break-word; }
 .barbell-tooltip-sub { font-size: var(--font-xs); color: var(--text-secondary); padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border-color); }
 .barbell-tooltip-rows { display: flex; flex-direction: column; gap: 3px; }
@@ -286,7 +315,7 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .insights-summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; color: var(--text-primary); user-select: none; padding: 4px 0; }
 .insights-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 12px 0 4px; font-size: var(--font-md); color: var(--text-secondary); }
 .insights-window { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-inline-end: auto; }
-.insights-window input[type="number"] { width: 60px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--color-surface-container-lowest); color: var(--text-primary); font: inherit; font-size: var(--font-md); font-weight: 600; text-align: center; }
+.insights-window input[type="number"] { width: 60px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--color-field-border, var(--color-outline)); background: var(--color-surface-container-lowest); color: var(--text-primary); font: inherit; font-size: var(--font-md); font-weight: 600; text-align: center; }
 .insights-window input[type="number"]:disabled { opacity: 0.5; }
 .insights-scope { flex: 1 1 100%; margin: 0; font-size: var(--font-md); color: var(--text-secondary); }
 .insights-grid { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
@@ -333,6 +362,22 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .guide-legend-tick { position: absolute; inset-block-start: -1px; inset-inline-start: 50%; transform: translateX(-50%); inline-size: 2.5px; block-size: 12px; }
 .guide-legend-swatch.unguided .guide-legend-tick { background-color: var(--color-outline); }
 .guide-legend-swatch.guided .guide-legend-tick { background-color: var(--color-primary); }
+
+/* Breakdown hint popovers (button[interestfor] + popover="hint", styled by .hint-popover in
+   dashboard.css). Explicit anchor names rather than the implicit interestfor anchor because the
+   anchor-positioning polyfill doesn't support implicit anchors. */
+.anchor-hint-guide-legend { anchor-name: --hint-guide-legend; }
+#hint-guide-legend { position-anchor: --hint-guide-legend; }
+.anchor-hint-sort-alpha-model { anchor-name: --hint-sort-alpha-model; }
+#hint-sort-alpha-model { position-anchor: --hint-sort-alpha-model; }
+.anchor-hint-sort-alpha-dimension { anchor-name: --hint-sort-alpha-dimension; }
+#hint-sort-alpha-dimension { position-anchor: --hint-sort-alpha-dimension; }
+.anchor-hint-sort-uplift-model { anchor-name: --hint-sort-uplift-model; }
+#hint-sort-uplift-model { position-anchor: --hint-sort-uplift-model; }
+.anchor-hint-sort-uplift-dimension { anchor-name: --hint-sort-uplift-dimension; }
+#hint-sort-uplift-dimension { position-anchor: --hint-sort-uplift-dimension; }
+/* The uplift sort buttons sit at the panel's inline end, so align the hint to the right edge. */
+:is(#hint-sort-uplift-model, #hint-sort-uplift-dimension).hint-popover[popover] { left: auto; right: anchor(right); }
 
 @media (width < 44rem) {
   .insights-panel-header-row { grid-template-columns: 1fr; justify-items: start; }
@@ -403,9 +448,16 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .pivot-head-note { font-weight: 400; text-transform: none; letter-spacing: 0; }
 .show-all-rows-btn { font-size: inherit; padding: 0 2px; }
 .pivot-empty { margin: 0; padding: 8px 4px; font-size: var(--font-md); color: var(--text-secondary); }
-.insight-dumbbell-cell { width: 160px; position: relative; z-index: 1; cursor: pointer; }
-.pivot-row.is-static .insight-dumbbell-cell { cursor: help; }
-.pivot-row.is-static .insight-dumbbell-cell:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; border-radius: 4px; }
+.insight-dumbbell-cell { width: 160px; cursor: pointer; }
+.insight-dumbbell-cell .rate-text { display: block; }
+/* Guide/model rows: let pointer events fall through the barbell to the row-header trigger's
+   stretched ::after (above), so hovering it shows #barbell-tooltip via that trigger's interestfor
+   and clicking it follows the row action. The cell's text stays in the accessibility tree. */
+.pivot-row:not(.is-static) .insight-dumbbell-cell { pointer-events: none; }
+.pivot-row.is-static .insight-dumbbell-cell { position: relative; cursor: help; }
+/* Dimension rows: the barbell is a <button interestfor> (landing.js); reset it so it looks like the plain cell content. */
+.pivot-barbell-btn { display: block; inline-size: 100%; margin: 0; padding: 2px 0; border: 0; border-radius: 4px; background: none; color: inherit; font: inherit; text-align: inherit; cursor: inherit; }
+.pivot-barbell-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
 @media (width < 30rem) {
   .insights-table .pivot-head { display: none; }
@@ -437,9 +489,10 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .mode-badge-inline { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: var(--font-xs); font-weight: 600; text-transform: none; letter-spacing: 0; border-radius: 4px; background: color-mix(in oklch, var(--color-primary) 16%, transparent); color: var(--color-primary); }
 
 .mobile-suites-controls { display: none; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-block-end: var(--space-2); }
-.mobile-suites-controls .header-filter-select { width: auto; min-width: 112px; border-color: var(--border-color); background-color: var(--color-surface-container-lowest); padding-inline-start: 8px; text-align: left; text-align-last: left; }
+.mobile-suites-controls .header-filter-select { width: auto; min-width: 112px; border-color: var(--color-field-border, var(--color-outline)); background-color: var(--color-surface-container-lowest); padding-inline-start: 8px; text-align: left; text-align-last: left; }
 
-@container (width < 640px) {
+/* rem (not px) so the card layout kicks in earlier when OS text scaling enlarges 1rem. */
+@container (width < 40rem) {
   .browse-controls { inline-size: 100%; }
   .mobile-suites-controls { display: flex; }
   .suites-table, .suites-table thead, .suites-table tbody, .suites-table tr, .suites-table th, .suites-table td { display: block; }

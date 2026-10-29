@@ -57,6 +57,9 @@
   --accent-failure: var(--color-accent-failure);
   --accent-warning: var(--color-accent-warning);
   --border-color: var(--color-outline-variant);
+  /* Form field boundaries need 3:1 non-text contrast (MWG color guide); the subtle
+     --color-outline-variant (~1.2–1.5:1) stays for decorative dividers only. */
+  --color-field-border: var(--color-outline);
   --hover-bg: var(--color-surface-container-low);
   --glass-bg: light-dark(rgba(255, 255, 255, 0.7), rgba(27, 31, 37, 0.7));
 
@@ -178,7 +181,8 @@
   .sort-btn,
   .header-filter-select,
   .tooltip-container,
-  .sort-direction-btn {
+  .sort-direction-btn,
+  #dumbbell-chart text {
     transition: none !important;
     animation: none !important;
     transform: none !important;
@@ -212,6 +216,8 @@ header > div > div {
 
 h1, h2 {
   font-family: var(--font-serif);
+  /* Even out short multi-line headings such as the modal's file-path title. */
+  text-wrap: balance;
 }
 
 h1 {
@@ -434,6 +440,11 @@ dialog#modal[open]::backdrop {
   box-shadow: 0 20px 50px var(--color-shadow);
 }
 
+/* Wraps the close button for the declarative method="dialog" close; adds no layout of its own. */
+.close-modal-form {
+  margin: 0;
+}
+
 .close-modal {
   background: transparent;
   border: none;
@@ -621,7 +632,7 @@ dialog#modal[open]::backdrop {
   color: var(--color-accent-failure);
   display: block;
   text-decoration: line-through;
-  opacity: 0.85;
+  /* No opacity: dimmed text would drop below 4.5:1 (MWG color guide). */
 }
 
 .diff-unchanged {
@@ -641,18 +652,60 @@ dialog#modal.diff-modal {
 }
 
 .diff-separator {
-  background-color: var(--border-color);
+  /* Opaque surface token + full-strength secondary text instead of opacity, to keep 4.5:1. */
+  background-color: var(--color-surface-container);
   color: var(--text-secondary);
   padding: 4px;
   text-align: center;
   font-size: 0.85em;
   user-select: none;
-  opacity: 0.7;
+}
+
+/* <code> inside code blocks inherits the block's monospace sizing. */
+:is(.log-content, .diff-container, .diff-fallback-pre) :is(code, samp) {
+  font: inherit;
+}
+
+/* Sandboxed agent content (trajectories, built apps) shown in the modal. */
+dialog#modal.frame-modal {
+  max-inline-size: 1200px;
+  inline-size: 95dvw;
+}
+
+.modal-content.frame-modal {
+  padding: 20px;
+}
+
+.frame-esc-hint {
+  margin: 8px 0 0;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.artifact-frame {
+  display: block;
+  inline-size: 100%;
+  block-size: min(75dvh, 900px);
+  margin-block-start: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  /* Agent pages usually assume a light canvas. */
+  background: #fff;
 }
 
 /* Dumbbell Chart & Tooltip */
+/* A popover="hint" (dashboard.html) opened by the rows' interestfor: it renders in the top layer, so
+   it needs no z-index, and the UA's [popover]:not(:popover-open) rule hides it. MWG
+   interest-triggered-tooltips: placed with anchor() against the HTML stand-in anchor that
+   dumbbell-chart.js moves over the active row (SVG can't be an anchor); no position-area, for
+   anchor-polyfill compatibility. Below the row's marks, start-aligned; then flipped; then pinned
+   to the viewport edge when it's wider than the space on either side (phones). Without anchor
+   positioning, dumbbell-chart.js sets left/top from measured coordinates instead. */
 .chart-tooltip {
   position: fixed;
+  inset: auto;
+  margin: 0;
+  border: none;
   max-inline-size: min(460px, calc(100dvw - 16px));
   box-sizing: border-box;
   background: var(--color-surface-container-lowest);
@@ -661,15 +714,40 @@ dialog#modal.diff-modal {
   border-radius: 6px;
   font-size: 0.8rem;
   pointer-events: auto;
-  display: none;
-  z-index: 2000;
+  overflow: visible;
   outline: 1px solid var(--color-outline-variant);
   box-shadow: 0 8px 24px var(--color-shadow);
   line-height: 1.4;
+  /* An 8px gap from the viewport's inline end: with zero margin a tooltip that ends flush with
+     the edge counts as fitting, so the edge fallbacks below never applied (phones). */
+  margin-inline-end: 8px;
+  position-anchor: --dumbbell-row;
+  top: calc(anchor(bottom) + 6px);
+  left: anchor(left);
+  /* Hide rather than strand it over unrelated rows when the row scrolls out of view. */
+  position-visibility: anchors-visible;
+  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline, --dc-edge-below, --dc-edge-above;
+}
+@position-try --dc-edge-below {
+  top: calc(anchor(bottom) + 6px);
+  bottom: auto;
+  left: 8px;
+  right: auto;
+}
+@position-try --dc-edge-above {
+  top: auto;
+  bottom: calc(anchor(top) + 6px);
+  left: 8px;
+  right: auto;
+}
+.dc-anchor {
+  position: absolute;
+  pointer-events: none;
+  anchor-name: --dumbbell-row;
 }
 
 #dumbbell-chart text {
-  transition: fill 0.2s ease, font-size 0.2s ease, filter 0.2s ease;
+  transition: fill 0.2s ease, filter 0.2s ease;
   user-select: none;
 }
 
@@ -680,6 +758,18 @@ dialog#modal.diff-modal {
   border-bottom: 0;
   overflow: hidden;
   transition: transform 0.2s, box-shadow 0.2s;
+  /* The long task list sits below the fold: skip rendering off-screen rows (MWG
+     defer-rendering-heavy-content). `auto` remembers each row's real height once rendered;
+     3.5rem is the collapsed header. overflow is already hidden, so paint containment clips nothing new. */
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 3.5rem;
+}
+
+@media (width < 48rem) {
+  .task-accordion {
+    /* The header wraps to two rows on narrow screens. */
+    contain-intrinsic-block-size: auto 5.5rem;
+  }
 }
 
 .task-accordion:last-child {
@@ -777,10 +867,18 @@ dialog#modal.diff-modal {
 /*
  * Accordion content supports `hidden="until-found"` (MWG `search-hidden-content` guide):
  * When closed with `hidden="until-found"`, the UA hides it with `content-visibility: hidden`
- * so Find-in-Page can still search inside collapsed task panels. Never set `display: none`
- * directly on `[hidden="until-found"]`.
+ * so Find-in-Page can still search inside collapsed task panels (the assertion table is rendered
+ * up front for this). Never set `display: none` directly on `[hidden="until-found"]`, and keep
+ * padding, borders, and backgrounds on the inner `.task-accordion-body`: the UA still paints
+ * them on the hidden element itself, which would leave an empty band under every closed task.
  */
 .task-accordion-content {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.task-accordion-body {
   padding: 16px;
   border-top: 1px solid var(--border-color);
   background: var(--color-surface-container-lowest);
@@ -839,7 +937,8 @@ dialog#modal.diff-modal {
 }
 
 .mini-dumbbell-track .connector.regressed {
-  background: var(--color-accent-failure);
+  /* Dashed like the suite chart and legend, so regressions don't rely on color alone. */
+  background: repeating-linear-gradient(90deg, var(--color-accent-failure) 0 4px, transparent 4px 6px);
 }
 
 /* Uplift Score */
@@ -898,6 +997,47 @@ dialog#modal.diff-modal {
 
 .task-title.has-failure {
   color: var(--color-accent-failure);
+}
+
+/* Badges and labels that are also interest-invoking buttons (button[interestfor] + popover="hint").
+   :where() keeps this reset at zero specificity so the badge's own styles win. */
+:where(.hint-trigger) {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+/* The dotted underline is the visual hint that more information is available on hover/focus. */
+.hint-trigger {
+  position: relative;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+/* Target size (WCAG 2.5.8, 24px; 44px on touch): the badges are ~16-20px tall, and growing the
+   visible box would break the header row. An invisible, centered pseudo-element extends the hit
+   area instead (it's part of the button for hit testing, and holds no content). */
+.hint-trigger::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  translate: -50% -50%;
+  inline-size: max(100%, 24px);
+  block-size: max(100%, 24px);
+}
+
+@media (pointer: coarse) {
+  .hint-trigger::after {
+    inline-size: max(100%, 44px);
+    block-size: max(100%, 44px);
+  }
 }
 
 .generation-failed-badge {
@@ -1017,7 +1157,8 @@ dialog#modal.diff-modal {
 }
 
 .assertion-error-loc {
-  opacity: 0.75;
+  /* A full-contrast token instead of opacity, which dropped this small text below 4.5:1. */
+  color: var(--color-on-surface-variant);
   font-size: 0.68rem;
 }
 
@@ -1257,78 +1398,6 @@ dialog#modal.diff-modal {
   height: auto;
 }
 
-/* Stability Trend Component Styles */
-.stability-loading {
-  color: var(--text-secondary);
-  font-size: var(--font-md);
-}
-
-.stability-no-matches {
-  color: var(--text-secondary);
-  font-size: var(--font-md);
-}
-
-.stability-title {
-  font-family: var(--font-serif);
-  font-size: var(--font-lg);
-  font-weight: bold;
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-md);
-}
-
-.stability-legend {
-  font-size: var(--font-base);
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-xl);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xl);
-}
-
-.stability-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.stability-legend-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.stability-legend-dot.guided {
-  background: oklch(65% 0.25 290);
-}
-
-.stability-legend-dot.unguided {
-  background: oklch(65% 0.1 200);
-}
-
-.stability-graph-container {
-  overflow-x: auto;
-  background: var(--color-surface-container-low);
-  border-radius: 6px;
-  padding: 16px;
-  border: 1px solid var(--border-color);
-}
-
-.stability-point-group {
-  cursor: pointer;
-}
-
-/* SVG links: visible focus ring on the whole run column */
-.stability-point-group:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.stability-error {
-  color: var(--accent-failure);
-  font-size: var(--font-md);
-}
-
 /* Sparkline / Stat Card Styles */
 .meta-item-header {
   display: flex;
@@ -1410,7 +1479,8 @@ dialog#modal.diff-modal {
 }
 
 .sparkline-range.regressed {
-  background: var(--color-accent-failure);
+  /* Dashed like the suite chart and legend, so regressions don't rely on color alone. */
+  background: repeating-linear-gradient(90deg, var(--color-accent-failure) 0 4px, transparent 4px 6px);
 }
 
 .sparkline-labels {
@@ -1557,9 +1627,13 @@ dialog#modal.diff-modal {
 .uplift-score.invalid { color: var(--color-accent-warning); font-size: 0.75rem; letter-spacing: 0.04em; }
 
 .tfoot-chip, .tfoot-chip-cell { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 4px; }
-.tfoot-chip-error { font-weight: bold; font-size: 0.75rem; color: var(--color-accent-warning); border: 1px solid var(--color-accent-warning); padding: 1px 5px; border-radius: 4px; cursor: help; }
+.tfoot-chip-error { font-weight: bold; font-size: 0.75rem; color: var(--color-accent-warning); border: 1px solid var(--color-accent-warning); padding: 1px 5px; border-radius: 4px; }
 .tfoot-chip-rate { font-weight: bold; font-size: 0.85rem; color: var(--rate-color, var(--text-primary)); }
-.tfoot-chip-build-failed { font-size: 0.7rem; color: var(--color-accent-failure); cursor: help; }
+.tfoot-chip-build-failed { font-size: 0.7rem; color: var(--color-accent-failure); }
+/* Per-run failure messages: a native disclosure instead of a hover-only title. */
+.tfoot-chip-details { display: flex; flex-direction: column; align-items: center; max-inline-size: 16rem; }
+.tfoot-chip-details > summary { cursor: pointer; }
+.tfoot-chip-msg { margin: 4px 0 0; max-block-size: 8rem; overflow: auto; font-size: 0.7rem; text-align: start; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-primary); }
 .tfoot-chip-actions { display: flex; flex-direction: column; gap: 2px; inline-size: 100%; }
 .guide-chip-link { padding: 2px 4px; border-radius: 4px; font-family: monospace; text-decoration: none; }
 .tfoot-run-cards-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px; }
@@ -1606,7 +1680,7 @@ dialog#modal.diff-modal {
 /* Accessibility Breakdown Bars (2 columns when card is wide enough) */
 .a11y-dimensions-grid { display: grid; grid-template-columns: 1fr; gap: 8px 20px; margin-block-start: auto; padding-top: 10px; border-top: 1px solid var(--color-outline-variant); }
 .a11y-dimensions-grid:empty { display: none; }
-@container (inline-size >= 420px) {
+@container (inline-size >= 26.25rem) {
   .a11y-dimensions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .a11y-dim-row { display: flex; flex-direction: column; gap: 2px; }
@@ -1628,7 +1702,7 @@ dialog#modal.diff-modal {
 .guide-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-inline-size: 0; }
 .guide-controls .sort-select { max-inline-size: 100%; }
 .sort-label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
-.sort-select { font-family: var(--font-sans); font-size: 0.82rem; padding: 6px 8px; border: 1px solid var(--color-outline-variant); border-radius: 4px; background: var(--color-surface-container-lowest); color: var(--color-on-surface); cursor: pointer; }
+.sort-select { font-family: var(--font-sans); font-size: 0.82rem; padding: 6px 8px; border: 1px solid var(--color-field-border); border-radius: 4px; background: var(--color-surface-container-lowest); color: var(--color-on-surface); cursor: pointer; }
 
 /* Task Accordion Accessibility, Efficiency Chips & Popover Hints */
 .a11y-task-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 16px; background: color-mix(in oklch, var(--color-primary) 10%, transparent); color: var(--color-primary); border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent); }
@@ -1655,6 +1729,9 @@ dialog#modal.diff-modal {
   inset: auto;
   margin: 0;
   max-width: min(340px, calc(100dvw - 32px));
+  /* Without a floor, a hint anchored near the right edge just shrinks to fit (e.g. 137px wide at
+     390px), so nothing overflows and position-try-fallbacks never flips it. */
+  min-inline-size: min(16rem, calc(100dvw - 32px));
   padding: 8px 12px;
   border: none;
   outline: 1px solid var(--color-outline-variant);
@@ -1680,8 +1757,16 @@ dialog#modal.diff-modal {
 }
 .hint-popover[popover]:is(:popover-open, .\:popover-open) { display: block; }
 @media (prefers-reduced-motion: no-preference) {
+  /* Base = closed/exit state (MWG animate-to-from-top-layer), so closing fades out instead of
+     holding full opacity for the display/overlay delay and then snapping away. */
   .hint-popover[popover] {
+    opacity: 0;
+    transform: translateY(-4px);
     transition: opacity 0.15s ease, transform 0.15s ease, display 0.15s allow-discrete, overlay 0.15s allow-discrete;
+  }
+  .hint-popover[popover]:is(:popover-open, .\:popover-open) {
+    opacity: 1;
+    transform: none;
   }
   @starting-style {
     .hint-popover[popover]:is(:popover-open, .\:popover-open) {
@@ -1696,11 +1781,46 @@ dialog#modal.diff-modal {
 .run-chip-meta.small { font-size: var(--font-xs); }
 .suite-header-row { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; }
 .suite-header-row > div:first-child { flex: 1 1 auto; min-inline-size: 0; }
+/* Phones: the loaded meta grid always takes its own row under the actions; claim it up front so the
+   still-empty header doesn't sit beside the Back button and then wrap down when data arrives. */
+@media (width < 40rem) {
+  .suite-header-row > div:first-child { flex-basis: 100%; }
+}
 .suite-test-header { font-size: var(--font-lg); color: var(--text-secondary); }
 .suite-header-actions { flex: 0 0 auto; display: flex; gap: 12px; justify-content: flex-end; }
 .suite-header-actions .secondary-btn, .dashboard-footer .secondary-btn { text-decoration: none; }
 .suite-chart-section { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 .suite-chart-section.hidden { display: none; }
+
+/*
+ * Loading reservations (MWG CLS guidance): the header, summary + chart, and task list all render from
+ * one fetch, so without a floor the "Guide evals" heading, sort control, and footer jump down when it
+ * lands. Floors are the loaded heights with the mock suite (the smallest realistic suite), measured
+ * at each layout breakpoint and rounded down so an upward shift is never introduced. dashboard.js
+ * clears aria-busy when rendering finishes or fails.
+ */
+#test-header[aria-busy="true"] { min-block-size: 4rem; }
+/* Reserve the two filled regions, not the whole section, so the static legend and toolbar between
+   them already sit where they end up. */
+#chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 26.5rem; }
+#chart-section[aria-busy="true"] #dumbbell-chart { min-block-size: 6rem; }
+#guide-grid[aria-busy="true"] { min-block-size: 100dvh; }
+@media (width < 80rem) {
+  #test-header[aria-busy="true"] { min-block-size: 7.5rem; }
+}
+@media (width < 50rem) {
+  #test-header[aria-busy="true"] { min-block-size: 11rem; }
+  #chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 27.5rem; }
+}
+@media (width < 46rem) {
+  #chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 47.5rem; }
+}
+@media (width < 25rem) {
+  #chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 51rem; }
+}
+@media (width < 22rem) {
+  #chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 59rem; }
+}
 .suite-dumbbell-chart { width: 100%; }
 .empty-chart-msg { padding: 16px; margin: 0; color: var(--color-on-surface-variant); }
 .guide-evals-heading { margin: 16px 0; color: var(--text-primary); }
@@ -1713,7 +1833,99 @@ dialog#modal.diff-modal {
 .legend-dot.guided { inline-size: 3px; block-size: 13px; background: var(--color-primary); }
 .legend-line { display: inline-block; inline-size: 18px; block-size: 3px; border-radius: 2px; }
 .legend-line.improved { background: var(--color-primary); }
-.legend-line.regressed { background: var(--color-accent-failure); }
+/* Dashed, matching the chart's regressed connectors, so the legend isn't color-only. */
+.legend-line.regressed { block-size: 0; border-radius: 0; background: none; border-block-start: 3px dashed var(--color-accent-failure); }
+.legend-glyph { color: var(--color-accent-warning); font-weight: 700; }
+
+/*
+ * Forced Colors Mode (MWG color guide): author backgrounds become Canvas, which would erase every
+ * chart tick, connector, legend swatch, and meter segment. dashboard.css loads first on every page,
+ * so these overrides must out-rank the later landing.css / hero.css / showcase.css rules on
+ * specificity alone: `:root:root` plus the track container gives (0,5,0), above hero.css's
+ * `.takeaway-dumbbell .takeaway-track .connector.regressed` (0,4,0).
+ * Author system colors survive forced colors, so no `forced-color-adjust: none` is needed: the user's
+ * palette still applies (Highlight / CanvasText / GrayText come from it). Gradients are stripped in
+ * forced colors, so dashed regressions use a dashed border instead of the repeating gradient.
+ */
+@media (forced-colors: active) {
+  :root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track, .sparkline-bar) {
+    background: Canvas;
+    outline: 1px solid GrayText;
+  }
+  :root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track) .dot.unguided,
+  :root:root .sparkline-bar .sparkline-dot.unguided,
+  :root:root .legend-dot.unguided,
+  :root:root .guide-legend-swatch.unguided .guide-legend-tick {
+    background: CanvasText;
+  }
+  :root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track) :is(.dot.guided, .connector),
+  :root:root .sparkline-bar :is(.sparkline-dot.guided, .sparkline-range),
+  :root:root :is(.legend-dot.guided, .legend-line.improved),
+  :root:root .guide-legend-swatch.guided .guide-legend-tick {
+    background: Highlight;
+  }
+  /* Regressed: dashed in forced colors on every page (the color difference is gone there). */
+  :root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track) .connector.regressed,
+  :root:root .sparkline-bar .sparkline-range.regressed,
+  :root:root .legend-line.regressed {
+    background: transparent;
+    block-size: 0;
+    border: 0;
+    border-block-start: 3px dashed CanvasText;
+    border-radius: 0;
+  }
+  :root:root .guide-legend-swatch:is(.unguided, .guided)::before {
+    background: GrayText;
+    opacity: 1;
+  }
+  :root:root .ab-meter-seg.pass {
+    background: CanvasText;
+  }
+  :root:root .ab-meter-seg.fail {
+    background: Canvas;
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
+  /* Selected segment of the "All checks / Accessibility subscore" toggles: the author fill is
+     dropped in forced colors, so mark the pressed state with the user's selection colors.
+     Chromium paints a Canvas backplate behind forced-colors text, which hid HighlightText on the
+     Highlight fill (white on white, or black on black). Every value here is a system color from
+     the user's palette, so opting this one rule out of forcing is safe; the underline marks the
+     state without relying on the fill alone. */
+  :root:root :is(.mode-toggle-btn, .metric-mode-btn)[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+    text-decoration: underline 2px;
+    text-underline-offset: 3px;
+  }
+  :root:root :is(.mode-toggle-btn, .metric-mode-btn)[aria-pressed="true"]:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+  :root:root :is(.mode-toggle-btn, .metric-mode-btn) {
+    border: 1px solid ButtonText;
+  }
+  /* Uncertainty shading (landing.css): an author background becomes Canvas and the band vanishes.
+     Full-opacity GrayText keeps the palette's own contrast; the dots still paint above it. */
+  :root:root :is(.insight-dumbbell-track, .suite-dumbbell-track) .variance-band[class] {
+    background: GrayText;
+    opacity: 1;
+  }
+  /* Suite chart SVG marks (classes set in dumbbell-chart.js); CSS beats the presentation attributes. */
+  #dumbbell-chart :is(.dc-connector, .dc-gtick) { stroke: Highlight; }
+  #dumbbell-chart :is(.dc-connector.regressed, .dc-utick) { stroke: CanvasText; }
+  #dumbbell-chart .dc-track { stroke: GrayText; }
+  #dumbbell-chart .dc-band { fill: GrayText; }
+  /* SVG fills aren't forced, so chart labels would keep their author colors on the user's Canvas. */
+  :is(#dumbbell-chart, .guide-chart-wrapper) text { fill: CanvasText; }
+  /* Guide timeline (guide.js): grid lines, guided marks, and the hollow unguided point. */
+  .guide-chart-wrapper line { stroke: GrayText; }
+  .guide-chart-wrapper .timeline-marker line { stroke: Highlight; }
+  .guide-chart-wrapper .timeline-marker :is(circle:not([stroke]), polygon) { fill: Highlight; }
+  .guide-chart-wrapper .timeline-marker circle[stroke] { fill: Canvas; stroke: CanvasText; }
+}
 
 @media (pointer: coarse) {
   .info-hint-btn { inline-size: 44px; block-size: 44px; border: 10px solid transparent; background-clip: padding-box; box-shadow: inset 0 0 0 1px var(--color-outline); }

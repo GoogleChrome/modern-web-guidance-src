@@ -1,9 +1,8 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, isLocalDashboardHost, getScrollBehavior } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, isLocalDashboardHost, getScrollBehavior, formatSuiteDate } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
 import { DumbbellChart, hideDumbbellTooltip } from './dumbbell-chart.js';
-import { loadStabilityTrend } from './stability-trend.js';
 
 /**
  * @typedef {Object} CurrentDetails
@@ -51,6 +50,89 @@ let currentTaskSort = 'default';
 // Module-scoped state
 let dashboardLoaded = false;
 
+/**
+ * Anchor positioning fallback for the hint popovers (MWG interest-triggered-tooltips, "Fallback
+ * strategies"). The vendored anchor polyfill runs once, on window load, and only positions elements
+ * that exist then, so it never sees the per-badge hints rendered later from the fetched data. Where
+ * `anchor()` is unsupported, place each opened hint under its trigger with the same flips as the CSS
+ * `position-try-fallbacks: flip-block, flip-inline`.
+ */
+const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('top', 'anchor(bottom)');
+
+/**
+ * @param {HTMLElement} pop
+ */
+function positionHintFallback(pop) {
+    const trigger = document.querySelector(`[interestfor="${CSS.escape(pop.id)}"]`);
+    if (!trigger) return;
+    const gap = 6;
+    const edge = 8;
+    const r = trigger.getBoundingClientRect();
+    pop.style.inset = 'auto';
+    // Two passes: the popover's shrink-to-fit width (and so its wrapped height) depends on where
+    // it sits, so measure again after the first placement before deciding to flip above.
+    for (let pass = 0; pass < 2; pass++) {
+        const w = pop.offsetWidth;
+        const h = pop.offsetHeight;
+        let top = r.bottom + gap;
+        if (top + h > window.innerHeight - edge && r.top - gap - h >= edge) top = r.top - gap - h;
+        let left = r.left;
+        if (left + w > window.innerWidth - edge) left = r.right - w;
+        left = Math.max(edge, Math.min(left, window.innerWidth - w - edge));
+        pop.style.top = `${Math.max(edge, top)}px`;
+        pop.style.left = `${left}px`;
+    }
+}
+
+if (!SUPPORTS_ANCHOR_POSITIONING) {
+    // toggle/beforetoggle don't bubble, so listen in the capture phase for every hint on the page.
+    for (const type of ['beforetoggle', 'toggle']) {
+        document.addEventListener(type, (e) => {
+            const pop = e.target;
+            if (!(pop instanceof HTMLElement) || !pop.classList.contains('hint-popover')) return;
+            if (/** @type {ToggleEvent} */ (e).newState !== 'open') return;
+            // beforetoggle: start near the trigger so the first frame isn't at the top-left corner;
+            // toggle: the popover is rendered now, so its real size is known for the flips.
+            positionHintFallback(pop);
+        }, true);
+    }
+
+    // Measured coordinates don't follow the trigger, so re-place open hints when anything scrolls
+    // (capture: inner scrollers too) or the viewport resizes, at most once per frame. A hint whose
+    // trigger has left the viewport closes instead of pinning itself to the edge.
+    let hintFrame = 0;
+    const repositionOpenHints = () => {
+        if (hintFrame) return;
+        hintFrame = window.requestAnimationFrame(() => {
+            hintFrame = 0;
+            for (const pop of document.querySelectorAll('.hint-popover')) {
+                if (!(pop instanceof HTMLElement) || !isPopoverShowing(pop)) continue;
+                const trigger = document.querySelector(`[interestfor="${CSS.escape(pop.id)}"]`);
+                const r = trigger?.getBoundingClientRect();
+                if (!r || r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) {
+                    pop.hidePopover?.();
+                } else {
+                    positionHintFallback(pop);
+                }
+            }
+        });
+    };
+    window.addEventListener('scroll', repositionOpenHints, { capture: true, passive: true });
+    window.addEventListener('resize', repositionOpenHints, { passive: true });
+}
+
+/**
+ * @param {HTMLElement} pop
+ */
+function isPopoverShowing(pop) {
+    try {
+        return pop.matches(':popover-open');
+    } catch {
+        // Popover polyfill (no native :popover-open selector) mirrors the state as a class.
+        return pop.classList.contains(':popover-open');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API Client
     api = new ApiClient();
@@ -83,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.history.replaceState({}, '', url);
             if (allTestData && currentTestID) {
                 renderDashboardDumbbellChart(allTestData);
-                renderGrid(allTestData, currentTestID);
+                rerenderGrid(allTestData, currentTestID);
             }
         };
         modeAllBtn.addEventListener('click', () => setMode('all'));
@@ -107,7 +189,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             window.history.replaceState({}, '', url);
             if (allTestData && currentTestID) {
-                renderGrid(allTestData, currentTestID);
+                rerenderGrid(allTestData, currentTestID);
             }
         });
     }
@@ -140,12 +222,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (initialTestID) {
         await loadDashboardData(initialTestID);
     } else {
+        endLoadingReservations();
         const main = document.getElementById('main-content');
         if (main) {
             main.innerHTML = `<div class="error-message">Error: No testId provided in query string.</div>`;
         }
     }
 });
+
+/**
+ * Drops the aria-busy space reservations (dashboard.css) once loading finishes or fails. A chart
+ * section that never rendered is hidden rather than left as an empty reserved band.
+ */
+function endLoadingReservations() {
+    document.getElementById('test-header')?.removeAttribute('aria-busy');
+    document.getElementById('guide-grid')?.removeAttribute('aria-busy');
+    const chartSection = document.getElementById('chart-section');
+    if (chartSection?.getAttribute('aria-busy') === 'true') {
+        chartSection.removeAttribute('aria-busy');
+        chartSection.classList.add('hidden');
+    }
+}
 
 /**
  * @param {string} testId
@@ -156,8 +253,15 @@ async function loadDashboardData(testId) {
     dashboardLoaded = true;
 
     try {
+        // The optional Jetski metadata doesn't depend on the evals, so fetch both at once instead
+        // of adding a serial round trip (it's two requests: an existence check, then the fetch).
+        const jetskiPromise = api.getJetskiInfo(testId).catch((/** @type {unknown} */ e) => {
+            console.log('Could not load Jetski info:', e);
+            return null;
+        });
         const data = await api.getEvals(testId);
         if (!data) {
+            endLoadingReservations();
             const main = document.getElementById('main-content');
             if (main) {
                 main.innerHTML = `<div class="error-message">Error: Failed to load evaluation data for ${escapeHtml(testId)}.</div>`;
@@ -169,17 +273,13 @@ async function loadDashboardData(testId) {
         allTestData = data;
         currentTestID = testId;
 
-        // Fetch jetski info (optional)
+        // Jetski info (optional) was requested in parallel with the evals above.
         let jetskiVersion = null;
         let manifestTimestamp = null;
-        try {
-            const jetskiData = await api.getJetskiInfo(testId);
-            if (jetskiData) {
-                jetskiVersion = jetskiData['Jetski Version'];
-                manifestTimestamp = jetskiData.timestamp;
-            }
-        } catch (e) {
-            console.log('Could not load Jetski info:', e);
+        const jetskiData = await jetskiPromise;
+        if (jetskiData) {
+            jetskiVersion = jetskiData['Jetski Version'];
+            manifestTimestamp = jetskiData.timestamp;
         }
 
         // Fetch timestamp from manifest
@@ -190,8 +290,13 @@ async function loadDashboardData(testId) {
 
         renderTestHeader(testId, jetskiVersion, timestamp, data);
         renderSummary(data);
-        renderGrid(data, testId);
+        // Chart first: it sits above the grid, so unhiding it after the grid paints would shift the list.
         renderDashboardDumbbellChart(data);
+        // renderGrid yields to the main thread while building, and a sort or mode click meanwhile
+        // supersedes it; wait for the latest render so the deep links below find their accordions.
+        void renderGrid(data, testId);
+        await renderGridIdle();
+        endLoadingReservations();
 
         // Check for deep link to modal
         const params = new URLSearchParams(window.location.search);
@@ -250,7 +355,12 @@ async function loadDashboardData(testId) {
         // Check for deep link to guide in hash
         const hash = window.location.hash;
         if (hash && hash.startsWith('#guide-')) {
-            const targetGuide = hash.substring(7); // remove '#guide-'
+            let targetGuide = hash.substring(7); // remove '#guide-'
+            try {
+                targetGuide = decodeURIComponent(targetGuide);
+            } catch {
+                // Malformed escape: match the raw value.
+            }
             const targetTask = params.get('task');
             setTimeout(() => {
                 const accordionEl = (targetTask && document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"][data-task="${CSS.escape(targetTask)}"]`))
@@ -267,6 +377,7 @@ async function loadDashboardData(testId) {
     } catch (error) {
         console.error('Error:', error);
         dashboardLoaded = false;
+        endLoadingReservations();
 
         const message = (error instanceof Error) ? error.message : String(error);
 
@@ -292,26 +403,21 @@ async function loadDashboardData(testId) {
 document.addEventListener('DOMContentLoaded', () => {
     const modal = $('dialog#modal');
 
-    const closeBtn = $('.close-modal');
+    // The close button is declarative (<form method="dialog"> in dashboard.html), so no click handler is needed.
 
-    // Close function that also cleans up URL
-    const closeModal = () => {
-        if (modal.open) modal.close();
-    };
-
-    closeBtn.onclick = closeModal;
-
-    // Fallback backdrop click dismissal for browsers without native closedby="any"
+    // Fallback backdrop click dismissal for browsers without native closedby="any" (MWG dialog guide).
     if (!('closedBy' in HTMLDialogElement.prototype)) {
-        /** @type {EventTarget | null} */
-        let pointerDownTarget = null;
-        modal.addEventListener('pointerdown', (event) => {
-            pointerDownTarget = event.target;
-        });
-        modal.addEventListener('click', (event) => {
-            if (event.target === modal && pointerDownTarget === modal) {
-                closeModal();
-            }
+        // Test the pointer position, not event.target: the <dialog> is also the target for its own
+        // padding and the gaps between its children, so a target check would close on those clicks.
+        const outside = (/** @type {PointerEvent} */ e) => {
+            const r = modal.getBoundingClientRect();
+            return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+        };
+        let pressedOutside = false;
+        modal.addEventListener('pointerdown', (e) => { pressedOutside = outside(e); });
+        // Require the press and the release outside, so a text-selection drag that ends on the backdrop does not dismiss.
+        modal.addEventListener('pointerup', (e) => {
+            if (pressedOutside && outside(e) && modal.open) modal.close();
         });
     }
 
@@ -329,14 +435,31 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (action === 'diff' && btn.dataset.setupPath !== undefined && btn.dataset.resultPath && btn.dataset.scenarioName && btn.dataset.runNumber) {
             viewDiff(btn.dataset.setupPath, btn.dataset.resultPath, btn.dataset.scenarioName, Number(btn.dataset.runNumber));
         } else if (action === 'app' && btn.dataset.appUrl) {
-            window.open(btn.dataset.appUrl, '_blank', 'noopener,noreferrer');
+            openApp(btn.dataset.appUrl);
         }
+    });
+
+    // Esc inside a sandboxed trajectory frame never reaches this document, so the srcdoc carries a
+    // tiny bridge (TRAJECTORY_ESC_BRIDGE) that posts a close request. The frame's origin is opaque
+    // ("null" for every sandboxed frame), so validate the sender by identity, not origin (MWG
+    // validate-origins guide): it must be the frame currently in this dialog, and the message must
+    // have exactly the expected shape.
+    window.addEventListener('message', (e) => {
+        const frame = modal.querySelector('iframe.artifact-frame[data-esc-bridge]');
+        if (!(frame instanceof HTMLIFrameElement) || !frame.contentWindow || e.source !== frame.contentWindow) return;
+        if (e.origin !== 'null') return; // still sandboxed (no allow-same-origin)
+        const msg = e.data;
+        if (typeof msg !== 'object' || msg === null || Array.isArray(msg)) return;
+        if (Object.keys(msg).length !== 1 || msg.type !== TRAJECTORY_CLOSE_MESSAGE) return;
+        if (modal.open) modal.close();
     });
 
     // Handle Esc key or dialog close API
     modal.addEventListener('close', () => {
-        modal.classList.remove('diff-modal');
-        modal.querySelector('.modal-content')?.classList.remove('diff-modal');
+        modal.classList.remove('diff-modal', 'frame-modal');
+        modal.querySelector('.modal-content')?.classList.remove('diff-modal', 'frame-modal');
+        // Stop sandboxed agent content (trajectory or app) from running behind the closed dialog.
+        modal.querySelectorAll('iframe.artifact-frame').forEach(frame => frame.remove());
         const url = new URL(window.location.href);
         const paramsList = ['testName', 'checkId', 'view', 'run'];
         let changed = false;
@@ -482,31 +605,11 @@ function formatRuntime(ms) {
 function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     const container = $('#test-header');
     if (container) {
-        let timeStr = '-';
-        if (!timestamp) {
-            const dateMatch = testId.match(/(\d{4}-\d{2}-\d{2})/);
-            if (dateMatch) timestamp = dateMatch[1];
-        }
-        if (!timestamp && data && data.timestamp) {
-            timestamp = data.timestamp;
-        }
-        if (timestamp) {
-            try {
-                const _date = new Date(timestamp);
-                timeStr = _date.toLocaleString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                }).replace(' at ', ', ');
-                if (timeStr.includes('12:00 AM') || timeStr === 'Invalid Date' || isNaN(_date.getTime())) {
-                    /** @type {Intl.DateTimeFormatOptions} */
-                    const options = { month: 'short', day: 'numeric' };
-                    timeStr = _date.toLocaleDateString('en-US', options);
-                }
-            } catch { }
-        }
+        // Shared parser and formatter (MWG capture-location-agnostic-data): builds an explicit UTC
+        // instant, prefers the run time encoded in the testId over a date-only or midnight timestamp,
+        // shows real instants in the viewer's time zone and date-only values as their UTC calendar
+        // day, in the same 'en-US' style as the other dashboard pages.
+        const timeStr = formatSuiteDate(timestamp || data?.timestamp || '', testId);
 
         let agent = 'unknown';
         let model = 'unknown';
@@ -529,10 +632,11 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
             model = data.model || 'unknown';
         }
 
+        container.removeAttribute('aria-busy');
         container.innerHTML = `
             <div class="header-meta-grid">
                 <div class="header-meta-item">
-                    <span class="meta-value" title="${escapeHtml(testId)}">${escapeHtml(testId)}</span>
+                    <span class="meta-value">${escapeHtml(testId)}</span>
                     <span class="meta-label">Test ID</span>
                 </div>
                 <div class="header-meta-item">
@@ -544,7 +648,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                     <span class="meta-label">Agent</span>
                 </div>
                 <div class="header-meta-item">
-                    <span class="meta-value" title="${escapeHtml(model)}">${escapeHtml(model)}</span>
+                    <span class="meta-value">${escapeHtml(model)}</span>
                     <span class="meta-label">Model</span>
                 </div>
                 <div class="header-meta-item">
@@ -564,7 +668,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                 ` : ''}
                 ${data.skillVersion ? `
                 <div class="header-meta-item">
-                    <span class="meta-value" title="${escapeHtml(data.skillVersion)}">${escapeHtml(data.skillVersion)}</span>
+                    <span class="meta-value">${escapeHtml(data.skillVersion)}</span>
                     <span class="meta-label">Skill Version</span>
                 </div>
                 ` : ''}
@@ -859,19 +963,101 @@ function renderSummary(data) {
     });
 }
 
+/** @typedef {{ appName: string, guide: string, scenarioName: string, unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
+
+/** Long-task budget from the MWG break-up-long-tasks guide. */
+const YIELD_BUDGET_MS = 50;
+
 /**
+ * Yields to the main thread so input and paint can run between chunks of work
+ * (MWG break-up-long-tasks), with a setTimeout fallback where scheduler.yield() is missing.
+ * @returns {Promise<void>}
+ */
+function yieldToMain() {
+    const scheduler = /** @type {{ scheduler?: { yield?: () => Promise<void> } }} */ (/** @type {unknown} */ (globalThis)).scheduler;
+    if (scheduler?.yield) return scheduler.yield();
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+/** Explanations for the task badges, shown in each badge's own hint popover. */
+const HINT_TEXT = {
+    infra: 'Infrastructure or CLI errors stop a run before grading. Those runs are excluded from pass rates.',
+    build: "The agent produced a broken app or build, so grading failed. Open the task to see each run's failure reason.",
+    leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the run isn't a clean baseline.",
+    invalid: 'Excluded from the rollup because one or both sides have 0 valid runs.',
+};
+
+/**
+ * Per-scenario stats don't depend on sort order or metric mode, so compute them once per data load.
+ * Holds the in-flight promise, so a sort or mode click during the first (yielding) computation
+ * awaits that same work instead of starting a second, concurrent computeScenarios().
+ * @type {WeakMap<DashboardEvalsReport, Promise<ScenarioItem[]>>}
+ */
+const scenarioCache = new WeakMap();
+
+/**
+ * Built accordions for the current data, metric mode, and suite. A sort change only reorders these
+ * nodes, which is cheap and keeps any panels the user already opened (and their loaded details).
+ * @type {{ data: DashboardEvalsReport | null, mode: string | null, testId: string | null, nodes: Map<string, HTMLElement> }}
+ */
+const accordionCache = { data: null, mode: null, testId: null, nodes: new Map() };
+
+/** Incremented per renderGrid() call; an older render that resumes after a yield stops. */
+let gridRenderSeq = 0;
+
+/** The most recent renderGrid() call (see renderGridIdle). @type {Promise<void>} */
+let latestGridRender = Promise.resolve();
+
+/**
+ * Builds the task list. A sort or mode click during a yielding render starts a newer render, and
+ * the older one returns early without finishing; callers that need the finished list (deep links,
+ * loading reservations) await renderGridIdle() instead of their own call.
+ * @param {DashboardEvalsReport} data
+ * @param {string} testId
+ * @returns {Promise<void>}
+ */
+function renderGrid(data, testId) {
+    const render = renderGridOnce(data, testId);
+    latestGridRender = render;
+    return render;
+}
+
+/**
+ * Resolves once the latest grid render has finished, following any renders started meanwhile.
+ * Rejects only if that latest render fails.
+ * @returns {Promise<void>}
+ */
+async function renderGridIdle() {
+    for (;;) {
+        const render = latestGridRender;
+        try {
+            await render;
+        } catch (error) {
+            if (render === latestGridRender) throw error;
+            continue;
+        }
+        if (render === latestGridRender) return;
+    }
+}
+
+/**
+ * Re-render from a sort or mode control: a failed render is logged instead of becoming an
+ * unhandled rejection (the cached scenarios are dropped, so the next click retries).
  * @param {DashboardEvalsReport} data
  * @param {string} testId
  */
-function renderGrid(data, testId) {
-    const guideGrid = document.getElementById('guide-grid');
-    const grid = document.getElementById('dashboard-grid');
+function rerenderGrid(data, testId) {
+    renderGrid(data, testId).catch((/** @type {unknown} */ error) => {
+        console.error('Error rendering tasks:', error);
+    });
+}
 
-    if (guideGrid) guideGrid.innerHTML = '';
-    if (grid) grid.innerHTML = '';
+/**
+ * @param {DashboardEvalsReport} data
+ * @returns {Promise<ScenarioItem[]>}
+ */
+async function computeScenarios(data) {
     const results = data.results;
-
-    sortedScenarios = [];
 
     // Extract dimensions dynamically from data keys
     const keys = Object.keys(results);
@@ -888,13 +1074,12 @@ function renderGrid(data, testId) {
         return a.localeCompare(b);
     });
 
-    /** @typedef {{ appName: string, guide: string, scenarioName: string, unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
-
     /** @type {ScenarioItem[]} */
     const scenarios = [];
 
-    sortedAppNames.forEach(appName => {
-        sortedGuides.forEach(guide => {
+    let deadline = performance.now() + YIELD_BUDGET_MS;
+    for (const appName of sortedAppNames) {
+        for (const guide of sortedGuides) {
             const scenarioName = `${appName} - ${guide}`;
             const unguidedKey = `${scenarioName} - unguided`;
             const guidedKey = `${scenarioName} - guided`;
@@ -902,7 +1087,7 @@ function renderGrid(data, testId) {
             const unguidedRuns = results[unguidedKey];
             const guidedRuns = results[guidedKey];
 
-            if (!unguidedRuns && !guidedRuns) return;
+            if (!unguidedRuns && !guidedRuns) continue;
 
             /**
              * @param {DashboardRunResult[] | undefined} runs
@@ -1047,12 +1232,41 @@ function renderGrid(data, testId) {
                 hasLeak,
                 hasFailure
             });
-        });
-    });
 
+            // Classifying every check of every run is the expensive part. Check per scenario, not per
+            // app: a suite with one or two base apps and ~200 guides would otherwise run in one task.
+            if (performance.now() >= deadline) {
+                await yieldToMain();
+                deadline = performance.now() + YIELD_BUDGET_MS;
+            }
+        }
+    }
+
+    return scenarios;
+}
+
+/**
+ * @param {DashboardEvalsReport} data
+ * @param {string} testId
+ */
+async function renderGridOnce(data, testId) {
+    const seq = ++gridRenderSeq;
+    const guideGrid = document.getElementById('guide-grid') || document.getElementById('dashboard-grid');
+
+    let scenariosPromise = scenarioCache.get(data);
+    if (!scenariosPromise) {
+        scenariosPromise = computeScenarios(data);
+        scenarioCache.set(data, scenariosPromise);
+        // Don't cache a failure; the next render retries.
+        scenariosPromise.catch(() => scenarioCache.delete(data));
+    }
+    const scenarios = await scenariosPromise;
+    if (seq !== gridRenderSeq) return; // a newer sort or mode click wins
+
+    // Always a copy: the sorts below run in place and must not reorder the cached list.
     const filteredScenarios = currentMetricMode === 'a11y'
         ? scenarios.filter(s => s.a11yCheckCount > 0)
-        : scenarios;
+        : scenarios.slice();
 
     if (currentTaskSort === 'uplift-desc') {
         filteredScenarios.sort((a, b) => ((b.uplift ?? -999) - (a.uplift ?? -999)) || ((b.guidedAvg ?? -1) - (a.guidedAvg ?? -1)));
@@ -1068,145 +1282,337 @@ function renderGrid(data, testId) {
         filteredScenarios.sort((a, b) => ((a.uncachedDeltaTokens ?? 999999999) - (b.uncachedDeltaTokens ?? 999999999)));
     }
 
-    filteredScenarios.forEach(item => {
-        const {
-            appName, guide, scenarioName, unguidedRuns, guidedRuns,
-            unguidedAvg, guidedAvg, uplift,
-            a11yUnguidedAvg, a11yGuidedAvg, a11yUplift, a11yCheckCount,
-            uRuntimeMs, gRuntimeMs, uUncachedTokens, gUncachedTokens,
-            infraErrorCount, hasInfraError, hasBuildFailure, leakCount, hasFailure
-        } = item;
+    // Arrow-key modal navigation follows the on-screen order.
+    sortedScenarios = filteredScenarios.map(item => item.scenarioName);
 
-        sortedScenarios.push(scenarioName);
+    if (accordionCache.data !== data || accordionCache.mode !== currentMetricMode || accordionCache.testId !== testId) {
+        accordionCache.data = data;
+        accordionCache.mode = currentMetricMode;
+        accordionCache.testId = testId;
+        accordionCache.nodes = new Map();
+    }
+    if (!guideGrid) return;
+    guideGrid.replaceChildren();
 
-        const displayU = currentMetricMode === 'a11y' ? a11yUnguidedAvg : unguidedAvg;
-        const displayG = currentMetricMode === 'a11y' ? a11yGuidedAvg : guidedAvg;
-        const displayUplift = currentMetricMode === 'a11y' ? a11yUplift : uplift;
-        const displayValidPair = displayU !== null && displayG !== null;
+    let fragment = document.createDocumentFragment();
+    let deadline = performance.now() + YIELD_BUDGET_MS;
+    for (const item of filteredScenarios) {
+        let accordion = accordionCache.nodes.get(item.scenarioName);
+        if (!accordion) {
+            accordion = buildAccordion(item, testId);
+            accordionCache.nodes.set(item.scenarioName, accordion);
+        }
+        fragment.append(accordion);
+        if (performance.now() >= deadline) {
+            // Paint what's ready, then let pending input run before building the rest.
+            guideGrid.append(fragment);
+            await yieldToMain();
+            if (seq !== gridRenderSeq) return; // a newer sort or mode click wins
+            fragment = document.createDocumentFragment();
+            deadline = performance.now() + YIELD_BUDGET_MS;
+        }
+    }
+    guideGrid.append(fragment);
+}
 
-        const accordion = document.createElement('div');
-        accordion.className = 'task-accordion';
-        accordion.id = `item-${scenarioName.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}`;
-        accordion.setAttribute('data-guide', guide);
-        accordion.setAttribute('data-task', appName);
+/**
+ * Builds one task accordion. The assertion table is rendered up front (the runs are already in
+ * memory) so Find-in-Page can match it inside collapsed `hidden="until-found"` panels; only the
+ * network-bound prompt and per-run artifacts load when the panel first opens.
+ * @param {ScenarioItem} item
+ * @param {string} testId
+ * @returns {HTMLElement}
+ */
+function buildAccordion(item, testId) {
+    const {
+        appName, guide, scenarioName, unguidedRuns, guidedRuns,
+        unguidedAvg, guidedAvg, uplift,
+        a11yUnguidedAvg, a11yGuidedAvg, a11yUplift, a11yCheckCount,
+        uRuntimeMs, gRuntimeMs, uUncachedTokens, gUncachedTokens,
+        infraErrorCount, hasInfraError, hasBuildFailure, leakCount, hasFailure
+    } = item;
 
-        const minVal = Math.min(displayU ?? 0, displayG ?? 0);
-        const maxVal = Math.max(displayU ?? 0, displayG ?? 0);
-        // Percent positions so the track can shrink on narrow screens (dots use translateX(-50%)).
-        const scale = (/** @type {number} */ val) => `${val}%`;
+    const displayU = currentMetricMode === 'a11y' ? a11yUnguidedAvg : unguidedAvg;
+    const displayG = currentMetricMode === 'a11y' ? a11yGuidedAvg : guidedAvg;
+    const displayUplift = currentMetricMode === 'a11y' ? a11yUplift : uplift;
+    const displayValidPair = displayU !== null && displayG !== null;
 
-        const modeParam = currentMetricMode === 'a11y' ? '&mode=a11y' : '';
-        const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}${modeParam}`;
-        const trendLinkHtml = `
-            <a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(formatTestName(scenarioName))}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="7" y1="17" x2="17" y2="7"></line>
-                    <polyline points="7 7 17 7 17 17"></polyline>
-                </svg>
-            </a>
-        `;
+    const accordion = document.createElement('div');
+    accordion.className = 'task-accordion';
+    accordion.id = `item-${scenarioName.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}`;
+    accordion.setAttribute('data-guide', guide);
+    accordion.setAttribute('data-task', appName);
 
-        const a11yPillHtml = a11yCheckCount > 0 ? (a11yUplift !== null ? `
-            <span class="a11y-task-pill">
-                ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp)
-                <span class="visually-hidden">accessibility checks: unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%</span>
-            </span>
-        ` : `
-            <span class="a11y-task-pill">
-                ${a11yCheckCount} a11y
-            </span>
-        `) : '';
+    const minVal = Math.min(displayU ?? 0, displayG ?? 0);
+    const maxVal = Math.max(displayU ?? 0, displayG ?? 0);
+    // Percent positions so the track can shrink on narrow screens (dots use translateX(-50%)).
+    const scale = (/** @type {number} */ val) => `${val}%`;
 
-        const metaChipsHtml = `
-            <div class="task-efficiency-meta">
-                ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average completion time, unguided to guided: </span><span aria-hidden="true">⏱</span> ${formatDuration(uRuntimeMs)} → ${formatDuration(gRuntimeMs)}</span>` : ''}
-                ${(uUncachedTokens > 0 || gUncachedTokens > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span aria-hidden="true">🪙</span> ${formatTokens(uUncachedTokens)} → ${formatTokens(gUncachedTokens)}</span>` : ''}
+    const modeParam = currentMetricMode === 'a11y' ? '&mode=a11y' : '';
+    const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}${modeParam}`;
+    const trendLinkHtml = `
+        <a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(formatTestName(scenarioName))}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="7" y1="17" x2="17" y2="7"></line>
+                <polyline points="7 7 17 7 17 17"></polyline>
+            </svg>
+        </a>
+    `;
+
+    const a11yPillHtml = a11yCheckCount > 0 ? (a11yUplift !== null ? `
+        <span class="a11y-task-pill">
+            ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp)
+            <span class="visually-hidden">accessibility checks: unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%</span>
+        </span>
+    ` : `
+        <span class="a11y-task-pill">
+            ${a11yCheckCount} a11y
+        </span>
+    `) : '';
+
+    const metaChipsHtml = `
+        <div class="task-efficiency-meta">
+            ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average completion time, unguided to guided: </span><span aria-hidden="true">⏱</span> ${formatDuration(uRuntimeMs)} → ${formatDuration(gRuntimeMs)}</span>` : ''}
+            ${(uUncachedTokens > 0 || gUncachedTokens > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span aria-hidden="true">🪙</span> ${formatTokens(uUncachedTokens)} → ${formatTokens(gUncachedTokens)}</span>` : ''}
+        </div>
+    `;
+
+    const contentId = `${accordion.id}-content`;
+    // The toggle is a real <button>; the trend link and pills are siblings so no
+    // interactive control is nested inside another (axe: nested-interactive).
+    // Badges are interest-invoking buttons (MWG interest-triggered-tooltips), so hover, focus, and
+    // touch users can all reach the text. Each badge gets its own hint popover with a unique id and
+    // a unique anchor-name / position-anchor pair: the guide makes that MANDATORY because the anchor
+    // polyfill can't use the implicit interestfor anchor, and a shared popover would need one.
+    /** @type {string[]} */
+    const hintPopovers = [];
+    /**
+     * @param {string} kind
+     * @param {string} className
+     * @param {string} label
+     * @param {string} hintText
+     */
+    const hintButton = (kind, className, label, hintText) => {
+        const hintId = `${accordion.id}-hint-${kind}`;
+        hintPopovers.push(`<div id="${hintId}" popover="hint" class="hint-popover" style="position-anchor: --${hintId};">${escapeHtml(hintText)}</div>`);
+        return `<button type="button" class="${className ? `${className} ` : ''}hint-trigger" interestfor="${hintId}" style="anchor-name: --${hintId};">${escapeHtml(label)}</button>`;
+    };
+    const infraBadgeHtml = hasInfraError
+        ? hintButton('infra', 'generation-failed-badge infra-error-badge', `${infraErrorCount} Infra Error${infraErrorCount === 1 ? '' : 's'}`, HINT_TEXT.infra)
+        : '';
+    const buildBadgeHtml = hasBuildFailure
+        ? hintButton('build', 'generation-failed-badge', 'Build Failed', HINT_TEXT.build)
+        : '';
+    const leakBadgeHtml = leakCount > 0
+        ? hintButton('leak', 'generation-failed-badge leak-badge', leakCount > 1 ? `${leakCount} Unguided Leaks` : 'Unguided Leak', HINT_TEXT.leak)
+        : '';
+    const invalidBadgeHtml = displayUplift === null
+        ? hintButton('invalid', '', 'INVALID', HINT_TEXT.invalid)
+        : '';
+    accordion.innerHTML = `
+        <div class="task-accordion-header">
+            <div class="left-section">
+                <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}">
+                    <span class="chevron" aria-hidden="true">▶</span>
+                    <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
+                    <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
+                </button>
+                ${trendLinkHtml}
+                ${a11yPillHtml}
+                ${infraBadgeHtml}
+                ${buildBadgeHtml}
+                ${leakBadgeHtml}
             </div>
-        `;
-
-        const contentId = `${accordion.id}-content`;
-        // The toggle is a real <button>; the trend link and pills are siblings so no
-        // interactive control is nested inside another (axe: nested-interactive).
-        accordion.innerHTML = `
-            <div class="task-accordion-header">
-                <div class="left-section">
-                    <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}">
-                        <span class="chevron" aria-hidden="true">▶</span>
-                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
-                        <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
-                    </button>
-                    ${trendLinkHtml}
-                    ${a11yPillHtml}
-                    ${hasInfraError ? `<span class="generation-failed-badge infra-error-badge" title="Infrastructure / CLI errors are excluded from pass rates">${infraErrorCount} Infra Error${infraErrorCount === 1 ? '' : 's'}</span>` : ''}
-                    ${hasBuildFailure ? `<span class="generation-failed-badge" title="Agent produced a broken app or build that failed grading">Build Failed</span>` : ''}
-                    ${leakCount > 0 ? `<span class="generation-failed-badge leak-badge" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(guide)}">${leakCount > 1 ? `${leakCount} Unguided Leaks` : 'Unguided Leak'}</span>` : ''}
+            <div class="right-section">
+                ${metaChipsHtml}
+                <div class="mini-dumbbell-track" aria-hidden="true">
+                    ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
+                    ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
+                    ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
                 </div>
-                <div class="right-section">
-                    ${metaChipsHtml}
-                    <div class="mini-dumbbell-track" aria-hidden="true">
-                        ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
-                        ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
-                        ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
-                    </div>
-                    ${displayUplift !== null ? `
-                    <div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}">
-                        <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp
-                    </div>
-                    ` : `
-                    <div class="uplift-score invalid" title="Excluded from rollup because one or both sides have 0 valid runs">
-                        INVALID
-                    </div>
-                    `}
+                ${displayUplift !== null ? `
+                <div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}">
+                    <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp
+                </div>
+                ` : `
+                <div class="uplift-score invalid">
+                    ${invalidBadgeHtml}
+                </div>
+                `}
+            </div>
+        </div>
+        <div class="task-accordion-content" id="${contentId}" hidden="until-found">
+            <div class="task-accordion-body">
+                <div class="task-details-grid">
+                    <div class="task-prompt-slot"><div class="expansion-loading">Loading details...</div></div>
+                    ${buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns)}
                 </div>
             </div>
-            <div class="task-accordion-content" id="${contentId}" hidden="until-found">
-                <div class="expansion-loading">Loading details...</div>
-            </div>
-        `;
+        </div>
+        ${hintPopovers.join('')}
+    `;
 
-        const header = $('.task-accordion-header', accordion);
-        const toggleBtn = $('.task-toggle', accordion);
-        const content = $('.task-accordion-content', accordion);
+    const header = $('.task-accordion-header', accordion);
+    const toggleBtn = $('.task-toggle', accordion);
+    const content = $('.task-accordion-content', accordion);
 
-        const toggleAccordion = async () => {
-            const isOpen = accordion.classList.toggle('open');
-            toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            if (isOpen) {
-                content.removeAttribute('hidden');
-            } else {
-                content.setAttribute('hidden', 'until-found');
+    const toggleAccordion = async () => {
+        const isOpen = accordion.classList.toggle('open');
+        toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        if (isOpen) {
+            content.removeAttribute('hidden');
+        } else {
+            content.setAttribute('hidden', 'until-found');
+        }
+
+        if (isOpen && content.querySelector('.expansion-loading') && content.dataset.loading !== 'true') {
+            content.dataset.loading = 'true';
+            try {
+                await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
+            } finally {
+                delete content.dataset.loading;
             }
+        }
+    };
 
-            if (isOpen && content.querySelector('.expansion-loading') && content.dataset.loading !== 'true') {
-                content.dataset.loading = 'true';
-                try {
-                    await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId);
-                } finally {
-                    delete content.dataset.loading;
-                }
-            }
-        };
-
-        content.addEventListener('beforematch', () => {
-            if (!accordion.classList.contains('open')) {
-                toggleAccordion();
-            }
-        });
-
-        // Clicking anywhere on the header row toggles (mouse convenience); the button
-        // is the keyboard/AT control and its click bubbles here. Links/pills opt out.
-        header.addEventListener('click', (e) => {
-            const target = e.target;
-            if (target instanceof Element && target.closest('a')) return;
+    content.addEventListener('beforematch', () => {
+        if (!accordion.classList.contains('open')) {
             toggleAccordion();
-        });
-
-        if (guideGrid) {
-            guideGrid.appendChild(accordion);
-        } else if (grid) {
-            grid.appendChild(accordion);
         }
     });
+
+    // Clicking anywhere on the header row toggles (mouse convenience); the button
+    // is the keyboard/AT control and its click bubbles here. Links and hint buttons opt out.
+    header.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target instanceof Element && target.closest('a, .hint-trigger')) return;
+        toggleAccordion();
+    });
+
+    return accordion;
+}
+
+/**
+ * Assertion table (thead + tbody) for one task, built synchronously from the in-memory runs.
+ * The per-run artifact footer is added later by fillAccordionDetails().
+ * @param {string} scenarioName
+ * @param {DashboardRunResult[] | undefined} unguidedRuns
+ * @param {DashboardRunResult[] | undefined} guidedRuns
+ * @returns {string}
+ */
+function buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns) {
+    const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
+    // 1. Truth Matrix (Combine all runs side-by-side if multiple)
+    const maxUnguided = unguidedRuns ? unguidedRuns.length : 0;
+    const maxGuided = guidedRuns ? guidedRuns.length : 0;
+    const maxRuns = Math.max(maxUnguided, maxGuided);
+
+    const assertionMap = new Map(); // message -> { unguided: [], guided: [], error?: string, errorLocation?: string, pageSnapshot?: string, browserErrors?: string }
+    /**
+     * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
+     * @param {'unguided' | 'guided'} type
+     */
+    const processResultsToMap = (runs, type) => {
+        if (!runs) return;
+        runs.forEach((run, runIndex) => {
+            if (run && run.results) {
+                run.results.forEach(check => {
+                    if (check.isEarlyFailure) return;
+                    const existing = assertionMap.get(check.message) || {
+                        unguided: [],
+                        guided: [],
+                        error: null,
+                        errorLocation: null,
+                        pageSnapshot: null,
+                        browserErrors: null,
+                    };
+                    existing[type][runIndex] = check.passed;
+                    // Guided runs are processed last, so when both fail, guided diagnostics win.
+                    if (!check.passed) {
+                        if (check.error) existing.error = check.error;
+                        if (check.errorLocation) existing.errorLocation = check.errorLocation;
+                        if (check.pageSnapshot) existing.pageSnapshot = check.pageSnapshot;
+                        if (check.browserErrors) existing.browserErrors = check.browserErrors;
+                    }
+                    assertionMap.set(check.message, existing);
+                });
+            }
+        });
+    };
+    processResultsToMap(unguidedRuns, 'unguided');
+    processResultsToMap(guidedRuns, 'guided');
+
+    /**
+     * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
+     */
+    const isRunEarlyFailure = (runs) => runs && runs.some(r => isEarlyFailureRun(r.results));
+    const uFailed = isRunEarlyFailure(unguidedRuns);
+    const gFailed = isRunEarlyFailure(guidedRuns);
+    const scenarioGuide = parseResultKey(`${scenarioName} - unguided`)?.guide || '';
+
+    let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Assertion results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader assertion results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
+
+    if (maxRuns > 1) {
+        truthMatrixHtml += `
+            <tr>
+                <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th>
+                <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th>
+                <th scope="col" rowspan="2">Assertion Requirement</th>
+            </tr>
+            <tr>
+        `;
+        for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
+        for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
+        truthMatrixHtml += `</tr>`;
+    } else {
+        truthMatrixHtml += `
+            <tr>
+                <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th>
+                <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th>
+                <th scope="col">Assertion Requirement</th>
+            </tr>
+        `;
+    }
+    truthMatrixHtml += `</thead><tbody>`;
+
+    const guideName = scenarioGuide || scenarioName.split(' - ')[1] || '';
+    if (assertionMap.size === 0) {
+        const totalCols = maxRuns > 1 ? (maxRuns * 2 + 1) : 3;
+        truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
+    }
+
+    const passSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="visually-hidden">Pass</span>';
+    const failSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span class="visually-hidden">Fail</span>';
+    const passCell = (/** @type {boolean | undefined} */ pass) => `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? passSvg : failSvg) : '-'}</td>`;
+
+    assertionMap.forEach((status, message) => {
+        const a11yInfo = classifyAccessibilityCheck(sampleRun?.discipline || '', guideName, message);
+        const subCatMeta = a11yInfo.subCategory ? A11Y_SUBCATEGORY_MAP[a11yInfo.subCategory] : null;
+        const a11yBadge = a11yInfo.isAccessibility && subCatMeta
+            ? ` <span class="a11y-check-badge">A11y · ${escapeHtml(subCatMeta.shortLabel)}</span>`
+            : '';
+
+        truthMatrixHtml += `<tr class="${a11yInfo.isAccessibility ? 'a11y-assertion-row' : ''}">`;
+        for (let i = 0; i < maxRuns; i++) truthMatrixHtml += passCell(status.unguided[i]);
+        for (let i = 0; i < maxRuns; i++) truthMatrixHtml += passCell(status.guided[i]);
+        let diagnosticsHtml = '';
+        if (status.error) {
+            const loc = status.errorLocation ? ` <span class="assertion-error-loc">(${escapeHtml(status.errorLocation)})</span>` : '';
+            diagnosticsHtml += `<div class="assertion-error">${escapeHtml(status.error.length > 300 ? status.error.substring(0, 300) + '...' : status.error)}${loc}</div>`;
+        }
+        if (status.pageSnapshot) {
+            diagnosticsHtml += `<details class="assertion-diagnostic"><summary>Page Snapshot</summary><pre>${escapeHtml(status.pageSnapshot)}</pre></details>`;
+        }
+        if (status.browserErrors) {
+            diagnosticsHtml += `<details class="assertion-diagnostic browser-errors"><summary>Browser Errors</summary><pre>${escapeHtml(status.browserErrors)}</pre></details>`;
+        }
+        truthMatrixHtml += `<td>
+            ${escapeHtml(message)}${a11yBadge}
+            ${diagnosticsHtml}
+        </td></tr>`;
+    });
+    truthMatrixHtml += '</tbody></table></div>';
+    return truthMatrixHtml;
 }
 
 /**
@@ -1277,116 +1683,11 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             }
         }
 
-        // 1. Truth Matrix (Combine all runs side-by-side if multiple)
         const maxUnguided = unguidedRuns ? unguidedRuns.length : 0;
         const maxGuided = guidedRuns ? guidedRuns.length : 0;
         const maxRuns = Math.max(maxUnguided, maxGuided);
-
-        const assertionMap = new Map(); // message -> { unguided: [], guided: [], error?: string, errorLocation?: string, pageSnapshot?: string, browserErrors?: string }
-        /**
-         * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
-         * @param {'unguided' | 'guided'} type
-         */
-        const processResultsToMap = (runs, type) => {
-            if (!runs) return;
-            runs.forEach((run, runIndex) => {
-                if (run && run.results) {
-                    run.results.forEach(check => {
-                        if (check.isEarlyFailure) return;
-                        const existing = assertionMap.get(check.message) || {
-                            unguided: [],
-                            guided: [],
-                            error: null,
-                            errorLocation: null,
-                            pageSnapshot: null,
-                            browserErrors: null,
-                        };
-                        existing[type][runIndex] = check.passed;
-                        // Guided runs are processed last, so when both fail, guided diagnostics win.
-                        if (!check.passed) {
-                            if (check.error) existing.error = check.error;
-                            if (check.errorLocation) existing.errorLocation = check.errorLocation;
-                            if (check.pageSnapshot) existing.pageSnapshot = check.pageSnapshot;
-                            if (check.browserErrors) existing.browserErrors = check.browserErrors;
-                        }
-                        assertionMap.set(check.message, existing);
-                    });
-                }
-            });
-        };
-        processResultsToMap(unguidedRuns, 'unguided');
-        processResultsToMap(guidedRuns, 'guided');
-
-        /**
-         * @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
-         */
-        const isRunEarlyFailure = (runs) => runs && runs.some(r => isEarlyFailureRun(r.results));
-        const uFailed = isRunEarlyFailure(unguidedRuns);
-        const gFailed = isRunEarlyFailure(guidedRuns);
         const scenarioGuide = parseResultKey(`${scenarioName} - unguided`)?.guide || '';
 
-        let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Assertion results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader assertion results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
-
-        if (maxRuns > 1) {
-            truthMatrixHtml += `
-                <tr>
-                    <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th>
-                    <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th>
-                    <th scope="col" rowspan="2">Assertion Requirement</th>
-                </tr>
-                <tr>
-            `;
-            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
-            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
-            truthMatrixHtml += `</tr>`;
-        } else {
-            truthMatrixHtml += `
-                <tr>
-                    <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th>
-                    <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th>
-                    <th scope="col">Assertion Requirement</th>
-                </tr>
-            `;
-        }
-        truthMatrixHtml += `</thead><tbody>`;
-
-        const guideName = scenarioGuide || scenarioName.split(' - ')[1] || '';
-        if (assertionMap.size === 0) {
-            const totalCols = maxRuns > 1 ? (maxRuns * 2 + 1) : 3;
-            truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
-        }
-
-        const passSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="visually-hidden">Pass</span>';
-        const failSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span class="visually-hidden">Fail</span>';
-        const passCell = (/** @type {boolean | undefined} */ pass) => `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? passSvg : failSvg) : '-'}</td>`;
-
-        assertionMap.forEach((status, message) => {
-            const a11yInfo = classifyAccessibilityCheck(sampleRun?.discipline || '', guideName, message);
-            const subCatMeta = a11yInfo.subCategory ? A11Y_SUBCATEGORY_MAP[a11yInfo.subCategory] : null;
-            const a11yBadge = a11yInfo.isAccessibility && subCatMeta
-                ? ` <span class="a11y-check-badge">A11y · ${escapeHtml(subCatMeta.shortLabel)}</span>`
-                : '';
-
-            truthMatrixHtml += `<tr class="${a11yInfo.isAccessibility ? 'a11y-assertion-row' : ''}">`;
-            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += passCell(status.unguided[i]);
-            for (let i = 0; i < maxRuns; i++) truthMatrixHtml += passCell(status.guided[i]);
-            let diagnosticsHtml = '';
-            if (status.error) {
-                const loc = status.errorLocation ? ` <span class="assertion-error-loc">(${escapeHtml(status.errorLocation)})</span>` : '';
-                diagnosticsHtml += `<div class="assertion-error">${escapeHtml(status.error.length > 300 ? status.error.substring(0, 300) + '...' : status.error)}${loc}</div>`;
-            }
-            if (status.pageSnapshot) {
-                diagnosticsHtml += `<details class="assertion-diagnostic"><summary>Page Snapshot</summary><pre>${escapeHtml(status.pageSnapshot)}</pre></details>`;
-            }
-            if (status.browserErrors) {
-                diagnosticsHtml += `<details class="assertion-diagnostic browser-errors"><summary>Browser Errors</summary><pre>${escapeHtml(status.browserErrors)}</pre></details>`;
-            }
-            truthMatrixHtml += `<td>
-                ${escapeHtml(message)}${a11yBadge}
-                ${diagnosticsHtml}
-            </td></tr>`;
-        });
-        truthMatrixHtml += '</tbody></table></div>';
 
         // Compute run cards for separate horizontal grid
         // Compute column chips for the footer transposed layout (Percent + Traj + Diff Table + Log)
@@ -1402,7 +1703,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             const style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace; text-decoration: none;';
 
             const url = `guide.html?guide=${encodeURIComponent(g)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}`;
-            return `<a href="${url}" class="${className}" style="${style}" title="View guide trend">${escapeHtml(g)}</a>`;
+            // No title tooltip (MWG html guide): the destination is spelled out for AT in the link text.
+            return `<a href="${url}" class="${className}" style="${style}">${escapeHtml(g)}<span class="visually-hidden"> (view guide trend)</span></a>`;
         };
 
         /**
@@ -1447,14 +1749,16 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const taskRuntime = getAgentRuntimeMs(run) || null; // agent-only (grader time is fixed harness overhead)
                  const tb = getTokenBreakdown(run.tokenUsage);
 
+                 // Per-run failure messages are dynamic, so instead of a hover-only title they sit in a
+                 // native disclosure that mouse, keyboard, and touch users can open (and find-in-page can reveal).
                  chips.push(`
                      <div class="tfoot-chip">
                          ${isEarlyFailure
-                             ? `<span class="tfoot-chip-error" title="${escapeHtml(earlyFailureMsg)}">ERROR<span class="visually-hidden">: ${escapeHtml(earlyFailureMsg)}</span></span>`
+                             ? `<details class="tfoot-chip-details"><summary class="tfoot-chip-error">ERROR</summary><p class="tfoot-chip-msg">${escapeHtml(earlyFailureMsg)}</p></details>`
                              : `<span class="tfoot-chip-rate" style="--rate-color: ${getColor(s.rate)};">${s.rate}%</span>`
                          }
-                         ${isLeak ? `<span class="run-chip-leak" title="Unguided agent accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}">Unguided Leak<span class="visually-hidden">: accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}</span></span>` : ''}
-                         ${buildFailureReason ? `<span class="tfoot-chip-build-failed" title="${escapeHtml(buildFailureReason)}">Build Failed<span class="visually-hidden">: ${escapeHtml(buildFailureReason)}</span></span>` : ''}
+                         ${isLeak ? `<span class="run-chip-leak">Unguided Leak<span class="visually-hidden">: accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}</span></span>` : ''}
+                         ${buildFailureReason ? `<details class="tfoot-chip-details"><summary class="tfoot-chip-build-failed">Build Failed</summary><p class="tfoot-chip-msg">${escapeHtml(buildFailureReason)}</p></details>` : ''}
                          ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent time: </span>${formatDuration(taskRuntime)}</span>` : ''}
                          ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)} uncached<span class="visually-hidden">, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
                          <div class="tfoot-chip-actions">
@@ -1551,35 +1855,36 @@ ${toolsUsed.map((/** @type {string} */ t) => {
 <div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px;">${unguidedCards}${guidedCards}</div>
 </td></tr></tfoot>`;
 
-        truthMatrixHtml = truthMatrixHtml.replace('</tbody></table></div>', `</tbody>${tfootHtml}</table></div>`);
-
-
-        const loadBtnId = `load-btn-${scenarioName.replace(/\s+/g, '-')}`;
-
-        container.innerHTML = `
-            <div class="task-details-grid">
-                ${promptHtml}
-                ${truthMatrixHtml}
-
-            </div>
-        `;
-
-            //  i left this out of it for now.
-         // <div id="${escapeHtml(svgContainerId)}" class="stability-section blueprint-framed">
-         //            <div class="stability-title">Reliability Trend Analysis</div>
-         //            <button id="${escapeHtml(loadBtnId)}" class="secondary-btn">Compare task results across trials</button>
-         //        </div>
-
-        const loadBtn = container.querySelector(`#${loadBtnId}`);
-        if (loadBtn) {
-            loadBtn.addEventListener('click', () => {
-                loadStabilityTrend(scenarioName, testId);
+        // The assertion table is already rendered (buildTruthMatrixHtml); add the network-bound
+        // prompt and per-run artifact footer around it without re-rendering the table.
+        const promptSlot = container.querySelector('.task-prompt-slot');
+        if (promptSlot) promptSlot.innerHTML = promptHtml;
+        container.querySelector('table.truth-matrix')?.insertAdjacentHTML('beforeend', tfootHtml);
+        // Long failure messages scroll (max-block-size), and keyboard users need focus to scroll them.
+        // Only those get a tab stop, as a named region; short messages stay plain, unfocusable text.
+        container.querySelectorAll('.tfoot-chip-details').forEach(details => {
+            details.addEventListener('toggle', () => {
+                const msg = details.querySelector('.tfoot-chip-msg');
+                if (!(details instanceof HTMLDetailsElement) || !(msg instanceof HTMLElement) || !details.open) return;
+                if (msg.scrollHeight > msg.clientHeight) {
+                    msg.tabIndex = 0;
+                    msg.setAttribute('role', 'region');
+                    msg.setAttribute('aria-label', `${details.querySelector('summary')?.textContent || 'Failure'} message`);
+                } else {
+                    msg.removeAttribute('tabindex');
+                    msg.removeAttribute('role');
+                    msg.removeAttribute('aria-label');
+                }
             });
-        }
+        });
 
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        container.innerHTML = `<div style="color: var(--accent-failure);">Error loading details: ${escapeHtml(msg)}</div>`;
+        // Keep the already-rendered assertion table; report the failure where the prompt would be.
+        const errorHtml = `<div style="color: var(--accent-failure);">Error loading details: ${escapeHtml(msg)}</div>`;
+        const promptSlot = container.querySelector('.task-prompt-slot');
+        if (promptSlot) promptSlot.innerHTML = errorHtml;
+        else container.innerHTML = errorHtml;
     }
 }
 
@@ -1598,26 +1903,128 @@ function formatPromptText(text) {
 }
 
 /**
+ * Opens the shared modal in its wide "frame" layout for sandboxed agent content.
+ * @param {string} titleText
+ * @returns {HTMLElement} the modal body
+ */
+function openFrameModal(titleText) {
+    const modal = $('dialog#modal');
+    const body = $('#modal-body');
+    $('#modal-title').textContent = titleText;
+    modal.dataset.view = 'content';
+    modal.classList.add('frame-modal');
+    $('.modal-content').classList.add('frame-modal');
+    const loading = document.createElement('div');
+    loading.className = 'modal-status-msg';
+    loading.textContent = 'Loading…';
+    body.replaceChildren(renderBackButton(), loading);
+    if (!modal.open) modal.showModal();
+    return body;
+}
+
+/**
+ * Agent-written HTML (trajectories, built apps) is untrusted: an agent can write any file into its
+ * project root. Render it in a sandboxed iframe WITHOUT `allow-same-origin`, so it runs in an opaque
+ * origin and can't read this origin's localStorage (the GCS OAuth token), cookies, or DOM
+ * (MWG security / validate-origins guides).
+ * @param {{ src?: string, srcdoc?: string, title: string, sandbox: string }} options
+ */
+function createSandboxedFrame({ src, srcdoc, title, sandbox }) {
+    const frame = document.createElement('iframe');
+    frame.className = 'artifact-frame';
+    frame.setAttribute('sandbox', sandbox);
+    frame.title = title;
+    if (srcdoc !== undefined) frame.srcdoc = srcdoc;
+    else if (src) frame.src = src;
+    return frame;
+}
+
+/**
+ * @param {HTMLElement} body
+ * @param {string} prefix
+ * @param {unknown} e
+ */
+function showFrameError(body, prefix, e) {
+    const error = document.createElement('div');
+    error.className = 'modal-error-msg';
+    error.textContent = `${prefix}: ${e instanceof Error ? e.message : String(e)}`;
+    body.replaceChildren(renderBackButton(), error);
+}
+
+/** Message type the trajectory frame's Esc bridge posts to the dashboard. */
+const TRAJECTORY_CLOSE_MESSAGE = 'mwg-dashboard:close-modal';
+
+/**
+ * Runs inside the sandboxed trajectory frame. It listens in the bubble phase on window, so the
+ * trajectory's own Esc handling runs first and can opt out with preventDefault().
+ */
+const TRAJECTORY_ESC_BRIDGE = `<script>addEventListener('keydown', function (e) { if (e.key === 'Escape' && !e.defaultPrevented) parent.postMessage({ type: '${TRAJECTORY_CLOSE_MESSAGE}' }, '*'); });</script>`;
+
+/**
+ * Adds the Esc bridge after any doctype (a leading script before `<!DOCTYPE>` would drop the
+ * document into quirks mode). Comments may precede the doctype without affecting the mode, so
+ * skip those too.
+ * @param {string} html
+ */
+function withEscBridge(html) {
+    const doctype = html.match(/^\s*(?:<!--[\s\S]*?-->\s*)*<!doctype[^>]*>/i);
+    if (!doctype) return TRAJECTORY_ESC_BRIDGE + html;
+    return doctype[0] + TRAJECTORY_ESC_BRIDGE + html.slice(doctype[0].length);
+}
+
+/**
  * @param {string} usedBasePath
  * @param {string} sessionFile
  */
-function openTrajectory(usedBasePath, sessionFile) {
-    if (api.source === 'remote') {
-        const finalPath = `${usedBasePath}/${sessionFile}`;
-        api.getFileBlob(finalPath)
-            .then(blob => {
-                const htmlBlob = new Blob([blob], { type: 'text/html' });
-                const url = URL.createObjectURL(htmlBlob);
-                window.open(url, '_blank');
-                setTimeout(() => URL.revokeObjectURL(url), 10_000);
-            })
-            .catch(e => {
-                console.error('Error loading trajectory:', e);
-                alert('Failed to load remote trajectory');
-            });
-    } else {
-        window.open(api.getAbsoluteUrl(`${usedBasePath}/${sessionFile}`), '_blank');
+async function openTrajectory(usedBasePath, sessionFile) {
+    const body = openFrameModal(sessionFile);
+    // The "Loading…" placeholder identifies this request: closing the dialog or opening any newer
+    // view replaces or abandons it, and then the late response must not start a frame.
+    const placeholder = body.lastElementChild;
+    const modal = $('dialog#modal');
+    try {
+        // Fetch as text (remote or local) and use srcdoc: a blob: URL or same-origin path would run the
+        // document's scripts in the dashboard's own origin.
+        const html = await api.getFileText(`${usedBasePath}/${sessionFile}`);
+        if (!modal.open || !placeholder || !body.contains(placeholder)) return;
+        const frame = createSandboxedFrame({
+            srcdoc: withEscBridge(html),
+            title: `Agent trajectory: ${sessionFile}`,
+            sandbox: 'allow-scripts',
+        });
+        frame.dataset.escBridge = '';
+        body.replaceChildren(renderBackButton(), frame);
+    } catch (e) {
+        if (!modal.open || !placeholder || !body.contains(placeholder)) return;
+        console.error('Error loading trajectory:', e);
+        showFrameError(body, 'Error loading trajectory', e);
     }
+}
+
+/**
+ * @param {string} appUrl
+ */
+function openApp(appUrl) {
+    const url = new URL(appUrl, window.location.href);
+    if (url.origin !== window.location.origin) {
+        // Remote GCS (storage.mtls.cloud.google.com) is already a separate origin from the dashboard.
+        window.open(url.href, '_blank', 'noopener,noreferrer');
+        return;
+    }
+    // Local (/gcs-proxy/, /results/) and ?source=static URLs share the dashboard's origin, so opening them
+    // in a tab would run the agent's app with access to the token. Load by URL (not srcdoc) so the app's
+    // relative assets still resolve; allow-forms keeps form-based apps usable without granting same-origin.
+    const body = openFrameModal('Agent-built app');
+    // The app is loaded by URL, so no Esc bridge can be injected, and Esc pressed inside the frame
+    // stays in the frame. Say how to get out instead.
+    const hint = document.createElement('p');
+    hint.className = 'frame-esc-hint';
+    hint.textContent = 'Keyboard: inside the app, press Shift+Tab to move focus back out, then Esc to close.';
+    body.replaceChildren(renderBackButton(), hint, createSandboxedFrame({
+        src: url.href,
+        title: 'Agent-built app preview (sandboxed)',
+        sandbox: 'allow-scripts allow-forms',
+    }));
 }
 
 // Global helper to open details from task list
@@ -1752,7 +2159,10 @@ async function viewContent(fileName, filePath) {
                 preEl.style.padding = '0';
                 preEl.style.fontSize = '0.75rem';
 
-                preEl.textContent = 'diff --git ' + fileDiff;
+                // <pre> only preserves whitespace; <code> marks the content as computer code (MWG html guide).
+            const codeEl = document.createElement('code');
+            codeEl.textContent = 'diff --git ' + fileDiff;
+            preEl.append(codeEl);
 
                 details.appendChild(preEl);
                 body.appendChild(details);
@@ -1765,7 +2175,10 @@ async function viewContent(fileName, filePath) {
         const lines = text.split('\n');
         const truncated = lines.length > 5000;
         const content = truncated ? lines.slice(0, 5000).join('\n') + '\n\n...[truncated for display]...' : text;
-        pre.textContent = content; // escapeHtml not needed if using textContent on a pre
+        // Logs are program output (<samp>); patches, JSON, and other files are code (<code>).
+        const inner = document.createElement(fileName.endsWith('.log') ? 'samp' : 'code');
+        inner.textContent = content; // escapeHtml not needed when using textContent
+        pre.replaceChildren(inner);
         pre.className = '';
 
     } catch (e) {
@@ -1839,7 +2252,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
             diffHtml += `<div class="diff-missing-banner">
                 <strong>Original file not found.</strong> Displaying current file content below.
             </div>`;
-            diffHtml += `<pre class="diff-fallback-pre">${escapeHtml(resultText)}</pre>`;
+            diffHtml += `<pre class="diff-fallback-pre"><code>${escapeHtml(resultText)}</code></pre>`;
         } else {
             // @ts-expect-error global library
             const diff = Diff.diffLines(setupText, resultText);
@@ -1930,6 +2343,7 @@ function renderDashboardDumbbellChart(data) {
 
 
     const chartSection = document.getElementById('chart-section');
+    chartSection?.removeAttribute('aria-busy');
     if (Object.keys(results).length < 1) {
         if (chartSection) chartSection.classList.add('hidden');
         return;
@@ -2059,7 +2473,15 @@ function renderDashboardDumbbellChart(data) {
             size: 500,
             rowHeight: 28,
             margin: { top: 5, right: 200, bottom: 40, left: 30 },
-            hideLegend: true // Hide legend for individual charts to save space
+            hideLegend: true, // Hide legend for individual charts to save space
+            // Same deep link the guide timeline uses (handled in loadDashboardData), so middle-click
+            // or "open in new tab" lands on this exact task's accordion.
+            itemHref: (item) => {
+                const url = new URL(window.location.href);
+                if (item.taskName) url.searchParams.set('task', item.taskName);
+                url.hash = `guide-${encodeURIComponent(item.useCaseId)}`;
+                return `${url.search}${url.hash}`;
+            }
         });
         chart.render({ labels, datasets });
     });

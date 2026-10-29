@@ -316,12 +316,42 @@
   .ab-check-status { padding: 2px 4px; }
 }
 
-@media (prefers-color-scheme: dark) {
-  .ab-score-card.guided { background: color-mix(in srgb, var(--color-accent-success) 8%, var(--color-surface-container-lowest)); }
+/* Slightly stronger tint on dark surfaces, keyed to the computed color-scheme via light-dark().
+   Gated by @supports because a var()-containing declaration can't fall back to an earlier one. */
+@supports (color: light-dark(#000, #fff)) {
+  .ab-score-card.guided { background: light-dark(color-mix(in srgb, var(--color-accent-success) 6%, var(--color-surface-container-lowest)), color-mix(in srgb, var(--color-accent-success) 8%, var(--color-surface-container-lowest))); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ab-task-pill, .ab-agent-pill { transition: none !important; }
+}
+
+/* CLS: reserve space for everything showcase.js renders after showcase-runs.json arrives, so the
+   section (and the page below it) doesn't jump. Values are the measured final sizes for the
+   default task/agent (Playwright at 1280px and 390px). The floors only apply while the section is
+   aria-busy, which showcase.js clears in the same task that paints the content, so real content
+   is never clipped and a small mismatch is the only possible shift. */
+#ab-spotlight[aria-busy="true"] .ab-agent-pills { min-block-size: 2.1rem; min-inline-size: 24rem; }
+#ab-spotlight[aria-busy="true"] .ab-task-pills { min-block-size: 2.275rem; }
+#ab-spotlight[aria-busy="true"] .ab-prompt-banner { min-block-size: 4.6rem; }
+/* On the grid, not the cards: the cards are subgrid items, whose min size doesn't size the rows. */
+#ab-spotlight[aria-busy="true"] .ab-scorecard-grid { min-block-size: 5.95rem; }
+#ab-spotlight[aria-busy="true"] #ab-checks-content { min-block-size: 12.8rem; }
+#ab-spotlight[aria-busy="true"] .ab-frame-footer { min-block-size: 2.075rem; }
+
+@container spotlight (width < 52rem) {
+  #ab-spotlight[aria-busy="true"] .ab-prompt-banner { min-block-size: 5.775rem; }
+  #ab-spotlight[aria-busy="true"] .ab-scorecard-grid { min-block-size: 11.75rem; }
+  #ab-spotlight[aria-busy="true"] #ab-checks-content { min-block-size: 14.625rem; }
+}
+
+@container spotlight (width < 40rem) {
+  #ab-spotlight[aria-busy="true"] .ab-agent-pills { min-block-size: 2rem; min-inline-size: 21.2rem; }
+  #ab-spotlight[aria-busy="true"] .ab-task-pills { min-block-size: 1.775rem; }
+  #ab-spotlight[aria-busy="true"] .ab-prompt-banner { min-block-size: 12.1rem; }
+  #ab-spotlight[aria-busy="true"] .ab-scorecard-grid { min-block-size: 15.15rem; }
+  #ab-spotlight[aria-busy="true"] #ab-checks-content { min-block-size: 19.5rem; }
+  #ab-spotlight[aria-busy="true"] .ab-frame-footer { min-block-size: 4.6rem; }
 }
 
 @media (prefers-contrast: more) {

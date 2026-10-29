@@ -4,6 +4,7 @@
  */
 
 import { extractSuiteSummary } from './summary-extractor.js';
+import { parseSuiteDate, toSuiteDateString } from './utils.js';
 
 /** @typedef {import('./summary-extractor.js').SuiteSummary} SuiteSummary */
 /** @typedef {Partial<SuiteSummary> & { testId: string }} ManifestSuite */
@@ -45,7 +46,6 @@ export const AGENT_FAMILIES = [
  * @typedef {Object} SuiteRef
  * @property {string} testId
  * @property {string} timestamp
- * @property {string} date
  * @property {string} agent
  * @property {string} model
  * @property {number} taskCount
@@ -105,33 +105,17 @@ function pct(numerator, denominator) {
     return denominator > 0 ? round((numerator / denominator) * 100) : 0;
 }
 
-/** @param {ManifestSuite} suite */
+/**
+ * Canonical timestamp for a suite: an ISO instant, or `YYYY-MM-DD` when the source has no time
+ * of day (so re-parsing keeps it date-only; see `toSuiteDateString`). Delegates to the shared
+ * `parseSuiteDate` so the hero, the runs table, and guide.html all resolve the same instant
+ * (and therefore the same calendar day) for a suite. Callers wanting the calendar day should
+ * use `getSuiteDayKey(parseSuiteDate(timestamp))` rather than slicing (which gives the UTC day).
+ * @param {ManifestSuite} suite
+ */
 export function getSuiteTimestamp(suite) {
-    const m = /(\d{4}-\d{2}-\d{2})[_T](\d{2})-(\d{2})-(\d{2})/.exec(suite.testId || '');
-    const fromTestId = m ? `${m[1]}T${m[2]}:${m[3]}:${m[4]}.000Z` : '';
-    const hasNonMidnightIdTime = Boolean(m && (m[2] !== '00' || m[3] !== '00' || m[4] !== '00'));
-
-    if (typeof suite.timestamp === 'string' && suite.timestamp.trim()) {
-        const raw = suite.timestamp.trim();
-        const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(raw);
-        const isMidnight = /T00:00:00(?:\.0+)?Z?$/i.test(raw);
-
-        if ((isDateOnly || isMidnight) && fromTestId && (isDateOnly || hasNonMidnightIdTime)) {
-            return fromTestId;
-        }
-        if (isDateOnly) {
-            const isoDate = `${raw}T00:00:00.000Z`;
-            if (!Number.isNaN(Date.parse(isoDate))) return isoDate;
-        }
-        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(raw)) {
-            const utcRaw = `${raw}Z`;
-            if (!Number.isNaN(Date.parse(utcRaw))) return utcRaw;
-        }
-        if (!Number.isNaN(Date.parse(raw))) return raw;
-    }
-
-    if (fromTestId) return fromTestId;
-    return '';
+    const date = parseSuiteDate(suite.timestamp, suite.testId || '');
+    return date ? toSuiteDateString(date) : '';
 }
 
 /** @param {ManifestSuite} suite */
@@ -233,7 +217,6 @@ function toSuiteRef(suite) {
     return {
         testId: suite.testId,
         timestamp,
-        date: timestamp.slice(0, 10),
         agent: suite.agent || 'unknown',
         model: suite.model || 'unknown',
         taskCount: suite.taskCount || 0,

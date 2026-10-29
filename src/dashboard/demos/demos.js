@@ -1,6 +1,6 @@
 // @ts-check
 
-import { $ } from '../utils.js';
+import { $, getScrollBehavior } from '../utils.js';
 
 /**
  * @typedef {{ id: string; path: string }} DemoFile
@@ -76,18 +76,22 @@ function renderCard(guide) {
   return h('article', { class: 'card', id: guide.id, 'data-src': iframeSrc },
     h('div', { class: 'card-header', 'data-action': 'expand' },
       h('div', { class: 'card-header-top' },
-        h('span', { class: 'guide-id', title: `${guide.title}: ${guide.description}` }, guide.id),
+        // The id doubles as the keyboard-operable expand toggle for the clamped description (it used to
+        // be a span with a title tooltip, and only the pointer-only header click expanded the card).
+        h('button', { type: 'button', class: 'guide-id', 'data-action': 'expand', 'aria-expanded': 'false', 'aria-label': `${guide.id}: ${guide.title}` }, guide.id),
         unsetDemo && h('div', { class: 'toggle-group', role: 'group', 'aria-label': 'Demo variant' },
           h('button', { type: 'button', class: 'toggle-btn active', 'data-action': 'variant', 'data-src': src, 'aria-pressed': 'true' }, 'demo'),
           h('button', { type: 'button', class: 'toggle-btn unset', 'data-action': 'variant', 'data-src': `../${unsetDemo.path}`, 'aria-pressed': 'false' }, 'unset'),
         ),
-        h('a', { class: 'open-link', href: src, target: '_blank', rel: 'noopener', title: 'Open in a new tab', 'aria-label': `Open ${guide.id} in a new tab` },
+        // Icon-only link: visually hidden text names it (no title tooltip, MWG html).
+        h('a', { class: 'open-link', href: src, target: '_blank', rel: 'noopener' },
           openInNewIcon.cloneNode(true),
+          h('span', { class: 'visually-hidden' }, `Open ${guide.id} in a new tab`),
         ),
       ),
-      h('div', { class: 'card-desc', title: guide.description }, guide.description),
-      h('div', { class: 'card-features' },
-        guide.features.map(f => h('button', { type: 'button', class: 'feature-tag', 'data-action': 'feature', title: `Filter by ${f}` }, f)),
+      h('div', { class: 'card-desc' }, guide.description),
+      h('div', { class: 'card-features', role: 'group', 'aria-label': 'Filter by web feature' },
+        guide.features.map(f => h('button', { type: 'button', class: 'feature-tag', 'data-action': 'feature' }, f)),
       ),
     ),
     h('div', { class: 'iframe-container' }),
@@ -98,7 +102,7 @@ const views = guides.map(guide => ({
   guide,
   searchText: [guide.id, guide.title, guide.category, guide.description, ...guide.features].join(' ').toLowerCase(),
   card: renderCard(guide),
-  tocItem: h('li', {}, h('a', { class: 'toc-link', href: `#${guide.id}`, title: guide.description }, guide.id)),
+  tocItem: h('li', {}, h('a', { class: 'toc-link', href: `#${guide.id}` }, guide.id)),
 }));
 
 // The manifest is already sorted by category, then id; groupBy preserves that order.
@@ -185,7 +189,10 @@ for (const { section } of categories) tocObserver.observe(section);
 
 /** @type {Record<string, (el: HTMLElement, card: HTMLElement) => void>} */
 const clickActions = {
-  expand: (_, card) => card.classList.toggle('expanded'),
+  expand: (_, card) => {
+    const expanded = card.classList.toggle('expanded');
+    card.querySelector('button.guide-id')?.setAttribute('aria-expanded', String(expanded));
+  },
   variant: (btn, card) => {
     const rawSrc = /** @type {string} */ (btn.dataset.src);
     const src = previewUrl(rawSrc);
@@ -246,8 +253,8 @@ function updateActiveHash() {
 window.addEventListener('hashchange', updateActiveHash);
 updateActiveHash();
 
-$('header.demos-header h1').addEventListener('click', () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+$('header.demos-header .scroll-top-btn').addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: getScrollBehavior() });
   if (window.location.hash) {
     history.pushState(null, '', window.location.pathname + window.location.search);
     updateActiveHash();

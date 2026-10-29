@@ -3,12 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Opt into OS text scaling; all type is rem-based and there is no root font-size. -->
+  <meta name="text-scale" content="scale">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, accessibility subscores, completion time, and token efficiency across suites.">
   <title>Modern Web Guidance Evals: Measurably better web code with Modern Web Guidance</title>
   <link rel="icon" href="data:,">
+  <!-- Default remote source fetches suites from GCS with an Authorization header (CORS, no credentials). -->
+  <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
   <link rel="stylesheet" href="hero.css">
@@ -105,7 +110,7 @@
           <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
           <p class="hero-agents-note">Pooled across the latest nightly runs per agent. Time, token, per-model, and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> live in the drawer below.</p>
         </div>
-        <div class="agent-table-wrap">
+        <div class="agent-table-wrap" tabindex="0" role="region" aria-labelledby="agent-table-caption">
           <table class="agent-table">
             <caption id="agent-table-caption" class="visually-hidden">Latest nightly runs per agent family, pooled. Unguided → guided.</caption>
             <thead>
@@ -285,16 +290,28 @@
     </main>
   </div>
 
-  <div id="barbell-tooltip" class="barbell-tooltip hidden" role="tooltip"></div>
+  <!-- Shared barbell preview (MWG interest-triggered-tooltips): every barbell link/button has
+       interestfor="barbell-tooltip", so hover/focus/long-press, hover persistence, Escape and light
+       dismiss come from popover="hint" + interestfor (WCAG 1.4.13). landing.js only fills in the
+       content for the trigger on the `interest` event and anchors it there. -->
+  <div id="barbell-tooltip" class="barbell-tooltip" popover="hint" role="tooltip"></div>
 
   <script type="module">
-    // Progressive enhancement for popover and CSS anchor positioning on #filter-menu.
-    // Versions are pinned so a public Pages deploy cannot silently pick up breaking upgrades.
+    // Conditional polyfills for popover (#filter-menu, #barbell-tooltip, hint popovers), CSS anchor
+    // positioning, and interestfor (barbell preview, breakdown hints), only loaded where the native feature is missing.
+    // Vendored copies (MWG secure-external-subresources): this origin holds the GCS OAuth token, so it
+    // must not run unpinned third-party code from a CDN. See vendor/README.md for versions.
+    // Known polyfill limit: its touch long-press only matches button[interestfor], so without native
+    // interestfor (Firefox, Safari) the <a interestfor> triggers (.uplift-link, .a11y-link,
+    // .pivot-link) don't preview on touch. Their content stays reachable by following the link.
+    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+      import("./vendor/interestfor.js").catch(() => {});
+    }
     if (!HTMLElement.prototype.hasOwnProperty("popover")) {
-      import("https://unpkg.com/@oddbird/popover-polyfill@0.6.1").catch(() => {});
+      import("./vendor/popover-polyfill.js").catch(() => {});
     }
     if (!("anchorName" in document.documentElement.style)) {
-      import("https://unpkg.com/@oddbird/css-anchor-positioning@0.10.2").catch(() => {});
+      import("./vendor/css-anchor-positioning.js").catch(() => {});
     }
   </script>
   <script type="module" src="hero.js"></script>

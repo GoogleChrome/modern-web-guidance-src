@@ -1,8 +1,13 @@
 :root {
+  /* Dark-only page: tell the browser so native controls and scrollbars match. */
+  color-scheme: dark;
   --bg-color: #0d0f17;
   --bg-secondary: #12151f;
   --border-color: #333d4d;
   --primary-color: #3b82f6; /* Flat blue for a cleaner runner view */
+  /* #3b82f6 is fine as text on the dark page, but white text on it is only
+     3.68:1; use this darker blue for any fill that carries white text. */
+  --primary-fill: #2563eb;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
 }
@@ -15,6 +20,8 @@
 
 body {
   font-family: 'Instrument Sans', sans-serif;
+  /* Scale the fallback to the web font's x-height so the swap doesn't shift text. */
+  font-size-adjust: from-font;
   background-color: var(--bg-color);
   color: var(--text-primary);
   min-height: 100vh;
@@ -28,6 +35,9 @@ body {
 
 .fancy-header {
   display: flex;
+  /* Let the header button drop below the title on narrow viewports instead of overflowing. */
+  flex-wrap: wrap;
+  gap: 1.5rem;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 3.5rem;
@@ -71,8 +81,16 @@ body {
 
 .row {
   display: flex;
+  /* Wrap so fixed-width inputs and the agent group reflow on narrow viewports. */
+  flex-wrap: wrap;
   gap: 2rem;
   margin-top: 1.5rem;
+}
+
+/* Give fieldsets in a row a real basis so wrapping moves them to their own line
+   rather than squeezing them to zero width next to the number inputs. */
+.row > fieldset.input-group {
+  flex: 1 1 16rem;
 }
 
 .input-group {
@@ -139,8 +157,34 @@ select {
 
 input:focus,
 select:focus {
-  outline: none;
   border-color: var(--primary-color);
+}
+
+/* Keyboard focus must stay visible; :focus-visible avoids rings on mouse clicks. */
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* The native inputs below are visually hidden, so draw the ring on the visible
+   proxy (the checkmark box or the pill) instead. */
+.custom-checkbox input:focus-visible + .checkmark,
+.pill-checkbox:has(input:focus-visible),
+.btn-toggle:has(input:focus-visible) {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+fieldset {
+  border: none;
+  min-inline-size: 0;
+}
+
+legend {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
 }
 
 .tasks-section {
@@ -170,7 +214,7 @@ select:focus {
   font-weight: 600;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .btn-secondary:hover {
@@ -180,7 +224,7 @@ select:focus {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, var(--primary-fill) 0%, #1d4ed8 100%);
   color: #fff;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
@@ -188,7 +232,7 @@ select:focus {
   font-weight: 600;
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), translate 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   display: inline-flex;
@@ -198,14 +242,20 @@ select:focus {
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
+  translate: 0 -2px;
   box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
+
+  @media (prefers-reduced-motion: reduce) {
+    translate: none;
+  }
 }
 
+/* The shine sweep uses translate (not left) so it stays on the compositor. */
 .btn-primary::before {
   content: '';
   position: absolute;
-  top: 0; left: -100%;
+  top: 0; left: 0;
+  translate: -100% 0;
   width: 100%; height: 100%;
   background: linear-gradient(
     90deg,
@@ -213,11 +263,16 @@ select:focus {
     rgba(255, 255, 255, 0.15) 50%,
     transparent 100%
   );
-  transition: all 0.5s ease;
+  transition: translate 0.5s ease;
+
+  /* Purely decorative motion; drop it entirely for reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    display: none;
+  }
 }
 
 .btn-primary:hover::before {
-  left: 100%;
+  translate: 100% 0;
 }
 
 .run-icon {
@@ -228,11 +283,15 @@ select:focus {
   stroke-width: 2px;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: transform 0.3s ease;
+  transition: translate 0.3s ease;
 }
 
 .btn-primary:hover .run-icon {
-  transform: translateX(3px);
+  translate: 3px 0;
+
+  @media (prefers-reduced-motion: reduce) {
+    translate: none;
+  }
 }
 
 .table-container {
@@ -264,15 +323,6 @@ th:first-child, td:first-child {
   border-left: 1px solid var(--border-color);
 }
 
-.header-check {
-  accent-color: #3b82f6;
-  opacity: 0.7;
-}
-
-.header-check:hover {
-  opacity: 1;
-}
-
 th {
   background: var(--bg-color);
   color: #fff;
@@ -298,9 +348,27 @@ tr:hover td {
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.5px;
+  padding: 0;
+}
+
+/* Full-cell button so the whole header row stays a click target. */
+.category-toggle {
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  padding: 0.75rem 1.25rem;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
   cursor: pointer;
   user-select: none;
-  padding: 0.75rem 1.25rem;
+}
+
+.category-toggle:focus-visible {
+  outline-offset: -2px;
 }
 
 .category-header:hover td {
@@ -313,37 +381,17 @@ tr:hover td {
   font-size: 0.625rem;
   color: var(--text-secondary);
   display: inline-block;
-  transition: transform 0.3s ease;
+  transition: rotate 0.3s ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
-.guide-row.collapsed td {
-  padding-top: 0;
-  padding-bottom: 0;
-  height: 0;
-  font-size: 0;
-  line-height: 0;
-  opacity: 0;
-  border-top: none;
-  border-bottom: none;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.guide-row.collapsed .custom-checkbox,
-.guide-row.collapsed .pill-checkbox {
-  padding-top: 0;
-  padding-bottom: 0;
-  height: 0;
-  font-size: 0;
-  line-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  border: none;
-  transition: all 0.3s ease;
-}
-
-.guide-row td {
-  transition: all 0.3s ease;
+/* Collapsed rows use the `hidden` attribute (set in eval-ui.js), which removes
+   them from the tab order and accessibility tree without animating layout. */
+.category-toggle[aria-expanded="false"] .expand-icon {
+  rotate: -90deg;
 }
 
 .guide-name {
@@ -355,6 +403,15 @@ tr:hover td {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+/* The guide name lives inside the row checkbox's label (so it names the
+   checkbox); keep the cell's typography rather than the small form-label style. */
+.guide-cell-content .custom-checkbox {
+  gap: 0.75rem;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
 }
 
 .btn-check-all {
@@ -371,7 +428,7 @@ tr:hover td {
   justify-content: center;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .btn-check-all:hover {
@@ -380,9 +437,9 @@ tr:hover td {
 }
 
 .btn-check-all.active {
-  background: var(--primary-color);
+  background: var(--primary-fill);
   color: #fff;
-  border-color: var(--primary-color);
+  border-color: var(--primary-fill);
 }
 
 .task-list {
@@ -444,11 +501,17 @@ tr:hover td {
 .btn-toggle-group {
   display: flex;
   gap: 0.5rem; /* smaller gap */
-  flex-wrap: nowrap;
+  /* Wrap so the agent radios don't overflow narrow viewports. */
+  flex-wrap: wrap;
   margin-top: 0.5rem;
 }
 
 .btn-toggle {
+  /* Anchors the visually hidden radio so focusing it doesn't scroll the page. */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   background: #11141c;
   color: var(--text-secondary);
   padding: 0.5rem 1rem;
@@ -456,9 +519,28 @@ tr:hover td {
   border: 1px solid var(--border-color);
   font-size: 0.8125rem;
   font-weight: 500;
+  letter-spacing: normal;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   white-space: nowrap;
+}
+
+/* Agent radios: the pill itself shows the selection, so visually hide the dot
+   while keeping the input focusable and in the accessibility tree. */
+.btn-toggle input[type="radio"] {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Skill switches stay visible, per the native switch pattern. */
+.btn-toggle input[type="checkbox"] {
+  accent-color: var(--primary-fill);
+  margin: 0;
+  cursor: pointer;
 }
 
 .btn-toggle:hover {
@@ -467,7 +549,7 @@ tr:hover td {
   color: #fff;
 }
 
-.btn-toggle.active {
+.btn-toggle:has(input:checked) {
   background: rgba(59, 130, 246, 0.1);
   color: #fff;
   border-color: var(--primary-color);
@@ -493,17 +575,19 @@ tr:hover td {
   width: 1.125rem;
   height: 1.125rem;
   background: #11141c;
-  border: 1.5px solid #444;
+  /* Lighter than the old #444 so the unchecked box meets 3:1 against the row. */
+  border: 1.5px solid #64748b;
   border-radius: 3px;
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .custom-checkbox input:checked + .checkmark {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
+  background: var(--primary-fill);
+  border-color: var(--primary-fill);
 }
 
 .custom-checkbox input:checked + .checkmark::after {
@@ -536,8 +620,12 @@ tr:hover td {
   background-color: #11141c;
   border: 1px solid var(--border-color);
   border-radius: 24px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-block;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 .switch-toggle .slider::before {
@@ -549,7 +637,11 @@ tr:hover td {
   bottom: 2px;
   background-color: var(--text-secondary);
   border-radius: 50%;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: translate 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 .switch-toggle input:checked + .slider {
@@ -559,7 +651,7 @@ tr:hover td {
 }
 
 .switch-toggle input:checked + .slider::before {
-  transform: translateX(20px);
+  translate: 20px 0;
   background-color: var(--primary-color);
 }
 

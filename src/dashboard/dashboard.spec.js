@@ -65,7 +65,7 @@ test.describe('Eval View Dashboard', () => {
     expect(count).toBeGreaterThan(0);
 
     // Hover over a dumbbell chart row hit area and verify the tooltip renders its inner content
-    const hitArea = page.locator('#dumbbell-chart rect[role="button"]').first();
+    const hitArea = page.locator('#dumbbell-chart a.dc-hit').first();
     await expect(hitArea).toBeVisible();
     await hitArea.hover();
 
@@ -356,9 +356,11 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(page.locator('.insights-dimension-panel')).toBeVisible();
     await expect(page.locator('.insights-guide-drawer')).toBeVisible();
 
-    // Hovering a Breakdowns barbell cell shows the explanatory barbell tooltip; Escape dismisses it
-    const firstBarbellCell = page.locator('.insights-guide-drawer .insight-dumbbell-cell').first();
-    await firstBarbellCell.hover();
+    // Hovering a Breakdowns guide row's trigger shows the explanatory barbell tooltip; Escape dismisses it.
+    // The row-header link is the interestfor trigger; the barbell cell passes pointer events through
+    // to its stretched hit area, so its rate text stays plain, screen-reader-visible cell content.
+    const firstBarbellTrigger = page.locator('.insights-guide-drawer .pivot-link').first();
+    await firstBarbellTrigger.hover();
     await expect(barbellTooltip).toBeVisible();
     await expect(barbellTooltip).toContainText('Vertical ticks mark the median');
     await page.keyboard.press('Escape');
@@ -415,19 +417,20 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await page.route('**/api/suites*', route => route.fulfill({ json: NIGHTLY_FIXTURE }));
     await page.goto('/');
 
-    // Keyboard focus on a suite uplift link shows #barbell-tooltip and wires aria-describedby
+    // Keyboard focus on a suite uplift link (an interestfor trigger) shows #barbell-tooltip; the
+    // trigger/tooltip relationship is exposed natively by interestfor, not an aria-describedby attribute
     const upliftLink = page.locator('.uplift-link').first();
     await expect(upliftLink).toBeVisible();
+    await expect(upliftLink).toHaveAttribute('interestfor', 'barbell-tooltip');
     await upliftLink.focus();
     const barbellTooltip = page.locator('#barbell-tooltip');
     await expect(barbellTooltip).toBeVisible();
-    await expect(upliftLink).toHaveAttribute('aria-describedby', 'barbell-tooltip');
     await page.keyboard.press('Escape');
     await expect(barbellTooltip).toBeHidden();
 
-    // Breakdowns: non-guide rows (e.g. By Accessibility Dimension) are keyboard-focusable for tooltips
+    // Breakdowns: non-guide rows (e.g. By Accessibility Dimension) have a focusable barbell button for tooltips
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
-    const dimBarbell = page.locator('.insights-dimension-panel .insight-dumbbell-cell[tabindex="0"]').first();
+    const dimBarbell = page.locator('.insights-dimension-panel .insight-dumbbell-cell button[interestfor="barbell-tooltip"]').first();
     await dimBarbell.focus();
     await expect(barbellTooltip).toBeVisible();
     await page.keyboard.press('Escape');
@@ -436,7 +439,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     // Mobile 390px: dumbbell tooltip stays inside viewport and clears on metric mode switch
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/dashboard.html?testId=example-result');
-    const hitArea = page.locator('#dumbbell-chart rect[role="button"]').first();
+    const hitArea = page.locator('#dumbbell-chart a.dc-hit').first();
     await expect(hitArea).toBeVisible();
     await hitArea.focus();
     const dumbbellTooltip = page.locator('#dumbbell-tooltip');

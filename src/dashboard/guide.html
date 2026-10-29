@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Opt into OS text scaling; all type is rem-based and there is no root font-size. -->
+  <meta name="text-scale" content="scale">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
   <title>Guide Performance Trend</title>
+  <!-- Default remote source fetches suites from GCS with an Authorization header (CORS, no credentials). -->
+  <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
   <style>
@@ -23,6 +28,7 @@
       margin: 0;
       font-size: clamp(1.5rem, 1rem + 2vw, 2.5rem);
       overflow-wrap: anywhere;
+      text-wrap: balance;
     }
     .guide-header-actions {
       display: flex;
@@ -54,11 +60,13 @@
       inline-size: 100%;
       padding: 6px 12px;
       border-radius: 4px;
-      border: 1px solid var(--border-color);
+      /* Field borders need 3:1 non-text contrast; --border-color (outline-variant) is ~1.2:1. */
+      border: 1px solid var(--color-field-border, var(--color-outline));
       background: var(--color-surface-container-lowest);
       color: var(--text-primary);
       font: inherit;
       font-size: var(--font-lg);
+      anchor-name: --guide-search;
     }
     .guide-subtitle {
       font-size: var(--font-lg);
@@ -77,18 +85,26 @@
     .timeline-filter-controls input[type="number"] {
       inline-size: 60px;
       padding: 4px 8px;
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--color-field-border, var(--color-outline));
       border-radius: 4px;
       background: var(--color-surface-container-lowest);
       color: var(--text-primary);
       font: inherit;
     }
-    .autocomplete-list {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      z-index: 1001;
+    /* popover="auto" listbox: top layer instead of z-index, anchored under the search input.
+       Explicit anchor name + anchor() insets (not position-area) so the polyfill can place it. */
+    .autocomplete-list[popover] {
+      position: fixed;
+      position-anchor: --guide-search;
+      inset: auto;
+      margin: 0;
+      padding: 0;
+      top: anchor(bottom);
+      left: anchor(left);
+      inline-size: min(280px, calc(100dvw - 24px));
+      inline-size: anchor-size(width);
+      position-try-fallbacks: flip-block;
+      color: inherit;
       background: var(--color-surface-container-lowest);
       border: 1px solid var(--border-color);
       border-radius: 4px;
@@ -143,8 +159,41 @@
       margin-top: 4px;
     }
     .guide-chart-wrapper {
+      position: relative;
       overflow-x: auto;
       width: 100%;
+    }
+    /* HTML stand-in anchor for the active SVG point (guide.js): SVG elements can't be CSS anchors. */
+    .timeline-anchor {
+      position: absolute;
+      pointer-events: none;
+      anchor-name: --timeline-point;
+    }
+    /* MWG interest-triggered-tooltips: beside the point's marker (anchor() insets, not position-area,
+       which the anchor polyfill can't handle), vertically centered on it; flipping to the other
+       side, then below/above, when it would overflow. Gated so that, without native anchor
+       positioning, the measured fallback in guide.js is the only thing placing it. */
+    @supports (anchor-name: --a) {
+      .tooltip-container[popover] {
+        position-anchor: --timeline-point;
+        left: calc(anchor(right) + 10px);
+        align-self: anchor-center;
+        position-try-fallbacks: flip-inline, --timeline-below, --timeline-above;
+        /* Hidden while its point is scrolled out of view (page or the chart's overflow wrapper). */
+        position-visibility: anchors-visible;
+      }
+      @position-try --timeline-below {
+        left: auto;
+        top: calc(anchor(bottom) + 10px);
+        align-self: normal;
+        justify-self: anchor-center;
+      }
+      @position-try --timeline-above {
+        left: auto;
+        bottom: calc(anchor(top) + 10px);
+        align-self: normal;
+        justify-self: anchor-center;
+      }
     }
     .timeline-point {
       cursor: pointer;
@@ -221,7 +270,7 @@
             <label for="guide-search" class="visually-hidden">Search guides</label>
             <input type="search" id="guide-search" class="guide-search" placeholder="Search guides..." autocomplete="off"
                    role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="autocomplete-list">
-            <div id="autocomplete-list" class="autocomplete-list hidden" role="listbox" aria-label="Matching guides"></div>
+            <div id="autocomplete-list" class="autocomplete-list" popover="auto" role="listbox" aria-label="Matching guides"></div>
           </div>
           <button id="go-guide-btn" class="secondary-btn" type="button">Go</button>
         </nav>
@@ -258,12 +307,35 @@
     </main>
   </div>
 
-  <div id="tooltip-container" class="tooltip-container hidden" role="tooltip">
+  <!-- Shared timeline preview (MWG interest-triggered-tooltips): each point is an SVG
+       <a interestfor="tooltip-container">, so hover/focus/long-press, hover persistence, Escape and
+       light dismiss come from popover="hint" + interestfor. guide.js fills it on `interest`. -->
+  <div id="tooltip-container" class="tooltip-container" popover="hint" role="tooltip">
     <div id="tooltip-header"></div>
     <div id="tooltip-content"></div>
   </div>
 
-  <script src="features-mapping.gen.js"></script>
+  <!-- defer keeps document order, so window.__featuresMapping is set before the guide.js module runs. -->
+  <script src="features-mapping.gen.js" defer></script>
+
+  <script type="module">
+    // Conditional polyfills for popover (#autocomplete-list, #tooltip-container), CSS anchor
+    // positioning, and interestfor (timeline points), only loaded where the native feature is
+    // missing. Vendored copies (MWG secure-external-subresources): this origin holds the GCS OAuth
+    // token. See vendor/README.md.
+    // Known polyfill limit: its touch long-press only matches button[interestfor], so without native
+    // interestfor (Firefox, Safari) the SVG <a> timeline points don't preview on touch; tapping
+    // still opens the run, whose page shows the same rates.
+    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+      import("./vendor/interestfor.js").catch(() => {});
+    }
+    if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+      import("./vendor/popover-polyfill.js").catch(() => {});
+    }
+    if (!("anchorName" in document.documentElement.style)) {
+      import("./vendor/css-anchor-positioning.js").catch(() => {});
+    }
+  </script>
   <script type="module" src="guide.js"></script>
 </body>
 </html>

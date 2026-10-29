@@ -11,6 +11,10 @@ import {
     SERVING_DISPLAY_NAMES,
     AGENT_DISPLAY_NAMES,
     parseSuiteDate,
+    formatSuiteDate,
+    getSuiteDayKey,
+    isPopoverOpen,
+    setPopoverOpen,
     median,
 } from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
@@ -170,9 +174,10 @@ window.addEventListener('mwg:manifest-hydrated', (e) => {
     if (!detail || !Array.isArray(detail.suites)) return;
     for (const suite of detail.suites) {
         if (suite && suite.testId && suite.guidedStats) {
-            registerSuiteSummary(suite, detail.source);
+            registerSuiteSummary(suite, detail.source, { refreshFilters: false });
         }
     }
+    refreshFilterOptions();
     renderSuites();
     const drawer = document.getElementById('breakdowns');
     if (drawer instanceof HTMLDetailsElement && drawer.open) {
@@ -223,50 +228,15 @@ function setupTestFilters() {
     const searchInput = document.getElementById('filter-search');
     if (!filterBtn || !filterMenu || !list) return;
 
-    const supportsPopover = typeof HTMLElement !== 'undefined' && 'showPopover' in HTMLElement.prototype;
-
-    if (supportsPopover) {
-        filterMenu.addEventListener('toggle', (e) => {
-            const isOpen = /** @type {ToggleEvent} */ (e).newState === 'open';
-            filterBtn.setAttribute('aria-expanded', String(isOpen));
-            if (isOpen && searchInput instanceof HTMLInputElement) {
-                searchInput.focus();
-            }
-        });
-    } else {
-        /** @param {boolean} open */
-        const setOpen = (open) => {
-            filterMenu.classList.toggle('hidden', !open);
-            filterBtn.setAttribute('aria-expanded', String(open));
-            if (open && searchInput instanceof HTMLInputElement) {
-                searchInput.focus();
-            }
-        };
-        filterMenu.classList.add('hidden');
-
-        filterBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            setOpen(filterMenu.classList.contains('hidden'));
-        });
-
-        document.addEventListener('click', (e) => {
-            const target = e.target;
-            if (target instanceof Node && !filterMenu.contains(target) && !filterBtn.contains(target)) {
-                if (!filterMenu.classList.contains('hidden')) setOpen(false);
-            }
-        });
-    }
-
-    // Escape closes the menu and returns focus to the trigger (disclosure pattern)
-    filterMenu.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            if (supportsPopover && filterMenu.matches(':popover-open')) {
-                filterMenu.hidePopover();
-            } else {
-                filterMenu.classList.add('hidden');
-                filterBtn.setAttribute('aria-expanded', 'false');
-            }
-            filterBtn.focus();
+    // Open/close, Escape, light dismiss, and focus return are all handled by the
+    // native popover (or the conditionally loaded popover polyfill in index.html).
+    // We only mirror the state into aria-expanded (drives the chevron CSS) and move
+    // focus into the search field so keyboard users can start typing immediately.
+    filterMenu.addEventListener('toggle', (e) => {
+        const isOpen = /** @type {ToggleEvent} */ (e).newState === 'open';
+        filterBtn.setAttribute('aria-expanded', String(isOpen));
+        if (isOpen && searchInput instanceof HTMLInputElement) {
+            searchInput.focus();
         }
     });
 
@@ -387,7 +357,7 @@ function setupScrollRegion() {
     wrap.setAttribute('tabindex', '0');
     wrap.setAttribute('role', 'region');
     wrap.setAttribute('aria-label', 'All runs table (scrolls horizontally)');
-    setupBarbellTooltips(wrap);
+    setupBarbellTooltip();
 
     if ('ResizeObserver' in window) {
         const ro = new ResizeObserver(entries => {
@@ -544,7 +514,7 @@ function setupInsightsControls() {
             if (drawer.open) {
                 renderPivotInsights();
             } else {
-                hideBarbellTooltip(true);
+                hideBarbellTooltip();
             }
         });
     }
@@ -563,16 +533,17 @@ function setupInsightsControls() {
             }
             return;
         }
+        // The row-header trigger's stretched ::after normally receives row clicks; this covers any
+        // click that still lands on plain cell content.
         if (!target.closest('a, button')) {
             const row = target.closest('tr.pivot-row');
             const rowAction = row?.querySelector('a.pivot-link, button[data-filter-key]');
-            if (rowAction instanceof HTMLElement) {
-                rowAction.click();
-            }
+            if (rowAction instanceof HTMLElement) rowAction.click();
         }
     });
 
-    setupBarbellTooltips(container);
+    setupBarbellTooltip();
+    setupAnchorPositioningFallback();
 }
 
 /**
@@ -619,7 +590,7 @@ function renderFilterMenuItems() {
 
         const dateSpan = document.createElement('span');
         dateSpan.className = 'filter-item-date';
-        dateSpan.textContent = formatSuiteDate(getSuiteDate(testInfo));
+        dateSpan.textContent = formatSuiteDateTime(getSuiteDate(testInfo));
 
         labelContent.append(idSpan, dateSpan);
         item.append(checkbox, labelContent);
@@ -691,11 +662,14 @@ async function loadSuites() {
     try {
         const { suites } = await api.getManifest();
         const list = Array.isArray(suites) ? suites : [];
+        // Register everything first, then rebuild the filter <select>s once: refreshing per
+        // suite rescanned and re-sorted every suite each time (O(n²) during load).
         for (const suite of list) {
             if (suite && suite.testId && suite.guidedStats) {
-                registerSuiteSummary(suite, api.source);
+                registerSuiteSummary(suite, api.source, { refreshFilters: false });
             }
         }
+        refreshFilterOptions();
         setEmptyState(list.length > 0 ? null : 'No test runs found yet. Run the test suite to get started.');
     } catch (error) {
         console.error('Error loading suites manifest:', error);
@@ -706,8 +680,10 @@ async function loadSuites() {
 /**
  * @param {import('./insights.js').ManifestSuite} summary
  * @param {import('./api.js').DataSource} source
+ * @param {{ refreshFilters?: boolean }} [options] Pass `refreshFilters: false` when registering
+ *     in a batch, then call `refreshFilterOptions()` once afterward.
  */
-function registerSuiteSummary(summary, source) {
+function registerSuiteSummary(summary, source, { refreshFilters = true } = {}) {
     const compoundKey = `${summary.testId}|||${source}`;
     allTestData[compoundKey] = {
         ...summary,
@@ -717,6 +693,11 @@ function registerSuiteSummary(summary, source) {
         serving: summary.serving || 'unknown',
         model: summary.model || 'unknown'
     };
+    if (refreshFilters) refreshFilterOptions();
+}
+
+/** Rebuilds every header filter's options from the registered suites. */
+function refreshFilterOptions() {
     updateFilterOptions('filter-model-group', 'model');
     updateFilterOptions('filter-agent-group', 'agent', agentDisplayNames);
     updateFilterOptions('mobile-filter-agent-group', 'agent', agentDisplayNames);
@@ -772,15 +753,12 @@ function getSuiteDate(testInfo) {
 }
 
 /**
- * "Oct 9, 2026, 7:00 AM", or just the date when no time-of-day is known.
+ * "Oct 9, 2026, 7:00 AM", or just the date when no time-of-day is known
+ * (shared `formatSuiteDate` drops the time for date-only values).
  * @param {Date} date
  */
-function formatSuiteDate(date) {
-    const hasTime = !(date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0);
-    if (!hasTime) {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-    return date.toLocaleString('en-US', {
+function formatSuiteDateTime(date) {
+    return formatSuiteDate(date, {
         month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
     }).replace(' at ', ', ');
 }
@@ -985,8 +963,9 @@ function renderSuites() {
     renderSuitesCount(visibleKeys.length, filteredKeys.length, hiddenAdHoc, paged, pageSize);
     syncOptionalColumns();
 
-    if (activeBarbellCell && container.contains(activeBarbellCell)) {
-        hideBarbellTooltip(true);
+    // Re-rendering detaches the current trigger, so close its preview rather than leave it orphaned.
+    if (activeBarbellAnchor && container.contains(activeBarbellAnchor)) {
+        hideBarbellTooltip();
     }
 
     if (visibleKeys.length === 0) {
@@ -1029,7 +1008,7 @@ function renderSuites() {
         const scheduled = isScheduledSuite(testId);
         const { label, ldap } = formatSuiteLabel(testInfo);
         const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
-        const dateDisplay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const dateDisplay = formatSuiteDate(date, { month: 'short', day: 'numeric', year: 'numeric' });
 
         const suiteBarbellTitle = scheduled
             ? `${dateDisplay} · ${agentDisplay}`
@@ -1058,7 +1037,7 @@ function renderSuites() {
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
             a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate}" data-barbell-g="${a11yGRate}" data-barbell-uplift="${a11yPp}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
             a11yCellHtml = `
-                <a href="${a11yLink}" class="a11y-link">
+                <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip">
                     ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Accessibility subscore')}
                     <span class="visually-hidden"> (open accessibility check results)</span>
                 </a>
@@ -1109,7 +1088,7 @@ function renderSuites() {
                 <td>${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)}</td>
                 <td class="model-cell">${escapeHtml(testInfo.model || '')}</td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate}" data-barbell-g="${gRate}" data-barbell-uplift="${overallPp}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
-                    <a href="${localLink}" class="uplift-link">
+                    <a href="${localLink}" class="uplift-link" interestfor="barbell-tooltip">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate', uErr, gErr)}
                         <span class="visually-hidden"> (open per-guide results)</span>
                     </a>
@@ -1235,235 +1214,224 @@ function formatSuiteLabel(testInfo) {
 // BREAKDOWNS (by model, by guide)
 // ==========================================
 
-/** @type {number | null} */
-let barbellHideTimeout = null;
+/**
+ * Explicit anchor shared by the active barbell trigger and `#barbell-tooltip` (landing.css).
+ * Explicit rather than the implicit interestfor anchor because the vendored interestfor
+ * polyfill and the anchor-positioning polyfill can't rely on implicit anchors.
+ */
+const BARBELL_ANCHOR = '--barbell-anchor';
+/** Without native anchor positioning the tooltip falls back to measured viewport coordinates. */
+const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('anchor-name', '--a');
+/** The element carrying the shared anchor name: the active trigger's barbell track. */
 /** @type {HTMLElement | null} */
-let activeBarbellCell = null;
-/** @type {HTMLElement | null} */
-let activeBarbellTrigger = null;
-/** @type {HTMLElement | null} */
-let dismissedBarbellCell = null;
-let barbellGlobalListenersBound = false;
+let activeBarbellAnchor = null;
+let barbellTooltipBound = false;
 
 /**
- * Wires hover, keyboard focus, and Escape dismissal for barbell summary cards
- * inside a table or breakdown container.
- * @param {HTMLElement | null} container
+ * `#barbell-tooltip` is one shared popover="hint" (index.html). Every barbell trigger is a
+ * real `<a>`/`<button interestfor="barbell-tooltip">`, so the browser (or the vendored
+ * interestfor polyfill) owns hover/focus/long-press, hover persistence, Escape and light
+ * dismiss (WCAG 1.4.13) and the trigger's accessible description. All this does is fill in
+ * the content for whichever trigger showed interest and move the explicit anchor to it.
  */
-function setupBarbellTooltips(container) {
-    if (!container) return;
+function setupBarbellTooltip() {
     const tooltip = document.getElementById('barbell-tooltip');
-    if (!tooltip) return;
+    if (!tooltip || barbellTooltipBound) return;
+    barbellTooltipBound = true;
 
-    if (!barbellGlobalListenersBound) {
-        barbellGlobalListenersBound = true;
-        tooltip.addEventListener('mouseenter', () => {
-            if (barbellHideTimeout) {
-                window.clearTimeout(barbellHideTimeout);
-                barbellHideTimeout = null;
-            }
-        });
-        tooltip.addEventListener('mouseleave', () => hideBarbellTooltip(false));
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !tooltip.classList.contains('hidden')) {
-                dismissedBarbellCell = activeBarbellCell;
-                hideBarbellTooltip(true);
-            }
-        });
-    }
-
-    container.addEventListener('mouseover', (e) => {
-        const target = e.target;
-        if (!(target instanceof Element)) return;
-        const cell = target.closest('[data-barbell-title]');
-        if (cell instanceof HTMLElement && container.contains(cell)) {
-            if (dismissedBarbellCell && dismissedBarbellCell !== cell) {
-                dismissedBarbellCell = null;
-            }
-            if (cell !== dismissedBarbellCell) {
-                showBarbellTooltip(cell);
-            }
-        }
+    tooltip.addEventListener('interest', (e) => {
+        const source = /** @type {Event & { source?: Element | null }} */ (e).source;
+        if (!(source instanceof HTMLElement)) return;
+        const cell = getBarbellDataCell(source);
+        if (!cell) return;
+        tooltip.innerHTML = renderBarbellTooltipContent(cell);
+        setBarbellAnchor(source);
+        // Moving between triggers while open fires no new toggle, so re-place it here too.
+        if (!SUPPORTS_ANCHOR_POSITIONING && isPopoverOpen(tooltip) && activeBarbellAnchor) placePopoverFallback(tooltip, activeBarbellAnchor, 'center');
     });
-
-    container.addEventListener('mousemove', (e) => {
-        const target = e.target;
-        if (!(target instanceof Element)) return;
-        const cell = target.closest('[data-barbell-title]');
-        if (cell instanceof HTMLElement && container.contains(cell)) {
-            if (cell !== dismissedBarbellCell && (activeBarbellCell !== cell || tooltip.classList.contains('hidden'))) {
-                showBarbellTooltip(cell);
-            }
+    tooltip.addEventListener('toggle', (e) => {
+        if (/** @type {ToggleEvent} */ (e).newState === 'open') {
+            if (!SUPPORTS_ANCHOR_POSITIONING && activeBarbellAnchor) placePopoverFallback(tooltip, activeBarbellAnchor, 'center');
         } else {
-            dismissedBarbellCell = null;
-            if (activeBarbellCell && container.contains(activeBarbellCell)) {
-                hideBarbellTooltip(false);
-            }
+            setBarbellAnchor(null);
         }
     });
-
-    container.addEventListener('mouseout', (e) => {
-        const related = /** @type {MouseEvent} */ (e).relatedTarget;
-        if (related instanceof Node && (tooltip.contains(related) || (activeBarbellCell && activeBarbellCell.contains(related)))) {
-            return;
-        }
-        dismissedBarbellCell = null;
-        if (activeBarbellCell && container.contains(activeBarbellCell)) {
-            hideBarbellTooltip(false);
-        }
-    });
-
-    container.addEventListener('mouseleave', (e) => {
-        const related = /** @type {MouseEvent} */ (e).relatedTarget;
-        if (related instanceof Node && tooltip.contains(related)) return;
-        dismissedBarbellCell = null;
-        if (activeBarbellCell && container.contains(activeBarbellCell)) {
-            hideBarbellTooltip(false);
-        }
-    });
-
-    container.addEventListener('focusin', (e) => {
-        const target = e.target;
-        if (!(target instanceof Element)) return;
-        const directCell = target.closest('[data-barbell-title]');
-        const cell = directCell || target.closest('tr.pivot-row')?.querySelector('[data-barbell-title]');
-        if (cell instanceof HTMLElement && container.contains(cell)) {
-            dismissedBarbellCell = null;
-            showBarbellTooltip(cell);
-        }
-    });
-
-    container.addEventListener('focusout', () => {
-        if (activeBarbellCell && container.contains(activeBarbellCell)) {
-            hideBarbellTooltip(false);
-        }
-    });
-    container.addEventListener('scroll', () => hideBarbellTooltip(true), { capture: true, passive: true });
 }
 
 /**
- * Anchors `#barbell-tooltip` directly beneath (or above) `cell` so moving the pointer
- * onto the tooltip keeps it stationary per WCAG 1.4.13.
- * @param {HTMLElement} cell
+ * Without native CSS anchor positioning (e.g. Firefox 146), the anchor polyfill only wires up
+ * elements that exist when it runs, so popovers rendered later (the barbell preview's dynamic
+ * anchor, the Breakdowns sort/legend hints) would open far from their triggers. In that case
+ * only, place each landing popover next to the trigger that showed interest, and close it on
+ * scroll since measured coordinates don't follow the trigger.
  */
-function showBarbellTooltip(cell) {
-    const tooltip = document.getElementById('barbell-tooltip');
-    if (!tooltip) return;
-    if (barbellHideTimeout) {
-        window.clearTimeout(barbellHideTimeout);
-        barbellHideTimeout = null;
-    }
-
-    if (activeBarbellCell !== cell || tooltip.classList.contains('hidden')) {
-        activeBarbellCell = cell;
-        const triggerCandidate = cell.querySelector('a, button') || cell.closest('tr.pivot-row')?.querySelector('a, button');
-        const nextTrigger = triggerCandidate instanceof HTMLElement ? triggerCandidate : cell;
-        if (activeBarbellTrigger && activeBarbellTrigger !== nextTrigger) {
-            activeBarbellTrigger.removeAttribute('aria-describedby');
-        }
-        activeBarbellTrigger = nextTrigger;
-        activeBarbellTrigger.setAttribute('aria-describedby', 'barbell-tooltip');
-        const title = cell.dataset.barbellTitle || '';
-        const kind = cell.dataset.barbellKind || 'guide';
-        const metric = cell.dataset.barbellMetric || 'Pass rate';
-        const runs = parseInt(cell.dataset.barbellRuns || '0') || 0;
-        const uRate = parseInt(cell.dataset.barbellU || '0') || 0;
-        const gRate = parseInt(cell.dataset.barbellG || '0') || 0;
-        const uplift = parseInt(cell.dataset.barbellUplift || '0') || 0;
-        const uSd = cell.dataset.barbellUSd || '';
-        const gSd = cell.dataset.barbellGSd || '';
-        const uDetail = cell.dataset.barbellUDetail || '';
-        const gDetail = cell.dataset.barbellGDetail || '';
-        const hasErr = cell.dataset.barbellErr === '1';
-
-        const sign = uplift > 0 ? '+' : '';
-        const liftCls = uplift > 0 ? 'up' : (uplift < 0 ? 'down' : 'flat');
-        const runsText = `${runs} ${runs === 1 ? 'run' : 'runs'}`;
-        const subText = cell.dataset.barbellSub || `${metric} · median across ${runsText}`;
-
-        const uExtraHtml = uDetail !== ''
-            ? ` <span class="barbell-tooltip-sd">(${escapeHtml(uDetail)})</span>`
-            : (uSd !== '' ? ` <span class="barbell-tooltip-sd">(±${escapeHtml(uSd)} pp SD)</span>` : '');
-        const gExtraHtml = gDetail !== ''
-            ? ` <span class="barbell-tooltip-sd">(${escapeHtml(gDetail)})</span>`
-            : (gSd !== '' ? ` <span class="barbell-tooltip-sd">(±${escapeHtml(gSd)} pp SD)</span>` : '');
-
-        let liftLabel = 'Median lift';
-        let note = '';
-        if (kind === 'suite-overall') {
-            liftLabel = 'Pass-rate lift';
-            note = `Vertical ticks mark checks passed without MWG and with MWG in this suite run; the horizontal bar spans the pass-rate lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
-        } else if (kind === 'suite-a11y') {
-            liftLabel = 'Accessibility lift';
-            note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
-        } else if (kind === 'guide') {
-            note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across runs.' : ''}`;
-        } else if (kind === 'dimension') {
-            note = `Vertical ticks mark the median accessibility pass rate without MWG and with MWG across ${runsText} for this dimension; the horizontal bar spans the median lift.`;
-        } else {
-            note = `Vertical ticks mark this model’s median suite ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
-        }
-
-        tooltip.innerHTML = `
-            <div class="barbell-tooltip-title">${escapeHtml(title)}</div>
-            <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div>
-            <div class="barbell-tooltip-rows">
-                <div class="barbell-tooltip-row">
-                    <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span>
-                    <strong>${uRate}%${uExtraHtml}</strong>
-                </div>
-                <div class="barbell-tooltip-row">
-                    <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span>
-                    <strong class="rate-g">${gRate}%${gExtraHtml}</strong>
-                </div>
-                <div class="barbell-tooltip-row barbell-tooltip-lift">
-                    <span>${escapeHtml(liftLabel)}</span>
-                    <strong class="delta ${liftCls}">${sign}${uplift} pp</strong>
-                </div>
-            </div>
-            <p class="barbell-tooltip-note">${escapeHtml(note)}</p>
-        `;
-        tooltip.style.left = '0px';
-        tooltip.style.top = '0px';
-        tooltip.classList.remove('hidden');
-
-        const rect = cell.getBoundingClientRect();
-        const gap = 6;
-        const w = tooltip.offsetWidth || 290;
-        const h = tooltip.offsetHeight || 175;
-        let left = rect.left + (rect.width / 2) - (w / 2);
-        let top = rect.bottom + gap;
-        if (top + h > window.innerHeight - 8 && rect.top - h - gap >= 8) {
-            top = rect.top - h - gap;
-        }
-        tooltip.style.left = `${Math.max(8, Math.min(left, window.innerWidth - w - 8))}px`;
-        tooltip.style.top = `${Math.max(8, Math.min(top, window.innerHeight - h - 8))}px`;
-    }
-}
-
-/** @param {boolean} [immediate] */
-function hideBarbellTooltip(immediate = false) {
-    const tooltip = document.getElementById('barbell-tooltip');
-    if (!tooltip) return;
-    if (barbellHideTimeout) {
-        window.clearTimeout(barbellHideTimeout);
-        barbellHideTimeout = null;
-    }
-    const hide = () => {
-        activeBarbellCell = null;
-        if (activeBarbellTrigger) {
-            activeBarbellTrigger.removeAttribute('aria-describedby');
-            activeBarbellTrigger = null;
-        }
-        tooltip.classList.add('hidden');
-        barbellHideTimeout = null;
+function setupAnchorPositioningFallback() {
+    if (SUPPORTS_ANCHOR_POSITIONING) return;
+    // The "Filter runs" menu: its anchor CSS is gated in landing.css (the polyfill offset it by
+    // scrollY), so place it under the trigger's inline end here. Placed before the first paint
+    // (rAF after beforetoggle) and again on toggle, and kept attached on scroll/resize instead of
+    // closing, since it holds a search field and checkboxes.
+    const filterMenu = document.getElementById('filter-menu');
+    const filterBtn = document.getElementById('filter-btn');
+    const placeFilterMenu = () => {
+        if (filterMenu && filterBtn && isPopoverOpen(filterMenu)) placePopoverFallback(filterMenu, filterBtn, 'end', 8);
     };
-    if (immediate) {
-        hide();
-        return;
+    filterMenu?.addEventListener('beforetoggle', (e) => {
+        if (/** @type {ToggleEvent} */ (e).newState === 'open') requestAnimationFrame(placeFilterMenu);
+    });
+    filterMenu?.addEventListener('toggle', placeFilterMenu);
+    window.addEventListener('resize', placeFilterMenu, { passive: true });
+    // `toggle` doesn't bubble, so listen in the capture phase to cover hints rendered later.
+    document.addEventListener('toggle', (e) => {
+        const hint = e.target;
+        if (!(hint instanceof HTMLElement) || !hint.classList.contains('hint-popover')) return;
+        if (/** @type {ToggleEvent} */ (e).newState !== 'open') return;
+        const trigger = document.querySelector(`[interestfor="${CSS.escape(hint.id)}"]`);
+        // The uplift sort buttons sit at the panel's inline end (mirrors landing.css).
+        if (trigger) placePopoverFallback(hint, trigger, hint.id.startsWith('hint-sort-uplift-') ? 'end' : 'start');
+    }, true);
+    document.addEventListener('scroll', (e) => {
+        // Scrolling inside the menu's own list doesn't move the trigger.
+        if (!(e.target instanceof Node && filterMenu?.contains(e.target))) placeFilterMenu();
+        document.querySelectorAll('#barbell-tooltip, .hint-popover').forEach(el => {
+            if (el instanceof HTMLElement) setPopoverOpen(el, false);
+        });
+    }, { capture: true, passive: true });
+}
+
+/**
+ * The element carrying the `data-barbell-*` attributes for a trigger: its own cell, or (for
+ * pivot rows whose trigger is the guide link/model button in the row header) the row's barbell cell.
+ * @param {HTMLElement} trigger
+ * @returns {HTMLElement | null}
+ */
+function getBarbellDataCell(trigger) {
+    const cell = trigger.closest('[data-barbell-title]') || trigger.closest('tr')?.querySelector('[data-barbell-title]');
+    return cell instanceof HTMLElement ? cell : null;
+}
+
+/**
+ * The box the barbell preview sits next to: the trigger's barbell track (suites table cells,
+ * pivot rows), not the trigger itself, which for pivot guide/model rows is the link or button in
+ * the row header. Falls back to the data cell, then the trigger, if the track isn't rendered.
+ * @param {HTMLElement} trigger
+ * @returns {HTMLElement}
+ */
+function getBarbellAnchorElement(trigger) {
+    const cell = getBarbellDataCell(trigger);
+    const track = cell?.querySelector('.suite-dumbbell-track, .insight-dumbbell-track');
+    if (track instanceof HTMLElement && track.getClientRects().length > 0) return track;
+    return cell || trigger;
+}
+
+/**
+ * Gives only the active trigger's barbell track the shared anchor name (MWG
+ * interest-triggered-tooltips: one unique anchor-name/position-anchor pair).
+ * @param {HTMLElement | null} trigger
+ */
+function setBarbellAnchor(trigger) {
+    const anchor = trigger ? getBarbellAnchorElement(trigger) : null;
+    if (activeBarbellAnchor && activeBarbellAnchor !== anchor) {
+        activeBarbellAnchor.style.removeProperty('anchor-name');
     }
-    barbellHideTimeout = window.setTimeout(hide, 150);
+    activeBarbellAnchor = anchor;
+    anchor?.style.setProperty('anchor-name', BARBELL_ANCHOR);
+}
+
+/**
+ * Fallback for browsers without CSS anchor positioning only: place an open popover below (or,
+ * when there's no room, above) `trigger`, clamped to the viewport.
+ * @param {HTMLElement} popover
+ * @param {Element} trigger
+ * @param {'center' | 'start' | 'end'} align
+ * @param {number} [gap] Space between the trigger and the popover, in px.
+ */
+function placePopoverFallback(popover, trigger, align, gap = 6) {
+    const rect = trigger.getBoundingClientRect();
+    const w = popover.offsetWidth || 290;
+    const h = popover.offsetHeight || 175;
+    const left = align === 'center' ? rect.left + (rect.width / 2) - (w / 2) : (align === 'end' ? rect.right - w : rect.left);
+    let top = rect.bottom + gap;
+    if (top + h > window.innerHeight - 8 && rect.top - h - gap >= 8) {
+        top = rect.top - h - gap;
+    }
+    popover.style.right = 'auto';
+    popover.style.bottom = 'auto';
+    popover.style.left = `${Math.max(8, Math.min(left, window.innerWidth - w - 8))}px`;
+    popover.style.top = `${Math.max(8, Math.min(top, window.innerHeight - h - 8))}px`;
+}
+
+/**
+ * Builds the barbell preview from a cell's `data-barbell-*` attributes.
+ * @param {HTMLElement} cell
+ * @returns {string}
+ */
+function renderBarbellTooltipContent(cell) {
+    const title = cell.dataset.barbellTitle || '';
+    const kind = cell.dataset.barbellKind || 'guide';
+    const metric = cell.dataset.barbellMetric || 'Pass rate';
+    const runs = parseInt(cell.dataset.barbellRuns || '0') || 0;
+    const uRate = parseInt(cell.dataset.barbellU || '0') || 0;
+    const gRate = parseInt(cell.dataset.barbellG || '0') || 0;
+    const uplift = parseInt(cell.dataset.barbellUplift || '0') || 0;
+    const uSd = cell.dataset.barbellUSd || '';
+    const gSd = cell.dataset.barbellGSd || '';
+    const uDetail = cell.dataset.barbellUDetail || '';
+    const gDetail = cell.dataset.barbellGDetail || '';
+    const hasErr = cell.dataset.barbellErr === '1';
+
+    const sign = uplift > 0 ? '+' : '';
+    const liftCls = uplift > 0 ? 'up' : (uplift < 0 ? 'down' : 'flat');
+    const runsText = `${runs} ${runs === 1 ? 'run' : 'runs'}`;
+    const subText = cell.dataset.barbellSub || `${metric} · median across ${runsText}`;
+
+    const uExtraHtml = uDetail !== ''
+        ? ` <span class="barbell-tooltip-sd">(${escapeHtml(uDetail)})</span>`
+        : (uSd !== '' ? ` <span class="barbell-tooltip-sd">(±${escapeHtml(uSd)} pp SD)</span>` : '');
+    const gExtraHtml = gDetail !== ''
+        ? ` <span class="barbell-tooltip-sd">(${escapeHtml(gDetail)})</span>`
+        : (gSd !== '' ? ` <span class="barbell-tooltip-sd">(±${escapeHtml(gSd)} pp SD)</span>` : '');
+
+    let liftLabel = 'Median lift';
+    let note = '';
+    if (kind === 'suite-overall') {
+        liftLabel = 'Pass-rate lift';
+        note = `Vertical ticks mark checks passed without MWG and with MWG in this suite run; the horizontal bar spans the pass-rate lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
+    } else if (kind === 'suite-a11y') {
+        liftLabel = 'Accessibility lift';
+        note = 'Vertical ticks mark accessibility checks passed without MWG and with MWG in this suite run; the horizontal bar spans the accessibility lift.';
+    } else if (kind === 'guide') {
+        note = `Vertical ticks mark the median ${metric.toLowerCase()} without MWG and with MWG across ${runsText} in this date window; the horizontal bar spans the median lift.${runs > 1 ? ' Shaded bands show ±1 standard deviation across runs.' : ''}`;
+    } else if (kind === 'dimension') {
+        note = `Vertical ticks mark the median accessibility pass rate without MWG and with MWG across ${runsText} for this dimension; the horizontal bar spans the median lift.`;
+    } else {
+        note = `Vertical ticks mark this model’s median suite ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
+    }
+
+    return `
+        <div class="barbell-tooltip-title">${escapeHtml(title)}</div>
+        <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div>
+        <div class="barbell-tooltip-rows">
+            <div class="barbell-tooltip-row">
+                <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span>
+                <strong>${uRate}%${uExtraHtml}</strong>
+            </div>
+            <div class="barbell-tooltip-row">
+                <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span>
+                <strong class="rate-g">${gRate}%${gExtraHtml}</strong>
+            </div>
+            <div class="barbell-tooltip-row barbell-tooltip-lift">
+                <span>${escapeHtml(liftLabel)}</span>
+                <strong class="delta ${liftCls}">${sign}${uplift} pp</strong>
+            </div>
+        </div>
+        <p class="barbell-tooltip-note">${escapeHtml(note)}</p>
+    `;
+}
+
+function hideBarbellTooltip() {
+    const tooltip = document.getElementById('barbell-tooltip');
+    if (tooltip) setPopoverOpen(tooltip, false);
 }
 
 /**
@@ -1478,7 +1446,8 @@ function getInsightKeys() {
     const limit = limitInput instanceof HTMLInputElement ? (parseInt(limitInput.value) || 5) : 5;
 
     if (!showAll && keys.length > 0) {
-        const dayOf = (/** @type {string} */ k) => getSuiteDate(allTestData[k]).toISOString().slice(0, 10);
+        // Same viewer-zone calendar day as the runs table and the guide.html timeline.
+        const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDate(allTestData[k]));
         const sortedDates = [...new Set(keys.map(dayOf))].sort((a, b) => a.localeCompare(b));
         const activeDates = new Set(sortedDates.slice(-limit));
         keys = keys.filter(k => activeDates.has(dayOf(k)));
@@ -1497,8 +1466,9 @@ function renderPivotInsights() {
     const container = document.getElementById('insights-container');
     if (!container) return;
 
-    if (activeBarbellCell && container.contains(activeBarbellCell)) {
-        hideBarbellTooltip(true);
+    // Re-rendering detaches the current trigger, so close its preview rather than leave it orphaned.
+    if (activeBarbellAnchor && container.contains(activeBarbellAnchor)) {
+        hideBarbellTooltip();
     }
 
     /** @type {Record<string, number>} */
@@ -1692,17 +1662,17 @@ function renderPivotInsights() {
             if (showVariance) {
                 if (uSD > 0) {
                     const left = Math.max(0, uRate - uSD);
-                    uBandHtml = `<div class="variance-band unguided" style="left: ${left}%; width: ${Math.min(100, uRate + uSD) - left}%;"></div>`;
+                    uBandHtml = `<span class="variance-band unguided" style="left: ${left}%; width: ${Math.min(100, uRate + uSD) - left}%;"></span>`;
                 }
                 if (gSD > 0) {
                     const left = Math.max(0, gRate - gSD);
-                    gBandHtml = `<div class="variance-band guided" style="left: ${left}%; width: ${Math.min(100, gRate + gSD) - left}%;"></div>`;
+                    gBandHtml = `<span class="variance-band guided" style="left: ${left}%; width: ${Math.min(100, gRate + gSD) - left}%;"></span>`;
                 }
             } else if (filterKey === 'model' && items.length > 0) {
                 avgUErr = Math.round(items.reduce((s, it) => s + (it.uErr || 0), 0) / items.length);
                 avgGErr = Math.round(items.reduce((s, it) => s + (it.gErr || 0), 0) / items.length);
-                if (avgUErr > 0) uBandHtml = `<div class="variance-band unguided" style="left: ${(uRate * (1 - avgUErr / 100)).toFixed(1)}%; width: ${avgUErr}%;"></div>`;
-                if (avgGErr > 0) gBandHtml = `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></div>`;
+                if (avgUErr > 0) uBandHtml = `<span class="variance-band unguided" style="left: ${(uRate * (1 - avgUErr / 100)).toFixed(1)}%; width: ${avgUErr}%;"></span>`;
+                if (avgGErr > 0) gBandHtml = `<span class="variance-band guided has-err" style="left: ${(gRate * (1 - avgGErr / 100)).toFixed(1)}%; width: ${avgGErr}%;"></span>`;
             }
 
             const isActive = filterKey === 'model' && currentModelFilter === key;
@@ -1712,7 +1682,7 @@ function renderPivotInsights() {
 
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
-                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${sourceQuery}${modeQuery}">${escapeHtml(key)}</a>`;
+                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${sourceQuery}${modeQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
                 effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
             } else if (filterKey === 'dimension') {
                 const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);
@@ -1722,7 +1692,7 @@ function renderPivotInsights() {
                 nameHtml = `<span class="pivot-static-name">${escapeHtml(label)}</span>`;
                 effSummary = desc ? `<span class="pivot-trials">${escapeHtml(desc)}</span>` : '';
             } else {
-                nameHtml = `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(key)}" aria-pressed="${isActive}">${escapeHtml(key)}</button>`;
+                nameHtml = `<button type="button" class="pivot-filter-btn" data-filter-key="${filterKey}" data-filter-value="${escapeHtml(key)}" aria-pressed="${isActive}" interestfor="barbell-tooltip">${escapeHtml(key)}</button>`;
                 const rtMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.rtDeltaPct).filter(v => typeof v === 'number')));
                 const tokMed = getMedianNumber(/** @type {number[]} */ (items.map(i => i.tokDeltaPct).filter(v => typeof v === 'number')));
                 const fmtSignedPct = (/** @type {number} */ v) => v > 0 ? `+${v}%` : (v < 0 ? `−${Math.abs(v)}%` : '0%');
@@ -1740,16 +1710,37 @@ function renderPivotInsights() {
             const gSdAttr = showVariance && items.length > 1 ? String(Math.round(gSD)) : '';
             const errAttr = filterKey === 'model' && (avgUErr > 0 || avgGErr > 0) ? '1' : '';
             const staticRowCls = filterKey === 'dimension' ? ' is-static' : '';
-            const focusCellAttrs = filterKey === 'dimension'
-                ? ` tabindex="0" aria-label="${escapeHtml(`${displayTitle}: median unguided ${uRate}%, guided ${gRate}% (${sign}${medUplift} pp)`)}"`
-                : '';
+            const barbellTrackHtml = `
+                            <span class="insight-dumbbell-track" aria-hidden="true">
+                                ${uBandHtml}
+                                ${gBandHtml}
+                                <span class="connector${regressedCls}" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></span>
+                                <span class="dot unguided" style="left: ${uRate}%;"></span>
+                                <span class="dot guided" style="left: ${gRate}%;"></span>
+                            </span>`;
+            const rateTextHtml = `
+                            <span class="rate-text">
+                                <span class="visually-hidden">Median unguided </span>${uRate}%
+                                <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span>${gRate}%
+                                <span class="delta ${medUplift > 0 ? 'up' : (medUplift < 0 ? 'down' : 'flat')}">(${sign}${medUplift} pp)</span>
+                            </span>`;
+            // Dimension rows have no other control, so the barbell itself is the interest invoker for
+            // #barbell-tooltip: a real, named, focusable button. Guide and model rows already have a
+            // keyboard/pointer trigger in the row header (the link/filter button, with interestfor),
+            // whose stretched ::after hit area covers the whole row (landing.css), so hovering or
+            // clicking the barbell reaches that trigger. Their rate text stays plain cell content so
+            // screen readers read the medians in table navigation.
+            const barbellCellHtml = filterKey === 'dimension'
+                ? `<button type="button" class="pivot-barbell-btn" interestfor="barbell-tooltip" aria-label="${escapeHtml(`${displayTitle}: median unguided ${uRate}%, guided ${gRate}% (${sign}${medUplift} pp)`)}">${barbellTrackHtml}${rateTextHtml}
+                        </button>`
+                : `${barbellTrackHtml}${rateTextHtml}`;
             rowsHtml += `
                 <tr class="pivot-row${isActive ? ' active-filter' : ''}${staticRowCls}">
                     <th scope="row" class="pivot-name">
                         ${nameHtml}
                         ${effSummary}
                     </th>
-                    <td class="insight-dumbbell-cell"${focusCellAttrs}
+                    <td class="insight-dumbbell-cell"
                         data-barbell-title="${escapeHtml(displayTitle)}"
                         data-barbell-kind="${filterKey}"
                         data-barbell-metric="${escapeHtml(metricName)}"
@@ -1760,18 +1751,7 @@ function renderPivotInsights() {
                         data-barbell-u-sd="${uSdAttr}"
                         data-barbell-g-sd="${gSdAttr}"
                         data-barbell-err="${errAttr}">
-                        <div class="insight-dumbbell-track" aria-hidden="true">
-                            ${uBandHtml}
-                            ${gBandHtml}
-                            <div class="connector${regressedCls}" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div>
-                            <div class="dot unguided" style="left: ${uRate}%;"></div>
-                            <div class="dot guided" style="left: ${gRate}%;"></div>
-                        </div>
-                        <div class="rate-text">
-                            <span class="visually-hidden">Median unguided </span>${uRate}%
-                            <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span>${gRate}%
-                            <span class="delta ${medUplift > 0 ? 'up' : (medUplift < 0 ? 'down' : 'flat')}">(${sign}${medUplift} pp)</span>
-                        </div>
+                        ${barbellCellHtml}
                     </td>
                 </tr>
             `;
@@ -1812,15 +1792,23 @@ function renderPivotInsights() {
         const arrow = sortMode === 'uplift-desc' ? '↓' : (sortMode === 'uplift-asc' ? '↑' : '↕');
         const panelNoun = panelKey === 'dimension' ? 'accessibility dimensions' : 'models';
         const nextTitle = sortMode === 'alpha' ? `Sort ${panelNoun} by uplift (high to low)` : (sortMode === 'uplift-desc' ? `Sort ${panelNoun} by uplift (low to high)` : `Reset ${panelNoun} to alphabetical sort`);
+        // Interest-triggered hints (button[interestfor] + popover="hint") instead of title
+        // attributes, so keyboard (focus) and touch (long-press) users can read them too.
+        // No aria-label on the uplift button: the hint already becomes its description, so a
+        // label with the same text would be announced twice (name + description).
+        const alphaHintId = `hint-sort-alpha-${panelKey}`;
+        const upliftHintId = `hint-sort-uplift-${panelKey}`;
         return `
             <div class="insights-panel-header">
                 <h3 class="insights-panel-title">
-                    <button type="button" class="insights-panel-title-btn" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" title="Sort ${panelNoun} alphabetically">${titleHtml}</button>
+                    <button type="button" class="insights-panel-title-btn anchor-${alphaHintId}" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" interestfor="${alphaHintId}">${titleHtml}</button>
                 </h3>
-                <button type="button" class="insights-uplift-sort-btn${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-label="${nextTitle}" aria-pressed="${isSorted}" title="${nextTitle}">
+                <button type="button" class="insights-uplift-sort-btn anchor-${upliftHintId}${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-pressed="${isSorted}" interestfor="${upliftHintId}">
                     <span>Uplift</span>
                     <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span>
                 </button>
+                <div id="${alphaHintId}" popover="hint" class="hint-popover">Sort ${panelNoun} alphabetically</div>
+                <div id="${upliftHintId}" popover="hint" class="hint-popover">${nextTitle}</div>
             </div>
         `;
     };
@@ -1877,7 +1865,7 @@ function renderPivotInsights() {
             <div class="insights-guide-body">
                 <div class="insights-panel-header-row">
                     <h3 class="insights-panel-title" tabindex="-1">By Guide (${guideCount})${modeSuffix}</h3>
-                    <div class="guide-legend" title="Shaded band shows ±1 standard deviation across runs; vertical tick mark shows median rate">
+                    <div class="guide-legend">
                         <span class="guide-legend-item">
                             <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
                             <span>Unguided</span>
@@ -1887,6 +1875,8 @@ function renderPivotInsights() {
                             <span class="guide-legend-swatch guided"><span class="guide-legend-tick"></span></span>
                             <span>Guided</span>
                         </span>
+                        <button type="button" class="info-hint-btn anchor-hint-guide-legend" interestfor="hint-guide-legend" aria-label="About the bands and ticks">?</button>
+                        <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
                     </div>
                     <div class="guide-sort-controls">
                         <label for="guide-sort-select" class="sort-label">Sort by:</label>

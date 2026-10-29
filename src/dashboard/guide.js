@@ -1,4 +1,4 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, isLocalDashboardHost, $, getScrollBehavior, parseSuiteDate } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, isLocalDashboardHost, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDate, formatSuiteDate, getSuiteDayKey, toSuiteDateString, setPopoverOpen, isPopoverOpen } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -74,7 +74,11 @@ function registerSuiteSummary(summary, source) {
 
     allTestData[compoundKey] = {
         testId: summary.testId,
-        timestamp: summary.timestamp,
+        // Canonicalize through the shared parser (testId time, zoneless = UTC) so sorting
+        // and day bucketing below agree with the landing page for the same suite.
+        // toSuiteDateString keeps date-only sources as `YYYY-MM-DD`, so the re-parse below still knows
+        // they have no time of day (an ISO round trip would turn them into a real UTC-midnight instant).
+        timestamp: (() => { const d = parseSuiteDate(summary.timestamp, summary.testId); return d ? toSuiteDateString(d) : summary.timestamp; })(),
         source: source,
         agent: summary.agent || 'unknown',
         serving: summary.serving || 'unknown',
@@ -187,8 +191,6 @@ function setupTimelineFilterControls(guideName) {
     });
 }
 
-let outsideClickBound = false;
-
 /**
  * @param {string} currentGuide
  */
@@ -246,12 +248,31 @@ function setupNavigationControls(currentGuide) {
     let currentFocus = -1;
 
     /** Combobox state: keep aria-expanded / aria-activedescendant in sync with the list. */
-    const closeList = () => {
-        list.classList.add('hidden');
+    const resetComboboxState = () => {
         list.innerHTML = '';
         searchInput.setAttribute('aria-expanded', 'false');
         searchInput.removeAttribute('aria-activedescendant');
         currentFocus = -1;
+    };
+    const closeList = () => {
+        setPopoverOpen(list, false);
+        resetComboboxState();
+    };
+    // #autocomplete-list is popover="auto": the browser light-dismisses it on outside clicks
+    // (replacing the old document click handler) and on Escape, so mirror those closes into
+    // the combobox ARIA state. Property assignment avoids stacking listeners on re-setup.
+    list.ontoggle = (e) => {
+        if (/** @type {ToggleEvent} */ (e).newState === 'closed') resetComboboxState();
+    };
+    const openList = () => {
+        if (isPopoverOpen(list)) return;
+        try {
+            // `source` ties the popover to the input (implicit anchor / accessibility relationship
+            // where supported; other browsers ignore the option).
+            /** @type {(options?: { source?: HTMLElement }) => void} */ (list.showPopover).call(list, { source: searchInput });
+        } catch {
+            setPopoverOpen(list, true);
+        }
     };
 
     searchInput.oninput = () => {
@@ -270,7 +291,7 @@ function setupNavigationControls(currentGuide) {
             return;
         }
 
-        list.classList.remove('hidden');
+        openList();
         searchInput.setAttribute('aria-expanded', 'true');
         matches.forEach((match, i) => {
             const div = document.createElement('div');
@@ -286,6 +307,13 @@ function setupNavigationControls(currentGuide) {
             };
             list.appendChild(div);
         });
+    };
+
+    // Light dismiss treats a click on the input as "outside" the popover (Chromium doesn't count
+    // a showPopover() `source` as an invoker for light dismiss), so re-open the matches when the
+    // user clicks back into a non-empty field.
+    searchInput.onclick = () => {
+        if (searchInput.value.trim() && !isPopoverOpen(list)) searchInput.dispatchEvent(new Event('input'));
     };
 
     searchInput.onkeydown = (e) => {
@@ -334,16 +362,6 @@ function setupNavigationControls(currentGuide) {
         searchInput.setAttribute('aria-activedescendant', items[currentFocus].id);
         items[currentFocus].scrollIntoView({ block: 'nearest' });
     }
-
-    if (!outsideClickBound) {
-        outsideClickBound = true;
-        document.addEventListener('click', (e) => {
-            const target = /** @type {Node} */ (e.target);
-            if (!searchInput.contains(target) && !list.contains(target)) {
-                closeList();
-            }
-        });
-    }
 }
 
 /** @type {number[]} */
@@ -353,7 +371,7 @@ const highlightScrollTimers = [];
  * @param {string} guideName
  */
 function renderGraphs(guideName) {
-    hideGuideTooltip(true);
+    hideGuideTooltip();
     while (highlightScrollTimers.length > 0) {
         const id = highlightScrollTimers.pop();
         if (id !== undefined) window.clearTimeout(id);
@@ -417,15 +435,13 @@ function renderGraphs(guideName) {
     });
 
     /**
-     * @param {string | number | Date} timestamp
+     * Viewer-zone calendar day (UTC for date-only values), shared with the landing page.
+     * @param {string} timestamp
      * @returns {string}
      */
     const getDateKey = (timestamp) => {
-        const d = new Date(timestamp);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        const d = parseSuiteDate(timestamp);
+        return d ? getSuiteDayKey(d) : '';
     };
 
     // Group by date (keep latest run per day) and slice to last 50 for each combination
@@ -452,9 +468,10 @@ function renderGraphs(guideName) {
         runs.forEach(run => {
             const dateKey = getDateKey(run.timestamp);
             if (!globalDatesMap.has(dateKey)) {
+                const runDate = parseSuiteDate(run.timestamp);
                 globalDatesMap.set(dateKey, {
                     dateKey: dateKey,
-                    shortDate: new Date(run.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    shortDate: runDate ? formatSuiteDate(runDate, { month: 'short', day: 'numeric' }) : dateKey
                 });
             }
         });
@@ -561,6 +578,8 @@ function renderGraphs(guideName) {
                 const isPositive = stats.guidedRate >= stats.unguidedRate;
                 
                 let elementHtml = '';
+                // Wrapped in .timeline-marker so the tooltip anchors to the visible mark rather
+                // than the full-height hit area or the rotated date label.
                 if (yU === yG) {
                     elementHtml = `<circle cx="${x}" cy="${yG}" r="5" fill="var(--color-primary)" />`;
                 } else {
@@ -585,13 +604,22 @@ function renderGraphs(guideName) {
                     `;
                 }
 
-                const pointLabel = `${suite.shortDate} (${run.testId}): unguided ${stats.unguidedRate}%, guided ${stats.guidedRate}%, uplift ${stats.uplift >= 0 ? '+' : ''}${stats.uplift} percentage points`;
+                // Short name (date + action): the rates are already the point's description, supplied
+                // by the interestfor hint (#tooltip-container), so they aren't repeated here.
+                const pointLabel = `${suite.shortDate}: open run`;
+                const taskParam = activeTask ? `&task=${encodeURIComponent(activeTask)}` : '';
+                const modeParam = isA11yMode ? '&mode=a11y' : '';
+                const runHref = `dashboard.html?testId=${encodeURIComponent(run.testId)}&source=${encodeURIComponent(run.source)}${taskParam}${modeParam}#guide-${encodeURIComponent(guideName)}`;
+                // Each point navigates, so it is a real SVG link (Enter, middle-click, and "open in new
+                // tab" work natively) and an interest invoker for the shared #tooltip-container hint
+                // (MWG interest-triggered-tooltips): hover/focus/long-press, hover persistence,
+                // Escape, and light dismiss come from interestfor + popover="hint".
                 svgContent += `
-                    <g class="timeline-point" tabindex="0" role="button" aria-label="${escapeHtml(pointLabel)}" data-testid="${escapeHtml(run.testId)}" data-comb="${escapeHtml(combKey)}">
-                        ${elementHtml}
+                    <a class="timeline-point" href="${escapeHtml(runHref)}" interestfor="tooltip-container" aria-label="${escapeHtml(pointLabel)}" data-testid="${escapeHtml(run.testId)}" data-comb="${escapeHtml(combKey)}">
+                        <g class="timeline-marker">${elementHtml}</g>
                         <text x="${x}" y="180" transform="rotate(90, ${x}, 180)" font-size="0.75rem" fill="var(--text-secondary)" text-anchor="start" dominant-baseline="middle">${escapeHtml(suite.shortDate)}</text>
                         <rect x="${x - 15}" y="${paddingY}" width="30" height="${plotHeight}" fill="transparent" />
-                    </g>
+                    </a>
                 `;
             } else {
                 // Draw faded date label for missing runs to preserve axis alignment
@@ -612,6 +640,11 @@ function renderGraphs(guideName) {
             svg.style.blockSize = 'auto';
         }
         svg.innerHTML = svgContent;
+        // Firefox doesn't scroll a focused SVG <a> into view (page or this overflow-x wrapper).
+        for (const point of svg.querySelectorAll('a.timeline-point')) {
+            const hit = point.querySelector(':scope > rect');
+            if (hit) scrollSvgLinkIntoViewOnFocus(point, hit, getTimelineMarker(point));
+        }
 
         chartWrapper.appendChild(svg);
         card.appendChild(chartWrapper);
@@ -633,180 +666,219 @@ function renderGraphs(guideName) {
             chartWrapper.scrollLeft = chartWrapper.scrollWidth;
         }
 
-        svg.querySelectorAll('.timeline-point').forEach(el => {
-            const group = /** @type {SVGElement} */ (el);
-            /**
-             * @param {number} [anchorX]
-             * @param {number} [anchorY]
-             */
-            const showPointTooltip = (anchorX, anchorY) => {
-                const combKey = group.getAttribute('data-comb');
-                const testId = group.getAttribute('data-testid');
-                if (!combKey || !testId) return;
-                const runData = combinations[combKey].find(r => r.testId === testId);
-                if (!runData) return;
-
-                const stats = getStats(runData);
-                if (!stats) return;
-                if (guideTooltipHideTimer) {
-                    window.clearTimeout(guideTooltipHideTimer);
-                    guideTooltipHideTimer = null;
-                }
-                if (activePointGroup && activePointGroup !== group) {
-                    activePointGroup.removeAttribute('aria-describedby');
-                }
-                activePointGroup = group;
-                group.setAttribute('aria-describedby', 'tooltip-container');
-
-                const parsedDate = parseSuiteDate(runData.timestamp);
-                const formattedDate = parsedDate
-                    ? parsedDate.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                    : String(runData.timestamp || '');
-
-                const tooltip = $('#tooltip-container');
-                const header = $('#tooltip-header');
-                const content = $('#tooltip-content');
-
-                header.innerHTML = `
-                    <div class="guide-tooltip-title">
-                        ${escapeHtml(runData.testId)}
-                    </div>
-                `;
-
-                const gPassed = stats.guidedPassed || 0;
-                const gTotal = stats.guidedTotal || 0;
-                const uPassed = stats.unguidedPassed || 0;
-                const uTotal = stats.unguidedTotal || 0;
-
-                content.innerHTML = `
-                    <div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div>
-                    <div class="guide-tooltip-rows">
-                        <div class="guide-tooltip-row">
-                            <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span>
-                            <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span>
-                        </div>
-                        <div class="guide-tooltip-row">
-                            <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span>
-                            <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span>
-                        </div>
-                        <div class="guide-tooltip-uplift-row">
-                            <span>Uplift:</span>
-                            <span class="guide-tooltip-uplift ${stats.uplift >= 0 ? 'positive' : 'negative'}">
-                                ${stats.uplift >= 0 ? '+' : ''}${stats.uplift} pp
-                            </span>
-                        </div>
-                    </div>
-                `;
-
-                tooltip.style.left = '0px';
-                tooltip.style.top = '0px';
-                tooltip.classList.remove('hidden');
-                if (typeof anchorX === 'number' && typeof anchorY === 'number') {
-                    const offset = 15;
-                    const tooltipWidth = tooltip.offsetWidth || 300;
-                    const tooltipHeight = tooltip.offsetHeight || 150;
-                    let finalX = anchorX + offset;
-                    if (finalX + tooltipWidth > window.innerWidth - 8) {
-                        finalX = anchorX - tooltipWidth - offset;
-                    }
-                    finalX = Math.max(8, Math.min(finalX, window.innerWidth - tooltipWidth - 8));
-
-                    let finalY = anchorY + offset;
-                    if (finalY + tooltipHeight > window.innerHeight - 8) {
-                        finalY = anchorY - tooltipHeight - offset;
-                    }
-                    finalY = Math.max(8, Math.min(finalY, window.innerHeight - tooltipHeight - 8));
-                    tooltip.style.left = `${finalX}px`;
-                    tooltip.style.top = `${finalY}px`;
-                }
-            };
-
-            const navigateToRun = () => {
-                const combKey = group.getAttribute('data-comb');
-                const testId = group.getAttribute('data-testid');
-                if (!combKey || !testId) return;
-                const runData = combinations[combKey].find(r => r.testId === testId);
-                if (runData) {
-                    const taskParam = activeTask ? `&task=${encodeURIComponent(activeTask)}` : '';
-                    const modeParam = isA11yMode ? '&mode=a11y' : '';
-                    window.location.href = `dashboard.html?testId=${encodeURIComponent(runData.testId)}&source=${encodeURIComponent(runData.source)}${taskParam}${modeParam}#guide-${encodeURIComponent(guideName)}`;
-                }
-            };
-
-            group.addEventListener('mouseenter', (e) => {
-                if (e instanceof MouseEvent) showPointTooltip(e.clientX, e.clientY);
-                else showPointTooltip();
-            });
-
-            group.addEventListener('mouseleave', () => {
-                hideGuideTooltip();
-            });
-
-            group.addEventListener('focus', () => {
-                const r = group.getBoundingClientRect();
-                showPointTooltip(r.left + r.width / 2, r.bottom);
-            });
-
-            group.addEventListener('blur', () => {
-                hideGuideTooltip(true);
-            });
-
-            group.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    hideGuideTooltip(true);
-                } else if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    navigateToRun();
-                }
-            });
-
-            group.addEventListener('click', navigateToRun);
-        });
     });
-}
 
-/** @type {number | null} */
-let guideTooltipHideTimer = null;
-/** @type {SVGElement | null} */
-let activePointGroup = null;
+    /**
+     * Fills `#tooltip-container` for the point that showed interest (see setupGuideTooltip).
+     * Closes over this render's data so the shared handler always reads the current runs.
+     * @param {Element} point
+     * @returns {boolean} whether the point resolved to a run
+     */
+    renderTimelineTooltip = (point) => {
+        const combKey = point.getAttribute('data-comb');
+        const testId = point.getAttribute('data-testid');
+        if (!combKey || !testId) return false;
+        const runData = combinations[combKey]?.find(r => r.testId === testId);
+        if (!runData) return false;
+        const stats = getStats(runData);
+        if (!stats) return false;
+
+        const parsedDate = parseSuiteDate(runData.timestamp);
+        const formattedDate = parsedDate
+            ? formatSuiteDate(parsedDate, { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : String(runData.timestamp || '');
+
+        $('#tooltip-header').innerHTML = `
+            <div class="guide-tooltip-title">
+                ${escapeHtml(runData.testId)}
+            </div>
+        `;
+
+        const gPassed = stats.guidedPassed || 0;
+        const gTotal = stats.guidedTotal || 0;
+        const uPassed = stats.unguidedPassed || 0;
+        const uTotal = stats.unguidedTotal || 0;
+
+        $('#tooltip-content').innerHTML = `
+            <div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div>
+            <div class="guide-tooltip-rows">
+                <div class="guide-tooltip-row">
+                    <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span>
+                    <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span>
+                </div>
+                <div class="guide-tooltip-row">
+                    <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span>
+                    <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span>
+                </div>
+                <div class="guide-tooltip-uplift-row">
+                    <span>Uplift:</span>
+                    <span class="guide-tooltip-uplift ${stats.uplift >= 0 ? 'positive' : 'negative'}">
+                        ${stats.uplift >= 0 ? '+' : ''}${stats.uplift} pp
+                    </span>
+                </div>
+            </div>
+        `;
+        return true;
+    };
+}
 
 /**
- * @param {boolean} [immediate]
+ * Content renderer for the current timeline render (set by renderGraphs).
+ * @type {((point: Element) => boolean) | null}
  */
-function hideGuideTooltip(immediate = false) {
-    const tooltip = document.getElementById('tooltip-container');
-    if (!tooltip) return;
-    if (guideTooltipHideTimer) {
-        window.clearTimeout(guideTooltipHideTimer);
-        guideTooltipHideTimer = null;
-    }
-    const doHide = () => {
-        if (activePointGroup) {
-            activePointGroup.removeAttribute('aria-describedby');
-            activePointGroup = null;
-        }
-        tooltip.classList.add('hidden');
-        guideTooltipHideTimer = null;
-    };
-    if (immediate) {
-        doHide();
-        return;
-    }
-    guideTooltipHideTimer = window.setTimeout(doHide, 150);
+let renderTimelineTooltip = null;
+
+/** Native CSS anchor positioning; otherwise the tooltip is placed with measured coordinates. */
+const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('anchor-name', '--a');
+
+/**
+ * SVG elements don't generate CSS boxes, so they can't be anchors (Chromium ignores
+ * `anchor-name` on an SVG `<a>`, and the implicit interestfor anchor resolves to nothing; see
+ * the landing-r2 verification notes). This one HTML proxy is moved over the active point's
+ * marker inside its scroll wrapper and carries `anchor-name: --timeline-point`, so the tooltip
+ * is still positioned with CSS anchor positioning and `position-try-fallbacks` (guide.html)
+ * and follows the point while the page or chart scrolls.
+ */
+const timelineAnchor = document.createElement('span');
+timelineAnchor.className = 'timeline-anchor';
+timelineAnchor.setAttribute('aria-hidden', 'true');
+
+/**
+ * @param {Element} point
+ * @returns {Element}
+ */
+function getTimelineMarker(point) {
+    return point.querySelector('.timeline-marker') || point;
 }
 
-// WCAG 1.4.13 Hoverable & Dismissible: keep open while pointer is over tooltip, close on Escape
-const guideTooltipEl = document.getElementById('tooltip-container');
-guideTooltipEl?.addEventListener('mouseenter', () => {
-    if (guideTooltipHideTimer) {
-        window.clearTimeout(guideTooltipHideTimer);
-        guideTooltipHideTimer = null;
-    }
-});
-guideTooltipEl?.addEventListener('mouseleave', () => hideGuideTooltip());
+/** @param {Element} point */
+function moveTimelineAnchor(point) {
+    const wrapper = point.closest('.guide-chart-wrapper');
+    if (!(wrapper instanceof HTMLElement)) return;
+    const r = getTimelineMarker(point).getBoundingClientRect();
+    const w = wrapper.getBoundingClientRect();
+    if (timelineAnchor.parentElement !== wrapper) wrapper.appendChild(timelineAnchor);
+    timelineAnchor.style.left = `${r.left - w.left + wrapper.scrollLeft - wrapper.clientLeft}px`;
+    timelineAnchor.style.top = `${r.top - w.top + wrapper.scrollTop - wrapper.clientTop}px`;
+    timelineAnchor.style.width = `${r.width}px`;
+    timelineAnchor.style.height = `${r.height}px`;
+}
 
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        hideGuideTooltip(true);
+/**
+ * Fallback for browsers without CSS anchor positioning only: place the open tooltip beside the
+ * point's marker (inline end, then start), or below/above it when neither side fits (narrow
+ * viewports), clamped to the viewport, mirroring the CSS position-try order in guide.html.
+ * @param {HTMLElement} tooltip
+ * @param {Element} point
+ */
+function placeGuideTooltipFallback(tooltip, point) {
+    // Never clamp the tooltip over other points for a point that's out of view (page or wrapper).
+    if (!isElementFullyVisible(getTimelineMarker(point))) {
+        hideGuideTooltip();
+        return;
     }
-});
+    const r = getTimelineMarker(point).getBoundingClientRect();
+    const gap = 10;
+    const margin = 8;
+    const w = tooltip.offsetWidth || 300;
+    const h = tooltip.offsetHeight || 150;
+    let left = r.right + gap;
+    let top = r.top + (r.height / 2) - (h / 2);
+    if (left + w > window.innerWidth - margin) {
+        left = r.left - w - gap;
+        if (left < margin) {
+            left = r.left + (r.width / 2) - (w / 2);
+            top = r.bottom + gap + h <= window.innerHeight - margin ? r.bottom + gap : r.top - h - gap;
+        }
+    }
+    tooltip.style.left = `${Math.max(margin, Math.min(left, window.innerWidth - w - margin))}px`;
+    tooltip.style.top = `${Math.max(margin, Math.min(top, window.innerHeight - h - margin))}px`;
+}
+
+/** @type {Element | null} */
+let activeTimelinePoint = null;
+/** Whether guide.js (not the interestfor polyfill) opened the tooltip; see setupGuideTooltip. */
+let shownWithoutInvoker = false;
+/** A point whose tooltip waits for it to scroll into view (see setupGuideTooltip). */
+let pendingTimelinePoint = /** @type {Element | null} */ (null);
+/** @type {number} */
+let guideFallbackFrame = 0;
+
+/**
+ * `#tooltip-container` is a popover="hint" opened by the points' interestfor (or the vendored
+ * polyfill), which also provides WCAG 1.4.13 hover persistence, Escape, and light dismiss.
+ * This only fills in the content and positions it for the point that showed interest.
+ */
+function setupGuideTooltip() {
+    const tooltip = document.getElementById('tooltip-container');
+    if (!tooltip) return;
+    tooltip.addEventListener('interest', (e) => {
+        const source = /** @type {Event & { source?: Element | null }} */ (e).source;
+        const point = source?.closest('.timeline-point');
+        if (!point || !renderTimelineTooltip || !renderTimelineTooltip(point)) return;
+        // Without anchor positioning the tooltip is placed from measured coordinates, so it only
+        // opens beside a point that's fully on screen; a focused point still scrolling into view
+        // (Firefox, see scrollSvgLinkIntoViewOnFocus) gets it once the scroll settles.
+        if (!SUPPORTS_ANCHOR_POSITIONING && !isElementFullyVisible(getTimelineMarker(point))) {
+            hideGuideTooltip();
+            pendingTimelinePoint = point;
+            whenElementSettlesInView(getTimelineMarker(point), () => {
+                pendingTimelinePoint = null;
+                if (!renderTimelineTooltip || !renderTimelineTooltip(point)) return;
+                activeTimelinePoint = point;
+                setPopoverOpen(tooltip, true);
+                shownWithoutInvoker = true;
+                placeGuideTooltipFallback(tooltip, point);
+            }, () => pendingTimelinePoint === point && point.matches(':focus, :hover'));
+            return;
+        }
+        pendingTimelinePoint = null;
+        activeTimelinePoint = point;
+        if (SUPPORTS_ANCHOR_POSITIONING) moveTimelineAnchor(point);
+        else if (isPopoverOpen(tooltip)) placeGuideTooltipFallback(tooltip, point);
+        // The vendored interestfor polyfill opens the target with showPopover({ source }), which
+        // Firefox rejects for an SVG source (the polyfill swallows the error), so the interest
+        // event fires but nothing opens. Open it here in that case; native interestfor (and the
+        // polyfill with HTML sources) has already opened it by the time this runs.
+        window.setTimeout(() => {
+            if (activeTimelinePoint === point && !isPopoverOpen(tooltip)) {
+                setPopoverOpen(tooltip, true);
+                shownWithoutInvoker = true;
+            }
+        });
+    });
+    // ...and close it again when the polyfill reports lost interest (pointer/focus left, Escape).
+    tooltip.addEventListener('loseinterest', () => {
+        if (shownWithoutInvoker) hideGuideTooltip();
+    });
+    tooltip.addEventListener('toggle', (e) => {
+        const open = /** @type {ToggleEvent} */ (e).newState === 'open';
+        if (open && !SUPPORTS_ANCHOR_POSITIONING && activeTimelinePoint) placeGuideTooltipFallback(tooltip, activeTimelinePoint);
+        if (!open) {
+            activeTimelinePoint = null;
+            shownWithoutInvoker = false;
+        }
+    });
+    if (!SUPPORTS_ANCHOR_POSITIONING) {
+        // Measured coordinates don't follow the point, so re-place the open tooltip on scroll and
+        // resize (rAF-throttled); placeGuideTooltipFallback closes it once the point leaves view.
+        const onViewportChange = () => {
+            if (guideFallbackFrame) return;
+            guideFallbackFrame = window.requestAnimationFrame(() => {
+                guideFallbackFrame = 0;
+                if (!activeTimelinePoint || !isPopoverOpen(tooltip)) return;
+                if (!activeTimelinePoint.isConnected) hideGuideTooltip();
+                else placeGuideTooltipFallback(tooltip, activeTimelinePoint);
+            });
+        };
+        document.addEventListener('scroll', onViewportChange, { capture: true, passive: true });
+        window.addEventListener('resize', onViewportChange, { passive: true });
+    }
+}
+
+function hideGuideTooltip() {
+    const tooltip = document.getElementById('tooltip-container');
+    if (tooltip) setPopoverOpen(tooltip, false);
+}
+
+setupGuideTooltip();

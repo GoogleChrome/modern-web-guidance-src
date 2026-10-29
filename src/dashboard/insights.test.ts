@@ -69,7 +69,10 @@ test('getAgentFamily and getSuiteTimestamp resolve family lineage and timestamps
 
     assert.strictEqual(getSuiteTimestamp({ testId: 'nightly-2026-10-09_07-00-02-antigravity_cli' }), '2026-10-09T07:00:02.000Z');
     assert.strictEqual(getSuiteTimestamp({ testId: 'nightly-2026-10-09_18-30-00-codex_cli', timestamp: '2026-10-09' }), '2026-10-09T18:30:00.000Z');
-    assert.strictEqual(getSuiteTimestamp({ testId: 'custom', timestamp: '2026-10-09T14:20:00' }), '2026-10-09T14:20:00Z');
+    assert.strictEqual(getSuiteTimestamp({ testId: 'custom', timestamp: '2026-10-09T14:20:00' }), '2026-10-09T14:20:00.000Z');
+    // Date-only sources stay date-only (no invented UTC-midnight instant) so re-parsing keeps the calendar day.
+    assert.strictEqual(getSuiteTimestamp({ testId: 'custom', timestamp: '2026-10-09' }), '2026-10-09');
+    assert.strictEqual(getSuiteTimestamp({ testId: 'nightly-2026-10-09-claude_code' }), '2026-10-09');
     assert.strictEqual(getSuiteTimestamp({ testId: 'x', timestamp: '2026-01-01T00:00:00.000Z' }), '2026-01-01T00:00:00.000Z');
     assert.strictEqual(getSuiteTimestamp({ testId: 'no-date' }), '');
 });
@@ -94,7 +97,8 @@ test('selectRecentSuites defaults to the latest 1 nightly suite per family regar
 test('computeHeadlineInsights pools pass rates and a11y from unrounded counts', () => {
     const insights = computeHeadlineInsights(manifest, { perAgentRecentN: 3 });
     assert.deepStrictEqual(insights.families.map(f => f.id), ['claude_code', 'antigravity_cli']);
-    assert.strictEqual(insights.latestTimestamp, '2026-10-09T11:12:49Z');
+    // Normalized to a canonical ISO instant by the shared parseSuiteDate.
+    assert.strictEqual(insights.latestTimestamp, '2026-10-09T11:12:49.000Z');
     assert.deepStrictEqual(insights.missingStats, []);
 
     const gemini = insights.families.find(f => f.id === 'antigravity_cli');

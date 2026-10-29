@@ -1,0 +1,403 @@
+import { test, expect } from '@playwright/test';
+
+// Focused checks for the landing (index.html) and guide trend (guide.html) MWG fixes:
+// vendored conditional polyfills, top-layer popovers for tooltips/menus, interest-triggered
+// hints instead of title attributes, and the labeled agent-table scroll region.
+
+/** @param {import('@playwright/test').Page} page */
+function collectErrors(page) {
+  /** @type {string[]} */
+  const errors = [];
+  page.on('pageerror', e => errors.push(String(e)));
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  return errors;
+}
+
+/** Minimal nightly suites with accessibility sub-category data, so the dimension panel renders. */
+const A11Y_SUITES_FIXTURE = {
+  suites: ['antigravity_cli', 'claude_code'].map((agent, i) => ({
+    testId: `nightly-2026-10-09_07-00-0${i}-${agent}`,
+    timestamp: `2026-10-09T11:1${i}:00.000Z`,
+    agent,
+    serving: 'skills_cli',
+    model: `model-${i}`,
+    taskCount: 10,
+    maxRuns: 1,
+    guidedStats: { passed: 9, total: 10 },
+    unguidedStats: { passed: 6, total: 10 },
+    a11yStats: {
+      guidedPassed: 9, guidedTotal: 10, guidedRate: 90, unguidedPassed: 5, unguidedTotal: 10, unguidedRate: 50, uplift: 40, guideCount: 2,
+      bySubCategory: { focus_inert: { guidedPassed: 4, guidedTotal: 4, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 4, unguidedRate: 50, uplift: 50 } }
+    },
+    guides: {
+      'content-vis': { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60, a11y: { guidedPassed: 2, guidedTotal: 2, guidedRate: 100, unguidedPassed: 1, unguidedTotal: 2, unguidedRate: 50, uplift: 50 } }
+    }
+  }))
+};
+
+test.describe('Landing page MWG compliance', () => {
+  test('loads only vendored polyfills and sets the referrer, text-scale, and preconnect hints', async ({ page, request }) => {
+    const errors = collectErrors(page);
+    /** @type {string[]} */
+    const thirdParty = [];
+    page.on('request', r => { if (/unpkg\.com|jsdelivr|cdn\./.test(r.url())) thirdParty.push(r.url()); });
+    await page.goto('/');
+    await expect(page.locator('.suite-table-row').first()).toBeVisible();
+
+    const html = await (await request.get('/')).text();
+    expect(html).not.toContain('unpkg.com');
+    for (const file of ['popover-polyfill.js', 'css-anchor-positioning.js', 'interestfor.js']) {
+      expect(html).toContain(`./vendor/${file}`);
+      const res = await request.get(`/vendor/${file}`);
+      expect(res.ok()).toBe(true);
+      expect(res.headers()['content-type']).toContain('javascript');
+      // Self-contained: no remote imports.
+      expect(await res.text()).not.toMatch(/import\s*\(?\s*["']https?:/);
+    }
+    await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
+    await expect(page.locator('meta[name="text-scale"]')).toHaveAttribute('content', 'scale');
+    await expect(page.locator('link[rel="preconnect"][href="https://storage.googleapis.com"]')).toHaveAttribute('crossorigin', '');
+    expect(thirdParty).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+/**
+ * The barbell preview sits right next to the active trigger's barbell track (which alone carries
+ * the shared anchor name), directly below or above it and horizontally over it.
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} track
+ */
+async function expectNextToBarbell(page, track) {
+  await expect(track).toHaveCSS('anchor-name', '--barbell-anchor');
+  expect(await page.locator('[style*="anchor-name"]').count()).toBe(1);
+  const t = await track.boundingBox();
+  const b = await page.locator('#barbell-tooltip').boundingBox();
+  expect(t && b).toBeTruthy();
+  if (!t || !b) return;
+  const below = b.y - (t.y + t.height);
+  const above = t.y - (b.y + b.height);
+  expect((below >= 0 && below <= 10) || (above >= 0 && above <= 10), `gap below ${below}, above ${above}`).toBe(true);
+  const cx = t.x + t.width / 2;
+  expect(b.x <= cx && b.x + b.width >= cx, `track center ${cx} outside tooltip ${b.x}..${b.x + b.width}`).toBe(true);
+}
+
+  test('barbell tooltip is a popover="hint" opened by interestfor triggers and anchored to their barbell', async ({ page }) => {
+    await page.goto('/');
+    const tooltip = page.locator('#barbell-tooltip');
+    await expect(tooltip).toHaveAttribute('popover', 'hint');
+    await expect(tooltip).toBeHidden();
+
+    // Every suite barbell trigger is a real link pointing interestfor at the shared tooltip.
+    const link = page.locator('.uplift-link').first();
+    await expect(link).toHaveAttribute('interestfor', 'barbell-tooltip');
+
+    // Hover opens it in the top layer (no z-index stacking needed), filled from data-barbell-*.
+    await link.hover();
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText('Pass-rate lift');
+    expect(await tooltip.evaluate(el => el.matches(':popover-open'))).toBe(true);
+    expect(await tooltip.evaluate(el => getComputedStyle(el).zIndex)).toBe('auto');
+    // CSS anchor positioning: only the active trigger's barbell track carries the shared anchor name.
+    const track = link.locator('.suite-dumbbell-track');
+    await expectNextToBarbell(page, track);
+    // Hoverable (WCAG 1.4.13), then dismissible with Escape.
+    await tooltip.hover();
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
+
+    // Keyboard focus opens it, inside the viewport; Escape closes it and releases the anchor.
+    await link.focus();
+    await expect(tooltip).toBeVisible();
+    const box = await tooltip.boundingBox();
+    const vp = page.viewportSize();
+    expect(box && vp && box.x >= 0 && box.x + box.width <= vp.width && box.y >= 0 && box.y + box.height <= vp.height).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
+    await expect(track).not.toHaveCSS('anchor-name', '--barbell-anchor');
+
+    // The accessibility subscore link anchors to its own barbell, at desktop and phone widths.
+    await page.route('**/api/suites*', route => route.fulfill({ json: A11Y_SUITES_FIXTURE }));
+    await page.reload();
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const a11yLink = page.locator('.a11y-link').first();
+      await a11yLink.focus();
+      await expect(tooltip).toBeVisible();
+      await expect(tooltip).toContainText('Accessibility lift');
+      await expectNextToBarbell(page, a11yLink.locator('.suite-dumbbell-track'));
+      await page.keyboard.press('Escape');
+      await expect(tooltip).toBeHidden();
+    }
+  });
+
+  test('breakdown barbells: dimension cells are named buttons; guide/model rows keep rates in the accessibility tree and preview via the row-header trigger', async ({ page }) => {
+    await page.route('**/api/suites*', route => route.fulfill({ json: A11Y_SUITES_FIXTURE }));
+    await page.goto('/');
+    await page.locator('#breakdowns > summary').click();
+    const tooltip = page.locator('#barbell-tooltip');
+
+    // No aria-hidden or tabindex=-1 proxy controls anywhere in the pivot tables (S1).
+    await expect(page.locator('.insights-table [aria-hidden="true"]:is(button, a, [tabindex])')).toHaveCount(0);
+    await expect(page.locator('.insights-table button[tabindex="-1"]')).toHaveCount(0);
+
+    // Guide rows: the row-header link is the trigger; the median rates are plain, exposed cell text.
+    const guideRow = page.locator('.insights-guide-drawer .pivot-row').first();
+    const guideLink = guideRow.locator('.pivot-link');
+    await expect(guideLink).toHaveAttribute('interestfor', 'barbell-tooltip');
+    await expect(guideRow.locator('.pivot-barbell-btn')).toHaveCount(0);
+    const snapshot = await guideRow.ariaSnapshot();
+    expect(snapshot).toMatch(/cell "?Median unguided \d+% , guided \d+% \([+-]?\d+ pp\)|cell[^\n]*Median unguided \d+%/);
+    await guideLink.focus();
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText('Vertical ticks mark the median');
+    // Next to the row's barbell, not the row-header link.
+    await expectNextToBarbell(page, guideRow.locator('.insight-dumbbell-track'));
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
+    // Hovering the barbell itself reaches the row-header trigger's stretched hit area. (Start the
+    // pointer outside the row: focus() scrolled the row under the idle pointer, and a hint dismissed
+    // with Escape only re-opens when the pointer newly enters its trigger.)
+    await page.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.blur());
+    await page.mouse.move(2, 2);
+    const track = guideRow.locator('.insight-dumbbell-track');
+    await track.scrollIntoViewIfNeeded();
+    const trackBox = await track.boundingBox();
+    expect(trackBox).not.toBeNull();
+    if (trackBox) await page.mouse.move(trackBox.x + trackBox.width / 2, trackBox.y + trackBox.height / 2);
+    await expect(tooltip).toBeVisible();
+    await page.mouse.move(2, 2);
+    await expect(tooltip).toBeHidden();
+
+    // Model rows: clicking the barbell toggles the row's filter button without focusing anything hidden.
+    const modelRow = page.locator('.insights-panel[data-panel="model"] .pivot-row').first();
+    const modelBtn = modelRow.locator('.pivot-filter-btn');
+    await expect(modelBtn).toHaveAttribute('interestfor', 'barbell-tooltip');
+    await modelBtn.focus();
+    await expect(tooltip).toBeVisible();
+    await expectNextToBarbell(page, modelRow.locator('.insight-dumbbell-track'));
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
+    await page.evaluate(() => /** @type {HTMLElement | null} */ (document.activeElement)?.blur());
+    await modelRow.locator('.insight-dumbbell-track').scrollIntoViewIfNeeded();
+    const modelTrack = await modelRow.locator('.insight-dumbbell-track').boundingBox();
+    expect(modelTrack).not.toBeNull();
+    if (modelTrack) await page.mouse.click(modelTrack.x + modelTrack.width / 2, modelTrack.y + modelTrack.height / 2);
+    await expect(page.locator('.insights-panel[data-panel="model"] .pivot-filter-btn').first()).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[aria-hidden="true"]'))).toBe(false);
+    await page.locator('.insights-panel[data-panel="model"] .pivot-filter-btn').first().click();
+    await expect(page.locator('.insights-panel[data-panel="model"] .pivot-filter-btn').first()).toHaveAttribute('aria-pressed', 'false');
+
+    // Dimension rows (a11y mode): no other control, so the barbell is a real, named, focusable button.
+    await page.locator('#insights-mode-a11y').click();
+    const dimBtn = page.locator('.insights-dimension-panel .insight-dumbbell-cell button[interestfor="barbell-tooltip"]').first();
+    await expect(dimBtn).not.toHaveAttribute('tabindex', /.*/);
+    await expect(dimBtn).not.toHaveAttribute('aria-hidden', /.*/);
+    await expect(dimBtn).toHaveAccessibleName(/median unguided \d+%, guided \d+%/);
+    await expect(page.locator('.insight-dumbbell-cell[tabindex]')).toHaveCount(0);
+    await dimBtn.focus();
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText('for this dimension');
+    await expectNextToBarbell(page, dimBtn.locator('.insight-dumbbell-track'));
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
+
+    // The uplift sort button has no aria-label duplicating its hint (N8).
+    await expect(page.locator('.insights-uplift-sort-btn').first()).not.toHaveAttribute('aria-label', /.*/);
+  });
+
+  test('tooltips are placed with anchor() insets, not position-area (S2)', async ({ page }) => {
+    for (const path of ['/', '/guide.html?guide=content-vis']) {
+      await page.goto(path);
+      const css = await page.evaluate(() => {
+        /** @param {CSSRuleList} rules @returns {string} */
+        const collect = rules => Array.from(rules).map(r => ('cssRules' in r && r.cssRules ? collect(/** @type {CSSGroupingRule} */ (r).cssRules) : '') + r.cssText).join('\n');
+        return Array.from(document.styleSheets).map(s => { try { return collect(s.cssRules); } catch { return ''; } }).join('\n');
+      });
+      expect(css).not.toMatch(/position-area\s*:/);
+    }
+    await page.goto('/');
+    const css = await page.locator('#barbell-tooltip').evaluate(el => {
+      const s = getComputedStyle(el);
+      return { anchor: s.getPropertyValue('position-anchor'), fallbacks: s.getPropertyValue('position-try-fallbacks') };
+    });
+    expect(css.anchor).toBe('--barbell-anchor');
+    expect(css.fallbacks).toBe('flip-block');
+  });
+
+  test('filter menu chevron does not animate under reduced motion', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const duration = await page.locator('.filter-runs-chevron').evaluate(el => getComputedStyle(el).transitionDuration);
+    expect(duration.split(',').every(d => parseFloat(d) === 0)).toBe(true);
+  });
+
+  test('barbell tooltip still works through the vendored interestfor polyfill', async ({ page }) => {
+    // Force the polyfill path in Chromium (index.html imports it when interestForElement is missing).
+    await page.addInitScript(() => {
+      delete (/** @type {any} */ (HTMLButtonElement.prototype)).interestForElement;
+    });
+    const polyfill = page.waitForRequest(r => r.url().endsWith('/vendor/interestfor.js'));
+    await page.goto('/');
+    await polyfill;
+    const tooltip = page.locator('#barbell-tooltip');
+    await page.locator('.uplift-link').first().focus();
+    await expect(tooltip).toBeVisible();
+    await expect(tooltip).toContainText('Pass-rate lift');
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
+  });
+
+  test('regressed barbell connectors are dashed, not color-only; empty spotlight data hides the section', async ({ page }) => {
+    await page.route('**/showcase-runs.json', route => route.fulfill({ json: { tasks: [] } }));
+    await page.goto('/');
+    await expect(page.locator('#ab-spotlight')).toBeHidden();
+    await expect(page.locator('#ab-spotlight')).toHaveAttribute('aria-busy', 'false');
+
+    const bg = await page.evaluate(() => {
+      const track = document.createElement('div');
+      track.className = 'insight-dumbbell-track';
+      track.innerHTML = '<div class="connector regressed"></div>';
+      const hero = document.createElement('div');
+      hero.className = 'takeaway-dumbbell';
+      hero.innerHTML = '<div class="takeaway-track"><div class="connector regressed"></div></div>';
+      document.body.append(track, hero);
+      return [track, hero].map(el => getComputedStyle(/** @type {Element} */ (el.querySelector('.connector'))).backgroundImage);
+    });
+    for (const image of bg) expect(image).toContain('repeating-linear-gradient');
+  });
+
+  test('filter menu relies on native popover behavior and keeps aria-expanded in sync', async ({ page }) => {
+    await page.goto('/');
+    const btn = page.locator('#filter-btn');
+    const menu = page.locator('#filter-menu');
+    await btn.click();
+    await expect(menu).toBeVisible();
+    await expect(btn).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#filter-search')).toBeFocused();
+    expect(await menu.evaluate(el => getComputedStyle(el).zIndex)).toBe('auto');
+
+    // Escape is the native close request; focus returns to the invoker.
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(btn).toHaveAttribute('aria-expanded', 'false');
+    await expect(btn).toBeFocused();
+
+    // Light dismiss on outside click.
+    await btn.click();
+    await expect(menu).toBeVisible();
+    await page.locator('.landing-title').click();
+    await expect(menu).toBeHidden();
+    await expect(btn).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('breakdown explanations use interestfor hint popovers instead of title attributes', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#breakdowns > summary').click();
+    const titleBtn = page.locator('.insights-panel[data-panel="model"] .insights-panel-title-btn');
+    await expect(titleBtn).toBeVisible();
+    await expect(titleBtn).not.toHaveAttribute('title', /.*/);
+    await expect(page.locator('.insights-uplift-sort-btn').first()).not.toHaveAttribute('title', /.*/);
+    await expect(page.locator('.guide-legend')).not.toHaveAttribute('title', /.*/);
+
+    await expect(titleBtn).toHaveAttribute('interestfor', 'hint-sort-alpha-model');
+    const hint = page.locator('#hint-sort-alpha-model');
+    await expect(hint).toHaveAttribute('popover', 'hint');
+    await titleBtn.focus();
+    await expect(hint).toBeVisible();
+    await expect(hint).toHaveText('Sort models alphabetically');
+
+    const legendBtn = page.locator('.guide-legend .info-hint-btn');
+    await legendBtn.focus();
+    const legendHint = page.locator('#hint-guide-legend');
+    await expect(legendHint).toBeVisible();
+    await expect(legendHint).toContainText('standard deviation');
+    await page.keyboard.press('Escape');
+    await expect(legendHint).toBeHidden();
+  });
+
+  test('agent table scroll wrapper is a labeled, focusable region; spotlight meter has no title tooltips', async ({ page }) => {
+    await page.goto('/');
+    const wrap = page.locator('.agent-table-wrap');
+    await expect(wrap).toHaveAttribute('role', 'region');
+    await expect(wrap).toHaveAttribute('tabindex', '0');
+    await expect(wrap).toHaveAttribute('aria-labelledby', 'agent-table-caption');
+    await expect(page.locator('#agent-table-caption')).toHaveCount(1);
+
+    await expect(page.locator('#ab-spotlight')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('.ab-meter-seg').first()).toBeAttached();
+    expect(await page.locator('.ab-meter-seg[title]').count()).toBe(0);
+  });
+});
+
+test.describe('Guide trend page MWG compliance', () => {
+  test('autocomplete is an anchored popover listbox with light dismiss synced to the combobox', async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.goto('/guide.html?guide=content-vis');
+    await expect(page.locator('.timeline-point').first()).toBeVisible();
+    await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
+    await expect(page.locator('meta[name="text-scale"]')).toHaveAttribute('content', 'scale');
+    await expect(page.locator('script[src="features-mapping.gen.js"]')).toHaveAttribute('defer', '');
+
+    const input = page.locator('#guide-search');
+    const list = page.locator('#autocomplete-list');
+    await expect(list).toHaveAttribute('popover', 'auto');
+    await input.fill('pre');
+    await expect(list).toBeVisible();
+    await expect(input).toHaveAttribute('aria-expanded', 'true');
+    expect(await list.evaluate(el => el.matches(':popover-open'))).toBe(true);
+
+    // Anchored directly under the input.
+    const inBox = await input.boundingBox();
+    const listBox = await list.boundingBox();
+    expect(inBox && listBox && Math.abs(listBox.y - (inBox.y + inBox.height)) <= 2 && Math.abs(listBox.x - inBox.x) <= 2).toBe(true);
+
+    // Clicking back into the input keeps it open; ArrowDown still drives aria-activedescendant.
+    await input.click();
+    await expect(list).toBeVisible();
+    await input.press('ArrowDown');
+    await expect(input).toHaveAttribute('aria-activedescendant', 'autocomplete-option-0');
+
+    // Outside click (away from the list, which overlays the subtitle) light-dismisses and resets the combobox state.
+    await page.mouse.click(5, (page.viewportSize()?.height ?? 720) - 5);
+    await expect(list).toBeHidden();
+    await expect(input).toHaveAttribute('aria-expanded', 'false');
+    await expect(input).not.toHaveAttribute('aria-activedescendant', /.*/);
+    expect(errors).toEqual([]);
+  });
+
+  test('timeline points are SVG links with interestfor that open an anchored popover="hint"', async ({ page }) => {
+    await page.goto('/guide.html?guide=content-vis');
+    const point = page.locator('.timeline-point').first();
+    await expect(point).toBeVisible();
+    const tooltip = page.locator('#tooltip-container');
+    await expect(tooltip).toHaveAttribute('popover', 'hint');
+    expect(await point.evaluate(el => el instanceof SVGAElement)).toBe(true);
+    await expect(point).toHaveAttribute('href', /^dashboard\.html\?testId=.+#guide-content-vis$/);
+    await expect(point).toHaveAttribute('interestfor', 'tooltip-container');
+    await expect(point).not.toHaveAttribute('role', /.*/);
+    // Short name (date + action); the rates come from the hint description, not repeated in the label (N-d).
+    await expect(point).toHaveAttribute('aria-label', /^[^%]+: open run$/);
+
+    await point.locator('.timeline-marker').hover();
+    await expect(tooltip).toBeVisible();
+    expect(await tooltip.evaluate(el => el.matches(':popover-open'))).toBe(true);
+    await expect(page.locator('#tooltip-content .guide-tooltip-date')).not.toBeEmpty();
+    // Anchored beside the point's marker via the HTML stand-in anchor (SVG can't be an anchor).
+    const marker = await point.locator('.timeline-marker').boundingBox();
+    const tip = await tooltip.boundingBox();
+    expect(marker && tip && Math.min(Math.abs(tip.x - (marker.x + marker.width)), Math.abs(tip.x + tip.width - marker.x)) <= 14).toBe(true);
+    await tooltip.hover();
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
+
+    await point.focus();
+    await expect(tooltip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toBeHidden();
+    // Native link activation.
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/dashboard\.html\?testId=/);
+  });
+});

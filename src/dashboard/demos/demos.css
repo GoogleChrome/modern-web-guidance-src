@@ -1,4 +1,6 @@
 :root {
+  /* Dark-only palette: match UA form controls and scrollbars (overrides dashboard.css's light dark). */
+  color-scheme: dark;
   --demos-bg: #131518;
   --demos-panel: #1c1f24;
   --demos-panel-active: #242830;
@@ -42,6 +44,18 @@ body {
     letter-spacing: -0.01em;
     font-family: var(--demos-font-mono);
     text-transform: lowercase;
+  }
+
+  .scroll-top-btn {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
     cursor: pointer;
     user-select: none;
     transition: color 0.15s;
@@ -68,12 +82,10 @@ body {
     font: inherit;
     font-size: 0.82rem;
     font-family: var(--demos-font-mono);
-    outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: border-color 0.15s;
 
     &:focus {
       border-color: var(--demos-accent);
-      box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
     }
 
     &::placeholder {
@@ -300,6 +312,14 @@ main {
 
   .guide-id {
     flex: 1;
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    text-align: start;
+    line-height: inherit;
+    cursor: pointer;
     font-family: var(--demos-font-mono);
     font-size: 0.84rem;
     font-weight: 600;
@@ -450,4 +470,21 @@ main {
 
 [hidden] {
   display: none !important;
+}
+
+/* Visible keyboard focus for every control (inputs previously had outline: none with a 20%-alpha
+   glow). The accent is ~7:1 against the dark panel and page backgrounds, well above 3:1. */
+:is(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--demos-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card:target {
+    animation: none;
+  }
+
+  :is(.toc-cat-header, .toc-link, .toggle-btn, .open-link):active {
+    transform: none;
+  }
 }

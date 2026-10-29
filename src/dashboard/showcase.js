@@ -123,7 +123,13 @@ async function loadShowcase() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = /** @type {ShowcasePayload} */ (await res.json());
         tasks = Array.isArray(data.tasks) ? data.tasks : [];
-        if (!tasks.length) return;
+        if (!tasks.length) {
+            // Nothing to show: hide the section (and drop aria-busy) so its reserved
+            // min-block-size doesn't leave an empty gap on the page.
+            rootEl.hidden = true;
+            rootEl.setAttribute('aria-busy', 'false');
+            return;
+        }
         if (!tasks.some(t => t.id === activeTaskId)) {
             activeTaskId = tasks[0].id;
         }
@@ -184,7 +190,9 @@ function renderTaskPills(currentTask) {
         const pair = t.agents[activeAgentId] || Object.values(t.agents)[0];
         const deltaChecks = pair ? pair.guided.passed - pair.unguided.passed : 0;
         const deltaHtml = (isCurrent && deltaChecks > 0)
-            ? `<span class="ab-task-delta" aria-hidden="true" title="+${deltaChecks} passing checks with MWG">+${deltaChecks}</span>`
+            // Visually hidden text instead of a title tooltip (MWG html: no title tooltips), so the
+            // meaning of "+N" reaches screen reader, keyboard, and touch users too.
+            ? `<span class="ab-task-delta"><span aria-hidden="true">+${deltaChecks}</span><span class="visually-hidden">, ${deltaChecks} more passing ${deltaChecks === 1 ? 'check' : 'checks'} with MWG</span></span>`
             : '';
         return `<button type="button" class="ab-task-pill" data-task-id="${escapeHtml(t.id)}" aria-pressed="${isCurrent}"><span>${escapeHtml(shortLabel)}</span>${deltaHtml}</button>`;
     }).join('');
@@ -194,8 +202,17 @@ function renderTaskPills(currentTask) {
 
     if (!taskPillsListenersBound) {
         taskPillsListenersBound = true;
-        container.addEventListener('scroll', () => syncTaskPillsScrollShadows(container), { passive: true });
-        window.addEventListener('resize', () => syncTaskPillsScrollShadows(container), { passive: true });
+        // Coalesce scroll/resize bursts into one layout read + class write per frame.
+        let shadowRaf = 0;
+        const scheduleShadowSync = () => {
+            if (shadowRaf) return;
+            shadowRaf = requestAnimationFrame(() => {
+                shadowRaf = 0;
+                syncTaskPillsScrollShadows(container);
+            });
+        };
+        container.addEventListener('scroll', scheduleShadowSync, { passive: true });
+        window.addEventListener('resize', scheduleShadowSync, { passive: true });
     }
 
     container.querySelectorAll('.ab-task-pill').forEach(btn => {
@@ -342,26 +359,30 @@ function renderScorecard(task, pair) {
     const deltaGlyph = deltaChecks > 0 ? '▲' : (deltaChecks < 0 ? '▼' : '•');
     const contrast = getApproachContrast(task, pair);
 
+    // Segments are purely visual (inside role="img"); no per-segment title tooltips, which only
+    // mouse users could reach. The grader checks table below lists every check's number,
+    // message, and pass/fail state for both runs (a flip reads as Fail → Pass there).
     const uMeterSegs = pair.checks.map(c => {
         const st = c.unguidedPassed ? 'pass' : 'fail';
-        const label = `Check #${c.index} (${c.unguidedPassed ? 'Pass' : 'Fail'}): ${c.message}`;
-        return `<span class="ab-meter-seg ${st}" title="${escapeHtml(label)}"></span>`;
+        return `<span class="ab-meter-seg ${st}"></span>`;
     }).join('');
 
     const gMeterSegs = pair.checks.map(c => {
         const st = c.guidedPassed ? 'pass' : 'fail';
-        const label = `Check #${c.index} (${c.guidedPassed ? 'Pass' : 'Fail'}${c.flipped ? ', flipped from Fail' : ''}): ${c.message}`;
-        return `<span class="ab-meter-seg ${st}${c.flipped ? ' is-flipped' : ''}" title="${escapeHtml(label)}"></span>`;
+        return `<span class="ab-meter-seg ${st}${c.flipped ? ' is-flipped' : ''}"></span>`;
     }).join('');
 
     const uTone = scoreTone(u.rate);
     const gTone = scoreTone(g.rate);
     const uFailed = u.total - u.passed;
+    // The action goes in visually hidden text rather than a title tooltip (MWG html), keeping the
+    // visible "A11y n/m" at the start of the accessible name (WCAG 2.5.3 Label in Name).
+    const a11yActionHtml = '<span class="visually-hidden">: show accessibility assertions</span>';
     const uA11yHtml = u.a11yTotal > 0
-        ? `<button type="button" class="ab-score-a11y ${u.a11yPassed < u.a11yTotal ? 'fail' : 'pass'}" title="Show accessibility assertions">A11y ${u.a11yPassed}/${u.a11yTotal}</button>`
+        ? `<button type="button" class="ab-score-a11y ${u.a11yPassed < u.a11yTotal ? 'fail' : 'pass'}">A11y ${u.a11yPassed}/${u.a11yTotal}${a11yActionHtml}</button>`
         : '';
     const gA11yHtml = g.a11yTotal > 0
-        ? `<button type="button" class="ab-score-a11y ${g.a11yPassed === g.a11yTotal ? 'pass' : 'fail'}" title="Show accessibility assertions">A11y ${g.a11yPassed}/${g.a11yTotal}</button>`
+        ? `<button type="button" class="ab-score-a11y ${g.a11yPassed === g.a11yTotal ? 'pass' : 'fail'}">A11y ${g.a11yPassed}/${g.a11yTotal}${a11yActionHtml}</button>`
         : '';
 
     uEl.innerHTML = `

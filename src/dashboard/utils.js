@@ -20,42 +20,199 @@ export const AGENT_DISPLAY_NAMES = {
 };
 
 /**
+ * Suite timestamps without an explicit offset (`YYYY-MM-DD`, `YYYY-MM-DDTHH:MM[:SS[.fff]]`)
+ * are written by the harness in UTC. Capture the numeric fields so we can build the instant
+ * with `Date.UTC()` instead of hand-built ISO strings, which `Date` would otherwise parse as
+ * UTC (date-only) or local time (date-time) depending on the shape.
+ */
+const ZONELESS_TIMESTAMP_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3})\d*)?)?)?$/;
+const TEST_ID_DATETIME_RE = /(\d{4})-(\d{2})-(\d{2})[_T](\d{2})-(\d{2})-(\d{2})/;
+const TEST_ID_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/;
+
+/**
+ * Builds a UTC instant from numeric string fields; returns null for out-of-range values
+ * (e.g. month 13) rather than letting `Date.UTC` silently roll them over.
+ * @param {string} y @param {string} mo @param {string} d
+ * @param {string} [hh] @param {string} [mi] @param {string} [ss] @param {string} [ms]
+ * @returns {Date | null}
+ */
+function utcDateFromParts(y, mo, d, hh = '0', mi = '0', ss = '0', ms = '0') {
+    const [Y, M, D, H, Mi, S] = [y, mo, d, hh, mi, ss].map(Number);
+    const date = new Date(Date.UTC(Y, M - 1, D, H, Mi, S, Number(ms.padEnd(3, '0'))));
+    if (Number.isNaN(date.getTime()) || date.getUTCMonth() !== M - 1 || date.getUTCDate() !== D) return null;
+    return date;
+}
+
+/**
+ * Dates that `parseSuiteDate` resolved from a date-only source (no time of day). Kept as an
+ * explicit flag rather than inferred from the instant, because a genuine `T00:00:00Z` run is a
+ * real instant (e.g. 5 PM the previous day in Los Angeles) and must not be shown as date-only.
+ * @type {WeakSet<Date>}
+ */
+const DATE_ONLY_SUITE_DATES = new WeakSet();
+
+/**
  * Parses a suite timestamp safely across timezones, preferring full timestamps embedded in
- * `testId` (`YYYY-MM-DD_HH-MM-SS`) when `timestamp` is missing, date-only, or midnight-only.
+ * `testId` (`YYYY-MM-DD_HH-MM-SS`, UTC) when `timestamp` is missing, date-only, or midnight-only.
+ *
+ * Every zoneless value is treated as UTC (the harness clock), so a date-only `2026-10-09`
+ * becomes `2026-10-09T00:00:00Z` with `dateOnly: true`. Use `formatSuiteDate()` /
+ * `getSuiteDayKey()` to display these: they show real instants in the viewer's zone, but keep
+ * date-only values on their UTC calendar day so viewers west of UTC don't see the previous day.
  *
  * @param {string | undefined | null} timestamp
  * @param {string} [testId='']
- * @returns {Date | null}
+ * @returns {{ date: Date, dateOnly: boolean } | null}
  */
-export function parseSuiteDate(timestamp, testId = '') {
+export function parseSuiteDateInfo(timestamp, testId = '') {
     const rawTs = typeof timestamp === 'string' ? timestamp.trim() : '';
     const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(rawTs);
     const isMidnight = /T00:00:00(?:\.0+)?Z?$/i.test(rawTs);
 
     if ((!rawTs || isDateOnly || isMidnight) && testId) {
-        const fullMatch = testId.match(/(\d{4}-\d{2}-\d{2})[_T](\d{2})-(\d{2})-(\d{2})/);
+        const fullMatch = testId.match(TEST_ID_DATETIME_RE);
         if (fullMatch) {
-            const [, datePart, hh, mm, ss] = fullMatch;
+            const [, y, mo, d, hh, mm, ss] = fullMatch;
             if (hh !== '00' || mm !== '00' || ss !== '00' || !rawTs || isDateOnly) {
-                const fromId = new Date(`${datePart}T${hh}:${mm}:${ss}Z`);
-                if (!Number.isNaN(fromId.getTime())) return fromId;
+                const fromId = utcDateFromParts(y, mo, d, hh, mm, ss);
+                if (fromId) return { date: fromId, dateOnly: false };
             }
         }
     }
 
     if (rawTs) {
-        const candidate = isDateOnly ? new Date(`${rawTs}T00:00:00`) : new Date(rawTs);
-        if (!Number.isNaN(candidate.getTime())) return candidate;
+        const zoneless = rawTs.match(ZONELESS_TIMESTAMP_RE);
+        if (zoneless) {
+            const [, y, mo, d, hh, mi, ss, ms] = zoneless;
+            const candidate = utcDateFromParts(y, mo, d, hh, mi, ss, ms);
+            // Only the bare `YYYY-MM-DD` shape lacks a time of day.
+            if (candidate) return { date: candidate, dateOnly: hh === undefined };
+        } else {
+            // Strings with an explicit `Z` or `±HH:MM` offset are unambiguous instants.
+            const candidate = new Date(rawTs);
+            if (!Number.isNaN(candidate.getTime())) return { date: candidate, dateOnly: false };
+        }
     }
 
     if (testId) {
-        const dateMatch = testId.match(/(\d{4}-\d{2}-\d{2})/);
+        // Unparseable timestamp: fall back to whatever the testId encodes.
+        const fullMatch = testId.match(TEST_ID_DATETIME_RE);
+        const fromId = fullMatch ? utcDateFromParts(fullMatch[1], fullMatch[2], fullMatch[3], fullMatch[4], fullMatch[5], fullMatch[6]) : null;
+        if (fromId) return { date: fromId, dateOnly: false };
+        const dateMatch = testId.match(TEST_ID_DATE_RE);
         if (dateMatch) {
-            const fallback = new Date(`${dateMatch[1]}T00:00:00`);
-            if (!Number.isNaN(fallback.getTime())) return fallback;
+            const fallback = utcDateFromParts(dateMatch[1], dateMatch[2], dateMatch[3]);
+            if (fallback) return { date: fallback, dateOnly: true };
         }
     }
     return null;
+}
+
+/**
+ * `parseSuiteDateInfo` returning just the `Date`. Date-only results are remembered (see
+ * `isDateOnlySuiteDate`), so pass the returned object itself to `formatSuiteDate` /
+ * `getSuiteDayKey`; a copy (`new Date(d)`) or an ISO round trip loses the flag. Use
+ * `toSuiteDateString` to serialize without losing it.
+ * @param {string | undefined | null} timestamp
+ * @param {string} [testId='']
+ * @returns {Date | null}
+ */
+export function parseSuiteDate(timestamp, testId = '') {
+    const info = parseSuiteDateInfo(timestamp, testId);
+    if (!info) return null;
+    if (info.dateOnly) DATE_ONLY_SUITE_DATES.add(info.date);
+    return info.date;
+}
+
+/**
+ * True when `date` came from a date-only source via `parseSuiteDate` (it is anchored at UTC
+ * midnight but has no real time of day).
+ * @param {Date} date
+ */
+export function isDateOnlySuiteDate(date) {
+    return DATE_ONLY_SUITE_DATES.has(date);
+}
+
+/**
+ * Serializes a parsed suite date so that re-parsing it keeps date-only-ness: `YYYY-MM-DD` for
+ * date-only values, a full ISO instant otherwise.
+ * @param {Date} date
+ */
+export function toSuiteDateString(date) {
+    return isDateOnlySuiteDate(date) ? date.toISOString().slice(0, 10) : date.toISOString();
+}
+
+/** Default `formatSuiteDate` style when called as `formatSuiteDate(dateLike, testId?)`. */
+const DEFAULT_SUITE_DATE_OPTIONS = /** @type {Intl.DateTimeFormatOptions} */ ({ dateStyle: 'medium', timeStyle: 'short' });
+
+/**
+ * Formats a suite date. Real instants are shown in the viewer's time zone; date-only
+ * values are formatted in UTC so the calendar day never drifts (and no made-up time
+ * of day is shown). Time-of-day options are dropped for date-only values.
+ *
+ * Accepts a `Date` from `parseSuiteDate` or a raw timestamp string (parsed here, with the
+ * optional `testId` as the fallback source). The second argument is either the `testId`
+ * (default "Oct 9, 2026, 7:00 AM" style) or explicit `Intl.DateTimeFormat` options.
+ * Returns `'-'` when no date can be resolved.
+ * @param {Date | string | null | undefined} dateLike
+ * @param {string | Intl.DateTimeFormatOptions} [testIdOrOptions]
+ * @param {string} [locale='en-US']
+ * @returns {string}
+ */
+export function formatSuiteDate(dateLike, testIdOrOptions, locale = 'en-US') {
+    const testId = typeof testIdOrOptions === 'string' ? testIdOrOptions : '';
+    const options = typeof testIdOrOptions === 'object' && testIdOrOptions !== null ? testIdOrOptions : DEFAULT_SUITE_DATE_OPTIONS;
+    /** @type {{ date: Date, dateOnly: boolean } | null} */
+    let info = null;
+    if (dateLike instanceof Date) {
+        info = Number.isNaN(dateLike.getTime()) ? null : { date: dateLike, dateOnly: isDateOnlySuiteDate(dateLike) };
+    } else {
+        info = parseSuiteDateInfo(dateLike, testId);
+    }
+    if (!info) return '-';
+    if (info.dateOnly) {
+        const { hour: _h, minute: _m, second: _s, hour12: _h12, timeStyle: _ts, ...dateOnly } = options;
+        return new Intl.DateTimeFormat(locale, { ...dateOnly, timeZone: 'UTC' }).format(info.date);
+    }
+    return new Intl.DateTimeFormat(locale, options).format(info.date);
+}
+
+/**
+ * `YYYY-MM-DD` calendar-day bucket for a suite date, in the viewer's time zone (or UTC for
+ * date-only values), matching what `formatSuiteDate` displays.
+ * @param {Date} date
+ */
+export function getSuiteDayKey(date) {
+    const utc = isDateOnlySuiteDate(date);
+    const y = utc ? date.getUTCFullYear() : date.getFullYear();
+    const m = (utc ? date.getUTCMonth() : date.getMonth()) + 1;
+    const d = utc ? date.getUTCDate() : date.getDate();
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/**
+ * Whether a `[popover]` element is showing. `:popover-open` is an invalid selector (and
+ * throws) in browsers that rely on the popover polyfill, which sets a `:popover-open` class.
+ * @param {HTMLElement} el
+ */
+export function isPopoverOpen(el) {
+    try {
+        return el.matches(':popover-open');
+    } catch {
+        return el.classList.contains(':popover-open');
+    }
+}
+
+/**
+ * Shows or hides a declared `[popover]` (top layer), tolerating repeat calls, which would
+ * otherwise throw `InvalidStateError`.
+ * @param {HTMLElement} el
+ * @param {boolean} open
+ */
+export function setPopoverOpen(el, open) {
+    if (isPopoverOpen(el) === open || typeof el.showPopover !== 'function') return;
+    if (open) el.showPopover();
+    else el.hidePopover();
 }
 
 /** @param {string} [hostname] */
@@ -69,6 +226,85 @@ export function getScrollBehavior() {
         return 'auto';
     }
     return 'smooth';
+}
+
+/**
+ * Whether `el`'s box is entirely visible: inside the viewport and not clipped by any scrolling
+ * ancestor (e.g. a chart's `overflow-x: auto` wrapper). A box larger than the visible area on an
+ * axis counts as visible on that axis when it covers it.
+ * @param {Element} el
+ * @param {number} [tolerance] px of slack for subpixel layout
+ */
+export function isElementFullyVisible(el, tolerance = 1) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return false;
+    let top = 0;
+    let left = 0;
+    let bottom = window.innerHeight;
+    let right = window.innerWidth;
+    for (let p = el.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+        const cs = getComputedStyle(p);
+        if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+        const c = p.getBoundingClientRect();
+        if (cs.overflowY !== 'visible') {
+            top = Math.max(top, c.top + p.clientTop);
+            bottom = Math.min(bottom, c.top + p.clientTop + p.clientHeight);
+        }
+        if (cs.overflowX !== 'visible') {
+            left = Math.max(left, c.left + p.clientLeft);
+            right = Math.min(right, c.left + p.clientLeft + p.clientWidth);
+        }
+    }
+    const fits = (/** @type {number} */ a0, /** @type {number} */ a1, /** @type {number} */ b0, /** @type {number} */ b1) =>
+        (a0 >= b0 - tolerance && a1 <= b1 + tolerance) || (a0 <= b0 + tolerance && a1 >= b1 - tolerance);
+    return fits(r.top, r.bottom, top, bottom) && fits(r.left, r.right, left, right);
+}
+
+/**
+ * Keyboard focus on an SVG `<a>` (chart rows, timeline points): Chromium scrolls it into view
+ * natively, but Firefox doesn't, for focus or for `scrollIntoView()` on the `<a>` itself. It does
+ * scroll an SVG shape, so after focus this scrolls `scrollTarget` (a shape inside the link) into
+ * view, vertically and horizontally through every scroll container. It runs a frame later and
+ * only when `visibleTarget` still isn't fully visible, so it never fights Chromium's native focus
+ * scrolling.
+ * @param {Element} link the focusable SVG `<a>`
+ * @param {Element} scrollTarget a shape inside it that Firefox will scroll to
+ * @param {Element} [visibleTarget] the box that must end up visible (defaults to scrollTarget)
+ */
+export function scrollSvgLinkIntoViewOnFocus(link, scrollTarget, visibleTarget = scrollTarget) {
+    link.addEventListener('focus', () => {
+        window.requestAnimationFrame(() => {
+            if (document.activeElement !== link || isElementFullyVisible(visibleTarget)) return;
+            scrollTarget.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: getScrollBehavior() });
+        });
+    });
+}
+
+/**
+ * Calls `callback` once `el` is fully visible and its box has stopped moving (e.g. after a smooth
+ * scroll), or never if that doesn't happen within `timeoutMs` or `isStillWanted()` turns false.
+ * @param {Element} el
+ * @param {() => void} callback
+ * @param {() => boolean} isStillWanted
+ * @param {number} [timeoutMs]
+ */
+export function whenElementSettlesInView(el, callback, isStillWanted, timeoutMs = 1500) {
+    const start = performance.now();
+    let last = '';
+    let stableFrames = 0;
+    const tick = () => {
+        if (!el.isConnected || !isStillWanted() || performance.now() - start > timeoutMs) return;
+        const r = el.getBoundingClientRect();
+        const key = `${Math.round(r.top)},${Math.round(r.left)}`;
+        stableFrames = key === last ? stableFrames + 1 : 0;
+        last = key;
+        if (stableFrames >= 2 && isElementFullyVisible(el)) {
+            callback();
+            return;
+        }
+        window.requestAnimationFrame(tick);
+    };
+    window.requestAnimationFrame(tick);
 }
 
 /** @param {number[]} values */
