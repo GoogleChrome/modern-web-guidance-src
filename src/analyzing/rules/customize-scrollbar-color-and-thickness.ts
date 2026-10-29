@@ -125,14 +125,21 @@ function ruleIsVisibleScrollbarButton(styleRule: CssRuleView): boolean {
     return false;
   }
   const borderRadius = normalizeCssValue(styleRule.getPropertyValue('border-radius'));
-  if (!borderRadius || borderRadius === '0' || borderRadius === '0px' || RESET_DIMENSIONS.has(borderRadius)) {
+  const hasBorderRadius =
+    Boolean(borderRadius) &&
+    borderRadius !== '0' &&
+    borderRadius !== '0px' &&
+    !RESET_DIMENSIONS.has(borderRadius);
+  const hasSize =
+    hasAnyNonZeroDimension(styleRule, 'width') ||
+    hasAnyNonZeroDimension(styleRule, 'height');
+  if (!hasBorderRadius && !hasSize) {
     return false;
   }
   return (
     hasValidColor(styleRule, 'background') ||
     hasValidColor(styleRule, 'background-color') ||
-    hasAnyNonZeroDimension(styleRule, 'width') ||
-    hasAnyNonZeroDimension(styleRule, 'height')
+    hasSize
   );
 }
 
@@ -171,8 +178,6 @@ function prefixHasBespokeScrollbarParts(
 ): boolean {
   const targetPrefix = extractScrollbarSelectorPrefix(styleRule.selectorText);
   const allRules = ctx.styleRules ?? [];
-  let hasVisibleButton = false;
-  let hasTrackPiece = false;
   for (const r of allRules) {
     if (
       !areScrollbarPrefixesCompatible(
@@ -185,25 +190,17 @@ function prefixHasBespokeScrollbarParts(
     if (
       (WEBKIT_SCROLLBAR_REGEX.test(r.selectorText) ||
         WEBKIT_THUMB_REGEX.test(r.selectorText) ||
-        WEBKIT_TRACK_REGEX.test(r.selectorText)) &&
+        WEBKIT_TRACK_REGEX.test(r.selectorText) ||
+        WEBKIT_BUTTON_REGEX.test(r.selectorText)) &&
       ruleHasBespokeShadowOrAppearance(r)
     ) {
       return true;
     }
-    if (
-      WEBKIT_SCROLLBAR_REGEX.test(r.selectorText) &&
-      normalizeCssValue(r.getPropertyValue('width')) === '1px'
-    ) {
+    if (WEBKIT_BUTTON_REGEX.test(r.selectorText) && ruleIsVisibleScrollbarButton(r)) {
       return true;
     }
-    if (WEBKIT_BUTTON_REGEX.test(r.selectorText) && ruleIsVisibleScrollbarButton(r)) {
-      hasVisibleButton = true;
-    }
-    if (/::-webkit-scrollbar-track-piece\b/i.test(r.selectorText)) {
-      hasTrackPiece = true;
-    }
   }
-  return hasVisibleButton && hasTrackPiece;
+  return false;
 }
 
 function stylesheetHasValidColoredThumb(

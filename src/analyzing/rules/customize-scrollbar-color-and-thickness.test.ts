@@ -354,7 +354,7 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts bespoke thumb/track shadows, 1px hairline scrollbars, and styled scrollbar-button + track-piece sets', () => {
+  await t.test('exempts bespoke thumb/track shadows and styled scrollbar-button rules while allowing hidden scrollbar-button', () => {
     const css = `
       #coexpression_legend::-webkit-scrollbar {
         -webkit-appearance: none;
@@ -376,14 +376,24 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
         background: #ebebeb;
         border-radius: 4px;
       }
-      ul::-webkit-scrollbar-track-piece {
-        background: #ebebeb;
-      }
       ul::-webkit-scrollbar-thumb {
         border-radius: 3px;
         background-color: gray;
       }
     `;
     assert.equal(scanCss('bespoke.css', css, [matcher]).length, 0);
+
+    const hiddenButtonCss = `
+      .panel::-webkit-scrollbar {
+        width: 8px;
+      }
+      .panel::-webkit-scrollbar-button {
+        display: none;
+      }
+      .panel::-webkit-scrollbar-thumb {
+        background-color: #888;
+      }
+    `;
+    assert.equal(scanCss('hidden-button.css', hiddenButtonCss, [matcher]).length, 2);
   });
 });

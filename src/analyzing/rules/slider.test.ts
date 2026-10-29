@@ -45,7 +45,7 @@ void test('slider JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts vertical sliders, pips, tooltips, formatters, non-linear ranges, and library docs', () => {
+  await t.test('exempts vertical sliders, pips, tooltips, formatters, and non-linear ranges', () => {
     const code = `
       noUiSlider.create(el1, {
         start: [75],
@@ -65,16 +65,5 @@ void test('slider JS matcher', async (t) => {
       });
     `;
     assert.equal(matchJsRule(sliderJsMatcher, 'advanced-sliders.js', code).length, 0);
-
-    const docCode = `
-      noUiSlider.create(rangeSlider, {
-        start: [4000],
-        range: { min: [2000], max: [10000] },
-      });
-    `;
-    assert.equal(
-      matchJsRule(sliderJsMatcher, 'documentation/slider-values/range.js', docCode).length,
-      0,
-    );
   });
 });

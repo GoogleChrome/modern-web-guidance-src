@@ -10,14 +10,10 @@ export const SWITCH_GUIDE_HASH = '0b0a9d49545e';
 const TREE_OR_ACCORDION_ID_REGEX =
   /(?:^|[-_])(?:toctree|tree|accordion|collapse|collapsible|drawer|dropdown|submenu)(?:$|[-_0-9])/i;
 
-function isTreeDisclosureOrSvgArtHack(
+function isTreeDisclosureHack(
   element: DomElementView,
   ctx: DomMatcherContext,
 ): boolean {
-  if (/(?:^|\/)(?:_build|_site)\//i.test(ctx.filePath)) {
-    return true;
-  }
-
   const classAttr =
     element.getAttribute('class') ?? element.getAttribute('className') ?? '';
   const idAttr = element.getAttribute('id') ?? '';
@@ -35,22 +31,7 @@ function isTreeDisclosureOrSvgArtHack(
   const windowText = lines.slice(startIdx, Math.min(lines.length, startIdx + 20)).join('\n');
 
   // CSS checkbox-hack toggling a sibling <ul>/<ol>/<nav> tree or menu after </label>
-  if (/<\/label>\s*<(?:ul|ol|nav)\b/i.test(windowText)) {
-    return true;
-  }
-
-  // Bespoke multi-layer SVG filter/gradient artwork inside the same <label> before </label>
-  const labelCloseIdx = windowText.search(/<\/label>/i);
-  const withinLabel =
-    labelCloseIdx >= 0 ? windowText.slice(0, labelCloseIdx) : windowText;
-  if (
-    /<svg\b/i.test(withinLabel) &&
-    /<(?:filter|linearGradient|radialGradient|feGaussianBlur)\b/i.test(withinLabel)
-  ) {
-    return true;
-  }
-
-  return false;
+  return /<\/label>\s*<(?:ul|ol|nav)\b/i.test(windowText);
 }
 
 export const switchMatcher: DomRuleMatcher = {
@@ -77,7 +58,7 @@ export const switchMatcher: DomRuleMatcher = {
       return null;
     }
 
-    if (isTreeDisclosureOrSvgArtHack(element, ctx)) {
+    if (isTreeDisclosureHack(element, ctx)) {
       return null;
     }
 

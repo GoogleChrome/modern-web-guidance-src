@@ -12,7 +12,6 @@ import {
 import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -22,9 +21,6 @@ const SLIDER_GUARD_TOKENS = [
   'accent-color',
   'accentColor',
 ] as const;
-
-const NOUISLIDER_DOC_PATH_REGEX =
-  /(?:^|[\\/])documentation[\\/](?:slider-values|pips|behaviour-option|more|events-callbacks|slider-read-write|number-formatting)[\\/]/i;
 
 function isNumericValueNode(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
@@ -112,15 +108,7 @@ function hasNonNativeSliderOptions(optionsObj: ObjectLiteralExpression): boolean
   return false;
 }
 
-function matchNoUiSliderCreate(
-  callExpr: CallExpression,
-  _sourceFile: unknown,
-  ctx: JsMatcherContext,
-): string | null {
-  if (NOUISLIDER_DOC_PATH_REGEX.test(ctx.filePath)) {
-    return null;
-  }
-
+function matchNoUiSliderCreate(callExpr: CallExpression): string | null {
   const callee = unwrapExpression(callExpr.getExpression());
   if (!Node.isPropertyAccessExpression(callee) || callee.getName() !== 'create') {
     return null;

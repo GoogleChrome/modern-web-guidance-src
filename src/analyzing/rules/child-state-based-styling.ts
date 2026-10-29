@@ -15,18 +15,9 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-const FORM_EVENT_NAMES = new Set([
-  'focus',
-  'blur',
-  'focusin',
-  'focusout',
-  'change',
-  'input',
-]);
-
+const FORM_EVENT_NAMES = new Set(['focus', 'blur', 'focusin', 'focusout', 'change', 'input']);
 const PURE_STYLING_STATE_CLASS_REGEX =
   /^(?:is-|has-)?(?:focus|focused|active|checked|valid|invalid|empty|filled|value)$/i;
-
 const JQUERY_FOCUS_EVENT_NAMES = new Set([
   'focus',
   'blur',
@@ -37,24 +28,22 @@ const JQUERY_FOCUS_EVENT_NAMES = new Set([
   'focusin focusout',
   'focusout focusin',
 ]);
-
-const JQUERY_VALIDITY_EVENT_NAMES = new Set([
-  'blur input',
-  'input blur',
-  'input',
+const JQUERY_VALIDITY_EVENT_NAMES = new Set(['blur input', 'input blur', 'input']);
+const ALLOWED_HANDLER_METHODS = new Set([
+  'closest',
+  'checkValidity',
+  'preventDefault',
+  'stopPropagation',
 ]);
 
 function isAllowedCallInsideNativeHandler(call: CallExpression): boolean {
   const callee = unwrapExpression(call.getExpression());
-  if (Node.isPropertyAccessExpression(callee)) {
-    const name = callee.getName();
-    if (name === 'closest' || name === 'checkValidity') {
-      return true;
-    }
-    if (name === 'add' || name === 'remove' || name === 'toggle') {
-      const target = unwrapExpression(callee.getExpression());
-      return Node.isPropertyAccessExpression(target) && target.getName() === 'classList';
-    }
+  if (!Node.isPropertyAccessExpression(callee)) return false;
+  const name = callee.getName();
+  if (ALLOWED_HANDLER_METHODS.has(name)) return true;
+  if (name === 'add' || name === 'remove' || name === 'toggle') {
+    const target = unwrapExpression(callee.getExpression());
+    return Node.isPropertyAccessExpression(target) && target.getName() === 'classList';
   }
   return false;
 }
@@ -68,13 +57,13 @@ function hasDisallowedHandlerCalls(node: Node): boolean {
       Node.isArrowFunction(current) ||
       Node.isMethodDeclaration(current)
     ) {
-      let hasDisallowedCall = false;
+      let hasDisallowed = false;
       current.forEachDescendant((desc) => {
         if (Node.isCallExpression(desc) && !isAllowedCallInsideNativeHandler(desc)) {
-          hasDisallowedCall = true;
+          hasDisallowed = true;
         }
       });
-      return hasDisallowedCall;
+      return hasDisallowed;
     }
     current = current.getParent();
   }
@@ -85,82 +74,48 @@ function refersToParentNavigation(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
   if (Node.isPropertyAccessExpression(unwrapped)) {
     const propName = unwrapped.getName();
-    if (propName === 'parentElement' || propName === 'parentNode') {
-      return true;
-    }
+    return propName === 'parentElement' || propName === 'parentNode';
   }
   if (Node.isCallExpression(unwrapped)) {
     const callExpr = unwrapExpression(unwrapped.getExpression());
-    if (Node.isPropertyAccessExpression(callExpr) && callExpr.getName() === 'closest') {
-      return true;
-    }
+    return Node.isPropertyAccessExpression(callExpr) && callExpr.getName() === 'closest';
   }
   if (Node.isIdentifier(unwrapped)) {
     const resolved = resolveLocalExpression(unwrapped);
-    if (resolved !== unwrapped) {
-      return refersToParentNavigation(resolved);
-    }
+    return resolved !== unwrapped && refersToParentNavigation(resolved);
   }
   return false;
 }
 
 function isFormEventCall(call: CallExpression): boolean {
   const callExpr = unwrapExpression(call.getExpression());
-  if (!Node.isPropertyAccessExpression(callExpr)) {
-    return false;
-  }
+  if (!Node.isPropertyAccessExpression(callExpr)) return false;
   const method = callExpr.getName();
-  if (FORM_EVENT_NAMES.has(method)) {
-    return true;
-  }
-  if (method !== 'addEventListener' && method !== 'on' && method !== 'bind') {
-    return false;
-  }
-  const args = call.getArguments();
-  const firstArgNode = args[0];
-  if (!firstArgNode) {
-    return false;
-  }
+  if (FORM_EVENT_NAMES.has(method)) return true;
+  if (method !== 'addEventListener' && method !== 'on' && method !== 'bind') return false;
+  const firstArgNode = call.getArguments()[0];
+  if (!firstArgNode) return false;
   const firstArg = unwrapExpression(firstArgNode);
-  if (!Node.isStringLiteral(firstArg)) {
-    return false;
-  }
-  const eventName = firstArg.getLiteralText().toLowerCase().trim();
-  return FORM_EVENT_NAMES.has(eventName);
+  return (
+    Node.isStringLiteral(firstArg) &&
+    FORM_EVENT_NAMES.has(firstArg.getLiteralText().toLowerCase().trim())
+  );
 }
 
 function isEnclosedInFormEventHandler(node: Node): boolean {
   let current: Node | undefined = node.getParent();
   while (current && !Node.isSourceFile(current)) {
-    if (Node.isCallExpression(current) && isFormEventCall(current)) {
-      return true;
-    }
+    if (Node.isCallExpression(current) && isFormEventCall(current)) return true;
     if (Node.isBinaryExpression(current)) {
       const left = unwrapExpression(current.getLeft());
-      if (Node.isPropertyAccessExpression(left)) {
-        const prop = left.getName().toLowerCase();
-        if (
-          prop === 'onfocus' ||
-          prop === 'onblur' ||
-          prop === 'onchange' ||
-          prop === 'oninput'
-        ) {
-          return true;
-        }
-      }
-    } else if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isMethodDeclaration(current)
-    ) {
-      const fnName = (current.getName() ?? '').toLowerCase();
       if (
-        fnName.includes('focus') ||
-        fnName.includes('blur') ||
-        fnName.includes('change') ||
-        fnName.includes('input')
+        Node.isPropertyAccessExpression(left) &&
+        /^on(?:focus|blur|change|input)$/i.test(left.getName())
       ) {
         return true;
       }
+    } else if (Node.isFunctionDeclaration(current) || Node.isMethodDeclaration(current)) {
+      if (/(?:focus|blur|change|input)/i.test(current.getName() ?? '')) return true;
     }
     current = current.getParent();
   }
@@ -171,37 +126,19 @@ function isJQuerySelfOrInputWrapper(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
   if (Node.isCallExpression(unwrapped)) {
     const callee = unwrapExpression(unwrapped.getExpression());
-    if (Node.isIdentifier(callee)) {
-      const fnName = callee.getText();
-      if (fnName === '$' || fnName === 'jQuery') {
-        const argText = unwrapped.getArguments()[0]?.getText().trim() ?? '';
-        return (
-          argText === 'this' ||
-          argText === 'e.target' ||
-          argText === 'e.currentTarget' ||
-          argText === 'event.target' ||
-          argText === 'event.currentTarget'
-        );
-      }
+    if (Node.isIdentifier(callee) && (callee.getText() === '$' || callee.getText() === 'jQuery')) {
+      const argText = unwrapped.getArguments()[0]?.getText().trim() ?? '';
+      return /^(?:this|(?:e|event)\.(?:target|currentTarget))$/.test(argText);
     }
   }
   if (Node.isIdentifier(unwrapped)) {
-    const idText = unwrapped.getText();
-    if (idText === '$this' || idText === '$input' || idText === 'input') {
-      return true;
-    }
     const resolved = resolveLocalExpression(unwrapped);
-    if (resolved !== unwrapped) {
-      return isJQuerySelfOrInputWrapper(resolved);
-    }
+    return resolved !== unwrapped && isJQuerySelfOrInputWrapper(resolved);
   }
   return false;
 }
 
-function inspectToggleConditionAst(condNode: Node): {
-  allowed: boolean;
-  usesValidity: boolean;
-} {
+function inspectToggleConditionAst(condNode: Node): { allowed: boolean; usesValidity: boolean } {
   let hasDisallowedNode = false;
   let usesValidity = false;
   let usesEventType = false;
@@ -216,41 +153,27 @@ function inspectToggleConditionAst(condNode: Node): {
       }
     } else if (Node.isPropertyAccessExpression(n)) {
       const prop = n.getName();
-      if (prop === 'value' || prop === 'length') {
-        hasDisallowedNode = true;
-      } else if (prop === 'validity' || prop === 'valid') {
-        usesValidity = true;
-      } else if (prop === 'type') {
-        usesEventType = true;
-      }
+      if (prop === 'value' || prop === 'length') hasDisallowedNode = true;
+      else if (prop === 'validity' || prop === 'valid') usesValidity = true;
+      else if (prop === 'type') usesEventType = true;
     }
   };
 
   checkNode(condNode);
   condNode.forEachDescendant(checkNode);
-
-  return {
-    allowed: !hasDisallowedNode && (usesValidity || usesEventType),
-    usesValidity,
-  };
+  return { allowed: !hasDisallowedNode && (usesValidity || usesEventType), usesValidity };
 }
 
 function isJQueryParentClassToggle(node: CallExpression): boolean {
   const callExpr = unwrapExpression(node.getExpression());
-  if (!Node.isPropertyAccessExpression(callExpr)) {
-    return false;
-  }
+  if (!Node.isPropertyAccessExpression(callExpr)) return false;
 
   const method = callExpr.getName();
-  if (method !== 'addClass' && method !== 'removeClass' && method !== 'toggleClass') {
-    return false;
-  }
+  if (method !== 'addClass' && method !== 'removeClass' && method !== 'toggleClass') return false;
 
   const args = node.getArguments();
   const firstArgNode = args[0];
-  if (!firstArgNode || args.length > 2) {
-    return false;
-  }
+  if (!firstArgNode || args.length > 2) return false;
 
   const firstArg = unwrapExpression(firstArgNode);
   if (
@@ -263,55 +186,32 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
   let usesValidityCheck = false;
   const secondArgNode = args[1];
   if (secondArgNode) {
-    if (method !== 'toggleClass') {
-      return false;
-    }
+    if (method !== 'toggleClass') return false;
     const condInfo = inspectToggleConditionAst(secondArgNode);
-    if (!condInfo.allowed) {
-      return false;
-    }
+    if (!condInfo.allowed) return false;
     usesValidityCheck = condInfo.usesValidity;
   }
 
   const parentCall = unwrapExpression(callExpr.getExpression());
-  if (!Node.isCallExpression(parentCall)) {
-    return false;
-  }
+  if (!Node.isCallExpression(parentCall)) return false;
   const parentCallExpr = unwrapExpression(parentCall.getExpression());
-  if (!Node.isPropertyAccessExpression(parentCallExpr)) {
-    return false;
-  }
+  if (!Node.isPropertyAccessExpression(parentCallExpr)) return false;
+
   const parentMethod = parentCallExpr.getName();
-  if (
-    parentMethod !== 'parent' &&
-    parentMethod !== 'parents' &&
-    parentMethod !== 'closest'
-  ) {
+  if (parentMethod !== 'parent' && parentMethod !== 'parents' && parentMethod !== 'closest') {
     return false;
   }
 
   const parentArgs = parentCall.getArguments();
   const firstParentArg = parentArgs[0];
-  if (parentMethod === 'parents' || parentMethod === 'closest') {
-    if (!firstParentArg || parentArgs.length !== 1) {
-      return false;
-    }
+  if (parentArgs.length > 1) return false;
+  if (parentMethod === 'parents' || parentMethod === 'closest' || firstParentArg) {
+    if (!firstParentArg) return false;
     const selArg = unwrapExpression(firstParentArg);
-    if (!Node.isStringLiteral(selArg) || selArg.getLiteralText().trim().length === 0) {
-      return false;
-    }
-  } else if (parentArgs.length > 1) {
-    return false;
-  } else if (firstParentArg) {
-    const selArg = unwrapExpression(firstParentArg);
-    if (!Node.isStringLiteral(selArg) || selArg.getLiteralText().trim().length === 0) {
-      return false;
-    }
+    if (!Node.isStringLiteral(selArg) || selArg.getLiteralText().trim().length === 0) return false;
   }
 
-  if (!isJQuerySelfOrInputWrapper(parentCallExpr.getExpression())) {
-    return false;
-  }
+  if (!isJQuerySelfOrInputWrapper(parentCallExpr.getExpression())) return false;
 
   let enclosingFn: Node | undefined = node.getParent();
   while (
@@ -331,42 +231,26 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
   }
 
   const body = enclosingFn.getBody();
-  if (Node.isBlock(body) && body.getStatements().length !== 1) {
-    return false;
-  }
+  if (Node.isBlock(body) && body.getStatements().length !== 1) return false;
 
   const bindCall = enclosingFn.getParent();
-  if (!bindCall || !Node.isCallExpression(bindCall)) {
-    return false;
-  }
+  if (!bindCall || !Node.isCallExpression(bindCall)) return false;
   const bindCallee = unwrapExpression(bindCall.getExpression());
-  if (!Node.isPropertyAccessExpression(bindCallee)) {
-    return false;
-  }
+  if (!Node.isPropertyAccessExpression(bindCallee)) return false;
 
   const bindMethod = bindCallee.getName();
-  if (
-    bindMethod === 'focus' ||
-    bindMethod === 'blur' ||
-    bindMethod === 'focusin' ||
-    bindMethod === 'focusout'
-  ) {
+  if (/^(?:focus|blur|focusin|focusout)$/.test(bindMethod)) {
     return bindCall.getArguments().length === 1 && !usesValidityCheck;
   }
 
   if (bindMethod === 'on' || bindMethod === 'bind') {
     const bindArgs = bindCall.getArguments();
     const firstBindArg = bindArgs[0];
-    if (!firstBindArg || (bindArgs.length !== 2 && bindArgs.length !== 3)) {
-      return false;
-    }
+    if (!firstBindArg || (bindArgs.length !== 2 && bindArgs.length !== 3)) return false;
     const evArg = unwrapExpression(firstBindArg);
-    if (!Node.isStringLiteral(evArg)) {
-      return false;
-    }
-    const secondBindArg = bindArgs[1];
-    if (bindArgs.length === 3 && secondBindArg) {
-      const delArg = unwrapExpression(secondBindArg);
+    if (!Node.isStringLiteral(evArg)) return false;
+    if (bindArgs.length === 3 && bindArgs[1]) {
+      const delArg = unwrapExpression(bindArgs[1]);
       if (
         !Node.isStringLiteral(delArg) ||
         !/\b(?:input|select|textarea)\b/i.test(delArg.getLiteralText())

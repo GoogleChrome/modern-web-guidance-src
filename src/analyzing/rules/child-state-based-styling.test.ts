@@ -25,10 +25,11 @@ void test('child-state-based-styling/js-parent-class: JS positive matches', asyn
     assert.match(matches[0]?.message ?? '', /CSS :has\(\) selector/);
   });
 
-  await t.test('flags closest(.form-group) class toggle on change event', () => {
+  await t.test('flags closest(.form-group) class toggle on change event (including preventDefault)', () => {
     const code = `
       function bindInputEvents(field) {
         field.addEventListener('change', (e) => {
+          e.preventDefault();
           const group = field.closest('.form-group');
           group.classList.toggle('has-value', field.value.length > 0);
         });
@@ -36,7 +37,7 @@ void test('child-state-based-styling/js-parent-class: JS positive matches', asyn
     `;
     const { matches } = scanJsSource('field-change.js', code, [jsMatcher]);
     assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 5);
+    assert.equal(matches[0]?.line, 6);
   });
 
   await t.test('flags onfocus property assignment modifying parentNode classList', () => {

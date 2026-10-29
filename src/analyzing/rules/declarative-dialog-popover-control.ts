@@ -38,7 +38,7 @@ const NON_DIALOG_CLOSE_RECEIVER_RE =
 const INVALID_RECEIVERS = new Set(['this', 'self', 'window', 'document']);
 
 const EVENT_PURE_CALL_RE =
-  /^(?:e|evt|event)\s*\.\s*(?:preventDefault|stopPropagation)\s*\(\s*\)$/;
+  /^(?:e|evt|event)\s*\.\s*(?:preventDefault|stopPropagation|stopImmediatePropagation)\s*\(\s*\)$/;
 
 const LOCAL_LOOKUP_DECL_RE =
   /^(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\s*=\s*(?:document\s*\.\s*(?:getElementById|querySelector)|[a-zA-Z_$][\w$]*\s*\.\s*closest)\s*\(\s*(['"`])([^'"`]*)\2\s*\)$/;
@@ -306,7 +306,11 @@ function isPureEventControlExpr(node: Node): boolean {
     return false;
   }
   const method = callee.getName();
-  if (method !== 'preventDefault' && method !== 'stopPropagation') {
+  if (
+    method !== 'preventDefault' &&
+    method !== 'stopPropagation' &&
+    method !== 'stopImmediatePropagation'
+  ) {
     return false;
   }
   return Node.isIdentifier(unwrapExpression(callee.getExpression()));
@@ -454,19 +458,7 @@ function extractPureDialogPopoverCallFromHandler(
 }
 
 const NON_BUTTON_LISTENER_TARGET_RE =
-  /\b(?:window|document|document\.body|body|overlay|backdrop|mask|scrim|root)\b/i;
-
-function isDynamicDomLookupTarget(targetNode: Node): boolean {
-  const unwrapped = unwrapExpression(targetNode);
-  if (!Node.isIdentifier(unwrapped)) return false;
-  const resolved = resolveLocalExpression(unwrapped);
-  if (resolved === unwrapped || !Node.isCallExpression(resolved)) return false;
-  const callee = unwrapExpression(resolved.getExpression());
-  if (!Node.isPropertyAccessExpression(callee)) return false;
-  const method = callee.getName();
-  if (method !== 'getElementById' && method !== 'querySelector') return false;
-  return !isPureDomLookupExpr(resolved);
-}
+  /\b(?:window|document|document\.body|body|overlay|backdrop|mask|scrim)\b/i;
 
 export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher = {
   kind: 'js',
@@ -519,10 +511,10 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
         return;
       }
 
-      // Check target node: reject window, document, body, overlay, backdrop, scrim, root, or dynamic getElementById
+      // Check target node: reject window, document, body, overlay, backdrop, or scrim
       if (targetNode) {
         const targetText = targetNode.getText().trim();
-        if (NON_BUTTON_LISTENER_TARGET_RE.test(targetText) || isDynamicDomLookupTarget(targetNode)) {
+        if (NON_BUTTON_LISTENER_TARGET_RE.test(targetText)) {
           return;
         }
       }
@@ -578,6 +570,7 @@ export const declarativeDialogPopoverControlClickListenerRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The click listener performs additional logic (validation, network requests, analytics, classList or state updates) beyond opening/closing the dialog or popover.',
+      'The click listener is attached to the dialog root, backdrop, overlay, or a non-button menu item rather than a `<button>` element, or uses `stopImmediatePropagation()` to suppress parent event delegation on a custom element.',
       'The listener passes a `returnValue` argument to `.close(arg)`.',
       'The listener calls a third-party library method like Bootstrap or jQuery `.modal("show")` or `.popover("toggle")`.',
     ],
