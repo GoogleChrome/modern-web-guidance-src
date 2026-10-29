@@ -34,13 +34,13 @@ const TRANSPARENT_VALUES = new Set([
 
 const WEBKIT_SCROLLBAR_REGEX = /::-webkit-scrollbar(?![-\w])/i;
 const WEBKIT_THUMB_REGEX = /::-webkit-scrollbar-thumb\b/i;
+const WEBKIT_TRACK_REGEX = /::-webkit-scrollbar-track(?:-piece)?\b/i;
+const WEBKIT_BUTTON_REGEX = /::-webkit-scrollbar-button\b/i;
 const WEBKIT_THUMB_STATE_REGEX =
   /::-webkit-scrollbar-thumb\s*:(?:hover|active|focus|window-inactive)\b/i;
 const WEBKIT_THUMB_NON_HOVER_STATE_REGEX =
   /::-webkit-scrollbar-thumb\s*:(?:active|focus|window-inactive)\b/i;
 const HOVER_WEBKIT_SCROLLBAR_REGEX = /:hover::-webkit-scrollbar(?![-\w])/i;
-const CUSTOM_SCROLLBAR_WIDGET_SELECTOR_REGEX =
-  /(?:\.CodeMirror-scroll|\.el-scrollbar__wrap|\.ps(?:\b|__)|\.simplebar-|\.os-viewport|\.nice-select\b)/i;
 const INSET_PADDING_CLIP_REGEX = /^(?:padding-box|content-box)$/i;
 const GRADIENT_VALUE_REGEX =
   /(?:(?:-webkit-|-moz-|-o-)?(?:repeating-)?(?:linear|radial|conic)-gradient|-webkit-gradient)\s*\(/i;
@@ -98,8 +98,46 @@ function ruleHasInsetPaddingClip(styleRule: CssRuleView): boolean {
   return INSET_PADDING_CLIP_REGEX.test(bgClip) || INSET_PADDING_CLIP_REGEX.test(webkitBgClip);
 }
 
+function ruleHasBespokeShadowOrAppearance(styleRule: CssRuleView): boolean {
+  const oShadow = normalizeCssValue(styleRule.getPropertyValue('-o-box-shadow'));
+  if (oShadow && oShadow !== 'none') {
+    return true;
+  }
+  for (const prop of ['box-shadow', '-webkit-box-shadow'] as const) {
+    const val = normalizeCssValue(styleRule.getPropertyValue(prop));
+    if (!val || val === 'none' || RESET_DIMENSIONS.has(val)) {
+      continue;
+    }
+    // Reject multi-layer inset box-shadows or outset (non-inset) thumb/track glow shadows
+    if (/\binset\b[\s\S]*,\s*inset\b/i.test(val) || !/\binset\b/i.test(val)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function ruleIsVisibleScrollbarButton(styleRule: CssRuleView): boolean {
+  const displayVal = normalizeCssValue(styleRule.getPropertyValue('display'));
+  if (displayVal === 'none') {
+    return false;
+  }
+  if (isZeroDimension(styleRule, 'width') || isZeroDimension(styleRule, 'height')) {
+    return false;
+  }
+  const borderRadius = normalizeCssValue(styleRule.getPropertyValue('border-radius'));
+  if (!borderRadius || borderRadius === '0' || borderRadius === '0px' || RESET_DIMENSIONS.has(borderRadius)) {
+    return false;
+  }
+  return (
+    hasValidColor(styleRule, 'background') ||
+    hasValidColor(styleRule, 'background-color') ||
+    hasAnyNonZeroDimension(styleRule, 'width') ||
+    hasAnyNonZeroDimension(styleRule, 'height')
+  );
+}
+
 function ruleHasValidThumbColor(styleRule: CssRuleView): boolean {
-  if (ruleHasInsetPaddingClip(styleRule)) {
+  if (ruleHasInsetPaddingClip(styleRule) || ruleHasBespokeShadowOrAppearance(styleRule)) {
     return false;
   }
   return hasValidColor(styleRule, 'background') || hasValidColor(styleRule, 'background-color');
@@ -125,6 +163,47 @@ function areScrollbarPrefixesCompatible(prefixA: string, prefixB: string): boole
     normalizeScrollbarSelectorPrefix(prefixA) ===
     normalizeScrollbarSelectorPrefix(prefixB)
   );
+}
+
+function prefixHasBespokeScrollbarParts(
+  styleRule: CssRuleView,
+  ctx: CssMatcherContext,
+): boolean {
+  const targetPrefix = extractScrollbarSelectorPrefix(styleRule.selectorText);
+  const allRules = ctx.styleRules ?? [];
+  let hasVisibleButton = false;
+  let hasTrackPiece = false;
+  for (const r of allRules) {
+    if (
+      !areScrollbarPrefixesCompatible(
+        targetPrefix,
+        extractScrollbarSelectorPrefix(r.selectorText),
+      )
+    ) {
+      continue;
+    }
+    if (
+      (WEBKIT_SCROLLBAR_REGEX.test(r.selectorText) ||
+        WEBKIT_THUMB_REGEX.test(r.selectorText) ||
+        WEBKIT_TRACK_REGEX.test(r.selectorText)) &&
+      ruleHasBespokeShadowOrAppearance(r)
+    ) {
+      return true;
+    }
+    if (
+      WEBKIT_SCROLLBAR_REGEX.test(r.selectorText) &&
+      normalizeCssValue(r.getPropertyValue('width')) === '1px'
+    ) {
+      return true;
+    }
+    if (WEBKIT_BUTTON_REGEX.test(r.selectorText) && ruleIsVisibleScrollbarButton(r)) {
+      hasVisibleButton = true;
+    }
+    if (/::-webkit-scrollbar-track-piece\b/i.test(r.selectorText)) {
+      hasTrackPiece = true;
+    }
+  }
+  return hasVisibleButton && hasTrackPiece;
 }
 
 function stylesheetHasValidColoredThumb(
@@ -211,11 +290,6 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       }
     }
 
-    // 4. Skip custom JS scrollbar widget containers (CodeMirror, Element UI, PerfectScrollbar, SimpleBar)
-    if (CUSTOM_SCROLLBAR_WIDGET_SELECTOR_REGEX.test(styleRule.selectorText)) {
-      return null;
-    }
-
     const isThumb = WEBKIT_THUMB_REGEX.test(styleRule.selectorText);
     const isScrollbar = WEBKIT_SCROLLBAR_REGEX.test(styleRule.selectorText);
 
@@ -224,8 +298,8 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
       if (WEBKIT_THUMB_NON_HOVER_STATE_REGEX.test(styleRule.selectorText)) {
         return null;
       }
-      // Must set visible non-gradient background or background-color without inset-padding clip
-      if (!ruleHasValidThumbColor(styleRule)) {
+      // Must set visible non-gradient background or background-color without inset-padding clip or box-shadow
+      if (!ruleHasValidThumbColor(styleRule) || prefixHasBespokeScrollbarParts(styleRule, ctx)) {
         return null;
       }
       // For :hover thumb rules, require a base ::-webkit-scrollbar-thumb rule with a valid solid color
@@ -267,8 +341,12 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
         };
       }
 
-      // Non-zero thickness customization requires accompanying -webkit-scrollbar-thumb with a valid solid color
-      if (!hasCustomThickness || !stylesheetHasValidColoredThumb(styleRule, ctx)) {
+      // Non-zero thickness customization requires accompanying -webkit-scrollbar-thumb with a valid solid color and no bespoke shadow/button parts
+      if (
+        !hasCustomThickness ||
+        !stylesheetHasValidColoredThumb(styleRule, ctx) ||
+        prefixHasBespokeScrollbarParts(styleRule, ctx)
+      ) {
         return null;
       }
     } else {
@@ -297,9 +375,9 @@ export const customizeScrollbarColorAndThicknessRule: AnalyzerRule = {
     dropWhen: [
       'The stylesheet already defines standard scrollbar-width or scrollbar-color properties.',
       'The rule only resets scrollbar properties using CSS cascade keywords (auto, inherit, initial, unset, revert) or sets transparent thumb backgrounds without hiding ::-webkit-scrollbar.',
-      'The rule sets a CSS gradient (linear-gradient, radial-gradient, -webkit-gradient) or image on ::-webkit-scrollbar-thumb, or styles ::-webkit-scrollbar thickness when the accompanying ::-webkit-scrollbar-thumb only uses gradients, images, box-shadow, backdrop-filter, or transparent backgrounds.',
+      'The rule sets a CSS gradient (linear-gradient, radial-gradient, -webkit-gradient), image, or box-shadow (-webkit-box-shadow) on ::-webkit-scrollbar-thumb or ::-webkit-scrollbar-track, styles visible ::-webkit-scrollbar-button arrows, or styles ::-webkit-scrollbar thickness when the accompanying ::-webkit-scrollbar-thumb uses gradients, images, box-shadow, backdrop-filter, or transparent backgrounds.',
       'The rule targets ::-webkit-scrollbar for non-zero sizing without custom thumb styling, or only sets border-radius without color, thickness, or hiding.',
-      'The rule is inside a CSS reset stylesheet or an @supports not (scrollbar-width: ...) / @supports not (scrollbar-color: ...) fallback block.',
+      'The rule is inside a CSS reset stylesheet, targets a third-party custom JS scrollbar widget container that hides native scrollbars to render synthetic DOM scrollbars, or is inside an @supports not (scrollbar-width: ...) / @supports not (scrollbar-color: ...) fallback block.',
     ],
   },
 };

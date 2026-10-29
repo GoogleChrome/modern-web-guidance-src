@@ -55,4 +55,17 @@ void test('soft-edge-content-fade: negative / exempt cases', async (t) => {
     const matches = scanCss('icon.css', css, [softEdgeContentFadeCssMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts flat uniform-opacity dark-mode dimming gradients without a transparent stop', () => {
+    const css = `
+      .night img {
+        -webkit-mask-image: -webkit-gradient(linear, 0 0, 0 100%, from(rgba(0, 0, 0, 0.7)), to(rgba(0, 0, 0, 0.7)));
+      }
+      .dudu-night img {
+        -webkit-mask-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7));
+      }
+    `;
+    const matches = scanCss('night.css', css, [softEdgeContentFadeCssMatcher]);
+    assert.equal(matches.length, 0);
+  });
 });

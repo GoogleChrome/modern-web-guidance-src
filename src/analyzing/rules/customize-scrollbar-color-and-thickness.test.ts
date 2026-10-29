@@ -316,7 +316,7 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     assert.match(matches[0]?.message ?? '', /customize scrollbar appearance/);
   });
 
-  await t.test('exempts standalone :hover thumb rules, :active/:window-inactive states, inset background-clip thumbs, and custom scrollbar widgets', () => {
+  await t.test('exempts standalone :hover thumb rules, :active/:window-inactive states, and inset background-clip thumbs', () => {
     const css = `
       .standalone::-webkit-scrollbar-thumb:hover {
         background: #555;
@@ -331,9 +331,6 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
         background-color: rgba(0, 0, 0, 0.2);
         background-clip: padding-box;
         border: 4px solid transparent;
-      }
-      .CodeMirror-scroll::-webkit-scrollbar {
-        display: none;
       }
       #portfolio::-webkit-scrollbar {
         width: 5px;
@@ -355,5 +352,38 @@ void test('customize-scrollbar-color-and-thickness: negative / exempt cases', as
     `;
     const matches = scanCss('card.css', css, [matcher]);
     assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts bespoke thumb/track shadows, 1px hairline scrollbars, and styled scrollbar-button + track-piece sets', () => {
+    const css = `
+      #coexpression_legend::-webkit-scrollbar {
+        -webkit-appearance: none;
+        width: 7px;
+      }
+      #coexpression_legend::-webkit-scrollbar-thumb {
+        border-radius: 4px;
+        background-color: rgba(0, 0, 0, .5);
+        -webkit-box-shadow: 0 0 1px rgba(255, 255, 255, .5);
+      }
+      .scrollable::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.1);
+        -webkit-box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.10), inset 0 -1px 0 rgba(0, 0, 0, 0.07);
+      }
+      ul::-webkit-scrollbar {
+        width: 10px;
+      }
+      ul::-webkit-scrollbar-button {
+        background: #ebebeb;
+        border-radius: 4px;
+      }
+      ul::-webkit-scrollbar-track-piece {
+        background: #ebebeb;
+      }
+      ul::-webkit-scrollbar-thumb {
+        border-radius: 3px;
+        background-color: gray;
+      }
+    `;
+    assert.equal(scanCss('bespoke.css', css, [matcher]).length, 0);
   });
 });

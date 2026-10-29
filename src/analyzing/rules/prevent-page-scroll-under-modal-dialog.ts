@@ -22,23 +22,20 @@ export const PREVENT_PAGE_SCROLL_UNDER_MODAL_DIALOG_GUIDE_HASH = '7d10dd62dcbc';
 
 const FULLSCREEN_ONLY_REGEX = /fullscreen/i;
 
-const MODAL_OR_OVERLAY_WORD_REGEX =
-  /\b(?:dialog|modal|drawer|lightbox|popup|overlay|showmodal)\b/i;
+const MODAL_OR_DIALOG_WORD_REGEX = /\b(?:dialog|modal|showmodal)\b/i;
 
-const MODAL_OR_OVERLAY_CAMEL_REGEX =
-  /[a-z](?:Dialog|Modal|Drawer|Lightbox|Popup|Overlay|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[dD]rawer|[lL]ightbox|[pP]opup|[oO]verlay|[sS]howModal)[A-Z]/;
+const MODAL_OR_DIALOG_CAMEL_REGEX =
+  /[a-z](?:Dialog|Modal|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[sS]howModal)[A-Z]/;
 
-const NON_DRAWER_MODAL_WORD_REGEX =
-  /\b(?:dialog|modal|lightbox|popup|overlay|showmodal)\b/i;
-
-const NON_DRAWER_MODAL_CAMEL_REGEX =
-  /[a-z](?:Dialog|Modal|Lightbox|Popup|Overlay|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[lL]ightbox|[pP]opup|[oO]verlay|[sS]howModal)[A-Z]/;
-
-function hasNonDrawerModalName(text: string): boolean {
-  return NON_DRAWER_MODAL_WORD_REGEX.test(text) || NON_DRAWER_MODAL_CAMEL_REGEX.test(text);
+function hasModalOrDialogName(text: string): boolean {
+  return MODAL_OR_DIALOG_WORD_REGEX.test(text) || MODAL_OR_DIALOG_CAMEL_REGEX.test(text);
 }
 
-const SIDEBAR_NAVIGATION_DRAWER_REGEX = /\b(?:PerfectScrollbar|Sidebar|mobileOpen)\b/;
+const MODAL_OR_OVERLAY_WORD_REGEX =
+  /\b(?:dialog|modal|lightbox|popup|overlay|showmodal)\b/i;
+
+const MODAL_OR_OVERLAY_CAMEL_REGEX =
+  /[a-z](?:Dialog|Modal|Lightbox|Popup|Overlay|ShowModal)(?![a-z])|(?:\b|_)(?:[dD]ialog|[mM]odal|[lL]ightbox|[pP]opup|[oO]verlay|[sS]howModal)[A-Z]/;
 
 function hasModalOrOverlayName(text: string): boolean {
   return MODAL_OR_OVERLAY_WORD_REGEX.test(text) || MODAL_OR_OVERLAY_CAMEL_REGEX.test(text);
@@ -110,10 +107,38 @@ function isEffectHookCallback(fnNode: Node): boolean {
   return false;
 }
 
-function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
+const TIMER_OR_MOUNT_CALL_NAMES = new Set([
+  'setTimeout',
+  'setInterval',
+  'requestAnimationFrame',
+  'onMounted',
+  'onBeforeUnmount',
+  'onUnmounted',
+]);
+
+function isTimerOrMountCallback(fnNode: Node): boolean {
+  const parent = fnNode.getParent();
+  if (!parent || !Node.isCallExpression(parent)) {
+    return false;
+  }
+  const callee = unwrapExpression(parent.getExpression());
+  if (Node.isIdentifier(callee)) {
+    return TIMER_OR_MOUNT_CALL_NAMES.has(callee.getText());
+  }
+  if (Node.isPropertyAccessExpression(callee)) {
+    return TIMER_OR_MOUNT_CALL_NAMES.has(callee.getName());
+  }
+  return false;
+}
+
+function hasNativeDialogContext(
+  node: Node,
+  ctx: JsMatcherContext,
+  requireModalOrDialog = false,
+): boolean {
   let current: Node | undefined = node.getParent();
   let callableDepth = 0;
-  let steppedFromEffectHook = false;
+  let matchedContext = false;
 
   while (current && !Node.isSourceFile(current)) {
     if (
@@ -126,55 +151,55 @@ function hasNativeDialogContext(node: Node, ctx: JsMatcherContext): boolean {
       if (isImmediatelyInvokedFunction(current)) {
         break;
       }
+      if (
+        Node.isClassDeclaration(current) ||
+        Node.isMethodDeclaration(current) ||
+        current.isAsync?.() ||
+        isTimerOrMountCallback(current)
+      ) {
+        return false;
+      }
       const text = current.getText();
-      if (text.length > 8_000) {
-        break;
-      }
-      if (/\bPerfectScrollbar\b/.test(text)) {
-        return false;
-      }
-      if (FULLSCREEN_CANVAS_GAME_REGEX.test(text) && !hasModalOrOverlayName(text)) {
-        return false;
-      }
-
-      if (callableDepth === 0 || (callableDepth === 1 && steppedFromEffectHook)) {
-        const hasCue =
-          hasModalOrOverlayName(text) ||
-          text.includes('showModal') ||
-          text.includes('<dialog');
-        if (hasCue) {
-          if (
-            !hasNonDrawerModalName(text) &&
-            !text.includes('<dialog') &&
-            SIDEBAR_NAVIGATION_DRAWER_REGEX.test(text)
-          ) {
-            return false;
-          }
-          return true;
+      if (text.length <= 8_000) {
+        if (
+          isEffectHookCallback(current) &&
+          /\baddEventListener\s*\(\s*['"`]keydown['"`]/.test(text)
+        ) {
+          return false;
         }
-      } else {
+        if (FULLSCREEN_CANVAS_GAME_REGEX.test(text) && !hasModalOrOverlayName(text)) {
+          return false;
+        }
+
+        const nameCheck = requireModalOrDialog ? hasModalOrDialogName : hasModalOrOverlayName;
         const scopeName = getCallableOrClassName(current);
-        if (hasModalOrOverlayName(scopeName)) {
-          if (
-            !hasNonDrawerModalName(scopeName) &&
-            SIDEBAR_NAVIGATION_DRAWER_REGEX.test(text)
-          ) {
-            return false;
+
+        if (nameCheck(scopeName)) {
+          matchedContext = true;
+        } else if (callableDepth === 0) {
+          const hasCue =
+            hasModalOrDialogName(text) ||
+            text.includes('showModal') ||
+            text.includes('<dialog');
+          if (hasCue) {
+            matchedContext = true;
           }
-          return true;
         }
       }
 
-      if (callableDepth === 0) {
-        steppedFromEffectHook = isEffectHookCallback(current);
-      }
       callableDepth++;
     }
     current = current.getParent();
   }
 
+  if (matchedContext) {
+    return true;
+  }
+
+  const fileNameCheck = requireModalOrDialog ? hasModalOrDialogName : hasModalOrOverlayName;
   if (
-    hasModalOrOverlayName(ctx.filePath) &&
+    callableDepth > 0 &&
+    fileNameCheck(ctx.filePath) &&
     !FULLSCREEN_CANVAS_GAME_REGEX.test(ctx.filePath)
   ) {
     return true;
@@ -205,11 +230,20 @@ const BARE_SCROLL_LOCK_CLASS_REGEX = new RegExp(
   'i',
 );
 
+function isMinifiedCssLine(stylesheetText: string, lineNumber: number): boolean {
+  const lines = stylesheetText.split('\n');
+  const lineText = lines[lineNumber - 1] ?? '';
+  return lineText.length > 500;
+}
+
 function isScrollLockSelector(
   selectorText: string,
   styleRule: CssRuleView,
   ctx: CssMatcherContext,
 ): boolean {
+  if (isMinifiedCssLine(ctx.stylesheetText, styleRule.line)) {
+    return false;
+  }
   const parts = selectorText.split(',');
   for (const rawPart of parts) {
     const part = rawPart.trim();
@@ -229,7 +263,7 @@ function isScrollLockSelector(
       }
       if (
         hasModalOrOverlayName(ctx.filePath) ||
-        CSS_MODAL_CONTEXT_REGEX.test(ctx.stylesheetText)
+        (ctx.stylesheetText.length <= 2_000 && CSS_MODAL_CONTEXT_REGEX.test(ctx.stylesheetText))
       ) {
         return true;
       }
@@ -451,7 +485,10 @@ function matchClassListAdd(callExpr: CallExpression, ctx: JsMatcherContext): Ana
   };
 }
 
-function matchScrollLockCall(callExpr: CallExpression): AnalyzerMatch | null {
+function matchScrollLockCall(
+  callExpr: CallExpression,
+  ctx: JsMatcherContext,
+): AnalyzerMatch | null {
   const expr = unwrapExpression(callExpr.getExpression());
   let fnName = '';
   if (Node.isIdentifier(expr)) {
@@ -462,6 +499,9 @@ function matchScrollLockCall(callExpr: CallExpression): AnalyzerMatch | null {
 
   if (fnName === 'disableBodyScroll' || fnName === 'enableBodyScroll') {
     if (isInsideFullscreenToggle(callExpr)) {
+      return null;
+    }
+    if (!hasNativeDialogContext(callExpr, ctx, true)) {
       return null;
     }
     return {
@@ -498,7 +538,7 @@ export const preventPageScrollUnderModalDialogMatcher: JsRuleMatcher = {
 
     const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
     for (const callExpr of callExpressions) {
-      const scrollLockMatch = matchScrollLockCall(callExpr);
+      const scrollLockMatch = matchScrollLockCall(callExpr, ctx);
       if (scrollLockMatch) {
         matches.push(scrollLockMatch);
         continue;
@@ -560,6 +600,7 @@ export const preventPageScrollUnderModalDialogRule: AnalyzerRule = {
     ],
     dropWhen: [
       'Full-screen editor or canvas views (e.g. fullscreen toggle modes for code editors or games) that do not present a modal dialog or overlay layer.',
+      'Side-navigation drawers, sliding panels, mobile menus, or non-modal popovers/portals where native <dialog>.showModal() does not apply.',
       'Native <dialog> elements utilizing CSS overscroll-behavior: contain or body:has(dialog[open]) to contain scroll without imperative JS.',
       'CSS stylesheet declarations or internal container style assignments setting overflow: hidden on sub-elements rather than the root body or documentElement.',
     ],

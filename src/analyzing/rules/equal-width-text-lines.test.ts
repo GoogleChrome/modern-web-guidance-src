@@ -96,11 +96,6 @@ void test('equal-width-text-lines JS matcher', async (t) => {
       Array.from(slide.querySelectorAll('.r-fit-text')).forEach((el) => {
         fitty(el, { minSize: 24, maxSize: 200 });
       });
-      const plugin = {
-        initSingle: function($callout) {
-          $callout.fitText(2.15);
-        }
-      };
       canvas.fitText(ctx, 'heading');
       chart.fitText();
       this.fitText();

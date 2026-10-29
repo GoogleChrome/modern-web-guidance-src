@@ -28,10 +28,7 @@ const FITTEXT_PACKAGES = [
 ] as const;
 
 const NON_TEXT_FIT_TARGETS =
-  /\b(?:canvas|ctx|context|chart|video|audio|player|camera|scene|game|threejs|circleType|circletype)\b/i;
-
-const SINGLE_LINE_ENCLOSING_NAME_REGEX =
-  /\b(?:initSingle|fitSingle(?:Line)?|singleLine|circleType|circletype)\b/i;
+  /\b(?:canvas|ctx|context|chart|video|audio|player|camera|scene|game|threejs)\b/i;
 
 const SINGLE_LINE_SELECTOR_REGEX =
   /(?:^|[\s>+~])\.r-fit-text\s*$/i;
@@ -111,25 +108,9 @@ function isSingleLineOption(call: CallExpression): boolean {
   return false;
 }
 
-function isInSingleLineContext(call: CallExpression, sourceFile: SourceFile): boolean {
-  const filePath = sourceFile.getFilePath();
-  if (/circletype/i.test(filePath)) {
-    return true;
-  }
-
+function isInSingleLineContext(call: CallExpression): boolean {
   let current: Node | undefined = call.getParent();
   while (current) {
-    if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isMethodDeclaration(current) ||
-      Node.isPropertyAssignment(current) ||
-      Node.isVariableDeclaration(current)
-    ) {
-      const name = current.getName?.() ?? '';
-      if (name && SINGLE_LINE_ENCLOSING_NAME_REGEX.test(name)) {
-        return true;
-      }
-    }
     if (
       Node.isCallExpression(current) &&
       /\.r-fit-text\b/.test(current.getExpression().getText())
@@ -169,7 +150,7 @@ function isFitTextCall(
 ): boolean {
   if (
     isSingleLineOption(call) ||
-    isInSingleLineContext(call, sourceFile) ||
+    isInSingleLineContext(call) ||
     /white-space\s*:\s*nowrap/i.test(fileContent)
   ) {
     return false;
@@ -318,14 +299,14 @@ export const equalWidthTextLinesJsRule: AnalyzerRule = {
   matcher: equalWidthTextLinesJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'Imperative JavaScript invokes fitty(), fitText(), or jQuery .fitText() to scale headline text lines to uniform container width without a CSS.supports("text-fit", ...) guard.',
-      'A script dynamically computes font-size scaling factors across heading lines using clientWidth or offsetWidth measurements.',
+      'Imperative JavaScript invokes fitty(), fitText(), or jQuery .fitText() to scale text or heading elements to fit their container width (including calls passing compressor numbers or minFontSize/maxFontSize bounds) without a CSS.supports("text-fit", ...) guard.',
+      'A script dynamically computes font-size scaling factors across text or heading elements using clientWidth or offsetWidth measurements.',
     ],
     dropWhen: [
       'The call is guarded by CSS.supports("text-fit", ...) or a progressive enhancement fallback check.',
-      'The call passes minFontSize/maxFontSize or minSize/maxSize fluid clamp options on a non-line selector, explicitly sets single-line mode (multiLine: false, singleLine: true, maxLines: 1, white-space: nowrap), or targets a single heading, link, or Reveal.js .r-fit-text slide element.',
-      'The script curves text along a circular path (CircleType) or measures container aspect ratios or video dimensions rather than text typography lines.',
-      'The sizing uses fluid viewport units (clamp, vw, cqi) without imperative line-scaling loops.',
+      'The call explicitly sets single-line mode (multiLine: false, singleLine: true, maxLines: 1, white-space: nowrap) or targets a Reveal.js .r-fit-text slide element.',
+      'The script curves text along a circular path (CircleType) or measures canvas, chart, or video dimensions rather than DOM typography.',
+      'The sizing uses pure CSS fluid viewport units (clamp, vw, cqi) without imperative JS text-fitting calls.',
     ],
   },
 };

@@ -374,4 +374,64 @@ describe('prevent-page-scroll-under-modal-dialog rule', () => {
     assert.equal(matches.length, 3);
     assert.match(matches[0].message, /body-scroll-lock/);
   });
+
+  test('exempts non-modal disableBodyScroll, drawer/sliding-pane effects, and framework lifecycle methods', () => {
+    const nonModalDisableScroll = `
+      function openMobileMenu() {
+        overlay.style.transitionDuration = '400ms';
+        disableBodyScroll(menuTopNav);
+      }
+    `;
+    assert.equal(
+      scanJsSource(
+        'src/main.js',
+        nonModalDisableScroll,
+        [preventPageScrollUnderModalDialogMatcher],
+        project,
+      ).matches.length,
+      0,
+    );
+
+    const drawerEffectCode = `
+      const Wrap = () => {
+        useEffect(() => {
+          if (isOpen) {
+            document.body.style.overflow = 'hidden';
+          }
+        }, [isOpen]);
+        return <Drawer placement="bottom" isOpen={isOpen} />;
+      };
+    `;
+    assert.equal(
+      scanJsSource(
+        'apps/app/components/Subscription/preview.tsx',
+        drawerEffectCode,
+        [preventPageScrollUnderModalDialogMatcher],
+        project,
+      ).matches.length,
+      0,
+    );
+
+    const lifecycleModalCode = `
+      export default class Modal {
+        componentDidMount() {
+          if (this.props.isOpen) {
+            document.body.style.overflow = 'hidden';
+          }
+        }
+        created() {
+          document.body.classList.add('overflow-hidden');
+        }
+      }
+    `;
+    assert.equal(
+      scanJsSource(
+        'src/components/Modal/index.js',
+        lifecycleModalCode,
+        [preventPageScrollUnderModalDialogMatcher],
+        project,
+      ).matches.length,
+      0,
+    );
+  });
 });
