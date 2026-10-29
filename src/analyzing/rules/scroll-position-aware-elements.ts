@@ -369,15 +369,18 @@ function extractNumericComparisonThreshold(
       unwrapped.getText(),
       unwrapped.getStart(),
     );
-    if (rhs && Node.isNumericLiteral(unwrapExpression(rhs))) {
-      return Number(unwrapExpression(rhs).getLiteralText());
+    if (rhs) {
+      const unwrappedRhs = unwrapExpression(rhs);
+      if (Node.isNumericLiteral(unwrappedRhs)) {
+        return Number(unwrappedRhs.getLiteralText());
+      }
     }
     const resolved = resolveLocalExpression(unwrapped, 2);
-    if (
-      resolved !== unwrapped &&
-      Node.isNumericLiteral(unwrapExpression(resolved))
-    ) {
-      return Number(unwrapExpression(resolved).getLiteralText());
+    if (resolved !== unwrapped) {
+      const unwrappedResolved = unwrapExpression(resolved);
+      if (Node.isNumericLiteral(unwrappedResolved)) {
+        return Number(unwrappedResolved.getLiteralText());
+      }
     }
   }
   return null;
