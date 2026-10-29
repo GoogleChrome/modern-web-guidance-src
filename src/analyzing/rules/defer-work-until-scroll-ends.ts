@@ -22,9 +22,6 @@ const SCROLLEND_GUARD_TOKENS = ['onscrollend', 'scrollend'] as const;
 
 const DEBOUNCE_FN_REGEX = /(^|\.)debounce$/i;
 
-const CONTINUOUS_SCROLL_OR_POSITION_WORK_REGEX =
-  /\b(?:scrollHeight|offsetTop|loadMore|useInfiniteScroll|prevScrollTop|scrollUp|fixedTop|is-fixed|sticky|max-height|dropup|MutationObserver)\b/;
-
 function hasMinimumDebounceDelay(delayNode: Node | undefined): boolean {
   if (!delayNode) {
     return false;
@@ -94,10 +91,6 @@ function isDebounceCall(node: Node): boolean {
     return false;
   }
 
-  if (CONTINUOUS_SCROLL_OR_POSITION_WORK_REGEX.test(resolved.getText())) {
-    return false;
-  }
-
   // Check options (leading, immediate, maxWait) and minimum delay
   const args = resolved.getArguments();
   if (args.length >= 2 && !hasMinimumDebounceDelay(args[1])) {
@@ -140,10 +133,6 @@ function normalizeTimerName(exprText: string): string {
 function hasScrollEndDebouncePattern(
   fn: FunctionExpression | ArrowFunction | MethodDeclaration | FunctionDeclaration,
 ): boolean {
-  if (CONTINUOUS_SCROLL_OR_POSITION_WORK_REGEX.test(fn.getText())) {
-    return false;
-  }
-
   const calls = fn
     .getDescendantsOfKind(SyntaxKind.CallExpression)
     .filter((call) => isInDirectFunctionScope(call, fn));
@@ -495,6 +484,7 @@ export const deferWorkUntilScrollEndsRule: AnalyzerRule = {
       'Scroll listeners already guarded by feature detection for "onscrollend" in window or "scrollend" event support.',
       'Non-scroll event debouncers (e.g. input, keyup, resize, mousemove, or search queries).',
       'Debounce callers with leading-edge execution or maxWait options.',
+      'Sticky/fixed header threshold toggles, scroll-direction (up/down) header hide/show handlers, scroll-spy active TOC highlighting, dropdown flip/repositioning, or infinite-scroll bottom-proximity pagination (which belong to IntersectionObserver or CSS position: sticky rather than scrollend).',
     ],
   },
 };

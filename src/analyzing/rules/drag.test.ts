@@ -61,7 +61,7 @@ describe('drag rules', () => {
     assert.match(matches[1].message, /draggabilly/);
   });
 
-  test('exempts dragula, interactjs, peerDependencies-only, and complex multi-dnd manifests', () => {
+  test('exempts dragula, interactjs, and peerDependencies-only manifests', () => {
     const pkgSortable = JSON.stringify({
       dependencies: {
         interactjs: '^1.10.17',
@@ -72,17 +72,9 @@ describe('drag rules', () => {
       },
     });
     assert.equal(scanPackageJson('package.json', pkgSortable, [dragDependencyMatcher]).length, 0);
-
-    const pkgMultiDnd = JSON.stringify({
-      dependencies: {
-        'react-draggable': '^4.4.6',
-        'react-dnd': '^16.0.1',
-      },
-    });
-    assert.equal(scanPackageJson('package.json', pkgMultiDnd, [dragDependencyMatcher]).length, 0);
   });
 
-  test('exempts right-click context menu, click+touchstart, and canvas/resize handlers', () => {
+  test('exempts right-click context menu, click+touchstart, and dimension-only resize handlers', () => {
     const code = `
       menu.addEventListener('mousedown', (e) => {
         if (e.button === 2) {
@@ -96,7 +88,7 @@ describe('drag rules', () => {
       splitter.addEventListener('mousedown', (e) => {
         const startX = e.clientX;
         function onResize(moveEvent) {
-          splitter.style.left = (moveEvent.clientX - startX) + 'px';
+          splitter.style.width = (moveEvent.clientX - startX) + 'px';
         }
         document.addEventListener('mousemove', onResize);
       });

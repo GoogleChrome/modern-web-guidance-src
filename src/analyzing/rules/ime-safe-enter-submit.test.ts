@@ -315,7 +315,23 @@ describe('ime-safe-enter-submit rule', () => {
     }
   });
 
-  test('ignores non-call identifier substrings like triggered = false, Alt+Enter shortcuts, Space+Enter button activation, and arrow-key widget navigation', () => {
+  test('flags custom action methods like this.login() or props.onCommit() on Enter keydown', () => {
+    const code = `
+      input.addEventListener('keydown', function(e) {
+        if (e.keyCode === 13) {
+          this.login();
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'auth/login.js',
+      code,
+      [imeSafeEnterSubmitMatcher]
+    );
+    assert.equal(matches.length, 1);
+  });
+
+  test('ignores global document hotkeys, Alt+Enter shortcuts, Space+Enter button activation, and arrow-key widget navigation', () => {
     const code = `
       document.addEventListener('keydown', (event) => {
         switch (event.keyCode) {

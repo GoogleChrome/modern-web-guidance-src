@@ -8,9 +8,6 @@ export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = '0616906d0788';
 const ENTER_CHECK_REGEX =
   /(?:keyCode\s*===?\s*13|13\s*===?\s*keyCode|which\s*===?\s*13|13\s*===?\s*which|key\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*key|code\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*code|case\s+(?:13|['"]Enter['"]))/;
 
-const ACTION_TOKENS_REGEX =
-  /\b(?:submit\w*|requestSubmit|click|dispatchEvent|trigger|fetch|axios|ajax|\w*send\w*|\w*search\w*|\w*save\w*|handleEnter|onEnter|add\w*|create\w*|post\w*)\s*(?:\(|\.)/i;
-
 const SPACE_OR_BUTTON_KEY_REGEX =
   /\b(?:Space|Spacebar)\b|['"] ['"]|(?:keyCode|which)\s*===?\s*32\b|\b32\s*===?\s*(?:keyCode|which)/;
 
@@ -38,9 +35,6 @@ const TEST_FILE_PATH_REGEX =
  * and control returns, with no submission or action invocations.
  */
 function isSuppressOnlyBranch(branchText: string): boolean {
-  if (ACTION_TOKENS_REGEX.test(branchText)) {
-    return false;
-  }
   const stripped = branchText
     .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
     .replace(/(?:e|event|evt)\s*\.\s*(?:preventDefault|stopPropagation|stopImmediatePropagation)\s*\(\s*\)/g, '')
@@ -132,8 +126,7 @@ function checkHandlerForUnsafeEnter(
       const branchText = ifStmt.getThenStatement().getText();
       if (
         !isSuppressOnlyBranch(branchText) &&
-        !SYNTHETIC_KEY_EVENT_REGEX.test(branchText) &&
-        ACTION_TOKENS_REGEX.test(branchText)
+        !SYNTHETIC_KEY_EVENT_REGEX.test(branchText)
       ) {
         return {
           line: ifStmt.getStartLineNumber(),
@@ -157,8 +150,7 @@ function checkHandlerForUnsafeEnter(
             const clauseText = clause.getText();
             if (
               !isSuppressOnlyBranch(clauseText) &&
-              !SYNTHETIC_KEY_EVENT_REGEX.test(clauseText) &&
-              ACTION_TOKENS_REGEX.test(clauseText)
+              !SYNTHETIC_KEY_EVENT_REGEX.test(clauseText)
             ) {
               return {
                 line: clause.getStartLineNumber(),
@@ -248,12 +240,24 @@ function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
 
   // 1. addEventListener('keydown', handler)
   if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'addEventListener') {
+    const receiverText = unwrapExpression(expr.getExpression()).getText();
+    const isGlobalTarget =
+      receiverText === 'document' ||
+      receiverText === 'window' ||
+      receiverText === 'globalThis' ||
+      receiverText === 'document.body';
     const args = callExpr.getArguments();
     if (args.length >= 2) {
       const eventArg = unwrapExpression(args[0]);
       if (Node.isStringLiteral(eventArg) && eventArg.getLiteralValue() === 'keydown') {
         const handler = resolveHandlerFunction(args[1]);
         if (handler) {
+          if (
+            isGlobalTarget &&
+            !/\b(?:target|srcElement|activeElement|input|textarea|form)\b/i.test(handler.getText())
+          ) {
+            return null;
+          }
           return checkHandlerForUnsafeEnter(handler, callExpr.getStartLineNumber());
         }
       }
@@ -427,7 +431,7 @@ export const imeSafeEnterSubmitRule: AnalyzerRule = {
       'Handlers that check event.isComposing or event.keyCode === 229.',
       'Handlers strictly requiring modifier keys (Ctrl+Enter or Cmd+Enter) where IME character selection is not triggered.',
       'Native form submit events or standard inputs inside a form with no custom Enter keydown listener (native Enter submission handles IME automatically).',
-      'Global document-level hotkeys for non-text interactions (e.g. game controls, dialog dismissal, modal escape/enter).',
+      'Global document-level hotkeys, non-text UI widgets (buttons, menus, tabs, treeviews, dropdowns, modals, media players), or rich-text/code editor newline/indentation handlers rather than text-input submission.',
     ],
   },
 };

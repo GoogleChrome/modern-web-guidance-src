@@ -178,29 +178,23 @@ describe('calculate-event-differentials rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('ignores Moment.js internal library/locale files and Emscripten WASM runtimes', () => {
-    const momentInternalCode = `
-      function getCalendarFormat(myMoment, now) {
-        var diff = myMoment.diff(now, 'days', true);
-        return diff < -6 ? 'sameElse' : 'sameDay';
-      }
+  test('ignores Moment.js calendar sameElse format callbacks and this.diff methods', () => {
+    const momentCalendarCode = `
+      const localeConfig = {
+        calendar: {
+          sameElse: function (now) {
+            var diff = this.diff(now, 'days', true);
+            var otherDiff = targetMoment.diff(now, 'days');
+            return diff < -6 ? 'L' : 'dddd';
+          }
+        }
+      };
     `;
-    const { matches: m1 } = scanJsSource(
-      'assets/vendors/moment/locale/zh-cn.js',
-      momentInternalCode,
+    const { matches } = scanJsSource(
+      'locale/calendar.js',
+      momentCalendarCode,
       [calculateEventDifferentialsMatcher]
     );
-    assert.equal(m1.length, 0);
-
-    const wasmCode = `
-      var _emscripten_get_now = function() { return performance.now(); };
-      var days = (a.getTime() - b.getTime()) / 86400000;
-    `;
-    const { matches: m2 } = scanJsSource(
-      'public/plugin/ffmpeg-core.js',
-      wasmCode,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(m2.length, 0);
+    assert.equal(matches.length, 0);
   });
 });

@@ -23,9 +23,6 @@ const TARGET_DRAG_PACKAGES = [
   'react-draggable',
 ] as const;
 
-const NON_DRAG_INTERACTION_REGEX =
-  /\b(?:getContext\s*\(|WebGL\w*|raycast\w*|joystick\w*|wsSend\w*|canvas|resize\w*|resizing|splitter|slider\w*|knob\w*|timeline\w*|volume\w*|swipe\w*)\b/i;
-
 const RIGHT_CLICK_BUTTON_REGEX = /(?:\bbutton\s*===?\s*2|\bwhich\s*===?\s*3)\b/;
 
 const POINTER_GUARD_TOKENS = [
@@ -157,6 +154,26 @@ function hasMoveOrEndListener(scopeNode: Node): boolean {
   return found;
 }
 
+function hasExternalMoveCallback(handlerNode: Node): boolean {
+  const start = handlerNode.getStart();
+  const end = handlerNode.getEnd();
+  let hasExternal = false;
+  handlerNode.forEachDescendant((descendant) => {
+    if (hasExternal) return;
+    if (Node.isCallExpression(descendant)) {
+      const matched = matchEventListenerCall(descendant, DRAG_MOVE_EVENTS);
+      if (matched) {
+        const cb = unwrapExpression(matched.handlerNode);
+        if (cb.getStart() >= start && cb.getEnd() <= end) {
+          return;
+        }
+        hasExternal = true;
+      }
+    }
+  });
+  return hasExternal;
+}
+
 function isNoOpOrPreventDefaultOnlyHandler(handlerNode: Node): boolean {
   if (hasCoordinateAccess(handlerNode)) {
     return false;
@@ -203,33 +220,6 @@ export const dragDependencyMatcher: DependencyRuleMatcher = createDependencyMatc
       if (!Object.prototype.hasOwnProperty.call(deps, pkgName)) {
         return null;
       }
-      const allDeps = {
-        ...deps,
-        ...(typeof pkgJson.devDependencies === 'object' && pkgJson.devDependencies !== null
-          ? (pkgJson.devDependencies as Record<string, unknown>)
-          : {}),
-        ...(typeof pkgJson.peerDependencies === 'object' && pkgJson.peerDependencies !== null
-          ? (pkgJson.peerDependencies as Record<string, unknown>)
-          : {}),
-      };
-      for (const depName of Object.keys(allDeps)) {
-        if (
-          depName === 'react-dnd' ||
-          depName === 'react-beautiful-dnd' ||
-          depName.startsWith('@dnd-kit/') ||
-          depName === 'react-sortable-hoc' ||
-          depName === 'react-sortablejs' ||
-          depName === 'react-grid-layout' ||
-          depName === 'framer-motion' ||
-          depName === '@simonwep/selection-js' ||
-          depName === 'matter-js' ||
-          depName === 'three' ||
-          depName === 'react-motion' ||
-          depName === 'react-spring'
-        ) {
-          return null;
-        }
-      }
     }
 
     return `Legacy drag-and-drop library "${pkgName}" (${versionRange}) can be modernized using Pointer Events (pointerdown, pointermove) and setPointerCapture().`;
@@ -255,10 +245,7 @@ function matchDragStartListener(
   }
 
   const handlerText = dragStartMatch.handlerNode.getText();
-  if (
-    RIGHT_CLICK_BUTTON_REGEX.test(handlerText) ||
-    NON_DRAG_INTERACTION_REGEX.test(handlerText)
-  ) {
+  if (RIGHT_CLICK_BUTTON_REGEX.test(handlerText)) {
     return null;
   }
 
@@ -300,10 +287,7 @@ function matchDragStartListener(
       return null;
     }
     const scopeText = scope.getText();
-    if (
-      RIGHT_CLICK_BUTTON_REGEX.test(scopeText) ||
-      NON_DRAG_INTERACTION_REGEX.test(scopeText)
-    ) {
+    if (RIGHT_CLICK_BUTTON_REGEX.test(scopeText)) {
       return null;
     }
   }
@@ -322,6 +306,9 @@ function matchDragStartListener(
   const styleInHandler = hasPositionStyleMutation(dragStartMatch.handlerNode);
   if (!moveInHandler && styleInHandler) {
     // One-shot click/mousedown position jump without registering a move listener
+    return null;
+  }
+  if (moveInHandler && !styleInHandler && !hasExternalMoveCallback(dragStartMatch.handlerNode)) {
     return null;
   }
   if (moveInHandler && !styleInHandler && /\.scrollTop\s*=/.test(dragStartMatch.handlerNode.getText())) {
@@ -390,7 +377,8 @@ export const dragJsRule: AnalyzerRule = {
     dropWhen: [
       'Pointer Events implementations utilizing setPointerCapture() and pointermove/lostpointercapture.',
       'Native HTML Drag and Drop API usage (dragstart, dragover, drop) for transferring data or files between targets rather than moving floating elements.',
-      'WebGL 3D scene cameras, game engines, or 2D <canvas> pixel-drawing tools calling canvas.getContext("2d" | "webgl") for internal rendering rather than panning or repositioning DOM elements.',
+      'WebGL 3D scene cameras, game engines, virtual joysticks, or 2D <canvas> pixel-drawing tools calling canvas.getContext("2d" | "webgl") for internal rendering rather than panning or repositioning DOM elements.',
+      '1D range sliders, audio/video timeline scrubbers, volume knobs, split-pane resize handles, or swipe-gesture detectors that adjust a single value, dimension, or scroll offset rather than 2D element dragging.',
     ],
   },
 };

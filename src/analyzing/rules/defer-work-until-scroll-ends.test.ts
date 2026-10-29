@@ -230,7 +230,7 @@ describe('defer-work-until-scroll-ends rule', () => {
     assert.equal(matches.length, 0);
   });
 
-  test('ignores nested timers, sub-25ms delays, and continuous scroll position handlers', () => {
+  test('ignores nested timers and sub-25ms delays', () => {
     const code = `
       $(window).scroll(function() {
         let t;
@@ -244,16 +244,6 @@ describe('defer-work-until-scroll-ends rule', () => {
       window.addEventListener('scroll', () => {
         clearTimeout(zeroTimer);
         zeroTimer = setTimeout(() => update(), 0);
-      });
-
-      let stickyTimer;
-      window.addEventListener('scroll', () => {
-        clearTimeout(stickyTimer);
-        stickyTimer = setTimeout(() => {
-          if (window.scrollY > prevScrollTop) {
-            header.classList.add('is-fixed');
-          }
-        }, 100);
       });
     `;
     const { matches } = scanJsSource(
