@@ -248,8 +248,8 @@ export type RuleStatusValue = 'qualified' | 'experimental';
  * Per-rule lifecycle status map keyed by `AnalyzerRule['id']`.
  *
  * Rules qualify for default terminal shipping when scored on held-out findings by the multi-judge panel:
- * - Static Matcher Precision >= 80.0% and Post-Verifier Precision >= 90.0% at n >= 10 findings
- *   (or Static Matcher Precision >= 90.0% at n >= 5 for rare patterns).
+ * - Post-Verifier Precision >= 90% and either Static Matcher Precision >= 80% at n >= 10,
+ *   or >= 90% at n >= 5 for rare patterns.
  */
 export const STATUS: Readonly<Record<string, RuleStatusValue>> = {
   'accessible-web-components': 'experimental',

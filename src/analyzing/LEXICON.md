@@ -113,7 +113,7 @@ Independent authoring of a **Static Matcher** from `guide.md` and upstream expla
 
 The proportion of evaluated findings graded `legit-modernize-target` ($\text{legit-modernize-target} / n$), measuring whether applying the guide to the flagged code is a genuine win. Because the analyzer operates in two distinct stages (deterministic static analysis vs runtime LLM verification), precision is always stage-qualified:
 - **Static Matcher Precision**: Precision of findings emitted by the **Static Matcher** alone, before any **LLM Verifier** pass.
-- **Post-Verifier Precision**: Precision of findings retained after the **LLM Verifier** (`verifierRubric`) filter. Default CLI rule shipping (**Qualified Rule**) requires clearing both **Static Matcher Precision** ($\ge 80\%$) and **Post-Verifier Precision** ($\ge 90\%$) at $n \ge 10$ (or **Static Matcher Precision** $\ge 90\%$ at $n \ge 5$ for rare patterns) on the **`held-out` split** as scored by the multi-judge panel.
+- **Post-Verifier Precision**: Precision of findings retained after the **LLM Verifier** (`verifierRubric`) filter. Default CLI rule shipping (**Qualified Rule**) requires **Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns on the **`held-out` split** as scored by the multi-judge panel.
 
 * _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/README.md#qualification-criteria`
 * _Avoid_: `P1 Precision`, `P2 Precision`, `p1Precision`, `p2Precision`, `Strict Precision`, `Raw Precision`, `Detector Accuracy`, `Verified Precision`, `Final Precision`
@@ -154,14 +154,14 @@ A rule in `ALL_RULES` available behind `--all` that has not yet cleared the qual
 
 ### Qualified Rule
 
-A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Static Matcher Precision** $\ge 80\%$ and **Post-Verifier Precision** $\ge 90\%$ at $n \ge 10$, or **Static Matcher Precision** $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**, which runs only under `--all`.
+A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**, which runs only under `--all`.
 
 * _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
 * _Avoid_: `Default Rule`, `Tier 1 Rule`, `Tier A / Tier B / Tier C`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`
 
 ### Scope Hold
 
-A state where a rule clears the default-on qualification bar on the **`held-out` split** (**Static Matcher Precision** $\ge 80\%$ and **Post-Verifier Precision** $\ge 90\%$ at $n \ge 10$, or **Static Matcher Precision** $\ge 90\%$ at $n \ge 5$) but is held from promotion pending human review (for example, to inspect the distribution of findings, verify payoff in real code, or evaluate sensitivity to vendored files). Distinct from a declined promotion, where human review explicitly decided not to promote the rule.
+A state where a rule clears the default-on qualification bar on the **`held-out` split** (**Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns) but is held from promotion pending human review (for example, to inspect the distribution of findings, verify payoff in real code, or evaluate sensitivity to vendored files). Distinct from a declined promotion, where human review explicitly decided not to promote the rule.
 
 * _Avoid_: `Pending Rule`, `Paused Promotion`, `Held Rule`
 

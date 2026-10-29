@@ -227,14 +227,14 @@ export const autofillSignInFormRule: AnalyzerRule = {
 ### Qualified Rules & Gated Execution
 
 To keep terminal false alarms low when run in developer environments, the analyzer enforces qualification gating:
-- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear the default-on qualification standard on the `held-out` split as scored by the multi-judge panel: Static Matcher Precision $\ge 80\%$ and Post-Verifier Precision $\ge 90\%$ at $n \ge 10$ (or Static Matcher Precision $\ge 90\%$ at $n \ge 5$ for rare patterns). In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
+- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear the default-on qualification standard on the `held-out` split as scored by the multi-judge panel: Post-Verifier Precision $\ge 90\%$ and either Static Matcher Precision $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns. In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
 - **`ALL_RULES` (`--all`):** Executes all active feature guides across all rules in `ALL_RULES`, including experimental rules.
 
 ### Qualification Criteria
 
 Rules qualify for default terminal shipping when scored on `held-out` findings by the multi-judge panel:
-- **Standard Bar:** Static Matcher Precision $\ge 80.0\%$ and Post-Verifier Precision $\ge 90.0\%$ at $n \ge 10$ evaluated findings on the `held-out` split.
-- **Rare-Pattern Bar:** Static Matcher Precision $\ge 90.0\%$ at $n \ge 5$ evaluated findings on the `held-out` split.
+- **Standard Bar:** Post-Verifier Precision $\ge 90.0\%$ and Static Matcher Precision $\ge 80.0\%$ at $n \ge 10$ evaluated findings on the `held-out` split.
+- **Rare-Pattern Bar:** Post-Verifier Precision $\ge 90.0\%$ and Static Matcher Precision $\ge 90.0\%$ at $n \ge 5$ evaluated findings on the `held-out` split.
 - Rules below the bar remain in the experimental tier (`--all`) until their matchers and rubrics clear the threshold.
 
 ### 2-Axis Triage Taxonomy
@@ -345,4 +345,4 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 2. **Run detection evaluation**: `node --env-file=.env src/analyzing/eval/detection-eval.ts`.
 3. **Qualification criteria**:
    - **Experimental Rule**: Active in `ALL_RULES`, available under `--all`.
-   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it clears the multi-judge qualification standard on the `held-out` split (Static Matcher Precision $\ge 80\%$ and Post-Verifier Precision $\ge 90\%$ at $n \ge 10$, or Static Matcher Precision $\ge 90\%$ at $n \ge 5$ for rare patterns).
+   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it clears the multi-judge qualification standard on the `held-out` split (Post-Verifier Precision $\ge 90\%$ and either Static Matcher Precision $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns).
