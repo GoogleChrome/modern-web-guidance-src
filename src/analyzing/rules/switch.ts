@@ -1,42 +1,10 @@
 import type {
   AnalyzerRule,
   DomElementView,
-  DomMatcherContext,
   DomRuleMatcher,
 } from '../schema.ts';
 
 export const SWITCH_GUIDE_HASH = '0b0a9d49545e';
-
-const TREE_OR_ACCORDION_ID_REGEX =
-  /(?:^|[-_])(?:toctree|tree|accordion|collapse|collapsible|drawer|dropdown|submenu)(?:$|[-_0-9])/i;
-
-function isTreeDisclosureHack(
-  element: DomElementView,
-  ctx: DomMatcherContext,
-): boolean {
-  const classAttr =
-    element.getAttribute('class') ?? element.getAttribute('className') ?? '';
-  const idAttr = element.getAttribute('id') ?? '';
-  const nameAttr = element.getAttribute('name') ?? '';
-  if (
-    TREE_OR_ACCORDION_ID_REGEX.test(classAttr) ||
-    TREE_OR_ACCORDION_ID_REGEX.test(idAttr) ||
-    TREE_OR_ACCORDION_ID_REGEX.test(nameAttr)
-  ) {
-    return true;
-  }
-
-  const lines = ctx.documentText.split(/\r?\n/);
-  const startIdx = Math.max(0, element.line - 1);
-  const windowText = lines.slice(startIdx, Math.min(lines.length, startIdx + 20)).join('\n');
-
-  // CSS checkbox-hack toggling a sibling <ul>/<ol>/<nav> tree or menu after </label>,
-  // or driving bespoke multi-layer SVG filter/gradient artwork inside <label>
-  return (
-    /<\/label>\s*<(?:ul|ol|nav)\b/i.test(windowText) ||
-    /<(?:filter|linearGradient)\b/i.test(windowText)
-  );
-}
 
 export const switchMatcher: DomRuleMatcher = {
   kind: 'dom',
@@ -47,7 +15,7 @@ export const switchMatcher: DomRuleMatcher = {
   ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['switch'],
-  matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
+  matchElement: (element: DomElementView) => {
     if (element.tagName !== 'input') {
       return null;
     }
@@ -63,10 +31,6 @@ export const switchMatcher: DomRuleMatcher = {
       element.hasDynamicAttribute?.('switch') ||
       element.hasAttribute('v-bind')
     ) {
-      return null;
-    }
-
-    if (isTreeDisclosureHack(element, ctx)) {
       return null;
     }
 

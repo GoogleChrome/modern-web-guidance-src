@@ -123,23 +123,14 @@ void test('progress-ring: negative / exempt cases', async (suiteContext) => {
     assert.equal(matches.length, 0);
   });
 
-  await suiteContext.test('exempts test and fixture files', () => {
-    const code = `
-      function testRing(circle: SVGCircleElement) {
-        circle.style.strokeDashoffset = '50';
-      }
-    `;
-    const { matches } = scanJsSource('test/fixtures/ring.ts', code, [jsMatcher]);
-    assert.equal(matches.length, 0);
-  });
-
   await suiteContext.test('exempts indeterminate circular loading spinners', () => {
     const html = `
-      <div class="v-progress-circular v-progress-circular--indeterminate primary--text">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="21 21 42 42">
-          <circle fill="transparent" cx="42" cy="42" r="20" stroke-dasharray="125.664" stroke-dashoffset="125.664px" class="v-progress-circular__overlay"></circle>
-        </svg>
-      </div>
+      <svg class="v-progress-circular v-progress-circular--indeterminate" viewBox="21 21 42 42">
+        <circle fill="transparent" cx="42" cy="42" r="20" stroke-dasharray="125.664" stroke-dashoffset="125.664px"></circle>
+      </svg>
+      <svg class="progress-ring" viewBox="21 21 42 42">
+        <circle fill="transparent" cx="42" cy="42" r="20" stroke-dasharray="125.664" stroke-dashoffset="125.664px" class="progress-ring--indeterminate"></circle>
+      </svg>
     `;
     const matches = scanHtml('spinner.html', html, [domMatcher]);
     assert.equal(matches.length, 0);

@@ -12,7 +12,6 @@ import {
 import type {
   AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -169,16 +168,7 @@ export const scrollCompletionEffectsJsMatcher: JsRuleMatcher = {
     ['smooth'],
     ['setTimeout'],
   ] as const,
-  matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
-    if (
-      ctx.filePath.includes('.test.') ||
-      ctx.filePath.includes('.spec.') ||
-      ctx.filePath.includes('/test/') ||
-      ctx.filePath.includes('/tests/')
-    ) {
-      return [];
-    }
-
+  matchFile(sourceFile: SourceFile): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
     for (const call of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
       if (

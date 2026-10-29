@@ -37,36 +37,12 @@ void test('switch DOM matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts CSS checkbox-hack tree navigation disclosure toggles', () => {
-    const treeHtml = `
-      <li class="toctree-l2 has-children">
-        <a href="harl.html">Algorithms</a>
-        <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/>
-        <label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation</div></label>
-        <ul><li>Child</li></ul>
-      </li>
-    `;
-    assert.equal(scanHtml('nav.html', treeHtml, [switchMatcher]).length, 0);
-  });
-
-  await t.test('exempts Vue v-bind attribute spread wrappers and bespoke SVG filter/gradient art toggles', () => {
+  await t.test('exempts Vue v-bind attribute spread wrappers', () => {
     const vueSpreadHtml = `
       <div class="mdc-switch">
         <input v-model="model" v-bind="$attrs" class="mdc-switch__native-control" role="switch" type="checkbox">
       </div>
     `;
     assert.equal(scanHtml('Switch.vue', vueSpreadHtml, [switchMatcher]).length, 0);
-
-    const svgArtHtml = `
-      <label class="switch">
-        <input class="switch_input" type="checkbox" role="switch">
-        <svg class="switch_base-neon" viewBox="0 0 40 24">
-          <defs>
-            <filter id="switch-glow"><feGaussianBlur stddeviation="1" /></filter>
-          </defs>
-        </svg>
-      </label>
-    `;
-    assert.equal(scanHtml('Neumorphism.html', svgArtHtml, [switchMatcher]).length, 0);
   });
 });

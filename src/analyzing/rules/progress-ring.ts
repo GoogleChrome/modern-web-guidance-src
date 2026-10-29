@@ -5,7 +5,6 @@ import type {
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -41,19 +40,7 @@ function isProgressRingCalculation(scopeText: string): boolean {
 export const progressRingJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: FAST_TOKENS,
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const lowerPath = ctx.filePath.toLowerCase();
-    if (
-      lowerPath.includes('/test/') ||
-      lowerPath.includes('/tests/') ||
-      lowerPath.includes('/test/data/') ||
-      lowerPath.includes('/fixtures/') ||
-      lowerPath.includes('/fixture/') ||
-      lowerPath.includes('__tests__')
-    ) {
-      return [];
-    }
-
+  matchFile: (sourceFile: SourceFile): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     const matchedLines = new Set<number>();
 
@@ -115,18 +102,6 @@ export const progressRingDomMatcher: DomRuleMatcher = {
   selector: 'circle',
   fastTokens: ['stroke-dashoffset', 'stroke-dasharray'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
-    const lowerPath = ctx.filePath.toLowerCase();
-    if (
-      lowerPath.includes('/test/') ||
-      lowerPath.includes('/tests/') ||
-      lowerPath.includes('/test/data/') ||
-      lowerPath.includes('/fixtures/') ||
-      lowerPath.includes('/fixture/') ||
-      lowerPath.includes('__tests__')
-    ) {
-      return null;
-    }
-
     if (element.getAttribute('pathLength') === '100') {
       return null;
     }
@@ -154,12 +129,6 @@ export const progressRingDomMatcher: DomRuleMatcher = {
     if (elementAttrs.includes('indeterminate')) {
       return null;
     }
-    const lines = ctx.documentText.split('\n');
-    for (let i = element.line - 1; i >= 0 && i >= element.line - 6; i--) {
-      if ((lines[i] ?? '').toLowerCase().includes('indeterminate')) {
-        return null;
-      }
-    }
 
     let isProgress =
       elementAttrs.includes('progress') ||
@@ -169,11 +138,15 @@ export const progressRingDomMatcher: DomRuleMatcher = {
 
     if (!isProgress) {
       // Check enclosing <svg> tag attributes (up to 20 lines before circle)
+      const lines = ctx.documentText.split('\n');
       for (let i = element.line - 1; i >= 0 && i >= element.line - 20; i--) {
         const line = lines[i] ?? '';
         if (/<svg\b/i.test(line)) {
           const svgTag = line.slice(line.lastIndexOf('<svg'));
           const lowerSvg = svgTag.toLowerCase();
+          if (lowerSvg.includes('indeterminate')) {
+            return null;
+          }
           if (
             lowerSvg.includes('progress') ||
             lowerSvg.includes('gauge') ||
