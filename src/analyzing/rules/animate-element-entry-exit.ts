@@ -387,38 +387,12 @@ function isChainedHideAndShowFlash(callExpr: CallExpression): boolean {
   return hasHide && hasShow;
 }
 
-function isNonJQueryHelperFadeCall(callExpr: CallExpression): boolean {
-  const args = callExpr.getArguments();
-  if (args.length >= 2) {
-    const firstArg = unwrapExpression(args[0]);
-    const secondArg = unwrapExpression(args[1]);
-    // Helper utility pattern `fadeOut(element, 5)` where arg0 is a DOM element/call and arg1 is a numeric duration
-    if (
-      !Node.isNumericLiteral(firstArg) &&
-      !Node.isStringLiteral(firstArg) &&
-      Node.isNumericLiteral(secondArg)
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function isAccordionOrSubmenuHeightSlide(
+function isNestedInsideJQueryAnimCallback(
   callExpr: CallExpression,
   methodName: string,
-  callerExpr: Node,
 ): boolean {
   if (methodName !== 'slideDown' && methodName !== 'slideUp') {
     return false;
-  }
-  const callerText = callerExpr.getText();
-  // Skip submenu / accordion / collapsible panel height animations
-  if (
-    /\.(?:closest|next|prev|children|parent|parents|siblings)\s*\(/.test(callerText) ||
-    /\b(?:content|collapsible|accordion|submenu|sub-menu|dropdown|faq|panel)\b/i.test(callerText)
-  ) {
-    return true;
   }
   // Skip slideUp/slideDown inside a nested jQuery animation callback (e.g. fadeOut -> hide -> slideUp)
   let current: Node | undefined = callExpr.getParent();
@@ -453,11 +427,7 @@ function matchJQueryAnim(callExpr: CallExpression): AnalyzerMatch | null {
     return null;
   }
 
-  if (isNonJQueryHelperFadeCall(callExpr)) {
-    return null;
-  }
-
-  if (isAccordionOrSubmenuHeightSlide(callExpr, methodName, callerExpr)) {
+  if (isNestedInsideJQueryAnimCallback(callExpr, methodName)) {
     return null;
   }
 
@@ -589,9 +559,8 @@ export const animateElementEntryExitRule: AnalyzerRule = {
     dropWhen: [
       'Audio, sound volume, or gain node fades (e.g. audio.fadeIn, sound.fadeOut).',
       'Canvas, WebGL, 3D camera, or game engine rendering transitions (e.g. camera.fadeIn, scene.fadeOut).',
-      'Accordion, collapsible panel, or dropdown submenu height toggle animations (.slideToggle, or .slideDown/.slideUp on accordion/submenu content) that interpolate height between 0 and auto.',
-      'Chained flash/attention effects on an already-present element (e.g. $tag.hide().fadeIn() or $el.fadeOut().fadeIn()).',
       'Code already protected by @starting-style or allow-discrete feature guards.',
+      'Generic transitionend / animationend event listeners that perform business logic or state updates without hiding or removing the DOM element.',
     ],
   },
 };

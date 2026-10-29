@@ -79,9 +79,9 @@ void test('menu: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts dropdown container holding form or input controls', () => {
+  await t.test('exempts dropdown-form container with role="menu"', () => {
     const html = `
-      <div class="dropdown-menu" role="menu">
+      <div class="dropdown-menu dropdown-form" role="menu">
         <form class="px-4 py-3">
           <input type="email" class="form-control" placeholder="email@example.com">
         </form>

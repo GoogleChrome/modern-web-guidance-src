@@ -410,7 +410,7 @@ function isNotyfInstance(node: Node): boolean {
 }
 
 function isInsideLoopOrMultiToastContext(callExpr: CallExpression): boolean {
-  // Check enclosing block for navigation, early-return validation guard, or multiple stacked toastr calls
+  // Check enclosing block for navigation or multiple stacked toastr calls
   let block: Node | undefined = callExpr.getParent();
   while (block && !Node.isBlock(block) && !Node.isSourceFile(block)) {
     block = block.getParent();
@@ -424,16 +424,6 @@ function isInsideLoopOrMultiToastContext(callExpr: CallExpression): boolean {
       )
     ) {
       return true;
-    }
-    if (Node.isBlock(block)) {
-      const blockParent = block.getParent();
-      if (
-        Node.isIfStatement(blockParent) &&
-        (block.getStatements().some((s) => Node.isReturnStatement(s)) ||
-          blockParent.getElseStatement() === block)
-      ) {
-        return true;
-      }
     }
     const toastrMatches = blockText.match(/\btoastr\.(?:info|success|warning|error)\s*\(/g);
     if (toastrMatches && toastrMatches.length >= (Node.isBlock(block) ? 2 : 3)) {

@@ -20,7 +20,7 @@ const NON_ICON_MEDIA_SELECTOR_REGEX =
   /\b(?:html|body|video|canvas|iframe|picture|photo|avatar|thumbnail|banner|hero|gallery|backdrop)\b|:host-context\(/i;
 
 const USERSTYLE_OVERRIDE_CONTENT_REGEX =
-  /:host-context\(\s*\.-theme-with-dark-background\s*\)|\bdevtools-[a-z-]+|--override-color-|@-moz-document\b/i;
+  /@-moz-document\s*\(/i;
 
 function isColorTintingFilterChain(value: string): boolean {
   const lower = value.toLowerCase();

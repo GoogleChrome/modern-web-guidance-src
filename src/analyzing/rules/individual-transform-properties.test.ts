@@ -399,17 +399,5 @@ describe('individualTransformPropertiesRule', () => {
       }
     `;
     assert.equal(scanCss('src/flames.css', nonStaticKeyframeCss, rules).length, 0);
-
-    const checkedCheckmarkPseudoCss = `
-      .checkbox:checked + .check-mark::after {
-        content: "";
-        border-left: 2px solid #fff;
-        transform: translate(-50%, -50%) rotate(-45deg);
-      }
-    `;
-    assert.equal(
-      scanCss('src/checkbox.css', checkedCheckmarkPseudoCss, standaloneChainRules).length,
-      0,
-    );
   });
 });

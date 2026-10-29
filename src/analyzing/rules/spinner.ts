@@ -119,12 +119,9 @@ export const spinnerDomMatcher: DomRuleMatcher = {
       return null;
     }
 
-    // Skip single-line minified HTML dumps (> 1000 chars on the matched line) or component showcase pages rendering escaped spinner-border code snippets
+    // Skip single-line minified HTML dumps (> 1000 chars on the matched line)
     const lineText = ctx.documentText.split(/\r?\n/)[element.line - 1] ?? '';
-    if (
-      lineText.length > 1000 ||
-      /&lt;(?:div|span)\s+class=(?:&quot;|['"])spinner-border\b/i.test(ctx.documentText)
-    ) {
+    if (lineText.length > 1000) {
       return null;
     }
 
@@ -205,12 +202,12 @@ export const spinnerDomRule: AnalyzerRule = {
   matcher: spinnerDomMatcher,
   verifierRubric: {
     keepWhen: [
-      'HTML markup uses a standalone <div> with spinner classes (spinner-border, loading-spinner, fa-spinner) or an indeterminate role="progressbar" without aria-valuenow to indicate a loading state.',
+      'HTML markup uses a <div>, <span>, or <i> with spinner classes (spinner-border, loading-spinner) or an indeterminate role="progressbar" without aria-valuenow to indicate a loading state.',
     ],
     dropWhen: [
       'The element is already a native <progress> element without a value attribute.',
       'The element is a determinate progress bar with aria-valuenow (covered by progress) or a determinate SVG progress ring (covered by progress-ring).',
-      'The element is an inline <span> spinner nested inside a <button> or <a> tag, a pulsing dot (spinner-grow), an empty self-closing utility spinner div (e.g. <div class="spinner-border ... ms-auto" role="status" />) inside a flex status banner, a component gallery/showcase demo page, or an archived third-party player DOM dump.',
+      'The element is a numeric input spinner button.',
     ],
   },
 };
