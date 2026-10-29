@@ -355,10 +355,64 @@ function handlerReadsScrollOffset(handlerNode: Node): boolean {
   return subtreeReadsScrollOffset(handlerNode);
 }
 
+function extractNumericComparisonThreshold(
+  operand: Node,
+  handlerNode: Node,
+): number | null {
+  const unwrapped = unwrapExpression(operand);
+  if (Node.isNumericLiteral(unwrapped)) {
+    return Number(unwrapped.getLiteralText());
+  }
+  if (Node.isIdentifier(unwrapped)) {
+    const rhs = findPriorAssignmentRhs(
+      handlerNode,
+      unwrapped.getText(),
+      unwrapped.getStart(),
+    );
+    if (rhs && Node.isNumericLiteral(unwrapExpression(rhs))) {
+      return Number(unwrapExpression(rhs).getLiteralText());
+    }
+    const resolved = resolveLocalExpression(unwrapped, 2);
+    if (
+      resolved !== unwrapped &&
+      Node.isNumericLiteral(unwrapExpression(resolved))
+    ) {
+      return Number(unwrapExpression(resolved).getLiteralText());
+    }
+  }
+  return null;
+}
+
+function isUpdatedAfterComparison(
+  operand: Node,
+  handlerNode: Node,
+  afterPos: number,
+): boolean {
+  const unwrapped = unwrapExpression(operand);
+  if (!Node.isIdentifier(unwrapped) && !Node.isPropertyAccessExpression(unwrapped)) {
+    return false;
+  }
+  const targetText = unwrapped.getText();
+  let updatedLater = false;
+  handlerNode.forEachDescendant((node) => {
+    if (
+      !updatedLater &&
+      Node.isBinaryExpression(node) &&
+      node.getOperatorToken().getKind() === SyntaxKind.EqualsToken &&
+      node.getStart() > afterPos &&
+      unwrapExpression(node.getLeft()).getText() === targetText
+    ) {
+      updatedLater = true;
+    }
+  });
+  return updatedLater;
+}
+
 function handlerHasScrollComparison(handlerNode: Node): boolean {
   let found = false;
+  let hasDirectionalStateUpdate = false;
+  const distinctThresholds = new Set<number>();
   handlerNode.forEachDescendant((node) => {
-    if (found) return;
     if (Node.isBinaryExpression(node)) {
       const op = node.getOperatorToken().getKind();
       if (!COMPARISON_OPERATORS.has(op)) {
@@ -376,14 +430,28 @@ function handlerHasScrollComparison(handlerNode: Node): boolean {
       if (isJqueryDockingComparison) {
         return;
       }
-      if (
-        operandRepresentsScrollOffset(left, handlerNode) ||
-        operandRepresentsScrollOffset(right, handlerNode)
-      ) {
+      const leftIsScroll = operandRepresentsScrollOffset(left, handlerNode);
+      const rightIsScroll = operandRepresentsScrollOffset(right, handlerNode);
+      if (leftIsScroll || rightIsScroll) {
+        const otherOperand = leftIsScroll ? right : left;
+        if (isUpdatedAfterComparison(otherOperand, handlerNode, node.getEnd())) {
+          hasDirectionalStateUpdate = true;
+          return;
+        }
+        const threshold = extractNumericComparisonThreshold(
+          otherOperand,
+          handlerNode,
+        );
+        if (threshold !== null && threshold > 0) {
+          distinctThresholds.add(threshold);
+        }
         found = true;
       }
     }
   });
+  if (hasDirectionalStateUpdate || distinctThresholds.size > 2) {
+    return false;
+  }
   return found;
 }
 
@@ -554,18 +622,62 @@ const CLASS_MUTATION_METHODS = new Set([
   'toggleClass',
 ]);
 
+const DOM_REPARENTING_OR_RECT_METHODS = new Set([
+  'appendChild',
+  'removeChild',
+  'insertBefore',
+  'replaceChild',
+  'getBoundingClientRect',
+]);
+
+function hasDisqualifyingDomOperation(handlerNode: Node): boolean {
+  let disqualified = false;
+  handlerNode.forEachDescendant((node) => {
+    if (disqualified) return;
+    if (Node.isPropertyAccessExpression(node)) {
+      const propName = node.getName();
+      if (propName === 'href') {
+        disqualified = true;
+        return;
+      }
+      if (propName === 'top') {
+        const recv = unwrapExpression(node.getExpression());
+        if (Node.isCallExpression(recv)) {
+          const callee = unwrapExpression(recv.getExpression());
+          if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'position') {
+            disqualified = true;
+            return;
+          }
+        }
+      }
+    }
+    if (Node.isCallExpression(node)) {
+      const callee = unwrapExpression(node.getExpression());
+      if (Node.isPropertyAccessExpression(callee)) {
+        const methodName = callee.getName();
+        if (DOM_REPARENTING_OR_RECT_METHODS.has(methodName)) {
+          disqualified = true;
+          return;
+        }
+        if (methodName === 'setAttribute') {
+          const firstArg = node.getArguments()[0];
+          const unwrappedArg = firstArg ? unwrapExpression(firstArg) : undefined;
+          if (unwrappedArg && Node.isStringLiteral(unwrappedArg)) {
+            const attrName = unwrappedArg.getLiteralText().toLowerCase();
+            if (attrName === 'src' || attrName === 'aria-hidden') {
+              disqualified = true;
+              return;
+            }
+          }
+        }
+      }
+    }
+  });
+  return disqualified;
+}
+
 function handlerMutatesScrollStateOrSize(handlerNode: Node): boolean {
-  // Reject lazy-loading, parallax, infinite scroll, or nav link href handlers
-  const handlerText = handlerNode.getText();
-  if (
-    handlerText.includes('setAttribute(\'src\'') ||
-    handlerText.includes('setAttribute("src"') ||
-    handlerText.includes('data-parallax') ||
-    handlerText.includes('getBoundingClientRect') ||
-    handlerText.includes('fetchMore') ||
-    handlerText.includes('loadMore') ||
-    handlerText.includes('href')
-  ) {
+  if (hasDisqualifyingDomOperation(handlerNode)) {
     return false;
   }
 
@@ -798,8 +910,8 @@ export const scrollPositionAwareElementsRule: AnalyzerRule = {
     ],
     dropWhen: [
       'Implementations using CSS scroll-state container queries (@container scroll-state(...)) or IntersectionObserver sentinels.',
-      'Complex scroll-driven parallax or layout engines that interpolate continuous dimensions rather than toggling binary state classes.',
-      'Infinite scroll or pagination handlers that trigger network requests when reaching scroll bounds.',
+      'Scroll-direction tracking handlers (hide on scroll down, show on scroll up using prevScroll/previousTop/lastScroll) or multi-stage scroll thresholds.',
+      'Handlers performing DOM node reparenting (appendChild/removeChild), element collision/overlap calculations (offsetHeight/outerHeight/.position().top), or infinite scroll network requests.',
     ],
   },
 };

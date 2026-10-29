@@ -8,6 +8,7 @@ import {
   resolveCallableNode,
   resolveLocalExpression,
 } from '../scanners/ast-helpers.ts';
+import { hasVendoredLicenseHeader } from '../scanners/file-filter.ts';
 import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
   AnalyzerRule,
@@ -76,11 +77,51 @@ function matchDirtyClassBlurListener(callExpr: CallExpression): string | null {
   return `Imperative '${listener.eventName}' listener toggling touched/dirty classes to gate validation styling can be modernized with CSS :user-invalid.`;
 }
 
+const TOUCHED_DIRTY_TOKEN_REGEX =
+  /\b(?:is-|ng-|data-)?(touched|dirty|interacted|was-validated)\b/i;
+
+interface StylesheetValidationState {
+  readonly isVendored: boolean;
+  readonly seenTouchedTokens: Set<string>;
+}
+
+const stylesheetValidationStateCache = new WeakMap<
+  CssMatcherContext,
+  StylesheetValidationState
+>();
+
+function getStylesheetValidationState(
+  ctx: CssMatcherContext,
+): StylesheetValidationState {
+  let state = stylesheetValidationStateCache.get(ctx);
+  if (!state) {
+    const strippedCharset = ctx.stylesheetText.replace(
+      /^\s*@charset\b[^;]*;\s*/i,
+      '',
+    );
+    state = {
+      isVendored: hasVendoredLicenseHeader(strippedCharset),
+      seenTouchedTokens: new Set<string>(),
+    };
+    stylesheetValidationStateCache.set(ctx, state);
+  }
+  return state;
+}
+
 export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: [':invalid'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     const selector = styleRule.selectorText;
+    if (!selector.toLowerCase().includes(':invalid')) {
+      return null;
+    }
+
+    const sheetState = getStylesheetValidationState(ctx);
+    if (sheetState.isVendored) {
+      return null;
+    }
+
     if (
       selector.includes(':user-invalid') ||
       ctx.stylesheetText.includes(':user-invalid')
@@ -97,8 +138,9 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
 
     const selectorWithoutNot = selector.replace(/:not\([^)]*\)/gi, '');
     if (
-      /\bselect\b/i.test(selectorWithoutNot) &&
-      !/\b(?:input|textarea)\b/i.test(selectorWithoutNot)
+      selectorWithoutNot.split(',').length > 4 ||
+      (/\bselect\b/i.test(selectorWithoutNot) &&
+        !/\b(?:input|textarea)\b/i.test(selectorWithoutNot))
     ) {
       return null;
     }
@@ -110,7 +152,46 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
       return null;
     }
 
+    // For touched/dirty rules, skip rules where :invalid only targets a general sibling (~),
+    // pseudo-element, :checked state, or secondary :invalid:focus ring
+    if (
+      !hasRequiredInvalid &&
+      (/:invalid[^,]*~|::?(?:before|after)|:checked\b|:invalid:focus\b/i.test(
+        selectorWithoutNot,
+      ))
+    ) {
+      return null;
+    }
+
+    // Require direct field error styling (border, outline, color, or non-focus box-shadow/background-color)
+    // and skip rules that only reset background-image: none or adjust z-index
+    const bgImage = styleRule.getPropertyValue('background-image')?.trim().toLowerCase();
+    const hasDirectErrorStyle =
+      styleRule.hasProperty('border-color') ||
+      styleRule.hasProperty('border') ||
+      styleRule.hasProperty('outline') ||
+      styleRule.hasProperty('color') ||
+      (hasRequiredInvalid && styleRule.hasProperty('display')) ||
+      (!/:focus\b/i.test(selectorWithoutNot) &&
+        (styleRule.hasProperty('box-shadow') || styleRule.hasProperty('background-color')));
+    if (
+      !hasDirectErrorStyle ||
+      (bgImage === 'none' &&
+        !styleRule.hasProperty('border-color') &&
+        !styleRule.hasProperty('color') &&
+        !styleRule.hasProperty('box-shadow'))
+    ) {
+      return null;
+    }
+
     if (hasTouchedDirtyInvalid) {
+      const tokenMatch = TOUCHED_DIRTY_TOKEN_REGEX.exec(selectorWithoutNot);
+      const tokenKey = tokenMatch?.[1]?.toLowerCase() ?? 'touched';
+      if (sheetState.seenTouchedTokens.has(tokenKey)) {
+        return null;
+      }
+      sheetState.seenTouchedTokens.add(tokenKey);
+
       return {
         message:
           'CSS selector pairs :invalid with a touched/dirty class (e.g. .was-validated, .touched) to gate invalid styling until user interaction; modernize with native :user-invalid.',
@@ -143,7 +224,7 @@ export const requiredFieldFeedbackCssRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The stylesheet already uses :user-invalid or guards :invalid inside @supports not selector(:user-invalid).',
-      'The selector negates :invalid inside :not(:invalid) or styles server-returned asynchronous validation errors.',
+      'The selector only negates :invalid inside :not(:invalid), only sets background-image: none or z-index without visual error styling, or is part of a minified third-party vendor bundle (e.g. vendor.css).',
     ],
   },
 };

@@ -31,12 +31,55 @@ const TARGET_JS_METHODS: ReadonlySet<string> = new Set([
   'select2',
   'chosen',
   'selectpicker',
+  'niceSelect',
   'niceselect',
   'selectric',
 ]);
 
-const SEARCH_OR_COMPLEX_OPTIONS_REGEX =
-  /\b(?:multiple\s*:\s*true|ajax\s*:|tags\s*:|query\s*:|matcher\s*:|minimumInputLength\s*:|liveSearch\s*:|search_contains\s*:)/i;
+const COMPLEX_SELECT_OPTION_NAMES: ReadonlySet<string> = new Set([
+  'ajax',
+  'tags',
+  'query',
+  'matcher',
+  'minimumInputLength',
+  'liveSearch',
+  'search_contains',
+  'allowClear',
+  'tokenSeparators',
+  'maximumSelectionLength',
+  'formatResult',
+  'templateResult',
+]);
+
+function hasComplexSelectOption(argNode: Node): boolean {
+  const unwrapped = unwrapExpression(argNode);
+  if (!Node.isObjectLiteralExpression(unwrapped)) {
+    return false;
+  }
+  for (const prop of unwrapped.getProperties()) {
+    if (
+      Node.isPropertyAssignment(prop) ||
+      Node.isShorthandPropertyAssignment(prop) ||
+      Node.isMethodDeclaration(prop)
+    ) {
+      const nameNode = prop.getNameNode();
+      const propName = Node.isStringLiteral(nameNode)
+        ? nameNode.getLiteralText()
+        : nameNode.getText();
+      if (COMPLEX_SELECT_OPTION_NAMES.has(propName)) {
+        return true;
+      }
+      if (
+        propName === 'multiple' &&
+        Node.isPropertyAssignment(prop) &&
+        prop.getInitializer()?.getText() === 'true'
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 function isJQueryIdentifierName(name: string): boolean {
   return name.startsWith('$') || name === 'jQuery' || name === 'mQuery';
@@ -75,26 +118,37 @@ function matchSelectCall(node: CallExpression): string | null {
     return null;
   }
 
-  const methodName = expr.getName().toLowerCase();
-  if (!TARGET_JS_METHODS.has(methodName)) {
+  const rawMethodName = expr.getName();
+  if (!TARGET_JS_METHODS.has(rawMethodName)) {
+    return null;
+  }
+  const methodName = rawMethodName.toLowerCase();
+
+  // Check receiver: for chosen and select2, require jQuery-like receiver
+  if (
+    (methodName === 'chosen' || methodName === 'select2') &&
+    !isJQueryLikeReceiver(expr.getExpression())
+  ) {
     return null;
   }
 
-  // Check receiver: for chosen, require jQuery-like receiver (reject this.chosen())
-  if (methodName === 'chosen' && !isJQueryLikeReceiver(expr.getExpression())) {
-    return null;
-  }
-
-  // Exclude multi-select, remote ajax search, or tag-creation options in AST
+  // Exclude command/getter string literals (e.g. .select2('destroy'), .select2('data'), .select2('val'))
+  // and multi-select, remote ajax search, allowClear, or tag-creation options in AST
   const args = node.getArguments();
   if (args.length > 0) {
-    const argText = args[0]?.getText() ?? '';
-    if (SEARCH_OR_COMPLEX_OPTIONS_REGEX.test(argText)) {
+    const firstArg = unwrapExpression(args[0]);
+    if (Node.isStringLiteral(firstArg)) {
+      const cmd = firstArg.getLiteralText().toLowerCase().trim();
+      if (methodName !== 'selectpicker' || (cmd !== 'render' && cmd !== 'refresh')) {
+        return null;
+      }
+    }
+    if (hasComplexSelectOption(firstArg)) {
       return null;
     }
   }
 
-  return `Legacy custom select method call .${expr.getName()}() replaces native <select>; modernize with customizable select (appearance: base-select and ::picker(select)).`;
+  return `Legacy custom select method call .${rawMethodName}() replaces native <select>; modernize with customizable select (appearance: base-select and ::picker(select)).`;
 }
 
 const brandedSelectStylingJsMatcher: JsRuleMatcher = createJsCallMatcher({

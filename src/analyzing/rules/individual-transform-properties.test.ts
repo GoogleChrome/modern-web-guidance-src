@@ -26,7 +26,7 @@ describe('individualTransformPropertiesRule', () => {
 
   it('ignores standalone multi-function transform in default rule (Pattern C), flagged by opt-in standalone rule', () => {
     const css = `
-      .icon {
+      .icon.is-active {
         transform: translate(10px, 20px) rotate(45deg) scale(0.9);
       }
     `;
@@ -325,9 +325,91 @@ describe('individualTransformPropertiesRule', () => {
     // multi-function-chain (opt-in standalone chain rule)
     const chainMatches = scanCss(
       'src/chain.css',
-      '.icon { transform: translate(10px, 20px) rotate(45deg); }',
+      '.icon.is-active { transform: translate(10px, 20px) rotate(45deg); }',
       standaloneChainRules,
     );
     assert.equal(chainMatches[0]?.subPattern, 'multi-function-chain');
+  });
+
+  it('ignores static layout chains, media query resets, out-of-order keyframe steps, and hardware-acceleration translateZ(0)', () => {
+    const staticChainCss = `
+      .tail::after {
+        content: '';
+        position: absolute;
+        transform: translateX(5px) rotate(45deg);
+      }
+    `;
+    assert.equal(scanCss('src/tail.css', staticChainCss, standaloneChainRules).length, 0);
+
+    const mediaResetCss = `
+      .card__side--back {
+        transform: rotateY(180deg);
+      }
+      @media only screen and (max-width: 56.25em) {
+        .card__side--back {
+          transform: rotateY(0);
+        }
+      }
+    `;
+    assert.equal(scanCss('src/media-reset.css', mediaResetCss, rules).length, 0);
+
+    const outOfOrderKeyframeCss = `
+      @keyframes animBounce {
+        0% {
+          transform: rotateX(21deg);
+        }
+        50% {
+          transform: translateY(3px) scaleX(0.98) scaleY(1.02) rotateX(25deg);
+        }
+        100% {
+          transform: rotateX(21deg);
+        }
+      }
+    `;
+    assert.equal(scanCss('src/bounce.css', outOfOrderKeyframeCss, rules).length, 0);
+
+    const loaderGpuHackCss = `
+      .loader {
+        transform: translateZ(0);
+        animation: load8 1.1s infinite linear;
+      }
+      @keyframes load8 {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    assert.equal(scanCss('src/loader.css', loaderGpuHackCss, rules).length, 0);
+
+    const hoverPseudoElementCss = `
+      [data-help]:hover::after {
+        content: attr(data-help);
+        transform: translate(-1px, 1px);
+      }
+    `;
+    assert.equal(
+      scanCss('src/help.css', hoverPseudoElementCss, singleFunctionStateRules).length,
+      0,
+    );
+
+    const nonStaticKeyframeCss = `
+      @keyframes flames2 {
+        from { transform: rotate(0deg) scale(1, 1); }
+        50% { transform: rotate(-5deg) scale(0.8, 0.8); }
+        to { transform: rotate(0deg) scale(1, 1); }
+      }
+    `;
+    assert.equal(scanCss('src/flames.css', nonStaticKeyframeCss, rules).length, 0);
+
+    const checkedCheckmarkPseudoCss = `
+      .checkbox:checked + .check-mark::after {
+        content: "";
+        border-left: 2px solid #fff;
+        transform: translate(-50%, -50%) rotate(-45deg);
+      }
+    `;
+    assert.equal(
+      scanCss('src/checkbox.css', checkedCheckmarkPseudoCss, standaloneChainRules).length,
+      0,
+    );
   });
 });
