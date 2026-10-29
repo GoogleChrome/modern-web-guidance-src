@@ -35,7 +35,7 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
 
   <label class="master">
     <input type="checkbox" class="checkbox" id="select-all"
-           aria-controls="robot-1 robot-2" />
+           aria-controls="robot-1" />
     Select all automatons
   </label>
 
