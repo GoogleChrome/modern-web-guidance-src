@@ -138,8 +138,7 @@ function ruleIsVisibleScrollbarButton(styleRule: CssRuleView): boolean {
   }
   return (
     hasValidColor(styleRule, 'background') ||
-    hasValidColor(styleRule, 'background-color') ||
-    hasSize
+    hasValidColor(styleRule, 'background-color')
   );
 }
 
