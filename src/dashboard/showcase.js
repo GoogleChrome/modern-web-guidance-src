@@ -1,16 +1,10 @@
-/**
- * Use-case Evaluation Spotlight for the landing page (index.html).
- */
 import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior } from './utils.js';
-
 /** @typedef {{ passed: number, total: number, rate: number, a11yPassed: number, a11yTotal: number, runtimeMs: number, uncachedTokens: number, totalTokens: number, guidesUsed: string[], addedLines: number, removedLines: number }} ShowcaseModeRun */
 /** @typedef {{ index: number, message: string, unguidedPassed: boolean, guidedPassed: boolean, flipped: boolean, isA11y: boolean, a11yLabel: string | null }} ShowcaseCheckItem */
 /** @typedef {{ agentId: string, agentLabel: string, model: string, suiteId: string, date: string, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
 /** @typedef {{ id: string, label: string, category: string, categoryLabel: string, featureSummary: string, prompt: string, baseApp: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 /** @typedef {{ generatedAt: string, tasks: ShowcaseTask[] }} ShowcasePayload */
-
 const AGENT_ORDER = ['claude_code', 'antigravity_cli', 'codex_cli'];
-
 /** @type {Record<string, string>} */
 const SHORT_TASK_LABELS = {
     'highlight-text-ranges': 'Search highlights',
@@ -20,7 +14,6 @@ const SHORT_TASK_LABELS = {
     'scrollspy': 'CSS scrollspy',
     'interest-triggered-tooltips': 'Interest tooltips'
 };
-
 /** @type {Record<string, string>} */
 const GUIDE_CATEGORY_MAP = {
     'accessibility': 'accessibility', 'animate-to-from-top-layer': 'ui-behaviors', 'css': 'css',
@@ -37,7 +30,6 @@ const GUIDE_CATEGORY_MAP = {
     'same-document-transitions': 'ui-behaviors', 'scrollspy': 'ui-components',
     'search-hidden-content': 'ui-behaviors'
 };
-
 /** @type {Record<string, { unguided: string, guided: string }>} */
 const TASK_APPROACH_CONTRAST = {
     'highlight-text-ranges': {
@@ -65,7 +57,6 @@ const TASK_APPROACH_CONTRAST = {
         guided: 'Declarative interestfor triggers with <div popover="hint">, CSS anchor(), position-try fallbacks, and WCAG 1.4.13 persistence (15/16; omitted 1 of 3 polyfills).'
     }
 };
-
 /** @type {Record<string, Partial<{ unguided: string, guided: string }>>} */
 const TASK_PAIR_OVERRIDES = {
     'animate-to-from-top-layer:antigravity_cli': {
@@ -87,11 +78,8 @@ const TASK_PAIR_OVERRIDES = {
         guided: 'Declarative interestfor triggers with <div popover="hint">, position-try fallbacks, and WCAG 1.4.13 persistence (12/16; used position-area instead of anchor() and omitted 2 of 3 polyfills).'
     }
 };
-
-/**
- * @param {ShowcaseTask} task
- * @param {ShowcaseAgentPair} pair
- */
+/** @param {ShowcaseTask} task
+ * @param {ShowcaseAgentPair} pair */
 function getApproachContrast(task, pair) {
     const base = TASK_APPROACH_CONTRAST[task.id] || {
         unguided: 'Standard unguided implementation without MWG skill.',
@@ -100,7 +88,6 @@ function getApproachContrast(task, pair) {
     const override = TASK_PAIR_OVERRIDES[`${task.id}:${pair.agentId}`];
     return override ? { ...base, ...override } : base;
 }
-
 /** @type {ShowcaseTask[]} */
 let tasks = [];
 /** @type {string} */
@@ -108,14 +95,8 @@ let activeTaskId = 'highlight-text-ranges';
 /** @type {string} */
 let activeAgentId = 'claude_code';
 let checksExpanded = false;
-
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
-
-document.addEventListener('DOMContentLoaded', () => {
-    if (!rootEl) return;
-    void loadShowcase();
-});
-
+document.addEventListener('DOMContentLoaded', () => { if (!rootEl) return; void loadShowcase(); });
 async function loadShowcase() {
     if (!rootEl) return;
     try {
@@ -123,28 +104,13 @@ async function loadShowcase() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = /** @type {ShowcasePayload} */ (await res.json());
         tasks = Array.isArray(data.tasks) ? data.tasks : [];
-        if (!tasks.length) {
-            // Nothing to show: hide the section (and drop aria-busy) so its reserved
-            // min-block-size doesn't leave an empty gap on the page.
-            rootEl.hidden = true;
-            rootEl.setAttribute('aria-busy', 'false');
-            return;
-        }
-        if (!tasks.some(t => t.id === activeTaskId)) {
-            activeTaskId = tasks[0].id;
-        }
+        if (!tasks.length) { rootEl.hidden = true; rootEl.setAttribute('aria-busy', 'false'); return; }
+        if (!tasks.some(t => t.id === activeTaskId)) { activeTaskId = tasks[0].id; }
         renderAll();
         rootEl.setAttribute('aria-busy', 'false');
-    } catch (err) {
-        console.warn('A/B Spotlight: could not load showcase-runs.json', err);
-        rootEl.hidden = true;
-    }
+    } catch (err) { console.warn('A/B Spotlight: could not load showcase-runs.json', err); rootEl.hidden = true; }
 }
-
-/**
- * Returns the currently selected task and agent pair.
- * @returns {{ task: ShowcaseTask, pair: ShowcaseAgentPair } | null}
- */
+/** @returns {{ task: ShowcaseTask, pair: ShowcaseAgentPair } | null} */
 function getCurrentSelection() {
     const task = tasks.find(t => t.id === activeTaskId) || tasks[0];
     if (!task) return null;
@@ -152,7 +118,6 @@ function getCurrentSelection() {
     if (!pair) return null;
     return { task, pair };
 }
-
 function renderAll() {
     const sel = getCurrentSelection();
     if (!sel) return;
@@ -162,70 +127,49 @@ function renderAll() {
     renderScorecard(sel.task, sel.pair);
     renderChecks(sel.task, sel.pair);
 }
-
 let taskPillsListenersBound = false;
 let agentPillsListenersBound = false;
-
-/**
- * Updates directional edge-fade classes on #ab-task-pills based on scroll position.
- * @param {HTMLElement} container
- */
+/** @param {HTMLElement} container */
 function syncTaskPillsScrollShadows(container) {
     const maxScroll = container.scrollWidth - container.clientWidth;
     container.classList.toggle('has-scroll-left', container.scrollLeft > 4);
     container.classList.toggle('has-scroll-right', maxScroll - container.scrollLeft > 4);
 }
-
-/**
- * @param {ShowcaseTask} currentTask
- */
+/** @param {ShowcaseTask} currentTask */
 function renderTaskPills(currentTask) {
     const container = document.getElementById('ab-task-pills');
     if (!container) return;
-
     const existingPills = /** @type {HTMLElement[]} */ (Array.from(container.querySelectorAll('.ab-task-pill')));
     const sameTasks = existingPills.length === tasks.length &&
         existingPills.every((el, idx) => el.getAttribute('data-task-id') === tasks[idx].id);
-
     if (!sameTasks) {
         container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend>` + tasks.map(t => {
             const shortLabel = SHORT_TASK_LABELS[t.id] || t.label;
             return `<label class="ab-task-pill" data-task-id="${escapeHtml(t.id)}"><input type="radio" name="ab-task" value="${escapeHtml(t.id)}"><span>${escapeHtml(shortLabel)}</span><span class="ab-task-delta-slot"></span></label>`;
         }).join('');
     }
-
     container.querySelectorAll('.ab-task-pill').forEach(pill => {
         const taskId = pill.getAttribute('data-task-id');
         const task = tasks.find(t => t.id === taskId);
         const isCurrent = taskId === currentTask.id;
         const input = pill.querySelector('input[type="radio"]');
-        if (input instanceof HTMLInputElement) {
-            input.checked = isCurrent;
-        }
+        if (input instanceof HTMLInputElement) { input.checked = isCurrent; }
         const deltaSlot = pill.querySelector('.ab-task-delta-slot');
         if (deltaSlot && task) {
             const pair = task.agents[activeAgentId] || Object.values(task.agents)[0];
             const deltaChecks = pair ? pair.guided.passed - pair.unguided.passed : 0;
-            // Visually hidden text instead of a title tooltip (MWG html: no title tooltips), so the
-            // meaning of "+N" reaches screen reader, keyboard, and touch users too.
             deltaSlot.innerHTML = (isCurrent && deltaChecks > 0)
                 ? `<span class="ab-task-delta"><span aria-hidden="true">+${deltaChecks}</span><span class="visually-hidden">, ${deltaChecks} more passing ${deltaChecks === 1 ? 'check' : 'checks'} with MWG</span></span>`
                 : '';
         }
     });
-
     syncTaskPillsScrollShadows(container);
-
     if (!taskPillsListenersBound) {
         taskPillsListenersBound = true;
-        // Coalesce scroll/resize bursts into one layout read + class write per frame.
         let shadowRaf = 0;
         const scheduleShadowSync = () => {
             if (shadowRaf) return;
-            shadowRaf = requestAnimationFrame(() => {
-                shadowRaf = 0;
-                syncTaskPillsScrollShadows(container);
-            });
+            shadowRaf = requestAnimationFrame(() => { shadowRaf = 0; syncTaskPillsScrollShadows(container); });
         };
         container.addEventListener('scroll', scheduleShadowSync, { passive: true });
         window.addEventListener('resize', scheduleShadowSync, { passive: true });
@@ -247,59 +191,41 @@ function renderTaskPills(currentTask) {
         });
     }
 }
-
-/**
- * @param {ShowcaseTask} currentTask
- * @param {ShowcaseAgentPair} currentPair
- */
+/** @param {ShowcaseTask} currentTask
+ * @param {ShowcaseAgentPair} currentPair */
 function renderAgentPills(currentTask, currentPair) {
     const container = document.getElementById('ab-agent-pills');
     if (!container) return;
-
     const orderedIds = AGENT_ORDER.filter(id => currentTask.agents[id]);
     const existingPills = /** @type {HTMLElement[]} */ (Array.from(container.querySelectorAll('.ab-agent-pill')));
     const sameAgents = existingPills.length === orderedIds.length &&
         existingPills.every((el, idx) => el.getAttribute('data-agent-id') === orderedIds[idx]);
-
     if (!sameAgents) {
         container.innerHTML = `<legend class="visually-hidden">Select coding agent</legend>` + orderedIds.map(id => {
             const pair = currentTask.agents[id];
             return `<label class="ab-agent-pill" data-agent-id="${escapeHtml(id)}"><input type="radio" name="ab-agent" value="${escapeHtml(id)}">${getAgentBadge(id)}${escapeHtml(pair.agentLabel)}</label>`;
         }).join('');
     }
-
     container.querySelectorAll('.ab-agent-pill').forEach(pill => {
         const id = pill.getAttribute('data-agent-id');
         const input = pill.querySelector('input[type="radio"]');
-        if (input instanceof HTMLInputElement) {
-            input.checked = id === currentPair.agentId;
-        }
+        if (input instanceof HTMLInputElement) { input.checked = id === currentPair.agentId; }
     });
-
     if (!agentPillsListenersBound) {
         agentPillsListenersBound = true;
         container.addEventListener('change', (e) => {
             const target = e.target;
             if (!(target instanceof HTMLInputElement) || target.name !== 'ab-agent') return;
             const id = target.value;
-            if (id && id !== activeAgentId) {
-                activeAgentId = id;
-                renderAll();
-                announceSelection();
-            }
+            if (id && id !== activeAgentId) { activeAgentId = id; renderAll(); announceSelection(); }
         });
     }
 }
-
-/**
- * @param {ShowcaseTask} task
- * @param {ShowcaseAgentPair} pair
- */
+/** @param {ShowcaseTask} task
+ * @param {ShowcaseAgentPair} pair */
 function renderPromptBar(task, pair) {
     const kickerEl = rootEl ? rootEl.querySelector('.ab-prompt-kicker') : null;
-    if (kickerEl) {
-        kickerEl.textContent = 'Task prompt';
-    }
+    if (kickerEl) { kickerEl.textContent = 'Task prompt'; }
     const promptEl = document.getElementById('ab-prompt-text');
     const metaEl = document.getElementById('ab-run-provenance');
     if (promptEl) {
@@ -316,38 +242,16 @@ function renderPromptBar(task, pair) {
             return `<a class="ab-prov-link" href="${ghHref}" target="_blank" rel="noopener">${escapeHtml(slug)}</a>`;
         }).join(', ');
         const guidePrefix = cleanGuides.length > 1 ? 'Guides:' : 'Guide:';
-
-        metaEl.innerHTML = `
-            <span class="ab-prov-item">${escapeHtml(pair.date)} nightly run (${escapeHtml(pair.model)})</span>
-            <span class="ab-prov-sep" aria-hidden="true">·</span>
-            <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a>
-            <span class="ab-prov-sep" aria-hidden="true">·</span>
-            <a class="ab-prov-link" href="${trendHref}">Guide trend</a>
-            <span class="ab-prov-sep" aria-hidden="true">·</span>
-            <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>
-        `;
+        metaEl.innerHTML = `<span class="ab-prov-item">${escapeHtml(pair.date)} nightly run (${escapeHtml(pair.model)})</span> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${suiteHref}">Inspect suite</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <a class="ab-prov-link" href="${trendHref}">Guide trend</a> <span class="ab-prov-sep" aria-hidden="true">·</span> <span class="ab-prov-item">${guidePrefix} ${guideLinksHtml}</span>`;
     }
 }
-
-/**
- * Strips verbose "Requirement N:" prefixes from check messages so they don't duplicate the # column.
- * @param {string} msg
- * @returns {string}
- */
-function cleanCheckMessage(msg) {
-    return msg.replace(/^Requirement\s+\d+[a-z]?:\s*/i, '');
-}
-
-/**
- * Expands the grader assertions table (if collapsed) and scrolls to the first accessibility row.
- * @param {ShowcaseTask} task
- * @param {ShowcaseAgentPair} pair
- */
+/** @param {string} msg
+ * @returns {string} */
+function cleanCheckMessage(msg) { return msg.replace(/^Requirement\s+\d+[a-z]?:\s*/i, ''); }
+/** @param {ShowcaseTask} task
+ * @param {ShowcaseAgentPair} pair */
 function expandAndFocusA11yChecks(task, pair) {
-    if (!checksExpanded) {
-        checksExpanded = true;
-        renderChecks(task, pair);
-    }
+    if (!checksExpanded) { checksExpanded = true; renderChecks(task, pair); }
     const firstA11yRow = document.querySelector('#ab-checks-content tr[data-a11y="true"]');
     if (firstA11yRow instanceof HTMLElement) {
         firstA11yRow.scrollIntoView({ behavior: getScrollBehavior(), block: 'nearest' });
@@ -357,23 +261,14 @@ function expandAndFocusA11yChecks(task, pair) {
         wrap.focus({ preventScroll: true });
     }
 }
-
 /** @param {number} rate */
-function scoreTone(rate) {
-    if (rate < 60) return 'low';
-    if (rate < 85) return 'mid';
-    return 'high';
-}
-
-/**
- * @param {ShowcaseTask} task
- * @param {ShowcaseAgentPair} pair
- */
+function scoreTone(rate) { if (rate < 60) return 'low'; if (rate < 85) return 'mid'; return 'high'; }
+/** @param {ShowcaseTask} task
+ * @param {ShowcaseAgentPair} pair */
 function renderScorecard(task, pair) {
     const uEl = document.getElementById('ab-score-unguided');
     const gEl = document.getElementById('ab-score-guided');
     if (!uEl || !gEl) return;
-
     const u = pair.unguided;
     const g = pair.guided;
     const deltaChecks = g.passed - u.passed;
@@ -382,25 +277,17 @@ function renderScorecard(task, pair) {
     const deltaTone = deltaChecks > 0 ? 'good' : (deltaChecks < 0 ? 'cost' : 'flat');
     const deltaGlyph = deltaChecks > 0 ? '▲' : (deltaChecks < 0 ? '▼' : '•');
     const contrast = getApproachContrast(task, pair);
-
-    // Segments are purely visual (inside role="img"); no per-segment title tooltips, which only
-    // mouse users could reach. The grader checks table below lists every check's number,
-    // message, and pass/fail state for both runs (a flip reads as Fail → Pass there).
     const uMeterSegs = pair.checks.map(c => {
         const st = c.unguidedPassed ? 'pass' : 'fail';
         return `<span class="ab-meter-seg ${st}"></span>`;
     }).join('');
-
     const gMeterSegs = pair.checks.map(c => {
         const st = c.guidedPassed ? 'pass' : 'fail';
         return `<span class="ab-meter-seg ${st}${c.flipped ? ' is-flipped' : ''}"></span>`;
     }).join('');
-
     const uTone = scoreTone(u.rate);
     const gTone = scoreTone(g.rate);
     const uFailed = u.total - u.passed;
-    // The action goes in visually hidden text rather than a title tooltip (MWG html), keeping the
-    // visible "A11y n/m" at the start of the accessible name (WCAG 2.5.3 Label in Name).
     const a11yActionHtml = '<span class="visually-hidden">: show accessibility assertions</span>';
     const uA11yHtml = u.a11yTotal > 0
         ? `<button type="button" class="ab-score-a11y ${u.a11yPassed < u.a11yTotal ? 'fail' : 'pass'}">A11y ${u.a11yPassed}/${u.a11yTotal}${a11yActionHtml}</button>`
@@ -408,115 +295,39 @@ function renderScorecard(task, pair) {
     const gA11yHtml = g.a11yTotal > 0
         ? `<button type="button" class="ab-score-a11y ${g.a11yPassed === g.a11yTotal ? 'pass' : 'fail'}">A11y ${g.a11yPassed}/${g.a11yTotal}${a11yActionHtml}</button>`
         : '';
-
-    uEl.innerHTML = `
-        <div class="ab-score-header">
-            <div class="ab-score-header-main">
-                <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span>
-                <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span>
-                <span class="ab-pass-summary">${uFailed > 0 ? `${uFailed} failed` : 'all passed'}</span>
-                ${uA11yHtml}
-            </div>
-            <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)}</span>
-        </div>
-        <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div>
-        <p class="ab-verdict-summary">${escapeHtml(contrast.unguided)}</p>
-    `;
-
-    gEl.innerHTML = `
-        <div class="ab-score-header">
-            <div class="ab-score-header-main">
-                <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span>
-                <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span>
-                <span class="delta ${deltaTone}"><span class="glyph" aria-hidden="true">${deltaGlyph}</span>${deltaSign} ${deltaWord}</span>
-                ${gA11yHtml}
-            </div>
-            <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)}</span>
-        </div>
-        <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div>
-        <p class="ab-verdict-summary">${escapeHtml(contrast.guided)}</p>
-    `;
-
-    rootEl?.querySelectorAll('.ab-score-a11y').forEach(btn => {
-        btn.addEventListener('click', () => expandAndFocusA11yChecks(task, pair));
-    });
+    uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span> <span class="ab-pass-summary">${uFailed > 0 ? `${uFailed} failed` : 'all passed'}</span> ${uA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div> <p class="ab-verdict-summary">${escapeHtml(contrast.unguided)}</p> `;
+    gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span> <span class="delta ${deltaTone}"><span class="glyph" aria-hidden="true">${deltaGlyph}</span>${deltaSign} ${deltaWord}</span> ${gA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div> <p class="ab-verdict-summary">${escapeHtml(contrast.guided)}</p> `;
+    rootEl?.querySelectorAll('.ab-score-a11y').forEach(btn => { btn.addEventListener('click', () => expandAndFocusA11yChecks(task, pair)); });
 }
-
-/**
- * Renders the grader checks table for the selected use case and agent.
- * @param {ShowcaseTask} task
- * @param {ShowcaseAgentPair} pair
- */
+/** @param {ShowcaseTask} task
+ * @param {ShowcaseAgentPair} pair */
 function renderChecks(task, pair) {
     const container = document.getElementById('ab-checks-content');
     if (!container) return;
-
     const totalChecks = pair.checks.length;
     const previewCount = 3;
     const canCollapse = totalChecks > previewCount;
     const collapsed = canCollapse && !checksExpanded;
     const a11yTotal = pair.checks.filter(c => c.isA11y).length || pair.guided.a11yTotal || 0;
-
     const rowsHtml = pair.checks.map(c => {
         const uBadge = c.unguidedPassed
             ? '<span class="ab-check-status pass"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>'
             : '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>';
         const gBadge = c.guidedPassed
-            ? `<span class="ab-check-status pass${c.flipped ? ' is-flipped' : ''}"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>`
-            : '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>';
-        const a11yTag = c.isA11y
-            ? `<span class="ab-a11y-tag">A11y · ${escapeHtml(c.a11yLabel || 'Accessibility')}</span>`
+            ? `<span class="ab-check-status pass${c.flipped ? ' is-flipped' : ''}"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>`: '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>'; const a11yTag = c.isA11y ?`<span class="ab-a11y-tag">A11y · ${escapeHtml(c.a11yLabel || 'Accessibility')}</span>`
             : '';
-
-        return `
-            <tr class="ab-check-row${c.flipped ? ' is-flipped' : ''}"${c.isA11y ? ' data-a11y="true"' : ''}>
-                <td class="ab-check-num">${c.index}</td>
-                <th scope="row" class="ab-check-msg">
-                    <span>${escapeHtml(cleanCheckMessage(c.message))}</span>
-                    ${a11yTag}
-                </th>
-                <td class="ab-check-cell" data-label="Without MWG">${uBadge}</td>
-                <td class="ab-check-cell" data-label="With MWG">${gBadge}</td>
-            </tr>`;
+        return ` <tr class="ab-check-row${c.flipped ? ' is-flipped' : ''}"${c.isA11y ? ' data-a11y="true"' : ''}> <td class="ab-check-num">${c.index}</td> <th scope="row" class="ab-check-msg"> <span>${escapeHtml(cleanCheckMessage(c.message))}</span> ${a11yTag} </th> <td class="ab-check-cell" data-label="Without MWG">${uBadge}</td> <td class="ab-check-cell" data-label="With MWG">${gBadge}</td> </tr>`;
     }).join('');
-
     const collapsedLabel = a11yTotal > 0
         ? `Show all ${totalChecks} checks (${a11yTotal} a11y)`
         : `Show all ${totalChecks} checks`;
     const toggleHtml = canCollapse
-        ? `<div class="ab-checks-toggle-bar">
-             <button type="button" id="ab-checks-toggle" class="ab-checks-toggle" aria-expanded="${checksExpanded}" aria-controls="ab-checks-table-wrap">
-               ${checksExpanded ? 'Show fewer checks' : collapsedLabel}
-             </button>
-           </div>`
+        ? `<div class="ab-checks-toggle-bar"> <button type="button" id="ab-checks-toggle" class="ab-checks-toggle" aria-expanded="${checksExpanded}" aria-controls="ab-checks-table-wrap"> ${checksExpanded ? 'Show fewer checks' : collapsedLabel} </button> </div>`
         : '';
-
-    container.innerHTML = `
-        <div id="ab-checks-table-wrap" class="ab-checks-table-wrap${collapsed ? ' is-collapsed' : ''}" tabindex="0" role="region" aria-label="Deterministic grader checks for ${escapeHtml(task.label)}">
-            <table class="ab-checks-table">
-                <caption class="visually-hidden">Playwright grader assertions comparing unguided and guided runs for ${escapeHtml(task.label)} on ${escapeHtml(pair.agentLabel)}</caption>
-                <thead>
-                    <tr>
-                        <th scope="col" class="ab-col-num">#</th>
-                        <th scope="col">Grader assertion</th>
-                        <th scope="col" class="ab-col-status">Without MWG</th>
-                        <th scope="col" class="ab-col-status">With MWG</th>
-                    </tr>
-                </thead>
-                <tbody>${rowsHtml}</tbody>
-            </table>
-        </div>
-        ${toggleHtml}
-    `;
-
+    container.innerHTML = ` <div id="ab-checks-table-wrap" class="ab-checks-table-wrap${collapsed ? ' is-collapsed' : ''}" tabindex="0" role="region" aria-label="Deterministic grader checks for ${escapeHtml(task.label)}"> <table class="ab-checks-table"> <caption class="visually-hidden">Playwright grader assertions comparing unguided and guided runs for ${escapeHtml(task.label)} on ${escapeHtml(pair.agentLabel)}</caption> <thead> <tr> <th scope="col" class="ab-col-num">#</th> <th scope="col">Grader assertion</th> <th scope="col" class="ab-col-status">Without MWG</th> <th scope="col" class="ab-col-status">With MWG</th> </tr> </thead> <tbody>${rowsHtml}</tbody> </table> </div> ${toggleHtml} `;
     const toggleBtn = document.getElementById('ab-checks-toggle');
-    toggleBtn?.addEventListener('click', () => {
-        checksExpanded = !checksExpanded;
-        renderChecks(task, pair);
-        document.getElementById('ab-checks-toggle')?.focus();
-    });
+    toggleBtn?.addEventListener('click', () => { checksExpanded = !checksExpanded; renderChecks(task, pair); document.getElementById('ab-checks-toggle')?.focus(); });
 }
-
 function announceSelection() {
     const liveEl = document.getElementById('hero-live');
     const sel = getCurrentSelection();

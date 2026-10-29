@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { A11Y_SUBCATEGORIES, classifyAccessibilityCheck, classifyScenarioCheck } from './a11y-classifier.js';
-
 test('classifyAccessibilityCheck maps dedicated accessibility guides and cross-cutting subcategories', () => {
     const cases: Array<[string, string, string, string]> = [
         ['accessibility', 'respect-os-text-scale', 'Document head opts into OS text scaling via meta text-scale element', 'motion_contrast_visual'],
@@ -45,7 +44,6 @@ test('classifyAccessibilityCheck maps dedicated accessibility guides and cross-c
         assert.strictEqual(res.subCategory, expected, `Expected ${expected} for ${guide}: ${msg}`);
     }
 });
-
 test('classifyAccessibilityCheck excludes known false-positive keyword collisions', () => {
     const fpCases: Array<[string, string, string]> = [
         ['js', 'model-partial-time-concepts', 'Helper variable is not globally accessible'],
@@ -65,7 +63,6 @@ test('classifyAccessibilityCheck excludes known false-positive keyword collision
         assert.strictEqual(res.subCategory, null);
     }
 });
-
 test('classifyScenarioCheck ignores synthetic early-failure placeholder checks', () => {
     assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', isEarlyFailure: true, testId: 'chk-1' }, 'accordion').isAccessibility, false);
     assert.strictEqual(classifyScenarioCheck({ message: 'Trigger button sets aria-expanded="true"', testId: '' }, 'accordion').isAccessibility, false);

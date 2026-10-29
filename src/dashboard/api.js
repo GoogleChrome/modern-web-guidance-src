@@ -9,13 +9,8 @@ import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 const manifestCache = new Map();
 /** @type {Set<string>} */
 const failedHydrationIds = new Set();
-
 export class ApiClient {
-    static clearCache() {
-        manifestCache.clear();
-        failedHydrationIds.clear();
-    }
-
+    static clearCache() { manifestCache.clear(); failedHydrationIds.clear(); }
     constructor() {
         const params = new URLSearchParams(window.location.search);
         const sourceParam = params.get('source');
@@ -143,14 +138,10 @@ export class ApiClient {
         }
     }
 
-    /**
-     * Loads and memoizes the suites manifest (`suites.gen.json`, or `/api/suites` locally).
-     * @returns {Promise<{ suites: import('./insights.js').ManifestSuite[] }>}
-     */
+    /** @returns {Promise<{ suites: import('./insights.js').ManifestSuite[] }>} */
     async getManifest() {
         const cached = manifestCache.get(this.source);
         if (cached) return cached;
-
         const promise = (async () => {
             const bust = `t=${Date.now()}`;
             if (this.source === 'local') {
@@ -171,12 +162,8 @@ export class ApiClient {
         promise.catch(() => manifestCache.delete(this.source));
         return promise;
     }
-
-    /**
-     * Computes headline insights from the suites manifest, hydrating missing `a11yStats` from `evals.json` when needed.
-     * @param {{ perAgentRecentN?: number, onUpdate?: (insights: import('./insights.js').HeadlineInsights) => void }} [options]
-     * @returns {Promise<import('./insights.js').HeadlineInsights>}
-     */
+    /** @param {{ perAgentRecentN?: number, onUpdate?: (insights: import('./insights.js').HeadlineInsights) => void }} [options]
+ * @returns {Promise<import('./insights.js').HeadlineInsights>} */
     async getHeadlineInsights(options = {}) {
         const { perAgentRecentN = 1, onUpdate } = options;
         const insightOptions = { perAgentRecentN };
@@ -190,9 +177,7 @@ export class ApiClient {
                     if (failedHydrationIds.has(`${this.source}:${id}`)) {
                         throw new Error(`Skipping previously failed hydration for ${id}`);
                     }
-                    try {
-                        return await this.getEvals(id);
-                    } catch (err) {
+                    try { return await this.getEvals(id); } catch (err) {
                         failedHydrationIds.add(`${this.source}:${id}`);
                         throw err;
                     }
@@ -220,12 +205,9 @@ export class ApiClient {
                     return fallback;
                 });
             if (!onUpdate) return hydrate;
-        } else if (onUpdate && insights.missingStats.length > 0) {
-            queueMicrotask(() => onUpdate(insights));
-        }
+        } else if (onUpdate && insights.missingStats.length > 0) { queueMicrotask(() => onUpdate(insights)); }
         return insights;
     }
-
     /** 
      * Fetches the evals.json payload for a specific root test ID.
      * @param {string} testId

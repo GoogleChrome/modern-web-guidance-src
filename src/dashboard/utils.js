@@ -1,13 +1,7 @@
 /// <reference path="./evals.d.ts" />
 import { classifyScenarioCheck } from './a11y-classifier.js';
-
 /** @type {Record<string, string>} */
-export const SERVING_DISPLAY_NAMES = {
-    skills: 'Skills',
-    skills_cli: 'Skills (CLI)',
-    mcp: 'MCP',
-};
-
+export const SERVING_DISPLAY_NAMES = { skills: 'Skills', skills_cli: 'Skills (CLI)', mcp: 'MCP', };
 /** @type {Record<string, string>} */
 export const AGENT_DISPLAY_NAMES = {
     claude_code: 'Claude Code',
@@ -42,33 +36,15 @@ function utcDateFromParts(y, mo, d, hh = '0', mi = '0', ss = '0', ms = '0') {
     if (Number.isNaN(date.getTime()) || date.getUTCMonth() !== M - 1 || date.getUTCDate() !== D) return null;
     return date;
 }
-
-/**
- * Dates that `parseSuiteDate` resolved from a date-only source (no time of day). Kept as an
- * explicit flag rather than inferred from the instant, because a genuine `T00:00:00Z` run is a
- * real instant (e.g. 5 PM the previous day in Los Angeles) and must not be shown as date-only.
- * @type {WeakSet<Date>}
- */
+/** @type {WeakSet<Date>} */
 const DATE_ONLY_SUITE_DATES = new WeakSet();
-
-/**
- * Parses a suite timestamp safely across timezones, preferring full timestamps embedded in
- * `testId` (`YYYY-MM-DD_HH-MM-SS`, UTC) when `timestamp` is missing, date-only, or midnight-only.
- *
- * Every zoneless value is treated as UTC (the harness clock), so a date-only `2026-10-09`
- * becomes `2026-10-09T00:00:00Z` with `dateOnly: true`. Use `formatSuiteDate()` /
- * `getSuiteDayKey()` to display these: they show real instants in the viewer's zone, but keep
- * date-only values on their UTC calendar day so viewers west of UTC don't see the previous day.
- *
- * @param {string | undefined | null} timestamp
+/** @param {string | undefined | null} timestamp
  * @param {string} [testId='']
- * @returns {{ date: Date, dateOnly: boolean } | null}
- */
+ * @returns {{ date: Date, dateOnly: boolean } | null} */
 export function parseSuiteDateInfo(timestamp, testId = '') {
     const rawTs = typeof timestamp === 'string' ? timestamp.trim() : '';
     const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(rawTs);
     const isMidnight = /T00:00:00(?:\.0+)?Z?$/i.test(rawTs);
-
     if ((!rawTs || isDateOnly || isMidnight) && testId) {
         const fullMatch = testId.match(TEST_ID_DATETIME_RE);
         if (fullMatch) {
@@ -79,23 +55,18 @@ export function parseSuiteDateInfo(timestamp, testId = '') {
             }
         }
     }
-
     if (rawTs) {
         const zoneless = rawTs.match(ZONELESS_TIMESTAMP_RE);
         if (zoneless) {
             const [, y, mo, d, hh, mi, ss, ms] = zoneless;
             const candidate = utcDateFromParts(y, mo, d, hh, mi, ss, ms);
-            // Only the bare `YYYY-MM-DD` shape lacks a time of day.
             if (candidate) return { date: candidate, dateOnly: hh === undefined };
         } else {
-            // Strings with an explicit `Z` or `±HH:MM` offset are unambiguous instants.
             const candidate = new Date(rawTs);
             if (!Number.isNaN(candidate.getTime())) return { date: candidate, dateOnly: false };
         }
     }
-
     if (testId) {
-        // Unparseable timestamp: fall back to whatever the testId encodes.
         const fullMatch = testId.match(TEST_ID_DATETIME_RE);
         const fromId = fullMatch ? utcDateFromParts(fullMatch[1], fullMatch[2], fullMatch[3], fullMatch[4], fullMatch[5], fullMatch[6]) : null;
         if (fromId) return { date: fromId, dateOnly: false };
@@ -107,58 +78,24 @@ export function parseSuiteDateInfo(timestamp, testId = '') {
     }
     return null;
 }
-
-/**
- * `parseSuiteDateInfo` returning just the `Date`. Date-only results are remembered (see
- * `isDateOnlySuiteDate`), so pass the returned object itself to `formatSuiteDate` /
- * `getSuiteDayKey`; a copy (`new Date(d)`) or an ISO round trip loses the flag. Use
- * `toSuiteDateString` to serialize without losing it.
- * @param {string | undefined | null} timestamp
+/** @param {string | undefined | null} timestamp
  * @param {string} [testId='']
- * @returns {Date | null}
- */
+ * @returns {Date | null} */
 export function parseSuiteDate(timestamp, testId = '') {
     const info = parseSuiteDateInfo(timestamp, testId);
     if (!info) return null;
     if (info.dateOnly) DATE_ONLY_SUITE_DATES.add(info.date);
     return info.date;
 }
-
-/**
- * True when `date` came from a date-only source via `parseSuiteDate` (it is anchored at UTC
- * midnight but has no real time of day).
- * @param {Date} date
- */
-export function isDateOnlySuiteDate(date) {
-    return DATE_ONLY_SUITE_DATES.has(date);
-}
-
-/**
- * Serializes a parsed suite date so that re-parsing it keeps date-only-ness: `YYYY-MM-DD` for
- * date-only values, a full ISO instant otherwise.
- * @param {Date} date
- */
-export function toSuiteDateString(date) {
-    return isDateOnlySuiteDate(date) ? date.toISOString().slice(0, 10) : date.toISOString();
-}
-
-/** Default `formatSuiteDate` style when called as `formatSuiteDate(dateLike, testId?)`. */
+/** @param {Date} date */
+export function isDateOnlySuiteDate(date) { return DATE_ONLY_SUITE_DATES.has(date); }
+/** @param {Date} date */
+export function toSuiteDateString(date) { return isDateOnlySuiteDate(date) ? date.toISOString().slice(0, 10) : date.toISOString(); }
 const DEFAULT_SUITE_DATE_OPTIONS = /** @type {Intl.DateTimeFormatOptions} */ ({ dateStyle: 'medium', timeStyle: 'short' });
-
-/**
- * Formats a suite date. Real instants are shown in the viewer's time zone; date-only
- * values are formatted in UTC so the calendar day never drifts (and no made-up time
- * of day is shown). Time-of-day options are dropped for date-only values.
- *
- * Accepts a `Date` from `parseSuiteDate` or a raw timestamp string (parsed here, with the
- * optional `testId` as the fallback source). The second argument is either the `testId`
- * (default "Oct 9, 2026, 7:00 AM" style) or explicit `Intl.DateTimeFormat` options.
- * Returns `'-'` when no date can be resolved.
- * @param {Date | string | null | undefined} dateLike
+/** @param {Date | string | null | undefined} dateLike
  * @param {string | Intl.DateTimeFormatOptions} [testIdOrOptions]
  * @param {string} [locale='en-US']
- * @returns {string}
- */
+ * @returns {string} */
 export function formatSuiteDate(dateLike, testIdOrOptions, locale = 'en-US') {
     const testId = typeof testIdOrOptions === 'string' ? testIdOrOptions : '';
     const options = typeof testIdOrOptions === 'object' && testIdOrOptions !== null ? testIdOrOptions : DEFAULT_SUITE_DATE_OPTIONS;
@@ -166,9 +103,7 @@ export function formatSuiteDate(dateLike, testIdOrOptions, locale = 'en-US') {
     let info = null;
     if (dateLike instanceof Date) {
         info = Number.isNaN(dateLike.getTime()) ? null : { date: dateLike, dateOnly: isDateOnlySuiteDate(dateLike) };
-    } else {
-        info = parseSuiteDateInfo(dateLike, testId);
-    }
+    } else { info = parseSuiteDateInfo(dateLike, testId); }
     if (!info) return '-';
     if (info.dateOnly) {
         const { hour: _h, minute: _m, second: _s, hour12: _h12, timeStyle: _ts, ...dateOnly } = options;
@@ -176,12 +111,7 @@ export function formatSuiteDate(dateLike, testIdOrOptions, locale = 'en-US') {
     }
     return new Intl.DateTimeFormat(locale, options).format(info.date);
 }
-
-/**
- * `YYYY-MM-DD` calendar-day bucket for a suite date, in the viewer's time zone (or UTC for
- * date-only values), matching what `formatSuiteDate` displays.
- * @param {Date} date
- */
+/** @param {Date} date */
 export function getSuiteDayKey(date) {
     const utc = isDateOnlySuiteDate(date);
     const y = utc ? date.getUTCFullYear() : date.getFullYear();
@@ -189,52 +119,22 @@ export function getSuiteDayKey(date) {
     const d = utc ? date.getUTCDate() : date.getDate();
     return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
-
-/**
- * Whether a `[popover]` element is showing. `:popover-open` is an invalid selector (and
- * throws) in browsers that rely on the popover polyfill, which sets a `:popover-open` class.
- * @param {HTMLElement} el
- */
+/** @param {HTMLElement} el */
 export function isPopoverOpen(el) {
-    try {
-        return el.matches(':popover-open');
-    } catch {
-        return el.classList.contains(':popover-open');
-    }
+    try { return el.matches(':popover-open'); } catch { return el.classList.contains(':popover-open'); }
 }
-
-/**
- * Shows or hides a declared `[popover]` (top layer), tolerating repeat calls, which would
- * otherwise throw `InvalidStateError`.
- * @param {HTMLElement} el
- * @param {boolean} open
- */
-export function setPopoverOpen(el, open) {
-    if (isPopoverOpen(el) === open || typeof el.showPopover !== 'function') return;
-    if (open) el.showPopover();
-    else el.hidePopover();
-}
-
+/** @param {HTMLElement} el
+ * @param {boolean} open */
+export function setPopoverOpen(el, open) { if (isPopoverOpen(el) === open || typeof el.showPopover !== 'function') return; if (open) el.showPopover(); else el.hidePopover(); }
 /** @param {string} [hostname] */
-export function isLocalDashboardHost(hostname = (typeof window !== 'undefined' ? window.location.hostname : '')) {
-    return hostname === 'localhost' || hostname === '127.0.0.1';
-}
-
+export function isLocalDashboardHost(hostname = (typeof window !== 'undefined' ? window.location.hostname : '')) { return hostname === 'localhost' || hostname === '127.0.0.1'; }
 /** @returns {ScrollBehavior} */
 export function getScrollBehavior() {
-    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        return 'auto';
-    }
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { return 'auto'; }
     return 'smooth';
 }
-
-/**
- * Whether `el`'s box is entirely visible: inside the viewport and not clipped by any scrolling
- * ancestor (e.g. a chart's `overflow-x: auto` wrapper). A box larger than the visible area on an
- * axis counts as visible on that axis when it covers it.
- * @param {Element} el
- * @param {number} [tolerance] px of slack for subpixel layout
- */
+/** @param {Element} el
+ * @param {number} [tolerance] px of slack for subpixel layout */
 export function isElementFullyVisible(el, tolerance = 1) {
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) return false;
@@ -246,31 +146,16 @@ export function isElementFullyVisible(el, tolerance = 1) {
         const cs = getComputedStyle(p);
         if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
         const c = p.getBoundingClientRect();
-        if (cs.overflowY !== 'visible') {
-            top = Math.max(top, c.top + p.clientTop);
-            bottom = Math.min(bottom, c.top + p.clientTop + p.clientHeight);
-        }
-        if (cs.overflowX !== 'visible') {
-            left = Math.max(left, c.left + p.clientLeft);
-            right = Math.min(right, c.left + p.clientLeft + p.clientWidth);
-        }
+        if (cs.overflowY !== 'visible') { top = Math.max(top, c.top + p.clientTop); bottom = Math.min(bottom, c.top + p.clientTop + p.clientHeight); }
+        if (cs.overflowX !== 'visible') { left = Math.max(left, c.left + p.clientLeft); right = Math.min(right, c.left + p.clientLeft + p.clientWidth); }
     }
     const fits = (/** @type {number} */ a0, /** @type {number} */ a1, /** @type {number} */ b0, /** @type {number} */ b1) =>
         (a0 >= b0 - tolerance && a1 <= b1 + tolerance) || (a0 <= b0 + tolerance && a1 >= b1 - tolerance);
     return fits(r.top, r.bottom, top, bottom) && fits(r.left, r.right, left, right);
 }
-
-/**
- * Keyboard focus on an SVG `<a>` (chart rows, timeline points): Chromium scrolls it into view
- * natively, but Firefox doesn't, for focus or for `scrollIntoView()` on the `<a>` itself. It does
- * scroll an SVG shape, so after focus this scrolls `scrollTarget` (a shape inside the link) into
- * view, vertically and horizontally through every scroll container. It runs a frame later and
- * only when `visibleTarget` still isn't fully visible, so it never fights Chromium's native focus
- * scrolling.
- * @param {Element} link the focusable SVG `<a>`
+/** @param {Element} link the focusable SVG `<a>`
  * @param {Element} scrollTarget a shape inside it that Firefox will scroll to
- * @param {Element} [visibleTarget] the box that must end up visible (defaults to scrollTarget)
- */
+ * @param {Element} [visibleTarget] the box that must end up visible (defaults to scrollTarget) */
 export function scrollSvgLinkIntoViewOnFocus(link, scrollTarget, visibleTarget = scrollTarget) {
     link.addEventListener('focus', () => {
         window.requestAnimationFrame(() => {
@@ -279,15 +164,10 @@ export function scrollSvgLinkIntoViewOnFocus(link, scrollTarget, visibleTarget =
         });
     });
 }
-
-/**
- * Calls `callback` once `el` is fully visible and its box has stopped moving (e.g. after a smooth
- * scroll), or never if that doesn't happen within `timeoutMs` or `isStillWanted()` turns false.
- * @param {Element} el
+/** @param {Element} el
  * @param {() => void} callback
  * @param {() => boolean} isStillWanted
- * @param {number} [timeoutMs]
- */
+ * @param {number} [timeoutMs] */
 export function whenElementSettlesInView(el, callback, isStillWanted, timeoutMs = 1500) {
     const start = performance.now();
     let last = '';
@@ -298,15 +178,11 @@ export function whenElementSettlesInView(el, callback, isStillWanted, timeoutMs 
         const key = `${Math.round(r.top)},${Math.round(r.left)}`;
         stableFrames = key === last ? stableFrames + 1 : 0;
         last = key;
-        if (stableFrames >= 2 && isElementFullyVisible(el)) {
-            callback();
-            return;
-        }
+        if (stableFrames >= 2 && isElementFullyVisible(el)) { callback(); return; }
         window.requestAnimationFrame(tick);
     };
     window.requestAnimationFrame(tick);
 }
-
 /** @param {number[]} values */
 export function median(values) {
     if (!values || values.length === 0) return 0;
@@ -314,7 +190,6 @@ export function median(values) {
     const mid = Math.floor(sorted.length / 2);
     return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
-
 /** @param {number | undefined | null} ms */
 export function formatDuration(ms) {
     if (!ms || ms <= 0) return '0s';
@@ -327,7 +202,6 @@ export function formatDuration(ms) {
     const remMins = mins % 60;
     return remMins > 0 ? `${hrs}h ${remMins}m` : `${hrs}h`;
 }
-
 /** @param {{ total?: number, cached?: number } | undefined | null} tokenUsage */
 export function getTokenBreakdown(tokenUsage) {
     const total = Math.max(0, tokenUsage?.total || 0);
@@ -336,19 +210,13 @@ export function getTokenBreakdown(tokenUsage) {
     const cachedPct = total > 0 ? Math.round((cached / total) * 100) : 0;
     return { total, cached, uncached, cachedPct };
 }
-
-/**
- * Extracts agent-only task duration in milliseconds (excluding fixed grader overhead).
- * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} run
- */
+/** Extracts agent-only task duration in milliseconds (excluding fixed grader overhead).
+ * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} run */
 export function getAgentRuntimeMs(run) {
     if (!run) return 0;
-    if (run.runtime && typeof run.runtime === 'object' && typeof run.runtime.agentRuntime === 'number' && run.runtime.agentRuntime > 0) {
-        return run.runtime.agentRuntime;
-    }
+    if (run.runtime && typeof run.runtime === 'object' && typeof run.runtime.agentRuntime === 'number' && run.runtime.agentRuntime > 0) { return run.runtime.agentRuntime; }
     return (typeof run.runtimeMs === 'number' && run.runtimeMs > 0) ? run.runtimeMs : 0;
 }
-
 /** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks */
 export function isEarlyFailureRun(checks) {
     return !!(checks && checks.some(c => c.isEarlyFailure));
@@ -372,12 +240,9 @@ export function getRunStats(checks) {
     const total = checks.length;
     return { rate: Math.round((passed / total) * 100), passed, total };
 }
-
-/**
- * @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
+/** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
  * @param {string} guideName
- * @param {string} [discipline='']
- */
+ * @param {string} [discipline=''] */
 export function getA11yRunStats(checks, guideName, discipline = '') {
     if (!checks || !checks.length) return { rate: 0, passed: 0, total: 0, checks: [] };
     const classified = checks
@@ -393,23 +258,18 @@ export function getA11yRunStats(checks, guideName, discipline = '') {
  * @returns {string}
  */
 export function getColor(percentage) {
-    if (!Number.isFinite(percentage)) {
-        return 'var(--color-on-surface-variant)';
-    }
+    if (!Number.isFinite(percentage)) { return 'var(--color-on-surface-variant)'; }
     const p = Math.max(0, Math.min(100, percentage));
-
     const RED = 'light-dark(oklch(45% 0.18 26), oklch(75% 0.16 26))';
     const YELLOW = 'light-dark(oklch(45% 0.13 74), oklch(82% 0.14 82))';
     const GREEN = 'light-dark(oklch(44% 0.13 145), oklch(78% 0.15 145))';
 
     if (p <= 30) return RED;
     if (p >= 90) return GREEN;
-
     if (p < 60) {
         const mix = Math.round(((p - 30) / 30) * 100);
         return `color-mix(in oklch, ${RED}, ${YELLOW} ${mix}%)`;
     }
-
     const mix = Math.round(((p - 60) / 30) * 100);
     return `color-mix(in oklch, ${YELLOW}, ${GREEN} ${mix}%)`;
 }
@@ -602,11 +462,7 @@ export function calculateChartData(results, optionsOrEligible = {}) {
             apps[scenario][failedKey] = true;
             apps[scenario][errRateKey] = Math.round((earlyFailureCount / runs.length) * 100);
         }
-
-        if (!onlyA11y || total > 0) {
-            apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0);
-        }
-
+        if (!onlyA11y || total > 0) { apps[scenario][rType].push(total > 0 ? (passed / total) * 100 : 0); }
         const validRuns = runs.filter(r => !isEarlyFailureRun(r.results));
         const totalTokens = validRuns.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).total, 0);
         const uncachedTokens = validRuns.reduce((acc, r) => acc + getTokenBreakdown(r.tokenUsage).uncached, 0);
@@ -614,10 +470,8 @@ export function calculateChartData(results, optionsOrEligible = {}) {
         const avgTokens = validRuns.length > 0 ? Math.round(totalTokens / validRuns.length) : 0;
         const avgUncached = validRuns.length > 0 ? Math.round(uncachedTokens / validRuns.length) : 0;
         const cachedPct = totalTokens > 0 ? Math.round((cachedTokens / totalTokens) * 100) : 0;
-        // Agent-only time, consistent with efficiencyStats (grader time is harness overhead).
         const totalRuntime = validRuns.reduce((acc, r) => acc + getAgentRuntimeMs(r), 0);
         const avgRuntime = validRuns.length > 0 ? Math.round(totalRuntime / validRuns.length) : 0;
-
         if (validRuns.length > 0) {
             apps[scenario][tokensKey].push(avgTokens);
             apps[scenario][uncachedKey].push(avgUncached);
@@ -628,11 +482,7 @@ export function calculateChartData(results, optionsOrEligible = {}) {
     
     const labels = Object.keys(apps)
         .filter(scenario => !onlyA11y || apps[scenario].a11y_total > 0)
-        .sort((a, b) => {
-            const taskA = taskNames[a] || a;
-            const taskB = taskNames[b] || b;
-            return taskA.localeCompare(taskB);
-        });
+        .sort((a, b) => { const taskA = taskNames[a] || a; const taskB = taskNames[b] || b; return taskA.localeCompare(taskB); });
 
     /**
      * @param {string} l
@@ -698,7 +548,6 @@ export function getAccessToken() {
 /** @type {Set<() => void>} */
 const authSuccessCallbacks = new Set();
 let authInitialized = false;
-
 /**
  * @param {(() => void) | undefined} [onAuthSuccess]
  */
@@ -815,22 +664,12 @@ export function $(query, context) {
   return /** @type {E} */ (result);
 }
 
-/**
- * Returns the colored decorative glyph badge for an agent family or agent string.
- * @param {string} agentName
- * @returns {string}
- */
+/** @param {string} agentName
+ * @returns {string} */
 export function getAgentBadge(agentName) {
     const name = (agentName || '').toLowerCase();
-    if (name.includes('gemini') || name.includes('jetski') || name.includes('antigravity')) {
-        return '<span class="agent-badge gemini" aria-hidden="true">✦</span>';
-    }
-    if (name.includes('codex') || name.includes('openai')) {
-        return '<span class="agent-badge openai" aria-hidden="true">❂</span>';
-    }
-    if (name.includes('claude')) {
-        return '<span class="agent-badge claude" aria-hidden="true">✱</span>';
-    }
+    if (name.includes('gemini') || name.includes('jetski') || name.includes('antigravity')) { return '<span class="agent-badge gemini" aria-hidden="true">✦</span>'; }
+    if (name.includes('codex') || name.includes('openai')) { return '<span class="agent-badge openai" aria-hidden="true">❂</span>'; }
+    if (name.includes('claude')) { return '<span class="agent-badge claude" aria-hidden="true">✱</span>'; }
     return '';
 }
-

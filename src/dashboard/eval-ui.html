@@ -4,13 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="text-scale" content="scale">
-    <!-- The runner is dark-only; declaring it up front keeps native controls,
-         scrollbars, and the initial canvas dark instead of flashing light. -->
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#0d0f17">
     <title>Modern Web Guidance Eval Runner</title>
     <link rel="stylesheet" href="eval-ui.css">
-    <!-- Font files come from a second origin, so warm up both connections. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
@@ -50,8 +47,6 @@
                             <label for="workerCount">Worker Count</label>
                             <input type="number" id="workerCount" placeholder="Auto" min="1">
                         </div>
-                        <!-- Native radios give the agent choice real state and arrow-key
-                             navigation; the fieldset/legend names the group. -->
                         <fieldset class="input-group">
                             <legend>Agent</legend>
                             <div class="btn-toggle-group" id="agent-group">
@@ -68,7 +63,6 @@
                         <fieldset class="input-group" style="flex: 1;">
                             <legend>Skills to Enable</legend>
                             <div class="skills-container" id="skills-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem;">
-                                <!-- Skill switches will be injected here -->
                             </div>
                         </fieldset>
                     </div>

@@ -1,10 +1,5 @@
-/**
- * Deterministic classifier for cross-cutting accessibility evaluation checks.
- *
- * @typedef {'focus_inert' | 'motion_contrast_visual' | 'aria_roles_live' | 'labels_forms' | 'keyboard'} A11ySubCategory
- * @typedef {{ id: A11ySubCategory, label: string, shortLabel: string, description: string }} A11ySubCategoryMeta
- */
-
+/** @typedef {'focus_inert' | 'motion_contrast_visual' | 'aria_roles_live' | 'labels_forms' | 'keyboard'} A11ySubCategory
+ * @typedef {{ id: A11ySubCategory, label: string, shortLabel: string, description: string }} A11ySubCategoryMeta */
 /** @type {A11ySubCategoryMeta[]} */
 export const A11Y_SUBCATEGORIES = [
     {
@@ -38,11 +33,9 @@ export const A11Y_SUBCATEGORIES = [
         description: 'Escape dismissal, arrow-key operability, semantic <button> / <button type="submit">, and explicit non-swipe back buttons'
     }
 ];
-
 export const A11Y_SUBCATEGORY_MAP = /** @type {Record<A11ySubCategory, A11ySubCategoryMeta>} */ (
     Object.fromEntries(A11Y_SUBCATEGORIES.map(item => [item.id, item]))
 );
-
 const FALSE_POSITIVE_SUBSTRINGS = [
     'globally accessible',
     'make the named timelines accessible',
@@ -64,31 +57,21 @@ const FALSE_POSITIVE_SUBSTRINGS = [
     'standalone component examples must document or assume a complete heading hierarchy outline',
     'continuous keyframe animations must be wrapped inside a reduced-motion media query'
 ];
-
 /** @param {string | undefined | null} msg */
-export function normalizeCheckMessage(msg) {
-    return (msg || '').replace(/\s+/g, ' ').trim();
-}
-
-/**
- * Classifies a single evaluation check into one of the 5 accessibility subcategories.
- * @param {string | undefined | null} discipline
+export function normalizeCheckMessage(msg) { return (msg || '').replace(/\s+/g, ' ').trim(); }
+/** @param {string | undefined | null} discipline
  * @param {string | undefined | null} guideName
  * @param {string | undefined | null} message
- * @returns {{ isAccessibility: boolean, subCategory: A11ySubCategory | null }}
- */
+ * @returns {{ isAccessibility: boolean, subCategory: A11ySubCategory | null }} */
 export function classifyAccessibilityCheck(discipline, guideName, message) {
     const gName = (guideName || '').toLowerCase();
     const disc = (discipline || '').toLowerCase();
     const msg = normalizeCheckMessage(message);
     if (!msg) return { isAccessibility: false, subCategory: null };
     const ml = msg.toLowerCase();
-
     for (const fp of FALSE_POSITIVE_SUBSTRINGS) {
         if (ml.includes(fp)) return { isAccessibility: false, subCategory: null };
     }
-
-    // Motion, contrast, non-color state indicators (WCAG 1.4.1), OS text scaling & reflow, & target size
     if (
         gName === 'respect-os-text-scale' ||
         gName.endsWith('/respect-os-text-scale') ||
@@ -113,8 +96,6 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     ) {
         return { isAccessibility: true, subCategory: 'motion_contrast_visual' };
     }
-
-    // Keyboard dismissal, arrow-key operability, semantic button operability, and non-gesture controls
     if (
         ml.includes('escape key') ||
         ml.includes('esc key') ||
@@ -133,16 +114,12 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     ) {
         return { isAccessibility: true, subCategory: 'keyboard' };
     }
-
-    // Priority disambiguations before aria_roles_live
     if (ml.includes('keyboard-focusable without assigning role="application"')) {
         return { isAccessibility: true, subCategory: 'focus_inert' };
     }
     if (ml.includes('programmatically associated with a visible <label>') || ml.includes('programmatically associated label')) {
         return { isAccessibility: true, subCategory: 'labels_forms' };
     }
-
-    // ARIA attributes, roles, live regions, accessible names, landmarks, heading hierarchy, CSS alt text, and page lang
     if (
         /\baria-[a-z]+\b/.test(ml) ||
         ml.includes('aria attributes') ||
@@ -168,8 +145,6 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     ) {
         return { isAccessibility: true, subCategory: 'aria_roles_live' };
     }
-
-    // Focus management, focus indicators, tab order, and inertness
     if (
         /\bfocus(?:ed|able|ing|es)?\b|:focus-visible/.test(ml) ||
         ml.includes('avoid tab order when hidden') ||
@@ -181,8 +156,6 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     ) {
         return { isAccessibility: true, subCategory: 'focus_inert' };
     }
-
-    // Form labels, fieldset/legend grouping, and accessible visually hidden input patterns
     if (
         ml.includes('visually hidden inputs in the fallback must use the canonical accessible utility pattern') ||
         ml.includes('associated <label>') ||
@@ -199,8 +172,6 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     ) {
         return { isAccessibility: true, subCategory: 'labels_forms' };
     }
-
-    // Fallback for dedicated guides under guides/accessibility/
     if (
         disc === 'accessibility' ||
         gName === 'accessible-error-announcement' ||
@@ -212,16 +183,11 @@ export function classifyAccessibilityCheck(discipline, guideName, message) {
     ) {
         return { isAccessibility: true, subCategory: 'aria_roles_live' };
     }
-
     return { isAccessibility: false, subCategory: null };
 }
-
-/**
- * Convenience helper for ScenarioCheck objects from evals.json, excluding synthetic early-failure placeholders.
- * @param {{ message?: string, testId?: string, id?: string, isEarlyFailure?: boolean, failureReason?: string } | null | undefined} check
+/** @param {{ message?: string, testId?: string, id?: string, isEarlyFailure?: boolean, failureReason?: string } | null | undefined} check
  * @param {string | undefined | null} guideName
- * @param {string | undefined | null} [discipline]
- */
+ * @param {string | undefined | null} [discipline] */
 export function classifyScenarioCheck(check, guideName, discipline = '') {
     if (
         !check ||

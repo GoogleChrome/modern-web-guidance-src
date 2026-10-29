@@ -76,14 +76,11 @@ function renderCard(guide) {
   return h('article', { class: 'card', id: guide.id, 'data-src': iframeSrc },
     h('div', { class: 'card-header', 'data-action': 'expand' },
       h('div', { class: 'card-header-top' },
-        // The id doubles as the keyboard-operable expand toggle for the clamped description (it used to
-        // be a span with a title tooltip, and only the pointer-only header click expanded the card).
         h('button', { type: 'button', class: 'guide-id', 'data-action': 'expand', 'aria-expanded': 'false', 'aria-label': `${guide.id}: ${guide.title}` }, guide.id),
         unsetDemo && h('div', { class: 'toggle-group', role: 'group', 'aria-label': 'Demo variant' },
           h('button', { type: 'button', class: 'toggle-btn active', 'data-action': 'variant', 'data-src': src, 'aria-pressed': 'true' }, 'demo'),
           h('button', { type: 'button', class: 'toggle-btn unset', 'data-action': 'variant', 'data-src': `../${unsetDemo.path}`, 'aria-pressed': 'false' }, 'unset'),
         ),
-        // Icon-only link: visually hidden text names it (no title tooltip, MWG html).
         h('a', { class: 'open-link', href: src, target: '_blank', rel: 'noopener' },
           openInNewIcon.cloneNode(true),
           h('span', { class: 'visually-hidden' }, `Open ${guide.id} in a new tab`),

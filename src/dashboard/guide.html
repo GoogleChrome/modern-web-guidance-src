@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Opt into OS text scaling; all type is rem-based and there is no root font-size. -->
   <meta name="text-scale" content="scale">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="light dark">
@@ -11,86 +10,21 @@
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Modern Web Guidance evaluation trend for a single guide: guided vs. unguided pass rate over time by agent and model.">
   <title>Guide Performance Trend</title>
-  <!-- Default remote source fetches suites from GCS with an Authorization header (CORS, no credentials). -->
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
   <style>
-    .guide-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 25px;
-    }
-    .guide-header h1 {
-      margin: 0;
-      font-size: clamp(1.5rem, 1rem + 2vw, 2.5rem);
-      overflow-wrap: anywhere;
-      text-wrap: balance;
-    }
-    .guide-header-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-    }
-    .guide-header-actions .secondary-btn {
-      margin-bottom: 0;
-      text-decoration: none;
-    }
-    .guide-nav-controls {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
-      position: relative;
-    }
-    .guide-nav-controls .secondary-btn {
-      margin-bottom: 0;
-      padding: 6px 12px;
-      font-size: var(--font-lg);
-    }
-    .guide-search-wrap {
-      position: relative;
-      inline-size: min(280px, 100%);
-    }
-    .guide-search {
-      inline-size: 100%;
-      padding: 6px 12px;
-      border-radius: 4px;
-      /* Field borders need 3:1 non-text contrast; --border-color (outline-variant) is ~1.2:1. */
-      border: 1px solid var(--color-field-border, var(--color-outline));
-      background: var(--color-surface-container-lowest);
-      color: var(--text-primary);
-      font: inherit;
-      font-size: var(--font-lg);
-      anchor-name: --guide-search;
-    }
-    .guide-subtitle {
-      font-size: var(--font-lg);
-      color: var(--text-secondary);
-      margin-top: 8px;
-    }
-    .timeline-filter-controls {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-      font-size: var(--font-md);
-      color: var(--text-primary);
-    }
-    .timeline-filter-controls input[type="number"] {
-      inline-size: 60px;
-      padding: 4px 8px;
-      border: 1px solid var(--color-field-border, var(--color-outline));
-      border-radius: 4px;
-      background: var(--color-surface-container-lowest);
-      color: var(--text-primary);
-      font: inherit;
-    }
+    .guide-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; }
+    .guide-header h1 { margin: 0; font-size: clamp(1.5rem, 1rem + 2vw, 2.5rem); overflow-wrap: anywhere; text-wrap: balance; }
+    .guide-header-actions { display: flex; gap: 12px; justify-content: flex-end; }
+    .guide-header-actions .secondary-btn { margin-bottom: 0; text-decoration: none; }
+    .guide-nav-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; position: relative; }
+    .guide-nav-controls .secondary-btn { margin-bottom: 0; padding: 6px 12px; font-size: var(--font-lg); }
+    .guide-search-wrap { position: relative; inline-size: min(280px, 100%); }
+    .guide-search { inline-size: 100%; padding: 6px 12px; border-radius: 4px; /* Field borders need 3:1 non-text contrast; --border-color (outline-variant) is ~1.2:1. */ border: 1px solid var(--color-field-border, var(--color-outline)); background: var(--color-surface-container-lowest); color: var(--text-primary); font: inherit; font-size: var(--font-lg); anchor-name: --guide-search; }
+    .guide-subtitle { font-size: var(--font-lg); color: var(--text-secondary); margin-top: 8px; }
+    .timeline-filter-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; font-size: var(--font-md); color: var(--text-primary); }
+    .timeline-filter-controls input[type="number"] { inline-size: 60px; padding: 4px 8px; border: 1px solid var(--color-field-border, var(--color-outline)); border-radius: 4px; background: var(--color-surface-container-lowest); color: var(--text-primary); font: inherit; }
     /* popover="auto" listbox: top layer instead of z-index, anchored under the search input.
        Explicit anchor name + anchor() insets (not position-area) so the polyfill can place it. */
     .autocomplete-list[popover] {
@@ -122,136 +56,44 @@
       background: var(--hover-bg);
       color: var(--color-primary);
     }
-    #graphs-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 24px;
-      margin-top: 20px;
-    }
-    #graphs-grid .stat-card {
-      min-inline-size: 0;
-      max-inline-size: 100%;
-    }
-    #tooltip-content {
-      padding: 8px 12px;
-      font-size: var(--font-md);
-    }
-    .guide-stat-card {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      padding: 20px;
-    }
-    .guide-card-title {
-      margin: 0;
-      font-family: var(--font-sans);
-      font-weight: 600;
-      font-size: 1rem;
-      color: var(--text-primary);
-    }
-    .guide-card-title-on {
-      font-weight: normal;
-      color: var(--text-secondary);
-    }
-    .guide-card-subtitle {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin-top: 4px;
-    }
-    .guide-chart-wrapper {
-      position: relative;
-      overflow-x: auto;
-      width: 100%;
-    }
+    #graphs-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 20px; }
+    #graphs-grid .stat-card { min-inline-size: 0; max-inline-size: 100%; }
+    #tooltip-content { padding: 8px 12px; font-size: var(--font-md); }
+    .guide-stat-card { display: flex; flex-direction: column; gap: 15px; padding: 20px; }
+    .guide-card-title { margin: 0; font-family: var(--font-sans); font-weight: 600; font-size: 1rem; color: var(--text-primary); }
+    .guide-card-title-on { font-weight: normal; color: var(--text-secondary); }
+    .guide-card-subtitle { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+    .guide-chart-wrapper { position: relative; overflow-x: auto; width: 100%; }
     /* HTML stand-in anchor for the active SVG point (guide.js): SVG elements can't be CSS anchors. */
-    .timeline-anchor {
-      position: absolute;
-      pointer-events: none;
-      anchor-name: --timeline-point;
-    }
+    .timeline-anchor { position: absolute; pointer-events: none; anchor-name: --timeline-point; }
     /* MWG interest-triggered-tooltips: beside the point's marker (anchor() insets, not position-area,
        which the anchor polyfill can't handle), vertically centered on it; flipping to the other
        side, then below/above, when it would overflow. Gated so that, without native anchor
        positioning, the measured fallback in guide.js is the only thing placing it. */
     @supports (anchor-name: --a) {
-      .tooltip-container[popover] {
-        position-anchor: --timeline-point;
-        left: calc(anchor(right) + 10px);
-        align-self: anchor-center;
-        position-try-fallbacks: flip-inline, --timeline-below, --timeline-above;
-        /* Hidden while its point is scrolled out of view (page or the chart's overflow wrapper). */
-        position-visibility: anchors-visible;
-      }
-      @position-try --timeline-below {
-        left: auto;
-        top: calc(anchor(bottom) + 10px);
-        align-self: normal;
-        justify-self: anchor-center;
-      }
-      @position-try --timeline-above {
-        left: auto;
-        bottom: calc(anchor(top) + 10px);
-        align-self: normal;
-        justify-self: anchor-center;
-      }
+      .tooltip-container[popover] { position-anchor: --timeline-point; left: calc(anchor(right) + 10px); align-self: anchor-center; position-try-fallbacks: flip-inline, --timeline-below, --timeline-above; /* Hidden while its point is scrolled out of view (page or the chart's overflow wrapper). */ position-visibility: anchors-visible; }
+      @position-try --timeline-below { left: auto; top: calc(anchor(bottom) + 10px); align-self: normal; justify-self: anchor-center; }
+      @position-try --timeline-above { left: auto; bottom: calc(anchor(top) + 10px); align-self: normal; justify-self: anchor-center; }
     }
-    .timeline-point {
-      cursor: pointer;
-    }
-    .timeline-point:focus-visible {
-      outline: 2px solid var(--color-primary);
-      outline-offset: 2px;
-    }
+    .timeline-point { cursor: pointer; }
+    .timeline-point:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
     .guide-tooltip-title {
       font-weight: bold;
       font-size: 0.9rem;
       color: var(--text-primary);
       word-break: break-all;
     }
-    .guide-tooltip-date {
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-      font-size: 0.75rem;
-    }
-    .guide-tooltip-rows {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .guide-tooltip-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .guide-tooltip-uplift-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      border-top: 1px solid var(--border-color);
-      padding-top: 4px;
-      margin-top: 4px;
-      font-weight: bold;
-    }
-    .guide-tooltip-guided {
-      font-weight: 600;
-      color: var(--color-primary);
-    }
-    .guide-tooltip-unguided {
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
-    .guide-tooltip-uplift.positive {
-      color: var(--color-accent-success);
-    }
-    .guide-tooltip-uplift.negative {
-      color: var(--color-accent-failure);
-    }
+    .guide-tooltip-date { color: var(--text-secondary); margin-bottom: 8px; font-size: 0.75rem; }
+    .guide-tooltip-rows { display: flex; flex-direction: column; gap: 4px; }
+    .guide-tooltip-row { display: flex; justify-content: space-between; gap: 12px; }
+    .guide-tooltip-uplift-row { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 4px; margin-top: 4px; font-weight: bold; }
+    .guide-tooltip-guided { font-weight: 600; color: var(--color-primary); }
+    .guide-tooltip-unguided { font-weight: 600; color: var(--text-secondary); }
+    .guide-tooltip-uplift.positive { color: var(--color-accent-success); }
+    .guide-tooltip-uplift.negative { color: var(--color-accent-failure); }
     @media (pointer: coarse) {
       .guide-search,
-      .timeline-filter-controls input[type="number"] {
-        min-block-size: 44px;
-        font-size: max(1rem, 1em);
-      }
+      .timeline-filter-controls input[type="number"] { min-block-size: 44px; font-size: max(1rem, 1em); }
     }
   </style>
 </head>
@@ -261,11 +103,9 @@
     <header class="guide-header">
       <div>
         <h1>Guide: <span id="guide-name-header">...</span></h1>
-
         <nav class="guide-nav-controls" aria-label="Guide navigation">
           <button id="prev-guide-btn" class="secondary-btn" type="button" aria-label="Previous guide"><span aria-hidden="true">←</span></button>
           <button id="next-guide-btn" class="secondary-btn" type="button" aria-label="Next guide"><span aria-hidden="true">→</span></button>
-
           <div class="guide-search-wrap">
             <label for="guide-search" class="visually-hidden">Search guides</label>
             <input type="text" id="guide-search" class="guide-search" placeholder="Search guides..." autocomplete="off"
@@ -299,7 +139,6 @@
 
     <main id="main-content" tabindex="-1">
       <div id="graphs-grid">
-        <!-- Graph cards injected by JS -->
       </div>
 
       <div id="empty-state" class="empty-state" hidden>
@@ -308,17 +147,12 @@
     </main>
   </div>
 
-  <!-- Shared timeline preview (MWG interest-triggered-tooltips): each point is an SVG
-       <a interestfor="tooltip-container">, so hover/focus/long-press, hover persistence, Escape and
-       light dismiss come from popover="hint" + interestfor. guide.js fills it on `interest`. -->
   <div id="tooltip-container" class="tooltip-container" popover="hint" role="tooltip">
     <div id="tooltip-header"></div>
     <div id="tooltip-content"></div>
   </div>
 
-  <!-- defer keeps document order, so window.__featuresMapping is set before the guide.js module runs. -->
   <script src="features-mapping.gen.js" defer></script>
-
   <script type="module">
     // Conditional polyfills for popover (#autocomplete-list, #tooltip-container), CSS anchor
     // positioning, and interestfor (timeline points), only loaded where the native feature is

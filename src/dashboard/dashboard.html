@@ -4,16 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Opt into OS text scaling; every size in dashboard.css is rem-based (MWG respect-os-text-scale). -->
   <meta name="text-scale" content="scale">
-  <!-- Baseline referrer policy so no full URL (testId, query) leaks to third-party hosts. -->
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Evaluation Suite Results for Modern Web Guidance: Inspect per-task guided vs. unguided uplift, accessibility subscores, completion time, and token usage.">
   <title>Suite Results</title>
-  <!-- Remote data (and the OAuth-authenticated CORS fetch) comes from GCS; warm up the TLS handshake early. -->
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <script src="diff.min.js" defer fetchpriority="low"></script>
@@ -43,8 +40,6 @@
     </header>
 
     <main id="main-content" tabindex="-1">
-      <!-- aria-busy reserves the loaded height (dashboard.css) so the guide list below doesn't jump when
-           the data arrives; dashboard.js clears it, and hides the section only if the suite has no results. -->
       <section id="chart-section" class="chart-container suite-chart-section" aria-labelledby="suite-summary-heading" aria-busy="true">
         <h2 id="suite-summary-heading" class="visually-hidden">Suite summary</h2>
         <div id="summary-side-panel" class="narrative-summary-grid"></div>
@@ -101,7 +96,6 @@
     </footer>
   </div>
 
-  <!-- Hint popovers (interestfor + popover="hint"); keep the text in the element, never in attributes -->
   <div id="dash-tooltip-a11y" popover="hint" class="hint-popover">
     <strong>Cross-cutting accessibility subscore</strong><br>
     Aggregates the deterministic grader assertions that test accessibility requirements across both dedicated <code>accessibility/</code> guides and UI, CSS, and HTML component guides. Each check is classified into one of six dimensions: Focus &amp; <code>inert</code> management; Motion, contrast &amp; visual; ARIA, roles &amp; live regions; Form labels &amp; grouping; Keyboard &amp; non-gesture operability; and checks from dedicated <code>accessibility/</code> guides. Graded-check counts differ between modes when a run fails before grading (counted as one failed check).
@@ -110,16 +104,9 @@
     <strong>Uncached vs. total token accounting</strong><br>
     <code>Uncached tokens = total − cached</code> (fresh input + output + thinking tokens). Multi-turn agents re-read cached prompt prefixes on every tool turn (roughly 85–96% cached for Claude Code and Codex CLI, ~20% for Antigravity CLI), so both uncached tokens and totals with cache share are shown.
   </div>
-  <!-- Task badge hints are rendered per badge by dashboard.js (unique id + anchor name per pair). -->
-  <!-- Suite chart tooltip (MWG interest-triggered-tooltips): each chart row is an SVG
-       <a href="#guide-…" interestfor="dumbbell-tooltip">, so hover/focus, hover persistence, Escape and
-       light dismiss come from popover="hint" + interestfor. dumbbell-chart.js fills it on `interest` and
-       moves an HTML stand-in anchor over the row (SVG can't be a CSS anchor); see dumbbell-chart.js. -->
   <div id="dumbbell-tooltip" popover="hint" class="chart-tooltip" role="tooltip"></div>
-
   <dialog id="modal" aria-labelledby="modal-title" closedby="any">
     <div class="modal-content">
-      <!-- Declarative close (MWG dialog guide): method="dialog" closes without script. -->
       <form method="dialog" class="close-modal-form">
         <button class="close-modal" aria-label="Close modal">&times;</button>
       </form>
@@ -130,7 +117,6 @@
     </div>
   </dialog>
 
-  <!-- defer keeps document order, so window.__featuresMapping is set before the dashboard.js module runs. -->
   <script src="features-mapping.gen.js" defer></script>
 
   <script type="module">

@@ -1,7 +1,5 @@
 import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
 import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
-
-/** Per-attempt agent timeout enforced by the harness (src/harness/run_suite.ts). */
 const TIMEOUT_MS = 600000;
 
 /**
@@ -17,20 +15,15 @@ const TIMEOUT_MS = 600000;
  * @property {Record<string, GuideSummary>} [tasks]
  * @property {string} [taskName]
  */
-
-/**
- * @typedef {Object} SubCategoryA11yStats
+/** @typedef {Object} SubCategoryA11yStats
  * @property {number} guidedPassed
  * @property {number} guidedTotal
  * @property {number} guidedRate
  * @property {number} unguidedPassed
  * @property {number} unguidedTotal
  * @property {number} unguidedRate
- * @property {number} uplift
- */
-
-/**
- * @typedef {Object} SuiteA11yStats
+ * @property {number} uplift */
+/** @typedef {Object} SuiteA11yStats
  * @property {number} guidedPassed
  * @property {number} guidedTotal
  * @property {number} guidedRate
@@ -39,9 +32,7 @@ const TIMEOUT_MS = 600000;
  * @property {number} unguidedRate
  * @property {number} uplift
  * @property {number} guideCount
- * @property {Record<import('./a11y-classifier.js').A11ySubCategory, SubCategoryA11yStats>} bySubCategory
- */
-
+ * @property {Record<import('./a11y-classifier.js').A11ySubCategory, SubCategoryA11yStats>} bySubCategory */
 /**
  * @typedef {Object} SuiteEfficiencyStats
  * @property {{
@@ -129,7 +120,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     let unguidedEarlyFailures = 0;
     let unguidedLeaks = 0;
 
-    // Cross-cutting accessibility counters
     let a11yGuidedPassed = 0;
     let a11yGuidedTotal = 0;
     let a11yUnguidedPassed = 0;
@@ -143,15 +133,12 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             unguided: { passed: 0, total: 0 }
         };
     });
-
-    // Efficiency tracking
     /** @type {number[]} */
     const guidedRuntimes = [];
     /** @type {number[]} */
     const unguidedRuntimes = [];
     let guidedTimeouts = 0;
     let unguidedTimeouts = 0;
-
     /** @type {number[]} */
     const guidedUncachedTokens = [];
     /** @type {number[]} */
@@ -164,19 +151,14 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     let guidedCachedTokenSum = 0;
     let unguidedTotalTokenSum = 0;
     let unguidedCachedTokenSum = 0;
-
     /** @type {Record<string, { guidedMs: number[], unguidedMs: number[], guidedUncached: number[], unguidedUncached: number[] }>} */
     const pairedTaskEfficiency = {};
-
     const distinctScenarios = new Set();
     /** @type {Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>} */
     const suiteGuides = {};
     /** @type {Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>} */
     const suiteGuideA11y = {};
-    /**
-     * Per-task accessibility check totals for multi-target guides.
-     * @type {Record<string, Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>>}
-     */
+    /** @type {Record<string, Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>>} */
     const suiteGuideTaskA11y = {};
     /**
      * Per-task totals, so multi-target guides stay distinguishable after summing to guide level.
@@ -236,15 +218,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
             if (isEligibleScenario) {
                 const s = getRunStats(run.results);
-
-                if (isGuided) {
-                    guidedPassed += s.passed;
-                    guidedTotal += s.total;
-                } else if (isUnguided) {
-                    unguidedPassed += s.passed;
-                    unguidedTotal += s.total;
-                }
-
+                if (isGuided) { guidedPassed += s.passed; guidedTotal += s.total; } else if (isUnguided) { unguidedPassed += s.passed; unguidedTotal += s.total; }
                 if (parsedKey && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided')) {
                     const runType = /** @type {'guided' | 'unguided'} */ (parsedKey.runType);
                     const { guide, task } = parsedKey;
@@ -252,12 +226,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
                     suiteGuides[guide][runType].total += s.total;
 
                     const taskStats = task && suiteGuideTasks[guide][task];
-                    if (taskStats) {
-                        taskStats[runType].passed += s.passed;
-                        taskStats[runType].total += s.total;
-                    }
-
-                    // Accessibility check classification
+                    if (taskStats) { taskStats[runType].passed += s.passed; taskStats[runType].total += s.total; }
                     (run.results || []).forEach(check => {
                         const cls = classifyScenarioCheck(check, guide, run.discipline);
                         if (cls.isAccessibility && cls.subCategory) {
@@ -270,7 +239,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
                             }
                             suiteGuideA11y[guide][runType].total += 1;
                             if (check.passed) suiteGuideA11y[guide][runType].passed += 1;
-
                             if (task) {
                                 if (!suiteGuideTaskA11y[guide]) suiteGuideTaskA11y[guide] = {};
                                 if (!suiteGuideTaskA11y[guide][task]) {
@@ -282,19 +250,9 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
                                 suiteGuideTaskA11y[guide][task][runType].total += 1;
                                 if (check.passed) suiteGuideTaskA11y[guide][task][runType].passed += 1;
                             }
-
-                            if (runType === 'guided') {
-                                a11yGuidedTotal += 1;
-                                if (check.passed) a11yGuidedPassed += 1;
-                            } else {
-                                a11yUnguidedTotal += 1;
-                                if (check.passed) a11yUnguidedPassed += 1;
-                            }
+                            if (runType === 'guided') { a11yGuidedTotal += 1; if (check.passed) a11yGuidedPassed += 1; } else { a11yUnguidedTotal += 1; if (check.passed) a11yUnguidedPassed += 1; }
                             const bucket = subCatTallies[cls.subCategory];
-                            if (bucket) {
-                                bucket[runType].total += 1;
-                                if (check.passed) bucket[runType].passed += 1;
-                            }
+                            if (bucket) { bucket[runType].total += 1; if (check.passed) bucket[runType].passed += 1; }
                         }
                     });
                 }
@@ -303,29 +261,16 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             if (parsedKey && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided')) {
                 const runType = /** @type {'guided' | 'unguided'} */ (parsedKey.runType);
                 const { guide, task } = parsedKey;
-
-                // Agent-only runtime & token tracking (exclude crashed/infra-errored runs from medians/means,
-                // while counting per-attempt harness timeouts even when they surface as early failures).
                 const runtimeMs = getAgentRuntimeMs(run);
                 const earlyFailed = isEarlyFailureRun(run.results);
                 const timedOut = runtimeMs >= TIMEOUT_MS ||
                     (earlyFailed && (run.results || []).some(c => /timeout/i.test(c.message || '')));
-                if (timedOut) {
-                    if (runType === 'guided') guidedTimeouts += 1;
-                    else unguidedTimeouts += 1;
-                }
-
+                if (timedOut) { if (runType === 'guided') guidedTimeouts += 1; else unguidedTimeouts += 1; }
                 if (isEligibleScenario && !earlyFailed) {
                     const pairKey = `${task}|||${guide}`;
                     const pairBucket = pairedTaskEfficiency[pairKey];
                     if (runtimeMs > 0) {
-                        if (runType === 'guided') {
-                            guidedRuntimes.push(runtimeMs);
-                            if (pairBucket) pairBucket.guidedMs.push(runtimeMs);
-                        } else {
-                            unguidedRuntimes.push(runtimeMs);
-                            if (pairBucket) pairBucket.unguidedMs.push(runtimeMs);
-                        }
+                        if (runType === 'guided') { guidedRuntimes.push(runtimeMs); if (pairBucket) pairBucket.guidedMs.push(runtimeMs); } else { unguidedRuntimes.push(runtimeMs); if (pairBucket) pairBucket.unguidedMs.push(runtimeMs); }
                     }
 
                     const tb = getTokenBreakdown(run.tokenUsage);
@@ -398,8 +343,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         });
         guidesFormatted[guide] = { ...base, tasks };
     });
-
-    // Build a11yStats
     const a11yGuidedRate = a11yGuidedTotal > 0 ? Math.round((a11yGuidedPassed / a11yGuidedTotal) * 100) : 0;
     const a11yUnguidedRate = a11yUnguidedTotal > 0 ? Math.round((a11yUnguidedPassed / a11yUnguidedTotal) * 100) : 0;
     const a11yUplift = (a11yGuidedTotal > 0 && a11yUnguidedTotal > 0)
@@ -422,19 +365,15 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         guideCount: a11yGuides.size,
         bySubCategory
     };
-
-    // Build efficiencyStats
     const guidedMedianMs = Math.round(median(guidedRuntimes));
     const unguidedMedianMs = Math.round(median(unguidedRuntimes));
     const guidedMeanMs = guidedRuntimes.length > 0 ? Math.round(guidedRuntimes.reduce((a, b) => a + b, 0) / guidedRuntimes.length) : 0;
     const unguidedMeanMs = unguidedRuntimes.length > 0 ? Math.round(unguidedRuntimes.reduce((a, b) => a + b, 0) / unguidedRuntimes.length) : 0;
     const medianDeltaPct = unguidedMedianMs > 0 ? Math.round(((guidedMedianMs - unguidedMedianMs) / unguidedMedianMs) * 100) : 0;
-
     let pairedRuntimeCount = 0;
     let fasterGuidedCount = 0;
     let pairedTokensCount = 0;
     let fewerUncachedCount = 0;
-
     Object.values(pairedTaskEfficiency).forEach(pair => {
         if (pair.guidedMs.length > 0 && pair.unguidedMs.length > 0) {
             pairedRuntimeCount += 1;
@@ -449,7 +388,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             if (gAvg <= uAvg) fewerUncachedCount += 1;
         }
     });
-
     const guidedUncachedMedian = Math.round(median(guidedUncachedTokens));
     const unguidedUncachedMedian = Math.round(median(unguidedUncachedTokens));
     const uncachedMedianDelta = guidedUncachedMedian - unguidedUncachedMedian;
@@ -459,7 +397,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const guidedUncachedTotal = Math.max(0, guidedTotalTokenSum - guidedCachedTokenSum);
     const unguidedUncachedTotal = Math.max(0, unguidedTotalTokenSum - unguidedCachedTokenSum);
     const suiteUncachedDeltaPct = unguidedUncachedTotal > 0 ? Math.round(((guidedUncachedTotal - unguidedUncachedTotal) / unguidedUncachedTotal) * 100) : 0;
-
     const efficiencyStats = {
         runtime: {
             guidedMedianMs,
@@ -491,7 +428,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             pairedTaskCount: pairedTokensCount
         }
     };
-
     const taskCount = evalsData.summary && evalsData.summary.taskCount ? evalsData.summary.taskCount : distinctScenarios.size;
     const gFailures = evalsData.summary?.guidedEarlyFailures ?? guidedEarlyFailures;
     const uFailures = evalsData.summary?.unguidedEarlyFailures ?? unguidedEarlyFailures;

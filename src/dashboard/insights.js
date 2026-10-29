@@ -1,22 +1,12 @@
-/**
- * Headline insights for the eval dashboard landing page.
- * Pools overall and accessibility pass-rate comparisons across recent nightly suites per agent family.
- */
-
 import { extractSuiteSummary } from './summary-extractor.js';
 import { parseSuiteDate, toSuiteDateString } from './utils.js';
-
 /** @typedef {import('./summary-extractor.js').SuiteSummary} SuiteSummary */
 /** @typedef {Partial<SuiteSummary> & { testId: string }} ManifestSuite */
-
-/**
- * @typedef {Object} AgentFamilyDef
+/** @typedef {Object} AgentFamilyDef
  * @property {string} id
  * @property {string} label
  * @property {string} description
- * @property {string[]} agents
- */
-
+ * @property {string[]} agents */
 /** @type {AgentFamilyDef[]} */
 export const AGENT_FAMILIES = [
     { id: 'claude_code', label: 'Claude Code', description: 'claude_code', agents: ['claude_code', 'claude'] },
@@ -28,32 +18,23 @@ export const AGENT_FAMILIES = [
         agents: ['antigravity_cli', 'jetski_cli']
     }
 ];
-
-/**
- * @typedef {Object} RateComparison
+/** @typedef {Object} RateComparison
  * @property {number} unguidedRate
  * @property {number} guidedRate
  * @property {number} upliftPp
  * @property {number} unguidedPassed
  * @property {number} unguidedTotal
  * @property {number} guidedPassed
- * @property {number} guidedTotal
- */
-
+ * @property {number} guidedTotal */
 /** @typedef {RateComparison & { guideCount: number }} A11yComparison */
-
-/**
- * @typedef {Object} SuiteRef
+/** @typedef {Object} SuiteRef
  * @property {string} testId
  * @property {string} timestamp
  * @property {string} agent
  * @property {string} model
  * @property {number} taskCount
- * @property {number} earlyFailureRate
- */
-
-/**
- * @typedef {Object} FamilyInsight
+ * @property {number} earlyFailureRate */
+/** @typedef {Object} FamilyInsight
  * @property {string} id
  * @property {string} label
  * @property {string} description
@@ -64,94 +45,47 @@ export const AGENT_FAMILIES = [
  * @property {SuiteRef} latest
  * @property {number} tasksEvaluated
  * @property {RateComparison} overall
- * @property {A11yComparison | null} a11y
- */
-
-/**
- * @typedef {Object} PooledInsight
+ * @property {A11yComparison | null} a11y */
+/** @typedef {Object} PooledInsight
  * @property {number} suiteCount
  * @property {number} familyCount
  * @property {number} tasksEvaluated
  * @property {RateComparison} overall
- * @property {A11yComparison | null} a11y
- */
-
-/**
- * @typedef {Object} HeadlineInsights
+ * @property {A11yComparison | null} a11y */
+/** @typedef {Object} HeadlineInsights
  * @property {{ perAgentRecentN: number, nightlyOnly: boolean, before: string | null }} options
  * @property {FamilyInsight[]} families
  * @property {PooledInsight | null} pooled
  * @property {string[]} suiteIds
  * @property {string | null} latestTimestamp
- * @property {string[]} missingStats
- */
-
-/**
- * @typedef {Object} InsightOptions
+ * @property {string[]} missingStats */
+/** @typedef {Object} InsightOptions
  * @property {number} [perAgentRecentN=1]
  * @property {boolean} [nightlyOnly=true]
  * @property {string | null} [before=null]
- * @property {AgentFamilyDef[]} [families=AGENT_FAMILIES]
- */
-
+ * @property {AgentFamilyDef[]} [families=AGENT_FAMILIES] */
 /** @param {number} value @param {number} [digits=1] */
-function round(value, digits = 1) {
-    const f = 10 ** digits;
-    return Math.round(value * f) / f;
-}
-
+function round(value, digits = 1) { const f = 10 ** digits; return Math.round(value * f) / f; }
 /** @param {number} numerator @param {number} denominator */
-function pct(numerator, denominator) {
-    return denominator > 0 ? round((numerator / denominator) * 100) : 0;
-}
-
-/**
- * Canonical timestamp for a suite: an ISO instant, or `YYYY-MM-DD` when the source has no time
- * of day (so re-parsing keeps it date-only; see `toSuiteDateString`). Delegates to the shared
- * `parseSuiteDate` so the hero, the runs table, and guide.html all resolve the same instant
- * (and therefore the same calendar day) for a suite. Callers wanting the calendar day should
- * use `getSuiteDayKey(parseSuiteDate(timestamp))` rather than slicing (which gives the UTC day).
- * @param {ManifestSuite} suite
- */
-export function getSuiteTimestamp(suite) {
-    const date = parseSuiteDate(suite.timestamp, suite.testId || '');
-    return date ? toSuiteDateString(date) : '';
-}
-
+function pct(numerator, denominator) { return denominator > 0 ? round((numerator / denominator) * 100) : 0; }
 /** @param {ManifestSuite} suite */
-export function isNightlySuite(suite) {
-    return typeof suite.testId === 'string' && suite.testId.startsWith('nightly-');
-}
-
-/**
- * @param {string | undefined} agent
- * @param {AgentFamilyDef[]} [families=AGENT_FAMILIES]
- */
-export function getAgentFamily(agent, families = AGENT_FAMILIES) {
-    if (!agent) return null;
-    const needle = agent.toLowerCase();
-    return families.find(f => f.agents.includes(needle)) || null;
-}
-
+export function getSuiteTimestamp(suite) { const date = parseSuiteDate(suite.timestamp, suite.testId || ''); return date ? toSuiteDateString(date) : ''; }
 /** @param {ManifestSuite} suite */
-export function hasHeadlineStats(suite) {
-    return Boolean(suite && suite.a11yStats);
-}
-
-/**
- * Selects the latest N nightly suites per agent family (newest first within each family).
- * @param {Array<ManifestSuite | string>} suites
+export function isNightlySuite(suite) { return typeof suite.testId === 'string' && suite.testId.startsWith('nightly-'); }
+/** @param {string | undefined} agent
+ * @param {AgentFamilyDef[]} [families=AGENT_FAMILIES] */
+export function getAgentFamily(agent, families = AGENT_FAMILIES) { if (!agent) return null; const needle = agent.toLowerCase(); return families.find(f => f.agents.includes(needle)) || null; }
+/** @param {ManifestSuite} suite */
+export function hasHeadlineStats(suite) { return Boolean(suite && suite.a11yStats); }
+/** @param {Array<ManifestSuite | string>} suites
  * @param {InsightOptions} [options]
- * @returns {Map<AgentFamilyDef, ManifestSuite[]>}
- */
+ * @returns {Map<AgentFamilyDef, ManifestSuite[]>} */
 export function selectRecentSuites(suites, options = {}) {
     const { perAgentRecentN = 1, nightlyOnly = true, before = null, families = AGENT_FAMILIES } = options;
     const beforeMs = before ? Date.parse(before) : NaN;
-
     /** @type {Map<AgentFamilyDef, ManifestSuite[]>} */
     const byFamily = new Map();
     families.forEach(f => byFamily.set(f, []));
-
     (suites || []).forEach(entry => {
         /** @type {ManifestSuite | null} */
         const suite = typeof entry === 'string' ? { testId: entry } : entry;
@@ -162,55 +96,43 @@ export function selectRecentSuites(suites, options = {}) {
         const ts = getSuiteTimestamp(suite);
         if (!ts) return;
         if (!Number.isNaN(beforeMs) && Date.parse(ts) >= beforeMs) return;
-        /** @type {ManifestSuite[]} */ (byFamily.get(family)).push(suite);
+        /** @type {ManifestSuite[]} */
+(byFamily.get(family)).push(suite);
     });
-
     byFamily.forEach((list, family) => {
         list.sort((a, b) => (Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a))) || b.testId.localeCompare(a.testId));
         byFamily.set(family, list.slice(0, perAgentRecentN));
     });
     return byFamily;
 }
-
-/**
- * Fetches `evals.json` for selected suites that lack `a11yStats` and recomputes summaries in place.
- * @param {Array<ManifestSuite | string>} suites
+/** @param {Array<ManifestSuite | string>} suites
  * @param {(testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>} fetchEvals
- * @param {InsightOptions} [options]
- */
+ * @param {InsightOptions} [options] */
 export async function hydrateMissingStats(suites, fetchEvals, options = {}) {
     const selected = selectRecentSuites(suites, options);
     /** @type {ManifestSuite[]} */
     const targets = [];
     selected.forEach(list => list.forEach(s => { if (!hasHeadlineStats(s)) targets.push(s); }));
-
     /** @type {string[]} */
     const hydrated = [];
     /** @type {string[]} */
     const failed = [];
     const concurrency = Math.min(4, targets.length);
     let cursor = 0;
-
     await Promise.all(Array.from({ length: concurrency }, async () => {
         while (cursor < targets.length) {
             const suite = targets[cursor++];
             try {
                 const evals = await fetchEvals(suite.testId);
                 const summary = extractSuiteSummary(suite.testId, evals, suite.timestamp || null);
-                if (summary) {
-                    Object.assign(suite, summary);
-                    hydrated.push(suite.testId);
-                    continue;
-                }
+                if (summary) { Object.assign(suite, summary); hydrated.push(suite.testId); continue; }
             } catch {
-                // fall through
             }
             failed.push(suite.testId);
         }
     }));
     return { hydrated, failed };
 }
-
 /** @param {ManifestSuite} suite @returns {SuiteRef} */
 function toSuiteRef(suite) {
     const timestamp = getSuiteTimestamp(suite);
@@ -223,7 +145,6 @@ function toSuiteRef(suite) {
         earlyFailureRate: suite.earlyFailureRate || 0
     };
 }
-
 /** @param {{ unguidedPassed: number, unguidedTotal: number, guidedPassed: number, guidedTotal: number }} c @returns {RateComparison} */
 function toRateComparison(c) {
     const rawU = c.unguidedTotal > 0 ? (c.unguidedPassed / c.unguidedTotal) * 100 : 0;
@@ -238,7 +159,6 @@ function toRateComparison(c) {
         guidedTotal: c.guidedTotal
     };
 }
-
 /** @param {ManifestSuite[]} suites */
 function accumulate(suites) {
     const acc = {
@@ -264,9 +184,7 @@ function accumulate(suites) {
             acc.a11yGuideCount = Math.max(acc.a11yGuideCount, s.a11yStats.guideCount || 0);
             if (s.guides) {
                 for (const [slug, gStats] of Object.entries(s.guides)) {
-                    if (gStats?.a11y && (gStats.a11y.guidedTotal > 0 || gStats.a11y.unguidedTotal > 0)) {
-                        distinctA11yGuides.add(slug);
-                    }
+                    if (gStats?.a11y && (gStats.a11y.guidedTotal > 0 || gStats.a11y.unguidedTotal > 0)) { distinctA11yGuides.add(slug); }
                 }
             }
         }
@@ -274,17 +192,12 @@ function accumulate(suites) {
     acc.a11yGuideCount = Math.max(acc.a11yGuideCount, distinctA11yGuides.size);
     return acc;
 }
-
-/**
- * Computes the landing-page headline numbers from manifest entries.
- * @param {Array<ManifestSuite | string>} suites
+/** @param {Array<ManifestSuite | string>} suites
  * @param {InsightOptions} [options]
- * @returns {HeadlineInsights}
- */
+ * @returns {HeadlineInsights} */
 export function computeHeadlineInsights(suites, options = {}) {
     const { perAgentRecentN = 1, nightlyOnly = true, before = null } = options;
     const selected = selectRecentSuites(suites, options);
-
     /** @type {FamilyInsight[]} */
     const families = [];
     /** @type {ManifestSuite[]} */
@@ -308,7 +221,6 @@ export function computeHeadlineInsights(suites, options = {}) {
             a11y: acc.a11ySuites > 0 ? { ...toRateComparison(acc.a11y), guideCount: acc.a11yGuideCount } : null
         });
     });
-
     /** @type {PooledInsight | null} */
     let pooled = null;
     if (allSelected.length > 0) {
@@ -321,7 +233,6 @@ export function computeHeadlineInsights(suites, options = {}) {
             a11y: acc.a11ySuites > 0 ? { ...toRateComparison(acc.a11y), guideCount: acc.a11yGuideCount } : null
         };
     }
-
     const sortedAll = [...allSelected].sort((a, b) => (Date.parse(getSuiteTimestamp(b)) - Date.parse(getSuiteTimestamp(a))) || b.testId.localeCompare(a.testId));
     return {
         options: { perAgentRecentN, nightlyOnly, before },

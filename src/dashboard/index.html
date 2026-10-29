@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Opt into OS text scaling; all type is rem-based and there is no root font-size. -->
   <meta name="text-scale" content="scale">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="color-scheme" content="light dark">
@@ -12,7 +11,6 @@
   <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, accessibility subscores, completion time, and token efficiency across suites.">
   <title>Modern Web Guidance Evals: Measurably better web code with Modern Web Guidance</title>
   <link rel="icon" href="data:,">
-  <!-- Default remote source fetches suites from GCS with an Authorization header (CORS, no credentials). -->
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
@@ -37,9 +35,7 @@
         </button>
       </div>
     </header>
-
     <main id="main-content" tabindex="-1">
-      <!-- STAGE 1: HERO — one claim, one focal number, plus accessibility subscore (owned by hero.js / hero.css) -->
       <section id="hero" class="hero" aria-labelledby="hero-heading" aria-busy="true">
         <div class="hero-top">
           <h2 id="hero-heading" class="hero-heading"><span class="hero-accent">Measurably better web code</span> with Modern Web Guidance</h2>
@@ -47,14 +43,11 @@
             Same agent, same set of tasks, <strong>with and without Modern Web Guidance</strong>. Every nightly run gives <span id="hero-lede-agents"><span class="agent-badge claude" aria-hidden="true">✱</span>Claude Code, <span class="agent-badge openai" aria-hidden="true">❂</span>Codex CLI, and <span class="agent-badge gemini" aria-hidden="true">✦</span>Antigravity CLI</span> identical feature prompts on starter web apps, then grades the resulting code in a real browser against automated best-practice checks.
           </p>
         </div>
-
-        <!-- Always-present live region so status changes are announced; the visible box below is purely presentational. -->
         <p id="hero-live" class="visually-hidden" role="status" aria-live="polite"></p>
         <div id="hero-status" class="hero-status" hidden>
           <span id="hero-status-text"></span>
           <button id="hero-auth-btn" class="primary-btn" type="button" hidden>Sign in with Google</button>
         </div>
-
         <ul id="hero-takeaways" class="hero-takeaways" role="list" aria-label="Headline results">
           <li class="takeaway takeaway-primary" data-metric="overall">
             <h3 class="takeaway-label">Change in aggregate pass rate of using best practices</h3>
@@ -70,8 +63,6 @@
         </ul>
         <p id="hero-eyebrow" class="hero-eyebrow">Nightly evaluations · loading latest results…</p>
       </section>
-
-      <!-- STAGE 2: Use-case Evaluation Spotlight (owned by showcase.js / showcase.css) -->
       <section id="ab-spotlight" class="ab-spotlight page-section" aria-labelledby="ab-spotlight-heading" aria-busy="true">
         <div class="ab-spotlight-header">
           <div class="ab-spotlight-titles">
@@ -84,31 +75,24 @@
             </fieldset>
           </div>
         </div>
-
         <fieldset id="ab-task-pills" class="ab-task-pills" aria-controls="ab-comparison-frame">
           <legend class="visually-hidden">Select evaluation task</legend>
         </fieldset>
-
         <div id="ab-comparison-frame" class="ab-comparison-frame">
           <div class="ab-prompt-banner">
             <span class="ab-prompt-kicker">Task prompt</span>
             <p id="ab-prompt-text" class="ab-prompt-text">Loading task prompt…</p>
           </div>
-
           <div class="ab-scorecard-grid">
             <div id="ab-score-unguided" class="ab-score-card unguided" role="region" aria-label="Unguided run evaluation result"></div>
             <div id="ab-score-guided" class="ab-score-card guided" role="region" aria-label="Guided run evaluation result"></div>
           </div>
-
           <div id="ab-checks-content"></div>
-
           <div class="ab-frame-footer">
             <div id="ab-run-provenance" class="ab-run-provenance"></div>
           </div>
         </div>
       </section>
-
-      <!-- STAGE 3: Breakdown by agent family & progressive disclosure drawers -->
       <section id="agents-section" class="hero-agents page-section" aria-labelledby="agents-heading">
         <div class="hero-agents-header">
           <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
@@ -130,8 +114,6 @@
             </tbody>
           </table>
         </div>
-
-        <!-- Power-user progressive disclosure drawers -->
         <div class="hero-drawers">
           <details class="insights-drawer" id="breakdowns">
             <summary class="insights-summary">Breakdowns by model and guide</summary>
@@ -150,7 +132,6 @@
             </div>
             <div id="insights-container" class="insights-grid"></div>
           </details>
-
           <details class="hero-method" id="hero-method">
             <summary>How we test &amp; measure</summary>
             <div class="hero-method-body">
@@ -193,7 +174,6 @@
         </div>
       </section>
 
-      <!-- STAGE 4: BROWSE: full results (owned by landing.js / landing.css) -->
       <section id="browse-section" class="browse-section page-section" aria-labelledby="browse-heading">
         <div class="browse-header">
           <div class="browse-intro">
@@ -237,7 +217,6 @@
             </div>
           </div>
         </div>
-
         <div class="mobile-suites-controls" aria-label="Sort and filter runs">
           <label for="mobile-sort-select" class="visually-hidden">Sort runs</label>
           <select id="mobile-sort-select" class="header-filter-select header-filter-select-left">
@@ -254,7 +233,6 @@
             <optgroup label="Select agent" id="mobile-filter-agent-group"></optgroup>
           </select>
         </div>
-
         <div class="suites-table-container">
           <table class="suites-table">
             <caption class="visually-hidden">Evaluation suite runs comparing unguided and guided results. Pass-rate change in percentage points (pp); time and token change in %, lower is better.</caption>
@@ -295,10 +273,6 @@
     </main>
   </div>
 
-  <!-- Shared barbell preview (MWG interest-triggered-tooltips): every barbell link/button has
-       interestfor="barbell-tooltip", so hover/focus/long-press, hover persistence, Escape and light
-       dismiss come from popover="hint" + interestfor (WCAG 1.4.13). landing.js only fills in the
-       content for the trigger on the `interest` event and anchors it there. -->
   <div id="barbell-tooltip" class="barbell-tooltip" popover="hint" role="tooltip"></div>
 
   <script type="module">

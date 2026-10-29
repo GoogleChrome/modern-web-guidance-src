@@ -4,7 +4,6 @@ test.describe('Eval View Dashboard', () => {
   test('should load the dashboard and show expected content', async ({ page }) => {
     await page.goto('/');
 
-    // Check title and header navigation links
     await expect(page.locator('.landing-title')).toContainText('Modern Web Guidance Evals');
     await expect(page.locator('.header-links a', { hasText: 'Docs' })).toHaveAttribute('href', 'https://developer.chrome.com/docs/modern-web-guidance');
     await expect(page.locator('.header-links a', { hasText: 'GitHub' })).toHaveAttribute('href', 'https://github.com/GoogleChrome/modern-web-guidance-src');
@@ -25,19 +24,15 @@ test.describe('Eval View Dashboard', () => {
   
   test('should show barbell summary hover card on rate-cell hover', async ({ page }) => {
     await page.goto('/');
-
     const firstUpliftCell = page.locator('.uplift-cell').first();
     await expect(firstUpliftCell).toBeVisible();
     await firstUpliftCell.hover();
-
     const tooltip = page.locator('#barbell-tooltip');
     await expect(tooltip).toBeVisible();
     await expect(tooltip).toContainText('Without MWG');
     await expect(tooltip).toContainText('With MWG');
     await expect(tooltip).toContainText('Pass-rate lift');
     await expect(tooltip).toContainText('Vertical ticks mark checks passed');
-
-    // WCAG 1.4.13 Hoverable & Dismissible: remains visible when hovered, dismisses on Escape
     await tooltip.hover();
     await expect(tooltip).toBeVisible();
     await page.keyboard.press('Escape');
@@ -63,25 +58,18 @@ test.describe('Eval View Dashboard', () => {
     
     const count = await page.locator('.task-accordion-header').count();
     expect(count).toBeGreaterThan(0);
-
-    // Hover over a dumbbell chart row hit area and verify the tooltip renders its inner content
     const hitArea = page.locator('#dumbbell-chart a.dc-hit').first();
     await expect(hitArea).toBeVisible();
     await hitArea.hover();
-
     const dumbbellTooltip = page.locator('#dumbbell-tooltip');
     await expect(dumbbellTooltip).toBeVisible();
     await expect(dumbbellTooltip.locator('.dumbbell-tooltip')).toBeVisible();
     await expect(dumbbellTooltip.locator('.dumbbell-tooltip-title')).not.toBeEmpty();
     await expect(dumbbellTooltip.locator('.dumbbell-tooltip-uplift')).toContainText('pp');
-
-    // WCAG 1.4.13 Hoverable & Dismissible: moving onto the tooltip keeps it open; Escape dismisses it
     await dumbbellTooltip.hover();
     await expect(dumbbellTooltip).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(dumbbellTooltip).toBeHidden();
-
-    // Verify both ? hint popovers open anchored near their trigger buttons and stay inside the viewport
     const viewport = page.viewportSize() || { width: 1280, height: 720 };
     const a11yHintBtn = page.locator('.anchor-dash-a11y');
     const a11yPopover = page.locator('#dash-tooltip-a11y');
@@ -96,7 +84,6 @@ test.describe('Eval View Dashboard', () => {
       expect(a11yPopBox.x + a11yPopBox.width).toBeLessThanOrEqual(viewport.width);
       expect(Math.abs(a11yPopBox.x - a11yBtnBox.x)).toBeLessThan(20);
     }
-
     const tokensHintBtn = page.locator('.anchor-dash-tokens');
     const tokensPopover = page.locator('#dash-tooltip-tokens');
     await tokensHintBtn.focus();
@@ -110,19 +97,13 @@ test.describe('Eval View Dashboard', () => {
       expect(tokensPopBox.x + tokensPopBox.width).toBeLessThanOrEqual(viewport.width);
       expect(Math.abs((tokensPopBox.x + tokensPopBox.width) - (tokensBtnBox.x + tokensBtnBox.width))).toBeLessThan(20);
     }
-
-    // Verify the 4 summary cards render in a 2x2 grid on desktop
     const narrativeCards = page.locator('#summary-side-panel article.narrative-card');
     await expect(narrativeCards).toHaveCount(4);
     const c0 = await narrativeCards.nth(0).boundingBox();
     const c1 = await narrativeCards.nth(1).boundingBox();
     const c2 = await narrativeCards.nth(2).boundingBox();
     const c3 = await narrativeCards.nth(3).boundingBox();
-    if (c0 && c1 && c2 && c3) {
-      expect(Math.abs(c0.y - c1.y)).toBeLessThan(2);
-      expect(Math.abs(c2.y - c3.y)).toBeLessThan(2);
-      expect(c2.y).toBeGreaterThan(c0.y + 40);
-    }
+    if (c0 && c1 && c2 && c3) { expect(Math.abs(c0.y - c1.y)).toBeLessThan(2); expect(Math.abs(c2.y - c3.y)).toBeLessThan(2); expect(c2.y).toBeGreaterThan(c0.y + 40); }
     // await page.screenshot({ path: '/tmp/dashboard-suite.png' });
   });
 
@@ -161,13 +142,11 @@ test.describe('Eval View Dashboard', () => {
   test('should show By Guide panel and navigate to guide.html on click', async ({ page }) => {
     await page.goto('/');
 
-    // Expand the Breakdowns drawer if it's closed
     const insightsDrawer = page.locator('.insights-drawer');
     if (!(await insightsDrawer.getAttribute('open') !== null)) {
       await page.locator('.insights-summary').click();
     }
 
-    // By Guide panel is visible inside the Breakdowns drawer
     const guideDrawer = page.locator('.insights-guide-drawer');
     await expect(guideDrawer).toBeVisible();
 
@@ -194,8 +173,6 @@ test.describe('Eval View Dashboard', () => {
     const tooltip = page.locator('#tooltip-container');
     await expect(tooltip).toBeVisible();
     await expect(page.locator('#tooltip-content')).toBeVisible();
-
-    // WCAG 1.4.13 Hoverable & Dismissible: remains visible when hovered, dismisses on Escape
     await tooltip.hover();
     await expect(tooltip).toBeVisible();
     await page.keyboard.press('Escape');
@@ -253,7 +230,6 @@ test.describe('Eval View Dashboard', () => {
     expect([400, 403, 404]).toContain(res.status);
   });
 });
-
 const NIGHTLY_FIXTURE = {
   suites: /** @type {[string, string, string, number, number, number, number, number, number, number, number, number, number, number, number, number, number][]} */ ([
     ['antigravity_cli', 'gemini-3.8-flash', '2026-10-09T11:11:04.176Z', 952, 1062, 693, 1059, 96, 99, 76, 103, 487114, 915536, -47, 309324, 450451, -31],
@@ -284,7 +260,6 @@ const NIGHTLY_FIXTURE = {
     }
   }))
 };
-
 test.describe('Hero, Spotlight, and Browse all runs', () => {
   test('renders empty hero state when no nightly suites exist and preserves heading hierarchy', async ({ page }) => {
     await page.goto('/');
@@ -296,12 +271,10 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('.suite-table-row')).toHaveCount(1);
   });
-
   test('renders populated hero, agent table, sortable suites table, filter menu, and breakdowns drawer', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.route('**/api/suites*', route => route.fulfill({ json: NIGHTLY_FIXTURE }));
     await page.goto('/');
-
     const hero = page.locator('#hero');
     await expect(hero).toHaveAttribute('aria-busy', 'false');
     await expect(hero.locator('#hero-heading')).toHaveText('Measurably better web code with Modern Web Guidance');
@@ -309,19 +282,13 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('.takeaway-secondary[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('#hero-eyebrow')).toContainText(/3 recent runs across 3 agent families/);
-
-    // Keyboard-operable "How we measure" disclosure
     const details = page.locator('#hero-method');
     await details.locator('summary').focus();
     await page.keyboard.press('Enter');
     await expect(details).toHaveAttribute('open', '');
-
-    // Per-agent table
     const agentRows = page.locator('#agent-table-body tr');
     await expect(agentRows).toHaveCount(3);
     await expect(agentRows.first().locator('td[data-label="Pass rate"]')).toHaveText(/\d+%\s*→\s*\d+%/);
-
-    // Suites table & sorting
     const suiteRows = page.locator('.suite-table-row');
     await expect(suiteRows).toHaveCount(3);
     const barbellTooltip = page.locator('#barbell-tooltip');
@@ -338,8 +305,6 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
     await page.locator('.sort-btn[data-sort="date"]').click();
     await expect(dateHeader).toHaveAttribute('aria-sort', 'ascending');
-
-    // Stateful Filter runs control
     const filterBtnText = page.locator('#filter-btn-text');
     await expect(filterBtnText).toHaveText('All selected (3)');
     await page.locator('#filter-btn').click();
@@ -347,26 +312,18 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(filterBtnText).toHaveText('None selected');
     await page.locator('#select-all-btn').click();
     await page.locator('#filter-btn').click();
-
-    // Clicking the Accessibility hero link opens the Breakdowns drawer in Accessibility mode
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     await expect(page.locator('#breakdowns')).toHaveAttribute('open', '');
     await expect(page.locator('#insights-limit-input')).toHaveValue('5');
     await expect(page.locator('#insights-mode-a11y input[type="radio"]')).toBeChecked();
     await expect(page.locator('.insights-dimension-panel')).toBeVisible();
     await expect(page.locator('.insights-guide-drawer')).toBeVisible();
-
-    // Hovering a Breakdowns guide row's trigger shows the explanatory barbell tooltip; Escape dismisses it.
-    // The row-header link is the interestfor trigger; the barbell cell passes pointer events through
-    // to its stretched hit area, so its rate text stays plain, screen-reader-visible cell content.
     const firstBarbellTrigger = page.locator('.insights-guide-drawer .pivot-link').first();
     await firstBarbellTrigger.hover();
     await expect(barbellTooltip).toBeVisible();
     await expect(barbellTooltip).toContainText('Vertical ticks mark the median');
     await page.keyboard.press('Escape');
     await expect(barbellTooltip).toBeHidden();
-
-    // Breakdown panel Uplift sort & Expand controls
     const modelSortBtn = page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]');
     await modelSortBtn.click();
     await expect(modelSortBtn).toHaveClass(/is-sorted/);
@@ -374,51 +331,38 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expandBtn.click();
     await expect(expandBtn).toHaveAttribute('aria-expanded', 'true');
   });
-
   test('renders A/B Task Spotlight, switches tasks/agents, and keeps mobile viewports overflow-free', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-
     const spotlight = page.locator('#ab-spotlight');
     await expect(spotlight).toHaveAttribute('aria-busy', 'false');
     await expect(spotlight.locator('.ab-spotlight-sub')).not.toContainText('—');
     const taskPills = spotlight.locator('#ab-task-pills .ab-task-pill');
     await expect(taskPills).toHaveCount(6);
     await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+8 checks');
-
-    // Grader assertions collapse to 3 visible rows by default and expand on toggle
     const checkRows = spotlight.locator('.ab-checks-table tbody tr');
     await expect(checkRows.nth(2)).toBeVisible();
     await expect(checkRows.nth(3)).toBeHidden();
     await spotlight.locator('#ab-checks-toggle').click();
     await expect(checkRows.nth(10)).toBeVisible();
-
-    // Switch task and agent family
     await taskPills.nth(1).click();
     await expect(checkRows.nth(3)).toBeHidden();
     await spotlight.locator('#ab-score-guided .ab-score-a11y').click();
     await expect(spotlight.locator('tr[data-a11y="true"]')).toBeVisible();
     await spotlight.locator('#ab-agent-pills .ab-agent-pill').nth(1).click();
     await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+1 check');
-
-    // Mobile viewport (390px) overflow check on landing and suite pages
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-
     await page.goto('/dashboard.html?testId=example-result');
     await expect(page.locator('#summary-side-panel .narrative-card')).toHaveCount(4);
     await page.locator('.task-accordion-header').first().click();
     await expect(page.locator('.truth-matrix').first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   });
-
   test('supports keyboard-triggered barbell tooltips, mobile tooltip bounds, mode switching, and combobox Enter', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.route('**/api/suites*', route => route.fulfill({ json: NIGHTLY_FIXTURE }));
     await page.goto('/');
-
-    // Keyboard focus on a suite uplift link (an interestfor trigger) shows #barbell-tooltip; the
-    // trigger/tooltip relationship is exposed natively by interestfor, not an aria-describedby attribute
     const upliftLink = page.locator('.uplift-link').first();
     await expect(upliftLink).toBeVisible();
     await expect(upliftLink).toHaveAttribute('interestfor', 'barbell-tooltip');
@@ -427,16 +371,12 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(barbellTooltip).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(barbellTooltip).toBeHidden();
-
-    // Breakdowns: non-guide rows (e.g. By Accessibility Dimension) have a focusable barbell button for tooltips
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     const dimBarbell = page.locator('.insights-dimension-panel .insight-dumbbell-cell button[interestfor="barbell-tooltip"]').first();
     await dimBarbell.focus();
     await expect(barbellTooltip).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(barbellTooltip).toBeHidden();
-
-    // Mobile 390px: dumbbell tooltip stays inside viewport and clears on metric mode switch
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/dashboard.html?testId=example-result');
     const hitArea = page.locator('#dumbbell-chart a.dc-hit').first();
@@ -446,15 +386,10 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(dumbbellTooltip).toBeVisible();
     const tipBox = await dumbbellTooltip.boundingBox();
     expect(tipBox).not.toBeNull();
-    if (tipBox) {
-      expect(tipBox.x).toBeGreaterThanOrEqual(0);
-      expect(tipBox.x + tipBox.width).toBeLessThanOrEqual(390);
-    }
+    if (tipBox) { expect(tipBox.x).toBeGreaterThanOrEqual(0); expect(tipBox.x + tipBox.width).toBeLessThanOrEqual(390); }
     await page.locator('#dash-mode-a11y-btn').click();
     await expect(dumbbellTooltip).toBeHidden();
     await expect(page.locator('#dumbbell-chart')).toContainText('No accessibility checks recorded');
-
-    // Guide combobox: ArrowDown -> Escape -> Enter submits typed text cleanly
     await page.unroute('**/api/suites*');
     await page.goto('/guide.html?guide=content-vis');
     await expect(page.locator('.timeline-point').first()).toBeVisible();

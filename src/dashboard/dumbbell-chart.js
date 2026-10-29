@@ -1,5 +1,4 @@
 import { escapeHtml, formatDuration, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView } from './utils.js';
-
 /**
  * @typedef {Object} DumbbellChartOptions
  * @property {number} [size]
@@ -53,54 +52,18 @@ import { escapeHtml, formatDuration, isElementFullyVisible, scrollSvgLinkIntoVie
 
 /** @type {Element | null} */
 let activeHitArea = null;
-/** Whether dumbbell-chart.js (not interestfor) opened the tooltip; see wireTooltip(). */
 let shownWithoutInvoker = false;
-/** The row whose tooltip a touch tap showed; a second tap on it activates the link. */
 let touchShownHit = /** @type {Element | null} */ (null);
 if (typeof document !== 'undefined') {
-  document.addEventListener('pointerdown', (e) => {
-    if (touchShownHit && !(e.target instanceof Node && touchShownHit.contains(e.target))) touchShownHit = null;
-  }, { capture: true, passive: true });
+  document.addEventListener('pointerdown', (e) => { if (touchShownHit && !(e.target instanceof Node && touchShownHit.contains(e.target))) touchShownHit = null; }, { capture: true, passive: true });
 }
-
-/**
- * Suite chart tooltip (MWG interest-triggered-tooltips), the same pattern as the guide timeline
- * (guide.js): every hit area is an SVG `<a href="#guide-…" interestfor="dumbbell-tooltip">`, so
- * hover, keyboard focus, hover persistence, Esc, and light dismiss come from interestfor +
- * `popover="hint"`, and the link itself navigates in-page (Enter, middle-click, open in new tab).
- * - SVG elements can't be CSS anchors (Chromium places the popover at (0, 0) with the implicit
- *   anchor or an `anchor-name` on the `<a>` or its `<rect>`), so one HTML stand-in `<span>` with
- *   `anchor-name: --dumbbell-row` is moved over the active row's marks, and dashboard.css places
- *   the tooltip with `anchor()` and `position-try-fallbacks` (no `position-area`, for polyfill
- *   compatibility).
- * - Firefox runs the vendored interestfor polyfill: it fires `interest` but its
- *   `showPopover({ source })` rejects an SVG source, so the tooltip is opened here in that case and
- *   closed again on `loseinterest`. Without native anchor positioning it's placed with measured
- *   coordinates that follow scroll and resize.
- */
 const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('top', 'anchor(bottom)');
-/** Native interestfor exposes the tooltip as the trigger's description itself; the polyfill doesn't. */
 const SUPPORTS_NATIVE_INTEREST = typeof CSS !== 'undefined' && CSS.supports('selector(:interest-source)');
-
-/**
- * Per hit area: fills the tooltip for that row and returns the element whose box the tooltip
- * anchors to (the row's marks).
- * @type {WeakMap<Element, () => { marks: Element[], hit: Element }>}
- */
+/** @type {WeakMap<Element, () => { marks: Element[], hit: Element }>} */
 const hitRenderers = new WeakMap();
-
-/** HTML stand-in anchor for the active SVG row (see above). */
 const rowAnchor = typeof document === 'undefined' ? null : document.createElement('span');
-if (rowAnchor) {
-  rowAnchor.className = 'dc-anchor';
-  rowAnchor.setAttribute('aria-hidden', 'true');
-}
-
-/**
- * Screen box of a row: the unguided-to-guided marks (not the hit area, which fills the whole row
- * pitch), so the tooltip sits right next to the barbell.
- * @param {{ marks: Element[], hit: Element }} target
- */
+if (rowAnchor) { rowAnchor.className = 'dc-anchor'; rowAnchor.setAttribute('aria-hidden', 'true'); }
+/** @param {{ marks: Element[], hit: Element }} target */
 function rowBox(target) {
   const h = target.hit.getBoundingClientRect();
   let left = Infinity;
@@ -117,17 +80,10 @@ function rowBox(target) {
   if (!Number.isFinite(left)) return { left: h.left, right: h.right, top: h.top, bottom: h.bottom };
   return { left: left - 2, right: right + 2, top: top - 2, bottom: bottom + 2 };
 }
-
 /** @type {{ marks: Element[], hit: Element } | null} */
 let activeTarget = null;
-/** A row whose tooltip waits for the row to scroll into view (see showForHitArea). */
 let pendingHit = /** @type {Element | null} */ (null);
-
-/**
- * Moves the stand-in anchor over the active row, inside the chart's own container so it scrolls
- * with the chart and the page.
- * @param {{ marks: Element[], hit: Element }} target
- */
+/** @param {{ marks: Element[], hit: Element }} target */
 function moveRowAnchor(target) {
   if (!rowAnchor) return;
   const container = target.hit.closest('svg')?.parentElement;
@@ -141,20 +97,10 @@ function moveRowAnchor(target) {
   rowAnchor.style.width = `${r.right - r.left}px`;
   rowAnchor.style.height = `${r.bottom - r.top}px`;
 }
-
-/**
- * Fallback for browsers without CSS anchor positioning only: the same placement as the CSS in
- * dashboard.css (below the row's marks, start-aligned; then above; then flipped to end-aligned;
- * then pinned to the viewport edge), from measured coordinates.
- * @param {HTMLElement} tip
- * @param {{ marks: Element[], hit: Element }} target
- */
+/** @param {HTMLElement} tip
+ * @param {{ marks: Element[], hit: Element }} target */
 function placeTooltipFallback(tip, target) {
-  // Never clamp the tooltip over unrelated rows for a row that's (partly) out of view.
-  if (!isElementFullyVisible(target.hit)) {
-    hideDumbbellTooltip(true);
-    return;
-  }
+  if (!isElementFullyVisible(target.hit)) { hideDumbbellTooltip(true); return; }
   const r = rowBox(target);
   const gap = 6;
   const edge = 8;
@@ -168,113 +114,64 @@ function placeTooltipFallback(tip, target) {
   tip.style.left = `${left}px`;
   tip.style.top = `${Math.max(edge, Math.min(top, window.innerHeight - h - edge))}px`;
 }
-
 /** @type {number} */
 let fallbackFrame = 0;
-
-/**
- * Measured coordinates don't follow the row, so re-place the open tooltip on scroll and resize
- * (rAF-throttled), and close it once its row has scrolled out of view.
- */
 function onViewportChangeFallback() {
   if (fallbackFrame) return;
   fallbackFrame = window.requestAnimationFrame(() => {
     fallbackFrame = 0;
     const tip = document.getElementById('dumbbell-tooltip');
     if (!tip || !activeTarget || !isTooltipOpen(tip)) return;
-    if (!activeTarget.hit.isConnected) {
-      hideDumbbellTooltip(true);
-      return;
-    }
+    if (!activeTarget.hit.isConnected) { hideDumbbellTooltip(true); return; }
     placeTooltipFallback(tip, activeTarget);
   });
 }
-
 if (typeof window !== 'undefined') {
   if (!SUPPORTS_ANCHOR_POSITIONING) {
     window.addEventListener('scroll', onViewportChangeFallback, { capture: true, passive: true });
     window.addEventListener('resize', onViewportChangeFallback, { passive: true });
   } else {
-    // The SVG scales with its container, so a resize moves the row out from under the stand-in.
     window.addEventListener('resize', () => {
       const tip = document.getElementById('dumbbell-tooltip');
       if (tip && activeTarget && activeTarget.hit.isConnected && isTooltipOpen(tip)) moveRowAnchor(activeTarget);
     }, { passive: true });
   }
 }
-
-/**
- * `popover="hint"` is newer than the Popover API itself. Where it's unsupported the attribute
- * value is invalid and the element falls back to a manual popover, which has no native Esc handling.
- */
 const SUPPORTS_HINT_POPOVER = (() => {
   if (typeof document === 'undefined') return false;
   const probe = document.createElement('div');
   probe.setAttribute('popover', 'hint');
   return probe.popover === 'hint';
 })();
-
-/**
- * @param {HTMLElement} tip
- */
+/** @param {HTMLElement} tip */
 function isTooltipOpen(tip) {
-  try {
-    return tip.matches(':popover-open');
-  } catch {
-    // Popover polyfill (no native :popover-open selector) mirrors the state as a class.
-    return tip.classList.contains(':popover-open') || tip.style.display === 'block';
-  }
+  try { return tip.matches(':popover-open'); } catch { return tip.classList.contains(':popover-open') || tip.style.display === 'block'; }
 }
-
-/**
- * Clears the per-trigger state once the tooltip is gone, whichever way it closed (lost interest,
- * Esc, light dismiss, or a re-render).
- */
 function releaseActiveHitArea() {
-  if (activeHitArea) {
-    activeHitArea.removeAttribute('aria-describedby');
-    activeHitArea = null;
-  }
+  if (activeHitArea) { activeHitArea.removeAttribute('aria-describedby'); activeHitArea = null; }
   activeTarget = null;
   shownWithoutInvoker = false;
 }
-
-/**
- * Closes the suite chart tooltip (e.g. before the chart re-renders on a mode switch).
- * @param {boolean} [_immediate] kept for callers; closing is always immediate now that
- *   interestfor owns the hover delays.
- */
+/** @param {boolean} [_immediate] kept for callers; closing is always immediate now that
+ * interestfor owns the hover delays. */
 export function hideDumbbellTooltip(_immediate = false) {
   const tip = document.getElementById('dumbbell-tooltip');
   if (!tip) return;
   pendingHit = null;
   releaseActiveHitArea();
-  if (isTooltipOpen(tip)) {
-    if (typeof tip.hidePopover === 'function') tip.hidePopover();
-    else tip.style.display = 'none';
-  }
+  if (isTooltipOpen(tip)) { if (typeof tip.hidePopover === 'function') tip.hidePopover(); else tip.style.display = 'none'; }
 }
-
-/**
- * Fills, anchors, and (where interestfor didn't) opens the tooltip for one hit area.
- * @param {HTMLElement} tip
+/** @param {HTMLElement} tip
  * @param {Element} hit the SVG `<a>`
  * @param {{ open?: boolean }} [opts]
- * @returns {boolean} whether the hit area resolved to a row
- */
+ * @returns {boolean} whether the hit area resolved to a row */
 function showForHitArea(tip, hit, opts = {}) {
   const render = hitRenderers.get(hit);
   if (!render) return false;
   const target = render();
-  // Without anchor positioning the tooltip is placed from measured coordinates, so it can only
-  // open beside a row that's fully on screen. A focused row that's still scrolling into view
-  // (Firefox, see scrollSvgLinkIntoViewOnFocus) gets its tooltip once the scroll settles.
   if (!SUPPORTS_ANCHOR_POSITIONING && !isElementFullyVisible(target.hit)) {
     if (activeHitArea && activeHitArea !== hit) activeHitArea.removeAttribute('aria-describedby');
-    if (isTooltipOpen(tip)) {
-      if (typeof tip.hidePopover === 'function') tip.hidePopover();
-      else tip.style.display = 'none';
-    }
+    if (isTooltipOpen(tip)) { if (typeof tip.hidePopover === 'function') tip.hidePopover(); else tip.style.display = 'none'; }
     pendingHit = hit;
     whenElementSettlesInView(target.hit, () => {
       pendingHit = null;
@@ -287,47 +184,26 @@ function showForHitArea(tip, hit, opts = {}) {
   activeHitArea = hit;
   activeTarget = target;
   if (!SUPPORTS_NATIVE_INTEREST) hit.setAttribute('aria-describedby', 'dumbbell-tooltip');
-  if (SUPPORTS_ANCHOR_POSITIONING) {
-    tip.style.removeProperty('left');
-    tip.style.removeProperty('top');
-    moveRowAnchor(target);
-  }
-  if (opts.open && !isTooltipOpen(tip)) {
-    if (typeof tip.showPopover === 'function') tip.showPopover();
-    else tip.style.display = 'block';
-    shownWithoutInvoker = true;
-  }
+  if (SUPPORTS_ANCHOR_POSITIONING) { tip.style.removeProperty('left'); tip.style.removeProperty('top'); moveRowAnchor(target); }
+  if (opts.open && !isTooltipOpen(tip)) { if (typeof tip.showPopover === 'function') tip.showPopover(); else tip.style.display = 'block'; shownWithoutInvoker = true; }
   if (!SUPPORTS_ANCHOR_POSITIONING && isTooltipOpen(tip)) placeTooltipFallback(tip, target);
   return true;
 }
-
-/**
- * Wires the shared tooltip once: content and anchoring on `interest`, the polyfill fallbacks, and
- * state cleanup on close.
- * @param {HTMLElement} tip
- */
+/** @param {HTMLElement} tip */
 function wireTooltip(tip) {
   tip.addEventListener('interest', (e) => {
     const source = /** @type {Event & { source?: Element | null }} */ (e).source;
     const hit = source?.closest('.dc-hit');
     if (!hit || !showForHitArea(tip, hit)) return;
-    // The interestfor polyfill can't open the popover from an SVG source (see above). Native
-    // interestfor, and the polyfill with HTML sources, have already opened it when this runs.
     window.setTimeout(() => {
       if (activeHitArea === hit && !isTooltipOpen(tip)) showForHitArea(tip, hit, { open: true });
     });
   });
-  // ...and close it again when the polyfill reports lost interest (pointer/focus left, Escape).
-  // Moving between rows gains interest in the new row before the old one's loss arrives, so only
-  // the active row's loss closes it.
   tip.addEventListener('loseinterest', (e) => {
     const source = /** @type {Event & { source?: Element | null }} */ (e).source;
     const hit = source?.closest('.dc-hit');
     if (shownWithoutInvoker && (!hit || hit === activeHitArea)) hideDumbbellTooltip(true);
   });
-  // The toggle event is async: by the time it reports a close, a newer row may already have taken
-  // over (e.g. Tab between rows in Firefox: the old row's loss closes it, the new row's interest
-  // follows). So remember which row the close (beforetoggle, synchronous) belonged to.
   /** @type {Element | null} */
   let closingHit = null;
   tip.addEventListener('beforetoggle', (e) => {
@@ -336,18 +212,12 @@ function wireTooltip(tip) {
   tip.addEventListener('toggle', (e) => {
     const open = /** @type {ToggleEvent} */ (e).newState === 'open';
     if (open && !SUPPORTS_ANCHOR_POSITIONING && activeTarget) placeTooltipFallback(tip, activeTarget);
-    // Native Esc / light dismiss close the popover without going through hideDumbbellTooltip().
     if (!open && !isTooltipOpen(tip) && activeHitArea && activeHitArea === closingHit) releaseActiveHitArea();
   });
-  // WCAG 1.4.13 Dismissible: a native hint popover already closes on Esc. Where hint is
-  // unsupported it degrades to a manual popover, so handle Esc here instead.
   if (!SUPPORTS_HINT_POPOVER) {
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') hideDumbbellTooltip(true);
-    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideDumbbellTooltip(true); });
   }
 }
-
 /**
  * @property {HTMLElement} container
  * @property {Required<DumbbellChartOptions>} options
@@ -387,13 +257,9 @@ export class DumbbellChart {
 
   init() {
     this.container.innerHTML = '';
-    if (this.options.hideLabels) {
-      this.tooltip = null;
-      return;
-    }
+    if (this.options.hideLabels) { this.tooltip = null; return; }
     this.tooltip = document.getElementById('dumbbell-tooltip');
     if (!this.tooltip && document.body) {
-      // Pages are expected to declare the popover in HTML; create it only as a fallback.
       this.tooltip = document.createElement('div');
       this.tooltip.id = 'dumbbell-tooltip';
       this.tooltip.className = 'chart-tooltip';
@@ -651,15 +517,9 @@ export class DumbbellChart {
         text.setAttribute("font-weight", hasFailure ? "bold" : "600");
         text.setAttribute("text-anchor", "start");
         text.setAttribute("alignment-baseline", "middle");
-        // A visible glyph (explained in the page legend) so the failure cue isn't color-only. No SVG
-        // <title> hover tooltip (MWG html guide); the focusable hit areas below spell out the failure.
         text.textContent = hasFailure ? `⚠ ${featureName}` : featureName;
         
-        // Add hover effects to highlight the row (and click navigation when wired)
-        if (guidedSet.onClick && items.length > 0) {
-          text.style.cursor = "pointer";
-          text.onclick = () => guidedSet.onClick?.(items[0].originalIndex, 'Guided');
-        }
+        if (guidedSet.onClick && items.length > 0) { text.style.cursor = "pointer"; text.onclick = () => guidedSet.onClick?.(items[0].originalIndex, 'Guided'); }
         text.onmouseenter = () => rowBg.setAttribute("fill", "var(--hover-bg)");
         text.onmouseleave = () => rowBg.setAttribute("fill", "transparent");
         
@@ -680,8 +540,6 @@ export class DumbbellChart {
           const trackHeight = Math.min(4, Math.max(2, offsetStep * 0.45));
           const uHalf = Math.min(5, Math.max(2.75, offsetStep * 0.58));
           const gHalf = Math.min(6, Math.max(3.25, offsetStep * 0.72));
-
-          // 0%–100% baseline track matching landing page barbells
           const track = document.createElementNS("http://www.w3.org/2000/svg", "line");
           track.setAttribute("x1", leftAxis.toString());
           track.setAttribute("y1", y.toString());
@@ -689,11 +547,8 @@ export class DumbbellChart {
           track.setAttribute("y2", y.toString());
           track.setAttribute("stroke", "var(--color-surface-container)");
           track.setAttribute("stroke-width", trackHeight.toString());
-          // Classes let dashboard.css map marks to system colors in forced colors mode.
           track.setAttribute("class", "dc-track");
           svg.appendChild(track);
-
-          // Manski Error Uncertainty Bands ([R * (1 - e), R * (1 - e) + e])
           const bands = [
               { val: uVal, err: item.uErr, fill: "var(--color-outline)", opacity: "0.25" },
               { val: gVal, err: item.gErr, fill: "var(--color-accent-warning)", opacity: "0.35" }
@@ -712,7 +567,6 @@ export class DumbbellChart {
               svg.appendChild(pill);
           }
 
-          // Connecting Bar (The Delta)
           const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
           line.setAttribute("x1", uX.toString());
           line.setAttribute("y1", y.toString());
@@ -721,11 +575,9 @@ export class DumbbellChart {
           line.setAttribute("stroke", lineColor);
           line.setAttribute("stroke-width", trackHeight.toString());
           line.setAttribute("class", isPositive ? "dc-connector" : "dc-connector regressed");
-          // Dashed regressions (see legend) so improved vs. regressed doesn't rely on color alone.
           if (!isPositive) line.setAttribute("stroke-dasharray", "4 2");
           svg.appendChild(line);
 
-          // Unguided Tick (Baseline)
           const uTick = document.createElementNS("http://www.w3.org/2000/svg", "line");
           uTick.setAttribute("x1", uX.toString());
           uTick.setAttribute("y1", (y - uHalf).toString());
@@ -735,8 +587,6 @@ export class DumbbellChart {
           uTick.setAttribute("stroke-width", "2");
           uTick.setAttribute("class", "dc-utick");
           svg.appendChild(uTick);
-
-          // Guided Tick (Outcome)
           const gTick = document.createElementNS("http://www.w3.org/2000/svg", "line");
           gTick.setAttribute("x1", gX.toString());
           gTick.setAttribute("y1", (y - gHalf).toString());
@@ -746,15 +596,10 @@ export class DumbbellChart {
           gTick.setAttribute("stroke-width", "2.5");
           gTick.setAttribute("class", "dc-gtick");
           svg.appendChild(gTick);
-
-          // Hit area for tooltip & keyboard focus: the sub-line's whole share of the feature row, so
-          // sub-lines tile the row without overlapping (half a step either side of the line), and
-          // the first and last ones extend to the row's edges. A single-line row gets the full
-          // row pitch (WCAG 2.5.8 target size).
           const hitTop = itemIndex === 0 ? currentY : y - (offsetStep / 2);
           const hitBottom = itemIndex === items.length - 1 ? currentY + rowHeight : y + (offsetStep / 2);
           const hitRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-          hitRect.setAttribute("x", leftAxis.toString()); // only over the chart area
+          hitRect.setAttribute("x", leftAxis.toString());
           hitRect.setAttribute("y", hitTop.toString());
           hitRect.setAttribute("width", (width - this.options.margin.left - this.options.margin.right).toString());
           hitRect.setAttribute("height", (hitBottom - hitTop).toString());
@@ -763,22 +608,15 @@ export class DumbbellChart {
           /** @type {SVGElement} */
           let hitArea = hitRect;
           if (!this.options.hideLabels) {
-              // Each row navigates in-page to its task, so it's a real SVG link (Enter, middle-click,
-              // and "open in new tab" work natively) and the interest invoker for the shared tooltip.
               hitArea = document.createElementNS("http://www.w3.org/2000/svg", "a");
               hitArea.setAttribute("class", "dc-hit");
               hitArea.setAttribute("href", this.options.itemHref ? this.options.itemHref(item) : `#guide-${encodeURIComponent(item.useCaseId || featureName)}`);
               hitArea.setAttribute("interestfor", "dumbbell-tooltip");
-              // Short name (row + action): the rates are the row's description, supplied by the
-              // interestfor hint (#dumbbell-tooltip), so they aren't repeated here. The failure note
-              // stays, since the visible cue for it is only a glyph on the feature label.
               const failedNote = (item.uFailed || item.gFailed) ? ', at least one run failed before grading' : '';
               hitArea.setAttribute("aria-label", `${item.useCaseId || featureName} (${item.taskName}): open task${failedNote}`);
               hitArea.appendChild(hitRect);
               scrollSvgLinkIntoViewOnFocus(hitArea, hitRect);
           }
-
-          /** Fills the shared tooltip for this row (see wireTooltip). */
           const renderTooltip = () => {
             const tip = this.tooltip;
             const target = { marks: [uTick, gTick], hit: hitRect };
@@ -793,33 +631,18 @@ export class DumbbellChart {
             const gCachedPct = item.gCachedPct || 0;
             const uRuntimeMs = item.uRuntimeMs || 0;
             const gRuntimeMs = item.gRuntimeMs || 0;
-
             const uncachedDeltaPct = uUncached > 0 ? Math.round(((gUncached - uUncached) / uUncached) * 100) : 0;
             const uncachedDeltaSign = uncachedDeltaPct > 0 ? "+" : "";
             const uncachedDeltaCls = uncachedDeltaPct <= 0 ? "text-success" : "";
-
             const runtimeDeltaPct = uRuntimeMs > 0 ? Math.round(((gRuntimeMs - uRuntimeMs) / uRuntimeMs) * 100) : 0;
             const runtimeDeltaSign = runtimeDeltaPct > 0 ? "+" : "";
             const runtimeDeltaCls = runtimeDeltaPct <= 0 ? "text-success" : "";
-
             const fmtTime = (/** @type {number} */ ms) => (ms && ms > 0) ? formatDuration(ms) : '-';
-
-            tip.innerHTML = `
-                <div class="dumbbell-tooltip">
-                    <div class="dumbbell-tooltip-left">
-                         <div class="dumbbell-tooltip-title${item.uFailed || item.gFailed ? ' text-warning' : ''}">${escapeHtml(item.useCaseId)} (${escapeHtml(item.taskName)})</div>
-                         <div class="dumbbell-tooltip-feature">feature: ${escapeHtml(featureName)}</div>
-                         ${(uRuntimeMs > 0 || gRuntimeMs > 0 || uTokens > 0 || gTokens > 0) ? `
+            tip.innerHTML = ` <div class="dumbbell-tooltip"> <div class="dumbbell-tooltip-left"> <div class="dumbbell-tooltip-title${item.uFailed || item.gFailed ? ' text-warning' : ''}">${escapeHtml(item.useCaseId)} (${escapeHtml(item.taskName)})</div> <div class="dumbbell-tooltip-feature">feature: ${escapeHtml(featureName)}</div> ${(uRuntimeMs > 0 || gRuntimeMs > 0 || uTokens > 0 || gTokens > 0) ? `
                          <div class="dumbbell-tooltip-metrics">
-                            ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `
-                            <div>Time (U → G): <strong>${fmtTime(uRuntimeMs)} → ${fmtTime(gRuntimeMs)}</strong> <span class="${runtimeDeltaCls}">(${runtimeDeltaSign}${runtimeDeltaPct}%)</span></div>
-                            ` : ''}
-                            ${(uUncached > 0 || gUncached > 0) ? `
-                            <div>Uncached Tokens: <strong>${uUncached.toLocaleString()} → ${gUncached.toLocaleString()}</strong> <span class="${uncachedDeltaCls}">(${uncachedDeltaSign}${uncachedDeltaPct}%)</span></div>
-                            ` : ''}
-                            ${(uTokens > 0 || gTokens > 0) ? `
-                            <div>Total Tokens: <strong>${uTokens.toLocaleString()} → ${gTokens.toLocaleString()}</strong>${gCachedPct > 0 ? ` <span>(${gCachedPct}% cached)</span>` : ''}</div>
-                            ` : ''}
+                            ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<div>Time (U → G): <strong>${fmtTime(uRuntimeMs)} → ${fmtTime(gRuntimeMs)}</strong> <span class="${runtimeDeltaCls}">(${runtimeDeltaSign}${runtimeDeltaPct}%)</span></div>` : ''}
+                            ${(uUncached > 0 || gUncached > 0) ? `<div>Uncached Tokens: <strong>${uUncached.toLocaleString()} → ${gUncached.toLocaleString()}</strong> <span class="${uncachedDeltaCls}">(${uncachedDeltaSign}${uncachedDeltaPct}%)</span></div>` : ''}
+                            ${(uTokens > 0 || gTokens > 0) ? ` <div>Total Tokens: <strong>${uTokens.toLocaleString()} → ${gTokens.toLocaleString()}</strong>${gCachedPct > 0 ? ` <span>(${gCachedPct}% cached)</span>` : ''}</div> ` : ''}
                          </div>
                          ` : ''}
                     </div>
@@ -832,15 +655,10 @@ export class DumbbellChart {
             `;
             return target;
           };
-
           if (!this.options.hideLabels) {
             hitRenderers.set(hitArea, renderTooltip);
             hitArea.addEventListener('click', (e) => {
               const tip = this.tooltip;
-              // Touch has no hover, and interestfor's long-press isn't discoverable: the first tap
-              // on a row shows its tooltip, a second tap on the same row follows the link. Mouse,
-              // pen, and keyboard (Enter) activate right away. (The second tap's pointerdown may
-              // already have light-dismissed the hint, so track the row, not the popover state.)
               if (tip && /** @type {PointerEvent} */ (e).pointerType === 'touch' && touchShownHit !== hitArea) {
                 e.preventDefault();
                 showForHitArea(tip, hitArea, { open: true });
@@ -848,13 +666,7 @@ export class DumbbellChart {
                 return;
               }
               touchShownHit = null;
-              if (guidedSet.onClick) {
-                // Opening the task's accordion is the in-page navigation; the href is for
-                // middle-click / open in new tab (dashboard.js handles the #guide- deep link).
-                e.preventDefault();
-                hideDumbbellTooltip(true);
-                guidedSet.onClick(item.originalIndex, 'Guided');
-              }
+              if (guidedSet.onClick) { e.preventDefault(); hideDumbbellTooltip(true); guidedSet.onClick(item.originalIndex, 'Guided'); }
             });
           } else if (guidedSet.onClick) {
               hitArea.onclick = () => guidedSet.onClick ? guidedSet.onClick(item.originalIndex, 'Guided') : null;

@@ -2,22 +2,12 @@
 /* its also the only styles loaded for dashboard */
 
 @layer reset, base, theme, components, utilities;
-
 @layer reset {
-  *, *::before, *::after {
-    box-sizing: border-box;
-  }
+*, *::before, *::after { box-sizing: border-box; }
 }
 
 :root {
-  /*
-   * Design tokens (light values first, dark second). The page follows the OS
-   * color scheme (MWG `dark-mode` / `color` guides): `color-scheme: light dark`
-   * also switches native form controls and scrollbars. Success/failure/warning
-   * text tokens are chosen for >= 4.5:1 against their surfaces.
-   */
   color-scheme: light dark;
-
   --color-surface: light-dark(#f8f9fa, #111418);
   --color-surface-container-lowest: light-dark(#ffffff, #1b1f25);
   --color-surface-container-low: light-dark(#f3f4f5, #1f242b);
@@ -57,8 +47,6 @@
   --accent-failure: var(--color-accent-failure);
   --accent-warning: var(--color-accent-warning);
   --border-color: var(--color-outline-variant);
-  /* Form field boundaries need 3:1 non-text contrast (MWG color guide); the subtle
-     --color-outline-variant (~1.2–1.5:1) stays for decorative dividers only. */
   --color-field-border: var(--color-outline);
   --hover-bg: var(--color-surface-container-low);
   --glass-bg: light-dark(rgba(255, 255, 255, 0.7), rgba(27, 31, 37, 0.7));
@@ -96,99 +84,16 @@
   --font-xl: 1rem;
 }
 
-/*
- * Fallback for browsers without light-dark() (Baseline Newly Available 2024-05):
- * mirror the dark values behind prefers-color-scheme so the page still adapts.
- */
 @supports not (color: light-dark(#000, #fff)) {
-  :root {
-    --color-surface: #f8f9fa;
-    --color-surface-container-lowest: #ffffff;
-    --color-surface-container-low: #f3f4f5;
-    --color-surface-container: #edeeef;
-    --color-on-surface: #191c1d;
-    --color-on-surface-variant: #434654;
-    --color-primary: #003cb2;
-    --color-primary-container: #2454d4;
-    --color-on-primary: #ffffff;
-    --color-outline: #656878;
-    --color-outline-variant: rgba(196, 197, 215, 0.4);
-    --color-accent-success: #166534;
-    --color-accent-success-bg: rgba(22, 163, 74, 0.14);
-    --color-accent-failure: #ba1a1a;
-    --color-accent-failure-bg: rgba(186, 26, 26, 0.12);
-    --color-accent-warning: #7c5200;
-    --color-accent-warning-bg: rgba(124, 82, 0, 0.12);
-    --color-accent-leak: #6d28d9;
-    --color-accent-leak-bg: rgba(109, 40, 217, 0.12);
-    --color-shadow: rgba(0, 0, 0, 0.15);
-    --color-grid-dot: rgba(196, 197, 215, 0.3);
-    --glass-bg: rgba(255, 255, 255, 0.7);
-  }
-
+:root { --color-surface: #f8f9fa; --color-surface-container-lowest: #ffffff; --color-surface-container-low: #f3f4f5; --color-surface-container: #edeeef; --color-on-surface: #191c1d; --color-on-surface-variant: #434654; --color-primary: #003cb2; --color-primary-container: #2454d4; --color-on-primary: #ffffff; --color-outline: #656878; --color-outline-variant: rgba(196, 197, 215, 0.4); --color-accent-success: #166534; --color-accent-success-bg: rgba(22, 163, 74, 0.14); --color-accent-failure: #ba1a1a; --color-accent-failure-bg: rgba(186, 26, 26, 0.12); --color-accent-warning: #7c5200; --color-accent-warning-bg: rgba(124, 82, 0, 0.12); --color-accent-leak: #6d28d9; --color-accent-leak-bg: rgba(109, 40, 217, 0.12); --color-shadow: rgba(0, 0, 0, 0.15); --color-grid-dot: rgba(196, 197, 215, 0.3); --glass-bg: rgba(255, 255, 255, 0.7); }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --color-surface: #111418;
-      --color-surface-container-lowest: #1b1f25;
-      --color-surface-container-low: #1f242b;
-      --color-surface-container: #272d35;
-      --color-on-surface: #e4e7ec;
-      --color-on-surface-variant: #aeb4c0;
-      --color-primary: #a9c4ff;
-      --color-primary-container: #2e62e0;
-      --color-on-primary: #0b1a3f;
-      --color-outline: #8b8f9c;
-      --color-outline-variant: rgba(196, 197, 215, 0.18);
-      --color-accent-success: #5fd38a;
-      --color-accent-success-bg: rgba(95, 211, 138, 0.16);
-      --color-accent-failure: #ff8a80;
-      --color-accent-failure-bg: rgba(255, 138, 128, 0.16);
-      --color-accent-warning: #d29922;
-      --color-accent-warning-bg: rgba(210, 153, 34, 0.16);
-      --color-accent-leak: #c4b5fd;
-      --color-accent-leak-bg: rgba(196, 181, 253, 0.16);
-      --color-shadow: rgba(0, 0, 0, 0.55);
-      --color-grid-dot: rgba(196, 197, 215, 0.08);
-      --glass-bg: rgba(27, 31, 37, 0.7);
-    }
+:root { --color-surface: #111418; --color-surface-container-lowest: #1b1f25; --color-surface-container-low: #1f242b; --color-surface-container: #272d35; --color-on-surface: #e4e7ec; --color-on-surface-variant: #aeb4c0; --color-primary: #a9c4ff; --color-primary-container: #2e62e0; --color-on-primary: #0b1a3f; --color-outline: #8b8f9c; --color-outline-variant: rgba(196, 197, 215, 0.18); --color-accent-success: #5fd38a; --color-accent-success-bg: rgba(95, 211, 138, 0.16); --color-accent-failure: #ff8a80; --color-accent-failure-bg: rgba(255, 138, 128, 0.16); --color-accent-warning: #d29922; --color-accent-warning-bg: rgba(210, 153, 34, 0.16); --color-accent-leak: #c4b5fd; --color-accent-leak-bg: rgba(196, 181, 253, 0.16); --color-shadow: rgba(0, 0, 0, 0.55); --color-grid-dot: rgba(196, 197, 215, 0.08); --glass-bg: rgba(27, 31, 37, 0.7); }
   }
 }
-
-::selection {
-  background: color-mix(in oklch, var(--color-primary) 22%, transparent);
-  color: var(--color-on-surface);
-}
-
-/*
- * Reduced motion (MWG `motion` guide): hover lifts and fades are decorative,
- * so switch them off per component instead of a blanket near-zero duration.
- */
+::selection { background: color-mix(in oklch, var(--color-primary) 22%, transparent); color: var(--color-on-surface); }
 @media (prefers-reduced-motion: reduce) {
-  .secondary-btn,
-  .stat-card,
-  .test-card,
-  .pass-rate-fill,
-  .task-accordion,
-  .task-accordion-header,
-  .dog-ear-card,
-  .hint-popover,
-  .mode-toggle-btn,
-  .metric-mode-btn,
-  .suite-table-row,
-  .suite-table-row th,
-  .insights-table tr,
-  .pivot-filter-btn,
-  .sort-btn,
-  .header-filter-select,
-  .tooltip-container,
-  .sort-direction-btn,
-  #dumbbell-chart text {
-    transition: none !important;
-    animation: none !important;
-    transform: none !important;
-  }
+.secondary-btn, .stat-card, .test-card, .pass-rate-fill, .task-accordion, .task-accordion-header, .dog-ear-card, .hint-popover, .mode-toggle-btn, .metric-mode-btn, .suite-table-row, .suite-table-row th, .insights-table tr, .pivot-filter-btn, .sort-btn, .header-filter-select, .tooltip-container, .sort-direction-btn, #dumbbell-chart text { transition: none !important; animation: none !important; transform: none !important; }
 }
-
 body {
   font-family: var(--font-sans);
   color: var(--color-on-surface);
@@ -216,7 +121,6 @@ header > div > div {
 
 h1, h2 {
   font-family: var(--font-serif);
-  /* Even out short multi-line headings such as the modal's file-path title. */
   text-wrap: balance;
 }
 
@@ -354,13 +258,6 @@ h1 {
   font-size: 0.9rem;
 }
 
-/*
- * Modern Dialog (MWG `animate-to-from-top-layer` & `prevent-page-scroll-under-modal-dialog` guides):
- * - Transition `display` and `overlay` with `transition-behavior: allow-discrete` plus `@starting-style`
- *   so both entry and exit animate smoothly without `display: none !important`.
- * - Set `overscroll-behavior: contain` on `dialog:modal` and `overflow: hidden; overscroll-behavior: contain`
- *   on `dialog::backdrop` so scroll gestures inside or outside the modal never chain to the page underneath.
- */
 dialog#modal {
   background: transparent;
   border: none;
@@ -388,10 +285,7 @@ dialog#modal[open] {
   opacity: 1;
   transform: translateY(0) scale(1);
 
-  @starting-style {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
+@starting-style { opacity: 0; transform: translateY(12px) scale(0.98); }
 }
 
 dialog#modal::backdrop {
@@ -421,9 +315,7 @@ dialog#modal[open]::backdrop {
   }
 
   @starting-style {
-    dialog#modal[open] {
-      transform: none;
-    }
+dialog#modal[open] { transform: none; }
   }
 }
 
@@ -439,8 +331,6 @@ dialog#modal[open]::backdrop {
   box-sizing: border-box;
   box-shadow: 0 20px 50px var(--color-shadow);
 }
-
-/* Wraps the close button for the declarative method="dialog" close; adds no layout of its own. */
 .close-modal-form {
   margin: 0;
 }
@@ -582,10 +472,7 @@ dialog#modal[open]::backdrop {
   transition: background-color 0.15s ease-out, border-color 0.15s ease-out;
 }
 
-.secondary-btn svg {
-  display: block;
-  flex-shrink: 0;
-}
+.secondary-btn svg { display: block; flex-shrink: 0; }
 
 .secondary-btn:hover {
   background-color: var(--hover-bg);
@@ -632,7 +519,6 @@ dialog#modal[open]::backdrop {
   color: var(--color-accent-failure);
   display: block;
   text-decoration: line-through;
-  /* No opacity: dimmed text would drop below 4.5:1 (MWG color guide). */
 }
 
 .diff-unchanged {
@@ -652,7 +538,6 @@ dialog#modal.diff-modal {
 }
 
 .diff-separator {
-  /* Opaque surface token + full-strength secondary text instead of opacity, to keep 4.5:1. */
   background-color: var(--color-surface-container);
   color: var(--text-secondary);
   padding: 4px;
@@ -660,28 +545,10 @@ dialog#modal.diff-modal {
   font-size: 0.85em;
   user-select: none;
 }
-
-/* <code> inside code blocks inherits the block's monospace sizing. */
-:is(.log-content, .diff-container, .diff-fallback-pre) :is(code, samp) {
-  font: inherit;
-}
-
-/* Sandboxed agent content (trajectories, built apps) shown in the modal. */
-dialog#modal.frame-modal {
-  max-inline-size: 1200px;
-  inline-size: 95dvw;
-}
-
-.modal-content.frame-modal {
-  padding: 20px;
-}
-
-.frame-esc-hint {
-  margin: 8px 0 0;
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-}
-
+:is(.log-content, .diff-container, .diff-fallback-pre) :is(code, samp) { font: inherit; }
+dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
+.modal-content.frame-modal { padding: 20px; }
+.frame-esc-hint { margin: 8px 0 0; font-size: var(--font-sm); color: var(--text-secondary); }
 .artifact-frame {
   display: block;
   inline-size: 100%;
@@ -689,18 +556,10 @@ dialog#modal.frame-modal {
   margin-block-start: 12px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  /* Agent pages usually assume a light canvas. */
   background: #fff;
 }
 
 /* Dumbbell Chart & Tooltip */
-/* A popover="hint" (dashboard.html) opened by the rows' interestfor: it renders in the top layer, so
-   it needs no z-index, and the UA's [popover]:not(:popover-open) rule hides it. MWG
-   interest-triggered-tooltips: placed with anchor() against the HTML stand-in anchor that
-   dumbbell-chart.js moves over the active row (SVG can't be an anchor); no position-area, for
-   anchor-polyfill compatibility. Below the row's marks, start-aligned; then flipped; then pinned
-   to the viewport edge when it's wider than the space on either side (phones). Without anchor
-   positioning, dumbbell-chart.js sets left/top from measured coordinates instead. */
 .chart-tooltip {
   position: fixed;
   inset: auto;
@@ -718,28 +577,15 @@ dialog#modal.frame-modal {
   outline: 1px solid var(--color-outline-variant);
   box-shadow: 0 8px 24px var(--color-shadow);
   line-height: 1.4;
-  /* An 8px gap from the viewport's inline end: with zero margin a tooltip that ends flush with
-     the edge counts as fitting, so the edge fallbacks below never applied (phones). */
   margin-inline-end: 8px;
   position-anchor: --dumbbell-row;
   top: calc(anchor(bottom) + 6px);
   left: anchor(left);
-  /* Hide rather than strand it over unrelated rows when the row scrolls out of view. */
   position-visibility: anchors-visible;
   position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline, --dc-edge-below, --dc-edge-above;
 }
-@position-try --dc-edge-below {
-  top: calc(anchor(bottom) + 6px);
-  bottom: auto;
-  left: 8px;
-  right: auto;
-}
-@position-try --dc-edge-above {
-  top: auto;
-  bottom: calc(anchor(top) + 6px);
-  left: 8px;
-  right: auto;
-}
+@position-try --dc-edge-below { top: calc(anchor(bottom) + 6px); bottom: auto; left: 8px; right: auto; }
+@position-try --dc-edge-above { top: auto; bottom: calc(anchor(top) + 6px); left: 8px; right: auto; }
 .dc-anchor {
   position: absolute;
   pointer-events: none;
@@ -758,18 +604,11 @@ dialog#modal.frame-modal {
   border-bottom: 0;
   overflow: hidden;
   transition: transform 0.2s, box-shadow 0.2s;
-  /* The long task list sits below the fold: skip rendering off-screen rows (MWG
-     defer-rendering-heavy-content). `auto` remembers each row's real height once rendered;
-     3.5rem is the collapsed header. overflow is already hidden, so paint containment clips nothing new. */
   content-visibility: auto;
   contain-intrinsic-block-size: auto 3.5rem;
 }
-
 @media (width < 48rem) {
-  .task-accordion {
-    /* The header wraps to two rows on narrow screens. */
-    contain-intrinsic-block-size: auto 5.5rem;
-  }
+.task-accordion { contain-intrinsic-block-size: auto 5.5rem; }
 }
 
 .task-accordion:last-child {
@@ -836,60 +675,26 @@ dialog#modal.frame-modal {
   gap: 30px;
   min-inline-size: 0;
 }
-
-/* Narrow screens: the header wraps into a title row and a metrics row instead of forcing the viewport wider. */
-.task-accordion-header {
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-
-.task-accordion-header .left-section {
-  flex-wrap: wrap;
-  min-inline-size: 0;
-}
-
-.task-accordion-header .right-section {
-  flex-wrap: wrap;
-  gap: 10px 20px;
-  margin-inline-start: auto;
-}
-
+.task-accordion-header { flex-wrap: wrap; gap: 8px 16px; }
+.task-accordion-header .left-section { flex-wrap: wrap; min-inline-size: 0; }
+.task-accordion-header .right-section { flex-wrap: wrap; gap: 10px 20px; margin-inline-start: auto; }
 @media (width < 48rem) {
-  .task-accordion-header .right-section {
-    flex: 1 1 100%;
-    justify-content: space-between;
-    margin-inline-start: 0;
-  }
-
-  .task-efficiency-meta {
-    flex-wrap: wrap;
-  }
+.task-accordion-header .right-section { flex: 1 1 100%; justify-content: space-between; margin-inline-start: 0; }
+.task-efficiency-meta { flex-wrap: wrap; }
 }
 
-/*
- * Accordion content supports `hidden="until-found"` (MWG `search-hidden-content` guide):
- * When closed with `hidden="until-found"`, the UA hides it with `content-visibility: hidden`
- * so Find-in-Page can still search inside collapsed task panels (the assertion table is rendered
- * up front for this). Never set `display: none` directly on `[hidden="until-found"]`, and keep
- * padding, borders, and backgrounds on the inner `.task-accordion-body`: the UA still paints
- * them on the hidden element itself, which would leave an empty band under every closed task.
- */
 .task-accordion-content {
   padding: 0;
   border: 0;
   background: none;
 }
-
 .task-accordion-body {
   padding: 16px;
   border-top: 1px solid var(--border-color);
   background: var(--color-surface-container-lowest);
 }
 
-.task-accordion:not(.open) .task-accordion-content:not([hidden="until-found"]) {
-  display: none;
-}
-
+.task-accordion:not(.open) .task-accordion-content:not([hidden="until-found"]) { display: none; }
 .task-accordion.open .task-accordion-content {
   display: block;
 }
@@ -938,11 +743,7 @@ dialog#modal.frame-modal {
   background: var(--color-primary);
 }
 
-.mini-dumbbell-track .connector.regressed {
-  /* Dashed like the suite chart and legend, so regressions don't rely on color alone. */
-  background: repeating-linear-gradient(90deg, var(--color-accent-failure) 0 4px, transparent 4px 6px);
-}
-
+.mini-dumbbell-track .connector.regressed { background: repeating-linear-gradient(90deg, var(--color-accent-failure) 0 4px, transparent 4px 6px); }
 /* Uplift Score */
 .uplift-score {
   font-size: 1.25rem;
@@ -956,123 +757,26 @@ dialog#modal.frame-modal {
   color: var(--color-accent-failure);
 }
 
-.uplift-score.flat {
-  color: var(--text-secondary);
-}
-
-/* Accordion toggle is a real button; it inherits the header's text styling. */
-.task-toggle {
-  appearance: none;
-  background: none;
-  border: 0;
-  padding: 2px 4px;
-  margin: -2px -4px;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.task-toggle .feature-chip {
-  margin-right: 0;
-}
-
-.chevron {
-  display: inline-block;
-  font-size: 0.75rem;
-  transition: rotate 0.2s;
-}
-
-.task-accordion.open .chevron {
-  rotate: 90deg;
-}
-
+.uplift-score.flat { color: var(--text-secondary); }
+.task-toggle { appearance: none; background: none; border: 0; padding: 2px 4px; margin: -2px -4px; font: inherit; color: inherit; text-align: left; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; border-radius: 4px; }
+.task-toggle .feature-chip { margin-right: 0; }
+.chevron { display: inline-block; font-size: 0.75rem; transition: rotate 0.2s; }
+.task-accordion.open .chevron { rotate: 90deg; }
 @media (prefers-reduced-motion: reduce) {
-  .chevron {
-    transition: none;
-  }
+.chevron { transition: none; }
 }
-
-.task-title.has-failure {
-  color: var(--color-accent-failure);
-}
-
-/* Badges and labels that are also interest-invoking buttons (button[interestfor] + popover="hint").
-   :where() keeps this reset at zero specificity so the badge's own styles win. */
-:where(.hint-trigger) {
-  appearance: none;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  letter-spacing: inherit;
-}
-
-/* The dotted underline is the visual hint that more information is available on hover/focus. */
-.hint-trigger {
-  position: relative;
-  cursor: help;
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-}
-
-/* Target size (WCAG 2.5.8, 24px; 44px on touch): the badges are ~16-20px tall, and growing the
-   visible box would break the header row. An invisible, centered pseudo-element extends the hit
-   area instead (it's part of the button for hit testing, and holds no content). */
-.hint-trigger::after {
-  content: "";
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-start: 50%;
-  translate: -50% -50%;
-  inline-size: max(100%, 24px);
-  block-size: max(100%, 24px);
-}
-
+.task-title.has-failure { color: var(--color-accent-failure); }
+:where(.hint-trigger) { appearance: none; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; letter-spacing: inherit; }
+.hint-trigger { position: relative; cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
+.hint-trigger::after { content: ""; position: absolute; inset-block-start: 50%; inset-inline-start: 50%; translate: -50% -50%; inline-size: max(100%, 24px); block-size: max(100%, 24px); }
 @media (pointer: coarse) {
-  .hint-trigger::after {
-    inline-size: max(100%, 44px);
-    block-size: max(100%, 44px);
-  }
+.hint-trigger::after { inline-size: max(100%, 44px); block-size: max(100%, 44px); }
 }
-
-.generation-failed-badge {
-  font-size: var(--font-base);
-  color: var(--color-accent-failure);
-  border: 1px solid currentColor;
-  padding: 2px 6px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
-.expansion-loading {
-  color: var(--text-secondary);
-}
-
-.trend-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: 24px;
-  min-block-size: 24px;
-  border-radius: 4px;
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
+.generation-failed-badge { font-size: var(--font-base); color: var(--color-accent-failure); border: 1px solid currentColor; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.expansion-loading { color: var(--text-secondary); }
+.trend-link { display: inline-flex; align-items: center; justify-content: center; min-inline-size: 24px; min-block-size: 24px; border-radius: 4px; color: var(--color-primary); text-decoration: none; }
 /* Assertion Truth Matrix */
-.truth-matrix-wrap {
-  margin-bottom: 16px;
-  max-inline-size: 100%;
-  overflow-x: auto;
-}
-
+.truth-matrix-wrap { margin-bottom: 16px; max-inline-size: 100%; overflow-x: auto; }
 .truth-matrix {
   width: 100%;
   border-collapse: collapse;
@@ -1103,25 +807,11 @@ dialog#modal.frame-modal {
   text-align: center;
 }
 
-.truth-matrix th:last-child,
-.truth-matrix td:last-child {
-  overflow-wrap: anywhere;
-}
-
+.truth-matrix th:last-child, .truth-matrix td:last-child { overflow-wrap: anywhere; }
 @media (width < 40rem) {
-  .truth-matrix th,
-  .truth-matrix td {
-    padding: 6px;
-  }
-
-  .truth-matrix th.center,
-  .truth-matrix td.center {
-    padding-inline: 4px;
-    font-size: 0.75rem;
-    letter-spacing: 0;
-  }
+.truth-matrix th, .truth-matrix td { padding: 6px; }
+.truth-matrix th.center, .truth-matrix td.center { padding-inline: 4px; font-size: 0.75rem; letter-spacing: 0; }
 }
-
 .truth-matrix tr:last-child td {
   border-bottom: none;
 }
@@ -1159,7 +849,6 @@ dialog#modal.frame-modal {
 }
 
 .assertion-error-loc {
-  /* A full-contrast token instead of opacity, which dropped this small text below 4.5:1. */
   color: var(--color-on-surface-variant);
   font-size: 0.68rem;
 }
@@ -1225,10 +914,6 @@ dialog#modal.frame-modal {
 }
 
 /* Header Meta Grid */
-/*
- * Meta strip: first column (test ID = the page's identity) takes the slack and wraps;
- * the other cells size to their content so nothing is ellipsized.
- */
 .header-meta-grid {
   display: grid;
   grid-auto-flow: column;
@@ -1238,54 +923,18 @@ dialog#modal.frame-modal {
   border-radius: 12px;
   max-inline-size: 100%;
 }
-
-.header-meta-grid .header-meta-item {
-  min-inline-size: 0;
-  width: auto;
-}
-
-.header-meta-grid .meta-value {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  overflow-wrap: anywhere;
-}
-
-/* Tablets & narrow laptops: wrap the metadata cells so the strip never overflows horizontally. */
+.header-meta-grid .header-meta-item { min-inline-size: 0; width: auto; }
+.header-meta-grid .meta-value { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 @media (width < 80rem) {
-  .header-meta-grid {
-    display: grid;
-    grid-auto-flow: row;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
-    gap: 4px 12px;
-  }
-
-  .header-meta-grid .header-meta-item {
-    padding: 8px 4px;
-    min-inline-size: 0;
-  }
-
-  .header-meta-grid .header-meta-item:first-child {
-    grid-column: 1 / -1;
-  }
-
-  .header-meta-grid .meta-value {
-    overflow-wrap: anywhere;
-  }
+.header-meta-grid { display: grid; grid-auto-flow: row; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: 4px 12px; }
+.header-meta-grid .header-meta-item { padding: 8px 4px; min-inline-size: 0; }
+.header-meta-grid .header-meta-item:first-child { grid-column: 1 / -1; }
+.header-meta-grid .meta-value { overflow-wrap: anywhere; }
 }
-
-/* Phones: two-column meta strip instead of eight stacked 160px cells. */
 @media (width < 40rem) {
-  .header-meta-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2px 12px;
-  }
-
-  .suite-header-actions {
-    order: -1;
-  }
+.header-meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; }
+.suite-header-actions { order: -1; }
 }
-
 .narrative-note span {
   font-size: var(--font-xs);
   color: var(--text-secondary);
@@ -1479,9 +1128,7 @@ dialog#modal.frame-modal {
 .sparkline-range.small {
   block-size: 3px;
 }
-
 .sparkline-range.regressed {
-  /* Dashed like the suite chart and legend, so regressions don't rely on color alone. */
   background: repeating-linear-gradient(90deg, var(--color-accent-failure) 0 4px, transparent 4px 6px);
 }
 
@@ -1614,8 +1261,6 @@ dialog#modal.frame-modal {
   border: none !important;
   margin-top: 8px;
 }
-
-/* Visually hidden, focus-visible & utility classes */
 .visually-hidden:where(:not(:focus-within, :active)) { clip-path: inset(50%); height: 1px; overflow: clip; position: absolute; white-space: nowrap; width: 1px; }
 :is(a, button, select, input, summary, [tabindex="0"], [role="button"]):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .hidden, [hidden]:not([hidden="until-found"]) { display: none !important; }
@@ -1627,26 +1272,22 @@ dialog#modal.frame-modal {
 .leak-badge { background: var(--color-accent-leak-bg); color: var(--color-accent-leak); border-color: color-mix(in oklch, var(--color-accent-leak) 40%, transparent); }
 .run-chip-leak { font-size: 0.7rem; color: var(--color-accent-leak); background: var(--color-accent-leak-bg); border: 1px solid color-mix(in oklch, var(--color-accent-leak) 45%, transparent); padding: 1px 4px; border-radius: 4px; }
 .uplift-score.invalid { color: var(--color-accent-warning); font-size: 0.75rem; letter-spacing: 0.04em; }
-
 .tfoot-chip, .tfoot-chip-cell { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 4px; }
 .tfoot-chip-error { font-weight: bold; font-size: 0.75rem; color: var(--color-accent-warning); border: 1px solid var(--color-accent-warning); padding: 1px 5px; border-radius: 4px; }
 .tfoot-chip-rate { font-weight: bold; font-size: 0.85rem; color: var(--rate-color, var(--text-primary)); }
 .tfoot-chip-build-failed { font-size: 0.7rem; color: var(--color-accent-failure); }
-/* Per-run failure messages: a native disclosure instead of a hover-only title. */
 .tfoot-chip-details { display: flex; flex-direction: column; align-items: center; max-inline-size: 16rem; }
 .tfoot-chip-details > summary { cursor: pointer; }
 .tfoot-chip-msg { margin: 4px 0 0; max-block-size: 8rem; overflow: auto; font-size: 0.7rem; text-align: start; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-primary); }
 .tfoot-chip-actions { display: flex; flex-direction: column; gap: 2px; inline-size: 100%; }
 .guide-chip-link { padding: 2px 4px; border-radius: 4px; font-family: monospace; text-decoration: none; }
 .tfoot-run-cards-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px; }
-
 .modal-back-btn { margin-block-end: 20px; padding: 5px 15px; font-size: 0.9em; }
 .modal-status-msg, .modal-loading-state { text-align: center; padding: 20px; }
 .modal-error-msg, .modal-error-state { color: var(--color-accent-failure); padding: 20px; }
 .diff-missing-banner { background-color: var(--color-accent-warning-bg); border-inline-start: 4px solid var(--color-accent-warning); padding: 15px; margin-block-end: 20px; border-radius: 4px; }
 .diff-missing-title { font-weight: bold; color: var(--color-accent-warning); }
 .diff-fallback-pre, .diff-raw-pre { white-space: pre-wrap; margin: 0; color: var(--text-primary); font-family: monospace; }
-
 .dumbbell-tooltip { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: flex-start; justify-content: space-between; min-inline-size: min(310px, calc(100dvw - 40px)); color: var(--color-on-surface); }
 .dumbbell-tooltip-left { display: flex; flex-direction: column; gap: 4px; min-inline-size: 0; flex: 1 1 180px; }
 .dumbbell-tooltip-title { font-weight: 700; font-size: 0.875rem; overflow-wrap: anywhere; }
@@ -1658,11 +1299,9 @@ dialog#modal.frame-modal {
 .dumbbell-tooltip-uplift.positive { color: var(--color-accent-success); }
 .dumbbell-tooltip-uplift.negative { color: var(--color-accent-failure); }
 .dumbbell-tooltip-rate { white-space: nowrap; }
-
-/* Narrative Summary Grid (4 cards, 2x2 on desktop/tablet, 1x4 on narrow viewports) */
 .narrative-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: 100%; }
 @media (width < 46rem) {
-  .narrative-summary-grid { grid-template-columns: 1fr; }
+.narrative-summary-grid { grid-template-columns: 1fr; }
 }
 .narrative-card { container-type: inline-size; display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; justify-content: flex-start; min-inline-size: 0; }
 .narrative-card .meta-item-header { gap: 6px 12px; align-items: center; flex-wrap: wrap; min-block-size: 24px; }
@@ -1674,16 +1313,13 @@ dialog#modal.frame-modal {
 .narrative-metrics-list { display: flex; flex-direction: column; gap: 6px; margin-block-start: auto; padding-top: 10px; border-top: 1px solid var(--color-outline-variant); font-size: 0.8rem; }
 .narrative-metric-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; color: var(--text-secondary); }
 .narrative-metric-row strong { color: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; margin-inline-start: auto; white-space: nowrap; }
-
 .efficiency-delta-pill { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 16px; background: var(--color-surface-container); color: var(--text-secondary); white-space: nowrap; }
 .efficiency-delta-pill.positive { background: var(--color-accent-success-bg); color: var(--color-accent-success); }
 .efficiency-delta-pill.negative { background: var(--color-accent-failure-bg); color: var(--color-accent-failure); }
-
-/* Accessibility Breakdown Bars (2 columns when card is wide enough) */
 .a11y-dimensions-grid { display: grid; grid-template-columns: 1fr; gap: 8px 20px; margin-block-start: auto; padding-top: 10px; border-top: 1px solid var(--color-outline-variant); }
 .a11y-dimensions-grid:empty { display: none; }
 @container (inline-size >= 26.25rem) {
-  .a11y-dimensions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.a11y-dimensions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .a11y-dim-row { display: flex; flex-direction: column; gap: 2px; }
 .a11y-dim-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.75rem; }
@@ -1691,15 +1327,12 @@ dialog#modal.frame-modal {
 .a11y-dim-values { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .a11y-dim-delta { color: var(--color-accent-success); font-weight: 600; }
 .a11y-dim-delta.negative { color: var(--color-accent-failure); }
-
-/* Chart Toolbar, Metric Mode Toggle & Guide Controls */
 .chart-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; background: var(--color-surface-container-lowest); border: 1px solid var(--color-outline-variant); border-radius: var(--radius-default); }
 .chart-toolbar-left, .chart-toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .metric-mode-toggle { position: relative; display: inline-flex; margin: 0; min-inline-size: 0; background: var(--color-surface-container); border: 1px solid var(--color-outline-variant); border-radius: 6px; padding: 2px; gap: 2px; }
 .mode-toggle-btn { position: relative; display: inline-flex; align-items: center; appearance: none; border: none; background: transparent; color: var(--color-on-surface-variant); font-family: var(--font-sans); font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 4px; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease; }
 .mode-toggle-btn:has(> input[type="radio"]:checked) { background: var(--color-primary); color: var(--color-on-primary); }
 .mode-toggle-btn:hover:not(:has(> input[type="radio"]:checked)) { background: var(--color-surface-container-lowest); color: var(--color-on-surface); }
-/* Pill-styled radio switchers: hide the native radio circle while keeping the input focusable and in the accessibility tree. */
 :is(.mode-toggle-btn, .metric-mode-btn, .ab-agent-pill, .ab-task-pill) > input[type="radio"] {
   position: absolute;
   inset-block-start: 50%;
@@ -1710,138 +1343,68 @@ dialog#modal.frame-modal {
   opacity: 0;
   pointer-events: none;
 }
-:is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:focus-visible) {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
+:is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .guide-section-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
 .guide-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-inline-size: 0; }
 .guide-controls .sort-select { max-inline-size: 100%; }
 .sort-label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
 .sort-select { font-family: var(--font-sans); font-size: 0.82rem; padding: 6px 8px; border: 1px solid var(--color-field-border); border-radius: 4px; background: var(--color-surface-container-lowest); color: var(--color-on-surface); cursor: pointer; }
-
-/* Task Accordion Accessibility, Efficiency Chips & Popover Hints */
 .a11y-task-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 16px; background: color-mix(in oklch, var(--color-primary) 10%, transparent); color: var(--color-primary); border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent); }
 .task-efficiency-meta { display: flex; align-items: center; gap: 8px; }
 .task-eff-chip { font-size: 0.75rem; color: var(--text-secondary); background: var(--color-surface-container-low); border: 1px solid var(--color-outline-variant); padding: 2px 8px; border-radius: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .a11y-check-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; border-radius: 16px; background: color-mix(in oklch, var(--color-primary) 12%, transparent); color: var(--color-primary); border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent); vertical-align: middle; }
-
-[interestfor] {
-  --interest-delay-start: 0.2s;
-  interest-delay-start: var(--interest-delay-start);
-  --interest-delay-end: 0.15s;
-  interest-delay-end: var(--interest-delay-end);
-}
-:root:has(:is(:interest-source, .interest-source)) [interestfor] {
-  --interest-delay-start: 0s;
-  interest-delay-start: 0s;
-}
+[interestfor] { --interest-delay-start: 0.2s; interest-delay-start: var(--interest-delay-start); --interest-delay-end: 0.15s; interest-delay-end: var(--interest-delay-end); }
+:root:has(:is(:interest-source, .interest-source)) [interestfor] { --interest-delay-start: 0s; interest-delay-start: 0s; }
 .info-hint-btn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--color-outline); background: var(--color-surface-container-lowest); color: var(--color-on-surface-variant); font-size: 0.75rem; font-weight: 700; line-height: 1; padding: 0; cursor: help; }
 .info-hint-btn:is(:hover, :focus-visible, :interest-source, .interest-source) { border-color: var(--color-primary); color: var(--color-primary); }
 .anchor-dash-a11y { anchor-name: --anchor-dash-a11y; }
 .anchor-dash-tokens { anchor-name: --anchor-dash-tokens; }
-.hint-popover[popover] {
-  position: fixed;
-  inset: auto;
-  margin: 0;
-  max-width: min(340px, calc(100dvw - 32px));
-  /* Without a floor, a hint anchored near the right edge just shrinks to fit (e.g. 137px wide at
-     390px), so nothing overflows and position-try-fallbacks never flips it. */
-  min-inline-size: min(16rem, calc(100dvw - 32px));
-  padding: 8px 12px;
-  border: none;
-  outline: 1px solid var(--color-outline-variant);
-  border-radius: 6px;
-  background: var(--color-surface-container-lowest);
-  color: var(--color-on-surface);
-  box-shadow: 0 8px 24px var(--color-shadow);
-  font-family: var(--font-sans);
-  font-size: 0.76rem;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: normal;
-  line-height: 1.45;
-  top: calc(anchor(bottom) + 6px);
-  left: anchor(left);
-  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
-}
+.hint-popover[popover] { position: fixed; inset: auto; margin: 0; max-width: min(340px, calc(100dvw - 32px)); min-inline-size: min(16rem, calc(100dvw - 32px)); padding: 8px 12px; border: none; outline: 1px solid var(--color-outline-variant); border-radius: 6px; background: var(--color-surface-container-lowest); color: var(--color-on-surface); box-shadow: 0 8px 24px var(--color-shadow); font-family: var(--font-sans); font-size: 0.76rem; font-weight: 400; text-transform: none; letter-spacing: normal; line-height: 1.45; top: calc(anchor(bottom) + 6px); left: anchor(left); position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline; }
 #dash-tooltip-a11y { position-anchor: --anchor-dash-a11y; }
-#dash-tooltip-tokens {
-  position-anchor: --anchor-dash-tokens;
-  left: auto;
-  right: anchor(right);
-}
+#dash-tooltip-tokens { position-anchor: --anchor-dash-tokens; left: auto; right: anchor(right); }
 .hint-popover[popover]:is(:popover-open, .\:popover-open) { display: block; }
 @media (prefers-reduced-motion: no-preference) {
-  /* Base = closed/exit state (MWG animate-to-from-top-layer), so closing fades out instead of
-     holding full opacity for the display/overlay delay and then snapping away. */
-  .hint-popover[popover] {
-    opacity: 0;
-    transform: translateY(-4px);
-    transition: opacity 0.15s ease, transform 0.15s ease, display 0.15s allow-discrete, overlay 0.15s allow-discrete;
-  }
-  .hint-popover[popover]:is(:popover-open, .\:popover-open) {
-    opacity: 1;
-    transform: none;
-  }
+.hint-popover[popover] { opacity: 0; transform: translateY(-4px); transition: opacity 0.15s ease, transform 0.15s ease, display 0.15s allow-discrete, overlay 0.15s allow-discrete; }
+.hint-popover[popover]:is(:popover-open, .\:popover-open) { opacity: 1; transform: none; }
   @starting-style {
-    .hint-popover[popover]:is(:popover-open, .\:popover-open) {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
+.hint-popover[popover]:is(:popover-open, .\:popover-open) { opacity: 0; transform: translateY(-4px); }
   }
 }
-
-/* Suite page header, legend & touch ergonomics */
 .run-chip-meta { font-size: var(--font-sm); color: var(--text-secondary); }
 .run-chip-meta.small { font-size: var(--font-xs); }
 .suite-header-row { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; }
 .suite-header-row > div:first-child { flex: 1 1 auto; min-inline-size: 0; }
-/* Phones: the loaded meta grid always takes its own row under the actions; claim it up front so the
-   still-empty header doesn't sit beside the Back button and then wrap down when data arrives. */
 @media (width < 40rem) {
-  .suite-header-row > div:first-child { flex-basis: 100%; }
+.suite-header-row > div:first-child { flex-basis: 100%; }
 }
 .suite-test-header { font-size: var(--font-lg); color: var(--text-secondary); }
 .suite-header-actions { flex: 0 0 auto; display: flex; gap: 12px; justify-content: flex-end; }
 .suite-header-actions .secondary-btn, .dashboard-footer .secondary-btn { text-decoration: none; }
 .suite-chart-section { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 .suite-chart-section.hidden { display: none; }
-
-/*
- * Loading reservations (MWG CLS guidance): the header, summary + chart, and task list all render from
- * one fetch, so without a floor the "Guide evals" heading, sort control, and footer jump down when it
- * lands. Floors are the loaded heights with the mock suite (the smallest realistic suite), measured
- * at each layout breakpoint and rounded down so an upward shift is never introduced. dashboard.js
- * clears aria-busy when rendering finishes or fails.
- */
 #test-header[aria-busy="true"] { min-block-size: 4rem; }
-/* Reserve the two filled regions, not the whole section, so the static legend and toolbar between
-   them already sit where they end up. */
 #chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 26.5rem; }
 #chart-section[aria-busy="true"] #dumbbell-chart { min-block-size: 6rem; }
 #guide-grid[aria-busy="true"] { min-block-size: 100dvh; }
 @media (width < 80rem) {
-  #test-header[aria-busy="true"] { min-block-size: 7.5rem; }
+#test-header[aria-busy="true"] { min-block-size: 7.5rem; }
 }
 @media (width < 50rem) {
-  #test-header[aria-busy="true"] { min-block-size: 11rem; }
-  #chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 27.5rem; }
+#test-header[aria-busy="true"] { min-block-size: 11rem; }
+#chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 27.5rem; }
 }
 @media (width < 46rem) {
-  #chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 47.5rem; }
+#chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 47.5rem; }
 }
 @media (width < 25rem) {
-  #chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 51rem; }
+#chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 51rem; }
 }
 @media (width < 22rem) {
-  #chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 59rem; }
+#chart-section[aria-busy="true"] #summary-side-panel { min-block-size: 59rem; }
 }
 .suite-dumbbell-chart { width: 100%; }
 .empty-chart-msg { padding: 16px; margin: 0; color: var(--color-on-surface-variant); }
 .guide-evals-heading { margin: 16px 0; color: var(--text-primary); }
-
 .dumbbell-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); margin: 0; font-size: var(--font-md); color: var(--text-secondary); }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .legend-note { white-space: normal; }
@@ -1850,108 +1413,37 @@ dialog#modal.frame-modal {
 .legend-dot.guided { inline-size: 3px; block-size: 13px; background: var(--color-primary); }
 .legend-line { display: inline-block; inline-size: 18px; block-size: 3px; border-radius: 2px; }
 .legend-line.improved { background: var(--color-primary); }
-/* Dashed, matching the chart's regressed connectors, so the legend isn't color-only. */
 .legend-line.regressed { block-size: 0; border-radius: 0; background: none; border-block-start: 3px dashed var(--color-accent-failure); }
 .legend-glyph { color: var(--color-accent-warning); font-weight: 700; }
-
-/*
- * Forced Colors Mode (MWG color guide): author backgrounds become Canvas, which would erase every
- * chart tick, connector, legend swatch, and meter segment. dashboard.css loads first on every page,
- * so these overrides must out-rank the later landing.css / hero.css / showcase.css rules on
- * specificity alone: `:root:root` plus the track container gives (0,5,0), above hero.css's
- * `.takeaway-dumbbell .takeaway-track .connector.regressed` (0,4,0).
- * Author system colors survive forced colors, so no `forced-color-adjust: none` is needed: the user's
- * palette still applies (Highlight / CanvasText / GrayText come from it). Gradients are stripped in
- * forced colors, so dashed regressions use a dashed border instead of the repeating gradient.
- */
 @media (forced-colors: active) {
-  :root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track, .sparkline-bar) {
-    background: Canvas;
-    outline: 1px solid GrayText;
-  }
-  :root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track) .dot.unguided,
-  :root:root .sparkline-bar .sparkline-dot.unguided,
-  :root:root .legend-dot.unguided,
-  :root:root .guide-legend-swatch.unguided .guide-legend-tick {
-    background: CanvasText;
-  }
-  :root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track) :is(.dot.guided, .connector),
-  :root:root .sparkline-bar :is(.sparkline-dot.guided, .sparkline-range),
-  :root:root :is(.legend-dot.guided, .legend-line.improved),
-  :root:root .guide-legend-swatch.guided .guide-legend-tick {
-    background: Highlight;
-  }
-  /* Regressed: dashed in forced colors on every page (the color difference is gone there). */
-  :root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track) .connector.regressed,
-  :root:root .sparkline-bar .sparkline-range.regressed,
-  :root:root .legend-line.regressed {
-    background: transparent;
-    block-size: 0;
-    border: 0;
-    border-block-start: 3px dashed CanvasText;
-    border-radius: 0;
-  }
-  :root:root .guide-legend-swatch:is(.unguided, .guided)::before {
-    background: GrayText;
-    opacity: 1;
-  }
-  :root:root .ab-meter-seg.pass {
-    background: CanvasText;
-  }
-  :root:root .ab-meter-seg.fail {
-    background: Canvas;
-    outline: 1px solid CanvasText;
-    outline-offset: -1px;
-  }
-  /* Selected segment of the "All checks / Accessibility subscore" toggles: the author fill is
-     dropped in forced colors, so mark the pressed state with the user's selection colors.
-     Chromium paints a Canvas backplate behind forced-colors text, which hid HighlightText on the
-     Highlight fill (white on white, or black on black). Every value here is a system color from
-     the user's palette, so opting this one rule out of forcing is safe; the underline marks the
-     state without relying on the fill alone. */
-  :root:root :is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:checked) {
-    forced-color-adjust: none;
-    background: Highlight;
-    color: HighlightText;
-    border-color: Highlight;
-    text-decoration: underline 2px;
-    text-underline-offset: 3px;
-  }
-  :root:root :is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:checked:focus-visible) {
-    outline: 2px solid CanvasText;
-    outline-offset: 2px;
-  }
-  :root:root :is(.mode-toggle-btn, .metric-mode-btn) {
-    border: 1px solid ButtonText;
-  }
-  /* Uncertainty shading (landing.css): an author background becomes Canvas and the band vanishes.
-     Full-opacity GrayText keeps the palette's own contrast; the dots still paint above it. */
-  :root:root :is(.insight-dumbbell-track, .suite-dumbbell-track) .variance-band[class] {
-    background: GrayText;
-    opacity: 1;
-  }
-  /* Suite chart SVG marks (classes set in dumbbell-chart.js); CSS beats the presentation attributes. */
-  #dumbbell-chart :is(.dc-connector, .dc-gtick) { stroke: Highlight; }
-  #dumbbell-chart :is(.dc-connector.regressed, .dc-utick) { stroke: CanvasText; }
-  #dumbbell-chart .dc-track { stroke: GrayText; }
-  #dumbbell-chart .dc-band { fill: GrayText; }
-  /* SVG fills aren't forced, so chart labels would keep their author colors on the user's Canvas. */
-  :is(#dumbbell-chart, .guide-chart-wrapper) text { fill: CanvasText; }
-  /* Guide timeline (guide.js): grid lines, guided marks, and the hollow unguided point. */
-  .guide-chart-wrapper line { stroke: GrayText; }
-  .guide-chart-wrapper .timeline-marker line { stroke: Highlight; }
-  .guide-chart-wrapper .timeline-marker :is(circle:not([stroke]), polygon) { fill: Highlight; }
-  .guide-chart-wrapper .timeline-marker circle[stroke] { fill: Canvas; stroke: CanvasText; }
+:root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track, .sparkline-bar) { background: Canvas; outline: 1px solid GrayText; }
+:root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track) .dot.unguided, :root:root .sparkline-bar .sparkline-dot.unguided, :root:root .legend-dot.unguided, :root:root .guide-legend-swatch.unguided .guide-legend-tick { background: CanvasText; }
+:root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track) :is(.dot.guided, .connector), :root:root .sparkline-bar :is(.sparkline-dot.guided, .sparkline-range), :root:root :is(.legend-dot.guided, .legend-line.improved), :root:root .guide-legend-swatch.guided .guide-legend-tick { background: Highlight; }
+:root:root :is(.suite-dumbbell-track, .insight-dumbbell-track, .mini-dumbbell-track, .takeaway-track) .connector.regressed, :root:root .sparkline-bar .sparkline-range.regressed, :root:root .legend-line.regressed { background: transparent; block-size: 0; border: 0; border-block-start: 3px dashed CanvasText; border-radius: 0; }
+:root:root .guide-legend-swatch:is(.unguided, .guided)::before { background: GrayText; opacity: 1; }
+:root:root .ab-meter-seg.pass { background: CanvasText; }
+:root:root .ab-meter-seg.fail { background: Canvas; outline: 1px solid CanvasText; outline-offset: -1px; }
+:root:root :is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:checked) { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; text-decoration: underline 2px; text-underline-offset: 3px; }
+:root:root :is(.mode-toggle-btn, .metric-mode-btn):has(> input[type="radio"]:checked:focus-visible) { outline: 2px solid CanvasText; outline-offset: 2px; }
+:root:root :is(.mode-toggle-btn, .metric-mode-btn) { border: 1px solid ButtonText; }
+:root:root :is(.insight-dumbbell-track, .suite-dumbbell-track) .variance-band[class] { background: GrayText; opacity: 1; }
+#dumbbell-chart :is(.dc-connector, .dc-gtick) { stroke: Highlight; }
+#dumbbell-chart :is(.dc-connector.regressed, .dc-utick) { stroke: CanvasText; }
+#dumbbell-chart .dc-track { stroke: GrayText; }
+#dumbbell-chart .dc-band { fill: GrayText; }
+:is(#dumbbell-chart, .guide-chart-wrapper) text { fill: CanvasText; }
+.guide-chart-wrapper line { stroke: GrayText; }
+.guide-chart-wrapper .timeline-marker line { stroke: Highlight; }
+.guide-chart-wrapper .timeline-marker :is(circle:not([stroke]), polygon) { fill: Highlight; }
+.guide-chart-wrapper .timeline-marker circle[stroke] { fill: Canvas; stroke: CanvasText; }
 }
-
 @media (pointer: coarse) {
-  .info-hint-btn { inline-size: 44px; block-size: 44px; border: 10px solid transparent; background-clip: padding-box; box-shadow: inset 0 0 0 1px var(--color-outline); }
-  .trend-link, .sort-direction-btn { min-inline-size: 44px; min-block-size: 44px; }
-  .header-link, .ab-prov-link, .takeaway-action-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-agent-pill, .ab-task-pill, .ab-checks-toggle, .ab-score-a11y, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .task-toggle, .secondary-btn, .sort-select, .tfoot-action-btn, .hero-drawers > details > summary, .toggle-label { min-block-size: 44px; }
-  .header-link, .ab-prov-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-checks-toggle, .ab-score-a11y, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .secondary-btn { display: inline-flex; align-items: center; }
-  .takeaway-action-link { display: inline-block; padding-block: 10px; }
-  .guide-nav-controls .secondary-btn { min-inline-size: 44px; justify-content: center; }
-  .toggle-label input[type="checkbox"], .filter-item input[type="checkbox"] { inline-size: 24px; block-size: 24px; }
-  input, select, textarea, .sort-select { font-size: max(1rem, 1em); }
+.info-hint-btn { inline-size: 44px; block-size: 44px; border: 10px solid transparent; background-clip: padding-box; box-shadow: inset 0 0 0 1px var(--color-outline); }
+.trend-link, .sort-direction-btn { min-inline-size: 44px; min-block-size: 44px; }
+.header-link, .ab-prov-link, .takeaway-action-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-agent-pill, .ab-task-pill, .ab-checks-toggle, .ab-score-a11y, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .task-toggle, .secondary-btn, .sort-select, .tfoot-action-btn, .hero-drawers > details > summary, .toggle-label { min-block-size: 44px; }
+.header-link, .ab-prov-link, .show-all-rows-btn, .text-btn, .mode-toggle-btn, .metric-mode-btn, .ab-checks-toggle, .ab-score-a11y, .insights-uplift-sort-btn, .insights-expand-btn, .insights-panel-title-btn, .pivot-filter-btn, .pivot-link, .sort-combined-control, .autocomplete-item, .secondary-btn { display: inline-flex; align-items: center; }
+.takeaway-action-link { display: inline-block; padding-block: 10px; }
+.guide-nav-controls .secondary-btn { min-inline-size: 44px; justify-content: center; }
+.toggle-label input[type="checkbox"], .filter-item input[type="checkbox"] { inline-size: 24px; block-size: 24px; }
+input, select, textarea, .sort-select { font-size: max(1rem, 1em); }
 }
-

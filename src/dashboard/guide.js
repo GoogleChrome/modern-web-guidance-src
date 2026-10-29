@@ -19,9 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (subtitleEl) {
         if (isA11yMode) {
             subtitleEl.innerHTML = 'Guided vs. unguided <strong>accessibility subscore</strong> over time, by agent and model combination <span class="mode-badge-inline">Accessibility checks</span>';
-        } else {
-            subtitleEl.textContent = 'Guided vs. unguided pass rate over time, by agent and model combination';
-        }
+        } else { subtitleEl.textContent = 'Guided vs. unguided pass rate over time, by agent and model combination'; }
     }
     setupTimelineFilterControls(guideName);
 
@@ -65,10 +63,6 @@ function registerSuiteSummary(summary, source) {
 
     allTestData[compoundKey] = {
         testId: summary.testId,
-        // Canonicalize through the shared parser (testId time, zoneless = UTC) so sorting
-        // and day bucketing below agree with the landing page for the same suite.
-        // toSuiteDateString keeps date-only sources as `YYYY-MM-DD`, so the re-parse below still knows
-        // they have no time of day (an ISO round trip would turn them into a real UTC-midnight instant).
         timestamp: (() => { const d = parseSuiteDate(summary.timestamp, summary.testId); return d ? toSuiteDateString(d) : summary.timestamp; })(),
         source: source,
         agent: summary.agent || 'unknown',
@@ -184,7 +178,6 @@ function setupTimelineFilterControls(guideName) {
 
 /** @type {AbortController | null} */
 let navListenersAbort = null;
-
 /**
  * @param {string} currentGuide
  */
@@ -192,18 +185,14 @@ function setupNavigationControls(currentGuide) {
     navListenersAbort?.abort();
     navListenersAbort = new AbortController();
     const { signal } = navListenersAbort;
-
     const params = new URLSearchParams(window.location.search);
     const isA11yMode = params.get('mode') === 'a11y';
     const modeSuffix = isA11yMode ? '&mode=a11y' : '';
-
     const guideSet = new Set();
     Object.values(allTestData).forEach(run => {
         if (run.guides) {
             Object.keys(run.guides).forEach(g => {
-                if (!isA11yMode || run.guides[g]?.a11y) {
-                    guideSet.add(g);
-                }
+                if (!isA11yMode || run.guides[g]?.a11y) { guideSet.add(g); }
             });
         }
     });
@@ -245,7 +234,6 @@ function setupNavigationControls(currentGuide) {
 
     let currentFocus = -1;
 
-    /** Combobox state: keep aria-expanded / aria-activedescendant in sync with the list. */
     const resetComboboxState = () => {
         list.innerHTML = '';
         searchInput.setAttribute('aria-expanded', 'false');
@@ -253,27 +241,17 @@ function setupNavigationControls(currentGuide) {
         if (statusEl) statusEl.textContent = '';
         currentFocus = -1;
     };
-    const closeList = () => {
-        setPopoverOpen(list, false);
-        resetComboboxState();
-    };
-    // #autocomplete-list is popover="auto": the browser light-dismisses it on outside clicks
-    // (replacing the old document click handler) and on Escape, so mirror those closes into
-    // the combobox ARIA state.
+    const closeList = () => { setPopoverOpen(list, false); resetComboboxState(); };
     list.addEventListener('toggle', (e) => {
         if (/** @type {ToggleEvent} */ (e).newState === 'closed') resetComboboxState();
     }, { signal });
     const openList = () => {
         if (isPopoverOpen(list)) return;
         try {
-            // `source` ties the popover to the input (implicit anchor / accessibility relationship
-            // where supported; other browsers ignore the option).
-            /** @type {(options?: { source?: HTMLElement }) => void} */ (list.showPopover).call(list, { source: searchInput });
-        } catch {
-            setPopoverOpen(list, true);
-        }
+            /** @type {(options?: { source?: HTMLElement }) => void} */
+(list.showPopover).call(list, { source: searchInput });
+        } catch { setPopoverOpen(list, true); }
     };
-
     searchInput.addEventListener('input', () => {
         const val = searchInput.value.trim().toLowerCase();
         list.innerHTML = '';
@@ -312,25 +290,16 @@ function setupNavigationControls(currentGuide) {
         });
     }, { signal });
 
-    // Light dismiss treats a click on the input as "outside" the popover (Chromium doesn't count
-    // a showPopover() `source` as an invoker for light dismiss), so re-open the matches when the
-    // user clicks back into a non-empty field.
-    searchInput.addEventListener('click', () => {
-        if (searchInput.value.trim() && !isPopoverOpen(list)) searchInput.dispatchEvent(new Event('input'));
-    }, { signal });
-
+    searchInput.addEventListener('click', () => { if (searchInput.value.trim() && !isPopoverOpen(list)) searchInput.dispatchEvent(new Event('input')); }, { signal });
     searchInput.addEventListener('keydown', (e) => {
         const isOpen = searchInput.getAttribute('aria-expanded') === 'true';
         const items = list.querySelectorAll('.autocomplete-item');
-
         if (e.key === 'Enter') {
             e.preventDefault();
             if (isOpen && currentFocus > -1 && items[currentFocus]) {
-                /** @type {HTMLElement} */ (items[currentFocus]).click();
-            } else {
-                closeList();
-                goBtn.click();
-            }
+                /** @type {HTMLElement} */
+(items[currentFocus]).click();
+            } else { closeList(); goBtn.click(); }
             return;
         }
         if (items.length === 0) return;
@@ -354,10 +323,7 @@ function setupNavigationControls(currentGuide) {
      */
     function setActive(items) {
         if (!items) return;
-        items.forEach(item => {
-            item.classList.remove('active');
-            item.setAttribute('aria-selected', 'false');
-        });
+        items.forEach(item => { item.classList.remove('active'); item.setAttribute('aria-selected', 'false'); });
         if (currentFocus >= items.length) currentFocus = 0;
         if (currentFocus < 0) currentFocus = items.length - 1;
         items[currentFocus].classList.add('active');
@@ -369,16 +335,12 @@ function setupNavigationControls(currentGuide) {
 
 /** @type {number[]} */
 const highlightScrollTimers = [];
-
 /**
  * @param {string} guideName
  */
 function renderGraphs(guideName) {
     hideGuideTooltip();
-    while (highlightScrollTimers.length > 0) {
-        const id = highlightScrollTimers.pop();
-        if (id !== undefined) window.clearTimeout(id);
-    }
+    while (highlightScrollTimers.length > 0) { const id = highlightScrollTimers.pop(); if (id !== undefined) window.clearTimeout(id); }
     const grid = $('#graphs-grid');
     grid.innerHTML = '';
 
@@ -400,12 +362,7 @@ function renderGraphs(guideName) {
         if (!guideStats) return null;
         let targetStats = guideStats;
         if (activeTask) {
-            // Single-task guides store only the name; the roll-up is that task's data.
-            if (guideStats.tasks) {
-                targetStats = guideStats.tasks[activeTask];
-            } else {
-                targetStats = guideStats.taskName === activeTask ? guideStats : null;
-            }
+            if (guideStats.tasks) { targetStats = guideStats.tasks[activeTask]; } else { targetStats = guideStats.taskName === activeTask ? guideStats : null; }
         }
         if (!targetStats) return null;
         return isA11yMode ? (targetStats.a11y || null) : targetStats;
@@ -581,8 +538,6 @@ function renderGraphs(guideName) {
                 const isPositive = stats.guidedRate >= stats.unguidedRate;
                 
                 let elementHtml = '';
-                // Wrapped in .timeline-marker so the tooltip anchors to the visible mark rather
-                // than the full-height hit area or the rotated date label.
                 if (yU === yG) {
                     elementHtml = `<circle cx="${x}" cy="${yG}" r="5" fill="var(--color-primary)" />`;
                 } else {
@@ -607,16 +562,10 @@ function renderGraphs(guideName) {
                     `;
                 }
 
-                // Short name (date + action): the rates are already the point's description, supplied
-                // by the interestfor hint (#tooltip-container), so they aren't repeated here.
                 const pointLabel = `${suite.shortDate}: open run`;
                 const taskParam = activeTask ? `&task=${encodeURIComponent(activeTask)}` : '';
                 const modeParam = isA11yMode ? '&mode=a11y' : '';
                 const runHref = `dashboard.html?testId=${encodeURIComponent(run.testId)}&source=${encodeURIComponent(run.source)}${taskParam}${modeParam}#guide-${encodeURIComponent(guideName)}`;
-                // Each point navigates, so it is a real SVG link (Enter, middle-click, and "open in new
-                // tab" work natively) and an interest invoker for the shared #tooltip-container hint
-                // (MWG interest-triggered-tooltips): hover/focus/long-press, hover persistence,
-                // Escape, and light dismiss come from interestfor + popover="hint".
                 svgContent += `
                     <a class="timeline-point" href="${escapeHtml(runHref)}" interestfor="tooltip-container" aria-label="${escapeHtml(pointLabel)}" data-testid="${escapeHtml(run.testId)}" data-comb="${escapeHtml(combKey)}">
                         <g class="timeline-marker">${elementHtml}</g>
@@ -643,17 +592,12 @@ function renderGraphs(guideName) {
             svg.style.blockSize = 'auto';
         }
         svg.innerHTML = svgContent;
-        // Firefox doesn't scroll a focused SVG <a> into view (page or this overflow-x wrapper).
-        for (const point of svg.querySelectorAll('a.timeline-point')) {
-            const hit = point.querySelector(':scope > rect');
-            if (hit) scrollSvgLinkIntoViewOnFocus(point, hit, getTimelineMarker(point));
-        }
+        for (const point of svg.querySelectorAll('a.timeline-point')) { const hit = point.querySelector(':scope > rect'); if (hit) scrollSvgLinkIntoViewOnFocus(point, hit, getTimelineMarker(point)); }
 
         chartWrapper.appendChild(svg);
         card.appendChild(chartWrapper);
         grid.appendChild(card);
 
-        // Auto-scroll to highlighted point if it exists in this chart, or to the latest runs on the right
         if (highlightTestId) {
             const highlightedEl = svg.querySelector(`[data-testid="${CSS.escape(highlightTestId)}"]`);
             if (highlightedEl) {
@@ -671,12 +615,8 @@ function renderGraphs(guideName) {
 
     });
 
-    /**
-     * Fills `#tooltip-container` for the point that showed interest (see setupGuideTooltip).
-     * Closes over this render's data so the shared handler always reads the current runs.
-     * @param {Element} point
-     * @returns {boolean} whether the point resolved to a run
-     */
+    /** @param {Element} point
+ * @returns {boolean} whether the point resolved to a run */
     renderTimelineTooltip = (point) => {
         const combKey = point.getAttribute('data-comb');
         const testId = point.getAttribute('data-testid');
@@ -685,74 +625,33 @@ function renderGraphs(guideName) {
         if (!runData) return false;
         const stats = getStats(runData);
         if (!stats) return false;
-
         const parsedDate = parseSuiteDate(runData.timestamp);
         const formattedDate = parsedDate
             ? formatSuiteDate(parsedDate, { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
             : String(runData.timestamp || '');
-
-        $('#tooltip-header').innerHTML = `
-            <div class="guide-tooltip-title">
-                ${escapeHtml(runData.testId)}
-            </div>
-        `;
+        $('#tooltip-header').innerHTML = `<div class="guide-tooltip-title"> ${escapeHtml(runData.testId)} </div>`;
 
         const gPassed = stats.guidedPassed || 0;
         const gTotal = stats.guidedTotal || 0;
         const uPassed = stats.unguidedPassed || 0;
         const uTotal = stats.unguidedTotal || 0;
-
-        $('#tooltip-content').innerHTML = `
-            <div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div>
-            <div class="guide-tooltip-rows">
-                <div class="guide-tooltip-row">
-                    <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span>
-                    <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span>
-                </div>
-                <div class="guide-tooltip-row">
-                    <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span>
-                    <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span>
-                </div>
-                <div class="guide-tooltip-uplift-row">
-                    <span>Uplift:</span>
-                    <span class="guide-tooltip-uplift ${stats.uplift >= 0 ? 'positive' : 'negative'}">
-                        ${stats.uplift >= 0 ? '+' : ''}${stats.uplift} pp
-                    </span>
-                </div>
-            </div>
-        `;
+        $('#tooltip-content').innerHTML = `<div class="guide-tooltip-date">${escapeHtml(formattedDate)}</div> <div class="guide-tooltip-rows"> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Guided A11y Rate:' : 'Guided Pass Rate:'}</span> <span class="guide-tooltip-guided">${stats.guidedRate}% (${gPassed}/${gTotal})</span> </div> <div class="guide-tooltip-row"> <span>${isA11yMode ? 'Unguided A11y Rate:' : 'Unguided Pass Rate:'}</span> <span class="guide-tooltip-unguided">${stats.unguidedRate}% (${uPassed}/${uTotal})</span> </div> <div class="guide-tooltip-uplift-row"> <span>Uplift:</span> <span class="guide-tooltip-uplift ${stats.uplift >= 0 ? 'positive' : 'negative'}"> ${stats.uplift >= 0 ? '+' : ''}${stats.uplift} pp </span> </div> </div>`;
         return true;
     };
 }
 
-/**
- * Content renderer for the current timeline render (set by renderGraphs).
- * @type {((point: Element) => boolean) | null}
- */
+/** @type {((point: Element) => boolean) | null} */
 let renderTimelineTooltip = null;
 
-/** Native CSS anchor positioning; otherwise the tooltip is placed with measured coordinates. */
 const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('anchor-name', '--a');
 
-/**
- * SVG elements don't generate CSS boxes, so they can't be anchors (Chromium ignores
- * `anchor-name` on an SVG `<a>`, and the implicit interestfor anchor resolves to nothing; see
- * the landing-r2 verification notes). This one HTML proxy is moved over the active point's
- * marker inside its scroll wrapper and carries `anchor-name: --timeline-point`, so the tooltip
- * is still positioned with CSS anchor positioning and `position-try-fallbacks` (guide.html)
- * and follows the point while the page or chart scrolls.
- */
 const timelineAnchor = document.createElement('span');
 timelineAnchor.className = 'timeline-anchor';
 timelineAnchor.setAttribute('aria-hidden', 'true');
 
-/**
- * @param {Element} point
- * @returns {Element}
- */
-function getTimelineMarker(point) {
-    return point.querySelector('.timeline-marker') || point;
-}
+/** @param {Element} point
+ * @returns {Element} */
+function getTimelineMarker(point) { return point.querySelector('.timeline-marker') || point; }
 
 /** @param {Element} point */
 function moveTimelineAnchor(point) {
@@ -767,19 +666,10 @@ function moveTimelineAnchor(point) {
     timelineAnchor.style.height = `${r.height}px`;
 }
 
-/**
- * Fallback for browsers without CSS anchor positioning only: place the open tooltip beside the
- * point's marker (inline end, then start), or below/above it when neither side fits (narrow
- * viewports), clamped to the viewport, mirroring the CSS position-try order in guide.html.
- * @param {HTMLElement} tooltip
- * @param {Element} point
- */
+/** @param {HTMLElement} tooltip
+ * @param {Element} point */
 function placeGuideTooltipFallback(tooltip, point) {
-    // Never clamp the tooltip over other points for a point that's out of view (page or wrapper).
-    if (!isElementFullyVisible(getTimelineMarker(point))) {
-        hideGuideTooltip();
-        return;
-    }
+    if (!isElementFullyVisible(getTimelineMarker(point))) { hideGuideTooltip(); return; }
     const r = getTimelineMarker(point).getBoundingClientRect();
     const gap = 10;
     const margin = 8;
@@ -789,29 +679,17 @@ function placeGuideTooltipFallback(tooltip, point) {
     let top = r.top + (r.height / 2) - (h / 2);
     if (left + w > window.innerWidth - margin) {
         left = r.left - w - gap;
-        if (left < margin) {
-            left = r.left + (r.width / 2) - (w / 2);
-            top = r.bottom + gap + h <= window.innerHeight - margin ? r.bottom + gap : r.top - h - gap;
-        }
+        if (left < margin) { left = r.left + (r.width / 2) - (w / 2); top = r.bottom + gap + h <= window.innerHeight - margin ? r.bottom + gap : r.top - h - gap; }
     }
     tooltip.style.left = `${Math.max(margin, Math.min(left, window.innerWidth - w - margin))}px`;
     tooltip.style.top = `${Math.max(margin, Math.min(top, window.innerHeight - h - margin))}px`;
 }
-
 /** @type {Element | null} */
 let activeTimelinePoint = null;
-/** Whether guide.js (not the interestfor polyfill) opened the tooltip; see setupGuideTooltip. */
 let shownWithoutInvoker = false;
-/** A point whose tooltip waits for it to scroll into view (see setupGuideTooltip). */
 let pendingTimelinePoint = /** @type {Element | null} */ (null);
 /** @type {number} */
 let guideFallbackFrame = 0;
-
-/**
- * `#tooltip-container` is a popover="hint" opened by the points' interestfor (or the vendored
- * polyfill), which also provides WCAG 1.4.13 hover persistence, Escape, and light dismiss.
- * This only fills in the content and positions it for the point that showed interest.
- */
 function setupGuideTooltip() {
     const tooltip = document.getElementById('tooltip-container');
     if (!tooltip) return;
@@ -819,9 +697,6 @@ function setupGuideTooltip() {
         const source = /** @type {Event & { source?: Element | null }} */ (e).source;
         const point = source?.closest('.timeline-point');
         if (!point || !renderTimelineTooltip || !renderTimelineTooltip(point)) return;
-        // Without anchor positioning the tooltip is placed from measured coordinates, so it only
-        // opens beside a point that's fully on screen; a focused point still scrolling into view
-        // (Firefox, see scrollSvgLinkIntoViewOnFocus) gets it once the scroll settles.
         if (!SUPPORTS_ANCHOR_POSITIONING && !isElementFullyVisible(getTimelineMarker(point))) {
             hideGuideTooltip();
             pendingTimelinePoint = point;
@@ -839,32 +714,17 @@ function setupGuideTooltip() {
         activeTimelinePoint = point;
         if (SUPPORTS_ANCHOR_POSITIONING) moveTimelineAnchor(point);
         else if (isPopoverOpen(tooltip)) placeGuideTooltipFallback(tooltip, point);
-        // The vendored interestfor polyfill opens the target with showPopover({ source }), which
-        // Firefox rejects for an SVG source (the polyfill swallows the error), so the interest
-        // event fires but nothing opens. Open it here in that case; native interestfor (and the
-        // polyfill with HTML sources) has already opened it by the time this runs.
         window.setTimeout(() => {
-            if (activeTimelinePoint === point && !isPopoverOpen(tooltip)) {
-                setPopoverOpen(tooltip, true);
-                shownWithoutInvoker = true;
-            }
+            if (activeTimelinePoint === point && !isPopoverOpen(tooltip)) { setPopoverOpen(tooltip, true); shownWithoutInvoker = true; }
         });
     });
-    // ...and close it again when the polyfill reports lost interest (pointer/focus left, Escape).
-    tooltip.addEventListener('loseinterest', () => {
-        if (shownWithoutInvoker) hideGuideTooltip();
-    });
+    tooltip.addEventListener('loseinterest', () => { if (shownWithoutInvoker) hideGuideTooltip(); });
     tooltip.addEventListener('toggle', (e) => {
         const open = /** @type {ToggleEvent} */ (e).newState === 'open';
         if (open && !SUPPORTS_ANCHOR_POSITIONING && activeTimelinePoint) placeGuideTooltipFallback(tooltip, activeTimelinePoint);
-        if (!open) {
-            activeTimelinePoint = null;
-            shownWithoutInvoker = false;
-        }
+        if (!open) { activeTimelinePoint = null; shownWithoutInvoker = false; }
     });
     if (!SUPPORTS_ANCHOR_POSITIONING) {
-        // Measured coordinates don't follow the point, so re-place the open tooltip on scroll and
-        // resize (rAF-throttled); placeGuideTooltipFallback closes it once the point leaves view.
         const onViewportChange = () => {
             if (guideFallbackFrame) return;
             guideFallbackFrame = window.requestAnimationFrame(() => {
@@ -878,10 +738,8 @@ function setupGuideTooltip() {
         window.addEventListener('resize', onViewportChange, { passive: true });
     }
 }
-
 function hideGuideTooltip() {
     const tooltip = document.getElementById('tooltip-container');
     if (tooltip) setPopoverOpen(tooltip, false);
 }
-
 setupGuideTooltip();

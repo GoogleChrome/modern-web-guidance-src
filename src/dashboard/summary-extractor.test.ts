@@ -43,10 +43,7 @@ test('extractSuiteSummary breaks multi-target guides down per task', () => {
 
 test('extractSuiteSummary stores only a name for single-task guides', () => {
     const summary = extractSuiteSummary('run-2', {
-        results: {
-            'task - preload-prerender - guided': [mockRun(3, 4)],
-            'task - preload-prerender - unguided': [mockRun(1, 4)],
-        },
+        results: { 'task - preload-prerender - guided': [mockRun(3, 4)], 'task - preload-prerender - unguided': [mockRun(1, 4)], },
     });
 
     assert.ok(summary);
@@ -83,7 +80,6 @@ test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and ex
             }],
         },
     } as never);
-
     assert.ok(summary);
     assert.strictEqual(summary.a11yStats.unguidedPassed, 1);
     assert.strictEqual(summary.a11yStats.unguidedTotal, 2);
@@ -91,14 +87,10 @@ test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and ex
     assert.strictEqual(summary.a11yStats.guidedTotal, 2);
     assert.strictEqual(summary.a11yStats.uplift, 50);
     assert.strictEqual(summary.a11yStats.guideCount, 1);
-
-    // 1/3 (33%) -> 2/3 (67%): exact difference 33.33 pp rounds to 33, not 34
     const scrollspy = summary.guides.scrollspy;
     assert.strictEqual(scrollspy.unguidedRate, 33);
     assert.strictEqual(scrollspy.guidedRate, 67);
     assert.strictEqual(scrollspy.uplift, 33);
-
-    // Agent-only runtime & uncached tokens (50k -> 40k = -20%)
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 120000);
     assert.strictEqual(summary.efficiencyStats.runtime.guidedMedianMs, 90000);
     assert.strictEqual(summary.efficiencyStats.runtime.medianDeltaPct, -25);
@@ -106,7 +98,6 @@ test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and ex
     assert.strictEqual(summary.efficiencyStats.tokens.guidedUncachedMedian, 40000);
     assert.strictEqual(summary.efficiencyStats.tokens.uncachedMedianDeltaPct, -20);
 });
-
 test('extractSuiteSummary excludes infra-errored task pairs from guide and suite rollups while counting agent-broken apps as 0/N', () => {
     // daily-grind: guided passed 5/5, unguided broke the app build (0/5 agent failure, not isEarlyFailure)
     // devtools-times: guided had an infra error (isEarlyFailure: true -> 0 valid runs), unguided passed 1/5
@@ -178,7 +169,6 @@ test('extractSuiteSummary computes unguidedLeakRate when unguided run accesses e
     assert.strictEqual(summary.unguidedStats.passed, 5);
     assert.strictEqual(summary.unguidedStats.total, 10);
 });
-
 test('extractSuiteSummary counts distinct task-guide scenarios and excludes early failures from efficiency medians while counting timeouts', () => {
     const summary = extractSuiteSummary('run-efficiency-hygiene', {
         results: {
@@ -212,11 +202,8 @@ test('extractSuiteSummary counts distinct task-guide scenarios and excludes earl
             ],
         },
     } as never);
-
     assert.ok(summary);
-    // Both guides use generic target slug "task", so distinct scenario count must be 2, not 1.
     assert.strictEqual(summary.taskCount, 2);
-    // Early-failure run (2000ms, 1500 tokens) is excluded from medians, while TIMEOUT is still counted.
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 100000);
     assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 55000);
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedTimeouts, 1);

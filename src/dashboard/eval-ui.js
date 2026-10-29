@@ -1,7 +1,4 @@
-// Module so it can share escapeHtml with the dashboard; modules are deferred, so
-// it no longer blocks the parser.
 import { escapeHtml } from './utils.js';
-
 document.addEventListener('DOMContentLoaded', async () => {
   const tableBodyRaw = document.querySelector('#tasks-table tbody');
   const launchFormRaw = document.getElementById('launch-form');
@@ -11,8 +8,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tableBody = tableBodyRaw;
   const launchForm = launchFormRaw;
 
-  // The agent group is a native radio group in the markup, so no JS is needed
-  // to track or expose its selection.
 
   /** @type {Record<string, Record<string, string[]>>} */
   let allGuides = {};
@@ -53,8 +48,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     container.innerHTML = '';
 
     sortedSkills.forEach(skill => {
-      // Native switches expose on/off state to assistive tech; the label
-      // wraps the input so the skill name is its accessible name.
       const label = document.createElement('label');
       label.className = 'btn-toggle';
       const input = document.createElement('input');
@@ -63,9 +56,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       input.name = 'skills';
       input.value = skill;
       input.checked = selectedSkills.has(skill);
-
-      // Keep the Set as the source of truth so the launch payload (including
-      // its ordering and any default skill that isn't rendered) is unchanged.
       input.addEventListener('change', () => {
         if (input.checked) {
           selectedSkills.add(skill);
@@ -73,7 +63,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           selectedSkills.delete(skill);
         }
       });
-
       label.append(input, skill);
       container.appendChild(label);
     });
@@ -98,13 +87,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (guideHeader) {
       guideHeader.textContent = guideCount > 0 ? `Guide Tasks (${guideCount} selected)` : 'Guide Tasks';
     }
-
     if (count > 0) {
       const formError = document.getElementById('form-error');
-      if (formError) {
-        formError.hidden = true;
-        formError.textContent = '';
-      }
+      if (formError) { formError.hidden = true; formError.textContent = ''; }
     }
   }
 
@@ -187,10 +172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let headerHtml = `<th>Guide</th>`;
     headers.forEach(h => {
       const isSelected = h === 'task';
-      // Task type names come from the guides directory, so escape them. The
-      // column has no visible text, so the checkbox needs an explicit name.
       const safeH = escapeHtml(h);
-      // The default type is literally named "task"; avoid "Select all task tasks".
       const headerLabel = h === 'task' ? 'Select all default tasks' : `Select all ${safeH} tasks`;
       headerHtml += `<th class="checkbox-header">
         <label class="custom-checkbox">
@@ -210,7 +192,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const headerRow = document.createElement('tr');
       headerRow.classList.add('category-header');
       headerRow.setAttribute('data-category', category);
-      // A real button makes collapse keyboard-operable and announces its state.
       headerRow.innerHTML = `<td colspan="${totalCols}"><button type="button" class="category-toggle" aria-expanded="true" aria-controls="${rowIds.join(' ')}"><span class="expand-icon" aria-hidden="true">▼</span> ${escapeHtml(category)}</button></td>`;
       tableBody.appendChild(headerRow);
 
@@ -224,7 +205,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         row.classList.add('guide-row');
         row.setAttribute('data-category', category);
 
-        // The guide name sits inside the label so it names the row checkbox.
         let rowHtml = `
           <td class="guide-name">
             <div class="guide-cell-content">
@@ -240,8 +220,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         headers.forEach(h => {
           if (tasks.includes(h)) {
             const safeH = escapeHtml(h);
-            // The visible pill text ("task", "negative") repeats on every row,
-            // so prefix the guide name to make each checkbox distinguishable.
             rowHtml += `
               <td class="checkbox-cell">
                 <label class="pill-checkbox">
@@ -305,8 +283,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggle.addEventListener('click', () => {
       const expanded = toggle.getAttribute('aria-expanded') === 'true';
       toggle.setAttribute('aria-expanded', String(!expanded));
-      // `hidden` removes collapsed rows from layout, the tab order, and the
-      // accessibility tree; the icon rotation is driven by aria-expanded in CSS.
       for (const id of (toggle.getAttribute('aria-controls') || '').split(' ')) {
         const row = id && document.getElementById(id);
         if (row) row.hidden = expanded;
@@ -413,7 +389,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (data.success) {
         [runBtn, headerBtn].forEach(btn => {
           if (btn instanceof HTMLButtonElement) {
-            // Darker greens keep the white label above 4.5:1 contrast.
             btn.style.background = 'linear-gradient(135deg, #047857 0%, #065f46 100%)';
             btn.innerHTML = '<span>🚀 Started! Closing...</span>';
           }
