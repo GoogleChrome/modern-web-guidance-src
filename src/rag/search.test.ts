@@ -60,13 +60,23 @@ describe("searchUseCases", () => {
       embed: async () => Array.from({ length: 384 }, () => 0),
     };
     // Dense similarity is 0 (below 0.3 floor), but BM25 matches "autofill address form".
-    // With an all-zero embedder, all guides tie at dense cosine 0 (ranking by vector order in dense list),
-    // so we assert membership and zero-cosine retention rather than relying on exact rank.
     const results = await searchUseCases("autofill address form", 5, 0.3, zeroEmbedder);
     assert.ok(results.length > 0, "Should return BM25 matches even when dense similarity is 0");
     const match = results.find((r) => r.id === "autofill-address-form");
     assert.ok(match, "BM25 should surface autofill-address-form");
     assert.strictEqual(match.similarity, 0, "Zero dense similarity is preserved on BM25-surfaced result");
+  });
+
+  it("excludes sub-floor dense list and returns only BM25 matches when topDenseSim < minSimilarity", async () => {
+    const zeroEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 384 }, () => 0),
+    };
+    // "i18n pluralization" has 1 BM25 match and 0 dense similarity (below floor).
+    // When dense is below floor, only BM25 matches are returned without sub-floor dense padding.
+    const results = await searchUseCases("i18n pluralization", 10, 0.3, zeroEmbedder);
+    assert.strictEqual(results.length, 1, "Should return only the BM25 match, not padded to limit=10");
+    assert.strictEqual(results[0].id, "state-aware-sticky-headers");
+    assert.strictEqual(results[0].similarity, 0);
   });
 
   it("above-floor behavior is unchanged and preserves dense similarities", async () => {
