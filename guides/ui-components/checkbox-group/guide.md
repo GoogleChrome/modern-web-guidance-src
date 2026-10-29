@@ -77,7 +77,8 @@ const items = [...document.querySelectorAll('input[name="robot"]:not(:disabled)'
 
 function sync() {
   const checked = items.filter((item) => item.checked).length;
-  master.checked = checked === items.length;
+  master.disabled = items.length === 0;
+  master.checked = items.length > 0 && checked === items.length;
   // Mixed only when some, but not all, options are checked.
   master.indeterminate = checked > 0 && checked < items.length;
   // Announce the running count so bulk changes are not silent.
