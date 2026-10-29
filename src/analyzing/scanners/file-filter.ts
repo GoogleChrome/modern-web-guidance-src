@@ -108,6 +108,43 @@ const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
   '.d.ts',
 ];
 
+export const JS_RULE_EXTENSIONS = [
+  '.js',
+  '.mjs',
+  '.cjs',
+  '.ts',
+  '.mts',
+  '.cts',
+  '.jsx',
+  '.tsx',
+  '.vue',
+  '.svelte',
+  '.astro',
+  '.html',
+  '.htm',
+] as const;
+
+export const CSS_RULE_EXTENSIONS = [
+  '.css',
+  '.vue',
+  '.svelte',
+  '.astro',
+  '.html',
+  '.htm',
+] as const;
+
+export const DOM_RULE_EXTENSIONS = [
+  '.html',
+  '.htm',
+  '.vue',
+  '.svelte',
+  '.astro',
+  '.jsx',
+  '.tsx',
+] as const;
+
+export const DEPENDENCY_RULE_FILENAMES = ['package.json'] as const;
+
 const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
   '.js',
   '.mjs',

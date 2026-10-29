@@ -680,7 +680,10 @@ function matchSingleFunctionStateRule(
 
 export const individualTransformPropertiesMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['transform'],
+  fastTokens: [
+    ['transform'],
+    ['translate', 'Translate', 'rotate', 'Rotate', 'scale', 'Scale'],
+  ],
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string; subPattern?: string } | null {
     // a) Keep skipping if stylesheet already declares `scale`, `rotate`, or `translate` properties.
     if (
@@ -783,7 +786,10 @@ export const individualTransformPropertiesMatcher: CssRuleMatcher = {
 
 export const individualTransformPropertiesStandaloneChainMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['transform'],
+  fastTokens: [
+    ['transform'],
+    ['translate', 'Translate', 'rotate', 'Rotate', 'scale', 'Scale'],
+  ],
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string; subPattern?: string } | null {
     if (
       ctx.stylesheetHasProperty('scale') ||
@@ -875,7 +881,10 @@ export const individualTransformPropertiesStandaloneChainRule: AnalyzerRule = {
 
 export const individualTransformPropertiesSingleFunctionStateMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['transform'],
+  fastTokens: [
+    ['transform'],
+    ['translate', 'Translate', 'rotate', 'Rotate', 'scale', 'Scale'],
+  ],
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
     return matchSingleFunctionStateRule(styleRule, ctx);
   },

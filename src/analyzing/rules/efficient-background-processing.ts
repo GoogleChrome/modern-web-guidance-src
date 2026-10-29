@@ -71,7 +71,11 @@ function matchLoopPauseObserver(
 
 export const efficientBackgroundProcessingMatcher: JsRuleMatcher =
   createJsCallMatcher({
-    fastTokens: ['IntersectionObserver'],
+    fastTokens: [
+      ['IntersectionObserver'],
+      ['isIntersecting', 'intersectionRatio'],
+      ['requestAnimationFrame', 'cancelAnimationFrame', 'setInterval', 'clearInterval'],
+    ],
     isGuarded: (node) =>
       isProtectedByFeatureGuard(node, AUTO_STATE_CHANGE_GUARD_TOKENS),
     matchNew: (node, sourceFile) => matchLoopPauseObserver(node, sourceFile),

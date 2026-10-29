@@ -89,7 +89,11 @@ function matchRealtimeSnapScrollListener(callExpr: CallExpression): string | nul
 }
 
 export const scrollSnapRealtimeFeedbackMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['Math.round', 'Math.abs'],
+  fastTokens: [
+    ['scroll'],
+    ['Math.round', 'Math.abs'],
+    ['scrollLeft', 'scrollTop'],
+  ],
   isGuarded: (node, sourceFile) => isGuardedBySnapChanging(node, sourceFile),
   matchCall: matchRealtimeSnapScrollListener,
 });

@@ -151,7 +151,13 @@ function matchScrollProgressListener(callExpr: CallExpression): string | null {
 }
 
 export const scrollProgressIndicatorMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['scrollHeight', 'documentHeight', 'offsetHeight', 'scrollTop'],
+  fastTokens: [
+    ['scroll', 'onscroll'],
+    ['scrollTop', 'scrollY', 'pageYOffset'],
+    ['scrollHeight', 'documentHeight', 'offsetHeight', 'height'],
+    ['clientHeight', 'innerHeight', 'height'],
+    ['width', 'scale', 'setProperty'],
+  ],
   isGuarded: (node) => isGuardedByScrollTimelineSupport(node),
   matchCall: (node) => matchScrollProgressListener(node),
 });

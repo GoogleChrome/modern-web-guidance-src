@@ -94,7 +94,11 @@ function matchSnapStateSyncListener(callExpr: CallExpression): string | null {
 }
 
 export const scrollSnapStateSyncMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['Math.round', 'Math.floor'],
+  fastTokens: [
+    ['scroll', 'scrollend'],
+    ['Math.round', 'Math.floor'],
+    ['scrollLeft', 'scrollTop'],
+  ],
   isGuarded: (node, sourceFile) => isGuardedBySnapChange(node, sourceFile),
   matchCall: matchSnapStateSyncListener,
 });

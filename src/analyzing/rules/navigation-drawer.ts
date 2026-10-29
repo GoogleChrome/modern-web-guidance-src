@@ -77,7 +77,10 @@ function hasDrawerControllerSignals(scopeText: string): boolean {
 
 export const navigationDrawerJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: FAST_TOKENS,
+  fastTokens: [
+    FAST_TOKENS,
+    ['classList', 'style', 'backdrop', 'Backdrop', 'overlay', 'Overlay', 'scrim', 'mask', 'overflow', 'no-scroll', 'Escape'],
+  ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const lowerPath = ctx.filePath.toLowerCase();
     if (

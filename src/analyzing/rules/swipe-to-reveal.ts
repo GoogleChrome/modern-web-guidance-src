@@ -73,7 +73,10 @@ function handlerTranslatesHorizontally(handlerNode: Node): boolean {
 
 export const swipeToRevealMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['translateX', 'translate3d'],
+  fastTokens: [
+    ['translateX', 'translate3d'],
+    ['touchmove', 'touchend', 'pointermove', 'pointerup'],
+  ],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     const content = ctx.fileContent;
     if (

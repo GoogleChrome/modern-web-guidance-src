@@ -106,7 +106,12 @@ function matchScrollabilityResizeObserver(newExpr: NewExpression): string | null
 }
 
 export const scrollabilityAffordanceHintsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['scrollWidth', 'scrollHeight'],
+  fastTokens: [
+    ['scroll', 'resize', 'ResizeObserver'],
+    ['scrollWidth', 'scrollHeight'],
+    ['clientWidth', 'clientHeight'],
+    ['classList', 'className', 'addClass', 'removeClass', 'toggleClass', 'setAttribute', 'toggleAttribute'],
+  ],
   isGuarded: (node) => isGuardedByScrollState(node),
   matchCall: matchScrollabilityListener,
   matchNew: matchScrollabilityResizeObserver,

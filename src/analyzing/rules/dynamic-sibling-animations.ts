@@ -284,7 +284,10 @@ function isJsLoopSettingDelayFromIndex(node: Node): Node | undefined {
 
 const dynamicSiblingAnimationsJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['.style.animationDelay', '.style.transitionDelay', '.style.setProperty'],
+  fastTokens: [
+    ['animationDelay', 'transitionDelay', 'animation-delay', 'transition-delay'],
+    ['style', 'setProperty'],
+  ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     if (

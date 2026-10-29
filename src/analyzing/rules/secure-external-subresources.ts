@@ -52,7 +52,7 @@ export const secureExternalSubresourcesMatcher: DomRuleMatcher = {
     'https://maxcdn.bootstrapcdn.com/',
     'https://stackpath.bootstrapcdn.com/',
     'https://ajax.googleapis.com/',
-    'integrity=',
+    'integrity',
   ],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['integrity', 'crossorigin', 'crossOrigin', 'src', 'href'],

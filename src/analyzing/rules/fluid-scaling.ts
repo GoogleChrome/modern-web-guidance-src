@@ -111,7 +111,28 @@ function countSteppedBreakpointsForSelector(
 
 export const fluidScalingMatcher: CssRuleMatcher = {
   kind: 'css',
-  fastTokens: ['@media', 'font-size'] as const,
+  fastTokens: [
+    ['@media'],
+    ['min-width', 'max-width', 'min-inline-size', 'max-inline-size', 'width'],
+    ['font-size'],
+    [
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'title',
+      'heading',
+      'headline',
+      'display',
+      'subhead',
+      'subtitle',
+      'lead',
+      'kicker',
+      'eyebrow',
+    ],
+  ] as const,
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string } | null {
     if (FRAMEWORK_FILE_RE.test(ctx.filePath)) {
       return null;

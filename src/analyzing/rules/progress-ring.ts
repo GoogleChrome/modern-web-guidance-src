@@ -16,8 +16,6 @@ const FAST_TOKENS: readonly string[] = [
   'strokeDasharray',
   'stroke-dashoffset',
   'stroke-dasharray',
-  'circumference',
-  'Math.PI',
 ] as const;
 
 function isProgressRingCalculation(scopeText: string): boolean {

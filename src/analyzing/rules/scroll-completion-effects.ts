@@ -136,7 +136,12 @@ function findPostScrollSetTimeout(scope: Node, scrollCall: CallExpression): Call
 
 export const scrollCompletionEffectsJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['scrollIntoView', 'scrollTo', 'scrollBy', 'scroll'] as const,
+  fastTokens: [
+    ['scrollIntoView', 'scrollTo', 'scrollBy', 'scroll'],
+    ['behavior'],
+    ['smooth'],
+    ['setTimeout'],
+  ] as const,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (
       ctx.filePath.includes('.test.') ||

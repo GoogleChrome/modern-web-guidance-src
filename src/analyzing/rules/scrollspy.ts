@@ -52,7 +52,7 @@ const scrollspyDomMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector:
     '[data-spy="scroll"], [data-bs-spy="scroll"], [data-spy], [data-bs-spy], [class*="scrollspy"], [data-scrollspy]',
-  fastTokens: ['data-spy', 'data-bs-spy', 'scrollspy', 'data-target', 'data-bs-target'],
+  fastTokens: ['data-spy', 'data-bs-spy', 'data-scrollspy', 'scrollspy', 'ScrollSpy', 'data-target', 'data-bs-target'],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['data-spy', 'data-bs-spy'],
   matchElement: (element: DomElementView, _ctx: DomMatcherContext) => {
@@ -281,11 +281,10 @@ function isIntersectionObserverScrollSpy(node: Node): boolean {
 export const scrollspyJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
-    'scrollspy',
-    'ScrollSpy',
-    'IntersectionObserver',
-    'offsetTop',
-    'getBoundingClientRect',
+    ['scrollspy', 'ScrollSpy', 'IntersectionObserver', 'offsetTop', 'getBoundingClientRect'],
+    ['scrollspy', 'ScrollSpy', 'active', 'aria-current', 'current', 'target-current'],
+    ['scrollspy', 'ScrollSpy', 'nav', 'toc', 'menu', 'link', 'href', 'section'],
+    ['scrollspy', 'ScrollSpy', 'classList', 'addClass', 'toggleClass', 'className', 'setAttribute', 'aria-current'],
   ],
   matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];

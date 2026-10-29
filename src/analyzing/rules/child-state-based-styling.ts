@@ -270,7 +270,22 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
 
 export const childStateBasedStylingJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['classList', 'addClass', 'removeClass', 'toggleClass'],
+  fastTokens: [
+    ['classList', 'addClass', 'removeClass', 'toggleClass'],
+    ['parentElement', 'parentNode', 'closest', 'parent', 'parents'],
+    [
+      'focus',
+      'Focus',
+      'blur',
+      'Blur',
+      'focusin',
+      'focusout',
+      'change',
+      'Change',
+      'input',
+      'Input',
+    ],
+  ],
   matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();

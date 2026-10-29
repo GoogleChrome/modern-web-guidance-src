@@ -119,7 +119,10 @@ export const interactionsInComplexLayoutsPackageMatcher: DependencyRuleMatcher =
   );
 
 export const interactionsInComplexLayoutsJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['fastdom', 'FastDom', 'measure', 'mutate'],
+  fastTokens: [
+    ['fastdom', 'FastDom', 'fastDom'],
+    ['measure', 'mutate'],
+  ],
   isGuarded: (node) => isGuardedByContainment(node),
   matchCall: (node) => matchFastdomCall(node),
 });

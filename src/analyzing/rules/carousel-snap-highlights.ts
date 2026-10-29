@@ -171,7 +171,30 @@ function matchScrollListener(
 
 export const carouselSnapHighlightsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['IntersectionObserver', 'scroll', 'scrollend'] as const,
+  fastTokens: [
+    ['IntersectionObserver', 'scroll', 'scrollend'],
+    ['classList', 'addClass', 'removeClass', 'toggleClass', 'aria-current'],
+    [
+      'carousel',
+      'Carousel',
+      'slider',
+      'Slider',
+      'slides',
+      'Slides',
+      'slide',
+      'Slide',
+      'snap',
+      'Snap',
+      'gallery',
+      'Gallery',
+      'swiper',
+      'Swiper',
+      'reel',
+      'Reel',
+      'track',
+      'Track',
+    ],
+  ] as const,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (isAlreadyModern(ctx.fileContent)) {
       return [];

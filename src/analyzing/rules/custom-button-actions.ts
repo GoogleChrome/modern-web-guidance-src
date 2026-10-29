@@ -122,7 +122,12 @@ function triggersCustomAction(node: Node, listenerTargetText: string): boolean {
 
 export const customButtonActionsJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['classList', 'dispatchEvent'] as const,
+  fastTokens: [
+    ['addEventListener'],
+    ['click'],
+    ['classList', 'dispatchEvent'],
+    ['btn', 'Btn', 'button', 'Button', 'data-action', 'data-command'],
+  ] as const,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
 

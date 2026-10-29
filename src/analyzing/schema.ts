@@ -144,16 +144,24 @@ export interface DependencyMatcherContext {
   readonly packageJson: Readonly<Record<string, unknown>>;
 }
 
+/**
+ * Fast substring pre-filter evaluated before AST/CSS/DOM parsing and compiled
+ * directly into corpus SQL predicates:
+ * - `readonly string[]`: at least ONE token must appear (`t1 OR t2`)
+ * - `readonly (readonly string[])[]`: EVERY inner group must have >=1 match (`(a1 OR a2) AND (b1 OR b2)`)
+ */
+export type FastTokenSpec = readonly string[] | readonly (readonly string[])[];
+
 export interface JsRuleMatcher {
   readonly kind: 'js';
-  readonly fastTokens?: readonly string[];
+  readonly fastTokens: FastTokenSpec;
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[];
 }
 
 export interface DomRuleMatcher {
   readonly kind: 'dom';
   readonly selector: string;
-  readonly fastTokens?: readonly string[];
+  readonly fastTokens: FastTokenSpec;
   readonly skipIfHasSpread?: boolean;
   readonly skipIfDynamicAttributes?: readonly string[];
   matchElement(element: DomElementView, ctx: DomMatcherContext): { message: string; subPattern?: string } | null;
@@ -161,7 +169,7 @@ export interface DomRuleMatcher {
 
 export interface CssRuleMatcher {
   readonly kind: 'css';
-  readonly fastTokens?: readonly string[];
+  readonly fastTokens: FastTokenSpec;
   matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string; subPattern?: string } | null;
 }
 

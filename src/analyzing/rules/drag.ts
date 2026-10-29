@@ -324,8 +324,8 @@ function matchDragStartListener(
 
 export const dragJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
-    'mousedown',
-    'touchstart',
+    ['mousedown', 'touchstart'],
+    ['mousemove', 'touchmove'],
   ],
   shouldSkipFile: (sourceFile) => {
     const text = sourceFile.getText();

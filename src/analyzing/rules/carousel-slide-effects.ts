@@ -98,7 +98,12 @@ function matchScrollListener(
 
 export const carouselSlideEffectsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['scroll'] as const,
+  fastTokens: [
+    ['scroll'],
+    ['getBoundingClientRect', 'scrollLeft', 'offsetLeft'],
+    ['forEach', 'for', 'map', 'slides', 'items', 'cards', 'children', 'querySelectorAll'],
+    ['transform', 'scale', 'rotate', 'translate', 'opacity', 'currentTime', 'setProperty'],
+  ] as const,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (isAlreadyModern(ctx.fileContent)) {
       return [];
