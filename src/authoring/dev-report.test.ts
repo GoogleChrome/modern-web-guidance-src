@@ -281,9 +281,10 @@ test('findSharedFailingTests extracts intersection of failing tests across activ
   assert.deepStrictEqual(findSharedFailingTests({}, []), []);
 });
 
-test('findTestedToSkippedExpectations detects TESTED to SKIPPED changes in grader manifests', (t) => {
+test('findTestedToSkippedExpectations detects newly introduced SKIPPED entries in grader manifests', (t) => {
   const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-manifest-flip-'));
   const beforePath = path.join(rootTmp, 'before-grader.ts');
+  const noManifestPath = path.join(rootTmp, 'no-manifest-grader.ts');
   const afterPath = path.join(rootTmp, 'after-grader.ts');
 
   t.after(() => {
@@ -300,6 +301,13 @@ test('findTestedToSkippedExpectations detects TESTED to SKIPPED changes in grade
     ].join('\n')
   );
   fs.writeFileSync(
+    noManifestPath,
+    [
+      "import { test } from '@playwright/test';",
+      "test('Checks modal opening', () => {});",
+    ].join('\n')
+  );
+  fs.writeFileSync(
     afterPath,
     [
       '// Expectation 1: TESTED - Checks modal opening',
@@ -310,7 +318,9 @@ test('findTestedToSkippedExpectations detects TESTED to SKIPPED changes in grade
   );
 
   const beforeManifest = extractManifestEntries(beforePath);
+  const noPriorManifest = extractManifestEntries(noManifestPath);
   const afterManifest = extractManifestEntries(afterPath);
   assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, afterManifest), [2, 4]);
+  assert.deepStrictEqual(findTestedToSkippedExpectations(noPriorManifest, afterManifest), [2, 3, 4]);
   assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, beforeManifest), []);
 });

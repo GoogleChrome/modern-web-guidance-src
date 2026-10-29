@@ -255,7 +255,7 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 }
 
 /**
- * Returns 1-based expectation numbers that changed from TESTED in `before` to SKIPPED in `after`.
+ * Returns 1-based expectation numbers that are SKIPPED in `after` and were not already SKIPPED in `before`.
  */
 export function findTestedToSkippedExpectations(
   before: ReadonlyMap<number, ManifestExpectationEntry>,
@@ -263,7 +263,7 @@ export function findTestedToSkippedExpectations(
 ): number[] {
   const flipped: number[] = [];
   for (const [num, afterEntry] of after.entries()) {
-    if (afterEntry.status === 'SKIPPED' && before.get(num)?.status === 'TESTED') {
+    if (afterEntry.status === 'SKIPPED' && before.get(num)?.status !== 'SKIPPED') {
       flipped.push(num);
     }
   }
