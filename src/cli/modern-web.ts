@@ -3,7 +3,6 @@
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
-import { fileURLToPath } from "node:url";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { retrieveUseCase } from "../rag/retrieve.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
@@ -12,8 +11,6 @@ import { getVersion } from "./version.ts";
 import { getSkillUpdateLevel } from "./skill-version.ts";
 import { USE_CASES } from "../rag/guides.ts";
 import { determineAgent } from "./telemetry/detect-agent.ts";
-
-const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -49,7 +46,7 @@ Options:
 
 async function main() {
   if (values.version) {
-    console.log(getVersion(MODULE_DIR));
+    console.log(getVersion(import.meta.dirname));
     process.exit(0);
   }
 
@@ -194,7 +191,7 @@ async function main() {
 // the SKILL.md did.
 function getCLISkillVersion(): string | null {
   try {
-    const versionPath = join(MODULE_DIR, "skill-version.txt");
+    const versionPath = join(import.meta.dirname, "skill-version.txt");
     const version = readFileSync(versionPath, "utf8");
     return version.trim();
   } catch (e) {
@@ -204,7 +201,7 @@ function getCLISkillVersion(): string | null {
 
 function getOurCLIAdjacentSkillIDs(): string[] {
   try {
-    const parentDir = dirname(MODULE_DIR);
+    const parentDir = dirname(import.meta.dirname);
     const skillsPath = basename(parentDir) === 'skills'
       ? parentDir
       : join(dirname(parentDir), 'skills');

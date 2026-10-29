@@ -5,8 +5,6 @@
  */
 
 import process from 'node:process';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { WatchdogClient } from './watchdog-client.ts';
 import {
   type ChromeModernWebGuidance,
@@ -17,8 +15,6 @@ import {
 } from './types.ts';
 import { getVersion } from '../version.ts';
 import { determineAgent } from './detect-agent.ts';
-
-const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 
 function isTelemetryEnabled(): boolean {
   const optOutSetting = process.env.DISABLE_TELEMETRY?.toLowerCase();
@@ -83,7 +79,7 @@ export class ClearcutLogger {
         search_items: searchItems,
       },
       os: detectOS(),
-      version: getVersion(MODULE_DIR),
+      version: getVersion(import.meta.dirname),
       skill_version: this.#skillVersion,
       agent: this.#agent,
       latency_ms: bucketizeLatency(latencyMs),
@@ -106,7 +102,7 @@ export class ClearcutLogger {
         guide_id: guideId,
       },
       os: detectOS(),
-      version: getVersion(MODULE_DIR),
+      version: getVersion(import.meta.dirname),
       skill_version: this.#skillVersion,
       agent: this.#agent,
       latency_ms: bucketizeLatency(latencyMs),
@@ -137,7 +133,7 @@ export class ClearcutLogger {
         command_type: commandType,
       },
       os: detectOS(),
-      version: getVersion(MODULE_DIR),
+      version: getVersion(import.meta.dirname),
       skill_version: this.#skillVersion,
       agent: this.#agent,
       latency_ms: bucketizeLatency(latencyMs),

@@ -342,20 +342,5 @@ test('no build-machine rootDir path leak in bundled dist binaries', async () => 
   assert.strictEqual(searchMjs.includes(ROOT_DIR), false, 'search.mjs should not contain build-machine rootDir');
 });
 
-test('bundled dist binaries do not rely on import.meta.dirname (Node <20.11 compatibility)', async () => {
-  for (const relPath of [
-    'skills/modern-web-guidance/modern-web.mjs',
-    'skills/modern-web-guidance/search.mjs',
-    'skills/modern-web-guidance/watchdog/main.js',
-  ]) {
-    const content = await fs.readFile(path.join(STAGING_DIR, relPath), 'utf8');
-    assert.strictEqual(
-      content.includes('import.meta.dirname'),
-      false,
-      `${relPath} should use fileURLToPath(import.meta.url) instead of import.meta.dirname`
-    );
-  }
-});
-
 
 

@@ -3,11 +3,8 @@ import { loadGraphModel, type GraphModel } from "@tensorflow/tfjs-converter";
 import { Tokenizer } from "@huggingface/tokenizers";
 import "./tfjs-kernels.ts";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import zlib from "node:zlib";
-
-const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 interface LoadedArtifacts {
   model: GraphModel;
@@ -17,7 +14,7 @@ interface LoadedArtifacts {
 }
 
 async function load(): Promise<LoadedArtifacts> {
-  const modelDir = path.resolve(MODULE_DIR, "tfjs-model-minilm");
+  const modelDir = path.resolve(import.meta.dirname, "tfjs-model-minilm");
   const modelJsonPath = path.resolve(modelDir, "model.json");
   const tokGzPath = path.resolve(modelDir, "tokenizer.json.gz");
   const tokCfgPath = path.resolve(modelDir, "tokenizer_config.json");
