@@ -1,9 +1,10 @@
 import {
   GEMINI_API_BASE,
+  buildGenerateContentUrl,
   computeExplainerContextHash,
   fetchWithRetry,
-  getGeminiApiKey,
   loadExplainerContextMap,
+  resolveGeminiApiBase,
   type ExplainerContextEntry,
 } from './detection-eval.ts';
 import {
@@ -22,9 +23,11 @@ export {
   GUIDE_TRIAGE_RESPONSE_SCHEMA,
   GUIDE_TRIAGE_SYSTEM_PROMPT,
   GUIDE_TRIAGE_THINKING_BUDGET,
+  buildGenerateContentUrl,
   computeGuideTriagePromptVersion,
   formatGuideTriagePrompt,
   loadExplainerContextMap,
+  resolveGeminiApiBase,
   type ExplainerContextEntry,
 };
 
@@ -78,6 +81,7 @@ export interface GuideTriageInput {
 
 export interface GuideTriageOptions {
   readonly apiKey?: string;
+  readonly baseUrl?: string;
   readonly fetchFn?: typeof fetch;
   readonly maxRetries?: number;
   readonly model?: string;
@@ -217,13 +221,12 @@ export async function triageGuide(
   guide: GuideTriageInput,
   options?: GuideTriageOptions,
 ): Promise<GuideTriageEntry> {
-  const apiKey = getGeminiApiKey(options);
   const customFetch = options?.fetchFn ?? fetch;
   const model = options?.model ?? GUIDE_TRIAGE_MODEL;
   const maxRetries = options?.maxRetries ?? 8;
 
   const body = buildGuideTriageRequestBody(guide, options);
-  const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
+  const url = buildGenerateContentUrl(model, options);
 
   const res = await fetchWithRetry(
     url,

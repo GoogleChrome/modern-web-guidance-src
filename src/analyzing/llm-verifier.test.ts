@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
 import {
+  GEMINI_API_BASE,
   LLM_VERIFIER_MODEL,
+  buildGenerateContentUrl,
   buildVerifierRequestBody,
   formatVerifierPrompt,
+  getGeminiApiKey,
   parseVerifierResponse,
+  resolveGeminiApiBase,
   runLlmVerifier,
   type VerifierOptions,
 } from './llm-verifier.ts';
@@ -266,5 +270,85 @@ describe('LLM verifier', () => {
       },
       /Rule not found for finding with ruleId='test-rule'/,
     );
+  });
+
+  test('resolveGeminiApiBase and buildGenerateContentUrl support custom proxy base URLs without API keys', async () => {
+    const origBase = process.env.GEMINI_API_BASE;
+    const origGoogleBase = process.env.GOOGLE_GEMINI_BASE_URL;
+    const origKey = process.env.GEMINI_API_KEY;
+    try {
+      delete process.env.GEMINI_API_BASE;
+      delete process.env.GOOGLE_GEMINI_BASE_URL;
+      delete process.env.GEMINI_API_KEY;
+
+      assert.equal(resolveGeminiApiBase(), GEMINI_API_BASE);
+      assert.equal(
+        buildGenerateContentUrl('gemini-3.8-flash', { apiKey: 'abc' }),
+        `${GEMINI_API_BASE}/models/gemini-3.8-flash:generateContent?key=abc`,
+      );
+
+      // GOOGLE_GEMINI_BASE_URL without /v1beta gets /v1beta appended and omits ?key= when no key is set
+      process.env.GOOGLE_GEMINI_BASE_URL = 'http://127.0.0.1:41234/';
+      assert.equal(resolveGeminiApiBase(), 'http://127.0.0.1:41234/v1beta');
+      assert.equal(getGeminiApiKey(), '');
+      assert.equal(
+        buildGenerateContentUrl('gemini-3.8-flash'),
+        'http://127.0.0.1:41234/v1beta/models/gemini-3.8-flash:generateContent',
+      );
+
+      // GEMINI_API_BASE with explicit /v1beta is preserved without duplicating /v1beta
+      process.env.GEMINI_API_BASE = 'http://localhost:8000/v1beta';
+      assert.equal(resolveGeminiApiBase(), 'http://localhost:8000/v1beta');
+
+      // Invalid URL protocols fail fast
+      assert.throws(
+        () => resolveGeminiApiBase({ baseUrl: 'ftp://localhost:8000' }),
+        /Invalid Gemini API base URL protocol/,
+      );
+
+      // runLlmVerifier works against a custom baseUrl without requiring GEMINI_API_KEY
+      delete process.env.GEMINI_API_BASE;
+      delete process.env.GOOGLE_GEMINI_BASE_URL;
+      const rulesById = new Map<string, AnalyzerRule>([['test-rule', mockRule]]);
+      let requestedUrl = '';
+      const result = await runLlmVerifier([mockFindings[0]], rulesById, {
+        baseUrl: 'http://127.0.0.1:41234',
+        fetchFn: async (input) => {
+          requestedUrl = String(input);
+          return new Response(
+            JSON.stringify({
+              candidates: [
+                {
+                  content: {
+                    parts: [
+                      {
+                        text: JSON.stringify({
+                          keep: true,
+                          reason: 'Proxy verified',
+                          confidence: 'high',
+                        }),
+                      },
+                    ],
+                  },
+                },
+              ],
+            }),
+            { status: 200 },
+          );
+        },
+      });
+      assert.equal(
+        requestedUrl,
+        'http://127.0.0.1:41234/v1beta/models/gemini-3.8-flash:generateContent',
+      );
+      assert.equal(result.keptFindings.length, 1);
+    } finally {
+      if (origBase === undefined) delete process.env.GEMINI_API_BASE;
+      else process.env.GEMINI_API_BASE = origBase;
+      if (origGoogleBase === undefined) delete process.env.GOOGLE_GEMINI_BASE_URL;
+      else process.env.GOOGLE_GEMINI_BASE_URL = origGoogleBase;
+      if (origKey === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = origKey;
+    }
   });
 });

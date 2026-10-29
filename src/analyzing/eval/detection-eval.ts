@@ -30,8 +30,16 @@ import { ALL_RULES } from '../rules/index.ts';
 import { computeGuideHash } from '../scanners/index.ts';
 import type { AnalyzerRule, JudgeVerdict, CanonicalJudgeVerdict } from '../schema.ts';
 export { type JudgeVerdict, type CanonicalJudgeVerdict, CANONICAL_VERDICTS } from '../schema.ts';
-export { getGeminiApiKey, findGuideMarkdownPath, loadRawGuideMarkdown } from '../llm-verifier.ts';
-import { getGeminiApiKey } from '../llm-verifier.ts';
+export {
+  GEMINI_API_BASE,
+  buildGenerateContentUrl,
+  findGuideMarkdownPath,
+  getGeminiApiKey,
+  loadRawGuideMarkdown,
+  resolveGeminiApiBase,
+  type GeminiEndpointOptions,
+} from '../llm-verifier.ts';
+import { buildGenerateContentUrl } from '../llm-verifier.ts';
 
 const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
@@ -80,7 +88,6 @@ export function repoDir(entry: RepoConfigEntry, root: string = join(homedir(), '
 }
 
 export const JUDGE_MODEL = 'gemini-3.8-flash';
-export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 export const VALID_VERDICTS: ReadonlySet<string> = new Set([
   'legit-modernize-target',
@@ -378,6 +385,7 @@ export interface JudgeEvaluationMetrics {
 
 export interface JudgeRunOptions {
   apiKey?: string;
+  baseUrl?: string;
   concurrency?: number;
   fetchFn?: typeof fetch;
   temperature?: number;
@@ -531,7 +539,7 @@ export async function runJudgeDirect(
   cards: BlindCardPayload[],
   options: JudgeRunOptions = {},
 ): Promise<JudgeResult[]> {
-  const apiKey = getGeminiApiKey(options);
+  const url = buildGenerateContentUrl(JUDGE_MODEL, options);
 
   const customFetch = options.fetchFn ?? fetch;
   const concurrency = Math.max(1, options.concurrency ?? 5);
@@ -547,7 +555,6 @@ export async function runJudgeDirect(
       const idx = currentIndex++;
       const card = cards[idx];
       const body = buildGeminiRequestBody(card, options.temperature);
-      const url = `${GEMINI_API_BASE}/models/${JUDGE_MODEL}:generateContent?key=${apiKey}`;
 
       const res = await fetchWithRetry(
         url,

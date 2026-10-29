@@ -10,6 +10,35 @@ export const LLM_VERIFIER_MODEL = 'gemini-3.8-flash';
 export const PROMPT_MODEL = LLM_VERIFIER_MODEL;
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+export interface GeminiEndpointOptions {
+  readonly apiKey?: string;
+  readonly baseUrl?: string;
+}
+
+/**
+ * Resolves the Gemini API base URL (including `/v1beta` path prefix) from options or
+ * `GEMINI_API_BASE` / `GOOGLE_GEMINI_BASE_URL` environment variables.
+ */
+export function resolveGeminiApiBase(options?: { baseUrl?: string }): string {
+  const raw = (
+    options?.baseUrl ??
+    process.env.GEMINI_API_BASE ??
+    process.env.GOOGLE_GEMINI_BASE_URL ??
+    ''
+  ).trim();
+  if (!raw) {
+    return GEMINI_API_BASE;
+  }
+  const parsed = new URL(raw);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(
+      `Invalid Gemini API base URL protocol "${parsed.protocol}"; expected http: or https:`,
+    );
+  }
+  const normalized = parsed.toString().replace(/\/+$/, '');
+  return /\/v1(?:beta|alpha)?$/.test(normalized) ? normalized : `${normalized}/v1beta`;
+}
+
 export const VERIFIER_THINKING_BUDGET = 1024;
 
 /**
@@ -157,10 +186,16 @@ export const VERIFIER_PROMPT_VERSION = computeVerifierPromptVersion();
 
 /**
  * Resolves the Gemini API key from options, environment, or the workspace .env file.
+ * When targeting a custom `baseUrl` (such as a local proxy), returns `''` if no key is set
+ * rather than throwing.
  */
-export function getGeminiApiKey(options?: { apiKey?: string }): string {
-  if (options?.apiKey) {
+export function getGeminiApiKey(options?: GeminiEndpointOptions): string {
+  if (options?.apiKey !== undefined) {
     return options.apiKey;
+  }
+  const baseUrl = resolveGeminiApiBase(options);
+  if (baseUrl !== GEMINI_API_BASE) {
+    return process.env.GEMINI_API_KEY?.trim() ?? '';
   }
   if (!process.env.GEMINI_API_KEY) {
     try {
@@ -169,11 +204,21 @@ export function getGeminiApiKey(options?: { apiKey?: string }): string {
       /* ignore missing .env */
     }
   }
-  const key = process.env.GEMINI_API_KEY;
+  const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) {
     throw new Error('GEMINI_API_KEY is not defined in environment, options, or .env file');
   }
   return key;
+}
+
+/**
+ * Builds the `generateContent` endpoint URL for `model`, appending `?key=` only when an API key is resolved.
+ */
+export function buildGenerateContentUrl(model: string, options?: GeminiEndpointOptions): string {
+  const baseUrl = resolveGeminiApiBase(options);
+  const apiKey = getGeminiApiKey(options);
+  const endpoint = `${baseUrl}/models/${model}:generateContent`;
+  return apiKey ? `${endpoint}?key=${encodeURIComponent(apiKey)}` : endpoint;
 }
 
 export async function findGuideMarkdownPath(
@@ -230,6 +275,7 @@ export interface VerifierVerdict {
 
 export interface VerifierOptions {
   readonly apiKey?: string;
+  readonly baseUrl?: string;
   readonly fetchFn?: typeof fetch;
   readonly concurrency?: number;
   readonly maxRetries?: number;
@@ -366,9 +412,9 @@ export async function runLlmVerifier(
     }
   }
 
-  const apiKey = getGeminiApiKey(options);
   const customFetch = options?.fetchFn ?? fetch;
   const model = options?.model ?? LLM_VERIFIER_MODEL;
+  const url = buildGenerateContentUrl(model, options);
   const maxRetries = options?.maxRetries ?? 8;
   const concurrency = Math.max(1, options?.concurrency ?? 5);
 
@@ -407,7 +453,6 @@ export async function runLlmVerifier(
         );
       }
       const body = buildVerifierRequestBody(finding, rule, guideMarkdown);
-      const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`;
 
       const res = await fetchWithRetry(
         url,
