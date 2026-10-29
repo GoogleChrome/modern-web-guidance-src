@@ -5,7 +5,7 @@
  * Expectation 2: SKIPPED - Base application contains no dynamic DOM rendering or dangerous sinks.
  * Expectation 3: SKIPPED - Base application does not contain session cookies or user session state.
  * Expectation 4: SKIPPED - Base application does not embed third-party iframes or require partitioned third-party cookies.
- * Expectation 5: TESTED - Validates clickjacking protection via X-Frame-Options (SAMEORIGIN or DENY) and CSP frame-ancestors directive.
+ * Expectation 5: TESTED - Validates clickjacking protection via X-Frame-Options (DENY or SAMEORIGIN) and CSP frame-ancestors ('none' or 'self') directive.
  * Expectation 6: SKIPPED - Base application does not implement window message event listeners.
  * Expectation 7: SKIPPED - Base application does not send cross-window postMessage messages.
  * Expectation 8: TESTED - Validates Reporting-Endpoints header configuration and CSP report-to directive reference.
@@ -49,16 +49,16 @@ test.describe('security Target Grader', () => {
       expect(hsts).toMatch(/max-age=\d+.*includeSubDomains|includeSubDomains.*max-age=\d+/i);
     });
 
-    test('Exp 5: Document response sets X-Frame-Options to SAMEORIGIN or DENY', async ({ page, TARGET_URL }) => {
+    test('Exp 5: Document response sets X-Frame-Options to DENY or SAMEORIGIN', async ({ page, TARGET_URL }) => {
       const response = await page.goto(TARGET_URL);
       const xfo = response?.headers()['x-frame-options']?.toUpperCase() || '';
-      expect(xfo).toMatch(/^(SAMEORIGIN|DENY)$/);
+      expect(xfo).toMatch(/^(DENY|SAMEORIGIN)$/);
     });
 
     test("Exp 5: Document response sets Content-Security-Policy frame-ancestors directive", async ({ page, TARGET_URL }) => {
       const response = await page.goto(TARGET_URL);
       const csp = response?.headers()['content-security-policy'] || '';
-      expect(csp).toMatch(/frame-ancestors\s+[^;]*'self'/i);
+      expect(csp).toMatch(/\bframe-ancestors\s+(?:'none'|[^;*]*'self'[^;*]*)\s*(?:;|$)/i);
     });
 
     test('Exp 8: Document response configures a Reporting-Endpoints header', async ({ page, TARGET_URL }) => {
