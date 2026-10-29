@@ -396,4 +396,42 @@ describe('scroll-position-aware-elements rule', () => {
     );
     assert.equal(result.matches.length, 0);
   });
+
+  test('exempts scroll-direction tracking, DOM reparenting, and aria-hidden state handlers', () => {
+    const code = `
+      $(window).on('scroll', { previousTop: 0 }, function () {
+        const currentTop = $(window).scrollTop();
+        if (currentTop < this.previousTop) {
+          $('#mainNav').addClass('is-visible');
+        } else {
+          $('#mainNav').removeClass('is-visible');
+        }
+        this.previousTop = currentTop;
+      });
+
+      window.onscroll = function () {
+        if (window.pageYOffset > 100) {
+          stickyCell.appendChild(searchBox);
+          header.classList.add('sticky');
+        } else {
+          origCell.appendChild(searchBox);
+          header.classList.remove('sticky');
+        }
+      };
+
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 120) {
+          summaryBar.setAttribute('aria-hidden', 'false');
+          summaryBar.classList.add('visible');
+        }
+      });
+    `;
+    const result = scanJsSource(
+      'src/direction-and-reparent.js',
+      code,
+      [scrollPositionAwareElementsJsMatcher],
+      project,
+    );
+    assert.equal(result.matches.length, 0);
+  });
 });

@@ -355,10 +355,48 @@ function handlerReadsScrollOffset(handlerNode: Node): boolean {
   return subtreeReadsScrollOffset(handlerNode);
 }
 
+function extractNumericComparisonThreshold(
+  operand: Node,
+  handlerNode: Node,
+): number | null {
+  const unwrapped = unwrapExpression(operand);
+  if (Node.isNumericLiteral(unwrapped)) {
+    return Number(unwrapped.getLiteralText());
+  }
+  if (Node.isIdentifier(unwrapped)) {
+    const rhs = findPriorAssignmentRhs(
+      handlerNode,
+      unwrapped.getText(),
+      unwrapped.getStart(),
+    );
+    if (rhs && Node.isNumericLiteral(unwrapExpression(rhs))) {
+      return Number(unwrapExpression(rhs).getLiteralText());
+    }
+    const resolved = resolveLocalExpression(unwrapped, 2);
+    if (
+      resolved !== unwrapped &&
+      Node.isNumericLiteral(unwrapExpression(resolved))
+    ) {
+      return Number(unwrapExpression(resolved).getLiteralText());
+    }
+  }
+  return null;
+}
+
 function handlerHasScrollComparison(handlerNode: Node): boolean {
+  const handlerText = handlerNode.getText();
+  // Exclude scroll-direction tracking (hide on scroll down, show on scroll up)
+  if (
+    /\b(?:prevScrollTop|previousTop)\b/i.test(
+      handlerText,
+    )
+  ) {
+    return false;
+  }
+
   let found = false;
+  const distinctThresholds = new Set<number>();
   handlerNode.forEachDescendant((node) => {
-    if (found) return;
     if (Node.isBinaryExpression(node)) {
       const op = node.getOperatorToken().getKind();
       if (!COMPARISON_OPERATORS.has(op)) {
@@ -376,14 +414,24 @@ function handlerHasScrollComparison(handlerNode: Node): boolean {
       if (isJqueryDockingComparison) {
         return;
       }
-      if (
-        operandRepresentsScrollOffset(left, handlerNode) ||
-        operandRepresentsScrollOffset(right, handlerNode)
-      ) {
+      const leftIsScroll = operandRepresentsScrollOffset(left, handlerNode);
+      const rightIsScroll = operandRepresentsScrollOffset(right, handlerNode);
+      if (leftIsScroll || rightIsScroll) {
+        const otherOperand = leftIsScroll ? right : left;
+        const threshold = extractNumericComparisonThreshold(
+          otherOperand,
+          handlerNode,
+        );
+        if (threshold !== null && threshold > 0) {
+          distinctThresholds.add(threshold);
+        }
         found = true;
       }
     }
   });
+  if (distinctThresholds.size > 2) {
+    return false;
+  }
   return found;
 }
 
@@ -555,7 +603,7 @@ const CLASS_MUTATION_METHODS = new Set([
 ]);
 
 function handlerMutatesScrollStateOrSize(handlerNode: Node): boolean {
-  // Reject lazy-loading, parallax, infinite scroll, or nav link href handlers
+  // Reject lazy-loading, parallax, infinite scroll, DOM reparenting, or collision/offset handlers
   const handlerText = handlerNode.getText();
   if (
     handlerText.includes('setAttribute(\'src\'') ||
@@ -564,7 +612,14 @@ function handlerMutatesScrollStateOrSize(handlerNode: Node): boolean {
     handlerText.includes('getBoundingClientRect') ||
     handlerText.includes('fetchMore') ||
     handlerText.includes('loadMore') ||
-    handlerText.includes('href')
+    handlerText.includes('href') ||
+    handlerText.includes('appendChild') ||
+    handlerText.includes('removeChild') ||
+    handlerText.includes('insertBefore') ||
+    handlerText.includes('replaceChild') ||
+    handlerText.includes('classList.contains(') ||
+    handlerText.includes('.position().top') ||
+    handlerText.includes('aria-hidden')
   ) {
     return false;
   }
@@ -798,8 +853,8 @@ export const scrollPositionAwareElementsRule: AnalyzerRule = {
     ],
     dropWhen: [
       'Implementations using CSS scroll-state container queries (@container scroll-state(...)) or IntersectionObserver sentinels.',
-      'Complex scroll-driven parallax or layout engines that interpolate continuous dimensions rather than toggling binary state classes.',
-      'Infinite scroll or pagination handlers that trigger network requests when reaching scroll bounds.',
+      'Scroll-direction tracking handlers (hide on scroll down, show on scroll up using prevScroll/previousTop/lastScroll) or multi-stage scroll thresholds.',
+      'Handlers performing DOM node reparenting (appendChild/removeChild), element collision/overlap calculations (offsetHeight/outerHeight/.position().top), or infinite scroll network requests.',
     ],
   },
 };

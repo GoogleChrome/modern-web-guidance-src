@@ -81,6 +81,12 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
   fastTokens: [':invalid'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     const selector = styleRule.selectorText;
+    if (!selector.toLowerCase().includes(':invalid')) {
+      return null;
+    }
+    if (/\/bootstrap\/|(?:^|\/)bootstrap(?:\.[a-z0-9_-]+)*\.css$/i.test(ctx.filePath)) {
+      return null;
+    }
     if (
       selector.includes(':user-invalid') ||
       ctx.stylesheetText.includes(':user-invalid')
@@ -103,10 +109,36 @@ export const requiredFieldFeedbackCssMatcher: CssRuleMatcher = {
       return null;
     }
 
+    // Skip checkbox/radio (.form-check-input), file inputs (.form-control-file/.custom-file-input), input-group z-index layering, and Parsley theme selectors
+    if (
+      /\.(?:form-check-input|form-control-file|custom-file-input|input-group|parsley-error)\b/i.test(selectorWithoutNot) ||
+      (/\.custom-control-input\b/i.test(selectorWithoutNot) &&
+        !/:not\(\s*:checked\s*\)/i.test(selector))
+    ) {
+      return null;
+    }
+
+    // Skip rules that only hide validation background icons (background-image: none) without styling error feedback
+    const bgImage = styleRule.getPropertyValue('background-image')?.trim().toLowerCase();
+    if (
+      bgImage === 'none' &&
+      !styleRule.hasProperty('border-color') &&
+      !styleRule.hasProperty('color') &&
+      !styleRule.hasProperty('box-shadow')
+    ) {
+      return null;
+    }
+
     const hasRequiredInvalid = REQUIRED_INVALID_SELECTOR_REGEX.test(selectorWithoutNot);
     const hasTouchedDirtyInvalid = TOUCHED_DIRTY_INVALID_SELECTOR_REGEX.test(selectorWithoutNot);
 
     if (!hasRequiredInvalid && !hasTouchedDirtyInvalid) {
+      return null;
+    }
+
+    // Skip minified single-line CSS bundles where snippet context is unreadable
+    const rawLine = ctx.stylesheetText.split('\n')[styleRule.line - 1] ?? '';
+    if (rawLine.length > 1000) {
       return null;
     }
 
@@ -143,7 +175,7 @@ export const requiredFieldFeedbackCssRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The stylesheet already uses :user-invalid or guards :invalid inside @supports not selector(:user-invalid).',
-      'The selector negates :invalid inside :not(:invalid) or styles server-returned asynchronous validation errors.',
+      'The selector only negates :invalid inside :not(:invalid) or only sets background-image: none.',
     ],
   },
 };

@@ -78,6 +78,32 @@ void test('required-field-feedback CSS matcher', async (t) => {
     ]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts .form-check-input, .input-group z-index, and background-image: none icon resets', () => {
+    const css = `
+      .was-validated .form-check-input:invalid:focus {
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+      }
+      .was-validated .input-group .form-control:invalid:focus {
+        z-index: 2;
+      }
+      .was-validated .form-control:invalid {
+        background-image: none;
+      }
+    `;
+    const matches = scanCss('styles/validation.css', css, [
+      requiredFieldFeedbackCssMatcher,
+    ]);
+    assert.equal(matches.length, 0);
+    assert.equal(
+      scanCss(
+        'assets/bootstrap/css/bootstrap.rtl.css',
+        '.was-validated .form-control:invalid { border-color: #dc3545; }',
+        [requiredFieldFeedbackCssMatcher],
+      ).length,
+      0,
+    );
+  });
 });
 
 void test('required-field-feedback JS matcher', async (t) => {

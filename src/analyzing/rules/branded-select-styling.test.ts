@@ -176,6 +176,22 @@ void test('branded-select-styling JS: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts select2 command strings, allowClear/tokenSeparators, and non-jQuery Select2 calls', () => {
+    const code = `
+      NioApp.Select2('.form-select');
+      $o.select2('destroy');
+      const selected = $orgWidget.select2('data');
+      const val = $input.select2('val');
+      $('.select2me').select2({
+        placeholder: 'Select',
+        allowClear: true,
+      });
+      $('#tags').select2({ tokenSeparators: [',', ';'] });
+    `;
+    const matches = matchJsRule(jsMatcher, 'commands-and-complex.js', code);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('flags chosen combobox initialization', () => {
     const code = `
       $('.chzn-select').chosen({ disable_search_threshold: 10 });
