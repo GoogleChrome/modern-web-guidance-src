@@ -19,9 +19,6 @@ const MASK_PROPERTIES = new Set([
 const NON_ICON_MEDIA_SELECTOR_REGEX =
   /\b(?:html|body|video|canvas|iframe|picture|photo|avatar|thumbnail|banner|hero|gallery|backdrop)\b|:host-context\(/i;
 
-const USERSTYLE_OVERRIDE_FILE_REGEX =
-  /(?:^|[/\\._-])(?:devtools|userstyle|userchrome|stylus)(?:[._-]|$)/i;
-
 const USERSTYLE_OVERRIDE_CONTENT_REGEX =
   /:host-context\(\s*\.-theme-with-dark-background\s*\)|\bdevtools-[a-z-]+|--override-color-|@-moz-document\b/i;
 
@@ -54,7 +51,6 @@ export const iconsCssMatcher: CssRuleMatcher = {
   fastTokens: ['hue-rotate', 'sepia'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     if (
-      USERSTYLE_OVERRIDE_FILE_REGEX.test(ctx.filePath) ||
       USERSTYLE_OVERRIDE_CONTENT_REGEX.test(ctx.stylesheetText) ||
       NON_ICON_MEDIA_SELECTOR_REGEX.test(styleRule.selectorText)
     ) {
@@ -99,6 +95,7 @@ export const iconsRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The filter is applied to photographs, video elements, avatars, or whole-page dark-mode inversion rather than recoloring a single-color UI icon or graphic.',
+      'The stylesheet is a third-party userstyle or browser DevTools theme override (e.g. using :host-context(.-theme-with-dark-background), @-moz-document, or --override-color-* custom properties) where the author does not control the underlying icon DOM or image URL.',
       'The rule already uses CSS mask / mask-image for icon coloring.',
     ],
   },

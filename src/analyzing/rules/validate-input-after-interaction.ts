@@ -25,9 +25,6 @@ const SELECT_INVALID_SELECTOR_REGEX =
 const PLACEHOLDER_PSEUDO_ELEMENT_REGEX =
   /(?:::|:-)(?:webkit-input-|moz-|ms-input-)?placeholder\b/i;
 
-const RESET_OR_FRAMEWORK_FILE_REGEX =
-  /(?:^|[/\\._-])(?:reset|normalize|reboot|bootstrap|tailwind|mui|w3|foundation|bulma|materialize|semantic|uikit|pure|spectre|milligram|skeleton|tachyons|chota|picnic|water|mvp|sakura|awsm|bahunya|marx|tufte)(?:[._-]|$)/i;
-
 const VISUAL_ERROR_PROPERTIES = new Set([
   'border',
   'border-color',
@@ -99,10 +96,6 @@ export const validateInputAfterInteractionCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: [':invalid'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
-    if (RESET_OR_FRAMEWORK_FILE_REGEX.test(ctx.filePath)) {
-      return null;
-    }
-
     const selector = styleRule.selectorText;
     if (
       selector.includes(':user-invalid') ||
@@ -173,7 +166,7 @@ export const validateInputAfterInteractionRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The stylesheet already uses :user-invalid or guards :invalid inside @supports not selector(:user-invalid).',
-      'The rule only resets browser default :invalid styles (such as box-shadow: none or outline: none with no error border, background, or color) or is part of a CSS reset/normalize stylesheet.',
+      'The rule only resets browser default :invalid styles (such as box-shadow: none or outline: none with no error border, background, or color).',
       'The selector is already gated by a post-interaction class (.was-validated, .touched, .dirty, .submitted), combines :required:invalid (owned by required-field-feedback), or targets select:invalid (owned by select-menu-interaction).',
     ],
   },

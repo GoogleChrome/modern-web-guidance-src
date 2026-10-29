@@ -17,7 +17,7 @@ void test('validate-input-after-interaction CSS matcher', async (t) => {
         display: block;
       }
     `;
-    const matches = scanCss('form.css', css, [validateInputAfterInteractionCssMatcher]);
+    const matches = scanCss('bootstrap-overrides.css', css, [validateInputAfterInteractionCssMatcher]);
     assert.equal(matches.length, 3);
   });
 

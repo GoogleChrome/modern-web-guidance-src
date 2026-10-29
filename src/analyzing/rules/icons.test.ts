@@ -40,12 +40,15 @@ void test('icons CSS matcher', async (t) => {
     assert.equal(matches.length, 0);
 
     const devtoolsCss = `
+      devtools-record-menu-title {
+        --override-color-accent-red: #ed8796 !important;
+      }
       .lh-report-icon::before {
         filter: invert(77%) sepia(4%) saturate(1976%) hue-rotate(193deg) brightness(111%) contrast(92%);
       }
     `;
     assert.equal(
-      scanCss('themes/macchiato_maroon/devtools.css', devtoolsCss, [iconsCssMatcher]).length,
+      scanCss('theme-overrides.css', devtoolsCss, [iconsCssMatcher]).length,
       0,
     );
   });
