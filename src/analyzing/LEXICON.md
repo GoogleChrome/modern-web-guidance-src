@@ -125,6 +125,24 @@ The proportion of evaluated findings graded `not-old-pattern` ($\text{not-old-pa
 * _Reference_: `src/analyzing/rules/index.ts`, `src/analyzing/eval/detection-eval.ts#JudgeVerdict`
 * _Avoid_: `False Positive Rate`, `Error Rate`, `Non-Misfire Rate (as an evaluation metric)`
 
+### Yield
+
+The number of **Static Matcher** candidate findings a rule produces on a corpus split (rule-writing yield, held-out yield). Distinct from evaluated sample size ($n$), which is the subset of findings sampled for grading.
+
+* _Avoid_: `Match Count`, `Volume`, `Hits` (unscoped)
+
+### Not Enough Findings to Judge
+
+An evaluation measurement status for an active rule whose **`held-out` split** yield is too low ($1 \le n \le 4$) to run offline evaluation grading. Distinct from **Too Few to Qualify**, which applies to a rule that was evaluated but whose sample size is too small to clear the qualification bar.
+
+* _Avoid_: `Too Few to Measure` (as a user-facing label), `Unmeasurable`
+
+### Too Few to Qualify
+
+An evaluation qualification disposition for an active rule that has been evaluated on the **`held-out` split** but whose sample size ($n < 5$) is too small to clear the default-on qualification bar, regardless of precision. Distinct from **Not Enough Findings to Judge**, where the rule has never been evaluated because its held-out yield is under 5.
+
+* _Avoid_: `Too Few Findings` (as a user-facing label), `Insufficient Sample`
+
 ## Rule Lifecycle States
 
 ### Experimental Rule
@@ -140,6 +158,12 @@ A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx m
 
 * _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
 * _Avoid_: `Default Rule`, `Tier 1 Rule`, `Tier A / Tier B / Tier C`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`
+
+### Scope Hold
+
+A state where an active rule clears the default-on qualification bar on the **`held-out` split** (**Static Matcher Precision** $\ge 80\%$ and **Post-Verifier Precision** $\ge 90\%$ at $n \ge 10$, or **Static Matcher Precision** $\ge 90\%$ at $n \ge 5$) but is held from promotion pending human review (for example, to inspect the distribution of findings, verify payoff in real code, or evaluate sensitivity to vendored files). Distinct from a declined promotion, where human review explicitly decided not to promote the rule.
+
+* _Avoid_: `Pending Rule`, `Paused Promotion`, `Held Rule`
 
 ### Retired Guide
 
