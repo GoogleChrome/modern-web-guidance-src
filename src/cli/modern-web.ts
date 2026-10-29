@@ -128,8 +128,8 @@ async function main() {
           console.error(error.message);
         } else {
           console.error(`Retrieve failed for ${id}:`, error);
-          await getLogger().logRetrieveResult(Date.now() - startTime, false, id);
         }
+        await getLogger().logRetrieveResult(Date.now() - startTime, false, id);
       }
     }
 
