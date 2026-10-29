@@ -102,7 +102,7 @@ void test('persistent-toast-notifications JS matcher', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts stacked toastr calls in a block, navigation after toast, loop toasts, empty first arg, and component/lib paths', () => {
+  await t.test('exempts stacked toastr calls in a block, navigation after toast, loop toasts, and empty first arg', () => {
     const code = `
       function onError(data) {
         toastr.error("Cannot get user data");
@@ -135,5 +135,21 @@ void test('persistent-toast-notifications JS matcher', async (t) => {
       `,
     );
     assert.equal(multiCallMatches.length, 0);
+  });
+
+  await t.test('flags toastr.error inside Promise .catch() and JSX component files', () => {
+    const code = `
+      import toastr from 'toastr';
+      export function SaveButton() {
+        const handleSave = () => {
+          fetch('/api/save').catch((err) => {
+            toastr.error('Failed to save');
+          });
+        };
+        return <button onClick={handleSave}>Save</button>;
+      }
+    `;
+    const matches = matchJsRule(persistentToastNotificationsJsMatcher, 'SaveButton.tsx', code);
+    assert.equal(matches.length, 1);
   });
 });

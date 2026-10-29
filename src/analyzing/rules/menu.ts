@@ -189,11 +189,11 @@ export const menuDomMatcher: DomRuleMatcher = {
 
     const snippet = getElementSnippet(element, ctx);
     if (
-      /<(?:form|input|textarea|select|datetimepicker|datepicker|TextField)\b/i.test(
+      /<(?:form|input|textarea|select|datetimepicker|datepicker)\b/i.test(
         snippet,
       ) ||
-      /\b(?:input-group|dropdown-select)\b/i.test(snippet) ||
-      /@(?:keydown|keyup)\b|\bonKeyDown\b/i.test(snippet) ||
+      /\b(?:dropdown-select|navbar-nav)\b/i.test(snippet) ||
+      /<nav\b[^>]*\bcontextmenu\b/i.test(snippet) ||
       ctx.documentText.includes('{% highlight')
     ) {
       return null;
@@ -237,7 +237,7 @@ export const menuDomRule: AnalyzerRule = {
     ],
     dropWhen: [
       'Container already declaring focusgroup attribute.',
-      'Standard native <select> elements or form/picker popovers (<form>, <input>, <select>, datepicker) inside a dropdown.',
+      'Standard native <select> elements, search inputs, or form/picker popovers (<form>, <input>, <select>, datepicker) inside a dropdown.',
       'Persistent sidebar navigation treeviews (e.g., AdminLTE nav-sidebar / data-widget="treeview"), static footer link lists (list-unstyled), or trigger <button> elements.',
       'Low-level positioning primitive wrappers (e.g., Radix PopperContent) or documentation code snippets.',
     ],

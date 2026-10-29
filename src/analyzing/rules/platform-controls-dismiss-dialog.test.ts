@@ -124,18 +124,18 @@ void test('platform-controls-dismiss-dialog: negative / exempt cases', async (t)
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts multi-key gallery/focus-trap keydown handler (Escape + ArrowLeft/Tab)', () => {
+  await t.test('flags keydown handler that checks Escape to close modal alongside Tab focus trapping', () => {
     const code = `
       window.addEventListener('keydown', (e) => {
-        if (e.keyCode === 27) {
-          lightbox.close();
-        } else if (e.keyCode === 37) {
-          lightbox.prev();
+        if (e.key === 'Escape') {
+          modal.close();
+        } else if (e.key === 'Tab') {
+          trapFocus(e);
         }
       });
     `;
-    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'gallery.js', code);
-    assert.equal(matches.length, 0);
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'focus-trap.js', code);
+    assert.equal(matches.length, 1);
   });
 
   await t.test('exempts find/search input keydown listener', () => {
@@ -147,19 +147,6 @@ void test('platform-controls-dismiss-dialog: negative / exempt cases', async (t)
       });
     `;
     const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'findbar.js', code);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('exempts nested modal Escape listener calling stopPropagation()', () => {
-    const code = `
-      modal.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          modal.close();
-        }
-      });
-    `;
-    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'nested.js', code);
     assert.equal(matches.length, 0);
   });
 });

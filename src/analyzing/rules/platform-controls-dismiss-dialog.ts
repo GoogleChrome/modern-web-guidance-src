@@ -26,16 +26,13 @@ const CLOSEDBY_FEATURE_TOKENS = [
 ] as const;
 
 const MODAL_IDENTIFIER_REGEX =
-  /\b(?:dialog|dlg|modal|drawer|overlay|popup|sheet|lightbox)\b/i;
+  /\b(?:dialog|dlg|modal|drawer|overlay|sheet|lightbox)\b/i;
 
 const NON_MODAL_RECEIVER_REGEX =
-  /\b(?:window|self|document|ws|socket|stream|conn|connection|db|file|reader|writer|port|channel|context|audioCtx|peer|find|search|bar|input|field|editor|textarea|select|menu|dropdown|tooltip|toast|notification)\b/i;
-
-const NON_DIALOG_LISTENER_TARGET_REGEX =
-  /\b(?:input|field|bar|find|search|img|image|next|prev|btn|button|editor|textarea|select|table|grid|list|menu|dropdown|tooltip)\b/i;
+  /\b(?:window|self|document|ws|socket|stream|conn|connection|db|file|reader|writer|port|channel|context|audioCtx|peer|find|search|bar|input|field|editor|textarea|select|menu|dropdown|tooltip|toast|notification|popup)\b/i;
 
 const EXPLICIT_MODAL_DISMISS_METHOD_REGEX =
-  /(?:^|_|\b)(?:closeModal|closeDialog|hideModal|dismissModal|closeDrawer|hideDrawer|closePopup|hidePopup|closeOverlay|hideOverlay|closeLightbox|hideLightbox)\b/i;
+  /(?:^|_|\b)(?:closeModal|closeDialog|hideModal|dismissModal|closeDrawer|hideDrawer|closeOverlay|hideOverlay|closeLightbox|hideLightbox)\b/i;
 
 const GENERIC_DISMISS_METHOD_REGEX =
   /\b(?:close|hide|dismiss|hidePopover)\b/i;
@@ -65,11 +62,28 @@ function isModalDismissCallOrMutation(node: Node): boolean {
 
       // Native dialog.close(), popover.hidePopover(), or generic dismiss with modal receiver
       if (GENERIC_DISMISS_METHOD_REGEX.test(methodName)) {
-        if (
-          MODAL_IDENTIFIER_REGEX.test(receiverText) ||
-          receiverText === 'this'
-        ) {
+        if (MODAL_IDENTIFIER_REGEX.test(receiverText)) {
+          // Skip custom hover/prompt widgets that close on mouseleave in an enclosing function
+          let anc: Node | undefined = node.getParent();
+          while (anc && !Node.isSourceFile(anc)) {
+            if (
+              (Node.isFunctionDeclaration(anc) ||
+                Node.isFunctionExpression(anc) ||
+                Node.isArrowFunction(anc) ||
+                Node.isMethodDeclaration(anc)) &&
+              /\baddEventListener\s*\(\s*['"]mouseleave['"]/.test(anc.getText())
+            ) {
+              return false;
+            }
+            anc = anc.getParent();
+          }
           return true;
+        }
+        if (receiverText === 'this') {
+          const enclosingClass = node.getFirstAncestorByKind(SyntaxKind.ClassDeclaration);
+          if (!enclosingClass || MODAL_IDENTIFIER_REGEX.test(enclosingClass.getName() ?? '')) {
+            return true;
+          }
         }
       }
 
@@ -238,92 +252,9 @@ function isEscapeKeyCondition(expr: Node): boolean {
 }
 
 /**
- * Checks whether a keydown handler also handles non-Escape keys (e.g. Tab focus traps,
- * ArrowLeft/ArrowRight gallery navigation, Enter) or stops propagation for nested containment.
- */
-function handlerHandlesOtherKeysOrStopsPropagation(handler: Node): boolean {
-  let hasOtherKeyOrStop = false;
-
-  handler.forEachDescendant((child) => {
-    if (hasOtherKeyOrStop) return;
-
-    if (Node.isCallExpression(child)) {
-      const expr = unwrapExpression(child.getExpression());
-      if (
-        Node.isPropertyAccessExpression(expr) &&
-        (expr.getName() === 'stopPropagation' || expr.getName() === 'stopImmediatePropagation')
-      ) {
-        hasOtherKeyOrStop = true;
-        return;
-      }
-    }
-
-    if (Node.isSwitchStatement(child)) {
-      if (child.getCaseBlock().getClauses().length > 1) {
-        hasOtherKeyOrStop = true;
-        return;
-      }
-    }
-
-    if (Node.isBinaryExpression(child)) {
-      const op = child.getOperatorToken().getKind();
-      if (
-        op === SyntaxKind.EqualsEqualsToken ||
-        op === SyntaxKind.EqualsEqualsEqualsToken
-      ) {
-        const leftText = unwrapExpression(child.getLeft()).getText();
-        const rightText = unwrapExpression(child.getRight()).getText();
-
-        if ((leftText.endsWith('.key') || leftText.endsWith('.code')) && /^['"]/.test(rightText)) {
-          if (
-            rightText !== "'Escape'" &&
-            rightText !== '"Escape"' &&
-            rightText !== "'Esc'" &&
-            rightText !== '"Esc"'
-          ) {
-            hasOtherKeyOrStop = true;
-            return;
-          }
-        } else if ((rightText.endsWith('.key') || rightText.endsWith('.code')) && /^['"]/.test(leftText)) {
-          if (
-            leftText !== "'Escape'" &&
-            leftText !== '"Escape"' &&
-            leftText !== "'Esc'" &&
-            leftText !== '"Esc"'
-          ) {
-            hasOtherKeyOrStop = true;
-            return;
-          }
-        } else if (
-          (leftText.endsWith('.keyCode') || leftText.endsWith('.which')) &&
-          /^\d+$/.test(rightText) &&
-          rightText !== '27'
-        ) {
-          hasOtherKeyOrStop = true;
-          return;
-        } else if (
-          (rightText.endsWith('.keyCode') || rightText.endsWith('.which')) &&
-          /^\d+$/.test(leftText) &&
-          leftText !== '27'
-        ) {
-          hasOtherKeyOrStop = true;
-          return;
-        }
-      }
-    }
-  });
-
-  return hasOtherKeyOrStop;
-}
-
-/**
  * Checks whether a keydown/keyup handler checks for Escape and performs modal dismissal.
  */
 function handlerDismissesOnEscape(handler: Node): boolean {
-  if (handlerHandlesOtherKeysOrStopsPropagation(handler)) {
-    return false;
-  }
-
   let found = false;
 
   handler.forEachDescendant((child) => {
@@ -332,8 +263,12 @@ function handlerDismissesOnEscape(handler: Node): boolean {
     if (Node.isIfStatement(child)) {
       const cond = child.getExpression();
       if (isEscapeKeyCondition(cond)) {
+        const thenStmt = child.getThenStatement();
+        if (/\bstop(?:Immediate)?Propagation\s*\(/.test(thenStmt.getText())) {
+          return;
+        }
         if (
-          callableContainsModalDismiss(child.getThenStatement()) ||
+          callableContainsModalDismiss(thenStmt) ||
           callableContainsModalDismiss(handler)
         ) {
           found = true;
@@ -417,7 +352,7 @@ export const platformControlsDismissDialogJsMatcher: JsRuleMatcher = {
         continue;
       }
 
-      const { eventName, handlerNode, targetNode } = matchedListener;
+      const { eventName, handlerNode } = matchedListener;
 
       // Require inline callback function (ArrowFunction or FunctionExpression) so multi-responsibility
       // focus-trap / controller functions passed by identifier reference are not flagged out of context.
@@ -430,10 +365,6 @@ export const platformControlsDismissDialogJsMatcher: JsRuleMatcher = {
         !Node.isArrowFunction(handlerNode) &&
         !Node.isFunctionExpression(handlerNode)
       ) {
-        continue;
-      }
-
-      if (targetNode && NON_DIALOG_LISTENER_TARGET_REGEX.test(targetNode.getText())) {
         continue;
       }
 
@@ -476,10 +407,6 @@ export const platformControlsDismissDialogJsMatcher: JsRuleMatcher = {
         continue;
       }
 
-      if (NON_DIALOG_LISTENER_TARGET_REGEX.test(left.getExpression().getText())) {
-        continue;
-      }
-
       if (isProtectedByFeatureGuard(bin, CLOSEDBY_FEATURE_TOKENS)) {
         continue;
       }
@@ -519,7 +446,7 @@ export const platformControlsDismissDialogRule: AnalyzerRule = {
   matcher: platformControlsDismissDialogJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'Manual keydown or keyup listener checks exclusively for the Escape key to close a dialog, modal, drawer, overlay, or popover.',
+      'Manual keydown or keyup listener checks for the Escape key to close a dialog, modal, drawer, overlay, or popover.',
       'Manual popstate listener handles back-button navigation to dismiss an open dialog, drawer, or modal.',
     ],
     dropWhen: [

@@ -33,7 +33,7 @@ const SPINNER_FAST_TOKENS = [
 ] as const;
 
 const SPINNER_DOM_CLASS_REGEX =
-  /\b(?:spinner-border|loading-spinner|fa-spinner)\b/i;
+  /\b(?:spinner-border|loading-spinner)\b/i;
 
 const SPIN_JS_OPTION_KEYS_REGEX =
   /\b(?:lines|length|width|radius|corners|rotate|trail|speed|color|className|zIndex|top|left)\s*:/;
@@ -99,11 +99,10 @@ export const spinnerJsMatcher: JsRuleMatcher = {
 
 export const spinnerDomMatcher: DomRuleMatcher = {
   kind: 'dom',
-  selector: 'div',
+  selector: 'div, span, i',
   fastTokens: [
     'spinner-border',
     'loading-spinner',
-    'fa-spinner',
     'progressbar',
   ] as const,
   matchElement(
@@ -111,11 +110,21 @@ export const spinnerDomMatcher: DomRuleMatcher = {
     ctx: DomMatcherContext,
   ): { message: string } | null {
     const tag = element.tagName.toLowerCase();
-    if (tag !== 'div') {
+    if (tag !== 'div' && tag !== 'span' && tag !== 'i') {
       return null;
     }
 
-    if ((ctx.documentText.match(/\bspinner-border\b/g)?.length ?? 0) > 4) {
+    // Skip decorative inline icon spinners whose accessibility is provided by parent button/label
+    if (element.getAttribute('aria-hidden') === 'true') {
+      return null;
+    }
+
+    // Skip single-line minified HTML dumps (> 1000 chars on the matched line) or component showcase pages rendering escaped spinner-border code snippets
+    const lineText = ctx.documentText.split(/\r?\n/)[element.line - 1] ?? '';
+    if (
+      lineText.length > 1000 ||
+      /&lt;(?:div|span)\s+class=(?:&quot;|['"])spinner-border\b/i.test(ctx.documentText)
+    ) {
       return null;
     }
 

@@ -23,9 +23,9 @@ void test('menu: positive brownfield matches', async (t) => {
     assert.match(matches[0]?.message ?? '', /focusgroup/);
   });
 
-  await t.test('flags DOM <div role="menu"> without focusgroup', () => {
+  await t.test('flags DOM <div role="menu"> without focusgroup (including custom @keydown)', () => {
     const html = `
-      <div role="menu" aria-label="Actions">
+      <div role="menu" aria-label="Actions" @keydown="handleMenuNav">
         <button role="menuitem">Edit</button>
         <button role="menuitem">Delete</button>
       </div>

@@ -1,9 +1,7 @@
 import {
   Node,
-  SyntaxKind,
   type CallExpression,
   type ObjectLiteralExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
   isLibraryReference,
@@ -46,6 +44,8 @@ const DISQUALIFYING_TOAST_OPTION_KEYS: ReadonlySet<string> = new Set([
   'onclick',
   'onClick',
   'onCloseClick',
+  'close',
+  'stopOnFocus',
   'tapToDismiss',
   'destination',
   'newWindow',
@@ -410,27 +410,38 @@ function isNotyfInstance(node: Node): boolean {
 }
 
 function isInsideLoopOrMultiToastContext(callExpr: CallExpression): boolean {
-  // Check enclosing block for navigation or multiple stacked toastr calls in the same block
+  // Check enclosing block for navigation, early-return validation guard, or multiple stacked toastr calls
   let block: Node | undefined = callExpr.getParent();
   while (block && !Node.isBlock(block) && !Node.isSourceFile(block)) {
     block = block.getParent();
   }
-  if (block && Node.isBlock(block)) {
+  if (block && (Node.isBlock(block) || Node.isSourceFile(block))) {
     const blockText = block.getText();
     if (
-      /\b(?:window\.location|location\.(?:href|replace|assign|reload)|history\.(?:push|replace|back|goBack|go)|\$router\.|console\.error\b|\$\.removeCookie\b)/.test(
+      Node.isBlock(block) &&
+      /(?:\b(?:window\.location|location\.(?:href|replace|assign|reload)|history\.(?:push|replace|back|goBack|go))|\$router\.)/.test(
         blockText,
       )
     ) {
       return true;
     }
+    if (Node.isBlock(block)) {
+      const blockParent = block.getParent();
+      if (
+        Node.isIfStatement(blockParent) &&
+        (block.getStatements().some((s) => Node.isReturnStatement(s)) ||
+          blockParent.getElseStatement() === block)
+      ) {
+        return true;
+      }
+    }
     const toastrMatches = blockText.match(/\btoastr\.(?:info|success|warning|error)\s*\(/g);
-    if (toastrMatches && toastrMatches.length >= 2) {
+    if (toastrMatches && toastrMatches.length >= (Node.isBlock(block) ? 2 : 3)) {
       return true;
     }
   }
 
-  // Walk ancestors to check for loop constructs or Promise .catch() error chains
+  // Walk ancestors to check for loop constructs, multi-library adapter guards, or multi-toast promise chains
   let current: Node | undefined = callExpr.getParent();
   while (current && !Node.isSourceFile(current)) {
     if (
@@ -447,11 +458,17 @@ function isInsideLoopOrMultiToastContext(callExpr: CallExpression): boolean {
     ) {
       return true;
     }
+    if (Node.isExpressionStatement(current) || Node.isObjectLiteralExpression(current)) {
+      const stmtToastr = current.getText().match(/\btoastr\.(?:info|success|warning|error)\s*\(/g);
+      if (stmtToastr && stmtToastr.length >= 2) {
+        return true;
+      }
+    }
     if (Node.isCallExpression(current)) {
       const expr = unwrapExpression(current.getExpression());
       if (Node.isPropertyAccessExpression(expr)) {
         const name = expr.getName();
-        if (name === 'each' || name === 'forEach' || name === 'catch') {
+        if (name === 'each' || name === 'forEach') {
           return true;
         }
       }
@@ -509,6 +526,15 @@ function matchToastCall(callExpr: CallExpression): string | null {
     if (firstStatic !== null && firstStatic.trim() === '') {
       return null;
     }
+    if (args[0]) {
+      const unwrappedFirst = unwrapExpression(args[0]);
+      if (Node.isBinaryExpression(unwrappedFirst)) {
+        const leftLit = getStaticStringText(unwrappedFirst.getLeft());
+        if (leftLit !== null && /^[a-zA-Z0-9_]+:\s*$/.test(leftLit)) {
+          return null;
+        }
+      }
+    }
     if (isInsideLoopOrMultiToastContext(callExpr)) {
       return null;
     }
@@ -527,28 +553,19 @@ function matchToastCall(callExpr: CallExpression): string | null {
   return null;
 }
 
-function fileUsesManualPopoverOrQueueManager(
-  sourceFile: SourceFile,
-  fileContent: string,
-): boolean {
+function fileUsesManualPopoverOrQueueManager(fileContent: string): boolean {
   return (
     /popover\s*=\s*["']manual["']/i.test(fileContent) ||
     fileContent.includes('showPopover') ||
     /\btoastr\.(?:options|clear|remove)\b/.test(fileContent) ||
-    /\bdismissAll\s*\(/.test(fileContent) ||
-    (fileContent.match(/\btoastr\.(?:info|success|warning|error)\s*\(/g)?.length ?? 0) >= 4 ||
-    /\bextends\s+(?:React\.)?(?:Component|PureComponent)\b/.test(fileContent) ||
-    /\bthis\.\$(?:router|route|emit|refs|store|http)\b/.test(fileContent) ||
-    /@Component\s*\(|\bEventEmitter\b|\.emit\s*\(\s*\{/.test(fileContent) ||
-    sourceFile.getDescendantsOfKind(SyntaxKind.JsxElement).length > 0 ||
-    sourceFile.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement).length > 0
+    /\bdismissAll\s*\(/.test(fileContent)
   );
 }
 
 export const persistentToastNotificationsJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['Toastify', 'Notyf', 'toastr', 'fadeOut', 'slideUp'],
-  shouldSkipFile: (sourceFile, ctx) =>
-    fileUsesManualPopoverOrQueueManager(sourceFile, ctx.fileContent),
+  shouldSkipFile: (_sourceFile, ctx) =>
+    fileUsesManualPopoverOrQueueManager(ctx.fileContent),
   dedupeLines: true,
   featureGuardTokens: TOAST_GUARD_TOKENS,
   matchCall: (node) => matchToastCall(node),
@@ -569,8 +586,8 @@ export const persistentToastNotificationsJsRule: AnalyzerRule = {
     dropWhen: [
       'The component already uses native <div popover="manual"> with showPopover() and hidePopover() or is guarded by a popover feature check.',
       'The toast relies on multi-toast queue stacking (e.g. multiple consecutive toastr calls in the same block or inside a loop), progress bars, interactive click/destination callbacks (onClick, destination, newWindow, callback), or imperative queue clearing (toastr.clear / dismissAll) that native popover="manual" does not provide.',
-      'The toast call is immediately followed by page navigation or route change (e.g. window.location.href, history.goBack(), $router.back()) or is inside a React/Vue/TSX component.',
-      'The toast call is inside a keyboard shortcut/input handler (checking evt.key, evt.ctrlKey, or evt.altKey), an AJAX .error()/.fail()/.catch() callback, or an inline form/item-count validation branch (e.g. warning when maximum SKU/attribute count is reached).',
+      'The toast call is immediately followed by page navigation or route change (e.g. window.location.href, history.goBack(), $router.back()).',
+      'The call is inside a headless data service, telemetry/error-reporting utility (e.g. logging to console.error and analytics.track), or an inline focus/input hint guarded by document.activeElement.',
       'The code renders blocking modal dialogs (<dialog>) or inline form validation error banners.',
     ],
   },

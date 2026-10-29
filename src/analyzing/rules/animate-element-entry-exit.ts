@@ -13,28 +13,26 @@ const JQUERY_ANIM_METHODS = new Set([
   'fadeToggle',
 ]);
 
-const NON_DOM_TARGET_KEYWORDS = [
+const NON_DOM_RECEIVER_NAMES: ReadonlySet<string> = new Set([
   'audio',
   'sound',
   'gain',
-  'track',
   'music',
-  'player',
   'howler',
   'howl',
   'volume',
   'canvas',
-  'ctx',
-  'context',
   'camera',
-  'scene',
-  'screen',
-  'stage',
   'speaker',
   'voice',
   'synth',
   'oscillator',
-];
+  'audiotrack',
+  'soundeffect',
+  'gainnode',
+  'audioplayer',
+  'soundplayer',
+]);
 
 const TRANSITION_EVENTS = new Set([
   'transitionend',
@@ -53,42 +51,25 @@ const FEATURE_GUARD_TOKENS = [
 ] as const;
 
 function isNonDomCaller(targetExpr: Node): boolean {
-  const text = targetExpr.getText().trim();
-  const lower = text.toLowerCase();
-
-  // jQuery DOM wrapper calls are definitely DOM operations
-  if (
-    lower.startsWith('$') ||
-    lower.startsWith('jquery(') ||
-    lower.startsWith('window.$') ||
-    lower.startsWith('window.jquery')
-  ) {
-    return false;
+  const unwrapped = unwrapExpression(targetExpr);
+  if (Node.isIdentifier(unwrapped)) {
+    return NON_DOM_RECEIVER_NAMES.has(unwrapped.getText().trim().toLowerCase());
   }
-
-  // Identifiers naming UI/DOM components (e.g. scene_controls, audio_panel) are DOM callers
-  if (/\b(?:controls?|panel|element|container|wrapper|buttons?|btn|ui|toggle|widget)\b/i.test(lower.replace(/_/g, ' '))) {
-    return false;
+  if (Node.isPropertyAccessExpression(unwrapped)) {
+    return NON_DOM_RECEIVER_NAMES.has(unwrapped.getName().trim().toLowerCase());
   }
-
-  for (const keyword of NON_DOM_TARGET_KEYWORDS) {
-    if (lower === keyword || lower.includes(keyword)) {
-      return true;
-    }
-  }
-
-  if (lower === 'this') {
-    const enclosingClass = targetExpr.getFirstAncestorByKind(SyntaxKind.ClassDeclaration);
+  if (Node.isThisExpression(unwrapped)) {
+    const enclosingClass = unwrapped.getFirstAncestorByKind(SyntaxKind.ClassDeclaration);
     if (enclosingClass) {
-      const className = (enclosingClass.getName() ?? '').toLowerCase();
-      for (const keyword of NON_DOM_TARGET_KEYWORDS) {
-        if (className.includes(keyword)) {
-          return true;
-        }
-      }
+      const className = (enclosingClass.getName() ?? '').trim().toLowerCase();
+      return (
+        NON_DOM_RECEIVER_NAMES.has(className) ||
+        /^(?:audio|sound|howl|howler|music|synth|camera)(?:player|manager|controller|engine|track|effect)?$/.test(
+          className,
+        )
+      );
     }
   }
-
   return false;
 }
 
@@ -610,10 +591,7 @@ export const animateElementEntryExitRule: AnalyzerRule = {
       'Canvas, WebGL, 3D camera, or game engine rendering transitions (e.g. camera.fadeIn, scene.fadeOut).',
       'Accordion, collapsible panel, or dropdown submenu height toggle animations (.slideToggle, or .slideDown/.slideUp on accordion/submenu content) that interpolate height between 0 and auto.',
       'Chained flash/attention effects on an already-present element (e.g. $tag.hide().fadeIn() or $el.fadeOut().fadeIn()).',
-      'Delegated transitionend listeners on parent containers (e.g. parentNode.addEventListener) or listeners with complex multi-step application state/counter logic.',
-      'Calls inside third-party vendor/plugin files or modal plugin internal lifecycle callbacks (e.g. $.modal.close, sweetAlert.close).',
       'Code already protected by @starting-style or allow-discrete feature guards.',
-      'Generic transitionend / animationend event listeners that perform business logic or state updates without hiding or removing the DOM element.',
     ],
   },
 };

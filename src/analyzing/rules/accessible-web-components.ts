@@ -59,6 +59,9 @@ function isCustomElementClass(
   if (clauses.length === 0) {
     return false;
   }
+  const hasLifecycle =
+    cls.getConstructors().length > 0 ||
+    cls.getMethods().some((m) => CUSTOM_ELEMENT_LIFECYCLE_METHODS.has(m.getName()));
   for (const clause of clauses) {
     const text = clause.getText();
     if (
@@ -68,12 +71,15 @@ function isCustomElementClass(
     ) {
       return true;
     }
+    if (hasLifecycle && /\b[A-Z]\w*Element\b/.test(text)) {
+      return true;
+    }
   }
   if (
     /\b(?:HTMLElement|LitElement|ReactiveElement|PolymerElement|customElements\.define)\b|@customElement\b/.test(
       fileContent,
     ) &&
-    cls.getMethods().some((m) => CUSTOM_ELEMENT_LIFECYCLE_METHODS.has(m.getName()))
+    hasLifecycle
   ) {
     return true;
   }
@@ -191,7 +197,7 @@ const accessibleWebComponentsJsMatcher: JsRuleMatcher = {
     if (
       !ctx.fileContent.includes('setAttribute') ||
       (!ctx.fileContent.includes('role') && !ctx.fileContent.includes('aria-')) ||
-      !/\b(?:HTMLElement|HTML\w*Element|LitElement|ReactiveElement|FastElement|PolymerElement|CustomElement\w*|customElements\.define)\b|@customElement\b/.test(
+      !/\b(?:HTMLElement|[A-Z]\w*Element|CustomElement\w*|customElements\.define)\b|@customElement\b/.test(
         ctx.fileContent,
       )
     ) {
@@ -286,8 +292,7 @@ export const accessibleWebComponentsRule: AnalyzerRule = {
     dropWhen: [
       'setAttribute is called on an internal shadow DOM child or light DOM child element rather than on the custom element host (this).',
       'The custom element already sets role or aria* properties on ElementInternals and only falls back to this.setAttribute() when ElementInternals ARIA properties are unsupported.',
-      'The attribute being set is an IDREF relationship attribute (such as aria-labelledby, aria-describedby, or aria-controls) that takes element IDs.',
-      'The file is inside an archived blog post static asset dump directory (_posts/.../*_files/).',
+      'The code is a minified or bundled third-party vendor script (e.g. single-line minified class declarations with mangled 1-2 character class names).',
     ],
   },
 };

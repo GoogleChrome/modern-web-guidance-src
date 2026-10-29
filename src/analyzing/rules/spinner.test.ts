@@ -80,15 +80,9 @@ void test('spinner: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts component showcase gallery with >4 spinner-border demos', () => {
-    const html = `
-      <div class="spinner-border text-primary"></div>
-      <div class="spinner-border text-secondary"></div>
-      <div class="spinner-border text-success"></div>
-      <div class="spinner-border text-danger"></div>
-      <div class="spinner-border text-warning"></div>
-    `;
-    const matches = scanHtml('pages/components/spinners.html', html, [spinnerDomMatcher]);
-    assert.equal(matches.length, 0);
+  await t.test('flags standalone <span class="loading loading-spinner"> without aria-hidden', () => {
+    const html = `<span class="loading loading-spinner"></span>`;
+    const matches = scanHtml('span-spinner.html', html, [spinnerDomMatcher]);
+    assert.equal(matches.length, 1);
   });
 });
