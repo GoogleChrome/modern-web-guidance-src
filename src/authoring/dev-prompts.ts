@@ -82,6 +82,7 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 export interface GraderPromptOptions {
   guideFile: string;
   expectationsFile: string;
+  taskFile?: string;
   solutionPatchFiles: Partial<Record<SolutionAgent, string>>;
   zeroPassratePatchFile: string;
   graderFile: string;
@@ -106,6 +107,7 @@ export interface GraderPromptOptions {
 const MAX_FAILURE_CONTEXT_CHARS = 16_000;
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
+  const taskFile = opts.taskFile ?? TASK_FILE;
   let prReviewContextBlock = '';
   if (opts.prContext?.comments) {
     const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS GRADER & EVALUATIONS'];
@@ -161,22 +163,23 @@ Write a Playwright test script named \`${opts.graderFile}\` that directly valida
 # INPUTS
 1. **Standard Guidance**: \`${opts.guideFile}\`
 2. **Requirements**: \`${opts.expectationsFile}\`
-3. **Golden Solution Diffs**:
+3. **Developer Task**: \`${taskFile}\`
+4. **Golden Solution Diffs**:
 ${solutionList}
-4. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of tests)
-5. **Boilerplate Template**: \`${opts.templateFile}\`
+5. **Anti-Pattern Zero-Passrate Diff**: \`${opts.zeroPassratePatchFile}\` (must fail 100% of tests)
+6. **Boilerplate Template**: \`${opts.templateFile}\`
 
 # VERIFICATION & SCOPING RULES
 
 ## 1. Strictly Follow the Boilerplate Template
 Base your grader's imports, workspace setup, helper function usage, and test structure on \`${opts.templateFile}\`. Use the template's helpers (\`getTargetFiles\`, \`getCssStyleSheet\`, \`getJsProject\`, \`getHtmlDocuments\`) to dynamically locate and analyze modified code across standalone files and embedded template tags. Never hardcode file paths.
 
-## 2. Assertion Hierarchy
-- **Static Analysis First**: Prioritize static AST analysis over browser execution for structural assertions. Always avoid regex on HTML, CSS, and JavaScript files.
+## 2. Right Instrument for the Claim: Parsers vs. Browser
+- **Structure and API Usage (Parsers)**: Check structure and API usage with parsers, never regex on HTML, CSS, or JavaScript/TypeScript source files.
   - Use **Linkedom** for HTML structure and DOM querying (\`getHtmlDocuments\`).
   - Use **CSSOMNom** for CSS rules, at-rules (@media, @supports, @container, @view-transition), and declarations (\`getCssStyleSheet\`).
   - Use **ts-morph** for JavaScript/TypeScript syntax, AST analysis, and function/variable querying (\`getJsProject\`).
-- **Browser Checks Only When Necessary**: Only write browser-based Playwright E2E tests when strictly necessary for requirements that cannot be verified statically (such as computed layout geometry or animations on existing base-app elements). Never write browser E2E tests that depend on newly invented page routes, custom REST API endpoints/payloads, or DOM selectors/button labels that only exist in the golden solution patches and are not part of the base application. Omit browser test blocks entirely if static checks are sufficient.
+- **Runtime Behavior (Browser)**: Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright. Browser tests must locate elements through base-app markup, hooks (\`id\` or \`data-\` attributes) that \`${taskFile}\` names, or platform semantics (element types, ARIA roles, standard attributes). Never write browser E2E tests that depend on newly invented page routes, intercepted REST API payloads, or IDs/classes/labels that exist only in the golden solution patches (and are neither part of the base application nor named in \`${taskFile}\`). Omit browser test blocks if no expectations require runtime browser checks.
 - **Reference Examples & API Definitions**: Before writing tests, use your file-viewing tools to inspect these reference pattern libraries and API type definitions for implementation patterns:
   - **Test Fixture Helper Signatures (Reference Only)**: [test-fixture.reference.ts](file://${opts.testFixtureReferencePath})
   - **Static Analysis Patterns (Linkedom, CSSOMNom, ts-morph)**: [parser-pattern-library.test.ts](file://${opts.parserPatternLibraryPath})
@@ -185,12 +188,12 @@ Base your grader's imports, workspace setup, helper function usage, and test str
   - **Linkedom Type Definitions**: [linkedom.d.ts](file://${opts.linkedomDtsPath})
   - **CSSOMNom Type Definitions**: [cssomnom.d.ts](file://${opts.cssomnomDtsPath})
 
-## 3. Expectation Coverage & Granular Assertions
-${coverageInstruction}Write only one assertion per \`test('...', ...)\` block across both static and browser tests. Do not combine multiple assertions into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
+## 3. Expectation Coverage & One Expectation per Test
+${coverageInstruction}Write one expectation per \`test('...', ...)\` block across both static and browser tests, with a precondition assertion (e.g., asserting a list isn't empty with \`expect(items.length).toBeGreaterThan(0)\`) allowed before the main assertion. Do not combine multiple expectations into a single test block. This ensures precise, unambiguous error reporting during calibration if a test fails.
 
 ## 4. Precision & Matching Rules
 - **Outcome-Based Assertions**: Verify structural and functional requirements in static checks rather than forcing a single narrow implementation when valid alternatives exist.
-- **No Patch-Specific Identifier Overfitting**: The golden solution patches are examples of valid implementations, not an exhaustive specification. Never hardcode helper function names, local variable/state names, custom class names, or newly created filenames that happen to appear in the solution patches. Match conceptual roles, standard web platform APIs, and DOM/CSS semantics instead.
+- **No Patch-Specific Identifier Overfitting**: The golden solution patches are examples of valid implementations, not an exhaustive specification. Never hardcode helper function names, local variable/state names, custom class names, or newly created filenames that happen to appear in the solution patches. Match conceptual roles, hooks named in \`${taskFile}\`, standard web platform APIs, and DOM/CSS semantics instead.
 - **Utility CSS Flexibility**: In apps using utility-first CSS frameworks (e.g., Tailwind), accept either standard CSS declarations (\`getCssStyleSheet\`) or equivalent utility classes on elements in template markup (\`getHtmlDocuments\`).
 - **Flexible Pattern Matching**: Avoid exact-string equality for dynamic names or classes. Use loose matches, inclusion checks, and word boundaries (e.g., \`/\\bname\\b/\`) to avoid substring false positives.
 - **No Vacuous Guards or \`test.skip()\`**: Never use \`test.skip()\`. Never wrap \`expect(...)\` inside \`if (items.length > 0)\` without first asserting \`expect(items.length).toBeGreaterThan(0)\`. Every \`test()\` block must execute a real, non-trivial assertion that fails when the requirement is absent.
@@ -245,7 +248,7 @@ Generate a \`${taskFile}\` file containing exactly one realistic, high-level tes
 2. **Never Copy Description Verbatim**: Do NOT copy the **Guide Description** string verbatim into \`${taskFile}\`. Adapt the desired user outcome into a natural developer request situated in the \`${opts.baseApp}\` application.
 3. **Preserve High-Level Capability Boundary**: Keep the functional domain and execution context from the **Guide Description** clear (e.g., distinguishing on-device / built-in browser capabilities vs. external cloud APIs) without naming specific JS/CSS APIs, properties, or method names.
 4. **No Technical/API Dictation**: Do NOT dictate the underlying technical implementation. NEVER name specific web platform APIs, framework features, or explicit CSS properties or functions (e.g. do NOT say "use @view-transition", "use active-view-transition-type", or "use pagereveal"). Describe the desired user outcome instead.
-5. **No Specific Details or Sub-Features**: Keep the request high-level. Do NOT list or specify secondary implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the **Guide Description** above.
+5. **No Specific Details or Sub-Features**: Keep the request high-level. Do NOT list or specify secondary implementation details, custom sub-features, or edge cases (such as directional animations or accessibility preferences) that are not explicitly stated in the **Guide Description** above. When introducing a new UI element that has no natural anchor in the existing app, you may optionally name one neutral hook (an \`id\` or \`data-\` attribute) for that primary element; never require one, and never use a hook name that hints at the mechanism.
 6. **Format**: Format \`${taskFile}\` strictly as a single line prefixed with "- ", containing absolutely no internal line breaks.
 7. **Casuality & Tone**: Write the prompt as a developer talking to an AI coding assistant — casual, natural, and direct.
 8. **Directive Action Request**: Phrase the prompt as an ACTION REQUEST or directive (e.g., "implement X", "modify Y", "update the ..."). NEVER phrase it as an advisory question (e.g., "how can I?", "what's the best way to?") — the agent must implement, not just explain.
@@ -367,8 +370,8 @@ Diagnose each target according to its assigned flag:
 0. **\`CALIBRATION_FAILED\`**:
    - The test suite failed calibration against the golden solution patches before agent evaluation runs could execute — typically because all 3 golden solution agents (which only read \`task.md\` + \`guide.md\`) failed the same expectation in \`expectations.md\`, or because \`grader.ts\` has a broken assertion.
    - **Treat \`guide.md\` as Authoritative over \`expectations.md\`**: Compare the failing test(s) against \`guide.md\` and \`expectations.md\`.
-     - If \`expectations.md\` demands a detail, sub-feature, selector, or requirement that is omitted from \`guide.md\` or marked optional/secondary in \`guide.md\`, **trim or relax \`expectations.md\`** (and update \`targets/<target>/grader.ts\` to match) rather than bloating \`guide.md\`. Modifying \`guide.md\` triggers \`gd-dev-content\` and pings human ATLs, so avoid editing \`guide.md\` unless \`guide.md\` itself has contradictory code snippets or is genuinely missing a core concept of the feature. Always append:
-       \`*(Note: These expectations/grader adjustments have already been applied directly in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
+     - If \`expectations.md\` demands a detail, sub-feature, selector, or requirement that is omitted from \`guide.md\` or marked optional/secondary in \`guide.md\`, **trim or relax \`expectations.md\`** and let \`targets/\` regenerate on rerun (do NOT hand-edit \`targets/<target>/grader.ts\` in the same pass) rather than bloating \`guide.md\`. Modifying \`guide.md\` triggers \`gd-dev-content\` and pings human ATLs, so avoid editing \`guide.md\` unless \`guide.md\` itself has contradictory code snippets or is genuinely missing a core concept of the feature. Always append:
+       \`*(Note: These expectations.md adjustments have already been applied directly in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
      - If \`expectations.md\` and \`guide.md\` are already aligned and the failure is purely a buggy or overly rigid check in \`targets/<target>/grader.ts\` or an under-scoped prompt in \`targets/<target>/task.md\`, fix \`targets/<target>/grader.ts\` or \`targets/<target>/task.md\` directly without touching \`guide.md\` or \`expectations.md\`. Always append:
        \`*(Note: These target adjustments have already been applied directly in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`
 
@@ -398,7 +401,7 @@ Diagnose each target according to its assigned flag:
      - **Miscellaneous Issues**: Any other issues discovered.
    - **Default Attribution Bias (\`targets/\` First, Avoid False-Alarm \`guide.md\` Edits)**:
      - Because calibration already passed (meaning all 3 solution agents successfully implemented \`task.md\` using only \`guide.md\` and passed 100% of \`grader.ts\`), **presume \`targets/<target>/grader.ts\` or \`targets/<target>/task.md\` is at fault** (\`gd-dev-eval\`, no edits to \`guide.md\`, no ATL ping) unless \`guide.md\` is demonstrably missing a core requirement or contains a contradictory code snippet.
-     - If \`expectations.md\` is misaligned with \`guide.md\` (e.g. requiring something omitted or optional in \`guide.md\`), treat \`guide.md\` as authoritative and trim \`expectations.md\` (plus update \`targets/<target>/grader.ts\`) rather than adding extra requirements to \`guide.md\`.
+     - If \`expectations.md\` is misaligned with \`guide.md\` (e.g. requiring something omitted or optional in \`guide.md\`), treat \`guide.md\` as authoritative and trim \`expectations.md\` (letting \`targets/\` regenerate rather than hand-editing \`targets/<target>/grader.ts\` in the same pass) rather than adding extra requirements to \`guide.md\`.
    - **Recommendation Rules**:
      - **Source-of-Truth Fixes**: If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` needs changes, recommend modifications **ONLY** to those files and **DO NOT** recommend edits to any files in \`targets/\`. Always append:
        \`*(Note: These source guidance changes have already been applied directly to ${GUIDE_FILE} / ${EXPECTATIONS_FILE} in this PR. After reviewing, add the needs-dev-rerun label to the PR; gd dev regenerates whatever the changed files require when running gd dev-gap)*\`

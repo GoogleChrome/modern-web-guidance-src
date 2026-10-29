@@ -16,8 +16,8 @@ const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 test.describe('<guide-name> Target Grader', () => {
 
-  // --- STATIC ASSERTIONS (FAST) ---
-  // Use static assertions to query DOM structure, attributes, CSS rules, and JavaScript syntax on the host.
+  // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
+  // Check structure and API usage (DOM structure, attributes, CSS rules, and JS/TS syntax) with parsers (Linkedom, CSSOMNom, ts-morph), never regex on source.
   // These run instantly and are far more robust for structural verification than starting a browser.
   
   test('Example test containing HTML checks (linkedom)', () => {
@@ -57,9 +57,10 @@ test.describe('<guide-name> Target Grader', () => {
     // expect(hasTargetFunction).toBe(true);
   });
 
-  // --- BROWSER ASSERTIONS (E2E) ---
-  // Use browser assertions ONLY for requirements that cannot be verified statically, such as runtime click events or dynamic state updates.
-  // If browser assertions are not needed, this entire `test.describe('Browser tests', ...)` section should be omitted.
+  // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
+  // Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright.
+  // Locate elements through base-app markup, hooks that task.md names, or platform semantics (element types, ARIA roles, standard attributes)—never invented routes, intercepted REST payloads, or IDs/classes that exist only in the golden patches.
+  // If no expectations require runtime browser checks, this entire `test.describe('Browser tests', ...)` section should be omitted.
   
   test.describe('Browser tests', () => {
     
