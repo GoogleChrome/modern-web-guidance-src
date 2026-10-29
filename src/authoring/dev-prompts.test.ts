@@ -175,6 +175,7 @@ test('buildTargetGraderPrompt includes discipline scoping only for discipline gu
   const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
   assert.ok(disciplinePrompt.includes('discipline guide'));
   assert.ok(disciplinePrompt.includes('Decide relevance from the base application in your workspace'));
+  assert.ok(disciplinePrompt.includes('Expectation N: SKIPPED: already satisfied by the base application'));
 
   const standardPrompt = buildTargetGraderPrompt(baseOpts);
   assert.ok(!standardPrompt.includes('discipline guide'));
@@ -198,7 +199,7 @@ test('buildTargetGraderPrompt includes expectation coverage and skip manifest ru
     buildTargetGraderPrompt({ ...baseOpts, failureContext: 'Golden test failed' }),
     buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true }),
   ]) {
-    assert.ok(prompt.includes('Skip an expectation only when its precondition is absent from the target application or the task'));
+    assert.ok(prompt.includes('Skip an expectation only when its precondition is absent from both the target application and the task'));
     assert.ok(prompt.includes('SKIPPED: <missing precondition>'));
     assert.ok(prompt.includes('Do not omit, merge, or skip any applicable expectation'));
   }

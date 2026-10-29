@@ -7,8 +7,10 @@ import {
   computeDevReportFlag,
   computeTargetSummary,
   buildInitialDevReport,
+  findTestedToSkippedExpectations,
   type TargetEvalSummary,
 } from './dev-report.ts';
+import { extractManifestEntries } from '../core/grader-coverage.ts';
 import { getGuideResultsDir } from '../core/paths.ts';
 import { findSharedFailingTests } from '../grading/run-grader.ts';
 import { Agents } from '../harness/config.ts';
@@ -277,4 +279,38 @@ test('findSharedFailingTests extracts intersection of failing tests across activ
 
   // Case 4: No active agents
   assert.deepStrictEqual(findSharedFailingTests({}, []), []);
+});
+
+test('findTestedToSkippedExpectations detects TESTED to SKIPPED changes in grader manifests', (t) => {
+  const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-manifest-flip-'));
+  const beforePath = path.join(rootTmp, 'before-grader.ts');
+  const afterPath = path.join(rootTmp, 'after-grader.ts');
+
+  t.after(() => {
+    fs.rmSync(rootTmp, { recursive: true, force: true });
+  });
+
+  fs.writeFileSync(
+    beforePath,
+    [
+      '// Expectation 1: TESTED - Checks modal opening',
+      '// Expectation 2: TESTED - Checks Escape dismissal',
+      '// Expectation 3: SKIPPED: No form in target app or task',
+      '// Expectation 4: TESTED - Checks focus restoration',
+    ].join('\n')
+  );
+  fs.writeFileSync(
+    afterPath,
+    [
+      '// Expectation 1: TESTED - Checks modal opening',
+      '// Expectation 2: SKIPPED: Agent did not implement Escape dismissal',
+      '// Expectation 3: SKIPPED: Updated skip reason for form',
+      '// Expectation 4: SKIPPED: Agent did not restore focus',
+    ].join('\n')
+  );
+
+  const beforeManifest = extractManifestEntries(beforePath);
+  const afterManifest = extractManifestEntries(afterPath);
+  assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, afterManifest), [2, 4]);
+  assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, beforeManifest), []);
 });

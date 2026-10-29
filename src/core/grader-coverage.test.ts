@@ -126,27 +126,31 @@ test(
   });
 
   it('formats actionable failure messages when expectations are uncovered', () => {
+    const missingItem = {
+      expectation: 'The component wrapper MUST have container-type: inline-size applied.',
+      isCovered: false,
+      bestMatchTest: 'should animate smoothly on click',
+      similarity: 0.22,
+    };
     const fakeResult = {
       isComplete: false,
       graderPath: '/root/guides/cat/my-guide/targets/daily-grind/grader.ts',
       expectationsPath: '/root/guides/cat/my-guide/expectations.md',
-      matches: [],
-      missing: [
-        {
-          expectation: 'The component wrapper MUST have container-type: inline-size applied.',
-          isCovered: false,
-          bestMatchTest: 'should animate smoothly on click',
-          similarity: 0.22,
-        },
+      matches: [
+        { expectation: 'Exp 1', isCovered: true, bestMatchTest: 'Test 1', similarity: 0.9 },
+        { expectation: 'Exp 2', isCovered: true, bestMatchTest: 'Test 2', similarity: 0.9 },
+        missingItem,
       ],
+      missing: [missingItem],
     };
 
     const msg = formatCoverageFailureMessage(fakeResult, '/root');
     assert.ok(msg.includes('❌ Uncovered expectation(s) found in grader: guides/cat/my-guide/targets/daily-grind/grader.ts'));
-    assert.ok(msg.includes('The component wrapper MUST have container-type: inline-size applied.'));
+    assert.ok(msg.includes('1. Expectation 3: "The component wrapper MUST have container-type: inline-size applied."'));
     assert.ok(msg.includes('Closest test found: "should animate smoothly on click" (similarity: 0.22)'));
     assert.ok(msg.includes('Add a test case verifying this behavior'));
     assert.ok(msg.includes('Update/rephrase the test name in guides/cat/my-guide/targets/daily-grind/grader.ts'));
+    assert.ok(msg.includes('lists all expectations (1..3) and records "// Expectation 3: SKIPPED: <missing precondition>"'));
   });
 
   it('covers tested expectations and manifest SKIPPED entries with a non-empty reason', async () => {
@@ -226,6 +230,39 @@ test(
     }
   });
 
+  it('fails when a manifest SKIPPED entry is in an incomplete manifest that does not list 1..N', async () => {
+    const tempExp = path.join(import.meta.dirname, 'temp-skip-incomplete-exp.md');
+    const tempGrader = path.join(import.meta.dirname, 'temp-skip-incomplete-grader.ts');
+    fs.writeFileSync(
+      tempExp,
+      [
+        '- A modal dialog is opened with `showModal()`.',
+        '- When a dialog guards unsaved form changes, it has `closedby="none"`.',
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      tempGrader,
+      [
+        '// Expectation 2: SKIPPED: The target app and task have no form with unsaved changes.',
+        "test('A modal dialog is opened with showModal()', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const res = await validateGraderExpectationCoverage(tempExp, tempGrader);
+      assert.strictEqual(res.isComplete, false);
+      assert.strictEqual(res.matches[0].isCovered, true);
+      assert.strictEqual(res.matches[1].isCovered, false);
+      assert.strictEqual(
+        res.matches[1].bestMatchTest,
+        'SKIPPED, but the manifest lists 1 entries for 2 expectations'
+      );
+    } finally {
+      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
   it('validates discipline guide graders without exempting them', async () => {
     const cssExp = path.join(rootDir, 'guides', 'css', 'css', 'expectations.md');
     const cssGrader = path.join(rootDir, 'guides', 'css', 'css', 'targets', 'daily-grind', 'grader.ts');
@@ -233,6 +270,10 @@ test(
     const htmlGrader = path.join(rootDir, 'guides', 'html', 'html', 'targets', 'daily-grind', 'grader.ts');
     const secExp = path.join(rootDir, 'guides', 'security', 'security', 'expectations.md');
     const secGrader = path.join(rootDir, 'guides', 'security', 'security', 'targets', 'daily-grind', 'grader.ts');
+
+    for (const p of [cssExp, cssGrader, htmlExp, htmlGrader, secExp, secGrader]) {
+      assert.ok(fs.existsSync(p), `expected file to exist: ${p}`);
+    }
 
     const cssRes = await validateGraderExpectationCoverage(cssExp, cssGrader);
     assert.strictEqual(cssRes.isComplete, true, `css discipline grader should pass coverage: ${JSON.stringify(cssRes.missing)}`);
@@ -245,8 +286,25 @@ test(
   });
 
   it('allows a leaf guide grader to skip expectations whose preconditions are absent from the target app or task', async () => {
-    const dialogExp = path.join(rootDir, 'guides', 'ui-components', 'dialog', 'expectations.md');
+    const tempExp = path.join(import.meta.dirname, 'temp-leaf-dialog-exp.md');
     const tempGrader = path.join(import.meta.dirname, 'temp-leaf-dialog-grader.ts');
+    fs.writeFileSync(
+      tempExp,
+      [
+        '- The overlay is a `<dialog>` with a non-empty accessible name (`aria-labelledby` or `aria-label`).',
+        '- A modal dialog is opened with `showModal()` or `command="show-modal"`, and `:modal` matches while it is open.',
+        '- Focus returns to the invoking element when a modal dialog closes.',
+        '- Pressing Esc closes an open modal dialog unless `closedby="none"` is set.',
+        '- When light dismiss is requested on a dialog, clicking the backdrop closes it.',
+        '- A backdrop-click fallback, if present, does not close the dialog when a press starts inside the dialog and ends on the backdrop.',
+        '- When a dialog guards unsaved form changes, it has `closedby="none"` or cancels the `cancel` event before closing.',
+        '- When a dialog guards unsaved form changes, attempting to dismiss it prompts or warns before discarding edits.',
+        '- A non-modal dialog panel is opened with `show()` and leaves the page behind it interactive.',
+        '- While a modal dialog is open, content outside it is not focusable.',
+        '- No `<dialog>` has `role="dialog"` or `aria-modal`.',
+        '- While a modal dialog is open, scrolling over its backdrop or inside it does not scroll the page behind it.',
+      ].join('\n')
+    );
     fs.writeFileSync(
       tempGrader,
       [
@@ -275,13 +333,14 @@ test(
     );
 
     try {
-      const res = await validateGraderExpectationCoverage(dialogExp, tempGrader);
+      const res = await validateGraderExpectationCoverage(tempExp, tempGrader);
       assert.strictEqual(res.isComplete, true, `leaf dialog grader with skips should pass coverage: ${JSON.stringify(res.missing)}`);
       assert.strictEqual(res.matches[6].isCovered, true);
       assert.ok(res.matches[6].bestMatchTest.startsWith('SKIPPED:'));
       assert.strictEqual(res.matches[7].isCovered, true);
       assert.strictEqual(res.matches[8].isCovered, true);
     } finally {
+      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
       if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
     }
   });
