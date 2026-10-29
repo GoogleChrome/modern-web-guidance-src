@@ -393,8 +393,9 @@
     // Derive the master state from the options; indeterminate is JS-only.
     function setupGroup({ master, items, summary, noun }) {
       function sync() {
-        const checked = items.filter((item) => item.checked || item.selected).length;
-        master.checked = checked === items.length;
+        const checked = items.filter((item) => item.checked).length;
+        master.disabled = items.length === 0;
+        master.checked = items.length > 0 && checked === items.length;
         master.indeterminate = checked > 0 && checked < items.length;
         summary.textContent = `${checked} of ${items.length} available ${noun}`;
       }
@@ -402,7 +403,6 @@
       master.addEventListener('change', () => {
         items.forEach((item) => {
           item.checked = master.checked;
-          item.selected = master.checked;
         });
         sync();
       });
