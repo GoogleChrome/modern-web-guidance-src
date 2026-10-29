@@ -98,6 +98,7 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; opacity: 1; }
 .insight-dumbbell-track .dot.unguided { inline-size: 2px; block-size: 10px; border: none; background: var(--color-outline); z-index: 1; }
 .insight-dumbbell-track .dot.guided { inline-size: 2.5px; block-size: 12px; border: none; background: var(--color-primary); z-index: 2; }
 .suite-dumbbell-track .connector, .insight-dumbbell-track .connector { position: absolute; top: 50%; translate: 0 -50%; block-size: 4px; background: var(--color-primary); }
+.suite-dumbbell-track .connector.regressed, .insight-dumbbell-track .connector.regressed { background: var(--color-accent-failure); }
 
 .rate-text { margin-top: 4px; font-size: var(--font-base); line-height: 1.25; color: var(--text-secondary); text-align: center; white-space: nowrap; }
 .rate-g { color: var(--text-primary); font-weight: 600; }
@@ -253,6 +254,33 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; opacity: 1; }
 .tooltip-title { font-size: var(--font-lg); font-weight: 700; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
 .tooltip-subtitle { font-size: var(--font-sm); color: var(--text-secondary); margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
 
+/* ---------- Breakdowns barbell hover tooltip ---------- */
+.barbell-tooltip {
+  position: fixed;
+  z-index: 2000;
+  max-inline-size: min(300px, calc(100dvw - 24px));
+  background: var(--card-bg);
+  outline: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--color-shadow);
+  padding: 10px 12px;
+  font-size: var(--font-sm);
+  line-height: 1.4;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.barbell-tooltip.hidden { display: none; }
+.barbell-tooltip-title { font-size: var(--font-md); font-weight: 700; color: var(--text-primary); word-break: break-word; }
+.barbell-tooltip-sub { font-size: var(--font-xs); color: var(--text-secondary); padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border-color); }
+.barbell-tooltip-rows { display: flex; flex-direction: column; gap: 3px; }
+.barbell-tooltip-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.barbell-tooltip-label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.barbell-tooltip-sd { font-weight: 400; color: var(--text-secondary); font-size: var(--font-xs); }
+.barbell-tooltip-lift { margin-top: 3px; padding-top: 4px; border-top: 1px dashed var(--border-color); }
+.barbell-tooltip-lift .delta { margin-inline-start: 0; }
+.barbell-tooltip-note { margin: 8px 0 0; padding-top: 6px; border-top: 1px solid var(--border-color); font-size: var(--font-xs); line-height: 1.4; color: var(--text-secondary); text-wrap: pretty; }
+
 /* ---------- Breakdowns drawer ---------- */
 .insights-drawer { background: var(--color-surface-container-lowest); border: 1px solid var(--border-color); border-radius: 8px; margin-block: var(--space-5); padding: 12px 16px; }
 .insights-summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; color: var(--text-primary); user-select: none; padding: 4px 0; }
@@ -375,7 +403,8 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; opacity: 1; }
 .pivot-head-note { font-weight: 400; text-transform: none; letter-spacing: 0; }
 .show-all-rows-btn { font-size: inherit; padding: 0 2px; }
 .pivot-empty { margin: 0; padding: 8px 4px; font-size: var(--font-md); color: var(--text-secondary); }
-.insight-dumbbell-cell { width: 160px; }
+.insight-dumbbell-cell { width: 160px; position: relative; z-index: 1; cursor: pointer; }
+.pivot-row.is-static .insight-dumbbell-cell { cursor: help; }
 
 @media (width < 30rem) {
   .insights-table .pivot-head { display: none; }

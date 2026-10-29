@@ -42,9 +42,9 @@
 .hero-lede {
   margin: 0;
   font-size: 0.9375rem;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--color-on-surface-variant);
-  max-inline-size: 68ch;
+  max-inline-size: 76ch;
   text-wrap: pretty;
 }
 
@@ -124,15 +124,19 @@
 
 .takeaway-primary .takeaway-label {
   grid-column: 1 / -1;
-  font-size: 0.75rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--color-on-surface-variant);
-  margin-block-end: 2px;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  color: var(--color-on-surface);
+  max-inline-size: none;
+  margin-block-end: var(--space-2);
+  text-wrap: pretty;
 }
 
 .takeaway-primary .takeaway-figure {
   grid-column: 1;
+  align-self: end;
   font-size: clamp(2.5rem, 1.75rem + 3cqi, 3.5rem);
   font-weight: 800;
   line-height: 1;
@@ -143,8 +147,9 @@
 
 .takeaway-primary .takeaway-statement {
   grid-column: 1;
+  align-self: start;
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.3;
   color: var(--color-on-surface-variant);
@@ -153,10 +158,12 @@
 .takeaway-primary .takeaway-dumbbell {
   grid-column: 2;
   grid-row: 2;
+  justify-self: center;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-4);
+  flex-direction: column;
+  gap: 6px;
+  inline-size: 100%;
+  max-inline-size: 32rem;
   margin: 0;
   padding: 0;
 }
@@ -164,6 +171,11 @@
 .takeaway-primary .takeaway-qualifier-short {
   grid-column: 2;
   grid-row: 3;
+  justify-self: center;
+  align-self: start;
+  inline-size: 100%;
+  max-inline-size: 32rem;
+  text-align: center;
   margin: 0;
   padding: 0;
   font-size: 0.75rem;
@@ -175,14 +187,16 @@
   border-inline-start: 1px solid var(--color-outline-variant);
   align-self: stretch;
   justify-content: center;
+  gap: var(--space-1);
 }
 
 .takeaway-label {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: var(--color-on-surface-variant);
+  line-height: 1.35;
+  color: var(--color-on-surface);
 }
 
 .takeaway-figure {
@@ -211,29 +225,83 @@
   text-wrap: pretty;
 }
 
+.takeaway-dumbbell-endpoints {
+  position: relative;
+  inline-size: 100%;
+  block-size: 2.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.takeaway-endpoint {
+  position: absolute;
+  inset-block-end: 0;
+  left: calc(var(--pos) * 1%);
+  transform: translateX(calc(var(--pos) * -1%));
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.takeaway-endpoint.align-start { align-items: flex-start; }
+.takeaway-endpoint.align-end { align-items: flex-end; }
+
+.takeaway-endpoint .endpoint-rate {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-on-surface-variant);
+}
+
+.takeaway-endpoint.guided .endpoint-rate {
+  color: var(--color-primary);
+}
+
+.takeaway-endpoint .endpoint-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
+}
+
+.takeaway-endpoint.guided .endpoint-name {
+  color: var(--color-on-surface);
+  font-weight: 600;
+}
+
+.takeaway-dumbbell.is-compact .takeaway-dumbbell-endpoints {
+  position: static;
+  block-size: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.takeaway-dumbbell.is-compact .takeaway-endpoint {
+  position: static;
+  transform: none;
+}
+
 .takeaway-dumbbell .takeaway-track {
-  flex: 1 1 12rem;
-  max-inline-size: 22rem;
+  inline-size: 100%;
+  max-inline-size: none;
   margin-inline: 0;
   block-size: 8px;
   border-radius: 4px;
 }
 
-.takeaway-dumbbell .takeaway-track .dot.unguided { inline-size: 2.5px; block-size: 12px; }
-.takeaway-dumbbell .takeaway-track .dot.guided { inline-size: 3px; block-size: 14px; }
+.takeaway-dumbbell .takeaway-track .dot.unguided { inline-size: 2.5px; block-size: 14px; }
+.takeaway-dumbbell .takeaway-track .dot.guided { inline-size: 3px; block-size: 16px; }
 .takeaway-dumbbell .takeaway-track .connector { block-size: 4px; }
+.takeaway-dumbbell .takeaway-track .connector.regressed { background: var(--color-accent-failure); }
 
-.takeaway-dumbbell-rates {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: 0.9375rem;
-  font-variant-numeric: tabular-nums;
+.takeaway-dumbbell-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  line-height: 1;
   color: var(--color-on-surface-variant);
-  white-space: nowrap;
+  opacity: 0.78;
+  font-variant-numeric: tabular-nums;
 }
-
-.takeaway-dumbbell-rates .rate-g { color: var(--color-primary); font-weight: 700; }
 
 .takeaway-qualifier {
   margin: 2px 0 0;
@@ -395,8 +463,7 @@
   .hero-takeaways { grid-template-columns: minmax(0, 1fr); padding: var(--space-3) var(--space-4); gap: var(--space-3); }
   .takeaway-primary { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
   .takeaway-primary .takeaway-dumbbell,
-  .takeaway-primary .takeaway-qualifier-short { grid-column: 1; grid-row: auto; }
-  .takeaway-primary .takeaway-dumbbell-rates { white-space: normal; flex-wrap: wrap; row-gap: 2px; }
+  .takeaway-primary .takeaway-qualifier-short { grid-column: 1; grid-row: auto; max-inline-size: none; justify-self: stretch; text-align: start; }
   .takeaway-secondary { padding-inline-start: 0; border-inline-start: 0; padding-block-start: var(--space-3); border-block-start: 1px solid var(--color-outline-variant); }
 }
 

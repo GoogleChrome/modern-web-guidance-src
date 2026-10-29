@@ -802,37 +802,46 @@ dialog#modal.diff-modal {
   max-inline-size: 100%;
   min-inline-size: 80px;
   flex: 0 1 250px;
-  height: 4px;
-  background: var(--border-color);
+  block-size: 4px;
+  background: var(--color-surface-container);
   border-radius: 2px;
   position: relative;
 }
 
 .mini-dumbbell-track .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
   position: absolute;
-  top: -2px;
-  transform: translateX(-50%);
+  top: 50%;
+  translate: -50% -50%;
+  border-radius: 0;
+  box-sizing: border-box;
 }
 
 .mini-dumbbell-track .dot.unguided {
-  background: var(--card-bg);
-  border: 1.5px solid var(--color-outline);
-  width: 6px;
-  height: 6px;
-  top: -1px;
+  inline-size: 2px;
+  block-size: 10px;
+  border: none;
+  background: var(--color-outline);
+  z-index: 1;
 }
 
 .mini-dumbbell-track .dot.guided {
+  inline-size: 2.5px;
+  block-size: 12px;
+  border: none;
   background: var(--color-primary);
+  z-index: 2;
 }
 
 .mini-dumbbell-track .connector {
-  height: 100%;
   position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  block-size: 4px;
   background: var(--color-primary);
+}
+
+.mini-dumbbell-track .connector.regressed {
+  background: var(--color-accent-failure);
 }
 
 /* Uplift Score */
@@ -1343,66 +1352,67 @@ dialog#modal.diff-modal {
 }
 
 .sparkline-bar {
-  height: 4px;
-  background: var(--border-color);
-  border-radius: 2px;
+  block-size: 6px;
+  background: var(--color-surface-container);
+  border-radius: 3px;
   position: relative;
-  margin: 2px 0;
+  margin: 5px 0;
 }
 
 .sparkline-bar.small {
-  height: 4px;
+  block-size: 4px;
   border-radius: 2px;
-  margin: 8px 0;
+  margin: 3px 0;
 }
 
 .sparkline-dot {
   position: absolute;
-  border-radius: 50%;
+  border-radius: 0;
   top: 50%;
-  transform: translateY(-50%);
+  translate: -50% -50%;
+  box-sizing: border-box;
 }
 
 .sparkline-dot.unguided {
-  width: 6px;
-  height: 6px;
-  border: 1.5px solid var(--color-outline);
-  background: transparent;
+  inline-size: 2px;
+  block-size: 12px;
+  border: none;
+  background: var(--color-outline);
+  z-index: 1;
 }
 
 .sparkline-dot.guided {
-  width: 8px;
-  height: 8px;
+  inline-size: 2.5px;
+  block-size: 14px;
+  border: none;
   background: var(--color-primary);
+  z-index: 2;
 }
 
 .sparkline-dot.unguided.small {
-  width: 6px;
-  height: 6px;
-  border-width: 1.5px;
-  top: -1px;
-  transform: none; /* Reset vertical centered transform if needed or adjust */
+  inline-size: 2px;
+  block-size: 8px;
 }
 
 .sparkline-dot.guided.small {
-  width: 8px;
-  height: 8px;
-  top: -2px;
-  transform: none;
+  inline-size: 2.5px;
+  block-size: 10px;
 }
 
 .sparkline-range {
   position: absolute;
-  height: 4px;
+  block-size: 4px;
   background: var(--color-primary);
   top: 50%;
-  transform: translateY(-50%);
+  translate: 0 -50%;
 }
 
 .sparkline-range.small {
-  height: 2px;
-  top: 1px;
-  transform: none;
+  block-size: 3px;
+}
+
+.sparkline-range.regressed {
+  background: var(--color-accent-failure);
 }
 
 .sparkline-labels {
@@ -1699,9 +1709,9 @@ dialog#modal.diff-modal {
 .dumbbell-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-4); margin: 0; font-size: var(--font-md); color: var(--text-secondary); }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .legend-note { white-space: normal; }
-.legend-dot { display: inline-block; inline-size: 10px; block-size: 10px; border-radius: 50%; box-sizing: border-box; }
-.legend-dot.unguided { border: 2px solid var(--color-outline); background: var(--color-surface-container-lowest); }
-.legend-dot.guided { background: var(--color-primary); }
+.legend-dot { display: inline-block; inline-size: 2.5px; block-size: 11px; border-radius: 0; box-sizing: border-box; vertical-align: middle; }
+.legend-dot.unguided { border: none; background: var(--color-outline); }
+.legend-dot.guided { inline-size: 3px; block-size: 13px; background: var(--color-primary); }
 .legend-line { display: inline-block; inline-size: 18px; block-size: 3px; border-radius: 2px; }
 .legend-line.improved { background: var(--color-primary); }
 .legend-line.regressed { background: var(--color-accent-failure); }
