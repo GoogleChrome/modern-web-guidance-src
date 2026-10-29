@@ -101,4 +101,55 @@ void test('persistent-toast-notifications JS matcher', async (t) => {
     const matches = matchJsRule(persistentToastNotificationsJsMatcher, 'non-toast-animations.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts stacked toastr calls in a block, navigation after toast, loop toasts, and empty first arg', () => {
+    const code = `
+      function onError(data) {
+        toastr.error("Cannot get user data");
+        toastr.error(data.Message);
+      }
+      function onSuccess(res) {
+        toastr.success(res.message, 'Sucesso');
+        window.location.href = '/thanks';
+      }
+      function fetchAll(types) {
+        types.forEach((type) => {
+          toastr.error('Failed ' + type);
+        });
+      }
+      function emptyTitle(res) {
+        toastr.error('', res.error);
+      }
+    `;
+    const matches = matchJsRule(persistentToastNotificationsJsMatcher, 'app/controllers/user.js', code);
+    assert.equal(matches.length, 0);
+
+    const multiCallMatches = matchJsRule(
+      persistentToastNotificationsJsMatcher,
+      'src/views/upload.js',
+      `
+        toastr.error('Missing file');
+        toastr.success('Uploaded 1');
+        toastr.info('Processing');
+        toastr.warning('Quota low');
+      `,
+    );
+    assert.equal(multiCallMatches.length, 0);
+  });
+
+  await t.test('flags toastr.error inside Promise .catch() and JSX component files', () => {
+    const code = `
+      import toastr from 'toastr';
+      export function SaveButton() {
+        const handleSave = () => {
+          fetch('/api/save').catch((err) => {
+            toastr.error('Failed to save');
+          });
+        };
+        return <button onClick={handleSave}>Save</button>;
+      }
+    `;
+    const matches = matchJsRule(persistentToastNotificationsJsMatcher, 'SaveButton.tsx', code);
+    assert.equal(matches.length, 1);
+  });
 });

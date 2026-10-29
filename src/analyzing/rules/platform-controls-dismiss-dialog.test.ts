@@ -123,4 +123,30 @@ void test('platform-controls-dismiss-dialog: negative / exempt cases', async (t)
     const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'router.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('flags keydown handler that checks Escape to close modal alongside Tab focus trapping', () => {
+    const code = `
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          modal.close();
+        } else if (e.key === 'Tab') {
+          trapFocus(e);
+        }
+      });
+    `;
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'focus-trap.js', code);
+    assert.equal(matches.length, 1);
+  });
+
+  await t.test('exempts find/search input keydown listener', () => {
+    const code = `
+      findInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          findBar.close();
+        }
+      });
+    `;
+    const matches = matchJsRule(platformControlsDismissDialogJsMatcher, 'findbar.js', code);
+    assert.equal(matches.length, 0);
+  });
 });

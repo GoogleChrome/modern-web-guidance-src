@@ -26,19 +26,19 @@ const CLOSEDBY_FEATURE_TOKENS = [
 ] as const;
 
 const MODAL_IDENTIFIER_REGEX =
-  /\b(?:dialog|dlg|modal|drawer|overlay|popup|sheet|lightbox)\b/i;
+  /\b(?:dialog|dlg|modal|drawer|overlay|sheet|lightbox)\b/i;
 
 const NON_MODAL_RECEIVER_REGEX =
-  /\b(?:window|self|document|ws|socket|stream|conn|connection|db|file|reader|writer|port|channel|context|audioCtx|peer)\b/i;
+  /\b(?:window|self|document|ws|socket|stream|conn|connection|db|file|reader|writer|port|channel|context|audioCtx|peer|find|search|bar|input|field|editor|textarea|select|menu|dropdown|tooltip|toast|notification|popup)\b/i;
 
 const EXPLICIT_MODAL_DISMISS_METHOD_REGEX =
-  /\b(?:closeModal|closeDialog|hideModal|dismissModal|closeDrawer|hideDrawer)\b/i;
+  /(?:^|_|\b)(?:closeModal|closeDialog|hideModal|dismissModal|closeDrawer|hideDrawer|closeOverlay|hideOverlay|closeLightbox|hideLightbox)\b/i;
 
 const GENERIC_DISMISS_METHOD_REGEX =
   /\b(?:close|hide|dismiss|hidePopover)\b/i;
 
 const DISMISS_CLASS_REGEX =
-  /\b(?:active|open|show|is-active|is-open|modal-open|dialog-open)\b/i;
+  /\b(?:active|open|show|in|visible|is-active|is-open|modal-open|dialog-open)\b/i;
 
 /**
  * Checks whether a node or statement calls a modal/dialog closer method or removes an open class.
@@ -62,13 +62,41 @@ function isModalDismissCallOrMutation(node: Node): boolean {
 
       // Native dialog.close(), popover.hidePopover(), or generic dismiss with modal receiver
       if (GENERIC_DISMISS_METHOD_REGEX.test(methodName)) {
-        if (
-          MODAL_IDENTIFIER_REGEX.test(receiverText) ||
-          receiverText === 'this' ||
-          receiverText.endsWith('.target') ||
-          receiverText.endsWith('.current')
-        ) {
+        if (MODAL_IDENTIFIER_REGEX.test(receiverText)) {
+          // Skip custom hover/prompt widgets that close on mouseleave in an enclosing function
+          let anc: Node | undefined = node.getParent();
+          while (anc && !Node.isSourceFile(anc)) {
+            if (
+              (Node.isFunctionDeclaration(anc) ||
+                Node.isFunctionExpression(anc) ||
+                Node.isArrowFunction(anc) ||
+                Node.isMethodDeclaration(anc)) &&
+              /\baddEventListener\s*\(\s*['"]mouseleave['"]/.test(anc.getText())
+            ) {
+              return false;
+            }
+            anc = anc.getParent();
+          }
           return true;
+        }
+        if (receiverText === 'this') {
+          const enclosingClass = node.getFirstAncestorByKind(SyntaxKind.ClassDeclaration);
+          if (!enclosingClass || MODAL_IDENTIFIER_REGEX.test(enclosingClass.getName() ?? '')) {
+            return true;
+          }
+        }
+      }
+
+      // jQuery $(modal).removeClass('active' | 'open' | ...) on a modal
+      if (methodName === 'removeClass' && MODAL_IDENTIFIER_REGEX.test(receiverText)) {
+        for (const arg of node.getArguments()) {
+          const unwrappedArg = unwrapExpression(arg);
+          if (
+            Node.isStringLiteral(unwrappedArg) &&
+            DISMISS_CLASS_REGEX.test(unwrappedArg.getLiteralText())
+          ) {
+            return true;
+          }
         }
       }
 
@@ -76,7 +104,10 @@ function isModalDismissCallOrMutation(node: Node): boolean {
       if (methodName === 'remove') {
         if (Node.isPropertyAccessExpression(receiver) && receiver.getName() === 'classList') {
           const targetReceiver = unwrapExpression(receiver.getExpression()).getText();
-          if (MODAL_IDENTIFIER_REGEX.test(targetReceiver)) {
+          if (
+            MODAL_IDENTIFIER_REGEX.test(targetReceiver) &&
+            !NON_MODAL_RECEIVER_REGEX.test(targetReceiver)
+          ) {
             const args = node.getArguments();
             for (const arg of args) {
               const unwrappedArg = unwrapExpression(arg);
@@ -106,7 +137,7 @@ function isModalDismissCallOrMutation(node: Node): boolean {
       const leftReceiver = unwrapExpression(left.getExpression());
       if (Node.isPropertyAccessExpression(leftReceiver) && leftReceiver.getName() === 'style') {
         const modalObj = unwrapExpression(leftReceiver.getExpression()).getText();
-        if (MODAL_IDENTIFIER_REGEX.test(modalObj)) {
+        if (MODAL_IDENTIFIER_REGEX.test(modalObj) && !NON_MODAL_RECEIVER_REGEX.test(modalObj)) {
           const right = unwrapExpression(node.getRight());
           if (Node.isStringLiteral(right)) {
             const val = right.getLiteralText().toLowerCase();
@@ -152,14 +183,14 @@ function checkBinaryEscape(child: Node): boolean {
       const rightText = right.getText();
 
       if (
-        leftText.endsWith('.key') &&
+        (leftText.endsWith('.key') || leftText.endsWith('.code')) &&
         (rightText === "'Escape'" || rightText === '"Escape"' || rightText === "'Esc'" || rightText === '"Esc"')
       ) {
         return true;
       }
 
       if (
-        rightText.endsWith('.key') &&
+        (rightText.endsWith('.key') || rightText.endsWith('.code')) &&
         (leftText === "'Escape'" || leftText === '"Escape"' || leftText === "'Esc'" || leftText === '"Esc"')
       ) {
         return true;
@@ -232,8 +263,12 @@ function handlerDismissesOnEscape(handler: Node): boolean {
     if (Node.isIfStatement(child)) {
       const cond = child.getExpression();
       if (isEscapeKeyCondition(cond)) {
+        const thenStmt = child.getThenStatement();
+        if (/\bstop(?:Immediate)?Propagation\s*\(/.test(thenStmt.getText())) {
+          return;
+        }
         if (
-          callableContainsModalDismiss(child.getThenStatement()) ||
+          callableContainsModalDismiss(thenStmt) ||
           callableContainsModalDismiss(handler)
         ) {
           found = true;
@@ -272,9 +307,22 @@ function handlerDismissesOnPopstate(handler: Node): boolean {
 
 export const platformControlsDismissDialogJsMatcher: JsRuleMatcher = {
   kind: 'js',
-  fastTokens: ['Escape', 'keyCode', 'which', 'popstate'] as const,
+  fastTokens: ['Escape', 'Esc', '27', 'popstate'] as const,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     const matches: AnalyzerMatch[] = [];
+
+    if (
+      (!ctx.fileContent.includes('keydown') &&
+        !ctx.fileContent.includes('keyup') &&
+        !ctx.fileContent.includes('keypress') &&
+        !ctx.fileContent.includes('popstate')) ||
+      (!ctx.fileContent.includes('Escape') &&
+        !ctx.fileContent.includes('Esc') &&
+        !ctx.fileContent.includes('27') &&
+        !ctx.fileContent.includes('popstate'))
+    ) {
+      return matches;
+    }
 
     // Skip test files
     if (
@@ -305,6 +353,20 @@ export const platformControlsDismissDialogJsMatcher: JsRuleMatcher = {
       }
 
       const { eventName, handlerNode } = matchedListener;
+
+      // Require inline callback function (ArrowFunction or FunctionExpression) so multi-responsibility
+      // focus-trap / controller functions passed by identifier reference are not flagged out of context.
+      const callArgs = call.getArguments();
+      const rawCallbackArg = unwrapExpression(callArgs[callArgs.length - 1] ?? callArgs[1] ?? call);
+      if (
+        eventName !== 'popstate' &&
+        !Node.isArrowFunction(rawCallbackArg) &&
+        !Node.isFunctionExpression(rawCallbackArg) &&
+        !Node.isArrowFunction(handlerNode) &&
+        !Node.isFunctionExpression(handlerNode)
+      ) {
+        continue;
+      }
 
       if (eventName === 'popstate') {
         if (handlerDismissesOnPopstate(handlerNode)) {
@@ -341,7 +403,7 @@ export const platformControlsDismissDialogJsMatcher: JsRuleMatcher = {
       }
 
       const propName = left.getName();
-      if (propName !== 'onpopstate' && propName !== 'onkeydown') {
+      if (propName !== 'onpopstate' && propName !== 'onkeydown' && propName !== 'onkeyup') {
         continue;
       }
 
@@ -358,7 +420,10 @@ export const platformControlsDismissDialogJsMatcher: JsRuleMatcher = {
           message:
             'Manual onpopstate handler dismisses a modal dialog; native <dialog closedby="any"> or CloseWatcher handles platform dismiss requests automatically.',
         });
-      } else if (propName === 'onkeydown' && handlerDismissesOnEscape(handlerNode)) {
+      } else if (
+        (propName === 'onkeydown' || propName === 'onkeyup') &&
+        handlerDismissesOnEscape(handlerNode)
+      ) {
         matches.push({
           line: bin.getStartLineNumber(),
           column: bin.getStartLinePos(),
@@ -381,13 +446,14 @@ export const platformControlsDismissDialogRule: AnalyzerRule = {
   matcher: platformControlsDismissDialogJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'Manual keydown listener checks Escape key to close dialog, modal, drawer, or popover',
-      'Manual popstate listener handles back-button navigation to dismiss open dialog, drawer, or modal',
+      'Manual keydown or keyup listener checks for the Escape key to close a dialog, modal, drawer, overlay, or popover.',
+      'Manual popstate listener handles back-button navigation to dismiss an open dialog, drawer, or modal.',
     ],
     dropWhen: [
-      'Dialog already uses closedby attribute or CloseWatcher',
-      'Escape listener handles global application shortcut unrelated to dialog dismissal (e.g. video player fullscreen, cancel drawing, blur search input)',
-      'Escape listener specifically intercepts Escape to prevent closing (e.g. prompt to save unsaved changes)',
+      'Dialog already uses closedby attribute or CloseWatcher.',
+      'Escape listener handles a find/search input bar, autocomplete, or global application shortcut unrelated to dialog dismissal.',
+      'Keydown listener also handles other keys such as Tab focus trapping, ArrowLeft/ArrowRight gallery navigation, or Enter submission.',
+      'Escape listener calls stopPropagation() to contain Escape within a nested component or prevent closing.',
     ],
   },
 };

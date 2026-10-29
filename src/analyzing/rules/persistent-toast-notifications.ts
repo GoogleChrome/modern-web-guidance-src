@@ -44,6 +44,8 @@ const DISQUALIFYING_TOAST_OPTION_KEYS: ReadonlySet<string> = new Set([
   'onclick',
   'onClick',
   'onCloseClick',
+  'close',
+  'stopOnFocus',
   'tapToDismiss',
   'destination',
   'newWindow',
@@ -407,6 +409,75 @@ function isNotyfInstance(node: Node): boolean {
   return false;
 }
 
+function isInsideLoopOrMultiToastContext(callExpr: CallExpression): boolean {
+  // Check enclosing block for navigation, early-return validation guard, or multiple stacked toastr calls
+  let block: Node | undefined = callExpr.getParent();
+  while (block && !Node.isBlock(block) && !Node.isSourceFile(block)) {
+    block = block.getParent();
+  }
+  if (block && (Node.isBlock(block) || Node.isSourceFile(block))) {
+    const blockText = block.getText();
+    if (
+      Node.isBlock(block) &&
+      /(?:\b(?:window\.location|location\.(?:href|replace|assign|reload)|history\.(?:push|replace|back|goBack|go))|\$router\.)/.test(
+        blockText,
+      )
+    ) {
+      return true;
+    }
+    if (Node.isBlock(block)) {
+      const blockParent = block.getParent();
+      if (
+        Node.isIfStatement(blockParent) &&
+        (block.getStatements().some((s) => Node.isReturnStatement(s)) ||
+          blockParent.getElseStatement() === block)
+      ) {
+        return true;
+      }
+    }
+    const toastrMatches = blockText.match(/\btoastr\.(?:info|success|warning|error)\s*\(/g);
+    if (toastrMatches && toastrMatches.length >= (Node.isBlock(block) ? 2 : 3)) {
+      return true;
+    }
+  }
+
+  // Walk ancestors to check for loop constructs, multi-library adapter guards, or multi-toast promise chains
+  let current: Node | undefined = callExpr.getParent();
+  while (current && !Node.isSourceFile(current)) {
+    if (
+      Node.isForStatement(current) ||
+      Node.isForInStatement(current) ||
+      Node.isForOfStatement(current) ||
+      Node.isWhileStatement(current)
+    ) {
+      return true;
+    }
+    if (
+      Node.isIfStatement(current) &&
+      /\btoastr\b/.test(current.getExpression().getText())
+    ) {
+      return true;
+    }
+    if (Node.isExpressionStatement(current) || Node.isObjectLiteralExpression(current)) {
+      const stmtToastr = current.getText().match(/\btoastr\.(?:info|success|warning|error)\s*\(/g);
+      if (stmtToastr && stmtToastr.length >= 2) {
+        return true;
+      }
+    }
+    if (Node.isCallExpression(current)) {
+      const expr = unwrapExpression(current.getExpression());
+      if (Node.isPropertyAccessExpression(expr)) {
+        const name = expr.getName();
+        if (name === 'each' || name === 'forEach') {
+          return true;
+        }
+      }
+    }
+    current = current.getParent();
+  }
+  return false;
+}
+
 function matchToastCall(callExpr: CallExpression): string | null {
   const handRolledMsg = matchHandRolledToast(callExpr);
   if (handRolledMsg) {
@@ -451,6 +522,22 @@ function matchToastCall(callExpr: CallExpression): string | null {
     args.length <= 3 &&
     isLibraryReference(receiver, 'toastr', ['toastr'])
   ) {
+    const firstStatic = getStaticStringText(args[0]);
+    if (firstStatic !== null && firstStatic.trim() === '') {
+      return null;
+    }
+    if (args[0]) {
+      const unwrappedFirst = unwrapExpression(args[0]);
+      if (Node.isBinaryExpression(unwrappedFirst)) {
+        const leftLit = getStaticStringText(unwrappedFirst.getLeft());
+        if (leftLit !== null && /^[a-zA-Z0-9_]+:\s*$/.test(leftLit)) {
+          return null;
+        }
+      }
+    }
+    if (isInsideLoopOrMultiToastContext(callExpr)) {
+      return null;
+    }
     for (const arg of args) {
       const resolvedArg = resolveLocalExpression(arg, 2);
       if (
@@ -476,8 +563,9 @@ function fileUsesManualPopoverOrQueueManager(fileContent: string): boolean {
 }
 
 export const persistentToastNotificationsJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['Toastify', 'Notyf', 'toastr', 'fadeOut', 'slideUp', 'delay'],
-  shouldSkipFile: (_sourceFile, ctx) => fileUsesManualPopoverOrQueueManager(ctx.fileContent),
+  fastTokens: ['Toastify', 'Notyf', 'toastr', 'fadeOut', 'slideUp'],
+  shouldSkipFile: (_sourceFile, ctx) =>
+    fileUsesManualPopoverOrQueueManager(ctx.fileContent),
   dedupeLines: true,
   featureGuardTokens: TOAST_GUARD_TOKENS,
   matchCall: (node) => matchToastCall(node),
@@ -492,12 +580,14 @@ export const persistentToastNotificationsJsRule: AnalyzerRule = {
   matcher: persistentToastNotificationsJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'JavaScript invokes Toastify(...).showToast(), new Notyf().success/error(...), or toastr.info/success/warning/error(...) to display floating toast notifications without native popover="manual".',
+      'JavaScript invokes Toastify(...).showToast(), new Notyf().success/error(...), or toastr.info/success/warning/error(...) to display a standalone floating toast notification without native popover="manual".',
       'Hand-rolled toast notifications append to document.body or use position: fixed / viewport offsets combined with show/fadeIn and delay/fadeOut lifecycle.',
     ],
     dropWhen: [
       'The component already uses native <div popover="manual"> with showPopover() and hidePopover() or is guarded by a popover feature check.',
-      'The toast relies on multi-toast queue stacking, progress bars, interactive click/destination callbacks (onClick, destination, newWindow, callback), or imperative queue clearing (toastr.clear / dismissAll) that native popover="manual" does not provide.',
+      'The toast relies on multi-toast queue stacking (e.g. multiple consecutive toastr calls in the same block or inside a loop), progress bars, interactive click/destination callbacks (onClick, destination, newWindow, callback), or imperative queue clearing (toastr.clear / dismissAll) that native popover="manual" does not provide.',
+      'The toast call is immediately followed by page navigation or route change (e.g. window.location.href, history.goBack(), $router.back()).',
+      'The call is inside a headless data service, telemetry/error-reporting utility (e.g. logging to console.error and analytics.track), or an inline focus/input hint guarded by document.activeElement.',
       'The code renders blocking modal dialogs (<dialog>) or inline form validation error banners.',
     ],
   },

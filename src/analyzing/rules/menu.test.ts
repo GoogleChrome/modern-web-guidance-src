@@ -23,9 +23,9 @@ void test('menu: positive brownfield matches', async (t) => {
     assert.match(matches[0]?.message ?? '', /focusgroup/);
   });
 
-  await t.test('flags DOM <div role="menu"> without focusgroup', () => {
+  await t.test('flags DOM <div role="menu"> without focusgroup (including custom @keydown)', () => {
     const html = `
-      <div role="menu" aria-label="Actions">
+      <div role="menu" aria-label="Actions" @keydown="handleMenuNav">
         <button role="menuitem">Edit</button>
         <button role="menuitem">Delete</button>
       </div>
@@ -63,6 +63,37 @@ void test('menu: negative / exempt cases', async (t) => {
       });
     `;
     const matches = matchJsRule(menuJsMatcher, 'game.js', code);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts sidebar treeview and static list-unstyled with role="menu"', () => {
+    const html = `
+      <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+        <li class="nav-item"><a href="#" class="nav-link">Dashboard</a></li>
+      </ul>
+      <ul class="list-unstyled" role="menu">
+        <li><a href="/about">About</a></li>
+      </ul>
+    `;
+    const matches = scanHtml('sidebar.html', html, [menuDomMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts dropdown container holding form or input controls', () => {
+    const html = `
+      <div class="dropdown-menu" role="menu">
+        <form class="px-4 py-3">
+          <input type="email" class="form-control" placeholder="email@example.com">
+        </form>
+      </div>
+    `;
+    const matches = scanHtml('login-dropdown.html', html, [menuDomMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts trigger <button role="menu"> and JSX spread wrappers', () => {
+    const html = `<button type="button" role="menu">Open</button>`;
+    const matches = scanHtml('button.html', html, [menuDomMatcher]);
     assert.equal(matches.length, 0);
   });
 });

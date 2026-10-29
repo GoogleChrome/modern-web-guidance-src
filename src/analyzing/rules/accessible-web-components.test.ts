@@ -98,4 +98,17 @@ void test('accessible-web-components: negative / exempt cases', async (t) => {
     const { matches } = scanJsSource('safe-widget.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('flags custom element setting role via self = this in ready() lifecycle', () => {
+    const code = `
+      class CustomSlider extends PolymerElement {
+        ready() {
+          const self = this;
+          self.setAttribute('role', 'slider');
+        }
+      }
+    `;
+    const { matches } = scanJsSource('custom-slider.js', code, [jsMatcher]);
+    assert.equal(matches.length, 1);
+  });
 });
