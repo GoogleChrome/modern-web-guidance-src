@@ -15,55 +15,71 @@ import type {
 
 export const CONTRAST_COLOR_GUIDE_HASH = '119018e98472';
 
-/**
- * Checks whether an expression computes a luminance or YIQ contrast score.
- */
-function isLuminanceOrYiqCalculation(node: Node): boolean {
-  let hasYiq = false;
-  let hasWcag = false;
-
-  node.forEachDescendant((child) => {
-    if (hasYiq || hasWcag) return;
-
-    if (Node.isNumericLiteral(child)) {
-      const val = child.getLiteralValue();
-      if (Math.abs(val - 0.299) < 0.001 || Math.abs(val - 299) < 0.001) {
-        hasYiq = true;
-      }
-      if (Math.abs(val - 0.2126) < 0.001) {
-        hasWcag = true;
-      }
-    }
-  });
-
-  return hasYiq || hasWcag;
+function isNestedFunction(node: Node): boolean {
+  return (
+    Node.isFunctionDeclaration(node) ||
+    Node.isFunctionExpression(node) ||
+    Node.isArrowFunction(node) ||
+    Node.isMethodDeclaration(node)
+  );
 }
 
 /**
- * Checks whether an enclosing scope returns or sets black/white or #000/#fff text colors.
+ * Checks whether a function's own body computes a luminance or YIQ contrast score.
  */
-function scopePicksBlackOrWhiteColor(scope: Node): boolean {
-  let hasColorChoice = false;
+function isLuminanceOrYiqCalculation(node: Node): boolean {
+  let hasYiqR = false;
+  let hasYiqG = false;
+  let hasWcagR = false;
+  let hasWcagG = false;
 
-  scope.forEachDescendant((child) => {
-    if (hasColorChoice) return;
+  node.forEachDescendant((child, traversal) => {
+    if (isNestedFunction(child)) {
+      traversal.skip();
+      return;
+    }
 
-    if (Node.isStringLiteral(child)) {
-      const text = child.getLiteralText().toLowerCase().trim();
+    if (Node.isNumericLiteral(child)) {
+      const parent = child.getParent();
       if (
-        text === '#000' ||
-        text === '#000000' ||
-        text === '#fff' ||
-        text === '#ffffff' ||
-        text === 'black' ||
-        text === 'white'
+        !parent ||
+        !Node.isBinaryExpression(parent) ||
+        parent.getOperatorToken().getKind() !== SyntaxKind.AsteriskToken
       ) {
-        hasColorChoice = true;
+        return;
       }
+      const val = child.getLiteralValue();
+      if (Math.abs(val - 0.299) < 0.001 || Math.abs(val - 299) < 0.001) hasYiqR = true;
+      if (Math.abs(val - 0.587) < 0.001 || Math.abs(val - 587) < 0.001) hasYiqG = true;
+      if (Math.abs(val - 0.2126) < 0.001) hasWcagR = true;
+      if (Math.abs(val - 0.7152) < 0.001) hasWcagG = true;
     }
   });
 
-  return hasColorChoice;
+  return (hasYiqR && hasYiqG) || (hasWcagR && hasWcagG);
+}
+
+/**
+ * Checks whether a function's own body selects between black (#000/black) and white (#fff/white) colors.
+ */
+function scopePicksBlackOrWhiteColor(scope: Node): boolean {
+  let hasBlack = false;
+  let hasWhite = false;
+
+  scope.forEachDescendant((child, traversal) => {
+    if (isNestedFunction(child)) {
+      traversal.skip();
+      return;
+    }
+
+    if (Node.isStringLiteral(child)) {
+      const text = child.getLiteralText().toLowerCase().trim();
+      if (text === '#000' || text === '#000000' || text === 'black') hasBlack = true;
+      if (text === '#fff' || text === '#ffffff' || text === 'white') hasWhite = true;
+    }
+  });
+
+  return hasBlack && hasWhite;
 }
 
 export const contrastColorJsMatcher: JsRuleMatcher = {

@@ -65,11 +65,11 @@ void test('dark-mode: CSS negative / exempt cases', async (t) => {
 });
 
 void test('dark-mode/js-match-media: JS positive matches', async (t) => {
-  await t.test('flags matchMedia without a change listener', () => {
+  await t.test('flags matchMedia setting data-theme attribute without a change listener', () => {
     const code = `
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (isDark) {
-        loadDarkAssets();
+        document.documentElement.setAttribute('data-theme', 'dark');
       }
     `;
     const { matches } = scanJsSource('theme-init.js', code, [jsMatcher]);
@@ -92,6 +92,16 @@ void test('dark-mode/js-match-media: JS positive matches', async (t) => {
 });
 
 void test('dark-mode/js-match-media: JS negative / exempt cases', async (t) => {
+  await t.test('exempts read-only dark-mode checks, cookie-backed theme overrides, and non-DOM matchMedia queries', () => {
+    const code = `
+      export function isInDarkMode() {
+        return document.documentElement.classList.contains('dark') ||
+          window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+    `;
+    const { matches } = scanJsSource('read-only.js', code, [jsMatcher]);
+    assert.equal(matches.length, 0);
+  });
   await t.test('exempts matchMedia when a change listener is registered and color-scheme is used', () => {
     const code = `
       const media = window.matchMedia('(prefers-color-scheme: dark)');

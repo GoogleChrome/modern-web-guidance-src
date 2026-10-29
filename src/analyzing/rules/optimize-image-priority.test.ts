@@ -6,48 +6,35 @@ import {
   optimizeImagePriorityMatcher
 } from './optimize-image-priority.ts';
 void test('optimize-image-priority DOM matcher', async (t) => {
-  await t.test('flags <link rel="preload" as="image"> without fetchpriority or imagesrcset when <img> is present', () => {
+  await t.test('flags <link rel="preload" as="image"> without fetchpriority or imagesrcset when matching <img src> is present, plus <img> with deprecated importance, loading="auto", or conflicting fetchpriority="high" + loading="lazy"', () => {
     const html = `
       <head>
         <link rel="preload" as="image" href="/hero.jpg">
       </head>
       <body>
         <img src="/hero.jpg" alt="Hero">
+        <img src="/sub.jpg" importance="high" alt="Sub">
+        <img src="/card.jpg" loading="auto" alt="Card">
+        <img src="/banner.jpg" fetchpriority="high" loading="lazy" alt="Banner">
       </body>
     `;
     const matches = scanHtml('index.html', html, [optimizeImagePriorityMatcher]);
-    assert.equal(matches.length, 1);
+    assert.equal(matches.length, 4);
     assert.equal(matches[0]?.line, 3);
   });
 
-  await t.test('exempts <link rel="preload" as="image"> for CSS background-image or when no <img> exists in document', () => {
-    const bgHtml = `
+  await t.test('exempts <link rel="preload" as="image"> when href does not match an <img src> in the document', () => {
+    const preloadHtml = `
       <head>
+        <link rel="preload" as="image" href="/icons/zoom-in.svg">
         <link rel="preload" as="image" href="/bg-hero.jpg">
-        <style>
-          .hero { background-image: url('/bg-hero.jpg'); }
-        </style>
       </head>
       <body>
-        <div class="hero"></div>
         <img src="/logo.png" alt="Logo">
       </body>
     `;
     assert.equal(
-      scanHtml('bg.html', bgHtml, [optimizeImagePriorityMatcher]).length,
-      0,
-    );
-
-    const noImgHtml = `
-      <head>
-        <link rel="preload" as="image" href="/hero.jpg">
-      </head>
-      <body>
-        <div class="hero-banner"></div>
-      </body>
-    `;
-    assert.equal(
-      scanHtml('no-img.html', noImgHtml, [optimizeImagePriorityMatcher]).length,
+      scanHtml('preload.html', preloadHtml, [optimizeImagePriorityMatcher]).length,
       0,
     );
   });

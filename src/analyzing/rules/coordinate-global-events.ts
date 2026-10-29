@@ -39,10 +39,30 @@ function isChainedUtcLocal(callExpr: CallExpression): boolean {
 }
 
 const MULTI_TIMEZONE_REGEX =
-  /(time_?zone|timezone|iana|target_?tz|dest_?tz|source_?tz|utc_?offset|tz_?offset|dst_?offset|zone_?name)/i;
+  /(?:iana|target_?tz|dest_?tz|source_?tz|from_?tz|to_?tz|time_?zones|zone_?name)/i;
 
 const RELATIVE_TIME_OR_EXCLUDED_FN_REGEX =
   /(time_?ago|from_?now|time_?since|duration|elapsed|cookie)/i;
+
+function isMultiTimezoneText(text: string): boolean {
+  return MULTI_TIMEZONE_REGEX.test(text) || text.includes('timeZone');
+}
+
+function stripComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+}
+
+function isLocalOffsetShiftText(text: string): boolean {
+  return (
+    text.includes('.toISOString()') ||
+    text.includes('.toUTCString()') ||
+    text.includes('.setMinutes(') ||
+    text.includes('.setUTCMinutes(') ||
+    text.includes('.setHours(') ||
+    text.includes('cookie') ||
+    /new\s+Date\s*\([^)]*[+-]/.test(text)
+  );
+}
 
 function hasMultiTimezoneContext(callExpr: CallExpression): boolean {
   let stmt: Node | undefined = callExpr;
@@ -50,28 +70,12 @@ function hasMultiTimezoneContext(callExpr: CallExpression): boolean {
     stmt = stmt.getParent();
   }
 
-  const stmtText = stmt ? stmt.getText() : '';
-
-  // 1. Drop simple .toISOString() local date formatting
-  if (stmtText.includes('.toISOString()')) {
+  const stmtText = stmt ? stripComments(stmt.getText()) : '';
+  if (isLocalOffsetShiftText(stmtText)) {
     return false;
   }
 
-  // 2. Drop .setMinutes() or .setUTCMinutes() or .setHours() local shifting
-  if (
-    stmtText.includes('.setMinutes(') ||
-    stmtText.includes('.setUTCMinutes(') ||
-    stmtText.includes('.setHours(')
-  ) {
-    return false;
-  }
-
-  // 3. Drop cookie expiration / toUTCString
-  if (stmtText.includes('cookie') || stmtText.includes('.toUTCString()')) {
-    return false;
-  }
-
-  // 4. Find enclosing function or scope
+  // Find enclosing function or scope
   let fn: Node | undefined = callExpr;
   while (fn) {
     if (
@@ -96,29 +100,26 @@ function hasMultiTimezoneContext(callExpr: CallExpression): boolean {
       }
     }
 
-    const fnText = fn.getText();
-    if (RELATIVE_TIME_OR_EXCLUDED_FN_REGEX.test(fnText)) {
-      if (
-        fnText.includes('timeAgo') ||
-        fnText.includes('fromNow') ||
-        fnText.includes('timeSince')
-      ) {
-        return false;
-      }
+    const fnText = stripComments(fn.getText());
+    if (
+      isLocalOffsetShiftText(fnText) ||
+      (RELATIVE_TIME_OR_EXCLUDED_FN_REGEX.test(fnText) &&
+        (fnText.includes('timeAgo') ||
+          fnText.includes('fromNow') ||
+          fnText.includes('timeSince')))
+    ) {
+      return false;
     }
 
-    // Check for explicit multi-timezone tokens in the function/statement
-    // Strip getTimezoneOffset itself to prevent tautological self-match
     const sanitizedFn = fnText.replace(/getTimezoneOffset/g, '');
-    if (MULTI_TIMEZONE_REGEX.test(sanitizedFn)) {
+    if (isMultiTimezoneText(sanitizedFn)) {
       return true;
     }
   }
 
-  // At statement level
   if (stmt) {
     const sanitizedStmt = stmtText.replace(/getTimezoneOffset/g, '');
-    if (MULTI_TIMEZONE_REGEX.test(sanitizedStmt)) {
+    if (isMultiTimezoneText(sanitizedStmt)) {
       return true;
     }
   }
@@ -244,8 +245,16 @@ function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
     }
 
     const args = callExpr.getArguments();
-    // Exclude getter with 0 args like m.tz()
-    if (args.length === 0) {
+    // Exclude getter with 0 args like m.tz() or 3-arg custom format string parsers moment.tz(input, format, tz)
+    if (args.length === 0 || args.length >= 3) {
+      return null;
+    }
+
+    let stmt: Node | undefined = callExpr;
+    while (stmt && !Node.isStatement(stmt)) {
+      stmt = stmt.getParent();
+    }
+    if (stmt && /\.(?:fromNow|toNow|diff)\s*\(/.test(stmt.getText())) {
       return null;
     }
 
@@ -271,9 +280,12 @@ function matchTimezoneCall(callExpr: CallExpression): AnalyzerMatch | null {
     };
   }
 
-  // 3. moment.utc(...).local() or chained utc/local
+  // 3. moment.utc(...).local() or chained utc/local in a multi-timezone context
   if (isChainedUtcLocal(callExpr)) {
-    if (isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS)) {
+    if (
+      isProtectedByFeatureGuard(callExpr, TEMPORAL_GUARD_TOKENS) ||
+      !hasMultiTimezoneContext(callExpr)
+    ) {
       return null;
     }
     return {
