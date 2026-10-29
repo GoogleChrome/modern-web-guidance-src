@@ -51,17 +51,50 @@ describe('drag rules', () => {
   test('flags package.json dependencies on legacy drag packages', () => {
     const pkg = JSON.stringify({
       dependencies: {
-        interactjs: '^1.10.17',
         'react-draggable': '^4.4.6',
-      },
-      peerDependencies: {
         draggabilly: '^3.0.0',
-        dragula: '^3.7.3',
       },
     });
     const matches = scanPackageJson('package.json', pkg, [dragDependencyMatcher]);
-    assert.equal(matches.length, 4);
-    assert.match(matches[0].message, /interactjs/);
+    assert.equal(matches.length, 2);
+    assert.match(matches[0].message, /react-draggable/);
+    assert.match(matches[1].message, /draggabilly/);
+  });
+
+  test('exempts dragula, interactjs, and peerDependencies-only manifests', () => {
+    const pkgSortable = JSON.stringify({
+      dependencies: {
+        interactjs: '^1.10.17',
+        dragula: '^3.7.3',
+      },
+      peerDependencies: {
+        draggabilly: '^3.0.0',
+      },
+    });
+    assert.equal(scanPackageJson('package.json', pkgSortable, [dragDependencyMatcher]).length, 0);
+  });
+
+  test('exempts right-click context menu, click+touchstart, and dimension-only resize handlers', () => {
+    const code = `
+      menu.addEventListener('mousedown', (e) => {
+        if (e.button === 2) {
+          menu.style.left = e.clientX + 'px';
+          menu.style.top = e.clientY + 'px';
+        }
+      });
+      document.addEventListener('mousemove', (e) => {
+        console.log(e.clientX);
+      });
+      splitter.addEventListener('mousedown', (e) => {
+        const startX = e.clientX;
+        function onResize(moveEvent) {
+          splitter.style.width = (moveEvent.clientX - startX) + 'px';
+        }
+        document.addEventListener('mousemove', onResize);
+      });
+    `;
+    const { matches } = scanJsSource('src/context-menu.js', code, [dragJsMatcher]);
+    assert.equal(matches.length, 0);
   });
 
   test('exempts modernized code utilizing setPointerCapture', () => {

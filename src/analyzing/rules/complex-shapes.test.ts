@@ -73,8 +73,24 @@ void test('complex-shapes: negative / exempt cases', async (t) => {
       .dropdown-content {
         -webkit-mask-image: radial-gradient(white, black);
       }
+      .safari-hex {
+        -webkit-mask-image: -webkit-radial-gradient(circle, #ffffff 100%, #000000 100%);
+      }
     `;
     const matches = scanCss('safari-bug-unprefixed.css', css, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts -webkit-mask-image: none reset declarations', () => {
+    const css = `
+      .waves-effect {
+        -webkit-mask-image: none;
+      }
+      .reset-mask {
+        -webkit-mask: none !important;
+      }
+    `;
+    const matches = scanCss('reset-mask.css', css, [matcher]);
     assert.equal(matches.length, 0);
   });
 

@@ -229,4 +229,28 @@ describe('defer-work-until-scroll-ends rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('ignores nested timers and sub-25ms delays', () => {
+    const code = `
+      $(window).scroll(function() {
+        let t;
+        menuItems.each(function(i) {
+          clearTimeout(t);
+          t = setTimeout(() => highlight(i), 100);
+        });
+      });
+
+      let zeroTimer;
+      window.addEventListener('scroll', () => {
+        clearTimeout(zeroTimer);
+        zeroTimer = setTimeout(() => update(), 0);
+      });
+    `;
+    const { matches } = scanJsSource(
+      'ui/non-scrollend.js',
+      code,
+      [deferWorkUntilScrollEndsMatcher]
+    );
+    assert.equal(matches.length, 0);
+  });
 });

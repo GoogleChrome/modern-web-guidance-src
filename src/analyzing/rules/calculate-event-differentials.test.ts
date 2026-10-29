@@ -177,4 +177,24 @@ describe('calculate-event-differentials rule', () => {
     );
     assert.equal(matches.length, 0);
   });
+
+  test('ignores Moment.js calendar sameElse format callbacks and this.diff methods', () => {
+    const momentCalendarCode = `
+      const localeConfig = {
+        calendar: {
+          sameElse: function (now) {
+            var diff = this.diff(now, 'days', true);
+            var otherDiff = targetMoment.diff(now, 'days');
+            return diff < -6 ? 'L' : 'dddd';
+          }
+        }
+      };
+    `;
+    const { matches } = scanJsSource(
+      'locale/calendar.js',
+      momentCalendarCode,
+      [calculateEventDifferentialsMatcher]
+    );
+    assert.equal(matches.length, 0);
+  });
 });

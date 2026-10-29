@@ -314,4 +314,62 @@ describe('ime-safe-enter-submit rule', () => {
       assert.equal(matches.length, 0, `Expected no matches for test file ${testPath}`);
     }
   });
+
+  test('flags custom action methods like this.login() or props.onCommit() on Enter keydown', () => {
+    const code = `
+      input.addEventListener('keydown', function(e) {
+        if (e.keyCode === 13) {
+          this.login();
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'auth/login.js',
+      code,
+      [imeSafeEnterSubmitMatcher]
+    );
+    assert.equal(matches.length, 1);
+  });
+
+  test('ignores global document hotkeys, Alt+Enter shortcuts, Space+Enter button activation, and arrow-key widget navigation', () => {
+    const code = `
+      document.addEventListener('keydown', (event) => {
+        switch (event.keyCode) {
+          case 13:
+            isOverview() ? deactivateOverview() : triggered = false;
+            break;
+        }
+      });
+
+      input.addEventListener('keydown', (event) => {
+        if (event.altKey && event.key === 'Enter') {
+          submitShortcut();
+        }
+      });
+
+      customBtn.addEventListener('keydown', function(event) {
+        if (event.code === 'Enter' || event.code === 'Space') {
+          this.click();
+        }
+      });
+
+      dropdown.addEventListener('keydown', (event) => {
+        switch (event.key) {
+          case 'ArrowUp':
+          case 'ArrowDown':
+            moveFocus();
+            break;
+          case 'Enter':
+            option.click();
+            break;
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'ui/keyboard-shortcuts.js',
+      code,
+      [imeSafeEnterSubmitMatcher]
+    );
+    assert.equal(matches.length, 0);
+  });
 });

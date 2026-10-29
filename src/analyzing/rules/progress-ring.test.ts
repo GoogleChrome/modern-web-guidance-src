@@ -80,6 +80,16 @@ void test('progress-ring: negative / exempt cases', async (suiteContext) => {
     assert.equal(matches.length, 0);
   });
 
+  await suiteContext.test('exempts SVG circle with url(#gradient) stroke', () => {
+    const html = `
+      <svg class="progress-ring">
+        <circle class="progress progress-speed" stroke="url(#gradient)" stroke-dasharray="70 30" stroke-dashoffset="0" r="50" cx="60" cy="60" />
+      </svg>
+    `;
+    const matches = scanHtml('gradientGauge.html', html, [domMatcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await suiteContext.test('exempts native <progress> element', () => {
     const html = `
       <div class="ring-wrapper">

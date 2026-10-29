@@ -5,19 +5,31 @@ import type {
   CssRuleView,
 } from '../schema.ts';
 
+const REPLACED_OR_FORM_SELECTOR_REGEX =
+  /(?:^|[\s>+~,])(?:img|svg|video|canvas|textarea|input|select)\b/i;
+
+function getLocalStylesheetWindow(stylesheetText: string, line: number, radius = 20): string {
+  const lines = stylesheetText.split('\n');
+  const start = Math.max(0, line - 1 - radius);
+  const end = Math.min(lines.length, line + radius);
+  return lines.slice(start, end).join('\n');
+}
+
 function isIntrinsicSizeMaxHeight(styleRule: CssRuleView, stylesheetText: string): boolean {
+  const localWindow = getLocalStylesheetWindow(stylesheetText, styleRule.line, 20);
   const maxHeightRegex = /(?:^|[;{}]\s*)max-height\s*:\s*([^;!}]+)/gi;
   const declaredValues: string[] = [];
+  const ruleValue = (styleRule.getPropertyValue('max-height') ?? '').trim().toLowerCase();
+  if (ruleValue) {
+    declaredValues.push(ruleValue);
+  }
   let execMatch: RegExpExecArray | null;
-  while ((execMatch = maxHeightRegex.exec(stylesheetText)) !== null) {
+  while ((execMatch = maxHeightRegex.exec(localWindow)) !== null) {
     declaredValues.push(execMatch[1].trim().toLowerCase());
   }
 
   if (declaredValues.length === 0) {
-    const ruleValue = (styleRule.getPropertyValue('max-height') ?? '').trim().toLowerCase();
-    if (ruleValue) {
-      declaredValues.push(ruleValue);
-    }
+    return false;
   }
 
   const nonZeroValues: string[] = [];
@@ -104,11 +116,20 @@ const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {
     }
 
     // 4. Check whether max-height is explicitly transitioned, or transitioned via 'all'
+    const explicitlyTransitionsMaxHeight =
+      transition.includes('max-height') || transitionProp.includes('max-height');
+    const transitionsAllWithCollapsibleMaxHeight =
+      !explicitlyTransitionsMaxHeight &&
+      (transition.includes('all') || transitionProp.includes('all')) &&
+      styleRule.hasProperty('max-height') &&
+      !REPLACED_OR_FORM_SELECTOR_REGEX.test(styleRule.selectorText) &&
+      (maxHeight === '0' ||
+        maxHeight === '0px' ||
+        overflow.includes('hidden') ||
+        overflowY.includes('hidden'));
+
     const transitionsMaxHeight =
-      transition.includes('max-height') ||
-      transitionProp.includes('max-height') ||
-      ((transition.includes('all') || transitionProp.includes('all')) &&
-        styleRule.hasProperty('max-height'));
+      explicitlyTransitionsMaxHeight || transitionsAllWithCollapsibleMaxHeight;
 
     if (!transitionsMaxHeight) {
       return null;

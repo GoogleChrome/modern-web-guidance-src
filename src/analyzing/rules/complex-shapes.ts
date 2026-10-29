@@ -17,28 +17,38 @@ const WEBKIT_TO_STANDARD_MAP: Readonly<Record<string, string>> = {
 };
 
 const SAFARI_BORDER_RADIUS_WORKAROUND_REGEX =
-  /(?:-webkit-)?radial-gradient\s*\([^)]*white[^)]*black/i;
+  /(?:-webkit-)?radial-gradient\s*\([^)]*(?:white|#fff(?:fff)?|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))[^)]*(?:black|#000(?:000)?|rgb\(\s*0\s*,\s*0\s*,\s*0\s*\))/i;
+
+const MASK_RESET_VALUE_REGEX =
+  /^\s*(?:none|initial|inherit|unset|revert|revert-layer)(?:\s*!important)?\s*$/i;
 
 function isSafariBorderRadiusWorkaround(value: string): boolean {
   return SAFARI_BORDER_RADIUS_WORKAROUND_REGEX.test(value);
+}
+
+function isMaskResetValue(value: string): boolean {
+  return MASK_RESET_VALUE_REGEX.test(value);
 }
 
 const complexShapesCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['-webkit-mask'],
   matchRule: (styleRule: CssRuleView, _ctx: CssMatcherContext) => {
-    // 1. If rule already provides standard mask shorthand, skip
-    if (styleRule.hasProperty('mask')) {
+    // 1. If rule already provides standard mask or mask-image, skip
+    if (styleRule.hasProperty('mask') || styleRule.hasProperty('mask-image')) {
       return null;
     }
 
-    // 2. Collect declared -webkit-mask* properties that are not the Safari compositing workaround
+    // 2. Collect declared -webkit-mask* properties that are not resets or Safari compositing workarounds
     const activeWebkitProps: string[] = [];
     for (const [webkitProp, standardProp] of Object.entries(WEBKIT_TO_STANDARD_MAP)) {
       if (!styleRule.hasProperty(webkitProp)) {
         continue;
       }
       const val = styleRule.getPropertyValue(webkitProp) ?? '';
+      if (isMaskResetValue(val)) {
+        continue;
+      }
       if (
         (webkitProp === '-webkit-mask' || webkitProp === '-webkit-mask-image') &&
         isSafariBorderRadiusWorkaround(val)
