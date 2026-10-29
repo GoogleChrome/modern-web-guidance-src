@@ -189,7 +189,7 @@ export async function validateGraderExpectationCoverage(
     cleanedTestVectors = await Promise.all(testTitles.map(t => getVec(cleanText(t))));
 
     const expectationEntries = expectations.map(exp => {
-      const withoutExamples = exp.replace(/\s*\((?:e\.g\.|such as)\b[^)]*\)/gi, '');
+      const withoutExamples = exp.replace(/\s*\((?:e\.g\.[,:]?|such as\b)(?:[^()]|\([^()]*\))*\)/gi, '');
       const firstSentence = withoutExamples.split(/[.!?]\s+/)[0];
       return {
         exp,

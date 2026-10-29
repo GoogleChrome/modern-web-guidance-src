@@ -231,12 +231,17 @@ test(
     const cssGrader = path.join(rootDir, 'guides', 'css', 'css', 'targets', 'daily-grind', 'grader.ts');
     const htmlExp = path.join(rootDir, 'guides', 'html', 'html', 'expectations.md');
     const htmlGrader = path.join(rootDir, 'guides', 'html', 'html', 'targets', 'daily-grind', 'grader.ts');
+    const secExp = path.join(rootDir, 'guides', 'security', 'security', 'expectations.md');
+    const secGrader = path.join(rootDir, 'guides', 'security', 'security', 'targets', 'daily-grind', 'grader.ts');
 
     const cssRes = await validateGraderExpectationCoverage(cssExp, cssGrader);
     assert.strictEqual(cssRes.isComplete, true, `css discipline grader should pass coverage: ${JSON.stringify(cssRes.missing)}`);
 
     const htmlRes = await validateGraderExpectationCoverage(htmlExp, htmlGrader);
     assert.strictEqual(htmlRes.isComplete, true, `html discipline grader should pass coverage: ${JSON.stringify(htmlRes.missing)}`);
+
+    const secRes = await validateGraderExpectationCoverage(secExp, secGrader);
+    assert.strictEqual(secRes.isComplete, true, `security discipline grader should pass coverage: ${JSON.stringify(secRes.missing)}`);
   });
 
   it('allows a leaf guide grader to skip expectations whose preconditions are absent from the target app or task', async () => {
