@@ -63,7 +63,7 @@ Pick **one** shape per trail: slant or arrow. The snippets below are alternative
 - Selectors are illustrative; use your own hook (`.breadcrumb` here). Scope to `> ol > li > a` so dropdown menu links aren't shaped. Only add per-variant classes if one page really shows several variants.
 - Make the slant or point size responsive with `clamp()` and container units (`cqi`).
 - Pair state colors with the shape: hover and current-page styles must use background or text color, not border color, so they still show under the `clip-path` fallback. Keep the focus style visually distinct from hover.
-- The overlap margin applies to shaped segments only. A collapsed trail's "…" item is a plain button, so give it and the first visible item after it a normal gap (the hidden middle items sit between them in the DOM), or they overlap the button and cover its focus ring.
+- The overlap margin applies to shaped segments only. A collapsed trail's "…" item is a plain button, so give it and the item after it a normal gap, or they overlap the button and cover its focus ring.
 - Polygons are physically directional and logical properties don't flip `polygon()` coordinates, so each shape needs an explicit `:dir(rtl)` mirror, included in the snippets.
 
 #### Slant (`/`)
