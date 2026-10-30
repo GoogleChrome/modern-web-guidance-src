@@ -99,21 +99,24 @@ function formatFeatureHeadingName(name: string): string {
 defineFeatureMacro("FEATURE_FALLBACKS", {
   content: (args, filePath, options) => {
     const [featureId] = args;
-    let fallbacks = "";
+    let fallbacks: string;
     try {
       fallbacks = MACRO_HANDLERS.FEATURE([featureId, "fallbacks"], filePath, options);
     } catch (e) {
       if (e instanceof MacroError) {
-        fallbacks = "";
-      } else {
-        throw e;
+        throw new MacroError(
+          `${e.message} Either add a "## Fallbacks" section in "features/${featureId}.md" or use {{ BASELINE_STATUS("${featureId}") }} with inline fallback guidance instead.`
+        );
       }
+      throw e;
+    }
+    if (!fallbacks.trim()) {
+      throw new MacroError(
+        `Empty "#fallbacks" section in "features/${featureId}.md" (referenced in FEATURE_FALLBACKS macro in ${filePath}). Either add fallback guidance in "features/${featureId}.md" or use {{ BASELINE_STATUS("${featureId}") }} with inline fallback guidance instead.`
+      );
     }
     // Pending `tmp-*` features have no upstream status yet (#2004), so only their fallbacks are emitted.
     const baselineStatus = featureId in pendingFeatures ? "" : MACRO_HANDLERS.BASELINE_STATUS([featureId], filePath, options);
-    if (!fallbacks) {
-      return baselineStatus;
-    }
 
     return [
       `### Fallbacks & browser support for ${formatFeatureHeadingName(getFeatureName(featureId))}`,
