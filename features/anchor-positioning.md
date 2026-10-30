@@ -32,7 +32,7 @@ Without a bundler, import from a CDN inside a `<script type="module">`:
 
 **Polyfill caveats:**
 - **No implicit anchors:** The polyfill does not support implicit anchor associations (such as those created by `popovertarget`, `commandfor`, `interestfor`, or `showPopover({ source })`). You **MUST** set a unique explicit `anchor-name` on each trigger and a matching `position-anchor` on the positioned element.
-- **No `position-area` on popovers:** Because the polyfill emulates `position-area` with a wrapper element that does not constrain top-layer `[popover]` elements, `position-area` is not supported on popovers by the polyfill. When using the polyfill with a popover, position elements using `anchor()` functions on inset properties (`top`, `left`, `right`, `bottom`) with `inset: auto` instead of `position-area`.
+- **No `position-area` with `position-try-fallbacks`:** `position-area` with `position-try-fallbacks` is not supported by the polyfill. When using the polyfill on elements needing fallbacks, position elements using `anchor()` functions on inset properties (`top`, `left`, `right`, `bottom`) with `inset: auto` instead of `position-area`.
 - **Do not wrap polyfilled rules in `@supports`:** Browsers without native anchor positioning evaluate `@supports (position-area: ...)` and `@supports (anchor-name: --a)` to `false` and discard the block before the polyfill can process it.
 
 ```css
@@ -43,7 +43,7 @@ Without a bundler, import from a CDN inside a `<script type="module">`:
 
 [popover].anchored-overlay {
   position-anchor: --my-trigger;
-  /* MANDATORY: Use anchor() on inset properties rather than position-area when using the polyfill with a popover. */
+  /* MANDATORY: Use anchor() on inset properties rather than position-area when using the polyfill on elements needing position-try-fallbacks. */
   inset: auto;
   top: anchor(bottom);
   left: anchor(left);
