@@ -5,7 +5,7 @@ import type {
   DomRuleMatcher,
 } from '../schema.ts';
 
-export const SCROLLSPY_GUIDE_HASH = 'fffee90dc52d';
+export const SCROLLSPY_GUIDE_HASH = 'd689593b76c5';
 
 const scrollspyDomMatcher: DomRuleMatcher = {
   kind: 'dom',

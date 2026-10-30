@@ -5,7 +5,7 @@ import type {
   CssRuleView,
 } from '../schema.ts';
 
-export const CUSTOM_TEXT_DECORATIONS_GUIDE_HASH = '050e45377dd8';
+export const CUSTOM_TEXT_DECORATIONS_GUIDE_HASH = '63fece93df55';
 
 const INLINE_OR_LINK_SELECTOR_REGEX =
   /(?:^|[\s>+~,])(?:a(?:\.[\w-]+|:[a-z-]+)*|\.link|\.underline|\.text-link|\.nav-link|\.content-link|span(?:\.[\w-]+)*|p\s+a|li\s+a)(?:$|[\s>+~,:])/i;

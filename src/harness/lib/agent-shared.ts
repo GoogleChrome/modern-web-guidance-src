@@ -452,18 +452,26 @@ export function parseAgentArgs(scriptName: string): AgentArgs {
  * @returns The path to the working directory within the isolated home
  */
 export function createWorkDir(templateDir: string, homeDir: string, runType: string): string {
-  // For the single task run, there is no template
-  // Create the empty work dir with the runType as the directory name
-  if (templateDir === '') {
-    const workDir = path.join(homeDir, runType);
+  const isSingleTask = templateDir === '';
+  const workDir = isSingleTask
+    ? path.join(homeDir, runType)
+    : path.join(homeDir, path.basename(templateDir));
+
+  if (isSingleTask) {
     fs.mkdirSync(workDir, { recursive: true });
-    return workDir;
+  } else {
+    execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   }
-  // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
-  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
-  const workDir = path.join(homeDir, path.basename(templateDir));
+
+  // Guided sandboxes are pre-opted-in so OT guides can be retrieved; .mwgrc must land in the
+  // root commit so it stays out of agent.patch (suite templates arrive with .git already).
+  if (runType === 'guided') {
+    fs.writeFileSync(path.join(workDir, '.mwgrc'), JSON.stringify({ allowOriginTrials: true }, null, 2) + '\n', 'utf8');
+  }
   if (!fs.existsSync(path.join(workDir, '.git'))) {
     initGitRepo(workDir);
+  } else if (runType === 'guided') {
+    execSync('git add .mwgrc && git commit -q --amend --no-edit', { cwd: workDir, stdio: 'ignore' });
   }
   return workDir;
 }

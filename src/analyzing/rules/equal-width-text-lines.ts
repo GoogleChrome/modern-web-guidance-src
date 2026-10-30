@@ -17,7 +17,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const EQUAL_WIDTH_TEXT_LINES_GUIDE_HASH = '1795916b979c';
+export const EQUAL_WIDTH_TEXT_LINES_GUIDE_HASH = '1a77340529aa';
 
 const FITTEXT_PACKAGES = [
   'fitty',

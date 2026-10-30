@@ -46,24 +46,16 @@ npx -y modern-web-guidance@latest search "<query>" --skill-version SKILL_VERSION
 [
   {
     "id": "optimize-image-priority",
-    "description": "Optimize the loading priority of Largest Contentful Paint (LCP) candidate images.",
-    "category": "performance",
-    "featuresUsed": [ "Fetch priority" ],
-    "tokenCount": 985,
-    "similarity": 0.7289
+    "description": "Optimize the loading priority of Largest Contentful Paint (LCP) candidate images."
   },
   {
     "id": "defer-rendering-heavy-content",
-    "description": "Reduce rendering times in content-heavy web pages by deferring rendering for offscreen content.",
-    "category": "performance",
-    "featuresUsed": [ "content-visibility", "hidden=\"until-found\"" ],
-    "tokenCount": 1250,
-    "similarity": 0.6961
+    "description": "Reduce rendering times in content-heavy web pages by deferring rendering for offscreen content."
   }
 ]
 ```
 
-> **Note**: Judge results by their `description` fields (not raw `similarity` scores):
+> **Note**: Judge results by their `description` fields:
 > - **Match found**: Call `retrieve` directly—do not also run `list`.
 > - **No match on a web UI/CSS/DOM behavior (or broad UI audit)**: If `search` returns `[]` or unrelated descriptions because your phrasing differed from the catalog (or your task spans multiple categories), run `npx -y modern-web-guidance@latest list` once to check if the pattern is covered under more general terminology.
 > - **Topic not covered**: If no guide `description` directly matches your task, proceed with your implementation without retry loops or retrieving unrelated guides.

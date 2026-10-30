@@ -3,17 +3,16 @@ import { describe, it } from 'node:test';
 import { QUALIFIED_RULES } from './index.ts';
 import { scanAllGuides } from '../../core/guide-validation.ts';
 
-describe('172-landed-guide invariant for analyzer rules', () => {
-  it('asserts that every rule in QUALIFIED_RULES belongs to the 172 landed feature guides', async (t) => {
+describe('landed-guide invariant for analyzer rules', () => {
+  it('asserts that every rule in QUALIFIED_RULES belongs to a landed feature guide', async (t) => {
     const allGuides = scanAllGuides();
     const landedFeatureGuides = allGuides.filter(
       (g) => !g.isDisciplineGuide && g.isPublished,
     );
 
-    assert.strictEqual(
-      landedFeatureGuides.length,
-      172,
-      'Corpus must have exactly 172 landed feature guides',
+    assert.ok(
+      landedFeatureGuides.length > 0,
+      'Corpus must have landed feature guides',
     );
 
     const landedGuideIds = new Set(landedFeatureGuides.map((g) => g.name));

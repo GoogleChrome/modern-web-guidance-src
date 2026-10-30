@@ -97,6 +97,12 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
     }
     fs.writeFileSync(codexMarketplacePath, JSON.stringify(codexMarketplaceData, null, 2) + '\n');
   }
+
+  // Agent Plugins
+  const agentPluginPath = path.join(publishCliDir, "plugin.json");
+  const agentPluginData = JSON.parse(fs.readFileSync(agentPluginPath, 'utf8'));
+  agentPluginData.version = newVersion;
+  fs.writeFileSync(agentPluginPath, JSON.stringify(agentPluginData, null, 2) + '\n');
 }
 
 export function processSkills(publishRoot: string) {

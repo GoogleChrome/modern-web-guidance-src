@@ -1,0 +1,1 @@
+- Prevent the underlying page from scrolling while a modal dialog is open.

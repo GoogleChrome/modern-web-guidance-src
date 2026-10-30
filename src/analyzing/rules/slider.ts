@@ -15,7 +15,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const SLIDER_GUIDE_HASH = '70aeff8bae4d';
+export const SLIDER_GUIDE_HASH = '3082b9fc3260';
 
 const SLIDER_GUARD_TOKENS = [
   'accent-color',
