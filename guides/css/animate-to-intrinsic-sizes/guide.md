@@ -53,7 +53,7 @@ You can apply this pattern to any container (like a "Show More" section or a nav
   transition: inline-size 0.3s ease;
 }
 
-.badge:hover {
+.badge:is(:hover, :focus-visible) {
   /* calc-size(basis, calculation) */
   /* 'size' refers to the evaluated basis (max-content in this case) */
   inline-size: calc-size(max-content, size + 20px);
@@ -92,11 +92,15 @@ You can also animate in the opposite direction—starting from a natural size an
 ```javascript
 // MANDATORY Accessibility Synchronization: Ensure elements collapsed to zero dimensions are removed from the assistive technology tree, and sync aria-expanded states on triggers.
 const alertElement = document.querySelector('.collapsible-alert');
-alertElement.addEventListener('transitionend', (e) => {
-  if (e.propertyName === 'block-size' && alertElement.classList.contains('is-dismissed')) {
-    alertElement.hidden = true;
-  }
-});
+function dismissAlert() {
+  alertElement.classList.add('is-dismissed');
+  // Waits for every transition the class starts; under reduced motion there are none
+  Promise.allSettled(alertElement.getAnimations().map((animation) => animation.finished)).then(() => {
+    if (alertElement.classList.contains('is-dismissed')) {
+      alertElement.hidden = true;
+    }
+  });
+}
 
 // Example trigger syncer
 const triggerBtn = document.querySelector('.accordion-trigger');
