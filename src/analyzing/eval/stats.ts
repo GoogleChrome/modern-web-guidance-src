@@ -1,4 +1,4 @@
-export const CARD_ID_HEX_LENGTH = 12;
+export { CARD_ID_HEX_LENGTH, computeCardId } from '../scanners/index.ts';
 export const Z_95 = 1.96;
 export const Z_SEQUENTIAL_STOPPING = 2.39;
 
@@ -20,8 +20,6 @@ export interface SensitivitySpecificityResult {
   positives: number;
   negatives: number;
 }
-
-export { computeCardId } from '../scanners/index.ts';
 
 /**
  * Calculates the Wilson score interval for a binomial proportion.
@@ -52,8 +50,7 @@ export function wilsonInterval(
 }
 
 /**
- * Evaluates sequential stopping boundaries at 15, 30, and 60 grades
- * using Z_SEQUENTIAL_STOPPING (2.39).
+ * Evaluates sequential stopping boundaries using Z_SEQUENTIAL_STOPPING (2.39).
  */
 export function checkSequentialStop(
   successes: number,
@@ -79,12 +76,10 @@ function tallyPairedRatings(pairs: ReadonlyArray<readonly [string, string]>) {
   }
   const totalValues = 2 * pairs.length;
   let sumSquaredCounts = 0;
-  let sumSquaredProps = 0;
   for (const count of categoryCounts.values()) {
     sumSquaredCounts += count * count;
-    const prop = count / totalValues;
-    sumSquaredProps += prop * prop;
   }
+  const sumSquaredProps = totalValues > 0 ? sumSquaredCounts / (totalValues * totalValues) : 0;
   return {
     agreementCount,
     numCategories: categoryCounts.size,

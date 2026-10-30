@@ -350,9 +350,9 @@ export function parseVerifierResponse(rawText: string, cardId: string): Verifier
   };
 }
 
-const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+export const RETRYABLE_HTTP_STATUSES: ReadonlySet<number> = new Set([429, 500, 502, 503, 504]);
 
-async function fetchWithRetry(
+export async function fetchWithRetry(
   url: string,
   options: RequestInit,
   customFetch: typeof fetch,
@@ -362,7 +362,7 @@ async function fetchWithRetry(
   for (let attempt = 1; ; attempt++) {
     try {
       const res = await customFetch(url, options);
-      if (!RETRYABLE_STATUSES.has(res.status) || attempt > maxRetries) {
+      if (!RETRYABLE_HTTP_STATUSES.has(res.status) || attempt > maxRetries) {
         return res;
       }
     } catch (err: unknown) {

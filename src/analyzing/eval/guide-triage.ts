@@ -1,10 +1,12 @@
 import {
   GEMINI_API_BASE,
   buildGenerateContentUrl,
-  computeExplainerContextHash,
   fetchWithRetry,
-  loadExplainerContextMap,
   resolveGeminiApiBase,
+} from '../llm-verifier.ts';
+import {
+  computeExplainerContextHash,
+  loadExplainerContextMap,
   type ExplainerContextEntry,
 } from './detection-eval.ts';
 import {
@@ -114,6 +116,22 @@ const VALID_EVIDENCE_SOURCES: ReadonlySet<string> = new Set<GuideTriageEvidenceS
   'none',
 ]);
 
+function toTrimmedStrings(arr: unknown[], label: string, guideId: string): string[] {
+  return arr.map((t) => {
+    if (typeof t !== 'string') {
+      throw new Error(`Guide Triage ${label} must be string for guide ${guideId}`);
+    }
+    return t.trim();
+  });
+}
+
+function requireString(val: unknown, field: string, guideId: string, nonEmpty = true): string {
+  if (typeof val !== 'string' || (nonEmpty && !val.trim())) {
+    throw new Error(`Guide Triage response missing string '${field}' for guide ${guideId}`);
+  }
+  return val.trim();
+}
+
 export function parseGuideTriageResponse(rawText: string, guideId: string) {
   let parsed: unknown;
   try {
@@ -135,29 +153,13 @@ export function parseGuideTriageResponse(rawText: string, guideId: string) {
   if (!Array.isArray(rec.candidateTechniques)) {
     throw new Error(`Guide Triage response missing array 'candidateTechniques' for guide ${guideId}`);
   }
-
-  const toTrimmedStrings = (arr: unknown[], label: string): string[] =>
-    arr.map((t) => {
-      if (typeof t !== 'string') {
-        throw new Error(`Guide Triage ${label} must be string for guide ${guideId}`);
-      }
-      return t.trim();
-    });
-
-  const requireString = (val: unknown, field: string, nonEmpty = true): string => {
-    if (typeof val !== 'string' || (nonEmpty && !val.trim())) {
-      throw new Error(`Guide Triage response missing string '${field}' for guide ${guideId}`);
-    }
-    return val.trim();
-  };
-
   if (typeof rec.borderline !== 'boolean') {
     throw new Error(`Guide Triage response missing boolean 'borderline' for guide ${guideId}`);
   }
 
-  const replaces = Array.isArray(rec.replaces) ? toTrimmedStrings(rec.replaces, 'replaces') : undefined;
+  const replaces = Array.isArray(rec.replaces) ? toTrimmedStrings(rec.replaces, 'replaces', guideId) : undefined;
   const doesNotReplace = Array.isArray(rec.doesNotReplace)
-    ? toTrimmedStrings(rec.doesNotReplace, 'doesNotReplace')
+    ? toTrimmedStrings(rec.doesNotReplace, 'doesNotReplace', guideId)
     : undefined;
   const evidenceSource =
     typeof rec.evidenceSource === 'string' && VALID_EVIDENCE_SOURCES.has(rec.evidenceSource)
@@ -166,13 +168,13 @@ export function parseGuideTriageResponse(rawText: string, guideId: string) {
 
   return {
     classification: rec.classification as GuideTriageClassification,
-    candidateTechniques: toTrimmedStrings(rec.candidateTechniques, 'candidateTechnique'),
+    candidateTechniques: toTrimmedStrings(rec.candidateTechniques, 'candidateTechnique', guideId),
     ...(replaces ? { replaces } : {}),
     ...(doesNotReplace ? { doesNotReplace } : {}),
     borderline: rec.borderline,
-    brownfieldTarget: requireString(rec.brownfieldTarget, 'brownfieldTarget'),
-    evidenceFromGuide: requireString(rec.evidenceFromGuide, 'evidenceFromGuide', false),
-    reason: requireString(rec.reason, 'reason'),
+    brownfieldTarget: requireString(rec.brownfieldTarget, 'brownfieldTarget', guideId),
+    evidenceFromGuide: requireString(rec.evidenceFromGuide, 'evidenceFromGuide', guideId, false),
+    reason: requireString(rec.reason, 'reason', guideId),
     ...(evidenceSource ? { evidenceSource } : {}),
   };
 }

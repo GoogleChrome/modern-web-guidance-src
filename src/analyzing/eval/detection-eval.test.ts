@@ -34,6 +34,12 @@ import {
   type JudgeVerdict,
 } from './detection-eval.ts';
 
+const mockGeminiResponse = (p: unknown, status = 200) =>
+  new Response(typeof p === 'string' ? p : JSON.stringify(p), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
 const SAMPLE_GUIDE_SUMMARY: GuideSummaryInfo = {
   guideId: 'calculate-event-differentials',
   problem: 'Date subtraction suffers from daylight saving and leap second drift.',
@@ -487,29 +493,26 @@ describe('code snippet slicing, blind cards prep, and direct judge runner', () =
     assert.equal(expectedProvenance.ruleHash, 'rulehash1234');
 
     const mockDirectFetch: typeof fetch = async () =>
-      new Response(
-        JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify({
-                      matches_before_syntax: true,
-                      has_fallback_or_feature_guard: false,
-                      modern_feature_applies_here: true,
-                      has_meaningful_payoff: true,
-                      reasoning: 'Matches old Date subtraction.',
-                      verdict: 'legit-modernize-target',
-                    }),
-                  },
-                ],
-              },
+      mockGeminiResponse({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    matches_before_syntax: true,
+                    has_fallback_or_feature_guard: false,
+                    modern_feature_applies_here: true,
+                    has_meaningful_payoff: true,
+                    reasoning: 'Matches old Date subtraction.',
+                    verdict: 'legit-modernize-target',
+                  }),
+                },
+              ],
             },
-          ],
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
+          },
+        ],
+      });
 
     const run0 = await runJudgeDirect([cardWithExplainer], {
       apiKey: 'test-key',
