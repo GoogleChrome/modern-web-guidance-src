@@ -138,6 +138,13 @@
             border: 0;
           }
 
+          @media (forced-colors: active) {
+            /* Keeps the gradient, which forced colors mode removes, and draws it in system colors */
+            forced-color-adjust: none;
+            --spinner-color: CanvasText;
+            --track-color: Canvas;
+          }
+
           animation:
             progress-spin var(--_used-spinner-duration) linear infinite 
             var(--progress-dash-animation, );
@@ -166,7 +173,10 @@
 
         @media (prefers-reduced-motion: reduce) {
           progress.loading-spinner:indeterminate {
-            --_used-spinner-duration: 6s;
+            animation: none;
+            /* Shows a static arc while the animations are off, so the stopped
+               spinner is still visible */
+            --arc-end: 158deg;
           }
         }
       }

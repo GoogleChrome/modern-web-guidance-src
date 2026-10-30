@@ -56,7 +56,7 @@ progress.loading-spinner:indeterminate::slider-fill {
 ```
 
 #### Spinner Ring and Trail
-The spinner uses a `conic-gradient` to create a visual trail.
+The spinner uses a `conic-gradient` to create a visual trail. Forced colors mode removes background gradients, so in `@media (forced-colors: active)`, opt the spinner out with `forced-color-adjust: none` and draw it with system colors, or the spinner disappears.
 
 ```css
 @property --arc-start {
@@ -109,6 +109,13 @@ progress.loading-spinner:indeterminate {
 
   /* ... fallback for background-clip: border-area ... */
 
+  @media (forced-colors: active) {
+    /* Keeps the gradient, which forced colors mode removes, and draws it in system colors */
+    forced-color-adjust: none;
+    --spinner-color: CanvasText;
+    --track-color: Canvas;
+  }
+
   /* The dash animation is only included if @property is supported */
   animation:
     progress-spin var(--_used-spinner-duration) linear infinite
@@ -139,14 +146,15 @@ progress.loading-spinner:indeterminate {
 
 #### Respecting Motion Preferences
 
-Users with motion sensitivities may find fast-spinning elements disorienting. Always respect the `prefers-reduced-motion` media query. Set the internal `--_used-spinner-duration` property to override the user's `--spinner-duration` value.
+Users with motion sensitivities may find fast-spinning elements disorienting. Always respect the `prefers-reduced-motion` media query. Turn off both animations using `@media (prefers-reduced-motion: reduce)`, with the same selector as the spinner rule so that it overrides the spinner's `animation`, and keep a static arc in the spinner color so the spinner is still visible. The `<progress>` element's role and accessible name still tell assistive technologies that the process is active.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  .loading-spinner {
-    /* Slow down the animation significantly rather than stopping it entirely,
-       so the user still knows that the process is active. */
-    --_used-spinner-duration: 6s;
+  progress.loading-spinner:indeterminate {
+    animation: none;
+    /* Shows a static arc while the animations are off, so the stopped
+       spinner is still visible */
+    --arc-end: 158deg;
   }
 }
 ```
