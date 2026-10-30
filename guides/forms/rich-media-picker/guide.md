@@ -164,6 +164,8 @@ This approach helps ensure equity in the information provided across browsers, r
 
 **DON'T** override the option's text, by applying an `aria-label` on it. This will result in people missing visible text that hasn't been included in the `aria-label`. It also risks the issue arising when the option text is updated in the future. Instead, ensure that the entire option text makes sense in isolation.
 
+**DON'T** add interactive elements or semantics inside the `<option>` element. People using screen readers will not hear the announcements, and as a result, won't be able to determine that further information is present.
+
 ## Fallback Strategies
 
 {{ FEATURE_FALLBACKS("customizable-select") }}
