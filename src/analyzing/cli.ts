@@ -7,13 +7,10 @@ import { scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerRule, VerifierRubric } from './schema.ts';
 
 export interface AnalyzeCliFinding {
-  readonly ruleId: string;
   readonly file: string;
   readonly line: number;
   readonly message: string;
-  readonly codeSnippet: string;
-  readonly summary?: string;
-  readonly verifierRubric?: VerifierRubric;
+  readonly lineContent: string;
 }
 
 export interface AnalyzeCliRuleGroup {
@@ -26,12 +23,9 @@ export interface AnalyzeCliRuleGroup {
 
 export interface AnalyzeCliGuideGroup {
   readonly guideId: string;
-  readonly summary: string;
   readonly retrieveCommand: string;
-  readonly verifierRubric?: VerifierRubric;
   readonly count: number;
-  readonly findings: readonly AnalyzeCliFinding[];
-  readonly rules?: readonly AnalyzeCliRuleGroup[];
+  readonly rules: readonly AnalyzeCliRuleGroup[];
 }
 
 export interface AnalyzeJsonOutput {
@@ -80,16 +74,6 @@ export function elideText(text: string, maxLen = 110): string {
   return normalized.slice(0, maxLen - 1).trimEnd() + '…';
 }
 
-export function extractTargetCodeLine(codeSnippet: string, maxLen = 80): string {
-  if (!codeSnippet) return '';
-  const lines = codeSnippet.split('\n');
-  const raw =
-    lines.find((l) => l.trimStart().startsWith('>')) ??
-    lines.find((l) => l.trim().length > 0) ??
-    '';
-  return elideText(raw.replace(/^\s*>?\s*(?:\d+\s*\|\s*)?/, ''), maxLen);
-}
-
 export function sampleDiversifiedFindings(
   findings: readonly AnalyzeCliFinding[],
   maxTotal = 5,
@@ -125,11 +109,7 @@ Options:
 
 function appendFindingGroupBlock(
   lines: string[],
-  group: {
-    readonly summary: string;
-    readonly verifierRubric?: VerifierRubric;
-    readonly findings: readonly AnalyzeCliFinding[];
-  },
+  group: AnalyzeCliRuleGroup,
   indent: string,
   fmt: (style: TextStyle, text: string) => string,
 ): void {
@@ -143,7 +123,7 @@ function appendFindingGroupBlock(
   const displayed = sampleDiversifiedFindings(group.findings, 5);
   for (const f of displayed) {
     lines.push(`${indent}- ${f.file}:${f.line}`);
-    const preview = extractTargetCodeLine(f.codeSnippet, 80);
+    const preview = elideText(f.lineContent, 80);
     if (preview) {
       lines.push(`${indent}  ${fmt('dim', preview)}`);
     }
@@ -209,25 +189,22 @@ export function formatHumanReadable(
   lines.push('');
 
   for (const g of guides) {
-    if (!g.rules || g.rules.length <= 1) {
-      lines.push(
-        `* ${fmt(['bold', 'cyan'], g.guideId)} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'})`)}`,
-      );
-      appendFindingGroupBlock(lines, g, '  ', fmt);
+    const countSuffix =
+      g.rules.length === 1
+        ? `(${g.count} finding${g.count === 1 ? '' : 's'})`
+        : `(${g.count} finding${g.count === 1 ? '' : 's'} across ${g.rules.length} rules)`;
+
+    lines.push(
+      `* ${fmt(['bold', 'cyan'], g.guideId)} ${fmt('dim', countSuffix)}`,
+    );
+    for (const rg of g.rules) {
       lines.push('');
-    } else {
       lines.push(
-        `* ${fmt(['bold', 'cyan'], g.guideId)} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'} across ${g.rules.length} rules)`)}`,
+        `  ${fmt('bold', rg.ruleId)} ${fmt('dim', `(${rg.count} finding${rg.count === 1 ? '' : 's'})`)}`,
       );
-      for (const rg of g.rules) {
-        lines.push('');
-        lines.push(
-          `  ${fmt('bold', rg.ruleId)} ${fmt('dim', `(${rg.count} finding${rg.count === 1 ? '' : 's'})`)}`,
-        );
-        appendFindingGroupBlock(lines, rg, '    ', fmt);
-      }
-      lines.push('');
+      appendFindingGroupBlock(lines, rg, '    ', fmt);
     }
+    lines.push('');
   }
 
   lines.push(
@@ -326,62 +303,39 @@ export async function runAnalyzeCli(
 
   const guides: AnalyzeCliGuideGroup[] = sortedGuideIds.map((gid) => {
     const guideFindings = findingsByGuide.get(gid)!;
-    guideFindings.sort(
-      (a, b) =>
-        a.file.localeCompare(b.file) ||
-        a.line - b.line ||
-        a.ruleId.localeCompare(b.ruleId),
-    );
-
-    const cliFindings: AnalyzeCliFinding[] = guideFindings.map((f) => {
-      const rule = ruleMap.get(f.ruleId);
-      if (!rule) {
-        throw new Error(`Rule definition not found for ruleId "${f.ruleId}" (guide "${gid}")`);
-      }
-      if (!rule.summary?.trim()) {
-        throw new Error(`Rule "${rule.id}" is missing a required summary string`);
-      }
-      return {
-        ruleId: f.ruleId,
-        file: f.file,
-        line: f.line,
-        message: f.message,
-        codeSnippet: f.codeSnippet || f.contextSlice,
-        summary: rule.summary,
-        ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
-      };
-    });
-
-    const byRule = Map.groupBy(cliFindings, (f) => f.ruleId);
-    const ruleGroups: AnalyzeCliRuleGroup[] = Array.from(byRule.keys())
+    const byRule = Map.groupBy(guideFindings, (f) => f.ruleId);
+    const rules: AnalyzeCliRuleGroup[] = Array.from(byRule.keys())
       .sort()
       .map((rid) => {
+        const rule = ruleMap.get(rid);
+        if (!rule) {
+          throw new Error(`Rule definition not found for ruleId "${rid}" (guide "${gid}")`);
+        }
+        if (!rule.summary?.trim()) {
+          throw new Error(`Rule "${rule.id}" is missing a required summary string`);
+        }
         const rf = byRule.get(rid)!;
-        const rule = ruleMap.get(rid)!;
+        rf.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+        const cliFindings: AnalyzeCliFinding[] = rf.map((f) => ({
+          file: f.file,
+          line: f.line,
+          message: f.message,
+          lineContent: f.lineContent ?? '',
+        }));
         return {
           ruleId: rid,
           summary: rule.summary,
           ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
-          count: rf.length,
-          findings: rf,
+          count: cliFindings.length,
+          findings: cliFindings,
         };
       });
 
-    const primaryRule = ruleGroups[0]!;
-    const isSingleRule = ruleGroups.length === 1;
-
     return {
       guideId: gid,
-      summary: isSingleRule
-        ? primaryRule.summary
-        : ruleGroups.map((rg) => rg.summary).join('; '),
       retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
-      ...(isSingleRule && primaryRule.verifierRubric
-        ? { verifierRubric: primaryRule.verifierRubric }
-        : {}),
-      count: cliFindings.length,
-      findings: cliFindings,
-      ...(isSingleRule ? {} : { rules: ruleGroups }),
+      count: guideFindings.length,
+      rules,
     };
   });
 

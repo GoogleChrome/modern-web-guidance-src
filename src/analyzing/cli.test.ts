@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   elideText,
-  extractTargetCodeLine,
   formatHumanReadable,
   runAnalyzeCli,
   sampleDiversifiedFindings,
@@ -188,20 +187,25 @@ describe('runAnalyzeCli', () => {
 
       const guide = parsed.guides.find((g) => g.guideId === 'autofill-sign-in-form');
       assert.ok(guide, 'Expected autofill-sign-in-form guide in JSON output');
-      assert.ok(guide.verifierRubric, 'Expected verifierRubric in guide JSON output');
-      assert.ok(guide.verifierRubric.keepWhen.length >= 1);
-      assert.ok(guide.verifierRubric.dropWhen.length >= 1);
       assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve autofill-sign-in-form');
-      assert.ok(guide.summary.length > 0);
-      assert.equal(guide.count, guide.findings.length);
+      assert.equal(guide.count, 1);
+      assert.equal(guide.rules.length, 1);
 
-      const finding = guide.findings[0];
+      const ruleGroup = guide.rules[0];
+      assert.ok(ruleGroup);
+      assert.equal(ruleGroup.ruleId, 'autofill-sign-in-form');
+      assert.ok(ruleGroup.summary.length > 0);
+      assert.ok(ruleGroup.verifierRubric, 'Expected verifierRubric in rule group JSON output');
+      assert.ok(ruleGroup.verifierRubric.keepWhen.length >= 1);
+      assert.ok(ruleGroup.verifierRubric.dropWhen.length >= 1);
+      assert.equal(ruleGroup.count, ruleGroup.findings.length);
+
+      const finding = ruleGroup.findings[0];
       assert.ok(finding);
-      assert.equal(finding.ruleId, 'autofill-sign-in-form');
       assert.equal(finding.file, 'auth.html');
       assert.ok(typeof finding.line === 'number');
       assert.ok(finding.message.length > 0);
-      assert.ok(finding.codeSnippet.length > 0);
+      assert.equal(finding.lineContent, '<input type="password" name="pass">');
     } finally {
       await rm(testDir, { recursive: true, force: true });
     }
@@ -327,7 +331,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(resJson.exitCode, 0);
       const parsedJson = JSON.parse(resJson.output) as AnalyzeJsonOutput;
       assert.equal(parsedJson.totalFindings, 8);
-      assert.equal(parsedJson.guides[0].findings.length, 8);
+      assert.equal(parsedJson.guides[0].rules[0].findings.length, 8);
     } finally {
       await rm(testDir, { recursive: true, force: true });
     }
@@ -343,29 +347,12 @@ describe('runAnalyzeCli', () => {
       assert.equal(elideText('  multiple   whitespace   chars  ', 50), 'multiple whitespace chars');
     });
 
-    it('extractTargetCodeLine extracts marked target lines and cleans up formatting', () => {
-      const snippetWithMarker = `   1 | line 1\n>  2 |   <input type="password" name="pwd">   \n   3 | line 3`;
-      assert.equal(
-        extractTargetCodeLine(snippetWithMarker, 80),
-        '<input type="password" name="pwd">',
-      );
-
-      const snippetWithoutMarker = `  42 |    .class { display: none; }   `;
-      assert.equal(
-        extractTargetCodeLine(snippetWithoutMarker, 80),
-        '.class { display: none; }',
-      );
-
-      assert.equal(extractTargetCodeLine(''), '');
-    });
-
     it('sampleDiversifiedFindings diversifies findings across files round-robin up to cap', () => {
       const makeFinding = (file: string, id: string): AnalyzeCliFinding => ({
-        ruleId: 'r1',
         file,
         line: 1,
         message: id,
-        codeSnippet: '> 1 | line',
+        lineContent: 'line',
       });
 
       // 3 files with 3 findings each (9 findings total)
@@ -398,16 +385,21 @@ describe('runAnalyzeCli', () => {
         [
           {
             guideId: 'autofill-sign-in-form',
-            summary: 'Autocomplete guidance summary',
             retrieveCommand: 'npx retrieve autofill-sign-in-form',
             count: 1,
-            findings: [
+            rules: [
               {
                 ruleId: 'autofill-sign-in-form',
-                file: 'src/login.html',
-                line: 10,
-                message: 'Missing autocomplete',
-                codeSnippet: '> 10 | <input type="password">',
+                summary: 'Autocomplete guidance summary',
+                count: 1,
+                findings: [
+                  {
+                    file: 'src/login.html',
+                    line: 10,
+                    message: 'Missing autocomplete',
+                    lineContent: '<input type="password">',
+                  },
+                ],
               },
             ],
           },
@@ -426,16 +418,21 @@ describe('runAnalyzeCli', () => {
         [
           {
             guideId: 'autofill-sign-in-form',
-            summary: 'Autocomplete guidance summary',
             retrieveCommand: 'npx retrieve autofill-sign-in-form',
             count: 1,
-            findings: [
+            rules: [
               {
                 ruleId: 'autofill-sign-in-form',
-                file: 'src/login.html',
-                line: 10,
-                message: 'Missing autocomplete',
-                codeSnippet: '> 10 | <input type="password">',
+                summary: 'Autocomplete guidance summary',
+                count: 1,
+                findings: [
+                  {
+                    file: 'src/login.html',
+                    line: 10,
+                    message: 'Missing autocomplete',
+                    lineContent: '<input type="password">',
+                  },
+                ],
               },
             ],
           },
@@ -483,7 +480,7 @@ describe('runAnalyzeCli', () => {
         assert.equal(resJson.exitCode, 0);
         const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
         assert.equal(parsed.totalFindings, 1);
-        assert.equal(parsed.guides[0]?.findings[0]?.file, join('src', 'login.html').replace(/\\/g, '/'));
+        assert.equal(parsed.guides[0]?.rules[0]?.findings[0]?.file, join('src', 'login.html').replace(/\\/g, '/'));
         assert.equal(parsed.skippedDocsAndTestsCount, 9);
 
         // 2. Default human-readable output: includes one dim line reporting skipped count
@@ -507,7 +504,7 @@ describe('runAnalyzeCli', () => {
         assert.equal(resDocs.exitCode, 0);
         const parsedDocs = JSON.parse(resDocs.output) as AnalyzeJsonOutput;
         assert.equal(parsedDocs.totalFindings, 1);
-        assert.equal(parsedDocs.guides[0]?.findings[0]?.file, 'sample.html');
+        assert.equal(parsedDocs.guides[0]?.rules[0]?.findings[0]?.file, 'sample.html');
       } finally {
         await rm(testDir, { recursive: true, force: true });
       }
@@ -564,11 +561,14 @@ describe('runAnalyzeCli', () => {
         const guideBOnly = parsedBOnly.guides[0];
         assert.ok(guideBOnly);
         assert.equal(guideBOnly.guideId, 'test-multirule');
+        assert.equal(guideBOnly.rules.length, 1);
+        const ruleGroupBOnly = guideBOnly.rules[0];
+        assert.ok(ruleGroupBOnly);
         // Must show Rule B's summary and rubric, NOT Rule A's!
-        assert.equal(guideBOnly.summary, 'Summary for Rule B (CSS style workaround)');
-        assert.deepEqual(guideBOnly.verifierRubric, ruleB.verifierRubric);
-        assert.equal(guideBOnly.findings[0]?.summary, 'Summary for Rule B (CSS style workaround)');
-        assert.deepEqual(guideBOnly.findings[0]?.verifierRubric, ruleB.verifierRubric);
+        assert.equal(ruleGroupBOnly.ruleId, 'test-multirule/css-rule');
+        assert.equal(ruleGroupBOnly.summary, 'Summary for Rule B (CSS style workaround)');
+        assert.deepEqual(ruleGroupBOnly.verifierRubric, ruleB.verifierRubric);
+        assert.equal(ruleGroupBOnly.findings[0]?.lineContent, '.custom-style { color: red; }');
 
         const resHumanBOnly = await runAnalyzeCli([testDir], { rules: [ruleA, ruleB] });
         assert.ok(resHumanBOnly.output.includes('Summary for Rule B (CSS style workaround)'));
@@ -589,24 +589,19 @@ describe('runAnalyzeCli', () => {
 
         const guideBoth = parsedBoth.guides[0];
         assert.ok(guideBoth);
-        assert.ok(guideBoth.rules && guideBoth.rules.length === 2);
+        assert.equal(guideBoth.rules.length, 2);
 
         const ruleGroupA = guideBoth.rules.find((r) => r.ruleId === 'test-multirule/package-rule');
         const ruleGroupB = guideBoth.rules.find((r) => r.ruleId === 'test-multirule/css-rule');
         assert.ok(ruleGroupA && ruleGroupB);
         assert.equal(ruleGroupA.summary, ruleA.summary);
         assert.deepEqual(ruleGroupA.verifierRubric, ruleA.verifierRubric);
+        assert.equal(ruleGroupA.findings.length, 1);
+        assert.equal(ruleGroupA.findings[0]?.file, 'package.json');
         assert.equal(ruleGroupB.summary, ruleB.summary);
         assert.deepEqual(ruleGroupB.verifierRubric, ruleB.verifierRubric);
-
-        // Every finding in findings array has its own rule's summary and rubric
-        const findingA = guideBoth.findings.find((f) => f.ruleId === 'test-multirule/package-rule');
-        const findingB = guideBoth.findings.find((f) => f.ruleId === 'test-multirule/css-rule');
-        assert.ok(findingA && findingB);
-        assert.equal(findingA.summary, ruleA.summary);
-        assert.deepEqual(findingA.verifierRubric, ruleA.verifierRubric);
-        assert.equal(findingB.summary, ruleB.summary);
-        assert.deepEqual(findingB.verifierRubric, ruleB.verifierRubric);
+        assert.equal(ruleGroupB.findings.length, 1);
+        assert.equal(ruleGroupB.findings[0]?.file, 'style.css');
 
         // Human output renders multi-rule guide with distinct rule blocks
         const resHumanBoth = await runAnalyzeCli([testDir], { rules: [ruleA, ruleB] });

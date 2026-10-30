@@ -66,26 +66,11 @@ Coding agents receive structured JSON containing exact file coordinates, message
   "guides": [
     {
       "guideId": "form-fields-automatically-fit-contents",
-      "summary": "Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.",
       "retrieveCommand": "npx modern-web-guidance retrieve form-fields-automatically-fit-contents",
-      "verifierRubric": {
-        "keepWhen": [
-          "A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/width using scrollHeight or scrollWidth to auto-expand the field as the user types.",
-          "…"
-        ],
-        "dropWhen": [
-          "The code is guarded by a feature query checking CSS.supports(\"field-sizing\", \"content\") or field-sizing support.",
-          "…"
-        ]
-      },
       "count": 1,
-      "findings": [
+      "rules": [
         {
           "ruleId": "form-fields-automatically-fit-contents",
-          "file": "src/static/js/admin/settings.js",
-          "line": 30,
-          "message": "Library autosize() call auto-expands textarea/input fields; modernize with CSS field-sizing: content.",
-          "codeSnippet": "   28 |       $('.settings').append(settings.results);\n   29 |       $('.settings').focus();\n>  30 |       $('.settings').autosize();\n   31 |     }\n   32 |     else{…",
           "summary": "Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.",
           "verifierRubric": {
             "keepWhen": [
@@ -96,7 +81,16 @@ Coding agents receive structured JSON containing exact file coordinates, message
               "The code is guarded by a feature query checking CSS.supports(\"field-sizing\", \"content\") or field-sizing support.",
               "…"
             ]
-          }
+          },
+          "count": 1,
+          "findings": [
+            {
+              "file": "src/static/js/admin/settings.js",
+              "line": 30,
+              "message": "Library autosize() call auto-expands textarea/input fields; modernize with CSS field-sizing: content.",
+              "lineContent": "$('.settings').autosize();"
+            }
+          ]
         }
       ]
     }
