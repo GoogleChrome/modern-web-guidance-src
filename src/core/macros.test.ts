@@ -630,6 +630,48 @@ describe('INCLUDE', () => {
       );
     });
 
+    it('throws MacroError when features/<id>.md does not exist', () => {
+      assert.throws(
+        () => replaceMacros('{{ FEATURE_FALLBACKS("subgrid") }}', 'test.md'),
+        (err: unknown) =>
+          err instanceof MacroError &&
+          /File not found: "features\/subgrid\.md"/.test(err.message) &&
+          /BASELINE_STATUS\("subgrid"\)/.test(err.message)
+      );
+    });
+
+    it('throws MacroError when features/<id>.md has no ## Fallbacks section', () => {
+      assert.throws(
+        () => replaceMacros('{{ FEATURE_FALLBACKS("tmp-cross-origin-storage") }}', 'test.md'),
+        (err: unknown) =>
+          err instanceof MacroError &&
+          /Section "#fallbacks" not found in "features\/tmp-cross-origin-storage\.md"/.test(err.message) &&
+          /BASELINE_STATUS\("tmp-cross-origin-storage"\)/.test(err.message)
+      );
+    });
+
+    it('throws MacroError when ## Fallbacks section is empty', () => {
+      const tempFeaturePath = path.join(rootDir, 'features', 'grid.md');
+      fs.writeFileSync(tempFeaturePath, '## Fallbacks\n\n{# only a comment #}\n', 'utf8');
+      try {
+        assert.throws(
+          () => replaceMacros('{{ FEATURE_FALLBACKS("grid") }}', 'test.md'),
+          (err: unknown) =>
+            err instanceof MacroError &&
+            /Empty "#fallbacks" section in "features\/grid\.md"/.test(err.message) &&
+            /BASELINE_STATUS\("grid"\)/.test(err.message)
+        );
+      } finally {
+        fs.unlinkSync(tempFeaturePath);
+      }
+    });
+
+    it('emits heading, baseline status, and fallback content when features/<id>.md#fallbacks exists', () => {
+      const result = replaceMacros('{{ FEATURE_FALLBACKS("anchor-positioning") }}', 'test.md');
+      assert.match(result, /^### Fallbacks & browser support for Anchor positioning\n\n/);
+      assert.match(result, /@oddbird\/css-anchor-positioning/);
+    });
+
     it('emits fallbacks without a status line for pending tmp-* features', () => {
       const result = replaceMacros('{{ FEATURE_FALLBACKS("tmp-customizable-select-listbox") }}', 'test.md');
       assert.match(result, /^### Fallbacks & browser support for customizable-select-listbox\n\n[^\n]/);
