@@ -130,10 +130,7 @@ Ensure that options have enough context to be understood in isolation, particula
     <line x1="12" y1="17" x2="12" y2="21"></line>
   </svg>
   <div class="option-text">
-    <span class="option-title">
-      Frontend Developer<span class="visually-hidden">.</span>
-      <span class="visually-hidden">Responsibilities include:</span>
-    </span>
+    <span class="option-title">Frontend Developer</span>
     <span class="option-desc">React, Vue, CSS</span>
   </div>
 </option>
