@@ -1,3 +1,4 @@
+import { normalizeCssDeclValue } from '../scanners/css-scanner.ts';
 import type {
   AnalyzerRule,
   CssMatcherContext,
@@ -66,10 +67,6 @@ const RESET_PROP_VALUES = new Set([
   'normal',
   'auto',
 ]);
-
-function normalizeCssDeclValue(raw: string): string {
-  return raw.replace(/\s*!important\s*$/i, '').trim().toLowerCase();
-}
 
 function hasVisualErrorOrSiblingReveal(
   styleRule: CssRuleView,

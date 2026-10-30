@@ -7,6 +7,7 @@ import {
 import {
   getSafeModuleSpecifier,
   isGlobalReference,
+  matchesPackageSpec,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
@@ -28,9 +29,6 @@ const FITTEXT_PACKAGES = [
 const NON_TEXT_FIT_TARGETS =
   /\b(?:canvas|ctx|context|chart|video|audio|player|camera|scene|game|threejs)\b/i;
 
-const SINGLE_LINE_SELECTOR_REGEX =
-  /(?:^|[\s>+~])\.r-fit-text\s*$/i;
-
 const HEADING_OR_TITLE_CONTEXT_REGEX =
   /(?:^|[\s>+~.#'"`_-])(?:h[1-6]|headline|heading|title)\b/i;
 
@@ -49,8 +47,14 @@ function hasMinMaxFontSizeOption(call: CallExpression): boolean {
   return false;
 }
 
-function hasHeadingOrTitleContext(text: string): boolean {
-  return HEADING_OR_TITLE_CONTEXT_REGEX.test(text);
+function isJQueryLikeTarget(target: Node): boolean {
+  return (
+    (Node.isIdentifier(target) &&
+      (target.getText().startsWith('$') || target.getText() === 'jQuery')) ||
+    Node.isCallExpression(target) ||
+    (Node.isPropertyAccessExpression(target) &&
+      (target.getName().startsWith('$') || target.getName() === 'jQuery'))
+  );
 }
 
 function countFitTextCallsInFile(sourceFile: SourceFile): number {
@@ -61,13 +65,7 @@ function countFitTextCallsInFile(sourceFile: SourceFile): number {
       const name = expr.getName();
       if (name === 'fitText' || name === 'fittext') {
         const target = unwrapExpression(expr.getExpression());
-        const isJQueryCaller =
-          (Node.isIdentifier(target) &&
-            (target.getText().startsWith('$') || target.getText() === 'jQuery')) ||
-          Node.isCallExpression(target) ||
-          (Node.isPropertyAccessExpression(target) &&
-            (target.getName().startsWith('$') || target.getName() === 'jQuery'));
-        if (isJQueryCaller || call.getArguments().length > 0) {
+        if (isJQueryLikeTarget(target) || call.getArguments().length > 0) {
           count++;
         }
       }
@@ -121,24 +119,22 @@ function isInSingleLineContext(call: CallExpression): boolean {
   return false;
 }
 
-function extractLastSelectorLiteral(text: string): string | null {
-  const strMatches = text.match(/['"`]([^'"`]+)['"`]/g);
-  if (!strMatches || strMatches.length === 0) {
-    return null;
-  }
-  const lastRaw = strMatches[strMatches.length - 1];
-  if (!lastRaw) {
-    return null;
-  }
-  return lastRaw.slice(1, -1).trim();
-}
-
-function isSingleLineSelectorTarget(text: string): boolean {
-  if (/\.r-fit-text\b/.test(text)) {
+function isExcludedTargetNode(
+  node: Node,
+  hasMinMaxOpts: boolean,
+  sourceFile: SourceFile,
+): boolean {
+  const text = node.getText();
+  const resolvedText = resolveLocalExpression(node, 2).getText();
+  if (/\.r-fit-text\b/i.test(text) || /\.r-fit-text\b/i.test(resolvedText)) {
     return true;
   }
-  const selector = extractLastSelectorLiteral(text);
-  return selector !== null && SINGLE_LINE_SELECTOR_REGEX.test(selector);
+  return (
+    hasMinMaxOpts &&
+    (HEADING_OR_TITLE_CONTEXT_REGEX.test(text) ||
+      HEADING_OR_TITLE_CONTEXT_REGEX.test(resolvedText)) &&
+    countFitTextCallsInFile(sourceFile) === 1
+  );
 }
 
 function isFitTextCall(
@@ -160,37 +156,14 @@ function isFitTextCall(
     if (name !== 'fitty' && name !== 'fitText' && name !== 'fittext') {
       return false;
     }
-    const args = call.getArguments();
-    if (args.length === 0) {
+    const firstArg = call.getArguments()[0];
+    if (!firstArg || isExcludedTargetNode(firstArg, hasMinMaxOpts, sourceFile)) {
       return false;
     }
-    const firstArg = args[0];
-    if (firstArg) {
-      const firstText = firstArg.getText();
-      const resolvedFirstText = resolveLocalExpression(firstArg, 2).getText();
-      if (
-        isSingleLineSelectorTarget(firstText) ||
-        isSingleLineSelectorTarget(resolvedFirstText)
-      ) {
-        return false;
-      }
-      if (
-        hasMinMaxOpts &&
-        (hasHeadingOrTitleContext(firstText) ||
-          hasHeadingOrTitleContext(resolvedFirstText)) &&
-        countFitTextCallsInFile(sourceFile) === 1
-      ) {
-        return false;
-      }
-    }
     if (!isGlobalReference(expr, name)) {
-      const hasPkgImport = sourceFile.getImportDeclarations().some((imp) => {
-        const spec = getSafeModuleSpecifier(imp);
-        return (
-          spec !== null &&
-          FITTEXT_PACKAGES.some((pkg) => spec === pkg || spec.startsWith(`${pkg}/`))
-        );
-      });
+      const hasPkgImport = sourceFile.getImportDeclarations().some((imp) =>
+        matchesPackageSpec(getSafeModuleSpecifier(imp), FITTEXT_PACKAGES),
+      );
       if (!hasPkgImport) {
         return false;
       }
@@ -209,46 +182,15 @@ function isFitTextCall(
       return false;
     }
 
-    const targetText = target.getText();
-    const resolvedTargetText = resolveLocalExpression(target, 2).getText();
-    if (
-      isSingleLineSelectorTarget(targetText) ||
-      isSingleLineSelectorTarget(resolvedTargetText)
-    ) {
-      return false;
-    }
-    if (
-      hasMinMaxOpts &&
-      (hasHeadingOrTitleContext(targetText) ||
-        hasHeadingOrTitleContext(resolvedTargetText)) &&
-      countFitTextCallsInFile(sourceFile) === 1
-    ) {
+    if (isExcludedTargetNode(target, hasMinMaxOpts, sourceFile)) {
       return false;
     }
 
     // Skip zero-arg calls on non-jQuery objects (e.g. this.fitText(), customScripts.fitText())
-    const isJQueryCaller =
-      (Node.isIdentifier(target) && (target.getText().startsWith('$') || target.getText() === 'jQuery')) ||
-      Node.isCallExpression(target) ||
-      (Node.isPropertyAccessExpression(target) && (target.getName().startsWith('$') || target.getName() === 'jQuery'));
-
-    if (!isJQueryCaller && call.getArguments().length === 0) {
+    if (!isJQueryLikeTarget(target) && call.getArguments().length === 0) {
       return false;
     }
 
-    // Skip zero-arg wrapper calls like `customScripts.fitText()` when the file defines its own `fitText` method wrapping `$(...).fitText(...)`
-    if (
-      call.getArguments().length === 0 &&
-      Node.isIdentifier(target) &&
-      !target.getText().startsWith('$') &&
-      target.getText() !== 'jQuery' &&
-      /\bfitText\s*[:(]/.test(sourceFile.getFullText())
-    ) {
-      const propAssignments = sourceFile.getFullText().match(/\bfitText\s*:\s*function\b|\bfunction\s+fitText\b/);
-      if (propAssignments) {
-        return false;
-      }
-    }
     return true;
   }
   return false;

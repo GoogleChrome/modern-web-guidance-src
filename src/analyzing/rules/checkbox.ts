@@ -31,16 +31,21 @@ function isExcludedSelectorBranch(branch: string): boolean {
 }
 
 const STAR_CONTENT_REGEX = /(?:★|☆|\\2605|\\2606|\\f005|\\f006)/i;
-const STAR_OR_RATING_SELECTOR_REGEX = /\b(?:star|rating|rate)\b/i;
 
-const SR_ONLY_REGEX = /\.(?:sr-only|visually-hidden)\b/i;
-
-const TOGGLE_SWITCH_REGEX = /\b(?:switch|toggle|onoff|slider|toggle-btn|btn-check|toggle-button)\b/i;
+const EXCLUDED_RULE_SELECTOR_REGEX =
+  /(?:\.(?:sr-only|visually-hidden)|\b(?:switch|toggle|onoff|slider|toggle-btn|btn-check|toggle-button|star|rating|rate))\b/i;
 
 const CUSTOM_CHECKBOX_WRAPPER_CLASS_REGEX = /\.(?:custom-checkbox|custom-control-input)\b/i;
 
 const PSEUDO_ELEMENT_REGEX =
   /::?(?:before|after|placeholder|selection|backdrop|marker|file-selector-button)\b/i;
+
+function isExcludedWidgetRule(rule: CssRuleView): boolean {
+  return (
+    EXCLUDED_RULE_SELECTOR_REGEX.test(rule.selectorText) ||
+    STAR_CONTENT_REGEX.test(rule.getPropertyValue('content') ?? '')
+  );
+}
 
 function extractSubjectCompoundSelector(branch: string): string {
   const trimmed = branch.trim();
@@ -110,35 +115,15 @@ function hasValidSiblingSelectorInRules(
   ctx: CssMatcherContext,
   siblingPattern: RegExp,
 ): boolean {
-  if (!ctx.styleRules) {
-    return false;
-  }
-  for (const rule of ctx.styleRules) {
-    if (
-      SR_ONLY_REGEX.test(rule.selectorText) ||
-      TOGGLE_SWITCH_REGEX.test(rule.selectorText) ||
-      STAR_OR_RATING_SELECTOR_REGEX.test(rule.selectorText)
-    ) {
-      continue;
-    }
-    const contentVal = rule.getPropertyValue('content') ?? '';
-    if (STAR_CONTENT_REGEX.test(contentVal)) {
-      continue;
-    }
-    const branches = rule.selectorText.split(',');
-    for (const rawBranch of branches) {
-      const b = rawBranch.trim();
-      if (
-        !isExcludedSelectorBranch(b) &&
-        !TOGGLE_SWITCH_REGEX.test(b) &&
-        !STAR_OR_RATING_SELECTOR_REGEX.test(b) &&
-        siblingPattern.test(b)
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
+  return (
+    ctx.styleRules?.some(
+      (rule) =>
+        !isExcludedWidgetRule(rule) &&
+        rule.selectorText
+          .split(',')
+          .some((b) => !isExcludedSelectorBranch(b.trim()) && siblingPattern.test(b.trim())),
+    ) ?? false
+  );
 }
 
 export const checkboxCssMatcher: CssRuleMatcher = {
@@ -160,22 +145,8 @@ export const checkboxCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // 2. Skip screen-reader accessibility utility classes
-    if (SR_ONLY_REGEX.test(styleRule.selectorText)) {
-      return null;
-    }
-
-    // 3. Skip custom toggle-switch components (.switch, .toggle, role="switch")
-    if (TOGGLE_SWITCH_REGEX.test(styleRule.selectorText)) {
-      return null;
-    }
-
-    // 4. Skip star rating widgets (.star, .rating, .rate, or Unicode star content)
-    if (STAR_OR_RATING_SELECTOR_REGEX.test(styleRule.selectorText)) {
-      return null;
-    }
-    const contentProperty = styleRule.getPropertyValue('content') ?? '';
-    if (STAR_CONTENT_REGEX.test(contentProperty)) {
+    // 2. Skip screen-reader utility classes, toggle switches, and star rating widgets
+    if (isExcludedWidgetRule(styleRule)) {
       return null;
     }
 

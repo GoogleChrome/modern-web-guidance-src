@@ -25,6 +25,7 @@ const INTEREST_GUARD_TOKENS = [
 ] as const;
 
 const NON_SIMPLE_TIPPY_OPTION_KEYS: ReadonlySet<string> = new Set([
+  'interactive',
   'followCursor',
   'allowHTML',
   'onShow',
@@ -47,60 +48,48 @@ const NON_SIMPLE_TIPPY_OPTION_KEYS: ReadonlySet<string> = new Set([
 function isInteractiveOrClickPopoverConfig(optionsObj: ObjectLiteralExpression): boolean {
   for (const prop of optionsObj.getProperties()) {
     if (
-      Node.isPropertyAssignment(prop) ||
-      Node.isShorthandPropertyAssignment(prop) ||
-      Node.isMethodDeclaration(prop)
+      !Node.isPropertyAssignment(prop) &&
+      !Node.isShorthandPropertyAssignment(prop) &&
+      !Node.isMethodDeclaration(prop)
     ) {
-      const name = prop.getName();
-      if (NON_SIMPLE_TIPPY_OPTION_KEYS.has(name)) {
-        if (Node.isPropertyAssignment(prop)) {
-          const init = prop.getInitializer();
-          if (init && unwrapExpression(init).getKind() === SyntaxKind.FalseKeyword) {
-            continue;
-          }
+      continue;
+    }
+    const name = prop.getName();
+    if (NON_SIMPLE_TIPPY_OPTION_KEYS.has(name)) {
+      if (Node.isPropertyAssignment(prop)) {
+        const init = prop.getInitializer();
+        if (init && unwrapExpression(init).getKind() === SyntaxKind.FalseKeyword) {
+          continue;
         }
+      }
+      return true;
+    }
+    if (name === 'content') {
+      if (Node.isMethodDeclaration(prop)) {
         return true;
       }
-      if (name === 'interactive') {
-        if (Node.isShorthandPropertyAssignment(prop)) {
-          return true;
-        }
-        if (Node.isPropertyAssignment(prop)) {
-          const init = prop.getInitializer();
-          if (init && unwrapExpression(init).getKind() !== SyntaxKind.FalseKeyword) {
+      if (Node.isPropertyAssignment(prop)) {
+        const init = prop.getInitializer();
+        if (init) {
+          const resolvedContent = resolveLocalExpression(init, 2);
+          if (
+            Node.isArrowFunction(resolvedContent) ||
+            Node.isFunctionExpression(resolvedContent)
+          ) {
             return true;
           }
         }
       }
-      if (name === 'content') {
-        if (Node.isMethodDeclaration(prop)) {
-          return true;
-        }
-        if (Node.isPropertyAssignment(prop)) {
-          const init = prop.getInitializer();
-          if (init) {
-            const resolvedContent = resolveLocalExpression(init, 2);
-            if (
-              Node.isArrowFunction(resolvedContent) ||
-              Node.isFunctionExpression(resolvedContent)
-            ) {
-              return true;
-            }
-          }
-        }
-      }
     }
-  }
-
-  const triggerProp = optionsObj.getProperty('trigger');
-  if (triggerProp && Node.isPropertyAssignment(triggerProp)) {
-    const init = triggerProp.getInitializer();
-    if (init) {
-      const unwrapped = unwrapExpression(init);
-      if (Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)) {
-        const triggerText = unwrapped.getLiteralText();
-        if (triggerText.includes('click') || triggerText.includes('manual')) {
-          return true;
+    if (name === 'trigger' && Node.isPropertyAssignment(prop)) {
+      const init = prop.getInitializer();
+      if (init) {
+        const unwrapped = unwrapExpression(init);
+        if (Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)) {
+          const triggerText = unwrapped.getLiteralText();
+          if (triggerText.includes('click') || triggerText.includes('manual')) {
+            return true;
+          }
         }
       }
     }
@@ -162,8 +151,8 @@ function isGuardedByInterestCheck(node: Node): boolean {
 
 export const interestTriggeredTooltipsJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['tippy'],
-  isGuarded: (node) => isGuardedByInterestCheck(node),
-  matchCall: (node) => matchTippyCall(node),
+  isGuarded: isGuardedByInterestCheck,
+  matchCall: matchTippyCall,
 });
 
 export const interestTriggeredTooltipsJsRule: AnalyzerRule = {

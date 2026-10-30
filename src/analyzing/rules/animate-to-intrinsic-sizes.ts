@@ -8,72 +8,45 @@ import type {
 const REPLACED_OR_FORM_SELECTOR_REGEX =
   /(?:^|[\s>+~,])(?:img|svg|video|canvas|textarea|input|select)\b/i;
 
-function getLocalStylesheetWindow(stylesheetText: string, line: number, radius = 20): string {
-  const lines = stylesheetText.split('\n');
-  const start = Math.max(0, line - 1 - radius);
-  const end = Math.min(lines.length, line + radius);
-  return lines.slice(start, end).join('\n');
-}
+const IGNORED_MAX_HEIGHT_KEYWORDS = new Set(['none', 'initial', 'inherit', 'unset']);
+const PERCENT_OR_VIEWPORT_REGEX = /^\d+(?:\.\d+)?(?:%|vh|dvh|svh|lvh|vw|dvw|svw|lvw|vi|vb)$/i;
 
 function isIntrinsicSizeMaxHeight(styleRule: CssRuleView, stylesheetText: string): boolean {
-  const localWindow = getLocalStylesheetWindow(stylesheetText, styleRule.line, 20);
-  const maxHeightRegex = /(?:^|[;{}]\s*)max-height\s*:\s*([^;!}]+)/gi;
-  const declaredValues: string[] = [];
-  const ruleValue = (styleRule.getPropertyValue('max-height') ?? '').trim().toLowerCase();
-  if (ruleValue) {
-    declaredValues.push(ruleValue);
-  }
-  let execMatch: RegExpExecArray | null;
-  while ((execMatch = maxHeightRegex.exec(localWindow)) !== null) {
-    declaredValues.push(execMatch[1].trim().toLowerCase());
-  }
+  const lines = stylesheetText.split('\n');
+  const localWindow = lines
+    .slice(Math.max(0, styleRule.line - 21), Math.min(lines.length, styleRule.line + 20))
+    .join('\n');
 
+  const ruleValue = (styleRule.getPropertyValue('max-height') ?? '').trim().toLowerCase();
+  const declaredValues = [
+    ...(ruleValue ? [ruleValue] : []),
+    ...Array.from(
+      localWindow.matchAll(/(?:^|[;{}]\s*)max-height\s*:\s*([^;!}]+)/gi),
+      (m) => m[1].trim().toLowerCase(),
+    ),
+  ];
   if (declaredValues.length === 0) {
     return false;
   }
 
-  const nonZeroValues: string[] = [];
-  let hasZeroDeclared = false;
+  const hasZeroDeclared = declaredValues.some((v) => v === '0' || v === '0px');
+  const nonZeroValues = declaredValues.filter(
+    (v) => v !== '0' && v !== '0px' && !IGNORED_MAX_HEIGHT_KEYWORDS.has(v),
+  );
 
-  for (const rawValue of declaredValues) {
-    const trimmedValue = rawValue.trim().toLowerCase();
-    if (trimmedValue === '0' || trimmedValue === '0px') {
-      hasZeroDeclared = true;
-    } else if (
-      trimmedValue !== 'none' &&
-      trimmedValue !== 'initial' &&
-      trimmedValue !== 'inherit' &&
-      trimmedValue !== 'unset'
-    ) {
-      nonZeroValues.push(trimmedValue);
-    }
+  if (nonZeroValues.length > 0 && nonZeroValues.every((v) => PERCENT_OR_VIEWPORT_REGEX.test(v))) {
+    return false;
   }
 
-  if (nonZeroValues.length > 0) {
-    const allPercentOrViewport = nonZeroValues.every((valueText) =>
-      /^\d+(?:\.\d+)?(?:%|vh|dvh|svh|lvh|vw|dvw|svw|lvw|vi|vb)$/i.test(valueText),
-    );
-    if (allPercentOrViewport) {
-      return false;
-    }
-  }
-
-  if (hasZeroDeclared) {
-    return true;
-  }
-
-  for (const valueText of nonZeroValues) {
-    const pxMatch = /^(\d+(?:\.\d+)?)px$/i.exec(valueText);
-    if (pxMatch && parseFloat(pxMatch[1]) > 50) {
-      return true;
-    }
-    const remMatch = /^(\d+(?:\.\d+)?)(?:rem|em|ch)$/i.exec(valueText);
-    if (remMatch && parseFloat(remMatch[1]) > 3) {
-      return true;
-    }
-  }
-
-  return false;
+  return (
+    hasZeroDeclared ||
+    nonZeroValues.some((v) => {
+      const pxMatch = /^(\d+(?:\.\d+)?)px$/i.exec(v);
+      if (pxMatch && parseFloat(pxMatch[1]) > 50) return true;
+      const remMatch = /^(\d+(?:\.\d+)?)(?:rem|em|ch)$/i.exec(v);
+      return Boolean(remMatch && parseFloat(remMatch[1]) > 3);
+    })
+  );
 }
 
 const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {

@@ -1,3 +1,4 @@
+import { normalizeCssDeclValue } from '../scanners/css-scanner.ts';
 import type {
   AnalyzerRule,
   CssMatcherContext,
@@ -61,61 +62,34 @@ const RESET_PROP_VALUES = new Set([
 const EXPLICIT_ERROR_COLOR_TOKEN_REGEX =
   /\b(?:red|crimson|firebrick|darkred|maroon)\b|--[a-z0-9-]*(?:error|danger|invalid|alert|warn)|#(?:f00|ff0000|d00|c00|e00|dc3545|ef4444|f44336|d32f2f|b91c1c|b94a48|cc0000)\b/i;
 
-function normalizeCssDeclValue(raw: string): string {
-  return raw.replace(/\s*!important\s*$/i, '').trim().toLowerCase();
-}
-
-function isPlaceholderColorEmulation(styleRule: CssRuleView): boolean {
-  if (/placeholder/i.test(styleRule.selectorText)) {
-    return true;
+function hasVisualErrorStyling(styleRule: CssRuleView): boolean {
+  if (
+    /placeholder/i.test(styleRule.selectorText) ||
+    styleRule.declarations.some((d) => /placeholder/i.test(d.value))
+  ) {
+    return false;
   }
-  if (styleRule.declarations.some((d) => /placeholder/i.test(d.value))) {
-    return true;
-  }
-
-  // If the rule only sets color and/or opacity (no non-reset border, background, outline, box-shadow, display, visibility)
-  // and the color value does not contain an explicit error/danger color token, it is dimming the unselected <option value=""> placeholder
   const nonResetVisualDecls = styleRule.declarations.filter((d) => {
     const prop = d.property.toLowerCase();
-    if (!ERROR_OR_DISPLAY_PROPERTIES.has(prop)) {
-      return false;
-    }
+    if (!ERROR_OR_DISPLAY_PROPERTIES.has(prop)) return false;
     const val = normalizeCssDeclValue(d.value);
     return Boolean(val && !RESET_PROP_VALUES.has(val));
   });
-
-  if (
-    nonResetVisualDecls.length > 0 &&
-    nonResetVisualDecls.every((d) => {
-      const prop = d.property.toLowerCase();
-      return prop === 'color' || prop === 'opacity';
-    })
-  ) {
-    const hasExplicitErrorColor = nonResetVisualDecls.some(
+  if (nonResetVisualDecls.length === 0) {
+    return false;
+  }
+  const isOnlyColorOrOpacity = nonResetVisualDecls.every((d) => {
+    const prop = d.property.toLowerCase();
+    return prop === 'color' || prop === 'opacity';
+  });
+  if (isOnlyColorOrOpacity) {
+    return nonResetVisualDecls.some(
       (d) =>
         d.property.toLowerCase() === 'color' &&
         EXPLICIT_ERROR_COLOR_TOKEN_REGEX.test(d.value),
     );
-    if (!hasExplicitErrorColor) {
-      return true;
-    }
   }
-
-  return false;
-}
-
-function hasNonResetVisualErrorDeclaration(styleRule: CssRuleView): boolean {
-  return styleRule.declarations.some((d) => {
-    const prop = d.property.toLowerCase();
-    if (!ERROR_OR_DISPLAY_PROPERTIES.has(prop)) {
-      return false;
-    }
-    const val = normalizeCssDeclValue(d.value);
-    if (!val || RESET_PROP_VALUES.has(val)) {
-      return false;
-    }
-    return true;
-  });
+  return true;
 }
 
 export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
@@ -128,43 +102,20 @@ export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
     const selector = styleRule.selectorText;
     if (
       selector.includes(':user-invalid') ||
-      ctx.stylesheetText.includes(':user-invalid')
-    ) {
-      return null;
-    }
-
-    if (
-      styleRule.parentAtRule &&
-      styleRule.parentAtRule.includes(':user-invalid')
-    ) {
-      return null;
-    }
-
-    // Skip selectors already gated by touched/dirty/validated classes or third-party custom select widgets
-    if (
+      ctx.stylesheetText.includes(':user-invalid') ||
+      styleRule.parentAtRule?.includes(':user-invalid') ||
       TOUCHED_OR_VALIDATED_GATE_REGEX.test(selector) ||
-      CUSTOM_SELECT_WIDGET_CSS_REGEX.test(selector)
+      CUSTOM_SELECT_WIDGET_CSS_REGEX.test(selector) ||
+      REQUIRED_MULTI_CONTROL_OVERLAP_REGEX.test(selector)
     ) {
-      return null;
-    }
-
-    // Carve out multi-control :required:invalid rules owned by required-field-feedback
-    if (REQUIRED_MULTI_CONTROL_OVERLAP_REGEX.test(selector)) {
-      return null;
-    }
-
-    // Skip placeholder dimming rules (e.g. pairing select:invalid with ::placeholder)
-    if (isPlaceholderColorEmulation(styleRule)) {
       return null;
     }
 
     const selectorWithoutNot = selector.replace(/:not\([^)]*\)/gi, '');
-    if (!SELECT_INVALID_SELECTOR_REGEX.test(selectorWithoutNot)) {
-      return null;
-    }
-
-    // Require at least one non-reset visual error or display declaration (skip box-shadow: none resets)
-    if (!hasNonResetVisualErrorDeclaration(styleRule)) {
+    if (
+      !SELECT_INVALID_SELECTOR_REGEX.test(selectorWithoutNot) ||
+      !hasVisualErrorStyling(styleRule)
+    ) {
       return null;
     }
 
