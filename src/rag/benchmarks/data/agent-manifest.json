@@ -1,0 +1,48 @@
+{
+  "version": "v1",
+  "createdAt": "2026-10-26T22:28:43.398Z",
+  "sourceSuites": [
+    "harness-pre-2056 (2026-07-22..2026-10-09)",
+    "nightly-2026-10-19_07-00-02-antigravity_cli",
+    "nightly-2026-10-19_17-02-55-claude_code",
+    "nightly-2026-10-19_17-28-30-codex_cli",
+    "nightly-2026-10-20_18-18-02-antigravity_cli",
+    "nightly-2026-10-20_20-25-55-claude_code",
+    "nightly-2026-10-20_20-43-48-codex_cli",
+    "nightly-2026-10-22_21-00-02-antigravity_cli",
+    "nightly-2026-10-22_23-40-02-claude_code",
+    "nightly-2026-10-23_00-00-10-codex_cli",
+    "nightly-2026-10-24_21-00-02-antigravity_cli",
+    "nightly-2026-10-24_23-53-23-claude_code"
+  ],
+  "dateRange": "2026-07-22..2026-10-24",
+  "judgeModel": "gemini-3.8-flash",
+  "rubricVersion": "v1",
+  "clustering": "group-partitioned by connected components of expectedGuide (resample by guide cluster in bootstrap CIs)",
+  "notes": "Trajectory summaries lack full tool output (empty for antigravity, truncated for claude/codex, sidecar logs in <27% of runs). Most slug/title-matching queries were the first search in their task, and later ones were re-simulated against the prior search.",
+  "connectedComponents": {
+    "totalComponents": 99,
+    "largestComponentGuides": 15,
+    "largestComponentQueries": 115
+  },
+  "split": {
+    "dev": {
+      "guides": 70,
+      "queries": 515
+    },
+    "test": {
+      "guides": 70,
+      "queries": 514
+    }
+  },
+  "files": {
+    "agent-queries.jsonl": {
+      "rows": 1029,
+      "sha256": "ab3c93aabf692028398479685621c44043dc9d1350a6c100f43370a7905dadc0"
+    },
+    "agent-qrels.jsonl": {
+      "rows": 1029,
+      "sha256": "d5fb45b5a0b41a95513f1af48256f098c7f91f0e95e58724712779867ee0d18b"
+    }
+  }
+}

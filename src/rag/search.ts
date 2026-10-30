@@ -93,8 +93,8 @@ function loadVectors(): UseCaseVector[] {
 
 /**
  * Hybrid retrieval: guides are ranked by their best-matching chunk (dense cosine) and by per-chunk max-pooled BM25,
- * then merged with reciprocal rank fusion. `minSimilarity` gates the query, not individual guides: if no
- * chunk in the corpus reaches it, nothing is returned; otherwise lexical matches with weaker cosine can surface.
+ * then merged with reciprocal rank fusion. `minSimilarity` gates the query, not individual guides: `[]` is returned
+ * only when dense top-1 is below the floor AND BM25 has no matches; otherwise lexical matches with weaker cosine can surface.
  * The reported `similarity` is still the guide's best dense cosine.
  */
 export async function searchUseCases(
@@ -131,7 +131,7 @@ export async function searchUseCases(
   }
 
   const fused = reciprocalRankFusion([
-    dense.map((r) => r.item.id),
+    topDenseSim < minSimilarity ? [] : dense.map((r) => r.item.id),
     bm25Matches.map((r) => r.id),
   ]);
 

@@ -56,17 +56,28 @@ describe("searchUseCases", () => {
     assert.strictEqual(results.length, 0);
   });
 
-  it("fuses and returns results when dense is below floor but BM25 matches (new identifiers / zero-vector query)", async () => {
+  it("fuses and returns results when dense is below floor but BM25 matches", async () => {
     const zeroEmbedder: EmbedderLike = {
       embed: async () => Array.from({ length: 256 }, () => 0),
     };
-    // Dense similarity is 0 (below 0.58 floor), but BM25 matches "autofill address form"
+    // Dense similarity is 0 (below 0.58 floor), but BM25 matches "autofill address form".
     const results = await searchUseCases("autofill address form", 5, 0.58, zeroEmbedder);
     assert.ok(results.length > 0, "Should return BM25 matches even when dense similarity is 0");
-    assert.ok(
-      results.some((r) => r.id === "autofill-address-form"),
-      "BM25 should surface autofill-address-form"
-    );
+    const match = results.find((r) => r.id === "autofill-address-form");
+    assert.ok(match, "BM25 should surface autofill-address-form");
+    assert.strictEqual(match.similarity, 0, "Zero dense similarity is preserved on BM25-surfaced result");
+  });
+
+  it("excludes sub-floor dense list and returns only BM25 matches when topDenseSim < minSimilarity", async () => {
+    const zeroEmbedder: EmbedderLike = {
+      embed: async () => Array.from({ length: 256 }, () => 0),
+    };
+    // "i18n pluralization" has 1 BM25 match and 0 dense similarity (below floor).
+    // When dense is below floor, only BM25 matches are returned without sub-floor dense padding.
+    const results = await searchUseCases("i18n pluralization", 10, 0.58, zeroEmbedder);
+    assert.strictEqual(results.length, 1, "Should return only the BM25 match, not padded to limit=10");
+    assert.strictEqual(results[0].id, "state-aware-sticky-headers");
+    assert.strictEqual(results[0].similarity, 0);
   });
 
   it("returns results for queries matching uncached BM25-only guide entries", async () => {
@@ -79,6 +90,12 @@ describe("searchUseCases", () => {
     assert.strictEqual(results[0].similarity, 0, "Similarity for zero-dense match should be 0");
   });
 
+  it("above-floor behavior is unchanged and preserves dense similarities", async () => {
+    const results = await searchUseCases("autofill address form", 5, 0.58);
+    assert.ok(results.length > 0);
+    assert.strictEqual(results[0].id, "autofill-address-form");
+    assert.ok(results[0].similarity > 0.58);
+  });
   it("keeps sibling guides on a cluster query", async () => {
     const ids = (await searchUseCases("tooltip on hover")).map((r) => r.id);
     assert.ok(
