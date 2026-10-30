@@ -12,7 +12,6 @@
 - Right-clicking a target item (on `mouseup` or `pointerup`) opens its context menu popover with `showPopover({ source })` referencing the cursor anchor element.
 - A visible trigger `<button type="button">` toggles the context menu using `command="toggle-popover"` and `commandfor` matching the popover's `id`.
 - The visible trigger button sets `aria-haspopup="menu"`, `aria-expanded`, and an accessible label.
-- The context menu popover element is placed immediately after its visible trigger button in the DOM.
-- Opening a context menu sets a `source` attribute on the popover from `event.source` during the `beforetoggle` event.
-- A context menu opened from a button trigger (`[popover][source="button" i]`) adjusts its `position-area` styling compared to a cursor-triggered open.
+- When paired with a visible trigger button, the context menu popover element is placed immediately after its trigger button in the DOM.
+- When a context menu supports both cursor and button triggers, opening it from the button trigger (detected via `event.source` in `beforetoggle`) adjusts its `position-area` styling compared to a cursor-triggered open.
 - A JavaScript coordinate fallback (`left` and `top`) positions the popover when CSS Anchor Positioning (`positionArea` in `document.documentElement.style`) is not supported.

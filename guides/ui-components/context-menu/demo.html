@@ -213,7 +213,7 @@
       </button>
       <div id="menu1" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="trigger1">
-          <button type="button">Edit</button>
+          <button type="button" autofocus>Edit</button>
           <button type="button">Share</button>
           <hr />
           <button type="button">Delete</button>
@@ -478,13 +478,7 @@
         const popover = card.querySelector("[popover]");
         const anchor = card.querySelector(".menu-anchor");
 
-        card.addEventListener("contextmenu", (event) => {
-          event.preventDefault();
-        });
-
-        card.addEventListener("mouseup", (event) => {
-          if (!(event.button === 2 || event.ctrlKey)) return;
-
+        const openContextMenu = (event) => {
           const rect = card.getBoundingClientRect();
           const x = event.clientX - rect.left;
           const y = event.clientY - rect.top;
@@ -498,7 +492,20 @@
             popover.style.top = `${event.clientY}px`;
           }
 
+          enterOnOpen.add(popover);
           popover.showPopover({ source: anchor });
+        };
+
+        card.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          if (event.button === 0 && !event.ctrlKey) {
+            openContextMenu(event);
+          }
+        });
+
+        card.addEventListener("mouseup", (event) => {
+          if (!(event.button === 2 || event.ctrlKey)) return;
+          openContextMenu(event);
         });
       });
 

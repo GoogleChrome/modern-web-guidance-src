@@ -7,7 +7,7 @@ web-feature-ids:
   - focusgroup
   - invoker-commands
 guides:
-  menu
+  - menu
 ---
 
 # Context Menu
@@ -75,15 +75,7 @@ const card = document.querySelector('.card');
 const menuAnchor = card.querySelector('.menu-anchor');
 const popover = card.querySelector('#context-menu');
 
-card.addEventListener('contextmenu', (e) => {
-  // Prevent the browser's default context menu
-  e.preventDefault();
-});
-
-card.addEventListener('mouseup', (e) => {
-  // button 2 = right mouse click
-  if (!(e.button === 2 || e.ctrlKey)) return;
-
+function openContextMenu(e) {
   // Calculate relative coordinates
   const rect = card.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -97,6 +89,22 @@ card.addEventListener('mouseup', (e) => {
   // Open the popover and associate it with the anchor source.
   // MANDATORY: Use showPopover({source}) to establish the implicit anchor.
   popover.showPopover({ source: menuAnchor });
+  popover.querySelector('button:not([disabled])')?.focus();
+}
+
+card.addEventListener('contextmenu', (e) => {
+  // Prevent the browser's default context menu
+  e.preventDefault();
+  // Keyboard invocation (ContextMenu key or Shift+F10) dispatches contextmenu without mouseup
+  if (e.button === 0 && !e.ctrlKey) {
+    openContextMenu(e);
+  }
+});
+
+card.addEventListener('mouseup', (e) => {
+  // button 2 = right mouse click
+  if (!(e.button === 2 || e.ctrlKey)) return;
+  openContextMenu(e);
 });
 ```
 
@@ -115,6 +123,14 @@ For touch users or general discovery, add a visible button that toggles the same
 ```
 
 The `command` attribute sets the popover's implicit anchor position, in the same way as the source in `showPopover({source})`. It can be used as an anchor without setting an `anchor-name` or `position-anchor`. Keep the value of `aria-expanded` in sync with the popover's state.
+
+```js
+const trigger = card.querySelector('[commandfor="context-menu"]');
+
+popover.addEventListener('toggle', (event) => {
+  trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
+});
+```
 
 
 ### 4. Combining both methods
@@ -141,7 +157,7 @@ popover.addEventListener('beforetoggle', (event)=>{
 
 {{ FEATURE_FALLBACKS("focusgroup") }}
 
-### Fallback for Invoker Commmands
+### Fallback for Invoker Commands
 
 {{ BASELINE_STATUS("invoker-commands") }}
 
