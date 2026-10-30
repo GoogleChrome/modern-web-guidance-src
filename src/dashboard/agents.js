@@ -26,8 +26,9 @@ export const AGENTS = {
 
 /**
  * Agent families pooled into the headline numbers, in display order. Only agents on the
- * nightly schedule belong here; `gemini_cli` is intentionally excluded because it only
- * appears in ad hoc runs, which would skew the "latest nightly per agent" comparison.
+ * nightly schedule belong here. `gemini_cli` is intentionally excluded: it has only been used
+ * for ad hoc experiments (never nightly), and Antigravity CLI is already the Gemini entry, so
+ * adding it would count Gemini twice if it were ever scheduled.
  * @type {AgentFamilyDef[]}
  */
 export const AGENT_FAMILIES = [
