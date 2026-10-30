@@ -1,0 +1,1 @@
+- Refresh the visual presentation of The Daily Grind landing page in `index.html`: enhance the hero banner's atmosphere over the coffee imagery, give the Seasonal Favorites cards a sense of depth and subtle decorative backdrop styling, include a visual indicator for drink profiles on each card, and add a decorative finish to the footer.
