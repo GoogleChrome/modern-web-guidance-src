@@ -11,8 +11,7 @@ import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
 import { getSkillUpdateLevel } from "./skill-version.ts";
-import { USE_CASES, getUseCase } from "../rag/guides.ts";
-import { isDisciplineGuide } from "../core/discipline-guides.ts";
+import { USE_CASES } from "../rag/guides.ts";
 import { determineAgent } from "./telemetry/detect-agent.ts";
 
 const MAX_INLINE_STDOUT_BYTES = 9500;
@@ -149,12 +148,6 @@ async function main() {
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
-
-    ids.sort((a, b) => {
-      const aDisc = isDisciplineGuide(a, getUseCase(a)?.category) ? 1 : 0;
-      const bDisc = isDisciplineGuide(b, getUseCase(b)?.category) ? 1 : 0;
-      return aDisc - bDisc;
-    });
 
     let hasError = false;
     const retrievedSections: string[] = [];

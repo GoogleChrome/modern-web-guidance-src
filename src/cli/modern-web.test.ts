@@ -61,12 +61,12 @@ describe('modern-web CLI', () => {
     assert.strictEqual(occurrences, 1, 'Duplicate guide IDs should only be printed once');
   });
 
-  it('automatically saves large (> 9.5 KB) output to a temporary UTF-8 file, ordering use-case guides before discipline guides, while keeping <= 9.5 KB output inline', () => {
+  it('automatically saves large (> 9.5 KB) output to a temporary UTF-8 file while keeping <= 9.5 KB output inline', () => {
     const smallRes = runCLI(['retrieve', '2d-panning']);
     assert.strictEqual(smallRes.status, 0);
     assert.ok(smallRes.stdout.includes('--- Guide for 2d-panning ---'), 'Small guide should print inline to stdout');
 
-    const res = runCLI(['retrieve', 'css,2d-panning']);
+    const res = runCLI(['retrieve', '2d-panning,css']);
     assert.strictEqual(res.status, 0);
     const match = res.stdout.trim().match(/^Output \([\d.]+ KB, \d+ lines\) saved to (\S+) to prevent CLI stdout truncation\./);
     assert.ok(match, `Expected saved file path message, got: ${res.stdout}`);
@@ -75,10 +75,10 @@ describe('modern-web CLI', () => {
     try {
       assert.ok(fs.existsSync(savedPath), `Saved file should exist at ${savedPath}`);
       const content = fs.readFileSync(savedPath, 'utf8');
-      const useCaseIdx = content.indexOf('--- Guide for 2d-panning ---');
-      const disciplineIdx = content.indexOf('--- Guide for css ---');
-      assert.ok(useCaseIdx !== -1 && disciplineIdx !== -1, 'Both guides should be present in saved file');
-      assert.ok(useCaseIdx < disciplineIdx, 'Use-case guide should appear before discipline guide');
+      const firstIdx = content.indexOf('--- Guide for 2d-panning ---');
+      const secondIdx = content.indexOf('--- Guide for css ---');
+      assert.ok(firstIdx !== -1 && secondIdx !== -1, 'Both guides should be present in saved file');
+      assert.ok(firstIdx < secondIdx, 'Guides should appear in the exact order requested');
     } finally {
       fs.rmSync(savedPath, { force: true });
     }
