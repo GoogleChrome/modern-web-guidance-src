@@ -62,12 +62,13 @@ test.describe('IME-Safe Enter-to-Submit', () => {
     });
 
     await textarea.focus();
+    // Real browsers report keyCode 229 (VK_PROCESSKEY) during IME composition, never 13
     await textarea.evaluate((el) => {
       const event = new KeyboardEvent('keydown', {
         key: 'Enter',
         code: 'Enter',
-        keyCode: 13,
-        which: 13,
+        keyCode: 229,
+        which: 229,
         bubbles: true,
         cancelable: true,
         isComposing: true
