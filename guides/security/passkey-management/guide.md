@@ -14,7 +14,7 @@ This guide details how to enable users to view, rename, and delete their registe
 
 Your backend database layer and endpoints MUST support common CRUD actions for registered credentials as well as updating user profile details. Decoupled from framework-specific libraries, the server exposes endpoints to:
 
-1.  **List all user credentials**: Fetch all `StoredPasskeyCredential` records matching the signed-in user's ID.
+1.  **List all user credentials**: Fetch all `StoredPasskeyCredential` records matching the signed-in user's ID. Ensure every credential `id` and user `passkeyUserId` is stored and returned as a valid unpadded Base64URL string (`[A-Za-z0-9_-]`, no `=` padding, and `length % 4 !== 1`)—including in prototype seed data and mock backends (for example, `Buffer.from('cred-1').toString('base64url')` or `'dGVzdC1jcmVkLTE'`, never arbitrary human-readable placeholders like `'passkey-1'` or `'cred_yubikey_01'`).
 2.  **Update credential names**: Accept a new custom nickname for a specific credential ID and persist the update on the server.
 3.  **Delete credentials**: Remove a specific credential ID from the database.
 4.  **Update user account details**: Accept updated `name` (username) and `displayName` values for the signed-in user's profile so the client can synchronize them with the passkey provider.
@@ -78,34 +78,52 @@ Render a dedicated settings panel allowing users to easily audit and manage thei
 
 The Signal API lets the application communicate credential states to password managers, keeping the user's synced vaults and your backend database in lockstep.
 
+> [!IMPORTANT]
+> Browsers strictly validate Base64URL encoding and string length (`length % 4 !== 1`, characters strictly `[A-Za-z0-9_-]`, no `=` padding) in native code. Passing arbitrary human-readable placeholder or mock IDs (such as `'passkey-1'`, `'cred:01'`, or unencoded strings like `'cred_yubikey_01'`) throws `TypeError: Invalid base64url string for allAcceptedCredentialIds` on page load. Always encode mock/test IDs as genuine unpadded Base64URL strings (for example, `'dGVzdC1jcmVkLTE'` or `Buffer.from('cred-1').toString('base64url')`) and validate format before invoking the Signal API.
+
 *   **Feature Detection & Parameter Encoding Rule**:
     *   Always feature-detect Signal API methods before invoking them (`if (PublicKeyCredential.signalAllAcceptedCredentials)` and `if (PublicKeyCredential.signalCurrentUserDetails)`).
-    *   All `userId` and credential ID parameters passed to Signal API methods (`signalAllAcceptedCredentials`, `signalCurrentUserDetails`) MUST be **Base64URL-encoded strings**.
+    *   All `userId` and credential ID parameters passed to Signal API methods (`signalAllAcceptedCredentials`, `signalCurrentUserDetails`) MUST be **valid unpadded Base64URL-encoded strings**. Validate `userId` and `allAcceptedCredentialIds` before calling the API so malformed IDs are skipped safely rather than throwing on load.
 *   **Initiating Page Load Sync**:
     *   The application MUST invoke `signalAllAcceptedCredentials()` automatically when the management page loads (for example, inside a `DOMContentLoaded` event listener, module initialization, or framework component mount hook such as `useEffect`).
 *   **Management Updates Sync**:
     *   The application MUST invoke `signalAllAcceptedCredentials()` immediately within your delete credential click handler post-fetch.
     *   The application MUST invoke `signalCurrentUserDetails()` immediately within your user account rename (`name` or `displayName`) click handler post-fetch.
+*   **Non-Fatal Error Handling (`console.warn`)**:
+    *   Signal API calls perform passive background synchronization and MUST NOT break the UI or emit `console.error` when synchronization fails. Wrap Signal API calls in `try...catch` and log failures with `console.warn` instead of `console.error` so passive sync issues do not trigger Lighthouse Best Practices failures (`errors-in-console`) on page load.
 
 ```javascript
 // Client-side management synchronization ES module
 import { listFetch, renameCredentialFetch, updateUserFetch, deleteFetch } from './api.js';
 
-// Base64URL-encoded User ID string (illustration only)
+// Valid unpadded Base64URL: non-empty, [A-Za-z0-9_-] only, no '=' padding, length % 4 !== 1
+function isValidBase64Url(value) {
+  return typeof value === 'string' &&
+    value.length > 0 &&
+    value.length % 4 !== 1 &&
+    /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+// Base64URL-encoded User ID string (illustration only; even test/mock IDs must be valid Base64URL)
 const base64UrlUserId = "M2YPl-KGnA8";
 
 async function syncAcceptedCredentials(currentCredentialsList) {
   if (!window.PublicKeyCredential || !PublicKeyCredential.signalAllAcceptedCredentials) return;
+  const credentialIds = currentCredentialsList.map(c => c.id); // Array of Base64URL credential ID strings
+  if (!isValidBase64Url(base64UrlUserId) || !credentialIds.every(isValidBase64Url)) {
+    console.warn('SignalAllAcceptedCredentials skipped: userId and credential IDs must be valid unpadded Base64URL strings.');
+    return;
+  }
+
   try {
-    const credentialIds = currentCredentialsList.map(c => c.id); // Array of Base64URL credential ID strings
-    
     await PublicKeyCredential.signalAllAcceptedCredentials({
       rpId, // RP ID must match the one defined on the server
       userId: base64UrlUserId, // User ID Base64URL-encoded string
       allAcceptedCredentialIds: credentialIds
     });
   } catch (e) {
-    console.error('SignalAllAcceptedCredentials sync failure:', e);
+    // Use console.warn instead of console.error so passive sync failures do not fail Lighthouse errors-in-console
+    console.warn('SignalAllAcceptedCredentials sync warning:', e);
   }
 }
 
@@ -143,6 +161,10 @@ async function performCredentialRename(credentialId, newCredentialName) {
 async function performUserRename(rpId, userId, updatedName, updatedDisplayName) {
   const response = await updateUserFetch({ name: updatedName, displayName: updatedDisplayName });
   if (response.ok && window.PublicKeyCredential && PublicKeyCredential.signalCurrentUserDetails) {
+    if (!isValidBase64Url(userId)) {
+      console.warn('SignalCurrentUserDetails skipped: userId must be a valid unpadded Base64URL string.');
+      return;
+    }
     try {
       await PublicKeyCredential.signalCurrentUserDetails({
         rpId, // RP ID must match the one defined on the server
@@ -151,7 +173,8 @@ async function performUserRename(rpId, userId, updatedName, updatedDisplayName) 
         displayName: updatedDisplayName // Updated display name
       });
     } catch (e) {
-      console.error('SignalCurrentUserDetails sync failure:', e);
+      // Use console.warn instead of console.error for passive background sync
+      console.warn('SignalCurrentUserDetails sync warning:', e);
     }
   }
 }

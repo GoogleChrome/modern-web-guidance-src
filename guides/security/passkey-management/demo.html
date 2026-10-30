@@ -27,6 +27,13 @@
 
     const base64UrlUserId = "M2YPl-KGnA8"; // Base64URL string User ID
 
+    function isValidBase64Url(value) {
+      return typeof value === 'string' &&
+        value.length > 0 &&
+        value.length % 4 !== 1 &&
+        /^[A-Za-z0-9_-]+$/.test(value);
+    }
+
     async function gateCreatePasskeyButton() {
       const btn = document.getElementById('create-btn');
       if (window.PublicKeyCredential) {
@@ -39,16 +46,19 @@
 
     async function syncAcceptedCredentials(currentList) {
       if (window.PublicKeyCredential && PublicKeyCredential.signalAllAcceptedCredentials) {
+        const credentialIds = currentList.map(c => c.id);
+        if (!isValidBase64Url(base64UrlUserId) || !credentialIds.every(isValidBase64Url)) {
+          console.warn('SignalAllAcceptedCredentials skipped: userId and credential IDs must be valid unpadded Base64URL strings.');
+          return;
+        }
         try {
-          // Map Base64URL credential IDs
-          const credentialIds = currentList.map(c => c.id);
           await PublicKeyCredential.signalAllAcceptedCredentials({
             rpId: window.location.hostname,
             userId: base64UrlUserId,
             allAcceptedCredentialIds: credentialIds
           });
         } catch (e) {
-          console.error('Signal AllAcceptedCredentials sync threw:', e);
+          console.warn('SignalAllAcceptedCredentials sync warning:', e);
         }
       }
     }
@@ -162,12 +172,20 @@
         if (response.ok) {
           statusEl.textContent = 'Profile Updated';
           if (window.PublicKeyCredential && PublicKeyCredential.signalCurrentUserDetails) {
-            await PublicKeyCredential.signalCurrentUserDetails({
-              rpId: window.location.hostname,
-              userId: base64UrlUserId,
-              name: 'user@example.com',
-              displayName: updatedDisplayName
-            });
+            if (!isValidBase64Url(base64UrlUserId)) {
+              console.warn('SignalCurrentUserDetails skipped: userId must be a valid unpadded Base64URL string.');
+            } else {
+              try {
+                await PublicKeyCredential.signalCurrentUserDetails({
+                  rpId: window.location.hostname,
+                  userId: base64UrlUserId,
+                  name: 'user@example.com',
+                  displayName: updatedDisplayName
+                });
+              } catch (e) {
+                console.warn('SignalCurrentUserDetails sync warning:', e);
+              }
+            }
           }
         } else {
           throw new Error('User profile update failed on server');
