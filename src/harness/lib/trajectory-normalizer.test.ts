@@ -467,51 +467,71 @@ test('generateNormalizedTrajectory aggregates entries across multiple main sessi
 test('agent trajectory parsers strictly enforce modern-web-guidance retrieve filter', () => {
   const validCmd = 'npx -y modern-web-guidance@latest retrieve "dialog-closedby,light-dismiss"';
   const chainedCmd = 'npx -y modern-web-guidance@latest retrieve cpp-on-the-web; head -n 40 index.html && npx -y modern-web-guidance@latest retrieve "identify-inp-causes, support-global-calendar-systems"';
+  const spaceCmd = 'npx -y modern-web-guidance@latest retrieve accessible-generated-content 2d-panning > /tmp/mwg-guide.md 2>&1';
+  const directNodeMjsCmd = 'node /tmp/env/.agents/skills/modern-web-guidance/modern-web.mjs retrieve color';
+  const goJsonEscapedCmd = '{"CommandLine":"npx -y modern-web-guidance@latest retrieve \\"shadow-dom\\" \\u003e /tmp/mwg-guides.md \\u0026\\u0026 head -n 400 /tmp/mwg-guides.md","WaitMsBeforeAsync":5000,"toolSummary":"Retrieve web component guides"}';
   const legacyCmd = 'npx modern-web retrieve dialog-closedby';
-  const searchCmd = 'npx modern-web-guidance search "dialog"';
+  const searchCmd = 'npx modern-web-guidance search "retrieve password passkey"';
+  const inlineGuideRef = 'For more information, see `accessibility` (via `npx -y modern-web-guidance@latest retrieve "accessibility"`).';
   const genericCmd = 'curl https://example.com/retrieve/docs && git retrieve-branch';
 
   // 1. Claude
   const claudeMeta = extractClaudeMetadata([
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: validCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: chainedCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: spaceCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: directNodeMjsCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: goJsonEscapedCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: legacyCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: searchCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: inlineGuideRef } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: genericCmd } }] } },
   ]);
-  assert.deepStrictEqual(claudeMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
+  assert.deepStrictEqual(claudeMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
   // 2. Codex
   const codexMeta = extractCodexMetadata([
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: validCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: chainedCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: spaceCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: directNodeMjsCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: goJsonEscapedCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: legacyCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: searchCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: inlineGuideRef }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: genericCmd }) } },
   ]);
-  assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
+  assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
   // 3. Gemini
   const geminiMeta = extractGeminiMetadata({
     messages: [
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: validCmd } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: chainedCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: spaceCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: directNodeMjsCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: goJsonEscapedCmd } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: legacyCmd } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: searchCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: inlineGuideRef } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: genericCmd } }] },
     ]
   });
-  assert.deepStrictEqual(geminiMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
+  assert.deepStrictEqual(geminiMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
   // 4. Pi
   const piMeta = extractPiMetadata([
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: validCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: chainedCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: spaceCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: directNodeMjsCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: goJsonEscapedCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: legacyCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: searchCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: inlineGuideRef } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: genericCmd } }] } },
   ]);
-  assert.deepStrictEqual(piMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
+  assert.deepStrictEqual(piMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 });
 
 test('ensureFreshTrajectorySummary regenerates stale trajectory_summary.json missing normalizerVersion when raw session logs exist', async () => {
