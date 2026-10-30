@@ -3,15 +3,19 @@
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { retrieveUseCase, OriginTrialGateError } from "../rag/retrieve.ts";
 import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
 import { getSkillUpdateLevel } from "./skill-version.ts";
-import { USE_CASES } from "../rag/guides.ts";
+import { USE_CASES, getUseCase } from "../rag/guides.ts";
+import { isDisciplineGuide } from "../core/discipline-guides.ts";
 import { determineAgent } from "./telemetry/detect-agent.ts";
+
+const MAX_INLINE_STDOUT_BYTES = 9500;
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -24,6 +28,30 @@ const { values, positionals } = parseArgs({
   allowPositionals: true,
   strict: false,
 });
+
+function isStdoutRedirectedToFile(): boolean {
+  try {
+    return fstatSync(1).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function saveRetrievedGuides(content: string): string | null {
+  const filename = `mwg-guide-${process.pid}-${Date.now()}.md`;
+  const candidateDirs = [...new Set([tmpdir(), "/tmp"])];
+  for (const dir of candidateDirs) {
+    try {
+      if (!existsSync(dir)) continue;
+      const filePath = join(dir, filename);
+      writeFileSync(filePath, content, "utf8");
+      return filePath;
+    } catch {
+      // Try next candidate directory
+    }
+  }
+  return null;
+}
 
 function printUsage() {
   console.log(`
@@ -106,21 +134,36 @@ async function main() {
       process.exit(1);
     }
   } else if (command === "retrieve") {
-    const ids = arg ? arg.split(",").map(id => id.trim()).filter(Boolean) : [];
+    const ids = arg
+      ? [
+          ...new Set(
+            arg
+              .split(/[\s,;]+/)
+              .map(id => id.replace(/^["'\\]+|["'\\;]+$/g, "").trim())
+              .filter(id => Boolean(id) && !id.startsWith("-"))
+          ),
+        ]
+      : [];
     if (ids.length === 0) {
       await getLogger().logRetrieveResult(0, false, "");
       console.error("No IDs provided for retrieve.");
       process.exit(1);
     }
 
+    ids.sort((a, b) => {
+      const aDisc = isDisciplineGuide(a, getUseCase(a)?.category) ? 1 : 0;
+      const bDisc = isDisciplineGuide(b, getUseCase(b)?.category) ? 1 : 0;
+      return aDisc - bDisc;
+    });
+
     let hasError = false;
+    const retrievedSections: string[] = [];
 
     for (const id of ids) {
       const startTime = Date.now();
       try {
         const guide = await retrieveUseCase(id);
-        console.log(`\n--- Guide for ${id} ---`);
-        console.log(guide);
+        retrievedSections.push(`\n--- Guide for ${id} ---\n${guide}`);
         await getLogger().logRetrieveResult(Date.now() - startTime, true, id);
       } catch (error) {
         hasError = true;
@@ -130,6 +173,30 @@ async function main() {
           console.error(`Retrieve failed for ${id}:`, error);
         }
         await getLogger().logRetrieveResult(Date.now() - startTime, false, id);
+      }
+    }
+
+    if (retrievedSections.length > 0) {
+      const combinedStdout = retrievedSections.join("\n");
+      const totalBytes = Buffer.byteLength(combinedStdout, "utf8");
+      const shouldSaveToFile =
+        totalBytes > MAX_INLINE_STDOUT_BYTES && !isStdoutRedirectedToFile();
+
+      if (shouldSaveToFile) {
+        const fileContent = combinedStdout.replace(/^\n+/, "") + "\n";
+        const savedPath = saveRetrievedGuides(fileContent);
+        if (savedPath) {
+          const lineCount = fileContent.split("\n").length - 1;
+          const sizeKb = (totalBytes / 1024).toFixed(1);
+          console.log(
+            `Output (${sizeKb} KB, ${lineCount} lines) saved to ${savedPath} to prevent CLI stdout truncation.\n` +
+            `Read ${savedPath} in full using your file-reading tool (${lineCount} lines total)—do not use cat or head.`
+          );
+        } else {
+          console.log(combinedStdout);
+        }
+      } else {
+        console.log(combinedStdout);
       }
     }
 
