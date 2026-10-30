@@ -31,26 +31,16 @@ const SCROLL_TIMELINE_GUARD_TOKENS = [
   'animation-range',
 ] as const;
 
-function isScrollRevealInstance(node: Node): boolean {
+function isLibraryInstance(
+  node: Node,
+  identName: string,
+  packages: readonly string[],
+): boolean {
   const resolved = resolveLocalExpression(node, 2);
-  if (Node.isCallExpression(resolved) || Node.isNewExpression(resolved)) {
-    const callee = unwrapExpression(resolved.getExpression());
-    if (isLibraryReference(callee, 'ScrollReveal', ['scrollreveal'])) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function isWowInstance(node: Node): boolean {
-  const resolved = resolveLocalExpression(node, 2);
-  if (Node.isNewExpression(resolved) || Node.isCallExpression(resolved)) {
-    const callee = unwrapExpression(resolved.getExpression());
-    if (isLibraryReference(callee, 'WOW', ['wowjs', 'wow.js'])) {
-      return true;
-    }
-  }
-  return false;
+  return (
+    (Node.isCallExpression(resolved) || Node.isNewExpression(resolved)) &&
+    isLibraryReference(unwrapExpression(resolved.getExpression()), identName, packages)
+  );
 }
 
 function matchScrollRevealCall(callExpr: CallExpression): string | null {
@@ -66,11 +56,11 @@ function matchScrollRevealCall(callExpr: CallExpression): string | null {
     return 'AOS.init() scroll reveal initialization can be modernized with CSS Scroll-Driven Animations (animation-timeline: view() and animation-range: entry, exit).';
   }
 
-  if (methodName === 'reveal' && isScrollRevealInstance(receiver)) {
+  if (methodName === 'reveal' && isLibraryInstance(receiver, 'ScrollReveal', ['scrollreveal'])) {
     return 'ScrollReveal().reveal() scroll animation can be modernized with CSS Scroll-Driven Animations (animation-timeline: view() and animation-range: entry, exit).';
   }
 
-  if (methodName === 'init' && isWowInstance(receiver)) {
+  if (methodName === 'init' && isLibraryInstance(receiver, 'WOW', ['wowjs', 'wow.js'])) {
     return 'new WOW().init() scroll reveal initialization can be modernized with CSS Scroll-Driven Animations (animation-timeline: view() and animation-range: entry, exit).';
   }
 
@@ -87,7 +77,7 @@ export const scrollEntryExitEffectsPackageMatcher: DependencyRuleMatcher =
 export const scrollEntryExitEffectsJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['AOS.init', 'ScrollReveal', 'new WOW'],
   featureGuardTokens: SCROLL_TIMELINE_GUARD_TOKENS,
-  matchCall: (node) => matchScrollRevealCall(node),
+  matchCall: matchScrollRevealCall,
 });
 
 export const scrollEntryExitEffectsPackageRule: AnalyzerRule = {

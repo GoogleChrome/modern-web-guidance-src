@@ -50,22 +50,11 @@ function parseNthChildBaseSelector(selectorText: string): {
   return { baseSelector, index };
 }
 
-function isStaggerDelayOnlyRule(rule: CssRuleView): {
-  baseSelector: string;
-  index: number;
-  delayMs: number;
-} | null {
-  if (rule.declarations.length === 0) {
-    return null;
-  }
+function getRuleDelayMs(rule: CssRuleView): number | null {
   let delayMs: number | null = null;
   // Carve out rules that set custom properties (--i, --index) or any non-delay properties
   for (const decl of rule.declarations) {
-    const prop = decl.property.toLowerCase().trim();
-    if (!DELAY_PROPERTIES.has(prop)) {
-      return null;
-    }
-    if (decl.value.toLowerCase().includes('sibling-index(')) {
+    if (!DELAY_PROPERTIES.has(decl.property.toLowerCase().trim())) {
       return null;
     }
     const parsedMs = parseDelayMs(decl.value);
@@ -74,15 +63,7 @@ function isStaggerDelayOnlyRule(rule: CssRuleView): {
     }
     delayMs = parsedMs;
   }
-  if (delayMs === null) {
-    return null;
-  }
-
-  const parsedSel = parseNthChildBaseSelector(rule.selectorText);
-  if (!parsedSel) {
-    return null;
-  }
-  return { ...parsedSel, delayMs };
+  return delayMs;
 }
 
 const computedMatchedRulesByContext = new WeakMap<
@@ -101,18 +82,14 @@ function getSequenceStartRules(ctx: CssMatcherContext): Set<CssRuleView> {
     return result;
   }
 
-  const taintedKeys = new Set<string>();
   const byKey = new Map<
     string,
-    Array<{ index: number; delayMs: number; rule: CssRuleView }>
+    Array<{ index: number; delayMs: number; rule: CssRuleView }> | null
   >();
 
   for (const r of ctx.styleRules ?? []) {
-    if (
-      r.parentAtRule &&
-      r.parentAtRule.toLowerCase().includes('@supports') &&
-      r.parentAtRule.toLowerCase().includes('sibling-index')
-    ) {
+    const parentAt = r.parentAtRule?.toLowerCase();
+    if (parentAt?.includes('@supports') && parentAt.includes('sibling-index')) {
       continue;
     }
     const sel = parseNthChildBaseSelector(r.selectorText);
@@ -120,38 +97,36 @@ function getSequenceStartRules(ctx: CssMatcherContext): Set<CssRuleView> {
       continue;
     }
     const key = `${r.parentAtRule ?? ''}||${sel.baseSelector}`;
-    const parsed = isStaggerDelayOnlyRule(r);
-    if (!parsed) {
-      taintedKeys.add(key);
+    const existing = byKey.get(key);
+    if (existing === null) {
       continue;
     }
-    const list = byKey.get(key) ?? [];
-    list.push({ index: parsed.index, delayMs: parsed.delayMs, rule: r });
+    const delayMs = getRuleDelayMs(r);
+    if (delayMs === null) {
+      byKey.set(key, null);
+      continue;
+    }
+    const list = existing ?? [];
+    list.push({ index: sel.index, delayMs, rule: r });
     byKey.set(key, list);
   }
 
-  for (const [key, list] of byKey.entries()) {
-    if (taintedKeys.has(key) || list.length < 3) {
+  for (const list of byKey.values()) {
+    if (!list || list.length < 3) {
       continue;
     }
     const sorted = [...list].sort((a, b) => a.index - b.index);
     // Reject if duplicate indices or non-monotonic delays (e.g. 2D 3x3 cube grid wave)
-    let hasDuplicateOrFlat = false;
-    let isIncreasing = true;
-    let isDecreasing = true;
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i].index !== sorted[i - 1].index + 1) {
-        hasDuplicateOrFlat = true;
-        break;
-      }
-      if (sorted[i].delayMs <= sorted[i - 1].delayMs) {
-        isIncreasing = false;
-      }
-      if (sorted[i].delayMs >= sorted[i - 1].delayMs) {
-        isDecreasing = false;
-      }
-    }
-    if (!hasDuplicateOrFlat && (isIncreasing || isDecreasing)) {
+    const isConsecutive = sorted.every(
+      (item, i) => i === 0 || item.index === sorted[i - 1].index + 1,
+    );
+    const isIncreasing = sorted.every(
+      (item, i) => i === 0 || item.delayMs > sorted[i - 1].delayMs,
+    );
+    const isDecreasing = sorted.every(
+      (item, i) => i === 0 || item.delayMs < sorted[i - 1].delayMs,
+    );
+    if (isConsecutive && (isIncreasing || isDecreasing)) {
       result.add(sorted[0].rule);
     }
   }
