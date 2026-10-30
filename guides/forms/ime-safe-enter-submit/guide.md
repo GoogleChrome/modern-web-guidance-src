@@ -63,6 +63,10 @@ In recent versions of Safari, an event-ordering issue (WebKit bug 165004) delive
 
 If you need to support cross-browser compatibility across older versions of Safari and other platforms, adopt one of the following fallback strategies:
 
+{# Maintainer references:
+   - W3C UI Events spec (keyCode 229 during IME composition): https://w3c.github.io/uievents/#determine-keydown-keyup-keyCode
+   - WebKit Bug 165004 (Safari firing compositionend before keydown): https://bugs.webkit.org/show_bug.cgi?id=165004 #}
+
 ### Strategy 1: Add a `keyCode === 229` check (recommended)
 
 During IME composition, browsers report `keyCode: 229` (`VK_PROCESSKEY`) instead of `13` on `keydown`, even while setting `event.key === 'Enter'` on the confirming keystroke. Pairing `event.isComposing` with `event.keyCode === 229` reliably catches Safari's out-of-order confirming `Enter` keydown. (This also means legacy `event.keyCode === 13` handlers are already immune to IME confirmation, whereas migrating them to `event.key === 'Enter'` without `event.isComposing` and `event.keyCode === 229` will introduce premature submission.) Because this check is nested under the `event.key === 'Enter'` gate, it is safe from mobile virtual keyboards that might use `229` for normal character layout entry.
