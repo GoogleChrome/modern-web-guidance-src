@@ -1,19 +1,8 @@
-import {
-  Node,
-  type SourceFile,
-} from 'ts-morph';
-import {
-  isProtectedByFeatureGuard,
-  unwrapExpression,
-} from '../scanners/ast-helpers.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-  JsMatcherContext,
-  JsRuleMatcher,
 } from '../schema.ts';
 
 export const DYNAMIC_SIBLING_ANIMATIONS_GUIDE_HASH = '26f6d4e848cc';
@@ -186,143 +175,6 @@ const dynamicSiblingAnimationsCssMatcher: CssRuleMatcher = {
   },
 };
 
-function isJsLoopSettingDelayFromIndex(node: Node): Node | undefined {
-  let indexParamName: string | undefined;
-  let bodyNode: Node | undefined;
-
-  if (Node.isCallExpression(node)) {
-    const expr = unwrapExpression(node.getExpression());
-    if (!Node.isPropertyAccessExpression(expr) || expr.getName() !== 'forEach') {
-      return undefined;
-    }
-    const args = node.getArguments();
-    if (args.length === 0) {
-      return undefined;
-    }
-    const cb = unwrapExpression(args[0]);
-    if (!Node.isArrowFunction(cb) && !Node.isFunctionExpression(cb)) {
-      return undefined;
-    }
-    const params = cb.getParameters();
-    if (params.length < 2) {
-      return undefined;
-    }
-    const secondName = params[1].getNameNode();
-    if (!Node.isIdentifier(secondName)) {
-      return undefined;
-    }
-    indexParamName = secondName.getText();
-    bodyNode = cb.getBody();
-  } else if (Node.isForStatement(node)) {
-    const init = node.getInitializer();
-    if (!init || !Node.isVariableDeclarationList(init)) {
-      return undefined;
-    }
-    const decls = init.getDeclarations();
-    if (decls.length === 0) {
-      return undefined;
-    }
-    const nameNode = decls[0].getNameNode();
-    if (!Node.isIdentifier(nameNode)) {
-      return undefined;
-    }
-    indexParamName = nameNode.getText();
-    bodyNode = node.getStatement();
-  }
-
-  if (!indexParamName || !bodyNode) {
-    return undefined;
-  }
-
-  const idxRegex = new RegExp(`\\b${indexParamName}\\b`);
-  let matchedDelayNode: Node | undefined;
-
-  bodyNode.forEachDescendant((desc) => {
-    if (matchedDelayNode) {
-      return;
-    }
-    if (Node.isBinaryExpression(desc) && desc.getOperatorToken().getText() === '=') {
-      const left = unwrapExpression(desc.getLeft());
-      if (
-        Node.isPropertyAccessExpression(left) &&
-        (left.getName() === 'animationDelay' || left.getName() === 'transitionDelay')
-      ) {
-        const styleObj = unwrapExpression(left.getExpression());
-        if (
-          Node.isPropertyAccessExpression(styleObj) &&
-          styleObj.getName() === 'style' &&
-          idxRegex.test(desc.getRight().getText())
-        ) {
-          matchedDelayNode = desc;
-        }
-      }
-    } else if (Node.isCallExpression(desc)) {
-      const expr = unwrapExpression(desc.getExpression());
-      const args = desc.getArguments();
-      if (
-        Node.isPropertyAccessExpression(expr) &&
-        expr.getName() === 'setProperty' &&
-        args.length >= 2
-      ) {
-        const styleObj = unwrapExpression(expr.getExpression());
-        const propArg = unwrapExpression(args[0]);
-        if (
-          Node.isPropertyAccessExpression(styleObj) &&
-          styleObj.getName() === 'style' &&
-          Node.isStringLiteral(propArg) &&
-          DELAY_PROPERTIES.has(propArg.getLiteralText().toLowerCase()) &&
-          idxRegex.test(args[1].getText())
-        ) {
-          matchedDelayNode = desc;
-        }
-      }
-    }
-  });
-
-  return matchedDelayNode;
-}
-
-const dynamicSiblingAnimationsJsMatcher: JsRuleMatcher = {
-  kind: 'js',
-  fastTokens: [
-    ['animationDelay', 'transitionDelay', 'animation-delay', 'transition-delay'],
-    ['style', 'setProperty'],
-  ],
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-    if (
-      !ctx.fileContent.includes('animationDelay') &&
-      !ctx.fileContent.includes('transitionDelay') &&
-      !ctx.fileContent.includes('animation-delay') &&
-      !ctx.fileContent.includes('transition-delay')
-    ) {
-      return matches;
-    }
-    const visitedLines = new Set<number>();
-
-    sourceFile.forEachDescendant((node) => {
-      const delayNode = isJsLoopSettingDelayFromIndex(node);
-      if (!delayNode) {
-        return;
-      }
-      if (isProtectedByFeatureGuard(delayNode, ['sibling-index', 'sibling-count'])) {
-        return;
-      }
-      const line = delayNode.getStartLineNumber();
-      if (!visitedLines.has(line)) {
-        visitedLines.add(line);
-        matches.push({
-          line,
-          message:
-            'JavaScript loop computes staggered inline animationDelay/transitionDelay per sibling index; use CSS animation-delay: calc(sibling-index() * <step>) instead.',
-        });
-      }
-    });
-
-    return matches;
-  },
-};
-
 export const dynamicSiblingAnimationsCssRule: AnalyzerRule = {
   id: 'dynamic-sibling-animations',
   guideId: 'dynamic-sibling-animations',
@@ -342,26 +194,6 @@ export const dynamicSiblingAnimationsCssRule: AnalyzerRule = {
   },
 };
 
-export const dynamicSiblingAnimationsJsRule: AnalyzerRule = {
-  id: 'dynamic-sibling-animations/js',
-  guideId: 'dynamic-sibling-animations',
-  guideHash: DYNAMIC_SIBLING_ANIMATIONS_GUIDE_HASH,
-  summary:
-    'Replace JavaScript loops that assign staggered inline animationDelay or transitionDelay from the element index with CSS sibling-index().',
-  matcher: dynamicSiblingAnimationsJsMatcher,
-  verifierRubric: {
-    keepWhen: [
-      'A JavaScript loop over sibling elements sets inline style.animationDelay or style.transitionDelay as a function of the loop index.',
-      'The staggered delay calculation can be moved into CSS using calc(sibling-index() * <step>).',
-    ],
-    dropWhen: [
-      'The delay depends on runtime data, text length, random numbers, or measured DOM geometry rather than sibling index.',
-      'The loop is guarded by !CSS.supports("...sibling-index()...") as a fallback for older browsers.',
-    ],
-  },
-};
-
 export default [
   dynamicSiblingAnimationsCssRule,
-  dynamicSiblingAnimationsJsRule,
 ] satisfies readonly AnalyzerRule[];

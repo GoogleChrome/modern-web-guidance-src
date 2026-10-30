@@ -1,21 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import { scanJsSource } from '../scanners/js-scanner.ts';
-import type { CssRuleMatcher, JsRuleMatcher } from '../schema.ts';
+import type { CssRuleMatcher } from '../schema.ts';
 import {
   dynamicSiblingAnimationsCssRule,
-  dynamicSiblingAnimationsJsRule,
 } from './dynamic-sibling-animations.ts';
 
-if (
-  dynamicSiblingAnimationsCssRule.matcher.kind !== 'css' ||
-  dynamicSiblingAnimationsJsRule.matcher.kind !== 'js'
-) {
-  throw new Error('Expected CSS and JS matchers');
+if (dynamicSiblingAnimationsCssRule.matcher.kind !== 'css') {
+  throw new Error('Expected CSS matcher');
 }
 const cssMatcher: CssRuleMatcher = dynamicSiblingAnimationsCssRule.matcher;
-const jsMatcher: JsRuleMatcher = dynamicSiblingAnimationsJsRule.matcher;
 
 void test('dynamic-sibling-animations: CSS positive matches', async (t) => {
   await t.test('flags >= 3 consecutive :nth-child(N) rules setting only animation-delay', () => {
@@ -68,32 +62,6 @@ void test('dynamic-sibling-animations: CSS negative / exempt cases', async (t) =
       }
     `;
     const matches = scanCss('modern.css', css, [cssMatcher]);
-    assert.equal(matches.length, 0);
-  });
-});
-
-void test('dynamic-sibling-animations/js: JS positive and negative cases', async (t) => {
-  await t.test('flags forEach loop setting el.style.animationDelay from index', () => {
-    const code = `
-      const items = document.querySelectorAll('.stagger-item');
-      items.forEach((el, index) => {
-        el.style.animationDelay = \`\${index * 100}ms\`;
-      });
-    `;
-    const { matches } = scanJsSource('stagger.js', code, [jsMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 4);
-  });
-
-  await t.test('exempts JS fallback guarded by CSS.supports("...sibling-index()...")', () => {
-    const code = `
-      if (!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')) {
-        items.forEach((el, index) => {
-          el.style.animationDelay = \`\${index * 0.1}s\`;
-        });
-      }
-    `;
-    const { matches } = scanJsSource('stagger-fallback.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 });

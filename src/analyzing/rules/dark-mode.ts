@@ -1,20 +1,8 @@
-import {
-  Node,
-  type CallExpression,
-  type SourceFile,
-} from 'ts-morph';
-import {
-  isProtectedByFeatureGuard,
-  unwrapExpression,
-} from '../scanners/ast-helpers.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-  JsMatcherContext,
-  JsRuleMatcher,
 } from '../schema.ts';
 
 export const DARK_MODE_GUIDE_HASH = '796876897c2c';
@@ -69,109 +57,6 @@ const darkModeCssMatcher: CssRuleMatcher = {
   },
 };
 
-function isPrefersColorSchemeCall(call: CallExpression): boolean {
-  const expr = unwrapExpression(call.getExpression());
-  let methodName = '';
-  if (Node.isPropertyAccessExpression(expr)) {
-    methodName = expr.getName();
-  } else if (Node.isIdentifier(expr)) {
-    methodName = expr.getText();
-  }
-  if (methodName !== 'matchMedia') {
-    return false;
-  }
-  const args = call.getArguments();
-  if (args.length === 0) {
-    return false;
-  }
-  const firstArg = unwrapExpression(args[0] as Node);
-  if (!Node.isStringLiteral(firstArg)) {
-    return false;
-  }
-  const query = firstArg.getLiteralText().toLowerCase();
-  return query.includes('prefers-color-scheme') && query.includes('dark');
-}
-
-const darkModeJsMatcher: JsRuleMatcher = {
-  kind: 'js',
-  fastTokens: ['matchMedia', 'prefers-color-scheme'],
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-    const visitedLines = new Set<number>();
-
-    const content = ctx.fileContent;
-    const hasChangeListener =
-      content.includes('.addListener(') ||
-      /\baddEventListener\s*\([^;()]{0,120}['"`]change['"`]/.test(content) ||
-      /\.onchange\s*=/.test(content);
-
-    // Check actual color-scheme property or property access, avoiding query literal (J-1)
-    const hasColorScheme =
-      /(?:\.style\.colorScheme|(?<![\w-])color-scheme\s*:)/i.test(content);
-
-    // Skip user-override toggles like localStorage/sessionStorage/cookies (J-2)
-    const hasStorageOverride =
-      /\b(?:localStorage|sessionStorage|cookie|Cookies)\b/i.test(content);
-    if (hasStorageOverride || hasColorScheme) {
-      return matches;
-    }
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      if (!isPrefersColorSchemeCall(node)) {
-        return;
-      }
-
-      if (isProtectedByFeatureGuard(node, ['color-scheme', 'light-dark'])) {
-        return;
-      }
-
-      let scope: Node = node;
-      while (
-        scope.getParent() &&
-        !Node.isFunctionDeclaration(scope) &&
-        !Node.isFunctionExpression(scope) &&
-        !Node.isArrowFunction(scope) &&
-        !Node.isMethodDeclaration(scope) &&
-        !Node.isSourceFile(scope)
-      ) {
-        scope = scope.getParent()!;
-      }
-      if (
-        (Node.isFunctionExpression(scope) || Node.isArrowFunction(scope)) &&
-        Node.isParenthesizedExpression(scope.getParent())
-      ) {
-        return;
-      }
-      const scopeText = scope.getText();
-      const togglesDarkTheme =
-        scopeText.includes('dark') &&
-        /(?:classList\.(?:add|remove|toggle)|\.className\s*[+=]|\.setAttribute\s*\(|\.dataset\.)/.test(
-          scopeText,
-        );
-
-      if (!togglesDarkTheme || hasChangeListener) {
-        return;
-      }
-
-      const line = node.getStartLineNumber();
-      if (!visitedLines.has(line)) {
-        visitedLines.add(line);
-        matches.push({
-          line,
-          message:
-            'JavaScript matchMedia(prefers-color-scheme) reads dark mode without a change listener or to toggle theme classes; modernize with CSS color-scheme: light dark and light-dark().',
-        });
-      }
-    });
-
-    return matches;
-  },
-};
-
 export const darkModeCssRule: AnalyzerRule = {
   id: 'dark-mode',
   guideId: 'dark-mode',
@@ -192,27 +77,6 @@ export const darkModeCssRule: AnalyzerRule = {
   },
 };
 
-export const darkModeJsMatchMediaRule: AnalyzerRule = {
-  id: 'dark-mode/js-match-media',
-  guideId: 'dark-mode',
-  guideHash: DARK_MODE_GUIDE_HASH,
-  summary:
-    'JavaScript matchMedia reading dark mode without dynamic listeners or to toggle theme classes should use declarative CSS color-scheme.',
-  matcher: darkModeJsMatcher,
-  verifierRubric: {
-    keepWhen: [
-      'JavaScript uses matchMedia("(prefers-color-scheme: dark)") to read system theme state once at load without registering a change listener for dynamic theme updates.',
-      'JavaScript imperatively toggles .dark or data-theme="dark" classes on documentElement or body based on system preference instead of declarative color-scheme: light dark.',
-    ],
-    dropWhen: [
-      'The script registers a change event listener (or .addListener) on the MediaQueryList to handle real-time system theme updates and user theme overrides.',
-      'The application integrates a full user-controlled theme picker with persisted localStorage overrides that coordinates with color-scheme meta tags.',
-      'The matchMedia call is part of an analytics or system diagnostics payload rather than driving UI theme styles.',
-    ],
-  },
-};
-
 export default [
   darkModeCssRule,
-  darkModeJsMatchMediaRule,
 ] satisfies readonly AnalyzerRule[];

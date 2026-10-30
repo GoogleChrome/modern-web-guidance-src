@@ -14,7 +14,6 @@ import {
   type AnalyzeJsonOutput,
 } from './cli.ts';
 import {
-  ALL_RULES,
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
 } from './rules/index.ts';
@@ -85,7 +84,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(resDefault.exitCode, 0);
       assert.match(
         resDefault.output,
-        new RegExp(`0 findings from ${QUALIFIED_GUIDE_IDS.length} qualified guides \\(pass --all to include experimental guides\\)\\.`),
+        new RegExp(`0 findings from ${QUALIFIED_GUIDE_IDS.length} qualified guides\\.`),
       );
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
@@ -96,12 +95,6 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.targetDir, emptyDir);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
-
-      // With --all on an actually empty directory, reports no modernization opportunities found
-      const resAllEmpty = await runAnalyzeCli([emptyDir, '--all']);
-      assert.equal(resAllEmpty.exitCode, 0);
-      assert.match(resAllEmpty.output, /No modernization opportunities found/);
-      assert.doesNotMatch(resAllEmpty.output, /provisional and need verification/);
     } finally {
       await rm(emptyDir, { recursive: true, force: true });
     }
@@ -112,7 +105,7 @@ describe('runAnalyzeCli', () => {
       activeGuideCount: 1,
       isDefaultQualifiedMode: true,
     });
-    assert.match(reducedZeroOutput, /0 findings from 1 qualified guide \(pass --all to include experimental guides\)\./);
+    assert.match(reducedZeroOutput, /0 findings from 1 qualified guide\./);
     assert.doesNotMatch(reducedZeroOutput, /suspended pending re-validation/);
   });
 
@@ -140,7 +133,7 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'accordion.css'), cssContent, 'utf8');
 
-      const res = await runAnalyzeCli(['analyze', testDir, '--all']);
+      const res = await runAnalyzeCli(['analyze', testDir]);
       assert.equal(res.exitCode, 0);
 
       // Check header and provisional notice
@@ -152,7 +145,7 @@ describe('runAnalyzeCli', () => {
       );
 
       // Check guide grouping, title line, rubric lines, and code preview
-      assert.match(res.output, /\* autofill-sign-in-form \[qualified\] \(\d+ findings?\)/);
+      assert.match(res.output, /\* autofill-sign-in-form \(\d+ findings?\)/);
       assert.match(res.output, /Keep when:/);
       assert.match(res.output, /Drop when:/);
       assert.match(res.output, /- login\.html:\d+/);
@@ -160,7 +153,7 @@ describe('runAnalyzeCli', () => {
 
       assert.match(
         res.output,
-        /\* animate-to-intrinsic-sizes \[qualified\] \(\d+ findings?\)/,
+        /\* animate-to-intrinsic-sizes \(\d+ findings?\)/,
       );
       assert.match(res.output, /- accordion\.css:\d+/);
       assert.match(res.output, /\.accordion-panel \{/);
@@ -184,7 +177,7 @@ describe('runAnalyzeCli', () => {
 </form>`;
       await writeFile(join(testDir, 'auth.html'), htmlContent, 'utf8');
 
-      const res = await runAnalyzeCli([testDir, '--all', '--json']);
+      const res = await runAnalyzeCli([testDir, '--json']);
       assert.equal(res.exitCode, 0);
 
       const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
@@ -198,7 +191,6 @@ describe('runAnalyzeCli', () => {
       assert.ok(guide.verifierRubric, 'Expected verifierRubric in guide JSON output');
       assert.ok(guide.verifierRubric.keepWhen.length >= 1);
       assert.ok(guide.verifierRubric.dropWhen.length >= 1);
-      assert.equal(guide.tier, 'qualified');
       assert.equal(guide.retrieveCommand, 'npx modern-web-guidance retrieve autofill-sign-in-form');
       assert.ok(guide.summary.length > 0);
       assert.equal(guide.count, guide.findings.length);
@@ -273,24 +265,14 @@ describe('runAnalyzeCli', () => {
     }
   });
 
-  it('gates CLI to QUALIFIED_RULES by default and includes experimental rules with --all', async () => {
+  it('runs QUALIFIED_RULES by default and rejects unknown flags (--all, --experimental, --jsno)', async () => {
     const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
     try {
-      // 1. Create a pattern from an experimental guide: complex-shapes
+      // Create a file that does not match any qualified rule
       const maskCss = `.icon {\n  -webkit-mask-image: url('icon.svg');\n}`;
       await writeFile(join(testDir, 'mask.css'), maskCss, 'utf8');
 
-      // 2. Create experimental patterns: break-up-long-tasks, coordinate-global-events
-      const yieldJs = `const yieldToMain = () => new Promise(r => setTimeout(r));`;
-      await writeFile(join(testDir, 'yield.js'), yieldJs, 'utf8');
-
-      const timezoneJs = `function convertToTargetZone(timestamp, targetTzOffset) {
-  const localOffsetMinutes = new Date().getTimezoneOffset();
-  return timestamp + (targetTzOffset - localOffsetMinutes) * 60 * 1000;
-}`;
-      await writeFile(join(testDir, 'timezone.js'), timezoneJs, 'utf8');
-
-      // Default run (QUALIFIED_RULES only; experimental patterns do not match default)
+      // Default run (QUALIFIED_RULES only)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
@@ -298,47 +280,26 @@ describe('runAnalyzeCli', () => {
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
 
-      // Retired flags (--experimental, --all-rules) and typo flags fail fast with exit code 1
+      // Unknown flags (--all, --experimental, --all-rules, --jsno) fail fast with exit code 1
+      const resAllHuman = await runAnalyzeCli([testDir, '--all']);
+      assert.equal(resAllHuman.exitCode, 1);
+      assert.equal(resAllHuman.data, undefined);
+      assert.match(resAllHuman.output, /Error: Unknown option '--all'/);
+
+      const resAllJson = await runAnalyzeCli([testDir, '--all', '--json']);
+      assert.equal(resAllJson.exitCode, 1);
+      assert.ok(resAllJson.data);
+      const parsedAllJson = JSON.parse(resAllJson.output) as AnalyzeJsonOutput;
+      assert.match(parsedAllJson.error ?? '', /Unknown option '--all'/);
+
       const resExperimentalHuman = await runAnalyzeCli([testDir, '--experimental']);
       assert.equal(resExperimentalHuman.exitCode, 1);
-      assert.equal(resExperimentalHuman.data, undefined);
-      assert.match(resExperimentalHuman.output, /Error: --experimental was renamed to --all/);
-
-      const resExperimentalJson = await runAnalyzeCli([testDir, '--experimental', '--json']);
-      assert.equal(resExperimentalJson.exitCode, 1);
-      assert.ok(resExperimentalJson.data);
-      const parsedExpJson = JSON.parse(resExperimentalJson.output) as AnalyzeJsonOutput;
-      assert.equal(parsedExpJson.error, '--experimental was renamed to --all');
-
-      const resAllRulesHuman = await runAnalyzeCli([testDir, '--all-rules']);
-      assert.equal(resAllRulesHuman.exitCode, 1);
-      assert.match(resAllRulesHuman.output, /Error: --all-rules was renamed to --all/);
+      assert.match(resExperimentalHuman.output, /Error: Unknown option '--experimental'/);
 
       const resTypo = await runAnalyzeCli([testDir, '--jsno']);
       assert.equal(resTypo.exitCode, 1);
       assert.equal(resTypo.data, undefined);
       assert.match(resTypo.output, /Error: Unknown option '--jsno'/);
-
-      // Opt-in run with --all
-      const resAll = await runAnalyzeCli([testDir, '--all', '--json']);
-      assert.equal(resAll.exitCode, 0);
-      const parsedAll = JSON.parse(resAll.output) as AnalyzeJsonOutput;
-      assert.equal(parsedAll.activeRuleCount, ALL_RULES.length);
-      assert.equal(parsedAll.activeGuideCount, new Set(ALL_RULES.map((r) => r.guideId)).size);
-      const allGuideIds = parsedAll.guides.map((g) => g.guideId);
-
-      assert.ok(
-        allGuideIds.includes('complex-shapes'),
-        '--all includes experimental rule complex-shapes',
-      );
-      assert.ok(
-        allGuideIds.includes('break-up-long-tasks'),
-        '--all includes experimental rule break-up-long-tasks',
-      );
-      assert.ok(
-        allGuideIds.includes('coordinate-global-events'),
-        '--all includes experimental rule coordinate-global-events',
-      );
     } finally {
       await rm(testDir, { recursive: true, force: true });
     }
@@ -355,14 +316,14 @@ describe('runAnalyzeCli', () => {
         await writeFile(join(testDir, `form${i}.html`), html, 'utf8');
       }
 
-      const res = await runAnalyzeCli([testDir, '--all']);
+      const res = await runAnalyzeCli([testDir]);
       assert.equal(res.exitCode, 0);
 
       // Terminal output should cap findings at 5 and print overflow line
       assert.match(res.output, /\.\.\. and 3 more findings/);
 
       // Verify JSON output still has all 8 findings un-truncated
-      const resJson = await runAnalyzeCli([testDir, '--all', '--json']);
+      const resJson = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resJson.exitCode, 0);
       const parsedJson = JSON.parse(resJson.output) as AnalyzeJsonOutput;
       assert.equal(parsedJson.totalFindings, 8);
@@ -437,7 +398,6 @@ describe('runAnalyzeCli', () => {
         [
           {
             guideId: 'autofill-sign-in-form',
-            tier: 'qualified',
             summary: 'Autocomplete guidance summary',
             retrieveCommand: 'npx retrieve autofill-sign-in-form',
             count: 1,
@@ -459,7 +419,6 @@ describe('runAnalyzeCli', () => {
       // Should contain ANSI escape codes \u001b[
       assert.ok(outputColor.includes('\u001b['), 'Expected ANSI styling codes in colored output');
       assert.ok(outputColor.includes('autofill-sign-in-form'));
-      assert.ok(outputColor.includes('[qualified]'));
 
       const outputNoColor = formatHumanReadable(
         '/workspace',
@@ -467,7 +426,6 @@ describe('runAnalyzeCli', () => {
         [
           {
             guideId: 'autofill-sign-in-form',
-            tier: 'qualified',
             summary: 'Autocomplete guidance summary',
             retrieveCommand: 'npx retrieve autofill-sign-in-form',
             count: 1,

@@ -1,56 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scanPackageJson } from '../scanners/dependency-scanner.ts';
 import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
   equalWidthTextLinesJsMatcher,
-  equalWidthTextLinesPackageMatcher
 } from './equal-width-text-lines.ts';
-void test('equal-width-text-lines dependency matcher', async (t) => {
-  await t.test('flags fitty in dependencies', () => {
-    const pkg = JSON.stringify({
-      dependencies: {
-        fitty: '^2.3.6',
-      },
-    }, null, 2);
-    const matches = scanPackageJson('package.json', pkg, [equalWidthTextLinesPackageMatcher]);
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /fitty/);
-  });
-
-  await t.test('flags fittext in peerDependencies', () => {
-    const pkg = JSON.stringify({
-      peerDependencies: {
-        fittext: '^0.0.4',
-      },
-    }, null, 2);
-    const matches = scanPackageJson('package.json', pkg, [equalWidthTextLinesPackageMatcher]);
-    assert.equal(matches.length, 1);
-    assert.match(matches[0]?.message ?? '', /fittext/);
-  });
-
-  await t.test('flags jquery-fittext and react-fitty', () => {
-    const pkg = JSON.stringify({
-      dependencies: {
-        'jquery-fittext': '^1.2.0',
-        'react-fitty': '^1.0.0',
-      },
-    }, null, 2);
-    const matches = scanPackageJson('package.json', pkg, [equalWidthTextLinesPackageMatcher]);
-    assert.equal(matches.length, 2);
-  });
-
-  await t.test('exempts unrelated dependencies', () => {
-    const pkg = JSON.stringify({
-      dependencies: {
-        react: '^18.0.0',
-        lodash: '^4.17.21',
-      },
-    }, null, 2);
-    const matches = scanPackageJson('package.json', pkg, [equalWidthTextLinesPackageMatcher]);
-    assert.equal(matches.length, 0);
-  });
-});
 
 void test('equal-width-text-lines JS matcher', async (t) => {
   await t.test('flags fitty call', () => {

@@ -2,21 +2,9 @@ import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
-import {
-  ALL_RULES,
-  QUALIFIED_RULES,
-  RULE_REGISTRY_BY_GUIDE_ID,
-} from './rules/index.ts';
+import { QUALIFIED_RULES } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerRule, VerifierRubric } from './schema.ts';
-
-export type GuideConfidenceTier = 'qualified' | 'experimental';
-
-export function getGuideConfidenceTier(guideId: string): GuideConfidenceTier {
-  return RULE_REGISTRY_BY_GUIDE_ID.get(guideId)?.lifecycle.status === 'qualified'
-    ? 'qualified'
-    : 'experimental';
-}
 
 export interface AnalyzeCliFinding {
   readonly ruleId: string;
@@ -38,7 +26,6 @@ export interface AnalyzeCliRuleGroup {
 
 export interface AnalyzeCliGuideGroup {
   readonly guideId: string;
-  readonly tier: GuideConfidenceTier;
   readonly summary: string;
   readonly retrieveCommand: string;
   readonly verifierRubric?: VerifierRubric;
@@ -132,7 +119,6 @@ Arguments:
 Options:
   --json                    Output findings as structured JSON for coding agents
   --guide <guideId>         Filter analysis to a specific guide ID
-  --all                     Include all experimental rules
   --include-docs-and-tests  Include documentation, example, demo, and test files in analysis
   -h, --help                Show this help message
 `.trim();
@@ -201,7 +187,7 @@ export function formatHumanReadable(
     if (isDefaultMode) {
       const lines = [
         `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
-        `0 findings from ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide' : 'guides'} (pass --all to include experimental guides).`,
+        `0 findings from ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide' : 'guides'}.`,
       ];
       if (skippedNotice) lines.push(skippedNotice);
       lines.push('');
@@ -223,20 +209,15 @@ export function formatHumanReadable(
   lines.push('');
 
   for (const g of guides) {
-    const tierBadge =
-      g.tier === 'experimental'
-        ? ` ${fmt('yellow', '[experimental]')}`
-        : ` ${fmt('dim', '[qualified]')}`;
-
     if (!g.rules || g.rules.length <= 1) {
       lines.push(
-        `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'})`)}`,
+        `* ${fmt(['bold', 'cyan'], g.guideId)} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'})`)}`,
       );
       appendFindingGroupBlock(lines, g, '  ', fmt);
       lines.push('');
     } else {
       lines.push(
-        `* ${fmt(['bold', 'cyan'], g.guideId)}${tierBadge} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'} across ${g.rules.length} rules)`)}`,
+        `* ${fmt(['bold', 'cyan'], g.guideId)} ${fmt('dim', `(${g.count} finding${g.count === 1 ? '' : 's'} across ${g.rules.length} rules)`)}`,
       );
       for (const rg of g.rules) {
         lines.push('');
@@ -281,7 +262,6 @@ export async function runAnalyzeCli(
       options: {
         json: { type: 'boolean' },
         guide: { type: 'string' },
-        all: { type: 'boolean' },
         'include-docs-and-tests': { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
       },
@@ -289,9 +269,7 @@ export async function runAnalyzeCli(
       strict: true,
     });
   } catch (err: unknown) {
-    const rawMsg = err instanceof Error ? err.message : String(err);
-    const retiredMatch = rawMsg.match(/Unknown option '(--(?:experimental|all-rules))'/);
-    const error = retiredMatch ? `${retiredMatch[1]} was renamed to --all` : rawMsg;
+    const error = err instanceof Error ? err.message : String(err);
     const isJson = cleanArgs.includes('--json');
     const targetDir = cleanArgs.find((a) => !a.startsWith('-')) || '.';
     return errorCliResult(error, isJson, targetDir);
@@ -300,7 +278,6 @@ export async function runAnalyzeCli(
   const isJson = Boolean(parsed.values.json);
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
   const isHelp = Boolean(parsed.values.help);
-  const useAllRules = Boolean(parsed.values.all);
   const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
   const targetDir = parsed.positionals[0] || '.';
 
@@ -323,12 +300,8 @@ export async function runAnalyzeCli(
   }
 
   const isDefaultQualifiedMode =
-    !useAllRules && !guideFilter && options?.rules === undefined;
-  const defaultRules =
-    useAllRules || Boolean(guideFilter)
-      ? ALL_RULES
-      : QUALIFIED_RULES;
-  const activeRulesList = options?.rules ?? defaultRules;
+    !guideFilter && options?.rules === undefined;
+  const activeRulesList = options?.rules ?? QUALIFIED_RULES;
   const activeRules = guideFilter
     ? activeRulesList.filter((r) => r.guideId === guideFilter)
     : activeRulesList;
@@ -399,7 +372,6 @@ export async function runAnalyzeCli(
 
     return {
       guideId: gid,
-      tier: getGuideConfidenceTier(gid),
       summary: isSingleRule
         ? primaryRule.summary
         : ruleGroups.map((rg) => rg.summary).join('; '),

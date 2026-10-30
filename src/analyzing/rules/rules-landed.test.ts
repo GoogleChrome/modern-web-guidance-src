@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { ALL_RULES } from './index.ts';
+import { QUALIFIED_RULES } from './index.ts';
 import { scanAllGuides } from '../../core/guide-validation.ts';
 
 describe('172-landed-guide invariant for analyzer rules', () => {
-  it('asserts that every rule in ALL_RULES belongs to the 172 landed feature guides', async (t) => {
+  it('asserts that every rule in QUALIFIED_RULES belongs to the 172 landed feature guides', async (t) => {
     const allGuides = scanAllGuides();
     const landedFeatureGuides = allGuides.filter(
       (g) => !g.isDisciplineGuide && g.isPublished,
@@ -18,10 +18,10 @@ describe('172-landed-guide invariant for analyzer rules', () => {
 
     const landedGuideIds = new Set(landedFeatureGuides.map((g) => g.name));
 
-    const ruleGuideIds = new Set(ALL_RULES.map((r) => r.guideId));
-    assert.ok(ruleGuideIds.size > 0, 'ALL_RULES must cover active landed feature guides');
+    const ruleGuideIds = new Set(QUALIFIED_RULES.map((r) => r.guideId));
+    assert.ok(ruleGuideIds.size > 0, 'QUALIFIED_RULES must cover active landed feature guides');
 
-    for (const rule of ALL_RULES) {
+    for (const rule of QUALIFIED_RULES) {
       await t.test(`rule ${rule.id} (${rule.guideId}) is a landed feature guide`, () => {
         assert.ok(
           landedGuideIds.has(rule.guideId),

@@ -10,11 +10,9 @@ import {
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
-import { createDependencyMatcher } from '../scanners/dependency-scanner.ts';
 import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
   AnalyzerRule,
-  DependencyRuleMatcher,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -256,13 +254,6 @@ function isFitTextCall(
   return false;
 }
 
-export const equalWidthTextLinesPackageMatcher: DependencyRuleMatcher =
-  createDependencyMatcher(
-    FITTEXT_PACKAGES,
-    (pkgName, versionRange) =>
-      `Legacy text-fitting package "${pkgName}" (${versionRange}) can be modernized with native CSS text-fit: grow per-line-all.`,
-  );
-
 export const equalWidthTextLinesJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: ['fitty', 'fitText', 'fittext'],
   featureGuardTokens: ['text-fit', 'text-wrap'],
@@ -271,24 +262,6 @@ export const equalWidthTextLinesJsMatcher: JsRuleMatcher = createJsCallMatcher({
       ? `Imperative text-fitting script call "${node.getExpression().getText()}" can be modernized with native CSS text-fit: grow per-line-all.`
       : null,
 });
-
-export const equalWidthTextLinesPackageRule: AnalyzerRule = {
-  id: 'equal-width-text-lines/package-fittext',
-  guideId: 'equal-width-text-lines',
-  guideHash: EQUAL_WIDTH_TEXT_LINES_GUIDE_HASH,
-  summary:
-    'Legacy text-fitting packages (fitty, fittext, jquery-fittext, react-fitty) in dependencies should be modernized with native CSS text-fit: grow per-line-all.',
-  matcher: equalWidthTextLinesPackageMatcher,
-  verifierRubric: {
-    keepWhen: [
-      'A project declares fitty, fittext, jquery-fittext, or react-fitty in package.json dependencies to resize text lines to equal width.',
-    ],
-    dropWhen: [
-      'The package is a dev-only tool or unrelated utility not used for heading line scaling.',
-      'The text resizing is single-line container fitting covered by fit-text-to-container rather than multi-line equal-width headings.',
-    ],
-  },
-};
 
 export const equalWidthTextLinesJsRule: AnalyzerRule = {
   id: 'equal-width-text-lines/js-fittext',
@@ -312,6 +285,5 @@ export const equalWidthTextLinesJsRule: AnalyzerRule = {
 };
 
 export default [
-  equalWidthTextLinesPackageRule,
   equalWidthTextLinesJsRule,
 ] satisfies readonly AnalyzerRule[];

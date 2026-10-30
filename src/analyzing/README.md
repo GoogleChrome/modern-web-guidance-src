@@ -27,7 +27,6 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 | `[dir]` | Positional | Directory to analyze (defaults to current working directory). |
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
-| `--all` | Flag | Include experimental rules (default runs only qualified rules). |
 | `--include-docs-and-tests` | Flag | Include documentation, example, demo, and test files (skipped by default). |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
@@ -39,14 +38,14 @@ Found 2 modernization opportunities across 2 guides:
 Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.
 Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
 
-* autofill-sign-in-form [qualified] (1 finding)
+* autofill-sign-in-form (1 finding)
   Password input in sign-in or credential form should specify autocomplete="current-password" or autocomplete="new-password".
   Keep when: The password input is part of a user-facing authentication, current-password verification, or sign-in form.;…
   Drop when: The password input is disabled, readonly, hidden, or a non-interactive display widget.; The password input al…
   - src/templates/pad.html:109
     <input id='passwordinput' type='password' name='password'><input type='submit'…
 
-* form-fields-automatically-fit-contents [qualified] (1 finding)
+* form-fields-automatically-fit-contents (1 finding)
   Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.
   Keep when: A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/wi…
   Drop when: The code is guarded by a feature query checking CSS.supports("field-sizing", "content") or field-sizing suppo…
@@ -58,7 +57,7 @@ Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json fo
 
 ### Structured JSON Output (`--json`, abridged)
 
-Coding agents receive structured JSON containing exact file coordinates, confidence tiers, message descriptions, verification rubrics, and copy-paste retrieval commands:
+Coding agents receive structured JSON containing exact file coordinates, message descriptions, verification rubrics, and copy-paste retrieval commands:
 
 ```json
 {
@@ -67,7 +66,6 @@ Coding agents receive structured JSON containing exact file coordinates, confide
   "guides": [
     {
       "guideId": "form-fields-automatically-fit-contents",
-      "tier": "qualified",
       "summary": "Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.",
       "retrieveCommand": "npx modern-web-guidance retrieve form-fields-automatically-fit-contents",
       "verifierRubric": {
@@ -227,15 +225,14 @@ export const autofillSignInFormRule: AnalyzerRule = {
 ### Qualified Rules & Gated Execution
 
 To keep terminal false alarms low when run in developer environments, the analyzer enforces qualification gating:
-- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** By default in standard terminal CLI mode and `--json` mode, the analyzer runs rules for guides that clear the default-on qualification standard on the `held-out` split as scored by the multi-judge panel: Post-Verifier Precision $\ge 90\%$ and either Static Matcher Precision $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns. In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
-- **`ALL_RULES` (`--all`):** Executes all active feature guides across all rules in `ALL_RULES`, including experimental rules.
+- **`QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`):** In both standard terminal CLI mode and `--json` mode, the analyzer ships rules in `src/analyzing/rules/` that clear the default-on qualification standard on the `held-out` split as scored by the multi-judge panel: Post-Verifier Precision $\ge 90\%$ and either Static Matcher Precision $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns. In `--json` mode, complete `verifierRubric` definitions (`keepWhen` and `dropWhen`) are emitted so coding agents can perform runtime verification before proposing edits.
 
 ### Qualification Criteria
 
 Rules qualify for default terminal shipping when scored on `held-out` findings by the multi-judge panel:
 - **Standard Bar:** Post-Verifier Precision $\ge 90.0\%$ and Static Matcher Precision $\ge 80.0\%$ at $n \ge 10$ evaluated findings on the `held-out` split.
 - **Rare-Pattern Bar:** Post-Verifier Precision $\ge 90.0\%$ and Static Matcher Precision $\ge 90.0\%$ at $n \ge 5$ evaluated findings on the `held-out` split.
-- Rules below the bar remain in the experimental tier (`--all`) until their matchers and rubrics clear the threshold.
+- Rules below the bar remain in the experimental tier until their matchers and rubrics clear the threshold.
 
 ### 2-Axis Triage Taxonomy
 
@@ -356,5 +353,5 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 1. **Run preflight checks**: `pnpm run preflight` and `node --test "src/analyzing/**/*.test.ts"`.
 2. **Run detection evaluation**: `node --env-file=.env src/analyzing/eval/detection-eval.ts`.
 3. **Qualification criteria**:
-   - **Experimental Rule**: Active in `ALL_RULES`, available under `--all`.
-   - **Qualified Rule**: Promoted to `QUALIFIED_GUIDE_IDS` for default terminal shipping once it clears the multi-judge qualification standard on the `held-out` split (Post-Verifier Precision $\ge 90\%$ and either Static Matcher Precision $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns).
+   - **Experimental Rule**: Active under evaluation and tightening prior to default shipping.
+   - **Qualified Rule**: Promoted to `QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`) in `src/analyzing/rules/` for default terminal shipping once it clears the multi-judge qualification standard on the `held-out` split (Post-Verifier Precision $\ge 90\%$ and either Static Matcher Precision $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns).

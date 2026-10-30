@@ -1,200 +1,45 @@
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
 import { scanJsSource } from '../scanners/index.ts';
-import {
-  calculateEventDifferentialsMatcher
-} from './calculate-event-differentials.ts';
+import { durationJsMatcher } from './calculate-event-differentials.ts';
 
-describe('calculate-event-differentials rule', () => {
-  test('flags Date difference divided by 86400000 (days) with .getTime() on both sides', () => {
+describe('format-human-readable-durations/js-duration-formatter rule', () => {
+  test('flags humanizeDuration and prettyMs calls', () => {
     const code = `
-      function getDaysBetween(date1, date2) {
-        const diffDays = (date1.getTime() - date2.getTime()) / 86400000;
-        return diffDays;
+      function renderSpan(ms) {
+        const a = humanizeDuration(ms);
+        const b = prettyMs(ms);
+        return a + b;
       }
     `;
-    const { matches } = scanJsSource(
-      'time/days.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /Temporal/);
+    const { matches } = scanJsSource('ui/duration.js', code, [durationJsMatcher]);
+    assert.equal(matches.length, 2);
+    assert.match(matches[0]!.message, /Temporal\.Duration/);
   });
 
-  test('flags new Date differences divided by 86400000', () => {
+  test('flags moment.duration().humanize() and custom formatDuration function', () => {
     const code = `
-      function diffInDays(a, b) {
-        return (new Date(a) - new Date(b)) / 86400000;
+      const label = moment.duration(5000).humanize();
+      function formatDuration(sec) {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        return h + 'hr ' + m + 'min';
       }
     `;
-    const { matches } = scanJsSource(
-      'time/new-date.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /Temporal/);
+    const { matches } = scanJsSource('ui/format.js', code, [durationJsMatcher]);
+    assert.equal(matches.length, 2);
   });
 
-  test('flags Date difference divided by (1000 * 60 * 60 * 24)', () => {
+  test('ignores duration calls guarded by Intl.DurationFormat feature detection', () => {
     const code = `
-      function daysUntilExpiration(endDate, startDate) {
-        return (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-      }
-    `;
-    const { matches } = scanJsSource(
-      'time/calc.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /Temporal/);
-  });
-
-  test('flags real-world tiddlywiki week calculation pattern', () => {
-    const code = `
-      function calcWeek(dt, x) {
-        var n = Math.floor((dt.getTime() - x.getTime()) / 86400000);
-        return n;
-      }
-    `;
-    const { matches } = scanJsSource(
-      'core/modules/utils/utils.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /86400000/);
-  });
-
-  test('flags moment.diff with calendar days unit', () => {
-    const code = `
-      function getDiffInDays(d1, d2) {
-        return moment(d1).diff(moment(d2), 'days');
-      }
-    `;
-    const { matches } = scanJsSource(
-      'time/moment-diff.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /diff/);
-  });
-
-  test('flags dayjs.diff with calendar months unit', () => {
-    const code = `
-      function getDiffInMonths(d1, d2) {
-        return dayjs(d1).diff(d2, 'months');
-      }
-    `;
-    const { matches } = scanJsSource(
-      'time/dayjs-diff.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 1);
-    assert.match(matches[0].message, /diff/);
-  });
-
-  test('ignores Date.now() cache expiration or elapsed timers', () => {
-    const code = `
-      function isExpired(cachedAt) {
-        return (Date.now() - cachedAt.getTime()) / 86400000 > 7;
-      }
-    `;
-    const { matches } = scanJsSource(
-      'cache/ttl.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 0);
-  });
-
-  test('ignores intra-day divisions (/ 3600000 for hours, / 60000 for minutes, / 1000 for seconds)', () => {
-    const code = `
-      function getHours(a, b) {
-        const hours = (a.getTime() - b.getTime()) / 3600000;
-        const seconds = (a.getTime() - b.getTime()) / 1000;
-        return { hours, seconds };
-      }
-    `;
-    const { matches } = scanJsSource(
-      'time/hours.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 0);
-  });
-
-  test('ignores .diff() with intra-day hours unit or minute m unit', () => {
-    const code = `
-      function durationHours(dateEnd, dateStart) {
-        const h = dateEnd.diff(dateStart, 'hours');
-        const m = dateEnd.diff(dateStart, 'm');
-        return { h, m };
-      }
-    `;
-    const { matches } = scanJsSource(
-      'time/diff.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 0);
-  });
-
-  test('ignores date diff math when guarded by Temporal feature guard', () => {
-    const code = `
-      function getDiffDays(d1, d2) {
-        if (typeof Temporal === 'undefined') {
-          return (d1.getTime() - d2.getTime()) / 86400000;
+      function renderSpan(ms) {
+        if (typeof Intl.DurationFormat === 'undefined') {
+          return humanizeDuration(ms);
         }
-        return 0;
+        return '';
       }
     `;
-    const { matches } = scanJsSource(
-      'time/guarded.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 0);
-  });
-
-  test('ignores Math.round or Date.UTC or new Date() with 0 args subtraction', () => {
-    const code = `
-      function calc(a, b) {
-        const roundVal = Math.round((a.getTime() - b.getTime()) / 86400000);
-        const utcVal = (new Date(Date.UTC(2024, 0, 1)) - new Date(Date.UTC(2023, 0, 1))) / 86400000;
-        const nowVal = (new Date() - new Date(a)) / 86400000;
-        return { roundVal, utcVal, nowVal };
-      }
-    `;
-    const { matches } = scanJsSource(
-      'time/now-round.js',
-      code,
-      [calculateEventDifferentialsMatcher]
-    );
-    assert.equal(matches.length, 0);
-  });
-
-  test('ignores Moment.js calendar sameElse format callbacks and this.diff methods', () => {
-    const momentCalendarCode = `
-      const localeConfig = {
-        calendar: {
-          sameElse: function (now) {
-            var diff = this.diff(now, 'days', true);
-            var otherDiff = targetMoment.diff(now, 'days');
-            return diff < -6 ? 'L' : 'dddd';
-          }
-        }
-      };
-    `;
-    const { matches } = scanJsSource(
-      'locale/calendar.js',
-      momentCalendarCode,
-      [calculateEventDifferentialsMatcher]
-    );
+    const { matches } = scanJsSource('ui/guarded.js', code, [durationJsMatcher]);
     assert.equal(matches.length, 0);
   });
 });

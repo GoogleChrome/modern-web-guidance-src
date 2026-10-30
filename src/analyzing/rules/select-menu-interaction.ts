@@ -1,32 +1,14 @@
-import {
-  type CallExpression,
-  type Node,
-  SyntaxKind,
-} from 'ts-morph';
-import {
-  isDomClassOrAttrMutation,
-  matchEventListenerCall,
-  resolveCallableNode,
-  resolveLocalExpression,
-} from '../scanners/ast-helpers.ts';
-import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
   AnalyzerRule,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-  JsRuleMatcher,
 } from '../schema.ts';
 
 export const SELECT_MENU_INTERACTION_GUIDE_HASH = '3d0aae1e8d74';
 
 const SELECT_INVALID_SELECTOR_REGEX =
   /(?:^|[\s>+~,])select(?:[.#][a-zA-Z0-9_-]+|\[[^\]]*\]|:[a-zA-Z-]+)*:invalid\b/i;
-
-const USER_INVALID_GUARD_TOKENS = [
-  ':user-invalid',
-  'user-invalid',
-] as const;
 
 const TOUCHED_OR_VALIDATED_GATE_REGEX =
   /(?:\.(?:was-validated|is-validated|validated|touched|is-touched|ng-touched|dirty|is-dirty|ng-dirty|interacted|submitted)\b|\bform\.invalid\b|\[data-(?:touched|dirty|interacted|validated)\b)/i;
@@ -136,104 +118,6 @@ function hasNonResetVisualErrorDeclaration(styleRule: CssRuleView): boolean {
   });
 }
 
-const SELECT_IDENTIFIER_REGEX =
-  /(?:^|[^a-zA-Z0-9_$])select(?:El|Element|Menu|Box|Field|Dropdown|s)?(?![a-zA-Z0-9_$])/i;
-
-const CUSTOM_SELECT_WIDGET_JS_REGEX =
-  /\b(?:select2|chosen|choices|tomSelect|multiselect|combobox|autocomplete|datepicker)\b/i;
-
-function isSelectTargetText(text: string): boolean {
-  if (
-    /\[[^\]]*\bmultiple\b[^\]]*\]/i.test(text) ||
-    CUSTOM_SELECT_WIDGET_JS_REGEX.test(text) ||
-    /\b(?:input|textarea)\b/i.test(text)
-  ) {
-    return false;
-  }
-  const stripped = text.replace(/\bquerySelector(?:All)?\b/g, '');
-  return (
-    /\bselect\b/i.test(stripped) ||
-    SELECT_IDENTIFIER_REGEX.test(stripped)
-  );
-}
-
-function isSelectTargetNode(targetNode: Node | undefined): boolean {
-  if (!targetNode) {
-    return false;
-  }
-  const directText = targetNode.getText();
-  const resolved = resolveLocalExpression(targetNode, 2);
-  const resolvedText = resolved.getText();
-  if (
-    /\[[^\]]*\bmultiple\b[^\]]*\]/i.test(directText) ||
-    /\[[^\]]*\bmultiple\b[^\]]*\]/i.test(resolvedText) ||
-    CUSTOM_SELECT_WIDGET_JS_REGEX.test(directText) ||
-    CUSTOM_SELECT_WIDGET_JS_REGEX.test(resolvedText) ||
-    /\b(?:input|textarea)\b/i.test(directText) ||
-    /\b(?:input|textarea)\b/i.test(resolvedText)
-  ) {
-    return false;
-  }
-  if (isSelectTargetText(directText)) {
-    return true;
-  }
-  return isSelectTargetText(resolvedText);
-}
-
-function mutatesInvalidOrTouchedState(handlerRoot: Node): boolean {
-  const innerCalls = [
-    ...(handlerRoot.getKind() === SyntaxKind.CallExpression ? [handlerRoot] : []),
-    ...handlerRoot.getDescendantsOfKind(SyntaxKind.CallExpression),
-  ];
-  for (const call of innerCalls) {
-    const callText = call.getText();
-    if (
-      /\.classList\.(?:add|remove|toggle)\s*\([^)]*(?:invalid|error|touched|dirty|valid)\b/i.test(
-        callText,
-      ) ||
-      /\.(?:addClass|removeClass|toggleClass)\s*\([^)]*(?:invalid|error|touched|dirty|valid)\b/i.test(
-        callText,
-      ) ||
-      /\.(?:setAttribute|removeAttribute|toggleAttribute)\s*\(\s*['"`](?:aria-invalid|data-(?:invalid|error|touched|dirty))\b/i.test(
-        callText,
-      )
-    ) {
-      return true;
-    }
-  }
-
-  const handlerText = handlerRoot.getText();
-  return /\.className\b[^;]*(?:invalid|error|touched|dirty)\b/i.test(handlerText);
-}
-
-function matchSelectValidationListener(callExpr: CallExpression): string | null {
-  const listener = matchEventListenerCall(callExpr, ['blur', 'change']);
-  if (!listener) {
-    return null;
-  }
-
-  if (!isSelectTargetNode(listener.targetNode)) {
-    return null;
-  }
-
-  const resolvedHandler = resolveCallableNode(listener.handlerNode);
-  if (!isDomClassOrAttrMutation(resolvedHandler)) {
-    return null;
-  }
-
-  const handlerText = resolvedHandler.getText();
-  const checksEmptyOrInvalid =
-    /\.value\s*===\s*['"`]{2}|!\s*[a-zA-Z0-9_$.]+\.value\b|checkValidity\s*\(|validity\.valid/.test(
-      handlerText,
-    );
-
-  if (!checksEmptyOrInvalid || !mutatesInvalidOrTouchedState(resolvedHandler)) {
-    return null;
-  }
-
-  return `Imperative '${listener.eventName}' listener toggling invalid/error state on <select> can be modernized with native <select required> and CSS select:user-invalid.`;
-}
-
 export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: [
@@ -291,27 +175,6 @@ export const selectMenuInteractionCssMatcher: CssRuleMatcher = {
   },
 };
 
-export const selectMenuInteractionJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: [
-    ['blur', 'change', 'onblur', 'onchange'],
-    ['select', 'Select'],
-    ['value', 'checkValidity', 'validity'],
-    [
-      'classList',
-      'addClass',
-      'removeClass',
-      'toggleClass',
-      'setAttribute',
-      'removeAttribute',
-      'toggleAttribute',
-      'className',
-    ],
-    ['invalid', 'Invalid', 'error', 'Error', 'touched', 'Touched', 'dirty', 'Dirty', 'valid', 'Valid'],
-  ],
-  featureGuardTokens: USER_INVALID_GUARD_TOKENS,
-  matchCall: matchSelectValidationListener,
-});
-
 export const selectMenuInteractionCssRule: AnalyzerRule = {
   id: 'select-menu-interaction/css-select-invalid',
   guideId: 'select-menu-interaction',
@@ -333,25 +196,6 @@ export const selectMenuInteractionCssRule: AnalyzerRule = {
   },
 };
 
-export const selectMenuInteractionJsRule: AnalyzerRule = {
-  id: 'select-menu-interaction/js-select-interaction',
-  guideId: 'select-menu-interaction',
-  guideHash: SELECT_MENU_INTERACTION_GUIDE_HASH,
-  summary:
-    'JavaScript blur/change listeners checking select.value === "" to toggle invalid classes should be modernized with CSS select:user-invalid and <select required>.',
-  matcher: selectMenuInteractionJsMatcher,
-  verifierRubric: {
-    keepWhen: [
-      'A change or blur event listener on a native <select> element checks select.value === "" or !select.value and toggles an invalid, error, or touched class or aria-invalid attribute.',
-    ],
-    dropWhen: [
-      'The listener is guarded by a CSS.supports("selector(:user-invalid)") check.',
-      'The handler targets text <input>/<textarea> controls, multi-select inputs, custom select libraries (Select2, Chosen, Choices.js, TomSelect), or asynchronous server-side validation responses.',
-    ],
-  },
-};
-
 export default [
   selectMenuInteractionCssRule,
-  selectMenuInteractionJsRule,
 ] satisfies readonly AnalyzerRule[];

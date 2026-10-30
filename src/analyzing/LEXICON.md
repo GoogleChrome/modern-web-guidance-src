@@ -13,7 +13,7 @@ The people-facing name for the end-to-end workflow of finding legacy web platfor
 
 ### `analyze`
 
-The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for legacy web platform patterns matching qualified or experimental rules. It performs the detection step only and stops there; the AI coding agent and developer carry out the verification and update steps of the **Modernize** workflow.
+The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for legacy web platform patterns matching qualified rules. It performs the detection step only and stops there; the AI coding agent and developer carry out the verification and update steps of the **Modernize** workflow.
 
 * _Reference_: `src/analyzing/cli.ts#runAnalyzeCli`, `guides/modern-web-guidance/SKILL.md#modernize-an-existing-codebase`
 * _Avoid_: `modern-web-guidance refactor`, `modern-web-guidance uplift`, `scan` (as a CLI command name)
@@ -61,14 +61,14 @@ A published feature guide in `guides/<guideId>/guide.md` representing one modern
 
 A **Static Matcher** entry (`AnalyzerRule`) targeting a specific language or scanner layer (JS/TS AST, CSS, HTML/JSX DOM, or `package.json`) for a given `guideId`. A single guide may have multiple rules across layers (e.g., a `package.json` dependency rule plus a JS AST rule).
 
-* _Reference_: `src/analyzing/schema.ts#AnalyzerRule`, `src/analyzing/rules/index.ts#ALL_RULES`
+* _Reference_: `src/analyzing/schema.ts#AnalyzerRule`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
 * _Avoid_: `Detector`, `Check`, `Linter Rule`
 
 ### Sub-Pattern (`subPattern`)
 
 A distinct syntactic or payoff variant within a single **Rule**. A **Deferred Sub-Pattern** is a sub-pattern held back from default execution because its precision or payoff profile differs from the rule's active sub-patterns.
 
-* _Reference_: `src/analyzing/rules/individual-transform-properties.ts#ITP_DEFERRED_SUB_PATTERNS`
+* _Reference_: `src/analyzing/README.md#4-rule-authoring-analyzerrule`
 * _Avoid_: `Sub-Rule`, `Rule Variant`, `Branch`
 
 ## Corpus Splits
@@ -147,14 +147,14 @@ An evaluation qualification disposition for a rule that has been evaluated on th
 
 ### Experimental Rule
 
-A rule in `ALL_RULES` available behind `--all` that has not yet cleared the qualification criteria for default shipping.
+A rule under active evaluation and tightening that has not yet cleared the qualification criteria for default shipping in `QUALIFIED_RULES`.
 
-* _Reference_: `src/analyzing/rules/index.ts#ALL_RULES`
+* _Reference_: `src/analyzing/README.md#qualification-criteria`
 * _Avoid_: `Active Rule`, `Unqualified Rule`, `Stage 1`, `PILOT_RULES`
 
 ### Qualified Rule
 
-A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**, which runs only under `--all`.
+A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**.
 
 * _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
 * _Avoid_: `Default Rule`, `Tier 1 Rule`, `Tier A / Tier B / Tier C`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`
@@ -167,7 +167,7 @@ A state where a rule clears the default-on qualification bar on the **`held-out`
 
 ### Retired Guide
 
-A guide for which a rule was prototyped and subsequently retired in `RULE_REGISTRY` (with its module deleted on disk) because **Guide Triage** or human review determined it has `no-legacy-pattern` or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding.
+A guide for which a rule was prototyped and subsequently retired (with its module deleted on disk) because **Guide Triage** or human review determined it has `no-legacy-pattern` or mismatched the guide's actual feature. Not to be confused with an **LLM Verifier** `drop` decision on an individual finding.
 
-* _Reference_: `src/analyzing/rules/index.ts#RULE_REGISTRY`, `src/analyzing/README.md`
+* _Reference_: `src/analyzing/README.md`
 * _Avoid_: `Dropped Rule`

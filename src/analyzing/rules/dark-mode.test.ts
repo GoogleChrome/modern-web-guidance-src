@@ -1,15 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import { scanJsSource } from '../scanners/js-scanner.ts';
-import type { CssRuleMatcher, JsRuleMatcher } from '../schema.ts';
-import {
-  darkModeCssRule,
-  darkModeJsMatchMediaRule,
-} from './dark-mode.ts';
+import type { CssRuleMatcher } from '../schema.ts';
+import { darkModeCssRule } from './dark-mode.ts';
 
 const cssMatcher = darkModeCssRule.matcher as CssRuleMatcher;
-const jsMatcher = darkModeJsMatchMediaRule.matcher as JsRuleMatcher;
 
 void test('dark-mode: CSS positive brownfield matches', async (t) => {
   await t.test('flags rules inside @media (prefers-color-scheme: dark) without color-scheme', () => {
@@ -60,83 +55,6 @@ void test('dark-mode: CSS negative / exempt cases', async (t) => {
       }
     `;
     const matches = scanCss('light-dark-theme.css', css, [cssMatcher]);
-    assert.equal(matches.length, 0);
-  });
-});
-
-void test('dark-mode/js-match-media: JS positive matches', async (t) => {
-  await t.test('flags matchMedia setting data-theme attribute without a change listener', () => {
-    const code = `
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (isDark) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    `;
-    const { matches } = scanJsSource('theme-init.js', code, [jsMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-    assert.match(matches[0]?.message ?? '', /color-scheme/);
-  });
-
-  await t.test('flags JS toggling dark theme class without color-scheme', () => {
-    const code = `
-      const media = window.matchMedia('(prefers-color-scheme: dark)');
-      if (media.matches) {
-        document.documentElement.classList.add('dark');
-      }
-    `;
-    const { matches } = scanJsSource('theme-toggle.js', code, [jsMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-  });
-});
-
-void test('dark-mode/js-match-media: JS negative / exempt cases', async (t) => {
-  await t.test('exempts read-only dark-mode checks, cookie-backed theme overrides, and non-DOM matchMedia queries', () => {
-    const code = `
-      export function isInDarkMode() {
-        return document.documentElement.classList.contains('dark') ||
-          window.matchMedia('(prefers-color-scheme: dark)').matches;
-      }
-    `;
-    const { matches } = scanJsSource('read-only.js', code, [jsMatcher]);
-    assert.equal(matches.length, 0);
-  });
-  await t.test('exempts matchMedia when a change listener is registered and color-scheme is used', () => {
-    const code = `
-      const media = window.matchMedia('(prefers-color-scheme: dark)');
-      document.documentElement.style.colorScheme = media.matches ? 'dark' : 'light';
-      media.addEventListener('change', (e) => {
-        document.documentElement.style.colorScheme = e.matches ? 'dark' : 'light';
-      });
-    `;
-    const { matches } = scanJsSource('modern-listener.js', code, [jsMatcher]);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('exempts code protected by feature guard', () => {
-    const code = `
-      if (!CSS.supports('color-scheme', 'light dark')) {
-        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      }
-    `;
-    const { matches } = scanJsSource('guarded.js', code, [jsMatcher]);
-    assert.equal(matches.length, 0);
-  });
-
-  await t.test('exempts matchMedia assigned to property and passed to addEventListener helper', () => {
-    const code = `
-      class Tokenizer {
-        #mediaQueryList;
-        constructor() {
-          this.#mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)');
-          addEventListener(this.#mediaQueryList, 'change', () => {
-            this.handleThemeChange();
-          });
-        }
-      }
-    `;
-    const { matches } = scanJsSource('tokenizer.js', code, [jsMatcher]);
     assert.equal(matches.length, 0);
   });
 });
