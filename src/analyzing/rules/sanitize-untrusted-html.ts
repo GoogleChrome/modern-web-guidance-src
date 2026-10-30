@@ -28,11 +28,11 @@ const SANITIZER_FEATURE_TOKENS = [
 ] as const;
 
 /**
- * Checks whether an expression is a call to a third-party sanitizer like
- * DOMPurify.sanitize(...), sanitizeHtml(...), xss(...), or insane(...).
+ * Checks whether an expression (resolving local identifiers) is a call to a
+ * third-party sanitizer like DOMPurify.sanitize(...), sanitizeHtml(...), xss(...), or insane(...).
  */
 function isSanitizerCall(expr: Node): boolean {
-  const unwrapped = unwrapExpression(expr);
+  const unwrapped = resolveLocalExpression(expr);
   if (!Node.isCallExpression(unwrapped)) {
     return false;
   }
@@ -41,32 +41,11 @@ function isSanitizerCall(expr: Node): boolean {
     const name = callee.getText();
     return name === 'sanitizeHtml' || name === 'xss' || name === 'insane';
   }
-  if (Node.isPropertyAccessExpression(callee)) {
-    const propName = callee.getName();
-    if (propName === 'sanitize') {
-      const obj = unwrapExpression(callee.getExpression());
-      const objText = obj.getText();
-      return (
-        objText === 'DOMPurify' ||
-        objText === 'dompurify' ||
-        objText === 'window.DOMPurify' ||
-        objText === 'globalThis.DOMPurify' ||
-        /purify/i.test(objText)
-      );
-    }
-  }
-  return false;
-}
-
-/**
- * Resolves local identifiers to check if the value derives from a sanitizer call.
- */
-function resolvesToSanitizerCall(node: Node): boolean {
-  if (isSanitizerCall(node)) {
-    return true;
-  }
-  const resolved = resolveLocalExpression(node);
-  return isSanitizerCall(resolved);
+  return (
+    Node.isPropertyAccessExpression(callee) &&
+    callee.getName() === 'sanitize' &&
+    /purify/i.test(unwrapExpression(callee.getExpression()).getText())
+  );
 }
 
 /**
@@ -88,8 +67,7 @@ function matchHtmlPropertyAssignment(binaryExpr: BinaryExpression): AnalyzerMatc
     return null;
   }
 
-  const right = unwrapExpression(binaryExpr.getRight());
-  if (!resolvesToSanitizerCall(right)) {
+  if (!isSanitizerCall(binaryExpr.getRight())) {
     return null;
   }
 
@@ -112,30 +90,24 @@ function matchDomInsertionSink(callExpr: CallExpression): AnalyzerMatch | null {
 
   const methodName = expr.getName();
   const args = callExpr.getArguments();
+  const htmlArg =
+    methodName === 'insertAdjacentHTML'
+      ? args[1]
+      : methodName === 'html'
+        ? args[0]
+        : undefined;
 
-  if (methodName === 'insertAdjacentHTML' && args.length >= 2) {
-    const htmlArg = args[1];
-    if (htmlArg && resolvesToSanitizerCall(htmlArg)) {
-      return {
-        line: callExpr.getStartLineNumber(),
-        message:
-          'Method insertAdjacentHTML(...) with third-party sanitizer output can be modernized with native Element.prototype.setHTML() and Sanitizer API.',
-      };
-    }
+  if (!htmlArg || !isSanitizerCall(htmlArg)) {
+    return null;
   }
 
-  if (methodName === 'html' && args.length >= 1) {
-    const htmlArg = args[0];
-    if (htmlArg && resolvesToSanitizerCall(htmlArg)) {
-      return {
-        line: callExpr.getStartLineNumber(),
-        message:
-          'jQuery .html(...) with third-party sanitizer output can be replaced with native Element.prototype.setHTML() and Sanitizer API.',
-      };
-    }
-  }
-
-  return null;
+  return {
+    line: callExpr.getStartLineNumber(),
+    message:
+      methodName === 'insertAdjacentHTML'
+        ? 'Method insertAdjacentHTML(...) with third-party sanitizer output can be modernized with native Element.prototype.setHTML() and Sanitizer API.'
+        : 'jQuery .html(...) with third-party sanitizer output can be replaced with native Element.prototype.setHTML() and Sanitizer API.',
+  };
 }
 
 export const sanitizerJsMatcher: JsRuleMatcher = {
@@ -145,31 +117,19 @@ export const sanitizerJsMatcher: JsRuleMatcher = {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
 
-    const recordMatch = (match: AnalyzerMatch | null): void => {
-      if (!match) {
-        return;
-      }
-      if (visitedLines.has(match.line)) {
-        return;
-      }
-      visitedLines.add(match.line);
-      matches.push(match);
-    };
-
     sourceFile.forEachDescendant((node) => {
-      if (Node.isBinaryExpression(node)) {
-        const match = matchHtmlPropertyAssignment(node);
-        if (match && !isProtectedByFeatureGuard(node, SANITIZER_FEATURE_TOKENS)) {
-          recordMatch(match);
-        }
-        return;
-      }
-
-      if (Node.isCallExpression(node)) {
-        const match = matchDomInsertionSink(node);
-        if (match && !isProtectedByFeatureGuard(node, SANITIZER_FEATURE_TOKENS)) {
-          recordMatch(match);
-        }
+      const match = Node.isBinaryExpression(node)
+        ? matchHtmlPropertyAssignment(node)
+        : Node.isCallExpression(node)
+          ? matchDomInsertionSink(node)
+          : null;
+      if (
+        match &&
+        !visitedLines.has(match.line) &&
+        !isProtectedByFeatureGuard(node, SANITIZER_FEATURE_TOKENS)
+      ) {
+        visitedLines.add(match.line);
+        matches.push(match);
       }
     });
 

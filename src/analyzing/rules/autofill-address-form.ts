@@ -7,7 +7,7 @@ import type {
 
 export const AUTOFILL_ADDRESS_FORM_GUIDE_HASH = '31a1d6e904ab';
 
-const FORM_TAG_REGEX = /<\/?(form|Form)\b([^>]*)>/gi;
+const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 
 /**
  * Checks whether an element line position is enclosed within an open `<form>` or `<Form>` tag.
@@ -21,17 +21,10 @@ function isEnclosedInForm(documentText: string, targetLine: number): boolean {
   const textBefore = lines.slice(0, targetLine).join('\n');
 
   let depth = 0;
-  let match: RegExpExecArray | null;
-  FORM_TAG_REGEX.lastIndex = 0;
-
-  while ((match = FORM_TAG_REGEX.exec(textBefore)) !== null) {
-    const isClosing = match[0].startsWith('</');
-    const attrs = match[2] ?? '';
-    const isSelfClosing = attrs.trim().endsWith('/');
-
-    if (isClosing) {
+  for (const match of textBefore.matchAll(FORM_TAG_REGEX)) {
+    if (match[0].startsWith('</')) {
       depth = Math.max(0, depth - 1);
-    } else if (!isSelfClosing) {
+    } else if (!match[1]?.trim().endsWith('/')) {
       depth++;
     }
   }
@@ -42,34 +35,10 @@ function isEnclosedInForm(documentText: string, targetLine: number): boolean {
 
   // Same-line form check: line contains <form or <Form before element
   const currentLine = lines[targetLine - 1] ?? '';
-  if (/<(form|Form)\b/i.test(currentLine)) {
-    const formIndex = currentLine.search(/<(form|Form)\b/i);
-    const inputIndex = currentLine.search(/<(input|textarea)\b/i);
-    if (formIndex !== -1 && (inputIndex === -1 || formIndex < inputIndex)) {
-      return true;
-    }
-  }
-
-  return false;
+  const formIndex = currentLine.search(/<form\b/i);
+  const inputIndex = currentLine.search(/<(?:input|textarea)\b/i);
+  return formIndex !== -1 && (inputIndex === -1 || formIndex < inputIndex);
 }
-
-const ADDRESS_FIELD_TOKENS: ReadonlySet<string> = new Set([
-  'street-address',
-  'street_address',
-  'streetaddress',
-  'address_line_1',
-  'address-line-1',
-  'addressline1',
-  'address_1',
-  'address-1',
-  'address1',
-  'postal-code',
-  'postal_code',
-  'postalcode',
-  'zipcode',
-  'zip_code',
-  'zip-code',
-]);
 
 const ADDRESS_FIELD_REGEX =
   /(?:^|[_-])(street[-_]?address|address[-_]?line[-_]?1|address1|postal[-_]?code|zip[-_]?code|zipcode)(?:$|[_-])/i;
@@ -78,17 +47,11 @@ const NON_POSTAL_QUALIFIER_REGEX =
   /(?:^|[_-])(?:email|ip|mac|wallet|url|server)(?:$|[_-])/i;
 
 function isPostalAddressIdentifier(identifier: string): boolean {
-  if (!identifier) {
-    return false;
-  }
   const lower = identifier.toLowerCase().trim();
-  if (NON_POSTAL_QUALIFIER_REGEX.test(lower)) {
+  if (!lower || NON_POSTAL_QUALIFIER_REGEX.test(lower)) {
     return false;
   }
-  if (ADDRESS_FIELD_TOKENS.has(lower)) {
-    return true;
-  }
-  return ADDRESS_FIELD_REGEX.test(lower);
+  return lower === 'address_1' || lower === 'address-1' || ADDRESS_FIELD_REGEX.test(lower);
 }
 
 const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
@@ -97,9 +60,24 @@ const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
   '[autocomplete]',
   '[attr.autocomplete]',
   'bind:autocomplete',
-  ':autoComplete',
-  '[autoComplete]',
 ];
+
+const SUPPORTED_EXTENSIONS = ['.html', '.htm', '.jsx', '.tsx'];
+const TEST_PATH_SUBSTRINGS = ['/test/', '/tests/', '/fixtures/', '/fixture/', '__tests__'];
+
+const NON_ADDRESS_INPUT_TYPES = new Set([
+  'search',
+  'hidden',
+  'checkbox',
+  'radio',
+  'submit',
+  'button',
+  'reset',
+  'email',
+  'url',
+  'tel',
+  'password',
+]);
 
 const autofillAddressFormMatcher: DomRuleMatcher = {
   kind: 'dom',
@@ -110,67 +88,23 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     // 1. High-precision file type constraint: skip XML/XFA specs, test fixtures, or non-web templates
     const lowerPath = ctx.filePath.toLowerCase();
-    const isSupportedFile =
-      lowerPath.endsWith('.html') ||
-      lowerPath.endsWith('.htm') ||
-      lowerPath.endsWith('.jsx') ||
-      lowerPath.endsWith('.tsx');
-
-    if (!isSupportedFile) {
-      return null;
-    }
-
     if (
-      lowerPath.includes('/test/') ||
-      lowerPath.includes('/tests/') ||
-      lowerPath.includes('/test/data/') ||
-      lowerPath.includes('/fixtures/') ||
-      lowerPath.includes('/fixture/') ||
-      lowerPath.includes('__tests__')
+      !SUPPORTED_EXTENSIONS.some((ext) => lowerPath.endsWith(ext)) ||
+      TEST_PATH_SUBSTRINGS.some((sub) => lowerPath.includes(sub))
     ) {
       return null;
     }
 
-    // 2. Skip non-address, non-text, or search inputs
+    // 2. Skip non-address, non-interactive, or dynamic-autocomplete inputs
     const type = element.getAttribute('type')?.toLowerCase().trim() ?? 'text';
     if (
-      type === 'search' ||
-      type === 'hidden' ||
-      type === 'checkbox' ||
-      type === 'radio' ||
-      type === 'submit' ||
-      type === 'button' ||
-      type === 'reset' ||
-      type === 'email' ||
-      type === 'url' ||
-      type === 'tel' ||
-      type === 'password'
-    ) {
-      return null;
-    }
-
-    // 3. Skip non-interactive inputs
-    if (
+      NON_ADDRESS_INPUT_TYPES.has(type) ||
       element.hasAttribute('disabled') ||
       element.hasAttribute('readonly') ||
-      element.hasAttribute('hidden')
+      element.hasAttribute('hidden') ||
+      DYNAMIC_AUTOCOMPLETE_ATTRS.some((attr) => element.hasAttribute(attr))
     ) {
       return null;
-    }
-
-    // 4. Skip dynamic attributes or spread attributes in JSX and framework templates
-    if (
-      element.hasDynamicAttribute?.('autocomplete') ||
-      element.hasDynamicAttribute?.('autoComplete') ||
-      element.hasSpreadAttribute
-    ) {
-      return null;
-    }
-
-    for (const attr of DYNAMIC_AUTOCOMPLETE_ATTRS) {
-      if (element.hasAttribute(attr)) {
-        return null;
-      }
     }
 
     // 5. Must explicitly denote a postal address field by name or id

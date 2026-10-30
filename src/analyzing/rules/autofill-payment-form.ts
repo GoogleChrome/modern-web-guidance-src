@@ -7,7 +7,7 @@ import type {
 
 export const AUTOFILL_PAYMENT_FORM_GUIDE_HASH = '2548c8a287fc';
 
-const FORM_TAG_REGEX = /<\/?(form|Form)\b([^>]*)>/gi;
+const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 
 /**
  * Checks whether an element line position is enclosed within an open `<form>` or `<Form>` tag.
@@ -21,17 +21,10 @@ function isEnclosedInForm(documentText: string, targetLine: number): boolean {
   const textBefore = lines.slice(0, targetLine).join('\n');
 
   let depth = 0;
-  let match: RegExpExecArray | null = null;
-  FORM_TAG_REGEX.lastIndex = 0;
-
-  while ((match = FORM_TAG_REGEX.exec(textBefore)) !== null) {
-    const isClosing = match[0].startsWith('</');
-    const attrs = match[2] ?? '';
-    const isSelfClosing = attrs.trim().endsWith('/');
-
-    if (isClosing) {
+  for (const match of textBefore.matchAll(FORM_TAG_REGEX)) {
+    if (match[0].startsWith('</')) {
       depth = Math.max(0, depth - 1);
-    } else if (!isSelfClosing) {
+    } else if (!match[1]?.trim().endsWith('/')) {
       depth++;
     }
   }
@@ -42,15 +35,9 @@ function isEnclosedInForm(documentText: string, targetLine: number): boolean {
 
   // Same-line form check: line contains <form or <Form before element
   const currentLine = lines[targetLine - 1] ?? '';
-  if (/<(form|Form)\b/i.test(currentLine)) {
-    const formIndex = currentLine.search(/<(form|Form)\b/i);
-    const inputIndex = currentLine.search(/<(input|select)\b/i);
-    if (formIndex !== -1 && (inputIndex === -1 || formIndex < inputIndex)) {
-      return true;
-    }
-  }
-
-  return false;
+  const formIndex = currentLine.search(/<form\b/i);
+  const inputIndex = currentLine.search(/<(?:input|select)\b/i);
+  return formIndex !== -1 && (inputIndex === -1 || formIndex < inputIndex);
 }
 
 const VALID_PAYMENT_AUTOCOMPLETE_TOKENS: ReadonlySet<string> = new Set([
@@ -92,15 +79,32 @@ const CARD_CSC_REGEX =
 const CARDHOLDER_NAME_REGEX =
   /(?:cc[-_]?name|cardholder[-_]?name|name[-_]?on[-_]?card|\bcardholder\b)/i;
 
-const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
-  ':autocomplete',
-  'v-bind:autocomplete',
-  '[autocomplete]',
-  '[attr.autocomplete]',
-  'bind:autocomplete',
-  ':autoComplete',
-  '[autoComplete]',
+const SUPPORTED_EXTENSIONS = [
+  '.html',
+  '.htm',
+  '.jsx',
+  '.tsx',
+  '.vue',
+  '.svelte',
+  '.astro',
+  '.php',
 ];
+
+const TEST_PATH_SUBSTRINGS = ['/test/', '/tests/', '/fixtures/', '/fixture/', '__tests__'];
+
+const NON_PAYMENT_INPUT_TYPES = new Set([
+  'search',
+  'submit',
+  'button',
+  'reset',
+  'checkbox',
+  'radio',
+  'email',
+  'url',
+  'tel',
+  'range',
+  'file',
+]);
 
 export const autofillPaymentFormMatcher: DomRuleMatcher = {
   kind: 'dom',
@@ -111,137 +115,80 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     // 1. High-precision file type constraint
     const lowerPath = ctx.filePath.toLowerCase();
-    const isSupportedFile =
-      lowerPath.endsWith('.html') ||
-      lowerPath.endsWith('.htm') ||
-      lowerPath.endsWith('.jsx') ||
-      lowerPath.endsWith('.tsx') ||
-      lowerPath.endsWith('.vue') ||
-      lowerPath.endsWith('.svelte') ||
-      lowerPath.endsWith('.astro') ||
-      lowerPath.endsWith('.php');
-
-    if (!isSupportedFile) {
-      return null;
-    }
-
     if (
-      lowerPath.includes('/test/') ||
-      lowerPath.includes('/tests/') ||
-      lowerPath.includes('/test/data/') ||
-      lowerPath.includes('/fixtures/') ||
-      lowerPath.includes('/fixture/') ||
-      lowerPath.includes('__tests__')
+      !SUPPORTED_EXTENSIONS.some((ext) => lowerPath.endsWith(ext)) ||
+      TEST_PATH_SUBSTRINGS.some((sub) => lowerPath.includes(sub))
     ) {
       return null;
     }
 
-    // 2. Skip non-interactive, disabled, or display inputs
+    // 2. Skip non-interactive, disabled, display, or non-payment inputs
+    const rawType = element.getAttribute('type')?.toLowerCase().trim() ?? 'text';
     if (
       element.hasAttribute('disabled') ||
       element.hasAttribute('readonly') ||
-      element.hasAttribute('hidden')
+      element.hasAttribute('hidden') ||
+      NON_PAYMENT_INPUT_TYPES.has(rawType)
     ) {
       return null;
     }
 
-    // 3. Skip non-payment input types
-    const rawType = element.getAttribute('type')?.toLowerCase().trim() ?? 'text';
-    if (
-      rawType === 'search' ||
-      rawType === 'submit' ||
-      rawType === 'button' ||
-      rawType === 'reset' ||
-      rawType === 'checkbox' ||
-      rawType === 'radio' ||
-      rawType === 'email' ||
-      rawType === 'url' ||
-      rawType === 'tel' ||
-      rawType === 'range' ||
-      rawType === 'file'
-    ) {
-      return null;
-    }
-
-    // 4. Skip dynamic framework attributes and JSX spread
-    if (
-      element.hasDynamicAttribute?.('autocomplete') ||
-      element.hasDynamicAttribute?.('autoComplete') ||
-      element.hasSpreadAttribute
-    ) {
-      return null;
-    }
-
-    for (const attr of DYNAMIC_AUTOCOMPLETE_ATTRS) {
-      if (element.hasAttribute(attr)) {
-        return null;
-      }
-    }
-
+    // 3. Skip dynamic framework attributes
     for (const [attrName, attrVal] of Object.entries(element.attributes)) {
+      const lowerAttr = attrName.toLowerCase();
       if (
-        attrName.startsWith(':') ||
-        attrName.startsWith('v-bind') ||
-        attrName.startsWith('[') ||
-        attrName.includes('$attrs') ||
-        attrName.includes('restProps') ||
-        attrName.includes('attributes')
-      ) {
-        if (
-          attrName.includes('autocomplete') ||
+        (lowerAttr.startsWith(':') ||
+          lowerAttr.startsWith('v-bind') ||
+          lowerAttr.startsWith('[') ||
+          lowerAttr.startsWith('bind:') ||
+          attrName.includes('$attrs') ||
+          attrName.includes('restProps') ||
+          attrName.includes('attributes')) &&
+        (lowerAttr.includes('autocomplete') ||
           attrName.includes('bind') ||
           attrName.includes('attrs') ||
-          attrName.includes('props')
-        ) {
-          return null;
-        }
+          attrName.includes('props'))
+      ) {
+        return null;
       }
       if (
-        (attrName === 'autocomplete' || attrName === 'autoComplete') &&
-        (attrVal.includes('{') ||
-          attrVal.includes('{{') ||
-          attrVal.includes('<?') ||
-          attrVal.includes('<%'))
+        lowerAttr === 'autocomplete' &&
+        (attrVal.includes('{') || attrVal.includes('<?') || attrVal.includes('<%'))
       ) {
         return null;
       }
     }
 
-    // 5. Must be enclosed within a form or explicitly bound via the `form` attribute
-    const hasFormBinding =
-      element.hasAttribute('form') || isEnclosedInForm(ctx.documentText, element.line);
-    if (!hasFormBinding) {
+    // 4. Must be enclosed within a form or explicitly bound via the `form` attribute
+    if (!element.hasAttribute('form') && !isEnclosedInForm(ctx.documentText, element.line)) {
       return null;
     }
 
-    // 6. Inspect identifiers to classify payment field
+    // 5. Inspect identifiers to classify payment field
     const name = element.getAttribute('name') ?? '';
     const id = element.getAttribute('id') ?? '';
     const placeholder = element.getAttribute('placeholder') ?? '';
     const ariaLabel = element.getAttribute('aria-label') ?? '';
     const combinedIdentifiers = `${name} ${id} ${placeholder} ${ariaLabel}`.toLowerCase();
 
-    // Skip search / filter inputs
-    if (NON_PAYMENT_SEARCH_FILTER_REGEX.test(combinedIdentifiers)) {
+    if (
+      NON_PAYMENT_SEARCH_FILTER_REGEX.test(combinedIdentifiers) ||
+      NON_CARD_IDENTIFIERS_REGEX.test(combinedIdentifiers)
+    ) {
       return null;
     }
 
-    // Skip non-card numbers such as bank accounts, routing, IBAN, gift cards, flashcards, kanban
-    if (NON_CARD_IDENTIFIERS_REGEX.test(combinedIdentifiers)) {
-      return null;
-    }
-
-    // 7. Check existing autocomplete attribute value
+    // 6. Check existing autocomplete attribute value
     const autocompleteAttr =
       element.getAttribute('autocomplete') ?? element.getAttribute('autoComplete');
-    if (autocompleteAttr) {
-      const tokens = autocompleteAttr.trim().toLowerCase().split(/\s+/);
-      const hasValidToken = tokens.some((token) =>
-        VALID_PAYMENT_AUTOCOMPLETE_TOKENS.has(token),
-      );
-      if (hasValidToken) {
-        return null;
-      }
+    if (
+      autocompleteAttr
+        ?.trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .some((token) => VALID_PAYMENT_AUTOCOMPLETE_TOKENS.has(token))
+    ) {
+      return null;
     }
 
     // 8. Security code with type="password" anti-pattern check

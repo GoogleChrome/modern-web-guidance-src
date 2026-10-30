@@ -9,8 +9,6 @@ export const STYLING_WEB_COMPONENTS_GUIDE_HASH = '396647b6e310';
 
 const FAST_TOKENS: readonly string[] = [':host-context'] as const;
 
-const HOST_CONTEXT_REGEX = /::?host-context\s*\(/i;
-
 const EXCLUDED_PATH_PATTERNS: readonly RegExp[] = [
   /(?:^|[\\/])(?:tests?|fixtures?|__tests__|__mocks__|spec|specs)[\\/]/i,
   /(?:^|[\\/])(?:node_modules|vendor|bower_components|dist|build|out|\.next|\.nuxt|\.output)[\\/]/i,
@@ -25,32 +23,12 @@ export const stylingWebComponentsCssMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: FAST_TOKENS,
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
-    const filePath = ctx.filePath;
-    if (EXCLUDED_PATH_PATTERNS.some((p) => p.test(filePath))) {
-      return null;
-    }
-
-    const selector = styleRule.selectorText.trim();
-
-    if (!HOST_CONTEXT_REGEX.test(selector)) {
+    if (EXCLUDED_PATH_PATTERNS.some((p) => p.test(ctx.filePath))) {
       return null;
     }
 
     // In Shadow DOM, :host-context() is only valid as the root/host-targeting selector
-    // Check each comma-separated selector branch to support compound selectors
-    const selectorParts = selector.split(',');
-    let hasValidHostContextRoot = false;
-    for (const rawPart of selectorParts) {
-      const part = rawPart.trim();
-      if (HOST_CONTEXT_REGEX.test(part)) {
-        if (VALID_HOST_CONTEXT_ROOT_REGEX.test(part)) {
-          hasValidHostContextRoot = true;
-          break;
-        }
-      }
-    }
-
-    if (!hasValidHostContextRoot) {
+    if (!styleRule.selectorText.split(',').some((part) => VALID_HOST_CONTEXT_ROOT_REGEX.test(part))) {
       return null;
     }
 
@@ -58,12 +36,9 @@ export const stylingWebComponentsCssMatcher: CssRuleMatcher = {
     if (styleRule.parentAtRule) {
       const atRuleLower = styleRule.parentAtRule.toLowerCase();
       if (
-        atRuleLower.includes('@supports') &&
-        (atRuleLower.includes(':host-context') || atRuleLower.includes('selector(:host-context'))
+        (atRuleLower.includes('@supports') && atRuleLower.includes(':host-context')) ||
+        (atRuleLower.includes('@container') && atRuleLower.includes('style('))
       ) {
-        return null;
-      }
-      if (atRuleLower.includes('@container') && atRuleLower.includes('style(')) {
         return null;
       }
     }
