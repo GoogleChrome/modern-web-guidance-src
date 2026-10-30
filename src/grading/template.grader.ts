@@ -83,5 +83,11 @@ test.describe('<guide-name> Target Grader', () => {
     //   });
     //   expect(pos.bTop).toBeGreaterThanOrEqual(pos.aBottom);
     // });
+
+    // EXAMPLE 3: Interaction and state changes (via task.md hook or platform semantics)
+    // test('Example browser test containing interaction and state check', async ({ page }) => {
+    //   await page.getByRole('button', { name: 'Open' }).click();
+    //   await expect(page.locator('#item-details')).toBeVisible();
+    // });
   });
 });
