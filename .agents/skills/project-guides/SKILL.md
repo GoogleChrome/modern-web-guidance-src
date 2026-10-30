@@ -11,21 +11,23 @@ This is the second of three stages in creating guidance:
 2. Stage 2: Authoring guidance for a use case (you are here)
 3. Stage 3: Evaluating guidance for a use case
 
+> **Governance & Review**: See [`GOVERNANCE.md`](../../../GOVERNANCE.md) and [`docs/ATLS.md`](../../../docs/ATLS.md) for authoring permissions (Peers fast-track to Stage 2; every guide requires Peer/ATL authorship and category Content ATL approval before merging).
+
 ## What a real-world coding agent sees
 
-When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is eval infrastructure:
+When a developer asks an AI coding assistant to implement something, the assistant retrieves the relevant `guide.md` via a RAG (vector search) system. **`guide.md` is the only project file a real-world coding agent ever sees.** Everything else in a use case directory is reference or eval infrastructure:
 
 | File/Directory | Purpose | Seen by real-world agents? |
 |---|---|---|
 | `guide.md` | Guidance for implementing the use case | ✅ Yes — this is the only file |
+| `demo.html` | Canonical standalone reference implementation used for Stage 2 validation and review | ❌ No |
 | `expectations.md` | Verification criteria used to generate target evaluation suites | ❌ No |
-| `demo.html` | Reference implementation of the use case | ❌ No |
-| `targets/<base_app>/solution.patch` | Golden diff against clean base app used to calibrate the grader | ❌ No |
-| `targets/<base_app>/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
+| `targets/<base_app>/patches/*-solution.patch` | Golden diffs against clean base apps used to calibrate the grader | ❌ No |
+| `targets/<base_app>/patches/zero-passrate.patch` | Guidance-absent diff used to verify grader assertions fail when requirements are not implemented | ❌ No |
 | `targets/<base_app>/grader.ts` | Playwright test suite run against the eval agent's output | ❌ No |
 | `targets/<base_app>/task.md` | Simulated developer prompts fed to the eval agent by the harness | ❌ No |
 
-**Implication for authoring (`guide.md`, `expectations.md`, & `demo.html`):** Authors and SMEs strictly author `guide.md`, `expectations.md`, and `demo.html`. You do not author `solution.patch`, `zero-passrate.patch`, `grader.ts`, or `task.md`—those evaluation files are generated separately by the eval pipeline.
+**Implication for Stage 2 authoring (`guide.md`, `demo.html`, & `expectations.md`):** Content contributors and Peers strictly author `guide.md`, `demo.html`, and `expectations.md` (and self-validate with the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill). You do not hand-author solution patches, `grader.ts`, or `task.md`—Stage 3 evaluation generation and calibration (`gd dev` and `gd pr`) are handled downstream by maintainers and evaluation tooling (see [`src/harness/README.md`](../../../src/harness/README.md)).
 
 **Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `expectations.md`, any target patch, or any external link to understand how to implement the use case.
 
@@ -157,3 +159,7 @@ Write a natural-language, bulleted list of assertions that must be true if an ag
 
 * **Reference implementation:** `demo.html` should be a clean, working implementation of the use case (and its fallback strategy when the target feature is not Baseline Widely Available). Keep it self-contained with inline scripts and styles when possible.
 * **Warning-free execution:** Demos must run without browser console errors or warnings to ensure clean evaluation runs.
+
+## Self-Validation (Before Submitting a PR)
+
+Once you have authored `guide.md`, `demo.html`, and `expectations.md`, invoke the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill with your AI coding assistant to self-validate your work before opening a PR or proceeding to Stage 3. This autonomously exercises the demo in a browser via DevTools MCP, verifies expectation alignment, and checks accessibility compliance.
