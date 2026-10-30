@@ -6,3 +6,5 @@
 * Changing the active page moves the underline element to be positioned underneath the new active tab item.
 * When `prefers-reduced-motion: reduce` is enabled, there is no animation.
 * When `prefers-reduced-motion: no-preference` is enabled, the underline animates.
+* Exactly one link in the navigation has `aria-current="page"`.
+* Changing the active page moves `aria-current="page"` to the link in the new active tab item.
