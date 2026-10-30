@@ -514,18 +514,19 @@ export function formatChunkHeader(
   category: string,
   featureIds: string[],
 ): string {
-  const featureList = featureIds.map((rawFid) => {
+  const header = `${title}\n${id} (${category})`;
+  if (featureIds.length === 0) return header;
+
+  const features = featureIds.map((rawFid) => {
     const name = getFeatureName(rawFid);
     const fid = rawFid.replace(/^tmp-/, "");
-    const unsluggedFid = fid.replace(/-/g, " ");
-    const nameLower = name.toLowerCase();
-    const aliases = [fid, unsluggedFid].filter(
-      (v, i, arr) => v.toLowerCase() !== nameLower && arr.indexOf(v) === i
+    const aliases = [...new Set([fid, fid.replaceAll("-", " ")])].filter(
+      (a) => a.toLowerCase() !== name.toLowerCase()
     );
     return aliases.length > 0 ? `${name} (${aliases.join(", ")})` : name;
   });
-  const featuresLine = featureList.length > 0 ? `Features: ${featureList.join(", ")}\n` : "";
-  return `${title}\n${id} (${category})\n${featuresLine}`.trimEnd();
+
+  return `${header}\nFeatures: ${features.join(", ")}`;
 }
 
 async function processSingleGuideFile(
