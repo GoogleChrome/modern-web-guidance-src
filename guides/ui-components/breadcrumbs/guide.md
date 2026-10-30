@@ -164,7 +164,7 @@ Collapse any trail with more than 3 items on narrow containers instead of lettin
 const nav = document.querySelector('nav[aria-label="Breadcrumbs"]');
 const trail = nav.querySelector('ol');
 const overflow = trail.querySelector('.overflow');
-const menu = overflow.querySelector('[popover] ul');
+const menu = overflow.querySelector('[popover]');
 
 function sync() {
   const collapsed = getComputedStyle(overflow).display !== 'none';
@@ -174,7 +174,7 @@ function sync() {
   const focused = document.activeElement;
   if (collapsed) menu.append(...items);
   else if (menu.children.length) {
-    overflow.querySelector('[popover]').hidePopover();
+    menu.hidePopover();
     overflow.after(...menu.children);
   }
   focused?.isConnected && focused.focus();
