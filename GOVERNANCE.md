@@ -52,7 +52,7 @@ Content ATLs are appointed by the Owners based on domain expertise and active st
 
 ### Owners
 
-Owners govern the project in consultation with Content ATLs and Peers. Owners are responsible for overall project health, technical direction, repository infrastructure, CLI tooling (`gd`), serving distributions, and governance.
+Owners govern the project in consultation with Content ATLs and Peers. Owners are responsible for overall project health, technical direction, repository infrastructure, CLI tooling (`gd`), serving distributions, and governance. The Owners group includes browser vendor representatives and independent web platform experts.
 
 Owners:
 * Author guidance and contribute across the repository alongside Peers.
@@ -63,17 +63,17 @@ Owners:
 * Release packages and manage major version releases.
 
 To become an Owner, one must:
-* Demonstrate long-term commitment, technical leadership, and deep familiarity with project architecture and standards.
+* Demonstrate long-term commitment (directly or through their organization, such as serving in or staffing an active [Content ATL](./docs/ATLS.md) role), technical leadership, and deep familiarity with project architecture and standards.
 * Actively drive project direction, infrastructure, and community health.
 
-New Owners are nominated by existing Owners and confirmed by majority vote.
+New Owners are nominated by existing Owners and confirmed by majority vote. Owner seats depend on continued active participation and are reviewed periodically by the Owners.
 
 
 ## Decision Making
 
-Decisions follow a consensus-seeking model among the maintainers. If consensus cannot be reached, decisions are resolved by a simple majority vote among the Owners. Decisions are documented in writing (e.g., via pull requests, issues, or documentation updates).
+Decisions follow a consensus-seeking model among the maintainers. If consensus cannot be reached, decisions are resolved by a simple majority vote among the Owners. Decisions are documented in writing (e.g., via pull requests, issues, or documentation updates) and address any objections raised. Any Peer, Content ATL, or Owner may propose changes to project policy, including this document, through the same process. For feature stability disputes, see [Volatility Objections](./guides/CONTRIBUTING.md#volatility-objections).
 
 
 ## Project Meetings
 
-The Owners meet quarterly, or as needed, to review project health and roadmap priorities.
+The Owners meet quarterly, or as needed, to review project health and roadmap priorities. Participating organizations may send additional non-voting observers to Owners meetings.

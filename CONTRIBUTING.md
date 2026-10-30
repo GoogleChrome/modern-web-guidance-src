@@ -15,7 +15,7 @@ All submissions to Google Open Source projects require a signed Contributor Lice
 
 ## Governance & Authoring Rights
 
-Contributor roles (**Contributors**, **Peers**, **Content ATLs**, and **Owners**), authoring permissions, and review policies are defined in **[`GOVERNANCE.md`](./GOVERNANCE.md)**. Because guidance is ingested directly by AI coding assistants, authoring brand-new guidance from scratch is reserved for onboarded [Peers](./GOVERNANCE.md#peers) (or contributors sponsored by a Peer or [Content ATL](./docs/ATLS.md)), while anyone can open issues to propose use cases or submit PRs to improve existing guides.
+Contributor roles (**Contributors**, **Peers**, **Content ATLs**, and **Owners**), authoring permissions, and review policies are defined in **[`GOVERNANCE.md`](./GOVERNANCE.md)**. Because guidance is ingested directly by AI coding assistants, authoring brand-new guidance from scratch is reserved for onboarded [Peers](./GOVERNANCE.md#peers) unless permitted by a [Content ATL](./docs/ATLS.md) or [Owner](./GOVERNANCE.md#owners), while anyone can open issues to propose use cases or submit PRs to improve existing guides.
 
 
 ## Proposal First for Non-Trivial Changes
