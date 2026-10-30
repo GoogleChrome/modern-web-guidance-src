@@ -145,6 +145,11 @@ describe('runAnalyzeCli', () => {
 
       // Check guide grouping, title line, rubric lines, and code preview
       assert.match(res.output, /\* autofill-sign-in-form \(\d+ findings?\)/);
+      assert.doesNotMatch(
+        res.output,
+        /\n  autofill-sign-in-form \(\d+ findings?\)/,
+        'Single-rule guide with ruleId === guideId must omit redundant ruleId subheader',
+      );
       assert.match(res.output, /Keep when:/);
       assert.match(res.output, /Drop when:/);
       assert.match(res.output, /- login\.html:\d+/);
@@ -571,6 +576,7 @@ describe('runAnalyzeCli', () => {
         assert.equal(ruleGroupBOnly.findings[0]?.lineContent, '.custom-style { color: red; }');
 
         const resHumanBOnly = await runAnalyzeCli([testDir], { rules: [ruleA, ruleB] });
+        assert.ok(resHumanBOnly.output.includes('  test-multirule/css-rule (1 finding)'));
         assert.ok(resHumanBOnly.output.includes('Summary for Rule B (CSS style workaround)'));
         assert.ok(!resHumanBOnly.output.includes('Summary for Rule A'));
         assert.ok(resHumanBOnly.output.includes('CSS rule uses .custom-style'));

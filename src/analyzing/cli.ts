@@ -197,12 +197,16 @@ export function formatHumanReadable(
     lines.push(
       `* ${fmt(['bold', 'cyan'], g.guideId)} ${fmt('dim', countSuffix)}`,
     );
-    for (const rg of g.rules) {
-      lines.push('');
-      lines.push(
-        `  ${fmt('bold', rg.ruleId)} ${fmt('dim', `(${rg.count} finding${rg.count === 1 ? '' : 's'})`)}`,
-      );
-      appendFindingGroupBlock(lines, rg, '    ', fmt);
+    if (g.rules.length === 1 && g.rules[0]!.ruleId === g.guideId) {
+      appendFindingGroupBlock(lines, g.rules[0]!, '  ', fmt);
+    } else {
+      for (const rg of g.rules) {
+        lines.push('');
+        lines.push(
+          `  ${fmt('bold', rg.ruleId)} ${fmt('dim', `(${rg.count} finding${rg.count === 1 ? '' : 's'})`)}`,
+        );
+        appendFindingGroupBlock(lines, rg, '    ', fmt);
+      }
     }
     lines.push('');
   }
