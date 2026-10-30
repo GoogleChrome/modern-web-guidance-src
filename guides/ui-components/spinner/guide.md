@@ -153,11 +153,11 @@ Users with motion sensitivities may find fast-spinning elements disorienting. Al
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("registered-custom-properties") }}
+{{ BASELINE_STATUS("registered-custom-properties") }}
 
 If `@property` is supported, the dash animation is automatically included via the `--progress-dash-animation` property's `initial-value`. In browsers without `@property` support, the property registration is ignored, and the animation falls back to a simple rotation. No JavaScript is required for this fallback.
 
-{{ FEATURE_FALLBACKS("background-clip-border-area") }}
+{{ BASELINE_STATUS("background-clip-border-area") }}
 
 For browsers that don't yet support `background-clip: border-area`, fall back to a `mask-image` to hollow out the center.
 

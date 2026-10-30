@@ -474,19 +474,19 @@ All newer features that are used are either not core to the experience or have r
 
 ### Fallback for `overscroll-behavior`
 
-{{ FEATURE_FALLBACKS("overscroll-behavior") }}
+{{ BASELINE_STATUS("overscroll-behavior") }}
 
 No fallback is needed for this use case. Although `overscroll-behavior` has an interop issue that manifests on containers without scrollable overflow, the track here is always horizontally scrollable (three full-width columns inside a 100%-width container), so the property behaves consistently across browsers and the swipe gesture is reliably contained.
 
 ### Fallback for `scrollbar-width`
 
-{{ FEATURE_FALLBACKS("scrollbar-width") }}
+{{ BASELINE_STATUS("scrollbar-width") }}
 
 Hidden scrollbars are a visual enhancement, not the mechanism that makes swipe-to-remove work. If your Baseline target does not include `scrollbar-width`, the row still scrolls, snaps, detects commit, and removes correctly; the unsupported experience may simply show a horizontal scrollbar. If your product requires hidden scrollbars in older WebKit-derived browsers, you can add a narrowly scoped `::-webkit-scrollbar { display: none; }` rule for the swipe track.
 
 ### Fallback for `scroll-initial-target`
 
-{{ FEATURE_FALLBACKS("scroll-initial-target") }}
+{{ BASELINE_STATUS("scroll-initial-target") }}
 
 If your Baseline target does not include `scroll-initial-target`, scroll the track to the content programmatically inside `setupItem`. Detect with `CSS.supports`:
 

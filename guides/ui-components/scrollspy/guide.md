@@ -92,7 +92,7 @@ nav a:target-current {
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("scroll-target-group") }}
+{{ BASELINE_STATUS("scroll-target-group") }}
 
 For browsers that do not support `scroll-target-group`, you should use a fallback based on the `IntersectionObserver` API.
 

@@ -68,7 +68,7 @@ In addition, be careful when using the `mandatory` value for `scroll-snap-type`,
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("scroll-snap-events") }}
+{{ BASELINE_STATUS("scroll-snap-events") }}
 
 If `scrollsnapchange` is not supported, use `IntersectionObserver` to detect which element is currently at the top of the scroller. Note this is different behavior than `scrollsnapchange`, as this will trigger while the scroll happens, rather than only when the scroll has settled.
 
