@@ -5,8 +5,10 @@ import { unwrapExpression } from '../scanners/ast-helpers.ts';
 
 export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = '0616906d0788';
 
+// keyCode/which === 13 checks are deliberately absent: the keydown that confirms an IME
+// composition reports keyCode 229, so those handlers never fire mid-composition.
 const ENTER_CHECK_REGEX =
-  /(?:keyCode\s*===?\s*13|13\s*===?\s*keyCode|which\s*===?\s*13|13\s*===?\s*which|key\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*key|code\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*code|case\s+(?:13|['"]Enter['"]))/;
+  /(?:key\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*key|code\s*===?\s*['"]Enter['"]|['"]Enter['"]\s*===?\s*code|case\s+['"]Enter['"])/;
 
 const SPACE_OR_BUTTON_KEY_REGEX =
   /\b(?:Space|Spacebar)\b|['"] ['"]|(?:keyCode|which)\s*===?\s*32\b|\b32\s*===?\s*(?:keyCode|which)/;
@@ -40,7 +42,7 @@ function isSuppressOnlyBranch(branchText: string): boolean {
     .replace(/(?:e|event|evt)\s*\.\s*(?:preventDefault|stopPropagation|stopImmediatePropagation)\s*\(\s*\)/g, '')
     .replace(/\breturn\s*(?:false|true)?\s*;?/g, '')
     .replace(/\bbreak\s*;?/g, '')
-    .replace(/case\s+(?:13|['"]Enter['"])\s*:/g, '')
+    .replace(/case\s+['"]Enter['"]\s*:/g, '')
     .replace(/[{};,\s]/g, '');
   return stripped.length === 0;
 }
@@ -131,16 +133,16 @@ function checkHandlerForUnsafeEnter(handler: Node): AnalyzerMatch | null {
     }
   }
 
-  // Look for SwitchStatements checking keyCode/which/key
+  // Look for SwitchStatements on event.key with an 'Enter' case
   const switchStatements = handler.getDescendantsOfKind(SyntaxKind.SwitchStatement);
   for (const switchStmt of switchStatements) {
     const exprText = switchStmt.getExpression().getText();
-    if (exprText.includes('keyCode') || exprText.includes('which') || exprText.includes('key')) {
+    if (exprText.includes('key')) {
       const caseBlock = switchStmt.getCaseBlock();
       for (const clause of caseBlock.getClauses()) {
         if (Node.isCaseClause(clause)) {
           const caseExprText = clause.getExpression().getText();
-          if (caseExprText === '13' || caseExprText === "'Enter'" || caseExprText === '"Enter"') {
+          if (caseExprText === "'Enter'" || caseExprText === '"Enter"') {
             const clauseText = clause.getText();
             if (
               !isSuppressOnlyBranch(clauseText) &&
@@ -319,13 +321,13 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
     ['keydown', 'onkeydown', 'onKeyDown'],
-    ['Enter', '13'],
+    ['Enter'],
   ],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {
       return [];
     }
-    if (ctx.fileContent && !/(?:\b13\b|['"]Enter['"])/.test(ctx.fileContent)) {
+    if (ctx.fileContent && !/['"]Enter['"]/.test(ctx.fileContent)) {
       return [];
     }
 
@@ -375,16 +377,17 @@ export const imeSafeEnterSubmitRule: AnalyzerRule = {
   guideId: 'ime-safe-enter-submit',
   guideHash: IME_SAFE_ENTER_SUBMIT_GUIDE_HASH,
   summary:
-    'Flag keydown event listeners on inputs or textareas intercepting Enter (keyCode 13 or key "Enter") to submit forms, send messages, or trigger actions without checking event.isComposing or event.keyCode === 229, breaking IME input in CJK languages.',
+    'Flag keydown event listeners on inputs or textareas intercepting Enter (event.key or event.code "Enter") to submit forms, send messages, or trigger actions without checking event.isComposing or event.keyCode === 229, breaking IME input in CJK languages.',
   matcher: imeSafeEnterSubmitMatcher,
   verifierRubric: {
     keepWhen: [
-      'Keydown event listeners on inputs or textareas checking event.key === "Enter" or event.keyCode === 13 to trigger submission, search, or message sending without checking event.isComposing or event.keyCode === 229.',
+      'Keydown event listeners on inputs or textareas checking event.key === "Enter" or event.code === "Enter" to trigger submission, search, or message sending without checking event.isComposing or event.keyCode === 229.',
       'Custom enter-to-submit implementations intercepting Enter to call form.submit(), form.requestSubmit(), or trigger a click on a submit button without IME composition gating.',
     ],
     dropWhen: [
       'Keyup or keypress event listeners (composition has already ended by keyup).',
       'Handlers that check event.isComposing or event.keyCode === 229.',
+      'Handlers that detect Enter only through event.keyCode === 13 or event.which === 13 (the keydown that confirms an IME composition reports keyCode 229, so these never fire mid-composition).',
       'Handlers strictly requiring modifier keys (Ctrl+Enter or Cmd+Enter) where IME character selection is not triggered.',
       'Native form submit events or standard inputs inside a form with no custom Enter keydown listener (native Enter submission handles IME automatically).',
       'Global document-level hotkeys, non-text UI widgets (buttons, menus, tabs, treeviews, dropdowns, modals, media players), or rich-text/code editor newline/indentation handlers rather than text-input submission.',

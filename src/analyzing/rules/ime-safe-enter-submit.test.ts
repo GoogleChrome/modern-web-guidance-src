@@ -24,17 +24,54 @@ describe('ime-safe-enter-submit rule', () => {
     assert.match(matches[0].message, /isComposing|IME/);
   });
 
-  test('flags jQuery keydown with keyCode === 13 (grocy pattern)', () => {
+  test('ignores keyCode/which === 13 handlers (the IME-confirming Enter reports keyCode 229)', () => {
     const code = `
+      const SUBMIT_KEY_LABEL = 'Enter';
       $('#barcode-form input').keydown(function(event) {
         if (event.keyCode === 13) {
           event.preventDefault();
           $('#save-barcode-button').click();
         }
       });
+      const input = document.getElementById('search');
+      input.onkeydown = function(e) {
+        if (e.which == 13) {
+          doSearch();
+        }
+      };
+      field.addEventListener('keydown', (event) => {
+        if (13 === event.keyCode) {
+          submitForm();
+        }
+      });
+      other.addEventListener('keydown', (event) => {
+        switch (event.keyCode) {
+          case 13:
+            event.preventDefault();
+            submitForm();
+            break;
+        }
+      });
     `;
     const { matches } = scanJsSource(
       'forms/barcode.js',
+      code,
+      [imeSafeEnterSubmitMatcher]
+    );
+    assert.equal(matches.length, 0);
+  });
+
+  test('flags mixed handlers that check key === "Enter" alongside keyCode === 13', () => {
+    const code = `
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          e.preventDefault();
+          submitForm();
+        }
+      });
+    `;
+    const { matches } = scanJsSource(
+      'forms/mixed.js',
       code,
       [imeSafeEnterSubmitMatcher]
     );
@@ -66,11 +103,11 @@ describe('ime-safe-enter-submit rule', () => {
     assert.match(matches[0].message, /isComposing|IME/);
   });
 
-  test('flags element.onkeydown assignment with event.which === 13', () => {
+  test('flags element.onkeydown assignment with event.key === "Enter"', () => {
     const code = `
       const input = document.getElementById('search');
       input.onkeydown = function(e) {
-        if (e.which === 13) {
+        if (e.key === 'Enter') {
           e.preventDefault();
           doSearch();
         }
@@ -85,11 +122,11 @@ describe('ime-safe-enter-submit rule', () => {
     assert.match(matches[0].message, /isComposing|IME/);
   });
 
-  test('flags switch statement on keyCode 13 inside keydown listener', () => {
+  test('flags switch statement on event.key with an Enter case inside keydown listener', () => {
     const code = `
       input.addEventListener('keydown', (event) => {
-        switch (event.keyCode) {
-          case 13:
+        switch (event.key) {
+          case 'Enter':
             event.preventDefault();
             submitForm();
             break;
@@ -152,7 +189,7 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
       input.addEventListener('keypress', (event) => {
-        if (event.keyCode === 13) {
+        if (event.key === 'Enter') {
           form.requestSubmit();
         }
       });
@@ -208,15 +245,15 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
       textarea.addEventListener('keydown', (e) => {
-        if (e.keyCode === 13) {
+        if (e.key === 'Enter') {
           e.preventDefault();
           e.stopPropagation();
           return false;
         }
       });
       input2.addEventListener('keydown', (e) => {
-        switch (e.keyCode) {
-          case 13:
+        switch (e.key) {
+          case 'Enter':
             e.preventDefault();
             break;
         }
@@ -244,7 +281,7 @@ describe('ime-safe-enter-submit rule', () => {
       const tab = document.getElementById('tab-1');
       tab.role = 'tab';
       tab.onkeydown = (e) => {
-        if (e.keyCode === 13) {
+        if (e.key === 'Enter') {
           e.preventDefault();
           tab.click();
         }
@@ -318,7 +355,7 @@ describe('ime-safe-enter-submit rule', () => {
   test('flags custom action methods like this.login() or props.onCommit() on Enter keydown', () => {
     const code = `
       input.addEventListener('keydown', function(e) {
-        if (e.keyCode === 13) {
+        if (e.key === 'Enter') {
           this.login();
         }
       });
@@ -334,8 +371,8 @@ describe('ime-safe-enter-submit rule', () => {
   test('ignores global document hotkeys, Alt+Enter shortcuts, Space+Enter button activation, and arrow-key widget navigation', () => {
     const code = `
       document.addEventListener('keydown', (event) => {
-        switch (event.keyCode) {
-          case 13:
+        switch (event.key) {
+          case 'Enter':
             isOverview() ? deactivateOverview() : triggered = false;
             break;
         }
