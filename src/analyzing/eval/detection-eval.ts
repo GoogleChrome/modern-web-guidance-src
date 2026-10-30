@@ -893,6 +893,18 @@ export async function loadPaulIrishScoredCards(
   return { cards: scoredCards, humanVerdicts: scoredVerdicts };
 }
 
+export interface CalibrationDeckFinding {
+  tool: string;
+  repo: string;
+  commit: string;
+  guideId: string;
+  sourceId: string;
+  kind: string;
+  file: string;
+  line: number;
+  reason: string;
+}
+
 export interface CalibrationDeckItem {
   cardId: string;
   repo: string;
@@ -908,6 +920,8 @@ export interface CalibrationDeckItem {
   phase2Decision?: string;
   phase2Reason?: string | null;
   phase2Confidence?: string;
+  populationCounts?: { low: number; medium: number; high: number; unknown: number };
+  findings?: readonly CalibrationDeckFinding[];
 }
 
 /** Slices out code snippet around a line from file content. */
