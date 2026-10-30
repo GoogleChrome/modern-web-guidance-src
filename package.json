@@ -18,7 +18,7 @@
     "build": "node src/build/build-guides.ts --target=skills-cli && pnpm run build-dist",
     "build-dist": "node src/build/build-dist.ts",
     "build:guides": "pnpm run build",
-    "build:static-site": "node src/build/build-guides.ts --target=static-site --output=dist/static-site-guides",
+    "build:devsite": "node src/build/build-guides.ts --target=devsite --output=dist/devsite",
     "publish-skills": "node src/build/publish-skills.ts",
     "collect-evals": "node src/build/collect-eval-results.ts",
     "benchmark:rag": "node src/rag/benchmarks/bench-rag.ts",
