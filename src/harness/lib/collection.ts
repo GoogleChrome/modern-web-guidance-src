@@ -5,10 +5,11 @@ import os from 'os';
 import { stripVTControlCharacters } from 'util';
 import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
 import { type SuiteConfig } from '../config.ts';
-import { getTaskMap } from '../../core/guide-validation.ts';
+import { getTaskMap, resolveTaskGraderPath } from '../../core/guide-validation.ts';
 import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
 import { rootDir } from '../../core/paths.ts';
 import { extractTestTitles } from '../../core/grader-coverage.ts';
+import { isSpecSkipped } from '../../grading/run-grader.ts';
 import { type ScenarioCheck } from './metrics.ts';
 
 function isTargetAppPresent(targetFile: string, targetPkgJson: string, targetPatchFile?: string): boolean {
@@ -198,11 +199,7 @@ function getTaskRunContext(
   const targetFile = path.join(dir, targetModifiedFile || 'index.html');
   const targetPkgJson = path.join(dir, 'package.json');
   const targetPatchFile = path.join(dir, 'agent.patch');
-  let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-  const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
-  if (fs.existsSync(targetGraderPath)) {
-    graderPath = targetGraderPath;
-  }
+  const graderPath = resolveTaskGraderPath(taskInfo, taskName);
   const graderResults = path.join(dir, `${guide}_results.json`);
   const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson, targetPatchFile);
 
@@ -245,7 +242,7 @@ function setupGraderForTask(
     return null;
   }
 
-  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide);
+  const gradeScript = getGraderScriptContent(dir, ctx.graderPath, ctx.guide, ctx.taskInfo.baselineTarget);
   const relativeId = path.relative(resultsDir, dir); // e.g. "1/guideName/guided"
   fs.writeFileSync(path.join(dir, 'grade.mjs'), gradeScript);
 
@@ -390,10 +387,15 @@ export function evaluateScenarioResults(
       json.suites.forEach(traverse);
 
       if (specs.length > 0) {
-        return specs.map((spec: any) => {
+        const scenarioChecks: ScenarioCheck[] = [];
+        for (const spec of specs) {
+          if (isSpecSkipped(spec)) {
+            continue;
+          }
           const lastResult = spec.tests?.[0]?.results?.at(-1);
           if (lastResult?.status === 'passed') {
-            return { id: spec.id, passed: true, message: spec.title };
+            scenarioChecks.push({ id: spec.id, passed: true, message: spec.title });
+            continue;
           }
 
           // Strip ANSI colors and local paths (repo root, temp grading dir, home) so diagnostics are portable and shareable.
@@ -416,7 +418,7 @@ export function evaluateScenarioResults(
           const browserErrorsAtt = lastResult?.attachments?.find((a: any) => a.name === 'browser-errors');
           const browserErrors = browserErrorsAtt?.body ? clean(Buffer.from(browserErrorsAtt.body, 'base64').toString('utf8')) : undefined;
 
-          return {
+          scenarioChecks.push({
             id: spec.id,
             passed: false,
             message: spec.title,
@@ -424,8 +426,9 @@ export function evaluateScenarioResults(
             ...(errorLocation ? { errorLocation } : {}),
             ...(pageSnapshot ? { pageSnapshot } : {}),
             ...(browserErrors ? { browserErrors } : {}),
-          };
-        });
+          });
+        }
+        return scenarioChecks;
       }
     }
 

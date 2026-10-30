@@ -1,9 +1,12 @@
+import fs from 'node:fs';
 import { features, groups } from 'web-features';
 import bcd from '@mdn/browser-compat-data' with { type: 'json' };
 import type { Browsers, BrowserName } from '@mdn/browser-compat-data';
 import pendingWebFeatures from '../../features/pending-web-features.json' with { type: 'json' };
 
 export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
+export const BASELINE_TARGETS = ['widely', 'newly', 'limited'] as const;
+export type BaselineTarget = (typeof BASELINE_TARGETS)[number];
 
 type Feature = typeof features[string];
 
@@ -130,7 +133,7 @@ export function checkBaseline(target: string, featureId: string): boolean {
     return true;
   }
 
-  const baselineStatus = getFeatureStatus(featureId);
+  const baselineStatus = getFeatureOrBcdStatus(featureId);
   if (!baselineStatus) {
     return false;
   }
@@ -465,6 +468,74 @@ export function getStatus(
       }
     }
   }
+}
+
+function getFeatureOrBcdStatus(
+  token: string
+): { baseline: 'high' | 'low' | false; baseline_low_date?: string } | undefined {
+  const trimmed = token.trim();
+  if (!trimmed) return undefined;
+
+  if (trimmed.includes(':') || trimmed.includes('.')) {
+    const [featureId, bcdKey] = trimmed.includes(':') ? trimmed.split(':', 2) : [undefined, trimmed];
+    if (!bcdKey) return undefined;
+    if (featureId && !validateFeature(featureId).isValid) return undefined;
+    const compat = getStatus(featureId, bcdKey);
+    return compat ? { baseline: compat.baseline, baseline_low_date: compat.baseline_low_date } : undefined;
+  }
+
+  if (trimmed.startsWith('tmp-')) {
+    return validateFeature(trimmed).isValid ? { baseline: false } : undefined;
+  }
+
+  const featureStatus = getFeatureStatus(trimmed);
+  if (!featureStatus) return undefined;
+  return {
+    baseline: featureStatus.baseline,
+    baseline_low_date: featureStatus.baseline_low_date,
+  };
+}
+
+/**
+ * Resolves the Baseline status ('high', 'low', or false) for a web-features ID,
+ * pending `tmp-*` feature ID, BCD key, or `feature-id:bcd.key` pair.
+ * Returns `undefined` if the token is not a recognized feature or BCD key.
+ */
+export function resolveFeatureOrBcdBaseline(token: string): 'high' | 'low' | false | undefined {
+  const trimmed = token.trim();
+  if (!trimmed) return undefined;
+  if (!trimmed.includes(':') && !trimmed.includes('.') && !validateFeature(trimmed).isValid) {
+    return undefined;
+  }
+  return getFeatureOrBcdStatus(trimmed)?.baseline;
+}
+
+/**
+ * Extracts `skipUnless({ unsupported: '<features>' })` calls from a `grader.ts` file
+ * and returns the sorted list of additional Baseline targets (`'newly'`, `'limited'`)
+ * that should be evaluated alongside `'widely'`.
+ */
+export function getBaselineTargetsForGrader(graderPath: string): BaselineTarget[] {
+  if (!fs.existsSync(graderPath)) return [];
+  const content = fs.readFileSync(graderPath, 'utf8');
+  const extraTargets = new Set<BaselineTarget>();
+  const skipUnlessRegex = /\bskipUnless\s*\(\s*\{\s*unsupported\s*:\s*(['"])([\s\S]*?)\1\s*,?\s*\}\s*\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = skipUnlessRegex.exec(content)) !== null) {
+    const tokens = match[2]
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean);
+    for (const token of tokens) {
+      const status = resolveFeatureOrBcdBaseline(token);
+      if (status === 'low') {
+        extraTargets.add('newly');
+      } else if (status === false) {
+        extraTargets.add('limited');
+      }
+    }
+  }
+  return (['newly', 'limited'] as const).filter(t => extraTargets.has(t));
 }
 
 /**

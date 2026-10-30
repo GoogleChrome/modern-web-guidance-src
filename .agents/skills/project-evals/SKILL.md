@@ -39,6 +39,7 @@ Write a natural-language, bulleted list of assertions that must be true if an ag
 * **Avoid untestable conditional expectations** — Avoid `"If the implementation uses X, then Y"` expectations when valid solutions may omit `X` entirely; if a golden solution patch has zero instances of `X`, the grader cannot assert `Y` without writing a vacuous guard.
 * **No external links** — The grader generator cannot resolve them.
 * **Avoid over-constraining** — Describe required outcomes, API contracts, or structural invariants rather than prescribing incidental implementation details (specific variable names, helper names, or file paths).
+* **Separate native and fallback expectations** — Write core expectations assuming all features in `guide.md` are natively supported. When `guide.md` includes `## Fallback strategies`, write each fallback requirement as a separate plain-English bullet that names the unsupported feature (e.g., *"When `<feature>` is unsupported, ..."*) rather than combining native and fallback checks in the same bullet, so `gd dev` can scope fallback tests with `skipUnless({ unsupported: '<feature>' })` automatically.
 
 ---
 
@@ -88,6 +89,7 @@ The 3 golden solution patches (`claude`, `codex`, `jetski`) are generated from `
 - **Single assertion per `test()` block**: Write one assertion per `test('...', ...)` block for clear failure diagnostics.
 - **No vacuous guards**: Never write `if (items.length > 0) { expect(...); }`, `hasFeature && (items.length === 0 || ...)`, or `if (files.length === 0) { expect(false).toBe(true); return; }`. Always assert `expect(items.length).toBeGreaterThan(0)` before asserting `.every(...)` or item properties.
 - **Never use `test.skip()`** or wrap assertions in `try/catch` blocks that swallow errors.
+- **Fallback-scoped tests (`skipUnless`)**: For expectations that only apply when a feature is unsupported (corresponding to `## Fallback strategies` in `guide.md`), call `skipUnless({ unsupported: '<feature>' })` (imported from `test-fixture.ts`) as the first line of the test body, where `<feature>` is a `web-features` ID from `guide.md` frontmatter or a BCD key. The harness automatically detects `skipUnless({ unsupported: '<feature>' })` calls in `grader.ts` and runs additional evaluation variants (`newly`, `limited`) for any Newly or Limited availability features. Do not call `skipUnless` for universal expectations.
 
 ---
 

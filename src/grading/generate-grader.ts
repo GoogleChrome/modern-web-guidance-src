@@ -54,6 +54,15 @@ export async function generateTargetGrader(
       path.resolve(repoRoot, 'src', 'core', 'patch-utils.ts'),
       path.join(tempHome, 'src', 'core', 'patch-utils.ts')
     );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'src', 'core', 'baseline.ts'),
+      path.join(tempHome, 'src', 'core', 'baseline.ts')
+    );
+    fs.mkdirSync(path.join(tempHome, 'features'), { recursive: true });
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'features', 'pending-web-features.json'),
+      path.join(tempHome, 'features', 'pending-web-features.json')
+    );
     fs.mkdirSync(path.join(tempHome, 'src', 'grading'), { recursive: true });
     fs.copyFileSync(
       path.resolve(repoRoot, 'src', 'grading', 'test-fixture.ts'),

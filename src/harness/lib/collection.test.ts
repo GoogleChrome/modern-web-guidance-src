@@ -158,6 +158,89 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
         isEarlyFailure: true,
       }]);
     });
+
+    await t.test('omits skipped Playwright specs from scenario results instead of counting them as failed', () => {
+      const genFail = path.join(tempDir, 'generation_failed.json');
+      if (fs.existsSync(genFail)) fs.unlinkSync(genFail);
+
+      const resultsJsonPath = path.join(tempDir, 'skipped_results.json');
+      fs.writeFileSync(
+        resultsJsonPath,
+        JSON.stringify({
+          suites: [
+            {
+              title: 'Target Grader',
+              specs: [
+                {
+                  id: 'spec-1',
+                  title: 'Universal check passes',
+                  ok: true,
+                  tests: [{ status: 'expected', results: [{ status: 'passed' }] }],
+                },
+                {
+                  id: 'spec-2',
+                  title: 'Skipped fallback check under limited',
+                  ok: true,
+                  tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
+                },
+                {
+                  id: 'spec-3',
+                  title: 'Fallback check fails',
+                  ok: false,
+                  tests: [{ status: 'unexpected', results: [{ status: 'failed', errors: [{ message: 'Expected fallback' }] }] }],
+                },
+              ],
+            },
+          ],
+        })
+      );
+
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        graderPath,
+        resultsJsonPath,
+        true,
+        path.join(tempDir, 'index.html')
+      );
+      assert.strictEqual(res.length, 2);
+      assert.strictEqual(res[0].id, 'spec-1');
+      assert.strictEqual(res[0].passed, true);
+      assert.strictEqual(res[1].id, 'spec-3');
+      assert.strictEqual(res[1].passed, false);
+    });
+
+    await t.test('returns empty array when every spec in the file is skipped for a baseline target', () => {
+      const allSkippedJsonPath = path.join(tempDir, 'all_skipped_results.json');
+      fs.writeFileSync(
+        allSkippedJsonPath,
+        JSON.stringify({
+          suites: [
+            {
+              title: 'Target Grader',
+              specs: [
+                {
+                  id: 'spec-1',
+                  title: 'Skipped fallback check',
+                  ok: true,
+                  tests: [{ status: 'skipped', results: [{ status: 'skipped' }] }],
+                },
+              ],
+            },
+          ],
+        })
+      );
+
+      const res = evaluateScenarioResults(
+        tempDir,
+        'test-guide',
+        graderPath,
+        allSkippedJsonPath,
+        true,
+        path.join(tempDir, 'index.html')
+      );
+      assert.deepStrictEqual(res, []);
+    });
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }

@@ -195,6 +195,16 @@ ${coverageInstruction}Write only one assertion per \`test('...', ...)\` block ac
 - **Flexible Pattern Matching**: Avoid exact-string equality for dynamic names or classes. Use loose matches, inclusion checks, and word boundaries (e.g., \`/\\bname\\b/\`) to avoid substring false positives.
 - **No Vacuous Guards or \`test.skip()\`**: Never use \`test.skip()\`. Never wrap \`expect(...)\` inside \`if (items.length > 0)\` without first asserting \`expect(items.length).toBeGreaterThan(0)\`. Every \`test()\` block must execute a real, non-trivial assertion that fails when the requirement is absent.
 - **No Swallowed Errors**: Do not wrap assertions in generic try/catch blocks that swallow exceptions.
+- **Fallback Expectations (\`skipUnless\`)**: Inspect \`${opts.guideFile}\` (specifically its \`web-feature-ids\` frontmatter and \`## Fallback strategies\` section) alongside \`${opts.expectationsFile}\`:
+  - **Universal expectations** (requirements that apply when all features in \`${opts.guideFile}\` are supported): write standard \`test('...', ...)\` blocks and do NOT call \`skipUnless\`.
+  - **Fallback-only expectations** (requirements that only apply when a feature is unsupported, corresponding to \`## Fallback strategies\` in \`${opts.guideFile}\`): call \`skipUnless({ unsupported: '<feature>' });\` (imported from \`test-fixture.ts\`) as the first statement of the test body, where \`<feature>\` is the \`web-features\` ID from \`${opts.guideFile}\` frontmatter (or a BCD key):
+    \`\`\`ts
+    test('...', () => {
+      skipUnless({ unsupported: '<feature-id>' });
+      // ...assertion...
+    });
+    \`\`\`
+  - Note: Golden solution patches and \`zero-passrate.patch\` are generated under the default \`widely\` target, so calibration executes all tests (including \`skipUnless({ unsupported: '<feature>' })\` tests for Newly/Limited features), while live evaluation runs on higher targets (\`newly\` / \`limited\`) automatically skip tests with \`skipUnless({ unsupported: '<feature>' })\` when \`<feature>\` is supported.
 
 ## 5. Dependencies & Sandbox Constraints
 Do not install any npm packages or execute application dev, build, or test commands in your workspace. However, you MUST verify that your generated grader code compiles cleanly and passes linting. Run ONLY these verification commands in your workspace and fix any errors before ending your turn:

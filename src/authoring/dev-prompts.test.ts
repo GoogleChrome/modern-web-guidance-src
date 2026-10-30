@@ -70,6 +70,8 @@ test('buildTargetGraderPrompt includes Option B scoping rules and locked solutio
   assert.ok(prompt.includes('LOCKED'));
   assert.ok(prompt.includes('No Patch-Specific Identifier Overfitting'));
   assert.ok(prompt.includes('No Vacuous Guards or `test.skip()`'));
+  assert.ok(prompt.includes('Fallback Expectations (`skipUnless`)'));
+  assert.ok(prompt.includes('skipUnless'));
   assert.ok(prompt.includes('npx oxlint'));
 });
 

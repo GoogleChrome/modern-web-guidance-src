@@ -186,32 +186,56 @@ export function computeTargetSummary(
   const guideName = path.basename(targetDir);
   const json = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
   const results = json.results || {};
-  const guidedKey = Object.keys(results).find(k => k.includes(baseApp) && k.endsWith('- guided'));
-  const guidedRun = guidedKey ? results[guidedKey]?.[0] : null;
+  const stats = json.stats || {};
+  const guidedKeys = Object.keys(results).filter(
+    k => (k.startsWith(`${baseApp} - `) || k.startsWith(`${baseApp}-`)) && k.endsWith(' - guided')
+  );
 
-  if (!guidedRun) {
+  if (guidedKeys.length === 0) {
     return null;
   }
 
-  const guidedPassRate = json.summary?.guidedPassRate ?? 0;
-  const unguidedPassRate = json.summary?.unguidedPassRate ?? null;
-  const { flag, flagDetails } = computeDevReportFlag({
-    guideName,
-    hasEarlyFailure: !!json.summary?.guidedEarlyFailures,
-    earlyFailureMessage: guidedRun.results?.find((c: any) => c.isEarlyFailure)?.message,
-    toolsUsed: guidedRun.guidanceToolsUsed || [],
-    guidesConsumed: guidedRun.guidesUsed || [],
-    guidedPassRate,
-    unguidedPassRate,
-  });
+  let fallbackSummary: TargetEvalSummary | null = null;
 
-  return {
-    baseApp,
-    flag,
-    flagDetails,
-    guidedPassRate,
-    unguidedPassRate,
-  };
+  for (const guidedKey of guidedKeys) {
+    const guidedRun = results[guidedKey]?.[0];
+    if (!guidedRun) continue;
+
+    const variantName = guidedKey.split(' - ')[0]!;
+    const unguidedKey = guidedKey.replace(/ - guided$/, ' - unguided');
+    const guidedPassRate = stats[guidedKey]?.medianPassRate ?? json.summary?.guidedPassRate ?? 0;
+    const unguidedPassRate = stats[unguidedKey]?.medianPassRate ?? json.summary?.unguidedPassRate ?? null;
+    const earlyFailureCheck = guidedRun.results?.find((c: any) => c.isEarlyFailure);
+
+    const { flag, flagDetails: rawFlagDetails } = computeDevReportFlag({
+      guideName,
+      hasEarlyFailure: Boolean(earlyFailureCheck || stats[guidedKey]?.earlyFailures || json.summary?.guidedEarlyFailures),
+      earlyFailureMessage: earlyFailureCheck?.message,
+      toolsUsed: guidedRun.guidanceToolsUsed || [],
+      guidesConsumed: guidedRun.guidesUsed || [],
+      guidedPassRate,
+      unguidedPassRate,
+    });
+    const flagDetails =
+      flag !== 'HEALTHY' && variantName !== baseApp
+        ? `[${variantName}] ${rawFlagDetails}`
+        : rawFlagDetails;
+
+    const summary: TargetEvalSummary = {
+      baseApp,
+      flag,
+      flagDetails,
+      guidedPassRate,
+      unguidedPassRate,
+    };
+
+    if (flag !== 'HEALTHY') {
+      return summary;
+    }
+    fallbackSummary ??= summary;
+  }
+
+  return fallbackSummary;
 }
 
 /**
