@@ -11,9 +11,20 @@ import type {
 } from '../schema.ts';
 import { matchesFastTokens } from './js-scanner.ts';
 
+const CONDITION_PROP_RE = /\(\s*(--[\w-]+|[a-zA-Z-]+)\s*:/g;
+const DECL_PROP_RE = /(?:^|[;{])\s*(--[\w-]+|[a-zA-Z][a-zA-Z0-9_-]*)\s*:/g;
+
 interface PreparedCssContext {
   readonly styleRules: readonly CssRuleView[];
   readonly ctx: CssMatcherContext;
+}
+
+function collectPropertyNames(text: string, regex: RegExp, target: Set<string>): void {
+  for (const match of text.matchAll(regex)) {
+    if (match[1]) {
+      target.add(match[1].toLowerCase());
+    }
+  }
 }
 
 function prepareCssContext(
@@ -34,35 +45,23 @@ function prepareCssContext(
         allProperties.add(decl.name.toLowerCase());
       }
     }
-    if (entry.rule && 'conditionText' in entry.rule && typeof entry.rule.conditionText === 'string') {
-      const conditionRe = /\(\s*(--[\w-]+|[a-zA-Z-]+)\s*:/g;
-      let conditionMatch: RegExpExecArray | null = conditionRe.exec(entry.rule.conditionText);
-      while (conditionMatch !== null) {
-        if (conditionMatch[1]) {
-          allProperties.add(conditionMatch[1].toLowerCase());
-        }
-        conditionMatch = conditionRe.exec(entry.rule.conditionText);
-      }
+    if (
+      entry.rule &&
+      'conditionText' in entry.rule &&
+      typeof entry.rule.conditionText === 'string'
+    ) {
+      collectPropertyNames(entry.rule.conditionText, CONDITION_PROP_RE, allProperties);
     }
   }
 
-  const declPropertyRe = /(?:^|[;{])\s*(--[\w-]+|[a-zA-Z][a-zA-Z0-9_-]*)\s*:/g;
-  let declMatch: RegExpExecArray | null = declPropertyRe.exec(cssContent);
-  while (declMatch !== null) {
-    if (declMatch[1]) {
-      allProperties.add(declMatch[1].toLowerCase());
-    }
-    declMatch = declPropertyRe.exec(cssContent);
-  }
+  collectPropertyNames(cssContent, DECL_PROP_RE, allProperties);
 
   const styleRules: CssRuleView[] = Array.from(walkStyleRules(sheet));
-
   const ctx: CssMatcherContext = {
     filePath,
     stylesheetText: cssContent,
     styleRules,
-    stylesheetHasProperty: (prop: string) =>
-      allProperties.has(prop.toLowerCase()),
+    stylesheetHasProperty: (prop: string) => allProperties.has(prop.toLowerCase()),
     stylesheetHasValue: (substr: string) => cssContent.includes(substr),
   };
 

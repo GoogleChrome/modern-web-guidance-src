@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { extractScriptBlocks, extractStyleBlocks } from './sfc-extractor.ts';
+import {
+  blankOutsideRange,
+  blankRanges,
+  extractScriptBlocks,
+  extractStyleBlocks,
+  prepareHtmlForDomScan,
+} from './sfc-extractor.ts';
 
 void test('sfc-extractor: Astro frontmatter extraction', async (t) => {
   await t.test('extracts frontmatter containing internal --- comments without premature termination', () => {
@@ -71,5 +77,37 @@ void test('sfc-extractor: Vue and Svelte script & style extraction', async (t) =
     assert.equal(blocks[0]?.virtualPath, 'src/index.html.js');
     assert.equal(blocks[1]?.virtualPath, 'src/index.html.block1.ts');
     assert.equal(blocks[2]?.virtualPath, 'src/index.html.block2.js');
+  });
+
+  await t.test('blankOutsideRange, blankRanges, prepareHtmlForDomScan, and Lit css extraction', () => {
+    const raw = 'line 1\nline 2: target\nline 3\n';
+    const start = raw.indexOf('line 2: target');
+    const end = start + 'line 2: target'.length;
+    const blanked = blankOutsideRange(raw, start, end);
+    assert.equal(blanked.length, raw.length);
+    assert.equal(blanked.split('\n').length, raw.split('\n').length);
+    assert.equal(blanked.slice(start, end), 'line 2: target');
+
+    const multi = 'aaa\nbbb\nccc\nddd\n';
+    const bbbStart = multi.indexOf('bbb');
+    const blankedRanges = blankRanges(multi, [{ start: bbbStart, end: bbbStart + 3 }]);
+    assert.equal(blankedRanges.length, multi.length);
+    assert.equal(blankedRanges.includes('bbb'), false);
+    assert.equal(blankedRanges.includes('ccc'), true);
+
+    const vue =
+      '<script>\nconst a = 1;\n</script>\n<template>\n  <button>Click</button>\n</template>\n<style>\nbutton { color: red; }\n</style>';
+    const prepared = prepareHtmlForDomScan('App.vue', vue);
+    assert.equal(prepared.length, vue.length);
+    assert.equal(prepared.includes('<script>'), false);
+    assert.equal(prepared.includes('<style>'), false);
+    assert.equal(prepared.includes('<template>'), false);
+    assert.equal(prepared.includes('<button>Click</button>'), true);
+
+    const litTs = 'import { css } from "lit";\nconst s = css`\n  .card { color: ${"red"}; }\n`;';
+    const litBlocks = extractStyleBlocks('card.ts', litTs);
+    assert.equal(litBlocks.length, 1);
+    assert.equal(litBlocks[0]?.includes('.card { color:'), true);
+    assert.equal(litBlocks[0]?.includes('${"red"}'), false);
   });
 });

@@ -545,6 +545,23 @@ describe('dependency-scanner runtime & client-side filtering', () => {
     const minifiedMatches = scanPackageJson('package.json', minifiedPkg, [rule]);
     assert.equal(minifiedMatches.length, 1);
     assert.equal(minifiedMatches[0]?.line, 1);
+
+    // 3. Keywords containing package name before dependencies
+    const keywordsPkg = JSON.stringify(
+      {
+        name: 'my-app',
+        keywords: ['react-select', 'ui'],
+        description: 'An app with react-select',
+        dependencies: { 'react-select': '^5.0.0' },
+      },
+      null,
+      2,
+    );
+    const kwMatches = scanPackageJson('package.json', keywordsPkg, [
+      { kind: 'dependency', packages: ['react-select'] },
+    ]);
+    assert.equal(kwMatches.length, 1);
+    assert.equal(kwMatches[0]?.line, 9);
   });
 });
 

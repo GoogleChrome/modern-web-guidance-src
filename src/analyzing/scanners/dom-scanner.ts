@@ -10,264 +10,129 @@ interface HtmlTagToken {
   readonly attributes: Readonly<Record<string, string>>;
 }
 
-function skipComment(
-  html: string,
-  startIndex: number,
-  curLine: number,
-  curCol: number,
-): { index: number; line: number; col: number } {
-  let i = startIndex + 4;
-  let line = curLine;
-  let col = curCol + 4;
-  const len = html.length;
-
-  while (i < len && !html.startsWith('-->', i)) {
-    if (html[i] === '\n') {
-      line++;
-      col = 1;
-    } else {
-      col++;
-    }
-    i++;
-  }
-  if (i < len) {
-    i += 3;
-    col += 3;
-  }
-  return { index: i, line, col };
-}
-
-function skipUntilGreaterThan(
-  html: string,
-  startIndex: number,
-  curLine: number,
-  curCol: number,
-): { index: number; line: number; col: number } {
-  let i = startIndex;
-  let line = curLine;
-  let col = curCol;
-  const len = html.length;
-
-  while (i < len && html[i] !== '>') {
-    if (html[i] === '\n') {
-      line++;
-      col = 1;
-    } else {
-      col++;
-    }
-    i++;
-  }
-  if (i < len && html[i] === '>') {
-    i++;
-    col++;
-  }
-  return { index: i, line, col };
-}
-
-function skipWhitespace(
-  html: string,
-  startIndex: number,
-  curLine: number,
-  curCol: number,
-): { index: number; line: number; col: number } {
-  let i = startIndex;
-  let line = curLine;
-  let col = curCol;
-  const len = html.length;
-
-  while (i < len && /\s/.test(html[i] ?? '')) {
-    if (html[i] === '\n') {
-      line++;
-      col = 1;
-    } else {
-      col++;
-    }
-    i++;
-  }
-  return { index: i, line, col };
-}
-
-function readAttributeValue(
-  html: string,
-  startIndex: number,
-  curLine: number,
-  curCol: number,
-): { value: string; index: number; line: number; col: number } {
-  // Skip past `=` and subsequent whitespace
-  const afterEqual = skipWhitespace(html, startIndex + 1, curLine, curCol + 1);
-  let i = afterEqual.index;
-  let line = afterEqual.line;
-  let col = afterEqual.col;
-  const len = html.length;
-
-  let value = '';
-  const quote = html[i];
-
-  if (quote === '"' || quote === "'") {
-    i++;
-    col++;
-    while (i < len && html[i] !== quote) {
-      if (html[i] === '\n') {
-        line++;
-        col = 1;
-      } else {
-        col++;
-      }
-      value += html[i];
-      i++;
-    }
-    if (i < len && html[i] === quote) {
-      i++;
-      col++;
-    }
-  } else {
-    while (i < len && /[^\s>]/.test(html[i] ?? '')) {
-      value += html[i];
-      i++;
-      col++;
-    }
-  }
-
-  return { value, index: i, line, col };
-}
-
-function parseTagAttributes(
-  html: string,
-  startIndex: number,
-  curLine: number,
-  curCol: number,
-): { attributes: Record<string, string>; index: number; line: number; col: number } {
-  let i = startIndex;
-  let line = curLine;
-  let col = curCol;
-  const len = html.length;
-  const attributes: Record<string, string> = {};
-
-  while (i < len) {
-    const ws = skipWhitespace(html, i, line, col);
-    i = ws.index;
-    line = ws.line;
-    col = ws.col;
-
-    if (i >= len || html[i] === '>') {
-      if (i < len && html[i] === '>') {
-        i++;
-        col++;
-      }
-      break;
-    }
-
-    if (html[i] === '/' && html[i + 1] === '>') {
-      i += 2;
-      col += 2;
-      break;
-    }
-
-    let attrName = '';
-    while (i < len && /[^\s=>/]/.test(html[i] ?? '')) {
-      attrName += html[i];
-      i++;
-      col++;
-    }
-
-    if (attrName.length === 0) {
-      i++;
-      col++;
-      continue;
-    }
-
-    const wsEq = skipWhitespace(html, i, line, col);
-    i = wsEq.index;
-    line = wsEq.line;
-    col = wsEq.col;
-
-    const attrKey = attrName.toLowerCase();
-    if (i < len && html[i] === '=') {
-      const valResult = readAttributeValue(html, i, line, col);
-      if (!Object.hasOwn(attributes, attrKey)) {
-        attributes[attrKey] = valResult.value;
-      }
-      i = valResult.index;
-      line = valResult.line;
-      col = valResult.col;
-    } else {
-      // Bare boolean attribute e.g. <input required>
-      if (!Object.hasOwn(attributes, attrKey)) {
-        attributes[attrKey] = '';
-      }
-    }
-  }
-
-  return { attributes, index: i, line, col };
-}
-
 /**
  * Linearly tokenizes an HTML string to record exact line, column, and attributes
  * (including bare boolean attributes) for all opening tags.
  */
 export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
   const tokens: HtmlTagToken[] = [];
+  const len = html.length;
+  let i = 0;
   let line = 1;
   let col = 1;
-  let i = 0;
-  const len = html.length;
+
+  const advanceTo = (end: number): void => {
+    while (i < end) {
+      if (html[i] === '\n') {
+        line++;
+        col = 1;
+      } else {
+        col++;
+      }
+      i++;
+    }
+  };
+
+  const skipWhitespace = (): void => {
+    while (i < len && /\s/.test(html[i] ?? '')) {
+      advanceTo(i + 1);
+    }
+  };
 
   while (i < len) {
-    if (html[i] === '\n') {
-      line++;
-      col = 1;
-      i++;
-      continue;
+    const nextLt = html.indexOf('<', i);
+    if (nextLt === -1) {
+      break;
     }
-
-    if (html[i] !== '<') {
-      i++;
-      col++;
-      continue;
-    }
+    advanceTo(nextLt);
 
     if (html.startsWith('<!--', i)) {
-      const skipped = skipComment(html, i, line, col);
-      i = skipped.index;
-      line = skipped.line;
-      col = skipped.col;
+      const closeIdx = html.indexOf('-->', i + 4);
+      advanceTo(closeIdx === -1 ? len : closeIdx + 3);
       continue;
     }
 
     if (html.startsWith('<!doctype', i) || html[i + 1] === '/') {
-      const skipped = skipUntilGreaterThan(html, i, line, col);
-      i = skipped.index;
-      line = skipped.line;
-      col = skipped.col;
+      const closeIdx = html.indexOf('>', i);
+      advanceTo(closeIdx === -1 ? len : closeIdx + 1);
       continue;
     }
 
     const tagStartLine = line;
     const tagStartCol = col;
-    i++;
-    col++;
+    advanceTo(i + 1);
 
-    let tagName = '';
+    const nameStart = i;
     while (i < len && /[a-zA-Z0-9_-]/.test(html[i] ?? '')) {
-      tagName += html[i];
       i++;
       col++;
     }
-
-    if (tagName.length === 0) {
+    if (i === nameStart) {
       continue;
     }
+    const tagName = html.slice(nameStart, i).toLowerCase();
 
-    const parsedAttrs = parseTagAttributes(html, i, line, col);
-    i = parsedAttrs.index;
-    line = parsedAttrs.line;
-    col = parsedAttrs.col;
+    const attributes: Record<string, string> = {};
+    while (i < len) {
+      skipWhitespace();
+      if (i >= len || html[i] === '>') {
+        if (i < len) {
+          advanceTo(i + 1);
+        }
+        break;
+      }
+      if (html[i] === '/' && html[i + 1] === '>') {
+        advanceTo(i + 2);
+        break;
+      }
+
+      const attrStart = i;
+      while (i < len && /[^\s=>/]/.test(html[i] ?? '')) {
+        i++;
+        col++;
+      }
+      if (i === attrStart) {
+        advanceTo(i + 1);
+        continue;
+      }
+
+      const attrKey = html.slice(attrStart, i).toLowerCase();
+      skipWhitespace();
+
+      let value = '';
+      if (i < len && html[i] === '=') {
+        advanceTo(i + 1);
+        skipWhitespace();
+        const quote = html[i];
+        if (quote === '"' || quote === "'") {
+          advanceTo(i + 1);
+          const valStart = i;
+          const closeQuote = html.indexOf(quote, i);
+          advanceTo(closeQuote === -1 ? len : closeQuote);
+          value = html.slice(valStart, i);
+          if (i < len) {
+            advanceTo(i + 1);
+          }
+        } else {
+          const valStart = i;
+          while (i < len && /[^\s>]/.test(html[i] ?? '')) {
+            i++;
+            col++;
+          }
+          value = html.slice(valStart, i);
+        }
+      }
+
+      if (!Object.hasOwn(attributes, attrKey)) {
+        attributes[attrKey] = value;
+      }
+    }
 
     tokens.push({
-      tagName: tagName.toLowerCase(),
+      tagName,
       line: tagStartLine,
       column: tagStartCol,
-      attributes: parsedAttrs.attributes,
+      attributes,
     });
   }
 
@@ -309,9 +174,6 @@ function isLinkedomElementNode(val: unknown): val is LinkedomElementNode {
   );
 }
 
-/**
- * Extracts attributes map from a linkedom Element.
- */
 function getLinkedomAttributes(el: LinkedomElementNode): Record<string, string> {
   const attrs: Record<string, string> = {};
   if (Array.isArray(el.attributes)) {
@@ -325,6 +187,11 @@ function getLinkedomAttributes(el: LinkedomElementNode): Record<string, string> 
   return attrs;
 }
 
+function decodeCodePoint(full: string, raw: string, radix: number): string {
+  const cp = Number.parseInt(raw, radix);
+  return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : full;
+}
+
 function decodeBasicEntities(val: string): string {
   if (!val.includes('&')) {
     return val;
@@ -336,14 +203,8 @@ function decodeBasicEntities(val: string): string {
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
     .replace(/&nbsp;/gi, '\u00a0')
-    .replace(/&#x([0-9a-f]+);/gi, (full, hex: string) => {
-      const cp = Number.parseInt(hex, 16);
-      return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : full;
-    })
-    .replace(/&#(\d+);/g, (full, dec: string) => {
-      const cp = Number.parseInt(dec, 10);
-      return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : full;
-    });
+    .replace(/&#x([0-9a-f]+);/gi, (full, hex: string) => decodeCodePoint(full, hex, 16))
+    .replace(/&#(\d+);/g, (full, dec: string) => decodeCodePoint(full, dec, 10));
 }
 
 /**
@@ -432,6 +293,31 @@ function querySelectorAllIncludingTemplates(
   return results;
 }
 
+function createDomElementView(
+  tagName: string,
+  attributes: Readonly<Record<string, string>>,
+  line: number,
+  column: number,
+  jsx?: { readonly hasSpread: boolean; readonly dynamicAttrs: ReadonlySet<string> },
+): DomElementView {
+  return {
+    tagName,
+    attributes,
+    line,
+    column,
+    isJsx: Boolean(jsx),
+    hasSpreadAttribute: jsx?.hasSpread ?? false,
+    hasAttribute: (name: string) => Object.hasOwn(attributes, name.toLowerCase()),
+    getAttribute: (name: string) => {
+      const lower = name.toLowerCase();
+      return Object.hasOwn(attributes, lower) ? (attributes[lower] ?? null) : null;
+    },
+    ...(jsx
+      ? { hasDynamicAttribute: (name: string) => jsx.dynamicAttrs.has(name.toLowerCase()) }
+      : {}),
+  };
+}
+
 /**
  * Scans an HTML file using linkedom + linear HTML tokenizer against rules in a single parse pass.
  */
@@ -484,21 +370,7 @@ export function scanHtmlRules<T extends { readonly matcher: DomRuleMatcher }>(
       tokenIndex = matchRes.nextIndex;
 
       const { line, column } = matchRes.token;
-
-      const view: DomElementView = {
-        tagName: tagLower,
-        attributes: elAttrs,
-        line,
-        column,
-        isJsx: false,
-        hasSpreadAttribute: false,
-        hasAttribute: (name: string) => Object.hasOwn(elAttrs, name.toLowerCase()),
-        getAttribute: (name: string) => {
-          const lower = name.toLowerCase();
-          return Object.hasOwn(elAttrs, lower) ? (elAttrs[lower] ?? null) : null;
-        },
-      };
-
+      const view = createDomElementView(tagLower, elAttrs, line, column);
       const result = matcher.matchElement(view, ctx);
       if (result) {
         results.push({
@@ -621,17 +493,10 @@ export function scanJsxRules<T extends { readonly matcher: DomRuleMatcher }>(
       mockEl = null;
     }
 
-    const view: DomElementView = {
-      tagName,
-      attributes: staticAttrs,
-      line,
-      column,
-      isJsx: true,
-      hasSpreadAttribute: hasSpread,
-      hasAttribute: (name: string) => Object.hasOwn(staticAttrs, name.toLowerCase()),
-      getAttribute: (name: string) => staticAttrs[name.toLowerCase()] ?? null,
-      hasDynamicAttribute: (name: string) => dynamicAttrs.has(name.toLowerCase()),
-    };
+    const view = createDomElementView(tagName, staticAttrs, line, column, {
+      hasSpread,
+      dynamicAttrs,
+    });
 
     return { view, mockEl, hasSpread, dynamicAttrs };
   });

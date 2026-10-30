@@ -232,23 +232,17 @@ function scanJsAst(
   return findings;
 }
 
-function scanCssContent(
-  ctx: FileContext,
-  cssText: string,
-  rules: readonly RuleWith<CssRuleMatcher>[],
-): AnalyzerFinding[] {
-  return materializeRuleMatches(ctx, scanCssRules(ctx.relPath, cssText, rules));
-}
-
 function scanExtractedStyles(
   ctx: FileContext,
   rules: readonly RuleWith<CssRuleMatcher>[],
 ): AnalyzerFinding[] {
-  if (rules.length === 0) return [];
+  if (rules.length === 0) {
+    return [];
+  }
   const findings: AnalyzerFinding[] = [];
   for (const blankedCss of extractStyleBlocks(ctx.relPath, ctx.content)) {
     if (!isMinifiedContent(blankedCss)) {
-      findings.push(...scanCssContent(ctx, blankedCss, rules));
+      findings.push(...materializeRuleMatches(ctx, scanCssRules(ctx.relPath, blankedCss, rules)));
     }
   }
   return findings;
@@ -284,22 +278,6 @@ function processMultiBlockFile(
 
 const JSX_EXTENSIONS = new Set(['.jsx', '.tsx']);
 const JS_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.jsx', '.tsx']);
-
-function processJavaScriptFile(
-  ctx: FileContext,
-  ext: string,
-  rules: FileRuleBundle,
-  project: Project,
-): AnalyzerFinding[] {
-  const domRules = JSX_EXTENSIONS.has(ext) ? rules.dom : [];
-  const findings = scanJsAst(ctx, ctx.relPath, ctx.content, rules.js, domRules, project);
-
-  if (ctx.content.includes('css`')) {
-    findings.push(...scanExtractedStyles(ctx, rules.css));
-  }
-
-  return findings;
-}
 
 function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | undefined {
   if (
@@ -383,7 +361,9 @@ export function scanFiles(
 
       if (ext === '.css') {
         if (cssRules.length > 0) {
-          findings.push(...scanCssContent(ctx, content, cssRules));
+          findings.push(
+            ...materializeRuleMatches(ctx, scanCssRules(relPath, content, cssRules)),
+          );
         }
         continue;
       }
@@ -394,7 +374,11 @@ export function scanFiles(
       }
 
       if (JS_EXTENSIONS.has(ext)) {
-        findings.push(...processJavaScriptFile(ctx, ext, ruleBundle, project));
+        const activeDom = JSX_EXTENSIONS.has(ext) ? ruleBundle.dom : [];
+        findings.push(...scanJsAst(ctx, relPath, content, ruleBundle.js, activeDom, project));
+        if (content.includes('css`')) {
+          findings.push(...scanExtractedStyles(ctx, ruleBundle.css));
+        }
       }
     } catch {
       // Per-file exception boundary: an unexpected parser/AST exception on one malformed
@@ -425,7 +409,6 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
     return;
   }
 
-  // Sort entries alphabetically for deterministic traversal across environments (S5)
   entries.sort((entryA, entryB) => entryA.name.localeCompare(entryB.name));
 
   for (const entry of entries) {
@@ -500,13 +483,11 @@ export async function scanRepoFiles(
   options?: RepoScanOptions,
 ): Promise<AnalyzerFinding[]> {
   const fileMap = new Map<string, string>();
-  const maxFiles = options?.maxFiles ?? 5000;
   const fileFilterOptions = resolveFileFilterOptions(options);
-
   const state: WalkDirState = {
     repoDirPath,
     fileMap,
-    maxFiles,
+    maxFiles: options?.maxFiles ?? 5000,
     fileFilterOptions,
     skippedDocsAndTestsCount: 0,
   };

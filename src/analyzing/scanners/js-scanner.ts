@@ -127,16 +127,12 @@ export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher 
 
       for (const node of candidates) {
         const line = node.getStartLineNumber();
-        if (visitedLines?.has(line)) {
-          continue;
-        }
         if (
-          config.featureGuardTokens &&
-          isProtectedByFeatureGuard(node, config.featureGuardTokens)
+          visitedLines?.has(line) ||
+          (config.featureGuardTokens &&
+            isProtectedByFeatureGuard(node, config.featureGuardTokens)) ||
+          config.isGuarded?.(node, sourceFile, ctx)
         ) {
-          continue;
-        }
-        if (config.isGuarded?.(node, sourceFile, ctx)) {
           continue;
         }
         const message = Node.isCallExpression(node)
@@ -171,10 +167,7 @@ export function normalizeFastTokenGroups(
   if (!fastTokens || fastTokens.length === 0) {
     return [];
   }
-  if (isNestedTokenGroups(fastTokens)) {
-    return fastTokens;
-  }
-  return [fastTokens];
+  return isNestedTokenGroups(fastTokens) ? fastTokens : [fastTokens];
 }
 
 /**
@@ -184,12 +177,12 @@ export function matchesFastTokens(
   content: string,
   fastTokens?: FastTokenSpec,
 ): boolean {
-  const groups = normalizeFastTokenGroups(fastTokens);
-  if (groups.length === 0) {
-    return true;
-  }
-  return groups.every((group) => group.some((token) => content.includes(token)));
+  return normalizeFastTokenGroups(fastTokens).every((group) =>
+    group.some((token) => content.includes(token)),
+  );
 }
+
+export const fileContainsFastTokens = matchesFastTokens;
 
 /**
  * Scans a JS/TS source string against a list of JsRuleMatchers using ts-morph.
@@ -201,34 +194,23 @@ export function scanJsSource(
   rules: readonly JsRuleMatcher[],
   project?: Project,
 ): { readonly matches: AnalyzerMatch[]; readonly sourceFile?: SourceFile } {
-  // 1. Filter rules by fastTokens
   const activeRules = rules.filter((rule) =>
     matchesFastTokens(fileContent, rule.fastTokens),
   );
-
   if (activeRules.length === 0) {
     return { matches: [] };
   }
 
-  // 2. Parse AST using provided Project or shared virtual Project
   const proj = project ?? getSharedVirtualProject();
   const sourceFile = proj.createSourceFile(filePath, fileContent, {
     overwrite: true,
   });
-
-  const ctx: JsMatcherContext = {
-    filePath,
-    fileContent,
-  };
-
+  const ctx: JsMatcherContext = { filePath, fileContent };
   const matches: AnalyzerMatch[] = [];
 
   try {
     for (const rule of activeRules) {
-      const ruleMatches = rule.matchFile(sourceFile, ctx);
-      for (const m of ruleMatches) {
-        matches.push(m);
-      }
+      matches.push(...rule.matchFile(sourceFile, ctx));
     }
   } finally {
     if (!project) {

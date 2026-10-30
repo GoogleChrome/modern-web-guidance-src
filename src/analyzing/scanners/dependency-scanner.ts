@@ -21,15 +21,14 @@ const EXTENSIONS_TO_STRIP: readonly string[] = [
 ];
 
 const VERSION_SUFFIX_REGEX = /[-._]v?\d+(?:\.\d+)*(?:[-._][a-z0-9.]+)?$/i;
+const LEADING_COMMENT_RE = /^\s*(?:\/\*[\s\S]*?(?:\*\/|$)|(?:\/\/[^\n]*\n)+)/;
+const BANNER_MARKER_RE = /\/\*!|@(?:license|preserve|author|version)|copyright|license/i;
+const AUTHOR_OR_COPYRIGHT_LINE_RE = /copyright|@author|\bauthors?\b\s*[:-]|\(c\)\s*\d{4}/i;
 
 function stripKnownExtension(filename: string): string {
   const lower = filename.toLowerCase();
-  for (const extension of EXTENSIONS_TO_STRIP) {
-    if (lower.endsWith(extension)) {
-      return filename.slice(0, filename.length - extension.length);
-    }
-  }
-  return filename;
+  const ext = EXTENSIONS_TO_STRIP.find((e) => lower.endsWith(e));
+  return ext ? filename.slice(0, filename.length - ext.length) : filename;
 }
 
 function escapeRegExp(str: string): string {
@@ -74,52 +73,15 @@ const STRICT_SINGLE_WORD_PACKAGES: ReadonlySet<string> = new Set([
   'country',
 ]);
 
-function extractLeadingComment(content: string): string | null {
-  const match = content.match(/^\s*(?:\/\*[\s\S]*?(?:\*\/|$)|(?:\/\/[^\n]*\n)+)/);
-  return match ? match[0] : null;
-}
-
-function stripAuthorAndCopyrightLines(commentText: string): string {
-  return commentText
-    .split('\n')
-    .filter((line) => {
-      const lower = line.toLowerCase();
-      return !(
-        lower.includes('copyright') ||
-        lower.includes('@author') ||
-        /\bauthors?\b\s*[:-]/i.test(line) ||
-        /\(c\)\s*\d{4}/i.test(line)
-      );
-    })
-    .join('\n');
-}
-
 function extractCleanedBanner(content: string): string | null {
-  const bannerSlice = content.slice(0, 1500);
-  if (bannerSlice.length === 0) {
+  const commentMatch = content.slice(0, 1500).match(LEADING_COMMENT_RE);
+  if (!commentMatch || !BANNER_MARKER_RE.test(commentMatch[0])) {
     return null;
   }
-
-  const commentBlock = extractLeadingComment(bannerSlice);
-  if (!commentBlock) {
-    return null;
-  }
-
-  const lowerComment = commentBlock.toLowerCase();
-  const hasBannerMarker =
-    lowerComment.includes('/*!') ||
-    lowerComment.includes('@license') ||
-    lowerComment.includes('@preserve') ||
-    lowerComment.includes('@author') ||
-    lowerComment.includes('@version') ||
-    lowerComment.includes('copyright') ||
-    lowerComment.includes('license');
-
-  if (!hasBannerMarker) {
-    return null;
-  }
-
-  return stripAuthorAndCopyrightLines(commentBlock);
+  return commentMatch[0]
+    .split('\n')
+    .filter((line) => !AUTHOR_OR_COPYRIGHT_LINE_RE.test(line))
+    .join('\n');
 }
 
 function bannerIdentifiesPackage(cleanedComment: string, pkgNorm: NormalizedPackage): boolean {
@@ -142,11 +104,11 @@ function bannerIdentifiesPackage(cleanedComment: string, pkgNorm: NormalizedPack
     STRICT_SINGLE_WORD_PACKAGES.has(pkgNorm.raw);
 
   if (isStrictSingleWord) {
-    if (pkgNorm.raw.includes('-') || pkgNorm.raw.includes('.')) {
-      const fullPkgPattern = new RegExp(`\\b${escapeRegExp(pkgNorm.raw)}\\b`, 'i');
-      if (fullPkgPattern.test(cleanedComment)) {
-        return true;
-      }
+    if (
+      (pkgNorm.raw.includes('-') || pkgNorm.raw.includes('.')) &&
+      new RegExp(`\\b${escapeRegExp(pkgNorm.raw)}\\b`, 'i').test(cleanedComment)
+    ) {
+      return true;
     }
 
     const coreEsc = escapeRegExp(pkgNorm.core);
@@ -195,21 +157,13 @@ function matchesVendoredPackage(
     candidates.has(pkgNorm.raw) ||
     candidates.has(pkgNorm.unscoped) ||
     candidates.has(pkgNorm.base) ||
-    candidates.has(pkgNorm.core)
+    candidates.has(pkgNorm.core) ||
+    (pkgNorm.core === 'moment' &&
+      (lowerBase.startsWith('moment-with-') ||
+        lowerBase.startsWith('moment.') ||
+        lowerBase.startsWith('moment-timezone'))) ||
+    (pkgNorm.raw === 'dompurify' && candidates.has('purify'))
   ) {
-    return true;
-  }
-
-  if (
-    pkgNorm.core === 'moment' &&
-    (lowerBase.startsWith('moment-with-') ||
-      lowerBase.startsWith('moment.') ||
-      lowerBase.startsWith('moment-timezone'))
-  ) {
-    return true;
-  }
-
-  if (pkgNorm.raw === 'dompurify' && candidates.has('purify')) {
     return true;
   }
 
@@ -363,10 +317,9 @@ function hasAnyPackage(
 }
 
 function hasNonEmptyField(value: unknown): boolean {
-  if (typeof value === 'string') {
-    return value.trim().length > 0;
-  }
-  return isRecord(value) && Object.keys(value).length > 0;
+  return typeof value === 'string'
+    ? value.trim().length > 0
+    : isRecord(value) && Object.keys(value).length > 0;
 }
 
 /**
@@ -437,7 +390,7 @@ function findPackageLine(
       }
       pendingString = null;
     } else {
-      pendingString = token.includes('\\') ? (JSON.parse(token) as string) : token.slice(1, -1);
+      pendingString = token.includes('\\') ? String(JSON.parse(token)) : token.slice(1, -1);
       pendingLine = line;
     }
   }
