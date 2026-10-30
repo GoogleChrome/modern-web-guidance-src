@@ -93,4 +93,11 @@ describe("searchUseCases", () => {
       `Expected both tooltip siblings, got: ${ids.join(", ")}`
     );
   });
+
+  it("surfaces guides matching by web feature ID via enriched chunk content", async () => {
+    // details-name is a web-feature-id on search-hidden-content, enriched in chunk header
+    const results = await searchUseCases("details-name", 5);
+    assert.ok(results.length > 0, "Should return results for web feature ID query");
+    assert.strictEqual(results[0].id, "search-hidden-content");
+  });
 });
