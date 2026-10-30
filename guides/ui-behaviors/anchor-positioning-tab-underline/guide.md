@@ -91,7 +91,7 @@ This is only a visual indicator, and must not be a replacement for setting the a
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ BASELINE_STATUS("anchor-positioning") }}
 
 If anchor positioning is not supported in the browser, use a `border-bottom` to add an underline. It will not be animated.
 

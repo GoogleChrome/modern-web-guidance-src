@@ -75,30 +75,4 @@ If your dropdown or flyout includes a directional arrow or border that needs to 
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ BASELINE_STATUS("anchor-positioning") }}
-
-To support browsers without anchor positioning, you must set a reasonable position. By default popovers are centered in the middle of the screen, which may work for your use case.
-
-For some use cases, you may be able to use the `@oddbird/css-anchor-positioning` polyfill, which adds support for some anchor positioning use cases. It does not support implicit anchors, so you MUST add anchor names to the trigger. Additionally, `position-area` is not supported on popovers by the polyfill, so you MUST use `anchor()` on the desired insets. 
-
-```html
-<!-- MANDATORY: Conditionally install the anchor positioning polyfill -->
-<script type="module">
-  if (!("anchorName" in document.documentElement.style)) {
-    await import("https://unpkg.com/@oddbird/css-anchor-positioning");
-  }
-</script>
-```
-
-```css
-.panel {
-  /* Mandatory: use explicit anchor name */
-  position-anchor: --kebab-anchor;
-  /* Mandatory: use insets rather than position-area for positioning */
-  bottom: auto;
-  right: auto;
-  top: anchor(bottom);
-  left: anchor(left);
-  margin: 0;
-}
-```
+{{ FEATURE_FALLBACKS("anchor-positioning") }}
