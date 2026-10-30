@@ -13,14 +13,17 @@ import {
 
 describe('computeCardId', () => {
   it('computes deterministic 12-char SHA-256 matching canonical labels', () => {
-    const cases = [
-      { repo: 'lh-scorecalc', commit: 'a2a9e2bd036758d161c7ec80f20b1c158c069b2f', guide: 'css-layout', file: 'style.css', line: 5, expected: 'f724500e2ff9' },
-      { repo: 'fastmail-overture', commit: '532d7d10d6052eb65e36b8ae9cd2d30ffa5925c8', guide: 'coordinate-global-events', file: 'source/core/Date.js', line: 537, expected: 'edefed5255eb' },
-      { repo: 'fastmail-overture', commit: '532d7d10d6052eb65e36b8ae9cd2d30ffa5925c8', guide: 'manage-recurring-intervals', file: 'source/core/Date.js', line: 304, expected: '50501ceafbb8' },
-    ];
-    assert.deepStrictEqual(
-      cases.map((c) => computeCardId(c.repo, c.commit, c.guide, c.file, c.line)),
-      cases.map((c) => c.expected),
+    assert.strictEqual(
+      computeCardId('lh-scorecalc', 'a2a9e2bd036758d161c7ec80f20b1c158c069b2f', 'css-layout', 'style.css', 5),
+      'f724500e2ff9',
+    );
+    assert.strictEqual(
+      computeCardId('fastmail-overture', '532d7d10d6052eb65e36b8ae9cd2d30ffa5925c8', 'coordinate-global-events', 'source/core/Date.js', 537),
+      'edefed5255eb',
+    );
+    assert.strictEqual(
+      computeCardId('fastmail-overture', '532d7d10d6052eb65e36b8ae9cd2d30ffa5925c8', 'manage-recurring-intervals', 'source/core/Date.js', 304),
+      '50501ceafbb8',
     );
 
     const id = computeCardId('my-repo', 'commit-hash', 'guide-x', 'src/file.ts', 42);
@@ -58,25 +61,20 @@ describe('wilsonInterval', () => {
 
 describe('checkSequentialStop', () => {
   it('enforces sequential stopping boundaries and custom maxGrades caps', () => {
-    const cases = [
-      { successes: 10, total: 10, target: 0.8, expected: 'continue' },
-      { successes: 14, total: 14, target: 0.8, expected: 'continue' },
-      { successes: 5, total: 15, target: 0.8, expected: 'fail' },
-      { successes: 15, total: 15, target: 0.8, expected: 'continue' },
-      { successes: 30, total: 30, target: 0.8, expected: 'pass' },
-      { successes: 60, total: 60, target: 0.9, expected: 'pass' },
-      { successes: 59, total: 60, target: 0.85, expected: 'pass' },
-      { successes: 50, total: 60, target: 0.9, expected: 'fail' },
-      { successes: 58, total: 60, target: 0.9, expected: 'fail' },
-      { successes: 58, total: 60, target: 0.9, maxGrades: 100, expected: 'continue' },
-      { successes: 95, total: 100, target: 0.9, maxGrades: 100, expected: 'fail' },
-      { successes: 98, total: 100, target: 0.9, maxGrades: 100, expected: 'pass' },
-    ];
+    assert.strictEqual(checkSequentialStop(10, 10, 0.8), 'continue');
+    assert.strictEqual(checkSequentialStop(14, 14, 0.8), 'continue');
+    assert.strictEqual(checkSequentialStop(5, 15, 0.8), 'fail');
+    assert.strictEqual(checkSequentialStop(15, 15, 0.8), 'continue');
+    assert.strictEqual(checkSequentialStop(30, 30, 0.8), 'pass');
 
-    assert.deepStrictEqual(
-      cases.map((c) => checkSequentialStop(c.successes, c.total, c.target, c.maxGrades)),
-      cases.map((c) => c.expected),
-    );
+    assert.strictEqual(checkSequentialStop(60, 60, 0.9), 'pass');
+    assert.strictEqual(checkSequentialStop(59, 60, 0.85), 'pass');
+    assert.strictEqual(checkSequentialStop(50, 60, 0.9), 'fail');
+
+    assert.strictEqual(checkSequentialStop(58, 60, 0.9), 'fail');
+    assert.strictEqual(checkSequentialStop(58, 60, 0.9, 100), 'continue');
+    assert.strictEqual(checkSequentialStop(95, 100, 0.9, 100), 'fail');
+    assert.strictEqual(checkSequentialStop(98, 100, 0.9, 100), 'pass');
   });
 });
 

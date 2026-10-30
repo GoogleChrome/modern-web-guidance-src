@@ -46,19 +46,10 @@ export {
 const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 
-export const RULES_BY_ID: ReadonlyMap<string, AnalyzerRule> = new Map(
-  ALL_RULES.map((r) => [r.id, r]),
+const RULES_BY_ID: ReadonlyMap<string, AnalyzerRule> = new Map(ALL_RULES.map((r) => [r.id, r]));
+const RULES_BY_GUIDE_ID: ReadonlyMap<string, AnalyzerRule> = new Map(
+  [...ALL_RULES].reverse().map((r) => [r.guideId, r]),
 );
-
-export const RULES_BY_GUIDE_ID: ReadonlyMap<string, AnalyzerRule> = (() => {
-  const map = new Map<string, AnalyzerRule>();
-  for (const rule of ALL_RULES) {
-    if (!map.has(rule.guideId)) {
-      map.set(rule.guideId, rule);
-    }
-  }
-  return map;
-})();
 
 function findMatchingRule(ruleId: string | undefined, guideId: string): AnalyzerRule | undefined {
   return (ruleId ? RULES_BY_ID.get(ruleId) : undefined) ?? RULES_BY_GUIDE_ID.get(guideId);
@@ -290,17 +281,12 @@ export function computeJudgeInputProvenance(
     }
   }
 
-  const promptGuideHash =
-    (card.guideSummary?.markdownBody?.trim() && card.guideSummary.promptGuideHash)
-      ? card.guideSummary.promptGuideHash
-      : computePromptGuideHash(
-          card.guideSummary?.markdownBody,
-          card.cardId,
-          card.guideId,
-        );
-  const explainerContextHash =
-    card.guideSummary?.explainerContextHash ??
-    computeExplainerContextHash(card.guideSummary?.explainerContext);
+  const promptGuideHash = computePromptGuideHash(
+    card.guideSummary?.markdownBody,
+    card.cardId,
+    card.guideId,
+  );
+  const explainerContextHash = computeExplainerContextHash(card.guideSummary?.explainerContext);
   const matchedRule = findMatchingRule(card.ruleId, card.guideId);
   const ruleId = (card.ruleId || matchedRule?.id || card.guideId || '').trim();
   if (!ruleId) {
@@ -789,7 +775,7 @@ export async function loadGuideSummariesMap(
 
   for (const entry of entries) {
     if (!entry.isFile() || entry.name !== 'guide.md') continue;
-    const parentDir = entry.parentPath ?? (entry as unknown as { path?: string }).path ?? '';
+    const parentDir = entry.parentPath;
     const guideId = basename(parentDir);
     const fullPath = join(parentDir, entry.name);
     const rawContent = await readFile(fullPath, 'utf8');
@@ -797,8 +783,12 @@ export async function loadGuideSummariesMap(
     const explainer = explainersMap?.get(guideId);
     map.set(guideId, {
       ...summary,
-      ...(explainer?.combinedExcerpt ? { explainerContext: explainer.combinedExcerpt } : {}),
-      explainerContextHash: explainer?.explainerContextHash ?? 'none',
+      ...(explainersMap
+        ? {
+            ...(explainer?.combinedExcerpt ? { explainerContext: explainer.combinedExcerpt } : {}),
+            explainerContextHash: computeExplainerContextHash(explainer?.combinedExcerpt),
+          }
+        : {}),
     });
   }
 
@@ -974,9 +964,7 @@ export async function prepareBlindCards(
       guideId: item.guideId,
       ruleId: effectiveRuleId,
       ruleHash: matchedRule ? computeRuleHash(matchedRule) : 'unregistered',
-      guideHash:
-        summary.promptGuideHash ??
-        computePromptGuideHash(summary.markdownBody, item.cardId, item.guideId),
+      guideHash: computePromptGuideHash(summary.markdownBody, item.cardId, item.guideId),
       guideSummary: summary,
       codeSnippet: snippet,
     });

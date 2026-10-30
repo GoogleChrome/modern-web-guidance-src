@@ -11,15 +11,11 @@ import {
   triageGuide,
 } from './guide-triage.ts';
 
-function mockGeminiResponse(payload: unknown, status = 200): Response {
-  return new Response(
-    typeof payload === 'string' ? payload : JSON.stringify(payload),
-    {
-      status,
-      headers: { 'Content-Type': 'application/json' },
-    },
-  );
-}
+const mockGeminiResponse = (p: unknown, status = 200) =>
+  new Response(typeof p === 'string' ? p : JSON.stringify(p), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 
 void test('guide-triage: request body construction', async (t) => {
   const sampleGuide = {
