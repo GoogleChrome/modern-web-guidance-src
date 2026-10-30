@@ -76,7 +76,7 @@ Always use the **DevTools MCP** server to test the demo associated with the guid
 
 ### Baseline and Fallback Verification
 *   **Target Baseline**: The demo file should always assume a baseline target of **widely available**.
-*   **Check Status**: Use the `baseline-status` skill (by reading its `SKILL.md` file) to learn how to query the status of any given feature.
+*   **Check Status**: Use [`web-baseline`](../web-baseline/SKILL.md) and `gd baselinestatus <query>` (or `pnpm baselinestatus <query>`) to query the status of any given feature.
 *   **Fallback Requirement**: If a feature is NOT widely available, the demo file MUST demonstrate how the fallback strategy described in the guide should be used.
 
 ## 5. Manual Verification
@@ -91,7 +91,7 @@ After automated testing with DevTools MCP, guide the user through manual verific
     *   Describe what they should look for to confirm success or failure.
 4.  **Test in Supported and Unsupported Browsers**:
     *   **Supported**: Chrome is the target for DevTools MCP, but encourage the user to also try it themselves via the local server link.
-    *   **Unsupported**: Identify a browser that does not support the feature (using the `baseline-status` skill). Suggest testing in a browser that lacks support to verify the fallback behavior.
+    *   **Unsupported**: Identify a browser that does not support the feature (using `gd baselinestatus <query>`). Suggest testing in a browser that lacks support to verify the fallback behavior.
 5.  **Handle "Newly Available" Features**: If the feature is newly Baseline and it is hard to find an unsupported browser version, guide the user to perform a **static evaluation of the code** (e.g., checking for feature detection and fallback logic in the source).
 6. **Success Criteria**: Explain clearly how the user can convince themselves that the demo illustrates a correct implementation of the use case.
 

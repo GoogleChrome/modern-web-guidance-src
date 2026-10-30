@@ -152,7 +152,7 @@ The code in `src/build/`, `src/cli/`, and `src/rag/` compiles `guide.md` and `SK
 ## 5. Key Architectural Decisions
 
 - **CLI Agents in Isolated Sandboxes**: Grader, solution, and evaluation runs invoke CLI coding agents inside isolated `/tmp/` `HOME` directories (`setupGuideDevWorkDir()`) wrapped in OS-level filesystem sandboxes (`bwrap` on Linux, `sandbox-exec` on macOS; `src/harness/lib/sandbox.ts`) so agents cannot inspect repo source files or graders. During `gd dev`, golden solutions are generated across three distinct agent families to calibrate graders against model-diverse implementations.
-- **Playwright for Outcome Grading**: Graders are Playwright test suites so assertions can verify real browser rendering, computed styles, DOM state, and runtime behavior alongside static AST checks, with an automated retry loop (up to 3 attempts) during calibration.
+- **Playwright for Outcome Grading**: Graders are Playwright test suites so assertions can verify real browser rendering, computed styles, DOM state, and runtime behavior alongside static AST checks, with an automated retry loop (up to 5 attempts / 4 retries) during calibration.
 - **Standalone Skills CLI Serving**: Serving guidance via Agent Skills and `dist/skills-cli` provides deterministic, portable tool access across all supported coding agents without external server dependencies.
 
 ---

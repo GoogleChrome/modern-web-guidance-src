@@ -18,9 +18,9 @@ Content ATLs ensure that all guidance within their domain is technically accurat
 
 ATL stewardship spans both **domain verticals** (directory categories) and **guidance horizontals** (cross-cutting feature groups like Motion or WebAuthn).
 
-Official ownership mapping is maintained in **[`.github/atls.json`](../.github/atls.json)**, which resolves ATL assignments through three hierarchical tiers:
+Official ownership mapping is maintained in **[`.github/atls.json`](../.github/atls.json)**, which routes ATL assignments across three tables (unioning matched category, feature, and group ATLs via `src/ci/atl-triage.ts`):
 
-1. **`web_features`**: Specific feature-level overrides (highest priority, e.g., `prefers-reduced-motion`, `canvas-html`).
+1. **`web_features`**: Specific feature-level assignments (e.g., `prefers-reduced-motion`, `canvas-html`).
 2. **`web_features_groups`**: Cross-cutting guidance horizontals and feature groups (e.g., `animation`, `transitions`, `view-transitions`, `scrolling`, `webauthn`).
 3. **`default`**: Domain vertical defaults across guidance directories (`css`, `forms`, `performance`, `ui-behaviors`, `ui-components`, `built-in-ai`, `privacy`, `security`, `webmcp`, etc.).
 

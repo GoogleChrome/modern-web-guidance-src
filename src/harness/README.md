@@ -131,6 +131,7 @@ src/harness/
     collection.ts            # Results aggregation
     guide-usage.ts           # Guide/tool usage extraction
     sandbox.ts               # Filesystem isolation sandbox
+    trajectory-normalizer.ts # Unified trajectory_summary.json generation
   nightly/                   # Nightly cron automation scripts
   config.ts                  # Suite configuration
   run-suite.ts               # Orchestrator
@@ -286,28 +287,15 @@ Each agent outputs trajectories in distinct formats:
 | Jetski CLI | Protocol Buffers / SQLite | `.gemini/jetski/conversations/*` | `parseJetskiCliSession` |
 | Antigravity CLI | SQLite | `.gemini/antigravity-cli/conversations/*.db` | `parseJetskiCliSession` |
 
-Example extraction for Pi:
+Each agent runner colocates a trajectory parser (`parse<Agent>Trajectory` and `load<Agent>Logs`) and calls `generateNormalizedTrajectory(targetDir, Agents.<AGENT>, userPrompt)` in its `finally` block to write a unified `trajectory_summary.json` in `targetDir`:
+
 ```typescript
 // src/harness/agents/pi-agent.ts
-export function extractPiTokenUsage(dir: string) {
-  const sessionFiles = fs.globSync('*.jsonl', { cwd: dir });
-  let total = 0;
-  
-  for (const file of sessionFiles) {
-    const content = fs.readFileSync(path.join(dir, file), 'utf8');
-    const lines = content.split('\n').filter(line => line.trim());
-    
-    for (const line of lines) {
-      const msg = JSON.parse(line);
-      if (msg.usage) {
-        total += msg.usage.total_tokens || 0;
-      }
-    }
-  }
-  
-  return { total };
-}
+exportPiTrajectories(workDir, targetDir);
+await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
 ```
+
+`src/harness/lib/collection.ts` and `src/harness/lib/guide-usage.ts` read `trajectory_summary.json` via `ensureFreshTrajectorySummarySync(runDir)` to extract the model identifier, token usage (`total` and `cached`), tool calls, and retrieved/read guides uniformly across all agents.
 
 ### 5. Guide Usage Tracking
 
@@ -361,7 +349,7 @@ Only these paths are re-exposed:
 
 | Path | Access | Why |
 |------|--------|-----|
-| `node_modules`, `src/harness/node_modules` | read-only | Agent CLI binaries |
+| `node_modules` | read-only | Agent CLI binaries |
 | `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
 | isolated `HOME` (`/tmp/ghh-*`) | writable | Agent workspace, `.gd-bin` npx/pnpx/pnpm shims, and `modern-web.log` |
 
@@ -378,69 +366,56 @@ Copy an existing harness (e.g., `src/harness/agents/pi-agent.ts`) and create `sr
 ```typescript
 // src/harness/agents/my-agent.ts
 import config, { Agents } from '../config.ts';
-import { ... } from '../lib/agent-shared.ts';
+import {
+  cleanupIsolatedHome,
+  copyFileIfExists,
+  parseAgentArgs,
+  runCliAgentCommand,
+  setupIsolatedWorkDir,
+} from '../lib/agent-shared.ts';
+import {
+  type TrajectorySummary,
+  generateNormalizedTrajectory,
+} from '../lib/trajectory-normalizer.ts';
 
-function setupIsolatedWorkDir(templateDir: string, runType: string, targetDir?: string): string {
-  const tempHome = createIsolatedHome('ghh-my-agent', targetDir);
-  const workDir = createWorkDir(templateDir, tempHome, runType);
-  
-  // Copy agent-specific auth/config files
+export function setupMyAgentCredentials(tempHome: string): void {
   const agentDest = path.join(tempHome, '.my-agent');
   fs.mkdirSync(agentDest, { recursive: true });
-  
   copyFileIfExists(
     path.join(os.homedir(), '.my-agent', 'config.json'),
     path.join(agentDest, 'config.json')
   );
-  
-  process.env.HOME = tempHome;
   process.env.MY_AGENT_CONFIG_DIR = agentDest;
-  
-  // Copy skills for guided runs
-  if (runType === 'guided') {
-    const suiteConfig = getSuiteConfig();
-    copySkills(tempHome, Agents.MY_AGENT, suiteConfig.skillsToEnable);
-  }
-  
-  return workDir;
+}
+
+export function getMyAgentCommandAndArgs(prompt: string): { command: string; commandArgs: string[] } {
+  const command = config.environment.myAgentBin || 'my-agent';
+  return { command, commandArgs: ['-p', prompt] };
 }
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('my-agent.ts');
-  const workDir = setupIsolatedWorkDir(templateDir, runType, targetDir);
-  
-  const command = config.environment.myAgentBin;
-  const commandArgs = [
-    '-p',        // non-interactive mode
-    userPrompt
-  ];
-  
-  // runType ('guided' | 'unguided') controls what the filesystem sandbox exposes
-  await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', runType);
-  
-  // Export trajectories
-  const sessionsDir = path.join(path.dirname(workDir), '.my-agent', 'sessions');
-  exportTrajectories(sessionsDir, '*.jsonl', targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.MY_AGENT, templateDir, runType);
+
+  try {
+    const { command, commandArgs } = getMyAgentCommandAndArgs(userPrompt);
+    try {
+      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', runType);
+    } finally {
+      exportMyAgentTrajectories(workDir, targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.MY_AGENT, userPrompt);
+    }
+  } finally {
+    cleanupIsolatedHome(path.dirname(workDir));
+  }
 }
 
-export function extractMyAgentModel(resultsDir: string): string {
-  // Parse trajectory files to extract model name
+export function loadMyAgentLogs(dir: string) {
+  // Load raw session logs from dir
 }
 
-export function extractMyAgentTokenUsage(dir: string) {
-  // Parse trajectory files to extract token usage
-}
-
-export function collectMyAgentToolsFromTrajectory(dir: string): string[] {
-  // Parse trajectory files to extract tools used
-}
-
-export function collectMyAgentGuidesFromTrajectory(dirPath: string) {
-  // Parse trajectory files to extract guides retrieved
-}
-
-if (isMain) {
-  run();
+export function parseMyAgentTrajectory(logData: any[]): TrajectorySummary {
+  // Normalize steps, model, tokenUsage, toolsUsed, retrievedGuides, and fileReadGuides
 }
 ```
 
@@ -466,39 +441,19 @@ export interface EnvironmentConfig {
 
 ### Step 3: Wire Up Integrations
 
-**`run-suite.ts`** - Agent script mapping (unknown agents throw):
-```typescript
-const AGENT_SCRIPTS: Record<string, string> = {
-  // ... other agents
-  [Agents.MY_AGENT]: 'my-agent.ts',
-};
-```
-
-**`lib/collection.ts`** - Model and token extraction:
-```typescript
-export function extractModelFromResults(resultsDir: string): string {
-  // Reads model from trajectory_summary.json
-}
-
-export function extractTokenUsageFromResults(resultsDir: string) {
-  // Reads token usage from trajectory_summary.json
-}
-```
-
-**`lib/guide-usage.ts`** - Guide and tool usage collection:
-```typescript
-export async function collectGuidesUsed(dirPath: string) {
-  // Reads retrieved and read guides from trajectory_summary.json
-}
-
-export async function collectGuidanceToolsUsed(dir: string) {
-  // Reads tools used from trajectory_summary.json
-}
-```
+1. **`src/harness/lib/agent-shared.ts`** - Register `setupMyAgentCredentials` in `setupAgentCredentials()` and `getMyAgentCommandAndArgs` in `getAgentCommandAndArgs()`.
+2. **`src/harness/lib/trajectory-normalizer.ts`** - Register `loadMyAgentLogs` and `parseMyAgentTrajectory` in `detectAgentForRun()` and `generateNormalizedTrajectorySync()`. (`lib/collection.ts` and `lib/guide-usage.ts` automatically read the resulting `trajectory_summary.json`).
+3. **`src/harness/run-suite.ts`** - Map the agent enum to its script in `AGENT_SCRIPTS`:
+   ```typescript
+   const AGENT_SCRIPTS: Record<string, string> = {
+     // ... other agents
+     [Agents.MY_AGENT]: 'my-agent.ts',
+   };
+   ```
 
 ### Step 4: Add Smoke Test
 
-The `quick-smoke.ts` script supports all registered agents:
+Register the agent in `AGENT_CONFIGS` in `src/harness/quick-smoke.ts` and run a smoke test:
 ```bash
 # Usage: node src/harness/quick-smoke.ts [agent] [guided|unguided]
 node src/harness/quick-smoke.ts my-agent unguided
@@ -693,7 +648,7 @@ The comparison runs in four steps:
 1. **Loads both runs.** Missing runs are downloaded from GCS. If a `trajectory_summary.json` is missing or from an older normalizer version, it's rebuilt from the raw session logs.
 2. **Pre-processes trajectories** into tagged milestone steps (skill search, guide retrieval, code mutation, noise) and counts error/retry loops.
 3. **Runs one diagnostic prompt** with the configured solution agent CLI in an isolated temp workspace. The full guide, grader, diffs and trajectories are staged there as files. The agent may split the guide-compliance and code/friction audits across its own subagents.
-4. **Writes a four-section markdown report** to `<Run A suite>/variance_diagnoses/<guide>-<task>-<runA>-vs-<runB>.md`. If Run A isn't in a recognizable suite folder, it falls back to Run B's suite, then to `harness/results/variance_diagnoses/`.
+4. **Writes a four-section markdown report** to `<Run A suite>/variance_diagnoses/<guide>-<task>-<runA>-vs-<runB>.md`. If Run A isn't in a recognizable suite folder, it falls back to Run B's suite, then to `results/variance_diagnoses/`.
 
 ---
 
