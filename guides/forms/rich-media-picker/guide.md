@@ -92,7 +92,7 @@ select.custom-select option:hover {
 }
 
 /* Remove standard OS checkmark for base-select */
-select.custom-select option::before {
+select.custom-select option::checkmark {
   display: none;
 }
 
@@ -115,6 +115,8 @@ select.custom-select option:checked .option-title {
 {{ FEATURE("customizable-select", "usage") }}
 
 ## Accessibility considerations
+
+MANDATORY: When the select is expanded and the list of options are visible, there must be a way to visibly identify which option is selected. Examples of how this could be achieved include: using a custom icon, adding a sufficiently contrasting outline (that clearly differs from focus/hover indication), or using a sufficiently contrasting background color.
 
 Ensure that the rich media picker always has an associated visible label that conveys the context of the information required. This will allow people to independently select the option that they need. This ensures adherence to WCAG 3.3.2 Labels or Instructions, which requires that labels or instructions are provided when content requires user input. Similarly, ensure that all of the options include visible text, and do not rely solely on an image or colour, so that people can easily select the option that they need.
 
