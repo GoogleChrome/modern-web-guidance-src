@@ -34,16 +34,25 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 
 ```text
 Modern Web Guidance Analyzer — /workspace/etherpad-lite
-Found 2 modernization opportunities across 2 guides:
+Found 4 modernization opportunities across 3 guides:
 Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.
 Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
 
 * autofill-sign-in-form (1 finding)
   Password input in sign-in or credential form should specify autocomplete="current-password" or autocomplete="new-password".
-  Keep when: The password input is part of a user-facing authentication, current-password verification, or sign-in form.;…
-  Drop when: The password input is disabled, readonly, hidden, or a non-interactive display widget.; The password input al…
+  Keep when: The password input is part of a user-facing authentication, current-password verification, or sign-in form; T…
+  Drop when: The password input is disabled, readonly, hidden, or a non-interactive display widget; The password input alr…
   - src/templates/pad.html:109
     <input id='passwordinput' type='password' name='password'><input type='submit'…
+
+* customize-scrollbar-color-and-thickness (2 findings)
+  Vendor ::-webkit-scrollbar pseudo-elements customize or hide scrollbars; use standard scrollbar-color and scrollbar-width (including scrollbar-width: none) instead.
+  Keep when: The CSS rule uses vendor pseudo-elements (::-webkit-scrollbar or ::-webkit-scrollbar-thumb) to customize scro…
+  Drop when: The stylesheet already defines standard scrollbar-width or scrollbar-color properties; The rule only resets s…
+  - src/static/skins/colibris/src/components/chat.css:49
+    #chattext::-webkit-scrollbar {
+  - src/static/skins/colibris/src/components/chat.css:53
+    #chattext::-webkit-scrollbar-thumb {
 
 * form-fields-automatically-fit-contents (1 finding)
   Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.
@@ -121,30 +130,30 @@ flowchart TD
 
 ---
 
-## 3. Architecture: Static Matcher + LLM Verifier
+## 3. Architecture: Static Matcher + Verification Rubric
 
-High-precision static analysis requires balancing high recall against low matcher misfire rates across diverse real-world frameworks. The analyzer achieves this through a two-step runtime architecture:
+High-precision static analysis requires balancing high recall against low matcher misfire rates across diverse real-world frameworks. At runtime, the CLI runs the fast deterministic **Static Matcher** (`fastTokens` pre-filter + AST/DOM/CSS/Dependency scanners) with zero LLM or network dependency, and emits each rule's `verifierRubric` (`keepWhen` / `dropWhen`) so the developer's coding agent verifies context at modernization time. During offline rule qualification and evaluation, [`llm-verifier.ts`](./llm-verifier.ts) scores candidate findings against the same rubric:
 
 ```mermaid
 flowchart LR
-    Source["Codebase Source Files<br/>(TS/JS, JSX/HTML, CSS, JSON)"] --> StaticMatcher["Static Matcher<br/>AST & Token Pattern Matching<br/>(High Recall, Fast)"]
-    StaticMatcher --> RawCards["Candidate Findings<br/>(Card ID: SHA-256 slice)"]
-    RawCards --> LlmVerifier["LLM Verifier<br/>Rubric Check: keepWhen / dropWhen<br/>(High Precision)"]
-    LlmVerifier --> Kept["Kept Modernization Findings"]
-    LlmVerifier -.-> Dropped["Dropped False Positives<br/>(Guarded, Shadowed, Non-DOM)"]
+    Source["Codebase Source Files<br/>(TS/JS, JSX/HTML, CSS, JSON)"] --> StaticMatcher["Static Matcher<br/>AST & Token Pattern Matching<br/>(High Recall, Zero LLM)"]
+    StaticMatcher --> RawCards["Candidate Findings + verifierRubric<br/>(keepWhen / dropWhen)"]
+    RawCards --> Verification["Contextual Verification<br/>Coding Agent (Runtime) / LLM Verifier (Eval)"]
+    Verification --> Kept["Kept Modernization Findings"]
+    Verification -.-> Dropped["Dropped False Positives<br/>(Guarded, Shadowed, Non-DOM)"]
 ```
 
 ### Static Matcher (High-Recall Deterministic Scanner)
 
-- **Speed & Breadth**: Scans thousands of files in milliseconds using token pre-filters (`fastTokens`) before parsing ASTs.
+- **Speed & Breadth**: Scans thousands of files in milliseconds using token pre-filters (`fastTokens`) before parsing ASTs, with zero runtime LLM dependency.
 - **Multi-Modal Matchers**: Evaluates JavaScript/TypeScript syntax trees via `ts-morph`, DOM elements and JSX props via custom AST visitors, CSS stylesheets via declaration parsing, and package dependencies via `package.json`.
 - **Finding Identity**: Every finding receives a deterministic 12-character hex ID:
   $$\text{CardID} = \text{SHA256}(\text{repo} : \text{commit} : \text{guideId} : \text{file} : \text{line})[0..12]$$
   This provides stable tracking across repeat runs and evaluation datasets.
 
-### LLM Verifier (Contextual Rubric Filter)
+### Verification Rubric & Offline LLM Verifier (`verifierRubric`)
 
-Candidate matches are validated against rule-specific rubrics defined in [`schema.ts`](./schema.ts):
+Candidate matches carry rule-specific rubrics defined in [`schema.ts`](./schema.ts) (`keepWhen` / `dropWhen`), emitted directly by the CLI for coding agents at modernization time and evaluated offline by [`llm-verifier.ts`](./llm-verifier.ts) during rule qualification:
 - **`keepWhen` Criteria**: Verified when the candidate matches genuine legacy workarounds (e.g., custom event loops, manual clipboard workarounds, DIY popover positioning).
 - **`dropWhen` Criteria**: Immediately discards false positives, including:
   - Code already guarded by feature detection (`'showPicker' in HTMLInputElement.prototype`).
@@ -247,41 +256,41 @@ Every web platform standard in the catalog is classified across two orthogonal a
 
 | Guide ID | Rule ID | Matcher Kind | Split | Yield | Sampled ($n$ / kept $n$) | Static Matcher Precision (95% Wilson CI) | Post-Verifier Precision (95% Wilson CI) | Modern Platform Target |
 | :--- | :--- | :--- | :---: | :---: | :---: | :--- | :--- | :--- |
-| `deliver-optimized-decorative-images` | `deliver-optimized-decorative-images` | CSS | `held-out` | 224 | 35 / 35 | 100.0% ([90.1%, 100.0%]) | 100.0% ([90.1%, 100.0%]) | Standard CSS `image-set()` for decorative backgrounds and masks |
+| `deliver-optimized-decorative-images` | `deliver-optimized-decorative-images` | CSS | `held-out` | 482 | 35 / 35 | 100.0% ([90.1%, 100.0%]) | 100.0% ([90.1%, 100.0%]) | Standard CSS `image-set()` for decorative backgrounds and masks |
 | `improve-text-layout-and-legibility` | `improve-text-layout-and-legibility/package-text-balance` | Dependency | `held-out` | 32 | 32 / 32 | 100.0% ([89.3%, 100.0%]) | 100.0% ([89.3%, 100.0%]) | CSS `text-wrap: balance` and `text-wrap: pretty` |
-| `select-menu-interaction` | `select-menu-interaction/css-select-invalid` | CSS | `held-out` | 29 | 29 / 29 | 100.0% ([88.3%, 100.0%]) | 100.0% ([88.3%, 100.0%]) | CSS `select:user-invalid` and `:user-valid` for post-interaction validation |
-| `styling-web-components` | `styling-web-components` | CSS & JS | `held-out` | 107 | 19 / 14 | 100.0% ([83.2%, 100.0%]) | 100.0% ([78.5%, 100.0%]) | `::part()`, `:host`, and constructable stylesheets (`adoptedStyleSheets`) |
-| `autofill-address-form` | `autofill-address-form` | DOM | `held-out` | 19 | 18 / 17 | 100.0% ([82.4%, 100.0%]) | 100.0% ([81.6%, 100.0%]) | Standard `autocomplete` attributes on address form inputs |
-| `dynamic-sibling-animations` | `dynamic-sibling-animations` | CSS | `held-out` | 15 | 11 / 11 | 100.0% ([74.1%, 100.0%]) | 100.0% ([74.1%, 100.0%]) | CSS `sibling-index()` and `sibling-count()` for staggered delays |
+| `select-menu-interaction` | `select-menu-interaction/css-select-invalid` | CSS | `held-out` | 53 | 29 / 29 | 100.0% ([88.3%, 100.0%]) | 100.0% ([88.3%, 100.0%]) | CSS `select:user-invalid` and `:user-valid` for post-interaction validation |
+| `styling-web-components` | `styling-web-components` | CSS & JS | `held-out` | 150 | 19 / 14 | 100.0% ([83.2%, 100.0%]) | 100.0% ([78.5%, 100.0%]) | `::part()`, `:host`, and constructable stylesheets (`adoptedStyleSheets`) |
+| `autofill-address-form` | `autofill-address-form` | DOM | `held-out` | 45 | 18 / 17 | 100.0% ([82.4%, 100.0%]) | 100.0% ([81.6%, 100.0%]) | Standard `autocomplete` attributes on address form inputs |
+| `dynamic-sibling-animations` | `dynamic-sibling-animations` | CSS | `held-out` | 20 | 11 / 11 | 100.0% ([74.1%, 100.0%]) | 100.0% ([74.1%, 100.0%]) | CSS `sibling-index()` and `sibling-count()` for staggered delays |
 | `flicker-free-client-side-ab-testing` | `flicker-free-client-side-ab-testing` | CSS | `held-out` | 37 | 11 / 11 | 100.0% ([74.1%, 100.0%]) | 100.0% ([74.1%, 100.0%]) | `<script async blocking="render">` in `<head>` replacing `.async-hide { opacity: 0 !important }` |
 | `scroll-entry-exit-effects` | `scroll-entry-exit-effects/package-scroll-reveal` | Dependency | `held-out` | 16 | 10 / 10 | 100.0% ([72.2%, 100.0%]) | 100.0% ([72.2%, 100.0%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
-| `child-state-based-styling` | `child-state-based-styling/js-parent-class` | JS | `held-out` | 8 | 8 / 8 | 100.0% ([67.6%, 100.0%]) | 100.0% ([67.6%, 100.0%]) | CSS `:has()` parent and container state selectors |
-| `declarative-dialog-popover-control` | `declarative-dialog-popover-control/click-listener` | JS | `held-out` | 10 | 8 / 7 | 100.0% ([67.6%, 100.0%]) | 100.0% ([64.6%, 100.0%]) | Declarative HTML `commandfor`/`command` and `popovertarget` attributes |
-| `soft-edge-content-fade` | `soft-edge-content-fade` | CSS | `held-out` | 7 | 6 / 6 | 100.0% ([61.0%, 100.0%]) | 100.0% ([61.0%, 100.0%]) | Standard CSS `mask-image: linear-gradient(...)` for soft-edge content fading |
+| `child-state-based-styling` | `child-state-based-styling/js-parent-class` | JS | `held-out` | 11 | 8 / 8 | 100.0% ([67.6%, 100.0%]) | 100.0% ([67.6%, 100.0%]) | CSS `:has()` parent and container state selectors |
+| `declarative-dialog-popover-control` | `declarative-dialog-popover-control/click-listener` | JS | `held-out` | 19 | 8 / 7 | 100.0% ([67.6%, 100.0%]) | 100.0% ([64.6%, 100.0%]) | Declarative HTML `commandfor`/`command` and `popovertarget` attributes |
+| `soft-edge-content-fade` | `soft-edge-content-fade` | CSS | `held-out` | 9 | 6 / 6 | 100.0% ([61.0%, 100.0%]) | 100.0% ([61.0%, 100.0%]) | Standard CSS `mask-image: linear-gradient(...)` for soft-edge content fading |
 | `improve-text-layout-and-legibility` | `improve-text-layout-and-legibility/js-text-balance` | JS | `held-out` | 9 | 6 / 6 | 100.0% ([61.0%, 100.0%]) | 100.0% ([61.0%, 100.0%]) | CSS `text-wrap: balance` and `text-wrap: pretty` replacing JS `balanceText()` / `<Balancer>` |
-| `light-dismiss-a-dialog` | `light-dismiss-a-dialog` | JS | `held-out` | 5 | 5 / 5 | 100.0% ([56.6%, 100.0%]) | 100.0% ([56.6%, 100.0%]) | Declarative `<dialog closedby="any">` light dismiss |
-| `secure-external-subresources` | `secure-external-subresources` | DOM | `held-out` | 289 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | Subresource Integrity (`integrity` and `crossorigin`) on third-party scripts |
-| `scrollspy` | `scrollspy` | DOM | `held-out` | 122 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | CSS `scroll-target-group: auto` and `:target-current` |
-| `custom-text-decorations` | `custom-text-decorations` | CSS | `held-out` | 34 | 28 / 26 | 96.4% ([82.3%, 99.4%]) | 100.0% ([87.1%, 100.0%]) | `text-decoration-thickness`, `text-underline-offset`, and `text-decoration-color` |
-| `form-fields-automatically-fit-contents` | `form-fields-automatically-fit-contents` | Dependency & JS | `held-out` | 29 | 26 / 25 | 96.2% ([81.1%, 99.3%]) | 100.0% ([86.7%, 100.0%]) | CSS `field-sizing: content` |
-| `validate-input-after-interaction` | `validate-input-after-interaction` | CSS | `held-out` | 26 | 26 / 26 | 96.2% ([81.1%, 99.3%]) | 96.2% ([81.1%, 99.3%]) | CSS `:user-invalid` and `:user-valid` for post-interaction validation styling |
-| `scroll-entry-exit-effects` | `scroll-entry-exit-effects/js-scroll-reveal` | JS | `held-out` | 44 | 25 / 25 | 96.0% ([80.5%, 99.3%]) | 96.0% ([80.5%, 99.3%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
-| `animate-to-intrinsic-sizes` | `animate-to-intrinsic-sizes` | CSS | `held-out` | 45 | 35 / 33 | 94.3% ([81.4%, 98.4%]) | 100.0% ([89.6%, 100.0%]) | CSS `interpolate-size: allow-keywords` and `calc-size()` for intrinsic size transitions |
-| `dark-mode` | `dark-mode` | CSS | `held-out` | 78 | 35 / 34 | 94.3% ([81.4%, 98.4%]) | 94.1% ([80.9%, 98.4%]) | `color-scheme: light dark` and `light-dark()` color function |
-| `interest-triggered-tooltips` | `interest-triggered-tooltips/js-tooltip` | JS | `held-out` | 56 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
-| `calculate-event-differentials` | `format-human-readable-durations/js-duration-formatter` | JS | `held-out` | 27 | 25 / 25 | 92.0% ([75.0%, 97.8%]) | 92.0% ([75.0%, 97.8%]) | Native `Temporal.Duration` and `Intl.DurationFormat` |
-| `ime-safe-enter-submit` | `ime-safe-enter-submit` | JS | `held-out` | 54 | 35 / 29 | 91.4% ([77.6%, 97.0%]) | 100.0% ([88.3%, 100.0%]) | `event.isComposing` guard on `keydown` Enter handlers for IME composition safety |
-| `autofill-sign-up-form` | `autofill-sign-up-form` | DOM | `held-out` | 134 | 35 / 29 | 91.4% ([77.6%, 97.0%]) | 96.6% ([82.8%, 99.4%]) | Standard `autocomplete="new-password"` on registration and sign-up password inputs |
-| `dark-mode-toggle` | `dark-mode-toggle` | JS | `held-out` | 64 | 21 / 21 | 90.5% ([71.1%, 97.3%]) | 90.5% ([71.1%, 97.3%]) | Theme toggle synchronizing `<meta name="color-scheme">` with CSS `light-dark()` |
-| `sanitize-untrusted-html` | `sanitize-untrusted-html/js-dompurify-innerhtml` | JS | `held-out` | 13 | 10 / 10 | 90.0% ([59.6%, 98.2%]) | 90.0% ([59.6%, 98.2%]) | Native Sanitizer API (`element.setHTML()`) |
+| `light-dismiss-a-dialog` | `light-dismiss-a-dialog` | JS | `held-out` | 10 | 5 / 5 | 100.0% ([56.6%, 100.0%]) | 100.0% ([56.6%, 100.0%]) | Declarative `<dialog closedby="any">` light dismiss |
+| `secure-external-subresources` | `secure-external-subresources` | DOM | `held-out` | 369 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | Subresource Integrity (`integrity` and `crossorigin`) on third-party scripts |
+| `scrollspy` | `scrollspy` | DOM | `held-out` | 206 | 35 / 34 | 97.1% ([85.5%, 99.5%]) | 100.0% ([89.8%, 100.0%]) | CSS `scroll-target-group: auto` and `:target-current` |
+| `custom-text-decorations` | `custom-text-decorations` | CSS | `held-out` | 64 | 28 / 26 | 96.4% ([82.3%, 99.4%]) | 100.0% ([87.1%, 100.0%]) | `text-decoration-thickness`, `text-underline-offset`, and `text-decoration-color` |
+| `form-fields-automatically-fit-contents` | `form-fields-automatically-fit-contents` | Dependency & JS | `held-out` | 53 | 26 / 25 | 96.2% ([81.1%, 99.3%]) | 100.0% ([86.7%, 100.0%]) | CSS `field-sizing: content` |
+| `validate-input-after-interaction` | `validate-input-after-interaction` | CSS | `held-out` | 48 | 26 / 26 | 96.2% ([81.1%, 99.3%]) | 96.2% ([81.1%, 99.3%]) | CSS `:user-invalid` and `:user-valid` for post-interaction validation styling |
+| `scroll-entry-exit-effects` | `scroll-entry-exit-effects/js-scroll-reveal` | JS | `held-out` | 58 | 25 / 25 | 96.0% ([80.5%, 99.3%]) | 96.0% ([80.5%, 99.3%]) | CSS Scroll-Driven Animations (`animation-timeline: view()`) |
+| `animate-to-intrinsic-sizes` | `animate-to-intrinsic-sizes` | CSS | `held-out` | 88 | 35 / 33 | 94.3% ([81.4%, 98.4%]) | 100.0% ([89.6%, 100.0%]) | CSS `interpolate-size: allow-keywords` and `calc-size()` for intrinsic size transitions |
+| `dark-mode` | `dark-mode` | CSS | `held-out` | 150 | 35 / 34 | 94.3% ([81.4%, 98.4%]) | 94.1% ([80.9%, 98.4%]) | `color-scheme: light dark` and `light-dark()` color function |
+| `interest-triggered-tooltips` | `interest-triggered-tooltips/js-tooltip` | JS | `held-out` | 69 | 13 / 13 | 92.3% ([66.7%, 98.6%]) | 92.3% ([66.7%, 98.6%]) | HTML `popover="hint"` and `interestfor` |
+| `calculate-event-differentials` | `format-human-readable-durations/js-duration-formatter` | JS | `held-out` | 40 | 25 / 25 | 92.0% ([75.0%, 97.8%]) | 92.0% ([75.0%, 97.8%]) | Native `Temporal.Duration` and `Intl.DurationFormat` |
+| `ime-safe-enter-submit` | `ime-safe-enter-submit` | JS | `held-out` | 127 | 35 / 29 | 91.4% ([77.6%, 97.0%]) | 100.0% ([88.3%, 100.0%]) | `event.isComposing` guard on `keydown` Enter handlers for IME composition safety |
+| `autofill-sign-up-form` | `autofill-sign-up-form` | DOM | `held-out` | 219 | 35 / 29 | 91.4% ([77.6%, 97.0%]) | 96.6% ([82.8%, 99.4%]) | Standard `autocomplete="new-password"` on registration and sign-up password inputs |
+| `dark-mode-toggle` | `dark-mode-toggle` | JS | `held-out` | 73 | 21 / 21 | 90.5% ([71.1%, 97.3%]) | 90.5% ([71.1%, 97.3%]) | Theme toggle synchronizing `<meta name="color-scheme">` with CSS `light-dark()` |
+| `sanitize-untrusted-html` | `sanitize-untrusted-html/js-dompurify-innerhtml` | JS | `held-out` | 44 | 10 / 10 | 90.0% ([59.6%, 98.2%]) | 90.0% ([59.6%, 98.2%]) | Native Sanitizer API (`element.setHTML()`) |
 | `icons` | `icons` | CSS | `held-out` | 32 | 28 / 24 | 89.3% ([72.8%, 96.3%]) | 95.8% ([79.8%, 99.3%]) | CSS `mask-image` with `background-color: currentColor` or inline SVG replacing `filter: invert(...) sepia(...)` recoloring |
-| `checkbox` | `checkbox` | CSS, DOM & JS | `held-out` | 175 | 35 / 32 | 85.7% ([70.6%, 93.7%]) | 93.8% ([79.9%, 98.3%]) | Native `<input type="checkbox">`, `accent-color`, and `:indeterminate` |
-| `autofill-sign-in-form` | `autofill-sign-in-form` | DOM | `held-out` | 265 | 35 / 26 | 85.7% ([70.6%, 93.7%]) | 92.3% ([75.9%, 97.9%]) | Standard `autocomplete="username"` and `autocomplete="current-password"` |
-| `slider` | `slider/js-slider` | JS | `held-out` | 84 | 14 / 13 | 85.7% ([60.1%, 96.0%]) | 92.3% ([66.7%, 98.6%]) | Native `<input type="range">` styled with CSS replacing single-handle JS slider libraries (`noUiSlider`, `$.fn.slider`, `ionRangeSlider`) |
-| `progress` | `progress` | DOM | `held-out` | 86 | 26 / 24 | 84.6% ([66.5%, 93.9%]) | 91.7% ([74.2%, 97.7%]) | Native HTML `<progress>` element styled with CSS `accent-color` |
+| `checkbox` | `checkbox` | CSS, DOM & JS | `held-out` | 190 | 35 / 32 | 85.7% ([70.6%, 93.7%]) | 93.8% ([79.9%, 98.3%]) | Native `<input type="checkbox">`, `accent-color`, and `:indeterminate` |
+| `autofill-sign-in-form` | `autofill-sign-in-form` | DOM | `held-out` | 351 | 35 / 26 | 85.7% ([70.6%, 93.7%]) | 92.3% ([75.9%, 97.9%]) | Standard `autocomplete="username"` and `autocomplete="current-password"` |
+| `slider` | `slider/js-slider` | JS | `held-out` | 40 | 14 / 13 | 85.7% ([60.1%, 96.0%]) | 92.3% ([66.7%, 98.6%]) | Native `<input type="range">` styled with CSS replacing single-handle JS slider libraries (`noUiSlider`, `$.fn.slider`, `ionRangeSlider`) |
+| `progress` | `progress` | DOM | `held-out` | 132 | 26 / 24 | 84.6% ([66.5%, 93.9%]) | 91.7% ([74.2%, 97.7%]) | Native HTML `<progress>` element styled with CSS `accent-color` |
 | `equal-width-text-lines` | `equal-width-text-lines/js-fittext` | JS | `held-out` | 48 | 34 / 29 | 82.4% ([66.5%, 91.7%]) | 96.6% ([82.8%, 99.4%]) | CSS `text-fit: grow per-line-all` and `text-box: trim-both cap alphabetic` replacing JS `fitText` / `fitty` heading calls |
 | `customize-scrollbar-color-and-thickness` | `customize-scrollbar-color-and-thickness` | CSS | `held-out` | 903 | 35 / 27 | 80.0% ([64.1%, 90.0%]) | 96.3% ([81.7%, 99.3%]) | Standard CSS `scrollbar-color` and `scrollbar-width` replacing unguarded `::-webkit-scrollbar` rules |
-| `autofill-payment-form` | `autofill-payment-form` | DOM & JS | `held-out` | 27 | 15 / 12 | 80.0% ([54.8%, 93.0%]) | 100.0% ([75.7%, 100.0%]) | Standard `cc-*` `autocomplete` attributes on payment inputs |
+| `autofill-payment-form` | `autofill-payment-form` | DOM & JS | `held-out` | 53 | 15 / 12 | 80.0% ([54.8%, 93.0%]) | 100.0% ([75.7%, 100.0%]) | Standard `cc-*` `autocomplete` attributes on payment inputs |
 
 ---
 
@@ -293,7 +302,7 @@ The analyzer gates rules on evaluation against held-out repositories before any 
 
 - **`guide-triage.ts`**: Implements the 2-axis triage taxonomy (`Detection` and `Update Scope`) and maintains canonical metadata for all web platform guides.
 - **`detection-eval.ts`**: Runs multi-pass LLM judge evaluation (`gemini-3.8-flash`) against human-graded cards to measure true-positive and matcher misfire rates with majority voting.
-- **`llm-verifier.ts`**: Implements the runtime and eval-time LLM verifier evaluating candidate matches against `verifierRubric` (`keepWhen` / `dropWhen`) specifications.
+- **`llm-verifier.ts`**: Implements the offline qualification and evaluation LLM verifier evaluating candidate matches against `verifierRubric` (`keepWhen` / `dropWhen`) specifications.
 - **`stats.ts`**: Statistical foundations implementing Wilson binomial confidence intervals, sequential stopping decisions, and TPR/TNR metrics.
 - **`prompts.ts`**: Centralized prompt templates, thinking budgets, and content-hashed version tracking across all LLM evaluation passes.
 

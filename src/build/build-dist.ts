@@ -159,6 +159,11 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
+  // TODO(paulirish): Refactor this build script to be less convoluted:
+  // 1. Separate cache checking from execution in processGuides.
+  // 2. Use better function names (e.g. prepareGuidesAndEmbeddings, isCacheValid).
+  // 3. Avoid the double-call pattern to processGuides.
+
   // Wipe publishRoot completely to ensure a clean build.
   fs.rmSync(publishRoot, { recursive: true, force: true });
   fs.mkdirSync(publishRoot, { recursive: true });

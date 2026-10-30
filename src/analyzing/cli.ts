@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
 import { scanRepoFiles } from './scanners/index.ts';
-import type { AnalyzerRule, VerifierRubric } from './schema.ts';
+import type { AnalyzerFinding, AnalyzerRule, VerifierRubric } from './schema.ts';
 
 export interface AnalyzeCliFinding {
   readonly file: string;
@@ -59,6 +59,10 @@ export interface FormatHumanReadableOptions {
 
 export type TextStyle = Parameters<typeof styleText>[0];
 
+function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
 export function shouldEnableColor(optionsColor?: boolean): boolean {
   if (optionsColor !== undefined) return optionsColor;
   if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '') return false;
@@ -68,10 +72,7 @@ export function shouldEnableColor(optionsColor?: boolean): boolean {
 
 export function elideText(text: string, maxLen = 110): string {
   const normalized = text.trim().replace(/\s+/g, ' ');
-  if (normalized.length <= maxLen) {
-    return normalized;
-  }
-  return normalized.slice(0, maxLen - 1).trimEnd() + '…';
+  return normalized.length <= maxLen ? normalized : `${normalized.slice(0, maxLen - 1).trimEnd()}…`;
 }
 
 export function sampleDiversifiedFindings(
@@ -83,8 +84,9 @@ export function sampleDiversifiedFindings(
   const sampled: AnalyzeCliFinding[] = [];
   for (let round = 0; sampled.length < maxTotal; round++) {
     for (const list of fileLists) {
-      if (round < list.length) {
-        sampled.push(list[round]!);
+      const item = list[round];
+      if (item) {
+        sampled.push(item);
         if (sampled.length === maxTotal) return sampled;
       }
     }
@@ -107,6 +109,13 @@ Options:
   -h, --help                Show this help message
 `.trim();
 
+function joinRubricItems(items: readonly string[]): string {
+  return elideText(
+    items.map((s) => s.trim().replace(/\.+$/, '')).join('; '),
+    110,
+  );
+}
+
 function appendFindingGroupBlock(
   lines: string[],
   group: AnalyzeCliRuleGroup,
@@ -115,10 +124,8 @@ function appendFindingGroupBlock(
 ): void {
   lines.push(`${indent}${group.summary}`);
   if (group.verifierRubric) {
-    const keep = elideText(group.verifierRubric.keepWhen.join('; '), 110);
-    const drop = elideText(group.verifierRubric.dropWhen.join('; '), 110);
-    lines.push(`${indent}${fmt('dim', `Keep when: ${keep}`)}`);
-    lines.push(`${indent}${fmt('dim', `Drop when: ${drop}`)}`);
+    lines.push(`${indent}${fmt('dim', `Keep when: ${joinRubricItems(group.verifierRubric.keepWhen)}`)}`);
+    lines.push(`${indent}${fmt('dim', `Drop when: ${joinRubricItems(group.verifierRubric.dropWhen)}`)}`);
   }
   const displayed = sampleDiversifiedFindings(group.findings, 5);
   for (const f of displayed) {
@@ -130,7 +137,7 @@ function appendFindingGroupBlock(
   }
   const remaining = group.findings.length - displayed.length;
   if (remaining > 0) {
-    lines.push(`${indent}... and ${remaining} more finding${remaining === 1 ? '' : 's'}`);
+    lines.push(`${indent}... and ${plural(remaining, 'more finding')}`);
   }
 }
 
@@ -159,52 +166,47 @@ export function formatHumanReadable(
     skippedDocsAndTestsCount > 0
       ? fmt(
           'dim',
-          `Skipped ${skippedDocsAndTestsCount} docs and test ${skippedDocsAndTestsCount === 1 ? 'file' : 'files'} (pass --include-docs-and-tests to scan).`,
+          `Skipped ${plural(skippedDocsAndTestsCount, 'docs and test file', 'docs and test files')} (pass --include-docs-and-tests to scan).`,
         )
       : undefined;
 
   if (totalFindings === 0) {
-    if (isDefaultMode) {
-      const lines = [
-        `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
-        `0 findings from ${activeGuideCount} qualified ${activeGuideCount === 1 ? 'guide' : 'guides'}.`,
-      ];
-      if (skippedNotice) lines.push(skippedNotice);
-      lines.push('');
-      return lines.join('\n');
-    }
-    const filterNote = guideFilter ? ` for guide "${guideFilter}"` : '';
-    const lines: string[] = [];
-    if (skippedNotice) lines.push(skippedNotice);
-    lines.push(`No modernization opportunities found in ${targetDir}${filterNote}.\n`);
-    return lines.join('\n');
+    const lines = isDefaultMode
+      ? [
+          `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
+          `0 findings from ${plural(activeGuideCount, 'qualified guide')}.`,
+          ...(skippedNotice ? [skippedNotice] : []),
+        ]
+      : [
+          ...(skippedNotice ? [skippedNotice] : []),
+          `No modernization opportunities found in ${targetDir}${guideFilter ? ` for guide "${guideFilter}"` : ''}.`,
+        ];
+    return `${lines.join('\n')}\n`;
   }
 
   const lines: string[] = [
     `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
     `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}:`,
     fmt('dim', 'Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.'),
+    ...(skippedNotice ? [skippedNotice] : []),
+    '',
   ];
-  if (skippedNotice) lines.push(skippedNotice);
-  lines.push('');
 
   for (const g of guides) {
+    const findingCount = plural(g.count, 'finding');
     const countSuffix =
       g.rules.length === 1
-        ? `(${g.count} finding${g.count === 1 ? '' : 's'})`
-        : `(${g.count} finding${g.count === 1 ? '' : 's'} across ${g.rules.length} rules)`;
+        ? `(${findingCount})`
+        : `(${findingCount} across ${g.rules.length} rules)`;
 
-    lines.push(
-      `* ${fmt(['bold', 'cyan'], g.guideId)} ${fmt('dim', countSuffix)}`,
-    );
-    if (g.rules.length === 1 && g.rules[0]!.ruleId === g.guideId) {
-      appendFindingGroupBlock(lines, g.rules[0]!, '  ', fmt);
+    lines.push(`* ${fmt(['bold', 'cyan'], g.guideId)} ${fmt('dim', countSuffix)}`);
+    const singleRule = g.rules.length === 1 ? g.rules[0] : undefined;
+    if (singleRule) {
+      appendFindingGroupBlock(lines, singleRule, '  ', fmt);
     } else {
       for (const rg of g.rules) {
         lines.push('');
-        lines.push(
-          `  ${fmt('bold', rg.ruleId)} ${fmt('dim', `(${rg.count} finding${rg.count === 1 ? '' : 's'})`)}`,
-        );
+        lines.push(`  ${fmt('bold', rg.ruleId)} ${fmt('dim', `(${plural(rg.count, 'finding')})`)}`);
         appendFindingGroupBlock(lines, rg, '    ', fmt);
       }
     }
@@ -215,15 +217,61 @@ export function formatHumanReadable(
     `Retrieve a guide: ${fmt('cyan', 'npx modern-web-guidance retrieve <guide-id>')} (or pass ${fmt('cyan', '--json')} for coding agents)`,
   );
 
-  return lines.join('\n').trimEnd() + '\n';
+  return `${lines.join('\n').trimEnd()}\n`;
 }
 
 function errorCliResult(error: string, isJson: boolean, targetDir = '.'): AnalyzeCliResult {
   if (isJson) {
     const data: AnalyzeJsonOutput = { targetDir, totalFindings: 0, guides: [], error };
-    return { exitCode: 1, output: JSON.stringify(data, null, 2) + '\n', data };
+    return { exitCode: 1, output: `${JSON.stringify(data, null, 2)}\n`, data };
   }
   return { exitCode: 1, output: `Error: ${error}\n` };
+}
+
+function groupFindingsByGuide(
+  findings: readonly AnalyzerFinding[],
+  activeRules: readonly AnalyzerRule[],
+): AnalyzeCliGuideGroup[] {
+  const ruleMap = new Map(activeRules.map((r) => [r.id, r]));
+  const findingsByGuide = Map.groupBy(findings, (f) => f.guideId);
+
+  return Array.from(findingsByGuide.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([gid, guideFindings]) => {
+      const byRule = Map.groupBy(guideFindings, (f) => f.ruleId);
+      const rules: AnalyzeCliRuleGroup[] = Array.from(byRule.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([rid, rf]) => {
+          const rule = ruleMap.get(rid);
+          if (!rule) {
+            throw new Error(`Rule definition not found for ruleId "${rid}" (guide "${gid}")`);
+          }
+          if (!rule.summary?.trim()) {
+            throw new Error(`Rule "${rule.id}" is missing a required summary string`);
+          }
+          rf.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
+          const cliFindings: AnalyzeCliFinding[] = rf.map((f) => ({
+            file: f.file,
+            line: f.line,
+            message: f.message,
+            lineContent: f.lineContent ?? '',
+          }));
+          return {
+            ruleId: rid,
+            summary: rule.summary,
+            ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
+            count: cliFindings.length,
+            findings: cliFindings,
+          };
+        });
+
+      return {
+        guideId: gid,
+        retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
+        count: guideFindings.length,
+        rules,
+      };
+    });
 }
 
 /**
@@ -256,21 +304,15 @@ export async function runAnalyzeCli(
     return errorCliResult(error, isJson, targetDir);
   }
 
-  const isJson = Boolean(parsed.values.json);
-  const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
-  const isHelp = Boolean(parsed.values.help);
-  const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
-  const targetDir = parsed.positionals[0] || '.';
-
-  if (isHelp) {
-    return {
-      exitCode: 0,
-      output: ANALYZE_CLI_HELP + '\n',
-    };
+  if (parsed.values.help) {
+    return { exitCode: 0, output: `${ANALYZE_CLI_HELP}\n` };
   }
 
-  const baseCwd = options?.cwd ?? process.cwd();
-  const resolvedDir = resolve(baseCwd, targetDir);
+  const isJson = Boolean(parsed.values.json);
+  const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
+  const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
+  const targetDir = parsed.positionals[0] || '.';
+  const resolvedDir = resolve(options?.cwd ?? process.cwd(), targetDir);
 
   const dirStat = await stat(resolvedDir).catch(() => null);
   if (!dirStat?.isDirectory()) {
@@ -280,13 +322,9 @@ export async function runAnalyzeCli(
     return errorCliResult(error, isJson, targetDir);
   }
 
-  const isDefaultQualifiedMode =
-    !guideFilter && options?.rules === undefined;
-  const activeRulesList = options?.rules ?? QUALIFIED_RULES;
-  const activeRules = guideFilter
-    ? activeRulesList.filter((r) => r.guideId === guideFilter)
-    : activeRulesList;
-
+  const isDefaultQualifiedMode = !guideFilter && options?.rules === undefined;
+  const baseRules = options?.rules ?? QUALIFIED_RULES;
+  const activeRules = guideFilter ? baseRules.filter((r) => r.guideId === guideFilter) : baseRules;
   const activeRuleCount = activeRules.length;
   const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
 
@@ -301,48 +339,7 @@ export async function runAnalyzeCli(
       : [];
   const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount ?? 0;
 
-  const ruleMap = new Map(activeRules.map((r) => [r.id, r]));
-  const findingsByGuide = Map.groupBy(findings, (f) => f.guideId);
-  const sortedGuideIds = Array.from(findingsByGuide.keys()).sort();
-
-  const guides: AnalyzeCliGuideGroup[] = sortedGuideIds.map((gid) => {
-    const guideFindings = findingsByGuide.get(gid)!;
-    const byRule = Map.groupBy(guideFindings, (f) => f.ruleId);
-    const rules: AnalyzeCliRuleGroup[] = Array.from(byRule.keys())
-      .sort()
-      .map((rid) => {
-        const rule = ruleMap.get(rid);
-        if (!rule) {
-          throw new Error(`Rule definition not found for ruleId "${rid}" (guide "${gid}")`);
-        }
-        if (!rule.summary?.trim()) {
-          throw new Error(`Rule "${rule.id}" is missing a required summary string`);
-        }
-        const rf = byRule.get(rid)!;
-        rf.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
-        const cliFindings: AnalyzeCliFinding[] = rf.map((f) => ({
-          file: f.file,
-          line: f.line,
-          message: f.message,
-          lineContent: f.lineContent ?? '',
-        }));
-        return {
-          ruleId: rid,
-          summary: rule.summary,
-          ...(rule.verifierRubric ? { verifierRubric: rule.verifierRubric } : {}),
-          count: cliFindings.length,
-          findings: cliFindings,
-        };
-      });
-
-    return {
-      guideId: gid,
-      retrieveCommand: `npx modern-web-guidance retrieve ${gid}`,
-      count: guideFindings.length,
-      rules,
-    };
-  });
-
+  const guides = groupFindingsByGuide(findings, activeRules);
   const totalFindings = findings.length;
   const data: AnalyzeJsonOutput = {
     targetDir,
@@ -354,11 +351,7 @@ export async function runAnalyzeCli(
   };
 
   if (isJson) {
-    return {
-      exitCode: 0,
-      output: JSON.stringify(data, null, 2) + '\n',
-      data,
-    };
+    return { exitCode: 0, output: `${JSON.stringify(data, null, 2)}\n`, data };
   }
 
   const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter, {

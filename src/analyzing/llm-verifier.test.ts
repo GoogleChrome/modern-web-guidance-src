@@ -11,8 +11,22 @@ import {
   parseVerifierResponse,
   resolveGeminiApiBase,
   runLlmVerifier,
+  type VerifierConfidence,
   type VerifierOptions,
 } from './llm-verifier.ts';
+
+function geminiVerdictResponse(
+  keep: boolean,
+  reason: string,
+  confidence: VerifierConfidence = 'high',
+): Response {
+  return new Response(
+    JSON.stringify({
+      candidates: [{ content: { parts: [{ text: JSON.stringify({ keep, reason, confidence }) }] } }],
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  );
+}
 
 const mockRule: AnalyzerRule = {
   id: 'test-rule',
@@ -141,34 +155,10 @@ describe('LLM verifier', () => {
       const body = JSON.parse(options?.body as string) as {
         contents: Array<{ parts: Array<{ text: string }> }>;
       };
-      const promptText = body.contents[0].parts[0].text;
-
-      let keep = false;
-      let reason = 'Non-DOM context';
-      if (promptText.includes('modal.js')) {
-        keep = true;
-        reason = 'Genuine DOM jQuery animation';
-      }
-
-      return new Response(
-        JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify({
-                      keep,
-                      reason,
-                      confidence: 'high',
-                    }),
-                  },
-                ],
-              },
-            },
-          ],
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      const isModal = body.contents[0].parts[0].text.includes('modal.js');
+      return geminiVerdictResponse(
+        isModal,
+        isModal ? 'Genuine DOM jQuery animation' : 'Non-DOM context',
       );
     };
 
@@ -209,29 +199,9 @@ describe('LLM verifier', () => {
 
     const mockFetch: typeof fetch = async () => {
       attempts++;
-      if (attempts === 1) {
-        return new Response('Rate limited', { status: 429 });
-      }
-      return new Response(
-        JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify({
-                      keep: true,
-                      reason: 'Recovered after retry',
-                      confidence: 'high',
-                    }),
-                  },
-                ],
-              },
-            },
-          ],
-        }),
-        { status: 200 },
-      );
+      return attempts === 1
+        ? new Response('Rate limited', { status: 429 })
+        : geminiVerdictResponse(true, 'Recovered after retry');
     };
 
     const result = await runLlmVerifier([mockFindings[0]], rulesById, {
@@ -247,27 +217,20 @@ describe('LLM verifier', () => {
   test('runLlmVerifier fails fast and throws when error persists', async () => {
     const rulesById = new Map<string, AnalyzerRule>([['test-rule', mockRule]]);
 
-    const mockFetch: typeof fetch = async () => {
-      return new Response('Internal Server Error', { status: 500 });
-    };
-
     await assert.rejects(
-      async () => {
-        await runLlmVerifier([mockFindings[0]], rulesById, {
+      () =>
+        runLlmVerifier([mockFindings[0]], rulesById, {
           apiKey: 'test-key',
-          fetchFn: mockFetch,
+          fetchFn: async () => new Response('Internal Server Error', { status: 500 }),
           maxRetries: 1,
-        });
-      },
+        }),
       /Gemini generateContent failed for card card-1 with HTTP 500/,
     );
   });
 
   test('runLlmVerifier throws explicit error if rule is not found', async () => {
     await assert.rejects(
-      async () => {
-        await runLlmVerifier([mockFindings[0]], new Map(), { apiKey: 'test-key' });
-      },
+      () => runLlmVerifier([mockFindings[0]], new Map(), { apiKey: 'test-key' }),
       /Rule not found for finding with ruleId='test-rule'/,
     );
   });
@@ -315,26 +278,7 @@ describe('LLM verifier', () => {
         baseUrl: 'http://127.0.0.1:41234',
         fetchFn: async (input) => {
           requestedUrl = String(input);
-          return new Response(
-            JSON.stringify({
-              candidates: [
-                {
-                  content: {
-                    parts: [
-                      {
-                        text: JSON.stringify({
-                          keep: true,
-                          reason: 'Proxy verified',
-                          confidence: 'high',
-                        }),
-                      },
-                    ],
-                  },
-                },
-              ],
-            }),
-            { status: 200 },
-          );
+          return geminiVerdictResponse(true, 'Proxy verified');
         },
       });
       assert.equal(

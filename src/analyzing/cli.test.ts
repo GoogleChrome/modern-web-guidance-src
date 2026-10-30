@@ -10,6 +10,7 @@ import {
   sampleDiversifiedFindings,
   writeAnalyzeCliResult,
   type AnalyzeCliFinding,
+  type AnalyzeCliGuideGroup,
   type AnalyzeJsonOutput,
 } from './cli.ts';
 import {
@@ -17,6 +18,15 @@ import {
   QUALIFIED_RULES,
 } from './rules/index.ts';
 import type { AnalyzerRule } from './schema.ts';
+
+async function withTempDir(fn: (dir: string) => Promise<void>): Promise<void> {
+  const dir = await mkdtemp(join(tmpdir(), 'analyzer-cli-test-'));
+  try {
+    await fn(dir);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
 
 describe('runAnalyzeCli', () => {
   it('handles help flags (-h, --help)', async () => {
@@ -76,9 +86,7 @@ describe('runAnalyzeCli', () => {
   });
 
   it('reports zero findings cleanly in default qualified mode', async () => {
-    const emptyDir = await mkdtemp(join(tmpdir(), 'analyzer-empty-test-'));
-    try {
-      // Default mode with qualified guides
+    await withTempDir(async (emptyDir) => {
       const resDefault = await runAnalyzeCli([emptyDir]);
       assert.equal(resDefault.exitCode, 0);
       assert.match(
@@ -94,9 +102,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.targetDir, emptyDir);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
-    } finally {
-      await rm(emptyDir, { recursive: true, force: true });
-    }
+    });
   });
 
   it('reports zero findings in human-readable output in default mode', () => {
@@ -105,13 +111,10 @@ describe('runAnalyzeCli', () => {
       isDefaultQualifiedMode: true,
     });
     assert.match(reducedZeroOutput, /0 findings from 1 qualified guide\./);
-    assert.doesNotMatch(reducedZeroOutput, /suspended pending re-validation/);
   });
 
   it('outputs human-readable grouped summary with retrieveCommand and file:line', async () => {
-    const testDir = await mkdtemp(join(tmpdir(), 'analyzer-human-test-'));
-    try {
-      // 1. Create HTML file triggering autofill-sign-in-form
+    await withTempDir(async (testDir) => {
       const htmlContent = `<form action="/login" method="POST">
   <label for="username">Username</label>
   <input type="text" id="username" name="username">
@@ -121,7 +124,6 @@ describe('runAnalyzeCli', () => {
 </form>`;
       await writeFile(join(testDir, 'login.html'), htmlContent, 'utf8');
 
-      // 2. Create CSS file triggering animate-to-intrinsic-sizes
       const cssContent = `.accordion-panel {
   max-height: 0;
   overflow: hidden;
@@ -135,7 +137,6 @@ describe('runAnalyzeCli', () => {
       const res = await runAnalyzeCli(['analyze', testDir]);
       assert.equal(res.exitCode, 0);
 
-      // Check header and provisional notice
       assert.match(res.output, /Modern Web Guidance Analyzer —/);
       assert.match(res.output, /Found \d+ modernization opportunities across \d+ guides:/);
       assert.match(
@@ -143,38 +144,31 @@ describe('runAnalyzeCli', () => {
         /Note: Static analysis results are provisional — verify against the Keep\/Drop criteria below\./,
       );
 
-      // Check guide grouping, title line, rubric lines, and code preview
       assert.match(res.output, /\* autofill-sign-in-form \(\d+ findings?\)/);
       assert.doesNotMatch(
         res.output,
         /\n  autofill-sign-in-form \(\d+ findings?\)/,
-        'Single-rule guide with ruleId === guideId must omit redundant ruleId subheader',
+        'Single-rule guide must omit redundant ruleId subheader',
       );
       assert.match(res.output, /Keep when:/);
       assert.match(res.output, /Drop when:/);
+      assert.doesNotMatch(res.output, /\.;/, 'Rubric items should not render double punctuation .;');
       assert.match(res.output, /- login\.html:\d+/);
       assert.match(res.output, /<input type="password"/);
 
-      assert.match(
-        res.output,
-        /\* animate-to-intrinsic-sizes \(\d+ findings?\)/,
-      );
+      assert.match(res.output, /\* animate-to-intrinsic-sizes \(\d+ findings?\)/);
       assert.match(res.output, /- accordion\.css:\d+/);
       assert.match(res.output, /\.accordion-panel \{/);
 
-      // Check single bottom footer
       assert.match(
         res.output,
         /Retrieve a guide: npx modern-web-guidance retrieve <guide-id> \(or pass --json for coding agents\)/,
       );
-    } finally {
-      await rm(testDir, { recursive: true, force: true });
-    }
+    });
   });
 
   it('outputs structured JSON conforming to agent contract with --json', async () => {
-    const testDir = await mkdtemp(join(tmpdir(), 'analyzer-json-test-'));
-    try {
+    await withTempDir(async (testDir) => {
       const htmlContent = `<form action="/auth" method="POST">
   <input type="text" name="user">
   <input type="password" name="pass">
@@ -211,28 +205,22 @@ describe('runAnalyzeCli', () => {
       assert.ok(typeof finding.line === 'number');
       assert.ok(finding.message.length > 0);
       assert.equal(finding.lineContent, '<input type="password" name="pass">');
-    } finally {
-      await rm(testDir, { recursive: true, force: true });
-    }
+    });
   });
 
   it('filters analysis strictly to specified --guide <guideId>', async () => {
-    const testDir = await mkdtemp(join(tmpdir(), 'analyzer-filter-test-'));
-    try {
-      // 1. Create HTML file triggering autofill-sign-in-form
-      const htmlContent = `<form action="/login" method="POST">
-  <input type="password" name="password">
-</form>`;
-      await writeFile(join(testDir, 'login.html'), htmlContent, 'utf8');
+    await withTempDir(async (testDir) => {
+      await writeFile(
+        join(testDir, 'login.html'),
+        `<form action="/login" method="POST">\n  <input type="password" name="password">\n</form>`,
+        'utf8',
+      );
+      await writeFile(
+        join(testDir, 'panel.css'),
+        `.panel {\n  max-height: 0;\n  transition: max-height 0.25s ease;\n}`,
+        'utf8',
+      );
 
-      // 2. Create CSS file triggering animate-to-intrinsic-sizes
-      const cssContent = `.panel {
-  max-height: 0;
-  transition: max-height 0.25s ease;
-}`;
-      await writeFile(join(testDir, 'panel.css'), cssContent, 'utf8');
-
-      // Analyze with --guide animate-to-intrinsic-sizes
       const resCssOnly = await runAnalyzeCli([
         testDir,
         '--guide',
@@ -241,11 +229,8 @@ describe('runAnalyzeCli', () => {
       ]);
       assert.equal(resCssOnly.exitCode, 0);
       const parsedCss = JSON.parse(resCssOnly.output) as AnalyzeJsonOutput;
-      assert.ok(parsedCss.guides.every((g) => g.guideId === 'animate-to-intrinsic-sizes'));
-      assert.ok(parsedCss.guides.length === 1);
-      assert.equal(parsedCss.guides[0].guideId, 'animate-to-intrinsic-sizes');
+      assert.deepEqual(parsedCss.guides.map((g) => g.guideId), ['animate-to-intrinsic-sizes']);
 
-      // Analyze with --guide autofill-sign-in-form
       const resHtmlOnly = await runAnalyzeCli([
         testDir,
         '--guide',
@@ -254,34 +239,24 @@ describe('runAnalyzeCli', () => {
       ]);
       assert.equal(resHtmlOnly.exitCode, 0);
       const parsedHtml = JSON.parse(resHtmlOnly.output) as AnalyzeJsonOutput;
-      assert.ok(parsedHtml.guides.every((g) => g.guideId === 'autofill-sign-in-form'));
-      assert.ok(parsedHtml.guides.length === 1);
-      assert.equal(parsedHtml.guides[0].guideId, 'autofill-sign-in-form');
+      assert.deepEqual(parsedHtml.guides.map((g) => g.guideId), ['autofill-sign-in-form']);
 
-      // Analyze with non-matching guide
-      const resNone = await runAnalyzeCli([
-        testDir,
-        '--guide',
-        'non-matching-guide',
-        '--json',
-      ]);
+      const resNone = await runAnalyzeCli([testDir, '--guide', 'non-matching-guide', '--json']);
       assert.equal(resNone.exitCode, 0);
       const parsedNone = JSON.parse(resNone.output) as AnalyzeJsonOutput;
       assert.equal(parsedNone.totalFindings, 0);
       assert.deepEqual(parsedNone.guides, []);
-    } finally {
-      await rm(testDir, { recursive: true, force: true });
-    }
+    });
   });
 
   it('runs QUALIFIED_RULES by default and rejects unknown flags (--all, --experimental, --jsno)', async () => {
-    const testDir = await mkdtemp(join(tmpdir(), 'analyzer-rules-gate-test-'));
-    try {
-      // Create a file that does not match any qualified rule
-      const maskCss = `.icon {\n  -webkit-mask-image: url('icon.svg');\n}`;
-      await writeFile(join(testDir, 'mask.css'), maskCss, 'utf8');
+    await withTempDir(async (testDir) => {
+      await writeFile(
+        join(testDir, 'mask.css'),
+        `.icon {\n  -webkit-mask-image: url('icon.svg');\n}`,
+        'utf8',
+      );
 
-      // Default run (QUALIFIED_RULES only)
       const resDefault = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resDefault.exitCode, 0);
       const parsedDefault = JSON.parse(resDefault.output) as AnalyzeJsonOutput;
@@ -289,7 +264,6 @@ describe('runAnalyzeCli', () => {
       assert.deepEqual(parsedDefault.guides, []);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
 
-      // Unknown flags (--all, --experimental, --all-rules, --jsno) fail fast with exit code 1
       const resAllHuman = await runAnalyzeCli([testDir, '--all']);
       assert.equal(resAllHuman.exitCode, 1);
       assert.equal(resAllHuman.data, undefined);
@@ -309,46 +283,32 @@ describe('runAnalyzeCli', () => {
       assert.equal(resTypo.exitCode, 1);
       assert.equal(resTypo.data, undefined);
       assert.match(resTypo.output, /Error: Unknown option '--jsno'/);
-    } finally {
-      await rm(testDir, { recursive: true, force: true });
-    }
+    });
   });
 
   it('caps terminal findings at 5 per guide and renders overflow summary line', async () => {
-    const testDir = await mkdtemp(join(tmpdir(), 'analyzer-overflow-test-'));
-    try {
-      // Create 8 files each with an autofill pattern to exceed 5 findings
+    await withTempDir(async (testDir) => {
       for (let i = 1; i <= 8; i++) {
-        const html = `<form action="/login${i}" method="POST">
-  <input type="password" name="password">
-</form>`;
+        const html = `<form action="/login${i}" method="POST">\n  <input type="password" name="password">\n</form>`;
         await writeFile(join(testDir, `form${i}.html`), html, 'utf8');
       }
 
       const res = await runAnalyzeCli([testDir]);
       assert.equal(res.exitCode, 0);
-
-      // Terminal output should cap findings at 5 and print overflow line
       assert.match(res.output, /\.\.\. and 3 more findings/);
 
-      // Verify JSON output still has all 8 findings un-truncated
       const resJson = await runAnalyzeCli([testDir, '--json']);
       assert.equal(resJson.exitCode, 0);
       const parsedJson = JSON.parse(resJson.output) as AnalyzeJsonOutput;
       assert.equal(parsedJson.totalFindings, 8);
-      assert.equal(parsedJson.guides[0].rules[0].findings.length, 8);
-    } finally {
-      await rm(testDir, { recursive: true, force: true });
-    }
+      assert.equal(parsedJson.guides[0]?.rules[0]?.findings.length, 8);
+    });
   });
 
   describe('helper utilities and formatting', () => {
     it('elideText truncates and elides long lines gracefully', () => {
       assert.equal(elideText('short text', 20), 'short text');
-      assert.equal(
-        elideText('a'.repeat(30), 10),
-        'aaaaaaaaa…',
-      );
+      assert.equal(elideText('a'.repeat(30), 10), 'aaaaaaaaa…');
       assert.equal(elideText('  multiple   whitespace   chars  ', 50), 'multiple whitespace chars');
     });
 
@@ -360,7 +320,6 @@ describe('runAnalyzeCli', () => {
         lineContent: 'line',
       });
 
-      // 3 files with 3 findings each (9 findings total)
       const findings: AnalyzeCliFinding[] = [
         makeFinding('a.ts', 'a1'),
         makeFinding('a.ts', 'a2'),
@@ -374,9 +333,6 @@ describe('runAnalyzeCli', () => {
       ];
 
       const sampled = sampleDiversifiedFindings(findings, 5);
-      assert.equal(sampled.length, 5);
-
-      // Round 0 takes a1, b1, c1; Round 1 takes a2, b2 -> total 5
       assert.deepEqual(
         sampled.map((f) => f.message),
         ['a1', 'b1', 'c1', 'a2', 'b2'],
@@ -384,74 +340,43 @@ describe('runAnalyzeCli', () => {
     });
 
     it('formatHumanReadable emits ANSI styling when color option is enabled', () => {
-      const outputColor = formatHumanReadable(
-        '/workspace',
-        1,
-        [
-          {
-            guideId: 'autofill-sign-in-form',
-            retrieveCommand: 'npx retrieve autofill-sign-in-form',
-            count: 1,
-            rules: [
-              {
-                ruleId: 'autofill-sign-in-form',
-                summary: 'Autocomplete guidance summary',
-                count: 1,
-                findings: [
-                  {
-                    file: 'src/login.html',
-                    line: 10,
-                    message: 'Missing autocomplete',
-                    lineContent: '<input type="password">',
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-        undefined,
-        { color: true },
-      );
+      const fixtureGuides: AnalyzeCliGuideGroup[] = [
+        {
+          guideId: 'autofill-sign-in-form',
+          retrieveCommand: 'npx retrieve autofill-sign-in-form',
+          count: 1,
+          rules: [
+            {
+              ruleId: 'autofill-sign-in-form',
+              summary: 'Autocomplete guidance summary',
+              count: 1,
+              findings: [
+                {
+                  file: 'src/login.html',
+                  line: 10,
+                  message: 'Missing autocomplete',
+                  lineContent: '<input type="password">',
+                },
+              ],
+            },
+          ],
+        },
+      ];
 
-      // Should contain ANSI escape codes \u001b[
+      const outputColor = formatHumanReadable('/workspace', 1, fixtureGuides, undefined, {
+        color: true,
+      });
       assert.ok(outputColor.includes('\u001b['), 'Expected ANSI styling codes in colored output');
       assert.ok(outputColor.includes('autofill-sign-in-form'));
 
-      const outputNoColor = formatHumanReadable(
-        '/workspace',
-        1,
-        [
-          {
-            guideId: 'autofill-sign-in-form',
-            retrieveCommand: 'npx retrieve autofill-sign-in-form',
-            count: 1,
-            rules: [
-              {
-                ruleId: 'autofill-sign-in-form',
-                summary: 'Autocomplete guidance summary',
-                count: 1,
-                findings: [
-                  {
-                    file: 'src/login.html',
-                    line: 10,
-                    message: 'Missing autocomplete',
-                    lineContent: '<input type="password">',
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-        undefined,
-        { color: false },
-      );
-
+      const outputNoColor = formatHumanReadable('/workspace', 1, fixtureGuides, undefined, {
+        color: false,
+      });
       assert.ok(!outputNoColor.includes('\u001b['), 'Expected no ANSI escape codes when color=false');
     });
 
     it('skips docs, examples, demo, test, spec, and fixtures by default with --include-docs-and-tests opt-in', async () => {
-      const testDir = await mkdtemp(join(tmpdir(), 'analyzer-r64-test-'));
-      try {
+      await withTempDir(async (testDir) => {
         const addressHtml = `<form action="/checkout" method="post">
   <label for="street">Street Address</label>
   <input type="text" id="street" name="street_address" required>
@@ -463,10 +388,7 @@ describe('runAnalyzeCli', () => {
           await writeFile(full, addressHtml, 'utf8');
         };
 
-        // App file (should be scanned)
         await mkdirAndWrite('src/login.html');
-
-        // Docs / example / demo / test / spec / fixtures paths (should be skipped by default)
         await mkdirAndWrite('docs/sample.html');
         await mkdirAndWrite('examples/demo.html');
         await mkdirAndWrite('demo/page.html');
@@ -475,49 +397,45 @@ describe('runAnalyzeCli', () => {
         await mkdirAndWrite('fixtures/login.html');
         await mkdirAndWrite('src/login.test.html');
         await mkdirAndWrite('src/login.spec.html');
-        await mkdirAndWrite('test.html'); // Standalone test.* at root
-
-        // Minified file under docs/ should NOT be counted in skipped count (scanner ignores minified anyway)
+        await mkdirAndWrite('test.html');
         await mkdirAndWrite('docs/bundle.min.js');
 
-        // 1. Default run (--json): only src/login.html is reported, skippedDocsAndTestsCount is 9
         const resJson = await runAnalyzeCli([testDir, '--json']);
         assert.equal(resJson.exitCode, 0);
         const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
         assert.equal(parsed.totalFindings, 1);
-        assert.equal(parsed.guides[0]?.rules[0]?.findings[0]?.file, join('src', 'login.html').replace(/\\/g, '/'));
+        assert.equal(
+          parsed.guides[0]?.rules[0]?.findings[0]?.file,
+          join('src', 'login.html').replace(/\\/g, '/'),
+        );
         assert.equal(parsed.skippedDocsAndTestsCount, 9);
 
-        // 2. Default human-readable output: includes one dim line reporting skipped count
         const resHuman = await runAnalyzeCli([testDir]);
         assert.equal(resHuman.exitCode, 0);
         assert.ok(
-          resHuman.output.includes('Skipped 9 docs and test files (pass --include-docs-and-tests to scan).'),
+          resHuman.output.includes(
+            'Skipped 9 docs and test files (pass --include-docs-and-tests to scan).',
+          ),
           'Human output must include dim line with skipped count',
         );
 
-        // 3. Opt-in with --include-docs-and-tests: all 10 scannable files are scanned
         const resIncluded = await runAnalyzeCli([testDir, '--include-docs-and-tests', '--json']);
         assert.equal(resIncluded.exitCode, 0);
         const parsedIncluded = JSON.parse(resIncluded.output) as AnalyzeJsonOutput;
         assert.equal(parsedIncluded.totalFindings, 10);
         assert.equal(parsedIncluded.skippedDocsAndTestsCount, undefined);
 
-        // 4. "Relative to target dir": analyze ./docs still scans docs
         const docsDir = join(testDir, 'docs');
         const resDocs = await runAnalyzeCli([docsDir, '--json']);
         assert.equal(resDocs.exitCode, 0);
         const parsedDocs = JSON.parse(resDocs.output) as AnalyzeJsonOutput;
         assert.equal(parsedDocs.totalFindings, 1);
         assert.equal(parsedDocs.guides[0]?.rules[0]?.findings[0]?.file, 'sample.html');
-      } finally {
-        await rm(testDir, { recursive: true, force: true });
-      }
+      });
     });
 
     it('accurately associates each finding with its own rule summary and rubric in multi-rule guides', async () => {
-      const testDir = await mkdtemp(join(tmpdir(), 'analyzer-multirule-test-'));
-      try {
+      await withTempDir(async (testDir) => {
         const ruleA: AnalyzerRule = {
           id: 'test-multirule/package-rule',
           guideId: 'test-multirule',
@@ -542,12 +460,10 @@ describe('runAnalyzeCli', () => {
           matcher: {
             kind: 'css',
             fastTokens: ['.custom-style'],
-            matchRule: (rule) => {
-              if (rule.selectorText.includes('.custom-style')) {
-                return { message: 'Replace .custom-style with modern CSS container queries' };
-              }
-              return null;
-            },
+            matchRule: (rule) =>
+              rule.selectorText.includes('.custom-style')
+                ? { message: 'Replace .custom-style with modern CSS container queries' }
+                : null,
           },
           verifierRubric: {
             keepWhen: ['CSS rule uses .custom-style to simulate responsive tables'],
@@ -569,14 +485,14 @@ describe('runAnalyzeCli', () => {
         assert.equal(guideBOnly.rules.length, 1);
         const ruleGroupBOnly = guideBOnly.rules[0];
         assert.ok(ruleGroupBOnly);
-        // Must show Rule B's summary and rubric, NOT Rule A's!
         assert.equal(ruleGroupBOnly.ruleId, 'test-multirule/css-rule');
         assert.equal(ruleGroupBOnly.summary, 'Summary for Rule B (CSS style workaround)');
         assert.deepEqual(ruleGroupBOnly.verifierRubric, ruleB.verifierRubric);
         assert.equal(ruleGroupBOnly.findings[0]?.lineContent, '.custom-style { color: red; }');
 
+        // When only 1 rule fires under a guide, omit the redundant rule subheader
         const resHumanBOnly = await runAnalyzeCli([testDir], { rules: [ruleA, ruleB] });
-        assert.ok(resHumanBOnly.output.includes('  test-multirule/css-rule (1 finding)'));
+        assert.ok(!resHumanBOnly.output.includes('  test-multirule/css-rule (1 finding)'));
         assert.ok(resHumanBOnly.output.includes('Summary for Rule B (CSS style workaround)'));
         assert.ok(!resHumanBOnly.output.includes('Summary for Rule A'));
         assert.ok(resHumanBOnly.output.includes('CSS rule uses .custom-style'));
@@ -609,7 +525,7 @@ describe('runAnalyzeCli', () => {
         assert.equal(ruleGroupB.findings.length, 1);
         assert.equal(ruleGroupB.findings[0]?.file, 'style.css');
 
-        // Human output renders multi-rule guide with distinct rule blocks
+        // Human output renders multi-rule guide with distinct rule subheaders when >1 rule fires
         const resHumanBoth = await runAnalyzeCli([testDir], { rules: [ruleA, ruleB] });
         assert.ok(resHumanBoth.output.includes('2 findings across 2 rules'));
         assert.ok(resHumanBoth.output.includes('test-multirule/package-rule (1 finding)'));
@@ -621,17 +537,13 @@ describe('runAnalyzeCli', () => {
         const brokenRule: AnalyzerRule = {
           ...ruleA,
           id: 'test-multirule/broken-rule',
-          summary: '   ', // whitespace / empty
+          summary: '   ',
         };
         await assert.rejects(
-          async () => {
-            await runAnalyzeCli([testDir, '--json'], { rules: [brokenRule] });
-          },
+          () => runAnalyzeCli([testDir, '--json'], { rules: [brokenRule] }),
           /Rule "test-multirule\/broken-rule" is missing a required summary string/,
         );
-      } finally {
-        await rm(testDir, { recursive: true, force: true });
-      }
+      });
     });
   });
 });
