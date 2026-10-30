@@ -146,7 +146,7 @@ document.addEventListener('focusin', ({ target }) => {
 Collapse any trail with more than 3 items on narrow containers instead of letting it wrap; wrapped trails take 2-3 rows on a phone.
 
 - Make the `<nav>` a size container (`container-type: inline-size`, in the snippet below) so it responds to its own width, not the viewport.
-- Keep the first item and the last two. Add a "…" `<li>` after the first item, containing a `[popover]` button that lists the hidden links. Give the button `aria-label="Show N more breadcrumbs"`.
+- Keep the first item and the last two. Add a "…" `<li>` after the first item, containing a `<button type="button" popovertarget>` (with `aria-label="Show N more breadcrumbs"`) and a `[popover]` `<ul>` that lists the hidden links.
 - Show the "…" item only when collapsed (`display: none` by default, `display: flex` in a container query). The container query is the single source of truth for when the trail is collapsed; no rule hides the middle items.
 - Move the real middle `<li>` links into the popover's list when the "…" item is visible, and back into the trail when it is not. Don't duplicate them. A `ResizeObserver` on the `<nav>` re-checks on resize, and the check reads `getComputedStyle(overflow).display`. The "…" item's `display` depends only on the container's width, so moving items cannot cause a resize loop. Without script, the full trail stays visible and the "…" item stays hidden.
 - Moving a link drops focus if it had it, so restore focus afterwards. Close the popover when expanding back to the full trail.
