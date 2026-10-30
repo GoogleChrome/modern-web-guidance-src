@@ -64,4 +64,4 @@ tourStep.querySelector('button').focus();
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ FEATURE("anchor-positioning", "popover-fallbacks") }}

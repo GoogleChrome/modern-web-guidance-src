@@ -74,4 +74,4 @@ In modern browsers supporting native anchor positioning, you do **not** need to 
 
 The `popover-polyfill` does not polyfill the hint behavior in browsers that support `popover` but not `popover="hint"`. For those browsers, a tooltip opened via focus may stay open when a second tooltip opened via hover.
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ FEATURE("anchor-positioning", "popover-fallbacks") }}

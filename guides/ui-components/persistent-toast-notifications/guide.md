@@ -25,7 +25,7 @@ Toast notifications are transient status messages. Unlike menus, they should not
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ FEATURE("anchor-positioning", "popover-fallbacks") }}
 
 #### sibling-index()
 

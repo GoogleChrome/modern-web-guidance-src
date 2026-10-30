@@ -1,6 +1,10 @@
 # Anchor positioning
 
-## Fallbacks
+## Popover fallbacks
+
+### Fallbacks & browser support for Anchor positioning
+
+{{ BASELINE_STATUS("anchor-positioning") }}
 
 Without CSS Anchor Positioning, tethered elements such as `[popover]` overlays fall back to their default user-agent placement (centered in the viewport for popovers). Depending on whether spatial tethering is required for your use case, either conditionally load the polyfill or gate your positioning rules with `@supports`.
 

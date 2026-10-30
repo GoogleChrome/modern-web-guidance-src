@@ -75,4 +75,4 @@ If your dropdown or flyout includes a directional arrow or border that needs to 
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ FEATURE("anchor-positioning", "popover-fallbacks") }}
