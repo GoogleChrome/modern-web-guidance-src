@@ -28,8 +28,7 @@ import {
 } from './stats.ts';
 import { ALL_RULES } from '../rules/index.ts';
 import { computeGuideHash } from '../scanners/index.ts';
-import type { AnalyzerRule, JudgeVerdict, CanonicalJudgeVerdict } from '../schema.ts';
-export { type JudgeVerdict, type CanonicalJudgeVerdict, CANONICAL_VERDICTS } from '../schema.ts';
+import type { AnalyzerRule } from '../schema.ts';
 export {
   GEMINI_API_BASE,
   buildGenerateContentUrl,
@@ -89,7 +88,26 @@ export function repoDir(entry: RepoConfigEntry, root: string = join(homedir(), '
 
 export const JUDGE_MODEL = 'gemini-3.8-flash';
 
-export const VALID_VERDICTS: ReadonlySet<string> = new Set([
+export type CanonicalJudgeVerdict =
+  | 'legit-modernize-target'
+  | 'not-old-pattern'
+  | 'fallback-or-guard'
+  | 'loses-behavior'
+  | 'no-payoff'
+  | 'guide-wrong'
+  | 'unsure';
+
+/**
+ * Offline Detection Eval Judge verdict. Includes the 7 canonical verdicts plus legacy
+ * pre-7-taxonomy labels (`'right' | 'leave-it'`) retained for historical human grade
+ * (`grades.paulirish.jsonl`) and telemetry replay.
+ */
+export type JudgeVerdict =
+  | CanonicalJudgeVerdict
+  | 'right'
+  | 'leave-it';
+
+export const CANONICAL_VERDICTS: ReadonlySet<string> = new Set([
   'legit-modernize-target',
   'not-old-pattern',
   'fallback-or-guard',
@@ -97,6 +115,10 @@ export const VALID_VERDICTS: ReadonlySet<string> = new Set([
   'no-payoff',
   'guide-wrong',
   'unsure',
+]);
+
+export const VALID_VERDICTS: ReadonlySet<string> = new Set([
+  ...CANONICAL_VERDICTS,
   'right',
   'leave-it',
 ]);

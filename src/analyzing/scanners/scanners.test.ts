@@ -693,6 +693,7 @@ void test('context-slicer: AST and structured context slicing', async (t) => {
     const context = sliceStructuredContext('test.html', html, 2);
     assert.ok(context.codeSnippet);
     assert.ok(context.contextSlice);
+    assert.equal(context.lineContent, '<input type="password">');
   });
 });
 
@@ -1217,6 +1218,7 @@ void test('scanFiles and computeGuideHash: end-to-end integration', () => {
   assert.equal(finding.cardId.length, 12);
   assert.ok(finding.codeSnippet.includes('>    3 |   <input type="password" name="pwd">'));
   assert.ok(finding.contextSlice);
+  assert.equal(finding.lineContent, '<input type="password" name="pwd">');
 });
 
 void test('sfc-extractor: newline-preserving blanking and block extraction', async (t) => {

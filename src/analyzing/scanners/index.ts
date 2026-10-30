@@ -113,7 +113,7 @@ function materializeFinding(
   match: AnalyzerMatch,
   sourceFile?: SourceFile,
 ): AnalyzerFinding {
-  const { codeSnippet, contextSlice } = sliceStructuredContext(
+  const { codeSnippet, contextSlice, lineContent } = sliceStructuredContext(
     ctx.relPath,
     ctx.content,
     match.line,
@@ -131,6 +131,7 @@ function materializeFinding(
     message: match.message,
     codeSnippet,
     contextSlice,
+    lineContent,
     ...(match.isVendoredLibrary ? { isVendoredLibrary: true } : {}),
     ...(match.subPattern ? { subPattern: match.subPattern } : {}),
   };

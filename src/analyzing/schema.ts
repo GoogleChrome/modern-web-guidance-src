@@ -60,30 +60,6 @@ export interface VerifierRubric {
   readonly dropWhen: readonly string[];
 }
 
-export type CanonicalJudgeVerdict =
-  | 'legit-modernize-target'
-  | 'not-old-pattern'
-  | 'fallback-or-guard'
-  | 'loses-behavior'
-  | 'no-payoff'
-  | 'guide-wrong'
-  | 'unsure';
-
-export type JudgeVerdict =
-  | CanonicalJudgeVerdict
-  | 'right'
-  | 'leave-it';
-
-export const CANONICAL_VERDICTS: ReadonlySet<string> = new Set([
-  'legit-modernize-target',
-  'not-old-pattern',
-  'fallback-or-guard',
-  'loses-behavior',
-  'no-payoff',
-  'guide-wrong',
-  'unsure',
-]);
-
 export interface AnalyzerMatch {
   readonly line: number;
   readonly column?: number;
@@ -211,6 +187,7 @@ export interface AnalyzerFinding {
   readonly message: string;
   readonly codeSnippet: string;
   readonly contextSlice: string;
+  readonly lineContent?: string;
   readonly isVendoredLibrary?: boolean;
   readonly subPattern?: string;
 }
