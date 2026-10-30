@@ -45,15 +45,11 @@ function isCallbackArgument(fnNode: Node): boolean {
     parent = current.getParent();
   }
 
-  if (!parent) {
-    return false;
-  }
-
-  if (Node.isCallExpression(parent) || Node.isNewExpression(parent)) {
-    return parent.getExpression() !== current;
-  }
-
-  return false;
+  return Boolean(
+    parent &&
+      (Node.isCallExpression(parent) || Node.isNewExpression(parent)) &&
+      parent.getExpression() !== current,
+  );
 }
 
 /**
@@ -63,8 +59,7 @@ function isCallbackArgument(fnNode: Node): boolean {
 function resolveVariableStatementIfInitializer(fnNode: Node): Node {
   const parent = fnNode.getParent();
   if (parent && Node.isVariableDeclaration(parent)) {
-    const declList = parent.getParent();
-    const varStmt = declList?.getParent();
+    const varStmt = parent.getParent()?.getParent();
     if (varStmt && Node.isVariableStatement(varStmt)) {
       return varStmt;
     }
@@ -81,22 +76,19 @@ function findEnclosingScopeNode(
   sourceFile: SourceFile,
   targetLine: number,
 ): Node {
-  // Convert 1-based target line to start of line position
   const linePos = sourceFile.compilerNode.getPositionOfLineAndCharacter(
     Math.max(0, targetLine - 1),
     0,
   );
-  const node: Node | undefined = sourceFile.getDescendantAtPos(linePos);
-
+  const node = sourceFile.getDescendantAtPos(linePos);
   if (!node) {
     return sourceFile;
   }
 
-  let current: Node | undefined = node;
   let innermostStatement: Node | undefined;
   let outermostStatement: Node | undefined;
 
-  while (current && !Node.isSourceFile(current)) {
+  for (let current: Node | undefined = node; current && !Node.isSourceFile(current); current = current.getParent()) {
     if (
       Node.isFunctionDeclaration(current) ||
       Node.isMethodDeclaration(current) ||
@@ -108,23 +100,17 @@ function findEnclosingScopeNode(
       return current;
     }
 
-    if (Node.isArrowFunction(current) || Node.isFunctionExpression(current)) {
-      if (!isCallbackArgument(current)) {
-        return resolveVariableStatementIfInitializer(current);
-      }
+    if ((Node.isArrowFunction(current) || Node.isFunctionExpression(current)) && !isCallbackArgument(current)) {
+      return resolveVariableStatementIfInitializer(current);
     }
 
     if (Node.isStatement(current)) {
-      if (!innermostStatement) {
-        innermostStatement = current;
-      }
+      innermostStatement ??= current;
       const parent = current.getParent();
       if (parent && Node.isSourceFile(parent)) {
         outermostStatement = current;
       }
     }
-
-    current = current.getParent();
   }
 
   return outermostStatement ?? innermostStatement ?? sourceFile;
@@ -167,7 +153,7 @@ function extractSfcTemplateAndStyleLines(
 }
 
 function isFunctionOrClassScopeNode(node: Node): boolean {
-  if (
+  return (
     Node.isFunctionDeclaration(node) ||
     Node.isMethodDeclaration(node) ||
     Node.isConstructorDeclaration(node) ||
@@ -175,33 +161,23 @@ function isFunctionOrClassScopeNode(node: Node): boolean {
     Node.isSetAccessorDeclaration(node) ||
     Node.isClassDeclaration(node) ||
     Node.isArrowFunction(node) ||
-    Node.isFunctionExpression(node)
-  ) {
-    return true;
-  }
-  if (Node.isVariableStatement(node)) {
-    for (const decl of node.getDeclarations()) {
-      const init = decl.getInitializer();
-      if (init && (Node.isArrowFunction(init) || Node.isFunctionExpression(init))) {
-        return true;
-      }
-    }
-  }
-  return false;
+    Node.isFunctionExpression(node) ||
+    (Node.isVariableStatement(node) &&
+      node.getDeclarations().some((decl) => {
+        const init = decl.getInitializer();
+        return Boolean(init && (Node.isArrowFunction(init) || Node.isFunctionExpression(init)));
+      }))
+  );
 }
 
 function isTopLevelImportOrRequireStatement(stmt: Node): boolean {
-  if (Node.isImportDeclaration(stmt) || Node.isImportEqualsDeclaration(stmt)) {
-    return true;
-  }
-  if (
-    Node.isVariableStatement(stmt) &&
-    stmt.getEndLineNumber() - stmt.getStartLineNumber() <= 10 &&
-    /\brequire\s*\(/.test(stmt.getText())
-  ) {
-    return true;
-  }
-  return false;
+  return (
+    Node.isImportDeclaration(stmt) ||
+    Node.isImportEqualsDeclaration(stmt) ||
+    (Node.isVariableStatement(stmt) &&
+      stmt.getEndLineNumber() - stmt.getStartLineNumber() <= 10 &&
+      /\brequire\s*\(/.test(stmt.getText()))
+  );
 }
 
 /**
@@ -233,7 +209,7 @@ export function sliceJsAstContext(
   // Expand short non-function top-level statements by +-15 lines within the script body
   if (!isFunctionOrClassScopeNode(enclosingNode) && nodeEndLine - nodeStartLine + 1 < 25) {
     const firstStmtStart = statements[0]?.getStartLineNumber() ?? 1;
-    const lastStmtEnd = statements[statements.length - 1]?.getEndLineNumber() ?? allLines.length;
+    const lastStmtEnd = statements.at(-1)?.getEndLineNumber() ?? allLines.length;
     const minScriptLine = Math.max(firstStmtStart, lastImportEndLine + 1);
     const maxScriptLine = Math.min(allLines.length, lastStmtEnd);
     nodeStartLine = Math.min(
@@ -252,13 +228,11 @@ export function sliceJsAstContext(
     if (!isTopLevelImportOrRequireStatement(stmt)) {
       continue;
     }
-
     const start = stmt.getStartLineNumber();
     const end = stmt.getEndLineNumber();
     if (end < nodeStartLine || start > nodeEndLine) {
       for (let i = start; i <= end; i++) {
-        const lineContent = allLines[i - 1] ?? '';
-        importLines.push(`   ${String(i).padStart(4, ' ')} | ${lineContent}`);
+        importLines.push(`   ${String(i).padStart(4, ' ')} | ${allLines[i - 1] ?? ''}`);
       }
     }
   }
@@ -266,69 +240,35 @@ export function sliceJsAstContext(
   // 2. Scope block
   const totalNodeLines = nodeEndLine - nodeStartLine + 1;
   const scopeLines: string[] = [];
+  const pushScopeRange = (start: number, end: number): void => {
+    for (let i = start; i <= end; i++) {
+      const marker = i === targetLine ? '> ' : '  ';
+      scopeLines.push(`${marker}${String(i).padStart(4, ' ')} | ${allLines[i - 1] ?? ''}`);
+    }
+  };
 
   if (totalNodeLines <= MAX_CONTEXT_LINES) {
-    for (let i = nodeStartLine; i <= nodeEndLine; i++) {
-      const lineContent = allLines[i - 1] ?? '';
-      const marker = i === targetLine ? '> ' : '  ';
-      scopeLines.push(
-        `${marker}${String(i).padStart(4, ' ')} | ${lineContent}`,
-      );
-    }
+    pushScopeRange(nodeStartLine, nodeEndLine);
   } else {
     // Smart folding: keep function header, surrounding window around targetLine, and footer
     const headEnd = Math.min(nodeStartLine + 4, targetLine - 1);
-    const windowStart = Math.max(
-      nodeStartLine,
-      targetLine - JS_SURROUNDING_RADIUS,
-    );
-    const windowEnd = Math.min(
-      nodeEndLine,
-      targetLine + JS_SURROUNDING_RADIUS,
-    );
+    const windowStart = Math.max(nodeStartLine, targetLine - JS_SURROUNDING_RADIUS);
+    const windowEnd = Math.min(nodeEndLine, targetLine + JS_SURROUNDING_RADIUS);
     const tailStart = Math.max(windowEnd + 1, nodeEndLine - 3);
 
-    for (let i = nodeStartLine; i <= headEnd; i++) {
-      const lineContent = allLines[i - 1] ?? '';
-      const marker = i === targetLine ? '> ' : '  ';
-      scopeLines.push(
-        `${marker}${String(i).padStart(4, ' ')} | ${lineContent}`,
-      );
-    }
-
+    pushScopeRange(nodeStartLine, headEnd);
     if (windowStart > headEnd + 1) {
-      const foldedCount = windowStart - (headEnd + 1);
       scopeLines.push(
-        `       ... [${foldedCount} lines folded in enclosing scope] ...`,
+        `       ... [${windowStart - (headEnd + 1)} lines folded in enclosing scope] ...`,
       );
     }
-
-    for (
-      let i = Math.max(headEnd + 1, windowStart);
-      i <= Math.min(tailStart - 1, windowEnd);
-      i++
-    ) {
-      const lineContent = allLines[i - 1] ?? '';
-      const marker = i === targetLine ? '> ' : '  ';
-      scopeLines.push(
-        `${marker}${String(i).padStart(4, ' ')} | ${lineContent}`,
-      );
-    }
-
+    pushScopeRange(Math.max(headEnd + 1, windowStart), Math.min(tailStart - 1, windowEnd));
     if (tailStart > windowEnd + 1) {
-      const foldedCount = tailStart - (windowEnd + 1);
       scopeLines.push(
-        `       ... [${foldedCount} lines folded in enclosing scope] ...`,
+        `       ... [${tailStart - (windowEnd + 1)} lines folded in enclosing scope] ...`,
       );
     }
-
-    for (let i = Math.max(windowEnd + 1, tailStart); i <= nodeEndLine; i++) {
-      const lineContent = allLines[i - 1] ?? '';
-      const marker = i === targetLine ? '> ' : '  ';
-      scopeLines.push(
-        `${marker}${String(i).padStart(4, ' ')} | ${lineContent}`,
-      );
-    }
+    pushScopeRange(Math.max(windowEnd + 1, tailStart), nodeEndLine);
   }
 
   const sections: string[] = [];
@@ -340,10 +280,9 @@ export function sliceJsAstContext(
   // 3. When slicing an SFC (.vue, .svelte, .astro) or HTML <script> where non-script sections
   // were blanked in sourceFile, append up to 40 lines of <template>/HTML/<style> context.
   if (fileContent !== undefined && fileContent !== sourceText) {
-    const sourceLines = sourceText.split('\n');
     const sfcLines = extractSfcTemplateAndStyleLines(
       allLines,
-      sourceLines,
+      sourceText.split('\n'),
       nodeStartLine,
       nodeEndLine,
     );
@@ -370,10 +309,7 @@ function slicePackageJsonContext(
   }
 
   const windowStart = Math.max(1, targetLine - PACKAGE_JSON_WINDOW_RADIUS);
-  const windowEnd = Math.min(
-    allLines.length,
-    targetLine + PACKAGE_JSON_WINDOW_RADIUS,
-  );
+  const windowEnd = Math.min(allLines.length, targetLine + PACKAGE_JSON_WINDOW_RADIUS);
 
   if (windowStart <= PACKAGE_JSON_HEADER_LINES + 1) {
     const mergedEnd = Math.max(PACKAGE_JSON_HEADER_LINES, windowEnd);
@@ -405,8 +341,7 @@ export function sliceStructuredBlock(
   const start = Math.max(0, targetLine - 1 - radius);
   const end = Math.min(lines.length, targetLine + radius);
 
-  const blockLines = lines.slice(start, end);
-  return formatNumberedLines(blockLines, start + 1, targetLine);
+  return formatNumberedLines(lines.slice(start, end), start + 1, targetLine);
 }
 
 export function extractCompactSnippet(
@@ -428,17 +363,13 @@ export function sliceStructuredContext(
   const codeSnippet = extractCompactSnippet(fileContent, targetLine);
   const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase();
   const isPackageJson =
-    normalizedPath === 'package.json' ||
-    normalizedPath.endsWith('/package.json');
+    normalizedPath === 'package.json' || normalizedPath.endsWith('/package.json');
 
-  let contextSlice: string;
-  if (isPackageJson) {
-    contextSlice = slicePackageJsonContext(fileContent, targetLine);
-  } else if (sourceFile) {
-    contextSlice = sliceJsAstContext(sourceFile, targetLine, fileContent);
-  } else {
-    contextSlice = sliceStructuredBlock(fileContent, targetLine);
-  }
+  const contextSlice = isPackageJson
+    ? slicePackageJsonContext(fileContent, targetLine)
+    : sourceFile
+      ? sliceJsAstContext(sourceFile, targetLine, fileContent)
+      : sliceStructuredBlock(fileContent, targetLine);
 
   return { codeSnippet, contextSlice, lineContent };
 }

@@ -21,7 +21,7 @@ import {
   JUDGE_SYSTEM_PROMPT,
   JUDGE_VERSION,
   loadGuideSummariesMap,
-   loadPaulIrishScoredCards,
+  loadPaulIrishScoredCards,
   parseGuideSummaryMarkdown,
   parseJudgeJsonContent,
   prepareBlindCards,
@@ -74,8 +74,8 @@ function makeJudgeResult(
 }
 
 describe('judge type guards', () => {
-  it('identifies valid judge verdicts', () => {
-    for (const v of [
+  it('identifies valid judge verdicts, positive verdicts, normalization, and agreement', () => {
+    const valid = [
       'legit-modernize-target',
       'not-old-pattern',
       'fallback-or-guard',
@@ -85,21 +85,20 @@ describe('judge type guards', () => {
       'unsure',
       'right',
       'leave-it',
-    ]) {
-      assert.equal(isJudgeVerdict(v), true);
-    }
-    assert.equal(isJudgeVerdict('wrong'), false);
-    assert.equal(isJudgeVerdict(123), false);
-    assert.equal(isJudgeVerdict(null), false);
-  });
+    ];
+    assert.deepStrictEqual(valid.map(isJudgeVerdict), Array(valid.length).fill(true));
+    assert.deepStrictEqual(['wrong', 123, null].map(isJudgeVerdict), [false, false, false]);
 
-  it('validates isPositiveVerdict, normalizeJudgeVerdict, and verdictsAgree', () => {
-    assert.equal(isPositiveVerdict('legit-modernize-target'), true);
-    assert.equal(isPositiveVerdict('right'), true);
-    assert.equal(isPositiveVerdict('legit'), true);
-    for (const v of ['not-old-pattern', 'fallback-or-guard', 'loses-behavior', 'no-payoff', 'guide-wrong', 'unsure']) {
-      assert.equal(isPositiveVerdict(v), false);
-    }
+    assert.deepStrictEqual(
+      ['legit-modernize-target', 'right', 'legit'].map(isPositiveVerdict),
+      [true, true, true],
+    );
+    assert.deepStrictEqual(
+      ['not-old-pattern', 'fallback-or-guard', 'loses-behavior', 'no-payoff', 'guide-wrong', 'unsure'].map(
+        isPositiveVerdict,
+      ),
+      [false, false, false, false, false, false],
+    );
 
     assert.equal(normalizeJudgeVerdict('right'), 'legit-modernize-target');
     assert.equal(normalizeJudgeVerdict('legit'), 'legit-modernize-target');
@@ -117,22 +116,27 @@ describe('judge type guards', () => {
 });
 
 describe('blind card formatting & request construction', () => {
-  it('formats blind card prompt without revealing rule IDs, tools, or prior verdicts', () => {
+  it('formats blind card prompt and builds Gemini request body without internal metadata', () => {
     const prompt = formatBlindCardPrompt(SAMPLE_BLIND_CARD);
-
     assert.match(prompt, /## Modern Web Guidance Guide/);
     assert.match(prompt, /calculate-event-differentials/);
     assert.match(prompt, /Date subtraction suffers from daylight saving/);
     assert.match(prompt, /scripts\/analyze\.js/);
     assert.match(prompt, /line: 42/i);
     assert.match(prompt, /const delta = \(d1\.getTime\(\)/);
+    assert.doesNotMatch(prompt, /v1-analyzer|DATE_EVENT_DIFFERENTIAL_ARITHMETIC|uses-old-pattern/i);
 
-    assert.doesNotMatch(prompt, /v1-analyzer/i);
-    assert.doesNotMatch(prompt, /DATE_EVENT_DIFFERENTIAL_ARITHMETIC/);
-    assert.doesNotMatch(prompt, /uses-old-pattern/);
+    const body = buildGeminiRequestBody(SAMPLE_BLIND_CARD) as {
+      generationConfig: { responseMimeType: string; temperature: number };
+      contents: Array<{ parts: Array<{ text: string }> }>;
+    };
+    assert.equal(body.generationConfig.responseMimeType, 'application/json');
+    assert.equal(body.generationConfig.temperature, 0.2);
+    assert.equal(body.contents.length, 1);
+    assert.match(body.contents[0].parts[0].text, /scripts\/analyze\.js/);
   });
 
-  it('excludes all guide-triage.json fields and dossier text from the formatted judge prompt even when triage entries exist', async () => {
+  it('excludes all guide-triage.json fields and dossier text from formatted judge prompt', async () => {
     assert.ok(JUDGE_SYSTEM_PROMPT.includes('no-op syntax swap'));
     assert.ok(JUDGE_SYSTEM_PROMPT.includes('non-1:1 library component migration'));
 
@@ -154,7 +158,8 @@ describe('blind card formatting & request construction', () => {
         JSON.stringify([
           {
             guideId: 'individual-transform-properties',
-            combinedExcerpt: 'CSSWGTransforms-2 explainer: individual transform properties avoid repeating other transform functions in keyframes.',
+            combinedExcerpt:
+              'CSSWGTransforms-2 explainer: individual transform properties avoid repeating other transform functions in keyframes.',
           },
         ]),
         'utf8',
@@ -177,7 +182,7 @@ describe('blind card formatting & request construction', () => {
       process.env.ANALYZER_EVAL_DATA_DIR = evalDir;
       const summaries = await loadGuideSummariesMap(join(tmpRoot, 'guides'));
       const summary = summaries.get('individual-transform-properties');
-      assert.ok(summary, 'Expected guide summary to load');
+      assert.ok(summary);
 
       const card: BlindCardPayload = {
         cardId: 'card-triage-isolation-1',
@@ -219,18 +224,6 @@ describe('blind card formatting & request construction', () => {
       await rm(tmpRoot, { recursive: true, force: true });
     }
   });
-
-  it('builds Gemini request body with JSON schema and temperature 0.2', () => {
-    const body = buildGeminiRequestBody(SAMPLE_BLIND_CARD) as {
-      generationConfig: { responseMimeType: string; temperature: number };
-      contents: Array<{ parts: Array<{ text: string }> }>;
-    };
-
-    assert.equal(body.generationConfig.responseMimeType, 'application/json');
-    assert.equal(body.generationConfig.temperature, 0.2);
-    assert.equal(body.contents.length, 1);
-    assert.match(body.contents[0].parts[0].text, /scripts\/analyze\.js/);
-  });
 });
 
 describe('parseJudgeJsonContent & deriveJudgeVerdictFromFacts', () => {
@@ -248,14 +241,18 @@ describe('parseJudgeJsonContent & deriveJudgeVerdictFromFacts', () => {
       { id: 'c5', facts: [true, false, true, false], rawVerdict: 'no-payoff', expected: 'no-payoff' },
       { id: 'c6', facts: [true, false, true, true], rawVerdict: 'unsure', expected: 'unsure' },
       { id: 'c7', facts: [true, false, true, true], rawVerdict: 'guide-wrong', expected: 'guide-wrong' },
-      // Contradictory string verdicts overridden when all 4 boolean facts pass
       { id: 'c8', facts: [true, false, true, true], rawVerdict: 'no-payoff', expected: 'legit-modernize-target' },
       { id: 'c9', facts: [true, false, true, true], rawVerdict: 'loses-behavior', expected: 'legit-modernize-target' },
       { id: 'c10', facts: [true, false, true, true], rawVerdict: 'fallback-or-guard', expected: 'legit-modernize-target' },
     ];
 
     for (const c of cases) {
-      const [matches_before_syntax, has_fallback_or_feature_guard, modern_feature_applies_here, has_meaningful_payoff] = c.facts;
+      const [
+        matches_before_syntax,
+        has_fallback_or_feature_guard,
+        modern_feature_applies_here,
+        has_meaningful_payoff,
+      ] = c.facts;
       const raw = JSON.stringify({
         matches_before_syntax,
         has_fallback_or_feature_guard,
@@ -270,19 +267,19 @@ describe('parseJudgeJsonContent & deriveJudgeVerdictFromFacts', () => {
       assert.equal(res.facts.rawVerdict, c.rawVerdict);
       assert.equal(
         deriveJudgeVerdictFromFacts(
-          { matches_before_syntax, has_fallback_or_feature_guard, modern_feature_applies_here, has_meaningful_payoff },
+          {
+            matches_before_syntax,
+            has_fallback_or_feature_guard,
+            modern_feature_applies_here,
+            has_meaningful_payoff,
+          },
           c.rawVerdict,
         ),
         c.expected,
       );
     }
-  });
 
-  it('throws an error on malformed JSON or missing schema fields per Fail Fast', () => {
-    assert.throws(
-      () => parseJudgeJsonContent('Not valid JSON at all', 'card-002'),
-      /not valid JSON/i,
-    );
+    assert.throws(() => parseJudgeJsonContent('Not valid JSON', 'card-002'), /not valid JSON/i);
     assert.throws(
       () => parseJudgeJsonContent(JSON.stringify({ verdict: 'right' }), 'card-003'),
       /does not match schema/i,
@@ -290,81 +287,75 @@ describe('parseJudgeJsonContent & deriveJudgeVerdictFromFacts', () => {
   });
 });
 
-describe('canary checking', () => {
-  const canaries: CanaryCard[] = [
-    { cardId: 'canary-pos-1', expectedVerdict: 'legit-modernize-target' },
-    { cardId: 'canary-pos-2', expectedVerdict: 'legit-modernize-target' },
-    { cardId: 'canary-neg-1', expectedVerdict: 'not-old-pattern' },
-    { cardId: 'canary-neg-2', expectedVerdict: 'fallback-or-guard' },
-  ];
-
-  it('passes when all negative controls are rejected and positives pass', () => {
-    const results: JudgeResult[] = [
-      makeJudgeResult('canary-pos-1', 'legit-modernize-target'),
-      makeJudgeResult('canary-pos-2', 'legit-modernize-target'),
-      makeJudgeResult('canary-neg-1', 'not-old-pattern'),
-      makeJudgeResult('canary-neg-2', 'fallback-or-guard'),
+describe('canary checking, stability, and metrics', () => {
+  it('checks canaries and flags leniency leaks on negative controls', () => {
+    const canaries: CanaryCard[] = [
+      { cardId: 'canary-pos-1', expectedVerdict: 'legit-modernize-target' },
+      { cardId: 'canary-pos-2', expectedVerdict: 'legit-modernize-target' },
+      { cardId: 'canary-neg-1', expectedVerdict: 'not-old-pattern' },
+      { cardId: 'canary-neg-2', expectedVerdict: 'fallback-or-guard' },
     ];
 
-    const check = checkCanaries(results, canaries);
-    assert.equal(check.passed, true);
-    assert.equal(check.tnr, 1.0);
-    assert.equal(check.tpr, 1.0);
-    assert.equal(check.violations.length, 0);
+    const clean = checkCanaries(
+      [
+        makeJudgeResult('canary-pos-1', 'legit-modernize-target'),
+        makeJudgeResult('canary-pos-2', 'legit-modernize-target'),
+        makeJudgeResult('canary-neg-1', 'not-old-pattern'),
+        makeJudgeResult('canary-neg-2', 'fallback-or-guard'),
+      ],
+      canaries,
+    );
+    assert.equal(clean.passed, true);
+    assert.equal(clean.tnr, 1.0);
+    assert.equal(clean.tpr, 1.0);
+    assert.equal(clean.violations.length, 0);
+
+    const lenient = checkCanaries(
+      [
+        makeJudgeResult('canary-pos-1', 'legit-modernize-target'),
+        makeJudgeResult('canary-pos-2', 'legit-modernize-target'),
+        makeJudgeResult('canary-neg-1', 'legit-modernize-target'),
+        makeJudgeResult('canary-neg-2', 'fallback-or-guard'),
+      ],
+      canaries,
+    );
+    assert.equal(lenient.passed, false);
+    assert.equal(lenient.tnr, 0.5);
+    assert.equal(lenient.violations.length, 1);
+    assert.equal(lenient.violations[0].cardId, 'canary-neg-1');
   });
 
-  it('fails when a false-positive canary is erroneously labeled right (leniency leak)', () => {
-    const lenientResults: JudgeResult[] = [
-      makeJudgeResult('canary-pos-1', 'legit-modernize-target'),
-      makeJudgeResult('canary-pos-2', 'legit-modernize-target'),
-      makeJudgeResult('canary-neg-1', 'legit-modernize-target'),
-      makeJudgeResult('canary-neg-2', 'fallback-or-guard'),
-    ];
-
-    const check = checkCanaries(lenientResults, canaries);
-    assert.equal(check.passed, false);
-    assert.equal(check.tnr, 0.5);
-    assert.equal(check.violations.length, 1);
-    assert.equal(check.violations[0].cardId, 'canary-neg-1');
-  });
-});
-
-describe('evaluateJudgeStability', () => {
-  it('scores perfect stability on identical 3-run verdicts', () => {
+  it('evaluates 3-run stability, majority consensus, 3-way splits, and provenance guards', () => {
     const makeRun = (): JudgeResult[] => [
       makeJudgeResult('c1', 'legit-modernize-target'),
       makeJudgeResult('c2', 'not-old-pattern'),
       makeJudgeResult('c3', 'fallback-or-guard'),
     ];
-
-    const stability = evaluateJudgeStability([makeRun(), makeRun(), makeRun()]);
-    assert.equal(stability.stabilityRate, 1.0);
-    assert.equal(stability.krippendorffAlpha, 1.0);
-    assert.equal(stability.gwetAc1, 1.0);
+    const perfect = evaluateJudgeStability([makeRun(), makeRun(), makeRun()]);
+    assert.equal(perfect.stabilityRate, 1.0);
+    assert.equal(perfect.krippendorffAlpha, 1.0);
+    assert.equal(perfect.gwetAc1, 1.0);
     assert.deepEqual(
-      stability.consensusResults.map((r) => r.verdict),
+      perfect.consensusResults.map((r) => r.verdict),
       ['legit-modernize-target', 'not-old-pattern', 'fallback-or-guard'],
     );
-  });
 
-  it('determines consensus majority vote when one run differs', () => {
-    const stability = evaluateJudgeStability([
+    const majority = evaluateJudgeStability([
       [makeJudgeResult('c1', 'legit-modernize-target')],
       [makeJudgeResult('c1', 'legit-modernize-target')],
       [makeJudgeResult('c1', 'no-payoff')],
     ]);
-    assert.equal(stability.stabilityRate, 0.0);
-    assert.equal(stability.consensusResults[0].verdict, 'legit-modernize-target');
-  });
+    assert.equal(majority.stabilityRate, 0.0);
+    assert.equal(majority.consensusResults[0].verdict, 'legit-modernize-target');
 
-  it('sets facts.verdict and facts.rawVerdict to unsure on a 3-way split and strips rawResponse/error', () => {
     const baseProv = computeJudgeInputProvenance(SAMPLE_BLIND_CARD);
-    const makePass = (verdict: JudgeVerdict): JudgeResult[] => [
+    const makePass = (verdict: JudgeVerdict, overrides: Partial<JudgeResult> = {}): JudgeResult[] => [
       makeJudgeResult(SAMPLE_BLIND_CARD.cardId, verdict, {
         ...baseProv,
         provenance: baseProv,
         rawResponse: `{"verdict":"${verdict}"}`,
         error: 'transient-pass-warning',
+        ...overrides,
       }),
     ];
 
@@ -381,50 +372,52 @@ describe('evaluateJudgeStability', () => {
     assert.equal(consensus.ruleHash, baseProv.ruleHash);
     assert.equal('rawResponse' in consensus, false);
     assert.equal('error' in consensus, false);
-  });
-
-  it('throws when the 3 stability runs disagree on input provenance or cardId', () => {
-    const baseProv = computeJudgeInputProvenance(SAMPLE_BLIND_CARD);
-    const makePass = (overrides: Partial<JudgeResult> = {}): JudgeResult[] => [
-      makeJudgeResult(SAMPLE_BLIND_CARD.cardId, 'legit-modernize-target', {
-        ...baseProv,
-        provenance: baseProv,
-        ...overrides,
-      }),
-    ];
 
     assert.throws(
-      () => evaluateJudgeStability([makePass(), makePass({ explainerContextHash: 'deadbeef1234' }), makePass()]),
+      () =>
+        evaluateJudgeStability([
+          makePass('legit-modernize-target'),
+          makePass('legit-modernize-target', { explainerContextHash: 'deadbeef1234' }),
+          makePass('legit-modernize-target'),
+        ]),
       /Stability run provenance mismatch.*explainerContextHash/,
     );
     assert.throws(
-      () => evaluateJudgeStability([makePass(), makePass(), makePass({ promptGuideHash: 'cafebabe5678' })]),
+      () =>
+        evaluateJudgeStability([
+          makePass('legit-modernize-target'),
+          makePass('legit-modernize-target'),
+          makePass('legit-modernize-target', { promptGuideHash: 'cafebabe5678' }),
+        ]),
       /Stability run provenance mismatch.*promptGuideHash/,
     );
     assert.throws(
-      () => evaluateJudgeStability([makePass(), makePass({ cardId: 'other-card' }), makePass()]),
+      () =>
+        evaluateJudgeStability([
+          makePass('legit-modernize-target'),
+          makePass('legit-modernize-target', { cardId: 'other-card' }),
+          makePass('legit-modernize-target'),
+        ]),
       /Stability run cardId mismatch/,
     );
   });
-});
 
-describe('evaluateJudgeMetrics', () => {
-  it('computes agreement and sensitivity/specificity accurately', () => {
-    const judgeResults: JudgeResult[] = [
-      makeJudgeResult('c1', 'legit-modernize-target'),
-      makeJudgeResult('c2', 'legit-modernize-target'),
-      makeJudgeResult('c3', 'not-old-pattern'),
-      makeJudgeResult('c4', 'fallback-or-guard'),
-    ];
-
-    const humanGrades = new Map<string, string>([
-      ['c1', 'legit-modernize-target'],
-      ['c2', 'legit-modernize-target'],
-      ['c3', 'not-old-pattern'],
-      ['c4', 'fallback-or-guard'],
-    ]);
-
-    const metrics = evaluateJudgeMetrics(judgeResults, humanGrades, new Set(['c3', 'c4']));
+  it('computes agreement and sensitivity/specificity in evaluateJudgeMetrics', () => {
+    const metrics = evaluateJudgeMetrics(
+      [
+        makeJudgeResult('c1', 'legit-modernize-target'),
+        makeJudgeResult('c2', 'legit-modernize-target'),
+        makeJudgeResult('c3', 'not-old-pattern'),
+        makeJudgeResult('c4', 'fallback-or-guard'),
+      ],
+      new Map([
+        ['c1', 'legit-modernize-target'],
+        ['c2', 'legit-modernize-target'],
+        ['c3', 'not-old-pattern'],
+        ['c4', 'fallback-or-guard'],
+      ]),
+      new Set(['c3', 'c4']),
+    );
     assert.equal(metrics.krippendorffAlpha, 1.0);
     assert.equal(metrics.gwetAc1, 1.0);
     assert.equal(metrics.sensitivitySpecificity.tpr, 1.0);
@@ -435,18 +428,15 @@ describe('evaluateJudgeMetrics', () => {
   });
 });
 
-describe('code snippet slicing & blind cards prep', () => {
-  it('extracts snippet around target line with cursor marker', () => {
+describe('code snippet slicing, blind cards prep, and direct judge runner', () => {
+  it('extracts snippet around target line and prepares blind cards', async () => {
     const file = ['line 1', 'line 2', 'line 3', 'target line 4', 'line 5', 'line 6'].join('\n');
     const snippet = extractCodeSnippet(file, 4, 1);
-
     assert.match(snippet, />    4 \| target line 4/);
     assert.match(snippet, /   3 \| line 3/);
     assert.match(snippet, /   5 \| line 5/);
     assert.doesNotMatch(snippet, /line 1/);
-  });
 
-  it('prepares blind cards from deck items with loaded summaries', async () => {
     const items: CalibrationDeckItem[] = [
       {
         cardId: 'test-1',
@@ -459,21 +449,17 @@ describe('code snippet slicing & blind cards prep', () => {
         code: '  const d = a - b;',
       },
     ];
-
-    const summaries = new Map<string, GuideSummaryInfo>([
-      ['calculate-event-differentials', SAMPLE_GUIDE_SUMMARY],
-    ]);
-
-    const blindCards = await prepareBlindCards(items, summaries);
+    const blindCards = await prepareBlindCards(
+      items,
+      new Map([['calculate-event-differentials', SAMPLE_GUIDE_SUMMARY]]),
+    );
     assert.equal(blindCards.length, 1);
     assert.equal(blindCards[0].cardId, 'test-1');
     assert.equal(blindCards[0].codeSnippet, '  const d = a - b;');
     assert.equal(blindCards[0].guideSummary.guideId, 'calculate-event-differentials');
   });
-});
 
-describe('mocked direct judge runner & provenance', () => {
-  it('executes runJudgeDirect with mock fetch and versions every verdict row with full input provenance', async () => {
+  it('executes runJudgeDirect with mock fetch and attaches full input provenance', async () => {
     const cardWithExplainer: BlindCardPayload = {
       ...SAMPLE_BLIND_CARD,
       cardId: 'card-prov-1',
@@ -541,8 +527,7 @@ describe('mocked direct judge runner & provenance', () => {
     assert.deepStrictEqual(run0[0].provenance, expectedProvenance);
     assert.deepStrictEqual(run0[0].facts.provenance, expectedProvenance);
 
-    const stability = evaluateJudgeStability([run0, run1, run2]);
-    const consensusRow = stability.consensusResults[0];
+    const consensusRow = evaluateJudgeStability([run0, run1, run2]).consensusResults[0];
     assert.equal(consensusRow.judgeVersion, JUDGE_VERSION);
     assert.equal(consensusRow.promptGuideHash, expectedProvenance.promptGuideHash);
     assert.equal(consensusRow.explainerContextHash, expectedProvenance.explainerContextHash);
@@ -556,8 +541,8 @@ describe('mocked direct judge runner & provenance', () => {
   });
 });
 
-describe('guide summary extraction from markdown', () => {
-  it('fails fast in loadGuideSummariesMap when ANALYZER_EVAL_DATA_DIR is unset', async () => {
+describe('guide summary extraction and scored card loading', () => {
+  it('fails fast when ANALYZER_EVAL_DATA_DIR is unset', async () => {
     const orig = process.env.ANALYZER_EVAL_DATA_DIR;
     delete process.env.ANALYZER_EVAL_DATA_DIR;
     try {
@@ -565,12 +550,16 @@ describe('guide summary extraction from markdown', () => {
         () => loadGuideSummariesMap(),
         /ANALYZER_EVAL_DATA_DIR environment variable is not set/,
       );
+      await assert.rejects(
+        () => loadPaulIrishScoredCards(),
+        /ANALYZER_EVAL_DATA_DIR environment variable is not set/,
+      );
     } finally {
       if (orig) process.env.ANALYZER_EVAL_DATA_DIR = orig;
     }
   });
 
-  it('hashes exact prompt markdownBody bytes in promptGuideHash and rejects sentinels or missing markdownBody', () => {
+  it('hashes exact prompt markdownBody bytes in promptGuideHash and rejects sentinels', () => {
     const rawWithFrontmatter = `---\nname: sample\ndescription: Frontmatter desc\n---\n\n# Sample Title\n\n{{macro_token}}\n\nBody text sent to model.\n`;
     const parsed = parseGuideSummaryMarkdown(rawWithFrontmatter, 'sample');
     assert.equal(parsed.problem, 'Frontmatter desc');
@@ -579,15 +568,11 @@ describe('guide summary extraction from markdown', () => {
     assert.notEqual(parsed.promptGuideHash, parsed.guideHash);
     assert.equal(parsed.promptGuideHash, computePromptGuideHash(parsed.markdownBody));
 
-    const card: BlindCardPayload = {
+    const prov = computeJudgeInputProvenance({
       ...SAMPLE_BLIND_CARD,
       guideHash: 'aaaaaaaaaaaa',
-      guideSummary: {
-        ...parsed,
-        guideHash: 'bbbbbbbbbbbb',
-      },
-    };
-    const prov = computeJudgeInputProvenance(card);
+      guideSummary: { ...parsed, guideHash: 'bbbbbbbbbbbb' },
+    });
     assert.equal(prov.promptGuideHash, computePromptGuideHash(parsed.markdownBody));
     assert.notEqual(prov.promptGuideHash, 'aaaaaaaaaaaa');
     assert.notEqual(prov.promptGuideHash, 'bbbbbbbbbbbb');
@@ -620,11 +605,7 @@ describe('guide summary extraction from markdown', () => {
       const guidesDir = join(tempRoot, 'guides');
       const guideFolder = join(guidesDir, 'css', 'sample-guide');
       await mkdir(guideFolder, { recursive: true });
-      await writeFile(
-        join(guideFolder, 'guide.md'),
-        '# Sample Guide\n\nBody for sample guide.\n',
-        'utf8',
-      );
+      await writeFile(join(guideFolder, 'guide.md'), '# Sample Guide\n\nBody for sample guide.\n', 'utf8');
 
       const missingExplainersPath = join(tempRoot, 'missing-explainers.json');
       await assert.rejects(
@@ -685,33 +666,15 @@ describe('guide summary extraction from markdown', () => {
       );
 
       await assert.rejects(
-        () =>
-          loadGuideSummariesMap(join(tempRoot, 'does-not-exist'), {
-            allowMissingExplainers: true,
-          }),
+        () => loadGuideSummariesMap(join(tempRoot, 'does-not-exist'), { allowMissingExplainers: true }),
         /ENOENT/,
       );
     } finally {
       await rm(tempRoot, { recursive: true, force: true });
     }
   });
-});
 
-describe('loadPaulIrishScoredCards', () => {
-  it('fails fast when ANALYZER_EVAL_DATA_DIR is unset', async () => {
-    const orig = process.env.ANALYZER_EVAL_DATA_DIR;
-    delete process.env.ANALYZER_EVAL_DATA_DIR;
-    try {
-      await assert.rejects(
-        () => loadPaulIrishScoredCards(),
-        /ANALYZER_EVAL_DATA_DIR environment variable is not set/,
-      );
-    } finally {
-      if (orig) process.env.ANALYZER_EVAL_DATA_DIR = orig;
-    }
-  });
-
-  it('loads the human-scored cards from canonical files excluding unsure, stubs, retired guides, and verifier drops', async (t) => {
+  it('loads the human-scored cards from canonical files when ANALYZER_EVAL_DATA_DIR is set', async (t) => {
     if (!process.env.ANALYZER_EVAL_DATA_DIR) {
       t.skip('ANALYZER_EVAL_DATA_DIR not set');
       return;

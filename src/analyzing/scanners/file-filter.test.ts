@@ -259,4 +259,79 @@ describe('file-filter vendored and hashed asset exclusions', () => {
     assert.equal(isDocsOrTestsPath('examples/button.html'), true);
     assert.equal(isDocsOrTestsPath('demo/index.html'), true);
   });
+
+  it('filters build, vendor, generated, and corpus non-app paths', () => {
+    assert.equal(isVendoredOrGeneratedPath('node_modules/foo/index.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('dist/bundle.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('vendor/assets/app.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('src/utils/math.min.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('src/types/index.d.ts'), true);
+    assert.equal(isVendoredOrGeneratedPath('.worktrees/feature/index.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('.worktree/test.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('.venv/lib/python.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('venv/lib/python.js'), true);
+    assert.equal(isVendoredOrGeneratedPath('.nyc_output/coverage.json'), true);
+    assert.equal(isVendoredOrGeneratedPath('test-results/report.html'), true);
+    assert.equal(isVendoredOrGeneratedPath('playwright-report/index.html'), true);
+    assert.equal(isVendoredOrGeneratedPath('src/components/Dialog.tsx'), false);
+    assert.equal(isVendoredOrGeneratedPath('views/login.blade.php'), false);
+
+    for (const p of [
+      'docs/3.1/reference/index.html',
+      'content/zh-cn/docs/setup.html',
+      'website/docs/intro.md',
+      'site/pages/index.html',
+      'gh-pages/index.html',
+    ]) {
+      assert.equal(isVendoredOrGeneratedPath(p), false);
+      assert.equal(isVendoredOrGeneratedPath(p, { excludeCorpusNonAppDirs: true }), true);
+    }
+  });
+
+  it('detects minified content and ignores long data URIs or inline SVGs in multi-line files', () => {
+    assert.equal(isMinifiedContent('const a = 1;\nconst b = 2;\n'), false);
+    assert.equal(isMinifiedContent(`const x = "${'a'.repeat(6000)}";`), true);
+
+    const fileWithDataUri =
+      Array.from({ length: 30 }, (_, i) => `.class-${i} { color: red; }`).join('\n') +
+      `\n.icon { background-image: url('data:image/svg+xml;utf8,${'a'.repeat(2000)}'); }\n`;
+    assert.equal(isMinifiedContent(fileWithDataUri), false);
+
+    const fileWithSvg =
+      Array.from({ length: 30 }, (_, i) => `// line ${i}`).join('\n') +
+      `\nconst icon = '<svg viewBox="0 0 100 100">${'path '.repeat(500)}</svg>';\n`;
+    assert.equal(isMinifiedContent(fileWithSvg), false);
+
+    const minifiedWithEmbeddedDataUri =
+      'const a = 1; ' +
+      'var x = 0; '.repeat(100) +
+      'const data = "data:application/octet-stream;base64,AAAA"; ' +
+      'var y = 2; '.repeat(100);
+    assert.equal(isMinifiedContent(minifiedWithEmbeddedDataUri), true);
+  });
+
+  it('detects third-party license headers with semver and respects ownNames', () => {
+    const thirdPartyHeader = `/*!
+ * jQuery JavaScript Library v3.6.0
+ * https://jquery.com/
+ * Includes Sizzle.js
+ * Copyright OpenJS Foundation and other contributors
+ * Released under the MIT license
+ */
+(function() { return 1; })();`;
+
+    assert.equal(hasVendoredLicenseHeader(thirdPartyHeader), true);
+    assert.equal(hasVendoredLicenseHeader(thirdPartyHeader, { ownNames: ['jquery'] }), false);
+    assert.equal(
+      hasVendoredLicenseHeader(
+        `// Copyright 2026 The Authors. All rights reserved.\nconst x = 10;\n`,
+      ),
+      false,
+    );
+  });
+
+  it('rejects files exceeding 1 MB source cap', () => {
+    assert.equal(shouldScanFile('src/small.js', 'const x = 1;\n'.repeat(100)), true);
+    assert.equal(shouldScanFile('src/bundle.js', 'a'.repeat(1_000_001)), false);
+  });
 });

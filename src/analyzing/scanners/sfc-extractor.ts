@@ -17,18 +17,7 @@ const NON_JS_SCRIPT_TYPES: ReadonlySet<string> = new Set([
 const SCRIPT_TAG_REGEX = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
 const STYLE_TAG_REGEX = /<style\b([^>]*)>([\s\S]*?)<\/style>/gi;
 const ASTRO_FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/;
-
-/**
- * Replaces non-newline characters in a string with spaces, preserving all \r and \n.
- */
-function blankSlicePreservingNewlines(slice: string): string {
-  let result = '';
-  for (let i = 0; i < slice.length; i++) {
-    const ch = slice[i];
-    result += ch === '\n' || ch === '\r' ? ch : ' ';
-  }
-  return result;
-}
+const TAG_ATTR_REGEX = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
 
 /**
  * Replaces characters in specified index ranges with spaces, preserving all newlines.
@@ -51,7 +40,7 @@ export function blankRanges(
     }
     const clampedStart = Math.max(lastIndex, start);
     if (end > clampedStart) {
-      result += blankSlicePreservingNewlines(content.slice(clampedStart, end));
+      result += content.slice(clampedStart, end).replace(/[^\r\n]/g, ' ');
     }
     lastIndex = Math.max(lastIndex, end);
   }
@@ -87,18 +76,12 @@ export function blankOutsideRange(
  */
 function parseTagAttributes(attrString: string): Record<string, string> {
   const attrs: Record<string, string> = {};
-  const attrRegex = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
-  let match = attrRegex.exec(attrString);
-
-  while (match !== null) {
+  for (const match of attrString.matchAll(TAG_ATTR_REGEX)) {
     const name = match[1]?.toLowerCase();
     if (name) {
-      const value = match[2] ?? match[3] ?? match[4] ?? '';
-      attrs[name] = value;
+      attrs[name] = match[2] ?? match[3] ?? match[4] ?? '';
     }
-    match = attrRegex.exec(attrString);
   }
-
   return attrs;
 }
 
@@ -129,13 +112,9 @@ function determineScriptVirtualPath(
  */
 function shouldSkipScript(attrs: Record<string, string>, body: string): boolean {
   const type = attrs.type?.toLowerCase();
-  if (type && NON_JS_SCRIPT_TYPES.has(type)) {
-    return true;
-  }
-  if (attrs.src && body.trim().length === 0) {
-    return true;
-  }
-  return false;
+  return Boolean(
+    (type && NON_JS_SCRIPT_TYPES.has(type)) || (attrs.src && body.trim().length === 0),
+  );
 }
 
 /**
@@ -164,16 +143,12 @@ export function extractScriptBlocks(
     }
   }
 
-  // <script> tags
-  SCRIPT_TAG_REGEX.lastIndex = 0;
-  let match = SCRIPT_TAG_REGEX.exec(content);
-
-  while (match !== null) {
+  for (const match of content.matchAll(SCRIPT_TAG_REGEX)) {
     const attrStr = match[1] ?? '';
     const body = match[2] ?? '';
     const attrs = parseTagAttributes(attrStr);
 
-    if (!shouldSkipScript(attrs, body) && body.trim().length > 0) {
+    if (!shouldSkipScript(attrs, body) && body.trim().length > 0 && match.index !== undefined) {
       const openTagLen = match[0].indexOf('>') + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
@@ -184,8 +159,6 @@ export function extractScriptBlocks(
         blankedContent: blankOutsideRange(content, startOffset, endOffset),
       });
     }
-
-    match = SCRIPT_TAG_REGEX.exec(content);
   }
 
   return blocks;
@@ -209,15 +182,10 @@ function sanitizeLitExpressions(rawSlice: string): string {
         const ch = rawSlice[i];
         if (ch === '{') {
           depth++;
-          result += '_';
         } else if (ch === '}') {
           depth--;
-          result += '_';
-        } else if (ch === '\n' || ch === '\r') {
-          result += ch;
-        } else {
-          result += '_';
         }
+        result += ch === '\n' || ch === '\r' ? ch : '_';
         i++;
       }
       continue;
@@ -234,10 +202,11 @@ function sanitizeLitExpressions(rawSlice: string): string {
  */
 function extractLitCssBlocks(content: string): readonly string[] {
   const blocks: string[] = [];
-  const litRegex = /\bcss\s*`/g;
-  let match = litRegex.exec(content);
 
-  while (match !== null) {
+  for (const match of content.matchAll(/\bcss\s*`/g)) {
+    if (match.index === undefined) {
+      continue;
+    }
     const openQuote = match.index + match[0].indexOf('`');
     let i = openQuote + 1;
     let depth = 0;
@@ -277,8 +246,6 @@ function extractLitCssBlocks(content: string): readonly string[] {
         blocks.push(blankOutsideRange(reconstructed, openQuote + 1, closeQuote));
       }
     }
-
-    match = litRegex.exec(content);
   }
 
   return blocks;
@@ -302,41 +269,29 @@ export function isMarkupPath(relPath: string): boolean {
  */
 export function extractStyleBlocks(relPath: string, content: string): readonly string[] {
   if (!isMarkupPath(relPath)) {
-    // Check for Lit css`...` tagged template literals
-    if (content.includes('css`')) {
-      return extractLitCssBlocks(content);
-    }
-    return [];
+    return content.includes('css`') ? extractLitCssBlocks(content) : [];
   }
 
   const blocks: string[] = [];
-  STYLE_TAG_REGEX.lastIndex = 0;
-  let match = STYLE_TAG_REGEX.exec(content);
-
-  while (match !== null) {
+  for (const match of content.matchAll(STYLE_TAG_REGEX)) {
     const body = match[2] ?? '';
-    if (body.trim().length > 0) {
+    if (body.trim().length > 0 && match.index !== undefined) {
       const openTagLen = match[0].indexOf('>') + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
       blocks.push(blankOutsideRange(content, startOffset, endOffset));
     }
-    match = STYLE_TAG_REGEX.exec(content);
   }
 
   return blocks;
 }
 
-/**
- * Finds index ranges for all <script> and <style> tags in markup.
- */
 function findTagRanges(content: string, regex: RegExp): { start: number; end: number }[] {
   const ranges: { start: number; end: number }[] = [];
-  regex.lastIndex = 0;
-  let match = regex.exec(content);
-  while (match !== null) {
-    ranges.push({ start: match.index, end: match.index + match[0].length });
-    match = regex.exec(content);
+  for (const match of content.matchAll(regex)) {
+    if (match.index !== undefined) {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+    }
   }
   return ranges;
 }
@@ -352,32 +307,24 @@ function findTopLevelVueTemplateTagRanges(content: string): { start: number; end
 
   const openStart = match.index;
   const openEnd = match.index + match[0].length;
+  const ranges = [{ start: openStart, end: openEnd }];
 
   let depth = 1;
   const tagRegex = /<\/?template\b[^>]*>/gi;
   tagRegex.lastIndex = openEnd;
-  let closeStart = -1;
-  let closeEnd = -1;
-  let tagMatch = tagRegex.exec(content);
 
-  while (tagMatch !== null) {
+  for (let tagMatch = tagRegex.exec(content); tagMatch !== null; tagMatch = tagRegex.exec(content)) {
     if (tagMatch[0].startsWith('</')) {
       depth--;
       if (depth === 0) {
-        closeStart = tagMatch.index;
-        closeEnd = tagMatch.index + tagMatch[0].length;
+        ranges.push({ start: tagMatch.index, end: tagMatch.index + tagMatch[0].length });
         break;
       }
     } else if (!tagMatch[0].endsWith('/>')) {
       depth++;
     }
-    tagMatch = tagRegex.exec(content);
   }
 
-  const ranges = [{ start: openStart, end: openEnd }];
-  if (closeStart !== -1) {
-    ranges.push({ start: closeStart, end: closeEnd });
-  }
   return ranges;
 }
 
@@ -387,35 +334,27 @@ function findTopLevelVueTemplateTagRanges(content: string): { start: number; end
  */
 export function prepareHtmlForDomScan(relPath: string, content: string): string {
   const lowerPath = relPath.toLowerCase();
+  if (
+    !lowerPath.endsWith('.vue') &&
+    !lowerPath.endsWith('.svelte') &&
+    !lowerPath.endsWith('.astro')
+  ) {
+    return content;
+  }
+
+  const rangesToBlank: { start: number; end: number }[] = [
+    ...findTagRanges(content, SCRIPT_TAG_REGEX),
+    ...findTagRanges(content, STYLE_TAG_REGEX),
+  ];
 
   if (lowerPath.endsWith('.vue')) {
-    const rangesToBlank: { start: number; end: number }[] = [
-      ...findTagRanges(content, SCRIPT_TAG_REGEX),
-      ...findTagRanges(content, STYLE_TAG_REGEX),
-      ...findTopLevelVueTemplateTagRanges(content),
-    ];
-    return blankRanges(content, rangesToBlank);
-  }
-
-  if (lowerPath.endsWith('.svelte')) {
-    const rangesToBlank: { start: number; end: number }[] = [
-      ...findTagRanges(content, SCRIPT_TAG_REGEX),
-      ...findTagRanges(content, STYLE_TAG_REGEX),
-    ];
-    return blankRanges(content, rangesToBlank);
-  }
-
-  if (lowerPath.endsWith('.astro')) {
-    const rangesToBlank: { start: number; end: number }[] = [
-      ...findTagRanges(content, SCRIPT_TAG_REGEX),
-      ...findTagRanges(content, STYLE_TAG_REGEX),
-    ];
+    rangesToBlank.push(...findTopLevelVueTemplateTagRanges(content));
+  } else if (lowerPath.endsWith('.astro')) {
     const fmMatch = ASTRO_FRONTMATTER_REGEX.exec(content);
     if (fmMatch) {
       rangesToBlank.push({ start: 0, end: fmMatch[0].length });
     }
-    return blankRanges(content, rangesToBlank);
   }
 
-  return content;
+  return blankRanges(content, rangesToBlank);
 }

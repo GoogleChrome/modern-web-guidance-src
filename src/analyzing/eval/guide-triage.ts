@@ -33,12 +33,6 @@ export {
 
 export const GUIDE_TRIAGE_MODEL = PROMPT_MODEL;
 
-/**
- * Guide Triage bucket classifying whether a published feature guide has a statically detectable brownfield target:
- * - `'detectable'`: The guide replaces a concrete, statically identifiable legacy browser API, CSS property/selector workaround, DOM markup pattern, or third-party package in brownfield code.
- * - `'ui-recipe-multi-part'`: The guide teaches a multi-element UI component or architectural recipe (e.g. carousel, tabs, navigation drawer) where legacy implementations vary wildly and lack a single high-precision static code hook.
- * - `'skip-no-old-way'`: The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API) with no direct legacy browser workaround to migrate from.
- */
 export type GuideTriageClassification =
   | 'detectable'
   | 'ui-recipe-multi-part'
@@ -88,34 +82,31 @@ export interface GuideTriageOptions {
   readonly enableSearchGrounding?: boolean;
 }
 
-export function buildGuideTriageRequestBody(guide: GuideTriageInput, options?: GuideTriageOptions): unknown {
+export function buildGuideTriageRequestBody(
+  guide: GuideTriageInput,
+  options?: GuideTriageOptions,
+): unknown {
   const enableSearchGrounding = options?.enableSearchGrounding ?? true;
-  const body: Record<string, unknown> = {
-    systemInstruction: {
-      parts: [{ text: GUIDE_TRIAGE_SYSTEM_PROMPT }],
-    },
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: formatGuideTriagePrompt(guide) }],
-      },
-    ],
+  return {
+    systemInstruction: { parts: [{ text: GUIDE_TRIAGE_SYSTEM_PROMPT }] },
+    contents: [{ role: 'user', parts: [{ text: formatGuideTriagePrompt(guide) }] }],
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: GUIDE_TRIAGE_RESPONSE_SCHEMA,
       temperature: 0.0,
       thinkingConfig: { thinkingBudget: GUIDE_TRIAGE_THINKING_BUDGET },
     },
+    ...(enableSearchGrounding ? { tools: [{ googleSearch: {} }] } : {}),
   };
-
-  if (enableSearchGrounding) {
-    body.tools = [{ googleSearch: {} }];
-  }
-
-  return body;
 }
 
-const VALID_EVIDENCE_SOURCES: ReadonlySet<GuideTriageEvidenceSource> = new Set([
+const VALID_CLASSIFICATIONS: ReadonlySet<string> = new Set<GuideTriageClassification>([
+  'detectable',
+  'ui-recipe-multi-part',
+  'skip-no-old-way',
+]);
+
+const VALID_EVIDENCE_SOURCES: ReadonlySet<string> = new Set<GuideTriageEvidenceSource>([
   'guide',
   'explainer',
   'search',
@@ -123,20 +114,7 @@ const VALID_EVIDENCE_SOURCES: ReadonlySet<GuideTriageEvidenceSource> = new Set([
   'none',
 ]);
 
-export function parseGuideTriageResponse(
-  rawText: string,
-  guideId: string,
-): {
-  classification: GuideTriageClassification;
-  candidateTechniques: string[];
-  replaces?: string[];
-  doesNotReplace?: string[];
-  borderline: boolean;
-  brownfieldTarget: string;
-  evidenceFromGuide: string;
-  reason: string;
-  evidenceSource?: GuideTriageEvidenceSource;
-} {
+export function parseGuideTriageResponse(rawText: string, guideId: string) {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawText.trim());
@@ -149,17 +127,11 @@ export function parseGuideTriageResponse(
   }
 
   const rec = parsed as Record<string, unknown>;
-  const classification = rec.classification;
-  if (
-    classification !== 'detectable' &&
-    classification !== 'ui-recipe-multi-part' &&
-    classification !== 'skip-no-old-way'
-  ) {
+  if (typeof rec.classification !== 'string' || !VALID_CLASSIFICATIONS.has(rec.classification)) {
     throw new Error(
-      `Guide Triage response invalid classification '${String(classification)}' for guide ${guideId}`,
+      `Guide Triage response invalid classification '${String(rec.classification)}' for guide ${guideId}`,
     );
   }
-
   if (!Array.isArray(rec.candidateTechniques)) {
     throw new Error(`Guide Triage response missing array 'candidateTechniques' for guide ${guideId}`);
   }
@@ -172,43 +144,35 @@ export function parseGuideTriageResponse(
       return t.trim();
     });
 
-  const candidateTechniques = toTrimmedStrings(rec.candidateTechniques, 'candidateTechnique');
-  const replaces = Array.isArray(rec.replaces) ? toTrimmedStrings(rec.replaces, 'replaces') : undefined;
-  const doesNotReplace = Array.isArray(rec.doesNotReplace)
-    ? toTrimmedStrings(rec.doesNotReplace, 'doesNotReplace')
-    : undefined;
+  const requireString = (val: unknown, field: string, nonEmpty = true): string => {
+    if (typeof val !== 'string' || (nonEmpty && !val.trim())) {
+      throw new Error(`Guide Triage response missing string '${field}' for guide ${guideId}`);
+    }
+    return val.trim();
+  };
 
   if (typeof rec.borderline !== 'boolean') {
     throw new Error(`Guide Triage response missing boolean 'borderline' for guide ${guideId}`);
   }
 
-  if (typeof rec.brownfieldTarget !== 'string' || !rec.brownfieldTarget.trim()) {
-    throw new Error(`Guide Triage response missing string 'brownfieldTarget' for guide ${guideId}`);
-  }
-
-  if (typeof rec.evidenceFromGuide !== 'string') {
-    throw new Error(`Guide Triage response missing string 'evidenceFromGuide' for guide ${guideId}`);
-  }
-
-  if (typeof rec.reason !== 'string' || !rec.reason.trim()) {
-    throw new Error(`Guide Triage response missing string 'reason' for guide ${guideId}`);
-  }
-
+  const replaces = Array.isArray(rec.replaces) ? toTrimmedStrings(rec.replaces, 'replaces') : undefined;
+  const doesNotReplace = Array.isArray(rec.doesNotReplace)
+    ? toTrimmedStrings(rec.doesNotReplace, 'doesNotReplace')
+    : undefined;
   const evidenceSource =
-    typeof rec.evidenceSource === 'string' &&
-    VALID_EVIDENCE_SOURCES.has(rec.evidenceSource as GuideTriageEvidenceSource)
+    typeof rec.evidenceSource === 'string' && VALID_EVIDENCE_SOURCES.has(rec.evidenceSource)
       ? (rec.evidenceSource as GuideTriageEvidenceSource)
       : undefined;
 
   return {
-    classification,
-    candidateTechniques,
+    classification: rec.classification as GuideTriageClassification,
+    candidateTechniques: toTrimmedStrings(rec.candidateTechniques, 'candidateTechnique'),
     ...(replaces ? { replaces } : {}),
     ...(doesNotReplace ? { doesNotReplace } : {}),
     borderline: rec.borderline,
-    brownfieldTarget: rec.brownfieldTarget.trim(),
-    evidenceFromGuide: rec.evidenceFromGuide.trim(),
-    reason: rec.reason.trim(),
+    brownfieldTarget: requireString(rec.brownfieldTarget, 'brownfieldTarget'),
+    evidenceFromGuide: requireString(rec.evidenceFromGuide, 'evidenceFromGuide', false),
+    reason: requireString(rec.reason, 'reason'),
     ...(evidenceSource ? { evidenceSource } : {}),
   };
 }
@@ -225,24 +189,20 @@ export async function triageGuide(
   const model = options?.model ?? GUIDE_TRIAGE_MODEL;
   const maxRetries = options?.maxRetries ?? 8;
 
-  const body = buildGuideTriageRequestBody(guide, options);
-  const url = buildGenerateContentUrl(model, options);
-
   const res = await fetchWithRetry(
-    url,
+    buildGenerateContentUrl(model, options),
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(buildGuideTriageRequestBody(guide, options)),
     },
     customFetch,
     maxRetries,
   );
 
   if (!res.ok) {
-    const errText = await res.text();
     throw new Error(
-      `Guide Triage failed for ${guide.guideId} with HTTP ${res.status}: ${errText}`,
+      `Guide Triage failed for ${guide.guideId} with HTTP ${res.status}: ${await res.text()}`,
     );
   }
 
@@ -251,56 +211,34 @@ export async function triageGuide(
       content?: { parts?: Array<{ text?: string }> };
       groundingMetadata?: {
         webSearchQueries?: string[];
-        groundingChunks?: Array<{
-          web?: {
-            uri?: string;
-            title?: string;
-          };
-        }>;
+        groundingChunks?: Array<{ web?: { uri?: string; title?: string } }>;
       };
     }>;
   };
   const candidate = data.candidates?.[0];
   const text = candidate?.content?.parts?.[0]?.text;
   if (!text) {
-    throw new Error(
-      `Guide Triage returned empty candidate text for guide ${guide.guideId}`,
-    );
+    throw new Error(`Guide Triage returned empty candidate text for guide ${guide.guideId}`);
   }
 
-  const webSearchQueries = candidate?.groundingMetadata?.webSearchQueries ?? [];
-  const groundingSources: string[] = [];
-  for (const chunk of candidate?.groundingMetadata?.groundingChunks ?? []) {
-    const source = chunk.web?.uri?.trim() || chunk.web?.title?.trim();
-    if (source) {
-      groundingSources.push(source);
-    }
-  }
+  const groundingSources = (candidate?.groundingMetadata?.groundingChunks ?? [])
+    .map((chunk) => chunk.web?.uri?.trim() || chunk.web?.title?.trim() || '')
+    .filter(Boolean);
 
   const parsed = parseGuideTriageResponse(text, guide.guideId);
   const promptVersion = computeGuideTriagePromptVersion(0.0, options?.enableSearchGrounding ?? true);
   const explainerContextHash =
     guide.explainerContextHash ??
-    (guide.explainerContext?.trim()
-      ? computeExplainerContextHash(guide.explainerContext)
-      : undefined);
+    (guide.explainerContext?.trim() ? computeExplainerContextHash(guide.explainerContext) : undefined);
 
   return {
     guideId: guide.guideId,
     guideHash: guide.guideHash,
-    classification: parsed.classification,
-    candidateTechniques: parsed.candidateTechniques,
-    ...(parsed.replaces ? { replaces: parsed.replaces } : {}),
-    ...(parsed.doesNotReplace ? { doesNotReplace: parsed.doesNotReplace } : {}),
-    borderline: parsed.borderline,
-    brownfieldTarget: parsed.brownfieldTarget,
-    evidenceFromGuide: parsed.evidenceFromGuide,
-    reason: parsed.reason,
+    ...parsed,
     triagePromptVersion: promptVersion,
     gate0PromptVersion: promptVersion,
-    ...(parsed.evidenceSource ? { evidenceSource: parsed.evidenceSource } : {}),
     ...(explainerContextHash ? { explainerContextHash } : {}),
-    webSearchQueries,
+    webSearchQueries: candidate?.groundingMetadata?.webSearchQueries ?? [],
     ...(groundingSources.length > 0 ? { groundingSources } : {}),
   };
 }

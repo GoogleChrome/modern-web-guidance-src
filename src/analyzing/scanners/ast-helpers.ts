@@ -10,7 +10,6 @@ import {
   type FunctionExpression,
   type ImportDeclaration,
   type MethodDeclaration,
-  type ParameterDeclaration,
   type SourceFile,
   type Statement,
   type VariableDeclaration,
@@ -59,23 +58,23 @@ function getForLoopDeclarations(scope: Node): readonly VariableDeclaration[] {
   return [];
 }
 
-function bindingNameContains(nameNode: Node, targetName: string): boolean {
-  if (Node.isIdentifier(nameNode)) {
-    return nameNode.getText() === targetName;
+function hasBindingName(node: Node, targetName: string): boolean {
+  if (
+    Node.isVariableDeclaration(node) ||
+    Node.isParameterDeclaration(node) ||
+    Node.isBindingElement(node)
+  ) {
+    return hasBindingName(node.getNameNode(), targetName);
   }
-  if (Node.isObjectBindingPattern(nameNode) || Node.isArrayBindingPattern(nameNode)) {
-    return nameNode
+  if (Node.isIdentifier(node)) {
+    return node.getText() === targetName;
+  }
+  if (Node.isObjectBindingPattern(node) || Node.isArrayBindingPattern(node)) {
+    return node
       .getElements()
-      .some((el) => Node.isBindingElement(el) && bindingNameContains(el.getNameNode(), targetName));
+      .some((el) => Node.isBindingElement(el) && hasBindingName(el, targetName));
   }
   return false;
-}
-
-function hasBindingName(
-  decl: VariableDeclaration | ParameterDeclaration,
-  targetName: string,
-): boolean {
-  return bindingNameContains(decl.getNameNode(), targetName);
 }
 
 interface ResolvedImport {
@@ -117,9 +116,7 @@ function resolveLexicalBinding(
   name: string,
   beforePos?: number,
 ): LexicalBinding | null {
-  let current: Node | undefined = startNode.getParent();
-
-  while (current) {
+  for (let current = startNode.getParent(); current; current = current.getParent()) {
     if (isCallableScope(current)) {
       if (current.getParameters().some((param) => hasBindingName(param, name))) {
         return { kind: 'other' };
@@ -141,13 +138,11 @@ function resolveLexicalBinding(
       }
     }
 
-    for (const decl of getForLoopDeclarations(current)) {
-      if (hasBindingName(decl, name)) {
-        if (beforePos !== undefined && decl.getStart() >= beforePos) {
-          return { kind: 'other' };
-        }
-        return { kind: 'variable', node: decl };
-      }
+    const loopDecl = getForLoopDeclarations(current).find((decl) => hasBindingName(decl, name));
+    if (loopDecl) {
+      return beforePos !== undefined && loopDecl.getStart() >= beforePos
+        ? { kind: 'other' }
+        : { kind: 'variable', node: loopDecl };
     }
 
     if (Node.isBlock(current) || Node.isSourceFile(current)) {
@@ -156,10 +151,9 @@ function resolveLexicalBinding(
           if (beforePos !== undefined && stmt.getStart() >= beforePos) {
             continue;
           }
-          for (const decl of stmt.getDeclarationList().getDeclarations()) {
-            if (hasBindingName(decl, name)) {
-              return { kind: 'variable', node: decl };
-            }
+          const decl = stmt.getDeclarations().find((d) => hasBindingName(d, name));
+          if (decl) {
+            return { kind: 'variable', node: decl };
           }
         } else if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
           return { kind: 'function', node: stmt };
@@ -175,8 +169,6 @@ function resolveLexicalBinding(
         return { kind: 'import', importBinding };
       }
     }
-
-    current = current.getParent();
   }
 
   return null;
@@ -264,10 +256,10 @@ const NEGATIVE_COMPARISON_VALUES = new Set([
  * Checks for negative equality comparisons like `typeof Feature === 'undefined'` or `Feature == null`.
  */
 function checkBinaryComparisonPolarity(expr: BinaryExpression): 'positive' | 'negative' | null {
-  const op = expr.getOperatorToken().getKind();
   if (!NEGATIVE_COMPARISON_VALUES.has(expr.getRight().getText())) {
     return null;
   }
+  const op = expr.getOperatorToken().getKind();
   if (op === SyntaxKind.EqualsEqualsToken || op === SyntaxKind.EqualsEqualsEqualsToken) {
     return 'negative';
   }
@@ -301,10 +293,8 @@ function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): 
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
-    if (unwrapped.getOperatorToken().getKind() === SyntaxKind.InKeyword) {
-      return true;
-    }
     return (
+      unwrapped.getOperatorToken().getKind() === SyntaxKind.InKeyword ||
       isValidFeatureCondition(unwrapped.getLeft(), featureTokens) ||
       isValidFeatureCondition(unwrapped.getRight(), featureTokens)
     );
@@ -365,11 +355,9 @@ function conditionCheckPolarity(
     return null;
   }
 
-  if (Node.isBinaryExpression(unwrapped)) {
-    return checkBinaryComparisonPolarity(unwrapped) ?? 'positive';
-  }
-
-  return 'positive';
+  return Node.isBinaryExpression(unwrapped)
+    ? (checkBinaryComparisonPolarity(unwrapped) ?? 'positive')
+    : 'positive';
 }
 
 /**
@@ -385,7 +373,7 @@ function statementAlwaysExits(stmt: Node): boolean {
   }
   if (Node.isBlock(stmt)) {
     const last = stmt.getStatements().at(-1);
-    return last ? statementAlwaysExits(last) : false;
+    return Boolean(last && statementAlwaysExits(last));
   }
   return false;
 }
@@ -395,19 +383,13 @@ function hasPositiveEarlyReturn(
   featureTokens: readonly string[],
   beforePos: number = Infinity,
 ): boolean {
-  for (const stmt of statements) {
-    if (stmt.getStart() >= beforePos) {
-      break;
-    }
-    if (
+  return statements.some(
+    (stmt) =>
+      stmt.getStart() < beforePos &&
       Node.isIfStatement(stmt) &&
       conditionCheckPolarity(stmt.getExpression(), featureTokens) === 'positive' &&
-      statementAlwaysExits(stmt.getThenStatement())
-    ) {
-      return true;
-    }
-  }
-  return false;
+      statementAlwaysExits(stmt.getThenStatement()),
+  );
 }
 
 function isGuardedByCallableEarlyReturn(
@@ -463,19 +445,15 @@ export function isProtectedByFeatureGuard(
     return false;
   }
 
-  // If node is a CallExpression (e.g. addEventListener) or BinaryExpression (e.g. onscroll = handler),
-  // check if any callable argument/RHS contains an early-return guard checking featureTokens.
-  if (Node.isCallExpression(node)) {
-    if (
-      node
-        .getArguments()
-        .some((arg) => isGuardedByCallableEarlyReturn(resolveCallableNode(arg), featureTokens))
-    ) {
-      return true;
-    }
-  } else if (
-    Node.isBinaryExpression(node) &&
-    isGuardedByCallableEarlyReturn(resolveCallableNode(node.getRight()), featureTokens)
+  const candidateCallables = Node.isCallExpression(node)
+    ? node.getArguments()
+    : Node.isBinaryExpression(node)
+      ? [node.getRight()]
+      : [];
+  if (
+    candidateCallables.some((arg) =>
+      isGuardedByCallableEarlyReturn(resolveCallableNode(arg), featureTokens),
+    )
   ) {
     return true;
   }
@@ -485,30 +463,13 @@ export function isProtectedByFeatureGuard(
     parent;
     current = parent, parent = current.getParent()
   ) {
-    if (Node.isIfStatement(parent)) {
-      const expectedPolarity =
-        current === parent.getElseStatement()
-          ? 'positive'
-          : current === parent.getThenStatement()
-            ? 'negative'
-            : null;
-      if (
-        expectedPolarity &&
-        conditionCheckPolarity(parent.getExpression(), featureTokens) === expectedPolarity
-      ) {
-        return true;
-      }
-    } else if (Node.isConditionalExpression(parent)) {
-      const expectedPolarity =
-        current === parent.getWhenFalse()
-          ? 'positive'
-          : current === parent.getWhenTrue()
-            ? 'negative'
-            : null;
-      if (
-        expectedPolarity &&
-        conditionCheckPolarity(parent.getCondition(), featureTokens) === expectedPolarity
-      ) {
+    if (Node.isIfStatement(parent) || Node.isConditionalExpression(parent)) {
+      const [whenTrue, whenFalse, cond] = Node.isIfStatement(parent)
+        ? [parent.getThenStatement(), parent.getElseStatement(), parent.getExpression()]
+        : [parent.getWhenTrue(), parent.getWhenFalse(), parent.getCondition()];
+      const expected =
+        current === whenFalse ? 'positive' : current === whenTrue ? 'negative' : null;
+      if (expected && conditionCheckPolarity(cond, featureTokens) === expected) {
         return true;
       }
     } else if (Node.isBinaryExpression(parent)) {
@@ -572,42 +533,39 @@ export function matchEventListenerCall(
   const methodName = expr.getName();
   const targetNode = expr.getExpression();
   const args = node.getArguments();
+  const [firstArg, secondArg] = args;
+  const lastArg = args.at(-1);
 
-  if (methodName === 'addEventListener' && args.length >= 2) {
-    const evName = getStaticStringValue(args[0]);
-    if (evName && eventNames.includes(evName)) {
-      return { eventName: evName, handlerNode: resolveCallableNode(args[1]), targetNode };
-    }
-    return null;
+  if (methodName === 'addEventListener' && secondArg) {
+    const evName = getStaticStringValue(firstArg);
+    return evName && eventNames.includes(evName)
+      ? { eventName: evName, handlerNode: resolveCallableNode(secondArg), targetNode }
+      : null;
   }
 
-  if (methodName === 'on' && args.length >= 2) {
-    const rawEventText = getStaticStringValue(args[0])?.trim();
-    if (!rawEventText) {
-      return null;
-    }
-    const matchedEvent = rawEventText
+  if (methodName === 'on' && secondArg && lastArg) {
+    const matchedEvent = getStaticStringValue(firstArg)
+      ?.trim()
       .split(/\s+/)
       .map((e) => e.split('.')[0])
       .find((e): e is string => Boolean(e && eventNames.includes(e)));
-    if (!matchedEvent) {
-      return null;
-    }
-    return {
-      eventName: matchedEvent,
-      handlerNode: resolveCallableNode(args[args.length - 1]),
-      targetNode,
-    };
+    return matchedEvent
+      ? {
+          eventName: matchedEvent,
+          handlerNode: resolveCallableNode(lastArg),
+          targetNode,
+        }
+      : null;
   }
 
   if (
-    args.length > 0 &&
+    lastArg &&
     JQUERY_EVENT_SHORTHANDS.has(methodName) &&
     eventNames.includes(methodName)
   ) {
     return {
       eventName: methodName,
-      handlerNode: resolveCallableNode(args[args.length - 1]),
+      handlerNode: resolveCallableNode(lastArg),
       targetNode,
     };
   }
@@ -655,9 +613,10 @@ function isDirectClassOrAttrMutation(n: Node): boolean {
 
   if (methodName === 'attr') {
     const args = n.getArguments();
+    const firstArg = args[0];
     return (
       args.length >= 2 ||
-      (args.length === 1 && Node.isObjectLiteralExpression(unwrapExpression(args[0])))
+      (args.length === 1 && firstArg !== undefined && Node.isObjectLiteralExpression(unwrapExpression(firstArg)))
     );
   }
 
@@ -730,7 +689,7 @@ export function isRequireOfPackage(
   return Boolean(options?.allowCurriedRequire && isRequireOfPackage(callee, packages, options));
 }
 
-export interface LibraryReferenceOptions {
+export interface LibraryReferenceOptions extends RequirePackageOptions {
   /**
    * Whether default imports (`import lib from 'pkg'`), namespace imports (`import * as lib from 'pkg'`),
    * and bare `require('pkg')` bindings match `identName`. Defaults to `true`.
@@ -741,11 +700,6 @@ export interface LibraryReferenceOptions {
    * matches without an explicit import or `require()`. Defaults to `true`.
    */
   readonly allowGlobal?: boolean;
-  /**
-   * Whether curried factory calls on `require('pkg')()` (e.g. `const list = require('country-list')()`)
-   * count as requiring the package. Defaults to `false`.
-   */
-  readonly allowCurriedRequire?: boolean;
   /**
    * Optional UMD global namespace identifiers (e.g. `['Popper', 'FloatingUIDOM']`) whose
    * `<Namespace>.<identName>` property access is recognized when `allowGlobal` is `true`.
@@ -825,10 +779,6 @@ export function isLibraryReference(
 ): boolean {
   const allowDefaultImport = options?.allowDefaultImport ?? true;
   const allowGlobal = options?.allowGlobal ?? true;
-  const requireOpts = options?.allowCurriedRequire
-    ? { allowCurriedRequire: true }
-    : undefined;
-
   const unwrapped = unwrapExpression(node);
 
   if (Node.isIdentifier(unwrapped)) {
@@ -844,7 +794,7 @@ export function isLibraryReference(
         identName,
         packages,
         allowDefaultImport,
-        requireOpts,
+        options,
       );
     }
     if (binding.kind === 'import') {
@@ -859,7 +809,7 @@ export function isLibraryReference(
     return false;
   }
 
-  if (isRequireExportExpression(unwrapped, identName, packages, allowDefaultImport, requireOpts)) {
+  if (isRequireExportExpression(unwrapped, identName, packages, allowDefaultImport, options)) {
     return true;
   }
 

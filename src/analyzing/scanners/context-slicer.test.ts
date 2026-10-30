@@ -3,7 +3,10 @@ import { describe, it } from 'node:test';
 import { createInMemoryProject } from './js-scanner.ts';
 import { extractScriptBlocks } from './sfc-extractor.ts';
 import {
+  extractCompactSnippet,
+  formatNumberedLines,
   sliceJsAstContext,
+  sliceStructuredBlock,
   sliceStructuredContext,
 } from './context-slicer.ts';
 
@@ -210,5 +213,31 @@ describe('context-slicer', () => {
     assert.match(largeSliced.contextSlice, />  180 \|     "sanitize-html": "\^2\.11\.0",/);
     assert.match(largeSliced.contextSlice, /  150 \|/);
     assert.match(largeSliced.contextSlice, /  210 \|/);
+  });
+
+  it('formatNumberedLines, sliceJsAstContext folding, and sliceStructuredBlock slice accurately', () => {
+    const formatted = formatNumberedLines(['const a = 1;', 'const b = 2;', 'const c = 3;'], 10, 11);
+    assert.match(formatted, /10 \| const a = 1;/);
+    assert.match(formatted, />   11 \| const b = 2;/);
+    assert.match(formatted, /12 \| const c = 3;/);
+
+    const project = createInMemoryProject();
+    const bodyLines = Array.from({ length: 150 }, (_, i) => `  line_${i + 1}();`);
+    const hugeSf = project.createSourceFile(
+      'huge.ts',
+      `function hugeFunction() {\n${bodyLines.join('\n')}\n}\n`,
+    );
+    const folded = sliceJsAstContext(hugeSf, 75);
+    assert.match(folded, /lines folded in enclosing scope/);
+    assert.match(folded, />\s+75 \|   line_74\(\);/);
+
+    const html = '<form>\n  <input type="password">\n  <button>Submit</button>\n</form>\n';
+    assert.match(extractCompactSnippet(html, 2), />    2 \|   <input type="password">/);
+    assert.match(sliceStructuredBlock(html, 3), />    3 \|   <button>Submit<\/button>/);
+
+    const context = sliceStructuredContext('test.html', html, 2);
+    assert.ok(context.codeSnippet);
+    assert.ok(context.contextSlice);
+    assert.equal(context.lineContent, '<input type="password">');
   });
 });

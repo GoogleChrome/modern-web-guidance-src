@@ -4,10 +4,7 @@ import { scanHtml } from '../../scanners/dom-scanner.ts';
 import type { DomRuleMatcher } from '../../schema.ts';
 import { autofillSignInFormRule } from '../autofill-sign-in-form.ts';
 import { autofillSignUpFormRule } from '../autofill-sign-up-form.ts';
-import {
-  findEnclosingFormAttrs,
-  tokenizeIdentifierWords,
-} from './password-credential.ts';
+import { findEnclosingFormAttrs, tokenizeIdentifierWords } from './password-credential.ts';
 
 const signInMatcher = autofillSignInFormRule.matcher as DomRuleMatcher;
 const signUpMatcher = autofillSignUpFormRule.matcher as DomRuleMatcher;
@@ -67,10 +64,8 @@ void test('autofill-sign-in-form vs autofill-sign-up-form: disjoint partition in
         <input type="password" name="confirm_password" required>
       </form>
     `;
-    const signInMatches = scanHtml('register.html', html, [signInMatcher]);
-    const signUpMatches = scanHtml('register.html', html, [signUpMatcher]);
-    assert.equal(signInMatches.length, 0);
-    assert.equal(signUpMatches.length, 2);
+    assert.equal(scanHtml('register.html', html, [signInMatcher]).length, 0);
+    assert.equal(scanHtml('register.html', html, [signUpMatcher]).length, 2);
   });
 
   await t.test('change-password form keeps old/current/existing/previous fields on sign-in and new/confirm on sign-up', () => {
@@ -84,15 +79,12 @@ void test('autofill-sign-in-form vs autofill-sign-up-form: disjoint partition in
         <input type="password" id="ChangePasswordConfirmPassword" name="confirm_password" placeholder="Confirm new password">
       </form>
     `;
-    const signInMatches = scanHtml('change-password.html', html, [signInMatcher]);
-    const signUpMatches = scanHtml('change-password.html', html, [signUpMatcher]);
-
     assert.deepEqual(
-      signInMatches.map((m) => m.line),
+      scanHtml('change-password.html', html, [signInMatcher]).map((m) => m.line),
       [3, 4, 5, 6],
     );
     assert.deepEqual(
-      signUpMatches.map((m) => m.line),
+      scanHtml('change-password.html', html, [signUpMatcher]).map((m) => m.line),
       [7, 8],
     );
   });
@@ -103,10 +95,8 @@ void test('autofill-sign-in-form vs autofill-sign-up-form: disjoint partition in
         <input type="password" id="change_password_auth" name="password" placeholder="Enter password to save changes">
       </form>
     `;
-    const signInMatches = scanHtml('security.html', html, [signInMatcher]);
-    const signUpMatches = scanHtml('security.html', html, [signUpMatcher]);
-    assert.equal(signInMatches.length, 1);
-    assert.equal(signUpMatches.length, 0);
+    assert.equal(scanHtml('security.html', html, [signInMatcher]).length, 1);
+    assert.equal(scanHtml('security.html', html, [signUpMatcher]).length, 0);
   });
 
   await t.test('generic form pairing password with confirmPassword routes both fields to sign-up', () => {
@@ -116,10 +106,8 @@ void test('autofill-sign-in-form vs autofill-sign-up-form: disjoint partition in
         <input type="password" id="confirmPassword" name="confirmPassword">
       </form>
     `;
-    const signInMatches = scanHtml('setup-password.html', html, [signInMatcher]);
-    const signUpMatches = scanHtml('setup-password.html', html, [signUpMatcher]);
-    assert.equal(signInMatches.length, 0);
-    assert.equal(signUpMatches.length, 2);
+    assert.equal(scanHtml('setup-password.html', html, [signInMatcher]).length, 0);
+    assert.equal(scanHtml('setup-password.html', html, [signUpMatcher]).length, 2);
   });
 
   await t.test('numbered Bootstrap login demo IDs like exampleInputPassword2 stay on sign-in', () => {
@@ -129,9 +117,7 @@ void test('autofill-sign-in-form vs autofill-sign-up-form: disjoint partition in
         <input type="password" id="exampleInputPassword2" placeholder="Password">
       </form>
     `;
-    const signInMatches = scanHtml('forms.html', html, [signInMatcher]);
-    const signUpMatches = scanHtml('forms.html', html, [signUpMatcher]);
-    assert.equal(signInMatches.length, 1);
-    assert.equal(signUpMatches.length, 0);
+    assert.equal(scanHtml('forms.html', html, [signInMatcher]).length, 1);
+    assert.equal(scanHtml('forms.html', html, [signUpMatcher]).length, 0);
   });
 });

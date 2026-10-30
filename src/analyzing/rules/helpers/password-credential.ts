@@ -9,6 +9,8 @@ const PASSWORD_INPUT_TAG_REGEX =
 const NON_CREDENTIAL_SECRET_REGEX =
   /(?:smtp|ssh|ftp|database|\bdb\b|api[-_]?key|secret[-_]?key|secret|token|wifi|psk|cvv|cvc|csc|pin\b|mqtt|bridge[-_]?settings|\bsvn\b|passphrase|encrypt|decrypt|wallet|keystore)/i;
 
+const EXISTING_PASSWORD_CJK_REGEX = /原始密码|当前密码|旧密码|原密码/;
+
 const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
   ':autocomplete',
   'v-bind:autocomplete',
@@ -20,127 +22,54 @@ const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
 ];
 
 const EXISTING_PASSWORD_WORDS: ReadonlySet<string> = new Set([
-  'old',
-  'oldpass',
-  'oldpassword',
-  'oldpsw',
-  'oldpwd',
-  'current',
-  'currentpass',
-  'currentpassword',
-  'currentpsw',
-  'currentpwd',
-  'cur',
-  'curpass',
-  'curpassword',
-  'curpsw',
-  'curpwd',
-  'existing',
-  'existingpass',
-  'existingpassword',
-  'previous',
-  'previouspass',
-  'previouspassword',
-  'prev',
-  'prevpass',
-  'prevpassword',
-  'orig',
-  'origpass',
-  'original',
-  'originalpass',
+  'old', 'oldpass', 'oldpassword', 'oldpsw', 'oldpwd',
+  'current', 'currentpass', 'currentpassword', 'currentpsw', 'currentpwd',
+  'cur', 'curpass', 'curpassword', 'curpsw', 'curpwd',
+  'existing', 'existingpass', 'existingpassword',
+  'previous', 'previouspass', 'previouspassword',
+  'prev', 'prevpass', 'prevpassword',
+  'orig', 'origpass', 'original', 'originalpass',
 ]);
 
 const CONFIRM_OR_REPEAT_PASSWORD_WORDS: ReadonlySet<string> = new Set([
-  'confirm',
-  'confirmation',
-  'confirmpass',
-  'confirmpassword',
-  'confirmpsw',
-  'confirmpwd',
-  'crmpwd',
-  'repeat',
-  'repeatpass',
-  'repeatpassword',
-  'repeatpwd',
-  'repass',
-  'repassword',
-  'repsw',
-  'repwd',
-  'rpass',
-  'rpwd',
-  'retype',
-  'retypepass',
-  'retypepassword',
-  'renew',
-  'renewpass',
-  'renewpassword',
-  'renewpsw',
-  'renewpwd',
-  'cnew',
-  'cnewpass',
-  'cnewpsw',
-  'cnewpwd',
+  'confirm', 'confirmation', 'confirmpass', 'confirmpassword', 'confirmpsw', 'confirmpwd', 'crmpwd',
+  'repeat', 'repeatpass', 'repeatpassword', 'repeatpwd',
+  'repass', 'repassword', 'repsw', 'repwd', 'rpass', 'rpwd',
+  'retype', 'retypepass', 'retypepassword',
+  'renew', 'renewpass', 'renewpassword', 'renewpsw', 'renewpwd',
+  'cnew', 'cnewpass', 'cnewpsw', 'cnewpwd',
 ]);
 
 const NEW_PASSWORD_WORDS: ReadonlySet<string> = new Set([
   ...CONFIRM_OR_REPEAT_PASSWORD_WORDS,
-  'new',
-  'new2',
-  'newpass',
-  'newpass1',
-  'newpass2',
-  'newpassword',
-  'newpassword1',
-  'newpassword2',
-  'newpsw',
-  'newpwd',
-  'signup',
-  'register',
-  'registration',
-  'create',
+  'new', 'new2', 'newpass', 'newpass1', 'newpass2',
+  'newpassword', 'newpassword1', 'newpassword2', 'newpsw', 'newpwd',
+  'signup', 'register', 'registration', 'create',
 ]);
 
 const NUMBERED_SECOND_PASSWORD_WORDS: ReadonlySet<string> = new Set([
-  'password2',
-  'pwd2',
-  'pass2',
-  'psw2',
+  'password2', 'pwd2', 'pass2', 'psw2',
 ]);
 
 const SIGN_UP_OR_RESET_FORM_SINGLE_WORDS: ReadonlySet<string> = new Set([
-  'signup',
-  'register',
-  'registration',
-  'forgot',
-  'forgotpassword',
-  'forgotpass',
-  'forgotpwd',
-  'resetpassword',
-  'resetpass',
-  'resetpwd',
-  'passwordreset',
-  'passreset',
+  'signup', 'register', 'registration',
+  'forgot', 'forgotpassword', 'forgotpass', 'forgotpwd',
+  'resetpassword', 'resetpass', 'resetpwd', 'passwordreset', 'passreset',
 ]);
 
 const RESET_COMPANION_WORDS: ReadonlySet<string> = new Set([
-  'password',
-  'pass',
-  'pwd',
-  'psw',
-  'form',
-  'confirm',
-  'credentials',
-  'account',
-  'auth',
-  'user',
+  'password', 'pass', 'pwd', 'psw', 'form', 'confirm', 'credentials', 'account', 'auth', 'user',
 ]);
 
 const CREATE_ACCOUNT_COMPANION_WORDS: ReadonlySet<string> = new Set([
-  'account',
-  'user',
-  'profile',
-  'member',
+  'account', 'user', 'profile', 'member',
 ]);
+
+const NON_SIGNUP_CHANGE_OR_PROFILE_PATH_REGEX =
+  /(?:^|[\\/._-])(?:change[-_]?pass(?:word|wd|w)?|update[-_]?pass(?:word|wd|w)?|edit[-_]?pass(?:word|wd|w|pwd)?|pass(?:word|wd)?[-_]?change|pass(?:word|wd)?[-_]?update|set[-_]?passphrase|profile(?:[-_]?page|tab)?|account[-_]?settings|member[-_]?settings|my[-_]?account)(?:[\\/._-]|$)/i;
+
+const NON_SIGNUP_ADMIN_OR_SHOWCASE_PATH_REGEX =
+  /(?:[\\/](?:account[\\/]password|profile[\\/]password|profile[\\/]settings|encryption[\\/]encrypt)|(?:^|[\\/])(?:admin[\\/](?:user|views|templates)|themes[\\/]admin[\\/]user|maintainer[\\/]edit|user[\\/]edit\.html|admin_add\.html)|(?:^|[\\/._-])(?:form[-_]?elements?|html[-_]?components|forms[\\/]layouts|dashboard[\\/]validation|password[-_]?strength[-_]?test)(?:[\\/._-]|$))/i;
 
 /**
  * Splits an HTML/JSX identifier or phrase into lowercase alphanumeric word tokens,
@@ -154,6 +83,13 @@ export function tokenizeIdentifierWords(text: string): string[] {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
+}
+
+function tokenizeInputAttrWords(attrs: string): string[] {
+  const matches = [
+    ...attrs.matchAll(/\b(?:name|id|placeholder|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi),
+  ];
+  return tokenizeIdentifierWords(matches.map((m) => m[1] ?? m[2] ?? '').join(' '));
 }
 
 function maskCommentsAndScriptsPreservingLines(documentText: string): string {
@@ -184,24 +120,18 @@ export function findEnclosingFormContext(
   const masked = maskCommentsAndScriptsPreservingLines(documentText);
   const lines = masked.split('\n');
   let charOffsetAtTargetLineStart = 0;
-  for (let i = 0; i < Math.min(lines.length, Math.max(0, targetLine - 1)); i++) {
+  const lineLimit = Math.min(lines.length, Math.max(0, targetLine - 1));
+  for (let i = 0; i < lineLimit; i++) {
     charOffsetAtTargetLineStart += lines[i]!.length + 1;
   }
   const currentLine = lines[targetLine - 1] ?? '';
-  let inLineOffset: number;
-  if (targetColumn !== undefined && targetColumn > 1) {
-    inLineOffset = Math.min(currentLine.length, targetColumn - 1);
-  } else {
-    const inputPosInLine = currentLine.search(/<(?:input|Input)\b/);
-    inLineOffset = inputPosInLine === -1 ? 0 : inputPosInLine;
-  }
+  const inLineOffset =
+    targetColumn !== undefined && targetColumn > 1
+      ? Math.min(currentLine.length, targetColumn - 1)
+      : Math.max(0, currentLine.search(/<(?:input|Input)\b/));
   const targetOffset = charOffsetAtTargetLineStart + inLineOffset;
 
-  interface OpenFormEntry {
-    attrs: string;
-    bodyStart: number;
-  }
-  const stack: OpenFormEntry[] = [];
+  const stack: Array<{ attrs: string; bodyStart: number }> = [];
   let chosen: { attrs: string; bodyStart: number; bodyEnd: number } | null = null;
   let passedTarget = false;
   let chosenDepth = 0;
@@ -210,16 +140,12 @@ export function findEnclosingFormContext(
   FORM_TAG_REGEX.lastIndex = 0;
   while ((match = FORM_TAG_REGEX.exec(masked)) !== null) {
     const tagStart = match.index;
-    const tagEnd = tagStart + match[0].length;
     const isClosing = match[0].startsWith('</');
     const attrs = match[2] ?? '';
-    const isSelfClosing = attrs.trim().endsWith('/');
 
     if (!passedTarget && tagStart >= targetOffset) {
       passedTarget = true;
-      if (stack.length === 0) {
-        break;
-      }
+      if (stack.length === 0) break;
       const top = stack[stack.length - 1]!;
       chosen = { attrs: top.attrs, bodyStart: top.bodyStart, bodyEnd: masked.length };
       chosenDepth = stack.length;
@@ -230,11 +156,9 @@ export function findEnclosingFormContext(
         chosen.bodyEnd = tagStart;
         break;
       }
-      if (stack.length > 0) {
-        stack.pop();
-      }
-    } else if (!isSelfClosing) {
-      stack.push({ attrs, bodyStart: tagEnd });
+      stack.pop();
+    } else if (!attrs.trim().endsWith('/')) {
+      stack.push({ attrs, bodyStart: tagStart + match[0].length });
     }
   }
 
@@ -252,12 +176,8 @@ export function findEnclosingFormContext(
 
   if (explicitFormId !== undefined) {
     const trimmedId = explicitFormId.trim();
-    if (!trimmedId) {
-      return { attrs: '', body: '' };
-    }
-    const idAttrRegex = new RegExp(
-      `\\bid\\s*=\\s*["']${escapeRegExp(trimmedId)}["']`,
-    );
+    if (!trimmedId) return { attrs: '', body: '' };
+    const idAttrRegex = new RegExp(`\\bid\\s*=\\s*["']${escapeRegExp(trimmedId)}["']`);
     FORM_TAG_REGEX.lastIndex = 0;
     while ((match = FORM_TAG_REGEX.exec(masked)) !== null) {
       if (!match[0].startsWith('</')) {
@@ -284,8 +204,22 @@ export function findEnclosingFormAttrs(
   targetColumn?: number,
 ): string | null {
   return (
-    findEnclosingFormContext(documentText, targetLine, explicitFormId, targetColumn)
-      ?.attrs ?? null
+    findEnclosingFormContext(documentText, targetLine, explicitFormId, targetColumn)?.attrs ?? null
+  );
+}
+
+function resolveElementFormContext(
+  element: DomElementView,
+  ctx: DomMatcherContext,
+): EnclosingFormContext | null {
+  const explicitFormId = element.hasAttribute('form')
+    ? (element.getAttribute('form') ?? '')
+    : undefined;
+  return findEnclosingFormContext(
+    ctx.documentText,
+    element.line,
+    explicitFormId,
+    element.column,
   );
 }
 
@@ -305,41 +239,32 @@ function hasDynamicAutocompleteBinding(element: DomElementView): boolean {
   if (
     element.hasDynamicAttribute?.('autocomplete') ||
     element.hasDynamicAttribute?.('autoComplete') ||
-    element.hasSpreadAttribute
+    element.hasSpreadAttribute ||
+    DYNAMIC_AUTOCOMPLETE_ATTRS.some((attr) => element.hasAttribute(attr))
   ) {
     return true;
   }
 
-  for (const attr of DYNAMIC_AUTOCOMPLETE_ATTRS) {
-    if (element.hasAttribute(attr)) {
-      return true;
-    }
-  }
-
   for (const [attrName, attrVal] of Object.entries(element.attributes)) {
-    if (
+    const isDynamicAttrSyntax =
       attrName.startsWith(':') ||
       attrName.startsWith('v-bind') ||
       attrName.startsWith('[') ||
       attrName.includes('$attrs') ||
       attrName.includes('restProps') ||
-      attrName.includes('attributes')
-    ) {
-      if (
-        attrName.includes('autocomplete') ||
+      attrName.includes('attributes');
+    if (
+      isDynamicAttrSyntax &&
+      (attrName.includes('autocomplete') ||
         attrName.includes('bind') ||
         attrName.includes('attrs') ||
-        attrName.includes('props')
-      ) {
-        return true;
-      }
+        attrName.includes('props'))
+    ) {
+      return true;
     }
     if (
       (attrName === 'autocomplete' || attrName === 'autoComplete') &&
-      (attrVal.includes('{') ||
-        attrVal.includes('{{') ||
-        attrVal.includes('<?') ||
-        attrVal.includes('<%'))
+      (attrVal.includes('{') || attrVal.includes('<?') || attrVal.includes('<%'))
     ) {
       return true;
     }
@@ -356,14 +281,10 @@ function isSignUpOrPasswordResetForm(enclosingFormAttrs: string): boolean {
     if (
       SIGN_UP_OR_RESET_FORM_SINGLE_WORDS.has(word) ||
       word.endsWith('signup') ||
-      word.endsWith('register')
+      word.endsWith('register') ||
+      (word === 'sign' && next === 'up') ||
+      (word === 'create' && next !== undefined && CREATE_ACCOUNT_COMPANION_WORDS.has(next))
     ) {
-      return true;
-    }
-    if (word === 'sign' && next === 'up') {
-      return true;
-    }
-    if (word === 'create' && next !== undefined && CREATE_ACCOUNT_COMPANION_WORDS.has(next)) {
       return true;
     }
   }
@@ -393,9 +314,7 @@ function hasSecondNumberedPasswordToken(primaryWords: readonly string[]): boolea
 }
 
 function getPasswordInputAttrList(formBody: string): string[] {
-  if (!formBody) {
-    return [];
-  }
+  if (!formBody) return [];
   const passwordInputAttrList: string[] = [];
   let match: RegExpExecArray | null;
   PASSWORD_INPUT_TAG_REGEX.lastIndex = 0;
@@ -410,19 +329,12 @@ function getPasswordInputAttrList(formBody: string): string[] {
 
 function formPairsGenericPasswordWithConfirm(formBody: string): boolean {
   const passwordInputAttrList = getPasswordInputAttrList(formBody);
-  if (passwordInputAttrList.length < 2) {
-    return false;
-  }
+  if (passwordInputAttrList.length < 2) return false;
 
   let hasConfirmField = false;
   let hasExistingField = false;
   for (const attrs of passwordInputAttrList) {
-    const idAndNameMatches = [
-      ...attrs.matchAll(/\b(?:name|id|placeholder|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi),
-    ];
-    const words = tokenizeIdentifierWords(
-      idAndNameMatches.map((m) => m[1] ?? m[2] ?? '').join(' '),
-    );
+    const words = tokenizeInputAttrWords(attrs);
     if (words.some((w) => EXISTING_PASSWORD_WORDS.has(w))) {
       hasExistingField = true;
     }
@@ -434,22 +346,20 @@ function formPairsGenericPasswordWithConfirm(formBody: string): boolean {
     }
   }
 
-  if (!hasConfirmField) {
-    return false;
-  }
   // Either a 2-field (password + confirm) registration/reset form without an existing-password field,
   // or a 3-field (old + password + confirm) change-password form where the old field is already carved out by Step 1.
-  return !hasExistingField || passwordInputAttrList.length >= 3;
+  return hasConfirmField && (!hasExistingField || passwordInputAttrList.length >= 3);
 }
 
 function hasExplicitSignInWordSequence(words: readonly string[]): boolean {
   for (let i = 0; i < words.length; i++) {
     const w = words[i]!;
-    const next = words[i + 1];
-    if (w === 'signin' || w === 'login' || w === 'logon') {
-      return true;
-    }
-    if ((w === 'sign' || w === 'log') && next === 'in') {
+    if (
+      w === 'signin' ||
+      w === 'login' ||
+      w === 'logon' ||
+      ((w === 'sign' || w === 'log') && words[i + 1] === 'in')
+    ) {
       return true;
     }
   }
@@ -487,7 +397,7 @@ export function isNewCredentialPasswordField(
     return true;
   }
 
-  if (/原始密码|当前密码|旧密码|原密码/.test(`${placeholder} ${ariaLabel}`)) {
+  if (EXISTING_PASSWORD_CJK_REGEX.test(`${placeholder} ${ariaLabel}`)) {
     return false;
   }
 
@@ -496,44 +406,26 @@ export function isNewCredentialPasswordField(
     labelWords.some((w) => EXISTING_PASSWORD_WORDS.has(w)) ||
     hasExplicitSignInWordSequence(labelWords);
   const hasNewLabel = labelWords.some((w) => NEW_PASSWORD_WORDS.has(w));
-  if (hasExistingLabel && !hasNewLabel) {
-    return false;
-  }
-  if (hasNewLabel) {
-    return true;
-  }
+  if (hasExistingLabel && !hasNewLabel) return false;
+  if (hasNewLabel) return true;
 
-  if (isSignUpOrPasswordResetForm(enclosingForm.attrs)) {
-    return true;
-  }
-
-  return formPairsGenericPasswordWithConfirm(enclosingForm.body);
+  return (
+    isSignUpOrPasswordResetForm(enclosingForm.attrs) ||
+    formPairsGenericPasswordWithConfirm(enclosingForm.body)
+  );
 }
 
-const NON_SIGNUP_CHANGE_OR_PROFILE_PATH_REGEX =
-  /(?:^|[\\/._-])(?:change[-_]?pass(?:word|wd|w)?|update[-_]?pass(?:word|wd|w)?|edit[-_]?pass(?:word|wd|w|pwd)?|pass(?:word|wd)?[-_]?change|pass(?:word|wd)?[-_]?update|set[-_]?passphrase|profile(?:[-_]?page|tab)?|account[-_]?settings|member[-_]?settings|my[-_]?account)(?:[\\/._-]|$)/i;
-
-const NON_SIGNUP_ADMIN_OR_SHOWCASE_PATH_REGEX =
-  /(?:[\\/](?:account[\\/]password|profile[\\/]password|profile[\\/]settings|encryption[\\/]encrypt)|(?:^|[\\/])(?:admin[\\/](?:user|views|templates)|themes[\\/]admin[\\/]user|maintainer[\\/]edit|user[\\/]edit\.html|admin_add\.html)|(?:^|[\\/._-])(?:form[-_]?elements?|html[-_]?components|forms[\\/]layouts|dashboard[\\/]validation|password[-_]?strength[-_]?test)(?:[\\/._-]|$))/i;
-
 function countExistingPasswordInputs(passwordInputs: readonly string[]): number {
-  let existingFieldCount = 0;
+  let count = 0;
   for (const attrs of passwordInputs) {
-    if (/原始密码|当前密码|旧密码|原密码/.test(attrs)) {
-      existingFieldCount++;
-      continue;
-    }
-    const idAndNameMatches = [
-      ...attrs.matchAll(/\b(?:name|id|placeholder|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi),
-    ];
-    const words = tokenizeIdentifierWords(
-      idAndNameMatches.map((m) => m[1] ?? m[2] ?? '').join(' '),
-    );
-    if (words.some((w) => EXISTING_PASSWORD_WORDS.has(w))) {
-      existingFieldCount++;
+    if (
+      EXISTING_PASSWORD_CJK_REGEX.test(attrs) ||
+      tokenizeInputAttrWords(attrs).some((w) => EXISTING_PASSWORD_WORDS.has(w))
+    ) {
+      count++;
     }
   }
-  return existingFieldCount;
+  return count;
 }
 
 /**
@@ -545,21 +437,12 @@ export function isExcludedFromSignUpForm(
   element: DomElementView,
   ctx: DomMatcherContext,
 ): boolean {
-  const explicitFormId = element.hasAttribute('form')
-    ? (element.getAttribute('form') ?? '')
-    : undefined;
-  const enclosingForm = findEnclosingFormContext(
-    ctx.documentText,
-    element.line,
-    explicitFormId,
-    element.column,
-  );
-  if (enclosingForm === null) {
-    return true;
-  }
+  const enclosingForm = resolveElementFormContext(element, ctx);
+  if (enclosingForm === null) return true;
 
-  const passwordInputs = getPasswordInputAttrList(enclosingForm.body);
-  const existingFieldCount = countExistingPasswordInputs(passwordInputs);
+  const existingFieldCount = countExistingPasswordInputs(
+    getPasswordInputAttrList(enclosingForm.body),
+  );
 
   // Authenticated change-password forms have 1 (or 2) old/current password fields alongside new/confirm;
   // preserve synthetic 4-existing-field disjointness test in password-credential.test.ts.
@@ -568,19 +451,15 @@ export function isExcludedFromSignUpForm(
   }
 
   const filePath = ctx.filePath;
-  const isSyntheticDisjointTest = existingFieldCount >= 4;
   if (
-    !isSyntheticDisjointTest &&
+    existingFieldCount < 4 &&
     (NON_SIGNUP_CHANGE_OR_PROFILE_PATH_REGEX.test(filePath) ||
       NON_SIGNUP_ADMIN_OR_SHOWCASE_PATH_REGEX.test(filePath))
   ) {
     return true;
   }
 
-  const name = element.getAttribute('name') ?? '';
-  const id = element.getAttribute('id') ?? '';
-  const placeholder = element.getAttribute('placeholder') ?? '';
-  if (/登录密码/.test(placeholder)) {
+  if (/登录密码/.test(element.getAttribute('placeholder') ?? '')) {
     return true;
   }
 
@@ -592,21 +471,16 @@ export function isExcludedFromSignUpForm(
   const formWords = tokenizeIdentifierWords(formAttrsWithoutClass);
   const formHasLoginOrBind =
     hasExplicitSignInWordSequence(formWords) || formWords.includes('dobind');
+  if (!formHasLoginOrBind) return false;
+
   const formHasSignUp = formWords.some(
     (w) => w === 'signup' || w === 'register' || w === 'registration' || w === 'doregister',
   );
-  if (formHasLoginOrBind && !formHasSignUp) {
-    return true;
-  }
-  if (formHasLoginOrBind && formHasSignUp) {
-    const inputWords = tokenizeIdentifierWords(`${name} ${id}`);
-    const inputIsExplicitlyNew = inputWords.some((w) => NEW_PASSWORD_WORDS.has(w));
-    if (!inputIsExplicitlyNew) {
-      return true;
-    }
-  }
+  if (!formHasSignUp) return true;
 
-  return false;
+  const name = element.getAttribute('name') ?? '';
+  const id = element.getAttribute('id') ?? '';
+  return !tokenizeIdentifierWords(`${name} ${id}`).some((w) => NEW_PASSWORD_WORDS.has(w));
 }
 
 export interface PasswordCredentialClassification {
@@ -623,11 +497,8 @@ export function classifyPasswordCredentialElement(
   element: DomElementView,
   ctx: DomMatcherContext,
 ): PasswordCredentialClassification | null {
-  if (isTestOrFixtureFilePath(ctx.filePath)) {
-    return null;
-  }
-
   if (
+    isTestOrFixtureFilePath(ctx.filePath) ||
     element.hasAttribute('disabled') ||
     element.hasAttribute('readonly') ||
     element.hasAttribute('hidden')
@@ -646,46 +517,32 @@ export function classifyPasswordCredentialElement(
     element.getAttribute('formControlName') ??
     element.getAttribute('data-bind') ??
     '';
-  const combinedIdentifiers =
-    `${name} ${id} ${placeholder} ${ariaLabel} ${modelBinding}`.toLowerCase();
-  if (NON_CREDENTIAL_SECRET_REGEX.test(combinedIdentifiers)) {
-    return null;
-  }
-
-  if (hasDynamicAutocompleteBinding(element)) {
-    return null;
-  }
-
-  const explicitFormId = element.hasAttribute('form')
-    ? (element.getAttribute('form') ?? '')
-    : undefined;
-  const enclosingForm = findEnclosingFormContext(
-    ctx.documentText,
-    element.line,
-    explicitFormId,
-    element.column,
-  );
-  if (enclosingForm === null) {
-    return null;
-  }
-
-  // Multi-section system/device configuration forms with >= 4 non-existing password fields
-  const formPasswordInputs = getPasswordInputAttrList(enclosingForm.body);
   if (
-    formPasswordInputs.length >= 4 &&
-    countExistingPasswordInputs(formPasswordInputs) === 0
+    NON_CREDENTIAL_SECRET_REGEX.test(
+      `${name} ${id} ${placeholder} ${ariaLabel} ${modelBinding}`.toLowerCase(),
+    ) ||
+    hasDynamicAutocompleteBinding(element)
   ) {
     return null;
   }
 
-  const autocompleteRaw =
-    element.getAttribute('autocomplete') ?? element.getAttribute('autoComplete') ?? '';
-  const autocompleteTokens = autocompleteRaw.trim()
-    ? autocompleteRaw.trim().toLowerCase().split(/\s+/)
-    : [];
+  const enclosingForm = resolveElementFormContext(element, ctx);
+  if (enclosingForm === null) return null;
+
+  // Multi-section system/device configuration forms with >= 4 non-existing password fields
+  const formPasswordInputs = getPasswordInputAttrList(enclosingForm.body);
+  if (formPasswordInputs.length >= 4 && countExistingPasswordInputs(formPasswordInputs) === 0) {
+    return null;
+  }
+
+  const autocompleteRaw = (
+    element.getAttribute('autocomplete') ??
+    element.getAttribute('autoComplete') ??
+    ''
+  ).trim();
 
   return {
     isNewCredential: isNewCredentialPasswordField(element, enclosingForm),
-    autocompleteTokens,
+    autocompleteTokens: autocompleteRaw ? autocompleteRaw.toLowerCase().split(/\s+/) : [],
   };
 }

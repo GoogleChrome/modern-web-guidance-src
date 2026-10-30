@@ -227,6 +227,11 @@ test('createJsCallMatcher, matchJsRule, and withVirtualSourceFile', async (t) =>
     assert.equal('sourceFile' in withoutProject, false);
 
     const callerProject = createInMemoryProject();
+    assert.notEqual(
+      callerProject,
+      createInMemoryProject(),
+      'createInMemoryProject creates independent project instances',
+    );
     const withProject = scanJsSource('sample.ts', 'legacyCall();', [matcher], callerProject);
     assert.equal(withProject.matches.length, 1);
     assert.equal(withProject.sourceFile?.wasForgotten(), false);
