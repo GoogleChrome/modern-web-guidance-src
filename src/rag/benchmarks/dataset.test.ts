@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -7,7 +8,10 @@ import { outDir } from "../../core/paths.ts";
 import { Agents } from "../../harness/config.ts";
 import { buildBm25Index } from "../bm25.ts";
 import {
+  DEFAULT_WILD_VERSION,
+  createQueryRecord,
   ensureWildDataset,
+  filterDatasetBySplit,
   loadPublicDataset,
   parseManifestJson,
   parseQrelsJsonl,
@@ -108,10 +112,114 @@ describe("dataset parsers and serializers", () => {
         /Invalid retrievedGuides.*expected array of non-empty strings/
       );
     });
+    await t.test("invalid split", () => {
+      assert.throws(
+        () => validateQueryRecord({ qid: "q1", query: "a", split: "other" }),
+        /Invalid split.*expected "dev" or "test"/
+      );
+    });
+    await t.test("valid split", () => {
+      const qDev = validateQueryRecord({ qid: "q1", query: "a", split: "dev" });
+      assert.strictEqual(qDev.split, "dev");
+      const qTest = validateQueryRecord({ qid: "q2", query: "b", split: "test" });
+      assert.strictEqual(qTest.split, "test");
+    });
   });
 });
 
-describe("checked-in public datasets (harness & oos)", () => {
+describe("checked-in public datasets (agent, harness & oos)", () => {
+  it("loads agent dataset with 1029 queries, matching qrels, manifest, and valid corpus expectedGuides", () => {
+    const agent = loadPublicDataset("agent");
+    assert.strictEqual(agent.queries.length, 1029);
+    assert.strictEqual(agent.qrels.size, 1029);
+    assert.ok(agent.manifest);
+    assert.strictEqual(agent.manifest.version, "v1");
+
+    const guidesJson: { id: string }[] = JSON.parse(
+      fs.readFileSync(path.join(outDir, "build/skills-cli/guides.json"), "utf8")
+    );
+    const validIds = new Set(guidesJson.map((g) => g.id));
+
+    const missingQrelQids = agent.queries.filter((q) => !agent.qrels.has(q.qid)).map((q) => q.qid);
+    assert.deepStrictEqual(missingQrelQids, []);
+
+    const orphanedExpectedGuides = agent.queries
+      .filter((q) => !q.expectedGuide || !validIds.has(q.expectedGuide))
+      .map((q) => q.qid);
+    assert.deepStrictEqual(orphanedExpectedGuides, []);
+
+    // Every query has valid split and non-empty alphanumeric content
+    for (const q of agent.queries) {
+      assert.ok(q.split === "dev" || q.split === "test", `Query ${q.qid} missing valid split`);
+      assert.ok(/[a-z0-9]/i.test(q.query), `Query ${q.qid} missing alphanumeric tokens`);
+    }
+
+    // Split filtering
+    const dev = filterDatasetBySplit(agent, "dev");
+    const test = filterDatasetBySplit(agent, "test");
+    assert.strictEqual(dev.queries.length, 515);
+    assert.strictEqual(test.queries.length, 514);
+    assert.strictEqual(dev.qrels.size, 515);
+    assert.strictEqual(test.qrels.size, 514);
+
+    // Connected components verify 0 guide overlap
+    const devGuides = new Set(dev.queries.map((q) => q.expectedGuide));
+    const testGuides = new Set(test.queries.map((q) => q.expectedGuide));
+    const overlap = [...devGuides].filter((g) => testGuides.has(g));
+    assert.deepStrictEqual(overlap, []);
+  });
+
+  it("throws fail-fast when agent manifest is missing, version mismatched, or SHA tampered", (t) => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-agent-manifest-test-"));
+    t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+    const qContent = serializeQueriesJsonl([{ qid: "aq0001", query: "popover", split: "dev", words: 1 }]);
+    const rContent = serializeQrelsJsonl([{ qid: "aq0001", query: "popover", scope: "in_domain", needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }]);
+
+    fs.writeFileSync(path.join(tmpDir, "agent-queries.jsonl"), qContent);
+    fs.writeFileSync(path.join(tmpDir, "agent-qrels.jsonl"), rContent);
+
+    // Missing manifest throws
+    assert.throws(() => loadPublicDataset("agent", tmpDir), /ENOENT.*agent-manifest\.json/);
+
+    // Version mismatch throws
+    fs.writeFileSync(path.join(tmpDir, "agent-manifest.json"), JSON.stringify({
+      version: "v2",
+      createdAt: "2026-10-13T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {
+        "agent-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+        "agent-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+      },
+    }));
+    assert.throws(() => loadPublicDataset("agent", tmpDir), /Manifest version mismatch.*expected "v1"/);
+
+    // Missing SHA throws
+    fs.writeFileSync(path.join(tmpDir, "agent-manifest.json"), JSON.stringify({
+      version: "v1",
+      createdAt: "2026-10-13T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {},
+    }));
+    assert.throws(() => loadPublicDataset("agent", tmpDir), /SHA-256 mismatch/);
+
+    // Tampered query file throws
+    fs.writeFileSync(path.join(tmpDir, "agent-manifest.json"), JSON.stringify({
+      version: "v1",
+      createdAt: "2026-10-13T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {
+        "agent-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+        "agent-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+      },
+    }));
+    fs.writeFileSync(path.join(tmpDir, "agent-queries.jsonl"), qContent + "\n");
+    assert.throws(() => loadPublicDataset("agent", tmpDir), /SHA-256 mismatch/);
+  });
+
   it("loads harness dataset with 160 queries, matching qrels, and valid corpus expectedGuides", () => {
     const harness = loadPublicDataset("harness");
     assert.strictEqual(harness.queries.length, 160);
@@ -186,6 +294,131 @@ describe("ensureWildDataset cache verification", () => {
     await assert.rejects(
       () => ensureWildDataset("v99", { cacheDir: tmpDir, allowDownload: false }),
       /SHA-256 mismatch/
+    );
+  });
+
+  it("throws on manifest version mismatch", async (t) => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-wild-test-manifest-"));
+    t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+    const vDir = path.join(tmpDir, "v99");
+    fs.mkdirSync(vDir, { recursive: true });
+    const qContent = serializeQueriesJsonl([{ qid: "w1", query: "popover api", words: 2 }]);
+    const rContent = serializeQrelsJsonl([{ qid: "w1", query: "popover api", scope: "in_domain", needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }]);
+    const manifest = {
+      version: "v98", // mismatch against requested v99
+      createdAt: "2026-10-13T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {
+        "wild-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+        "wild-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+      },
+    };
+    fs.writeFileSync(path.join(vDir, "wild-queries.jsonl"), qContent);
+    fs.writeFileSync(path.join(vDir, "wild-qrels.jsonl"), rContent);
+    fs.writeFileSync(path.join(vDir, "manifest.json"), JSON.stringify(manifest));
+    await assert.rejects(
+      () => ensureWildDataset("v99", { cacheDir: tmpDir, allowDownload: false }),
+      /Manifest version mismatch.*expected "v99", got "v98"/
+    );
+  });
+
+  it("rejects wild-v2 records missing split at load time", async (t) => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-wild-test-v2-nosplit-"));
+    t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+    const vDir = path.join(tmpDir, "v2");
+    fs.mkdirSync(vDir, { recursive: true });
+    const qContent = serializeQueriesJsonl([{ qid: "w0001", query: "popover api", words: 2 }]); // lacks split!
+    const rContent = serializeQrelsJsonl([{ qid: "w0001", query: "popover api", scope: "in_domain", needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }]);
+    const manifest = {
+      version: "v2",
+      createdAt: "2026-10-26T00:00:00Z",
+      judgeModel: "gemini-3.8-flash",
+      rubricVersion: "v1",
+      files: {
+        "wild-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+        "wild-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+      },
+    };
+    fs.writeFileSync(path.join(vDir, "wild-queries.jsonl"), qContent);
+    fs.writeFileSync(path.join(vDir, "wild-qrels.jsonl"), rContent);
+    fs.writeFileSync(path.join(vDir, "manifest.json"), JSON.stringify(manifest));
+    await assert.rejects(
+      () => ensureWildDataset("v2", { cacheDir: tmpDir, allowDownload: false }),
+      /Invalid wild-v2 query record.*missing or invalid split/
+    );
+  });
+
+  it("exports DEFAULT_WILD_VERSION as v2 and filters datasets by split", () => {
+    assert.strictEqual(DEFAULT_WILD_VERSION, "v2");
+    const mockDataset = {
+      name: "wild-v2",
+      queries: [
+        createQueryRecord({ qid: "w1", query: "popover", split: "dev" }),
+        createQueryRecord({ qid: "w2", query: "dialog", split: "test" }),
+      ],
+      qrels: new Map([
+        ["w1", { qid: "w1", query: "popover", scope: "in_domain" as const, needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }],
+        ["w2", { qid: "w2", query: "dialog", scope: "in_domain" as const, needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }],
+      ]),
+    };
+    const devSplit = filterDatasetBySplit(mockDataset, "dev");
+    assert.strictEqual(devSplit.name, "wild-v2-dev");
+    assert.strictEqual(devSplit.queries.length, 1);
+    assert.strictEqual(devSplit.queries[0].qid, "w1");
+    assert.strictEqual(devSplit.qrels.size, 1);
+    assert.strictEqual(devSplit.qrels.has("w1"), true);
+
+    const testSplit = filterDatasetBySplit(mockDataset, "test");
+    assert.strictEqual(testSplit.name, "wild-v2-test");
+    assert.strictEqual(testSplit.queries.length, 1);
+    assert.strictEqual(testSplit.queries[0].qid, "w2");
+    assert.strictEqual(testSplit.qrels.size, 1);
+    assert.strictEqual(testSplit.qrels.has("w2"), true);
+
+    // Rejects invalid split arguments (including empty string)
+    assert.throws(
+      () => filterDatasetBySplit(mockDataset, "" as any),
+      /Invalid split "": expected "dev" or "test"/
+    );
+    assert.throws(
+      () => filterDatasetBySplit(mockDataset, "devv" as any),
+      /Invalid split "devv": expected "dev" or "test"/
+    );
+
+    // Rejects split filtering when records lack a valid split (e.g. wild-v1)
+    const mockV1Dataset = {
+      name: "wild-v1",
+      queries: [createQueryRecord({ qid: "w0000", query: "popover" })],
+      qrels: new Map([
+        ["w0000", { qid: "w0000", query: "popover", scope: "in_domain" as const, needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }],
+      ]),
+    };
+    assert.throws(
+      () => filterDatasetBySplit(mockV1Dataset, "dev"),
+      /Dataset "wild-v1" query "w0000" does not have a valid split.*does not support split filtering/
+    );
+  });
+});
+
+describe("bench-rag CLI validation", () => {
+  const benchScript = path.join(import.meta.dirname, "bench-rag.ts");
+
+  it("eagerly rejects invalid --split values even under --public-only", () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [benchScript, "--public-only", "--split", "devv"], { encoding: "utf8", stdio: "pipe" }),
+      /Invalid --split "devv"/
+    );
+    assert.throws(
+      () => execFileSync(process.execPath, [benchScript, "--public-only", "--split", ""], { encoding: "utf8", stdio: "pipe" }),
+      /Invalid --split ""/
+    );
+  });
+
+  it("eagerly rejects invalid --wild-version values", () => {
+    assert.throws(
+      () => execFileSync(process.execPath, [benchScript, "--public-only", "--wild-version", ""], { encoding: "utf8", stdio: "pipe" }),
+      /Invalid --wild-version ""/
     );
   });
 });
@@ -398,6 +631,13 @@ describe("pooling and mining helpers", () => {
     assert.strictEqual(comp.wins, 1);
     assert.strictEqual(comp.losses, 0);
     assert.strictEqual(comp.oosNewlyRejected.length, 1);
+
+    // Guide-cluster bootstrap: resamples by guide cluster for agent dataset
+    const agentBaseSummary = { ...baseSummary, dataset: "agent" };
+    const agentHeadSummary = { ...headSummary, dataset: "agent" };
+    const agentComp = compareDatasetSummaries(agentBaseSummary, agentHeadSummary);
+    assert.strictEqual(typeof agentComp.ndcg5Delta.ciLow, "number");
+    assert.ok(agentComp.ndcg5Delta.ciLow <= agentComp.ndcg5Delta.ciHigh);
 
     const boot = pairedBootstrapDelta([0.1, 0.2, 0.1, 0.2], [0.8, 0.9, 0.8, 0.9]);
     assert.strictEqual(boot.significant, true);
