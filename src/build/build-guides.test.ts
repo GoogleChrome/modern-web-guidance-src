@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { chunkMarkdown, generateGuidesIndex, generateGuidesTocYaml, type DevsiteGuideMetadata } from './build-guides.ts';
+import { chunkMarkdown, formatChunkHeader, generateGuidesIndex, generateGuidesTocYaml, type DevsiteGuideMetadata } from './build-guides.ts';
 
 describe('chunkMarkdown', () => {
   it('chunks simple markdown by headings', () => {
@@ -120,5 +120,52 @@ describe('generateGuidesTocYaml', () => {
     assert.ok(yaml.includes('- heading: CSS'));
     assert.ok(yaml.includes('- title: "CSS Nesting: Best practices"'));
     assert.ok(yaml.includes('  path: /docs/modern-web-guidance/guides/css/css-nesting'));
+  });
+});
+
+describe('formatChunkHeader', () => {
+  it('omits Features line when featureIds is empty', () => {
+    const header = formatChunkHeader('Apply WebGL shaders', 'apply-webgl-shaders', 'visual-design', []);
+    assert.strictEqual(header, 'Apply WebGL shaders\napply-webgl-shaders (visual-design)');
+  });
+
+  it('does not duplicate single-word IDs when display name differs', () => {
+    const header = formatChunkHeader('Accordion', 'accordion', 'ui-components', ['details', 'where']);
+    assert.strictEqual(
+      header,
+      'Accordion\naccordion (ui-components)\nFeatures: <details> (details), :where() (where)'
+    );
+  });
+
+  it('emits unslugged subwords for hyphenated IDs whose display name equals the ID', () => {
+    const header = formatChunkHeader('Auto-growing textarea', 'auto-growing-textarea', 'forms', ['field-sizing']);
+    assert.strictEqual(
+      header,
+      'Auto-growing textarea\nauto-growing-textarea (forms)\nFeatures: field-sizing (field sizing)'
+    );
+  });
+
+  it('deduplicates unslugged ID when display name already matches case-insensitively', () => {
+    const header = formatChunkHeader('Page transitions', 'page-transitions', 'animations', ['view-transitions']);
+    assert.strictEqual(
+      header,
+      'Page transitions\npage-transitions (animations)\nFeatures: View transitions (view-transitions)'
+    );
+  });
+
+  it('includes both hyphenated and unslugged IDs when display name differs from both', () => {
+    const header = formatChunkHeader('Exclusive accordion', 'exclusive-accordion', 'ui-components', ['details-name']);
+    assert.strictEqual(
+      header,
+      'Exclusive accordion\nexclusive-accordion (ui-components)\nFeatures: Mutually exclusive <details> elements (details-name, details name)'
+    );
+  });
+
+  it('strips tmp- prefix so tmp does not leak into chunk metadata', () => {
+    const header = formatChunkHeader('Email verification', 'email-verification', 'forms', ['tmp-email-verification']);
+    assert.strictEqual(
+      header,
+      'Email verification\nemail-verification (forms)\nFeatures: email-verification (email verification)'
+    );
   });
 });

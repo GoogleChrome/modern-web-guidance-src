@@ -508,6 +508,26 @@ function requireTitle(title: unknown, filePath: string): string {
   return title.trim();
 }
 
+export function formatChunkHeader(
+  title: string,
+  id: string,
+  category: string,
+  featureIds: string[],
+): string {
+  const featureList = featureIds.map((rawFid) => {
+    const name = getFeatureName(rawFid);
+    const fid = rawFid.replace(/^tmp-/, "");
+    const unsluggedFid = fid.replace(/-/g, " ");
+    const nameLower = name.toLowerCase();
+    const aliases = [fid, unsluggedFid].filter(
+      (v, i, arr) => v.toLowerCase() !== nameLower && arr.indexOf(v) === i
+    );
+    return aliases.length > 0 ? `${name} (${aliases.join(", ")})` : name;
+  });
+  const featuresLine = featureList.length > 0 ? `Features: ${featureList.join(", ")}\n` : "";
+  return `${title}\n${id} (${category})\n${featuresLine}`.trimEnd();
+}
+
 async function processSingleGuideFile(
   filePath: string,
   category: string,
@@ -645,16 +665,7 @@ async function processSingleGuideFile(
     ? [`${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`]
     : [...chunkMarkdown(processedMarkdown), summaryChunk];
 
-  const featureList = featureIds.map((fid) => {
-    const name = getFeatureName(fid);
-    const unsluggedFid = fid.replace(/-/g, " ");
-    const nameLower = name.toLowerCase();
-    if (nameLower === fid.toLowerCase()) return name;
-    const fidPart = nameLower === unsluggedFid.toLowerCase() ? fid : `${fid}, ${unsluggedFid}`;
-    return `${name} (${fidPart})`;
-  });
-  const featuresLine = featureList.length > 0 ? `Features: ${featureList.join(", ")}\n` : "";
-  const header = `${title}\n${id} (${category})\n${featuresLine}`.trimEnd();
+  const header = formatChunkHeader(title, id, category, featureIds);
 
   for (const chunk of chunks) {
     const embeddingText = `${header}\n\n${chunk}`;
