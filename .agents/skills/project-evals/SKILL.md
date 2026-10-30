@@ -75,7 +75,7 @@ Unlike single-file `demo.html` checks, target app tasks (`daily-grind`, `devtool
   - **Never use regex** on HTML, CSS, or JS/TS source strings to verify syntax.
 - **Runtime behavior → Browser**: Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright:
   - Browser tests locate elements through base-app markup, hooks that `task.md` names, or platform semantics (element types, ARIA roles, standard attributes).
-  - **Never** use invented routes, intercepted REST payloads, or IDs or classes that exist only in the 3 golden solution patches.
+  - **Never** use invented routes, custom REST API endpoints/payloads, or IDs or classes that exist only in the 3 golden solution patches.
 
 ### 2. Anti-Overfitting to Golden Solution Patches
 The 3 golden solution patches (`claude`, `codex`, `jetski`) are generated from `task.md` + `guide.md` (without seeing `expectations.md`) and are **locked** during calibration. They represent valid implementations, **not** an exhaustive specification.
