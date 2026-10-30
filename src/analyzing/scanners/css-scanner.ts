@@ -113,6 +113,10 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
   return results;
 }
 
+export function normalizeCssDeclValue(raw: string | null | undefined): string {
+  return raw?.replace(/\s*!important\s*$/i, '').trim().toLowerCase() ?? '';
+}
+
 export function scanCss(
   filePath: string,
   cssContent: string,

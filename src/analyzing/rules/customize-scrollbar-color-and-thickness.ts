@@ -1,3 +1,4 @@
+import { normalizeCssDeclValue } from '../scanners/css-scanner.ts';
 import type {
   AnalyzerRule,
   CssMatcherContext,
@@ -45,37 +46,29 @@ const INSET_PADDING_CLIP_REGEX = /^(?:padding-box|content-box)$/i;
 const GRADIENT_VALUE_REGEX =
   /(?:(?:-webkit-|-moz-|-o-)?(?:repeating-)?(?:linear|radial|conic)-gradient|-webkit-gradient)\s*\(/i;
 
-function normalizeCssValue(raw: string | null | undefined): string {
-  return raw?.replace(/\s*!important\s*$/i, '').trim().toLowerCase() ?? '';
-}
+const MAX_SCROLLBAR_THICKNESS_PX = 15;
 
 function isZeroDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
-  const val = normalizeCssValue(styleRule.getPropertyValue(prop));
+  const val = normalizeCssDeclValue(styleRule.getPropertyValue(prop));
   return Boolean(val && ZERO_DIMENSION_REGEX.test(val));
 }
 
 function hasAnyNonZeroDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
-  const val = normalizeCssValue(styleRule.getPropertyValue(prop));
-  if (!val || RESET_DIMENSIONS.has(val) || ZERO_DIMENSION_REGEX.test(val)) {
-    return false;
-  }
-  return true;
+  const val = normalizeCssDeclValue(styleRule.getPropertyValue(prop));
+  return Boolean(val && !RESET_DIMENSIONS.has(val) && !ZERO_DIMENSION_REGEX.test(val));
 }
 
 function hasCustomThicknessDimension(styleRule: CssRuleView, prop: 'width' | 'height'): boolean {
   if (!hasAnyNonZeroDimension(styleRule, prop)) {
     return false;
   }
-  const val = normalizeCssValue(styleRule.getPropertyValue(prop));
+  const val = normalizeCssDeclValue(styleRule.getPropertyValue(prop));
   const pxMatch = val.match(/^(\d+(?:\.\d+)?)px$/);
-  if (pxMatch && Number(pxMatch[1]) > 15) {
-    return false;
-  }
-  return true;
+  return !pxMatch || Number(pxMatch[1]) <= MAX_SCROLLBAR_THICKNESS_PX;
 }
 
 function isValidColorString(raw: string | null | undefined): boolean {
-  const val = normalizeCssValue(raw);
+  const val = normalizeCssDeclValue(raw);
   if (!val) {
     return false;
   }
@@ -93,18 +86,18 @@ function hasValidColor(
 }
 
 function ruleHasInsetPaddingClip(styleRule: CssRuleView): boolean {
-  const bgClip = normalizeCssValue(styleRule.getPropertyValue('background-clip'));
-  const webkitBgClip = normalizeCssValue(styleRule.getPropertyValue('-webkit-background-clip'));
+  const bgClip = normalizeCssDeclValue(styleRule.getPropertyValue('background-clip'));
+  const webkitBgClip = normalizeCssDeclValue(styleRule.getPropertyValue('-webkit-background-clip'));
   return INSET_PADDING_CLIP_REGEX.test(bgClip) || INSET_PADDING_CLIP_REGEX.test(webkitBgClip);
 }
 
 function ruleHasBespokeShadowOrAppearance(styleRule: CssRuleView): boolean {
-  const oShadow = normalizeCssValue(styleRule.getPropertyValue('-o-box-shadow'));
+  const oShadow = normalizeCssDeclValue(styleRule.getPropertyValue('-o-box-shadow'));
   if (oShadow && oShadow !== 'none') {
     return true;
   }
   for (const prop of ['box-shadow', '-webkit-box-shadow'] as const) {
-    const val = normalizeCssValue(styleRule.getPropertyValue(prop));
+    const val = normalizeCssDeclValue(styleRule.getPropertyValue(prop));
     if (!val || val === 'none' || RESET_DIMENSIONS.has(val)) {
       continue;
     }
@@ -117,14 +110,14 @@ function ruleHasBespokeShadowOrAppearance(styleRule: CssRuleView): boolean {
 }
 
 function ruleIsVisibleScrollbarButton(styleRule: CssRuleView): boolean {
-  const displayVal = normalizeCssValue(styleRule.getPropertyValue('display'));
+  const displayVal = normalizeCssDeclValue(styleRule.getPropertyValue('display'));
   if (displayVal === 'none') {
     return false;
   }
   if (isZeroDimension(styleRule, 'width') || isZeroDimension(styleRule, 'height')) {
     return false;
   }
-  const borderRadius = normalizeCssValue(styleRule.getPropertyValue('border-radius'));
+  const borderRadius = normalizeCssDeclValue(styleRule.getPropertyValue('border-radius'));
   const hasBorderRadius =
     Boolean(borderRadius) &&
     borderRadius !== '0' &&
@@ -202,52 +195,44 @@ function prefixHasBespokeScrollbarParts(
   return false;
 }
 
-function stylesheetHasValidColoredThumb(
+function getBaseThumbRules(
   styleRule: CssRuleView,
   ctx: CssMatcherContext,
-): boolean {
+): CssRuleView[] {
   const targetPrefix = extractScrollbarSelectorPrefix(styleRule.selectorText);
-  const allRules = ctx.styleRules ?? [];
-  const thumbRules = allRules.filter(
+  return (ctx.styleRules ?? []).filter(
     (r) =>
       WEBKIT_THUMB_REGEX.test(r.selectorText) &&
+      !WEBKIT_THUMB_STATE_REGEX.test(r.selectorText) &&
       areScrollbarPrefixesCompatible(
         targetPrefix,
         extractScrollbarSelectorPrefix(r.selectorText),
       ),
   );
-  const baseThumbRules = thumbRules.filter(
-    (r) => !WEBKIT_THUMB_STATE_REGEX.test(r.selectorText),
-  );
+}
+
+function stylesheetHasValidColoredThumb(
+  styleRule: CssRuleView,
+  ctx: CssMatcherContext,
+): boolean {
+  const baseThumbRules = getBaseThumbRules(styleRule, ctx);
   if (baseThumbRules.length > 0) {
     return baseThumbRules.some(ruleHasValidThumbColor);
   }
-  if (thumbRules.some((r) => !WEBKIT_THUMB_STATE_REGEX.test(r.selectorText) && ruleHasValidThumbColor(r))) {
-    return true;
-  }
 
   // Fallback for ::-webkit-scrollbar-thumb:vertical / :horizontal blocks skipped by cssomnom
+  const targetPrefix = extractScrollbarSelectorPrefix(styleRule.selectorText);
   const thumbBlockRe = /([^{};]*?)::-webkit-scrollbar-thumb([^{]*)\{([^}]*)\}/gi;
-  let blockMatch: RegExpExecArray | null = thumbBlockRe.exec(ctx.stylesheetText);
-  while (blockMatch !== null) {
-    const rawPrefix = (blockMatch[1] ?? '').trim();
-    const stateSuffix = (blockMatch[2] ?? '').trim();
-    const body = blockMatch[3] ?? '';
+  const bgRe = /(?:^|[;\s])background(?:-color)?\s*:\s*([^;}]+)/gi;
+  for (const [, rawPrefix = '', stateSuffix = '', body = ''] of ctx.stylesheetText.matchAll(thumbBlockRe)) {
     if (
       !/:(?:hover|active|focus|window-inactive)\b/i.test(stateSuffix) &&
       !/background-clip\s*:\s*(?:padding-box|content-box)/i.test(body) &&
-      areScrollbarPrefixesCompatible(targetPrefix, rawPrefix)
+      areScrollbarPrefixesCompatible(targetPrefix, rawPrefix.trim()) &&
+      Array.from(body.matchAll(bgRe), (m) => m[1]).some(isValidColorString)
     ) {
-      const bgRe = /(?:^|[;\s])background(?:-color)?\s*:\s*([^;}]+)/gi;
-      let bgMatch: RegExpExecArray | null = bgRe.exec(body);
-      while (bgMatch !== null) {
-        if (isValidColorString(bgMatch[1])) {
-          return true;
-        }
-        bgMatch = bgRe.exec(body);
-      }
+      return true;
     }
-    blockMatch = thumbBlockRe.exec(ctx.stylesheetText);
   }
 
   return false;
@@ -299,23 +284,14 @@ const customizeScrollbarColorAndThicknessCssMatcher: CssRuleMatcher = {
         return null;
       }
       // For :hover thumb rules, require a base ::-webkit-scrollbar-thumb rule with a valid solid color
-      if (WEBKIT_THUMB_STATE_REGEX.test(styleRule.selectorText)) {
-        const targetPrefix = extractScrollbarSelectorPrefix(styleRule.selectorText);
-        const baseThumbRules = (ctx.styleRules ?? []).filter(
-          (r) =>
-            WEBKIT_THUMB_REGEX.test(r.selectorText) &&
-            !WEBKIT_THUMB_STATE_REGEX.test(r.selectorText) &&
-            areScrollbarPrefixesCompatible(
-              targetPrefix,
-              extractScrollbarSelectorPrefix(r.selectorText),
-            ),
-        );
-        if (!baseThumbRules.some(ruleHasValidThumbColor)) {
-          return null;
-        }
+      if (
+        WEBKIT_THUMB_STATE_REGEX.test(styleRule.selectorText) &&
+        !getBaseThumbRules(styleRule, ctx).some(ruleHasValidThumbColor)
+      ) {
+        return null;
       }
     } else if (isScrollbar) {
-      const displayValue = normalizeCssValue(styleRule.getPropertyValue('display'));
+      const displayValue = normalizeCssDeclValue(styleRule.getPropertyValue('display'));
       const hasCustomThickness =
         hasCustomThicknessDimension(styleRule, 'width') ||
         hasCustomThicknessDimension(styleRule, 'height');

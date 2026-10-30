@@ -26,7 +26,11 @@ import {
   sliceStructuredBlock,
   sliceStructuredContext,
 } from './context-slicer.ts';
-import { scanCss, scanCssRules } from './css-scanner.ts';
+import {
+  normalizeCssDeclValue,
+  scanCss,
+  scanCssRules,
+} from './css-scanner.ts';
 import { scanPackageJson } from './dependency-scanner.ts';
 import { scanHtml, scanJsx, tokenizeHtmlTags } from './dom-scanner.ts';
 import {
@@ -1112,6 +1116,14 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
     assert.equal(results[0]?.match.message, 'has-color');
     assert.equal(results[1]?.rule.id, 'rule-2');
     assert.equal(results[1]?.match.message, 'has-max-height');
+  });
+
+  await t.test('normalizeCssDeclValue strips !important, trims, lowercases, and handles nullish inputs', () => {
+    assert.equal(normalizeCssDeclValue('  NONE !important '), 'none');
+    assert.equal(normalizeCssDeclValue('RGBA(0, 0, 0, 0) !IMPORTANT'), 'rgba(0, 0, 0, 0)');
+    assert.equal(normalizeCssDeclValue('  12px  '), '12px');
+    assert.equal(normalizeCssDeclValue(null), '');
+    assert.equal(normalizeCssDeclValue(undefined), '');
   });
 });
 
