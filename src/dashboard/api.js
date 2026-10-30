@@ -1,16 +1,10 @@
-import { authenticatedFetch, parseResultKey, isLocalDashboardHost } from './utils.js';
-import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
+import { authenticatedFetch, parseResultKey } from './utils.js';
 
 /**
  * @typedef {'local' | 'remote' | 'static'} DataSource
  */
 
-/** @type {Map<string, Promise<{ suites: import('./insights.js').ManifestSuite[] }>>} */
-const manifestCache = new Map();
-/** @type {Set<string>} */
-const failedHydrationIds = new Set();
 export class ApiClient {
-    static clearCache() { manifestCache.clear(); failedHydrationIds.clear(); }
     constructor() {
         const params = new URLSearchParams(window.location.search);
         const sourceParam = params.get('source');
@@ -18,7 +12,7 @@ export class ApiClient {
         let source;
         if (sourceParam === 'remote' || sourceParam === 'local' || sourceParam === 'static') {
             source = sourceParam;
-        } else if (!isLocalDashboardHost()) {
+        } else if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
             source = 'remote';
         } else {
             source = 'local';
@@ -138,76 +132,6 @@ export class ApiClient {
         }
     }
 
-    /** @returns {Promise<{ suites: import('./insights.js').ManifestSuite[] }>} */
-    async getManifest() {
-        const cached = manifestCache.get(this.source);
-        if (cached) return cached;
-        const promise = (async () => {
-            const bust = `t=${Date.now()}`;
-            if (this.source === 'local') {
-                const res = await fetch(`api/suites?${bust}`);
-                if (!res.ok) throw new Error('Failed to load local suites');
-                const data = await res.json();
-                return { suites: Array.isArray(data) ? data : (data.suites || []) };
-            }
-            const url = this.source === 'remote'
-                ? `${this.gcsPrefix}suites.gen.json?alt=media&${bust}`
-                : `suites.gen.json?${bust}`;
-            const res = this.source === 'remote' ? await authenticatedFetch(url) : await fetch(url);
-            if (!res.ok) throw new Error(`Failed to load suites.gen.json (${res.status})`);
-            const suites = await res.json();
-            return { suites: Array.isArray(suites) ? suites : (suites.suites || []) };
-        })();
-        manifestCache.set(this.source, promise);
-        promise.catch(() => manifestCache.delete(this.source));
-        return promise;
-    }
-    /** @param {{ perAgentRecentN?: number, onUpdate?: (insights: import('./insights.js').HeadlineInsights) => void }} [options]
- * @returns {Promise<import('./insights.js').HeadlineInsights>} */
-    async getHeadlineInsights(options = {}) {
-        const { perAgentRecentN = 1, onUpdate } = options;
-        const insightOptions = { perAgentRecentN };
-        const { suites = [] } = await this.getManifest();
-        const insights = computeHeadlineInsights(suites, insightOptions);
-        const pendingMissing = insights.missingStats.filter(id => !failedHydrationIds.has(`${this.source}:${id}`));
-        if (pendingMissing.length > 0) {
-            const hydrate = hydrateMissingStats(
-                suites,
-                async (id) => {
-                    if (failedHydrationIds.has(`${this.source}:${id}`)) {
-                        throw new Error(`Skipping previously failed hydration for ${id}`);
-                    }
-                    try { return await this.getEvals(id); } catch (err) {
-                        failedHydrationIds.add(`${this.source}:${id}`);
-                        throw err;
-                    }
-                },
-                insightOptions
-            )
-                .then(() => {
-                    for (const id of pendingMissing) {
-                        const suite = suites.find(s => s.testId === id);
-                        if (!suite || !suite.a11yStats) {
-                            failedHydrationIds.add(`${this.source}:${id}`);
-                        }
-                    }
-                    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
-                        window.dispatchEvent(new CustomEvent('mwg:manifest-hydrated', { detail: { source: this.source, suites } }));
-                    }
-                    const updated = computeHeadlineInsights(suites, insightOptions);
-                    if (onUpdate) onUpdate(updated);
-                    return updated;
-                })
-                .catch(err => {
-                    console.warn('Headline insights hydration failed:', err);
-                    const fallback = computeHeadlineInsights(suites, insightOptions);
-                    if (onUpdate) onUpdate(fallback);
-                    return fallback;
-                });
-            if (!onUpdate) return hydrate;
-        } else if (onUpdate && insights.missingStats.length > 0) { queueMicrotask(() => onUpdate(insights)); }
-        return insights;
-    }
     /** 
      * Fetches the evals.json payload for a specific root test ID.
      * @param {string} testId
@@ -461,7 +385,8 @@ export class ApiClient {
     getAbsoluteUrl(path) {
         if (this.source === 'remote') {
             let fixedPath = path.split('?')[0];
-            if (isLocalDashboardHost()) {
+            const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            if (isLocalServer) {
                 return `/gcs-proxy/${fixedPath}`;
             }
             return `${this.gcsPrefix}${encodeURIComponent(fixedPath)}?alt=media`;

@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, isLocalDashboardHost, getScrollBehavior, formatSuiteDate } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const backBtns = document.querySelectorAll('a[href="./"]');
         backBtns.forEach(btn => {
             if (btn instanceof HTMLAnchorElement) {
-                btn.href = `./?source=${encodeURIComponent(source)}`;
+                btn.href = `./?source=${source}`;
             }
         });
     }
@@ -195,21 +195,8 @@ async function loadDashboardData(testId) {
     dashboardLoaded = true;
 
     try {
-        let jetskiPromise = api.getJetskiInfo(testId).catch((/** @type {unknown} */ e) => { console.log('Could not load Jetski info:', e); return null; });
-        let data;
-        try { data = await api.getEvals(testId); } catch (err) {
-            if (api.source === 'local' && !new URLSearchParams(window.location.search).get('source')) {
-                api.source = 'remote';
-                initGoogleAuth(async () => { await loadDashboardData(testId); });
-                const gcsBtn = document.getElementById('view-gcs-artifacts-btn');
-                if (gcsBtn) {
-                    gcsBtn.hidden = false;
-                    gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${encodeURIComponent(testId)}?project=chrome-kiwi-air-force-dev`, '_blank');
-                }
-                jetskiPromise = api.getJetskiInfo(testId).catch(() => null);
-                data = await api.getEvals(testId);
-            } else { throw err; }
-        }
+        const jetskiPromise = api.getJetskiInfo(testId).catch((/** @type {unknown} */ e) => { console.log('Could not load Jetski info:', e); return null; });
+        const data = await api.getEvals(testId);
         if (!data) {
             endLoadingReservations();
             const main = document.getElementById('main-content');
@@ -1416,7 +1403,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const earlyFailureMsg = isEarlyFailure ? (run.results?.find(c => c.isEarlyFailure)?.message || 'Infrastructure Error') : '';
                  const buildFailureReason = !isEarlyFailure ? (run.results?.find(c => c.failureReason)?.failureReason || '') : '';
                  const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
-                 const isLocalServer = isLocalDashboardHost();
+                 const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                  const appUrl = (api.source === 'remote' && !isLocalServer)
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;

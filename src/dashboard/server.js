@@ -118,13 +118,6 @@ const MIME_TYPES = {
 let cachedGcsToken = null;
 let tokenExpiry = 0;
 
-/**
- * Per-suite summaries keyed by `<evals.json path>|<mtimeMs>|<size>`; entries are
- * naturally invalidated when a suite's evals.json changes on disk.
- * @type {Map<string, import('./summary-extractor.js').SuiteSummary | null>}
- */
-const suiteSummaryCache = new Map();
-
 async function getGcsAccessToken() {
   if (cachedGcsToken && Date.now() < tokenExpiry) {
     return cachedGcsToken;
@@ -273,22 +266,9 @@ const server = http.createServer(async (req, res) => {
           let timestamp = null;
           try {
             if (fs.existsSync(evalsJsonPath)) {
-              const stat = fs.statSync(evalsJsonPath);
-              timestamp = stat.mtime.toISOString();
-              // Re-extracting every evals.json (~30 MB across 25 nightly suites) on each request
-              // blocks the event loop for ~700 ms, so memoize by path + mtime + size.
-              const cacheKey = `${evalsJsonPath}|${stat.mtimeMs}|${stat.size}`;
-              let summary = suiteSummaryCache.get(cacheKey);
-              if (summary === undefined) {
-                for (const existingKey of suiteSummaryCache.keys()) {
-                  if (existingKey.startsWith(`${evalsJsonPath}|`)) {
-                    suiteSummaryCache.delete(existingKey);
-                  }
-                }
-                const rawData = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
-                summary = extractSuiteSummary(d, rawData, timestamp) || null;
-                suiteSummaryCache.set(cacheKey, summary);
-              }
+              timestamp = fs.statSync(evalsJsonPath).mtime.toISOString();
+              const rawData = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
+              const summary = extractSuiteSummary(d, rawData, timestamp);
               if (summary) {
                 suitesList.push({ ...summary, id: d, source: 'local' });
                 return;

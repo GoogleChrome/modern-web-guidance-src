@@ -1,11 +1,11 @@
 import {
     initGoogleAuth,
+    authenticatedFetch,
     getAccessToken,
     escapeHtml,
     timeAgo,
     formatDuration,
     formatTokens,
-    isLocalDashboardHost,
     getAgentBadge,
     getScrollBehavior,
     SERVING_DISPLAY_NAMES,
@@ -18,7 +18,8 @@ import {
     median,
 } from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
-import { ApiClient } from './api.js';
+import { extractSuiteSummary } from './summary-extractor.js';
+import { updateHeroFromSuites } from './hero.js';
 
 /**
  * @typedef {import('./insights.js').ManifestSuite & {
@@ -70,12 +71,11 @@ let currentGuideSort = 'alphabetic';
 let currentGuideSortDir = 'asc';
 /** @type {InsightsMode} */
 let currentInsightsMode = 'all';
-const api = new ApiClient();
 const servingDisplayNames = SERVING_DISPLAY_NAMES;
 const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
 function isRemoteDashboard() {
-    return !isLocalDashboardHost();
+    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
 }
 
 /** @param {string} testId */
@@ -90,46 +90,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupInsightsControls();
 
         const params = new URLSearchParams(window.location.search);
-        const reloadSuitesAfterAuth = async () => {
-            await loadSuites();
-            selectedTestIds = new Set(Object.keys(allTestData));
-            applyTestsParam(params.get('tests'));
-            renderFilterMenuItems();
-            renderSuites();
-            applyGuidesHash(window.location.hash, false);
-        };
-        window.addEventListener('mwg:auth-changed', (e) => {
-            const authenticated = Boolean(/** @type {CustomEvent<{ authenticated?: boolean }>} */ (e).detail?.authenticated);
-            if (!authenticated && api.source === 'remote') { setEmptyState('Sign in with Google to load evaluation runs.'); }
+
+        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
+        initGoogleAuth(async () => {
+            await loadRemoteTests();
         });
 
-        if (api.source === 'remote' && !getAccessToken()) {
-            setEmptyState('Sign in with Google to load evaluation runs.');
-            renderSuites();
-            initGoogleAuth(reloadSuitesAfterAuth);
-            return;
-        }
-        if (api.source === 'remote') {
-            initGoogleAuth(reloadSuitesAfterAuth);
+        await loadLocalTests();
+        if (getAccessToken()) {
+            await loadRemoteTests();
         }
 
-        await loadSuites();
-        if (api.source === 'local' && Object.keys(allTestData).length === 0) {
-            api.source = 'remote';
-            if (!getAccessToken()) {
-                setEmptyState('No local evaluation runs found. Sign in with Google to load remote runs.');
-                renderSuites();
-                initGoogleAuth(reloadSuitesAfterAuth);
-                return;
-            }
-            initGoogleAuth(reloadSuitesAfterAuth);
-            await loadSuites();
-        }
         selectedTestIds = new Set(Object.keys(allTestData));
         applyTestsParam(params.get('tests'));
 
         renderFilterMenuItems();
         renderSuites();
+        syncHero();
         applyGuidesHash(window.location.hash, true);
     } catch (error) {
         console.error('Error:', error);
@@ -138,19 +115,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-window.addEventListener('mwg:manifest-hydrated', (e) => {
-    const detail = /** @type {CustomEvent<{ source: import('./api.js').DataSource, suites: import('./insights.js').ManifestSuite[] }>} */ (e).detail;
-    if (!detail || !Array.isArray(detail.suites)) return;
-    for (const suite of detail.suites) {
-        if (suite && suite.testId && suite.guidedStats) {
-            registerSuiteSummary(suite, detail.source, { refreshFilters: false });
-        }
-    }
-    refreshFilterOptions();
-    renderSuites();
-    const drawer = document.getElementById('breakdowns');
-    if (drawer instanceof HTMLDetailsElement && drawer.open) { renderPivotInsights(); }
-});
 // Handle browser back/forward
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
@@ -515,20 +479,131 @@ function setEmptyState(message) {
     if (p && message) p.textContent = message;
 }
 
-async function loadSuites() {
+function syncHero() {
+    const suites = Object.values(allTestData);
+    updateHeroFromSuites(suites, {
+        fetchEvals: async (testId) => {
+            const match = suites.find(s => s.testId === testId);
+            if (match?.source === 'remote') {
+                const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testId}/evals.json`)}?alt=media&t=${Date.now()}`;
+                const res = await authenticatedFetch(url);
+                if (!res.ok) throw new Error(`Failed to fetch remote evals for ${testId}`);
+                return res.json();
+            }
+            const fetchPath = match?.source === 'static' ? `results/${testId}/evals.json` : `${testId}/evals.json?source=local`;
+            const res = await fetch(`${fetchPath}${fetchPath.includes('?') ? '&' : '?'}t=${Date.now()}`);
+            if (!res.ok) throw new Error(`Failed to fetch local evals for ${testId}`);
+            return res.json();
+        },
+        onHydrated: () => {
+            refreshFilterOptions();
+            renderSuites();
+            const drawer = document.getElementById('breakdowns');
+            if (drawer instanceof HTMLDetailsElement && drawer.open) { renderPivotInsights(); }
+        }
+    });
+}
+
+async function loadLocalTests() {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return; // Avoid 404s by skipping local network fetches when hosted on GitHub Pages
+    }
+
     try {
-        const { suites } = await api.getManifest();
-        const list = Array.isArray(suites) ? suites : [];
-        for (const suite of list) {
-            if (suite && suite.testId && suite.guidedStats) {
-                registerSuiteSummary(suite, api.source, { refreshFilters: false });
+        let response = await fetch(`/api/suites?t=${Date.now()}`);
+        let manifest;
+        let useResultsPrefix = false;
+
+        if (!response.ok) {
+            // Try fetching suites.gen.json as fallback for static mode
+            const staticRes = await fetch(`/suites.gen.json?t=${Date.now()}`);
+            if (!staticRes.ok) return; // Silent fail if both fail
+            const suitesData = await staticRes.json();
+            if (Array.isArray(suitesData)) {
+                manifest = { suites: suitesData };
+            } else {
+                manifest = suitesData;
+            }
+            useResultsPrefix = true;
+        } else {
+            manifest = await response.json();
+        }
+
+        if (manifest.suites && manifest.suites.length > 0) {
+            setEmptyState(null);
+        }
+
+        // Load local test data
+        const sourceName = useResultsPrefix ? 'static' : 'local';
+        for (const suite of manifest.suites) {
+            if (typeof suite === 'object' && suite.testId && suite.guidedStats) {
+                registerSuiteSummary(suite, sourceName, { refreshFilters: false });
+            } else {
+                const testId = typeof suite === 'string' ? suite : suite.id || suite.testId;
+                const suiteTimestamp = typeof suite === 'object' ? suite.timestamp : undefined;
+                if (!testId) continue;
+                try {
+                    const fetchPath = useResultsPrefix ? `results/${testId}/evals.json` : `${testId}/evals.json`;
+                    const response = await fetch(`${fetchPath}?source=${sourceName}&t=${Date.now()}`);
+                    if (response.ok) {
+                        const parsed = await response.json();
+                        registerTestData(testId, sourceName, parsed, suiteTimestamp);
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load local test ${testId}:`, e);
+                }
             }
         }
         refreshFilterOptions();
-        setEmptyState(list.length > 0 ? null : 'No test runs found yet. Run the test suite to get started.');
+    } catch {
+        console.warn('Local proxy not available');
+    }
+}
+
+async function loadRemoteTests() {
+    try {
+        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
+        const response = await authenticatedFetch(fileUrl);
+        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
+
+        const manifest = await response.json();
+        if (Array.isArray(manifest) && manifest.length > 0) {
+            setEmptyState(null);
+            for (const item of manifest) {
+                if (item && item.testId) {
+                    registerSuiteSummary(item, 'remote', { refreshFilters: false });
+                }
+            }
+            refreshFilterOptions();
+        }
+
+        // Re-render UI now that we have remote data
+        const params = new URLSearchParams(window.location.search);
+        let initialTests = params.get('tests');
+        if (!initialTests || initialTests.trim() === '') {
+            selectedTestIds = new Set(Object.keys(allTestData));
+        } else {
+            applyTestsParam(initialTests);
+        }
+        renderFilterMenuItems();
+        renderSuites();
+        syncHero();
+
     } catch (error) {
-        console.error('Error loading suites manifest:', error);
-        setEmptyState('Could not load evaluation runs.');
+        console.error('Error loading remote suites:', error);
+    }
+}
+
+/**
+ * @param {string} testId
+ * @param {import('./api.js').DataSource} source
+ * @param {import('../harness/lib/metrics.ts').EvalsReport} parsed
+ * @param {string} [forcedTimestamp]
+ */
+function registerTestData(testId, source, parsed, forcedTimestamp) {
+    const summary = extractSuiteSummary(testId, parsed, forcedTimestamp);
+    if (summary) {
+        registerSuiteSummary(summary, source);
     }
 }
 

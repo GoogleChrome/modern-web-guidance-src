@@ -13,6 +13,7 @@
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     .guide-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; }
     .guide-header h1 { margin: 0; font-size: clamp(1.5rem, 1rem + 2vw, 2.5rem); overflow-wrap: anywhere; text-wrap: balance; }
@@ -131,7 +132,7 @@
       <div class="guide-header-actions">
         <a href="demos/" class="secondary-btn">Browse Demos</a>
         <a href="./" class="secondary-btn">← Back to results</a>
-        <button id="auth-btn" class="secondary-btn" type="button" hidden>
+        <button id="auth-btn" class="secondary-btn" type="button" style="display: none;">
           Sign in with Google
         </button>
       </div>

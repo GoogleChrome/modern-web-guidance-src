@@ -126,8 +126,6 @@ export function isPopoverOpen(el) {
 /** @param {HTMLElement} el
  * @param {boolean} open */
 export function setPopoverOpen(el, open) { if (isPopoverOpen(el) === open || typeof el.showPopover !== 'function') return; if (open) el.showPopover(); else el.hidePopover(); }
-/** @param {string} [hostname] */
-export function isLocalDashboardHost(hostname = (typeof window !== 'undefined' ? window.location.hostname : '')) { return hostname === 'localhost' || hostname === '127.0.0.1'; }
 /** @returns {ScrollBehavior} */
 export function getScrollBehavior() {
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { return 'auto'; }
@@ -545,27 +543,10 @@ export function getAccessToken() {
     return accessToken;
 }
 
-/** @type {Set<() => void>} */
-const authSuccessCallbacks = new Set();
-let authInitialized = false;
 /**
  * @param {(() => void) | undefined} [onAuthSuccess]
  */
 export function initGoogleAuth(onAuthSuccess) {
-    if (onAuthSuccess) authSuccessCallbacks.add(onAuthSuccess);
-    if (typeof document !== 'undefined' && !window.google?.accounts && !document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
-        const script = document.createElement('script');
-        script.src = 'https://accounts.google.com/gsi/client';
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
-    }
-    if (authInitialized) {
-        const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
-        if (authBtn) authBtn.hidden = Boolean(accessToken);
-        return;
-    }
-    authInitialized = true;
     const init = () => {
         if (!window.google || !window.google.accounts) {
             // Wait for script to load
@@ -575,7 +556,10 @@ export function initGoogleAuth(onAuthSuccess) {
 
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
-            authBtn.hidden = Boolean(accessToken);
+            authBtn.style.display = 'block';
+            if (accessToken) {
+                authBtn.style.display = 'none';
+            }
         }
 
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -590,14 +574,9 @@ export function initGoogleAuth(onAuthSuccess) {
                 localStorage.setItem('gcs_access_token', accessToken || '');
                 console.log('Successfully authenticated with Google.');
                 if (authBtn) {
-                    authBtn.hidden = true;
+                    authBtn.style.display = 'none';
                 }
-                for (const cb of authSuccessCallbacks) {
-                    try { cb(); } catch (err) { console.error(err); }
-                }
-                if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
-                    window.dispatchEvent(new CustomEvent('mwg:auth-changed', { detail: { authenticated: true } }));
-                }
+                if (onAuthSuccess) onAuthSuccess();
             },
         });
 
@@ -629,12 +608,12 @@ export async function authenticatedFetch(url, options = {}) {
         // Reset button UI if available
         const authBtn = /** @type {HTMLButtonElement | null} */ (document.getElementById('auth-btn'));
         if (authBtn) {
-            authBtn.hidden = false;
+            authBtn.style.display = 'block';
             authBtn.textContent = 'Sign in with Google';
             authBtn.disabled = false;
-        }
-        if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
-            window.dispatchEvent(new CustomEvent('mwg:auth-changed', { detail: { authenticated: false } }));
+            authBtn.style.backgroundColor = '';
+            authBtn.style.color = '';
+            authBtn.style.borderColor = '';
         }
     }
     return res;

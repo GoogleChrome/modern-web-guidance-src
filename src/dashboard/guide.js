@@ -1,4 +1,4 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, isLocalDashboardHost, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDate, formatSuiteDate, getSuiteDayKey, toSuiteDateString, setPopoverOpen, isPopoverOpen } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDate, formatSuiteDate, getSuiteDayKey, toSuiteDateString, setPopoverOpen, isPopoverOpen } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -86,7 +86,7 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
 }
 
 async function loadLocalTests() {
-    if (!isLocalDashboardHost()) {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         return; 
     }
     

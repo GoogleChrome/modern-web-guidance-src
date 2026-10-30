@@ -1,79 +1,57 @@
 import { getAccessToken, escapeHtml, getAgentBadge, parseSuiteDate, formatSuiteDate } from './utils.js';
-import { ApiClient } from './api.js';
+import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
+/** @typedef {import('./insights.js').ManifestSuite} ManifestSuite */
 /** @typedef {import('./insights.js').RateComparison} RateComparison */
 /** @type {Record<string, string>} */
 const FAMILY_HINT = { antigravity_cli: 'Gemini' };
-const api = new ApiClient();
 const heroEl = /** @type {HTMLElement | null} */ (document.getElementById('hero'));
 let heroLoadSeq = 0;
 document.addEventListener('DOMContentLoaded', () => {
-    if (!heroEl) return;
-    void loadAndRender();
     const authBtn = document.getElementById('auth-btn');
     const heroAuthBtn = document.getElementById('hero-auth-btn');
     if (heroAuthBtn && authBtn) { heroAuthBtn.addEventListener('click', () => authBtn.click()); }
-    window.addEventListener('mwg:auth-changed', (e) => {
-        const authenticated = Boolean(/** @type {CustomEvent<{ authenticated?: boolean }>} */ (e).detail?.authenticated);
-        if (authenticated) { void loadAndRender(); } else if (api.source === 'remote') { renderPending(); setStatus('auth'); setBusy(false); }
-    });
 });
-async function loadAndRender() {
+/**
+ * @param {ManifestSuite[]} suites
+ * @param {{ fetchEvals?: (testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>, onHydrated?: () => void }} [options]
+ */
+export function updateHeroFromSuites(suites, { fetchEvals, onHydrated } = {}) {
     if (!heroEl) return;
     const seq = ++heroLoadSeq;
-    setBusy(true);
-    setStatus(null);
-    const isSignedOut = () => api.source === 'remote' && !getAccessToken();
-    if (isSignedOut()) {
+    const isRemote = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    const isSignedOut = () => (isRemote || suites.length === 0) && !getAccessToken();
+    if (suites.length === 0 && isSignedOut()) {
         renderPending();
         setStatus('auth');
         setBusy(false);
         return;
     }
-    /** @param {HeadlineInsights} insights */
-    const paint = (insights) => {
-        if (seq !== heroLoadSeq) return;
-        const signedOutNow = isSignedOut();
-        if (!insights || !insights.families.length) { renderPending(); setStatus(signedOutNow ? 'auth' : 'empty'); return; }
-        renderHero(insights);
-        setStatus(signedOutNow ? 'auth-snapshot' : null);
-    };
-    try {
-        const insights = await api.getHeadlineInsights({
-            onUpdate: (final) => { if (seq !== heroLoadSeq) return; paint(final); setBusy(false); }
-        });
-        if (seq !== heroLoadSeq) return;
-        if (api.source === 'local' && !insights.families.length) {
-            const { suites = [] } = await api.getManifest();
-            if (seq !== heroLoadSeq) return;
-            if (suites.length === 0) {
-                api.source = 'remote';
-                if (!getAccessToken()) {
-                    renderPending();
-                    setStatus('auth');
-                    setBusy(false);
-                    return;
-                }
-                const remoteInsights = await api.getHeadlineInsights({
-                    onUpdate: (final) => { if (seq !== heroLoadSeq) return; paint(final); setBusy(false); }
-                });
-                if (seq !== heroLoadSeq) return;
-                paint(remoteInsights);
-                if (remoteInsights.missingStats.length > 0) return;
-                setBusy(false);
-                return;
-            }
-        }
-        paint(insights);
-        if (insights.missingStats.length > 0) return;
-    } catch (err) {
-        if (seq !== heroLoadSeq) return;
-        const signedOutNow = isSignedOut();
-        if (!signedOutNow) console.error('Hero: failed to load headline insights', err);
+    const insightOptions = { perAgentRecentN: 1 };
+    const insights = computeHeadlineInsights(suites, insightOptions);
+    if (!insights.families.length) {
         renderPending();
-        setStatus(signedOutNow ? 'auth' : 'error');
+        setStatus(isSignedOut() ? 'auth' : 'empty');
+        setBusy(false);
+        return;
     }
-    if (seq === heroLoadSeq) { setBusy(false); }
+    renderHero(insights);
+    setStatus(null);
+    if (insights.missingStats.length > 0 && fetchEvals) {
+        setBusy(true);
+        void hydrateMissingStats(suites, fetchEvals, insightOptions)
+            .then(() => {
+                if (seq !== heroLoadSeq) return;
+                renderHero(computeHeadlineInsights(suites, insightOptions));
+                setBusy(false);
+                if (onHydrated) onHydrated();
+            })
+            .catch(() => {
+                if (seq === heroLoadSeq) setBusy(false);
+            });
+    } else {
+        setBusy(false);
+    }
 }
 /** @param {boolean} busy */
 function setBusy(busy) { if (heroEl) heroEl.setAttribute('aria-busy', String(busy)); }

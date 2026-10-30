@@ -13,6 +13,7 @@
   <title>Suite Results</title>
   <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="diff.min.js" defer fetchpriority="low"></script>
 </head>
 
@@ -29,7 +30,7 @@
         </div>
         <div class="suite-header-actions">
           <a href="./" class="secondary-btn">← Back to results</a>
-          <button id="auth-btn" class="secondary-btn" type="button" hidden>
+          <button id="auth-btn" class="secondary-btn" type="button" style="display: none;">
             Sign in with Google
           </button>
         </div>
