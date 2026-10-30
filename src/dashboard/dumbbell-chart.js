@@ -100,7 +100,7 @@ function moveRowAnchor(target) {
 /** @param {HTMLElement} tip
  * @param {{ marks: Element[], hit: Element }} target */
 function placeTooltipFallback(tip, target) {
-  if (!isElementFullyVisible(target.hit)) { hideDumbbellTooltip(true); return; }
+  if (!isElementFullyVisible(target.hit)) { hideDumbbellTooltip(); return; }
   const r = rowBox(target);
   const gap = 6;
   const edge = 8;
@@ -122,7 +122,7 @@ function onViewportChangeFallback() {
     fallbackFrame = 0;
     const tip = document.getElementById('dumbbell-tooltip');
     if (!tip || !activeTarget || !isTooltipOpen(tip)) return;
-    if (!activeTarget.hit.isConnected) { hideDumbbellTooltip(true); return; }
+    if (!activeTarget.hit.isConnected) { hideDumbbellTooltip(); return; }
     placeTooltipFallback(tip, activeTarget);
   });
 }
@@ -152,9 +152,8 @@ function releaseActiveHitArea() {
   activeTarget = null;
   shownWithoutInvoker = false;
 }
-/** @param {boolean} [_immediate] kept for callers; closing is always immediate now that
- * interestfor owns the hover delays. */
-export function hideDumbbellTooltip(_immediate = false) {
+/** Closing is always immediate now that interestfor owns the hover delays. */
+export function hideDumbbellTooltip() {
   const tip = document.getElementById('dumbbell-tooltip');
   if (!tip) return;
   pendingHit = null;
@@ -202,7 +201,7 @@ function wireTooltip(tip) {
   tip.addEventListener('loseinterest', (e) => {
     const source = /** @type {Event & { source?: Element | null }} */ (e).source;
     const hit = source?.closest('.dc-hit');
-    if (shownWithoutInvoker && (!hit || hit === activeHitArea)) hideDumbbellTooltip(true);
+    if (shownWithoutInvoker && (!hit || hit === activeHitArea)) hideDumbbellTooltip();
   });
   /** @type {Element | null} */
   let closingHit = null;
@@ -215,7 +214,7 @@ function wireTooltip(tip) {
     if (!open && !isTooltipOpen(tip) && activeHitArea && activeHitArea === closingHit) releaseActiveHitArea();
   });
   if (!SUPPORTS_HINT_POPOVER) {
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideDumbbellTooltip(true); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideDumbbellTooltip(); });
   }
 }
 /**
@@ -666,7 +665,7 @@ export class DumbbellChart {
                 return;
               }
               touchShownHit = null;
-              if (guidedSet.onClick) { e.preventDefault(); hideDumbbellTooltip(true); guidedSet.onClick(item.originalIndex, 'Guided'); }
+              if (guidedSet.onClick) { e.preventDefault(); hideDumbbellTooltip(); guidedSet.onClick(item.originalIndex, 'Guided'); }
             });
           } else if (guidedSet.onClick) {
               hitArea.onclick = () => guidedSet.onClick ? guidedSet.onClick(item.originalIndex, 'Guided') : null;

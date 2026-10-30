@@ -479,22 +479,44 @@ function setEmptyState(message) {
     if (p && message) p.textContent = message;
 }
 
+/**
+ * Memoized by testId so overlapping syncHero() calls (e.g. local load, then remote load with a
+ * cached token) share one request per suite instead of refetching every missing evals.json.
+ * @type {Map<string, Promise<import('../harness/lib/metrics.ts').EvalsReport>>}
+ */
+const heroEvalsCache = new Map();
+
+/** @param {string} testId */
+function fetchEvalsForHero(testId) {
+    let pending = heroEvalsCache.get(testId);
+    if (!pending) {
+        pending = fetchEvalsUncached(testId);
+        // Drop failures so a later sync (e.g. after sign-in) can retry.
+        pending.catch(() => heroEvalsCache.delete(testId));
+        heroEvalsCache.set(testId, pending);
+    }
+    return pending;
+}
+
+/** @param {string} testId
+ * @returns {Promise<import('../harness/lib/metrics.ts').EvalsReport>} */
+async function fetchEvalsUncached(testId) {
+    const match = Object.values(allTestData).find(s => s.testId === testId);
+    if (match?.source === 'remote') {
+        const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testId}/evals.json`)}?alt=media&t=${Date.now()}`;
+        const res = await authenticatedFetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch remote evals for ${testId}`);
+        return res.json();
+    }
+    const fetchPath = match?.source === 'static' ? `results/${testId}/evals.json` : `${testId}/evals.json?source=local`;
+    const res = await fetch(`${fetchPath}${fetchPath.includes('?') ? '&' : '?'}t=${Date.now()}`);
+    if (!res.ok) throw new Error(`Failed to fetch local evals for ${testId}`);
+    return res.json();
+}
+
 function syncHero() {
-    const suites = Object.values(allTestData);
-    updateHeroFromSuites(suites, {
-        fetchEvals: async (testId) => {
-            const match = suites.find(s => s.testId === testId);
-            if (match?.source === 'remote') {
-                const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testId}/evals.json`)}?alt=media&t=${Date.now()}`;
-                const res = await authenticatedFetch(url);
-                if (!res.ok) throw new Error(`Failed to fetch remote evals for ${testId}`);
-                return res.json();
-            }
-            const fetchPath = match?.source === 'static' ? `results/${testId}/evals.json` : `${testId}/evals.json?source=local`;
-            const res = await fetch(`${fetchPath}${fetchPath.includes('?') ? '&' : '?'}t=${Date.now()}`);
-            if (!res.ok) throw new Error(`Failed to fetch local evals for ${testId}`);
-            return res.json();
-        },
+    updateHeroFromSuites(Object.values(allTestData), {
+        fetchEvals: fetchEvalsForHero,
         onHydrated: () => {
             refreshFilterOptions();
             renderSuites();
@@ -686,7 +708,13 @@ function toRate(stats) {
 
 /** @param {{ passed: number, total: number } | undefined} uStats
  * @param {{ passed: number, total: number } | undefined} gStats */
-function upliftPp(uStats, gStats) { return Math.round(toRateExact(gStats) - toRateExact(uStats)); }
+function upliftPp(uStats, gStats) { return hasBothSides(uStats, gStats) ? Math.round(toRateExact(gStats) - toRateExact(uStats)) : null; }
+/** A side with no checks has no rate, so uplift against it would be fabricated.
+ * @param {{ passed: number, total: number } | undefined} uStats
+ * @param {{ passed: number, total: number } | undefined} gStats */
+function hasBothSides(uStats, gStats) { return (uStats?.total || 0) > 0 && (gStats?.total || 0) > 0; }
+/** @param {{ passed: number, total: number } | undefined} stats */
+function rateOrNull(stats) { return (stats?.total || 0) > 0 ? toRate(stats) : null; }
 /** @param {import('./summary-extractor.js').SuiteA11yStats | undefined} a11y
  * @returns {{ u: { passed: number, total: number }, g: { passed: number, total: number } } | null} */
 function a11yPair(a11y) {
@@ -730,8 +758,8 @@ function getSortValue(t, key) {
         case 'tasks':
             return t.taskCount || 0;
         case 'uplift':
-            return toRateExact(t.guidedStats) - toRateExact(t.unguidedStats);
-        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair ? toRateExact(pair.g) - toRateExact(pair.u) : null; }
+            return hasBothSides(t.unguidedStats, t.guidedStats) ? toRateExact(t.guidedStats) - toRateExact(t.unguidedStats) : null;
+        case 'a11y': { const pair = a11yPair(t.a11yStats); return pair && hasBothSides(pair.u, pair.g) ? toRateExact(pair.g) - toRateExact(pair.u) : null; }
         case 'time': { const rt = t.efficiencyStats?.runtime; return rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0) ? rt.medianDeltaPct : null; }
         case 'tokens': {
             const tok = t.efficiencyStats?.tokens;
@@ -763,19 +791,24 @@ function sortSuiteKeys(keys) {
 // RENDERERS
 // ==========================================
 
-/** @param {number} uRate rounded unguided rate
- * @param {number} gRate rounded guided rate
- * @param {number} delta percentage-point change, computed from unrounded rates
+/** @param {number | null} uRate rounded unguided rate, or null when no unguided checks ran
+ * @param {number | null} gRate rounded guided rate, or null when no guided checks ran
+ * @param {number | null} delta percentage-point change, computed from unrounded rates; null unless both sides ran
  * @param {string} label used for the screen-reader sentence
  * @param {number} [uErr=0]
  * @param {number} [gErr=0] */
 function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
-    const sign = delta > 0 ? '+' : '';
-    const deltaClass = delta > 0 ? 'delta up' : (delta < 0 ? 'delta down' : 'delta flat');
-    const regressedCls = gRate < uRate ? ' regressed' : '';
-    const uErrBand = uErr > 0 ? `<div class="variance-band unguided" style="left: ${(uRate * (1 - uErr / 100)).toFixed(1)}%; width: ${uErr}%;"></div>` : '';
-    const gErrBand = gErr > 0 ? `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - gErr / 100)).toFixed(1)}%; width: ${gErr}%;"></div>` : '';
-    return `<div class="suite-dumbbell-track" aria-hidden="true"> ${uErrBand} ${gErrBand} <div class="connector${regressedCls}" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div> <div class="dot unguided" style="left: ${uRate}%;"></div> <div class="dot guided" style="left: ${gRate}%;"></div> </div> <div class="rate-text"> <span class="visually-hidden">${escapeHtml(label)}: unguided </span><span class="rate-u">${uRate}%</span> <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span> <span class="rate-g">${gRate}%</span> <span class="${deltaClass}">(${sign}${delta} pp)</span> </div>`;
+    const fmtRate = (/** @type {number | null} */ r) => r === null ? '—' : `${r}%`;
+    const deltaHtml = delta === null
+        ? '<span class="delta flat">(—)<span class="visually-hidden"> change not available</span></span>'
+        : `<span class="${delta > 0 ? 'delta up' : (delta < 0 ? 'delta down' : 'delta flat')}">(${delta > 0 ? '+' : ''}${delta} pp)</span>`;
+    const regressedCls = uRate !== null && gRate !== null && gRate < uRate ? ' regressed' : '';
+    const uErrBand = uRate !== null && uErr > 0 ? `<div class="variance-band unguided" style="left: ${(uRate * (1 - uErr / 100)).toFixed(1)}%; width: ${uErr}%;"></div>` : '';
+    const gErrBand = gRate !== null && gErr > 0 ? `<div class="variance-band guided has-err" style="left: ${(gRate * (1 - gErr / 100)).toFixed(1)}%; width: ${gErr}%;"></div>` : '';
+    const connector = uRate !== null && gRate !== null ? `<div class="connector${regressedCls}" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></div>` : '';
+    const uDot = uRate !== null ? `<div class="dot unguided" style="left: ${uRate}%;"></div>` : '';
+    const gDot = gRate !== null ? `<div class="dot guided" style="left: ${gRate}%;"></div>` : '';
+    return `<div class="suite-dumbbell-track" aria-hidden="true"> ${uErrBand} ${gErrBand} ${connector} ${uDot} ${gDot} </div> <div class="rate-text"> <span class="visually-hidden">${escapeHtml(label)}: unguided </span><span class="rate-u">${fmtRate(uRate)}</span> <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span> <span class="rate-g">${fmtRate(gRate)}</span> ${deltaHtml} </div>`;
 }
 /** @param {number} deltaPct
  * @param {{ less: string, more: string, noun: string }} words */
@@ -823,8 +856,8 @@ function renderSuites() {
         const testId = testInfo.testId;
         const date = getSuiteDate(testInfo);
 
-        const gRate = toRate(testInfo.guidedStats);
-        const uRate = toRate(testInfo.unguidedStats);
+        const gRate = rateOrNull(testInfo.guidedStats);
+        const uRate = rateOrNull(testInfo.unguidedStats);
         const overallPp = upliftPp(testInfo.unguidedStats, testInfo.guidedStats);
 
         const a11y = a11yPair(testInfo.a11yStats);
@@ -862,8 +895,8 @@ function renderSuites() {
         let a11yCellAttrs = '';
         let a11yCellHtml = '';
         if (a11y) {
-            const a11yURate = toRate(a11y.u);
-            const a11yGRate = toRate(a11y.g);
+            const a11yURate = rateOrNull(a11y.u);
+            const a11yGRate = rateOrNull(a11y.g);
             const a11yPp = upliftPp(a11y.u, a11y.g);
             const a11yGuideCount = testInfo.a11yStats?.guideCount || 0;
             const a11yScope = a11yGuideCount > 0
@@ -872,7 +905,7 @@ function renderSuites() {
             const a11ySub = ['Accessibility subscore', modelPart, a11yScope].filter(Boolean).join(' · ');
             const a11yUDetail = a11y.u.total > 0 ? `${a11y.u.passed.toLocaleString('en-US')}/${a11y.u.total.toLocaleString('en-US')} checks` : '';
             const a11yGDetail = a11y.g.total > 0 ? `${a11y.g.passed.toLocaleString('en-US')}/${a11y.g.total.toLocaleString('en-US')} checks` : '';
-            a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate}" data-barbell-g="${a11yGRate}" data-barbell-uplift="${a11yPp}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
+            a11yCellAttrs = ` data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(a11ySub)}" data-barbell-kind="suite-a11y" data-barbell-u="${a11yURate ?? ''}" data-barbell-g="${a11yGRate ?? ''}" data-barbell-uplift="${a11yPp ?? ''}" data-barbell-u-detail="${escapeHtml(a11yUDetail)}" data-barbell-g-detail="${escapeHtml(a11yGDetail)}"`;
             a11yCellHtml = ` <a href="${a11yLink}" class="a11y-link" interestfor="barbell-tooltip"> ${renderRateComparison(a11yURate, a11yGRate, a11yPp, 'Accessibility subscore')} <span class="visually-hidden"> (open accessibility check results)</span> </a> `;
         } else { a11yCellHtml = renderNotAvailable('Accessibility subscore'); }
 
@@ -903,7 +936,7 @@ function renderSuites() {
                 <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
                 <td>${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)}</td>
                 <td class="model-cell">${escapeHtml(testInfo.model || '')}</td>
-                <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate}" data-barbell-g="${gRate}" data-barbell-uplift="${overallPp}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
+                <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate ?? ''}" data-barbell-g="${gRate ?? ''}" data-barbell-uplift="${overallPp ?? ''}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
                     <a href="${localLink}" class="uplift-link" interestfor="barbell-tooltip">
                         ${renderRateComparison(uRate, gRate, overallPp, 'Pass rate', uErr, gErr)}
                         <span class="visually-hidden"> (open per-guide results)</span>
@@ -1115,16 +1148,18 @@ function renderBarbellTooltipContent(cell) {
     const kind = cell.dataset.barbellKind || 'guide';
     const metric = cell.dataset.barbellMetric || 'Pass rate';
     const runs = parseInt(cell.dataset.barbellRuns || '0') || 0;
-    const uRate = parseInt(cell.dataset.barbellU || '0') || 0;
-    const gRate = parseInt(cell.dataset.barbellG || '0') || 0;
-    const uplift = parseInt(cell.dataset.barbellUplift || '0') || 0;
+    // Empty attributes mean that side (or the comparison) has no data.
+    const parseOrNull = (/** @type {string | undefined} */ v) => (v === undefined || v === '') ? null : (parseInt(v) || 0);
+    const uRate = parseOrNull(cell.dataset.barbellU);
+    const gRate = parseOrNull(cell.dataset.barbellG);
+    const uplift = parseOrNull(cell.dataset.barbellUplift);
     const uSd = cell.dataset.barbellUSd || '';
     const gSd = cell.dataset.barbellGSd || '';
     const uDetail = cell.dataset.barbellUDetail || '';
     const gDetail = cell.dataset.barbellGDetail || '';
     const hasErr = cell.dataset.barbellErr === '1';
-    const sign = uplift > 0 ? '+' : '';
-    const liftCls = uplift > 0 ? 'up' : (uplift < 0 ? 'down' : 'flat');
+    const liftCls = uplift !== null && uplift > 0 ? 'up' : (uplift !== null && uplift < 0 ? 'down' : 'flat');
+    const liftText = uplift === null ? '—' : `${uplift > 0 ? '+' : ''}${uplift} pp`;
     const runsText = `${runs} ${runs === 1 ? 'run' : 'runs'}`;
     const subText = cell.dataset.barbellSub || `${metric} · median across ${runsText}`;
     const uExtraHtml = uDetail !== ''
@@ -1149,7 +1184,7 @@ function renderBarbellTooltipContent(cell) {
         note = `Vertical ticks mark this model’s median suite ${metric.toLowerCase()} without MWG and with MWG across ${runsText}; the horizontal bar spans the median lift.${hasErr ? ' Shaded bands indicate uncertainty from runs that failed before grading.' : ''}`;
     }
 
-    return `<div class="barbell-tooltip-title">${escapeHtml(title)}</div> <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div> <div class="barbell-tooltip-rows"> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <strong>${uRate}%${uExtraHtml}</strong> </div> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <strong class="rate-g">${gRate}%${gExtraHtml}</strong> </div> <div class="barbell-tooltip-row barbell-tooltip-lift"> <span>${escapeHtml(liftLabel)}</span> <strong class="delta ${liftCls}">${sign}${uplift} pp</strong> </div> </div> <p class="barbell-tooltip-note">${escapeHtml(note)}</p>`;
+    return `<div class="barbell-tooltip-title">${escapeHtml(title)}</div> <div class="barbell-tooltip-sub">${escapeHtml(subText)}</div> <div class="barbell-tooltip-rows"> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <strong>${uRate === null ? '—' : `${uRate}%`}${uExtraHtml}</strong> </div> <div class="barbell-tooltip-row"> <span class="barbell-tooltip-label"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <strong class="rate-g">${gRate === null ? '—' : `${gRate}%`}${gExtraHtml}</strong> </div> <div class="barbell-tooltip-row barbell-tooltip-lift"> <span>${escapeHtml(liftLabel)}</span> <strong class="delta ${liftCls}">${liftText}</strong> </div> </div> <p class="barbell-tooltip-note">${escapeHtml(note)}</p>`;
 }
 
 function hideBarbellTooltip() {
@@ -1207,27 +1242,30 @@ function renderPivotInsights() {
         let item = null;
         if (onlyA11y) {
             const pair = a11yPair(testInfo.a11yStats);
-            if (pair) {
-                item = { uplift: upliftPp(pair.u, pair.g), uRate: toRate(pair.u), gRate: toRate(pair.g), uErr, gErr, rtDeltaPct, tokDeltaPct };
+            const pairUplift = pair ? upliftPp(pair.u, pair.g) : null;
+            if (pair && pairUplift !== null) {
+                item = { uplift: pairUplift, uRate: toRate(pair.u), gRate: toRate(pair.g), uErr, gErr, rtDeltaPct, tokDeltaPct };
             }
             const bySub = testInfo.a11yStats?.bySubCategory;
             if (bySub) {
                 A11Y_SUBCATEGORIES.forEach(sub => {
                     const sc = bySub[sub.id];
-                    if (!sc || (sc.unguidedTotal === 0 && sc.guidedTotal === 0)) return;
+                    if (!sc) return;
                     const u = { passed: sc.unguidedPassed || 0, total: sc.unguidedTotal || 0 };
                     const g = { passed: sc.guidedPassed || 0, total: sc.guidedTotal || 0 };
+                    const scUplift = upliftPp(u, g);
+                    if (scUplift === null) return;
                     (grouped.dimension[sub.id] ||= []).push({
-                        uplift: upliftPp(u, g),
+                        uplift: scUplift,
                         uRate: toRate(u),
                         gRate: toRate(g),
                         description: sub.description
                     });
                 });
             }
-        } else if ((testInfo.guidedStats?.total || 0) > 0 && (testInfo.unguidedStats?.total || 0) > 0) {
+        } else if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
             item = {
-                uplift: upliftPp(testInfo.unguidedStats, testInfo.guidedStats),
+                uplift: Math.round(toRateExact(testInfo.guidedStats) - toRateExact(testInfo.unguidedStats)),
                 uRate: toRate(testInfo.unguidedStats),
                 gRate: toRate(testInfo.guidedStats),
                 uErr,
@@ -1247,8 +1285,9 @@ function renderPivotInsights() {
             if (!src) return;
             const u = { passed: src.unguidedPassed || 0, total: src.unguidedTotal || 0 };
             const g = { passed: src.guidedPassed || 0, total: src.guidedTotal || 0 };
-            if (onlyA11y ? (u.total === 0 && g.total === 0) : (u.total === 0 || g.total === 0)) return;
-            (grouped.guide[guide] ||= []).push({ uplift: upliftPp(u, g), uRate: toRate(u), gRate: toRate(g) });
+            const guideUplift = upliftPp(u, g);
+            if (guideUplift === null) return;
+            (grouped.guide[guide] ||= []).push({ uplift: guideUplift, uRate: toRate(u), gRate: toRate(g) });
         });
     });
 
@@ -1483,7 +1522,13 @@ function renderPivotInsights() {
         { value: 'guided', label: 'Guided rate' },
         { value: 'variance', label: 'Variance' }
     ];
-    const sortOptionsHtml = sortOptions.map(opt => `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`).join(''); const dirLabel = currentGuideSortDir === 'asc' ? 'ascending' : 'descending'; const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓'; const modeSuffix = onlyA11y ? ' <span class="mode-badge-inline">Accessibility checks</span>' : ''; const guideCount = Object.keys(grouped.guide).length; const runCount = keys.length; const dimensionPanelHtml = onlyA11y && Object.keys(grouped.dimension).length > 0 ?`
+    const sortOptionsHtml = sortOptions.map(opt => `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('');
+    const dirLabel = currentGuideSortDir === 'asc' ? 'ascending' : 'descending';
+    const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓';
+    const modeSuffix = onlyA11y ? ' <span class="mode-badge-inline">Accessibility checks</span>' : '';
+    const guideCount = Object.keys(grouped.guide).length;
+    const runCount = keys.length;
+    const dimensionPanelHtml = onlyA11y && Object.keys(grouped.dimension).length > 0 ? `
         <div class="insights-panel insights-dimension-panel" data-panel="dimension">
             ${renderPanelHeader('dimension', `By Accessibility Dimension (${Object.keys(grouped.dimension).length})${modeSuffix}`)}
             ${renderPivotTable(grouped.dimension, 'dimension')}

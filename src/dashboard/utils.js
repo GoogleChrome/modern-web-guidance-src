@@ -2,16 +2,7 @@
 import { classifyScenarioCheck } from './a11y-classifier.js';
 /** @type {Record<string, string>} */
 export const SERVING_DISPLAY_NAMES = { skills: 'Skills', skills_cli: 'Skills (CLI)', mcp: 'MCP', };
-/** @type {Record<string, string>} */
-export const AGENT_DISPLAY_NAMES = {
-    claude_code: 'Claude Code',
-    claude: 'Claude Code',
-    codex_cli: 'Codex CLI',
-    codex: 'Codex CLI',
-    antigravity_cli: 'Antigravity CLI',
-    jetski_cli: 'Jetski CLI',
-    gemini_cli: 'Gemini CLI',
-};
+export { AGENT_DISPLAY_NAMES, getAgentBadge } from './agents.js';
 
 /**
  * Suite timestamps without an explicit offset (`YYYY-MM-DD`, `YYYY-MM-DDTHH:MM[:SS[.fff]]`)
@@ -641,14 +632,4 @@ export function $(query, context) {
     throw new Error(`querySelector('${query}') not found`);
   }
   return /** @type {E} */ (result);
-}
-
-/** @param {string} agentName
- * @returns {string} */
-export function getAgentBadge(agentName) {
-    const name = (agentName || '').toLowerCase();
-    if (name.includes('gemini') || name.includes('jetski') || name.includes('antigravity')) { return '<span class="agent-badge gemini" aria-hidden="true">✦</span>'; }
-    if (name.includes('codex') || name.includes('openai')) { return '<span class="agent-badge openai" aria-hidden="true">❂</span>'; }
-    if (name.includes('claude')) { return '<span class="agent-badge claude" aria-hidden="true">✱</span>'; }
-    return '';
 }

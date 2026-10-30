@@ -1649,10 +1649,9 @@ window.openDetailsFromTask = (/** @type {string} */ scenarioName, /** @type {str
     }
 };
 
-// Expose functions to window for onclick handlers
+// Exposed for mwg-suite-page.spec.js, which opens trajectories directly; all in-page
+// buttons go through data-action delegation instead.
 window.openTrajectory = openTrajectory;
-window.viewContent = viewContent;
-window.viewDiff = viewDiff;
 
 /**
  * @param {string} testName
@@ -1953,7 +1952,7 @@ function renderDashboardDumbbellChart(data) {
 
     const container = document.getElementById('dumbbell-chart');
     if (!container) return;
-    hideDumbbellTooltip(true);
+    hideDumbbellTooltip();
     container.innerHTML = ''; // Clear old content
 
     container.style.display = 'block';

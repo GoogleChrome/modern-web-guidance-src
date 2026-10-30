@@ -10,7 +10,7 @@ const TIMEOUT_MS = 600000;
  * @property {number} unguidedPassed
  * @property {number} unguidedTotal
  * @property {number} unguidedRate
- * @property {number} uplift
+ * @property {number | null} uplift null unless both sides ran checks
  * @property {SubCategoryA11yStats} [a11y]
  * @property {Record<string, GuideSummary>} [tasks]
  * @property {string} [taskName]
@@ -22,7 +22,7 @@ const TIMEOUT_MS = 600000;
  * @property {number} unguidedPassed
  * @property {number} unguidedTotal
  * @property {number} unguidedRate
- * @property {number} uplift */
+ * @property {number | null} uplift */
 /** @typedef {Object} SuiteA11yStats
  * @property {number} guidedPassed
  * @property {number} guidedTotal
@@ -30,7 +30,7 @@ const TIMEOUT_MS = 600000;
  * @property {number} unguidedPassed
  * @property {number} unguidedTotal
  * @property {number} unguidedRate
- * @property {number} uplift
+ * @property {number | null} uplift
  * @property {number} guideCount
  * @property {Record<import('./a11y-classifier.js').A11ySubCategory, SubCategoryA11yStats>} bySubCategory */
 /**
@@ -176,7 +176,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         const isUnguided = key.endsWith(' - unguided');
 
         if (parsedKey) {
-            distinctScenarios.add(`${parsedKey.task} - ${parsedKey.guide}`);
+            distinctScenarios.add(parsedKey.task);
             const { guide, task } = parsedKey;
             if (!suiteGuides[guide]) {
                 suiteGuides[guide] = {
@@ -227,7 +227,8 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
 
                     const taskStats = task && suiteGuideTasks[guide][task];
                     if (taskStats) { taskStats[runType].passed += s.passed; taskStats[runType].total += s.total; }
-                    (run.results || []).forEach(check => {
+                    // Skip early-failure runs (zeroed by getRunStats) so a11y totals stay in sync with overall totals.
+                    if (s.total > 0) (run.results || []).forEach(check => {
                         const cls = classifyScenarioCheck(check, guide, run.discipline);
                         if (cls.isAccessibility && cls.subCategory) {
                             a11yGuides.add(guide);
@@ -310,7 +311,8 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
             unguidedPassed: t.unguided.passed,
             unguidedTotal: t.unguided.total,
             unguidedRate,
-            uplift: (t.guided.total > 0 && t.unguided.total > 0) ? Math.round(gExact - uExact) : (guidedRate - unguidedRate)
+            // A side with no checks has no rate, so there is nothing to compare against.
+            uplift: (t.guided.total > 0 && t.unguided.total > 0) ? Math.round(gExact - uExact) : null
         };
     };
 
@@ -343,11 +345,6 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         });
         guidesFormatted[guide] = { ...base, tasks };
     });
-    const a11yGuidedRate = a11yGuidedTotal > 0 ? Math.round((a11yGuidedPassed / a11yGuidedTotal) * 100) : 0;
-    const a11yUnguidedRate = a11yUnguidedTotal > 0 ? Math.round((a11yUnguidedPassed / a11yUnguidedTotal) * 100) : 0;
-    const a11yUplift = (a11yGuidedTotal > 0 && a11yUnguidedTotal > 0)
-        ? Math.round(((a11yGuidedPassed / a11yGuidedTotal) - (a11yUnguidedPassed / a11yUnguidedTotal)) * 100)
-        : (a11yGuidedRate - a11yUnguidedRate);
     /** @type {Record<import('./a11y-classifier.js').A11ySubCategory, SubCategoryA11yStats>} */
     const bySubCategory = /** @type {any} */ ({});
     A11Y_SUBCATEGORIES.forEach(sc => {
@@ -355,13 +352,10 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     });
 
     const a11yStats = {
-        guidedPassed: a11yGuidedPassed,
-        guidedTotal: a11yGuidedTotal,
-        guidedRate: a11yGuidedRate,
-        unguidedPassed: a11yUnguidedPassed,
-        unguidedTotal: a11yUnguidedTotal,
-        unguidedRate: a11yUnguidedRate,
-        uplift: a11yUplift,
+        ...formatStats({
+            guided: { passed: a11yGuidedPassed, total: a11yGuidedTotal },
+            unguided: { passed: a11yUnguidedPassed, total: a11yUnguidedTotal }
+        }),
         guideCount: a11yGuides.size,
         bySubCategory
     };

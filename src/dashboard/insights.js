@@ -1,27 +1,14 @@
 import { extractSuiteSummary } from './summary-extractor.js';
 import { parseSuiteDate, toSuiteDateString } from './utils.js';
+import { AGENT_FAMILIES } from './agents.js';
+export { AGENT_FAMILIES };
 /** @typedef {import('./summary-extractor.js').SuiteSummary} SuiteSummary */
 /** @typedef {Partial<SuiteSummary> & { testId: string }} ManifestSuite */
-/** @typedef {Object} AgentFamilyDef
- * @property {string} id
- * @property {string} label
- * @property {string} description
- * @property {string[]} agents */
-/** @type {AgentFamilyDef[]} */
-export const AGENT_FAMILIES = [
-    { id: 'claude_code', label: 'Claude Code', description: 'claude_code', agents: ['claude_code', 'claude'] },
-    { id: 'codex_cli', label: 'Codex CLI', description: 'codex_cli', agents: ['codex_cli', 'codex'] },
-    {
-        id: 'antigravity_cli',
-        label: 'Antigravity CLI',
-        description: 'antigravity_cli (succeeded jetski_cli)',
-        agents: ['antigravity_cli', 'jetski_cli']
-    }
-];
+/** @typedef {import('./agents.js').AgentFamilyDef} AgentFamilyDef */
 /** @typedef {Object} RateComparison
- * @property {number} unguidedRate
- * @property {number} guidedRate
- * @property {number} upliftPp
+ * @property {number | null} unguidedRate null when that side ran no checks
+ * @property {number | null} guidedRate null when that side ran no checks
+ * @property {number | null} upliftPp null unless both sides ran checks
  * @property {number} unguidedPassed
  * @property {number} unguidedTotal
  * @property {number} guidedPassed
@@ -43,13 +30,11 @@ export const AGENT_FAMILIES = [
  * @property {SuiteRef[]} suites
  * @property {number} suiteCount
  * @property {SuiteRef} latest
- * @property {number} tasksEvaluated
  * @property {RateComparison} overall
  * @property {A11yComparison | null} a11y */
 /** @typedef {Object} PooledInsight
  * @property {number} suiteCount
  * @property {number} familyCount
- * @property {number} tasksEvaluated
  * @property {RateComparison} overall
  * @property {A11yComparison | null} a11y */
 /** @typedef {Object} HeadlineInsights
@@ -67,7 +52,7 @@ export const AGENT_FAMILIES = [
 /** @param {number} value @param {number} [digits=1] */
 function round(value, digits = 1) { const f = 10 ** digits; return Math.round(value * f) / f; }
 /** @param {number} numerator @param {number} denominator */
-function pct(numerator, denominator) { return denominator > 0 ? round((numerator / denominator) * 100) : 0; }
+function pct(numerator, denominator) { return denominator > 0 ? round((numerator / denominator) * 100) : null; }
 /** @param {ManifestSuite} suite */
 export function getSuiteTimestamp(suite) { const date = parseSuiteDate(suite.timestamp, suite.testId || ''); return date ? toSuiteDateString(date) : ''; }
 /** @param {ManifestSuite} suite */
@@ -77,7 +62,7 @@ export function isNightlySuite(suite) { return typeof suite.testId === 'string' 
 export function getAgentFamily(agent, families = AGENT_FAMILIES) { if (!agent) return null; const needle = agent.toLowerCase(); return families.find(f => f.agents.includes(needle)) || null; }
 /** @param {ManifestSuite} suite */
 export function hasHeadlineStats(suite) { return Boolean(suite && suite.a11yStats); }
-/** @param {Array<ManifestSuite | string>} suites
+/** @param {ManifestSuite[]} suites
  * @param {InsightOptions} [options]
  * @returns {Map<AgentFamilyDef, ManifestSuite[]>} */
 export function selectRecentSuites(suites, options = {}) {
@@ -86,9 +71,7 @@ export function selectRecentSuites(suites, options = {}) {
     /** @type {Map<AgentFamilyDef, ManifestSuite[]>} */
     const byFamily = new Map();
     families.forEach(f => byFamily.set(f, []));
-    (suites || []).forEach(entry => {
-        /** @type {ManifestSuite | null} */
-        const suite = typeof entry === 'string' ? { testId: entry } : entry;
+    (suites || []).forEach(suite => {
         if (!suite || !suite.testId || !suite.guidedStats) return;
         if (nightlyOnly && !isNightlySuite(suite)) return;
         const family = getAgentFamily(suite.agent, families);
@@ -105,7 +88,7 @@ export function selectRecentSuites(suites, options = {}) {
     });
     return byFamily;
 }
-/** @param {Array<ManifestSuite | string>} suites
+/** @param {ManifestSuite[]} suites
  * @param {(testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>} fetchEvals
  * @param {InsightOptions} [options] */
 export async function hydrateMissingStats(suites, fetchEvals, options = {}) {
@@ -126,7 +109,8 @@ export async function hydrateMissingStats(suites, fetchEvals, options = {}) {
                 const evals = await fetchEvals(suite.testId);
                 const summary = extractSuiteSummary(suite.testId, evals, suite.timestamp || null);
                 if (summary) { Object.assign(suite, summary); hydrated.push(suite.testId); continue; }
-            } catch {
+            } catch (err) {
+                console.warn(`Headline stats: could not hydrate ${suite.testId}`, err);
             }
             failed.push(suite.testId);
         }
@@ -147,12 +131,12 @@ function toSuiteRef(suite) {
 }
 /** @param {{ unguidedPassed: number, unguidedTotal: number, guidedPassed: number, guidedTotal: number }} c @returns {RateComparison} */
 function toRateComparison(c) {
-    const rawU = c.unguidedTotal > 0 ? (c.unguidedPassed / c.unguidedTotal) * 100 : 0;
-    const rawG = c.guidedTotal > 0 ? (c.guidedPassed / c.guidedTotal) * 100 : 0;
+    // A side with no checks has no rate; treating it as 0% would fabricate uplift.
+    const hasBoth = c.unguidedTotal > 0 && c.guidedTotal > 0;
     return {
         unguidedRate: pct(c.unguidedPassed, c.unguidedTotal),
         guidedRate: pct(c.guidedPassed, c.guidedTotal),
-        upliftPp: round(rawG - rawU),
+        upliftPp: hasBoth ? round(((c.guidedPassed / c.guidedTotal) - (c.unguidedPassed / c.unguidedTotal)) * 100) : null,
         unguidedPassed: c.unguidedPassed,
         unguidedTotal: c.unguidedTotal,
         guidedPassed: c.guidedPassed,
@@ -165,23 +149,23 @@ function accumulate(suites) {
         overall: { unguidedPassed: 0, unguidedTotal: 0, guidedPassed: 0, guidedTotal: 0 },
         a11y: { unguidedPassed: 0, unguidedTotal: 0, guidedPassed: 0, guidedTotal: 0 },
         a11ySuites: 0,
-        a11yGuideCount: 0,
-        tasksEvaluated: 0
+        a11yGuideCount: 0
     };
     const distinctA11yGuides = new Set();
+    // Fallback for older manifests that carry a11yStats.guideCount but no per-guide a11y breakdown.
+    let maxSuiteGuideCount = 0;
     suites.forEach(s => {
         acc.overall.unguidedPassed += s.unguidedStats?.passed || 0;
         acc.overall.unguidedTotal += s.unguidedStats?.total || 0;
         acc.overall.guidedPassed += s.guidedStats?.passed || 0;
         acc.overall.guidedTotal += s.guidedStats?.total || 0;
-        acc.tasksEvaluated += s.taskCount || 0;
         if (s.a11yStats && (s.a11yStats.guidedTotal > 0 || s.a11yStats.unguidedTotal > 0)) {
             acc.a11ySuites += 1;
             acc.a11y.unguidedPassed += s.a11yStats.unguidedPassed;
             acc.a11y.unguidedTotal += s.a11yStats.unguidedTotal;
             acc.a11y.guidedPassed += s.a11yStats.guidedPassed;
             acc.a11y.guidedTotal += s.a11yStats.guidedTotal;
-            acc.a11yGuideCount = Math.max(acc.a11yGuideCount, s.a11yStats.guideCount || 0);
+            maxSuiteGuideCount = Math.max(maxSuiteGuideCount, s.a11yStats.guideCount || 0);
             if (s.guides) {
                 for (const [slug, gStats] of Object.entries(s.guides)) {
                     if (gStats?.a11y && (gStats.a11y.guidedTotal > 0 || gStats.a11y.unguidedTotal > 0)) { distinctA11yGuides.add(slug); }
@@ -189,10 +173,10 @@ function accumulate(suites) {
             }
         }
     });
-    acc.a11yGuideCount = Math.max(acc.a11yGuideCount, distinctA11yGuides.size);
+    acc.a11yGuideCount = distinctA11yGuides.size > 0 ? distinctA11yGuides.size : maxSuiteGuideCount;
     return acc;
 }
-/** @param {Array<ManifestSuite | string>} suites
+/** @param {ManifestSuite[]} suites
  * @param {InsightOptions} [options]
  * @returns {HeadlineInsights} */
 export function computeHeadlineInsights(suites, options = {}) {
@@ -216,7 +200,6 @@ export function computeHeadlineInsights(suites, options = {}) {
             suites: refs,
             suiteCount: refs.length,
             latest: refs[0],
-            tasksEvaluated: acc.tasksEvaluated,
             overall: toRateComparison(acc.overall),
             a11y: acc.a11ySuites > 0 ? { ...toRateComparison(acc.a11y), guideCount: acc.a11yGuideCount } : null
         });
@@ -228,7 +211,6 @@ export function computeHeadlineInsights(suites, options = {}) {
         pooled = {
             suiteCount: allSelected.length,
             familyCount: families.length,
-            tasksEvaluated: acc.tasksEvaluated,
             overall: toRateComparison(acc.overall),
             a11y: acc.a11ySuites > 0 ? { ...toRateComparison(acc.a11y), guideCount: acc.a11yGuideCount } : null
         };

@@ -1,10 +1,12 @@
 import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior } from './utils.js';
+import { AGENT_FAMILIES } from './agents.js';
 /** @typedef {{ passed: number, total: number, rate: number, a11yPassed: number, a11yTotal: number, runtimeMs: number, uncachedTokens: number, totalTokens: number, guidesUsed: string[], addedLines: number, removedLines: number }} ShowcaseModeRun */
 /** @typedef {{ index: number, message: string, unguidedPassed: boolean, guidedPassed: boolean, flipped: boolean, isA11y: boolean, a11yLabel: string | null }} ShowcaseCheckItem */
-/** @typedef {{ agentId: string, agentLabel: string, model: string, suiteId: string, date: string, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
+/** @typedef {{ unguided: string, guided: string }} ShowcaseApproach */
+/** @typedef {{ agentId: string, agentLabel: string, model: string, suiteId: string, date: string, approach?: ShowcaseApproach, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
 /** @typedef {{ id: string, label: string, category: string, categoryLabel: string, featureSummary: string, prompt: string, baseApp: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 /** @typedef {{ generatedAt: string, tasks: ShowcaseTask[] }} ShowcasePayload */
-const AGENT_ORDER = ['claude_code', 'antigravity_cli', 'codex_cli'];
+const AGENT_ORDER = AGENT_FAMILIES.map(f => f.id);
 /** @type {Record<string, string>} */
 const SHORT_TASK_LABELS = {
     'highlight-text-ranges': 'Search highlights',
@@ -30,70 +32,22 @@ const GUIDE_CATEGORY_MAP = {
     'same-document-transitions': 'ui-behaviors', 'scrollspy': 'ui-components',
     'search-hidden-content': 'ui-behaviors'
 };
-/** @type {Record<string, { unguided: string, guided: string }>} */
-const TASK_APPROACH_CONTRAST = {
-    'highlight-text-ranges': {
-        unguided: 'Mutated DOM text nodes with <mark> wrappers on every keystroke instead of using the CSS Custom Highlight API.',
-        guided: 'Zero-DOM-mutation highlights via CSS.highlights.set() and ::highlight(), with a feature-detected <mark> fallback.'
-    },
-    'animate-to-from-top-layer': {
-        unguided: 'Standard opacity/transform transitions that snap shut on exit, missing @starting-style, allow-discrete, and reduced-motion guards.',
-        guided: 'Smooth top-layer entry and exit transitions using @starting-style, transition-behavior: allow-discrete on display/overlay, and ::backdrop fade.'
-    },
-    'flicker-free-client-side-ab-testing': {
-        unguided: 'Applied an unconditional opacity: 0 anti-flicker hack without blocking="render" or a safety timeout, penalizing every page load.',
-        guided: 'Native <script async blocking="render"> in <head> with feature-detected timeout fallback (9/10; missed only the mock CDN timing assertion).'
-    },
-    'faster-spa-view-transitions': {
-        unguided: 'Toggled views without content-visibility: hidden, leaving inactive views exposed to the accessibility tree and losing focus state.',
-        guided: 'Cached off-screen view layout state with content-visibility: hidden, paired with aria-hidden="true", focus management, and display: none fallback.'
-    },
-    'scrollspy': {
-        unguided: 'Wired an unconditional JS scroll/IntersectionObserver loop without native scroll-target-group, :target-current, or non-color indicators.',
-        guided: 'Native CSS scroll-target-group: auto + :target-current with non-color active indicator, scrollend ARIA sync, and conditional IO fallback.'
-    },
-    'interest-triggered-tooltips': {
-        unguided: 'CSS :hover tooltips with pointer-events: none that fail WCAG 1.4.13 hover persistence, Escape dismissal, and viewport flip fallbacks.',
-        guided: 'Declarative interestfor triggers with <div popover="hint">, CSS anchor(), position-try fallbacks, and WCAG 1.4.13 persistence (15/16; omitted 1 of 3 polyfills).'
-    }
-};
-/** @type {Record<string, Partial<{ unguided: string, guided: string }>>} */
-const TASK_PAIR_OVERRIDES = {
-    'animate-to-from-top-layer:antigravity_cli': {
-        unguided: 'Applied @starting-style, transition-behavior: allow-discrete, and ::backdrop transitions (8/9), but omitted the prefers-reduced-motion guard.'
-    },
-    'flicker-free-client-side-ab-testing:codex_cli': {
-        guided: 'Applied <script async blocking="render"> in <head> with feature detection (8/10), but omitted the fallback safety timeout and missed the variant timing check.'
-    },
-    'faster-spa-view-transitions:claude_code': {
-        guided: 'Retrieved both faster-spa-view-transitions and defer-rendering-heavy-content, applying content-visibility: auto instead of content-visibility: hidden on inactive views (3/6).'
-    },
-    'scrollspy:codex_cli': {
-        guided: 'Applied native scroll-target-group: auto, :target-current, non-color indicators, scrollend ARIA sync, and IntersectionObserver fallback (10/11; missed only the fallback class selector).'
-    },
-    'interest-triggered-tooltips:antigravity_cli': {
-        guided: 'Declarative interestfor triggers with <div popover="hint">, CSS anchor(), position-try fallbacks, and WCAG 1.4.13 persistence (14/16; paired anchor() with position-area and omitted 1 of 3 polyfills).'
-    },
-    'interest-triggered-tooltips:codex_cli': {
-        guided: 'Declarative interestfor triggers with <div popover="hint">, position-try fallbacks, and WCAG 1.4.13 persistence (12/16; used position-area instead of anchor() and omitted 2 of 3 polyfills).'
-    }
-};
 /** @param {ShowcaseTask} task
  * @param {ShowcaseAgentPair} pair */
 function getApproachContrast(task, pair) {
-    const base = TASK_APPROACH_CONTRAST[task.id] || {
+    // Prose lives next to the run data in showcase-runs.json so regenerating the snapshot
+    // replaces both together; scores are rendered from pair.*.passed/total, not the prose.
+    return pair.approach || {
         unguided: 'Standard unguided implementation without MWG skill.',
         guided: `Guided implementation using ${task.featureSummary}.`
     };
-    const override = TASK_PAIR_OVERRIDES[`${task.id}:${pair.agentId}`];
-    return override ? { ...base, ...override } : base;
 }
 /** @type {ShowcaseTask[]} */
 let tasks = [];
 /** @type {string} */
 let activeTaskId = 'highlight-text-ranges';
 /** @type {string} */
-let activeAgentId = 'claude_code';
+let activeAgentId = AGENT_ORDER[0];
 let checksExpanded = false;
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
 document.addEventListener('DOMContentLoaded', () => { if (!rootEl) return; void loadShowcase(); });

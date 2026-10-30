@@ -349,7 +349,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(checkRows.nth(3)).toBeHidden();
     await spotlight.locator('#ab-score-guided .ab-score-a11y').click();
     await expect(spotlight.locator('tr[data-a11y="true"]')).toBeVisible();
-    await spotlight.locator('#ab-agent-pills .ab-agent-pill').nth(1).click();
+    await spotlight.locator('#ab-agent-pills .ab-agent-pill[data-agent-id="antigravity_cli"]').click();
     await expect(spotlight.locator('#ab-score-guided .delta')).toContainText('+1 check');
     await page.setViewportSize({ width: 390, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);

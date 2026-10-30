@@ -1,5 +1,6 @@
 import { getAccessToken, escapeHtml, getAgentBadge, parseSuiteDate, formatSuiteDate } from './utils.js';
 import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
+import { AGENT_FAMILIES } from './agents.js';
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
 /** @typedef {import('./insights.js').ManifestSuite} ManifestSuite */
 /** @typedef {import('./insights.js').RateComparison} RateComparison */
@@ -11,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const authBtn = document.getElementById('auth-btn');
     const heroAuthBtn = document.getElementById('hero-auth-btn');
     if (heroAuthBtn && authBtn) { heroAuthBtn.addEventListener('click', () => authBtn.click()); }
+    const methodAgents = document.getElementById('method-agents');
+    if (methodAgents) methodAgents.textContent = `: ${joinNames(AGENT_FAMILIES.map(f => f.label))}`;
 });
 /**
  * @param {ManifestSuite[]} suites
@@ -55,7 +58,7 @@ export function updateHeroFromSuites(suites, { fetchEvals, onHydrated } = {}) {
 }
 /** @param {boolean} busy */
 function setBusy(busy) { if (heroEl) heroEl.setAttribute('aria-busy', String(busy)); }
-/** @param {'auth' | 'auth-snapshot' | 'empty' | 'error' | null} kind */
+/** @param {'auth' | 'empty' | null} kind */
 function setStatus(kind) {
     const el = document.getElementById('hero-status');
     const text = document.getElementById('hero-status-text');
@@ -63,15 +66,12 @@ function setStatus(kind) {
     if (!el || !text || !btn) return;
     if (!kind) { el.hidden = true; text.textContent = ''; return; }
     el.hidden = false;
-    btn.hidden = !kind.startsWith('auth');
-    /** @type {Record<string, string>} */
+    btn.hidden = kind !== 'auth';
     const messages = {
         'auth': 'Results live in a private bucket. Sign in with Google to load the latest nightly numbers.',
-        'auth-snapshot': 'Showing the last published snapshot. Sign in with Google to load the latest nightly numbers.',
-        'empty': 'No nightly evaluation runs were found for this data source yet.',
-        'error': 'Could not load the latest results. Reload to try again.'
+        'empty': 'No nightly evaluation runs were found for this data source yet.'
     };
-    text.textContent = messages[kind] || messages.error;
+    text.textContent = messages[kind];
     announce(text.textContent);
 }
 /** @param {string} message */
@@ -92,7 +92,7 @@ function renderHero(insights) {
         el.textContent = recentN === 1 ? 'latest nightly run' : `most recent ${recentN} nightly runs`;
     }
     const o = insights.pooled?.overall;
-    announce(o ? `Latest results loaded: ${signed(o.upliftPp, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
+    announce(o && o.upliftPp !== null ? `Latest results loaded: ${signed(o.upliftPp, 0)} percentage points more checks passed with MWG.` : 'Latest results loaded.');
 }
 function renderPending() {
     const list = document.getElementById('hero-takeaways');
@@ -125,7 +125,7 @@ function renderEyebrow(insights) {
     const detail = n > 0 ? `<span class="eyebrow-detail"> · ${n} recent ${n === 1 ? 'run' : 'runs'} across ${insights.families.length} agent ${insights.families.length === 1 ? 'family' : 'families'}</span>` : '';
     el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>Nightly evaluations${detail}${latest ? ` · latest data <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
 }
-/** @param {number} uRate @param {number} gRate */
+/** @param {number | null} uRate @param {number | null} gRate */
 function renderTakeawayDumbbell(uRate, gRate) {
     const u = Math.max(0, Math.min(100, Math.round(uRate || 0)));
     const g = Math.max(0, Math.min(100, Math.round(gRate || 0)));
@@ -144,7 +144,7 @@ function renderTakeaways(insights) {
     const pooled = insights.pooled;
     /** @type {string[]} */
     const cards = [];
-    if (pooled?.overall) {
+    if (pooled?.overall && pooled.overall.upliftPp !== null) {
         const o = pooled.overall;
         const taskCounts = insights.families.flatMap(f => f.suites.map(s => s.taskCount || 0)).filter(n => n > 0);
         const yTasks = taskCounts.length > 0 ? Math.max(...taskCounts) : 0;
@@ -164,8 +164,10 @@ function renderTakeaways(insights) {
             visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
             short: `<span class="visually-hidden">${fmtPct(o.unguidedRate)} → ${fmtPct(o.guidedRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
         }));
+    } else {
+        cards.push(pendingCard('overall', 'Change in aggregate pass rate of using best practices', 'percentage-point lift', true));
     }
-    if (!pooled?.a11y) { cards.push(pendingCard('a11y', 'Accessibility', '', false)); } else {
+    if (!pooled?.a11y || pooled.a11y.upliftPp === null) { cards.push(pendingCard('a11y', 'Accessibility', '', false)); } else {
         const a = pooled.a11y;
         const a11yShortText = `~${fmtCompact(Math.min(a.unguidedTotal, a.guidedTotal))} a11y checks${a.guideCount ? ` across ${a.guideCount} guides` : ''}`;
         cards.push(takeawayCard({
@@ -221,7 +223,7 @@ function renderAgentTable(insights) {
 /** @param {RateComparison | null} r */
 function rateCell(r) {
     if (!r || (r.guidedTotal === 0 && r.unguidedTotal === 0)) return naCell();
-    return ` <div class="metric-main"> <span class="metric-pair">${fmtPct(r.unguidedRate)} → <strong>${fmtPct(r.guidedRate)}</strong></span> ${deltaChip(r.upliftPp)} </div>`;
+    return ` <div class="metric-main"> <span class="metric-pair">${fmtPct(r.unguidedRate)} → <strong>${fmtPct(r.guidedRate)}</strong></span> ${r.upliftPp === null ? naCell() : deltaChip(r.upliftPp)} </div>`;
 }
 function naCell() { return '<span class="na"><span aria-hidden="true">—</span><span class="visually-hidden">not available</span></span>'; }
 /** @param {number} value */
@@ -255,15 +257,17 @@ function joinNames(names) {
     if (names.length === 2) return `${names[0]} and ${names[1]}`;
     return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
-/** @param {number} v @param {number} digits */
+/** @param {number | null} v @param {number} digits */
 function signed(v, digits) {
+    if (v === null) return '—';
     const r = Math.sign(v || 0) * Number(Math.abs(v || 0).toFixed(digits));
     if (r > 0) return `+${r}`;
     if (r < 0) return `−${Math.abs(r)}`;
     return '0';
 }
-/** @param {number} v */
+/** @param {number | null} v */
 function fmtPct(v) {
+    if (v === null) return '—';
     return `${Math.round(v || 0)}%`;
 }
 /** @param {string} iso */

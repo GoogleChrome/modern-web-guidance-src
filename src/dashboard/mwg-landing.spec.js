@@ -292,7 +292,8 @@ async function expectNextToBarbell(page, track) {
     await expect(agentRadios.nth(1)).toBeFocused();
     await expect(agentRadios.nth(1)).toBeChecked();
     await expect(agentRadios.nth(0)).not.toBeChecked();
-    await expect(page.locator('#ab-run-provenance')).toContainText('gemini-4-argon');
+    // Pill order follows AGENT_FAMILIES (Claude Code, Codex CLI, Antigravity CLI).
+    await expect(page.locator('#ab-run-provenance')).toContainText('gpt-6.1-sol');
     const pillOutline = await agentRadios.nth(1).evaluate(el => getComputedStyle(/** @type {Element} */ (el.closest('.ab-agent-pill'))).outlineStyle);
     expect(pillOutline).toBe('solid');
     await page.keyboard.press('ArrowRight');

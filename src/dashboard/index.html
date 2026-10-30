@@ -147,7 +147,7 @@
                 </div>
                 <div class="method-item">
                   <dt>Why isn't "With MWG" 100%?</dt>
-                  <dd>Guidance is documentation an AI agent reads rather than a code generator. Guided runs still miss roughly 10–20% of checks for three practical reasons: <strong>skipped details</strong> (an agent may follow 15 of 16 steps in a guide and overlook one, such as a fallback for older browsers), <strong>choosing when to consult a guide</strong> (task prompts never mention MWG by name, so the agent must recognize on its own which guide applies), and <strong>strict test edge cases</strong> that nightly runs help us catch and refine.</dd>
+                  <dd>Guidance is documentation an AI agent reads rather than a code generator. Guided runs still miss some checks for three practical reasons: <strong>skipped details</strong> (an agent may follow 15 of 16 steps in a guide and overlook one, such as a fallback for older browsers), <strong>choosing when to consult a guide</strong> (task prompts never mention MWG by name, so the agent must recognize on its own which guide applies), and <strong>strict test edge cases</strong> that nightly runs help us catch and refine.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Accessibility subscore</dt>
@@ -159,11 +159,11 @@
                 </div>
                 <div class="method-item">
                   <dt>Token usage (uncached)</dt>
-                  <dd>Tokens measure how much text the AI model reads and writes. As an agent works across multiple steps, it repeatedly re-sends earlier conversation history from a fast cache (85–96% of raw tokens in some CLIs). We report <strong>uncached tokens</strong> (<code>total − cached</code>) so you see the newly read guides, code edits, and reasoning each task actually required.</dd>
+                  <dd>Tokens measure how much text the AI model reads and writes. As an agent works across multiple steps, it repeatedly re-sends earlier conversation history from a fast cache, which can make up most of the raw token count. We report <strong>uncached tokens</strong> (<code>total − cached</code>) so you see the newly read guides, code edits, and reasoning each task actually required.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Scheduled nightly runs</dt>
-                  <dd>Automated benchmark suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) run against the full task set on a regular schedule. Headline numbers combine the <span id="method-recent-n">latest nightly run</span> from each agent: Claude Code, Codex CLI, and Antigravity CLI.</dd>
+                  <dd>Automated benchmark suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) run against the full task set on a regular schedule. Headline numbers combine the <span id="method-recent-n">latest nightly run</span> from each agent<span id="method-agents"></span>.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Open-source benchmark</dt>

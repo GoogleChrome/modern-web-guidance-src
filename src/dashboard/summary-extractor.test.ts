@@ -203,7 +203,8 @@ test('extractSuiteSummary counts distinct task-guide scenarios and excludes earl
         },
     } as never);
     assert.ok(summary);
-    assert.strictEqual(summary.taskCount, 2);
+    // Without summary.taskCount, older evals.json files count distinct task names (both scenarios share `task`).
+    assert.strictEqual(summary.taskCount, 1);
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 100000);
     assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 55000);
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedTimeouts, 1);
