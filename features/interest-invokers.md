@@ -67,3 +67,11 @@ When using the polyfill, the CSS API changes slightly to account for the lack of
   interest-delay-end: var(--interest-delay-end);
 }
 ```
+
+Set the initial delay to `0s` if an interest-triggered popover is already open and users are likely to move through multiple triggers in quick succession.
+
+```css
+.container:has([interestfor]:is(:interest-source, .interest-source)) [interestfor] {
+  --interest-delay-start: 0s;
+}
+```

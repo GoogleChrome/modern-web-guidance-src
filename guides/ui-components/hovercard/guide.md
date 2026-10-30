@@ -57,7 +57,7 @@ Position the hovercard relative to its trigger using **CSS Anchor Positioning**.
   /* Position the card below the trigger, aligned with its inline-start edge
      and spanning toward the inline-end, flipping if it overflows the viewport. */
   position-area: block-end span-inline-end;
-  position-try-fallbacks: flip-block, flip-inline;
+  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
 }
 ```
 
