@@ -1,16 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { cGreen, cYellow, cCyan, cBold } from '../core/colors.ts';
-import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, TARGETS_DIR, REPORT_FILE } from '../core/guide-validation.ts';
+import { cGreen, cYellow, cCyan, cBold, cRed } from '../core/colors.ts';
+import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, TARGETS_DIR, REPORT_FILE, GRADER_FILE } from '../core/guide-validation.ts';
 import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/paths.ts';
 import { setupGuideDevWorkDir, runAgent } from '../harness/lib/utils.ts';
-import { buildDevReportPrompt } from './dev-prompts.ts';
+import { buildDevReportPrompt, buildApplyReviewFeedbackPrompt } from './dev-prompts.ts';
+import { testGrader } from '../grading/run-grader.ts';
 
 export type DevReportFlag =
+  | 'CALIBRATION_FAILED'
   | 'INFRASTRUCTURE_ERROR'
   | 'MISSING_GUIDANCE_TOOL'
   | 'MISSING_EXPECTED_GUIDE'
   | 'LOW_GUIDED_PASS_RATE'
+  | 'HIGH_UNGUIDED_PASS_RATE'
   | 'HEALTHY';
 
 export interface TargetEvalSummary {
@@ -22,16 +25,83 @@ export interface TargetEvalSummary {
 }
 
 /**
- * Computes deterministic diagnostic flag for an evaluation run in strict priority order.
+ * Applies pull request review feedback directly to the guide, expectations, and target files
+ * before target generation and evaluation calibration run.
  */
+export async function applyPrReviewFeedback(
+  targetDir: string,
+  prContext: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+    rerunMode?: string;
+  }
+): Promise<void> {
+  if (!prContext.comments?.trim()) return;
+
+  console.log(cCyan(`\n--- Applying Reviewer Feedback to Files ---`));
+  const agent = getDefaultSolutionAgent();
+  const { workDir, tempHome } = setupGuideDevWorkDir('review-feedback');
+
+  try {
+    if (fs.existsSync(path.join(targetDir, GUIDE_FILE))) {
+      fs.copyFileSync(path.join(targetDir, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
+    }
+    if (fs.existsSync(path.join(targetDir, EXPECTATIONS_FILE))) {
+      fs.copyFileSync(path.join(targetDir, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+    }
+    if (fs.existsSync(path.join(targetDir, TARGETS_DIR))) {
+      fs.cpSync(path.join(targetDir, TARGETS_DIR), path.join(workDir, 'targets'), { recursive: true });
+    }
+
+    const guideName = path.basename(targetDir);
+    const prompt = buildApplyReviewFeedbackPrompt({
+      guideName,
+      comments: prContext.comments,
+      branchCommits: prContext.branchCommits,
+      branchDiff: prContext.branchDiff,
+      rerunMode: prContext.rerunMode,
+    });
+
+    console.log(cCyan(`Invoking ${agent} to address review comments directly on disk...`));
+    await runAgent(agent, prompt, workDir, { homeDir: tempHome });
+
+    // Sync modified files back to targetDir
+    const workGuide = path.join(workDir, GUIDE_FILE);
+    if (fs.existsSync(workGuide)) {
+      fs.copyFileSync(workGuide, path.join(targetDir, GUIDE_FILE));
+    }
+    const workExp = path.join(workDir, EXPECTATIONS_FILE);
+    if (fs.existsSync(workExp)) {
+      fs.copyFileSync(workExp, path.join(targetDir, EXPECTATIONS_FILE));
+    }
+    const workTargets = path.join(workDir, 'targets');
+    if (fs.existsSync(workTargets)) {
+      fs.cpSync(workTargets, path.join(targetDir, TARGETS_DIR), { recursive: true });
+    }
+  } finally {
+    fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+  }
+}
 export function computeDevReportFlag(input: {
   guideName: string;
+  hasCalibrationFailure?: boolean;
+  calibrationFailureMessage?: string;
   hasEarlyFailure: boolean;
   earlyFailureMessage?: string;
   toolsUsed: string[];
   guidesConsumed: string[];
   guidedPassRate: number;
+  unguidedPassRate?: number | null;
 }): { flag: DevReportFlag; flagDetails: string } {
+  // Priority 0: Grader Calibration Failure
+  if (input.hasCalibrationFailure) {
+    return {
+      flag: 'CALIBRATION_FAILED',
+      flagDetails: `Calibration failed: ${input.calibrationFailureMessage || 'Grader failed to calibrate against golden solutions.'}`,
+    };
+  }
+
   // Priority 1: Infrastructure / Transient Errors
   if (input.hasEarlyFailure) {
     return {
@@ -64,7 +134,15 @@ export function computeDevReportFlag(input: {
     };
   }
 
-  // Priority 5: Healthy
+  // Priority 5: Unguided Pass Rate === 100%
+  if (input.unguidedPassRate === 100) {
+    return {
+      flag: 'HIGH_UNGUIDED_PASS_RATE',
+      flagDetails: `Unguided pass rate is 100% (unguided agent passed all checks without guidance).`,
+    };
+  }
+
+  // Priority 6: Healthy
   return {
     flag: 'HEALTHY',
     flagDetails: `Guided pass rate is ${input.guidedPassRate}% (≥ 90%) and expected guide was consumed.`,
@@ -74,7 +152,31 @@ export function computeDevReportFlag(input: {
 /**
  * Extracts and parses evaluation summary for a specific target base app.
  */
-export function computeTargetSummary(targetDir: string, baseApp: string, guideInfo?: Partial<GuideResultsInventory>): TargetEvalSummary | null {
+export function computeTargetSummary(
+  targetDir: string,
+  baseApp: string,
+  guideInfo?: Partial<GuideResultsInventory>,
+  calibrationErrorDetails?: string
+): TargetEvalSummary | null {
+  if (calibrationErrorDetails) {
+    const { flag, flagDetails } = computeDevReportFlag({
+      guideName: path.basename(targetDir),
+      hasCalibrationFailure: true,
+      calibrationFailureMessage: calibrationErrorDetails,
+      hasEarlyFailure: false,
+      toolsUsed: [],
+      guidesConsumed: [],
+      guidedPassRate: 0,
+    });
+    return {
+      baseApp,
+      flag,
+      flagDetails,
+      guidedPassRate: 0,
+      unguidedPassRate: null,
+    };
+  }
+
   const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
   const evalsJsonPath = path.join(guideResultsDir, baseApp, 'evals.json');
   if (!fs.existsSync(evalsJsonPath)) {
@@ -92,6 +194,7 @@ export function computeTargetSummary(targetDir: string, baseApp: string, guideIn
   }
 
   const guidedPassRate = json.summary?.guidedPassRate ?? 0;
+  const unguidedPassRate = json.summary?.unguidedPassRate ?? null;
   const { flag, flagDetails } = computeDevReportFlag({
     guideName,
     hasEarlyFailure: !!json.summary?.guidedEarlyFailures,
@@ -99,6 +202,7 @@ export function computeTargetSummary(targetDir: string, baseApp: string, guideIn
     toolsUsed: guidedRun.guidanceToolsUsed || [],
     guidesConsumed: guidedRun.guidesUsed || [],
     guidedPassRate,
+    unguidedPassRate,
   });
 
   return {
@@ -106,7 +210,7 @@ export function computeTargetSummary(targetDir: string, baseApp: string, guideIn
     flag,
     flagDetails,
     guidedPassRate,
-    unguidedPassRate: json.summary?.unguidedPassRate ?? null,
+    unguidedPassRate,
   };
 }
 
@@ -118,13 +222,29 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
   const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
   let content = `# Evaluation Report: ${guideName}\n\n`;
 
+  const anyUnhealthy = summaries.some(s => s.flag !== 'HEALTHY');
+  if (anyUnhealthy) {
+    content += `> [!NOTE]\n`;
+    content += `> **Reviewer Next Steps**: If any targets are flagged or require adjustments, recommended fixes have already been applied directly to the files in this PR.\n`;
+    content += `> - After reviewing, add the **\`needs-dev-rerun\`** label. The next \`gd dev-gap\` run regenerates whatever the changed files require: edits to \`guide.md\` or \`expectations.md\` regenerate all target artifacts, edits to \`task.md\` regenerate the solution patches and \`grader.ts\`, and edits to \`grader.ts\` re-run calibration and agent evaluations.\n\n`;
+  }
+
+  content += `## Summary\n\n`;
+  content += `<!-- TODO: Complete overall summary across all targets -->\n\n`;
+  content += `---\n\n`;
+
   for (const s of summaries) {
     content += `## Target: \`${s.baseApp}\` (Status: \`${s.flag}\`)\n\n`;
     content += `### Evaluation Results\n\n`;
     const evalsMdPath = path.join(guideResultsDir, s.baseApp, 'evals.md');
-    const rawEvals = fs.existsSync(evalsMdPath) ? fs.readFileSync(evalsMdPath, 'utf8').trim() : '';
-    const nestedEvals = rawEvals.replaceAll(/^## /gm, '#### ').replaceAll(/^### /gm, '##### ');
-    content += nestedEvals + '\n\n';
+    let nestedEvals = '';
+    if (fs.existsSync(evalsMdPath)) {
+      const rawEvals = fs.readFileSync(evalsMdPath, 'utf8').trim();
+      nestedEvals = rawEvals.replaceAll(/^## /gm, '#### ').replaceAll(/^### /gm, '##### ');
+    } else if (s.flag === 'CALIBRATION_FAILED') {
+      nestedEvals = `Calibration failed prior to evaluation run:\n\n\`\`\`\n${s.flagDetails}\n\`\`\``;
+    }
+    content += nestedEvals ? nestedEvals + '\n\n' : '';
     content += `### Diagnostic Analysis & Actionable Recommendations\n\n`;
     content += `<!-- TODO: Complete diagnostics and recommendations for ${s.baseApp} -->\n\n`;
     content += `---\n\n`;
@@ -139,13 +259,25 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 export async function runDevReport(
   targetDir: string,
   guideInfo?: Partial<GuideResultsInventory>,
-  targets: readonly string[] = SUPPORTED_BASE_APPS
+  targets: readonly string[] = SUPPORTED_BASE_APPS,
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  },
+  calibrationFailures?: ReadonlyMap<string, string> | Record<string, string>
 ): Promise<void> {
   console.log(cCyan(`\n--- Running Evaluation Report ---`));
 
   const guideResultsDir = resolveGuideResultsDir(targetDir, guideInfo);
+  const getCalibError = (app: string) => {
+    if (!calibrationFailures) return undefined;
+    if (calibrationFailures instanceof Map) return calibrationFailures.get(app);
+    return (calibrationFailures as Record<string, string>)[app];
+  };
+
   const summaries = targets
-    .map(baseApp => computeTargetSummary(targetDir, baseApp, guideInfo))
+    .map(baseApp => computeTargetSummary(targetDir, baseApp, guideInfo, getCalibError(baseApp)))
     .filter((s): s is TargetEvalSummary => s !== null);
 
   if (summaries.length === 0) {
@@ -158,6 +290,13 @@ export async function runDevReport(
 
   const agent = getDefaultSolutionAgent();
   const { workDir, tempHome } = setupGuideDevWorkDir('report');
+  const initialGraders = new Map<string, string>();
+  for (const s of summaries) {
+    const graderPath = path.join(targetDir, TARGETS_DIR, s.baseApp, GRADER_FILE);
+    if (fs.existsSync(graderPath)) {
+      initialGraders.set(s.baseApp, fs.readFileSync(graderPath, 'utf8'));
+    }
+  }
 
   try {
     // Copy guide.md, expectations.md, targets, and results to report sandbox
@@ -182,12 +321,55 @@ export async function runDevReport(
     const reportPrompt = buildDevReportPrompt({
       guideName,
       targets: summaries,
+      prContext,
     });
 
-    console.log(cCyan(`Invoking ${agent} to perform qualitative evaluation report...`));
+    console.log(cCyan(`Invoking ${agent} to perform qualitative evaluation report and apply recommended file updates...`));
     await runAgent(agent, reportPrompt, workDir, { homeDir: tempHome });
 
+    fs.mkdirSync(guideResultsDir, { recursive: true });
     fs.copyFileSync(workReportPath, finalReportPath);
+
+    // Sync any modified guide, expectations, and target files back to targetDir
+    const workGuideFile = path.join(workDir, GUIDE_FILE);
+    if (fs.existsSync(workGuideFile)) {
+      fs.copyFileSync(workGuideFile, path.join(targetDir, GUIDE_FILE));
+    }
+    const workExpFile = path.join(workDir, EXPECTATIONS_FILE);
+    if (fs.existsSync(workExpFile)) {
+      fs.copyFileSync(workExpFile, path.join(targetDir, EXPECTATIONS_FILE));
+    }
+    const workTargetsDir = path.join(workDir, 'targets');
+    if (fs.existsSync(workTargetsDir)) {
+      fs.cpSync(workTargetsDir, path.join(targetDir, TARGETS_DIR), {
+        recursive: true,
+        filter: (src) => !src.endsWith('-solution.patch'),
+      });
+    }
+
+    // Verify calibration if report agent modified any targets/<target>/grader.ts
+    for (const s of summaries) {
+      const graderPath = path.join(targetDir, TARGETS_DIR, s.baseApp, GRADER_FILE);
+      const originalGraderPath = path.join(workDir, 'targets', s.baseApp, GRADER_FILE);
+      if (fs.existsSync(graderPath) && fs.existsSync(originalGraderPath)) {
+        const originalContent = initialGraders.get(s.baseApp);
+        const newContent = fs.readFileSync(graderPath, 'utf8');
+        if (originalContent && originalContent !== newContent) {
+          console.log(cCyan(`\nValidating calibration for modified ${s.baseApp} grader...`));
+          const calib = await testGrader(path.join(targetDir, TARGETS_DIR, s.baseApp));
+          if (!calib.success) {
+            console.warn(cRed(`⚠️  Modified ${s.baseApp} grader failed calibration: ${calib.errorDetails || 'Unknown error'}. Reverting grader.ts changes.`));
+            fs.writeFileSync(graderPath, originalContent);
+            if (fs.existsSync(finalReportPath)) {
+              const revertWarning = `\n\n> [!WARNING]\n> **Grader Modification Reverted**: The report agent's proposed adjustments to \`targets/${s.baseApp}/${GRADER_FILE}\` failed calibration testing (${calib.errorDetails || 'calibration failure'}) and were automatically reverted on disk.\n`;
+              fs.appendFileSync(finalReportPath, revertWarning);
+            }
+          } else {
+            console.log(cGreen(`✅ Modified ${s.baseApp} grader passed calibration!`));
+          }
+        }
+      }
+    }
   } finally {
     fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
   }

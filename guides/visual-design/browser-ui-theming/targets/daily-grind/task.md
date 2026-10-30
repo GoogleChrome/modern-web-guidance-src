@@ -1,0 +1,1 @@
+- Update `index.html` to add a coffee order customization section alongside the Seasonal Favorites cards with native form controls and pickers, and style the page's built-in browser UI—including those form controls, pickers, scrollbars, and text selection—using CSS to match The Daily Grind's color palette rather than building custom replacement elements.

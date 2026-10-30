@@ -1,0 +1,213 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..808f4c9
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,10 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++await Promise.all(
++  ['index.html', 'seasonal-card.js'].map((file) =>
++    copyFile(new URL(file, import.meta.url), new URL(file, output)),
++  ),
++);
++console.log('Built static site in dist/');
+diff --git a/index.html b/index.html
+index 66c9173..43c6a87 100644
+--- a/index.html
++++ b/index.html
+@@ -107,19 +107,6 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -178,21 +165,22 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++        <seasonal-card>
++          <span slot="title">Maple Oat Latte</span>
++          <span slot="description">Creamy oat milk with a hint of Vermont maple syrup.</span>
++          <a slot="action" href="/menu/seasonal">View Details</a>
++          <span slot="badge">Limited</span>
++        </seasonal-card>
++        <seasonal-card>
++          <span slot="title">Dark Roast Espresso</span>
++          <span slot="description">Bold, smokey, and perfect for a morning boost.</span>
++          <a slot="action" href="/menu/espresso">View Details</a>
++        </seasonal-card>
++        <seasonal-card>
++          <span slot="title">Cold Brew</span>
++          <span slot="description">Steeped for 18 hours for maximum smoothness.</span>
++          <a slot="action" href="/menu/cold-brew">View Details</a>
++        </seasonal-card>
+       </div>
+     </section>
+   </main>
+@@ -207,6 +195,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/seasonal-card.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..cabcfcd 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check seasonal-card.js && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/seasonal-card.js b/seasonal-card.js
+new file mode 100644
+index 0000000..b471c66
+--- /dev/null
++++ b/seasonal-card.js
+@@ -0,0 +1,101 @@
++// Parse once; every card receives an independent copy of the shadow tree.
++const template = document.createElement('template');
++template.innerHTML = `
++  <style>
++    :host {
++      display: block;
++      min-width: 0;
++      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-size: 16px;
++      line-height: 1.6;
++      color: #3e2723;
++    }
++
++    *, ::slotted(*) {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    article {
++      height: 100%;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++    }
++
++    h3 {
++      font-size: 1.17em;
++      margin-bottom: 10px;
++      color: #4e342e;
++    }
++
++    ::slotted([slot="title"]), ::slotted([slot="description"]) {
++      font: inherit;
++      color: inherit;
++    }
++
++    .badge {
++      display: inline-block;
++      margin-bottom: 10px;
++      padding: 2px 8px;
++      border-radius: 4px;
++      background: #ffab40;
++      font-size: 0.75em;
++      font-weight: bold;
++    }
++
++    .badge[hidden] { display: none; }
++
++    ::slotted([slot="badge"]) {
++      font: inherit;
++      color: inherit;
++    }
++
++    ::slotted(a[slot="action"]) {
++      display: inline-block;
++      background: #4e342e;
++      color: white;
++      font: inherit;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      margin-top: 15px;
++      transition: background 0.3s;
++    }
++
++    ::slotted(a[slot="action"]:hover) { background: #3e2723; }
++    ::slotted(a[slot="action"]:focus-visible) {
++      outline: 3px solid #ffab40;
++      outline-offset: 3px;
++    }
++  </style>
++  <article>
++    <div class="badge" hidden><slot name="badge"></slot></div>
++    <h3><slot name="title"></slot></h3>
++    <p><slot name="description"></slot></p>
++    <slot name="action"></slot>
++  </article>
++`;
++
++class SeasonalCard extends HTMLElement {
++  constructor() {
++    super();
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.append(template.content.cloneNode(true));
++
++    const badgeSlot = root.querySelector('slot[name="badge"]');
++    const badge = root.querySelector('.badge');
++    // slotchange covers initial assignment and later additions/removals,
++    // including children parsed after the custom element is connected.
++    if (badgeSlot instanceof HTMLSlotElement && badge instanceof HTMLElement) {
++      badgeSlot.addEventListener('slotchange', () => {
++        badge.hidden = badgeSlot.assignedElements().length === 0;
++      });
++    }
++  }
++}
++
++customElements.define('seasonal-card', SeasonalCard);

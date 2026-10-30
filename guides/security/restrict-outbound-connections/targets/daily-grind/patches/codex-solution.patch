@@ -1,0 +1,638 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..e129183
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,3 @@
++node_modules/
++dist/
++data/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..2336ba9
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,9 @@
++// @ts-check
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++for (const filename of ['index.html', 'styles.css', 'newsletter.js', 'server.mjs']) {
++  await copyFile(new URL(filename, import.meta.url), new URL(filename, output));
++}
++console.log('Built Daily Grind in dist/.');
+diff --git a/index.html b/index.html
+index 66c9173..1ee8a96 100644
+--- a/index.html
++++ b/index.html
+@@ -5,154 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <link rel="stylesheet" href="/styles.css">
++  <script src="/newsletter.js" defer></script>
+ </head>
+ 
+ <body>
+@@ -176,7 +30,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-heading">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +49,16 @@
+         </div>
+       </div>
+     </section>
++    <section class="newsletter card" aria-labelledby="newsletter-heading">
++      <h2 id="newsletter-heading">Fresh news, brewed for you</h2>
++      <p>Sign up for seasonal favorites and news from The Daily Grind.</p>
++      <form id="newsletter-form" action="/api/newsletter" method="post">
++        <label for="newsletter-email">Email address</label>
++        <input id="newsletter-email" name="email" type="email" autocomplete="email" maxlength="254" required>
++        <button class="btn" type="submit">Subscribe</button>
++      </form>
++      <p id="newsletter-status" role="status" aria-live="polite" aria-atomic="true"></p>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/newsletter.js b/newsletter.js
+new file mode 100644
+index 0000000..ff0527a
+--- /dev/null
++++ b/newsletter.js
+@@ -0,0 +1,44 @@
++// @ts-check
++const form = document.querySelector('#newsletter-form');
++const emailInput = document.querySelector('#newsletter-email');
++const submitButton = document.querySelector('#newsletter-form button');
++const statusElement = document.querySelector('#newsletter-status');
++
++if (form instanceof HTMLFormElement && emailInput instanceof HTMLInputElement &&
++    submitButton instanceof HTMLButtonElement && statusElement instanceof HTMLElement) {
++  let pending = false;
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    if (pending || !form.reportValidity()) return;
++    pending = true;
++    submitButton.disabled = true;
++    form.setAttribute('aria-busy', 'true');
++    statusElement.textContent = 'Signing you up…';
++
++    try {
++      const response = await fetch(form.action, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ email: emailInput.value.trim() }),
++        credentials: 'same-origin',
++        redirect: 'error',
++        signal: AbortSignal.timeout(15000),
++      });
++      if (!response.ok) {
++        statusElement.textContent = response.status === 400
++          ? 'Please enter a valid email address and try again.'
++          : 'We couldn’t sign you up right now. Please try again shortly.';
++        return;
++      }
++      statusElement.textContent = 'Thanks for subscribing! You’re on the list.';
++      form.reset();
++    } catch {
++      // Network failures, policy blocks, redirects, and timeouts are all handled.
++      statusElement.textContent = 'Your signup request couldn’t get through. Please check your connection and try again.';
++    } finally {
++      pending = false;
++      submitButton.disabled = false;
++      form.removeAttribute('aria-busy');
++    }
++  });
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..87a24b0 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,17 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.mjs",
++    "build": "tsc --noEmit && node build.mjs"
++  },
++  "engines": {
++    "node": ">=22"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "devDependencies": {
++    "@types/node": "^26.6.5",
++    "typescript": "^7.0.2"
+   }
+ }
+diff --git a/server.mjs b/server.mjs
+new file mode 100644
+index 0000000..f614d80
+--- /dev/null
++++ b/server.mjs
+@@ -0,0 +1,160 @@
++// @ts-check
++import { createServer } from 'node:http';
++import { readFile, mkdir, appendFile } from 'node:fs/promises';
++import { resolve, join } from 'node:path';
++import { fileURLToPath, pathToFileURL } from 'node:url';
++
++const root = fileURLToPath(new URL('.', import.meta.url));
++const dataDirectory = resolve(process.env.NEWSLETTER_DATA_DIR || join(root, 'data'));
++const assets = new Map([
++  ['/', ['index.html', 'text/html; charset=utf-8']],
++  ['/index.html', ['index.html', 'text/html; charset=utf-8']],
++  ['/styles.css', ['styles.css', 'text/css; charset=utf-8']],
++  ['/newsletter.js', ['newsletter.js', 'text/javascript; charset=utf-8']],
++]);
++
++// Apply to every response, including any future document or worker response.
++// No redirect or WebRTC exceptions: both remain blocked by default.
++export const securityHeaders = {
++  'Connection-Allowlist': '(response-origin "https://images.unsplash.com"); report-to=conn-reports',
++  'Reporting-Endpoints': 'conn-reports="/api/security-reports"',
++  'Content-Security-Policy': [
++    "default-src 'self'",
++    "connect-src 'self'",
++    "img-src 'self' https://images.unsplash.com",
++    "script-src 'self'",
++    "style-src 'self'",
++    "font-src 'self'",
++    "form-action 'self'",
++    "worker-src 'self'",
++    "frame-src 'none'",
++    "frame-ancestors 'none'",
++    "object-src 'none'",
++    "base-uri 'none'",
++    'report-to conn-reports',
++  ].join('; '),
++  'X-Content-Type-Options': 'nosniff',
++  'Referrer-Policy': 'no-referrer',
++  'X-DNS-Prefetch-Control': 'off',
++  'Cache-Control': 'no-store',
++};
++
++class RequestError extends Error {
++  /** @param {number} status @param {string} message */
++  constructor(status, message) {
++    super(message);
++    this.status = status;
++  }
++}
++
++/** @param {import('node:http').IncomingMessage} request @param {number} limit */
++async function readBody(request, limit) {
++  let size = 0;
++  const chunks = [];
++  for await (const chunk of request) {
++    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
++    size += bytes.length;
++    if (size > limit) throw new RequestError(413, 'Request too large.');
++    chunks.push(bytes);
++  }
++  return Buffer.concat(chunks).toString('utf8');
++}
++
++/** @param {string} raw @returns {unknown} */
++function parseJson(raw) {
++  try {
++    return JSON.parse(raw);
++  } catch {
++    throw new RequestError(400, 'Invalid JSON.');
++  }
++}
++
++/** @param {import('node:http').ServerResponse} response @param {number} status @param {string} message */
++function sendJson(response, status, message) {
++  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
++  response.end(JSON.stringify({ message }));
++}
++
++/** @param {import('node:http').IncomingMessage} request @param {import('node:http').ServerResponse} response */
++export async function handleRequest(request, response) {
++  for (const [name, value] of Object.entries(securityHeaders)) response.setHeader(name, value);
++  try {
++    const pathname = new URL(request.url || '/', 'http://localhost').pathname;
++    if (pathname === '/api/newsletter' || pathname === '/api/security-reports') {
++      if (request.method !== 'POST') {
++        response.setHeader('Allow', 'POST');
++        return sendJson(response, 405, 'Use POST for this endpoint.');
++      }
++      if (request.headers['sec-fetch-site'] === 'cross-site') {
++        throw new RequestError(403, 'Cross-site requests are not accepted.');
++      }
++      const contentType = request.headers['content-type']?.split(';')[0]?.trim().toLowerCase();
++      const raw = await readBody(request, pathname === '/api/newsletter' ? 4096 : 65536);
++      if (pathname === '/api/security-reports') {
++        if (contentType !== 'application/reports+json' && contentType !== 'application/json') {
++          throw new RequestError(415, 'Expected JSON reports.');
++        }
++        const reports = parseJson(raw);
++        if (!Array.isArray(reports)) throw new RequestError(400, 'Expected a report array.');
++        // Only log aggregate counts; report URLs may contain private customer data.
++        const violations = reports.filter((report) => report && typeof report === 'object' &&
++          report.type === 'connection-allowlist').length;
++        if (violations > 0) console.warn(`Received ${violations} connection allowlist violation report(s).`);
++        response.writeHead(204);
++        response.end();
++        return;
++      }
++
++      /** @type {unknown} */
++      let email;
++      if (contentType === 'application/json') {
++        const body = parseJson(raw);
++        email = body && typeof body === 'object' && 'email' in body ? body.email : undefined;
++      } else if (contentType === 'application/x-www-form-urlencoded') {
++        email = new URLSearchParams(raw).get('email');
++      } else {
++        throw new RequestError(415, 'Expected a JSON or form submission.');
++      }
++      if (typeof email !== 'string') throw new RequestError(400, 'Please enter a valid email address.');
++      const normalizedEmail = email.trim();
++      if (normalizedEmail.length > 254 || !/^[^\s@\u0000-\u001f\u007f]+@[^\s@\u0000-\u001f\u007f]+\.[^\s@\u0000-\u001f\u007f]+$/.test(normalizedEmail)) {
++        throw new RequestError(400, 'Please enter a valid email address.');
++      }
++      await mkdir(dataDirectory, { recursive: true, mode: 0o700 });
++      await appendFile(join(dataDirectory, 'newsletter.jsonl'),
++        JSON.stringify({ email: normalizedEmail, subscribedAt: new Date().toISOString() }) + '\n', { mode: 0o600 });
++      if (contentType === 'application/x-www-form-urlencoded') {
++        response.writeHead(201, { 'Content-Type': 'text/html; charset=utf-8' });
++        response.end('<!doctype html><html lang="en"><meta charset="utf-8"><title>Subscribed | Daily Grind</title><h1>Thanks for subscribing!</h1><p>You’re on the list.</p><a href="/">Back to Daily Grind</a></html>');
++        return;
++      }
++      return sendJson(response, 201, 'Thanks for subscribing!');
++    }
++
++    if (request.method !== 'GET' && request.method !== 'HEAD') {
++      response.setHeader('Allow', 'GET, HEAD');
++      return sendJson(response, 405, 'Method not allowed.');
++    }
++    const asset = assets.get(pathname);
++    if (!asset) return sendJson(response, 404, 'Page not found.');
++    const [filename, contentType] = asset;
++    const body = await readFile(join(root, filename));
++    response.writeHead(200, { 'Content-Type': contentType, 'Content-Length': body.length });
++    response.end(request.method === 'HEAD' ? undefined : body);
++  } catch (error) {
++    if (response.destroyed) return;
++    const status = error instanceof RequestError ? error.status : 500;
++    // Do not expose storage paths, submitted emails, or internal errors to clients.
++    sendJson(response, status, error instanceof RequestError ? error.message : 'Unable to complete your request. Please try again.');
++  }
++}
++
++// Importing the handler for checks never starts a server.
++if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
++  const port = Number(process.env.PORT || 11222);
++  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.');
++  const server = createServer((request, response) => { void handleRequest(request, response); });
++  server.requestTimeout = 30000;
++  server.headersTimeout = 10000;
++  server.listen(port, '0.0.0.0', () => console.log(`Daily Grind listening on port ${port}`));
++}
+diff --git a/styles.css b/styles.css
+new file mode 100644
+index 0000000..9620d24
+--- /dev/null
++++ b/styles.css
+@@ -0,0 +1,162 @@
++:root {
++  --primary: #4e342e;
++  --secondary: #d7ccc8;
++  --accent: #ffab40;
++  --text: #3e2723;
++  --light: #fafafa;
++}
++
++* {
++  box-sizing: border-box;
++  margin: 0;
++  padding: 0;
++}
++
++body {
++  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++  line-height: 1.6;
++  color: var(--text);
++  background-color: var(--light);
++}
++
++/* Navigation */
++nav {
++  background: var(--primary);
++  color: white;
++  padding: 1rem 5%;
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  position: sticky;
++  top: 0;
++  z-index: 1000;
++}
++
++.logo {
++  font-size: 1.5rem;
++  font-weight: bold;
++  letter-spacing: 1px;
++}
++
++nav ul {
++  display: flex;
++  list-style: none;
++}
++
++nav ul li {
++  margin-left: 20px;
++}
++
++nav a {
++  color: white;
++  text-decoration: none;
++  font-size: 0.9rem;
++  transition: color 0.3s;
++}
++
++nav a:hover {
++  color: var(--accent);
++}
++
++.logout-link {
++  border: 1px solid var(--accent);
++  padding: 5px 12px;
++  border-radius: 4px;
++}
++
++/* Hero Section */
++.hero {
++  height: 60vh;
++  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++    url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++  background-size: cover;
++  background-position: center;
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  align-items: center;
++  color: white;
++  text-align: center;
++  padding: 0 20px;
++}
++
++.hero h1 {
++  font-size: 3rem;
++  margin-bottom: 1rem;
++}
++
++/* Content Sections */
++.container {
++  max-width: 1100px;
++  margin: 40px auto;
++  padding: 0 20px;
++}
++
++.grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++  gap: 20px;
++  margin-top: 20px;
++}
++
++.card {
++  background: white;
++  padding: 20px;
++  border-radius: 8px;
++  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++  text-align: center;
++}
++
++.card h3 {
++  margin-bottom: 10px;
++  color: var(--primary);
++}
++
++.btn {
++  display: inline-block;
++  background: var(--primary);
++  color: white;
++  padding: 10px 20px;
++  text-decoration: none;
++  border-radius: 5px;
++  margin-top: 15px;
++  transition: background 0.3s;
++}
++
++.btn:hover {
++  background: #3e2723;
++}
++
++footer {
++  background: var(--secondary);
++  text-align: center;
++  padding: 40px 20px;
++  margin-top: 40px;
++}
++
++.footer-links {
++  margin-bottom: 20px;
++}
++
++.footer-links a {
++  margin: 0 10px;
++  color: var(--text);
++  text-decoration: none;
++  font-size: 0.85rem;
++}
++
++.section-heading { text-align: center; }
++.newsletter { margin-top: 40px; }
++.newsletter form { max-width: 440px; margin: 20px auto 0; text-align: left; }
++.newsletter label { display: block; font-weight: 600; }
++.newsletter input { width: 100%; padding: 10px; border: 1px solid var(--primary); border-radius: 4px; font: inherit; }
++.newsletter button { border: 0; cursor: pointer; font: inherit; }
++.newsletter button:disabled { opacity: 0.6; cursor: wait; }
++#newsletter-status { margin-top: 15px; min-height: 1.6em; }
++:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++@media (max-width: 640px) {
++  nav { flex-direction: column; gap: 12px; }
++  nav ul { flex-wrap: wrap; justify-content: center; gap: 12px; }
++  nav ul li { margin-left: 0; }
++  .hero h1 { font-size: 2.3rem; }
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..e0f3ec5
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,14 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "noEmit": true,
++    "strict": true,
++    "target": "ES2023",
++    "module": "NodeNext",
++    "moduleResolution": "NodeNext",
++    "lib": ["ES2023", "DOM"],
++    "types": ["node"]
++  },
++  "include": ["*.mjs", "newsletter.js"]
++}

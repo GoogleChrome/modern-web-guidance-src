@@ -4,17 +4,17 @@ description: |
   Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.
 
   Trigger immediately for:
-  - UI/Layout: Modals, dialogs, popovers, Glassmorphism/backdrop-filters, anchor positioning, container queries, `:has()`, `:user-valid`.
-  - Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals.
-  - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.
-  - System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.
-  - Frameworks: Adapting layout/styles in React, Vue, Angular.
-  - General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.
+  - UI/Layout: Modals/dialogs/popovers, tables, dark mode, anchor positioning, container queries, `:has()`, etc.
+  - Scroll/Motion: View Transitions, Scroll-driven animations, parallax/reveals, etc.
+  - Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization, etc.
+  - System/APIs: Security, passkeys, HTML sanitization, Web Components, dates/timezones, Built-in AI, WebAssembly, etc.
+  - Frameworks: Standard HTML/CSS/DOM in React, Vue, Angular, etc.
+  - General Frontend: Forms, validation (`:user-valid`), autofill, accessibility, custom selects, scrollbars, etc.
 
   DO NOT trigger for:
-  - Backend: Database SQL, ORMs, Express API routes.
-  - Pipelines: CI/CD deployment, Docker, Actions.
-  - Generic: Local scripts (Python/Go tools), ESLint, Git.
+  - Backend: SQL, ORMs, API routes, etc.
+  - Infra/Scripts: CI/CD, Docker, Actions, Python/Go, Git, etc.
+  - Tooling/Trivial: Vite, tsconfig, ESLint, tests, copy/renames, 3P docs, etc.
 ---
 
 # Modern Web Guidance
@@ -24,15 +24,17 @@ A skill to search for specific web development use cases and retrieve their corr
 ## When to use
 
 Must use this skill:
-- At the **start** of implementing any web feature.
-- Before creating a new component, to check if a standardized pattern already exists.
+- At the **start** of implementing any web UI, CSS layout/animation, or client-side JS logic (dates/timezones, sanitization, performance, accessibility)—including when fixing UX symptoms (e.g., janky interactions, layout shifts).
+- Before creating or updating a component, to check if a standardized modern web pattern already exists.
 - To avoid implementing ad-hoc solutions or loading large dependencies unnecessarily.
 
 ## Usage Instructions
 
 ### Step 1. Search Use Cases
 
-Search with an action-oriented query summarizing what you want to achieve using the `search` command. Run `modern-web-guidance` directly with `npx`.
+Run `modern-web-guidance` directly with `npx` using a **2–5 word action-oriented query** for a **single web platform capability or UI pattern**:
+- **Keep queries focused and generic**: Describe the user-visible capability (`<verb> + <UI/platform object>`, optionally paired with the target HTML/CSS/JS feature name if known). Omit framework/library names (`React`, `Vue`, `Tailwind`, etc.) and app/domain nouns (product, route, or component/file names). Split multi-feature tasks into separate `search` calls.
+- **Example**: Search `"light dismiss dialog"` or `"responsive data table"`, **not** `"dialog"` (too terse), `"responsive table dark mode"` (compound — split into two searches), or `"close React settings modal on outside click"` (framework/app noise).
 
 ```sh
 npx -y modern-web-guidance@latest search "<query>" --skill-version SKILL_VERSION
@@ -43,33 +45,25 @@ npx -y modern-web-guidance@latest search "<query>" --skill-version SKILL_VERSION
 [
   {
     "id": "optimize-image-priority",
-    "description": "Optimize the loading priority of Largest Contentful Paint (LCP) candidate images.",
-    "category": "performance",
-    "featuresUsed": [ "Fetch priority" ],
-    "tokenCount": 985,
-    "similarity": 0.7289
+    "description": "Optimize the loading priority of Largest Contentful Paint (LCP) candidate images."
   },
   {
     "id": "defer-rendering-heavy-content",
-    "description": "Reduce rendering times in content-heavy web pages by deferring rendering for offscreen content.",
-    "category": "performance",
-    "featuresUsed": [ "content-visibility", "hidden=\"until-found\"" ],
-    "tokenCount": 1250,
-    "similarity": 0.6961
+    "description": "Reduce rendering times in content-heavy web pages by deferring rendering for offscreen content."
   }
 ]
 ```
 
-> **Note**: If search results are vague, return no matches, or show low similarity scores, run the `list` command to browse all guides:
-> ```sh
-> npx -y modern-web-guidance@latest list
-> ```
+> **Note**: Judge results by their `description` fields:
+> - **Match found**: Call `retrieve` directly—do not also run `list`.
+> - **No match on a web UI/CSS/DOM behavior (or broad UI audit)**: If `search` returns `[]` or unrelated descriptions because your phrasing differed from the catalog (or your task spans multiple categories), run `npx -y modern-web-guidance@latest list` once to check if the pattern is covered under more general terminology.
+> - **Topic not covered**: If no guide `description` directly matches your task, proceed with your implementation without retry loops or retrieving unrelated guides.
 
 ---
 
 ### Step 2. Retrieve Best Practices
 
-Once you have a relevant `id` from the search results, call this script using the `retrieve` command to get the full guide. You can pass multiple IDs separated by commas.
+Once you have relevant `id`(s) from the search results, call `retrieve` to get the full guide(s)—including both specific use-case guides that match your task and any broader discipline guide (e.g., `html`, `css`, `forms`, `accessibility`, `color`, `performance`, `security`) that applies. You can pass multiple IDs separated by commas.
 
 ```sh
 npx -y modern-web-guidance@latest retrieve "<id>"
@@ -109,7 +103,10 @@ When you consult `modern-web-guidance` for a task, end the response where you de
 ## Guidelines
 
 - Always search **first** to find the most relevant guides.
-- These guides are usually framework-agnostic; adapt them correctly to your setup.
+- These guides use vanilla HTML/CSS/JS; adapt them to your framework without dropping the modern feature:
+  - **Types**: Spread/cast newly shipped HTML attributes (`{...({ popover: 'hint', interestfor: id, commandfor: id, switch: '' } as any)}`, `[attr.*]`) rather than removing them or merging `@types/react`.
+  - **SSR & Bundlers**: Guard `window`/`HTMLElement` in SSR and load polyfills via bare `import('<pkg>')` in client effects (or set Vite `build.target: 'esnext'` for top-level `await`)—never copy files from `node_modules`.
+  - **DOM, IDs & CSS**: Call `showModal()`/`moveBefore()` via refs on non-VDOM-managed nodes, generate per-instance IDs/`anchor-name`s (`useId()`), and keep `:root` and `@starting-style` top-level/unscoped.
 - Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
 
 ## Interpreting Browser Support & Fallbacks

@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { getCssStyleSheet, getHtmlDocuments, getJsProject } from './test-fixture.ts';
-import { CSSPropertyRule, CSSStyleRule } from 'cssomnom';
+import { CSSContainerRule, CSSPropertyRule, CSSStyleRule } from 'cssomnom';
 import { SyntaxKind } from 'ts-morph';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -108,6 +108,150 @@ progress.progress-ring {
     }
   });
 
+  test('getCssStyleSheet ignores unparsed JSX inline style expressions and unwraps :global() in .astro files without corrupting subsequent rules', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-astro-style-test-'));
+    try {
+      const astroFile = path.join(tempDir, 'ArticleTeaser.astro');
+      fs.writeFileSync(
+        astroFile,
+        [
+          '---',
+          'const explicitSurface = "featured";',
+          '---',
+          '<article style={explicitSurface ? `--surface: ${explicitSurface};` : undefined} class="teaser">',
+          '  <span class="badge">Featured</span>',
+          '</article>',
+          '<style>',
+          '  :global(:where([data-surface="featured"])) .badge { display: inline-flex; }',
+          '</style>',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const cssFile = path.join(tempDir, 'global.css');
+      fs.writeFileSync(
+        cssFile,
+        [
+          '.surface-featured { --surface: featured; }',
+          '@container style(--surface: featured) { .badge { display: block; } }',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([astroFile, cssFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      const whereRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes(':where(')
+      );
+      assert.ok(whereRule, 'Should unwrap :global() and parse :where() fallback rule in Astro <style>');
+
+      const surfaceRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.surface-featured'
+      );
+      assert.ok(surfaceRule, 'Should preserve top-level .surface-featured CSSStyleRule after Astro file');
+      assert.strictEqual(surfaceRule.style.getPropertyValue('--surface').trim(), 'featured');
+
+      const containerRule = rules.find((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+      assert.ok(containerRule, 'Should preserve top-level @container rule after Astro file');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getCssStyleSheet isolates unterminated comments, strings, and url() in one source from subsequent files', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-css-isolation-test-'));
+    try {
+      const htmlFile = path.join(tempDir, 'index.html');
+      fs.writeFileSync(
+        htmlFile,
+        [
+          '<div style="color: red; background: url(">a</div>',
+          '<p style="font-family: &quot;Unclosed">b</p>',
+          '<style>.broken { color: red; /* unclosed comment</style>',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const cssFile = path.join(tempDir, 'global.css');
+      fs.writeFileSync(cssFile, '.after { color: blue; }', 'utf8');
+
+      const stylesheet = getCssStyleSheet([htmlFile, cssFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      const afterRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.after'
+      );
+      assert.ok(afterRule, 'Should preserve .after rule from global.css despite broken earlier sources');
+      assert.strictEqual(afterRule.style.getPropertyValue('color').trim(), 'blue');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getCssStyleSheet extracts <style> inside <script> tags and excludes <style>/[style] inside <template> elements in .html', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-html-template-test-'));
+    try {
+      const htmlFile = path.join(tempDir, 'index.html');
+      fs.writeFileSync(
+        htmlFile,
+        `<html>
+          <head>
+            <style>.global-style { color: red; }</style>
+          </head>
+          <body>
+            <template id="card-template">
+              <style>.template-style { color: blue; }</style>
+              <div style="font-size: 14px;"></div>
+              <template id="nested-template">
+                <style>.nested-template-style { color: yellow; }</style>
+              </template>
+            </template>
+            <div style="margin: 20px;"></div>
+            <script>
+              class MyCard extends HTMLElement {
+                connectedCallback() {
+                  this.shadowRoot.innerHTML = \`<style>.shadow-style { display: block; }</style>\`;
+                  const tmpl = \`<template><style>.script-template-style { color: green; }</style></template>\`;
+                }
+              }
+            </script>
+          </body>
+        </html>`,
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([htmlFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      // Top-level <style> should be found
+      const globalRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.global-style');
+      assert.ok(globalRule, 'Should find top-level .global-style rule');
+
+      // Top-level inline [style] should be found
+      const inlineRules = rules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '[style]');
+      assert.strictEqual(inlineRules.length, 1, 'Should find exactly 1 top-level inline [style] rule');
+      assert.strictEqual(inlineRules[0].style.getPropertyValue('margin'), '20px');
+
+      // <style> inside <script> should be extracted (e.g. shadowRoot.innerHTML)
+      const shadowRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.shadow-style');
+      assert.ok(shadowRule, 'Should extract .shadow-style rule from <script> template literal');
+
+      // <style> inside <template> inside <script> template literal should also be preserved
+      const scriptTemplateRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.script-template-style');
+      assert.ok(scriptTemplateRule, 'Should extract .script-template-style rule from <template> inside <script>');
+
+      // <style> and [style] inside <template> (including nested <template>) MUST NOT be extracted as global page styles
+      const templateRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.template-style');
+      assert.ok(!templateRule, 'Must NOT extract .template-style from inside <template>');
+
+      const nestedTemplateRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.nested-template-style');
+      assert.ok(!nestedTemplateRule, 'Must NOT extract .nested-template-style from inside nested <template>');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   test('getCssStyleSheet handles empty file lists gracefully', () => {
     const stylesheet = getCssStyleSheet([]);
     assert.ok(stylesheet);
@@ -167,23 +311,31 @@ const isComplete = value < 100;
     }
   });
 
-  test('getJsProject populates ts-morph Project from .ts and <script> tags', () => {
+  test('getJsProject populates ts-morph Project from .ts, .mjs, and <script> tags', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-js-test-'));
     try {
       const tsFile = path.join(tempDir, 'logic.ts');
       fs.writeFileSync(tsFile, 'export function calculateTotal(a: number, b: number): number { return a + b; }', 'utf8');
 
+      const mjsFile = path.join(tempDir, 'server.mjs');
+      fs.writeFileSync(mjsFile, 'export function setSecurityHeaders(res) { res.setHeader("Permissions-Policy", "camera=()"); }', 'utf8');
+
+      const testMjsFile = path.join(tempDir, 'hydration.test.mjs');
+      fs.writeFileSync(testMjsFile, 'function testHarnessOnly() { return false; }', 'utf8');
+
       const htmlFile = path.join(tempDir, 'index.html');
       fs.writeFileSync(htmlFile, '<script>function inlineHelper() { return 42; }</script>', 'utf8');
 
-      const project = getJsProject([tsFile, htmlFile]);
+      const project = getJsProject([tsFile, mjsFile, testMjsFile, htmlFile]);
       const sourceFiles = project.getSourceFiles();
-      assert.ok(sourceFiles.length >= 2);
+      assert.strictEqual(sourceFiles.length, 3);
 
       const functionDecls = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration));
       const funcNames = functionDecls.map(fn => fn.getName());
       assert.ok(funcNames.includes('calculateTotal'));
+      assert.ok(funcNames.includes('setSecurityHeaders'));
       assert.ok(funcNames.includes('inlineHelper'));
+      assert.ok(!funcNames.includes('testHarnessOnly'));
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

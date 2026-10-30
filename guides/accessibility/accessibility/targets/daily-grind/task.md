@@ -1,0 +1,1 @@
+- Audit and update the Daily Grind landing page in `index.html`—including the navigation bar, hero banner, seasonal favorites product cards, and footer links—to improve web accessibility with proper semantic markup, keyboard navigation, focus management, and screen reader support.

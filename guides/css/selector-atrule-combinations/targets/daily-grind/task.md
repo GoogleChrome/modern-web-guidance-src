@@ -1,1 +1,1 @@
-- Target elements based on the intersection or union of selectors and conditional @-rules while minimizing repetition.
+- Add dark and light theme styling to the Daily Grind homepage's navigation bar, hero banner, and "Seasonal Favorites" cards that responds to both OS color-scheme media preferences and root theme attributes or classes without duplicating the themed CSS rules.

@@ -4,8 +4,8 @@ import os from 'os';
 import { fileURLToPath } from 'url';
 import {
   cleanupIsolatedHome,
+  ISOLATED_HOME_ENV,
   parseAgentArgs,
-  watchLogFile,
   runCliAgentCommand,
   setupIsolatedWorkDir,
   parseJsonlFile,
@@ -13,12 +13,13 @@ import {
   type GuideUsage
 } from '../lib/agent-shared.ts';
 import config, { Agents } from '../config.ts';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { generateCodexTrajectoryHtml } from '../lib/codex-trajectory-viewer.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
+  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
@@ -31,6 +32,78 @@ import {
 import type { CodexRolloutLine, CodexOutputContentBlock } from './codex.d.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
+const REFRESH_EXPIRY_BUFFER_MS = 48 * 60 * 60 * 1000; // Refresh if <48h left on access_token
+const MAX_REFRESH_AGE_MS = 5 * 24 * 60 * 60 * 1000; // Refresh if last_refresh >5d old (Codex CLI refreshes at 8d)
+
+function getJwtExpMs(jwt?: string): number | null {
+  try {
+    const payload = JSON.parse(Buffer.from(jwt?.split('.')[1] ?? '', 'base64url').toString());
+    return typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+let inflightRefresh: Promise<boolean> | null = null;
+
+/**
+ * Refreshes ~/.codex/auth.json on the host before parallel workers copy it into
+ * ephemeral /tmp homes (preventing single-use refresh_token rotation races).
+ */
+export function ensureFreshHostCodexAuth(
+  authPath = path.join(os.homedir(), '.codex', 'auth.json'),
+  fetchFn: typeof fetch = fetch
+): Promise<boolean> {
+  return (inflightRefresh ??= (async () => {
+    let auth: any;
+    try {
+      auth = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+    } catch {
+      return false;
+    }
+    if (auth?.OPENAI_API_KEY || !auth?.tokens?.refresh_token) return false;
+
+    const now = Date.now();
+    const expMs = getJwtExpMs(auth.tokens.access_token);
+    if (expMs && expMs - now >= REFRESH_EXPIRY_BUFFER_MS && now - Date.parse(auth.last_refresh) <= MAX_REFRESH_AGE_MS) {
+      return false;
+    }
+
+    console.log('🔄 Refreshing host ~/.codex/auth.json before spawning parallel workers...');
+    const res = await fetchFn('https://auth.openai.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({
+        client_id: 'app_EMoamEEZ73f0CkXaXp7hrann',
+        grant_type: 'refresh_token',
+        refresh_token: auth.tokens.refresh_token,
+        scope: 'openid profile email'
+      })
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to refresh ${authPath} (${res.status}): ${await res.text()}\nRun 'codex login' to re-authenticate.`);
+    }
+
+    const { access_token, refresh_token, id_token } = (await res.json()) as Record<string, string>;
+    if (!access_token) throw new Error(`Refresh response for ${authPath} missing access_token.`);
+
+    Object.assign(auth.tokens, {
+      access_token,
+      ...(refresh_token && { refresh_token }),
+      ...(id_token && { id_token })
+    });
+    auth.last_refresh = new Date(now).toISOString();
+
+    const tmpPath = `${authPath}.tmp.${process.pid}`;
+    fs.writeFileSync(tmpPath, JSON.stringify(auth, null, 2), { mode: 0o600 });
+    fs.renameSync(tmpPath, authPath);
+    console.log('✅ Host ~/.codex/auth.json refreshed and saved.');
+    return true;
+  })().finally(() => {
+    inflightRefresh = null;
+  }));
+}
 
 export function setupCodexCliCredentials(tempHome: string): void {
   const codexGlobalDir = path.join(os.homedir(), '.codex');
@@ -80,7 +153,8 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType, targetDir);
+  if (!process.env[ISOLATED_HOME_ENV]) await ensureFreshHostCodexAuth();
+  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -93,12 +167,7 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    let stopWatchingMcpLog = () => { };
-
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
       await runCliAgentCommand(
         command,
         commandArgs,
@@ -108,7 +177,6 @@ async function run() {
         runType
       );
     } finally {
-      stopWatchingMcpLog();
       exportCodexTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.CODEX_CLI, userPrompt);
     }
@@ -254,7 +322,8 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
       if (typeof entry.payload?.model === 'string') {
         modelCounts[entry.payload.model] = (modelCounts[entry.payload.model] || 0) + 1;
       }
-      const info = (entry.type === 'token_count' ? entry : entry.payload)?.info?.total_token_usage;
+      const info = (entry.type === 'token_count' ? entry : entry.payload)?.info?.total_token_usage
+        || (entry.type === 'token_usage_record' ? entry.payload?.thread_token_usage : undefined);
       if (info) {
         lastTotal = info.total_tokens || 0;
         lastCached = info.cached_input_tokens || 0;
@@ -377,12 +446,10 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
             toolsUsed.add(match[1]);
           }
         }
-        if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
-          const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-          if (match) {
-            for (const g of match[1].split(',').map((s: string) => s.trim())) {
-              retrievedGuides.add(g);
-            }
+        const extractedGuides = extractRetrievedGuidesFromCommand(command);
+        if (extractedGuides.length > 0) {
+          for (const g of extractedGuides) {
+            retrievedGuides.add(g);
           }
         } else if (command.includes('.agents/skills/') && command.includes('guide.md')) {
           const match = command.match(/\.agents\/skills\/[^/]+\/([^/]+)\/guide\.md/);
@@ -462,7 +529,7 @@ export function loadCodexLogs(dir: string): { logData: any[]; subagentsMap: Reco
   }
 
   for (const file of subFiles) {
-    const subId = file.replace(/^subagent-(?:subagents-)?(?:agent-)?/, '').replace(/\.jsonl$/, '');
+    const subId = extractSubagentIdFromFilename(file);
     subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
   }
 
