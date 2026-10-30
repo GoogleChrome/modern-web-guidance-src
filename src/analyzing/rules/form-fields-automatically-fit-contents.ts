@@ -163,18 +163,9 @@ function isEnclosedInInputHandlerOrHelper(node: Node): boolean {
       return true;
     }
 
-    if (
-      Node.isFunctionDeclaration(current) ||
-      Node.isFunctionExpression(current) ||
-      Node.isArrowFunction(current) ||
-      Node.isMethodDeclaration(current)
-    ) {
-      const name = Node.isFunctionDeclaration(current) || Node.isMethodDeclaration(current)
-        ? (current.getName() ?? '').toLowerCase()
-        : '';
-      if (
-        FORM_FIELD_KEYWORDS.some((kw) => name.includes(kw))
-      ) {
+    if (Node.isFunctionDeclaration(current) || Node.isMethodDeclaration(current)) {
+      const name = (current.getName() ?? '').toLowerCase();
+      if (FORM_FIELD_KEYWORDS.some((kw) => name.includes(kw))) {
         return true;
       }
     }
@@ -233,14 +224,11 @@ function isAutoSizingFormField(node: BinaryExpression): boolean {
     return false;
   }
 
-  const inInputHandler = isEnclosedInInputHandlerOrHelper(node);
-  const hasReset = hasPrecedingStyleReset(node);
-  const mentionsFormField = FORM_FIELD_KEYWORDS.some((kw) =>
-    nodeText.includes(kw),
-  );
-
   // Require concrete evidence that this element is a form field (not generic accordion or slideDown)
-  return (inInputHandler || mentionsFormField) && (hasReset || mentionsFormField);
+  if (FORM_FIELD_KEYWORDS.some((kw) => nodeText.includes(kw))) {
+    return true;
+  }
+  return isEnclosedInInputHandlerOrHelper(node) && hasPrecedingStyleReset(node);
 }
 
 const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
@@ -255,36 +243,20 @@ const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
     const visitedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {
-      if (Node.isCallExpression(node)) {
-        if (isAutosizeCall(node)) {
-          if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
-            return;
-          }
-          const line = node.getStartLineNumber();
-          if (!visitedLines.has(line)) {
-            visitedLines.add(line);
-            matches.push({
-              line,
-              message:
-                'Library autosize() call auto-expands textarea/input fields; modernize with CSS field-sizing: content.',
-            });
-          }
-        }
-      } else if (Node.isBinaryExpression(node)) {
-        if (isAutoSizingFormField(node)) {
-          if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
-            return;
-          }
-          const line = node.getStartLineNumber();
-          if (!visitedLines.has(line)) {
-            visitedLines.add(line);
-            matches.push({
-              line,
-              message:
-                'JavaScript dynamic scrollHeight calculation resizes form field; replace with declarative CSS field-sizing: content.',
-            });
-          }
-        }
+      const message =
+        Node.isCallExpression(node) && isAutosizeCall(node)
+          ? 'Library autosize() call auto-expands textarea/input fields; modernize with CSS field-sizing: content.'
+          : Node.isBinaryExpression(node) && isAutoSizingFormField(node)
+            ? 'JavaScript dynamic scrollHeight calculation resizes form field; replace with declarative CSS field-sizing: content.'
+            : null;
+
+      if (!message || isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
+        return;
+      }
+      const line = node.getStartLineNumber();
+      if (!visitedLines.has(line)) {
+        visitedLines.add(line);
+        matches.push({ line, message });
       }
     });
 

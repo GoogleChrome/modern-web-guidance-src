@@ -1,17 +1,14 @@
 import {
   Node,
   type CallExpression,
-  type SourceFile,
 } from 'ts-morph';
 import {
-  isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
 } from '../scanners/ast-helpers.ts';
+import { createJsCallMatcher } from '../scanners/js-scanner.ts';
 import type {
-  AnalyzerMatch,
   AnalyzerRule,
-  JsMatcherContext,
   JsRuleMatcher,
 } from '../schema.ts';
 
@@ -268,8 +265,35 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
   return false;
 }
 
-export const childStateBasedStylingJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+const MATCH_MESSAGE =
+  'JavaScript event listener toggles state class on parent element to coordinate container styling; replace with CSS :has() selector on the container.';
+
+function isNativeParentClassListToggle(node: CallExpression): boolean {
+  const callExpr = unwrapExpression(node.getExpression());
+  if (!Node.isPropertyAccessExpression(callExpr)) return false;
+
+  const method = callExpr.getName();
+  if (method !== 'add' && method !== 'remove' && method !== 'toggle') return false;
+
+  const classListObj = unwrapExpression(callExpr.getExpression());
+  if (!Node.isPropertyAccessExpression(classListObj) || classListObj.getName() !== 'classList') {
+    return false;
+  }
+
+  if (!refersToParentNavigation(classListObj.getExpression())) return false;
+
+  const hasStateClass = node.getArguments().some((arg) => {
+    const unwrappedArg = unwrapExpression(arg);
+    return (
+      Node.isStringLiteral(unwrappedArg) &&
+      PURE_STYLING_STATE_CLASS_REGEX.test(unwrappedArg.getLiteralText())
+    );
+  });
+
+  return hasStateClass && isEnclosedInFormEventHandler(node) && !hasDisallowedHandlerCalls(node);
+}
+
+export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatcher({
   fastTokens: [
     ['classList', 'addClass', 'removeClass', 'toggleClass'],
     ['parentElement', 'parentNode', 'closest', 'parent', 'parents'],
@@ -286,87 +310,13 @@ export const childStateBasedStylingJsMatcher: JsRuleMatcher = {
       'Input',
     ],
   ],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
-    const matches: AnalyzerMatch[] = [];
-    const visitedLines = new Set<number>();
-
-    sourceFile.forEachDescendant((node) => {
-      if (!Node.isCallExpression(node)) {
-        return;
-      }
-
-      if (isProtectedByFeatureGuard(node, [':has', 'has('])) {
-        return;
-      }
-
-      if (isJQueryParentClassToggle(node)) {
-        const line = node.getStartLineNumber();
-        if (!visitedLines.has(line)) {
-          visitedLines.add(line);
-          matches.push({
-            line,
-            message:
-              'JavaScript event listener toggles state class on parent element to coordinate container styling; replace with CSS :has() selector on the container.',
-          });
-        }
-        return;
-      }
-
-      const callExpr = unwrapExpression(node.getExpression());
-      if (!Node.isPropertyAccessExpression(callExpr)) {
-        return;
-      }
-
-      const method = callExpr.getName();
-      if (method !== 'add' && method !== 'remove' && method !== 'toggle') {
-        return;
-      }
-
-      const classListObj = unwrapExpression(callExpr.getExpression());
-      if (!Node.isPropertyAccessExpression(classListObj) || classListObj.getName() !== 'classList') {
-        return;
-      }
-
-      const targetElement = classListObj.getExpression();
-      if (!refersToParentNavigation(targetElement)) {
-        return;
-      }
-
-      const args = node.getArguments();
-      const hasStateClass = args.some((arg) => {
-        const unwrappedArg = unwrapExpression(arg);
-        if (Node.isStringLiteral(unwrappedArg)) {
-          return PURE_STYLING_STATE_CLASS_REGEX.test(unwrappedArg.getLiteralText());
-        }
-        return false;
-      });
-
-      if (!hasStateClass) {
-        return;
-      }
-
-      if (!isEnclosedInFormEventHandler(node)) {
-        return;
-      }
-
-      if (hasDisallowedHandlerCalls(node)) {
-        return;
-      }
-
-      const line = node.getStartLineNumber();
-      if (!visitedLines.has(line)) {
-        visitedLines.add(line);
-        matches.push({
-          line,
-          message:
-            'JavaScript event listener toggles state class on parent element to coordinate container styling; replace with CSS :has() selector on the container.',
-        });
-      }
-    });
-
-    return matches;
-  },
-};
+  featureGuardTokens: [':has', 'has('],
+  dedupeLines: true,
+  matchCall: (node) =>
+    isJQueryParentClassToggle(node) || isNativeParentClassListToggle(node)
+      ? MATCH_MESSAGE
+      : null,
+});
 
 export const childStateBasedStylingJsParentClassRule: AnalyzerRule = {
   id: 'child-state-based-styling/js-parent-class',

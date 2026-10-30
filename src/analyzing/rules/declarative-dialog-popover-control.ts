@@ -119,19 +119,12 @@ function matchPureDialogPopoverCallNode(
     }
   }
 
-  if (methodName === 'close') {
-    if (NON_DIALOG_CLOSE_RECEIVER_RE.test(receiverText)) {
-      return null;
-    }
-    if (Node.isIdentifier(receiverExpr) && knownDialogVars.has(receiverExpr.getText())) {
-      return { callNode: unwrapped, methodName };
-    }
-    if (
-      DIALOG_RECEIVER_HINT_RE.test(receiverText) ||
-      (isPureDomLookupExpr(receiverExpr) && DIALOG_RECEIVER_HINT_RE.test(receiverText))
-    ) {
-      return { callNode: unwrapped, methodName };
-    }
+  if (
+    methodName === 'close' &&
+    (NON_DIALOG_CLOSE_RECEIVER_RE.test(receiverText) ||
+      (!(Node.isIdentifier(receiverExpr) && knownDialogVars.has(receiverExpr.getText())) &&
+        !DIALOG_RECEIVER_HINT_RE.test(receiverText)))
+  ) {
     return null;
   }
 
@@ -164,22 +157,9 @@ function extractPureDialogPopoverCallFromStatements(
       continue;
     }
 
-    if (Node.isExpressionStatement(stmt)) {
+    if (Node.isExpressionStatement(stmt) || Node.isReturnStatement(stmt)) {
       const expr = stmt.getExpression();
-      if (isPureEventControlExpr(expr)) {
-        continue;
-      }
-      const callMatch = matchPureDialogPopoverCallNode(expr, knownDialogVars);
-      if (callMatch !== null && matchedCall === null) {
-        matchedCall = callMatch;
-        continue;
-      }
-      return null;
-    }
-
-    if (Node.isReturnStatement(stmt)) {
-      const expr = stmt.getExpression();
-      if (!expr) {
+      if (!expr || (Node.isExpressionStatement(stmt) && isPureEventControlExpr(expr))) {
         continue;
       }
       const callMatch = matchPureDialogPopoverCallNode(expr, knownDialogVars);
@@ -233,14 +213,12 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
 
     sourceFile.forEachDescendant((node) => {
       let handlerNode: Node | null = null;
-      let listenerAnchorNode: Node = node;
       let targetNode: Node | undefined;
 
       if (Node.isCallExpression(node)) {
         const matched = matchEventListenerCall(node, ['click']);
         if (matched) {
           handlerNode = matched.handlerNode;
-          listenerAnchorNode = node;
           targetNode = matched.targetNode;
         } else {
           // Also support `.click(handler)` with 1 argument
@@ -254,7 +232,6 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
             firstArg !== undefined
           ) {
             handlerNode = unwrapExpression(firstArg);
-            listenerAnchorNode = node;
             targetNode = expr.getExpression();
           }
         }
@@ -266,7 +243,6 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
           left.getName().toLowerCase() === 'onclick'
         ) {
           handlerNode = unwrapExpression(node.getRight());
-          listenerAnchorNode = node;
           targetNode = left.getExpression();
         }
       }
@@ -283,7 +259,7 @@ export const declarativeDialogPopoverControlClickListenerMatcher: JsRuleMatcher 
         }
       }
 
-      if (isProtectedByFeatureGuard(listenerAnchorNode, FEATURE_GUARD_TOKENS)) {
+      if (isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
         return;
       }
 

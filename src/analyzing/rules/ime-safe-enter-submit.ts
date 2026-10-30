@@ -85,10 +85,7 @@ function requiresCtrlOrMetaModifier(condText: string): boolean {
 /**
  * Checks a handler function for an Enter key check lacking isComposing / keyCode 229 guards.
  */
-function checkHandlerForUnsafeEnter(
-  handler: Node,
-  _fallbackLine: number,
-): AnalyzerMatch | null {
+function checkHandlerForUnsafeEnter(handler: Node): AnalyzerMatch | null {
   const handlerText = handler.getText();
 
   // If the handler already checks isComposing, keyCode 229, or key === 'Process', skip!
@@ -111,15 +108,12 @@ function checkHandlerForUnsafeEnter(
     return null;
   }
 
-  let foundModifierGuardedEnter = false;
-
   // Look for IfStatements checking Enter
   const ifStatements = handler.getDescendantsOfKind(SyntaxKind.IfStatement);
   for (const ifStmt of ifStatements) {
     const condText = ifStmt.getExpression().getText();
     if (ENTER_CHECK_REGEX.test(condText)) {
       if (requiresCtrlOrMetaModifier(condText) || SPACE_OR_BUTTON_KEY_REGEX.test(condText)) {
-        foundModifierGuardedEnter = true;
         continue;
       }
 
@@ -164,11 +158,6 @@ function checkHandlerForUnsafeEnter(
     }
   }
 
-  // If all found Enter checks were guarded by Ctrl/Meta modifiers, do not flag!
-  if (foundModifierGuardedEnter) {
-    return null;
-  }
-
   return null;
 }
 
@@ -177,38 +166,27 @@ function checkHandlerForUnsafeEnter(
  */
 function resolveHandlerFunction(fnExpr: Node): Node | null {
   const unwrapped = unwrapExpression(fnExpr);
-  if (
-    Node.isArrowFunction(unwrapped) ||
-    Node.isFunctionExpression(unwrapped)
-  ) {
+  if (Node.isArrowFunction(unwrapped) || Node.isFunctionExpression(unwrapped)) {
     return unwrapped;
   }
-
-  if (Node.isIdentifier(unwrapped)) {
-    const name = unwrapped.getText();
-    let current: Node | undefined = unwrapped.getParent();
-    while (current) {
-      if (Node.isSourceFile(current) || Node.isBlock(current)) {
-        for (const stmt of current.getStatements()) {
-          if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
-            return stmt;
-          }
-          if (Node.isVariableStatement(stmt)) {
-            for (const decl of stmt.getDeclarationList().getDeclarations()) {
-              if (decl.getName() === name) {
-                const init = decl.getInitializer();
-                if (init) {
-                  return unwrapExpression(init);
-                }
-              }
-            }
-          }
+  if (!Node.isIdentifier(unwrapped)) {
+    return null;
+  }
+  const name = unwrapped.getText();
+  for (let current: Node | undefined = unwrapped.getParent(); current; current = current.getParent()) {
+    if (!Node.isSourceFile(current) && !Node.isBlock(current)) continue;
+    for (const stmt of current.getStatements()) {
+      if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
+        return stmt;
+      }
+      if (Node.isVariableStatement(stmt)) {
+        for (const decl of stmt.getDeclarationList().getDeclarations()) {
+          const init = decl.getName() === name ? decl.getInitializer() : undefined;
+          if (init) return unwrapExpression(init);
         }
       }
-      current = current.getParent();
     }
   }
-
   return null;
 }
 
@@ -258,7 +236,7 @@ function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
           ) {
             return null;
           }
-          return checkHandlerForUnsafeEnter(handler, callExpr.getStartLineNumber());
+          return checkHandlerForUnsafeEnter(handler);
         }
       }
     }
@@ -275,7 +253,7 @@ function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
           const handlerArg = args.length >= 3 ? args[2] : args[1];
           const handler = resolveHandlerFunction(handlerArg);
           if (handler) {
-            return checkHandlerForUnsafeEnter(handler, callExpr.getStartLineNumber());
+            return checkHandlerForUnsafeEnter(handler);
           }
         }
       }
@@ -288,7 +266,7 @@ function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
     if (args.length >= 1) {
       const handler = resolveHandlerFunction(args[0]);
       if (handler) {
-        return checkHandlerForUnsafeEnter(handler, callExpr.getStartLineNumber());
+        return checkHandlerForUnsafeEnter(handler);
       }
     }
   }
@@ -331,43 +309,10 @@ function matchJsxKeydown(jsxAttr: JsxAttribute): AnalyzerMatch | null {
 
   const handler = resolveHandlerFunction(expr);
   if (handler) {
-    return checkHandlerForUnsafeEnter(handler, jsxAttr.getStartLineNumber());
+    return checkHandlerForUnsafeEnter(handler);
   }
 
   return null;
-}
-
-/**
- * Checks binary assignment: element.onkeydown = handler
- */
-function matchOnKeydownAssignment(sourceFile: SourceFile): AnalyzerMatch[] {
-  const matches: AnalyzerMatch[] = [];
-  const assignments = sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-
-  for (const assign of assignments) {
-    if (assign.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
-      continue;
-    }
-    const left = unwrapExpression(assign.getLeft());
-    if (Node.isPropertyAccessExpression(left) && left.getName() === 'onkeydown') {
-      const receiver = unwrapExpression(left.getExpression());
-      if (Node.isIdentifier(receiver)) {
-        if (hasAriaButtonRoleAssignment(receiver, receiver.getText())) {
-          continue;
-        }
-      }
-      const right = unwrapExpression(assign.getRight());
-      const handler = resolveHandlerFunction(right);
-      if (handler) {
-        const match = checkHandlerForUnsafeEnter(handler, assign.getStartLineNumber());
-        if (match) {
-          matches.push(match);
-        }
-      }
-    }
-  }
-
-  return matches;
 }
 
 export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
@@ -386,30 +331,38 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
 
     const matches: AnalyzerMatch[] = [];
     const reportedLines = new Set<number>();
-
-    const callExpressions = sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const callExpr of callExpressions) {
-      const match = matchKeydownCall(callExpr);
+    const recordMatch = (match: AnalyzerMatch | null): void => {
       if (match && !reportedLines.has(match.line)) {
         reportedLines.add(match.line);
         matches.push(match);
       }
+    };
+
+    for (const callExpr of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+      recordMatch(matchKeydownCall(callExpr));
     }
 
-    const jsxAttributes = sourceFile.getDescendantsOfKind(SyntaxKind.JsxAttribute);
-    for (const jsxAttr of jsxAttributes) {
-      const match = matchJsxKeydown(jsxAttr);
-      if (match && !reportedLines.has(match.line)) {
-        reportedLines.add(match.line);
-        matches.push(match);
+    for (const jsxAttr of sourceFile.getDescendantsOfKind(SyntaxKind.JsxAttribute)) {
+      recordMatch(matchJsxKeydown(jsxAttr));
+    }
+
+    for (const assign of sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+      if (assign.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
+        continue;
       }
-    }
-
-    const assignMatches = matchOnKeydownAssignment(sourceFile);
-    for (const match of assignMatches) {
-      if (!reportedLines.has(match.line)) {
-        reportedLines.add(match.line);
-        matches.push(match);
+      const left = unwrapExpression(assign.getLeft());
+      if (Node.isPropertyAccessExpression(left) && left.getName() === 'onkeydown') {
+        const receiver = unwrapExpression(left.getExpression());
+        if (
+          Node.isIdentifier(receiver) &&
+          hasAriaButtonRoleAssignment(receiver, receiver.getText())
+        ) {
+          continue;
+        }
+        const handler = resolveHandlerFunction(assign.getRight());
+        if (handler) {
+          recordMatch(checkHandlerForUnsafeEnter(handler));
+        }
       }
     }
 

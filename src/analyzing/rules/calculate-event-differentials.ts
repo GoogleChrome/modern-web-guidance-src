@@ -78,26 +78,6 @@ function isKnownDurationCall(callExpr: CallExpression): string | null {
 }
 
 /**
- * Traverses descendants strictly within the immediate function scope,
- * skipping nested functions or classes to prevent outer wrapper false positives.
- */
-function forEachDescendantInScope(node: Node, callback: (child: Node) => void): void {
-  for (const child of node.getChildren()) {
-    if (
-      Node.isFunctionDeclaration(child) ||
-      Node.isFunctionExpression(child) ||
-      Node.isArrowFunction(child) ||
-      Node.isClassDeclaration(child) ||
-      Node.isMethodDeclaration(child)
-    ) {
-      continue;
-    }
-    callback(child);
-    forEachDescendantInScope(child, callback);
-  }
-}
-
-/**
  * Checks whether a function node is a custom duration formatting function
  * computing multiple time units (hours, minutes, seconds) via division/modulo
  * and returning a formatted string.
@@ -106,11 +86,6 @@ function isCustomDurationFormatterFunction(fnNode: Node): boolean {
   // Duration formatting functions are focused small helpers (< 60 lines)
   const lineCount = fnNode.getEndLineNumber() - fnNode.getStartLineNumber();
   if (lineCount > 60) {
-    return false;
-  }
-
-  const fnText = fnNode.getText();
-  if (fnText.includes('DurationFormat') || fnText.includes('Intl.DurationFormat')) {
     return false;
   }
 
@@ -127,17 +102,27 @@ function isCustomDurationFormatterFunction(fnNode: Node): boolean {
     }
   }
 
-  const hasNameMatch = DURATION_FUNCTION_NAME_REGEX.test(name);
-  if (!hasNameMatch) {
+  if (!DURATION_FUNCTION_NAME_REGEX.test(name) || fnNode.getText().includes('DurationFormat')) {
     return false;
   }
 
   // Collect string literals and binary operations in this function body
-  const unitLabelsFound = new Set<string>();
+  let hasUnitLabel = false;
   let hasDivisionOrModulo = false;
   let hasTimeConstants = false;
 
-  forEachDescendantInScope(fnNode, (child) => {
+  fnNode.forEachDescendant((child, traversal) => {
+    if (
+      Node.isFunctionDeclaration(child) ||
+      Node.isFunctionExpression(child) ||
+      Node.isArrowFunction(child) ||
+      Node.isClassDeclaration(child) ||
+      Node.isMethodDeclaration(child)
+    ) {
+      traversal.skip();
+      return;
+    }
+
     if (Node.isBinaryExpression(child)) {
       const op = child.getOperatorToken().getKind();
       if (op === SyntaxKind.SlashToken || op === SyntaxKind.PercentToken) {
@@ -163,17 +148,13 @@ function isCustomDurationFormatterFunction(fnNode: Node): boolean {
     if (Node.isStringLiteral(child) || Node.isNoSubstitutionTemplateLiteral(child)) {
       const text = child.getLiteralText().trim().toLowerCase();
       if (DURATION_UNIT_LABELS.has(text)) {
-        unitLabelsFound.add(text);
+        hasUnitLabel = true;
       }
     }
   });
 
   // Strictly require explicit duration function naming and division/modulo with unit labels
-  if (hasDivisionOrModulo && hasTimeConstants && unitLabelsFound.size >= 1) {
-    return true;
-  }
-
-  return false;
+  return hasDivisionOrModulo && hasTimeConstants && hasUnitLabel;
 }
 
 /**
@@ -230,41 +211,23 @@ export const durationJsMatcher: JsRuleMatcher = {
     const visitedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {
-      if (Node.isCallExpression(node)) {
-        const knownCall = isKnownDurationCall(node);
-        if (knownCall !== null) {
-          if (isProtectedByFeatureGuard(node, DURATION_FEATURE_TOKENS)) {
-            return;
-          }
-          const line = node.getStartLineNumber();
-          if (!visitedLines.has(line)) {
-            visitedLines.add(line);
-            matches.push({ line, message: knownCall });
-          }
-          return;
-        }
-      }
+      const message = Node.isCallExpression(node)
+        ? isKnownDurationCall(node)
+        : (Node.isFunctionDeclaration(node) ||
+              Node.isFunctionExpression(node) ||
+              Node.isArrowFunction(node) ||
+              Node.isMethodDeclaration(node)) &&
+            isCustomDurationFormatterFunction(node)
+          ? 'Custom duration formatting function computing multi-unit breakdown can be replaced with native Temporal.Duration and Intl.DurationFormat.'
+          : null;
 
-      if (
-        Node.isFunctionDeclaration(node) ||
-        Node.isFunctionExpression(node) ||
-        Node.isArrowFunction(node) ||
-        Node.isMethodDeclaration(node)
-      ) {
-        if (isCustomDurationFormatterFunction(node)) {
-          if (isProtectedByFeatureGuard(node, DURATION_FEATURE_TOKENS)) {
-            return;
-          }
-          const line = node.getStartLineNumber();
-          if (!visitedLines.has(line)) {
-            visitedLines.add(line);
-            matches.push({
-              line,
-              message:
-                'Custom duration formatting function computing multi-unit breakdown can be replaced with native Temporal.Duration and Intl.DurationFormat.',
-            });
-          }
-        }
+      if (!message || isProtectedByFeatureGuard(node, DURATION_FEATURE_TOKENS)) {
+        return;
+      }
+      const line = node.getStartLineNumber();
+      if (!visitedLines.has(line)) {
+        visitedLines.add(line);
+        matches.push({ line, message });
       }
     });
 
