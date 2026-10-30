@@ -43,27 +43,17 @@ export function wilsonInterval(
   const varianceTerm = (p * (1 - p)) / total + z2 / (4 * total * total);
   const margin = (z * Math.sqrt(Math.max(0, varianceTerm))) / denominator;
 
-  const lower = Math.max(0, center - margin);
-  const upper = Math.min(1, center + margin);
-
   return {
     proportion: p,
-    lower,
-    upper,
+    lower: Math.max(0, center - margin),
+    upper: Math.min(1, center + margin),
     n: total,
   };
 }
 
 /**
  * Evaluates sequential stopping boundaries at 15, 30, and 60 grades
- * using Z_SEQUENTIAL_STOPPING (2.39) per Spec §3.
- *
- * Rules:
- * - If total < 15: not at minimum checkpoint, continue.
- * - If Wilson lower bound >= targetLowerBound: pass.
- * - If Wilson upper bound < targetLowerBound: early fail.
- * - If total >= 60: terminal checkpoint, pass if lower >= target else fail.
- * - Otherwise: continue grading.
+ * using Z_SEQUENTIAL_STOPPING (2.39).
  */
 export function checkSequentialStop(
   successes: number,
@@ -71,25 +61,37 @@ export function checkSequentialStop(
   targetLowerBound: number,
   maxGrades: number = MAX_SEQUENTIAL_GRADES,
 ): SequentialStopDecision {
-  if (total < MIN_SEQUENTIAL_GRADES) {
-    return 'continue';
-  }
+  if (total < MIN_SEQUENTIAL_GRADES) return 'continue';
 
   const { lower, upper } = wilsonInterval(successes, total, Z_SEQUENTIAL_STOPPING);
-
-  if (lower >= targetLowerBound) {
-    return 'pass';
-  }
-
-  if (upper < targetLowerBound) {
-    return 'fail';
-  }
-
-  if (total >= maxGrades) {
-    return 'fail';
-  }
-
+  if (lower >= targetLowerBound) return 'pass';
+  if (upper < targetLowerBound || total >= maxGrades) return 'fail';
   return 'continue';
+}
+
+function tallyPairedRatings(pairs: ReadonlyArray<readonly [string, string]>) {
+  let agreementCount = 0;
+  const categoryCounts = new Map<string, number>();
+  for (const [r1, r2] of pairs) {
+    if (r1 === r2) agreementCount++;
+    categoryCounts.set(r1, (categoryCounts.get(r1) ?? 0) + 1);
+    categoryCounts.set(r2, (categoryCounts.get(r2) ?? 0) + 1);
+  }
+  const totalValues = 2 * pairs.length;
+  let sumSquaredCounts = 0;
+  let sumSquaredProps = 0;
+  for (const count of categoryCounts.values()) {
+    sumSquaredCounts += count * count;
+    const prop = count / totalValues;
+    sumSquaredProps += prop * prop;
+  }
+  return {
+    agreementCount,
+    numCategories: categoryCounts.size,
+    totalValues,
+    sumSquaredCounts,
+    sumSquaredProps,
+  };
 }
 
 /**
@@ -100,86 +102,36 @@ export function krippendorffAlphaNominal(
   pairs: ReadonlyArray<readonly [string, string]>,
 ): number {
   const nUnits = pairs.length;
-  if (nUnits === 0) {
-    return 1;
-  }
-  if (nUnits === 1) {
-    return pairs[0][0] === pairs[0][1] ? 1 : 0;
-  }
+  if (nUnits === 0) return 1;
+  if (nUnits === 1) return pairs[0][0] === pairs[0][1] ? 1 : 0;
 
-  let discordantUnits = 0;
-  const categoryCounts = new Map<string, number>();
-
-  for (const [r1, r2] of pairs) {
-    if (r1 !== r2) {
-      discordantUnits++;
-    }
-    categoryCounts.set(r1, (categoryCounts.get(r1) ?? 0) + 1);
-    categoryCounts.set(r2, (categoryCounts.get(r2) ?? 0) + 1);
-  }
-
-  const observedDisagreement = discordantUnits / nUnits;
-
-  const totalValues = 2 * nUnits;
-  let sumSquaredCounts = 0;
-  for (const count of categoryCounts.values()) {
-    sumSquaredCounts += count * count;
-  }
-
+  const { agreementCount, totalValues, sumSquaredCounts } = tallyPairedRatings(pairs);
+  const observedDisagreement = (nUnits - agreementCount) / nUnits;
   const expectedDisagreement =
-    (totalValues * totalValues - sumSquaredCounts) /
-    (totalValues * (totalValues - 1));
+    (totalValues * totalValues - sumSquaredCounts) / (totalValues * (totalValues - 1));
 
   if (expectedDisagreement === 0) {
     return observedDisagreement === 0 ? 1 : 0;
   }
-
   return 1 - observedDisagreement / expectedDisagreement;
 }
 
 /**
  * Computes Gwet's AC1 statistic for nominal paired ratings.
- * Unlike Cohen's kappa and Krippendorff's alpha, Gwet's AC1 resists
- * the Prevalence Paradox when one class dominates the marginals.
+ * Resists the Prevalence Paradox when one class dominates the marginals.
  */
 export function gwetAc1Nominal(
   pairs: ReadonlyArray<readonly [string, string]>,
 ): number {
   const nUnits = pairs.length;
-  if (nUnits === 0) {
-    return 1;
-  }
+  if (nUnits === 0) return 1;
 
-  let agreementCount = 0;
-  const categoryCounts = new Map<string, number>();
-
-  for (const [r1, r2] of pairs) {
-    if (r1 === r2) {
-      agreementCount++;
-    }
-    categoryCounts.set(r1, (categoryCounts.get(r1) ?? 0) + 1);
-    categoryCounts.set(r2, (categoryCounts.get(r2) ?? 0) + 1);
-  }
+  const { agreementCount, numCategories, sumSquaredProps } = tallyPairedRatings(pairs);
+  if (numCategories <= 1) return 1;
 
   const observedAgreement = agreementCount / nUnits;
-  const numCategories = categoryCounts.size;
-
-  if (numCategories <= 1) {
-    return 1;
-  }
-
-  const totalValues = 2 * nUnits;
-  let sumSquaredProps = 0;
-  for (const count of categoryCounts.values()) {
-    const prop = count / totalValues;
-    sumSquaredProps += prop * prop;
-  }
-
   const expectedChanceAgreement = (1 - sumSquaredProps) / (numCategories - 1);
-
-  if (expectedChanceAgreement >= 1) {
-    return observedAgreement;
-  }
+  if (expectedChanceAgreement >= 1) return observedAgreement;
 
   return (observedAgreement - expectedChanceAgreement) / (1 - expectedChanceAgreement);
 }
@@ -199,23 +151,16 @@ export function sensitivitySpecificity(
   for (const { humanRight, judgeRight } of pairs) {
     if (humanRight) {
       positives++;
-      if (judgeRight) {
-        truePositives++;
-      }
+      if (judgeRight) truePositives++;
     } else {
       negatives++;
-      if (!judgeRight) {
-        trueNegatives++;
-      }
+      if (!judgeRight) trueNegatives++;
     }
   }
 
-  const tpr = positives > 0 ? truePositives / positives : 1;
-  const tnr = negatives > 0 ? trueNegatives / negatives : 1;
-
   return {
-    tpr,
-    tnr,
+    tpr: positives > 0 ? truePositives / positives : 1,
+    tnr: negatives > 0 ? trueNegatives / negatives : 1,
     positives,
     negatives,
   };

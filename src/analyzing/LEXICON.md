@@ -68,7 +68,7 @@ A **Static Matcher** entry (`AnalyzerRule`) targeting a specific language or sca
 
 A distinct syntactic or payoff variant within a single **Rule**. A **Deferred Sub-Pattern** is a sub-pattern held back from default execution because its precision or payoff profile differs from the rule's active sub-patterns.
 
-* _Reference_: `src/analyzing/README.md#4-rule-authoring-analyzerrule`
+* _Reference_: `src/analyzing/schema.ts#AnalyzerMatch`, `src/analyzing/README.md#4-rule-authoring-analyzerrule`
 * _Avoid_: `Sub-Rule`, `Rule Variant`, `Branch`
 
 ## Corpus Splits
@@ -115,7 +115,7 @@ The proportion of evaluated findings graded `legit-modernize-target` ($\text{leg
 - **Static Matcher Precision**: Precision of findings emitted by the **Static Matcher** alone, before any **LLM Verifier** pass.
 - **Post-Verifier Precision**: Precision of findings retained after the **LLM Verifier** (`verifierRubric`) filter. Default CLI rule shipping (**Qualified Rule**) requires **Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns on the **`held-out` split** as scored by the multi-judge panel.
 
-* _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/README.md#qualification-criteria`
+* _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_RULES`, `src/analyzing/README.md#qualification-criteria`
 * _Avoid_: `P1 Precision`, `P2 Precision`, `p1Precision`, `p2Precision`, `Strict Precision`, `Raw Precision`, `Detector Accuracy`, `Verified Precision`, `Final Precision`
 
 ### Matcher Misfire Rate
@@ -154,9 +154,9 @@ A rule under active evaluation and tightening that has not yet cleared the quali
 
 ### Qualified Rule
 
-A rule in `QUALIFIED_GUIDE_IDS` (`QUALIFIED_RULES`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**.
+A rule in `QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`) shipped by default in `npx modern-web-guidance analyze` after clearing the default-on qualification bar on the **`held-out` split** as scored by the multi-judge panel (**Post-Verifier Precision** $\ge 90\%$ and either **Static Matcher Precision** $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns). Distinct from an **Experimental Rule**.
 
-* _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`, `src/analyzing/rules/index.ts#QUALIFIED_RULES`
+* _Reference_: `src/analyzing/rules/index.ts#QUALIFIED_RULES`, `src/analyzing/rules/index.ts#QUALIFIED_GUIDE_IDS`
 * _Avoid_: `Default Rule`, `Tier 1 Rule`, `Tier A / Tier B / Tier C`, `Graduated Rule`, `TERMINAL_QUALIFIED_RULES`, `JSON_QUALIFIED_RULES`
 
 ### Scope Hold
