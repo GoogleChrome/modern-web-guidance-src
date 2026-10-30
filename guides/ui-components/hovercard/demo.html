@@ -53,6 +53,10 @@
 
       [popover] {
         position-area: block-end span-inline-end;
+        position-try-fallbacks:
+          flip-block,
+          flip-inline,
+          flip-block flip-inline;
         border: none;
         padding: 1rem;
         border-radius: 12px;
@@ -81,20 +85,29 @@
       /* Respect reduced motion */
       @media (prefers-reduced-motion: no-preference) {
         [popover] {
-           /* Entry animation setup */
-        transition:
-          display 0.4s allow-discrete,
-          overlay 0.4s allow-discrete,
-          opacity 0.4s,
-          transform 0.4s;
+          /* Entry animation setup */
+          transition:
+            display 0.4s allow-discrete,
+            overlay 0.4s allow-discrete,
+            opacity 0.4s,
+            transform 0.4s;
         }
       }
 
       [interestfor] {
-        interest-delay: 0.2s 0.1s;
+        --interest-delay-start: 0.2s;
+        interest-delay-start: var(--interest-delay-start);
+        --interest-delay-end: 0.1s;
+        interest-delay-end: var(--interest-delay-end);
       }
-      :root:has(:interest-source) [interestfor] {
-        interest-delay-start: 0s;
+      /* If any hovercards are already open, open subsequent hovercards
+        immediately. For performance, apply this to the smallest wrapper of a
+        group of hovercard triggers. */
+      .related-articles:has(
+          [interestfor]:is(:interest-source, .interest-source)
+        )
+        [interestfor] {
+        --interest-delay-start: 0s;
       }
 
       [popover] h2 {
@@ -141,13 +154,19 @@
         }
       }
     </style>
+    <script type="module">
+      if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+        // CDN link only used for example, prefer bundling.
+        await import("https://unpkg.com/interestfor@latest");
+      }
+    </script>
   </head>
   <body>
     <main>
       <div>
         <article>
           <h3>Related articles</h3>
-          <ul>
+          <ul class="related-articles">
             <li>
               <a href="article-a.html" interestfor="buzz-popover">
                 The buzz on hummingbirds
