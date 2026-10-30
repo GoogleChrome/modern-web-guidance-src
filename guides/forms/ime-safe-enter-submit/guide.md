@@ -65,7 +65,7 @@ If you need to support cross-browser compatibility across older versions of Safa
 
 ### Strategy 1: Add a `keyCode === 229` check (recommended)
 
-By pairing `event.isComposing` with a check for `event.keyCode === 229`, you can reliably catch Safari's out-of-order confirming `Enter` keydown. Because this is nested under the `event.key === 'Enter'` gate, it is safe from mobile virtual keyboards that might use `229` for normal character layout entry.
+During IME composition, browsers report `keyCode: 229` (`VK_PROCESSKEY`) instead of `13` on `keydown`, even while setting `event.key === 'Enter'` on the confirming keystroke. Pairing `event.isComposing` with `event.keyCode === 229` reliably catches Safari's out-of-order confirming `Enter` keydown. (This also means legacy `event.keyCode === 13` handlers are already immune to IME confirmation, whereas migrating them to `event.key === 'Enter'` without `event.isComposing` and `event.keyCode === 229` will introduce premature submission.) Because this check is nested under the `event.key === 'Enter'` gate, it is safe from mobile virtual keyboards that might use `229` for normal character layout entry.
 
 ```js
 textarea.addEventListener('keydown', (event) => {
