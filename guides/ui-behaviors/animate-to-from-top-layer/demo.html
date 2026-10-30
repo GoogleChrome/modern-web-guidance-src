@@ -225,8 +225,9 @@
         }
 
         @starting-style {
-          dialog[open],
-          [popover]:popover-open {
+          /* Same selectors as the open states, so this starting transform wins */
+          dialog[open]:not([data-closing]),
+          [popover]:popover-open:not([data-closing]) {
             transform: none;
           }
         }

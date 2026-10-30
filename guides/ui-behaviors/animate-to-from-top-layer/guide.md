@@ -138,6 +138,16 @@ Exit animations require both `overlay` and discrete `display` transition support
     }
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  @starting-style {
+    /* Repeats the open-state selector above, which is more specific than
+       dialog[open], so this overrides its starting scale(0.9) */
+    :is(dialog[open], [popover]:popover-open):where(:not([data-closing])) {
+      transform: none;
+    }
+  }
+}
 ```
 
 ```javascript
