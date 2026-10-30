@@ -99,3 +99,36 @@ Note: For Chrome Web Store submission, PNG is required. SVG works for developmen
 ```
 
 Each file MUST match its declared size: icon-16.png = 16×16 pixels, etc.
+
+## Runtime Icon Paths Resolve Against the Caller, Not the Extension Root
+
+When passing a file path (rather than a `data:` or `blob:` URL for `iconUrl`) to
+`chrome.notifications.create({ iconUrl })` or `chrome.action.setIcon({ path })`, Chrome resolves
+relative paths against the calling context's URL (such as `src/background.js` or
+`options/options.html`), not the extension root. When called from a subdirectory, a bare relative
+path like `'icons/icon-128.png'` resolves to `src/icons/icon-128.png` (`ERR_FILE_NOT_FOUND`) and
+fails with `"Unable to download all specified images."` (notifications),
+`"Failed to set icon '<path>': Failed to fetch"` (service worker `setIcon`), or
+`"Could not load action icon '<path>'."` (extension page `setIcon`).
+
+Always wrap runtime icon file paths in `chrome.runtime.getURL()` (or prefix with `/`):
+
+```js
+// manifest.json: { "background": { "service_worker": "src/background.js" } }
+
+// ❌ BROKEN: resolves to chrome-extension://<id>/src/icons/icon-128.png and fails
+chrome.notifications.create('reminder', {
+  type: 'basic',
+  iconUrl: 'icons/icon-128.png',
+  title: 'Reminder',
+  message: 'Time is up!',
+});
+
+// ✅ CORRECT: resolves to chrome-extension://<id>/icons/icon-128.png from any context
+chrome.notifications.create('reminder', {
+  type: 'basic',
+  iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+  title: 'Reminder',
+  message: 'Time is up!',
+});
+```
