@@ -1,0 +1,6 @@
+- The two-dimensional scroll container sets `overflow: auto` or `overflow: scroll` (with content overflowing in both axes) and declares `scroll-axis-lock: none` directly on itself rather than on an ancestor wrapper.
+- The two-dimensional scroll container sets `overscroll-behavior: none` or `overscroll-behavior: contain` so panning into a boundary does not chain to the parent page or trigger browser overscroll navigation gestures.
+- The scroll container is keyboard focusable with `tabindex="0"`, has an accessible name, and shows a visible `:focus-visible` indicator.
+- `touch-action: none` is not applied to the scroll container unconditionally; when present, it is scoped inside `@supports not (scroll-axis-lock: none)`.
+- Any JavaScript fallback pans by updating the container's `scrollLeft` and `scrollTop` rather than translating the content with CSS `transform`.
+- Any JavaScript fallback is attached only when `CSS.supports('scroll-axis-lock', 'none')` is false.

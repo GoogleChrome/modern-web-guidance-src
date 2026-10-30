@@ -16,11 +16,16 @@ import { fileURLToPath } from 'url';
 
 const invokedBin = path.basename(process.argv[1] || 'npx');
 const args = process.argv.slice(2);
-const normalizedArgs = (args[0] === '-y' || args[0] === 'dlx') ? args.slice(1) : args;
+const pkgIdx = args.findIndex(a => /^modern-web-guidance(?:@.*)?$/.test(a));
 
-if (normalizedArgs[0] === 'modern-web-guidance@latest') {
-  const remainingArgs = normalizedArgs.slice(1);
+if (pkgIdx !== -1) {
+  const pkgSpec = args[pkgIdx];
+  const remainingArgs = args.slice(pkgIdx + 1);
   const localCliPath = "__LOCAL_CLI_PATH__";
+  if (!localCliPath || !fs.existsSync(localCliPath)) {
+    console.error(`npm error 404 Not Found - GET https://registry.npmjs.org/${pkgSpec} - Not found`);
+    process.exit(1);
+  }
 
   // Execute the local CLI instead of fetching from registry
   const result = spawnSync(process.execPath, [localCliPath, ...remainingArgs], { stdio: 'inherit' });
@@ -50,7 +55,13 @@ if (!realBin) {
 const env = { ...process.env };
 if (env.PATH) {
   const pathDirs = env.PATH.split(path.delimiter);
-  env.PATH = pathDirs.filter(d => d !== currentDir).join(path.delimiter);
+  env.PATH = pathDirs.filter(d => {
+    try {
+      return d !== currentDir && fs.realpathSync(d) !== currentDir;
+    } catch {
+      return d !== currentDir;
+    }
+  }).join(path.delimiter);
 }
 
 const child = spawn(realBin, args, {
@@ -70,7 +81,6 @@ const killGroup = () => {
 for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
   process.on(sig, () => {
     killGroup();
-    process.exit(1);
   });
 }
 

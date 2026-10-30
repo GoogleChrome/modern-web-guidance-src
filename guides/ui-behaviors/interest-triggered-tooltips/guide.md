@@ -40,11 +40,7 @@ The trigger must have a visual indicator to indicate that there is additional in
 
 ### Accessibility built in to `interestfor`
 
-`interestfor` handles the assistive-technology wiring for you, so you generally do not need to add ARIA attributes manually:
-
-- A target with `popover="hint"` gains an implicit minimum role of `tooltip`. **DO NOT** set `role="tooltip"` yourself.
-- The browser implicitly associates the source element with the target via `aria-describedby` when the target is plaintext, or via `aria-details` when the target contains interactive content. **DO NOT** add `aria-describedby` or `aria-details` to the trigger.
-- Because the association switches to `aria-details` when needed, the target IS allowed to contain interactive content (e.g. a link inside an "interest card").
+{{ FEATURE("interest-invokers", "accessibility") }}
 
 ### Accessibility Constraints (WCAG 1.4.13)
 
@@ -55,46 +51,22 @@ Even with `interestfor` handling the semantics above, your implementation MUST s
 
 ### Positioning the tooltip
 
-The tooltip can be positioned using anchor positioning. When the tooltip is opened using `interestfor`, the trigger becomes an implicit anchor for the tooltip, meaning you don't have to add `anchor-name` or `position-anchor` CSS properties. However, to support browsers without anchor positioning you must use the anchor positioning polyfill, which has several limitations for popovers. **MANDATORY:** Implicit anchors are NOT supported by the polyfill, so YOU MUST explicitly set an `anchor-name` on the trigger and `position-anchor` on the popover.
+The tooltip is positioned using **CSS Anchor Positioning**. When the tooltip is opened using `interestfor`, the trigger element automatically becomes an **implicit anchor** for the popover.
 
-
-```css
-/* MANDATORY: use explicit anchor names for compatibility with the polyfill */
-button[interestfor="tooltip-dom"] {
-  anchor-name: --tooltip-dom;
-}
-#tooltip-dom {
-  position-anchor: --tooltip-dom;
-}
-```
-
-Also, the polyfill does not support `position-area` on popovers, so **MANDATORY:** DO position using `anchor()` functions, and **YOU MUST** include a `position-try` fallback (e.g. `flip-block` or `flip-inline`).
+In modern browsers supporting native anchor positioning, you do **not** need to define an `anchor-name` on the trigger or a `position-anchor` on the tooltip. You can position the tooltip directly relative to its implicit anchor using `position-area` and handle collision flipping with `position-try-fallbacks`:
 
 ```css
-[popover]{
-  /* MANDATORY: use anchor functions and a position-try fallback for the polyfill */
-  top: anchor(bottom);
-  left: anchor(center);
-  position-try: flip-block;
+[popover] {
+  /* Implicit anchor from interestfor: no anchor-name or position-anchor needed */
+  position-area: top;
+  position-try-fallbacks: flip-block;
   margin: unset;
 }
 ```
 
-
 ### Fallback strategies
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
-
-Interest invokers must be conditionally polyfilled using the `interestfor` polyfill package from NPM. Do prefer bundling the polyfill over using the CDN.
-
-```html
-<script type="module">
-  if(!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")){
-    // CDN link only used for example, prefer bundling.
-    await import("https://unpkg.com/interestfor@latest");
-  }
-</script>
-```
 
 {{ FEATURE_FALLBACKS("popover") }}
 
@@ -104,7 +76,9 @@ The `popover-polyfill` does not polyfill the hint behavior in browsers that supp
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
-**MANDATORY:** To support browsers without anchor positioning, you MUST use the `@oddbird/css-anchor-positioning` polyfill. It does not support implicit anchors, so you MUST add anchor names to the trigger. Additionally, `position-area` is not supported on popovers by the polyfill, so you MUST use `anchor()` on the desired insets. 
+To support browsers without anchor positioning, you can use the `@oddbird/css-anchor-positioning` polyfill. Alternatively, you can use `@supports` to specify a fallback position.
+
+When using the `@oddbird/css-anchor-positioning` polyfill for legacy browser support, be aware that the polyfill does not support implicit anchors or `position-area` on popovers. Explicitly set an `anchor-name` on the trigger, set `position-anchor` on the popover, and position using `anchor()` inset functions instead of `position-area`: 
 
 ```html
 <!-- MANDATORY: Conditionally install the anchor positioning polyfill -->

@@ -5,7 +5,7 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
+} from '../../../../../src/grading/test-fixture.ts';
 
 // NOTE: Add imports from ts-morph, linkedom, or cssomnom as needed:
 // e.g. import { SyntaxKind, type Project } from 'ts-morph';

@@ -11,6 +11,7 @@ import {
 } from './agent-shared.ts';
 import { Agents } from '../config.ts';
 import { getDefaultSolutionAgent } from '../../core/guide-validation.ts';
+import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
 export async function copyBaseAppToWorkspace(baseApp: string, destDir: string): Promise<void> {
   const refBaseAppDir = path.join(baseAppsDir, baseApp);
@@ -56,11 +57,17 @@ export async function runAgent(
   agent: Agents,
   prompt: string,
   workDir?: string,
-  options: { captureOutput?: boolean } = {}
+  options: { captureOutput?: boolean; homeDir?: string } = {}
 ): Promise<string> {
-  const { command, commandArgs } = getAgentCommandAndArgs(agent, prompt);
-  const tempHome = workDir ? path.dirname(workDir) : undefined;
-  const env = tempHome ? { ...process.env, HOME: tempHome } : { ...process.env };
+  const raw = getAgentCommandAndArgs(agent, prompt);
+  const { command, commandArgs } = options.homeDir
+    ? wrapCommandInSandbox(raw.command, raw.commandArgs, buildSandboxPolicy(options.homeDir, 'unguided'))
+    : raw;
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    ...(options.homeDir ? { HOME: options.homeDir, ZDOTDIR: options.homeDir } : {}),
+    ...(workDir ? { PWD: workDir } : {}),
+  };
 
   if (options.captureOutput) {
     return runCommand(command, commandArgs, workDir, env);
@@ -79,7 +86,11 @@ export async function runAgent(
   return '';
 }
 
-export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string, agent?: Agents): string {
+export function setupGuideDevWorkDir(
+  suffix: string,
+  relativeWorkSubdir?: string,
+  agent?: Agents
+): { workDir: string; tempHome: string } {
   const tempHome = createIsolatedHome(`gd-gen-${suffix}`);
   const workDir = relativeWorkSubdir ? path.join(tempHome, relativeWorkSubdir) : path.join(tempHome, 'work');
   fs.mkdirSync(workDir, { recursive: true });
@@ -102,7 +113,7 @@ export function setupGuideDevWorkDir(suffix: string, relativeWorkSubdir?: string
     JSON.stringify({ type: 'module' }, null, 2)
   );
   
-  return workDir;
+  return { workDir, tempHome };
 }
 
 export function escapeLeftAngleBracket(text: string): string {

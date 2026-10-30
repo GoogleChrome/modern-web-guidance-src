@@ -49,7 +49,7 @@ For a technical walkthrough of the repository directory layout and architecture,
 
 ## Development Setup & Quality Gate
 
-This project uses **pnpm** (Node.js 24+):
+This project uses **pnpm** (requires Node.js `>=22.18.0`):
 
 ```bash
 # Clone and install dependencies:
@@ -67,6 +67,8 @@ pnpm typecheck && pnpm lint
 pnpm preflight
 ```
 
+When using a coding agent to author changes or address PR review feedback, follow the workflows and PR review etiquette in [`AGENTS.md`](./AGENTS.md#pr-review-etiquette).
+
 
 ## Project Agent Skills
 
@@ -74,6 +76,7 @@ This repository includes a curated set of **Agent Skills** in [`.agents/skills/`
 
 | Skill | Reference Document | Description |
 |---|---|---|
+| **Feature Intake** | [`project-features`](./.agents/skills/project-features/SKILL.md) | Filing, researching, and triaging `new-feature` issues and pending web features. |
 | **Use Cases** | [`project-use-cases`](./.agents/skills/project-use-cases/SKILL.md) | Formulating action-oriented developer tasks and frontmatter schemas (Stage 1). |
 | **Guide Authoring** | [`project-guides`](./.agents/skills/project-guides/SKILL.md) | Directives, snippet conventions, self-contained constraints, and Baseline fallback macros (Stage 2). |
 | **Guide Validation** | [`project-guide-validation`](./.agents/skills/project-guide-validation/SKILL.md) | Autonomous DevTools MCP browser testing, accessibility, and expectation alignment (Stage 2). |
@@ -81,6 +84,8 @@ This repository includes a curated set of **Agent Skills** in [`.agents/skills/`
 | **Evaluations & Graders** | [`project-evals`](./.agents/skills/project-evals/SKILL.md) | Playwright test grader generation and calibration criteria (Stage 3). |
 | **Baseline Status** | [`web-baseline`](./.agents/skills/web-baseline/SKILL.md) | Checking browser compatibility and Baseline status across web platform features. |
 | **Coding Standards** | [`project-coding-standards`](./.agents/skills/project-coding-standards/SKILL.md) | Architecture conventions, strict typing, canonical enums, and PR review standards for CLI and tooling code. |
+| **Eval Diagnostics** | [`eval-investigation`](./.agents/skills/eval-investigation/SKILL.md), [`nightly-eval-investigation`](./.agents/skills/nightly-eval-investigation/SKILL.md), [`dev-prompt-canary`](./.agents/skills/dev-prompt-canary/SKILL.md) | Investigating local/nightly evaluation runs and validating `gd dev` prompt changes. |
+| **Repo Maintenance** | [`project-maintenance`](./.agents/skills/project-maintenance/SKILL.md), [`coherence-auditor`](./.agents/skills/coherence-auditor/SKILL.md) | Routine dependency updates, link/doc coherence checks, and workspace hygiene. |
 
 
 ## Submitting a Pull Request

@@ -20,8 +20,8 @@ Content contributions progress through two stages, each governed by a normative 
 Translate a web platform feature into 2–5 distinct, action-oriented developer tasks (focusing on *what* the user is trying to accomplish rather than *how* the API works).
 
 1. Create `guides/<category>/<use-case-slug>/guide.md` containing only the YAML frontmatter stub (`name`, `description`, `web-feature-ids`).
-2. Validate structure with `pnpm test` (or `gd audit`).
-3. Open an issue or draft PR to align with the category's [Content Area Tech Lead (ATL)](../docs/ATLS.md) listed in [`.github/atls.json`](../.github/atls.json). *(Onboarded [Peers](../GOVERNANCE.md#peers) may fast-track directly to Stage 2).*
+2. Validate structure with `pnpm test`.
+3. Open a [new-use-case issue](../.github/ISSUE_TEMPLATE/new-use-case.yml) or a draft/stub PR to align with the category's [Content Area Tech Lead (ATL)](../docs/ATLS.md) listed in [`.github/atls.json`](../.github/atls.json). *(Onboarded [Peers](../GOVERNANCE.md#peers) may fast-track directly to Stage 2).*
 
 * **Authoritative Specification**: **[`.agents/skills/project-use-cases/SKILL.md`](../.agents/skills/project-use-cases/SKILL.md)** (and **[`project-discipline-guides`](../.agents/skills/project-discipline-guides/SKILL.md)** for category hub guides).
 

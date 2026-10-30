@@ -47,6 +47,7 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
 
   test('target element responds to loseinterest event to revert preview state', async ({ page }) => {
     await page.goto(TARGET_URL);
+    await page.addStyleTag({ content: '* { transition: none !important; animation: none !important; }' });
     
     const invoker = page.locator('[interestfor]').first();
     await expect(invoker).toBeAttached();
@@ -81,7 +82,7 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
     expect(matchesInitial).toBe(true);
   });
 
-  test('the polyfill for interest invokers is conditionally installed', async ({ page }) => {
+  test('the polyfill for interest invokers is conditionally installed', async ({ page, context }) => {
     await page.addInitScript(() => {
       Object.defineProperty(HTMLButtonElement.prototype, 'interestForElement', {
         value: null,
@@ -101,15 +102,35 @@ test.describe('Interest-Triggered Action Previews Grader', () => {
     await page.waitForTimeout(500);
 
     expect(polyfillRequested).toBe(false);
+
+    const unsupportedPage = await context.newPage();
+    await unsupportedPage.addInitScript(() => {
+      delete (HTMLButtonElement.prototype as any).interestForElement;
+      delete (HTMLElement.prototype as any).interestForElement;
+      delete (HTMLAnchorElement.prototype as any).interestForElement;
+    });
+
+    let polyfillRequestedWhenUnsupported = false;
+    unsupportedPage.on('request', (request) => {
+      if (request.url().includes('interestfor')) {
+        polyfillRequestedWhenUnsupported = true;
+      }
+    });
+
+    await unsupportedPage.goto(TARGET_URL);
+    await unsupportedPage.waitForTimeout(500);
+    await unsupportedPage.close();
+
+    expect(polyfillRequestedWhenUnsupported).toBe(true);
   });
 
   test('must not announce interest-driven preview state changes via a live region', async ({ page }) => {
     await page.goto(TARGET_URL);
+    await expect(page.locator('[interestfor]').first()).toBeAttached();
 
     const liveRegions = await page.locator('[aria-live], [role="status"], [role="log"], [role="alert"], [role="marquee"], [role="timer"]').all();
     
     if (liveRegions.length === 0) {
-      expect(true).toBe(true);
       return;
     }
 

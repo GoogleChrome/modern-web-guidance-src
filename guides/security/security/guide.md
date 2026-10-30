@@ -45,7 +45,7 @@ Guidelines for implementing preventative security measures on the web safely and
 
 The right starting point depends on the application and whether you can update the codebase directly:
 
-- **Auditing and hardening a codebase directly**: Apply Phase 1 code hygiene, wire up Phase 2 reporting (`Reporting-Endpoints` and `report-to`), and enforce Phase 3 headers (`Content-Security-Policy` with nonces/hashes, `'strict-dynamic'`, `'report-sample'`, `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'self'`, and `require-trusted-types-for 'script'`, plus COOP, CORP, Fetch Metadata, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy`) directly by updating `<script>` tags, cookies, and server middleware in the same pass.
+- **Auditing and hardening a codebase directly**: Apply Phase 1 code hygiene, wire up Phase 2 reporting (`Reporting-Endpoints` and `report-to`), and enforce Phase 3 headers (`Content-Security-Policy` with nonces/hashes, `'strict-dynamic'`, `'report-sample'`, `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'` (or `'self'`), and `require-trusted-types-for 'script'`, plus COOP, CORP, Fetch Metadata, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy`) directly by updating `<script>` tags, cookies, and server middleware in the same pass.
 - **Staged rollout on a large production site with unknown third-party dependencies**: Start with Phase 1 quick wins and deploy Phase 2 report-only headers alongside enforced companion policies while collecting violation telemetry, then promote the report-only policies to Phase 3 enforcement.
 - **Greenfield app or SaaS template / framework defaults**: Ship Phase 1 hygiene and Phase 3 enforced policies by default, with Phase 2 reporting configured so regressions are captured immediately.
 
@@ -93,12 +93,22 @@ Set-Cookie: third_party_var=value; SameSite=None; Secure; Partitioned
 ```
 
 ### 1.4 Clickjacking Protection (Frame-Ancestors & X-Frame-Options)
-Clickjacking protection is easy to deploy, carries extremely low risk of breaking legitimate functionality, and provides immediate defense against malicious UI redressing.
-- **DO**: Set the `X-Frame-Options: SAMEORIGIN` header to prevent other sites from embedding your pages in an iframe (or use `DENY` if you should never be embedded).
-- **DO**: For fine-grained control, use `frame-ancestors 'self'` (or specified trusted domains) in your CSP header.
+Clickjacking protection is easy to deploy, carries extremely low risk of breaking legitimate functionality, and provides immediate defense against malicious UI redressing. Choose the policy tier that matches your framing requirements:
+- **DO (Default — no framing needed)**: Set `Content-Security-Policy: frame-ancestors 'none'` alongside `X-Frame-Options: DENY` when your pages never need to be embedded in an iframe.
+- **DO (Same-origin framing only)**: Set `Content-Security-Policy: frame-ancestors 'self'` alongside `X-Frame-Options: SAMEORIGIN` when your application embeds its own pages in same-origin iframes.
+- **DO (Specific cross-origin framing required)**: Set `Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com` and **omit `X-Frame-Options`** (`X-Frame-Options` cannot express cross-origin allowlists—`ALLOW-FROM` is obsolete and unsupported—and `DENY` or `SAMEORIGIN` would block the embed in any client that evaluates `X-Frame-Options` without `frame-ancestors`).
+- **DO (Arbitrary framing explicitly required)**: Only omit both `frame-ancestors` and `X-Frame-Options` on routes designed as publicly embeddable widgets.
 
 ```http
+# Default (never framed):
+Content-Security-Policy: frame-ancestors 'none';
+X-Frame-Options: DENY
+
+# Same-origin framing allowed:
+Content-Security-Policy: frame-ancestors 'self';
 X-Frame-Options: SAMEORIGIN
+
+# Specific cross-origin framing allowed (omit X-Frame-Options):
 Content-Security-Policy: frame-ancestors 'self' https://trusted-partner.com;
 ```
 
@@ -150,7 +160,7 @@ Use "Report-Only" headers to identify potential breakages before they happen.
 **Example headers:**
 ```http
 Reporting-Endpoints: default="https://reports.example/default", main-endpoint="https://reports.example/main"
-Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; require-trusted-types-for 'script'; report-to main-endpoint;
+Content-Security-Policy-Report-Only: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; report-to main-endpoint;
 ```
 
 The `'strict-dynamic'`, `https:`, and `'unsafe-inline'` tokens together form a backwards-compatibility ladder: modern browsers honor `'strict-dynamic'` (nonce-propagating) and ignore the others; older browsers fall back to `https:`; very old browsers fall back to `'unsafe-inline'`. The fallbacks are harmless on any browser that supports a stricter token.
@@ -201,7 +211,7 @@ When enforcing `Content-Security-Policy`, always keep `Reporting-Endpoints` and 
 - `script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'` (or SHA-256/384/512 script hashes for static HTML) — the core directive of any CSP and the primary mechanism to prevent XSS.
 - `object-src 'none'` — blocks plugin-based code execution (`<object>`, `<embed>`).
 - `base-uri 'none'` — blocks `<base>` tag hijacking of relative URLs.
-- `frame-ancestors 'self'` — prevents clickjacking alongside `X-Frame-Options: SAMEORIGIN` (§1.4).
+- `frame-ancestors 'none'` (or `'self'` when same-origin framing is needed) — prevents clickjacking alongside `X-Frame-Options: DENY` (or `SAMEORIGIN`; see §1.4).
 - `require-trusted-types-for 'script'` — enforces Trusted Types runtime checks on DOM XSS sinks (§3.3).
 - `report-to <endpoint>` — sends violation reports to the endpoint defined in `Reporting-Endpoints`.
 - *Optional*: `form-action 'self'` prevents form submissions to attacker-controlled origins.
@@ -209,7 +219,7 @@ When enforcing `Content-Security-Policy`, always keep `Reporting-Endpoints` and 
 **Enforced Header Example (CSP with reporting):**
 ```http
 Reporting-Endpoints: main-endpoint="https://reports.example/main"
-Content-Security-Policy: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'; require-trusted-types-for 'script'; report-to main-endpoint;
+Content-Security-Policy: script-src 'nonce-{RANDOM}' 'strict-dynamic' 'report-sample'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; report-to main-endpoint;
 ```
 
 HTML for nonce-based CSP:
@@ -218,7 +228,7 @@ HTML for nonce-based CSP:
 ```
 
 **Server / Middleware Per-Request Nonce Generation:**
-In server-rendered or SSR middleware (such as Node.js, Express, or Astro middleware), generate a fresh cryptographic nonce on every request, attach it to `Content-Security-Policy`, and stamp `nonce` onto `<script>` tags in HTML responses:
+In server-rendered or SSR middleware (such as Node.js, Express, or Astro middleware), generate a fresh cryptographic nonce on every request, attach it to `Content-Security-Policy`, and pass the nonce into your template/SSR rendering context so only trusted template `<script>` tags receive it:
 
 ```javascript
 const bytes = new Uint8Array(16);
@@ -229,7 +239,7 @@ const csp = [
   `script-src 'nonce-${nonce}' 'strict-dynamic' 'report-sample'`,
   "object-src 'none'",
   "base-uri 'none'",
-  "frame-ancestors 'self'",
+  "frame-ancestors 'none'", // or "frame-ancestors 'self'" if same-origin framing is needed
   "require-trusted-types-for 'script'",
   'report-to main-endpoint',
 ].join('; ');
@@ -237,13 +247,16 @@ const csp = [
 headers.set('Reporting-Endpoints', 'main-endpoint="https://reports.example/main"');
 headers.set('Content-Security-Policy', csp);
 
-// If transforming rendered HTML in middleware, inject the per-request nonce onto <script> tags:
-html = html.replace(/<script\b(?![^>]*\bnonce=)/gi, `<script nonce="${nonce}"`);
+// Pass the per-request nonce into your template/SSR rendering context (or replace an
+// explicit placeholder token in a static template before interpolating any user data):
+res.locals.nonce = nonce; // e.g., <script nonce="<%= nonce %>" src="/app.js"></script>
 ```
 
 For static/cached HTML (SPAs) where a per-response nonce is not possible, use hash-based CSP: compute the `sha256-` hash of each script and list the hashes in `script-src` alongside `'strict-dynamic' 'report-sample'`.
 
-**Avoid**: Broad scheme or domain allowlists (such as `https:` alone or `script-src https://cdn.example.com` without `'strict-dynamic'`) as the primary `script-src` protection — they are easily bypassed by open redirects, JSONP endpoints, and dependency injection on the allowed origin.
+**Avoid**:
+- Broad scheme or domain allowlists (such as `https:` alone or `script-src https://cdn.example.com` without `'strict-dynamic'`) as the primary `script-src` protection — they are easily bypassed by open redirects, JSONP endpoints, and dependency injection on the allowed origin.
+- Rewriting already-rendered HTML with a regular expression (such as `html.replace(/<script\b.../gi, ...)`) to stamp CSP nonces onto every `<script>` tag — post-processing rendered HTML cannot distinguish developer-authored `<script>` tags from untrusted `<script>` tags introduced via reflected or stored HTML injection, authorizing attacker-injected scripts under `script-src 'nonce-...'`.
 
 #### 3.3 Trusted Types Enforcement
 Trusted Types enforces source-level guidance at runtime by blocking raw string assignments to dangerous DOM XSS sinks (`innerHTML`, `outerHTML`, `document.write`, `script.src`, `script.textContent`) unless they pass through a named policy.
@@ -354,12 +367,12 @@ Permissions-Policy: camera=(), geolocation=(), microphone=(), focus-without-user
 ```
 
 #### Subresource Integrity (SRI)
-- **DO**: Use the `integrity` attribute with a cryptographic hash (preferring `sha256` or `sha512`) when loading third-party scripts, combined with `crossorigin="anonymous"`.
+- **DO**: Use the `integrity` attribute with a cryptographic hash (preferring `sha384`, `sha512`, or `sha256`) when loading third-party scripts and stylesheets, combined with `crossorigin="anonymous"` (see {{ GUIDE_REF("secure-external-subresources") }} for securing HTML and CSS subresources with SRI, CORS, and Referrer Policy).
 - **DO**: Ensure the server/CDN sends an appropriate `Access-Control-Allow-Origin` header so the browser can compute the hash.
 - **DO NOT**: Use SRI for dynamic or unversioned assets — silent updates will cause script execution to fail. SRI is strictly for immutable, versioned assets.
 
 ```html
-<script src="https://cdn.example.com/lib.js" integrity="sha256-H8df...39v" crossorigin="anonymous"></script>
+<script src="https://cdn.example.com/lib@1.0.0.js" integrity="sha384-oqVu...Y8wC" crossorigin="anonymous"></script>
 ```
 
 #### Cross-Origin Resource Sharing (CORS)

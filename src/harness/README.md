@@ -23,6 +23,9 @@ gd dev guides/<category>/<use-case-slug> --test-grader
 
 # Skip evaluation and report generation after calibration:
 gd dev guides/<category>/<use-case-slug> --no-test
+
+# Run against only specific base applications (comma-separated):
+gd dev guides/<category>/<use-case-slug> --targets daily-grind
 ```
 
 ### The 5-Step `gd dev` Pipeline:
@@ -32,6 +35,8 @@ gd dev guides/<category>/<use-case-slug> --no-test
 4. **Agent Evaluations**: Executes guided and unguided agent runs against target apps to measure pass rates and guidance tool usage.
 5. **Evaluation Report (`report.md`)**: Invokes an evaluator agent to analyze failed assertions and output recommendations into `results/guides/<category>/<slug>/report.md`.
 
+When run from `main`, `gd dev` first switches to a new `gd-dev/<guide-name>` branch and commits the generated artifacts and any post-report fixes as separate commits.
+
 ### Submitting a Pull Request: `gd pr`
 
 Once `gd dev` completes and generates `results/guides/<category>/<slug>/report.md`, create a Pull Request directly from your terminal:
@@ -40,25 +45,26 @@ Once `gd dev` completes and generates `results/guides/<category>/<slug>/report.m
 gd pr guides/<category>/<use-case-slug>
 ```
 
-This automatically creates/switches to a `gd-dev/<guide-name>` branch, commits and pushes changes for the target guide directory, labels the PR (`gd-dev-content` and/or `gd-dev-eval`), and opens or updates a draft PR with `report.md` as the description.
+This automatically creates/switches to a `gd-dev/<guide-name>` branch, commits and pushes changes for the target guide directory, labels the PR (`gd-dev-content` and/or `gd-dev-eval`), and opens a new PR (or updates the existing PR description and syncs labels, removing `needs-dev-rerun`) with `report.md` as the description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
 
-### Fixing Open Eval Gaps: `gd dev-gap`
+### Fixing Missing Evals: `gd dev-gap`
 
-`eval-gap-watch` files an `"Evals missing for the <guide-name> guide"` issue (label `eval-gap`) for each guide that needs evals. `gd dev-gap` works through those issues, running `gd dev` and `gd pr` for each guide in turn from a clean `main`:
-
-```bash
-gd dev-gap --dry-run   # show which guides would run and why the rest are skipped
-gd dev-gap --limit 1   # process at most one guide
-gd dev-gap             # process all of them
-```
-
-### Checking Status: `gd audit`
-
-Use `gd audit` to view where every guide sits across the 6 maturity stages (`Stub`, `Incomplete`, `Needs expectations`, `Needs calibration`, `Needs test`, `Eval-ready`):
+`gd dev-gap` scans `guides/` on disk for non-draft guides that have populated `guide.md` and `expectations.md` but are missing evals (`grader.ts` or `task.md`, in legacy format or `targets/`), then runs `gd dev` (defaulting to `--targets daily-grind`) and `gd pr` for each guide in turn from a clean `main`. It also reruns open `gd pr` PRs labeled `needs-dev-rerun`:
 
 ```bash
-gd audit
+gd dev-gap --dry-run                            # show which guides/PRs would run and why any are skipped
+gd dev-gap --limit 1                            # process at most one guide
+gd dev-gap --targets daily-grind,devtools-times # override target base apps (defaults to daily-grind)
+gd dev-gap                                      # process all of them
 ```
+
+It skips guides that already have an open `grader updates: <guide-name>` PR (unless labeled `needs-dev-rerun`) and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` without an open PR (delete the branch to retry).
+
+When an evaluation report in a PR is unhealthy, `gd dev` applies recommended fixes directly to the files in the PR (committed as a separate post-report commit from the initial target generation). Reviewers can inspect the file diffs in the PR, leave inline comments or push adjustments, and trigger the next automated pass by labeling the PR **`needs-dev-rerun`**. `gd dev` regenerates whatever changed since the solution patches were generated (`guide.md` or `expectations.md` wipes `targets/<target>/` and regenerates everything; `task.md` regenerates the solution patches and `grader.ts`; `grader.ts` alone re-runs calibration and agent evaluation).
+
+### Pipeline Tracking
+
+`src/ci/sync-pipeline-issue.ts` maintains the canonical [Content & Eval Pipeline issue (#1815)](https://github.com/GoogleChrome/modern-web-guidance-src/issues/1815), including flagging guides under **Stale evals** whenever `expectations.md` has substantive changes newer than `grader.ts` or `targets/`.
 
 * **Normative Specification & Rules**: See [`.agents/skills/project-evals/SKILL.md`](../../.agents/skills/project-evals/SKILL.md).
 
@@ -357,7 +363,7 @@ Only these paths are re-exposed:
 |------|--------|-----|
 | `node_modules`, `src/harness/node_modules` | read-only | Agent CLI binaries |
 | `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
-| per-run `targetDir` | writable | npx shim, `modern-web.log` |
+| isolated `HOME` (`/tmp/ghh-*`) | writable | Agent workspace, `.gd-bin` npx/pnpx/pnpm shims, and `modern-web.log` |
 
 If no sandbox tool is available the run fails loudly. Set `GD_UNSAFE_NO_SANDBOX=1` to bypass for local debugging only. If an agent hits `EPERM`/`Operation not permitted` on a repo path the harness legitimately needs, add it to `buildSandboxPolicy()` rather than disabling the sandbox.
 
@@ -660,6 +666,36 @@ GD_SUITE_CONFIG='{"agent":"pi"}' \
 # Inspect the JSONL format
 cat results/suites/<suite>/<run>/<task>/guided/*.jsonl | head -100
 ```
+
+## Diagnosing Performance Variance with `gd compare`
+
+The `gd compare` command compares two evaluation run directories to diagnose behavioral differences and performance variance between agent runs:
+
+```bash
+# Compare two local run directories
+gd compare results/<suite-a>/<run-1>/<guide>/<task>/<run-type> results/<suite-b>/<run-2>/<guide>/<task>/<run-type>
+
+# Example: Compare guided vs unguided runs
+gd compare results/nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided results/nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/unguided
+
+# Compare runs from remote GCS suites (automatically downloaded and cached locally)
+gd compare nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided nightly-2026-08-11_17-00-02-jetski_cli/1/details-styling/task/guided
+```
+
+### Path Formats
+Run directory paths can be:
+- **Local repository paths**: Paths relative to repo root (e.g. `results/<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
+- **Results-relative or remote suite paths**: Paths relative to `results/` (e.g. `<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
+- **Remote GCS buckets**: If the specified run directory is not found locally, `gd compare` automatically downloads the run artifacts from Google Cloud Storage (`gs://guidance-evals/<suite-path>`) before launching analysis.
+
+### Analysis Pipeline
+The comparison runs in four steps:
+1. **Loads both runs.** Missing runs are downloaded from GCS. If a `trajectory_summary.json` is missing or from an older normalizer version, it's rebuilt from the raw session logs.
+2. **Pre-processes trajectories** into tagged milestone steps (skill search, guide retrieval, code mutation, noise) and counts error/retry loops.
+3. **Runs one diagnostic prompt** with the configured solution agent CLI in an isolated temp workspace. The full guide, grader, diffs and trajectories are staged there as files. The agent may split the guide-compliance and code/friction audits across its own subagents.
+4. **Writes a four-section markdown report** to `<Run A suite>/variance_diagnoses/<guide>-<task>-<runA>-vs-<runB>.md`. If Run A isn't in a recognizable suite folder, it falls back to Run B's suite, then to `harness/results/variance_diagnoses/`.
+
+---
 
 ## Related Documentation
 

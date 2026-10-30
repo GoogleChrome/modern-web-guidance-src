@@ -11,6 +11,7 @@ import {
   suitesDir,
   dashboardDir,
   getGuideResultsDir,
+  resolveGuideResultsDir,
 } from './paths.ts';
 
 describe('paths.ts exports', () => {
@@ -24,18 +25,25 @@ describe('paths.ts exports', () => {
     assert.equal(dashboardDir, path.join(rootDir, 'src/dashboard'));
   });
 
-  test('getGuideResultsDir constructs path correctly with slug or name', () => {
+  test('getGuideResultsDir constructs path correctly with name', () => {
     assert.equal(
-      getGuideResultsDir({ category: 'css', slug: 'scrollspy' }),
+      getGuideResultsDir({ category: 'css', name: 'scrollspy' }),
       path.join(resultsDir, 'guides', 'css', 'scrollspy')
-    );
-    assert.equal(
-      getGuideResultsDir({ category: 'forms', name: 'input-address' }),
-      path.join(resultsDir, 'guides', 'forms', 'input-address')
     );
     assert.throws(
       () => getGuideResultsDir({ category: 'forms' } as any),
-      /missing slug\/name/
+      /missing name/
+    );
+  });
+
+  test('resolveGuideResultsDir resolves from guideInfo or targetDir', () => {
+    assert.equal(
+      resolveGuideResultsDir('/tmp/some-dir', { category: 'css', name: 'scrollspy' }),
+      path.join(resultsDir, 'guides', 'css', 'scrollspy')
+    );
+    assert.equal(
+      resolveGuideResultsDir(path.join(guidesDir, 'forms', 'input-address')),
+      path.join(resultsDir, 'guides', 'forms', 'input-address')
     );
   });
 });

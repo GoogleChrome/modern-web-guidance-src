@@ -21,12 +21,21 @@ import {
 } from '../core/guide-validation.ts';
 import { cCyan, cGreen } from '../core/colors.ts';
 
-export async function generateTargetGrader(guideDirAbs: string, baseApp: string, failureContext?: string): Promise<void> {
+export async function generateTargetGrader(
+  guideDirAbs: string,
+  baseApp: string,
+  failureContext?: string,
+  prContext?: {
+    branchCommits?: string;
+    branchDiff?: string;
+    comments?: string;
+  }
+): Promise<void> {
   const repoRoot = rootDir;
   const relativeGuidePath = path.relative(repoRoot, guideDirAbs);
   const relativeWorkSubdir = path.join(relativeGuidePath, 'targets', baseApp);
 
-  const workDir = setupGuideDevWorkDir(`${baseApp}-grader`, relativeWorkSubdir);
+  const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-grader`, relativeWorkSubdir);
   try {
     fs.cpSync(path.join(baseAppsDir, baseApp), workDir, {
       recursive: true,
@@ -34,13 +43,11 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
     });
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
-
-    const tempHome = path.resolve(workDir, '../../../../..'); // workDir is tempHome/guides/cat/guide/targets/app
     
     // =========================================================================
     // 1. RUNTIME EXECUTION DEPENDENCIES (in tempHome)
-    // Required so grader.ts runtime import `../../../../test-fixture.ts` (guides/test-fixture.ts proxy)
-    // and `src/grading/test-fixture.ts` -> `../core/patch-utils.ts` resolve during Playwright execution.
+    // Required so grader.ts runtime imports (`../../../../../src/grading/test-fixture.ts` or
+    // legacy `../../../../test-fixture.ts` proxy) and `../core/patch-utils.ts` resolve during Playwright execution.
     // =========================================================================
     fs.mkdirSync(path.join(tempHome, 'src', 'core'), { recursive: true });
     fs.copyFileSync(
@@ -98,6 +105,11 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.cpSync(sourcePatches, path.join(workDir, PATCHES_DIR), { recursive: true });
     }
 
+    const existingGrader = path.join(guideDirAbs, TARGETS_DIR, baseApp, GRADER_FILE);
+    if (failureContext && fs.existsSync(existingGrader)) {
+      fs.copyFileSync(existingGrader, path.join(workDir, GRADER_FILE));
+    }
+
     const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
     const activeAgents = getActiveSolutionAgents(targetDir);
     const solutionPatchFiles: Partial<Record<SolutionAgent, string>> = {};
@@ -121,9 +133,10 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       cssomnomDtsPath: path.join(workDir, 'cssomnom.d.ts'),
       failureContext,
       isDisciplineGuide: isDisciplineGuide(path.basename(guideDirAbs), path.basename(path.dirname(guideDirAbs))),
+      prContext,
     });
 
-    await runAgent(getDefaultSolutionAgent(), prompt, workDir);
+    await runAgent(getDefaultSolutionAgent(), prompt, workDir, { homeDir: tempHome });
 
     const generatedGrader = path.join(workDir, GRADER_FILE);
     if (fs.existsSync(generatedGrader)) {
@@ -132,17 +145,17 @@ export async function generateTargetGrader(guideDirAbs: string, baseApp: string,
       fs.copyFileSync(generatedGrader, destGrader);
     }
 
-    const generatedPatches = path.join(workDir, PATCHES_DIR);
-    if (fs.existsSync(generatedPatches)) {
-      const destPatches = path.join(guideDirAbs, TARGETS_DIR, baseApp, PATCHES_DIR);
-      fs.mkdirSync(destPatches, { recursive: true });
-      fs.cpSync(generatedPatches, destPatches, { recursive: true });
+    const generatedZeroPassrate = path.join(workDir, ZERO_PASSRATE_PATCH_FILE);
+    if (fs.existsSync(generatedZeroPassrate)) {
+      const destZeroPassrate = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
+      fs.mkdirSync(path.dirname(destZeroPassrate), { recursive: true });
+      fs.copyFileSync(generatedZeroPassrate, destZeroPassrate);
     }
   } finally {
     try {
-      fs.rmSync(workDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
+      fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
     } catch (e) {
-      console.warn(`Warning: failed to remove workDir ${workDir}: ${(e as Error).message}`);
+      console.warn(`Warning: failed to remove tempHome ${tempHome}: ${(e as Error).message}`);
     }
   }
 }

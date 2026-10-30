@@ -1,0 +1,386 @@
+diff --git a/index.html b/index.html
+index 66c9173..e3f31e6 100644
+--- a/index.html
++++ b/index.html
+@@ -4,14 +4,117 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="color-scheme" content="light dark">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
+     :root {
++      color-scheme: light dark;
++
++      /* Base brand tokens */
+       --primary: #4e342e;
+-      --secondary: #d7ccc8;
++      --secondary: color-mix(in oklab, var(--primary), white 82%);
+       --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
++      --text: color-mix(in oklab, var(--primary), black 20%);
++      --light: color-mix(in oklab, var(--primary), white 92%);
++
++      /* Semantic surface & UI tokens (Light Mode default) */
++      --bg: var(--light);
++      --surface: #ffffff;
++      --surface-subtle: var(--secondary);
++      --heading: var(--primary);
++      --border: color-mix(in oklab, var(--primary), white 35%);
++
++      --nav-bg: var(--primary);
++      --nav-text: #ffffff;
++      --nav-border: color-mix(in oklab, var(--primary), black 25%);
++
++      --hero-bg-fallback: color-mix(in oklab, var(--primary), black 35%);
++      --hero-text: #ffffff;
++      --hero-overlay: rgba(25, 14, 11, 0.62);
++
++      --btn-bg: var(--primary);
++      --btn-text: #ffffff;
++      --btn-hover-bg: color-mix(in oklab, var(--primary), black 20%);
++      --btn-border: color-mix(in oklab, var(--primary), black 25%);
++
++      --hero-btn-bg: var(--accent);
++      --hero-btn-text: color-mix(in oklab, var(--primary), black 45%);
++      --hero-btn-hover-bg: color-mix(in oklab, var(--accent), white 20%);
++      --hero-btn-border: color-mix(in oklab, var(--primary), black 45%);
++
++      --badge-new-bg: color-mix(in oklab, var(--primary), white 85%);
++      --badge-new-text: color-mix(in oklab, var(--primary), black 20%);
++      --badge-new-border: var(--primary);
++
++      --badge-sold-out-bg: color-mix(in oklab, var(--primary), white 90%);
++      --badge-sold-out-text: color-mix(in oklab, var(--primary), black 15%);
++      --badge-sold-out-border: color-mix(in oklab, var(--primary), white 25%);
++    }
++
++    @media (prefers-color-scheme: dark) {
++      :root {
++        --secondary: color-mix(in oklab, var(--primary), black 40%);
++        --text: color-mix(in oklab, var(--primary), white 88%);
++        --light: color-mix(in oklab, var(--primary), black 50%);
++
++        --bg: var(--light);
++        --surface: color-mix(in oklab, var(--primary), black 30%);
++        --surface-subtle: var(--secondary);
++        --heading: color-mix(in oklab, var(--primary), white 78%);
++        --border: color-mix(in oklab, var(--primary), white 45%);
++
++        --nav-bg: color-mix(in oklab, var(--primary), black 35%);
++        --nav-text: color-mix(in oklab, var(--primary), white 92%);
++        --nav-border: color-mix(in oklab, var(--primary), white 40%);
++
++        --hero-bg-fallback: color-mix(in oklab, var(--primary), black 45%);
++        --hero-text: color-mix(in oklab, var(--primary), white 95%);
++        --hero-overlay: rgba(15, 7, 6, 0.72);
++
++        --btn-bg: color-mix(in oklab, var(--primary), white 75%);
++        --btn-text: color-mix(in oklab, var(--primary), black 45%);
++        --btn-hover-bg: color-mix(in oklab, var(--primary), white 85%);
++        --btn-border: color-mix(in oklab, var(--primary), white 85%);
++
++        --badge-new-bg: color-mix(in oklab, var(--primary), black 15%);
++        --badge-new-text: color-mix(in oklab, var(--primary), white 90%);
++        --badge-new-border: color-mix(in oklab, var(--primary), white 55%);
++
++        --badge-sold-out-bg: color-mix(in oklab, var(--primary), black 40%);
++        --badge-sold-out-text: color-mix(in oklab, var(--primary), white 80%);
++        --badge-sold-out-border: color-mix(in oklab, var(--primary), white 45%);
++      }
++    }
++
++    @media (forced-colors: active) {
++      :root {
++        --bg: Canvas;
++        --surface: Canvas;
++        --surface-subtle: Canvas;
++        --text: CanvasText;
++        --heading: CanvasText;
++        --border: CanvasText;
++        --nav-bg: Canvas;
++        --nav-text: CanvasText;
++        --nav-border: CanvasText;
++        --hero-bg-fallback: Canvas;
++        --hero-text: CanvasText;
++        --accent: Highlight;
++        --btn-bg: ButtonFace;
++        --btn-text: ButtonText;
++        --btn-hover-bg: Highlight;
++        --btn-border: ButtonText;
++        --hero-btn-bg: ButtonFace;
++        --hero-btn-text: ButtonText;
++        --hero-btn-hover-bg: Highlight;
++        --hero-btn-border: ButtonText;
++        --badge-new-bg: Canvas;
++        --badge-new-text: Highlight;
++        --badge-new-border: Highlight;
++        --badge-sold-out-bg: Canvas;
++        --badge-sold-out-text: GrayText;
++        --badge-sold-out-border: GrayText;
++      }
+     }
+ 
+     * {
+@@ -24,13 +127,14 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: var(--bg);
+     }
+ 
+     /* Navigation */
+     nav {
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--nav-bg);
++      color: var(--nav-text);
++      border-bottom: 1px solid var(--nav-border);
+       padding: 1rem 5%;
+       display: flex;
+       justify-content: space-between;
+@@ -48,6 +152,7 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -56,18 +161,20 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: var(--nav-text);
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
++      text-decoration: underline;
+     }
+ 
+     .logout-link {
+-      border: 1px solid var(--accent);
++      border: 1.5px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -75,15 +182,17 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      background-color: var(--hero-bg-fallback);
++      background-image: linear-gradient(var(--hero-overlay), var(--hero-overlay)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+       background-position: center;
++      border-bottom: 1px solid var(--border);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+       align-items: center;
+-      color: white;
++      color: var(--hero-text);
+       text-align: center;
+       padding: 0 20px;
+     }
+@@ -100,6 +209,11 @@
+       padding: 0 20px;
+     }
+ 
++    .section-title {
++      text-align: center;
++      color: var(--heading);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -108,35 +222,109 @@
+     }
+ 
+     .card {
+-      background: white;
++      background-color: var(--surface);
++      color: var(--text);
+       padding: 20px;
+       border-radius: 8px;
++      border: 1px solid var(--border);
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: space-between;
+     }
+ 
+-    .card h3 {
++    .card-header {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 8px;
+       margin-bottom: 10px;
+-      color: var(--primary);
++    }
++
++    .card h3 {
++      color: var(--heading);
++    }
++
++    /* Status Badges (differentiated by icon, shape, border style, and text — not color alone) */
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      font-size: 0.78rem;
++      font-weight: 700;
++      line-height: 1.2;
++      padding: 4px 10px;
++      letter-spacing: 0.03em;
++    }
++
++    .badge-icon {
++      width: 0.9em;
++      height: 0.9em;
++      flex-shrink: 0;
++      fill: currentColor;
++    }
++
++    .badge-new {
++      background-color: var(--badge-new-bg);
++      color: var(--badge-new-text);
++      border: 1.5px solid var(--badge-new-border);
++      border-radius: 999px;
++    }
++
++    .badge-sold-out {
++      background-color: var(--badge-sold-out-bg);
++      color: var(--badge-sold-out-text);
++      border: 1.5px dashed var(--badge-sold-out-border);
++      border-radius: 4px;
+     }
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
+-      color: white;
++      background-color: var(--btn-bg);
++      color: var(--btn-text);
++      border: 1.5px solid var(--btn-border);
+       padding: 10px 20px;
+       text-decoration: none;
++      font-weight: 600;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
++    }
++
++    .btn:hover,
++    .btn:focus-visible {
++      background-color: var(--btn-hover-bg);
++      text-decoration: underline;
++    }
++
++    .hero .btn {
++      background-color: var(--hero-btn-bg);
++      color: var(--hero-btn-text);
++      border-color: var(--hero-btn-border);
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
++    .hero .btn:hover,
++    .hero .btn:focus-visible {
++      background-color: var(--hero-btn-hover-bg);
++    }
++
++    @media (forced-colors: active) {
++      .btn:hover,
++      .btn:focus-visible,
++      .hero .btn:hover,
++      .hero .btn:focus-visible {
++        background-color: Highlight;
++        color: HighlightText;
++        border-color: HighlightText;
++      }
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background-color: var(--surface-subtle);
++      color: var(--text);
++      border-top: 1px solid var(--border);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -149,9 +337,15 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
++      text-decoration: underline;
++      text-underline-offset: 3px;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover,
++    .footer-links a:focus-visible {
++      color: var(--heading);
++    }
+   </style>
+ </head>
+ 
+@@ -176,20 +370,38 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
++          <div class="card-header">
++            <span class="badge badge-new">
++              <svg class="badge-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
++                <path d="M8 0.5L10.1 5.4L15.5 5.9L11.4 9.4L12.6 14.7L8 11.9L3.4 14.7L4.6 9.4L0.5 5.9L5.9 5.4L8 0.5Z" />
++              </svg>
++              <span>New</span>
++            </span>
++            <h3>Maple Oat Latte</h3>
++          </div>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++          <div class="card-header">
++            <h3>Dark Roast Espresso</h3>
++          </div>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
++          <div class="card-header">
++            <span class="badge badge-sold-out">
++              <svg class="badge-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
++                <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 1.5a5.5 5.5 0 0 1 3.35 1.14L3.64 11.35A5.5 5.5 0 0 1 8 2.5zm0 11a5.5 5.5 0 0 1-3.35-1.14l7.71-7.71A5.5 5.5 0 0 1 8 13.5z" />
++              </svg>
++              <span>Sold out</span>
++            </span>
++            <h3>Cold Brew</h3>
++          </div>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>

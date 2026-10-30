@@ -37,8 +37,11 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
 
     for (const [cmd, cmdArgs] of [
       ['npx', ['-y', 'modern-web-guidance@latest', 'search', 'foo']],
+      ['npx', ['modern-web-guidance', 'retrieve', 'foo']],
       ['pnpx', ['modern-web-guidance@latest', 'search', 'foo']],
+      ['pnpx', ['modern-web-guidance', 'retrieve', 'foo']],
       ['pnpm', ['dlx', 'modern-web-guidance@latest', 'search', 'foo']],
+      ['pnpm', ['dlx', 'modern-web-guidance', 'retrieve', 'foo']],
     ] as const) {
       const result = spawnSync(cmd, [...cmdArgs], {
         cwd: tempDir,
@@ -52,6 +55,24 @@ fs.writeFileSync(path.join(__dirname, 'called.txt'), 'yes');
       assert.ok(fs.existsSync(calledFile), `Dummy CLI should have been called for ${cmd}`);
       assert.strictEqual(fs.readFileSync(calledFile, 'utf8'), 'yes', 'Dummy CLI should have written yes');
       fs.unlinkSync(calledFile);
+    }
+
+    // Verify that when localCliPath is inaccessible (as in unguided sandbox runs),
+    // modern-web-guidance calls fail instead of falling through to npm/pnpm dlx.
+    fs.unlinkSync(dummyCliPath);
+    for (const [cmd, cmdArgs] of [
+      ['npx', ['modern-web-guidance', 'retrieve', 'foo']],
+      ['pnpx', ['modern-web-guidance', 'retrieve', 'foo']],
+      ['pnpm', ['dlx', 'modern-web-guidance', 'retrieve', 'foo']],
+    ] as const) {
+      const blockedResult = spawnSync(cmd, [...cmdArgs], {
+        cwd: tempDir,
+        encoding: 'utf8',
+        env,
+        timeout: 10000,
+        shell: process.platform === 'win32'
+      });
+      assert.strictEqual(blockedResult.status, 1, `Unguided ${cmd} modern-web-guidance call must be blocked`);
     }
 
     // Run a command that should NOT be intercepted (fallback)
@@ -91,20 +112,16 @@ srv.on('exit', (c) => process.exit(c ?? 0));
     assert.strictEqual(bgResult.status, 0, 'Backgrounded shim command should exit cleanly after kill');
     const grandchildPid = Number(fs.readFileSync(pidFile, 'utf8'));
     assert.ok(grandchildPid > 0, 'Grandchild PID should have been recorded');
-    let isDead = false;
-    for (let i = 0; i < 20; i++) {
+    const deadline = Date.now() + 1000;
+    while (Date.now() < deadline) {
       try {
         process.kill(grandchildPid, 0);
-        await new Promise(r => setTimeout(r, 50));
-      } catch (err: any) {
-        if (err.code === 'ESRCH') {
-          isDead = true;
-          break;
-        }
-        throw err;
+        await new Promise((r) => setTimeout(r, 20));
+      } catch {
+        break;
       }
     }
-    assert.strictEqual(isDead, true, 'Grandchild server process must not remain alive after killing shim');
+    assert.throws(() => process.kill(grandchildPid, 0), /ESRCH/, 'Grandchild server process must not remain alive after killing shim');
 
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });

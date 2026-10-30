@@ -1,0 +1,214 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/external-assets.js b/external-assets.js
+new file mode 100644
+index 0000000..929c4cd
+--- /dev/null
++++ b/external-assets.js
+@@ -0,0 +1,62 @@
++// Digests are release-time constants, never calculated from browser responses.
++// npm assets were checked against the registry tarball integrity. Images were
++// checked against Git blob IDs at the commit pinned in their URLs.
++
++/** @param {string} url @param {string} integrity */
++async function verifiedResponse(url, integrity) {
++  // Fail closed on engines without Fetch SRI; never silently fetch unverified.
++  if (!('integrity' in Request.prototype)) {
++    throw new Error('Subresource integrity is unavailable');
++  }
++  const response = await fetch(url, {
++    integrity,
++    mode: 'cors',
++    credentials: 'omit',
++    referrerPolicy: 'no-referrer',
++  });
++  if (!response.ok) throw new Error(`Asset request failed: ${response.status}`);
++  return response;
++}
++
++/** @param {HTMLElement} element */
++async function loadImage(element) {
++  const { image: url, integrity } = element.dataset;
++  if (!url || !integrity) throw new Error('Missing image integrity metadata');
++
++  // Quoted URLs and each modifier occur exactly once. Unsupported browsers use
++  // only verified blob URLs, never a plain, unverified external CSS fallback.
++  const protectedUrl = `url(${JSON.stringify(url)} cross-origin(anonymous) referrer-policy(no-referrer) integrity(${JSON.stringify(integrity)}))`;
++  if (globalThis.CSS?.supports('background-image', protectedUrl)) {
++    element.style.setProperty('--verified-image', protectedUrl);
++    return;
++  }
++
++  const response = await verifiedResponse(url, integrity);
++  const blobUrl = URL.createObjectURL(await response.blob());
++  // Retain the blob for the document lifetime so later CSS repaints still work.
++  // The browser releases these URLs when the document is destroyed.
++  element.style.setProperty('--verified-image', `url("${blobUrl}")`);
++}
++
++async function loadFont() {
++  const preload = document.querySelector('#brand-font');
++  if (!(preload instanceof HTMLLinkElement)) return;
++  const url = preload.href;
++  const integrity = preload.integrity;
++  const protectedUrl = `url(${JSON.stringify(url)} cross-origin(anonymous) referrer-policy(no-referrer) integrity(${JSON.stringify(integrity)}))`;
++  // FontFace accepts the same CSS src syntax as @font-face; format() remains
++  // outside url(). Unsupported engines get bytes checked by Fetch SRI instead.
++  const source = globalThis.CSS?.supports('background-image', protectedUrl)
++    ? `${protectedUrl} format("woff2")`
++    : await (await verifiedResponse(url, integrity)).arrayBuffer();
++  const font = new FontFace('Daily Grind', source, { weight: '400', display: 'swap' });
++  document.fonts.add(await font.load());
++}
++
++// Independent failures leave the system font and background colors in place.
++// An integrity failure must never retry with an unverified remote URL.
++void Promise.allSettled([
++  loadFont(),
++  ...Array.from(document.querySelectorAll('[data-image]'), (element) =>
++    element instanceof HTMLElement ? loadImage(element) : Promise.resolve()),
++]);
+diff --git a/index.html b/index.html
+index 66c9173..060e743 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,19 @@
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <meta name="referrer" content="strict-origin-when-cross-origin">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.css"
++    integrity="sha384-M86HUGbBFILBBZ9ykMAbT3nVb0+2C7yZlF8X2CiKNpDOQjKroMJqIeGZ/Le8N2Qp"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++  <link id="brand-font" rel="preload" as="font" type="font/woff2"
++    href="https://cdn.jsdelivr.net/npm/@fontsource/lato@5.2.6/files/lato-latin-400-normal.woff2"
++    integrity="sha384-+chn3xqCWRPSXDBtVEFQn+0J9Gb0SYR2FO1WrXo+L/arnyr8lXLVX2p0BqZIUemc"
++    crossorigin="anonymous" referrerpolicy="no-referrer">
++  <script defer src="https://cdn.jsdelivr.net/npm/focus-visible@5.2.1/dist/focus-visible.min.js"
++    integrity="sha384-xRa5B8rCDfdg0npZcxAh+RXswrbFk3g6dlHVeABeluN8EIwdyljz/LqJgc2R3KNA"
++    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
++  <script type="module" src="./external-assets.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -21,7 +33,7 @@
+     }
+ 
+     body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++      font-family: 'Daily Grind', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
+@@ -66,6 +78,12 @@
+       color: var(--accent);
+     }
+ 
++    a:focus-visible,
++    a.focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -75,8 +93,9 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-color: var(--primary);
++      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++        var(--verified-image, none);
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -120,6 +139,16 @@
+       color: var(--primary);
+     }
+ 
++    .card-image {
++      height: 180px;
++      margin-bottom: 16px;
++      border-radius: 4px;
++      background-color: var(--secondary);
++      background-image: var(--verified-image, none);
++      background-size: cover;
++      background-position: center;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -168,7 +197,9 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
++  <header class="hero"
++    data-image="https://cdn.jsdelivr.net/gh/startbootstrap/startbootstrap-business-casual@b6f928934386a54e08c2e7f40ebd9e4d7510bba4/dist/assets/img/bg.jpg"
++    data-integrity="sha384-72eGrJSailVshdeRx4RbfDLNQFFU/7tsWLqb1K4aFHmguFsOTQMIyCovIYijF0BU">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -179,16 +210,25 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="card-image" aria-hidden="true"
++            data-image="https://cdn.jsdelivr.net/gh/startbootstrap/startbootstrap-business-casual@b6f928934386a54e08c2e7f40ebd9e4d7510bba4/dist/assets/img/products-01.jpg"
++            data-integrity="sha384-xyZvU+eJeefwyLbZ/Hi4t2QhDY9gG9Z80yB/pPSS2Hdi4Gdh/U4+BTpT8cIYHsDj"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-image" aria-hidden="true"
++            data-image="https://cdn.jsdelivr.net/gh/startbootstrap/startbootstrap-business-casual@b6f928934386a54e08c2e7f40ebd9e4d7510bba4/dist/assets/img/products-03.jpg"
++            data-integrity="sha384-9bZdg+y1sCzDzkNIXsBhvWqRRwwKwse9wATgSnehtCgkwOyLsLzAkuhXVf5jR5fn"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="card-image" aria-hidden="true"
++            data-image="https://cdn.jsdelivr.net/gh/startbootstrap/startbootstrap-business-casual@b6f928934386a54e08c2e7f40ebd9e4d7510bba4/dist/assets/img/products-02.jpg"
++            data-integrity="sha384-1hIXUqDgZYQ2D+hSRFpgilsxh84TZGA84OwhphAENLHYCK71cXE59zH3vr3+8uFl"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/package.json b/package.json
+index 2bd4d77..28acf96 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node scripts/build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..b96a366
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,9 @@
++import { execFileSync } from 'node:child_process';
++import { copyFile, mkdir } from 'node:fs/promises';
++
++// This is a static site: validate JavaScript syntax and emit deployable files.
++execFileSync(process.execPath, ['--check', 'external-assets.js'], { stdio: 'inherit' });
++await mkdir('dist', { recursive: true });
++await Promise.all(['index.html', 'external-assets.js'].map((file) =>
++  copyFile(file, `dist/${file}`)));
++console.log('Built static site in dist/');
