@@ -11,6 +11,16 @@ import {
   triageGuide,
 } from './guide-triage.ts';
 
+function mockGeminiResponse(payload: unknown, status = 200): Response {
+  return new Response(
+    typeof payload === 'string' ? payload : JSON.stringify(payload),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
+}
+
 void test('guide-triage: request body construction', async (t) => {
   const sampleGuide = {
     guideId: 'temporal-now',
@@ -116,37 +126,34 @@ void test('guide-triage: triageGuide with mock fetch', async (t) => {
     const mockFetch: typeof fetch = async (input, init) => {
       capturedUrl = String(input);
       capturedBody = String(init?.body);
-      return new Response(
-        JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify({
-                      classification: 'detectable',
-                      candidateTechniques: ['manual wheel listeners'],
-                      borderline: false,
-                      brownfieldTarget: 'manual wheel event listeners',
-                      evidenceFromGuide: 'Replaces window.addEventListener("wheel", ...)',
-                      reason: 'Concrete legacy scroll listener replaced by scrollend.',
-                      evidenceSource: 'explainer',
-                    }),
-                  },
-                ],
-              },
-              groundingMetadata: {
-                webSearchQueries: ['legacy scrollend replacement'],
-                groundingChunks: [
-                  { web: { uri: 'https://chromestatus.com/feature/5195248554278912', title: 'scrollend' } },
-                  { web: { uri: 'https://github.com/w3c/csswg-drafts/issues/1234' } },
-                ],
-              },
+      return mockGeminiResponse({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    classification: 'detectable',
+                    candidateTechniques: ['manual wheel listeners'],
+                    borderline: false,
+                    brownfieldTarget: 'manual wheel event listeners',
+                    evidenceFromGuide: 'Replaces window.addEventListener("wheel", ...)',
+                    reason: 'Concrete legacy scroll listener replaced by scrollend.',
+                    evidenceSource: 'explainer',
+                  }),
+                },
+              ],
             },
-          ],
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
+            groundingMetadata: {
+              webSearchQueries: ['legacy scrollend replacement'],
+              groundingChunks: [
+                { web: { uri: 'https://chromestatus.com/feature/5195248554278912', title: 'scrollend' } },
+                { web: { uri: 'https://github.com/w3c/csswg-drafts/issues/1234' } },
+              ],
+            },
+          },
+        ],
+      });
     };
 
     const entry = await triageGuide(
@@ -182,30 +189,27 @@ void test('guide-triage: triageGuide with mock fetch', async (t) => {
     let callCount = 0;
     const retryFetch: typeof fetch = async () => {
       callCount++;
-      if (callCount === 1) return new Response('Rate limited', { status: 429 });
-      return new Response(
-        JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify({
-                      classification: 'skip-no-old-way',
-                      candidateTechniques: [],
-                      borderline: false,
-                      brownfieldTarget: 'none (greenfield capability)',
-                      evidenceFromGuide: 'No previous browser API existed for WebGPU shaders.',
-                      reason: 'Net-new hardware capability without brownfield workaround.',
-                    }),
-                  },
-                ],
-              },
+      if (callCount === 1) return mockGeminiResponse('Rate limited', 429);
+      return mockGeminiResponse({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    classification: 'skip-no-old-way',
+                    candidateTechniques: [],
+                    borderline: false,
+                    brownfieldTarget: 'none (greenfield capability)',
+                    evidenceFromGuide: 'No previous browser API existed for WebGPU shaders.',
+                    reason: 'Net-new hardware capability without brownfield workaround.',
+                  }),
+                },
+              ],
             },
-          ],
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
+          },
+        ],
+      });
     };
 
     const entry = await triageGuide(
@@ -219,7 +223,7 @@ void test('guide-triage: triageGuide with mock fetch', async (t) => {
       () =>
         triageGuide(
           { guideId: 'failing-guide', category: 'css', guideHash: 'aabbccddeeff', markdownContent: '# Failing Guide' },
-          { apiKey: 'test-api-key', fetchFn: async () => new Response('Bad Gateway', { status: 502 }), maxRetries: 1 },
+          { apiKey: 'test-api-key', fetchFn: async () => mockGeminiResponse('Bad Gateway', 502), maxRetries: 1 },
         ),
       /Guide Triage failed for failing-guide with HTTP 502/,
     );

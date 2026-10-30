@@ -15,10 +15,6 @@ export const PROMPT_MODEL = 'gemini-3.8-flash';
 export const GUIDE_TRIAGE_THINKING_BUDGET = 2048;
 export const JUDGE_THINKING_BUDGET = 2048;
 
-// ============================================================================
-// 1. Guide Triage
-// ============================================================================
-
 export const GUIDE_TRIAGE_SYSTEM_PROMPT = `You are an expert static analysis triage classifier for the Modern Web Guidance catalog.
 Your task is to classify whether a published feature guide has a statically detectable brownfield target.
 
@@ -149,10 +145,6 @@ export function computeGuideTriagePromptVersion(
 
 export const GUIDE_TRIAGE_PROMPT_VERSION = computeGuideTriagePromptVersion();
 
-// ============================================================================
-// 2. LLM Verifier
-// ============================================================================
-
 export {
   computePromptContentHash,
   VERIFIER_THINKING_BUDGET,
@@ -165,10 +157,6 @@ export {
   computeVerifierPromptVersion,
   VERIFIER_PROMPT_VERSION,
 } from '../llm-verifier.ts';
-
-// ============================================================================
-// 3. Evaluation Judge
-// ============================================================================
 
 export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization judge evaluating whether a static code finding is a legitimate instance of legacy web platform code that should be modernized according to a Modern Web Guidance guide.
 

@@ -8,6 +8,7 @@ import {
   JUDGE_SYSTEM_PROMPT,
   JUDGE_RESPONSE_SCHEMA,
   JUDGE_THINKING_BUDGET,
+  PROMPT_MODEL,
   computeJudgePromptVersion,
   formatBlindCardPrompt,
 } from './prompts.ts';
@@ -22,11 +23,14 @@ import {
   type SensitivitySpecificityResult,
 } from './stats.ts';
 import { ALL_RULES } from '../rules/index.ts';
+import { extractCompactSnippet } from '../scanners/context-slicer.ts';
 import { computeGuideHash } from '../scanners/index.ts';
 import type { AnalyzerRule } from '../schema.ts';
 import {
   GEMINI_API_BASE,
+  RETRYABLE_HTTP_STATUSES,
   buildGenerateContentUrl,
+  fetchWithRetry,
   findGuideMarkdownPath,
   getGeminiApiKey,
   loadRawGuideMarkdown,
@@ -34,20 +38,30 @@ import {
   type GeminiEndpointOptions,
 } from '../llm-verifier.ts';
 export {
-  GEMINI_API_BASE, buildGenerateContentUrl, findGuideMarkdownPath,
-  getGeminiApiKey, loadRawGuideMarkdown, resolveGeminiApiBase, type GeminiEndpointOptions,
+  GEMINI_API_BASE, RETRYABLE_HTTP_STATUSES, buildGenerateContentUrl, fetchWithRetry,
+  findGuideMarkdownPath, getGeminiApiKey, loadRawGuideMarkdown, resolveGeminiApiBase,
+  type GeminiEndpointOptions,
 };
 
 const WORKTREE_ROOT = resolve(import.meta.dirname, '../../..');
 const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
 
-const RULES_INDEX: ReadonlyMap<string, AnalyzerRule> = new Map([
-  ...ALL_RULES.map((r) => [r.guideId, r] as const).reverse(),
-  ...ALL_RULES.map((r) => [r.id, r] as const),
-]);
+export const RULES_BY_ID: ReadonlyMap<string, AnalyzerRule> = new Map(
+  ALL_RULES.map((r) => [r.id, r]),
+);
+
+export const RULES_BY_GUIDE_ID: ReadonlyMap<string, AnalyzerRule> = (() => {
+  const map = new Map<string, AnalyzerRule>();
+  for (const rule of ALL_RULES) {
+    if (!map.has(rule.guideId)) {
+      map.set(rule.guideId, rule);
+    }
+  }
+  return map;
+})();
 
 function findMatchingRule(ruleId: string | undefined, guideId: string): AnalyzerRule | undefined {
-  return (ruleId ? RULES_INDEX.get(ruleId) : undefined) ?? RULES_INDEX.get(guideId);
+  return (ruleId ? RULES_BY_ID.get(ruleId) : undefined) ?? RULES_BY_GUIDE_ID.get(guideId);
 }
 
 const sha256Hex12 = (text: string): string =>
@@ -80,7 +94,7 @@ export function repoDir(
     : join(root, entry.repo);
 }
 
-export const JUDGE_MODEL = 'gemini-3.8-flash';
+export const JUDGE_MODEL = PROMPT_MODEL;
 
 export type CanonicalJudgeVerdict =
   | 'legit-modernize-target'
@@ -276,12 +290,17 @@ export function computeJudgeInputProvenance(
     }
   }
 
-  const promptGuideHash = computePromptGuideHash(
-    card.guideSummary?.markdownBody,
-    card.cardId,
-    card.guideId,
-  );
-  const explainerContextHash = computeExplainerContextHash(card.guideSummary?.explainerContext);
+  const promptGuideHash =
+    (card.guideSummary?.markdownBody?.trim() && card.guideSummary.promptGuideHash)
+      ? card.guideSummary.promptGuideHash
+      : computePromptGuideHash(
+          card.guideSummary?.markdownBody,
+          card.cardId,
+          card.guideId,
+        );
+  const explainerContextHash =
+    card.guideSummary?.explainerContextHash ??
+    computeExplainerContextHash(card.guideSummary?.explainerContext);
   const matchedRule = findMatchingRule(card.ruleId, card.guideId);
   const ruleId = (card.ruleId || matchedRule?.id || card.guideId || '').trim();
   if (!ruleId) {
@@ -415,26 +434,6 @@ export function parseJudgeJsonContent(rawText: string, cardId: string): JudgeRes
   };
 }
 
-const RETRYABLE_HTTP_STATUSES: ReadonlySet<number> = new Set([429, 500, 502, 503, 504]);
-
-export async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  customFetch: typeof fetch,
-  maxRetries = 8,
-): Promise<Response> {
-  let delayMs = 1500;
-  for (let attempt = 1; ; attempt++) {
-    try {
-      const res = await customFetch(url, options);
-      if (!RETRYABLE_HTTP_STATUSES.has(res.status) || attempt > maxRetries) return res;
-    } catch (err: unknown) {
-      if (attempt > maxRetries) throw err;
-    }
-    await new Promise((r) => setTimeout(r, delayMs + Math.random() * 1000));
-    delayMs = Math.min(delayMs * 2, 16000);
-  }
-}
 
 /** Direct execution of the Detection Eval Judge across blind card finding payloads via Gemini LLM. */
 export async function runJudgeDirect(
@@ -768,49 +767,43 @@ export async function loadGuideSummariesMap(
   guidesRootDir: string = GUIDES_DIR,
   options: LoadGuideSummariesOptions = {},
 ): Promise<Map<string, GuideSummaryInfo>> {
-  const map = new Map<string, GuideSummaryInfo>();
-
-  async function walk(dir: string): Promise<void> {
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
-      const fullPath = join(dir, entry.name);
-      if (entry.isDirectory()) await walk(fullPath);
-      else if (entry.isFile() && entry.name === 'guide.md') {
-        const guideId = basename(dir);
-        map.set(guideId, parseGuideSummaryMarkdown(await readFile(fullPath, 'utf8'), guideId));
+  let explainersMap: Map<string, ExplainerContextEntry> | undefined;
+  if (!options.allowMissingExplainers || options.explainersPath || process.env.ANALYZER_EVAL_DATA_DIR) {
+    try {
+      explainersMap = await loadExplainerContextMap(options.explainersPath);
+    } catch (err: unknown) {
+      const code = typeof err === 'object' && err !== null ? (err as NodeJS.ErrnoException).code : undefined;
+      if (!options.allowMissingExplainers || code !== 'ENOENT') {
+        if (code !== undefined) {
+          throw new Error(
+            `Failed to read required guide explainers file at ${options.explainersPath ?? ''}: ${String(err)}`,
+          );
+        }
+        throw err;
       }
     }
   }
 
-  await walk(guidesRootDir);
+  const entries = await readdir(guidesRootDir, { recursive: true, withFileTypes: true });
+  const map = new Map<string, GuideSummaryInfo>();
+
+  for (const entry of entries) {
+    if (!entry.isFile() || entry.name !== 'guide.md') continue;
+    const parentDir = entry.parentPath ?? (entry as unknown as { path?: string }).path ?? '';
+    const guideId = basename(parentDir);
+    const fullPath = join(parentDir, entry.name);
+    const rawContent = await readFile(fullPath, 'utf8');
+    const summary = parseGuideSummaryMarkdown(rawContent, guideId);
+    const explainer = explainersMap?.get(guideId);
+    map.set(guideId, {
+      ...summary,
+      ...(explainer?.combinedExcerpt ? { explainerContext: explainer.combinedExcerpt } : {}),
+      explainerContextHash: explainer?.explainerContextHash ?? 'none',
+    });
+  }
+
   if (map.size === 0) {
     throw new Error(`loadGuideSummariesMap loaded 0 guides from ${guidesRootDir}. Failing fast.`);
-  }
-
-  if (options.allowMissingExplainers && !options.explainersPath && !process.env.ANALYZER_EVAL_DATA_DIR) {
-    return map;
-  }
-
-  let explainersMap: Map<string, ExplainerContextEntry>;
-  try {
-    explainersMap = await loadExplainerContextMap(options.explainersPath);
-  } catch (err: unknown) {
-    const code = typeof err === 'object' && err !== null ? (err as NodeJS.ErrnoException).code : undefined;
-    if (options.allowMissingExplainers && code === 'ENOENT') return map;
-    if (code !== undefined) {
-      throw new Error(
-        `Failed to read required guide explainers file at ${options.explainersPath ?? ''}: ${String(err)}`,
-      );
-    }
-    throw err;
-  }
-
-  for (const [guideId, existing] of map.entries()) {
-    const explainer = explainersMap.get(guideId);
-    map.set(guideId, {
-      ...existing,
-      ...(explainer?.combinedExcerpt ? { explainerContext: explainer.combinedExcerpt } : {}),
-      explainerContextHash: computeExplainerContextHash(explainer?.combinedExcerpt),
-    });
   }
 
   return map;
@@ -832,18 +825,27 @@ async function collectDeckItemsFromDir(
   maxDepth = 3,
 ): Promise<void> {
   if (maxDepth < 0) return;
-  for (const entry of await readdir(dir, { withFileTypes: true }).catch(() => [])) {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw err;
+  }
+  for (const entry of entries) {
     const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
       await collectDeckItemsFromDir(fullPath, allCardsMap, maxDepth - 1);
     } else if (entry.isFile() && entry.name.endsWith('.json')) {
+      const content = await readFile(fullPath, 'utf8');
+      let rawJson: unknown;
       try {
-        const rawJson = JSON.parse(await readFile(fullPath, 'utf8')) as unknown;
-        for (const c of (Array.isArray(rawJson) ? rawJson : [rawJson]) as CalibrationDeckItem[]) {
-          if (c && typeof c === 'object' && c.cardId) allCardsMap.set(c.cardId, c);
-        }
-      } catch {
-        /* ignore unreadable or invalid json */
+        rawJson = JSON.parse(content);
+      } catch (err: unknown) {
+        throw new Error(`Failed to parse deck JSON at ${fullPath}: ${String(err)}`);
+      }
+      for (const c of (Array.isArray(rawJson) ? rawJson : [rawJson]) as CalibrationDeckItem[]) {
+        if (c && typeof c === 'object' && c.cardId) allCardsMap.set(c.cardId, c);
       }
     }
   }
@@ -926,15 +928,7 @@ export interface CalibrationDeckItem {
 
 /** Slices out code snippet around a line from file content. */
 export function extractCodeSnippet(fileContent: string, targetLine: number, radius = 15): string {
-  const lines = fileContent.split('\n');
-  const start = Math.max(0, targetLine - 1 - radius);
-  return lines
-    .slice(start, Math.min(lines.length, targetLine + radius))
-    .map((l, idx) => {
-      const lineNum = start + idx + 1;
-      return `${lineNum === targetLine ? '> ' : '  '}${String(lineNum).padStart(4, ' ')} | ${l}`;
-    })
-    .join('\n');
+  return extractCompactSnippet(fileContent, targetLine, radius);
 }
 
 /** Prepares BlindCardPayloads from calibration deck and checked out repos. */
@@ -980,7 +974,9 @@ export async function prepareBlindCards(
       guideId: item.guideId,
       ruleId: effectiveRuleId,
       ruleHash: matchedRule ? computeRuleHash(matchedRule) : 'unregistered',
-      guideHash: computePromptGuideHash(summary.markdownBody, item.cardId, item.guideId),
+      guideHash:
+        summary.promptGuideHash ??
+        computePromptGuideHash(summary.markdownBody, item.cardId, item.guideId),
       guideSummary: summary,
       codeSnippet: snippet,
     });

@@ -34,6 +34,16 @@ import {
   type JudgeVerdict,
 } from './detection-eval.ts';
 
+export function mockGeminiResponse(payload: unknown, status = 200): Response {
+  return new Response(
+    typeof payload === 'string' ? payload : JSON.stringify(payload),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
+}
+
 const SAMPLE_GUIDE_SUMMARY: GuideSummaryInfo = {
   guideId: 'calculate-event-differentials',
   problem: 'Date subtraction suffers from daylight saving and leap second drift.',
@@ -246,7 +256,7 @@ describe('parseJudgeJsonContent & deriveJudgeVerdictFromFacts', () => {
       { id: 'c10', facts: [true, false, true, true], rawVerdict: 'fallback-or-guard', expected: 'legit-modernize-target' },
     ];
 
-    for (const c of cases) {
+    const actual = cases.map((c) => {
       const [
         matches_before_syntax,
         has_fallback_or_feature_guard,
@@ -262,22 +272,32 @@ describe('parseJudgeJsonContent & deriveJudgeVerdictFromFacts', () => {
         verdict: c.rawVerdict,
       });
       const res = parseJudgeJsonContent(raw, c.id);
-      assert.equal(res.cardId, c.id);
-      assert.equal(res.verdict, c.expected);
-      assert.equal(res.facts.rawVerdict, c.rawVerdict);
-      assert.equal(
-        deriveJudgeVerdictFromFacts(
-          {
-            matches_before_syntax,
-            has_fallback_or_feature_guard,
-            modern_feature_applies_here,
-            has_meaningful_payoff,
-          },
-          c.rawVerdict,
-        ),
-        c.expected,
+      const derived = deriveJudgeVerdictFromFacts(
+        {
+          matches_before_syntax,
+          has_fallback_or_feature_guard,
+          modern_feature_applies_here,
+          has_meaningful_payoff,
+        },
+        c.rawVerdict,
       );
-    }
+      return {
+        cardId: res.cardId,
+        verdict: res.verdict,
+        rawVerdict: res.facts.rawVerdict,
+        derived,
+      };
+    });
+
+    assert.deepStrictEqual(
+      actual,
+      cases.map((c) => ({
+        cardId: c.id,
+        verdict: c.expected,
+        rawVerdict: c.rawVerdict,
+        derived: c.expected,
+      })),
+    );
 
     assert.throws(() => parseJudgeJsonContent('Not valid JSON', 'card-002'), /not valid JSON/i);
     assert.throws(
@@ -487,29 +507,26 @@ describe('code snippet slicing, blind cards prep, and direct judge runner', () =
     assert.equal(expectedProvenance.ruleHash, 'rulehash1234');
 
     const mockDirectFetch: typeof fetch = async () =>
-      new Response(
-        JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify({
-                      matches_before_syntax: true,
-                      has_fallback_or_feature_guard: false,
-                      modern_feature_applies_here: true,
-                      has_meaningful_payoff: true,
-                      reasoning: 'Matches old Date subtraction.',
-                      verdict: 'legit-modernize-target',
-                    }),
-                  },
-                ],
-              },
+      mockGeminiResponse({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    matches_before_syntax: true,
+                    has_fallback_or_feature_guard: false,
+                    modern_feature_applies_here: true,
+                    has_meaningful_payoff: true,
+                    reasoning: 'Matches old Date subtraction.',
+                    verdict: 'legit-modernize-target',
+                  }),
+                },
+              ],
             },
-          ],
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
+          },
+        ],
+      });
 
     const run0 = await runJudgeDirect([cardWithExplainer], {
       apiKey: 'test-key',
@@ -587,16 +604,29 @@ describe('guide summary extraction and scored card loading', () => {
       /missing required guideSummary\.markdownBody/,
     );
 
-    for (const sentinel of ['canary', 'calibration', '', 'none']) {
-      assert.throws(
-        () => computeJudgeInputProvenance({ ...SAMPLE_BLIND_CARD, ruleHash: sentinel }),
-        /invalid\/sentinel ruleHash/,
-      );
-      assert.throws(
-        () => computeJudgeInputProvenance({ ...SAMPLE_BLIND_CARD, guideHash: sentinel }),
-        /invalid\/sentinel guideHash/,
-      );
-    }
+    const sentinels = ['canary', 'calibration', '', 'none'];
+    assert.deepStrictEqual(
+      sentinels.map((sentinel) => {
+        try {
+          computeJudgeInputProvenance({ ...SAMPLE_BLIND_CARD, ruleHash: sentinel });
+          return 'ok';
+        } catch (e) {
+          return (e as Error).message.includes('invalid/sentinel ruleHash') ? 'threw-ruleHash' : 'unexpected';
+        }
+      }),
+      sentinels.map(() => 'threw-ruleHash'),
+    );
+    assert.deepStrictEqual(
+      sentinels.map((sentinel) => {
+        try {
+          computeJudgeInputProvenance({ ...SAMPLE_BLIND_CARD, guideHash: sentinel });
+          return 'ok';
+        } catch (e) {
+          return (e as Error).message.includes('invalid/sentinel guideHash') ? 'threw-guideHash' : 'unexpected';
+        }
+      }),
+      sentinels.map(() => 'threw-guideHash'),
+    );
   });
 
   it('fails fast on missing/corrupt explainers and empty/missing guide dirs unless allowMissingExplainers is set', async () => {
