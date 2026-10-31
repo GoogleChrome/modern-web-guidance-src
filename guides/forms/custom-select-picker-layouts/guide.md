@@ -71,7 +71,7 @@ To style the selected *option*, use `option:checked`. For example:
 }
 ```
 
-As with any UI control, do not communicate state with color alone, and use multiple visual indicators (e.g. colors, border thickness, checkmark) to communicate which option is selected.
+As with any UI control, do not communicate state with color alone, and use multiple visual indicators (e.g. colors, border thickness, checkmark) to communicate which option is selected. Ensure that at least one of the visual indicators to indicate the selected state has a contrast of at least 3:1 with the background color.
 
 ### 5. (Optional) Style the selected option checkmark
 
@@ -125,7 +125,7 @@ Do NOT use `padding-inline-start` or `padding-block-end` for this, as they will 
 By default, the `<select>` will show a text-only version of the selected option.
 To display rich content for the selected value, use `<selectedcontent>` inside a `<button>` and/or to display the selected option differently (e.g. hide certain details).
 
-Not **NOT** use `<selectedcontent>` without the `<button>` around it, as the `<selectedcontent>` will just become part of the picker, like any other content element.
+**DO NOT** use `<selectedcontent>` without the `<button>` around it, as the `<selectedcontent>` will just become part of the picker, like any other content element.
 
 ### Best practices
 
@@ -146,6 +146,9 @@ Nesting a wrapper with `role="grid"` inside the picker works in practice, but is
 In some cases, using `<optgroup>` to group options may produce a good screen reader UX without `role="grid"`.
 Otherwise, it may be ultimately necessary to switch to a custom solution using the popover API, anchor positioning, and `role="grid"` to achieve the desired UX for screen reader users.
 
+As the grid roles will not be conveyed to screen reader users, ensure that the `down` and `up` arrow keys move focus to the next and previous item respectively, even if the `left` and `right` arrow keys have been scripted to move through items, so screen reader users visit all options in the list.
+
+Ensure that the focus indicator when moving through the options has a contrast of at least 3:1 with the background color or adjacent color.
 
 ## Fallback Strategy
 
