@@ -74,6 +74,39 @@ test.describe(`Accessible Error Announcement Expectations: ${demoName}`, () => {
     expect(isBeforeInvalid && isAfterValid).toBe(true);
   });
 
+  test(`Submitting a form with multiple invalid fields must synchronize aria-invalid on all of them`, async ({ page }) => {
+    const email = page.locator('input[type="email"], input[name="email"], #email').first();
+    const form = email.locator('xpath=ancestor::form[1]');
+
+    // Ensure the form has at least two empty required inputs (eval tasks may only create an email input)
+    // and strip novalidate so clicking submit runs native constraint validation.
+    await form.evaluate((formEl: HTMLFormElement) => {
+      formEl.removeAttribute('novalidate');
+      const requiredInputs = formEl.querySelectorAll<HTMLInputElement>('input[required], textarea[required], select[required]');
+      requiredInputs.forEach((inp) => { inp.value = ''; });
+      if (requiredInputs.length < 2) {
+        const extra = document.createElement('input');
+        extra.type = 'text';
+        extra.required = true;
+        formEl.prepend(extra);
+      }
+    });
+
+    const requiredFields = form.locator('input[required], textarea[required], select[required]');
+    const count = await requiredFields.count();
+    expect(count).toBeGreaterThanOrEqual(2);
+
+    for (let i = 0; i < count; i++) {
+      expect(['false', null]).toContain(await requiredFields.nth(i).getAttribute('aria-invalid'));
+    }
+
+    await form.locator('button[type="submit"], input[type="submit"], button:not([type])').first().click();
+
+    for (let i = 0; i < count; i++) {
+      await expect(requiredFields.nth(i)).toHaveAttribute('aria-invalid', 'true');
+    }
+  });
+
   test(`The visual error message visibility must match the aria-invalid state`, async ({ page }) => {
     const input = page.locator('input[type="email"], input[name="email"], #email').first();
     
