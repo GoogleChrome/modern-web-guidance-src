@@ -41,29 +41,61 @@ Use an element with an appropriate role for grouping all of the accordion items.
 
 An accordion must not have custom keyboard navigation: no arrow key navigation, roving `tabindex`, or `Home`/`End`. The contents of an accordion can often be long enough that a user needs to scroll, and adding custom keyboard navigation can prevent them from doing so.
 
+### Choosing whether to make the accordion mutually exclusive
+
+The default should be to not use an exclusive accordion variation.
+
+A mutually exclusive accordion only allows one item to be open at a time. This guide will demonstrate how to do so with both the `details` and custom approach, however, this should not be the default approach as it can be annoying for users. Sometimes users want to reference between the contents of multiple items and this behaviour does not allow for that. They also can cause content to shift out of the user’s view which can cause significant problems for those using screen magnifiers. 
+
+A further variation is a single mutually exlcusive accordion which requires at least one accordion item be open at a given time. Like mutually exlcusive accordions these can be frustrating to users for the same reasons, but also do not allow the user to completely reduce the amount of space the entire accordion structure is using.
+
+### When to offer expand all and collapse all
+
+Expand all and collapse all buttons can be very helpful for users, since they provide a quick way to show and hide all of the disclosed contents. They should not be added to mutually exclusive accordion variations as the “expand all” button would not work and the “collapse all” button would provide little benefit (i.e. it only saves closing a single item).
+
+```html
+<section id="support-accordion" aria-labelledby="support" data-accordion>
+    <h2 id="support">Support</h2>
+    <button type="button" commandfor="support-accordion" command="--expand-all">Expand all</button>
+    <button type="button" commandfor="support-accordion" command="--collapse-all">Collapse all</button>
+    <!-- Accordion items -->
+</section>
+```
+
 ## Implementing an accordion using `details` and `summary` elements
 
-`details` and `summary` elements can be used to implement accordions that are and are not mutually exclusive.
-
-- A group of `details` elements can work as an accordion that is not mutually exclusive.
-- A group of `details` elements that share the same `name` attribute value work as an accordion that is mutually exclusive.
-    - When creating a mutually exclusive accordion with `details` elements, use a globally unique `name`, or other `details` elements that are not meant to be included in the accordion will participate in the mutually exclusive behavior.
-
-### A mutually exclusive accordion using `details` and `summary` elements
+A set of adjacent `details` elements can be used to create an accordion.
 
 ```html
 <nav aria-labelledby="topics">
 	<h2 id="topics">Topics</h2>
-	<details name="topics">
+	<details>
 		<summary>Development</summary>
 		<!-- Development contents -->
 	</details>
-	<details name="topics">
+	<details>
 		<summary>Design</summary>
 		<!-- Design contents -->
 	</details>
 </nav>
 ```
+
+### Adding expand all and collapse all buttons to a `details` accordion
+
+```html
+document.addEventListener("command", event => {
+    if (!event.target.matches("[data-accordion]")) return;
+
+    for (const details of event.target.querySelector(":scope > details")) {
+        if (event.command === "--expand-all") details.open = true;
+        else if (event.command === "--collapse-all") details.open = false;
+    }
+}, { capture: true });
+```
+
+### Making the `details` accordion mutually exclusive
+
+A group of `details` elements that share the same `name` attribute value work as an accordion that is mutually exclusive. When creating a mutually exclusive accordion with `details` elements, use a globally unique `name`, or other `details` elements that are not meant to be included in the accordion will participate in the mutually exclusive behavior.
 
 ### Excluding a `details` element’s contents from find-in-page
 
@@ -77,6 +109,8 @@ details:not([open])::details-content {
 ```
 
 ### Styling `details` and `summary`
+
+Within the `details` element’s user-agent shadow root, there is a part-like pseudo-element called `::details-content` that contains the disclosed contents. By default, the element does not use `display: none` to hide the contents, but rather `content-visibility: hidden`.
 
 ## Implementing a custom accordion
 
@@ -134,6 +168,10 @@ document.addEventListener("beforematch", event => {
 	trigger.setAttribute("aria-expanded", true);
 }, { capture: true });
 ```
+
+### Adding expand all and collapse all buttons to a custom accordion
+
+### Making the custom accordion mutually exclusive
 
 ### Excluding an accordion item’s contents from find-in-page
 
