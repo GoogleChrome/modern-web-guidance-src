@@ -106,13 +106,13 @@ The following example demonstrates a custom select styled with standard page ani
   width: anchor-size(width);
   overflow: hidden;
 
-  /* MANDATORY: Use transition-behavior: allow-discrete for display and overlay transitions */
   transition:
     display,
     overlay,
     opacity cubic-bezier(0.16, 1, 0.3, 1),
     height cubic-bezier(0.16, 1, 0.3, 1);
   transition-duration: 0.4s;
+  /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
   transition-behavior: allow-discrete;
   opacity: 0;
   height: 0;

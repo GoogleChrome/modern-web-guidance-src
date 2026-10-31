@@ -124,6 +124,7 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
     translate: 0 -.25rem;
     transition: opacity, translate, display, overlay;
     transition-duration: .15s;
+    /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
     transition-behavior: allow-discrete;
   }
   /* Opening: faster. */

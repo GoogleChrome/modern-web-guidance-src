@@ -58,8 +58,7 @@ dialog,
   transition-property: opacity, transform, display, overlay;
   transition-duration: 0.3s;
   transition-timing-function: ease-out;
-  /* Applies to discrete properties like display and overlay.
-     If using the transition shorthand, declare this after it. */
+  /* Separate after transition so a shorthand doesn't reset it or fail in older browsers */
   transition-behavior: allow-discrete;
 }
 
@@ -70,6 +69,7 @@ dialog::backdrop,
   transition-property: background-color, display, overlay;
   transition-duration: 0.3s;
   transition-timing-function: ease-out;
+  /* Separate after transition so a shorthand doesn't reset it or fail in older browsers */
   transition-behavior: allow-discrete;
 }
 

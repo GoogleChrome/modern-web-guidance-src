@@ -94,7 +94,7 @@ Use `@starting-style` to define the entry animation and `transition-behavior: al
       display,
       overlay;
     transition-duration: 0.4s;
-    /* Place after the transition shorthand so the shorthand does not reset it */
+    /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
     transition-behavior: allow-discrete;
   }
 }

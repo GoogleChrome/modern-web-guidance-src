@@ -19,7 +19,7 @@ Toast notifications are transient status messages. Unlike menus, they should not
 * **DO** use sibling-index() to add margin between toast notifications so that items lower in the stack are visible.
 * **DO** provide an explicit "Close" button within the toast using popovertargetaction="hide".
 * **DO** use JavaScript for auto-dismissal timers (e.g., calling hidePopover() after 3000ms).
-* **DO** utilize transition-behavior: allow-discrete to animate the entry and exit from the Top Layer.
+* **DO** declare `transition-behavior: allow-discrete` as a separate property after `transition` (rather than inside the `transition` shorthand) to animate entry and exit from the Top Layer without older browsers ignoring the `transition` declaration.
 
 ### Fallback Strategies
 

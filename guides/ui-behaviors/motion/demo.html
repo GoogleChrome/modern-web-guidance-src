@@ -132,11 +132,12 @@
 
         /* Transition discrete display and top-layer overlay alongside opacity & transform */
         transition:
-          opacity 0.25s ease-out,
-          translate 0.25s ease-out,
-          clip-path 0.25s ease-out,
-          display 0.25s,
-          overlay 0.25s;
+          opacity ease-out,
+          translate ease-out,
+          clip-path ease-out,
+          display,
+          overlay;
+        transition-duration: 0.25s;
         transition-behavior: allow-discrete;
       }
 
@@ -164,10 +165,11 @@
         opacity: 0;
         scale: 0.95;
         transition:
-          opacity 0.25s ease-out,
-          scale 0.25s ease-out,
-          display 0.25s,
-          overlay 0.25s;
+          opacity ease-out,
+          scale ease-out,
+          display,
+          overlay;
+        transition-duration: 0.25s;
         transition-behavior: allow-discrete;
       }
 
@@ -184,9 +186,10 @@
       dialog.modal-reveal::backdrop {
         background-color: rgb(15 23 42 / 0%);
         transition:
-          background-color 0.25s ease-out,
-          display 0.25s,
-          overlay 0.25s;
+          background-color ease-out,
+          display,
+          overlay;
+        transition-duration: 0.25s;
         transition-behavior: allow-discrete;
       }
 
