@@ -1,341 +1,632 @@
-diff --git a/README.md b/README.md
-index 4479b53..919d196 100644
---- a/README.md
-+++ b/README.md
-@@ -7,7 +7,33 @@ This project is a sample news application built with Astro, designed to serve as
- pnpm install && pnpm run start
- ```
- 
--The application will now be running on `http://localhost:11224`.
-+The application will now be running on `http://localhost:11224/devtools-times/`.
-+
-+## WebAssembly image generator
-+
-+The homepage automatically renders a Julia fractal and offers a **Render a new image** button.
-+The C renderer (`native/image-renderer.c`) runs entirely in a module Web Worker;
-+only the completed RGBA buffer is transferred to the page for display on a canvas.
-+The worker frees each native allocation after copying the result and is terminated
-+when the component unmounts. Failed or timed-out renders offer a retry.
-+
-+The generated ES module and Wasm binary in `public/wasm/` are included so normal
-+`npm run build` deployments do not require a C compiler. After changing the C source,
-+install Emscripten (tested with 6.0.1), put `emcc` on PATH, and run:
-+
-+```sh
-+npm run build:wasm
-+npm run build
-+```
-+
-+The build uses `-Oz -flto -g0`, ES module output, strict defaults, and growing memory.
-+`ENVIRONMENT=web,worker` supports the dedicated browser worker without Node or shell
-+runtime support. There is no dynamic linking or shared-memory/header requirement.
-+
-+For runtime diagnostics, run `npm run build:wasm:assertions` before building or
-+starting the app. Check the browser console while the initial image and repeated
-+renders complete, and expand **About these patterns** during rendering to verify
-+responsiveness. Restore the release assets with `npm run build:wasm` afterward.
- 
- ## Tech Stack
- 
-diff --git a/native/image-renderer.c b/native/image-renderer.c
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..41f9e97 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -8,7 +8,7 @@ import node from "@astrojs/node";
+ // https://astro.build/config
+ export default defineConfig({
+   site: 'https://astro-news-pytrpecapa-uc.a.run.app/',
+-  base: 'devtools-times/',
++  base: '/',
+   integrations: [react()],
+   vite: {
+     plugins: [tailwindcss()],
+diff --git a/native/LICENSE.txt b/native/LICENSE.txt
 new file mode 100644
-index 0000000..6fe87db
+index 0000000..08255c8
 --- /dev/null
-+++ b/native/image-renderer.c
-@@ -0,0 +1,37 @@
-+#include <math.h>
++++ b/native/LICENSE.txt
+@@ -0,0 +1,22 @@
++LICENSE
++
++Copyright (c) 2006-2008 Kevin Beason (kevin.beason@gmail.com)
++
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of this software and associated documentation files (the
++"Software"), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish,
++distribute, sublicense, and/or sell copies of the Software, and to
++permit persons to whom the Software is furnished to do so, subject to
++the following conditions:
++
++The above copyright notice and this permission notice shall be included
++in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/native/README.md b/native/README.md
+new file mode 100644
+index 0000000..324a8b6
+--- /dev/null
++++ b/native/README.md
+@@ -0,0 +1,14 @@
++# smallpt browser port
++
++Based on Kevin Beason’s MIT-licensed smallpt:
++https://www.kevinbeason.com/smallpt/
++
++`smallpt-original.cpp` is the upstream source. `smallpt.cpp` retains its ray/sphere intersections, diffuse/specular/refractive materials, Russian roulette, camera, and Cornell box scene. The adaptation exports setup, framebuffer, and progressive row rendering functions instead of writing a PPM from main. It accumulates four samples per pixel per pass, with gamma correction for display. The palette tints the two foreground spheres and their corresponding walls. The light remains neutral.
++
++Run `npm run build:wasm` with Emscripten (`em++`) on PATH. The resulting ES module and `.wasm` binary are committed under `public/wasm`, so ordinary `npm run build` does not require the compiler. All live tracing runs in a module Web Worker, without pthreads or SharedArrayBuffer headers. New renders terminate the previous worker, so stale frames cannot overwrite the new scene. Errors are displayed in the canvas status bar.
++
++`npm run build:preview` uses native g++ and Sharp to generate the initial poster from this same renderer. It does not start a server. The live WebAssembly render replaces the poster as samples arrive.
++
++The home page is prerendered as `index.html`, including the canvas and controls. The rest of the existing Astro app retains its server adapter.
++
++Upstream license: `LICENSE.txt`.
+diff --git a/native/smallpt-original.cpp b/native/smallpt-original.cpp
+new file mode 100644
+index 0000000..61e2eda
+--- /dev/null
++++ b/native/smallpt-original.cpp
+@@ -0,0 +1,99 @@
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++int main(int argc, char *argv[]){
++  int w=1024, h=768, samps = argc==2 ? atoi(argv[1])/4 : 1; // # samples
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r, *c=new Vec[w*h];
++#pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
++  for (int y=0; y<h; y++){                       // Loop over image rows
++    fprintf(stderr,"\rRendering (%d spp) %5.2f%%",samps*4,100.*y/(h-1));
++    for (unsigned short x=0, Xi[3]={0,0,y*y*y}; x<w; x++)   // Loop cols
++      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++  }
++  FILE *f = fopen("image.ppm", "w");         // Write image to PPM file.
++  fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
++  for (int i=0; i<w*h; i++)
++    fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
++}
+diff --git a/native/smallpt.cpp b/native/smallpt.cpp
+new file mode 100644
+index 0000000..20ad155
+--- /dev/null
++++ b/native/smallpt.cpp
+@@ -0,0 +1,125 @@
++// Browser adaptation of Kevin Beason's smallpt. See LICENSE.txt.
 +#include <stdint.h>
-+#include <stdlib.h>
 +
-+// Return an owned RGBA buffer. The worker copies it before calling free().
-+uint8_t *render_image(int width, int height, uint32_t seed) {
-+  if (width < 1 || height < 1 || width > 1920 || height > 1080) return NULL;
-+  uint8_t *pixels = malloc((size_t)width * height * 4);
-+  if (!pixels) return NULL;
-+  double angle = (seed % 10000) * 0.0006283185307;
-+  double cr = -0.745 + 0.065 * cos(angle);
-+  double ci = 0.185 + 0.085 * sin(angle);
-+  double phase = (seed % 360) / 360.0;
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) { if (erand48(Xi)<p) f=f*(1/p); else return obj.e; } //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
 +
-+  for (int y = 0; y < height; y++) {
-+    for (int x = 0; x < width; x++) {
-+      double zr = 3.2 * (x - width / 2.0) / width;
-+      double zi = 3.2 * (y - height / 2.0) / width;
-+      int iteration = 0;
-+      while (zr * zr + zi * zi < 256.0 && iteration < 600) {
-+        double next = zr * zr - zi * zi + cr;
-+        zi = 2.0 * zr * zi + ci;
-+        zr = next;
-+        iteration++;
++static int width, height, pass;
++static uint32_t sceneSeed;
++static Vec* accumulation = nullptr;
++static unsigned char* pixels = nullptr;
++extern "C" {
++void setup(int w, int h, int seed, double r1, double g1, double b1, double r2, double g2, double b2) {
++  width=w; height=h; pass=0; sceneSeed=seed;
++  free(accumulation); free(pixels);
++  accumulation = (Vec*)calloc(w*h, sizeof(Vec)); pixels = (unsigned char*)calloc(w*h*4, 1);
++  spheres[0].c=Vec(r1,g1,b1); spheres[1].c=Vec(r2,g2,b2);
++  // Keep the mirror and glass materials while tinting their reflectance.
++  spheres[6].c=Vec(.65+.349*r1/.75,.65+.349*g1/.75,.65+.349*b1/.75);
++  spheres[7].c=Vec(.65+.349*r2/.75,.65+.349*g2/.75,.65+.349*b2/.75);
++}
++unsigned char* buffer() { return pixels; }
++void render_rows(int start, int end) {
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
++  Vec cx=Vec(width*.5135/height), cy=(cx%cam.d).norm()*.5135;
++  for(int row=start;row<end;row++) {
++    int y=height-row-1;
++    unsigned short Xi[3]={(unsigned short)(sceneSeed+pass*1031),(unsigned short)(sceneSeed>>16),(unsigned short)(y*y*y+pass*7919)};
++    for(int x=0;x<width;x++) {
++      Vec r;
++      for(int sy=0;sy<2;sy++) for(int sx=0;sx<2;sx++) {
++        double r1=2*erand48(Xi), dx=r1<1?sqrt(r1)-1:1-sqrt(2-r1);
++        double r2=2*erand48(Xi), dy=r2<1?sqrt(r2)-1:1-sqrt(2-r2);
++        Vec d=cx*(((sx+.5+dx)/2+x)/width-.5)+cy*(((sy+.5+dy)/2+y)/height-.5)+cam.d;
++        r=r+radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*.25;
 +      }
-+      size_t offset = ((size_t)y * width + x) * 4;
-+      double smooth = iteration;
-+      if (iteration < 600) smooth -= log2(log2(zr * zr + zi * zi)) - 1.0;
-+      for (int channel = 0; channel < 3; channel++) {
-+        double color = 0.5 + 0.5 * cos(6.283185307 * (smooth * 0.018 + phase + channel / 3.0));
-+        pixels[offset + channel] = iteration == 600 ? (uint8_t)(8 + channel * 6) : (uint8_t)(255 * color);
-+      }
-+      pixels[offset + 3] = 255;
++      int i=row*width+x;
++      accumulation[i]=accumulation[i]+r;
++      Vec c=accumulation[i]*(1./(pass+1));
++      pixels[i*4]=toInt(c.x); pixels[i*4+1]=toInt(c.y); pixels[i*4+2]=toInt(c.z); pixels[i*4+3]=255;
 +    }
 +  }
-+  return pixels;
++  if(end==height) pass++;
 +}
++}
++#ifdef SMALLPT_PREVIEW
++int main() {
++  setup(640,480,42,.75,.25,.25,.25,.25,.75);
++  for(int i=0;i<64;i++) render_rows(0,480);
++  FILE* f=fopen("public/preview.ppm","wb"); fprintf(f,"P6\n640 480\n255\n");
++  for(int i=0;i<640*480;i++) fwrite(pixels+i*4,1,3,f);
++  fclose(f);
++}
++#endif
 diff --git a/package.json b/package.json
-index 5e71a8a..00915ed 100644
+index 820c637..b8ca4bc 100644
 --- a/package.json
 +++ b/package.json
-@@ -3,6 +3,8 @@
-   "type": "module",
-   "version": "0.0.1",
-   "scripts": {
-+    "build:wasm": "node scripts/build-wasm.mjs",
-+    "build:wasm:assertions": "node scripts/build-wasm.mjs --assertions",
-     "dev": "astro dev",
+@@ -7,7 +7,9 @@
      "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
      "build": "astro build",
-diff --git a/public/wasm/image-renderer.js b/public/wasm/image-renderer.js
+     "preview": "astro preview",
+-    "astro": "astro"
++    "astro": "astro",
++    "build:wasm": "bash scripts/build-wasm.sh",
++    "build:preview": "node scripts/build-preview.mjs"
+   },
+   "dependencies": {
+     "@astrojs/node": "^11.1.8",
+diff --git a/public/favicon.svg b/public/favicon.svg
+index beeeb40..be74973 100644
+--- a/public/favicon.svg
++++ b/public/favicon.svg
+@@ -1,4 +1 @@
+-<svg width="284" height="284" viewBox="0 0 284 284" fill="none" xmlns="http://www.w3.org/2000/svg">
+-<rect width="284" height="284" fill="black"/>
+-<path d="M52.456 117.6V110.56C53.9067 110.389 55.6133 110.219 57.576 110.048C59.624 109.792 61.6293 109.579 63.592 109.408C65.64 109.152 67.3893 108.981 68.84 108.896C70.376 108.725 71.3573 108.683 71.784 108.768C72.552 109.024 73.2773 109.536 73.96 110.304C74.728 110.987 75.4107 111.755 76.008 112.608C76.6053 113.461 76.9467 114.101 77.032 114.528V176.608L96.232 180.96C97.0853 181.131 97.8533 180.96 98.536 180.448C99.2187 179.936 99.816 179.125 100.328 178.016C100.84 176.907 101.267 175.541 101.608 173.92C102.291 170.933 102.717 167.221 102.888 162.784C103.144 158.261 103.272 153.355 103.272 148.064C103.272 143.712 103.059 139.659 102.632 135.904C102.205 132.149 101.565 128.864 100.712 126.048C99.944 123.232 98.92 121.056 97.64 119.52C96.4453 117.984 94.9947 117.301 93.288 117.472L85.48 118.112L87.528 108.64H95.08C98.3227 108.64 101.523 109.28 104.68 110.56C107.837 111.755 110.696 113.803 113.256 116.704C115.901 119.605 117.949 123.531 119.4 128.48C120.936 133.429 121.704 139.616 121.704 147.04C121.704 152.416 121.491 157.067 121.064 160.992C120.637 164.917 119.912 168.416 118.888 171.488C118.547 172.427 117.651 173.621 116.2 175.072C114.835 176.523 113.128 178.101 111.08 179.808C109.032 181.429 106.899 183.008 104.68 184.544C102.547 185.995 100.584 187.189 98.792 188.128C97 189.067 95.6347 189.536 94.696 189.536C91.0267 189.536 87.4853 189.451 84.072 189.28C80.744 189.195 77.5013 188.981 74.344 188.64C71.1867 188.299 68.0293 187.915 64.872 187.488C64.1893 187.317 63.4213 186.891 62.568 186.208C61.8 185.44 61.1173 184.629 60.52 183.776C59.9227 182.923 59.5813 182.283 59.496 181.856V120.16L52.456 117.6ZM85.48 108.64H89.576V173.28C89.576 173.792 89.2773 174.731 88.68 176.096C88.168 177.376 87.4427 178.869 86.504 180.576H82.792V117.856C82.792 117.088 83.048 115.851 83.56 114.144C84.1573 112.437 84.7973 110.603 85.48 108.64ZM153.023 124.256C151.658 124.256 150.548 125.109 149.695 126.816C148.842 128.523 148.159 130.784 147.647 133.6C147.22 136.331 146.922 139.36 146.751 142.688C146.58 146.016 146.495 149.259 146.495 152.416C146.495 157.109 146.964 161.291 147.903 164.96C148.927 168.544 150.506 171.36 152.639 173.408C154.858 175.371 157.716 176.352 161.215 176.352L177.215 176.224V186.08C175.85 186.507 174.058 186.933 171.839 187.36C169.62 187.701 167.359 188 165.055 188.256C162.751 188.597 160.746 188.853 159.039 189.024C157.332 189.195 156.223 189.28 155.711 189.28C149.567 189.28 144.404 187.829 140.223 184.928C136.042 181.941 132.927 177.717 130.879 172.256C128.831 166.795 127.807 160.309 127.807 152.8C127.807 149.387 128.106 146.059 128.703 142.816C129.386 139.573 130.282 136.629 131.391 133.984C132.5 132.619 134.036 131.125 135.999 129.504C138.047 127.797 140.266 126.304 142.655 125.024C145.044 123.744 147.348 123.019 149.567 122.848L153.023 124.256ZM182.335 110.56L179.775 121.952C178.068 122.635 176.148 123.317 174.015 124C171.967 124.683 169.962 125.237 167.999 125.664C166.036 126.091 164.33 126.304 162.879 126.304C160.916 126.304 159.21 126.091 157.759 125.664C156.394 125.237 154.986 124.811 153.535 124.384C152.17 123.957 150.548 123.744 148.671 123.744C148.159 123.744 147.476 123.787 146.623 123.872C145.77 123.957 145.002 124.085 144.319 124.256L144.063 123.488L121.663 121.056L124.095 106.976C129.983 107.829 135.572 108.64 140.863 109.408C146.154 110.176 150.719 110.816 154.559 111.328C158.484 111.755 161.258 111.968 162.879 111.968C164.159 111.968 165.652 111.84 167.359 111.584C169.151 111.328 171.156 110.987 173.375 110.56C175.679 110.048 178.154 109.536 180.799 109.024L182.335 110.56ZM154.047 176.352V117.6H160.831V169.056C160.831 169.568 160.532 170.507 159.935 171.872C159.423 173.152 158.698 174.645 157.759 176.352H154.047ZM204.807 123.744C203.186 123.744 201.82 124.683 200.711 126.56C199.687 128.437 198.876 130.784 198.279 133.6C197.682 136.416 197.255 139.317 196.999 142.304C196.828 145.291 196.743 147.893 196.743 150.112C196.743 155.232 197.212 160.053 198.151 164.576C199.175 169.099 200.882 172.768 203.271 175.584C205.66 178.315 208.946 179.68 213.127 179.68L229.767 179.552V186.208C228.658 186.549 226.951 186.891 224.647 187.232C222.343 187.573 219.911 187.872 217.351 188.128C214.876 188.469 212.658 188.725 210.695 188.896C208.818 189.067 207.623 189.152 207.111 189.152C201.991 189.152 197.724 187.445 194.311 184.032C190.898 180.619 188.338 176.096 186.631 170.464C184.924 164.832 184.071 158.773 184.071 152.288C184.071 147.851 184.37 144.181 184.967 141.28C185.65 138.293 186.631 135.392 187.911 132.576C188.508 131.637 189.447 130.443 190.727 128.992C192.092 127.541 193.756 126.176 195.719 124.896C197.682 123.616 199.858 122.763 202.247 122.336L204.807 123.744ZM234.247 112.352L231.687 122.336C229.81 123.019 227.847 123.659 225.799 124.256C223.751 124.768 221.788 125.195 219.911 125.536C218.034 125.792 216.327 125.92 214.791 125.92C212.658 125.92 210.951 125.707 209.671 125.28C208.391 124.853 207.154 124.427 205.959 124C204.764 123.573 203.186 123.36 201.223 123.36C200.711 123.36 200.156 123.403 199.559 123.488C199.047 123.488 198.535 123.573 198.023 123.744L197.767 122.976L177.799 120.8L180.231 108.64C185.778 109.323 190.812 110.048 195.335 110.816C199.943 111.499 203.911 112.053 207.239 112.48C210.567 112.907 213.042 113.12 214.663 113.12C215.858 113.12 217.266 113.077 218.887 112.992C220.594 112.821 222.599 112.565 224.903 112.224C227.207 111.797 229.81 111.285 232.711 110.688L234.247 112.352ZM205.063 179.936V117.984H211.719V172.64C211.719 173.152 211.506 174.091 211.079 175.456C210.652 176.736 209.97 178.229 209.031 179.936H205.063Z" fill="white"/>
+-</svg>
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" rx="10" fill="#293e31"/><text x="8" y="28" font-size="27" font-family="sans-serif" letter-spacing="-5" fill="#edf5e9">sp</text></svg>
+diff --git a/public/preview.png b/public/preview.png
 new file mode 100644
-index 0000000..55e8c39
---- /dev/null
-+++ b/public/wasm/image-renderer.js
-@@ -0,0 +1,2 @@
-+async function Module(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("image-renderer.wasm")}return new URL("image-renderer.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{}var _render_image,__emscripten_timeout,_free,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_render_image=Module["_render_image"]=wasmExports["h"];__emscripten_timeout=wasmExports["i"];_free=Module["_free"]=wasmExports["j"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={c:__abort_js,b:__emscripten_runtime_keepalive_clear,d:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();if(ABORT)return;initRuntime();postRun()}var wasmExports;wasmExports=await createWasm();await run();
-+;return Module}export default Module;
-diff --git a/public/wasm/image-renderer.wasm b/public/wasm/image-renderer.wasm
-new file mode 100755
-index 0000000..4eac23d
-Binary files /dev/null and b/public/wasm/image-renderer.wasm differ
-diff --git a/scripts/build-wasm.mjs b/scripts/build-wasm.mjs
+index 0000000..e69de29
+diff --git a/public/wasm/render-worker.js b/public/wasm/render-worker.js
 new file mode 100644
-index 0000000..55be840
+index 0000000..df9600f
 --- /dev/null
-+++ b/scripts/build-wasm.mjs
-@@ -0,0 +1,20 @@
-+import { mkdirSync } from 'node:fs';
-+import { spawnSync } from 'node:child_process';
-+import { fileURLToPath } from 'node:url';
-+
-+const root = fileURLToPath(new URL('../', import.meta.url));
-+mkdirSync(new URL('../public/wasm/', import.meta.url), { recursive: true });
-+const result = spawnSync('emcc', [
-+  'native/image-renderer.c', '-o', 'public/wasm/image-renderer.js',
-+  '-Oz', '-flto', '-g0', '--no-entry',
-+  '-sEXPORT_ES6=1', '-sMODULARIZE=1', '-sENVIRONMENT=web,worker',
-+  '-sSTRICT=1', '-sALLOW_MEMORY_GROWTH=1',
-+  '-sINCOMING_MODULE_JS_API=["locateFile"]',
-+  `-sASSERTIONS=${process.argv.includes('--assertions') ? '1' : '0'}`,
-+  '-sEXPORTED_FUNCTIONS=["_render_image","_free"]',
-+  '-sEXPORTED_RUNTIME_METHODS=["HEAPU8"]',
-+], { cwd: root, stdio: 'inherit' });
-+if (result.error) {
-+  console.error('Install Emscripten and put emcc on PATH to rebuild the WebAssembly assets.', result.error.message);
-+}
-+process.exit(result.status ?? 1);
-diff --git a/src/components/ImageGenerator.tsx b/src/components/ImageGenerator.tsx
-new file mode 100644
-index 0000000..20c61f4
---- /dev/null
-+++ b/src/components/ImageGenerator.tsx
-@@ -0,0 +1,91 @@
-+import { useEffect, useRef, useState } from 'react';
-+import type { RenderRequest, RenderResponse } from '../workers/image-protocol';
-+
-+export default function ImageGenerator() {
-+  const canvas = useRef<HTMLCanvasElement>(null);
-+  const worker = useRef<Worker | null>(null);
-+  const timeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-+  const [busy, setBusy] = useState(true);
-+  const [status, setStatus] = useState('Preparing your first image…');
-+  const [failed, setFailed] = useState(false);
-+
-+  function stopTimer() {
-+    clearTimeout(timeout.current);
-+  }
-+
-+  function fail(message: string) {
-+    stopTimer();
-+    worker.current?.terminate();
-+    worker.current = null;
-+    setBusy(false);
-+    setFailed(true);
-+    setStatus(message);
-+  }
-+
-+  function render() {
-+    setBusy(true);
-+    setFailed(false);
-+    setStatus('Rendering a new image… You can keep exploring the page.');
-+    try {
-+      if (!worker.current) {
-+        worker.current = new Worker(new URL('../workers/image-renderer.worker.ts', import.meta.url), { type: 'module' });
-+        worker.current.onmessage = (event: MessageEvent<RenderResponse>) => {
-+          stopTimer();
-+          const result = event.data;
-+          if (result.type === 'error') {
-+            fail(`Could not render the image. ${result.message}`);
-+            return;
-+          }
-+          try {
-+            const context = canvas.current?.getContext('2d');
-+            if (!context) throw new Error('Canvas is unavailable in this browser.');
-+            context.putImageData(new ImageData(new Uint8ClampedArray(result.pixels), result.width, result.height), 0, 0);
-+            setStatus(`Image rendered in ${(result.elapsed / 1000).toFixed(2)} seconds. Create another to explore a new pattern.`);
-+            setBusy(false);
-+          } catch (error) {
-+            fail(error instanceof Error ? error.message : 'Could not display the image.');
-+          }
-+        };
-+        worker.current.onerror = (event) => {
-+          event.preventDefault();
-+          fail('The image renderer could not start. Please try again.');
-+        };
-+        worker.current.onmessageerror = () => fail('The rendered image could not be received. Please try again.');
++++ b/public/wasm/render-worker.js
+@@ -0,0 +1,19 @@
++import createSmallpt from './smallpt.js';
++const modulePromise = createSmallpt();
++self.onmessage = async ({ data }) => {
++  try {
++    const engine = await modulePromise;
++    const { width, height, samples, seed, colors } = data;
++    engine._setup(width, height, seed, ...colors.flat().map(v => v / 255 * .75));
++    const start = performance.now();
++    for (let sample = 0; sample < samples; sample += 4) {
++      for (let row = 0; row < height; row += 16) {
++        engine._render_rows(row, Math.min(row + 16, height));
 +      }
-+      const request: RenderRequest = { width: 960, height: 540, seed: crypto.getRandomValues(new Uint32Array(1))[0]! };
-+      worker.current.postMessage(request);
-+      timeout.current = setTimeout(() => fail('Rendering took too long. Please try again.'), 30000);
-+    } catch {
-+      fail('Image generation is unavailable. Please try again in a browser with WebAssembly support.');
++      const pixels = engine.HEAPU8.slice(engine._buffer(), engine._buffer() + width * height * 4);
++      self.postMessage({ pixels, samples: sample + 4, elapsed: performance.now() - start, done: sample + 4 >= samples }, [pixels.buffer]);
 +    }
++  } catch (error) {
++    self.postMessage({ error: error instanceof Error ? error.message : String(error) });
 +  }
-+
-+  useEffect(() => {
-+    render();
-+    return () => {
-+      stopTimer();
-+      worker.current?.terminate();
-+      worker.current = null;
-+    };
-+  }, []);
-+
-+  return (
-+    <section aria-labelledby="image-generator-title" className="border-b border-gray-300 py-6 mb-6">
-+      <p className="text-xs font-bold uppercase tracking-widest text-gray-500">The interactive edition</p>
-+      <h2 id="image-generator-title" className="text-3xl font-brand mt-2">A world of infinite patterns</h2>
-+      <p className="text-gray-600 mt-2 mb-4">Explore the beauty of Julia fractals. Each image reveals a new landscape of color and detail.</p>
-+      <figure aria-busy={busy}>
-+        <canvas ref={canvas} width={960} height={540} role="img" aria-label="A generated Julia fractal with flowing, colorful mathematical patterns" className="block w-full h-auto rounded bg-slate-950" />
-+        <figcaption role="status" aria-live="polite" className={`text-sm mt-3 min-h-10 ${failed ? 'text-red-700' : 'text-gray-600'}`}>{status}</figcaption>
-+      </figure>
-+      <button type="button" onClick={render} disabled={busy} className="rounded bg-gray-900 px-5 py-3 text-white font-semibold hover:bg-amber-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-600 disabled:opacity-60 disabled:cursor-wait">
-+        {busy ? 'Rendering…' : failed ? 'Try rendering again' : 'Render a new image'}
-+      </button>
-+      <details className="mt-4 text-sm text-gray-600">
-+        <summary className="cursor-pointer hover:text-amber-700 focus-visible:outline-2">About these patterns</summary>
-+        <p className="mt-2">Julia fractals come from repeating a simple mathematical rule. Small changes to its starting parameters produce entirely different shapes. Open this note or browse the news while your next image takes shape.</p>
-+      </details>
-+      <noscript>Enable JavaScript to generate interactive fractal images.</noscript>
-+    </section>
-+  );
++};
+diff --git a/public/wasm/smallpt.js b/public/wasm/smallpt.js
+new file mode 100644
+index 0000000..e46e455
+--- /dev/null
++++ b/public/wasm/smallpt.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=false;var ENVIRONMENT_IS_WORKER=true;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{}var _setup,_buffer,_render_rows,__emscripten_timeout,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_setup=Module["_setup"]=wasmExports["h"];_buffer=Module["_buffer"]=wasmExports["i"];_render_rows=Module["_render_rows"]=wasmExports["j"];__emscripten_timeout=wasmExports["k"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={c:__abort_js,b:__emscripten_runtime_keepalive_clear,d:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();if(ABORT)return;initRuntime();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}export default Module;
+diff --git a/public/wasm/smallpt.wasm b/public/wasm/smallpt.wasm
+new file mode 100755
+index 0000000..e69de29
+diff --git a/scripts/build-preview.mjs b/scripts/build-preview.mjs
+new file mode 100644
+index 0000000..e28b4d2
+--- /dev/null
++++ b/scripts/build-preview.mjs
+@@ -0,0 +1,15 @@
++// Build the initial canvas poster from the same C++ renderer; no browser or server needed.
++import { execFileSync } from 'node:child_process';
++import { readFileSync, unlinkSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import sharp from 'sharp';
++const executable = join(tmpdir(), 'smallpt-preview');
++if (!process.argv.includes('--from-ppm')) {
++  execFileSync('g++', ['-O3', '-DSMALLPT_PREVIEW', 'native/smallpt.cpp', '-o', executable]);
++  execFileSync(executable);
 +}
-diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
-index dcf9696..a7b7e91 100644
---- a/src/layouts/Layout.astro
-+++ b/src/layouts/Layout.astro
-@@ -29,9 +29,6 @@ const baseUrl = import.meta.env.BASE_URL;
-       rel="stylesheet"
-     />
- 
--    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
--    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
--
-     <link rel="icon" href=`${baseUrl}/favicon.svg` />
- 
-     <ClientRouter />
++const ppm = readFileSync('public/preview.ppm');
++const header = Buffer.from('P6\n640 480\n255\n');
++await sharp(ppm.subarray(header.length), { raw: { width: 640, height: 480, channels: 3 } }).png().toFile('public/preview.png');
++unlinkSync('public/preview.ppm');
+diff --git a/scripts/build-wasm.sh b/scripts/build-wasm.sh
+new file mode 100644
+index 0000000..d5e8aa0
+--- /dev/null
++++ b/scripts/build-wasm.sh
+@@ -0,0 +1,9 @@
++#!/usr/bin/env bash
++set -euo pipefail
++cd "$(dirname "$0")/.."
++mkdir -p public/wasm
++em++ native/smallpt.cpp -O3 -flto -nostdlib++ -fno-exceptions -fno-rtti --no-entry \
++  -sEXPORT_ES6 -sENVIRONMENT=worker \
++  -sEXPORTED_RUNTIME_METHODS=HEAPU8 -sSTACK_SIZE=1048576 -sSTRICT -sALLOW_MEMORY_GROWTH -sFILESYSTEM=0 \
++  -sEXPORTED_FUNCTIONS=_setup,_buffer,_render_rows \
++  -o public/wasm/smallpt.js
 diff --git a/src/pages/index.astro b/src/pages/index.astro
-index 92f6399..c16a589 100644
+index 92f6399..fc440ee 100644
 --- a/src/pages/index.astro
 +++ b/src/pages/index.astro
-@@ -1,5 +1,6 @@
+@@ -1,84 +1,55 @@
  ---
- import Layout from '../layouts/Layout.astro';
-+import ImageGenerator from '../components/ImageGenerator';
- import ArticleTeaser from '../components/ArticleTeaser.astro';
- import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
- import Ad from '../components/AdSlotBanner';
-@@ -56,6 +57,7 @@ politicsArticles[2] = {
- 
-     <!-- Main Content Area -->
-     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
-+        <ImageGenerator client:load />
-         <ArticleTeaser article={topArticle} large={true} />
-     </main>
- 
-@@ -81,4 +83,4 @@ politicsArticles[2] = {
-         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
-         
+-import Layout from '../layouts/Layout.astro';
+-import ArticleTeaser from '../components/ArticleTeaser.astro';
+-import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+-import Ad from '../components/AdSlotBanner';
+-import { getCollection } from 'astro:content';
+-import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
+-import type { RenderResult } from 'astro:content';
+-
+-const articles = await getCollection('articles');
+-articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+-
+-// Slicing articles for different sections
+-const topArticle = articles[0];
+-const topStories = articles.slice(1, 4);
+-const topNewsArticles = articles.slice(4, 8);      // 4 articles for the new grid
+-const worldNewsArticles = articles.slice(8, 11);    // 3 articles for the old grid
+-const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
+-
+-// Add a fake What's new in DevTools post in there, demonstrating a CORS issue for the image
+-politicsArticles[2] = {
+-    id: 'public-transit-overhaul',
+-    data: {
+-      title: 'What\'s new in DevTools',
+-      summary: 'Learn about what is new in Chrome DevTools 144: from request conditions to performance debugging, we got you covered.',
+-      author: 'Chrome DevTools Team',
+-      date: new Date('2025-09-16T00:00:00.000Z'),
+-      category: 'Web Development',
+-      image: 'https://cinemai-1026410574114.us-central1.run.app/cinemai/_next/image?url=%2Fcinemai%2F_next%2Fstatic%2Fmedia%2Fthumbnail-wndt-139-141.45ba64a6.jpg&w=3840&q=75',
+-      image_caption: '',
+-      readingTime: 3
+-    },
+-    body: '',
+-    collection: 'articles',
+-    slug: 'public-transit-overhaul',
+-    render: async () => '' as unknown as RenderResult,
+-  };
++export const prerender = true;
++const base = import.meta.env.BASE_URL;
+ ---
+-
+-<Layout title="The DevTools Times">
+-    <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
+-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+-                {topStories.map(article => (
+-                    <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+-                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                            <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">{article.data.title}</h3>
+-                        </a>
+-                        <span class="text-xs text-gray-500">{article.data.date.toLocaleDateString()}</span>
+-                    </div>
+-                ))}
+-            </div>
+-        </div>
+-    </div>
+-
+-    <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+-        <ArticleTeaser article={topArticle} large={true} />
+-    </main>
+-
+-    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
+-        <!-- "Top News" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
++<!doctype html>
++<html lang="en">
++  <head>
++    <meta charset="utf-8" />
++    <meta name="viewport" content="width=device-width, initial-scale=1" />
++    <meta name="description" content="A little light, a little code. Explore Kevin Beason’s smallpt path tracer, running entirely in your browser with WebAssembly." />
++    <title>smallpt — A little light. A lot of possibility.</title>
++    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;450;500&display=swap" rel="stylesheet" />
++  </head>
++  <body>
++    <div class="app" data-base={base}>
++      <header>
++        <a class="wordmark" href={base} aria-label="smallpt home"><span class="logo">s<span>p</span></span>smallpt<span class="wordmark-slash">/</span><span class="lab-label">THE LIGHT LAB</span></a>
++        <a class="source-link" href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">The original 99 lines <span>↗</span></a>
++      </header>
++      <main>
++        <section class="intro">
++          <div><div class="eyebrow"><span></span> A SMALL EXPERIMENT IN GLOBAL ILLUMINATION</div><h1>A little light.<br />A lot of possibility<span>.</span></h1><p>A classic C++ path tracer, right in your browser.<br class="mobile-break" /> Change the colors. Follow the light.</p></div>
++          <div class="browser-badge"><span class="badge-icon">⌘</span><div>Made of light. Powered by Wasm.<small>100% client-side. No render farm required.</small></div></div>
+         </section>
+-
+-        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+-
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
++        <section class="workspace" aria-label="Path tracing workspace">
++          <div class="render-panel">
++            <div class="panel-top"><div><span class="live-dot"></span>LIVE CANVAS<span class="divider">/</span><span class="muted">Cornell box</span></div><span id="canvas-resolution">640 × 480</span></div>
++            <div class="canvas-wrap"><img src={`${base}preview.png`} alt="Path-traced Cornell box with a mirror sphere and a glass sphere" width="640" height="480" /><canvas id="render-canvas" width="640" height="480" aria-label="Live path-traced Cornell box with randomized sphere colors"></canvas><span class="canvas-tag"><span></span> PATH TRACED</span><div class="canvas-caption">A world built from nine spheres.</div></div>
++            <div class="render-bottom"><span id="render-status" role="status"><span class="status-dot"></span> Ready to trace</span><span><span id="sample-count">0</span> <span class="subtle">samples / pixel</span><span class="divider">/</span><span id="elapsed">0.0s</span></span></div>
++            <div class="progress-track"><div id="progress"></div></div>
++          </div>
++          <aside>
++            <div class="control-heading"><h2>Make it yours</h2><span>01 — SCENE</span></div>
++            <p class="control-description">Same scene. A different atmosphere.<br />Give the light a new palette to play with.</p>
++            <div class="color-section"><div class="field-label">SCENE PALETTE <span id="palette-number">ORIGINAL</span></div><div class="palette"><div><label class="swatch swatch-one"><input type="color" id="color-one" value="#ff5555" aria-label="Left wall and mirror sphere color" /><span>↗</span></label><span>Mirror sphere</span></div><div><label class="swatch swatch-two"><input type="color" id="color-two" value="#5555ff" aria-label="Right wall and glass sphere color" /><span>↗</span></label><span>Glass sphere</span></div></div></div>
++            <button id="randomize" class="primary-button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h3c5 0 7 12 12 12h3M17 14l4 4-4 4M3 18h3c2.5 0 4-3 6-6s3.5-6 6-6h3M17 2l4 4-4 4" /></svg>Randomize & render<span>↗</span></button>
++            <div class="button-note">A fresh palette. A whole new perspective.</div>
++            <div class="settings"><div class="field-label">RENDER SETTINGS <span>02</span></div><label class="select-label" for="quality">Samples per pixel <span title="More samples produce a smoother image">ⓘ</span></label><div class="select-wrap"><select id="quality"><option value="16">16 samples · Quick look</option><option value="64" selected>64 samples · Balanced</option><option value="256">256 samples · Fine detail</option></select><span>⌄</span></div><div class="select-label resolution-label">Resolution <span class="mono" id="resolution-value">640 × 480</span></div><input class="resolution-range" id="resolution" type="range" min="0" max="2" step="1" value="1" aria-label="Render resolution: 320, 640, or 960 pixels wide" /><div class="quality-help">More samples, less noise. Good light takes time.</div></div>
++            <button id="download" class="download-button" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" /></svg>Save image<span>PNG ↓</span></button>
++            <div class="local-note"><span>◉</span> All the work happens on your device.</div>
++          </aside>
+         </section>
+-
+-        <!-- "Politics" section with the new grid variant -->
+-        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
++        <section class="details"><div class="detail-intro"><span class="eyebrow">SMALL CODE. BIG IDEAS.</span><h2>Nine spheres.<br />Infinite bounces.</h2></div><div class="detail"><span class="detail-icon">↗</span><h3>Follow every ray</h3><p>Monte Carlo path tracing simulates how light bounces, reflects, and finds its way to the camera.</p></div><div class="detail"><span class="detail-icon glass-icon">◈</span><h3>A study in materials</h3><p>Diffuse walls, a perfect mirror, and a glass sphere. Simple ingredients. Beautiful interactions.</p></div><div class="detail"><span class="detail-icon code-icon">{ }</span><h3>C++ meets the browser</h3><p>The original smallpt, compiled to WebAssembly. Real rendering, with nothing to install.</p></div></section>
++      </main>
++      <footer><div><strong>smallpt</strong><span class="footer-dot">·</span>A little experiment in light.</div><div>Originally by <a href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">Kevin Beason ↗</a><span class="footer-dot">/</span>Built for the curious.</div></footer>
      </div>
 -</Layout>
 \ No newline at end of file
-+</Layout>
-diff --git a/src/workers/image-protocol.ts b/src/workers/image-protocol.ts
++    <script src="../scripts/tracer.ts"></script>
++  </body>
++</html>
++<style is:global>
++:root{font-family:'DM Sans',sans-serif;color:#252a28;background:#f7f8f5;font-synthesis:none}*{box-sizing:border-box}body{margin:0}a{color:inherit;text-decoration:none}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button:focus-visible,a:focus-visible,select:focus-visible,.swatch:focus-within{outline:3px solid #61957b;outline-offset:4px}button{cursor:pointer}button:disabled{cursor:wait;opacity:.55}.app{max-width:1440px;margin:auto;padding:0 64px}header{height:101px;border-bottom:1px solid #dfe3dc;display:flex;align-items:center;justify-content:space-between}.wordmark{display:flex;align-items:center;gap:12px;font-size:24px;font-weight:700;letter-spacing:-1.2px}.logo{width:32px;height:32px;background:#283c31;color:#edf5e9;border-radius:8px;font-size:23px;font-weight:500;display:flex;align-items:center;justify-content:center;letter-spacing:-4px;padding-right:5px}.logo span{transform:translateY(3px)}.wordmark-slash{font-size:21px;font-weight:400;color:#bec5bc;margin:0 5px}.lab-label{font:10px 'IBM Plex Mono',monospace;letter-spacing:1.5px;color:#778078}.source-link{font-size:12px;color:#59625b}.source-link span{margin-left:14px;font-size:17px}.intro{display:flex;justify-content:space-between;align-items:flex-end;padding:48px 0 35px}.eyebrow{font:10px 'IBM Plex Mono',monospace;letter-spacing:1.4px;color:#6b776e;display:flex;align-items:center;gap:9px}.eyebrow>span{width:6px;height:6px;border-radius:50%;background:#6f8a71}h1{font-size:clamp(38px,4.1vw,58px);line-height:1.09;letter-spacing:-2.7px;font-weight:500;margin:19px 0 17px}h1>span{color:#849d77}.intro p{font-size:14px;color:#7b817b;line-height:1.75;margin:0}.mobile-break{display:none}.browser-badge{display:flex;gap:11px;align-items:center;padding-bottom:4px;font-size:11px;color:#526451}.badge-icon{width:33px;height:33px;border:1px solid #dce4d6;background:#edf1e8;border-radius:50%;display:grid;place-items:center;font-size:18px}.browser-badge small{font-size:10px;display:block;color:#8a9186;margin-top:5px}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 286px;gap:30px}.render-panel{background:#151917;border-radius:9px;overflow:hidden;border:1px solid #2c322e;align-self:start}.panel-top{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 19px;color:#a0aaa1;font:9px 'IBM Plex Mono',monospace;letter-spacing:.8px}.panel-top>div{display:flex;align-items:center;gap:9px}.live-dot{background:#9db68c;height:5px;width:5px;border-radius:50%}.muted{color:#727b74;letter-spacing:0}.divider{margin:0 10px;color:#505951}.canvas-wrap{aspect-ratio:4/3;position:relative;background:#1b1d19;overflow:hidden}.canvas-wrap img,.canvas-wrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.canvas-tag{position:absolute;top:16px;left:17px;background:#1b201caa;color:#d2d6ce;border:1px solid #ffffff18;border-radius:3px;font:8px 'IBM Plex Mono',monospace;letter-spacing:1px;padding:7px 8px;display:flex;align-items:center;gap:6px}.canvas-tag>span{width:4px;height:4px;background:#afc39d;border-radius:50%}.canvas-caption{position:absolute;bottom:17px;left:0;right:0;text-align:center;color:#ffffff77;font:9px 'IBM Plex Mono',monospace;letter-spacing:.4px}.render-bottom{display:flex;justify-content:space-between;align-items:center;padding:0 18px;height:43px;font:9px 'IBM Plex Mono',monospace;color:#b6c1b6}#render-status{display:flex;align-items:center;gap:7px}.status-dot{height:5px;width:5px;background:#a2bf8c;border-radius:50%}.subtle{color:#788378}.progress-track{height:2px;background:#2a302a}#progress{height:100%;width:0;background:#a1b78d;transition:width .2s}aside{padding:5px 0;display:flex;flex-direction:column}.control-heading{display:flex;justify-content:space-between;align-items:center}h2{margin:0;font-size:19px;font-weight:550;letter-spacing:-.5px}.control-heading>span{font:8px 'IBM Plex Mono',monospace;letter-spacing:1px;color:#92988d}.control-description{font-size:12px;color:#8a9085;line-height:1.8;margin:14px 0 26px}.field-label{display:flex;justify-content:space-between;color:#7b8578;font:9px 'IBM Plex Mono',monospace;letter-spacing:1px}.field-label>span{font-size:8px;color:#a1a79c;letter-spacing:.6px}.palette{display:flex;gap:12px;margin:13px 0 22px}.palette>div{flex:1}.swatch{display:block;height:62px;border-radius:5px;position:relative;background:#bf4141;cursor:pointer;border:1px solid #00000007}.swatch-two{background:#4141bf}.swatch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}.swatch>span{position:absolute;right:8px;bottom:5px;font-size:15px;color:#ffffff88;pointer-events:none}.palette>div>span{display:block;margin-top:9px;font-size:10px;color:#8a9185}.primary-button{border:1px solid #263c30;background:#293e31;color:#fff;height:46px;border-radius:5px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:12px;font-weight:500;transition:background .2s}.primary-button:hover{background:#3c5742}.primary-button>span{margin-left:auto;margin-right:4px;font-size:18px}.primary-button>svg{margin-left:6px}.button-note{font-size:9px;color:#9ca293;text-align:center;margin:10px 0 25px}.settings{border-top:1px solid #e1e5db;padding-top:22px}.select-label{font-size:11px;display:flex;justify-content:space-between;margin:17px 0 10px;color:#677062}.select-label>span{color:#a1a899}.select-wrap{position:relative}.select-wrap select{appearance:none;border:1px solid #dfe4d9;background:transparent;border-radius:4px;width:100%;padding:11px 12px;font-size:11px;color:#626e5e;cursor:pointer}.select-wrap>span{position:absolute;right:12px;top:7px;pointer-events:none;color:#8e9788}.mono{font:9px 'IBM Plex Mono',monospace}.resolution-label{margin-top:20px}.resolution-range{width:100%;height:3px;accent-color:#667c59;cursor:pointer;margin:14px 0}.resolution-track{height:3px;background:#e1e6db;position:relative;margin:16px 0}.resolution-track>span{display:block;width:60%;background:#849677;height:3px}.resolution-track i{position:absolute;left:60%;top:-3px;border-radius:50%;height:9px;width:9px;background:#667c59;border:2px solid #f7f8f5}.quality-help{font-size:9px;color:#969f8d;margin-top:15px;line-height:1.6}.download-button{display:flex;gap:9px;align-items:center;border:1px solid #dce2d5;border-radius:5px;background:none;padding:12px;font-size:11px;color:#697660;margin-top:24px}.download-button:hover{background:#edf1e7}.download-button>span{margin-left:auto;font:8px 'IBM Plex Mono',monospace;color:#9ba590}.local-note{font-size:9px;color:#959d8c;text-align:center;margin-top:13px}.local-note>span{font-size:11px;margin-right:5px}.details{display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:40px;border-top:1px solid #dfe4da;margin-top:38px;padding:31px 0 35px}.detail-intro .eyebrow{font-size:8px;letter-spacing:1px}.detail-intro h2{font-size:24px;font-weight:500;line-height:1.25;margin-top:13px;letter-spacing:-.7px}.detail-icon{font-size:24px;color:#798b6c;height:29px;display:block;line-height:1}.glass-icon{font-size:29px}.code-icon{font:23px 'IBM Plex Mono',monospace}.detail h3{font-size:12px;font-weight:550;margin:12px 0 7px}.detail p{font-size:11px;line-height:1.8;color:#8a9282;margin:0;max-width:235px}footer{border-top:1px solid #dfe4da;padding:24px 0 27px;display:flex;justify-content:space-between;font-size:9px;color:#969d8f}footer strong{font-size:12px;font-weight:650;color:#596450}footer a{color:#67775a}footer a:hover,.source-link:hover{color:#2c4831}.footer-dot{margin:0 12px;color:#b4bcac}@media(min-width:1440px){.app{padding:0 80px}}@media(max-width:1050px){.app{padding:0 32px}.workspace{grid-template-columns:minmax(0,1fr) 250px;gap:24px}.browser-badge{display:none}.details{gap:24px}.control-description{margin-bottom:20px}.settings{padding-top:18px}.button-note{margin-bottom:20px}}@media(max-width:760px){.app{padding:0 22px}header{height:77px}.lab-label{font-size:8px}.source-link{font-size:10px}.wordmark{font-size:21px;gap:9px}.wordmark-slash{margin:0}.intro{padding:34px 0 27px}h1{font-size:46px;letter-spacing:-2px}.eyebrow{font-size:8px;letter-spacing:1px}.intro p{font-size:12px}.workspace{grid-template-columns:1fr;gap:28px}.render-bottom{font-size:8px;padding:0 12px}.render-bottom .divider{margin:0 7px}aside{padding:0}.control-description br{display:none}.control-description{margin:9px 0 22px}.palette .swatch{height:65px}.settings{margin-top:2px}.details{grid-template-columns:1fr 1fr;gap:30px;margin-top:30px}.detail p{max-width:none}.detail-intro h2{font-size:25px}footer{gap:15px;flex-direction:column;font-size:9px}.footer-dot{margin:0 8px}.mobile-break{display:block}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
++</style>
+diff --git a/src/scripts/tracer.ts b/src/scripts/tracer.ts
 new file mode 100644
-index 0000000..3ec461d
+index 0000000..0225738
 --- /dev/null
-+++ b/src/workers/image-protocol.ts
-@@ -0,0 +1,9 @@
-+export interface RenderRequest {
-+  width: number;
-+  height: number;
-+  seed: number;
++++ b/src/scripts/tracer.ts
+@@ -0,0 +1,89 @@
++const app = document.querySelector<HTMLElement>('.app')!;
++const canvas = document.querySelector<HTMLCanvasElement>('#render-canvas')!;
++const context = canvas.getContext('2d')!;
++const randomize = document.querySelector<HTMLButtonElement>('#randomize')!;
++const download = document.querySelector<HTMLButtonElement>('#download')!;
++const quality = document.querySelector<HTMLSelectElement>('#quality')!;
++const inputs = [document.querySelector<HTMLInputElement>('#color-one')!, document.querySelector<HTMLInputElement>('#color-two')!];
++const status = document.querySelector<HTMLElement>('#render-status')!;
++let worker: Worker | undefined;
++let generation = 0;
++let hasFrame = false;
++const rgb = (hex: string) => [1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16));
++function updateSwatches() {
++  inputs.forEach(input => {
++    const [r, g, b] = rgb(input.value);
++    input.parentElement!.style.backgroundColor = `rgb(${r * .75}, ${g * .75}, ${b * .75})`;
++  });
 +}
-+
-+export type RenderResponse =
-+  | { type: 'rendered'; width: number; height: number; pixels: ArrayBuffer; elapsed: number }
-+  | { type: 'error'; message: string };
-diff --git a/src/workers/image-renderer.worker.ts b/src/workers/image-renderer.worker.ts
-new file mode 100644
-index 0000000..12ca4a9
---- /dev/null
-+++ b/src/workers/image-renderer.worker.ts
-@@ -0,0 +1,50 @@
-+import type { RenderRequest, RenderResponse } from './image-protocol';
-+
-+interface RendererModule {
-+  HEAPU8: Uint8Array;
-+  _render_image(width: number, height: number, seed: number): number;
-+  _free(pointer: number): void;
-+}
-+
-+type RendererFactory = (options: { locateFile: (path: string) => string }) => Promise<RendererModule>;
-+let modulePromise: Promise<RendererModule> | undefined;
-+
-+function loadRenderer() {
-+  if (!modulePromise) {
-+    const assetRoot = new URL(`${import.meta.env.BASE_URL}wasm/`, self.location.origin);
-+    const moduleUrl = new URL('image-renderer.js', assetRoot).href;
-+    modulePromise = import(/* @vite-ignore */ moduleUrl).then(
-+      (module: { default: RendererFactory }) => module.default({
-+        locateFile: (path) => new URL(path, assetRoot).href,
-+      }),
-+    );
-+  }
-+  return modulePromise;
-+}
-+
-+function reply(message: RenderResponse, transfer: Transferable[] = []) {
-+  self.postMessage(message, { transfer });
-+}
-+
-+self.onmessage = async (event: MessageEvent<RenderRequest>) => {
++function render() {
++  worker?.terminate();
++  hasFrame = false;
++  download.disabled = true;
++  status.lastChild!.textContent = ' Tracing light…';
++  document.querySelector<HTMLElement>('#progress')!.style.width = '0%';
++  document.querySelector('#sample-count')!.textContent = '0';
++  document.querySelector('#elapsed')!.textContent = '0.0s';
++  const samples = Number(quality.value);
++  const width = canvas.width, height = canvas.height;
 +  try {
-+    const { width, height, seed } = event.data;
-+    if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 1920 || height > 1080 || !Number.isInteger(seed)) {
-+      throw new Error('Invalid image dimensions or seed.');
-+    }
-+    const renderer = await loadRenderer();
-+    const start = performance.now();
-+    const pointer = renderer._render_image(width, height, seed);
-+    if (!pointer) throw new Error('Unable to allocate image memory.');
-+    try {
-+      // Read the current heap after rendering: memory growth can replace its buffer.
-+      const pixels = renderer.HEAPU8.slice(pointer, pointer + width * height * 4).buffer;
-+      reply({ type: 'rendered', width, height, pixels, elapsed: performance.now() - start }, [pixels]);
-+    } finally {
-+      renderer._free(pointer);
-+    }
-+  } catch (error) {
-+    modulePromise = undefined;
-+    reply({ type: 'error', message: error instanceof Error ? error.message : 'Image generation failed.' });
-+  }
-+};
++    worker = new Worker(`${app.dataset.base}wasm/render-worker.js`, { type: 'module' });
++    worker.onerror = fail;
++    worker.onmessage = ({ data }) => {
++      if (data.error) { fail(); return; }
++      context.putImageData(new ImageData(new Uint8ClampedArray(data.pixels), width, height), 0, 0);
++      hasFrame = true;
++      download.disabled = false;
++      document.querySelector('#sample-count')!.textContent = String(data.samples);
++      document.querySelector('#elapsed')!.textContent = `${(data.elapsed / 1000).toFixed(1)}s`;
++      document.querySelector<HTMLElement>('#progress')!.style.width = `${data.samples / samples * 100}%`;
++      if (data.done) status.lastChild!.textContent = ' Render complete';
++    };
++    worker.postMessage({ width, height, samples, seed: crypto.getRandomValues(new Uint32Array(1))[0], colors: inputs.map(input => rgb(input.value)) });
++  } catch { fail(); }
++}
++function fail() {
++  status.lastChild!.textContent = ' Render failed. Try again.';
++  worker?.terminate();
++}
++randomize.addEventListener('click', () => {
++  inputs.forEach(input => {
++    // A bright dominant channel keeps tinted mirror and glass materials visible.
++    const color = Array.from(crypto.getRandomValues(new Uint8Array(3))).map(v => 65 + Math.round(v / 255 * 190));
++    color[color.indexOf(Math.max(...color))] = 255;
++    input.value = `#${color.map(v => v.toString(16).padStart(2, '0')).join('')}`;
++  });
++  document.querySelector('#palette-number')!.textContent = `PALETTE ${String(++generation).padStart(2, '0')}`;
++  updateSwatches();
++  render();
++});
++inputs.forEach(input => input.addEventListener('change', () => {
++  document.querySelector('#palette-number')!.textContent = 'CUSTOM';
++  updateSwatches();
++  render();
++}));
++quality.addEventListener('change', render);
++document.querySelector<HTMLInputElement>('#resolution')!.addEventListener('change', event => {
++  const width = [320, 640, 960][Number((event.target as HTMLInputElement).value)];
++  canvas.width = width;
++  canvas.height = width * 3 / 4;
++  const label = `${width} × ${canvas.height}`;
++  document.querySelector('#resolution-value')!.textContent = label;
++  document.querySelector('#canvas-resolution')!.textContent = label;
++  render();
++});
++download.addEventListener('click', () => {
++  if (!hasFrame) return;
++  canvas.toBlob(blob => {
++    if (!blob) return;
++    const url = URL.createObjectURL(blob);
++    const anchor = document.createElement('a');
++    anchor.href = url;
++    anchor.download = `smallpt-${generation}-${Date.now()}.png`;
++    anchor.click();
++    setTimeout(() => URL.revokeObjectURL(url), 1000);
++  }, 'image/png');
++});
++window.addEventListener('pagehide', () => worker?.terminate());
++updateSwatches();
++render();

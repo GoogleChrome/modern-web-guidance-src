@@ -1,0 +1,73 @@
+diff --git a/index.html b/index.html
+index 66c9173..75069ba 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,43 @@
+       background: #3e2723;
+     }
+ 
++    /* Semantic context flag for descendant components */
++    .seasonal {
++      --surface: seasonal;
++    }
++
++    .card-badge {
++      display: none;
++      background: var(--accent);
++      color: white;
++      font-size: 0.75rem;
++      padding: 2px 10px;
++      border-radius: 999px;
++      margin-bottom: 10px;
++    }
++
++    /* Selector-based fallback for browsers without style query support */
++    :where(.seasonal) .card {
++      background: #fff8ee;
++      border-top: 4px solid var(--accent);
++    }
++
++    :where(.seasonal) .card-badge {
++      display: inline-block;
++    }
++
++    /* Cards adapt to the inherited semantic context */
++    @container style(--surface: seasonal) {
++      .card {
++        background: #fff8ee;
++        border-top: 4px solid var(--accent);
++      }
++
++      .card-badge {
++        display: inline-block;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -175,20 +212,23 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section class="seasonal">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <span class="card-badge">Seasonal</span>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="card-badge">Seasonal</span>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <span class="card-badge">Seasonal</span>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>

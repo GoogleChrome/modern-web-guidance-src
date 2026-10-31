@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites section and Order Now button on the homepage to show a loading spinner when loading drink details or starting an order, ensuring the busy state is communicated to all users, motion-reduction preferences are respected, and the animation runs efficiently.
