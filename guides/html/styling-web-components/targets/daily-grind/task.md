@@ -1,0 +1,1 @@
+- Turn the Seasonal Favorites cards into a reusable card web component that other pages on the site can drop in and restyle to match their own look, including colors, buttons, and other parts of the card, and that rearranges itself when it's placed in narrow or wide spots.
