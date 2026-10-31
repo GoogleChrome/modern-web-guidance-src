@@ -2,12 +2,10 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
   getRules,
   CSSStyleRule,
-  type CSSStyleSheet,
 } from '../../../../../src/grading/test-fixture.ts';
 import { Node, SyntaxKind, type Project } from 'ts-morph';
 
@@ -520,8 +518,7 @@ test.describe('dialog Target Grader', () => {
   });
 
   test('While a modal dialog is open, scrolling over its backdrop or inside it does not scroll the page behind it', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const dialogRules = styleRules.filter((r) =>
       (r.selectorText || '')

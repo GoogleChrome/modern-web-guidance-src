@@ -4,7 +4,6 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
   getRules,
@@ -162,16 +161,14 @@ test.describe('daily-grind Target Grader', () => {
   });
 
   test('The :tool-form-active pseudo-class is used to provide visual feedback', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const hasRule = getRules(stylesheet, CSSStyleRule).some(
+    const hasRule = getRules(targetFiles, CSSStyleRule).some(
       (r) => r.selectorText.includes(':tool-form-active') && r.style.length > 0
     );
     expect(hasRule).toBe(true);
   });
 
   test('The :tool-submit-active pseudo-class is used to provide visual feedback', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const hasRule = getRules(stylesheet, CSSStyleRule).some(
+    const hasRule = getRules(targetFiles, CSSStyleRule).some(
       (r) => r.selectorText.includes(':tool-submit-active') && r.style.length > 0
     );
     expect(hasRule).toBe(true);

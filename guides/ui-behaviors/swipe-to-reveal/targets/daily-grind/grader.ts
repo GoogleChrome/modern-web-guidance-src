@@ -2,12 +2,10 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
   getRules,
   CSSStyleRule,
-  type CSSStyleSheet,
 } from '../../../../../src/grading/test-fixture.ts';
 import { SyntaxKind, type Project } from 'ts-morph';
 
@@ -16,8 +14,7 @@ const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 test.describe('swipe-to-reveal Target Grader', () => {
   test('Horizontal swipe-to-reveal container is a horizontal scroll container configured with mandatory CSS Scroll Snap and no manual JS gesture listeners', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const docs = getHtmlDocuments(targetFiles);
 
     const hasOverflowX =
@@ -72,8 +69,7 @@ test.describe('swipe-to-reveal Target Grader', () => {
   });
 
   test('Foreground content element sets scroll-snap-align: start, scroll-initial-target: nearest, and an opaque background, while trailing panels snap to end', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const docs = getHtmlDocuments(targetFiles);
 
     const hasContentSnapAndInitialTarget = styleRules.some((r) => {
@@ -96,8 +92,7 @@ test.describe('swipe-to-reveal Target Grader', () => {
   });
 
   test('Outer horizontal swipe-to-reveal container sets overscroll-behavior: chain in CSS without contain or none', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasChainOverscroll = styleRules.some((r) => {
       const ob = r.style.getPropertyValue('overscroll-behavior').trim();

@@ -42,8 +42,8 @@ test.describe('<guide-name> Target Grader', () => {
 
   test('Example test containing CSS checks (cssomnom)', () => {
     // EXAMPLE 1: Recursive rule lookup across stylesheets and nested rules (pre-order):
-    // const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    // const styleRules = getRules(stylesheet, CSSStyleRule);
+    // const styleRules = getRules(targetFiles, CSSStyleRule);
+    // (Or getCssStyleSheet(targetFiles) if inspecting the stylesheet directly or using getCascadedStyle)
     // const targetRule = styleRules.find(r => r.selectorText === '.target-element');
     //
     // For nested rules and at-rules:

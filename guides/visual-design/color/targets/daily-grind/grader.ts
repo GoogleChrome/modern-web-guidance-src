@@ -7,13 +7,11 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getHtmlDocuments,
   getRules,
   CSSMediaRule,
   CSSStyleRule,
   type CSSRule,
-  type CSSStyleSheet,
   type RuleRoot,
 } from '../../../../../src/grading/test-fixture.ts';
 import type { Document } from 'linkedom';
@@ -223,8 +221,7 @@ async function auditScheme(page: Page, url: string, scheme: 'light' | 'dark'): P
 
 test.describe('color Target Grader', () => {
   test('Expectation 1: Provides @media (forced-colors: active) fallbacks with system colors or visible borders/outlines', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const forcedColorRules = getRules(stylesheet, CSSMediaRule).filter((r) =>
+    const forcedColorRules = getRules(targetFiles, CSSMediaRule).filter((r) =>
       /\bforced-colors\s*:\s*active\b/i.test(r.conditionText),
     );
     const blocks = forcedColorRules.flatMap((r) => collectDeclarationBlocks(r));
@@ -282,8 +279,7 @@ test.describe('color Target Grader', () => {
   });
 
   test('Expectation 4a: Declares support for light and dark color schemes via color-scheme property or meta tag', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
     const hasColorSchemeCss = styleRules.some((r) => {
@@ -301,9 +297,8 @@ test.describe('color Target Grader', () => {
   });
 
   test('Expectation 4b: Implements dark mode color tokens or styles using @media (prefers-color-scheme: dark) or light-dark()', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const mediaRules = getRules(stylesheet, CSSMediaRule);
-    const allStyleRules = getRules(stylesheet, CSSStyleRule);
+    const mediaRules = getRules(targetFiles, CSSMediaRule);
+    const allStyleRules = getRules(targetFiles, CSSStyleRule);
     const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
 
     const darkMediaRules = mediaRules.filter((r) =>

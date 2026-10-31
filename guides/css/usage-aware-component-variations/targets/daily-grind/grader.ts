@@ -40,8 +40,7 @@ test.describe('usage-aware-component-variations Target Grader', () => {
   });
 
   test('Component uses @container style() queries to adapt its internal visual logic based on inherited properties', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const containerRules = getRules(stylesheet, CSSContainerRule);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
 
     const styleQueryRules = containerRules.filter((r) => {
       const query = r.conditionText || r.containerQuery || '';
@@ -53,8 +52,7 @@ test.describe('usage-aware-component-variations Target Grader', () => {
   });
 
   test('When the context is active (e.g., featured/seasonal), the component reveals promotional elements and applies prominent styling', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const containerRules = getRules(stylesheet, CSSContainerRule);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
 
     const revealsPromotionalInStyleQuery = containerRules.some((r) => {
       const query = r.conditionText || r.containerQuery || '';
@@ -108,9 +106,8 @@ test.describe('usage-aware-component-variations Target Grader', () => {
   });
 
   test('The component does NOT rely on size queries (min-width or max-width) for this semantic variation', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const containerRules = getRules(stylesheet, CSSContainerRule);
-    const allStyleRules = getRules(stylesheet, CSSStyleRule);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
+    const allStyleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasStyleContainerRules = containerRules.some((r) =>
       /\bstyle\s*\(\s*--/.test(r.conditionText || r.containerQuery || '')

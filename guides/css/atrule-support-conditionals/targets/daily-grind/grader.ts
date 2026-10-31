@@ -2,7 +2,6 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
   getRules,
   CSSRule,
@@ -13,7 +12,6 @@ import {
   CSSPropertyRule,
   CSSNestedDeclarations,
   CSSAtRule,
-  type CSSStyleSheet,
 } from '../../../../../src/grading/test-fixture.ts';
 import { SyntaxKind, type Project } from 'ts-morph';
 
@@ -156,8 +154,7 @@ function hasJsAtRuleSupportDetection(project: Project, allRules: CSSRule[]): boo
 
 test.describe('atrule-support-conditionals Target Grader', () => {
   test('Stylesheets conditionally apply CSS rules or declarations based on at-rule support using @supports, tautological style @container query, @property fallback, or JS root class check', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = getRules(stylesheet);
+    const allRules = getRules(targetFiles);
     const project: Project = getJsProject(targetFiles);
 
     const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
@@ -175,8 +172,7 @@ test.describe('atrule-support-conditionals Target Grader', () => {
   });
 
   test('Any @supports at-rule(...) query passes only a bare @<name> identifier and avoids invalid checks (@supports (container-type: style) or CSS.registerProperty)', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = getRules(stylesheet);
+    const allRules = getRules(targetFiles);
     const project: Project = getJsProject(targetFiles);
 
     const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);
@@ -215,8 +211,7 @@ test.describe('atrule-support-conditionals Target Grader', () => {
   });
 
   test('At-rule support conditionals gate dependent regular CSS declarations or rules in stylesheets rather than only wrapping the detected at-rule itself or setting inline styles from JS', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = getRules(stylesheet);
+    const allRules = getRules(targetFiles);
     const project: Project = getJsProject(targetFiles);
 
     const supportsRules = allRules.filter((r): r is CSSSupportsRule => r instanceof CSSSupportsRule);

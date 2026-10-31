@@ -475,4 +475,43 @@ const isComplete = value < 100;
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  test('getRules accepts string[] file paths directly and getCssStyleSheet is memoized', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-getrules-memoize-test-'));
+    try {
+      const cssFile = path.join(tempDir, 'sample.css');
+      fs.writeFileSync(
+        cssFile,
+        `
+        .header { color: red; font-size: 16px; }
+        .footer { color: blue; }
+        `,
+        'utf8'
+      );
+
+      const files = [cssFile];
+
+      // 1. getCssStyleSheet is memoized for same array reference
+      const sheet1 = getCssStyleSheet(files);
+      const sheet2 = getCssStyleSheet(files);
+      assert.strictEqual(sheet1, sheet2, 'Should return identical memoized CSSStyleSheet instance for same files array');
+
+      // 2. getCssStyleSheet is memoized for distinct array with same unmodified files
+      const sheet3 = getCssStyleSheet([cssFile]);
+      assert.strictEqual(sheet1, sheet3, 'Should return identical memoized CSSStyleSheet instance for identical file stats');
+
+      // 3. getRules works directly with string[] file paths
+      const styleRules = getRules(files, CSSStyleRule);
+      assert.strictEqual(styleRules.length, 2);
+      assert.strictEqual(styleRules[0].selectorText, '.header');
+      assert.strictEqual(styleRules[1].selectorText, '.footer');
+
+      // 4. getRules without rule constructor flattens all rules from string[]
+      const allRules = getRules(files);
+      assert.strictEqual(allRules.length, 2);
+      assert.strictEqual(allRules[0], styleRules[0]);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });

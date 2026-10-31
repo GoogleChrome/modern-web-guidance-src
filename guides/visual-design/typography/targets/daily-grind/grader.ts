@@ -23,8 +23,7 @@ const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 test.describe('typography Target Grader', () => {
   test('Fluid typography uses clamp() combining rem and vw or cqi units', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasFluidClamp = styleRules.some((rule) => {
       const fontSize = rule.style.getPropertyValue('font-size');
       return (

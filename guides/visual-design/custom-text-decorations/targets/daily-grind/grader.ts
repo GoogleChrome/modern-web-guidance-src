@@ -39,8 +39,7 @@ function hasTextDecorationLine(rule: CSSStyleRule): boolean {
 
 test.describe('custom-text-decorations Target Grader', () => {
   test('Underlines, overlines, and strikethroughs are drawn with native text-decoration properties, not border-bottom, background gradient, or pseudo-element', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasNativeTextDecoration = styleRules.some((r) => hasTextDecorationLine(r));
     const hasFakeBorderBottomOnText = styleRules.some(
@@ -54,8 +53,7 @@ test.describe('custom-text-decorations Target Grader', () => {
   });
 
   test('Decoration style, color, thickness, and text-underline-offset use CSS custom properties or inheritable values', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const decoratedRules = styleRules.filter(
       (r) =>
@@ -78,8 +76,7 @@ test.describe('custom-text-decorations Target Grader', () => {
   });
 
   test('Decoration thickness and underline offset use relative units such as em so they scale with font size', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const thicknessUsesEm = styleRules.some((r) => {
       const td = r.style.getPropertyValue('text-decoration');
@@ -96,8 +93,7 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('A decorated link is a real <a> with an href destination, not a javascript: URL with a script handler', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const links = docs.flatMap((d) =>
       Array.from(d.document.querySelectorAll('a')) as Array<{
@@ -128,8 +124,7 @@ test.describe('custom-text-decorations Target Grader', () => {
   });
 
   test('A link with a hover reveal underline trims its line with text-decoration-inset at rest, and returns the inset to 0 or full width on both :hover and :focus-visible', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasTrimmedAtRest = styleRules.some((r) => {
       const inset = r.style.getPropertyValue('text-decoration-inset');
@@ -176,8 +171,7 @@ test.describe('custom-text-decorations Target Grader', () => {
   });
 
   test('text-decoration-skip-ink: auto and text-decoration-skip-spaces are not declared when they would only restate the default or have no effect', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasDecorations = styleRules.some((r) => hasTextDecorationLine(r));
     const hasRedundantSkipInkAuto = styleRules.some(
@@ -194,8 +188,7 @@ test.describe('custom-text-decorations Target Grader', () => {
   });
 
   test('text-decoration-skip-spaces is declared only on text that preserves its spaces', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasDecorations = styleRules.some((r) => hasTextDecorationLine(r));
     const skipSpacesRules = styleRules.filter((r) =>
@@ -212,8 +205,7 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('A draw-on custom line uses a pseudo-element with border-shape or border-block-end and transitions clip-path on both :hover and :focus-visible, not an inline SVG', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasInlineSvgInLinks = docs.some((d) =>
       Boolean(d.document.querySelector('a svg'))
@@ -308,8 +300,7 @@ test.describe('custom-text-decorations Target Grader', () => {
   });
 
   test('When the same polygon shape is used for border-shape and its clip-path fallback, the shape is stored in a CSS custom property rather than repeated', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const borderShapePolygons = styleRules
       .map((r) => r.style.getPropertyValue('border-shape').trim())
@@ -363,9 +354,8 @@ test.describe('custom-text-decorations Target Grader', () => {
   });
 
   test('A gradient outline around text uses background-clip: border-area inside @supports (background-clip: border-area) with a gradient fallback outside it', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allStyleRules = getRules(stylesheet, CSSStyleRule);
-    const supportsRules = getRules(stylesheet, CSSSupportsRule);
+    const allStyleRules = getRules(targetFiles, CSSStyleRule);
+    const supportsRules = getRules(targetFiles, CSSSupportsRule);
 
     const borderAreaRules = allStyleRules.filter(
       (r) =>

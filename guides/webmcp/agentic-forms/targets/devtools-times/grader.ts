@@ -2,7 +2,6 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
   getRules,
@@ -147,8 +146,7 @@ test.describe('agentic-forms Target Grader', () => {
   });
 
   test('The :tool-form-active pseudo-class is used to provide visual feedback', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasToolFormActiveRule = styleRules.some((rule) =>
       rule.selectorText?.includes(':tool-form-active') && rule.style.length > 0
     );
@@ -157,8 +155,7 @@ test.describe('agentic-forms Target Grader', () => {
   });
 
   test('The :tool-submit-active pseudo-class is used to provide visual feedback', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasToolSubmitActiveRule = styleRules.some((rule) =>
       rule.selectorText?.includes(':tool-submit-active') && rule.style.length > 0
     );

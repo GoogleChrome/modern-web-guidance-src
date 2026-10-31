@@ -9,7 +9,6 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getRules,
   closestRule,
   resolveSelector,
@@ -18,7 +17,7 @@ import {
   CSSContainerRule,
   CSSNestedDeclarations,
   type CSSRule,
-  type CSSStyleSheet,
+  type RuleRoot,
 } from '../../../../../src/grading/test-fixture.ts';
 
 interface CustomPropertyDeclaration {
@@ -33,9 +32,9 @@ function isAncestorSelector(selector: string): boolean {
   return /(^|[\s,>+~])(:root\b|html\b|&)/i.test(selector.trim());
 }
 
-function getCustomPropertyDeclarations(stylesheet: CSSStyleSheet): CustomPropertyDeclaration[] {
+function getCustomPropertyDeclarations(root: RuleRoot | string[]): CustomPropertyDeclaration[] {
   const decls: CustomPropertyDeclaration[] = [];
-  const rules = getRules(stylesheet);
+  const rules = getRules(root);
 
   for (const r of rules) {
     if (r instanceof CSSStyleRule || r instanceof CSSNestedDeclarations) {
@@ -76,8 +75,7 @@ const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 test.describe('selector-atrule-combinations: daily-grind Target Grader', () => {
   test('Expectation 1: Combined @media criteria sets a custom property on an ancestor element', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const customDecls = getCustomPropertyDeclarations(stylesheet);
+    const customDecls = getCustomPropertyDeclarations(targetFiles);
     const mediaSetsCustomPropOnAncestor = customDecls.some(
       (d) =>
         d.mediaCondition !== null &&
@@ -88,8 +86,7 @@ test.describe('selector-atrule-combinations: daily-grind Target Grader', () => {
   });
 
   test('Expectation 1: Root selector criteria sets a custom property on an ancestor element', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const customDecls = getCustomPropertyDeclarations(stylesheet);
+    const customDecls = getCustomPropertyDeclarations(targetFiles);
     const selectorSetsCustomPropOnAncestor = customDecls.some(
       (d) =>
         isAncestorSelector(d.selector) &&
@@ -99,17 +96,13 @@ test.describe('selector-atrule-combinations: daily-grind Target Grader', () => {
   });
 
   test('Expectation 2: Stylesheet defines @container style query blocks keyed off a custom property', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getRules(stylesheet);
-    const containerRules = allRules.filter((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
     const queriedProps = getQueriedCustomProperties(containerRules);
     expect(queriedProps.size).toBeGreaterThan(0);
   });
 
   test('Expectation 2: Descendant style rules are applied inside @container style query blocks', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getRules(stylesheet);
-    const containerRules = allRules.filter((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
     const hasDescendantRulesInStyleQuery = containerRules.some((cr) => {
       const isStyleQuery = /style\s*\(/i.test(cr.conditionText);
       if (!isStyleQuery) return false;
@@ -120,11 +113,9 @@ test.describe('selector-atrule-combinations: daily-grind Target Grader', () => {
   });
 
   test('Expectation 3: Queried custom property is declared on an ancestor element', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getRules(stylesheet);
-    const containerRules = allRules.filter((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
     const queriedProps = getQueriedCustomProperties(containerRules);
-    const customDecls = getCustomPropertyDeclarations(stylesheet);
+    const customDecls = getCustomPropertyDeclarations(targetFiles);
 
     const isDeclaredOnAncestor =
       queriedProps.size > 0 &&
@@ -135,11 +126,9 @@ test.describe('selector-atrule-combinations: daily-grind Target Grader', () => {
   });
 
   test('Expectation 3: Queried custom property is scoped to an ancestor rather than target elements', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = getRules(stylesheet);
-    const containerRules = allRules.filter((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+    const containerRules = getRules(targetFiles, CSSContainerRule);
     const queriedProps = getQueriedCustomProperties(containerRules);
-    const customDecls = getCustomPropertyDeclarations(stylesheet);
+    const customDecls = getCustomPropertyDeclarations(targetFiles);
 
     const targetSelectors: string[] = [];
     for (const cr of containerRules) {

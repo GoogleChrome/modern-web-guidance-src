@@ -2,13 +2,11 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getHtmlDocuments,
   getRules,
   CSSStyleRule,
   CSSMediaRule,
   CSSStartingStyleRule,
-  type CSSStyleSheet,
 } from '../../../../../src/grading/test-fixture.ts';
 import type { Document } from 'linkedom';
 
@@ -63,8 +61,7 @@ test.describe('hovercard Target Grader', () => {
   });
 
   test('The popover uses position-area (or inset-area) to position itself relative to the trigger link', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasPositionArea = styleRules.some((rule) => {
       const posArea =
         rule.style.getPropertyValue('position-area').trim() ||
@@ -75,8 +72,7 @@ test.describe('hovercard Target Grader', () => {
   });
 
   test('The popover has a transition that includes display: allow-discrete and overlay: allow-discrete', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasDiscreteTransition = styleRules.some((rule) =>
       ruleHasDiscreteDisplayAndOverlayTransition(rule),
     );
@@ -84,8 +80,7 @@ test.describe('hovercard Target Grader', () => {
   });
 
   test('The popover has a @starting-style block that defines its initial state for entry animations', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const startingStyleRules = getRules(stylesheet, CSSStartingStyleRule);
+    const startingStyleRules = getRules(targetFiles, CSSStartingStyleRule);
     const hasStartingStyleState = startingStyleRules.some((startingRule) => {
       const innerStyleRules = getRules(startingRule, CSSStyleRule);
       return innerStyleRules.some(
@@ -100,8 +95,7 @@ test.describe('hovercard Target Grader', () => {
   });
 
   test('If prefers-reduced-motion: reduce is active, the popover opens without a transform or opacity transition', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const mediaRules = getRules(stylesheet, CSSMediaRule);
+    const mediaRules = getRules(targetFiles, CSSMediaRule);
 
     const gatedByNoPreference = mediaRules.some(
       (media) =>

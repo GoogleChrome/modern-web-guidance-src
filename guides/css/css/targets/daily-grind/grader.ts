@@ -28,8 +28,7 @@ const targetFiles: string[] = getTargetFiles(import.meta.url);
 test.describe('CSS: Modern Architecture - Daily Grind Grader', () => {
 
   test('Expectation 1: The implementation uses CSS logical properties for layout spacing and sizing', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getRules(stylesheet, CSSStyleRule);
+    const rules = getRules(targetFiles, CSSStyleRule);
     const logicalSpacingProps = [
       'margin-inline', 'margin-inline-start', 'margin-inline-end',
       'margin-block', 'margin-block-start', 'margin-block-end',
@@ -61,15 +60,13 @@ test.describe('CSS: Modern Architecture - Daily Grind Grader', () => {
   });
 
   test('Expectation 5: The implementation uses :is() or :where() to group selectors or fallbacks', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getRules(stylesheet, CSSStyleRule);
+    const rules = getRules(targetFiles, CSSStyleRule);
     const hasIsOrWhere = rules.some(rule => /:(is|where)\(/.test(rule.selectorText));
     expect(hasIsOrWhere).toBe(true);
   });
 
   test('Expectation 6: The implementation uses :not() to exclude irrelevant states or targets', () => {
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const rules = getRules(stylesheet, CSSStyleRule);
+    const rules = getRules(targetFiles, CSSStyleRule);
     const hasNotSelector = rules.some(rule => /:not\(/.test(rule.selectorText));
     expect(hasNotSelector).toBe(true);
   });

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import type { Project } from 'ts-morph';
 import {
   parse,
-  getRules,
+  getRules as cssomGetRules,
   closestRule,
   resolveSelector,
   parseSelectorAST,
@@ -50,7 +50,6 @@ const require = createRequire(import.meta.url);
 export { expect } from '@playwright/test';
 export {
   parse,
-  getRules,
   closestRule,
   resolveSelector,
   parseSelectorAST,
@@ -247,12 +246,61 @@ function parseHtmlDocument(file: string, content: string): any {
 }
 
 
+const cssStyleSheetWeakCache = new WeakMap<string[], { key: string; sheet: CSSStyleSheet }>();
+const cssStyleSheetKeyCache = new Map<string, CSSStyleSheet>();
+
+function computeFilesCacheKey(files: string[]): string {
+  return files
+    .map((f) => {
+      try {
+        const stat = fs.statSync(f);
+        return `${f}:${stat.mtimeMs}:${stat.size}`;
+      } catch {
+        return `${f}:missing`;
+      }
+    })
+    .join('\0');
+}
+
+/**
+ * Recursively collects rules matching the given RuleClass in depth-first pre-order.
+ * When passed an array of file paths (string[]), automatically parses and caches
+ * the consolidated CSSStyleSheet via getCssStyleSheet(files).
+ */
+export function getRules(root: RuleRoot | string[]): CSSRule[];
+export function getRules<T extends CSSRule>(root: RuleRoot | string[], ruleType: AnyRuleConstructor<T>): T[];
+export function getRules(root: RuleRoot | string[], ruleType?: AnyRuleConstructor<any>): any[] {
+  let actualRoot: RuleRoot;
+  if (Array.isArray(root)) {
+    if (root.length === 0 || typeof root[0] === 'string') {
+      actualRoot = getCssStyleSheet(root as string[]);
+    } else {
+      actualRoot = root as unknown as CSSRule[];
+    }
+  } else {
+    actualRoot = root;
+  }
+  return ruleType ? cssomGetRules(actualRoot, ruleType) : cssomGetRules(actualRoot);
+}
+
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
  * and inline styles into a CSSOMNom CSSStyleSheet object.
+ * Results are memoized by file path, mtime, and file size.
  */
 export function getCssStyleSheet(files: string[]): CSSStyleSheet {
-  const { parse, CSSStyleDeclaration } = require('cssomnom') as typeof import('cssomnom');
+  const cachedWeak = cssStyleSheetWeakCache.get(files);
+  const cacheKey = computeFilesCacheKey(files);
+
+  if (cachedWeak && cachedWeak.key === cacheKey) {
+    return cachedWeak.sheet;
+  }
+
+  const cachedByKey = cssStyleSheetKeyCache.get(cacheKey);
+  if (cachedByKey) {
+    cssStyleSheetWeakCache.set(files, { key: cacheKey, sheet: cachedByKey });
+    return cachedByKey;
+  }
   const cssBlocks: string[] = [];
   for (const file of files) {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
@@ -318,6 +366,8 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
       (sheet as any)._rules.push(rule);
     }
   }
+  cssStyleSheetWeakCache.set(files, { key: cacheKey, sheet });
+  cssStyleSheetKeyCache.set(cacheKey, sheet);
   return sheet;
 }
 
