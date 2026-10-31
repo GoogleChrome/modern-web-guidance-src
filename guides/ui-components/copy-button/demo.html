@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Copy button · Invoker Commands + Async Clipboard</title>
+
+  <style>
+    :root {
+      color-scheme: light dark;
+
+      --surface: light-dark(oklch(98% 0.005 260), oklch(20% 0.02 260));
+      --surface-2: light-dark(oklch(94% 0.01 260), oklch(26% 0.025 260));
+      --border: light-dark(oklch(84% 0.02 260), oklch(38% 0.03 260));
+      --text: light-dark(oklch(25% 0.03 260), oklch(93% 0.01 260));
+      --muted: light-dark(oklch(48% 0.03 260), oklch(75% 0.02 260));
+      --accent: light-dark(oklch(52% 0.2 265), oklch(75% 0.14 265));
+      --success: light-dark(oklch(48% 0.14 150), oklch(78% 0.17 150));
+      --danger: light-dark(oklch(50% 0.19 25), oklch(72% 0.17 25));
+      --on-accent: light-dark(white, oklch(20% 0.02 260));
+
+      /* Data URI SVG icons, used as masks so they take currentColor */
+      --icon-copy: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='13' height='13' rx='2'/%3E%3Cpath d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'/%3E%3C/svg%3E");
+      --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 2rem 1rem 6rem;
+      font: 1rem/1.6 system-ui, sans-serif;
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    main {
+      max-inline-size: 44rem;
+      margin-inline: auto;
+      display: grid;
+      /* minmax(0, 1fr): the column may shrink below its content, so long code scrolls inside its block */
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2.5rem;
+    }
+
+    h1 { font-size: 1.75rem; line-height: 1.2; margin: 0; }
+    h2 { font-size: 1.125rem; margin: 0 0 .75rem; }
+    p  { margin: 0; text-wrap: pretty; }
+
+    code, pre, kbd { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+    /* ---------- Copy button ---------- */
+
+    /* Positioning context for the bubble, which is a sibling of the button */
+    .copy {
+      position: relative;
+      display: inline-flex;
+      flex: none;
+    }
+
+    .copy-button {
+      --size: 2.25rem;
+
+      display: inline-grid;
+      place-items: center;
+      flex: none;
+      min-inline-size: var(--size);
+      min-block-size: var(--size);
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: .5rem;
+      color: var(--muted);
+      background: var(--surface);
+      cursor: pointer;
+      transition: color .15s, background-color .15s, border-color .15s;
+
+      &:hover {
+        color: var(--text);
+        background: var(--surface-2);
+      }
+
+      &:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      &:active { scale: .94; }
+
+      /* Icon */
+      .icon {
+        inline-size: 1.125rem;
+        block-size: 1.125rem;
+        background-color: currentColor;
+        mask: var(--icon-copy) center / contain no-repeat;
+        /* In forced colors the UA would otherwise replace the background and hide the masked icon */
+        forced-color-adjust: none;
+      }
+
+      /* Success state */
+      &[data-copied] {
+        color: var(--success);
+        border-color: currentColor;
+
+        .icon {
+          mask-image: var(--icon-check);
+          animation: icon-pop .35s cubic-bezier(.3, 1.6, .5, 1);
+        }
+      }
+
+      &[data-failed] {
+        color: var(--danger);
+        border-color: currentColor;
+      }
+    }
+
+    /* Bubble and live region in one element. It is hidden with opacity, not
+       display: none or visibility: hidden, so it stays in the accessibility tree
+       and its text is announced. */
+    .tip {
+      --tip-color: var(--success);
+
+      position: absolute;
+      inset-block-end: calc(100% + .5rem);
+      inset-inline-start: 50%;
+      translate: -50% 0;
+      padding: .25rem .625rem;
+      border-radius: .375rem;
+      font: 600 .8125rem/1.4 system-ui, sans-serif;
+      white-space: nowrap;
+      color: var(--on-accent);
+      background: var(--tip-color);
+      opacity: 0;
+      pointer-events: none;
+
+      /* little arrow */
+      &::after {
+        content: "";
+        position: absolute;
+        inset-block-start: 100%;
+        inset-inline-start: 50%;
+        translate: -50% 0;
+        border: .3125rem solid transparent;
+        border-block-start-color: var(--tip-color);
+      }
+    }
+
+    .copy-button[data-copied] ~ .tip,
+    .copy-button[data-failed] ~ .tip { animation: tip 1.8s ease both; }
+    .copy-button[data-failed] ~ .tip { --tip-color: var(--danger); }
+
+    @keyframes icon-pop {
+      from { scale: .4; rotate: -20deg; }
+      to   { scale: 1;  rotate: 0deg; }
+    }
+
+    @keyframes tip {
+      0%   { opacity: 0; translate: -50% .5rem; scale: .85; }
+      12%  { opacity: 1; translate: -50% 0;     scale: 1; }
+      80%  { opacity: 1; translate: -50% 0; }
+      100% { opacity: 0; translate: -50% -.25rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      /* Fade the new icon in instead of popping and rotating it */
+      .copy-button[data-copied] .icon { animation: icon-fade .2s ease; }
+      .copy-button[data-copied] ~ .tip,
+      .copy-button[data-failed] ~ .tip { animation-name: tip-reduced; }
+      @keyframes icon-fade {
+        from { opacity: 0; }
+      }
+      @keyframes tip-reduced {
+        0%, 80% { opacity: 1; }
+        100%    { opacity: 0; }
+      }
+    }
+
+    @media (forced-colors: active) {
+      .copy-button .icon { background-color: ButtonText; }
+      .tip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+      .tip::after { display: none; }
+    }
+
+    /* Copying needs script, so show no control that does nothing */
+    @media (scripting: none) {
+      .copy { display: none; }
+    }
+
+    /* ---------- Example 1: code block ---------- */
+
+    .code-block {
+      border: 1px solid var(--border);
+      border-radius: .75rem;
+      background: var(--surface-2);
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: .5rem .5rem .5rem 1rem;
+        border-block-end: 1px solid var(--border);
+        font-size: .8125rem;
+        color: var(--muted);
+      }
+
+      pre {
+        margin: 0;
+        padding: 1rem;
+        overflow-x: auto;
+        font-size: .875rem;
+        line-height: 1.6;
+      }
+    }
+
+    /* ---------- Example 5: reveal-on-hover button ---------- */
+
+    .code-block.reveal {
+      position: relative;
+
+      /* Padding only clears the button at the end of the scroll range; the button's opaque background keeps it legible over long lines */
+      pre { padding-inline-end: 3.5rem; }
+
+      .copy {
+        position: absolute;
+        inset-block-start: .5rem;
+        inset-inline-end: .5rem;
+      }
+
+      .copy-button {
+        background: color-mix(in srgb, var(--surface) 85%, transparent);
+        backdrop-filter: blur(6px);
+
+        &:hover { background: color-mix(in srgb, var(--surface-2) 85%, transparent); }
+      }
+
+      /* Hidden with opacity only: display/visibility would remove the button from the tab order */
+      @media (hover: hover) {
+        .copy-button {
+          opacity: 0;
+          transition: opacity .15s, color .15s, background-color .15s, border-color .15s;
+        }
+
+        &:hover .copy-button,
+        &:focus-within .copy-button,
+        .copy-button:focus-visible,
+        .copy-button[data-copied],
+        .copy-button[data-failed] {
+          opacity: 1;
+        }
+      }
+    }
+
+    /* ---------- Example 2: inline ---------- */
+
+    .inline-copy {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .25rem .25rem .25rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: .625rem;
+      background: var(--surface-2);
+
+      max-inline-size: 100%;
+
+      code { font-size: .9375rem; min-inline-size: 0; overflow-wrap: anywhere; }
+      .copy-button { --size: 2rem; }
+    }
+
+    /* ---------- Example 3: form field ---------- */
+
+    .field {
+      display: grid;
+      gap: .375rem;
+
+      label { font-weight: 600; font-size: .9375rem; }
+
+      .row { display: flex; gap: .5rem; }
+
+      input {
+        flex: 1;
+        min-inline-size: 0;
+        padding: .5rem .75rem;
+        font: inherit;
+        font-family: ui-monospace, monospace;
+        color: inherit;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: .5rem;
+      }
+
+      /* The button stretches to the field's height in the flex row; its width and minimum height stay --size */
+      .copy-button { --size: 2.5rem; }
+    }
+
+    /* ---------- Example 4: selection popover ---------- */
+
+    [data-selectable] {
+      padding: 1rem 1.25rem;
+      border-inline-start: 4px solid var(--accent);
+      background: var(--surface-2);
+      border-radius: 0 .5rem .5rem 0;
+
+      ::selection {
+        background: color-mix(in oklab, var(--accent) 35%, transparent);
+      }
+    }
+
+    #selection-popover {
+      /* reset UA popover styles */
+      margin: 0;
+      padding: .25rem;
+      inset: auto;
+      border: 1px solid var(--border);
+      border-radius: .625rem;
+      background: var(--surface);
+      color: var(--text);
+      overflow: visible;
+      box-shadow: 0 .5rem 1.5rem oklch(0% 0 0 / .25);
+
+      /* positioned by JS from the selection rectangle */
+      position: fixed;
+      left: var(--x, 0);
+      top: var(--y, 0);
+      translate: -50% calc(-100% - .625rem);
+
+      /* Touch: the OS opens its own selection menu above the selection, so sit below it instead */
+      @media (pointer: coarse) {
+        translate: -50% 0;
+      }
+
+      /* entry/exit animation */
+      opacity: 0;
+      scale: .9;
+      transition:
+        opacity .15s, scale .15s,
+        overlay .15s allow-discrete, display .15s allow-discrete;
+
+      &:popover-open { opacity: 1; scale: 1; }
+
+      @starting-style {
+        &:popover-open { opacity: 0; scale: .9; }
+      }
+
+      .copy-button { --size: 2rem; border-color: transparent; }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <header>
+      <h1>Copy button</h1>
+      <p>
+        Uses <code>command="--copy"</code> / <code>commandfor</code> (Invoker Commands)
+        and <code>navigator.clipboard</code> (Async Clipboard).
+      </p>
+    </header>
+
+    <!-- 1. Code block -->
+    <section aria-labelledby="h-code">
+      <h2 id="h-code">1. Code block</h2>
+
+      <div class="code-block">
+        <header>
+          <span>CSS</span>
+          <span class="copy">
+            <button type="button" class="copy-button"
+                    command="--copy" commandfor="snippet-css" aria-label="Copy CSS code">
+              <span class="icon" aria-hidden="true"></span>
+            </button>
+            <span class="tip" role="status"></span>
+          </span>
+        </header>
+        <pre><code id="snippet-css">.card {
+  container-type: inline-size;
+  display: grid;
+  gap: 1rem;
+
+  @container (width &gt; 40rem) {
+    grid-template-columns: 1fr 2fr;
+  }
+}</code></pre>
+      </div>
+    </section>
+
+    <!-- 2. Inline value -->
+    <section aria-labelledby="h-inline">
+      <h2 id="h-inline">2. Inline value</h2>
+      <p style="margin-block-end: .75rem">Install with:</p>
+
+      <div class="inline-copy">
+        <code id="install-cmd">npm install @acme/design-tokens</code>
+        <span class="copy">
+          <button type="button" class="copy-button"
+                  command="--copy" commandfor="install-cmd" aria-label="Copy install command">
+            <span class="icon" aria-hidden="true"></span>
+          </button>
+          <span class="tip" role="status"></span>
+        </span>
+      </div>
+    </section>
+
+    <!-- 3. Form field -->
+    <section aria-labelledby="h-field">
+      <h2 id="h-field">3. Read-only field</h2>
+
+      <div class="field">
+        <label for="share-url">Share link</label>
+        <div class="row">
+          <input id="share-url" type="text" readonly
+                 value="https://example.com/share/8f3k2j9d">
+          <span class="copy">
+            <button type="button" class="copy-button"
+                    command="--copy" commandfor="share-url" aria-label="Copy share link">
+              <span class="icon" aria-hidden="true"></span>
+            </button>
+            <span class="tip" role="status"></span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Selection popover -->
+    <section aria-labelledby="h-select">
+      <h2 id="h-select">4. Copy on selection</h2>
+      <p style="margin-block-end: .75rem">
+        Select any text below with a pointer and a copy button appears.
+        <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>C</kbd> still works as normal.
+      </p>
+
+      <!-- No tabindex here: script adds one only for the Escape focus move, because a permanently focusable
+           quote makes Tab skip the copy button in Firefox after a click -->
+      <blockquote id="selectable" data-selectable style="margin: 0">
+        <p>
+          Progressive enhancement means starting with HTML that works everywhere,
+          then layering on richer behavior where the platform supports it.
+          Native features like popovers, invoker commands and the async clipboard
+          let us do far more without reaching for a framework.
+        </p>
+      </blockquote>
+
+      <div id="selection-popover" popover="manual">
+        <span class="copy">
+          <button type="button" class="copy-button"
+                  command="--copy-selection" commandfor="selectable" aria-label="Copy selected text">
+            <span class="icon" aria-hidden="true"></span>
+          </button>
+          <span class="tip" role="status"></span>
+        </span>
+      </div>
+    </section>
+
+    <!-- 5. Reveal on hover or focus -->
+    <section aria-labelledby="h-reveal">
+      <h2 id="h-reveal">5. Button shown on hover or focus</h2>
+      <p style="margin-block-end: .75rem">
+        The button appears when you hover the block or Tab to it. On touch devices it is always visible.
+      </p>
+
+      <div class="code-block reveal">
+        <span class="copy">
+          <button type="button" class="copy-button"
+                  command="--copy" commandfor="snippet-js" aria-label="Copy JavaScript code">
+            <span class="icon" aria-hidden="true"></span>
+          </button>
+          <span class="tip" role="status"></span>
+        </span>
+        <pre><code id="snippet-js">const dialog = document.querySelector('dialog');
+dialog.showModal();</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const popover = document.getElementById('selection-popover');
+    const selectable = document.querySelector('[data-selectable]');
+    const FEEDBACK_MS = 1800;
+
+    let selectedText = '';
+    const timers = new WeakMap();
+    // Page-wide: VoiceOver skips a repeat of the previous message from the same region; one shared value is simplest
+    let lastMessage = '';
+
+    /* ---------- Helpers ---------- */
+
+    function getText(el) {
+      // Form controls expose their text through .value
+      if (el.matches('input, textarea')) return el.value;
+      // innerText preserves line breaks as rendered
+      return el.innerText.trim();
+    }
+
+    async function writeToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    // One element is both the visible bubble and the live region (the button's next sibling)
+    function showFeedback(button, ok) {
+      const tip = button.nextElementSibling;
+      clearTimeout(timers.get(button));
+      button.removeAttribute('data-copied');
+      button.removeAttribute('data-failed');
+      let message = ok ? 'Copied' : 'Copy failed';
+      // A repeat gets a no-break space so it differs from the last message and is announced again
+      if (message === lastMessage) message += '\u00A0';
+      lastMessage = message;
+      // The bubble is at opacity 0 as its animation restarts, so the empty frame is not visible
+      tip.textContent = '';
+      void button.offsetWidth; // restart animation
+      button.setAttribute(ok ? 'data-copied' : 'data-failed', '');
+      requestAnimationFrame(() => (tip.textContent = message));
+
+      timers.set(button, setTimeout(() => {
+        button.removeAttribute('data-copied');
+        button.removeAttribute('data-failed');
+        tip.textContent = ''; // leave no stale text for screen reader browse mode
+        if (button.closest('[popover]') === popover) releasePress();
+      }, FEEDBACK_MS));
+    }
+
+    /* ---------- The command handler ---------- */
+
+    async function handleCopy(command, button, target) {
+      const text = command === '--copy-selection' ? selectedText : getText(target);
+      if (!text) return;
+
+      showFeedback(button, await writeToClipboard(text));
+    }
+
+    if ('CommandEvent' in window) {
+      // `command` events don't bubble, so listen in the capture phase.
+      document.addEventListener('command', (event) => {
+        if (!event.command.startsWith('--copy')) return;
+        handleCopy(event.command, event.source, event.target);
+      }, true);
+    } else {
+      // Fallback for browsers without Invoker Commands
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('button[command^="--copy"]');
+        if (!button) return;
+        const target = document.getElementById(button.getAttribute('commandfor'));
+        if (target) handleCopy(button.getAttribute('command'), button, target);
+      });
+    }
+
+    /* ---------- Selection popover ---------- */
+
+    let pointerDown = false;
+
+    // The selection as a range clipped to the quote, or null if it is not inside the quote. A triple-click
+    // ends at the start of the next element, so the end node can be outside the quote even though no text
+    // outside it is selected: accept that when clipping the range removes nothing but whitespace.
+    function quoteRange(sel) {
+      if (!sel.rangeCount) return null;
+      const range = sel.getRangeAt(0);
+      if (!selectable.contains(range.startContainer)) return null;
+      if (selectable.contains(range.endContainer)) return range;
+      const clipped = range.cloneRange();
+      clipped.setEnd(selectable, selectable.childNodes.length);
+      return clipped.toString().trim() === range.toString().trim() ? clipped : null;
+    }
+
+    function updatePopover() {
+      const sel = getSelection();
+      const range = quoteRange(sel);
+      const text = range ? range.toString().trim() : '';
+
+      if (sel.isCollapsed || !text) {
+        // Don't dismiss while the user is interacting with the popover itself
+        if (!pressing && !popover.matches(':focus-within') && popover.matches(':popover-open')) {
+          popover.hidePopover();
+        }
+        return;
+      }
+
+      selectedText = text;
+
+      const rect = range.getBoundingClientRect();
+      const x = Math.min(Math.max(rect.left + rect.width / 2, 32), innerWidth - 32);
+      popover.style.setProperty('--x', `${x}px`);
+      // Below the selection on touch (clear of the OS menu and selection handles), above it otherwise
+      const y = matchMedia('(pointer: coarse)').matches
+        ? Math.min(rect.bottom + 32, innerHeight - 56)
+        : Math.max(rect.top, 48);
+      popover.style.setProperty('--y', `${y}px`);
+
+      if (!popover.matches(':popover-open')) popover.showPopover();
+    }
+
+    // Focus leaving the popover may have been the only reason it stayed open. Only ever hide here:
+    // re-running updatePopover() would re-show a popover that Escape just dismissed.
+    popover.addEventListener('focusout', () => setTimeout(() => {
+      if (getSelection().isCollapsed && !pressing && !popover.matches(':focus-within') && popover.matches(':popover-open')) {
+        popover.hidePopover();
+      }
+    }, 0));
+
+    // Keep selection when pressing the button. Safari on iPhone does not focus a tapped button and clears the
+    // selection anyway, so :focus-within is false: mark the popover as pressed until the copy feedback ends
+    let pressing = false;
+    function releasePress() {
+      pressing = false;
+      setTimeout(updatePopover, 0); // Hides only if the selection is collapsed and focus is not inside
+    }
+    popover.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      pressing = true;
+    });
+    popover.addEventListener('pointercancel', releasePress);
+
+    document.addEventListener('pointerdown', (e) => {
+      if (!popover.contains(e.target)) pointerDown = true;
+    });
+    document.addEventListener('pointerup', () => {
+      pointerDown = false;
+      setTimeout(updatePopover, 0);
+    });
+
+    let selectionTimer;
+    document.addEventListener('selectionchange', () => {
+      clearTimeout(selectionTimer);
+      if (getSelection().isCollapsed) return updatePopover();
+      if (pointerDown) return; // wait for pointerup
+      selectionTimer = setTimeout(updatePopover, 200);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && popover.matches(':popover-open')) {
+        // Hiding the popover under focus would drop focus to the page, so move it to the quote first,
+        // making it focusable only for this move
+        if (popover.contains(document.activeElement)) {
+          selectable.tabIndex = -1;
+          selectable.addEventListener('blur', () => selectable.removeAttribute('tabindex'), { once: true });
+          selectable.focus({ preventScroll: true });
+        }
+        popover.hidePopover();
+      }
+    });
+
+    addEventListener('scroll', () => {
+      if (popover.matches(':popover-open')) updatePopover();
+    }, { passive: true });
+  </script>
+</body>
+</html>
