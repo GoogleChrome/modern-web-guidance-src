@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carousel</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --surface: Canvas;
+      --ink: CanvasText;
+      --line: color-mix(in srgb, CanvasText, transparent 75%);
+      --accent: #0a5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-block-size: 100vh;
+      display: grid;
+      place-items: center;
+      font: 1rem/1.5 system-ui, sans-serif;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .carousel {
+      position: relative;
+      inline-size: min(90vw, 32rem);
+    }
+
+    .carousel-track {
+      anchor-name: --carousel-track;
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      gap: 1rem;
+      border-radius: 0.5rem;
+    }
+
+    .carousel-track > * {
+      flex: 0 0 100%;
+      scroll-snap-align: center;
+      display: grid;
+      place-items: center;
+      block-size: 12rem;
+      border-radius: 0.5rem;
+      font-size: 2rem;
+      background: color-mix(in srgb, var(--accent), var(--surface) 80%);
+      border: 1px solid var(--line);
+    }
+
+    /*
+     * Looping without clones: at or one step from the first slide, park the last slide before it
+     * (order: -1); at or one step from the last slide, park the first slide after it (order: 1). The
+     * neighbor is already in place before scrolling reaches an end, so native scroll buttons never
+     * disable. Only the first and last slides ever get `order`.
+     * Without support the carousel stays a finite list.
+     */
+    @supports (order: mod(sibling-index(), 2)) {
+      /* --current is deliberately not defined here: without JavaScript no slide is parked, so DOM order applies and the carousel starts on slide 1 */
+      .carousel-track > :first-child {
+        order: clamp(0, var(--current) - (sibling-count() - 3), 1);
+      }
+
+      .carousel-track > :last-child {
+        order: calc(-1 * clamp(0, 2 - var(--current), 1));
+      }
+    }
+
+    .carousel-track > :first-child {
+      scroll-initial-target: nearest;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .carousel-track {
+        scroll-behavior: smooth;
+      }
+
+      @supports (animation-timeline: view()) {
+        .carousel-track > * {
+          animation: fade-in linear both;
+          animation-timeline: view(inline);
+          animation-range: entry 0% cover 40%;
+        }
+
+        @keyframes fade-in {
+          from {
+            opacity: 0.3;
+          }
+
+          to {
+            opacity: 1;
+          }
+        }
+      }
+    }
+
+    @supports selector(::scroll-button(*)) and (anchor-name: --carousel-track) {
+      .carousel-track::scroll-button(inline-start) {
+        content: "‹" / "Previous slide";
+        inset-inline-start: calc(anchor(start) + 0.5rem);
+      }
+
+      .carousel-track::scroll-button(inline-end) {
+        content: "›" / "Next slide";
+        inset-inline-end: calc(anchor(end) + 0.5rem);
+      }
+
+      .carousel-track::scroll-button(*) {
+        /* Pull the buttons out of the flex flow and center them on the track */
+        position: absolute;
+        position-anchor: --carousel-track;
+        inset-block-start: anchor(center);
+        translate: 0 -50%;
+        font-size: 1.5rem;
+        line-height: 1;
+        inline-size: 2.5rem;
+        block-size: 2.5rem;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .carousel-track::scroll-button(*):disabled {
+        opacity: 0.3;
+        pointer-events: none;
+      }
+    }
+
+    @supports selector(::scroll-marker) {
+      .carousel-track {
+        scroll-marker-group: after;
+      }
+
+      ::scroll-marker-group {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        /* matches the dot height */
+        height: 0.8rem;
+        margin-block: 0.8rem;
+      }
+
+      .carousel-track > *::scroll-marker {
+        content: "" / attr(data-marker-name);
+        inline-size: 0.8rem;
+        block-size: 0.8rem;
+        border-radius: 50%;
+        background: var(--line);
+        border: none;
+        cursor: pointer;
+      }
+
+      .carousel-track > *::scroll-marker:target-current {
+        background: var(--accent);
+      }
+
+      /* Without :target-current, the settled-scroll handler marks the current slide */
+      @supports not selector(:target-current) {
+        .carousel-track > *[data-current]::scroll-marker {
+          background: var(--accent);
+        }
+      }
+    }
+
+
+    /* Overlay the buttons at the track's left and right edges, centered on the slide height */
+    .fallback-controls {
+      position: absolute;
+      inset-inline: 0.5rem;
+      inset-block-start: 0;
+      block-size: 12rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .fallback-controls button {
+      pointer-events: auto;
+      font: inherit;
+      inline-size: 2.5rem;
+      block-size: 2.5rem;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .fallback-controls button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .fallback-markers {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-block-start: 0.75rem;
+    }
+
+    /* display on the classes above would otherwise override the hidden attribute */
+    .fallback-controls[hidden],
+    .fallback-markers[hidden] {
+      display: none;
+    }
+
+    .fallback-markers button {
+      inline-size: 0.8rem;
+      block-size: 0.8rem;
+      padding: 0;
+      border-radius: 50%;
+      border: none;
+      background: var(--line);
+      cursor: pointer;
+    }
+
+    .fallback-markers button[aria-current="true"] {
+      background: var(--accent);
+    }
+
+    .carousel-track,
+    :where(.fallback-controls, .fallback-markers) button {
+      touch-action: manipulation;
+    }
+
+    :focus-visible {
+      outline: 0.2rem solid #f90;
+      outline-offset: 0.15rem;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body>
+  <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
+    <!-- Rendered only when the browser lacks native ::scroll-button() support -->
+    <div class="fallback-controls" hidden>
+      <button type="button" class="carousel-prev" data-direction="previous" aria-label="Previous slide">‹</button>
+      <button type="button" class="carousel-next" data-direction="next" aria-label="Next slide">›</button>
+    </div>
+
+    <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
+      <div role="group" aria-roledescription="slide" aria-label="1 of 4"
+        data-marker-name="Go to slide 1">Slide 1</div>
+      <div role="group" aria-roledescription="slide" aria-label="2 of 4"
+        data-marker-name="Go to slide 2">Slide 2</div>
+      <div role="group" aria-roledescription="slide" aria-label="3 of 4"
+        data-marker-name="Go to slide 3">Slide 3</div>
+      <div role="group" aria-roledescription="slide" aria-label="4 of 4"
+        data-marker-name="Go to slide 4">Slide 4</div>
+    </div>
+
+    <!-- MANDATORY: announces the current slide regardless of which control moved the carousel -->
+    <p class="visually-hidden" role="status" aria-live="polite"></p>
+
+    <!-- Rendered only when the browser lacks native ::scroll-marker support -->
+    <nav class="fallback-markers" aria-label="Slides" hidden></nav>
+  </section>
+
+  <script type="module">
+    const track = document.querySelector(".carousel-track");
+    const slides = [...track.children];
+    const status = document.querySelector('.carousel [role="status"]');
+    const controls = document.querySelector(".fallback-controls");
+    const markerNav = document.querySelector(".fallback-markers");
+    const [prevBtn, nextBtn] = controls.querySelectorAll("button");
+    const hasButtons = CSS.supports("selector(::scroll-button(*))") &&
+      CSS.supports("anchor-name: --carousel-track");
+    const hasMarkers = CSS.supports("selector(::scroll-marker)");
+    let markers = [];
+    const loops = CSS.supports("order: mod(sibling-index(), 2)");
+    let parkedFor = -1;
+
+    // Slides in visual order. `order` is 0 for every slide without looping support, so DOM order applies.
+    const visual = () => [...slides].sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order);
+    const neighbor = (item, step) => visual()[visual().indexOf(item) + step];
+
+    // Inline (x) axis only: distance from the track's center to the slide's center.
+    const offsetToCenter = (s) => {
+      const r = s.getBoundingClientRect();
+      const t = track.getBoundingClientRect();
+      return r.left + r.width / 2 - (t.left + t.width / 2);
+    };
+
+    // Scrolls the track to the slide's snap position without touching ancestor scrollers.
+    const show = (item, behavior = "auto") => {
+      if (item) track.scrollBy({ left: offsetToCenter(item), behavior });
+    };
+
+    const nearest = () => slides.reduce((a, b) => (Math.abs(offsetToCenter(b)) < Math.abs(offsetToCenter(a)) ? b : a));
+
+    // Run a callback once scrolling settles. Without scrollend, a debounce stands in for it.
+    function onSettled(fn) {
+      if ("onscrollend" in window) {
+        // A scrollend from a scroll that was cut short can arrive after the next one has started; skip it.
+        track.addEventListener("scrollend", () => {
+          const at = [track.scrollLeft, track.scrollTop].join();
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            if ([track.scrollLeft, track.scrollTop].join() === at) fn();
+          }));
+        });
+        return;
+      }
+      let timer;
+      track.addEventListener("scroll", () => {
+        clearTimeout(timer);
+        timer = setTimeout(fn, 150);
+      }, { passive: true });
+    }
+
+    // Fallback clicks made mid-scroll build on the pending target, so rapid clicks are not lost.
+    let pending = null;
+    const step = (dir) => {
+      const target = neighbor(pending ?? nearest(), dir);
+      if (!target) return;
+      pending = target;
+      show(target);
+    };
+
+    // Native scroll buttons aim from the in-flight position, so a click mid-scroll would repeat the same slide.
+    // Finish the running scroll first; presses on the buttons and markers target the track itself.
+    let lastPos = track.scrollLeft + track.scrollTop;
+    let heading = 0;
+    track.addEventListener("scroll", () => {
+      const pos = track.scrollLeft + track.scrollTop;
+      heading = Math.sign(pos - lastPos) || heading;
+      lastPos = pos;
+    }, { passive: true });
+    track.addEventListener("scrollend", () => { heading = 0; });
+    track.addEventListener("pointerdown", (e) => {
+      const current = nearest();
+      // Not aligned with a slide means a scroll is running; scroll events can lag, so derive the direction if needed.
+      if (e.target !== track || Math.abs(offsetToCenter(current)) < 1) return;
+      const dir = heading || (offsetToCenter(current) < 0 ? 1 : -1);
+      const ahead = slides.filter((s) => offsetToCenter(s) * dir >= 0);
+      ahead.sort((x, y) => Math.abs(offsetToCenter(x)) - Math.abs(offsetToCenter(y)));
+      show(ahead[0], "instant");
+      // Park the end slides now, so the native button already has a neighbor to aim at.
+      sync();
+    });
+
+    controls.hidden = hasButtons;
+    if (!hasButtons) {
+      prevBtn.addEventListener("click", () => step(-1));
+      nextBtn.addEventListener("click", () => step(1));
+    }
+    markerNav.hidden = hasMarkers;
+    if (!hasMarkers) {
+      markers = slides.map((slide, i) => {
+        const button = Object.assign(document.createElement("button"), { type: "button" });
+        button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
+        button.addEventListener("click", () => show(slide));
+        markerNav.append(button);
+        return button;
+      });
+    }
+
+    // Park an end slide beside the current one, then cancel the layout shift with an instant scroll.
+    function park(item) {
+      const before = offsetToCenter(item);
+      // Snapping off while the slides are reordered: Firefox otherwise re-snaps to another slide and loops
+      track.style.scrollSnapType = "none";
+      // Safari paints the reordered layout for a frame before the compensating scroll lands; locking overflow hides that flicker
+      track.style.overflowX = "hidden";
+      track.style.setProperty("--current", slides.indexOf(item));
+      track.scrollBy({ left: offsetToCenter(item) - before, behavior: "instant" });
+      track.style.scrollSnapType = "";
+      requestAnimationFrame(() => requestAnimationFrame(() => { track.style.overflowX = ""; }));
+      // The parked slide is a visual-only neighbor, so keep it out of keyboard and AT reach.
+      slides.forEach((s) => { s.inert = getComputedStyle(s).order !== "0"; });
+      // Safari keeps the scroll-driven fade at its old progress after the instant scroll; restart it
+      slides.forEach((s) => s.getAnimations().forEach((a) => { a.cancel(); a.play(); }));
+    }
+
+    // The single code path for state: controls only scroll; this reflects where scrolling ended.
+    function sync() {
+      pending = null;
+      const item = nearest();
+      const i = slides.indexOf(item);
+      if (loops && i !== parkedFor) {
+        parkedFor = i;
+        park(item);
+      }
+      status.textContent = `Slide ${i + 1} of ${slides.length}`;
+      slides.forEach((s, j) => s.toggleAttribute("data-current", j === i));
+      markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
+      prevBtn.disabled = !neighbor(item, -1);
+      nextBtn.disabled = !neighbor(item, 1);
+    }
+
+    onSettled(sync);
+    // Start on the first slide: with the last slide parked before it, the track must not start on that one.
+    if (loops) show(slides[0], "instant");
+    sync();
+  </script>
+</body>
+
+</html>
