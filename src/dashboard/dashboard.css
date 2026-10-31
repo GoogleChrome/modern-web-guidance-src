@@ -636,9 +636,10 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 
 .task-accordion-header {
   padding: 12px 16px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  gap: 10px 24px;
   cursor: pointer;
   background: var(--card-bg);
   color: var(--text-secondary);
@@ -657,8 +658,24 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 
 .task-accordion-header .left-section {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-inline-size: 0;
+}
+
+.task-title-row {
+  display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 6px;
+  min-inline-size: 0;
+}
+
+.task-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-inline-start: 22px;
 }
 
 .task-accordion-header h3 {
@@ -672,15 +689,24 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 .task-accordion-header .right-section {
   display: flex;
   align-items: center;
-  gap: 30px;
+  gap: 24px;
   min-inline-size: 0;
 }
-.task-accordion-header { flex-wrap: wrap; gap: 8px 16px; }
-.task-accordion-header .left-section { flex-wrap: wrap; min-inline-size: 0; }
-.task-accordion-header .right-section { flex-wrap: wrap; gap: 10px 20px; margin-inline-start: auto; }
+
+.task-outcome-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 @media (width < 48rem) {
-.task-accordion-header .right-section { flex: 1 1 100%; justify-content: space-between; margin-inline-start: 0; }
-.task-efficiency-meta { flex-wrap: wrap; }
+  .task-accordion-header {
+    grid-template-columns: 1fr;
+  }
+  .task-accordion-header .right-section {
+    justify-content: space-between;
+    padding-inline-start: 22px;
+  }
 }
 
 .task-accordion-content {
@@ -1350,8 +1376,10 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 .sort-label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
 .sort-select { font-family: var(--font-sans); font-size: 0.82rem; padding: 6px 8px; border: 1px solid var(--color-field-border); border-radius: 4px; background: var(--color-surface-container-lowest); color: var(--color-on-surface); cursor: pointer; }
 .a11y-task-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 16px; background: color-mix(in oklch, var(--color-primary) 10%, transparent); color: var(--color-primary); border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent); }
-.task-efficiency-meta { display: flex; align-items: center; gap: 8px; }
-.task-eff-chip { font-size: 0.75rem; color: var(--text-secondary); background: var(--color-surface-container-low); border: 1px solid var(--color-outline-variant); padding: 2px 8px; border-radius: 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.task-stacked-metrics { display: grid; grid-template-columns: 72px 88px; gap: 16px; align-items: center; }
+.task-metric-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-variant-numeric: tabular-nums; font-size: 0.78rem; line-height: 1.25; white-space: nowrap; }
+.task-metric-stack .metric-before { color: var(--text-secondary); }
+.task-metric-stack .metric-after { color: var(--text-primary); font-weight: 600; }
 .a11y-check-badge { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; border-radius: 16px; background: color-mix(in oklch, var(--color-primary) 12%, transparent); color: var(--color-primary); border: 1px solid color-mix(in oklch, var(--color-primary) 30%, transparent); vertical-align: middle; }
 [interestfor] { --interest-delay-start: 0.2s; interest-delay-start: var(--interest-delay-start); --interest-delay-end: 0.15s; interest-delay-end: var(--interest-delay-end); }
 :root:has(:is(:interest-source, .interest-source)) [interestfor] { --interest-delay-start: 0s; interest-delay-start: 0s; }

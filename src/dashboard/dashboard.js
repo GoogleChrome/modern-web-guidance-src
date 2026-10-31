@@ -498,22 +498,9 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
 
         let agent = 'unknown';
         let model = 'unknown';
-        let serving = 'unknown';
 
         if (data) {
             agent = data.agent || 'unknown';
-            if (data.serving !== undefined) {
-                serving = data.serving;
-            } else if (data.enableSkills !== undefined) {
-                serving = data.enableSkills ? 'skills' : 'mcp';
-            }
-            /** @type {Record<string, string>} */
-            const servingDisplayNames = {
-                'skills': 'Skills',
-                'skills_cli': 'Skills (CLI)',
-                'mcp': 'MCP'
-            };
-            serving = servingDisplayNames[serving] || serving;
             model = data.model || 'unknown';
         }
 
@@ -535,10 +522,6 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                 <div class="header-meta-item">
                     <span class="meta-value">${escapeHtml(model)}</span>
                     <span class="meta-label">Model</span>
-                </div>
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(serving)}</span>
-                    <span class="meta-label">Serving Mode</span>
                 </div>
                 ${data.totalRuntime ?
                 `<div class="header-meta-item">
@@ -1101,8 +1084,12 @@ function buildAccordion(item, testId) {
     const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}${modeParam}`;
     const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(formatTestName(scenarioName))}"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
     const a11yPillHtml = a11yCheckCount > 0 ? (a11yUplift !== null ? `<span class="a11y-task-pill"> ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp) <span class="visually-hidden">accessibility checks: unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%</span> </span>` : `<span class="a11y-task-pill"> ${a11yCheckCount} a11y </span>`) : '';
-    const metaChipsHtml = ` <div class="task-efficiency-meta"> ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average completion time, unguided to guided: </span><span aria-hidden="true">⏱</span> ${formatDuration(uRuntimeMs)} → ${formatDuration(gRuntimeMs)}</span>` : ''}
-            ${(uUncachedTokens > 0 || gUncachedTokens > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span aria-hidden="true">🪙</span> ${formatTokens(uUncachedTokens)} → ${formatTokens(gUncachedTokens)}</span>` : ''} </div> `;
+    const hasRuntime = uRuntimeMs > 0 || gRuntimeMs > 0;
+    const hasTokens = uUncachedTokens > 0 || gUncachedTokens > 0;
+    const stackedMetricsHtml = ` <div class="task-stacked-metrics">
+        ${hasRuntime ? `<div class="task-metric-stack"><span class="visually-hidden">Average completion time, unguided to guided: </span><span class="metric-before">${formatDuration(uRuntimeMs)}</span><span class="metric-after">${formatDuration(gRuntimeMs)}</span></div>` : '<div class="task-metric-stack"></div>'}
+        ${hasTokens ? `<div class="task-metric-stack"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span class="metric-before">${formatTokens(uUncachedTokens)}</span><span class="metric-after">${formatTokens(gUncachedTokens)}</span></div>` : '<div class="task-metric-stack"></div>'}
+    </div> `;
     const contentId = `${accordion.id}-content`;
     /** @type {string[]} */
     const hintPopovers = [];
@@ -1127,27 +1114,28 @@ function buildAccordion(item, testId) {
     const invalidBadgeHtml = displayUplift === null
         ? hintButton('invalid', '', 'INVALID', HINT_TEXT.invalid)
         : '';
-    accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="chevron" aria-hidden="true">▶</span>
+    const badgesHtml = [a11yPillHtml, infraBadgeHtml, buildBadgeHtml, leakBadgeHtml].filter(Boolean).join('');
+    accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <div class="task-title-row"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="chevron" aria-hidden="true">▶</span>
                         <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
                         <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
                     </button>
                 </h3>
                 ${trendLinkHtml}
-                ${a11yPillHtml}
-                ${infraBadgeHtml}
-                ${buildBadgeHtml}
-                ${leakBadgeHtml}
+            </div>
+            ${badgesHtml ? `<div class="task-badges-row">${badgesHtml}</div>` : ''}
             </div>
             <div class="right-section">
-                ${metaChipsHtml}
-                <div class="mini-dumbbell-track" aria-hidden="true">
-                    ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
-                    ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
-                    ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
-                </div>
-                ${displayUplift !== null ? `<div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}"> <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp </div>` : ` <div class="uplift-score invalid"> ${invalidBadgeHtml}
-                </div>
-                `} </div> </div> <div class="task-accordion-content" id="${contentId}" hidden="until-found"> <div class="task-accordion-body"> <div class="task-details-grid"> <div class="task-prompt-slot"><div class="expansion-loading">Loading details...</div></div> ${buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns)}
+                ${stackedMetricsHtml}
+                <div class="task-outcome-group">
+                    <div class="mini-dumbbell-track" aria-hidden="true">
+                        ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
+                        ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
+                        ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
+                    </div>
+                    ${displayUplift !== null ? `<div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}"> <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp </div>` : ` <div class="uplift-score invalid"> ${invalidBadgeHtml}
+                    </div>
+                    `}
+                </div> </div> </div> <div class="task-accordion-content" id="${contentId}" hidden="until-found"> <div class="task-accordion-body"> <div class="task-details-grid"> <div class="task-prompt-slot"><div class="expansion-loading">Loading details...</div></div> ${buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns)}
                 </div>
             </div>
         </div>
