@@ -219,6 +219,29 @@ export function getRules(root: RuleRoot | string[], ruleType?: AnyRuleConstructo
   return ruleType ? cssomGetRules(actualRoot, ruleType) : cssomGetRules(actualRoot);
 }
 
+function unwrapGlobalPseudo(css: string): string {
+  let result = css;
+  const token = ':global(';
+  let idx = result.indexOf(token);
+  while (idx !== -1) {
+    let depth = 1;
+    let i = idx + token.length;
+    while (i < result.length && depth > 0) {
+      if (result[i] === '(') depth++;
+      else if (result[i] === ')') depth--;
+      i++;
+    }
+    if (depth === 0) {
+      const inner = result.slice(idx + token.length, i - 1);
+      result = result.slice(0, idx) + inner + result.slice(i);
+      idx = result.indexOf(token, idx + inner.length);
+    } else {
+      break;
+    }
+  }
+  return result;
+}
+
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
  * and inline styles into a CSSOMNom CSSStyleSheet object.
@@ -289,7 +312,7 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
   // Preserves full AST instances (including duplicate/fallback declarations) without re-serializing.
   const sheet = parse('', { allowUnknownPseudos: true });
   for (const block of cssBlocks) {
-    const parsedBlock = parse(block, { allowUnknownPseudos: true });
+    const parsedBlock = parse(unwrapGlobalPseudo(block), { allowUnknownPseudos: true });
     for (const rule of Array.from(parsedBlock.cssRules)) {
       (rule as any)._parentStyleSheet = sheet;
       (sheet as any)._rules.push(rule);
