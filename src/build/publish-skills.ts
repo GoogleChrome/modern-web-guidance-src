@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 import { generateReleaseNotes } from './generate-release-notes.ts';
 import { rootDir } from '../core/paths.ts';
+import { embedGuideChunks } from '../rag/embed-chunks.ts';
 
 const ROOT_DIR = rootDir; // modern-web-guidance-src/
 
@@ -18,6 +19,7 @@ const GH_PUBLISH_PATTERNS = [
   '**/*',
   '!**/.cache/**',
   '!**/tfjs-model-minilm/**',
+  '!**/static-model/**',
   '!**/*.{js,mjs,ts,bin,map,gz}',
   '!**/guides.json',
   '!**/skill-version.txt',
@@ -139,8 +141,19 @@ const releaseNotes = await generateReleaseNotes({
 async function validate(newVersion: string) {
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
+  console.log(`\nVerifying that all guide chunks have cached teacher vectors...`);
+  const checkResult = await embedGuideChunks({ check: true });
+  if (checkResult.missing.length > 0) {
+    const missingGuides = [...new Set(checkResult.missing.map((c) => c.guideId))];
+    throw new Error(
+      `Publish aborted: ${checkResult.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:\n` +
+        missingGuides.map((g) => `  - ${g}`).join("\n") +
+        `\nRun 'node src/rag/embed-chunks.ts' before publishing.`
+    );
+  }
+
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const result = await buildDist({publishRoot: publishCliDir, version: newVersion});
+  const result = await buildDist({ publishRoot: publishCliDir, version: newVersion, failOnMissingVectors: true });
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }

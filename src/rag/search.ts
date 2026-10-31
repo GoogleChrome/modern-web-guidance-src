@@ -2,7 +2,7 @@ import fs, { existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import zlib from "zlib";
-import { TfjsEmbedder } from "./tfjs-embedder.ts";
+import { StaticEmbedder } from "./static-embedder.ts";
 import { logToolResult } from "./logger.ts";
 import { buildBm25Index, rankBm25, reciprocalRankFusion, type Bm25Index } from "./bm25.ts";
 
@@ -30,10 +30,18 @@ export interface UseCaseVector {
 
 export interface EmbedderLike {
   embed(text: string): Promise<number[]>;
+  countTokens?(text: string): number | Promise<number>;
 }
 
-/** Query-level cosine floor: if no chunk in the corpus reaches this similarity, `[]` is returned. */
-export const DEFAULT_MIN_SIMILARITY = 0.3;
+/**
+ * Query-level cosine floor: if dense top-1 is below this similarity AND BM25 has no matches, `[]` is returned.
+ * Calibrated empirically across all in-domain dev queries (n=979 of Wild-v2 1,000):
+ *   min: 0.6296 ("removable filter chips"), p1: 0.7223, p5: 0.7518, median: 0.8177.
+ * With min 0.6296 minus a 0.05 safety margin, 0.58 guarantees 0 empty results on all in-domain queries.
+ * On OOS queries (n=90), top-1 cosine has median 0.7676, with 97.8% (88/90) admitted at 0.58.
+ * (Full OOS rejection with static queries awaits query-side centering in a future milestone).
+ */
+export const DEFAULT_MIN_SIMILARITY = 0.58;
 
 let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 
@@ -55,7 +63,10 @@ function resolveSkillsCliDataDir(): string {
   return BUNDLE_DIR;
 }
 
-export function dotProduct(a: number[], b: number[]): number {
+export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
+  if (a.length !== b.length) {
+    throw new Error(`Vector dimension mismatch in dotProduct: ${a.length} !== ${b.length}`);
+  }
   let sum = 0;
   for (let i = 0; i < a.length; i++) {
     sum += a[i] * b[i];
@@ -73,7 +84,7 @@ function loadVectors(): UseCaseVector[] {
   const items: UseCaseVector[] = JSON.parse(jsonContent);
 
   for (const item of items) {
-    if (!item.id || !Array.isArray(item.vector) || item.vector.length === 0 || typeof item.chunkContent !== "string") {
+    if (!item.id || !Array.isArray(item.vector) || typeof item.chunkContent !== "string") {
       throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id, vector, or chunkContent`);
     }
   }
@@ -92,7 +103,7 @@ export async function searchUseCases(
   minSimilarity = DEFAULT_MIN_SIMILARITY,
   embedder?: EmbedderLike
 ): Promise<UseCaseResult[]> {
-  const actualEmbedder = embedder ?? TfjsEmbedder.getInstance();
+  const actualEmbedder = embedder ?? StaticEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
 
   if (!cachedCorpus) {
@@ -103,6 +114,7 @@ export async function searchUseCases(
   // Both query and corpus vectors are L2-normalized unit vectors, so cosine similarity is dot product
   const best = new Map<string, { item: UseCaseVector; similarity: number }>();
   for (const item of cachedCorpus.vectors) {
+    if (item.vector.length === 0) continue;
     const sim = dotProduct(queryVector, item.vector);
     const existing = best.get(item.id);
     if (!existing || sim > existing.similarity) {
@@ -125,14 +137,15 @@ export async function searchUseCases(
 
   const limitedResults = fused.slice(0, limit).map(({ id }) => {
     const r = best.get(id);
-    if (!r) throw new Error(`BM25 returned guide "${id}" that has no vectors`);
+    const item = r ? r.item : cachedCorpus!.vectors.find((v) => v.id === id)!;
+    const similarity = r ? r.similarity : 0;
     return {
-      id: r.item.id,
-      description: r.item.description,
-      category: r.item.category,
-      featuresUsed: r.item.featuresUsed.length > 0 ? r.item.featuresUsed : undefined,
-      tokenCount: r.item.tokenCount,
-      similarity: parseFloat(r.similarity.toFixed(4)),
+      id: item.id,
+      description: item.description,
+      category: item.category,
+      featuresUsed: item.featuresUsed.length > 0 ? item.featuresUsed : undefined,
+      tokenCount: item.tokenCount,
+      similarity: parseFloat(similarity.toFixed(4)),
     };
   });
 
