@@ -1,0 +1,103 @@
+diff --git a/index.html b/index.html
+index 66c9173..cb0f8b5 100644
+--- a/index.html
++++ b/index.html
+@@ -2,6 +2,7 @@
+ <html lang="en">
+ 
+ <head>
++  <meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script'; trusted-types sanitize-html;">
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+@@ -177,26 +178,73 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <div class="grid" id="seasonal-grid"></div>
+     </section>
+   </main>
+ 
++  <script>
++    // Tinyfill for browsers without Trusted Types support.
++    if (!window.trustedTypes) {
++      window.trustedTypes = {
++        createPolicy: (name, rules) => rules,
++      };
++    }
++
++    // Allowlist-based sanitizer (no third-party dependencies).
++    const ALLOWED_TAGS = new Set(['DIV', 'H3', 'P', 'A', 'STRONG', 'EM', 'SPAN', 'BR']);
++    const ALLOWED_ATTRS = { A: new Set(['href', 'class']), '*': new Set(['class']) };
++    const SAFE_URL = /^(https?:|mailto:|\/(?!\/)|#|\.{0,2}\/)/i;
++
++    function sanitizeNode(node, out, doc) {
++      for (const child of Array.from(node.childNodes)) {
++        if (child.nodeType === Node.TEXT_NODE) {
++          out.appendChild(doc.createTextNode(child.textContent));
++        } else if (child.nodeType === Node.ELEMENT_NODE) {
++          if (!ALLOWED_TAGS.has(child.tagName)) continue; // drop element and contents
++          const el = doc.createElement(child.tagName);
++          const allowed = ALLOWED_ATTRS[child.tagName] || ALLOWED_ATTRS['*'];
++          for (const attr of Array.from(child.attributes)) {
++            if (!allowed.has(attr.name)) continue;
++            if (attr.name === 'href' && !SAFE_URL.test(attr.value.trim())) continue;
++            el.setAttribute(attr.name, attr.value);
++          }
++          sanitizeNode(child, el, doc);
++          out.appendChild(el);
++        }
++      }
++    }
++
++    const sanitizePolicy = window.trustedTypes.createPolicy('sanitize-html', {
++      createHTML: (input) => {
++        // DOMParser output is inert: no scripts run and no resources load.
++        const parsed = new DOMParser().parseFromString(String(input), 'text/html');
++        const clean = document.implementation.createHTMLDocument('');
++        sanitizeNode(parsed.body, clean.body, clean);
++        return clean.body.innerHTML;
++      },
++    });
++
++    const seasonalFavoritesHTML = `
++      <div class="card">
++        <h3>Maple Oat Latte</h3>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <a href="/menu/seasonal" class="btn">View Details</a>
++      </div>
++      <div class="card">
++        <h3>Dark Roast Espresso</h3>
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++        <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++      <div class="card">
++        <h3>Cold Brew</h3>
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++        <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>`;
++
++    document.getElementById('seasonal-grid').innerHTML =
++      sanitizePolicy.createHTML(seasonalFavoritesHTML);
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
