@@ -74,15 +74,17 @@ input:required:user-valid {
 
 ### 3. JavaScript State Synchronization
 
-MANDATORY: Because `:user-invalid` is a visual state, you MUST provide a JavaScript bridge to sync `aria-invalid="true"` dynamically for assistive technologies when a user blurs an invalid field or attempts submission.
+MANDATORY: Because `:user-invalid` is a visual state, you MUST provide a JavaScript bridge to sync `aria-invalid="true"` dynamically for assistive technologies when a user blurs an invalid field or attempts submission. Check `:user-invalid` / `:user-valid` instead of raw validity so the ARIA state mirrors the browser's interaction-aware state and fields that were only tabbed through are never announced as invalid.
 
 ```javascript
 const form = document.getElementById('feedback-form');
 
 const syncAriaInvalid = (input) => {
-  if (!input.checkValidity()) {
+  // Gate on the browser's interaction-aware state (:user-invalid/:user-valid)
+  // so fields that were only tabbed through are not announced as invalid.
+  if (input.matches(':user-invalid')) {
     input.setAttribute('aria-invalid', 'true');
-  } else {
+  } else if (input.matches(':user-valid')) {
     input.removeAttribute('aria-invalid');
   }
 };
@@ -115,4 +117,3 @@ form.addEventListener('input', (e) => {
 
 1.  **Asterisks**: It is still best practice to indicate required fields visually (e.g., with an asterisk `*`) in the label, so users know what to expect *before* they interact.
 2.  **Submit Buttons**: Unlike `disabled` buttons, keep your submit button enabled. If the user clicks it, the browser will automatically trigger `:user-invalid` on all empty required fields and focus the first one. This is excellent for accessibility and UX.
-3.  **Accessibility**: {{ FEATURE("user-pseudos", "aria-invalid") }}

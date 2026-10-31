@@ -86,7 +86,7 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     }
   });
 
-  test('Clicking into a required field and clicking out (blur) WITHOUT typing MUST trigger the error state (red border)', async ({ page }) => {
+  test('Interacting with a required field (such as typing and deleting a character) and clicking out (blur) MUST trigger the error state (red border)', async ({ page }) => {
     const input = page.locator('form input[required]').first();
     const initialStyle = await getStyling(input);
     
@@ -98,6 +98,16 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     const errorStyle = await getStyling(input);
     
     expect(differs(initialStyle, errorStyle) || errorStyle.hasUserInvalid).toBe(true);
+  });
+
+  test('Tabbing through a required field without changing its value must NOT set aria-invalid', async ({ page }) => {
+    const input = page.locator('form input[required]').first();
+
+    await input.focus();
+    await input.blur();
+
+    const ariaInvalid = await input.getAttribute('aria-invalid');
+    expect(['false', null]).toContain(ariaInvalid);
   });
 
   test('Typing into the field MUST remove the error state immediately', async ({ page }) => {
