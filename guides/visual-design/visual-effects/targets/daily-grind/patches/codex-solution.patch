@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+index 66c9173..1422635 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,13 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --in-oklab: ;
++    }
++
++    @supports (background: linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++      }
+     }
+ 
+     * {
+@@ -74,9 +81,14 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      isolation: isolate;
++      min-height: 60vh;
++      background-color: #34211e;
++      background-image:
++        linear-gradient(180deg var(--in-oklab), rgb(28 15 18 / 65%), rgb(46 21 15 / 35%) 50%, rgb(25 14 17 / 80%)),
++        linear-gradient(115deg var(--in-oklab), #a34924, #87503c 45%, #263e43),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-blend-mode: normal, soft-light, normal;
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -85,12 +97,17 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
+     }
+ 
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
++      text-shadow: 0 2px 6px rgb(20 10 8 / 45%);
++    }
++
++    .hero p {
++      text-shadow: 0 1px 4px rgb(20 10 8 / 70%);
+     }
+ 
+     /* Content Sections */
+@@ -108,13 +125,66 @@
+     }
+ 
+     .card {
+-      background: white;
++      --pie-accent: #b8682b;
++      --pie-dark: #634039;
++      --pie-light: #ead7b9;
++      --accent-end: 60%;
++      --dark-end: 85%;
++      background-color: #fffdf9;
++      background-image: repeating-linear-gradient(135deg var(--in-oklab), rgb(118 78 48 / 4%) 0 1px, transparent 1px 10px);
+       padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      border: 1px solid rgb(110 76 53 / 12%);
++      border-radius: 14px;
++      box-shadow:
++        0 1px 2px rgb(63 37 24 / 6%),
++        0 4px 8px -3px rgb(63 37 24 / 10%),
++        0 12px 24px -8px rgb(63 37 24 / 14%),
++        0 24px 40px -18px rgb(63 37 24 / 16%);
+       text-align: center;
+     }
+ 
++    .card:nth-child(2) {
++      --pie-accent: #89543d;
++      --pie-dark: #3e2927;
++      --accent-end: 35%;
++      --dark-end: 90%;
++      background-image: radial-gradient(circle at 2px 2px var(--in-oklab), rgb(118 78 48 / 9%) 1px, transparent 1.5px);
++      background-size: 12px 12px;
++    }
++
++    .card:nth-child(3) {
++      --pie-accent: #527772;
++      --pie-dark: #344a48;
++      --accent-end: 50%;
++      --dark-end: 80%;
++      background-image: repeating-conic-gradient(from 45deg var(--in-oklab), rgb(67 104 98 / 4%) 0 25%, transparent 0 50%);
++      background-size: 20px 20px;
++    }
++
++    .pie {
++      width: 64px;
++      aspect-ratio: 1;
++      margin: 0 auto 16px;
++      border-radius: 50%;
++      background: conic-gradient(from -90deg var(--in-oklab),
++        var(--pie-accent) 0 var(--accent-end),
++        var(--pie-dark) 0 var(--dark-end),
++        var(--pie-light) 0 100%);
++      box-shadow: 0 2px 4px rgb(63 37 24 / 12%), 0 6px 12px -4px rgb(63 37 24 / 20%);
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -136,7 +206,11 @@
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background-color: var(--secondary);
++      background-image:
++        linear-gradient(to bottom var(--in-oklab), transparent, var(--secondary) 70%),
++        radial-gradient(circle at 2px 2px var(--in-oklab), rgb(78 52 46 / 10%) 1px, transparent 1.5px);
++      background-size: 100% 100%, 14px 14px;
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -179,21 +253,35 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <div class="pie" aria-hidden="true"></div>
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="pie" aria-hidden="true"></div>
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <div class="pie" aria-hidden="true"></div>
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <table class="visually-hidden">
++        <caption>Decorative pie indicator color proportions. These are visual accents, not drink ingredients or nutritional data.</caption>
++        <thead>
++          <tr><th scope="col">Drink</th><th scope="col">Accent color</th><th scope="col">Dark color</th><th scope="col">Cream color</th></tr>
++        </thead>
++        <tbody>
++          <tr><th scope="row">Maple Oat Latte</th><td>60%</td><td>25%</td><td>15%</td></tr>
++          <tr><th scope="row">Dark Roast Espresso</th><td>35%</td><td>55%</td><td>10%</td></tr>
++          <tr><th scope="row">Cold Brew</th><td>50%</td><td>30%</td><td>20%</td></tr>
++        </tbody>
++      </table>
+     </section>
+   </main>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..6ea870f 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --input-type=module -e \"import { mkdirSync, copyFileSync } from 'node:fs'; mkdirSync('dist', { recursive: true }); copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
