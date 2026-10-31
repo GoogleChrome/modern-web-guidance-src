@@ -1,5 +1,5 @@
 import { extractSuiteSummary } from './summary-extractor.js';
-import { parseSuiteDate, toSuiteDateString } from './utils.js';
+import { parseSuiteDateInfo } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
 export { AGENT_FAMILIES };
 /** @typedef {import('./summary-extractor.js').SuiteSummary} SuiteSummary */
@@ -54,7 +54,11 @@ function round(value, digits = 1) { const f = 10 ** digits; return Math.round(va
 /** @param {number} numerator @param {number} denominator */
 function pct(numerator, denominator) { return denominator > 0 ? round((numerator / denominator) * 100) : null; }
 /** @param {ManifestSuite} suite */
-export function getSuiteTimestamp(suite) { const date = parseSuiteDate(suite.timestamp, suite.testId || ''); return date ? toSuiteDateString(date) : ''; }
+export function getSuiteTimestamp(suite) {
+    const info = parseSuiteDateInfo(suite.timestamp, suite.testId || '');
+    if (!info) return '';
+    return info.dateOnly ? info.date.toISOString().slice(0, 10) : info.date.toISOString();
+}
 /** @param {ManifestSuite} suite */
 export function isNightlySuite(suite) { return typeof suite.testId === 'string' && suite.testId.startsWith('nightly-'); }
 /** @param {string | undefined} agent

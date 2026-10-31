@@ -1,4 +1,4 @@
-import { getAccessToken, escapeHtml, getAgentBadge, parseSuiteDate, formatSuiteDate } from './utils.js';
+import { getAccessToken, escapeHtml, getAgentBadge, formatSuiteDate } from './utils.js';
 import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 import { AGENT_FAMILIES } from './agents.js';
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
@@ -243,9 +243,8 @@ function latestDateOf(insights) { return insights.latestTimestamp || ''; }
 function shortModelName(model) { return (model || '').replace(/^(claude-|gemini-)/i, ''); }
 /** @param {string} iso */
 function formatDateShort(iso) {
-    const d = parseSuiteDate(iso);
-    if (!d) return iso;
-    return formatSuiteDate(d, { month: 'short', day: 'numeric' });
+    const formatted = formatSuiteDate(iso, { month: 'short', day: 'numeric' });
+    return formatted === '-' ? iso : formatted;
 }
 /** @param {number} v */
 function fmtCompact(v) {
@@ -272,7 +271,6 @@ function fmtPct(v) {
 }
 /** @param {string} iso */
 function formatDate(iso) {
-    const d = parseSuiteDate(iso);
-    if (!d) return iso;
-    return formatSuiteDate(d, { month: 'short', day: 'numeric', year: 'numeric' });
+    const formatted = formatSuiteDate(iso, { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatted === '-' ? iso : formatted;
 }

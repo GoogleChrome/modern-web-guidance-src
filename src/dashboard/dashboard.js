@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
@@ -49,26 +49,15 @@ let currentTaskSort = 'default';
 
 // Module-scoped state
 let dashboardLoaded = false;
+/** @type {import('./summary-extractor.js').SuiteSummary | null} */
+let currentSuiteSummary = null;
 
-const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('top', 'anchor(bottom)');
 /** @param {HTMLElement} pop */
 function positionHintFallback(pop) {
     const trigger = document.querySelector(`[interestfor="${CSS.escape(pop.id)}"]`);
     if (!trigger) return;
-    const gap = 6;
-    const edge = 8;
-    const r = trigger.getBoundingClientRect();
-    pop.style.inset = 'auto';
     for (let pass = 0; pass < 2; pass++) {
-        const w = pop.offsetWidth;
-        const h = pop.offsetHeight;
-        let top = r.bottom + gap;
-        if (top + h > window.innerHeight - edge && r.top - gap - h >= edge) top = r.top - gap - h;
-        let left = r.left;
-        if (left + w > window.innerWidth - edge) left = r.right - w;
-        left = Math.max(edge, Math.min(left, window.innerWidth - w - edge));
-        pop.style.top = `${Math.max(edge, top)}px`;
-        pop.style.left = `${left}px`;
+        placePopoverFallback(pop, trigger);
     }
 }
 if (!SUPPORTS_ANCHOR_POSITIONING) {
@@ -86,7 +75,7 @@ if (!SUPPORTS_ANCHOR_POSITIONING) {
         hintFrame = window.requestAnimationFrame(() => {
             hintFrame = 0;
             for (const pop of document.querySelectorAll('.hint-popover')) {
-                if (!(pop instanceof HTMLElement) || !isPopoverShowing(pop)) continue;
+                if (!(pop instanceof HTMLElement) || !isPopoverOpen(pop)) continue;
                 const trigger = document.querySelector(`[interestfor="${CSS.escape(pop.id)}"]`);
                 const r = trigger?.getBoundingClientRect();
                 if (!r || r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) { pop.hidePopover?.(); } else { positionHintFallback(pop); }
@@ -95,10 +84,6 @@ if (!SUPPORTS_ANCHOR_POSITIONING) {
     };
     window.addEventListener('scroll', repositionOpenHints, { capture: true, passive: true });
     window.addEventListener('resize', repositionOpenHints, { passive: true });
-}
-/** @param {HTMLElement} pop */
-function isPopoverShowing(pop) {
-    try { return pop.matches(':popover-open'); } catch { return pop.classList.contains(':popover-open'); }
 }
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API Client
@@ -225,8 +210,8 @@ async function loadDashboardData(testId) {
         }
 
         renderTestHeader(testId, jetskiVersion, timestamp, data);
-        renderSummary(data);
-        renderDashboardDumbbellChart(data);
+        const extractedSummary = renderSummary(data);
+        renderDashboardDumbbellChart(data, extractedSummary);
         void renderGrid(data, testId);
         await renderGridIdle();
         endLoadingReservations();
@@ -606,20 +591,22 @@ function renderSparkline(uRate, gRate, isSmall = false) {
 
 /**
  * @param {DashboardEvalsReport} data
+ * @returns {import('./summary-extractor.js').SuiteSummary | null}
  */
 function renderSummary(data) {
     const container = document.getElementById('summary-side-panel');
-    if (!container) return;
+    if (!container) return null;
     const summary = data.summary || {};
 
     if (!data || !data.results) {
         console.error('Problematic data object in renderSummary:', data);
         container.innerHTML = '<div style="padding: 15px; color: var(--text-secondary); font-style: italic;">No results available for summary.</div>';
-        return;
+        return null;
     }
 
     const extracted = extractSuiteSummary(currentTestID || 'suite', data);
-    if (!extracted) return;
+    currentSuiteSummary = extracted;
+    if (!extracted) return null;
     const { guidedStats, unguidedStats, a11yStats, efficiencyStats } = extracted;
     const rt = efficiencyStats.runtime;
     const tok = efficiencyStats.tokens;
@@ -813,6 +800,7 @@ function renderSummary(data) {
         const guideSection = document.getElementById('guide-section');
         guideSection?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
     });
+    return extracted;
 }
 /** @typedef {{ appName: string, guide: string, scenarioName: string, unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
 const YIELD_BUDGET_MS = 50;
@@ -1936,9 +1924,49 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 }
 
 /**
- * @param {DashboardEvalsReport} data
+ * Slices precomputed suite-wide `chartData` to the scenarios in `disciplineResults`
+ * so `renderDashboardDumbbellChart` reuses the `extractSuiteSummary` walk.
+ * @param {ReturnType<typeof calculateChartData>} chartData
+ * @param {Record<string, DashboardRunResult[]>} disciplineResults
+ * @returns {ReturnType<typeof calculateChartData>}
  */
-function renderDashboardDumbbellChart(data) {
+function sliceChartDataForDiscipline(chartData, disciplineResults) {
+    /** @type {Set<string>} */
+    const scenarios = new Set();
+    for (const key of Object.keys(disciplineResults)) {
+        const parsed = parseResultKey(key);
+        if (parsed) scenarios.add(`${parsed.task} (${parsed.guide})`);
+    }
+    /** @type {number[]} */
+    const indices = [];
+    chartData.labels.forEach((label, idx) => {
+        if (scenarios.has(label)) indices.push(idx);
+    });
+    const pick = /** @template T @param {T[]} arr */ (arr) => indices.map(i => arr[i]);
+    return {
+        labels: pick(chartData.labels),
+        guided: pick(chartData.guided),
+        unguided: pick(chartData.unguided),
+        guided_tokens: pick(chartData.guided_tokens),
+        unguided_tokens: pick(chartData.unguided_tokens),
+        guided_uncached_tokens: pick(chartData.guided_uncached_tokens),
+        unguided_uncached_tokens: pick(chartData.unguided_uncached_tokens),
+        guided_cached_pct: pick(chartData.guided_cached_pct),
+        unguided_cached_pct: pick(chartData.unguided_cached_pct),
+        guided_runtime_ms: pick(chartData.guided_runtime_ms),
+        unguided_runtime_ms: pick(chartData.unguided_runtime_ms),
+        guided_failed: pick(chartData.guided_failed),
+        unguided_failed: pick(chartData.unguided_failed),
+        guided_err_rate: pick(chartData.guided_err_rate),
+        unguided_err_rate: pick(chartData.unguided_err_rate)
+    };
+}
+
+/**
+ * @param {DashboardEvalsReport} data
+ * @param {import('./summary-extractor.js').SuiteSummary | null} [summary]
+ */
+function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
     const results = data.results;
 
 
@@ -1998,7 +2026,9 @@ function renderDashboardDumbbellChart(data) {
             unguided_failed,
             guided_err_rate,
             unguided_err_rate
-        } = calculateChartData(disciplineResults, { onlyA11y: currentMetricMode === 'a11y' });
+        } = currentMetricMode !== 'a11y' && summary?.chartData
+            ? sliceChartDataForDiscipline(summary.chartData, disciplineResults)
+            : calculateChartData(disciplineResults, { onlyA11y: currentMetricMode === 'a11y' });
 
         if (labels.length === 0) return;
 

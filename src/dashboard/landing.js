@@ -10,11 +10,13 @@ import {
     getScrollBehavior,
     SERVING_DISPLAY_NAMES,
     AGENT_DISPLAY_NAMES,
-    parseSuiteDate,
+    parseSuiteDateInfo,
     formatSuiteDate,
     getSuiteDayKey,
     isPopoverOpen,
     setPopoverOpen,
+    SUPPORTS_ANCHOR_POSITIONING,
+    placePopoverFallback,
     median,
 } from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
@@ -429,7 +431,7 @@ function renderFilterMenuItems() {
 
         const dateSpan = document.createElement('span');
         dateSpan.className = 'filter-item-date';
-        dateSpan.textContent = formatSuiteDateTime(getSuiteDate(testInfo));
+        dateSpan.textContent = formatSuiteDateTime(getSuiteDateInfo(testInfo));
 
         labelContent.append(idSpan, dateSpan);
         item.append(checkbox, labelContent);
@@ -695,11 +697,14 @@ function updateFilterOptions(groupId, key, displayNames = {}) {
 
 
 /** @param {LandingSuiteSummary} testInfo
+ * @returns {import('./utils.js').SuiteDateInfo} */
+function getSuiteDateInfo(testInfo) { return parseSuiteDateInfo(testInfo.timestamp, testInfo.testId) || { date: new Date(0), dateOnly: false }; }
+/** @param {LandingSuiteSummary} testInfo
  * @returns {Date} */
-function getSuiteDate(testInfo) { return parseSuiteDate(testInfo.timestamp, testInfo.testId) || new Date(0); }
-/** @param {Date} date */
-function formatSuiteDateTime(date) {
-    return formatSuiteDate(date, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
+function getSuiteDate(testInfo) { return getSuiteDateInfo(testInfo).date; }
+/** @param {import('./utils.js').SuiteDateInfo} dateInfo */
+function formatSuiteDateTime(dateInfo) {
+    return formatSuiteDate(dateInfo, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
 }
 
 /** @param {{ passed: number, total: number } | undefined} stats */
@@ -858,7 +863,8 @@ function renderSuites() {
     visibleKeys.forEach(compoundKey => {
         const testInfo = allTestData[compoundKey];
         const testId = testInfo.testId;
-        const date = getSuiteDate(testInfo);
+        const dateInfo = getSuiteDateInfo(testInfo);
+        const date = dateInfo.date;
 
         const gRate = rateOrNull(testInfo.guidedStats);
         const uRate = rateOrNull(testInfo.unguidedStats);
@@ -884,7 +890,7 @@ function renderSuites() {
         const scheduled = isScheduledSuite(testId);
         const { label, ldap } = formatSuiteLabel(testInfo);
         const agentDisplay = agentDisplayNames[testInfo.agent] || testInfo.agent;
-        const dateDisplay = formatSuiteDate(date, { month: 'short', day: 'numeric', year: 'numeric' });
+        const dateDisplay = formatSuiteDate(dateInfo, { month: 'short', day: 'numeric', year: 'numeric' });
         const suiteBarbellTitle = scheduled
             ? `${dateDisplay} · ${agentDisplay}`
             : `${label || testId}${testInfo.agent && testInfo.agent !== 'unknown' ? ` · ${agentDisplay}` : ''}`;
@@ -1060,7 +1066,6 @@ function formatSuiteLabel(testInfo) {
  * polyfill and the anchor-positioning polyfill can't rely on implicit anchors.
  */
 const BARBELL_ANCHOR = '--barbell-anchor';
-const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('anchor-name', '--a');
 /** @type {HTMLElement | null} */
 let activeBarbellAnchor = null;
 let barbellTooltipBound = false;
@@ -1075,17 +1080,17 @@ function setupBarbellTooltip() {
         if (!cell) return;
         tooltip.innerHTML = renderBarbellTooltipContent(cell);
         setBarbellAnchor(source);
-        if (!SUPPORTS_ANCHOR_POSITIONING && isPopoverOpen(tooltip) && activeBarbellAnchor) placePopoverFallback(tooltip, activeBarbellAnchor, 'center');
+        if (!SUPPORTS_ANCHOR_POSITIONING && isPopoverOpen(tooltip) && activeBarbellAnchor) placePopoverFallback(tooltip, activeBarbellAnchor, { align: 'center', fallbackHeight: 175 });
     });
     tooltip.addEventListener('toggle', (e) => {
-        if (/** @type {ToggleEvent} */ (e).newState === 'open') { if (!SUPPORTS_ANCHOR_POSITIONING && activeBarbellAnchor) placePopoverFallback(tooltip, activeBarbellAnchor, 'center'); } else { setBarbellAnchor(null); }
+        if (/** @type {ToggleEvent} */ (e).newState === 'open') { if (!SUPPORTS_ANCHOR_POSITIONING && activeBarbellAnchor) placePopoverFallback(tooltip, activeBarbellAnchor, { align: 'center', fallbackHeight: 175 }); } else { setBarbellAnchor(null); }
     });
 }
 function setupAnchorPositioningFallback() {
     if (SUPPORTS_ANCHOR_POSITIONING) return;
     const filterMenu = document.getElementById('filter-menu');
     const filterBtn = document.getElementById('filter-btn');
-    const placeFilterMenu = () => { if (filterMenu && filterBtn && isPopoverOpen(filterMenu)) placePopoverFallback(filterMenu, filterBtn, 'end', 8); };
+    const placeFilterMenu = () => { if (filterMenu && filterBtn && isPopoverOpen(filterMenu)) placePopoverFallback(filterMenu, filterBtn, { align: 'end', gap: 8, fallbackHeight: 175 }); };
     filterMenu?.addEventListener('beforetoggle', (e) => {
         if (/** @type {ToggleEvent} */ (e).newState === 'open') requestAnimationFrame(placeFilterMenu);
     });
@@ -1096,7 +1101,7 @@ function setupAnchorPositioningFallback() {
         if (!(hint instanceof HTMLElement) || !hint.classList.contains('hint-popover')) return;
         if (/** @type {ToggleEvent} */ (e).newState !== 'open') return;
         const trigger = document.querySelector(`[interestfor="${CSS.escape(hint.id)}"]`);
-        if (trigger) placePopoverFallback(hint, trigger, hint.id.startsWith('hint-sort-uplift-') ? 'end' : 'start');
+        if (trigger) placePopoverFallback(hint, trigger, { align: hint.id.startsWith('hint-sort-uplift-') ? 'end' : 'start', fallbackHeight: 175 });
     }, true);
     document.addEventListener('scroll', (e) => {
         if (!(e.target instanceof Node && filterMenu?.contains(e.target))) placeFilterMenu();
@@ -1125,24 +1130,6 @@ function setBarbellAnchor(trigger) {
     }
     activeBarbellAnchor = anchor;
     anchor?.style.setProperty('anchor-name', BARBELL_ANCHOR);
-}
-/** @param {HTMLElement} popover
- * @param {Element} trigger
- * @param {'center' | 'start' | 'end'} align
- * @param {number} [gap] Space between the trigger and the popover, in px. */
-function placePopoverFallback(popover, trigger, align, gap = 6) {
-    const rect = trigger.getBoundingClientRect();
-    const w = popover.offsetWidth || 290;
-    const h = popover.offsetHeight || 175;
-    const left = align === 'center' ? rect.left + (rect.width / 2) - (w / 2) : (align === 'end' ? rect.right - w : rect.left);
-    let top = rect.bottom + gap;
-    if (top + h > window.innerHeight - 8 && rect.top - h - gap >= 8) {
-        top = rect.top - h - gap;
-    }
-    popover.style.right = 'auto';
-    popover.style.bottom = 'auto';
-    popover.style.left = `${Math.max(8, Math.min(left, window.innerWidth - w - 8))}px`;
-    popover.style.top = `${Math.max(8, Math.min(top, window.innerHeight - h - 8))}px`;
 }
 
 /** @param {HTMLElement} cell
@@ -1204,7 +1191,7 @@ function getInsightKeys() {
     const showAll = showAllCheck instanceof HTMLInputElement ? showAllCheck.checked : false;
     const limit = limitInput instanceof HTMLInputElement ? (parseInt(limitInput.value) || 5) : 5;
     if (!showAll && keys.length > 0) {
-        const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDate(allTestData[k]));
+        const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDateInfo(allTestData[k]));
         const sortedDates = [...new Set(keys.map(dayOf))].sort((a, b) => a.localeCompare(b));
         const activeDates = new Set(sortedDates.slice(-limit));
         keys = keys.filter(k => activeDates.has(dayOf(k)));

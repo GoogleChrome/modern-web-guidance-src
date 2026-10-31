@@ -8,21 +8,25 @@ import { selectRecentSuites, getSuiteTimestamp } from './insights.js';
 /** @typedef {{ id: string, label: string, category: string, prompt: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 const AGENT_ORDER = AGENT_FAMILIES.map(f => f.id);
 /** @type {Record<string, string>} */
-const GUIDE_CATEGORY_MAP = {
-    'accessibility': 'accessibility', 'animate-to-from-top-layer': 'ui-behaviors', 'css': 'css',
-    'css-layout': 'css', 'dark-mode': 'visual-design', 'declarative-dialog-popover-control': 'ui-behaviors',
-    'defer-rendering-heavy-content': 'performance', 'dialog': 'ui-components',
-    'directional-navigation-transitions': 'ui-behaviors', 'faster-spa-view-transitions': 'performance',
-    'flicker-free-client-side-ab-testing': 'performance', 'forms': 'forms',
-    'highlight-text-ranges': 'ui-behaviors', 'hovercard': 'ui-components', 'html': 'html',
-    'interest-triggered-tooltips': 'ui-behaviors', 'light-dismiss-a-dialog': 'ui-behaviors',
-    'motion': 'ui-behaviors', 'move-dom-element-without-losing-state': 'ui-behaviors',
-    'optimize-image-priority': 'performance', 'optimize-preload-priority': 'performance',
-    'performance': 'performance', 'persistent-toast-notifications': 'ui-components',
-    'position-aware-tooltips': 'ui-atoms', 'prevent-page-scroll-under-modal-dialog': 'ui-behaviors',
-    'same-document-transitions': 'ui-behaviors', 'scrollspy': 'ui-components',
-    'search-hidden-content': 'ui-behaviors'
-};
+const guideCategoryMap = {};
+/** @type {Promise<void> | null} */
+let guideCategoryPromise = null;
+function ensureGuideCategoriesLoaded() {
+    if (guideCategoryPromise || typeof fetch !== 'function') return;
+    guideCategoryPromise = fetch('grouped-tasks.gen.json')
+        .then(r => (r.ok ? r.json() : null))
+        .then((/** @type {{ guides?: Record<string, Record<string, string[]>> } | null} */ data) => {
+            if (!data?.guides) return;
+            for (const [category, guides] of Object.entries(data.guides)) {
+                for (const slug of Object.keys(guides)) {
+                    guideCategoryMap[slug] = category;
+                }
+            }
+            const sel = getCurrentSelection();
+            if (sel) renderPromptBar(sel.task, sel.pair);
+        })
+        .catch(() => {});
+}
 /** @type {ShowcaseTask[]} */
 let tasks = [];
 /** @type {string} */
@@ -34,6 +38,7 @@ let taskPillsListenersBound = false;
 let agentPillsListenersBound = false;
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
 if (rootEl) {
+    ensureGuideCategoriesLoaded();
     renderPending({ loading: true });
 }
 /**
@@ -119,10 +124,11 @@ function buildTasksFromRecentSuites(suites) {
             };
         }
         if (Object.keys(agentPairs).length > 0) {
+            if (discipline && !guideCategoryMap[def.id]) guideCategoryMap[def.id] = discipline;
             result.push({
                 id: def.id,
                 label: def.label,
-                category: GUIDE_CATEGORY_MAP[def.id] || discipline || 'ui-behaviors',
+                category: guideCategoryMap[def.id] || discipline || 'ui-behaviors',
                 prompt,
                 agents: agentPairs
             });
@@ -286,7 +292,7 @@ function renderPromptBar(task, pair) {
         const rawGuides = pair.guided.guidesUsed.length ? pair.guided.guidesUsed : [task.id];
         const cleanGuides = rawGuides.map(g => g.replace(/;+$/, '')).filter(Boolean);
         const guideLinksHtml = cleanGuides.map(slug => {
-            const cat = GUIDE_CATEGORY_MAP[slug] || task.category;
+            const cat = guideCategoryMap[slug] || task.category;
             const ghHref = `https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/guides/${encodeURIComponent(cat)}/${encodeURIComponent(slug)}/guide.md`;
             return `<a class="ab-prov-link" href="${ghHref}" target="_blank" rel="noopener">${escapeHtml(slug)}</a>`;
         }).join(', ');

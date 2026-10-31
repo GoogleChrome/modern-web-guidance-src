@@ -1,4 +1,4 @@
-import { escapeHtml, formatDuration, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView } from './utils.js';
+import { escapeHtml, formatDuration, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
 /**
  * @typedef {Object} DumbbellChartOptions
  * @property {number} [size]
@@ -57,7 +57,6 @@ let touchShownHit = /** @type {Element | null} */ (null);
 if (typeof document !== 'undefined') {
   document.addEventListener('pointerdown', (e) => { if (touchShownHit && !(e.target instanceof Node && touchShownHit.contains(e.target))) touchShownHit = null; }, { capture: true, passive: true });
 }
-const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('top', 'anchor(bottom)');
 const SUPPORTS_NATIVE_INTEREST = typeof CSS !== 'undefined' && CSS.supports('selector(:interest-source)');
 /** @type {WeakMap<Element, () => { marks: Element[], hit: Element }>} */
 const hitRenderers = new WeakMap();
@@ -101,18 +100,7 @@ function moveRowAnchor(target) {
  * @param {{ marks: Element[], hit: Element }} target */
 function placeTooltipFallback(tip, target) {
   if (!isElementFullyVisible(target.hit)) { hideDumbbellTooltip(); return; }
-  const r = rowBox(target);
-  const gap = 6;
-  const edge = 8;
-  const w = tip.offsetWidth || 330;
-  const h = tip.offsetHeight || 110;
-  let top = r.bottom + gap;
-  if (top + h > window.innerHeight - edge && r.top - gap - h >= edge) top = r.top - gap - h;
-  let left = r.left;
-  if (left + w > window.innerWidth - edge) left = r.right - w;
-  left = Math.max(edge, Math.min(left, window.innerWidth - w - edge));
-  tip.style.left = `${left}px`;
-  tip.style.top = `${Math.max(edge, Math.min(top, window.innerHeight - h - edge))}px`;
+  placePopoverFallback(tip, rowBox(target), { fallbackWidth: 330, fallbackHeight: 110 });
 }
 /** @type {number} */
 let fallbackFrame = 0;

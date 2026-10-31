@@ -4,97 +4,84 @@ import { classifyScenarioCheck } from './a11y-classifier.js';
 export const SERVING_DISPLAY_NAMES = { skills: 'Skills', skills_cli: 'Skills (CLI)', mcp: 'MCP', };
 export { AGENT_DISPLAY_NAMES, getAgentBadge } from './agents.js';
 
-/**
- * Suite timestamps without an explicit offset (`YYYY-MM-DD`, `YYYY-MM-DDTHH:MM[:SS[.fff]]`)
- * are written by the harness in UTC. Capture the numeric fields so we can build the instant
- * with `Date.UTC()` instead of hand-built ISO strings, which `Date` would otherwise parse as
- * UTC (date-only) or local time (date-time) depending on the shape.
- */
-const ZONELESS_TIMESTAMP_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3})\d*)?)?)?$/;
-const TEST_ID_DATETIME_RE = /(\d{4})-(\d{2})-(\d{2})[_T](\d{2})-(\d{2})-(\d{2})/;
-const TEST_ID_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/;
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ZONELESS_RE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?$/;
+const TEST_ID_DATETIME_RE = /(\d{4}-\d{2}-\d{2})[_T](\d{2})-(\d{2})-(\d{2})/;
+const TEST_ID_DATE_RE = /(\d{4}-\d{2}-\d{2})/;
+
+/** @typedef {{ date: Date, dateOnly: boolean }} SuiteDateInfo */
 
 /**
- * Builds a UTC instant from numeric string fields; returns null for out-of-range values
- * (e.g. month 13) rather than letting `Date.UTC` silently roll them over.
- * @param {string} y @param {string} mo @param {string} d
- * @param {string} [hh] @param {string} [mi] @param {string} [ss] @param {string} [ms]
- * @returns {Date | null}
- */
-function utcDateFromParts(y, mo, d, hh = '0', mi = '0', ss = '0', ms = '0') {
-    const [Y, M, D, H, Mi, S] = [y, mo, d, hh, mi, ss].map(Number);
-    const date = new Date(Date.UTC(Y, M - 1, D, H, Mi, S, Number(ms.padEnd(3, '0'))));
-    if (Number.isNaN(date.getTime()) || date.getUTCMonth() !== M - 1 || date.getUTCDate() !== D) return null;
-    return date;
-}
-/** @type {WeakSet<Date>} */
-const DATE_ONLY_SUITE_DATES = new WeakSet();
-/** @param {string | undefined | null} timestamp
+ * Suite timestamps without an explicit offset (`YYYY-MM-DD`, `YYYY-MM-DDTHH:MM[:SS[.fff]]`)
+ * are written by the harness in UTC. Distinguish bare calendar dates (`dateOnly: true`,
+ * formatted in UTC so `"2026-10-09"` doesn't shift to `"Oct 8, 2026"` in US timezones)
+ * from timestamps with a time-of-day (`dateOnly: false`).
+ * @param {string | undefined | null} timestamp
  * @param {string} [testId='']
- * @returns {{ date: Date, dateOnly: boolean } | null} */
+ * @returns {SuiteDateInfo | null}
+ */
 export function parseSuiteDateInfo(timestamp, testId = '') {
     const rawTs = typeof timestamp === 'string' ? timestamp.trim() : '';
-    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(rawTs);
+    const isDateOnly = DATE_ONLY_RE.test(rawTs);
     const isMidnight = /T00:00:00(?:\.0+)?Z?$/i.test(rawTs);
     if ((!rawTs || isDateOnly || isMidnight) && testId) {
-        const fullMatch = testId.match(TEST_ID_DATETIME_RE);
-        if (fullMatch) {
-            const [, y, mo, d, hh, mm, ss] = fullMatch;
-            if (hh !== '00' || mm !== '00' || ss !== '00' || !rawTs || isDateOnly) {
-                const fromId = utcDateFromParts(y, mo, d, hh, mm, ss);
-                if (fromId) return { date: fromId, dateOnly: false };
-            }
+        const m = testId.match(TEST_ID_DATETIME_RE);
+        if (m && (m[2] !== '00' || m[3] !== '00' || m[4] !== '00' || !rawTs || isDateOnly)) {
+            const d = new Date(`${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`);
+            if (!Number.isNaN(d.getTime())) return { date: d, dateOnly: false };
         }
     }
     if (rawTs) {
-        const zoneless = rawTs.match(ZONELESS_TIMESTAMP_RE);
-        if (zoneless) {
-            const [, y, mo, d, hh, mi, ss, ms] = zoneless;
-            const candidate = utcDateFromParts(y, mo, d, hh, mi, ss, ms);
-            if (candidate) return { date: candidate, dateOnly: hh === undefined };
-        } else {
-            const candidate = new Date(rawTs);
-            if (!Number.isNaN(candidate.getTime())) return { date: candidate, dateOnly: false };
-        }
+        const iso = ZONELESS_RE.test(rawTs)
+            ? `${rawTs.replace(' ', 'T')}${isDateOnly ? 'T00:00:00Z' : 'Z'}`
+            : rawTs;
+        const d = new Date(iso);
+        if (!Number.isNaN(d.getTime())) return { date: d, dateOnly: isDateOnly };
     }
     if (testId) {
-        const fullMatch = testId.match(TEST_ID_DATETIME_RE);
-        const fromId = fullMatch ? utcDateFromParts(fullMatch[1], fullMatch[2], fullMatch[3], fullMatch[4], fullMatch[5], fullMatch[6]) : null;
-        if (fromId) return { date: fromId, dateOnly: false };
-        const dateMatch = testId.match(TEST_ID_DATE_RE);
-        if (dateMatch) {
-            const fallback = utcDateFromParts(dateMatch[1], dateMatch[2], dateMatch[3]);
-            if (fallback) return { date: fallback, dateOnly: true };
+        const dt = testId.match(TEST_ID_DATETIME_RE);
+        if (dt) {
+            const d = new Date(`${dt[1]}T${dt[2]}:${dt[3]}:${dt[4]}Z`);
+            if (!Number.isNaN(d.getTime())) return { date: d, dateOnly: false };
+        }
+        const dm = testId.match(TEST_ID_DATE_RE);
+        if (dm) {
+            const d = new Date(`${dm[1]}T00:00:00Z`);
+            if (!Number.isNaN(d.getTime())) return { date: d, dateOnly: true };
         }
     }
     return null;
 }
+
 /** @param {string | undefined | null} timestamp
  * @param {string} [testId='']
  * @returns {Date | null} */
 export function parseSuiteDate(timestamp, testId = '') {
-    const info = parseSuiteDateInfo(timestamp, testId);
-    if (!info) return null;
-    if (info.dateOnly) DATE_ONLY_SUITE_DATES.add(info.date);
-    return info.date;
+    return parseSuiteDateInfo(timestamp, testId)?.date ?? null;
 }
-/** @param {Date} date */
-export function isDateOnlySuiteDate(date) { return DATE_ONLY_SUITE_DATES.has(date); }
-/** @param {Date} date */
-export function toSuiteDateString(date) { return isDateOnlySuiteDate(date) ? date.toISOString().slice(0, 10) : date.toISOString(); }
+
+/** @param {SuiteDateInfo | Date | string | null | undefined} dateLike
+ * @param {string} [testId='']
+ * @returns {SuiteDateInfo | null} */
+function resolveSuiteDateInfo(dateLike, testId = '') {
+    if (dateLike instanceof Date) {
+        return Number.isNaN(dateLike.getTime()) ? null : { date: dateLike, dateOnly: false };
+    }
+    if (typeof dateLike === 'object' && dateLike !== null && dateLike.date instanceof Date) {
+        return Number.isNaN(dateLike.date.getTime()) ? null : dateLike;
+    }
+    return parseSuiteDateInfo(typeof dateLike === 'string' ? dateLike : null, testId);
+}
+
 const DEFAULT_SUITE_DATE_OPTIONS = /** @type {Intl.DateTimeFormatOptions} */ ({ dateStyle: 'medium', timeStyle: 'short' });
-/** @param {Date | string | null | undefined} dateLike
+/** @param {SuiteDateInfo | Date | string | null | undefined} dateLike
  * @param {string | Intl.DateTimeFormatOptions} [testIdOrOptions]
  * @param {string} [locale='en-US']
  * @returns {string} */
 export function formatSuiteDate(dateLike, testIdOrOptions, locale = 'en-US') {
     const testId = typeof testIdOrOptions === 'string' ? testIdOrOptions : '';
     const options = typeof testIdOrOptions === 'object' && testIdOrOptions !== null ? testIdOrOptions : DEFAULT_SUITE_DATE_OPTIONS;
-    /** @type {{ date: Date, dateOnly: boolean } | null} */
-    let info = null;
-    if (dateLike instanceof Date) {
-        info = Number.isNaN(dateLike.getTime()) ? null : { date: dateLike, dateOnly: isDateOnlySuiteDate(dateLike) };
-    } else { info = parseSuiteDateInfo(dateLike, testId); }
+    const info = resolveSuiteDateInfo(dateLike, testId);
     if (!info) return '-';
     if (info.dateOnly) {
         const { hour: _h, minute: _m, second: _s, hour12: _h12, timeStyle: _ts, ...dateOnly } = options;
@@ -102,13 +89,68 @@ export function formatSuiteDate(dateLike, testIdOrOptions, locale = 'en-US') {
     }
     return new Intl.DateTimeFormat(locale, options).format(info.date);
 }
-/** @param {Date} date */
-export function getSuiteDayKey(date) {
-    const utc = isDateOnlySuiteDate(date);
-    const y = utc ? date.getUTCFullYear() : date.getFullYear();
-    const m = (utc ? date.getUTCMonth() : date.getMonth()) + 1;
-    const d = utc ? date.getUTCDate() : date.getDate();
+/** @param {SuiteDateInfo | Date | string | null | undefined} dateLike
+ * @param {string} [testId=''] */
+export function getSuiteDayKey(dateLike, testId = '') {
+    const info = resolveSuiteDateInfo(dateLike, testId);
+    if (!info) return '';
+    const { date, dateOnly } = info;
+    const y = dateOnly ? date.getUTCFullYear() : date.getFullYear();
+    const m = (dateOnly ? date.getUTCMonth() : date.getMonth()) + 1;
+    const d = dateOnly ? date.getUTCDate() : date.getDate();
     return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+export const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('top', 'anchor(bottom)');
+
+/**
+ * Positions a fixed-positioned popover/tooltip next to an anchor element or rect when native
+ * CSS Anchor Positioning is unavailable (or for SVG triggers not handled by the CSS polyfill).
+ * @param {HTMLElement} popover
+ * @param {Element | { left: number, top: number, right: number, bottom: number, width?: number, height?: number }} anchor
+ * @param {{ align?: 'start' | 'center' | 'end', placement?: 'block' | 'inline', gap?: number, edge?: number, fallbackWidth?: number, fallbackHeight?: number }} [options]
+ */
+export function placePopoverFallback(popover, anchor, options = {}) {
+    const {
+        align = 'start',
+        placement = 'block',
+        gap = 6,
+        edge = 8,
+        fallbackWidth = 290,
+        fallbackHeight = 140
+    } = options;
+    const raw = anchor instanceof Element ? anchor.getBoundingClientRect() : anchor;
+    const width = raw.width ?? (raw.right - raw.left);
+    const height = raw.height ?? (raw.bottom - raw.top);
+    const w = popover.offsetWidth || fallbackWidth;
+    const h = popover.offsetHeight || fallbackHeight;
+    let left;
+    let top;
+    if (placement === 'inline') {
+        left = raw.right + gap;
+        top = raw.top + (height / 2) - (h / 2);
+        if (left + w > window.innerWidth - edge) {
+            left = raw.left - w - gap;
+            if (left < edge) {
+                left = raw.left + (width / 2) - (w / 2);
+                top = raw.bottom + gap + h <= window.innerHeight - edge ? raw.bottom + gap : raw.top - h - gap;
+            }
+        }
+    } else {
+        left = align === 'center'
+            ? raw.left + (width / 2) - (w / 2)
+            : (align === 'end' ? raw.right - w : raw.left);
+        if (align === 'start' && left + w > window.innerWidth - edge) {
+            left = raw.right - w;
+        }
+        top = raw.bottom + gap;
+        if (top + h > window.innerHeight - edge && raw.top - h - gap >= edge) {
+            top = raw.top - h - gap;
+        }
+    }
+    popover.style.inset = 'auto';
+    popover.style.left = `${Math.max(edge, Math.min(left, window.innerWidth - w - edge))}px`;
+    popover.style.top = `${Math.max(edge, Math.min(top, window.innerHeight - h - edge))}px`;
 }
 /** @param {HTMLElement} el */
 export function isPopoverOpen(el) {

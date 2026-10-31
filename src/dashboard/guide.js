@@ -1,4 +1,4 @@
-import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDate, formatSuiteDate, getSuiteDayKey, toSuiteDateString, setPopoverOpen, isPopoverOpen } from './utils.js';
+import { initGoogleAuth, authenticatedFetch, getAccessToken, escapeHtml, $, getScrollBehavior, isElementFullyVisible, scrollSvgLinkIntoViewOnFocus, whenElementSettlesInView, parseSuiteDateInfo, formatSuiteDate, getSuiteDayKey, setPopoverOpen, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 
 /** @type {Record<string, GuideSuiteSummary>} */
@@ -63,7 +63,11 @@ function registerSuiteSummary(summary, source) {
 
     allTestData[compoundKey] = {
         testId: summary.testId,
-        timestamp: (() => { const d = parseSuiteDate(summary.timestamp, summary.testId); return d ? toSuiteDateString(d) : summary.timestamp; })(),
+        timestamp: (() => {
+            const info = parseSuiteDateInfo(summary.timestamp, summary.testId);
+            if (!info) return summary.timestamp;
+            return info.dateOnly ? info.date.toISOString().slice(0, 10) : info.date.toISOString();
+        })(),
         source: source,
         agent: summary.agent || 'unknown',
         serving: summary.serving || 'unknown',
@@ -399,10 +403,7 @@ function renderGraphs(guideName) {
      * @param {string} timestamp
      * @returns {string}
      */
-    const getDateKey = (timestamp) => {
-        const d = parseSuiteDate(timestamp);
-        return d ? getSuiteDayKey(d) : '';
-    };
+    const getDateKey = (timestamp) => getSuiteDayKey(timestamp);
 
     // Group by date (keep latest run per day) and slice to last 50 for each combination
     Object.keys(combinations).forEach(combKey => {
@@ -428,10 +429,10 @@ function renderGraphs(guideName) {
         runs.forEach(run => {
             const dateKey = getDateKey(run.timestamp);
             if (!globalDatesMap.has(dateKey)) {
-                const runDate = parseSuiteDate(run.timestamp);
+                const shortDate = formatSuiteDate(run.timestamp, { month: 'short', day: 'numeric' });
                 globalDatesMap.set(dateKey, {
                     dateKey: dateKey,
-                    shortDate: runDate ? formatSuiteDate(runDate, { month: 'short', day: 'numeric' }) : dateKey
+                    shortDate: shortDate === '-' ? dateKey : shortDate
                 });
             }
         });
@@ -625,10 +626,8 @@ function renderGraphs(guideName) {
         if (!runData) return false;
         const stats = getStats(runData);
         if (!stats) return false;
-        const parsedDate = parseSuiteDate(runData.timestamp);
-        const formattedDate = parsedDate
-            ? formatSuiteDate(parsedDate, { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-            : String(runData.timestamp || '');
+        const formatted = formatSuiteDate(runData.timestamp, { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const formattedDate = formatted === '-' ? String(runData.timestamp || '') : formatted;
         $('#tooltip-header').innerHTML = `<div class="guide-tooltip-title"> ${escapeHtml(runData.testId)} </div>`;
 
         const gPassed = stats.guidedPassed || 0;
@@ -642,8 +641,6 @@ function renderGraphs(guideName) {
 
 /** @type {((point: Element) => boolean) | null} */
 let renderTimelineTooltip = null;
-
-const SUPPORTS_ANCHOR_POSITIONING = typeof CSS !== 'undefined' && CSS.supports('anchor-name', '--a');
 
 const timelineAnchor = document.createElement('span');
 timelineAnchor.className = 'timeline-anchor';
@@ -669,20 +666,9 @@ function moveTimelineAnchor(point) {
 /** @param {HTMLElement} tooltip
  * @param {Element} point */
 function placeGuideTooltipFallback(tooltip, point) {
-    if (!isElementFullyVisible(getTimelineMarker(point))) { hideGuideTooltip(); return; }
-    const r = getTimelineMarker(point).getBoundingClientRect();
-    const gap = 10;
-    const margin = 8;
-    const w = tooltip.offsetWidth || 300;
-    const h = tooltip.offsetHeight || 150;
-    let left = r.right + gap;
-    let top = r.top + (r.height / 2) - (h / 2);
-    if (left + w > window.innerWidth - margin) {
-        left = r.left - w - gap;
-        if (left < margin) { left = r.left + (r.width / 2) - (w / 2); top = r.bottom + gap + h <= window.innerHeight - margin ? r.bottom + gap : r.top - h - gap; }
-    }
-    tooltip.style.left = `${Math.max(margin, Math.min(left, window.innerWidth - w - margin))}px`;
-    tooltip.style.top = `${Math.max(margin, Math.min(top, window.innerHeight - h - margin))}px`;
+    const marker = getTimelineMarker(point);
+    if (!isElementFullyVisible(marker)) { hideGuideTooltip(); return; }
+    placePopoverFallback(tooltip, marker, { placement: 'inline', gap: 10, fallbackWidth: 300, fallbackHeight: 150 });
 }
 /** @type {Element | null} */
 let activeTimelinePoint = null;
