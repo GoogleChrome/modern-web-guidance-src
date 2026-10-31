@@ -5,12 +5,67 @@
 <meta name="color-scheme" content="light dark">
 <title>Accordion</title>
 <style>
+	:root {
+		font-family: system-ui;
+	}
+
 	[command="--toggle"]::before {
 		content: "+" / "";
 		margin-inline-end: 0.5ch;
 	}
+
 	[command="--toggle"][aria-expanded="true"]::before {
 		content: "−" / "";
+	}
+
+	details {
+		--accordion-border-radius: 0.5rem;
+		--accordion-margin-block: 1rem;
+		--accordion-item-trigger-padding-block: 0.5rem;
+		--accordion-item-content-padding: 1rem;
+		border: 2px solid light-dark(Black, White);
+	}
+
+	details:first-of-type {
+		margin-block-start: var(--accordion-margin-block);
+		border-start-start-radius: var(--accordion-border-radius);
+		border-start-end-radius: var(--accordion-border-radius);
+	}
+
+	details:last-of-type {
+		margin-block-end: var(--accordion-margin-block);
+		border-end-start-radius: var(--accordion-border-radius);
+		border-end-end-radius: var(--accordion-border-radius);
+	}
+
+	details + details {
+		border-block-start-width: 0;
+	}
+
+	summary {
+		border-radius: inherit;
+		padding-inline-start: var(--accordion-item-content-padding);
+		padding-block: var(--accordion-item-trigger-padding-block);
+	}
+
+	details::details-content {
+		padding-inline: var(--accordion-item-content-padding);
+	}
+
+	@supports (interpolate-size: allow-keywords) {
+		details::details-content {
+			interpolate-size: allow-keywords;
+			overflow: clip;
+			contain: layout;
+			transition:
+				block-size 0.3s ease-in-out,
+				content-visibility 0.3s ease-in-out;
+			transition-behavior: allow-discrete;
+		}
+
+		details:not(:open, [open])::details-content {
+			block-size: 0;
+		}
 	}
 </style>
 
