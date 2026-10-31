@@ -45,7 +45,7 @@
 .suites-table tbody th { position: sticky; inset-inline-start: 0; z-index: 2; padding: 8px 12px; border-bottom: 1px solid var(--border-color); background: var(--color-surface-container-lowest); text-align: left; font-weight: 600; }
 .suites-table td { padding: 8px 8px; border-bottom: 1px solid var(--border-color); text-align: center; vertical-align: middle; font-size: var(--font-md); }
 .suites-table tbody tr:last-child :is(th, td) { border-bottom: 0; }
-.suites-table.hide-serving :is(th, td):nth-child(3), .suites-table.hide-source :is(th, td):nth-child(9) { display: none; }
+.suites-table.hide-source :is(th, td):nth-child(8) { display: none; }
 .suites-table.paged-desktop tbody tr:nth-child(n + 10) { display: none; }
 .sort-btn { appearance: none; background: none; border: 0; padding: 2px 4px; margin: -2px -4px; font: inherit; color: inherit; cursor: pointer; border-radius: 4px; white-space: nowrap; }
 .sort-btn::after { content: "↕"; content: "↕" / ""; display: inline-block; inline-size: 0.6em; margin-inline-start: 4px; opacity: 0.55; }
@@ -415,10 +415,10 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .suites-table thead { display: none; }
 .suites-table tr { margin: 8px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
 .suites-table tbody th { position: static; min-width: 0; background: var(--color-surface-container-low); }
-.suites-table { --label-2: "Agent"; --label-3: "Serving"; --label-4: "Model"; --label-5: "Pass rate"; --label-6: "A11y subscore"; --label-7: "Median time"; --label-8: "Median uncached tokens"; --label-9: "Source"; }
+.suites-table { --label-2: "Agent"; --label-3: "Model"; --label-4: "Pass rate"; --label-5: "A11y subscore"; --label-6: "Median time"; --label-7: "Median uncached tokens"; --label-8: "Source"; }
 .suites-table td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; width: auto; min-inline-size: 0; text-align: right; }
 .suites-table td::before { font-weight: 600; color: var(--text-secondary); text-align: left; flex-shrink: 0; }
-.suites-table.hide-serving td:nth-child(3), .suites-table.hide-source td:nth-child(9) { display: none; }
+.suites-table.hide-source td:nth-child(8) { display: none; }
 .suites-table td.agent-cell, .suites-table td.model-cell { max-inline-size: none; text-align: right; }
 .suites-table td.metric-cell { flex-direction: column; align-items: stretch; gap: 4px; text-align: left; min-inline-size: 0; }
 .suites-table td.metric-cell::before { text-align: left; }
@@ -433,7 +433,6 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .suites-table td:nth-child(6)::before { content: var(--label-6) ": "; }
 .suites-table td:nth-child(7)::before { content: var(--label-7) ": "; }
 .suites-table td:nth-child(8)::before { content: var(--label-8) ": "; }
-.suites-table td:nth-child(9)::before { content: var(--label-9) ": "; }
 .suites-empty-row td::before { content: none; }
 .suites-table.paged tbody tr:nth-child(n + 11) { display: none; }
 }

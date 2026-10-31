@@ -1,7 +1,5 @@
 /// <reference path="./evals.d.ts" />
 import { classifyScenarioCheck } from './a11y-classifier.js';
-/** @type {Record<string, string>} */
-export const SERVING_DISPLAY_NAMES = { skills: 'Skills', skills_cli: 'Skills (CLI)', mcp: 'MCP', };
 export { AGENT_DISPLAY_NAMES, getAgentBadge } from './agents.js';
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
