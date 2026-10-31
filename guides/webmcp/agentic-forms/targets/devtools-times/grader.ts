@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import {
   test,
   expect,
@@ -6,45 +5,12 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
+  getRules,
+  CSSStyleRule,
 } from '../../../../test-fixture.ts';
 import { SyntaxKind } from 'ts-morph';
-import { parse, CSSStyleRule, CSSGroupingRule, type CSSRule, type CSSStyleSheet } from 'cssomnom';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
-
-function extractAllStyleRules(rules: CSSRule[]): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-    }
-    if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
-      result.push(...extractAllStyleRules(Array.from((rule as CSSGroupingRule).cssRules)));
-    }
-  }
-  return result;
-}
-
-function getProcessedCssStyleSheet(files: string[]): CSSStyleSheet {
-  const cssBlocks: string[] = [];
-  for (const file of files) {
-    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
-    const content = fs.readFileSync(file, 'utf8');
-    if (/\.css$/i.test(file)) {
-      cssBlocks.push(content);
-    } else if (/\.(html|htm|astro)$/i.test(file)) {
-      const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-      if (styleMatches) {
-        for (const match of styleMatches) {
-          cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
-        }
-      }
-    }
-  }
-  // Wrap emerging WebMCP pseudo-classes so CSSOM parser retains them as CSSStyleRules
-  const sanitizedCss = cssBlocks.join('\n').replace(/:tool-([a-zA-Z0-9_-]+)/g, ':is(:tool-$1)');
-  return parse(sanitizedCss);
-}
 
 test.describe('agentic-forms Target Grader', () => {
   test('The form element has both toolname and tooldescription attributes', () => {
@@ -181,14 +147,9 @@ test.describe('agentic-forms Target Grader', () => {
   });
 
   test('The :tool-form-active pseudo-class is used to provide visual feedback', () => {
-    const stylesheet = getProcessedCssStyleSheet(targetFiles);
-    const fallbackSheet = getCssStyleSheet(targetFiles);
-    const rules = [
-      ...extractAllStyleRules(Array.from(stylesheet.cssRules)),
-      ...extractAllStyleRules(Array.from(fallbackSheet.cssRules)),
-    ];
-
-    const hasToolFormActiveRule = rules.some((rule) =>
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const hasToolFormActiveRule = styleRules.some((rule) =>
       rule.selectorText?.includes(':tool-form-active') && rule.style.length > 0
     );
 
@@ -196,14 +157,9 @@ test.describe('agentic-forms Target Grader', () => {
   });
 
   test('The :tool-submit-active pseudo-class is used to provide visual feedback', () => {
-    const stylesheet = getProcessedCssStyleSheet(targetFiles);
-    const fallbackSheet = getCssStyleSheet(targetFiles);
-    const rules = [
-      ...extractAllStyleRules(Array.from(stylesheet.cssRules)),
-      ...extractAllStyleRules(Array.from(fallbackSheet.cssRules)),
-    ];
-
-    const hasToolSubmitActiveRule = rules.some((rule) =>
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
+    const hasToolSubmitActiveRule = styleRules.some((rule) =>
       rule.selectorText?.includes(':tool-submit-active') && rule.style.length > 0
     );
 

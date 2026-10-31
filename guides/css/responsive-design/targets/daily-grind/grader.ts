@@ -9,8 +9,10 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getHtmlDocuments,
+  getRules,
+  CSSStyleRule,
+  CSSContainerRule,
 } from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule, CSSContainerRule, type CSSRule } from 'cssomnom';
 
 const currentUrl = typeof __filename !== 'undefined'
   ? pathToFileURL(__filename).href
@@ -18,27 +20,13 @@ const currentUrl = typeof __filename !== 'undefined'
 
 const targetFiles: string[] = getTargetFiles(currentUrl);
 
-/**
- * Recursively flattens CSS rules, extracting nested style and at-rules from grouping rules.
- */
-function getAllCssRules(rules: Iterable<CSSRule>): CSSRule[] {
-  const result: CSSRule[] = [];
-  for (const rule of rules) {
-    result.push(rule);
-    if ('cssRules' in rule && (rule as { cssRules?: Iterable<CSSRule> }).cssRules) {
-      result.push(...getAllCssRules((rule as { cssRules: Iterable<CSSRule> }).cssRules));
-    }
-  }
-  return result;
-}
-
 test.describe('Responsive Design - daily-grind Grader', () => {
   // --- STATIC ASSERTIONS ---
 
   test('Expectation 1: Declares container context with container-type: inline-size', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
+    const allRules = getRules(stylesheet);
 
     const hasInlineSizeContainer = allRules.some(r => {
       if (r instanceof CSSStyleRule) {
@@ -55,7 +43,7 @@ test.describe('Responsive Design - daily-grind Grader', () => {
   test('Expectation 1: Implements component-level responsive layout using @container queries', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
+    const allRules = getRules(stylesheet);
 
     const hasContainerQuery = allRules.some(r => r instanceof CSSContainerRule)
       || docs.some(d => Boolean(d.document.querySelector('[class*="@sm:"], [class*="@md:"], [class*="@lg:"], [class*="@xl:"], [class*="@min-"], [class*="@max-"]')));
@@ -66,7 +54,7 @@ test.describe('Responsive Design - daily-grind Grader', () => {
   test('Expectation 2: Uses dynamic viewport units (dvh or dvw) for viewport sizing', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
+    const allRules = getRules(stylesheet);
 
     const hasDynamicViewportUnits = allRules.some(r => {
       if (r instanceof CSSStyleRule) {
@@ -86,7 +74,7 @@ test.describe('Responsive Design - daily-grind Grader', () => {
   test('Expectation 2: Replaces static vh/vw units with dynamic viewport units for full-viewport sizing', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
+    const allRules = getRules(stylesheet);
 
     const heroHasStaticViewportUnit = allRules.some(r => {
       if (r instanceof CSSStyleRule && /\bhero\b/.test(r.selectorText)) {
@@ -106,7 +94,7 @@ test.describe('Responsive Design - daily-grind Grader', () => {
   test('Expectation 3: Applies aspect-ratio to media containers or responsive media elements', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
-    const allRules = getAllCssRules(stylesheet.cssRules);
+    const allRules = getRules(stylesheet);
 
     const hasAspectRatio = allRules.some(r => {
       if (r instanceof CSSStyleRule) {

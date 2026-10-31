@@ -4,56 +4,16 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import type { CSSRule, CSSStyleSheet } from 'cssomnom';
-import {
+  getRules,
   CSSStyleRule,
   CSSMediaRule,
   CSSSupportsRule,
-  CSSGroupingRule,
-} from 'cssomnom';
+  type CSSRule,
+  type CSSStyleSheet,
+} from '../../../../../src/grading/test-fixture.ts';
 
 // @ts-ignore - import.meta.url is supported by the Playwright ESM test runner
 const targetFiles: string[] = getTargetFiles(import.meta.url);
-
-function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule) {
-      result.push(...getAllStyleRules(rule.cssRules));
-    }
-  }
-  return result;
-}
-
-function getAllMediaRules(rules: Iterable<CSSRule>): CSSMediaRule[] {
-  const result: CSSMediaRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSMediaRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule) {
-      result.push(...getAllMediaRules(rule.cssRules));
-    }
-  }
-  return result;
-}
-
-function getAllSupportsRules(rules: Iterable<CSSRule>): CSSSupportsRule[] {
-  const result: CSSSupportsRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSSupportsRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule) {
-      result.push(...getAllSupportsRules(rule.cssRules));
-    }
-  }
-  return result;
-}
 
 function getStylePropsText(rule: CSSStyleRule): string {
   const values: string[] = [];
@@ -80,7 +40,7 @@ function hasTextDecorationLine(rule: CSSStyleRule): boolean {
 test.describe('custom-text-decorations Target Grader', () => {
   test('Underlines, overlines, and strikethroughs are drawn with native text-decoration properties, not border-bottom, background gradient, or pseudo-element', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const hasNativeTextDecoration = styleRules.some((r) => hasTextDecorationLine(r));
     const hasFakeBorderBottomOnText = styleRules.some(
@@ -95,7 +55,7 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('Decoration style, color, thickness, and text-underline-offset use CSS custom properties or inheritable values', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const decoratedRules = styleRules.filter(
       (r) =>
@@ -119,7 +79,7 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('Decoration thickness and underline offset use relative units such as em so they scale with font size', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const thicknessUsesEm = styleRules.some((r) => {
       const td = r.style.getPropertyValue('text-decoration');
@@ -137,7 +97,7 @@ test.describe('custom-text-decorations Target Grader', () => {
   test('A decorated link is a real <a> with an href destination, not a javascript: URL with a script handler', () => {
     const docs = getHtmlDocuments(targetFiles);
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const links = docs.flatMap((d) =>
       Array.from(d.document.querySelectorAll('a')) as Array<{
@@ -169,7 +129,7 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('A link with a hover reveal underline trims its line with text-decoration-inset at rest, and returns the inset to 0 or full width on both :hover and :focus-visible', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const hasTrimmedAtRest = styleRules.some((r) => {
       const inset = r.style.getPropertyValue('text-decoration-inset');
@@ -217,7 +177,7 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('text-decoration-skip-ink: auto and text-decoration-skip-spaces are not declared when they would only restate the default or have no effect', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const hasDecorations = styleRules.some((r) => hasTextDecorationLine(r));
     const hasRedundantSkipInkAuto = styleRules.some(
@@ -235,7 +195,7 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('text-decoration-skip-spaces is declared only on text that preserves its spaces', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const hasDecorations = styleRules.some((r) => hasTextDecorationLine(r));
     const skipSpacesRules = styleRules.filter((r) =>
@@ -253,7 +213,7 @@ test.describe('custom-text-decorations Target Grader', () => {
   test('A draw-on custom line uses a pseudo-element with border-shape or border-block-end and transitions clip-path on both :hover and :focus-visible, not an inline SVG', () => {
     const docs = getHtmlDocuments(targetFiles);
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const hasInlineSvgInLinks = docs.some((d) =>
       Boolean(d.document.querySelector('a svg'))
@@ -305,8 +265,8 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('The draw-on line border-shape is applied inside @supports (border-shape: circle(50%)), and a straight line that still draws on is used outside it', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allStyleRules = getAllStyleRules(stylesheet.cssRules);
-    const supportsRules = getAllSupportsRules(stylesheet.cssRules);
+    const allStyleRules = getRules(stylesheet, CSSStyleRule);
+    const supportsRules = getRules(stylesheet, CSSSupportsRule);
     const topLevelStyleRules = Array.from(stylesheet.cssRules).filter(
       (r): r is CSSStyleRule => r instanceof CSSStyleRule
     );
@@ -326,7 +286,7 @@ test.describe('custom-text-decorations Target Grader', () => {
           !s.conditionText.includes('not')
       );
       const inSupports = borderShapeSupports.some((s) =>
-        getAllStyleRules(s.cssRules).some(
+        getRules(s, CSSStyleRule).some(
           (r) =>
             (r.selectorText.includes('::after') ||
               r.selectorText.includes('::before')) &&
@@ -349,7 +309,7 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('When the same polygon shape is used for border-shape and its clip-path fallback, the shape is stored in a CSS custom property rather than repeated', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const borderShapePolygons = styleRules
       .map((r) => r.style.getPropertyValue('border-shape').trim())
@@ -373,7 +333,7 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('Hover reveal and draw-on animations are gated behind prefers-reduced-motion: no-preference so lines stay fully visible when reduced motion matches', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const mediaRules = getAllMediaRules(stylesheet.cssRules);
+    const mediaRules = getRules(stylesheet, CSSMediaRule);
     const topLevelStyleRules = Array.from(stylesheet.cssRules).filter(
       (r): r is CSSStyleRule => r instanceof CSSStyleRule
     );
@@ -385,7 +345,7 @@ test.describe('custom-text-decorations Target Grader', () => {
     );
 
     const hasGuardedAnimation = noPrefMediaRules.some((m) =>
-      getAllStyleRules(m.cssRules).some((r) => {
+      getRules(m, CSSStyleRule).some((r) => {
         const trans = r.style.getPropertyValue('transition');
         return (
           trans.includes('text-decoration-inset') || trans.includes('clip-path')
@@ -404,8 +364,8 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('A gradient outline around text uses background-clip: border-area inside @supports (background-clip: border-area) with a gradient fallback outside it', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allStyleRules = getAllStyleRules(stylesheet.cssRules);
-    const supportsRules = getAllSupportsRules(stylesheet.cssRules);
+    const allStyleRules = getRules(stylesheet, CSSStyleRule);
+    const supportsRules = getRules(stylesheet, CSSSupportsRule);
 
     const borderAreaRules = allStyleRules.filter(
       (r) =>
@@ -422,7 +382,7 @@ test.describe('custom-text-decorations Target Grader', () => {
             !s.conditionText.includes('not')
         )
         .some((s) =>
-          getAllStyleRules(s.cssRules).some(
+          getRules(s, CSSStyleRule).some(
             (r) =>
               r.style.getPropertyValue('background-clip').trim() ===
               'border-area'
@@ -437,8 +397,8 @@ test.describe('custom-text-decorations Target Grader', () => {
 
   test('A text outline shaped by border-shape applies border-shape inside @supports (border-shape: circle(50%))', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allStyleRules = getAllStyleRules(stylesheet.cssRules);
-    const supportsRules = getAllSupportsRules(stylesheet.cssRules);
+    const allStyleRules = getRules(stylesheet, CSSStyleRule);
+    const supportsRules = getRules(stylesheet, CSSSupportsRule);
 
     const borderShapeRules = allStyleRules.filter((r) =>
       Boolean(r.style.getPropertyValue('border-shape'))
@@ -459,7 +419,7 @@ test.describe('custom-text-decorations Target Grader', () => {
             !s.conditionText.includes('not')
         )
         .some((s) =>
-          getAllStyleRules(s.cssRules).some((r) =>
+          getRules(s, CSSStyleRule).some((r) =>
             Boolean(r.style.getPropertyValue('border-shape'))
           )
         );

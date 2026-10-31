@@ -5,28 +5,17 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
+  getRules,
+  CSSStyleRule,
+  type CSSStyleSheet,
 } from '../../../../../src/grading/test-fixture.ts';
 import { Node, SyntaxKind, type Project } from 'ts-morph';
-import { CSSStyleRule, CSSGroupingRule, type CSSRule, type CSSStyleSheet } from 'cssomnom';
 
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 
 const currentFileUrl = typeof __filename !== 'undefined' ? pathToFileURL(__filename).href : pathToFileURL(path.resolve('grader.ts')).href;
 const targetFiles: string[] = getTargetFiles(currentFileUrl);
-
-function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule && rule.cssRules) {
-      result.push(...collectStyleRules(rule.cssRules));
-    }
-  }
-  return result;
-}
 
 function getAllDialogs(docs: Array<{ file: string; document: any }>): any[] {
   return docs.flatMap((d) => Array.from(d.document.querySelectorAll('dialog')));
@@ -532,7 +521,7 @@ test.describe('dialog Target Grader', () => {
 
   test('While a modal dialog is open, scrolling over its backdrop or inside it does not scroll the page behind it', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const dialogRules = styleRules.filter((r) =>
       (r.selectorText || '')

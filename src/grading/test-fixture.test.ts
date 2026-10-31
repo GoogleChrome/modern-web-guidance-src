@@ -4,8 +4,22 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { getCssStyleSheet, getHtmlDocuments, getJsProject } from './test-fixture.ts';
-import { CSSContainerRule, CSSPropertyRule, CSSStyleRule } from 'cssomnom';
+import {
+  getCssStyleSheet,
+  getHtmlDocuments,
+  getJsProject,
+  getRules,
+  closestRule,
+  resolveSelector,
+  parseSelectorAST,
+  getDeclaredProperties,
+  getPropertyValues,
+  CSSContainerRule,
+  CSSPropertyRule,
+  CSSStyleRule,
+  CSSMediaRule,
+  CSSPositionTryRule,
+} from './test-fixture.ts';
 import { SyntaxKind } from 'ts-morph';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -390,6 +404,73 @@ const isComplete = value < 100;
       assert.ok(funcNames.includes('setSecurityHeaders'));
       assert.ok(funcNames.includes('inlineHelper'));
       assert.ok(!funcNames.includes('testHarnessOnly'));
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('re-exports cssomnom helpers and operates on stylesheets with nesting and @position-try', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-helpers-test-'));
+    try {
+      const cssFile = path.join(tempDir, 'sample.css');
+      fs.writeFileSync(
+        cssFile,
+        `
+        @media (min-width: 768px) {
+          .card {
+            grid-template-rows: auto;
+            grid-template-rows: subgrid;
+            width: 250px;
+            & > .title {
+              color: blue;
+            }
+          }
+        }
+        @position-try --below {
+          inset-area: block-end;
+        }
+        `,
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([cssFile]);
+      const allRules = getRules(stylesheet);
+      assert.ok(allRules.length >= 3);
+
+      const styleRules = getRules(stylesheet, CSSStyleRule);
+      assert.strictEqual(styleRules.length, 2);
+
+      const cardRule = styleRules.find(r => r.selectorText === '.card');
+      assert.ok(cardRule);
+
+      // closestRule
+      const enclosingMedia = closestRule(cardRule, CSSMediaRule);
+      assert.ok(enclosingMedia);
+      assert.strictEqual(enclosingMedia.conditionText, '(min-width: 768px)');
+
+      // resolveSelector & parseSelectorAST
+      const titleRule = styleRules.find(r => r.selectorText === '& > .title');
+      assert.ok(titleRule);
+      assert.strictEqual(resolveSelector(titleRule), ':is(.card) > .title');
+      const ast = parseSelectorAST(titleRule);
+      assert.strictEqual(ast?.type, 'selector-list');
+
+      // getPropertyValues with multiple declarations and logical/physical mapping
+      const rowValues = getPropertyValues(cardRule, 'grid-template-rows');
+      assert.deepStrictEqual(rowValues, ['auto', 'subgrid']);
+      const inlineSizeValues = getPropertyValues(cardRule, 'inline-size');
+      assert.deepStrictEqual(inlineSizeValues, ['250px']);
+
+      // getDeclaredProperties
+      const declProps = getDeclaredProperties(stylesheet);
+      assert.ok(declProps.has('grid-template-rows'));
+      assert.ok(declProps.has('width'));
+      assert.ok(declProps.has('color'));
+
+      // CSSPositionTryRule
+      const tryRules = getRules(stylesheet, CSSPositionTryRule);
+      assert.strictEqual(tryRules.length, 1);
+      assert.strictEqual(tryRules[0].name, '--below');
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

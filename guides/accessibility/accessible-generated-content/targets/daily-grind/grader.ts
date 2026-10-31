@@ -4,8 +4,10 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getHtmlDocuments,
+  getRules,
+  CSSStyleRule,
+  type CSSStyleSheet,
 } from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule, type CSSStyleSheet, type CSSRule } from 'cssomnom';
 
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -28,19 +30,6 @@ interface PseudoElementWithAlt {
 }
 
 const PSEUDO_ELEMENT_REGEX = /(::|:)(before|after)\b/i;
-
-function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const styleRules: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      styleRules.push(rule);
-    }
-    if ('cssRules' in rule && (rule as any).cssRules) {
-      styleRules.push(...getAllStyleRules((rule as any).cssRules));
-    }
-  }
-  return styleRules;
-}
 
 function parseContentValue(contentValue: string): ParsedContent {
   const trimmed = contentValue.trim();
@@ -99,7 +88,7 @@ function getHostSelectors(selectorText: string): string[] {
 }
 
 function getPseudoElementRulesWithAlt(sheet: CSSStyleSheet): PseudoElementWithAlt[] {
-  const allRules = getAllStyleRules(sheet.cssRules);
+  const allRules = getRules(sheet, CSSStyleRule);
   const results: PseudoElementWithAlt[] = [];
 
   for (const rule of allRules) {

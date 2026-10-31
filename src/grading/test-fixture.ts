@@ -4,13 +4,88 @@ import * as fs from 'fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'url';
 import type { Project } from 'ts-morph';
-import type { CSSStyleSheet } from 'cssomnom';
+import {
+  parse,
+  getRules,
+  closestRule,
+  resolveSelector,
+  parseSelectorAST,
+  getDeclaredProperties,
+  getPropertyValues,
+  getCascadedStyle,
+  CSSStyleSheet,
+  CSSStyleDeclaration,
+  CSSStyleRule,
+  CSSMediaRule,
+  CSSSupportsRule,
+  CSSContainerRule,
+  CSSKeyframesRule,
+  CSSKeyframeRule,
+  CSSPositionTryRule,
+  CSSPositionTryDescriptors,
+  CSSViewTransitionRule,
+  CSSStartingStyleRule,
+  CSSLayerBlockRule,
+  CSSLayerStatementRule,
+  CSSFontFeatureValuesRule,
+  CSSFontFaceRule,
+  CSSPageRule,
+  CSSPropertyRule,
+  CSSAtRule,
+  CSSNamespaceRule,
+  CSSScopeRule,
+  CSSNestedDeclarations,
+  CSSGroupingRule,
+  CSSRule,
+  type RuleRoot,
+  type AnyRuleConstructor,
+  type DeclaredPropertiesOptions,
+  type PropertyValueOptions,
+} from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
 import { startTargetServer } from './target-server.ts';
 
 const require = createRequire(import.meta.url);
 
 export { expect } from '@playwright/test';
+export {
+  parse,
+  getRules,
+  closestRule,
+  resolveSelector,
+  parseSelectorAST,
+  getDeclaredProperties,
+  getPropertyValues,
+  getCascadedStyle,
+  CSSStyleSheet,
+  CSSStyleDeclaration,
+  CSSStyleRule,
+  CSSMediaRule,
+  CSSSupportsRule,
+  CSSContainerRule,
+  CSSKeyframesRule,
+  CSSKeyframeRule,
+  CSSPositionTryRule,
+  CSSPositionTryDescriptors,
+  CSSViewTransitionRule,
+  CSSStartingStyleRule,
+  CSSLayerBlockRule,
+  CSSLayerStatementRule,
+  CSSFontFeatureValuesRule,
+  CSSFontFaceRule,
+  CSSPageRule,
+  CSSPropertyRule,
+  CSSAtRule,
+  CSSNamespaceRule,
+  CSSScopeRule,
+  CSSNestedDeclarations,
+  CSSGroupingRule,
+  CSSRule,
+  type RuleRoot,
+  type AnyRuleConstructor,
+  type DeclaredPropertiesOptions,
+  type PropertyValueOptions,
+};
 
 export function skipUnless(conditions: { unsupported: string }): void {
   const current = (process.env.BASELINE_TARGET || 'widely').trim().toLowerCase();
@@ -171,29 +246,6 @@ function parseHtmlDocument(file: string, content: string): any {
   return document;
 }
 
-function unwrapGlobalPseudo(css: string): string {
-  let result = css;
-  const token = ':global(';
-  let idx = result.indexOf(token);
-  while (idx !== -1) {
-    let depth = 1;
-    let i = idx + token.length;
-    while (i < result.length && depth > 0) {
-      if (result[i] === '(') depth++;
-      else if (result[i] === ')') depth--;
-      i++;
-    }
-    if (depth === 0) {
-      const inner = result.slice(idx + token.length, i - 1);
-      result = result.slice(0, idx) + inner + result.slice(i);
-      idx = result.indexOf(token, idx + inner.length);
-    } else {
-      break;
-    }
-  }
-  return result;
-}
-
 
 /**
  * Parses all CSS across standalone stylesheets (.css), HTML/Astro <style> tags,
@@ -257,10 +309,16 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
   }
   // Parse each block in isolation so CSS EOF error recovery closes any unterminated
   // block, string, url(, or comment at its own boundary instead of swallowing later blocks.
-  const isolatedRules = cssBlocks.flatMap((block) =>
-    Array.from(parse(unwrapGlobalPseudo(block)).cssRules, (rule) => rule.cssText)
-  );
-  return parse(isolatedRules.join('\n'));
+  // Preserves full AST instances (including duplicate/fallback declarations) without re-serializing.
+  const sheet = parse('', { allowUnknownPseudos: true });
+  for (const block of cssBlocks) {
+    const parsedBlock = parse(block, { allowUnknownPseudos: true });
+    for (const rule of Array.from(parsedBlock.cssRules)) {
+      (rule as any)._parentStyleSheet = sheet;
+      (sheet as any)._rules.push(rule);
+    }
+  }
+  return sheet;
 }
 
 export function populateJsProject(project: Project, files: string[]): void {

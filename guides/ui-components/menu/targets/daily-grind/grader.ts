@@ -5,39 +5,18 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import {
+  getRules,
   CSSStyleRule,
   CSSMediaRule,
   CSSSupportsRule,
   CSSStartingStyleRule,
-  CSSAtRule,
-  type CSSRule,
-  type CSSStyleSheet,
-} from 'cssomnom';
+  CSSPositionTryRule,
+} from '../../../../../src/grading/test-fixture.ts';
 import { SyntaxKind } from 'ts-morph';
 import type { Page } from '@playwright/test';
 
 // @ts-ignore - import.meta.url is supported at runtime by Playwright's ESM loader
 const targetFiles: string[] = getTargetFiles(import.meta.url);
-
-function collectAllCssRules(rules: Iterable<CSSRule>): CSSRule[] {
-  const result: CSSRule[] = [];
-  for (const rule of rules) {
-    result.push(rule);
-    if ('cssRules' in rule && rule.cssRules) {
-      result.push(...collectAllCssRules(rule.cssRules as Iterable<CSSRule>));
-    }
-    if ('childRules' in rule && Array.isArray((rule as CSSAtRule).childRules)) {
-      result.push(...collectAllCssRules((rule as CSSAtRule).childRules!));
-    }
-  }
-  return result;
-}
-
-function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  return collectAllCssRules(rules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-}
 
 interface MenuDiscovery {
   isMenubar: boolean;
@@ -187,9 +166,8 @@ test.describe('menu Target Grader', () => {
   // --- STATIC ASSERTIONS (FAST) ---
 
   test('Static CSS: Anchor positioning positions top-level menus below trigger and submenus beside trigger with --below fallback', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(stylesheet.cssRules);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const hasTopLevelPositionArea = styleRules.some((r) =>
       r.style.getPropertyValue('position-area').includes('block-end')
@@ -199,18 +177,16 @@ test.describe('menu Target Grader', () => {
         r.style.getPropertyValue('position-area').includes('inline-end') &&
         r.style.getPropertyValue('position-try-fallbacks').includes('--below')
     );
-    const hasPositionTryBelow = allRules.some(
-      (r) =>
-        (r instanceof CSSAtRule && r.name === 'position-try' && r.cssText.includes('--below')) ||
-        r.cssText.includes('@position-try --below')
-    );
+    const hasPositionTryBelow =
+      getRules(stylesheet, CSSPositionTryRule).some((r) => r.name === '--below') ||
+      getRules(stylesheet).some((r) => r.cssText.includes('@position-try --below') || r.cssText.includes('--below'));
 
     expect(hasTopLevelPositionArea && hasSubmenuPositionArea && hasPositionTryBelow).toBe(true);
   });
 
   test('Static CSS: Checked items render a non-empty ::before content and base ::before reserves a fixed-size leading slot without subgrid', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const hasBaseLeadingSlot = styleRules.some(
       (r) =>
@@ -236,8 +212,8 @@ test.describe('menu Target Grader', () => {
   });
 
   test('Static CSS: Trailing hint content is pushed to inline end via margin-inline-start: auto', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
 
     const hasTrailingEndAlignment = styleRules.some(
       (r) =>
@@ -253,16 +229,14 @@ test.describe('menu Target Grader', () => {
   });
 
   test('Static CSS: Open and close animations are gated by prefers-reduced-motion: no-preference, under 150ms, and use opacity and translate', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(stylesheet.cssRules);
-    const mediaRules = allRules.filter(
-      (r): r is CSSMediaRule =>
-        r instanceof CSSMediaRule && r.conditionText.includes('prefers-reduced-motion') && r.conditionText.includes('no-preference')
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const mediaRules = getRules(stylesheet, CSSMediaRule).filter(
+      (r) => r.conditionText.includes('prefers-reduced-motion') && r.conditionText.includes('no-preference')
     );
 
     const hasValidAnimation = mediaRules.some((media) => {
-      const innerStyles = collectStyleRules(media.cssRules);
-      const innerAll = collectAllCssRules(media.cssRules);
+      const innerStyles = getRules(media, CSSStyleRule);
+      const innerAll = getRules(media);
       const hasStartingStyle = innerAll.some(
         (r) => r instanceof CSSStartingStyleRule || r.cssText.includes('@starting-style')
       );
@@ -277,8 +251,8 @@ test.describe('menu Target Grader', () => {
   });
 
   test('Static CSS & JS: Safe triangle bridge uses data-bridge with clip-path and pointer coordinate custom properties', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(stylesheet.cssRules);
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const allRules = getRules(stylesheet);
     const project = getJsProject(targetFiles);
 
     const hasBridgeCss = allRules.some(
@@ -315,8 +289,8 @@ test.describe('menu Target Grader', () => {
 
     const docs = getHtmlDocuments(targetFiles);
     const stylesheet = getCssStyleSheet(targetFiles);
-    const hasSupportsRule = collectAllCssRules(stylesheet.cssRules).some(
-      (r) => r instanceof CSSSupportsRule && r.conditionText.includes('position-area')
+    const hasSupportsRule = getRules(stylesheet, CSSSupportsRule).some(
+      (r) => r.conditionText.includes('position-area')
     );
 
     expect(

@@ -12,34 +12,19 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import {
+  getRules,
   getCascadedStyle,
   CSSStyleRule,
-  CSSGroupingRule,
-  type CSSRule,
   type CSSStyleSheet,
-} from 'cssomnom';
+} from '../../../../../src/grading/test-fixture.ts';
 import type { Document } from 'linkedom';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function getAllStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const styleRules: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      styleRules.push(rule);
-    } else if (rule instanceof CSSGroupingRule) {
-      styleRules.push(...getAllStyleRules(rule.cssRules));
-    }
-  }
-  return styleRules;
-}
-
 test.describe('typography Target Grader', () => {
   test('Fluid typography uses clamp() combining rem and vw or cqi units', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = getAllStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(stylesheet, CSSStyleRule);
     const hasFluidClamp = styleRules.some((rule) => {
       const fontSize = rule.style.getPropertyValue('font-size');
       return (
