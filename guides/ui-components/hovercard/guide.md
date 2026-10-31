@@ -65,7 +65,7 @@ Position the hovercard relative to its trigger using **CSS Anchor Positioning**.
 
 {{ FEATURE("interest-invokers", "timing") }}
 
-Use `@starting-style` to define the entry animation and `transition-behavior: allow-discrete` (along with `display` and `overlay`) to animate the exit from the top layer, gating the transitions behind `@media (prefers-reduced-motion: no-preference)`.
+Use `@starting-style` to define the entry animation and `transition-behavior: allow-discrete` (along with `display` and `overlay`) to animate the exit from the top layer, gating the transitions behind `@media (prefers-reduced-motion: no-preference)`. Declare `transition-behavior: allow-discrete` as a separate property after `transition` rather than inside the `transition` shorthand so older browsers do not ignore the entire `transition` declaration.
 
 ```css
 [popover].hovercard {
@@ -89,11 +89,11 @@ Use `@starting-style` to define the entry animation and `transition-behavior: al
 @media (prefers-reduced-motion: no-preference) {
   [popover].hovercard {
     transition:
-      opacity,
-      transform,
-      display,
-      overlay;
-    transition-duration: 0.4s;
+      opacity 0.4s,
+      transform 0.4s,
+      display 0.4s,
+      overlay 0.4s;
+    /* Place after the transition shorthand so the shorthand does not reset it */
     transition-behavior: allow-discrete;
   }
 }

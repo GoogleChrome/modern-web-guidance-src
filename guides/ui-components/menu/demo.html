@@ -131,7 +131,8 @@
       [popover] {
         opacity: 0;
         translate: 0 -.25rem;
-        transition: opacity .15s ease, translate .15s ease, display .15s allow-discrete, overlay .15s allow-discrete;
+        transition: opacity .15s ease, translate .15s ease, display .15s, overlay .15s;
+        transition-behavior: allow-discrete;
       }
 
       /* Opening: faster. @starting-style is required: a closed popover is display: none, and

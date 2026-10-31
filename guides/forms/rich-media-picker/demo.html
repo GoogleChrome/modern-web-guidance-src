@@ -203,10 +203,11 @@
     /* Animations for popover */
     select.custom-select::picker(select) {
       transition:
-        display allow-discrete 0.3s,
-        overlay allow-discrete 0.3s,
+        display 0.3s,
+        overlay 0.3s,
         opacity 0.3s ease,
         transform 0.3s ease;
+      transition-behavior: allow-discrete;
       opacity: 0;
       transform: translateY(-8px);
     }

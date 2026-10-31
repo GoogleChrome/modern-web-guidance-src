@@ -17,7 +17,7 @@ To implement an animated select picker:
 
 1. **Opt-in to customization:** Apply `appearance: base-select` to both the `<select>` element and the `::picker(select)` pseudo-element.
 2. **Enable auto-sizing transitions (Optional):** Define `interpolate-size: allow-keywords` (usually on `:root`) to allow the browser to transition between discrete metric values like `height: auto` and `height: 0`.
-3. **Animate the top-layer container:** Apply standard entry/exit styles to `::picker(select)`. To make sure the opacity transition works when moving between `display: none` and `display: block`, you must use `transition-behavior: allow-discrete` (often written inline as `transition: display 0.3s allow-discrete`).
+3. **Animate the top-layer container:** Apply standard entry/exit styles to `::picker(select)`. Include `display` and `overlay` in the `transition` property and set `transition-behavior: allow-discrete` so the picker stays rendered in the top layer when transitioning between `display: none` and `display: block`.
 4. **Hook into the opening state with `@starting-style`:** Use `@starting-style` to define the baseline styles the browser should compute *before* the transition begins. For example, if you want it to fade in, set the opacity to `0` inside the `@starting-style` block.
 5. **Rotate the icon:** Use pseudo-element focus or active selectors like `:open::picker-icon` to apply transitions (such as rotation or translation) to the arrow indicator.
 
@@ -106,12 +106,13 @@ The following example demonstrates a custom select styled with standard page ani
   width: anchor-size(width);
   overflow: hidden;
 
-  /* The crucial transition setting for popover animations */
+  /* MANDATORY: Use transition-behavior: allow-discrete for display and overlay transitions */
   transition:
-    display 0.4s allow-discrete,
-    overlay 0.4s allow-discrete,
+    display 0.4s,
+    overlay 0.4s,
     opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1),
     height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-behavior: allow-discrete;
   opacity: 0;
   height: 0;
 }
@@ -156,6 +157,7 @@ The following example demonstrates a custom select styled with standard page ani
 ## Strategic Implementation & Best Practices
 
 - **DO** use `@starting-style` when you need animations to trigger exactly when an element transitions from `display: none` to visible.
+- **DO NOT** use `allow-discrete` in the `transition` shorthand — it will make older browsers ignore the entire `transition` declaration. Except in use cases where that is desirable, use a separate `transition-behavior: allow-discrete` declaration.
 - **DO NOT** use ad-hoc scroll locking. Top-layer elements managed by ‘base-select’ should allow natural backdrop dismiss behaviors.
 - **DO** verify reduced motion preferences. Always wrap animation constraints in a `prefers-reduced-motion` media query to ensure accessible environments for those affected by motion sickness.
 {{ FEATURE("customizable-select", "usage") }}

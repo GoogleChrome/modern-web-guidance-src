@@ -122,7 +122,8 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
   [popover] {
     opacity: 0;
     translate: 0 -.25rem;
-    transition: opacity .15s, translate .15s, display .15s allow-discrete, overlay .15s allow-discrete;
+    transition: opacity .15s, translate .15s, display .15s, overlay .15s;
+    transition-behavior: allow-discrete;
   }
   /* Opening: faster. */
   [popover]:popover-open {
@@ -138,7 +139,7 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
 }
 ```
 
-`@starting-style` is not a repeat of `[popover]`: a closed popover is `display: none`, and transitions do not run from an unrendered state, so it supplies the before-values for the open. Without it the open snaps and only the close animates. `display` and `overlay` with `allow-discrete` keep the popover rendered and in the top layer until the close transition ends.
+`@starting-style` is not a repeat of `[popover]`: a closed popover is `display: none`, and transitions do not run from an unrendered state, so it supplies the before-values for the open. Without it the open snaps and only the close animates. `display` and `overlay` with `transition-behavior: allow-discrete` (set as a separate declaration after `transition` so older browsers do not ignore the entire `transition` declaration) keep the popover rendered and in the top layer until the close transition ends.
 
 ## Keyboard and focus
 

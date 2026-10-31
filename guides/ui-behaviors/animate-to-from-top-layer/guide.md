@@ -18,7 +18,7 @@ Elements that render in the "top layer" (like `<dialog>`, elements with the `pop
 
 ### 1. Enable Discrete Transitions
 
-To animate the `display` property, you must set `transition-behavior: allow-discrete`. This allows the element to remain visible during its exit transition. If using transition shorthands, be sure to place the `transition-behavior: allow-discrete` afterwards to prevent the shorthand from negating it.
+To animate the `display` property, you must set `transition-behavior: allow-discrete`. This allows the element to remain visible during its exit transition. If using the `transition` shorthand, place `transition-behavior: allow-discrete` afterward so the shorthand does not reset it.
 
 ### 2. The `overlay` Property
 
@@ -58,8 +58,9 @@ dialog,
   transition-property: opacity, transform, display, overlay;
   transition-duration: 0.3s;
   transition-timing-function: ease-out;
-  /* Applies to discrete properties like display and overlay */
-  transition-behavior: allow-discrete; /* Note: be sure to write this after the shorthand */
+  /* Applies to discrete properties like display and overlay.
+     If using the transition shorthand, declare this after it. */
+  transition-behavior: allow-discrete;
 }
 
 /* 4. Animate the backdrop */
@@ -102,7 +103,8 @@ dialog[open]::backdrop,
 ## Constraints & Accessibility
 
 - **MANDATORY**: Include `overlay` in your `transition` list for any element moving into or out of the top layer.
-- **MANDATORY**: Use `allow-discrete` for the `display` property transition.
+- **MANDATORY**: Use `transition-behavior: allow-discrete` when transitioning `display` and `overlay`.
+- **DO NOT**: Use `allow-discrete` in the `transition` shorthand — it will make older browsers ignore the entire `transition` declaration. Except in use cases where that is desirable, use a separate `transition-behavior: allow-discrete` declaration.
 - **MANDATORY**: Respect user preferences for reduced motion using `prefers-reduced-motion` by simplifying transitions (e.g., removing transforms and shortening duration).
 - **DO**: Place the `@starting-style` block inside or after the "open" state selector to ensure proper cascading.
 - **DO NOT**: Use `@starting-style` for exit animations; exit animations are defined by the transition to the base (closed) state.
