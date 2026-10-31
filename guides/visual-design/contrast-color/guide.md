@@ -70,6 +70,10 @@ To support browsers without `contrast-color()`, you must provide a fallback. If 
 
 For browsers that support it, RCS provides the most robust automated fallback for dynamic colors.
 
+OkLCh accepts a lightness value, which is not the same as the relative luminance (Y) used in WCAG's Contrast (Minimum) success criterion, so it cannot be used to calculate the contrast as determined in WCAG. Instead, convert L to D65-adapted relative luminance.
+
+**DON'T** use vibrant light green or yellow-green background colors with white text, to account for the range that OkLCh can't accurately generate contrasting colors for.
+
 {{ BASELINE_STATUS("relative-color") }}
 
 ```css
