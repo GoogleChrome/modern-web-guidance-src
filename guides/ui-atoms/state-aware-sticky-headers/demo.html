@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>State-Aware Sticky Headers</title>
   <style>
+    :root {
+      --header-height: 4rem;
+    }
+
+    html {
+      /* Accounts for the height of the header */
+     scroll-padding-top: var(--header-height); ; 
+    }
+
     body {
       font-family: system-ui, sans-serif;
       margin: 0;
@@ -76,7 +85,7 @@
         <p>Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.</p>
         <p>Ut in nulla enim. Phasellus molestie magna non est bibendum non venenatis nisl tempor.</p>
         <p>Suspendisse dictum feugiat nisl ut dapibus.</p>
-        <p>Mauris iaculis porttitor posuere. Praesent id metus massa, ut blandit odio.</p>
+        <p>Mauris iaculis porttitor posuere. Praesent id metus massa, ut blandit <a href="#">odio</a>.</p>
         <p>Proin quis tortor orci. Etiam at risus et justo dignissim congue.</p>
       </div>
     </div>
@@ -94,7 +103,7 @@
         <p>Integer nec mi nisl. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
         <p>Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula.</p>
         <p>Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.</p>
-        <p>Ut in nulla enim. Phasellus molestie magna non est bibendum non venenatis nisl tempor.</p>
+        <p>Ut in nulla enim. Phasellus molestie magna non est bibendum non venenatis nisl <a href="#">tempor</a>.</p>
         <p>Suspendisse dictum feugiat nisl ut dapibus.</p>
       </div>
     </div>
