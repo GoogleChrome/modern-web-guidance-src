@@ -52,8 +52,7 @@ Because of its location in the DOM, the `scroll()` function will track its neare
 
 ```html
 <body>
-  <!-- MANDATORY: Purely decorative visual scroll progress bars MUST set aria-hidden="true" to remove the empty element from the assistive technology reading tree -->
-  <div id="progress" aria-hidden="true"></div>
+  <div id="progress"></div>
 </body>
 ```
 
