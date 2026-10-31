@@ -45,6 +45,10 @@ function findCreateHTMLRuleInObject(obj: ObjectLiteralExpression): boolean {
       if (name === 'createHTML') {
         return true;
       }
+    } else if (prop.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
+      if (prop.getName() === 'createHTML') {
+        return true;
+      }
     }
   }
   return false;
@@ -134,6 +138,14 @@ function hasTrustedTypesFallback(project: Project): boolean {
         if (leftText.includes('trustedTypes') && leftText.includes('createPolicy')) {
           return true;
         }
+      }
+    }
+
+    // Pattern 4: if-statement guarding on trustedTypes (e.g. if (window.trustedTypes) { ... } else { ... })
+    const ifStmts = sf.getDescendantsOfKind(SyntaxKind.IfStatement);
+    for (const stmt of ifStmts) {
+      if (stmt.getExpression().getText().includes('trustedTypes')) {
+        return true;
       }
     }
   }
@@ -401,7 +413,7 @@ test.describe('trusted-types Target Grader', () => {
         }
 
         const maliciousPayload =
-          '<div class="card"><h3>Test Drink</h3><img src="x" onerror="alert(1)"><script>alert(1)</script><a href="javascript:alert(1)">Link</a></div>';
+          '<div class="card"><h3>Test Drink</h3><img src="x" onerror="alert(1)"><<xss>img src="x" onerror="alert(1)"><script>alert(1)</script><a href="javascript:alert(1)">Link</a></div>';
         const trustedOutput = appPolicyEntry.policy.createHTML(maliciousPayload);
 
         // Verify the output can be assigned to innerHTML under Trusted Types enforcement
@@ -411,6 +423,13 @@ test.describe('trusted-types Target Grader', () => {
         const hasScriptInOutput = tempContainer.querySelector('script') !== null;
         const hasEventHandlersInOutput = Array.from(tempContainer.querySelectorAll('*')).some((el) =>
           Array.from(el.attributes).some((attr) => attr.name.toLowerCase().startsWith('on'))
+        );
+        const hasJavascriptUrlInOutput = Array.from(
+          tempContainer.querySelectorAll('[href], [src], [action]')
+        ).some((el) =>
+          ['href', 'src', 'action'].some((attr) =>
+            (el.getAttribute(attr) || '').trim().toLowerCase().startsWith('javascript:')
+          )
         );
 
         // Also check the live document body for rendered cards and absence of inline on* attributes
@@ -422,6 +441,7 @@ test.describe('trusted-types Target Grader', () => {
         return (
           !hasScriptInOutput &&
           !hasEventHandlersInOutput &&
+          !hasJavascriptUrlInOutput &&
           cards.length >= 3 &&
           !hasAnyInlineEventHandlersInDom
         );
