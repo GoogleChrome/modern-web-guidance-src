@@ -1,17 +1,16 @@
 diff --git a/index.html b/index.html
-index 66c9173..ace1570 100644
+index 66c9173..cb0f8b5 100644
 --- a/index.html
 +++ b/index.html
-@@ -2,6 +2,8 @@
+@@ -2,6 +2,7 @@
  <html lang="en">
  
  <head>
-+  <meta http-equiv="Content-Security-Policy"
-+    content="require-trusted-types-for 'script'; trusted-types sanitize-html; script-src 'self'">
++  <meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script'; trusted-types sanitize-html;">
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>The Daily Grind | Artisanal Coffee</title>
-@@ -177,23 +179,7 @@
+@@ -177,26 +178,73 @@
    <main class="container">
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -36,80 +35,69 @@ index 66c9173..ace1570 100644
      </section>
    </main>
  
-@@ -207,6 +193,7 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
- 
-+  <script type="module" src="/seasonal.js"></script>
- </body>
- 
- </html>
-diff --git a/seasonal.js b/seasonal.js
-new file mode 100644
-index 0000000..421f56e
---- /dev/null
-+++ b/seasonal.js
-@@ -0,0 +1,63 @@
-+// Tinyfill for browsers without Trusted Types: same policy code runs, no enforcement.
-+if (!window.trustedTypes) {
-+  window.trustedTypes = {
-+    createPolicy: (name, rules) => rules,
-+  };
-+}
-+
-+const ALLOWED_TAGS = new Set(['DIV', 'H3', 'P', 'A', 'STRONG', 'EM', 'SPAN', 'BR']);
-+const ALLOWED_ATTRS = {
-+  '*': new Set(['class']),
-+  A: new Set(['href']),
-+};
-+const SAFE_URL = /^(?:https?:|mailto:|\/(?!\/)|#|[^:]*$)/i;
-+
-+// Allowlist sanitizer working on an inert document (scripts never run, images never load).
-+function sanitizeNode(node) {
-+  for (const child of Array.from(node.childNodes)) {
-+    if (child.nodeType === Node.TEXT_NODE) continue;
-+    if (child.nodeType !== Node.ELEMENT_NODE || !ALLOWED_TAGS.has(child.tagName)) {
-+      child.remove();
-+      continue;
++  <script>
++    // Tinyfill for browsers without Trusted Types support.
++    if (!window.trustedTypes) {
++      window.trustedTypes = {
++        createPolicy: (name, rules) => rules,
++      };
 +    }
-+    for (const attr of Array.from(child.attributes)) {
-+      const allowed =
-+        ALLOWED_ATTRS['*'].has(attr.name) || ALLOWED_ATTRS[child.tagName]?.has(attr.name);
-+      if (!allowed || (attr.name === 'href' && !SAFE_URL.test(attr.value.trim()))) {
-+        child.removeAttribute(attr.name);
++
++    // Allowlist-based sanitizer (no third-party dependencies).
++    const ALLOWED_TAGS = new Set(['DIV', 'H3', 'P', 'A', 'STRONG', 'EM', 'SPAN', 'BR']);
++    const ALLOWED_ATTRS = { A: new Set(['href', 'class']), '*': new Set(['class']) };
++    const SAFE_URL = /^(https?:|mailto:|\/(?!\/)|#|\.{0,2}\/)/i;
++
++    function sanitizeNode(node, out, doc) {
++      for (const child of Array.from(node.childNodes)) {
++        if (child.nodeType === Node.TEXT_NODE) {
++          out.appendChild(doc.createTextNode(child.textContent));
++        } else if (child.nodeType === Node.ELEMENT_NODE) {
++          if (!ALLOWED_TAGS.has(child.tagName)) continue; // drop element and contents
++          const el = doc.createElement(child.tagName);
++          const allowed = ALLOWED_ATTRS[child.tagName] || ALLOWED_ATTRS['*'];
++          for (const attr of Array.from(child.attributes)) {
++            if (!allowed.has(attr.name)) continue;
++            if (attr.name === 'href' && !SAFE_URL.test(attr.value.trim())) continue;
++            el.setAttribute(attr.name, attr.value);
++          }
++          sanitizeNode(child, el, doc);
++          out.appendChild(el);
++        }
 +      }
 +    }
-+    sanitizeNode(child);
-+  }
-+}
 +
-+const sanitizePolicy = trustedTypes.createPolicy('sanitize-html', {
-+  createHTML: (input) => {
-+    const doc = new DOMParser().parseFromString(`<body>${String(input)}</body>`, 'text/html');
-+    sanitizeNode(doc.body);
-+    return doc.body.innerHTML;
-+  },
-+});
++    const sanitizePolicy = window.trustedTypes.createPolicy('sanitize-html', {
++      createHTML: (input) => {
++        // DOMParser output is inert: no scripts run and no resources load.
++        const parsed = new DOMParser().parseFromString(String(input), 'text/html');
++        const clean = document.implementation.createHTMLDocument('');
++        sanitizeNode(parsed.body, clean.body, clean);
++        return clean.body.innerHTML;
++      },
++    });
 +
-+const seasonalFavoritesHTML = [
-+  `<div class="card">
-+    <h3>Maple Oat Latte</h3>
-+    <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+    <a href="/menu/seasonal" class="btn">View Details</a>
-+  </div>`,
-+  `<div class="card">
-+    <h3>Dark Roast Espresso</h3>
-+    <p>Bold, smokey, and perfect for a morning boost.</p>
-+    <a href="/menu/espresso" class="btn">View Details</a>
-+  </div>`,
-+  `<div class="card">
-+    <h3>Cold Brew</h3>
-+    <p>Steeped for 18 hours for maximum smoothness.</p>
-+    <a href="/menu/cold-brew" class="btn">View Details</a>
-+  </div>`,
-+];
++    const seasonalFavoritesHTML = `
++      <div class="card">
++        <h3>Maple Oat Latte</h3>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <a href="/menu/seasonal" class="btn">View Details</a>
++      </div>
++      <div class="card">
++        <h3>Dark Roast Espresso</h3>
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++        <a href="/menu/espresso" class="btn">View Details</a>
++      </div>
++      <div class="card">
++        <h3>Cold Brew</h3>
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++        <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>`;
 +
-+const grid = document.getElementById('seasonal-grid');
-+if (grid) {
-+  grid.innerHTML = sanitizePolicy.createHTML(seasonalFavoritesHTML.join('\n'));
-+}
++    document.getElementById('seasonal-grid').innerHTML =
++      sanitizePolicy.createHTML(seasonalFavoritesHTML);
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

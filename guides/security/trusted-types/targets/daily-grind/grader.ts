@@ -468,6 +468,10 @@ test.describe('trusted-types Target Grader', () => {
 
       await page.goto(TARGET_URL);
 
+      const project: Project = getJsProject(targetFiles);
+      const hasStaticFallback =
+        hasCreatePolicyWithCreateHTML(project) && hasTrustedTypesFallback(project);
+
       const fallbackWorks = await page.evaluate(() => {
         const tt = (window as unknown as {
           trustedTypes?: {
@@ -488,7 +492,7 @@ test.describe('trusted-types Target Grader', () => {
         return hasScripts && cards.length >= 3;
       });
 
-      expect(fallbackWorks).toBe(true);
+      expect(hasStaticFallback && fallbackWorks).toBe(true);
     });
   });
 });
