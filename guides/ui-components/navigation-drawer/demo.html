@@ -29,6 +29,7 @@
         background: #0002;
         font-size: 1.25em;
         font-weight: 400;
+        position: relative;
       }
 
       button {
@@ -75,7 +76,7 @@
     /* Styles required for the swipeable navigation drawer component to work */
     @layer drawer {
       .Drawer {
-        --drawer-width: min(20em, 80dvw);
+        --drawer-width: min(20em, 80dvw, 100dvw - 24px);
         --drawer-backdrop: 0;
 
         position: fixed;
@@ -121,6 +122,16 @@
         content: '';
         scroll-snap-align: end;
         scroll-initial-target: nearest;
+      }
+
+      #drawer-title {
+        margin-top: var(--gap);
+      }
+
+      #drawer-close {
+        position: absolute;
+        top: 1em;
+        right: 1em;
       }
 
       .Drawer-sheet {
@@ -175,6 +186,7 @@
     const openBtn = document.getElementById('drawer-open');
     const scroller = drawer.querySelector('.Drawer-scroller');
     const sheet = drawer.querySelector('.Drawer-sheet');
+    const closeBtn = document.getElementById('drawer-close');
 
     async function openDrawer() {
       // Promote to the top layer before scrolling.
@@ -200,17 +212,22 @@
     function onDrawerOpened() {
       main.inert = true;
       openBtn.setAttribute('aria-expanded', 'true');
-      sheet.focus();
+      drawer.setAttribute('aria-modal', 'true');
     }
 
     function onDrawerClosed() {
       drawer.hidePopover();
       main.inert = false;
       openBtn.setAttribute('aria-expanded', 'false');
+      if (drawer.hasAttribute('aria-modal')) {
+        drawer.removeAttribute('aria-modal');
+        openBtn.focus();
+      }
     }
 
     function observeButtonClicks() {
       openBtn.addEventListener('click', () => openDrawer());
+      closeBtn.addEventListener('click', () => closeDrawer());
     }
 
     function observeLightDismiss() {
@@ -275,10 +292,17 @@
   </script>
 </head>
 <body>
-  <div class="Drawer" id="drawer" popover="manual">
+  <dialog class="Drawer" id="drawer" popover="manual" aria-labelledby="drawer-title">
     <div class="Drawer-scroller">
       <nav class="Drawer-sheet" tabindex="-1">
-        <header>Swipe to close</header>
+        <header>
+          <h1 id="drawer-title">Swipe to close</h1>
+          <button id="drawer-close" aria-label="Close menu" autofocus>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="#fff" viewBox="0 -960 960 960" aria-hidden="true">
+              <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+            </svg>
+          </button>
+        </header>
         <ul>
           <li><a href="#">Lorem ipsum est</a></li>
           <li><a href="#">dolor sit amet</a></li>
@@ -297,7 +321,7 @@
         </ul>
       </nav>
     </div>
-  </div>
+  </dialog>
 
   <main>
     <header>
