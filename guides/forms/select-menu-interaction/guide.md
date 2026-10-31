@@ -8,7 +8,7 @@ web-feature-ids:
 # Select Menu Interaction
 
 ## The Problem
-For mandatory dropdowns (e.g., "Choose a Country"), standard validation flags the field as invalid immediately if the default option has an empty value. This can create visual noise. We want to show the error only if the user opens the menu and closes it without choosing an option, or attempts to submit the form.
+For mandatory dropdowns (e.g., "Choose a Country"), standard validation flags the field as invalid immediately if the default option has an empty value. This can create visual noise. We want to show the error only if the user chooses the empty option (if it can be chosen) and leaves the field, or attempts to submit the form without choosing an option.
 
 ## The Solution
 The `:user-invalid` pseudo-class works seamlessly with `<select>` elements. It respects the user's interaction flow: simply loading the page or focusing/blurring without making a change doesn't count as an interaction, so the field stays neutral until they actively attempt a selection.
@@ -18,6 +18,7 @@ The `:user-invalid` pseudo-class works seamlessly with `<select>` elements. It r
 1.  **HTML Constraint**: Use a `<select>` with `required`. The first option should have `value=""` and ideally be disabled/hidden to force a valid choice.
 2.  **Visual Feedback**: Use `:user-invalid` to style the select box border.
 3.  **Timing**: The browser considers the field "interacted" if the user changes the value (even back to the default invalid state) before they blur the control, or upon form submission.
+4.  **Error Link**: List the error message in the select's `aria-describedby` only while the select is invalid, so screen readers read it with the select. A reference in the markup would read the hidden message from page load. The script in "Accessibility" under Other Considerations does this for each field whose `data-error` attribute is set to its error message's `id`.
 
 ## Implementation Guide
 
@@ -28,11 +29,12 @@ The "placeholder" option is key here.
 <form>
   <div class="field">
     <label for="country">Country</label>
+    <!-- Set data-error to the error message's id. The aria-invalid script lists that id in aria-describedby while the select is invalid. -->
     <select
       id="country"
       name="country"
       required
-      aria-errormessage="country-error"
+      data-error="country-error"
     >
       <option value="" disabled selected>Select a country...</option>
       <option value="us">United States</option>
@@ -40,7 +42,7 @@ The "placeholder" option is key here.
       <option value="uk">United Kingdom</option>
     </select>
     <div id="country-error" class="error-msg">
-      Please select a country.
+      <span role="img" aria-label="Error">❌</span> Please select a country.
     </div>
   </div>
 </form>

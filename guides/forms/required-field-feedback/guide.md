@@ -20,6 +20,8 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 1.  **HTML Constraint**: Add the `required` attribute to your inputs.
 2.  **Visual Feedback**: Use `:user-invalid` to style the border red and show a "Required" helper text.
 3.  **Timing**: Rely on the browser's native timing for visual feedback. You don't need `onBlur` handlers to add a `touched` class anymore, though some JavaScript is still needed to sync ARIA attributes (see below).
+4.  **Error Text**: Show visible error text with the error styling, so the error isn't shown by color alone. Start each message with an error icon that has a text alternative such as "Error" (the safest choice), or word every message as an error, for example "Name is required.", and use the same approach for every error in the form.
+5.  **Error Link**: List the error message in the field's `aria-describedby` only while the field is invalid, so screen readers read it with the field. A reference in the markup would read the hidden message from page load. The script in section 3 does this for each field whose `data-error` attribute is set to its error message's `id`.
 
 ## Implementation Guide
 
@@ -28,16 +30,17 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 <form id="feedback-form">
   <div class="field">
     <label for="full-name">Full Name</label>
+    <!-- Set data-error to the error message's id. The aria-invalid script lists that id in aria-describedby while the field is invalid. -->
     <input
       type="text"
       id="full-name"
       name="full-name"
       required
-      aria-errormessage="name-error"
+      data-error="name-error"
     >
     <!-- MANDATORY: Include an icon or distinct non-color indicator alongside error text -->
     <div id="name-error" class="error-msg">
-      <span aria-hidden="true">❌</span> This field is required.
+      <span role="img" aria-label="Error">❌</span> This field is required.
     </div>
   </div>
 </form>
@@ -74,38 +77,9 @@ input:required:user-valid {
 
 ### 3. JavaScript State Synchronization
 
-MANDATORY: Because `:user-invalid` is a visual state, you MUST provide a JavaScript bridge to sync `aria-invalid="true"` dynamically for assistive technologies when a user blurs an invalid field or attempts submission.
+MANDATORY: Because `:user-invalid` is a visual state, you MUST provide a JavaScript bridge to sync `aria-invalid="true"` dynamically for assistive technologies when a user blurs an invalid field or attempts submission, deriving it from `:user-invalid`, not `checkValidity()`, which is already false when a user tabs through an untouched field.
 
-```javascript
-const form = document.getElementById('feedback-form');
-
-const syncAriaInvalid = (input) => {
-  if (!input.checkValidity()) {
-    input.setAttribute('aria-invalid', 'true');
-  } else {
-    input.removeAttribute('aria-invalid');
-  }
-};
-
-// Sync on blur when a user finishes interacting
-form.addEventListener('blur', (e) => {
-  if (e.target.matches('input[required]')) {
-    syncAriaInvalid(e.target);
-  }
-}, true);
-
-// Sync all required fields when submission is attempted
-form.addEventListener('submit', () => {
-  form.querySelectorAll('input[required]').forEach(syncAriaInvalid);
-});
-
-// Remove error state immediately upon correction
-form.addEventListener('input', (e) => {
-  if (e.target.matches('input[required]') && e.target.checkValidity()) {
-    e.target.removeAttribute('aria-invalid');
-  }
-});
-```
+{{ FEATURE("user-pseudos", "aria-invalid") }}
 
 ## Fallbacking & Browser Support
 
@@ -113,6 +87,5 @@ form.addEventListener('input', (e) => {
 
 ## Other Considerations
 
-1.  **Asterisks**: It is still best practice to indicate required fields visually (e.g., with an asterisk `*`) in the label, so users know what to expect *before* they interact.
+1.  **Asterisks**: It is still best practice to indicate required fields visually (e.g., with an asterisk `*`) in the label, so users know what to expect *before* they interact. Explain the asterisk once before the form (for example, "Fields marked * are required."), and wrap it in `<span aria-hidden="true">*</span>`, because the `required` attribute already makes screen readers announce "required".
 2.  **Submit Buttons**: Unlike `disabled` buttons, keep your submit button enabled. If the user clicks it, the browser will automatically trigger `:user-invalid` on all empty required fields and focus the first one. This is excellent for accessibility and UX.
-3.  **Accessibility**: {{ FEATURE("user-pseudos", "aria-invalid") }}

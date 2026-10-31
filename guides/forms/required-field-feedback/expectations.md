@@ -1,7 +1,11 @@
 - On page load, all required fields must appear neutral.
-- Clicking into a required field and clicking out (blur) WITHOUT typing MUST trigger the error state (red border).
+- Focusing and then leaving an untouched required field leaves it without an error state.
+- Typing into a required field, clearing it and leaving it shows the error state.
 - Typing into the field MUST remove the error state immediately.
 - Clicking "Submit" with empty fields MUST trigger the error state on all of them.
 - "Force Fallback Mode" must replicate this exact behavior.
-- The implementation MUST dynamically synchronize the `aria-invalid="true"` attribute via JavaScript when an element enters an error state, and remove it when the field becomes valid.
+- The implementation MUST dynamically synchronize the `aria-invalid="true"` attribute via JavaScript when an element enters an error state, and remove it (or set it to `false`) when the field becomes valid.
 - Visual error feedback MUST incorporate multiple state indicators (e.g. an icon alongside the error text) to avoid communicating state through color alone.
+- After Submit is clicked with empty required fields, focus is on the first of them.
+- While a field has `aria-invalid="true"`, its accessible description includes its visible error text.
+- On page load, no field's accessible description includes its error text.
