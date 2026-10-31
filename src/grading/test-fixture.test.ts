@@ -9,6 +9,8 @@ import {
   getHtmlDocuments,
   getJsProject,
   getRules,
+} from './test-fixture.ts';
+import {
   closestRule,
   resolveSelector,
   parseSelectorAST,
@@ -19,7 +21,7 @@ import {
   CSSStyleRule,
   CSSMediaRule,
   CSSPositionTryRule,
-} from './test-fixture.ts';
+} from 'cssomnom';
 import { SyntaxKind } from 'ts-morph';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -409,7 +411,7 @@ const isComplete = value < 100;
     }
   });
 
-  test('re-exports cssomnom helpers and operates on stylesheets with nesting and @position-try', () => {
+  test('operates on stylesheets with nesting, cssomnom helpers, and @position-try', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-helpers-test-'));
     try {
       const cssFile = path.join(tempDir, 'sample.css');
@@ -510,6 +512,9 @@ const isComplete = value < 100;
       const allRules = getRules(files);
       assert.strictEqual(allRules.length, 2);
       assert.strictEqual(allRules[0], styleRules[0]);
+
+      // 5. getRules returns empty array directly for empty input
+      assert.deepStrictEqual(getRules([]), []);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

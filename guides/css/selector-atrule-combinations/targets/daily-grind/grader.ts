@@ -10,6 +10,8 @@ import {
   expect,
   getTargetFiles,
   getRules,
+} from '../../../../../src/grading/test-fixture.ts';
+import {
   closestRule,
   resolveSelector,
   CSSStyleRule,
@@ -18,7 +20,7 @@ import {
   CSSNestedDeclarations,
   type CSSRule,
   type RuleRoot,
-} from '../../../../../src/grading/test-fixture.ts';
+} from 'cssomnom';
 
 interface CustomPropertyDeclaration {
   property: string;

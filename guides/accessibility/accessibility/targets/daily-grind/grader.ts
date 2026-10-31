@@ -9,8 +9,8 @@ import {
   expect,
   getTargetFiles,
   getRules,
-  CSSStyleRule,
 } from '../../../../../src/grading/test-fixture.ts';
+import { CSSStyleRule } from 'cssomnom';
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);

@@ -5,12 +5,14 @@ import {
   getCssStyleSheet,
   getHtmlDocuments,
   getRules,
+} from '../../../../../src/grading/test-fixture.ts';
+import {
   CSSStyleRule,
   CSSMediaRule,
   CSSSupportsRule,
   type CSSRule,
   type CSSStyleSheet,
-} from '../../../../../src/grading/test-fixture.ts';
+} from 'cssomnom';
 
 // @ts-ignore - import.meta.url is supported by the Playwright ESM test runner
 const targetFiles: string[] = getTargetFiles(import.meta.url);

@@ -9,11 +9,13 @@ import {
   getTargetFiles,
   getHtmlDocuments,
   getRules,
+} from '../../../../../src/grading/test-fixture.ts';
+import {
   CSSMediaRule,
   CSSStyleRule,
   type CSSRule,
   type RuleRoot,
-} from '../../../../../src/grading/test-fixture.ts';
+} from 'cssomnom';
 import type { Document } from 'linkedom';
 import type { Page } from '@playwright/test';
 

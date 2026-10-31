@@ -4,10 +4,12 @@ import {
   getTargetFiles,
   getHtmlDocuments,
   getRules,
+} from '../../../../../src/grading/test-fixture.ts';
+import {
   CSSStyleRule,
   CSSMediaRule,
   CSSStartingStyleRule,
-} from '../../../../../src/grading/test-fixture.ts';
+} from 'cssomnom';
 import type { Document } from 'linkedom';
 
 // @ts-ignore - package.json omits "type": "module", causing nodenext to infer CJS

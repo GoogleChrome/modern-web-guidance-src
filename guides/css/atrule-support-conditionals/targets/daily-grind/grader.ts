@@ -4,6 +4,8 @@ import {
   getTargetFiles,
   getJsProject,
   getRules,
+} from '../../../../../src/grading/test-fixture.ts';
+import {
   CSSRule,
   CSSGroupingRule,
   CSSStyleRule,
@@ -12,7 +14,7 @@ import {
   CSSPropertyRule,
   CSSNestedDeclarations,
   CSSAtRule,
-} from '../../../../../src/grading/test-fixture.ts';
+} from 'cssomnom';
 import { SyntaxKind, type Project } from 'ts-morph';
 
 // @ts-ignore - import.meta.url is used at runtime under ESM

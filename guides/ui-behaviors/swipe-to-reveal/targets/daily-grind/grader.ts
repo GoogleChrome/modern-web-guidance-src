@@ -5,8 +5,8 @@ import {
   getJsProject,
   getHtmlDocuments,
   getRules,
-  CSSStyleRule,
 } from '../../../../../src/grading/test-fixture.ts';
+import { CSSStyleRule } from 'cssomnom';
 import { SyntaxKind, type Project } from 'ts-morph';
 
 // @ts-ignore - import.meta.url is supported at runtime by Playwright's ESM loader

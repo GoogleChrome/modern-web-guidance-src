@@ -16,11 +16,13 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getRules,
+} from '../../../../../src/grading/test-fixture.ts';
+import {
   closestRule,
   CSSStyleRule,
   CSSLayerBlockRule,
   CSSLayerStatementRule,
-} from '../../../../../src/grading/test-fixture.ts';
+} from 'cssomnom';
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);

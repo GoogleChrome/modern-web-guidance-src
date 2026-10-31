@@ -7,12 +7,11 @@ import {
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
 
-// NOTE: Add imports from ts-morph, linkedom, or test-fixture (which re-exports all cssomnom helpers) as needed:
+// NOTE: Add imports from test-fixture.ts, ts-morph, linkedom, or cssomnom as needed:
 // e.g. import { skipUnless } from '../../../../../src/grading/test-fixture.ts';
 // e.g. import { SyntaxKind, type Project } from 'ts-morph';
 // e.g. import type { Document } from 'linkedom';
 // e.g. import {
-//   getRules,
 //   closestRule,
 //   resolveSelector,
 //   parseSelectorAST,
@@ -23,7 +22,8 @@ import {
 //   CSSMediaRule,
 //   CSSPositionTryRule,
 //   type CSSStyleSheet,
-// } from '../../../../../src/grading/test-fixture.ts';
+// } from 'cssomnom';
+// e.g. import { getRules } from '../../../../../src/grading/test-fixture.ts';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 

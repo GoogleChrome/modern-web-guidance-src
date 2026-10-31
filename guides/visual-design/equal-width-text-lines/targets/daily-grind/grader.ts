@@ -7,12 +7,12 @@ import {
   getJsProject,
   getHtmlDocuments,
   getRules,
-  getCascadedStyle,
-  CSSStyleRule,
-  CSSSupportsRule,
 } from '../../../../../src/grading/test-fixture.ts';
 import {
+  getCascadedStyle,
   closestRule,
+  CSSStyleRule,
+  CSSSupportsRule,
   CSSStyleDeclaration,
   type CSSRule,
   type CSSStyleSheet,

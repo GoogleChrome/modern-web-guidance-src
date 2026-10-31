@@ -7,40 +7,11 @@ import type { Project } from 'ts-morph';
 import {
   parse,
   getRules as cssomGetRules,
-  closestRule,
-  resolveSelector,
-  parseSelectorAST,
-  getDeclaredProperties,
-  getPropertyValues,
-  getCascadedStyle,
   CSSStyleSheet,
   CSSStyleDeclaration,
-  CSSStyleRule,
-  CSSMediaRule,
-  CSSSupportsRule,
-  CSSContainerRule,
-  CSSKeyframesRule,
-  CSSKeyframeRule,
-  CSSPositionTryRule,
-  CSSPositionTryDescriptors,
-  CSSViewTransitionRule,
-  CSSStartingStyleRule,
-  CSSLayerBlockRule,
-  CSSLayerStatementRule,
-  CSSFontFeatureValuesRule,
-  CSSFontFaceRule,
-  CSSPageRule,
-  CSSPropertyRule,
-  CSSAtRule,
-  CSSNamespaceRule,
-  CSSScopeRule,
-  CSSNestedDeclarations,
-  CSSGroupingRule,
   CSSRule,
   type RuleRoot,
   type AnyRuleConstructor,
-  type DeclaredPropertiesOptions,
-  type PropertyValueOptions,
 } from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
 import { startTargetServer } from './target-server.ts';
@@ -48,43 +19,6 @@ import { startTargetServer } from './target-server.ts';
 const require = createRequire(import.meta.url);
 
 export { expect } from '@playwright/test';
-export {
-  parse,
-  closestRule,
-  resolveSelector,
-  parseSelectorAST,
-  getDeclaredProperties,
-  getPropertyValues,
-  getCascadedStyle,
-  CSSStyleSheet,
-  CSSStyleDeclaration,
-  CSSStyleRule,
-  CSSMediaRule,
-  CSSSupportsRule,
-  CSSContainerRule,
-  CSSKeyframesRule,
-  CSSKeyframeRule,
-  CSSPositionTryRule,
-  CSSPositionTryDescriptors,
-  CSSViewTransitionRule,
-  CSSStartingStyleRule,
-  CSSLayerBlockRule,
-  CSSLayerStatementRule,
-  CSSFontFeatureValuesRule,
-  CSSFontFaceRule,
-  CSSPageRule,
-  CSSPropertyRule,
-  CSSAtRule,
-  CSSNamespaceRule,
-  CSSScopeRule,
-  CSSNestedDeclarations,
-  CSSGroupingRule,
-  CSSRule,
-  type RuleRoot,
-  type AnyRuleConstructor,
-  type DeclaredPropertiesOptions,
-  type PropertyValueOptions,
-};
 
 export function skipUnless(conditions: { unsupported: string }): void {
   const current = (process.env.BASELINE_TARGET || 'widely').trim().toLowerCase();
@@ -246,8 +180,7 @@ function parseHtmlDocument(file: string, content: string): any {
 }
 
 
-const cssStyleSheetWeakCache = new WeakMap<string[], { key: string; sheet: CSSStyleSheet }>();
-const cssStyleSheetKeyCache = new Map<string, CSSStyleSheet>();
+const cssStyleSheetCache = new Map<string, CSSStyleSheet>();
 
 function computeFilesCacheKey(files: string[]): string {
   return files
@@ -270,9 +203,12 @@ function computeFilesCacheKey(files: string[]): string {
 export function getRules(root: RuleRoot | string[]): CSSRule[];
 export function getRules<T extends CSSRule>(root: RuleRoot | string[], ruleType: AnyRuleConstructor<T>): T[];
 export function getRules(root: RuleRoot | string[], ruleType?: AnyRuleConstructor<any>): any[] {
+  if (Array.isArray(root) && root.length === 0) {
+    return [];
+  }
   let actualRoot: RuleRoot;
   if (Array.isArray(root)) {
-    if (root.length === 0 || typeof root[0] === 'string') {
+    if (typeof root[0] === 'string') {
       actualRoot = getCssStyleSheet(root as string[]);
     } else {
       actualRoot = root as unknown as CSSRule[];
@@ -289,17 +225,10 @@ export function getRules(root: RuleRoot | string[], ruleType?: AnyRuleConstructo
  * Results are memoized by file path, mtime, and file size.
  */
 export function getCssStyleSheet(files: string[]): CSSStyleSheet {
-  const cachedWeak = cssStyleSheetWeakCache.get(files);
   const cacheKey = computeFilesCacheKey(files);
-
-  if (cachedWeak && cachedWeak.key === cacheKey) {
-    return cachedWeak.sheet;
-  }
-
-  const cachedByKey = cssStyleSheetKeyCache.get(cacheKey);
-  if (cachedByKey) {
-    cssStyleSheetWeakCache.set(files, { key: cacheKey, sheet: cachedByKey });
-    return cachedByKey;
+  const cached = cssStyleSheetCache.get(cacheKey);
+  if (cached) {
+    return cached;
   }
   const cssBlocks: string[] = [];
   for (const file of files) {
@@ -366,8 +295,7 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
       (sheet as any)._rules.push(rule);
     }
   }
-  cssStyleSheetWeakCache.set(files, { key: cacheKey, sheet });
-  cssStyleSheetKeyCache.set(cacheKey, sheet);
+  cssStyleSheetCache.set(cacheKey, sheet);
   return sheet;
 }
 

@@ -5,10 +5,12 @@ import {
   getCssStyleSheet,
   getHtmlDocuments,
   getRules,
+} from '../../../../../src/grading/test-fixture.ts';
+import {
   CSSStyleRule,
   CSSContainerRule,
   type CSSStyleSheet,
-} from '../../../../../src/grading/test-fixture.ts';
+} from 'cssomnom';
 import type { Document } from 'linkedom';
 
 // @ts-ignore - package.json omits "type": "module" locally, though Playwright runs ESM

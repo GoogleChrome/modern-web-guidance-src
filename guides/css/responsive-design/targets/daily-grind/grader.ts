@@ -9,9 +9,8 @@ import {
   getTargetFiles,
   getHtmlDocuments,
   getRules,
-  CSSStyleRule,
-  CSSContainerRule,
 } from '../../../../../src/grading/test-fixture.ts';
+import { CSSStyleRule, CSSContainerRule } from 'cssomnom';
 
 const currentUrl = typeof __filename !== 'undefined'
   ? pathToFileURL(__filename).href

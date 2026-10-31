@@ -7,8 +7,8 @@ import {
   getJsProject,
   getHtmlDocuments,
   getRules,
-  CSSStyleRule,
 } from '../../../../test-fixture.ts';
+import { CSSStyleRule } from 'cssomnom';
 
 // @ts-ignore - import.meta is available in ESM runner
 const targetFiles: string[] = getTargetFiles(import.meta.url);

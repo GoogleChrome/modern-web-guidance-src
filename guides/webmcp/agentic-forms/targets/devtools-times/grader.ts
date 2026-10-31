@@ -5,8 +5,8 @@ import {
   getJsProject,
   getHtmlDocuments,
   getRules,
-  CSSStyleRule,
 } from '../../../../test-fixture.ts';
+import { CSSStyleRule } from 'cssomnom';
 import { SyntaxKind } from 'ts-morph';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);

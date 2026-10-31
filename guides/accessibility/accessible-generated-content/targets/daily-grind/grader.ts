@@ -4,9 +4,8 @@ import {
   getTargetFiles,
   getHtmlDocuments,
   getRules,
-  CSSStyleRule,
-  type RuleRoot,
 } from '../../../../../src/grading/test-fixture.ts';
+import { CSSStyleRule, type RuleRoot } from 'cssomnom';
 
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';

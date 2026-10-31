@@ -4,9 +4,8 @@ import {
   getTargetFiles,
   getHtmlDocuments,
   getRules,
-  CSSStyleRule,
-  CSSSupportsRule,
 } from '../../../../../src/grading/test-fixture.ts';
+import { CSSStyleRule, CSSSupportsRule } from 'cssomnom';
 import type { Document } from 'linkedom';
 
 // @ts-ignore - import.meta.url is supported in ESM test runner

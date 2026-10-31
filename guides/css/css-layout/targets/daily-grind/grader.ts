@@ -46,10 +46,8 @@ import {
   expect,
   getTargetFiles,
   getRules,
-  getPropertyValues,
-  CSSStyleRule,
-  CSSContainerRule,
 } from '../../../../../src/grading/test-fixture.ts';
+import { getPropertyValues, CSSStyleRule, CSSContainerRule } from 'cssomnom';
 
 // @ts-ignore - import.meta.url is supported at runtime by Playwright/Node ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);

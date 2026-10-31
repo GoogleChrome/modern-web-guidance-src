@@ -13,10 +13,12 @@ import {
   getCssStyleSheet,
   getHtmlDocuments,
   getRules,
+} from '../../../../../src/grading/test-fixture.ts';
+import {
   getCascadedStyle,
   CSSStyleRule,
   type CSSStyleSheet,
-} from '../../../../../src/grading/test-fixture.ts';
+} from 'cssomnom';
 import type { Document } from 'linkedom';
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);

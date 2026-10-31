@@ -5,12 +5,14 @@ import {
   getJsProject,
   getHtmlDocuments,
   getRules,
+} from '../../../../../src/grading/test-fixture.ts';
+import {
   CSSStyleRule,
   CSSMediaRule,
   CSSSupportsRule,
   CSSStartingStyleRule,
   CSSPositionTryRule,
-} from '../../../../../src/grading/test-fixture.ts';
+} from 'cssomnom';
 import { SyntaxKind } from 'ts-morph';
 import type { Page } from '@playwright/test';
 

@@ -5,8 +5,8 @@ import {
   getJsProject,
   getHtmlDocuments,
   getRules,
-  CSSStyleRule,
 } from '../../../../../src/grading/test-fixture.ts';
+import { CSSStyleRule } from 'cssomnom';
 import { Node, SyntaxKind, type Project } from 'ts-morph';
 
 import * as path from 'path';
