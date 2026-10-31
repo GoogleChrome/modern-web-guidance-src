@@ -126,6 +126,15 @@ document.addEventListener("command", event => {
 
 Use the `hidden` attribute in the `until-found` state to make the contents of an accordion item findable using a browser’s find-in-page feature. Listen for the `beforematch` event to update the accordion trigger accordingly and, if the accordion item is within a mutually exclusive set, to collapse other accordion items that are expanded.
 
+```javascript
+document.addEventListener("beforematch", event => {
+	const trigger = document.querySelector(`[commandfor="${CSS.escape(event.target.id)}"][command="--toggle"]`);
+	if (!trigger) return;
+
+	trigger.setAttribute("aria-expanded", true);
+}, { capture: true });
+```
+
 ### Excluding an accordion item’s contents from find-in-page
 
 If it’s undesirable for an accordion item’s contents to be included in what’s matched with the browser’s find-in-page feature, use the `hidden` attribute in the `hidden` state (`hidden` with no value) instead of the `until-found` state.
