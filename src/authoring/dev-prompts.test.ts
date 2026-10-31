@@ -174,13 +174,14 @@ test('buildTargetGraderPrompt includes discipline scoping only for discipline gu
 
   const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
   assert.ok(disciplinePrompt.includes('discipline guide'));
-  assert.ok(disciplinePrompt.includes('you do NOT need to write a test for every expectation'));
+  assert.ok(disciplinePrompt.includes('Decide relevance from the base application in your workspace'));
+  assert.ok(disciplinePrompt.includes('Expectation N: SKIPPED: already satisfied by the base application'));
 
   const standardPrompt = buildTargetGraderPrompt(baseOpts);
   assert.ok(!standardPrompt.includes('discipline guide'));
 });
 
-test('buildTargetGraderPrompt requires a test for every expectation only for non-discipline guides', () => {
+test('buildTargetGraderPrompt includes expectation coverage and skip manifest rules for all guides', () => {
   const baseOpts = {
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
@@ -192,17 +193,17 @@ test('buildTargetGraderPrompt requires a test for every expectation only for non
     baseApp: 'devtools-times',
     templateFile: 'template.grader.ts',
   };
-  const coverageRule = 'Every top-level expectation in `expectations.md` must have at least one dedicated';
 
-  const standardPrompt = buildTargetGraderPrompt(baseOpts);
-  assert.ok(standardPrompt.includes(coverageRule));
-  assert.ok(standardPrompt.includes('Do not omit, merge, or skip any expectation'));
-
-  const retryPrompt = buildTargetGraderPrompt({ ...baseOpts, failureContext: 'Golden test failed' });
-  assert.ok(retryPrompt.includes(coverageRule));
-
-  const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
-  assert.ok(!disciplinePrompt.includes(coverageRule));
+  for (const prompt of [
+    buildTargetGraderPrompt(baseOpts),
+    buildTargetGraderPrompt({ ...baseOpts, failureContext: 'Golden test failed' }),
+    buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true }),
+  ]) {
+    assert.ok(prompt.includes('Skip an expectation only when its precondition is absent from both the target application and the task'));
+    assert.ok(prompt.includes('A state the grader can create or simulate (a permission state, a viewport width, a failed or denied request, a removed global) is never a missing precondition; test it.'));
+    assert.ok(prompt.includes('SKIPPED: <missing precondition>'));
+    assert.ok(prompt.includes('Do not omit, merge, or skip any applicable expectation'));
+  }
 });
 
 test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping only for discipline guides', () => {

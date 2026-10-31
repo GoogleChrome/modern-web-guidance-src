@@ -32,11 +32,11 @@ None of the following are ever seen by real-world coding agents:
 
 Write a natural-language, bulleted list of assertions that must be true if an agent implements `guide.md` correctly.
 
-* **1:1 with grader tests** — Each bullet becomes one `test()` block in `grader.ts` (for use-case guides). Write one bullet per assertion; do not combine multiple checks into a single bullet.
+* **1:1 with grader tests** — Each bullet becomes one `test()` block in `grader.ts`, unless its precondition is absent from both the target application and the task, in which case `grader.ts` lists it in its top-of-file manifest comment as `SKIPPED: <missing precondition>`. Write one bullet per assertion; do not combine multiple checks into a single bullet.
 * **Plain declarative phrasing** — Write each bullet as a plain statement of what is true of a correct implementation (e.g., "The dialog closes when the Escape key is pressed"). Omit `The implementation MUST…` boilerplate; imperative directives belong in `guide.md`.
 * **Concrete, testable criteria** — Every expectation must be verifiable via static AST analysis (Linkedom, CSSOMNom, ts-morph) or Playwright browser execution.
 * **Scoped to this use case** — Only include expectations that apply to the specific use case being graded and are documented in `guide.md`.
-* **Avoid untestable conditional expectations** — Avoid `"If the implementation uses X, then Y"` expectations when valid solutions may omit `X` entirely; if a golden solution patch has zero instances of `X`, the grader cannot assert `Y` without writing a vacuous guard.
+* **Avoid untestable conditional expectations** — Conditions on the target app or task (e.g., *"When a dialog guards unsaved form changes, it has `closedby=\"none\"`"* or *"A non-modal dialog panel leaves the page behind it interactive"*) are fine and get skipped in `grader.ts` (as `SKIPPED: <missing precondition>`) when that precondition is absent from both the target application and the task. Runtime states a grader can create (a permission state, a viewport width, a failed request) aren't preconditions at all: test them. Avoid conditions on the agent's own implementation choice (*"If the implementation uses X, then Y"*) when valid solutions may omit `X` entirely; if a golden solution patch has zero instances of `X`, the grader cannot assert `Y` without writing a vacuous guard.
 * **No external links** — The grader generator cannot resolve them.
 * **Avoid over-constraining** — Describe required outcomes, API contracts, or structural invariants rather than prescribing incidental implementation details (specific variable names, helper names, or file paths).
 
