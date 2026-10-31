@@ -1,2 +1,5 @@
 - The implementation MUST use `transition-behavior: allow-discrete` and `@starting-style` when animating discrete entry and exit states (such as `<dialog>` or `[popover]` elements).
-- The implementation MUST honor `@media (prefers-reduced-motion: reduce)` by disabling or dampening animations without using a blanket `* { animation-duration: 0.01ms !important; }` override.
+- The implementation MUST honor `@media (prefers-reduced-motion: reduce)` by disabling animations without using a blanket `* { animation-duration: 0.01ms !important; }` override.
+- With `prefers-reduced-motion: reduce`, an element that has an entry or scroll-driven reveal animation has the same computed `opacity` once revealed (opened, or scrolled fully into view) as it has with `prefers-reduced-motion: no-preference`.
+- Auto-running carousels, banners, and other persistent animations can be paused or stopped by the user.
+- Each control that pauses or stops persistent animations is a button that can be reached and operated with the keyboard.
