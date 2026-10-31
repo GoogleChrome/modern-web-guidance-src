@@ -89,10 +89,11 @@ Use `@starting-style` to define the entry animation and `transition-behavior: al
 @media (prefers-reduced-motion: no-preference) {
   [popover].hovercard {
     transition:
-      opacity 0.4s,
-      transform 0.4s,
-      display 0.4s,
-      overlay 0.4s;
+      opacity,
+      transform,
+      display,
+      overlay;
+    transition-duration: 0.4s;
     /* Place after the transition shorthand so the shorthand does not reset it */
     transition-behavior: allow-discrete;
   }

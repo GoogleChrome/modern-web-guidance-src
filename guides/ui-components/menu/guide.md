@@ -122,7 +122,8 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
   [popover] {
     opacity: 0;
     translate: 0 -.25rem;
-    transition: opacity .15s, translate .15s, display .15s, overlay .15s;
+    transition: opacity, translate, display, overlay;
+    transition-duration: .15s;
     transition-behavior: allow-discrete;
   }
   /* Opening: faster. */

@@ -28,9 +28,10 @@ To animate an element when toggling its visibility via an attribute (e.g., `hidd
   translate: 0;
   /* MANDATORY: Use transition-behavior: allow-discrete for display transition */
   transition:
-    display 0.4s,
-    opacity 0.4s ease-out,
-    translate 0.4s ease-out;
+    display,
+    opacity ease-out,
+    translate ease-out;
+  transition-duration: 0.4s;
   transition-behavior: allow-discrete;
 }
 
