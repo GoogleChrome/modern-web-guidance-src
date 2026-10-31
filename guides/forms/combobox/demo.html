@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Combobox</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #fff;
+    --text: #1b1f24;
+    --muted: #5f6672;
+    --border: #d0d5dd;
+    --accent: #2563eb;
+    --accent-soft: #e8efff;
+    --radius: 0.625rem;
+    --shadow: 0 10px 30px -10px rgb(0 0 0 / 0.25), 0 1px 3px rgb(0 0 0 / 0.08);
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --surface: #171b21; --text: #e6e9ee; --muted: #98a2b3;
+      --border: #2d333d; --accent: #60a5fa; --accent-soft: #1e2a44;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-block-size: 100dvh; display: grid; place-items: start center;
+    padding: clamp(1.5rem, 6vw, 4rem) 1rem; font-family: system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+  .card {
+    inline-size: min(100%, 26rem); background: var(--surface);
+    border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.5);
+    padding: 2rem; box-shadow: var(--shadow);
+  }
+  h1 { margin: 0 0 0.25rem; font-size: 1.375rem; letter-spacing: -0.01em; }
+  .lede { margin: 0 0 1.5rem; color: var(--muted); font-size: 0.9375rem; }
+  label { display: block; font-weight: 600; font-size: 0.9375rem; margin-block-end: 0.375rem; }
+  .field { margin-block-end: 1.25rem; }
+  .hint { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.8125rem; min-block-size: 1.25rem; }
+
+  input[list], .combo, .combo-filter {
+    inline-size: 100%; padding: 0.625rem 0.75rem; font: inherit; color: inherit;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  input[list]:focus-visible, .combo:focus-visible, .combo-filter:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
+  }
+
+  @supports (appearance: base-select) {
+    .combo, .combo::picker(select) { appearance: base-select; }
+    .combo {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+      text-align: start; cursor: pointer; transition: border-color 0.15s;
+    }
+    .combo:hover { border-color: var(--accent); }
+    .combo:has(option[value=""]:checked) { color: var(--muted); }
+    .combo::picker-icon { transition: rotate 0.2s ease; color: var(--muted); }
+    .combo:open::picker-icon { rotate: 180deg; }
+
+    .combo::picker(select) {
+      margin-block: 0.375rem;
+      inline-size: anchor-size(width); max-block-size: 18rem;
+      padding: 0.5rem; background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+      opacity: 0; translate: 0 -0.25rem;
+      transition: opacity 0.15s, translate 0.15s, display 0.15s allow-discrete, overlay 0.15s allow-discrete;
+    }
+    .combo:open::picker(select) { opacity: 1; translate: 0 0; }
+    @starting-style { .combo:open::picker(select) { opacity: 0; translate: 0 -0.25rem; } }
+
+    .combo-filter { padding: 0.5rem 0.75rem; margin-block-end: 0.5rem; border-radius: calc(var(--radius) - 0.25rem); }
+    .combo option, .combo-add {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.75rem; border-radius: calc(var(--radius) - 0.25rem); cursor: pointer;
+    }
+    .combo option:hover, .combo option:focus-visible, .combo-add:hover, .combo-add:focus-visible {
+      background: var(--accent-soft); outline: none;
+    }
+    .combo option:checked { font-weight: 600; }
+    .combo option::checkmark { order: 1; margin-inline-start: auto; color: var(--accent); }
+    .combo option[hidden], .combo-add[hidden] { display: none; }
+    .combo-add {
+      inline-size: 100%; text-align: start; font: inherit; color: var(--accent);
+      border: 0; background: none; border-block-start: 1px solid var(--border);
+      border-radius: 0 0 calc(var(--radius) - 0.25rem) calc(var(--radius) - 0.25rem); margin-block-start: 0.25rem;
+    }
+    .combo-add::before { content: "+"; font-weight: 700; }
+  }
+</style>
+</head>
+<body>
+<main class="card">
+<h1>Pick a fruit</h1>
+<p class="lede">Type to filter the list, or add your own if it isn’t there.</p>
+
+<form>
+  <!-- Fallback markup, replaced by script when customizable select is supported -->
+  <div class="field" id="fallback">
+    <label for="fruit-input">Fruit</label>
+    <input id="fruit-input" name="fruit" list="fruits" autocomplete="off">
+    <datalist id="fruits">
+      <option value="Apple"></option>
+      <option value="Apricot"></option>
+      <option value="Banana"></option>
+      <option value="Blueberry"></option>
+      <option value="Cherry"></option>
+      <option value="Grape"></option>
+      <option value="Mango"></option>
+      <option value="Orange"></option>
+      <option value="Peach"></option>
+    </datalist>
+  </div>
+
+  <div class="field" id="enhanced" hidden>
+    <label for="fruit-select">Fruit</label>
+    <select id="fruit-select" name="fruit" class="combo">
+      <button type="button"><selectedcontent></selectedcontent></button>
+      <option value="" hidden>Select a fruit</option>
+      <option value="Apple">Apple</option>
+      <option value="Apricot">Apricot</option>
+      <option value="Banana">Banana</option>
+      <option value="Blueberry">Blueberry</option>
+      <option value="Cherry">Cherry</option>
+      <option value="Grape">Grape</option>
+      <option value="Mango">Mango</option>
+      <option value="Orange">Orange</option>
+      <option value="Peach">Peach</option>
+    </select>
+    <p id="status" class="hint" role="status" aria-live="polite"></p>
+  </div>
+</form>
+</main>
+
+<script>
+  if (CSS.supports('appearance', 'base-select')) {
+    const fallback = document.getElementById('fallback');
+    const enhanced = document.getElementById('enhanced');
+    const select = document.getElementById('fruit-select');
+    // The HTML parser closes <select> on <input>/<button>, so build these via DOM
+    const filter = Object.assign(document.createElement('input'), {
+      type: 'text', className: 'combo-filter', placeholder: 'Type to filter or add…', autocomplete: 'off'
+    });
+    filter.setAttribute('aria-label', 'Filter fruit');
+    const add = Object.assign(document.createElement('button'), { type: 'button', className: 'combo-add', hidden: true });
+    select.querySelector('option').before(filter);
+    select.append(add);
+    const status = document.getElementById('status');
+    const options = () => [...select.querySelectorAll('option:not([value=""])')];
+
+    // Swap: only one control may be submitted under the same name
+    fallback.remove();
+    enhanced.hidden = false;
+
+    const update = () => {
+      const q = filter.value.trim().toLowerCase();
+      let count = 0;
+      for (const o of options()) {
+        const match = o.textContent.toLowerCase().includes(q);
+        o.hidden = !match;
+        if (match) count++;
+      }
+      const exact = options().some(o => o.textContent.toLowerCase() === q);
+      add.hidden = !q || exact;
+      add.textContent = `Add “${filter.value.trim()}”`;
+      status.textContent = `${count} option${count === 1 ? '' : 's'} available`;
+    };
+
+    filter.addEventListener('input', update);
+    // The select's own handling can move focus away from the input after pointerdown,
+    // so refocus once the browser's default handling has finished
+    const focusFilter = () => requestAnimationFrame(() => {
+      if (select.matches(':open') && document.activeElement !== filter) filter.focus();
+    });
+    filter.addEventListener('pointerdown', focusFilter);
+    filter.addEventListener('click', focusFilter);
+    // Opening via mouse or keyboard should land in the filter so the user can type immediately
+    select.addEventListener('click', focusFilter);
+    select.addEventListener('keydown', e => {
+      if (e.target === select && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) focusFilter();
+    });
+    // Keep typing characters (incl. space) from triggering select type-ahead
+    filter.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        options().find(o => !o.hidden)?.focus();
+      } else if (e.key === 'Enter') {
+        // Move focus to the match; a second Enter lets the select commit and
+        // close natively (there is no hidePicker() API)
+        e.preventDefault();
+        const first = options().find(o => !o.hidden);
+        if (first) first.focus();
+        else if (!add.hidden) add.click();
+      } else if (e.key === 'Escape' && filter.value) {
+        e.preventDefault();
+        reset();
+      } else if (e.key !== 'Escape' && e.key !== 'Tab') {
+        e.stopPropagation();
+      }
+    });
+
+    add.addEventListener('click', () => {
+      const text = filter.value.trim();
+      const option = new Option(text, text);
+      add.before(option);
+      option.selected = true;
+      filter.value = text;
+      update();
+      option.focus();
+    });
+
+    const reset = () => { filter.value = ''; update(); };
+    // Chrome does not fire toggle on <select>, so reset on every close path
+    select.addEventListener('change', reset);
+    select.addEventListener('focusout', e => { if (!select.contains(e.relatedTarget)) reset(); });
+  }
+</script>
+</body>
+</html>

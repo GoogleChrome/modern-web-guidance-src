@@ -1,0 +1,13 @@
+- A `<select>` element with a `name` attribute and an associated `<label>` is present.
+- `appearance: base-select` is applied to both the `<select>` and its `::picker(select)` pseudo-element.
+- The `<select>` contains a `<button>` with a `<selectedcontent>` element as its trigger.
+- At runtime, the `<select>` contains a descendant `<input type="text">` filter field (inserted by script, not present in the parsed HTML source) that appears before the first `<option>`.
+- Typing into the filter input hides `<option>` elements whose text does not contain the typed string and leaves matching `<option>` elements visible.
+- Typing printable characters into the filter input does not change the `<select>` element's `value` (type-ahead selection is suppressed).
+- When the typed text does not exactly match any existing `<option>`, a `<button>` inside the `<select>` becomes visible whose activation appends a new `<option>` whose `value` and text equal the typed text and marks it as selected.
+- After adding a free-form value, `new FormData(form).get(name)` returns that value.
+- Pressing Enter inside the filter input does not submit the form.
+- Pressing Enter inside the filter input moves focus to the first visible `<option>`.
+- An element with `role="status"` (or `aria-live`) updates its text content with the number of matching options as the filter changes.
+- The HTML source includes an `<input list>` bound to a `<datalist>` under the same `name` as the `<select>`.
+- The script gates the customizable-select enhancement on `CSS.supports('appearance', 'base-select')` and removes the `<datalist>`-based control when enhancing.
