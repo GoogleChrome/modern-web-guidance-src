@@ -1,0 +1,167 @@
+diff --git a/index.html b/index.html
+index 66c9173..7de8cbf 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,32 @@
+       background: #3e2723;
+     }
+ 
++    .skeleton {
++      min-height: 160px;
++      background: linear-gradient(90deg, #eee 25%, #f6f6f6 50%, #eee 75%);
++      background-size: 200% 100%;
++      animation: shimmer 1.2s infinite linear;
++    }
++
++    .skeleton-review {
++      min-height: 100px;
++    }
++
++    .skeleton-promo {
++      min-height: 120px;
++      border-radius: 8px;
++    }
++
++    .promo {
++      min-height: 120px;
++    }
++
++    @keyframes shimmer {
++      to {
++        background-position: -200% 0;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,26 +203,113 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <div class="grid" id="seasonal-grid" aria-live="polite">
++        <?start name="seasonal-cards">
++        <div class="card skeleton" aria-hidden="true"></div>
++        <div class="card skeleton" aria-hidden="true"></div>
++        <div class="card skeleton" aria-hidden="true"></div>
++        <?end>
++      </div>
++    </section>
++
++    <section>
++      <div id="promo" class="promo">
++        <?start name="promo">
++        <div class="skeleton skeleton-promo" aria-hidden="true"></div>
++        <?end>
++      </div>
++    </section>
++
++    <section>
++      <h2 style="text-align: center;">Customer Reviews</h2>
++      <div id="reviews" class="grid" aria-live="polite">
++        <?start name="reviews">
++        <div class="card skeleton skeleton-review" aria-hidden="true"></div>
++        <div class="card skeleton skeleton-review" aria-hidden="true"></div>
++        <?end>
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Content streamed later in the same document replaces the placeholders above -->
++  <template for="seasonal-cards">
++    <div class="card">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </div>
++  </template>
++
++  <script>
++    // Polyfills for browsers without native support (markers stay as <?...> syntax).
++    (function () {
++      var needsSetters = !('setHTMLUnsafe' in Element.prototype) || !('streamHTMLUnsafe' in Element.prototype);
++      var needsTemplateFor = !('htmlFor' in HTMLTemplateElement.prototype) && !('for' in HTMLTemplateElement.prototype);
++      var load = function (src) {
++        return new Promise(function (resolve) {
++          var s = document.createElement('script');
++          s.src = src;
++          s.onload = s.onerror = resolve;
++          document.head.appendChild(s);
++        });
++      };
++      var jobs = [];
++      if (needsSetters) jobs.push(load('https://unpkg.com/html-setters-polyfill'));
++      if (needsTemplateFor) jobs.push(load('https://unpkg.com/template-for-polyfill'));
++      window.polyfillsReady = Promise.all(jobs);
++    })();
++  </script>
++  <script>
++    async function streamInto(el, url, opts) {
++      await window.polyfillsReady;
++      const res = await fetch(url, { headers: { Accept: 'text/html' } });
++      if (!res.ok || !res.body) throw new Error(url + ' ' + res.status);
++      const stream = opts.unsafe
++        ? el.streamHTMLUnsafe({ runScripts: true })
++        : el.streamHTML();
++      await res.body.pipeThrough(new TextDecoderStream()).pipeTo(stream);
++    }
++
++    // Refresh cards with fresh server HTML (trusted menu markup, no scripts needed -> safe API).
++    function refreshSeasonalCards() {
++      return streamInto(document.getElementById('seasonal-grid'), '/menu/seasonal-cards.html', { unsafe: false })
++        .catch(function (e) { console.warn('Seasonal refresh failed', e); });
++    }
++
++    // Customer-submitted content: always the sanitizing (safe) API.
++    function loadReviews() {
++      return streamInto(document.getElementById('reviews'), '/reviews.html', { unsafe: false })
++        .catch(function (e) { console.warn('Reviews failed', e); });
++    }
++
++    // Our own CMS promo block, which ships its own widget script: trusted, so run scripts.
++    function loadPromo() {
++      return streamInto(document.getElementById('promo'), '/cms/promo.html', { unsafe: true })
++        .catch(function (e) { console.warn('Promo failed', e); });
++    }
++
++    loadReviews();
++    loadPromo();
++
++    // Menu changes: cross-tab notification, and when the tab becomes visible again.
++    if ('BroadcastChannel' in window) {
++      new BroadcastChannel('menu-updates').onmessage = refreshSeasonalCards;
++    }
++    document.addEventListener('visibilitychange', function () {
++      if (document.visibilityState === 'visible') refreshSeasonalCards();
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

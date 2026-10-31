@@ -219,6 +219,22 @@ const CSS_EXTS = /\.css$/i;
 const JS_EXTS = /\.(m?js|cjs|ts|tsx|jsx)$/i;
 const TEST_FILE_EXTS = /\.(test|spec)\.(m?js|cjs|ts|tsx|jsx)$/i;
 
+// Matches (1) comments and raw-text/RCDATA elements, which are passed through untouched, or
+// (2) `<?...>` processing-instruction-like markup, captured for rewriting.
+const PI_SCAN = /<!--[\s\S]*?-->|<(script|style|textarea|title)\b[^>]*>[\s\S]*?<\/\1\s*>|<\?([^>]*)>/gi;
+
+/**
+ * Browsers' HTML parsers turn `<?...>` into bogus comments (Comment nodes whose data starts
+ * with `?`), but linkedom drops them entirely. Rewrite them as real comments so graders can
+ * find markers such as `<?start name="x">`, `<?end>`, and `<?marker name="x">` via the DOM.
+ */
+function processingInstructionsToComments(content: string): string {
+  if (!content.includes('<?')) return content;
+  return content.replace(PI_SCAN, (match, _rawTextTag: string | undefined, pi: string | undefined) =>
+    pi === undefined ? match : `<!--?${pi}-->`
+  );
+}
+
 function parseHtmlDocument(file: string, content: string): any {
   const normalized = file.endsWith('.astro')
     ? content
@@ -229,7 +245,7 @@ function parseHtmlDocument(file: string, content: string): any {
           return `${attr}="${classes}"`;
         })
     : content;
-  const { document } = parseHTML(normalized);
+  const { document } = parseHTML(processingInstructionsToComments(normalized));
   document.querySelectorAll('[class\\:list]').forEach((el: any) => {
     el.classList.add(...el.getAttribute('class:list').split(/\s+/).filter(Boolean));
   });

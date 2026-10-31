@@ -1,0 +1,391 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..e41ea17
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,28 @@
++Daily Grind uses native declarative partial updates with bundled
++`template-for-polyfill` and `html-setters-polyfill` for older browsers.
++Run `pnpm install` and `npm run build`; deploy `dist/` as the site root.
++The source root also works after building. No development server is required.
++
++The initial response contains the seasonal skeleton range followed by its
++`template for` patch. A production server can flush the shell before producing
++the patch; a static host delivers the same document without an artificial delay.
++
++Server integration:
++
++- `/partials/menu.html` returns fresh coffee card HTML with `Content-Type: text/html`.
++  The refresh button fetches it without caching. The provided file is a static
++  example; connect this route to the menu datastore for live menu updates.
++- `/api/menu/events` is an optional SSE endpoint (`text/event-stream`). Emit
++  `event: menu-changed` followed by `data: {}` and a blank line after a menu
++  change. The client also accepts `document.dispatchEvent(new Event('menu-changed'))`.
++  Static hosting has no SSE endpoint; the refresh button remains available.
++- `/partials/reviews.html` contains customer-submitted HTML. It always uses safe
++  setters, with DOMPurify when the browser lacks `setHTML` and the Sanitizer API.
++- `/partials/promo.html` must be exclusively trusted first-party CMS output. Its
++  unsafe streaming setter explicitly enables embedded widget scripts. Never put
++  customer input in this endpoint. With Trusted Types enforcement, configure an
++  audited policy for this trusted CMS path before allowing executable HTML.
++
++Native streaming setters render incrementally. The setters polyfill buffers
++until the stream completes. The static sample includes a review and CMS widget
++so both paths work without a backend.
+diff --git a/app.ts b/app.ts
+new file mode 100644
+index 0000000..2677ed3
+--- /dev/null
++++ b/app.ts
+@@ -0,0 +1,128 @@
++import { supportsNativeSafeHTML } from './html-support';
++import 'html-setters-polyfill';
++import 'template-for-polyfill';
++import DOMPurify from 'dompurify';
++
++// The setters polyfill cannot supply the Sanitizer API on older browsers.
++// Use DOMPurify only for that safe fallback; never enable scripts for user content.
++type HTMLTarget = HTMLElement & {
++  setHTML?: (html: string) => void;
++  streamHTML: () => WritableStream<string>;
++  streamHTMLUnsafe: (options: { runScripts: boolean }) => WritableStream<string>;
++};
++
++function target(id: string): HTMLTarget {
++  const element = document.getElementById(id);
++  if (!(element instanceof HTMLElement)) throw new Error(`Missing element: ${id}`);
++  return element as HTMLTarget;
++}
++
++async function fetchHTML(element: HTMLElement, signal?: AbortSignal): Promise<Response> {
++  const url = new URL(element.dataset.source ?? '', location.href);
++  if (url.origin !== location.origin) throw new Error('HTML sources must be same-origin');
++  const response = await fetch(url, {
++    signal, cache: 'no-store', headers: { Accept: 'text/html' }, credentials: 'same-origin',
++    redirect: 'error',
++  });
++  if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) {
++    throw new Error('HTML is unavailable');
++  }
++  return response;
++}
++
++async function safeHTML(element: HTMLTarget, response: Response, signal?: AbortSignal): Promise<void> {
++  if (supportsNativeSafeHTML && element.setHTML && response.body) {
++    await response.body.pipeThrough(new TextDecoderStream()).pipeTo(element.streamHTML(), { signal });
++  } else {
++    const html = await response.text();
++    signal?.throwIfAborted();
++    element.replaceChildren(DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true }));
++  }
++}
++
++const cards = target('seasonal-cards');
++const status = target('menu-status');
++const refresh = target('refresh-menu');
++let activeRefresh: AbortController | undefined;
++
++async function refreshMenu(): Promise<void> {
++  activeRefresh?.abort();
++  const controller = new AbortController();
++  activeRefresh = controller;
++  refresh.setAttribute('aria-disabled', 'true');
++  cards.setAttribute('aria-busy', 'true');
++  status.textContent = 'Refreshing seasonal favorites…';
++  // Keep existing cards until the response is available. Focus returns to the
++  // persistent refresh control only when an update would remove the focused card.
++  const previous = cards.cloneNode(true);
++  try {
++    const response = await fetchHTML(cards, controller.signal);
++    if (cards.contains(document.activeElement)) refresh.focus();
++    await safeHTML(cards, response, controller.signal);
++    status.textContent = 'Seasonal favorites are up to date.';
++  } catch {
++    if (controller.signal.aborted) return;
++    cards.replaceChildren(...Array.from(previous.childNodes));
++    status.textContent = 'Could not refresh the menu. Please try again.';
++  } finally {
++    if (activeRefresh === controller) {
++      cards.removeAttribute('aria-busy');
++      refresh.removeAttribute('aria-disabled');
++      activeRefresh = undefined;
++    }
++  }
++}
++
++refresh.addEventListener('click', () => { void refreshMenu(); });
++document.addEventListener('menu-changed', () => { void refreshMenu(); });
++
++// The server emits a named SSE event after a menu change. Manual refresh still
++// works on static hosts. EventSource reconnects automatically after disconnects.
++const eventsURL = cards.dataset.events;
++if (eventsURL && 'EventSource' in window) {
++  let events: EventSource;
++  const connect = (): void => {
++    events = new EventSource(eventsURL);
++    events.addEventListener('menu-changed', () => { void refreshMenu(); });
++  };
++  connect();
++  window.addEventListener('pagehide', () => events.close());
++  window.addEventListener('pageshow', (event) => { if (event.persisted) connect(); });
++}
++
++async function loadReviews(): Promise<void> {
++  const reviews = target('customer-reviews');
++  try {
++    await safeHTML(reviews, await fetchHTML(reviews));
++  } catch {
++    reviews.textContent = 'Customer reviews are currently unavailable.';
++  }
++}
++
++async function loadPromo(): Promise<void> {
++  const promo = target('cms-promo');
++  try {
++    // This endpoint must contain only trusted, first-party CMS output. Never
++    // combine reviews or other customer input with this executable HTML stream.
++    const response = await fetchHTML(promo);
++    if (!response.body) throw new Error('Missing promo stream');
++    await response.body.pipeThrough(new TextDecoderStream())
++      .pipeTo(promo.streamHTMLUnsafe({ runScripts: true }));
++  } catch {
++    promo.textContent = 'Our latest offer is currently unavailable.';
++  }
++}
++
++// Polyfilled declarative patches run through a MutationObserver. Observe the
++// actual card insertion rather than assuming when a late template will arrive.
++function markInitialCardsReady(): void {
++  if (!cards.querySelector('.skeleton')) {
++    if (!activeRefresh) status.textContent = 'Seasonal favorites are ready.';
++    initialCardsObserver.disconnect();
++  }
++}
++const initialCardsObserver = new MutationObserver(markInitialCardsReady);
++initialCardsObserver.observe(cards, { childList: true, subtree: true });
++markInitialCardsReady();
++void loadReviews();
++void loadPromo();
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..ee7d17b
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,9 @@
++import { build } from 'esbuild';
++import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
++
++await mkdir('dist', { recursive: true });
++await build({ entryPoints: ['app.ts'], bundle: true, format: 'esm', target: 'es2022', outfile: 'dist/app.js' });
++const html = await readFile('index.html', 'utf8');
++await writeFile('dist/index.html', html.replace('./dist/app.js', './app.js'));
++await cp('partials', 'dist/partials', { recursive: true });
++console.log('Built Daily Grind in dist/');
+diff --git a/html-support.ts b/html-support.ts
+new file mode 100644
+index 0000000..ba90624
+--- /dev/null
++++ b/html-support.ts
+@@ -0,0 +1,4 @@
++// Capture this before template-for-polyfill wraps setHTML, including in browsers
++// that do not implement the underlying safe setter at all.
++export const supportsNativeSafeHTML = 'setHTML' in Element.prototype
++  && typeof Element.prototype.setHTML === 'function';
+diff --git a/index.html b/index.html
+index 66c9173..64cb19a 100644
+--- a/index.html
++++ b/index.html
+@@ -108,6 +108,7 @@
+     }
+ 
+     .card {
++      min-height: 210px;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -120,6 +121,12 @@
+       color: var(--primary);
+     }
+ 
++    .skeleton { background: var(--secondary); }
++    .skeleton p { margin-top: 3rem; }
++    .section-heading { text-align: center; }
++    #menu-status { min-height: 1.6em; text-align: center; }
++    #customer-reviews, #cms-promo { margin-top: 20px; }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,9 +182,47 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++    <section aria-labelledby="seasonal-heading">
++      <div class="section-heading">
++        <h2 id="seasonal-heading">Seasonal Favorites</h2>
++        <button type="button" class="btn" id="refresh-menu">Refresh menu</button>
++      </div>
++      <p id="menu-status" role="status">Loading seasonal favorites…</p>
++      <div id="seasonal-cards" class="grid" aria-live="polite" aria-label="Seasonal coffees"
++        data-source="/partials/menu.html" data-events="/api/menu/events">
++        <?start name="seasonal-cards">
++        <div class="card skeleton"><p>Loading coffee…</p></div>
++        <div class="card skeleton" aria-hidden="true"><p>Loading coffee…</p></div>
++        <div class="card skeleton" aria-hidden="true"><p>Loading coffee…</p></div>
++        <?end>
++      </div>
++      <noscript><p>Enable JavaScript for updates in browsers without native partial updates.
++        <a href="/menu">Browse the full menu</a>.</p></noscript>
++    </section>
++    <section aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading">From our customers</h2>
++      <div id="customer-reviews" aria-live="polite" data-source="/partials/reviews.html">
++        <p>Loading customer reviews…</p>
++      </div>
++    </section>
++    <aside id="cms-promo" aria-label="Coffee promotion" data-source="/partials/promo.html">
++      <p>Loading our latest offer…</p>
++    </aside>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <!-- The server can flush the shell above before sending this later in the same response.
++       Only application-owned markup belongs in declarative patches. Reviews use safe setters. -->
++  <template for="seasonal-cards">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -193,19 +238,8 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+-      </div>
+-    </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  </template>
++  <script type="module" src="./dist/app.js"></script>
+ 
+ </body>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..85f2a7f 100644
+--- a/package.json
++++ b/package.json
+@@ -2,9 +2,20 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "tsc --noEmit && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "dompurify": "^3.4.17",
++    "html-setters-polyfill": "^0.1.1",
++    "template-for-polyfill": "^0.1.1"
++  },
++  "devDependencies": {
++    "@types/node": "^26.6.5",
++    "esbuild": "^0.28.2",
++    "typescript": "^7.0.2"
+   }
+ }
+diff --git a/partials/menu.html b/partials/menu.html
+new file mode 100644
+index 0000000..01af71f
+--- /dev/null
++++ b/partials/menu.html
+@@ -0,0 +1,15 @@
++<div class="card">
++  <h3>Maple Oat Latte</h3>
++  <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++  <a href="/menu/seasonal" class="btn">View Details</a>
++</div>
++<div class="card">
++  <h3>Dark Roast Espresso</h3>
++  <p>Bold, smokey, and perfect for a morning boost.</p>
++  <a href="/menu/espresso" class="btn">View Details</a>
++</div>
++<div class="card">
++  <h3>Cold Brew</h3>
++  <p>Steeped for 18 hours for maximum smoothness.</p>
++  <a href="/menu/cold-brew" class="btn">View Details</a>
++</div>
+diff --git a/partials/promo.html b/partials/promo.html
+new file mode 100644
+index 0000000..c138a32
+--- /dev/null
++++ b/partials/promo.html
+@@ -0,0 +1,11 @@
++<div class="card" data-rewards-promo>
++  <h3>Make your next coffee more rewarding</h3>
++  <p>Join Daily Grind Rewards for our latest seasonal offers.</p>
++  <button type="button" class="btn" data-rewards-widget>Explore Rewards</button>
++</div>
++<script>
++  // Self-contained CMS widget: no dependency on other deferred blocks.
++  document.querySelectorAll('[data-rewards-widget]').forEach((button) => {
++    button.addEventListener('click', () => { window.location.assign('/rewards'); });
++  });
++</script>
+diff --git a/partials/reviews.html b/partials/reviews.html
+new file mode 100644
+index 0000000..f5f6692
+--- /dev/null
++++ b/partials/reviews.html
+@@ -0,0 +1,5 @@
++<article class="card">
++  <h3>A smooth start to the day</h3>
++  <blockquote><p>The maple oat latte is my new seasonal favorite.</p></blockquote>
++  <p>— Alex, customer</p>
++</article>
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..e0a4eb4
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "skipLibCheck": true,
++    "noEmit": true
++  },
++  "include": ["app.ts"]
++}

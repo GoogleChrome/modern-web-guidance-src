@@ -1,0 +1,185 @@
+diff --git a/index.html b/index.html
+index 66c9173..fdef205 100644
+--- a/index.html
++++ b/index.html
+@@ -174,25 +174,30 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
++  <main class="container" aria-live="polite">
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++      <div class="grid" id="seasonal-cards">
++        <?start name="seasonal-favorites">
++        <div class="card skeleton" style="min-height: 160px;">
++          <h3>Loading...</h3>
++          <p>Preparing seasonal blend...</p>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++        <div class="card skeleton" style="min-height: 160px;">
++          <h3>Loading...</h3>
++          <p>Preparing seasonal blend...</p>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++        <div class="card skeleton" style="min-height: 160px;">
++          <h3>Loading...</h3>
++          <p>Preparing seasonal blend...</p>
+         </div>
++        <?end>
++      </div>
++      <div id="customer-reviews" style="margin-top: 20px;">
++        <?marker name="customer-reviews">
++      </div>
++      <div id="cms-promo" style="margin-top: 20px;">
++        <?marker name="cms-promo">
+       </div>
+     </section>
+   </main>
+@@ -207,6 +212,134 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <!-- Streamed Out-of-Order Content -->
++  <template for="seasonal-favorites">
++    <div class="card">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </div>
++  </template>
++
++  <template for="customer-reviews">
++    <div class="card">
++      <h3>Customer Reviews</h3>
++      <p>"The Maple Oat Latte is the best seasonal drink in town!" &mdash; Alex R.</p>
++    </div>
++  </template>
++
++  <template for="cms-promo">
++    <div class="card">
++      <h3>Rewards Promo</h3>
++      <p>Double points on all seasonal drinks this week!</p>
++    </div>
++  </template>
++
++  <script type="module">
++    const cardsContainer = document.getElementById('seasonal-cards');
++    const reviewsContainer = document.getElementById('customer-reviews');
++    const promoContainer = document.getElementById('cms-promo');
++
++    // Refresh coffee cards with fresh HTML Stream from the server whenever the menu changes
++    export async function refreshSeasonalMenu(url = '/api/seasonal-favorites') {
++      const response = await fetch(url);
++      if (response.textStream) {
++        await response.textStream().pipeTo(cardsContainer.streamHTML());
++      } else if (response.body) {
++        await response.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(cardsContainer.streamHTML());
++      } else {
++        const html = await response.text();
++        cardsContainer.setHTML(html);
++      }
++    }
++
++    // Safely render customer-submitted reviews (untrusted user content stripped of scripts via built-in sanitizer)
++    export function renderCustomerReviews(reviewsHtml) {
++      reviewsContainer.setHTML(reviewsHtml);
++    }
++
++    export async function streamCustomerReviews(url = '/api/reviews') {
++      const response = await fetch(url);
++      if (response.textStream) {
++        await response.textStream().pipeTo(reviewsContainer.streamHTML());
++      } else if (response.body) {
++        await response.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(reviewsContainer.streamHTML());
++      }
++    }
++
++    // Render trusted CMS promo block including its embedded widget script
++    export function renderCmsPromo(promoHtml) {
++      promoContainer.setHTMLUnsafe(promoHtml, { runScripts: true });
++    }
++
++    export async function streamCmsPromo(url = '/api/cms-promo') {
++      const response = await fetch(url);
++      if (response.textStream) {
++        await response
++          .textStream()
++          .pipeTo(promoContainer.streamHTMLUnsafe({ runScripts: true }));
++      } else if (response.body) {
++        await response.body
++          .pipeThrough(new TextDecoderStream())
++          .pipeTo(promoContainer.streamHTMLUnsafe({ runScripts: true }));
++      }
++    }
++
++    // Listen for menu change events to refresh cards in place
++    window.addEventListener('menu-change', (event) => {
++      if (event.detail && event.detail.html) {
++        cardsContainer.setHTML(event.detail.html);
++      } else {
++        refreshSeasonalMenu(event.detail?.url);
++      }
++    });
++
++    // Expose helpers globally for interactive updates
++    Object.assign(window, {
++      refreshSeasonalMenu,
++      renderCustomerReviews,
++      streamCustomerReviews,
++      renderCmsPromo,
++      streamCmsPromo,
++    });
++
++    // Initialize default customer reviews (safe) and CMS promo block with embedded widget script (unsafe + runScripts)
++    if (typeof reviewsContainer.setHTML === 'function') {
++      renderCustomerReviews(`
++        <div class="card">
++          <h3>Customer Reviews</h3>
++          <p>"The Maple Oat Latte is the best seasonal drink in town!" &mdash; Alex R.</p>
++          <p>"Smooth Cold Brew every single morning." &mdash; Jamie L.</p>
++        </div>
++      `);
++    }
++
++    if (typeof promoContainer.setHTMLUnsafe === 'function') {
++      renderCmsPromo(`
++        <div class="card" id="cms-promo-widget">
++          <h3>Seasonal Rewards Promo</h3>
++          <p>Earn 2x points on all Seasonal Favorites this week!</p>
++          <script>
++            document.getElementById('cms-promo-widget')?.setAttribute('data-widget-initialized', 'true');
++          <\/script>
++        </div>
++      `);
++    }
++  </script>
+ </body>
+ 
+ </html>

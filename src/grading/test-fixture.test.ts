@@ -311,6 +311,60 @@ const isComplete = value < 100;
     }
   });
 
+  test('getHtmlDocuments exposes <?...> processing instructions as comment nodes like browsers do', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-html-pi-test-'));
+    try {
+      const htmlFile = path.join(tempDir, 'index.html');
+      fs.writeFileSync(
+        htmlFile,
+        `<!DOCTYPE html>
+<html><head><title>a <?start> title</title></head><body>
+<section id="favorites"><?start name="favorites"><p class="fallback">Loading…</p><?end></section>
+<?marker name="m">
+<!-- existing <?start name="ignored"> comment -->
+<template for="favorites"><ul><li>Latte</li></ul></template>
+<script>const s = '<?start name="x">';</script>
+<style>.a::after { content: "<?end>"; }</style>
+<textarea><?marker name="t"></textarea>
+</body></html>`,
+        'utf8'
+      );
+
+      const docs = getHtmlDocuments([htmlFile]);
+      assert.strictEqual(docs.length, 1);
+      const doc = docs[0].document;
+
+      const comments: string[] = [];
+      const walker = doc.createTreeWalker(doc, 128 /* NodeFilter.SHOW_COMMENT */);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) comments.push(n.data);
+      assert.deepStrictEqual(comments, [
+        '?start name="favorites"',
+        '?end',
+        '?marker name="m"',
+        ' existing <?start name="ignored"> comment ',
+      ]);
+
+      const section = doc.querySelector('#favorites');
+      const kids = Array.from(section.childNodes as ArrayLike<any>);
+      assert.deepStrictEqual(
+        kids.map((n) => [n.nodeType, n.nodeType === 8 ? n.data : n.className]),
+        [[8, '?start name="favorites"'], [1, 'fallback'], [8, '?end']],
+        'Fallback content should remain between the start and end markers'
+      );
+
+      const template = doc.querySelector('template[for="favorites"]');
+      assert.ok(template, 'Should parse <template for>');
+      assert.ok(template.content.querySelector('li'), 'Template content should parse');
+
+      assert.strictEqual(doc.querySelector('script').textContent, `const s = '<?start name="x">';`);
+      assert.strictEqual(doc.querySelector('style').textContent, '.a::after { content: "<?end>"; }');
+      assert.strictEqual(doc.querySelector('textarea').textContent, '<?marker name="t">');
+      assert.strictEqual(doc.querySelector('title').textContent, 'a <?start> title');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   test('getJsProject populates ts-morph Project from .ts, .mjs, and <script> tags', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-js-test-'));
     try {
