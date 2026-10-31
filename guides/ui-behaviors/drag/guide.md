@@ -13,9 +13,7 @@ Add dragging to an existing floating element such as a panel, palette, toolbar, 
 
 ## Use a dedicated handle
 
-Start dragging from a dedicated handle when the element contains selectable text, buttons, inputs, or links. This keeps its normal contents usable. Make the handle focusable for keyboard movement and give it an accessible name that mentions the arrow-key interaction.
-
-Do not apply `role="application"` to the handle. It unnecessarily changes assistive-technology interaction.
+Start dragging from a dedicated handle when the element contains selectable text, buttons, inputs, or links. This keeps its normal contents usable. Make the handle focusable for keyboard movement and give it an accessible name that mentions the arrow-key interaction. Ensure the handle exposes a `button` role so that the accessible name is conveyed to screen reader users.
 
 Apply `cursor: grab`/`grabbing`, `touch-action: none`, and both `user-select: none` and `-webkit-user-select: none` to the handle—not the entire draggable element—so text outside it remains selectable and touch gestures retain their usual behavior:
 
@@ -80,7 +78,61 @@ When the handle has focus, move the element with the arrow keys and call `preven
 
 ## Dialog-specific note
 
-A `<dialog>` or `[popover]` can use this mechanism with its header as the handle. Set `margin: 0` before assigning `left` and `top`, because the browser's default margins interfere with manual positioning. For dialog and popover opening, closing, focus, and dismissal behavior, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("platform-controls-dismiss-dialog") }}.
+A `<dialog>` or `[popover]` can use this mechanism with its header in addition to a separate drag handle. Set `margin: 0` before assigning `left` and `top`, because the browser's default margins interfere with manual positioning. For dialog and popover opening, closing, focus, and dismissal behavior, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("platform-controls-dismiss-dialog") }}.
+
+## Accessibility requirements
+
+The drag handle that is exposed to assistive technologies must be a dedicated button, rather than just scripting the header of a dialog to be draggable. This will ensure the button is exposed to screen reader users with an appropriate role and accessible name. For example, using a native button element:
+
+```html
+<button type="button" aria-label="Notes panel handle. Use arrow keys to move.">
+  <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+    <circle cx="9" cy="5" r="1.5" />
+    <circle cx="15" cy="5" r="1.5" />
+    <circle cx="9" cy="12" r="1.5" />
+    <circle cx="15" cy="12" r="1.5" />
+    <circle cx="9" cy="19" r="1.5" />
+    <circle cx="15" cy="19" r="1.5" />
+  </svg>
+</button>
+```
+
+Ensure the draggable element can be moved using a single pointer without requiring dragging movements. When the drag handle is clicked, show a grid in the background where clicking on a cell in the grid moves the element to the new position. Alternatively, make the drag handle a menu button, with menu items to reposition the element ("Dock left", "Move left", "Dock top", "Move up", "Dock right", "Move right", "Dock bottom", and "Move down").
+
+Provide feedback for screen reader users when the draggable element is moved. Use a visibly hidden live region, so that any updates to the region are announced to screen reader users. Ensure the region is included on page load, so that it is registered.
+
+```html
+<div class="visually-hidden" aria-live="polite"></div>
+```
+
+Update the region when the draggable element is moved:
+
+```html
+<div class="visually-hidden" aria-live="polite">
+  [Name of element] moved [new position]
+</div>
+```
+
+The message can be removed after a second, as it will be announced and no longer relevant.
+
+```html
+<div class="visually-hidden" aria-live="polite"></div>
+```
+
+CSS to visually hide the region so that it is still available for screen readers:
+
+```css
+.visually-hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+```
+
+As the keyboard interaction may not be obvious for some users, provide a help button in the draggable element that reveals the keystrokes to perform the operation.
 
 ## Fallback strategies
 
