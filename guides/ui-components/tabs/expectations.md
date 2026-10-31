@@ -1,0 +1,16 @@
+- The implementation MUST NOT use the WAI-ARIA tabs pattern when the “tabs” cause page navigation.
+- The implementation SHOULD use `focusgroup` with its `tablist` behaviour which applies the `tablist` and `tab` semantics, as well as, `tablist` focus behaviour.
+- The implementation SHOULD use the `@microsoft/focusgroup-polyfill` instead of manually implementing a roving tab index pattern and the tablist/tab semantics.
+- The implementation MUST ensure any `<button>` elements that are tabs are not also form submitters (e.g. when nested in a form or as a reusable component, use `type=button`).
+- The implementation MUST associate a tab with its corresponding tab panel using `aria-controls` on the tab and `aria-labelledby` on the tab panel.
+- The implementation MUST set `role=tabpanel` for the tab panels.
+- The implementation MUST apply `aria-selected` semantics to the tabs and sync the visibility of the associated tab panel.
+- The implementation SHOULD use `nomemory` and sync `focusgroupstart` on the current selected tab when selection follows focus.
+- The implementation SHOULD use manual activation if tab panels are lazy loaded.
+- The implementation MUST provide an accessible name for the `focusgroup=tablist` element using `aria-label` or `aria-labelledby`.
+- The implementation SHOULD set `tabindex=0` on the current tab panel if it does not contain any focusable elements.
+- The implementation MUST NOT set `tabindex=0` on hidden tab panels.
+- The implementation SHOULD use the ARIAMixin `ariaLabelledByElements` and `ariaControlsElements` properties instead of IDRefs if support is available.
+- The implementation SHOULD only use `hidden=until-found` when the tab panel contents should be searchable with browser find-in-page.
+- When `hidden=until-found` is used for tab panel visibility, the implementation MUST listen for the `beforematch` event to sync the current selected tab state (i.e. `aria-selected` and `focusgroupstart`) and reset `hidden=until-found` on other tab panels.
+- The implementation MUST NOT apply box styles (e.g. padding, borders, margin) to tab panels that have `hidden=until-found` and MUST make appropriate layout considerations (e.g. if the parent layout is a grid or flexbox, elements with `hidden=until-found` do participate in those layouts and properties like `gap` will cause extra space).
