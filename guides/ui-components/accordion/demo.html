@@ -16,45 +16,175 @@
 
 <h1>Accordion</h1>
 
-<nav aria-labelledby="topics">
-	<h2 id="topics">Topics</h2>
-	<details name="topics">
-		<summary>Development</summary>
-		<p>Development contents</p>
-	</details>
-	<details name="topics">
-		<summary>Design</summary>
-		<p>Design contents</p>
-	</details>
-</nav>
+<section>
+	<h2>Accordion using details</h2>
+	<div id="resources-accordion" role="region" aria-labelledby="resources">
+		<h3 id="resources">Resources</h3>
+		<button type="button" commandfor="resources-accordion" command="--expand-all">Expand all</button>
+		<button type="button" commandfor="resources-accordion" command="--collapse-all">Collapse all</button>
+		<details open>
+			<summary>Articles</summary>
+			<p>Articles contents</p>
+		</details>
+		<details>
+			<summary>Videos</summary>
+			<p>Videos contents</p>
+		</details>
+	</div>
+</section>
 
-<div role="region" aria-labelledby="services">
-	<h2 id="services">Services</h2>
-	<div>
-		<h3>
-			<button type="button" commandfor="design" command="--toggle" aria-expanded="true">Design</button>
-		</h3>
-		<div id="design">
-			<p>Design contents</p>
-		</div>
-	</div>
-	<div>
-		<h3>
-			<button type="button" commandfor="development" command="--toggle" aria-expanded="false">Development</button>
-		</h3>
-		<div id="development" hidden="until-found">
+<section>
+	<h2>Exclusive accordion using details</h2>
+	<nav aria-labelledby="topics">
+		<h3 id="topics">Topics</h3>
+		<details name="topics">
+			<summary>Development</summary>
 			<p>Development contents</p>
+		</details>
+		<details name="topics">
+			<summary>Design</summary>
+			<p>Design contents</p>
+		</details>
+	</nav>
+</section>
+
+<!--
+<section>
+	<h2>Single exclusive accordion using details</h2>
+	<div role="region" aria-labelledby="plans" data-always-open>
+		<h3 id="plans">Plans</h3>
+		<details name="plans" open>
+			<summary aria-disabled="true">Basic</summary>
+			<p>Basic contents</p>
+		</details>
+		<details name="plans">
+			<summary>Pro</summary>
+			<p>Pro contents</p>
+		</details>
+	</div>
+</section>
+-->
+
+<section>
+	<h2>Custom accordion</h2>
+	<div id="services-accordion" role="region" aria-labelledby="services">
+		<h3 id="services">Services</h3>
+		<button type="button" commandfor="services-accordion" command="--expand-all">Expand all</button>
+		<button type="button" commandfor="services-accordion" command="--collapse-all">Collapse all</button>
+		<div>
+			<h4>
+				<button type="button" commandfor="design" command="--toggle" aria-expanded="true">Design</button>
+			</h4>
+			<div id="design">
+				<p>Design contents</p>
+			</div>
+		</div>
+		<div>
+			<h4>
+				<button type="button" commandfor="development" command="--toggle" aria-expanded="false">Development</button>
+			</h4>
+			<div id="development" hidden="until-found">
+				<p>Development contents</p>
+			</div>
 		</div>
 	</div>
-</div>
+</section>
+
+<section>
+	<h2>Custom exclusive accordion</h2>
+	<div role="region" aria-labelledby="support" data-exclusive>
+		<h3 id="support">Support</h3>
+		<div>
+			<h4>
+				<button type="button" commandfor="email" command="--toggle" aria-expanded="true">Email</button>
+			</h4>
+			<div id="email">
+				<p>Email contents</p>
+			</div>
+		</div>
+		<div>
+			<h4>
+				<button type="button" commandfor="phone" command="--toggle" aria-expanded="false">Phone</button>
+			</h4>
+			<div id="phone" hidden="until-found">
+				<p>Phone contents</p>
+			</div>
+		</div>
+	</div>
+</section>
+
+<!--
+<section>
+	<h2>Custom single exclusive accordion</h2>
+	<div role="region" aria-labelledby="shipping" data-exclusive data-always-open>
+		<h3 id="shipping">Shipping</h3>
+		<div>
+			<h4>
+				<button type="button" commandfor="standard" command="--toggle" aria-expanded="true" aria-disabled="true">Standard</button>
+			</h4>
+			<div id="standard">
+				<p>Standard contents</p>
+			</div>
+		</div>
+		<div>
+			<h4>
+				<button type="button" commandfor="express" command="--toggle" aria-expanded="false" aria-disabled="false">Express</button>
+			</h4>
+			<div id="express" hidden="until-found">
+				<p>Express contents</p>
+			</div>
+		</div>
+	</div>
+</section>
+-->
 
 <script>
+function setExpanded(trigger, expanded) {
+	trigger.commandForElement.hidden = expanded ? false : "until-found";
+	trigger.setAttribute("aria-expanded", expanded);
+	if (trigger.closest("[data-always-open]")) trigger.setAttribute("aria-disabled", expanded);
+}
+
+function collapseOthers(trigger) {
+	const accordion = trigger.closest("[data-exclusive]");
+	if (!accordion) return;
+
+	for (const other of accordion.querySelectorAll('[command="--toggle"]')) {
+		if (other !== trigger) setExpanded(other, false);
+	}
+}
+
 document.addEventListener("command", event => {
 	if (event.command !== "--toggle") return;
-	const content = event.target;
-	const trigger = event.source;
+	const expanded = Boolean(event.target.hidden);
+	if (!expanded && event.source.closest("[data-always-open]")) return;
 
-	content.hidden = content.hidden ? false : "until-found";
-	trigger.setAttribute("aria-expanded", !content.hidden);
+	if (expanded) collapseOthers(event.source);
+	setExpanded(event.source, expanded);
+}, { capture: true });
+
+document.addEventListener("command", event => {
+	if (event.command !== "--expand-all" && event.command !== "--collapse-all") return;
+	const expanded = event.command === "--expand-all";
+
+	for (const details of event.target.querySelectorAll("details")) details.open = expanded;
+	for (const trigger of event.target.querySelectorAll('[command="--toggle"]')) setExpanded(trigger, expanded);
+}, { capture: true });
+
+document.addEventListener("beforematch", event => {
+	const trigger = document.querySelector(`[commandfor="${CSS.escape(event.target.id)}"][command="--toggle"]`);
+	if (!trigger) return;
+
+	collapseOthers(trigger);
+	setExpanded(trigger, true);
+}, { capture: true });
+
+document.addEventListener("click", event => {
+	if (event.target.closest("[data-always-open] details[open] > summary")) event.preventDefault();
+});
+
+document.addEventListener("toggle", event => {
+	if (!event.target.matches("[data-always-open] details")) return;
+	event.target.querySelector(":scope > summary").setAttribute("aria-disabled", event.target.open);
 }, { capture: true });
 </script>
