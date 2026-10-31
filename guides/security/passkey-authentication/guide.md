@@ -16,7 +16,7 @@ This guide details how to implement returning user authentication using discover
 
 Create an endpoint that generates WebAuthn request parameters using a vetted library per standards.
 
-1.  **Use the predefined RP ID**: Use the predefined proper RP ID as a constant string.
+1.  **Use the predefined RP ID**: Use the predefined proper RP ID as a constant string and include it as `rpId` in the returned request options so the client can pass `publicKey.rpId` directly to Signal API calls.
 2.  **Generate challenge**: Generate a high-entropy, cryptographically secure random buffer, store it securely in the user's session, and encode it as Base64URL.
 3.  **Discoverable Credentials mapping**: Specify an empty array `[]` for `allowCredentials`. This requests discoverable credentials, meaning the user does not need to enter their username first; the passkey provider will present available accounts.
 4.  **User Verification level**: Set `userVerification: "preferred"` (or `"required"` if explicitly mandated by corporate compliance policies).
@@ -82,6 +82,7 @@ Activate form autofill suggestions on page load to offer passkey authentication 
 5.  **Call Signal API**: Wrap server verification `fetch()` call in a try/catch block:
     - Show an error message for the user to understand what went wrong.
     - Call `signalUnknownCredential()` ONLY when the server explicitly responds with HTTP status `404` (Credential not found) and the user is unauthenticated.
+    - Always pass `rpId: publicKey.rpId` from the server's request options. **DO NOT** derive `rpId` from `window.location.hostname` on the client, as the server's configured RP ID may be a registrable parent domain (such as `example.com` on `login.example.com`) or use Related Origin Requests.
     - The `credentialId` parameter passed to `signalUnknownCredential()` MUST strictly be the Base64URL-encoded credential ID string (e.g., `encoded.id`), NOT the raw ArrayBuffer object `credential.rawId`.
 6.  **Encode the response**: Encode the credential `AuthenticatorAssertionResponse` with `.toJSON()` before sending it to the server for verification.
 
@@ -114,7 +115,7 @@ async function initializeConditionalAutofill() {
         // Note: this code path runs pre-authentication, satisfying the unauth precondition
         if (PublicKeyCredential.signalUnknownCredential) {
           await PublicKeyCredential.signalUnknownCredential({
-            rpId, // RP ID must match the one defined on the server
+            rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
             credentialId: encoded.id,
           });
         }
@@ -162,10 +163,12 @@ async function triggerButtonAuthentication() {
     const response = await loginVerifyFetch(encoded);
     if (!response.ok && response.status === 404) {
       // Note: this code path runs pre-authentication, satisfying the unauth precondition
-      await PublicKeyCredential.signalUnknownCredential({
-        rpId, // RP ID must match the one defined on the server
-        credentialId: encoded.id, // Base64URL-encoded credential ID
-      });
+      if (PublicKeyCredential.signalUnknownCredential) {
+        await PublicKeyCredential.signalUnknownCredential({
+          rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
+          credentialId: encoded.id, // Base64URL-encoded credential ID
+        });
+      }
     }
   } catch (serverErr) {
     console.error("Verification request error:", serverErr);

@@ -52,7 +52,7 @@ Applications choose from two reauthentication interfaces depending on the transa
 
 ### A. Button Flow (No Input Fields)
 
-Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button.
+Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button. When signaling an unknown credential on HTTP `404`, always pass `rpId: publicKey.rpId` from the server's request options—**DO NOT** derive `rpId` from `window.location.hostname` on the client.
 
 ```html
 <button id="reauth-btn" data-testid="reauth-button">Confirm Transaction</button>
@@ -91,7 +91,7 @@ async function triggerButtonReauth() {
         showTransactionSuccessUI();
       } else if (verifyResponse.status === 404 && PublicKeyCredential.signalUnknownCredential) {
         await PublicKeyCredential.signalUnknownCredential({
-          rpId, // RP ID must match the one defined on the server
+          rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
           credentialId: encodedCredential.id
         });
       }

@@ -44,7 +44,7 @@ if (capabilities.conditionalCreate) {
 * The server-side verification endpoint MUST relax the User Presence (UP) requirement (`requireUserPresence: false`) **ONLY** when verifying credentials produced by a conditional-create trigger. Strict presence verification must remain active for standard explicit creations.
 
 ### 6. Handle Failed Server Verification gracefully
-* If `navigator.credentials.create()` succeeds but the server verification fetch returns a bad response (e.g., signature verification fails), invoke `PublicKeyCredential.signalUnknownCredential()` to prevent orphaned credentials from lingering in the passkey provider.
+* If `navigator.credentials.create()` succeeds but the server verification fetch returns a bad response (e.g., signature verification fails), invoke `PublicKeyCredential.signalUnknownCredential({ rpId: publicKey.rp.id, credentialId: encodedResponse.id })` to prevent orphaned credentials from lingering in the passkey provider. Always read `rpId` from `publicKey.rp.id` in the server's creation options; **DO NOT** derive `rpId` from `window.location.hostname` on the client, which can mismatch a parent-domain or related-origin RP ID.
 
 ## Code Example
 
@@ -89,7 +89,7 @@ async function triggerConditionalCreate(loginAbortController) {
       // If the server verification fails, clean up using Signal API
       if (PublicKeyCredential.signalUnknownCredential) {
         await PublicKeyCredential.signalUnknownCredential({
-          rpId, // RP ID must match the one defined on the server
+          rpId: publicKey.rp.id, // Always use the server-provided rp.id; DO NOT use window.location.hostname
           credentialId: encodedResponse.id
         });
       }
@@ -98,7 +98,7 @@ async function triggerConditionalCreate(loginAbortController) {
     console.error('Verification network failure:', serverErr);
     if (PublicKeyCredential.signalUnknownCredential) {
       await PublicKeyCredential.signalUnknownCredential({
-        rpId, // RP ID must match the one defined on the server
+        rpId: publicKey.rp.id, // Always use the server-provided rp.id; DO NOT use window.location.hostname
         credentialId: encodedResponse.id
       });
     }
