@@ -236,7 +236,7 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
 /**
  * Main CLI Orchestrator
  */
-export async function runAllManifests({ resultsOnly = false, outputDir = defaultOutputDir } = {}) {
+export async function runAllManifests({ resultsOnly = false, outputDir = defaultOutputDir, resultsSourceDir = suitesDir } = {}) {
     fs.mkdirSync(outputDir, { recursive: true });
     if (!resultsOnly) {
         console.log('🔄 Generating features mapping...');
@@ -248,7 +248,7 @@ export async function runAllManifests({ resultsOnly = false, outputDir = default
     }
 
     console.log('🔄 Generating suites manifests...');
-    await generateSuitesManifest(outputDir);
+    await generateSuitesManifest(outputDir, resultsSourceDir);
 }
 
 // CLI Runner

@@ -3,9 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="text-scale" content="scale">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#0d0f17">
     <title>Modern Web Guidance Eval Runner</title>
     <link rel="stylesheet" href="eval-ui.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
 </head>
 <body>
     <div class="glass-orb orb-1"></div>
@@ -42,26 +47,24 @@
                             <label for="workerCount">Worker Count</label>
                             <input type="number" id="workerCount" placeholder="Auto" min="1">
                         </div>
-                        <div class="input-group">
-                            <label>Agent</label>
+                        <fieldset class="input-group">
+                            <legend>Agent</legend>
                             <div class="btn-toggle-group" id="agent-group">
-                                <button type="button" class="btn-toggle active" data-value="antigravity_cli">Antigravity CLI</button>
-                                <button type="button" class="btn-toggle" data-value="jetski_cli">Jetski CLI</button>
-                                <button type="button" class="btn-toggle" data-value="gemini_cli">Gemini CLI</button>
-                                <button type="button" class="btn-toggle" data-value="claude_code">Claude Code</button>
-                                <button type="button" class="btn-toggle" data-value="codex_cli">Codex CLI</button>
+                                <label class="btn-toggle"><input type="radio" name="agent" value="antigravity_cli" checked>Antigravity CLI</label>
+                                <label class="btn-toggle"><input type="radio" name="agent" value="jetski_cli">Jetski CLI</label>
+                                <label class="btn-toggle"><input type="radio" name="agent" value="gemini_cli">Gemini CLI</label>
+                                <label class="btn-toggle"><input type="radio" name="agent" value="claude_code">Claude Code</label>
+                                <label class="btn-toggle"><input type="radio" name="agent" value="codex_cli">Codex CLI</label>
                             </div>
-                            <input type="hidden" id="agent" value="antigravity_cli">
-                        </div>
+                        </fieldset>
                     </div>
                     
                     <div class="row" style="margin-top: 1.5rem; align-items: flex-start;">
-                        <div class="input-group" style="flex: 1;">
-                            <label>Skills to Enable</label>
+                        <fieldset class="input-group" style="flex: 1;">
+                            <legend>Skills to Enable</legend>
                             <div class="skills-container" id="skills-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem;">
-                                <!-- Skill buttons will be injected here -->
                             </div>
-                        </div>
+                        </fieldset>
                     </div>
                 </div>
             </section>
@@ -95,6 +98,7 @@
             </section>
 
             <div class="footer-actions">
+                <p id="form-error" class="form-error" role="alert" hidden></p>
                 <button type="submit" class="btn-primary" id="launch-btn">
                     <span>Start Evaluation</span>
                     <svg class="run-icon" viewBox="0 0 24 24">
@@ -105,6 +109,6 @@
         </form>
     </div>
 
-    <script src="eval-ui.js"></script>
+    <script type="module" src="eval-ui.js"></script>
 </body>
 </html>
