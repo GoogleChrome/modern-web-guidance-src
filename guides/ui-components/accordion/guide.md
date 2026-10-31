@@ -33,7 +33,7 @@ Use an element with an appropriate role for grouping all of the accordion items.
 
 ```html
 <section aria-label="Frequently Asked Questions">
-  <!-- Accordion implementation -->
+	<!-- Accordion implementation -->
 </section>
 ```
 
@@ -55,10 +55,10 @@ Expand all and collapse all buttons can be very helpful for users, since they pr
 
 ```html
 <section id="support-accordion" aria-labelledby="support" data-accordion>
-    <h2 id="support">Support</h2>
-    <button type="button" commandfor="support-accordion" command="--expand-all">Expand all</button>
-    <button type="button" commandfor="support-accordion" command="--collapse-all">Collapse all</button>
-    <!-- Accordion items -->
+	<h2 id="support">Support</h2>
+	<button type="button" commandfor="support-accordion" command="--expand-all">Expand all</button>
+	<button type="button" commandfor="support-accordion" command="--collapse-all">Collapse all</button>
+	<!-- Accordion items -->
 </section>
 ```
 
@@ -82,14 +82,14 @@ A set of adjacent `details` elements can be used to create an accordion.
 
 ### Adding expand all and collapse all buttons to a `details` accordion
 
-```html
+```javascript
 document.addEventListener("command", event => {
-    if (!event.target.matches("[data-accordion]")) return;
+	if (!event.target.matches("[data-accordion]")) return;
 
-    for (const details of event.target.querySelector(":scope > details")) {
-        if (event.command === "--expand-all") details.open = true;
-        else if (event.command === "--collapse-all") details.open = false;
-    }
+	for (const details of event.target.querySelector(":scope > details")) {
+		if (event.command === "--expand-all") details.open = true;
+		else if (event.command === "--collapse-all") details.open = false;
+	}
 }, { capture: true });
 ```
 
