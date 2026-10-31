@@ -43,10 +43,7 @@ test('extractSuiteSummary breaks multi-target guides down per task', () => {
 
 test('extractSuiteSummary stores only a name for single-task guides', () => {
     const summary = extractSuiteSummary('run-2', {
-        results: {
-            'task - preload-prerender - guided': [mockRun(3, 4)],
-            'task - preload-prerender - unguided': [mockRun(1, 4)],
-        },
+        results: { 'task - preload-prerender - guided': [mockRun(3, 4)], 'task - preload-prerender - unguided': [mockRun(1, 4)], },
     });
 
     assert.ok(summary);
@@ -58,6 +55,49 @@ test('extractSuiteSummary stores only a name for single-task guides', () => {
     assert.strictEqual(guide.guidedRate, 75);
 });
 
+test('extractSuiteSummary computes a11yStats, agent-only efficiencyStats, and exact unrounded uplift', () => {
+    const summary = extractSuiteSummary('run-3', {
+        results: {
+            'daily-grind - scrollspy - unguided': [{
+                discipline: 'ui-behaviors',
+                runtime: { agentRuntime: 120000, graderRuntime: 9000 },
+                tokenUsage: { total: 500000, cached: 450000 },
+                results: [
+                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: false, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: false, message: 'Renders three sections', testId: 's3' },
+                ],
+            }],
+            'daily-grind - scrollspy - guided': [{
+                discipline: 'ui-behaviors',
+                runtime: { agentRuntime: 90000, graderRuntime: 9000 },
+                tokenUsage: { total: 600000, cached: 560000 },
+                results: [
+                    { passed: true, message: 'Active link sets aria-current="true"', testId: 's1' },
+                    { passed: true, message: 'Respects prefers-reduced-motion', testId: 's2' },
+                    { passed: false, message: 'Renders three sections', testId: 's3' },
+                ],
+            }],
+        },
+    } as never);
+    assert.ok(summary);
+    assert.strictEqual(summary.a11yStats.unguidedPassed, 1);
+    assert.strictEqual(summary.a11yStats.unguidedTotal, 2);
+    assert.strictEqual(summary.a11yStats.guidedPassed, 2);
+    assert.strictEqual(summary.a11yStats.guidedTotal, 2);
+    assert.strictEqual(summary.a11yStats.uplift, 50);
+    assert.strictEqual(summary.a11yStats.guideCount, 1);
+    const scrollspy = summary.guides.scrollspy;
+    assert.strictEqual(scrollspy.unguidedRate, 33);
+    assert.strictEqual(scrollspy.guidedRate, 67);
+    assert.strictEqual(scrollspy.uplift, 33);
+    assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 120000);
+    assert.strictEqual(summary.efficiencyStats.runtime.guidedMedianMs, 90000);
+    assert.strictEqual(summary.efficiencyStats.runtime.medianDeltaPct, -25);
+    assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 50000);
+    assert.strictEqual(summary.efficiencyStats.tokens.guidedUncachedMedian, 40000);
+    assert.strictEqual(summary.efficiencyStats.tokens.uncachedMedianDeltaPct, -20);
+});
 test('extractSuiteSummary excludes infra-errored task pairs from guide and suite rollups while counting agent-broken apps as 0/N', () => {
     // daily-grind: guided passed 5/5, unguided broke the app build (0/5 agent failure, not isEarlyFailure)
     // devtools-times: guided had an infra error (isEarlyFailure: true -> 0 valid runs), unguided passed 1/5
@@ -128,4 +168,45 @@ test('extractSuiteSummary computes unguidedLeakRate when unguided run accesses e
     assert.strictEqual(summary.unguidedLeakRate, 50);
     assert.strictEqual(summary.unguidedStats.passed, 5);
     assert.strictEqual(summary.unguidedStats.total, 10);
+});
+test('extractSuiteSummary counts distinct task-guide scenarios and excludes early failures from efficiency medians while counting timeouts', () => {
+    const summary = extractSuiteSummary('run-efficiency-hygiene', {
+        results: {
+            'task - preload-prerender - guided': [{
+                ...mockRun(4, 4),
+                runtime: { agentRuntime: 60000, graderRuntime: 5000 },
+                tokenUsage: { total: 100000, cached: 70000 },
+            }],
+            'task - preload-prerender - unguided': [{
+                ...mockRun(2, 4),
+                runtime: { agentRuntime: 90000, graderRuntime: 5000 },
+                tokenUsage: { total: 120000, cached: 70000 },
+            }],
+            'task - responsive-table - guided': [{
+                ...mockRun(4, 4),
+                runtime: { agentRuntime: 80000, graderRuntime: 5000 },
+                tokenUsage: { total: 110000, cached: 70000 },
+            }],
+            'task - responsive-table - unguided': [
+                {
+                    ...mockRun(1, 4),
+                    runtime: { agentRuntime: 110000, graderRuntime: 5000 },
+                    tokenUsage: { total: 130000, cached: 70000 },
+                },
+                {
+                    runNumber: 2,
+                    runtime: { agentRuntime: 2000, graderRuntime: 0 },
+                    tokenUsage: { total: 1500, cached: 0 },
+                    results: [{ id: 'ef-1', passed: false, message: 'TIMEOUT (10m)', isEarlyFailure: true }],
+                },
+            ],
+        },
+    } as never);
+    assert.ok(summary);
+    // Without summary.taskCount, older evals.json files count distinct task names (both scenarios share `task`).
+    assert.strictEqual(summary.taskCount, 1);
+    assert.strictEqual(summary.efficiencyStats.runtime.unguidedMedianMs, 100000);
+    assert.strictEqual(summary.efficiencyStats.tokens.unguidedUncachedMedian, 55000);
+    assert.strictEqual(summary.efficiencyStats.runtime.unguidedTimeouts, 1);
+    assert.strictEqual(summary.efficiencyStats.runtime.guidedTimeouts, 0);
 });
