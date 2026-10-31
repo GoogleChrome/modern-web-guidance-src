@@ -210,3 +210,37 @@ test('extractSuiteSummary counts distinct task-guide scenarios and excludes earl
     assert.strictEqual(summary.efficiencyStats.runtime.unguidedTimeouts, 1);
     assert.strictEqual(summary.efficiencyStats.runtime.guidedTimeouts, 0);
 });
+test('extractSuiteSummary emits Spotlight slices only for featured guides, aligned by check id', () => {
+    const run = (checks: Array<[string, boolean]>, extra: Record<string, unknown> = {}) => ({
+        runNumber: 1,
+        prompt: 'add a search box',
+        discipline: 'ui-behaviors',
+        guidesUsed: ['highlight-text-ranges'],
+        runtime: { agentRuntime: 60000, graderRuntime: 5000 },
+        tokenUsage: { total: 100000, cached: 60000 },
+        results: checks.map(([id, passed]) => ({ id, passed, message: `check ${id}` })),
+        ...extra,
+    });
+    const summary = extractSuiteSummary('nightly-2026-10-28_01-55-42-claude_code', {
+        results: {
+            'task - highlight-text-ranges - guided': [run([['a', true], ['b', true], ['c', false]])],
+            // Unguided lists checks in a different order; slices must align by id, not position.
+            'task - highlight-text-ranges - unguided': [run([['c', false], ['a', true], ['b', false]], { guidesUsed: [] })],
+            'task - not-featured - guided': [run([['x', true]])],
+            'task - not-featured - unguided': [run([['x', false]])],
+        },
+    } as never);
+    assert.ok(summary);
+    assert.deepStrictEqual(Object.keys(summary.showcase), ['highlight-text-ranges']);
+    const slice = summary.showcase['highlight-text-ranges'];
+    assert.strictEqual(slice.prompt, 'add a search box');
+    assert.strictEqual(slice.discipline, 'ui-behaviors');
+    assert.deepStrictEqual([slice.unguided.passed, slice.unguided.total, slice.guided.passed, slice.guided.total], [1, 3, 2, 3]);
+    assert.strictEqual(slice.guided.uncachedTokens, 40000);
+    assert.strictEqual(slice.guided.earlyFailure, false);
+    assert.deepStrictEqual(slice.checks.map(c => [c.message, c.unguidedPassed, c.guidedPassed]), [
+        ['check a', true, true],
+        ['check b', false, true],
+        ['check c', false, false],
+    ]);
+});

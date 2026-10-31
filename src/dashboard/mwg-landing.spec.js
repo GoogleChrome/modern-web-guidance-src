@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+/** Latest-nightly summaries (with Spotlight slices) for the three agent families, built from real October 27–28 nightlies. */
+const SHOWCASE_SUITES_FIXTURE = JSON.parse(readFileSync(new URL('./mock-results/showcase-suites.json', import.meta.url), 'utf8'));
 /** @param {import('@playwright/test').Page} page */
 function collectErrors(page) {
   /** @type {string[]} */
@@ -6,6 +9,14 @@ function collectErrors(page) {
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   return errors;
+}
+/**
+ * Opens the breakdowns drawer, then parks the pointer: left over the drawer's summary it can end up
+ * on another interestfor trigger once layout settles, which opens that tooltip instead of the one under test.
+ * @param {import('@playwright/test').Page} page */
+async function openBreakdowns(page) {
+  await page.locator('#breakdowns > summary').click();
+  await page.mouse.move(2, 2);
 }
 const A11Y_SUITES_FIXTURE = {
   suites: ['antigravity_cli', 'claude_code'].map((agent, i) => ({
@@ -22,6 +33,8 @@ const A11Y_SUITES_FIXTURE = {
       guidedPassed: 9, guidedTotal: 10, guidedRate: 90, unguidedPassed: 5, unguidedTotal: 10, unguidedRate: 50, uplift: 40, guideCount: 2,
       bySubCategory: { focus_inert: { guidedPassed: 4, guidedTotal: 4, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 4, unguidedRate: 50, uplift: 50 } }
     },
+    // Present (even when empty) on summaries from the current extractor, so the hero doesn't re-hydrate from evals.json.
+    showcase: {},
     guides: {
       'content-vis': { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60, a11y: { guidedPassed: 2, guidedTotal: 2, guidedRate: 100, unguidedPassed: 1, unguidedTotal: 2, unguidedRate: 50, uplift: 50 } }
     }
@@ -107,7 +120,7 @@ async function expectNextToBarbell(page, track) {
   test('breakdown barbells: dimension cells are named buttons; guide/model rows keep rates in the accessibility tree and preview via the row-header trigger', async ({ page }) => {
     await page.route('**/api/suites*', route => route.fulfill({ json: A11Y_SUITES_FIXTURE }));
     await page.goto('/');
-    await page.locator('#breakdowns > summary').click();
+    await openBreakdowns(page);
     const tooltip = page.locator('#barbell-tooltip');
     await expect(page.locator('.insights-table [aria-hidden="true"]:is(button, a, [tabindex])')).toHaveCount(0);
     await expect(page.locator('.insights-table button[tabindex="-1"]')).toHaveCount(0);
@@ -202,11 +215,12 @@ async function expectNextToBarbell(page, track) {
     await page.keyboard.press('Escape');
     await expect(tooltip).toBeHidden();
   });
-  test('regressed barbell connectors are dashed, not color-only; empty spotlight data hides the section', async ({ page }) => {
-    await page.route('**/showcase-runs.json', route => route.fulfill({ json: { tasks: [] } }));
+  test('regressed barbell connectors are dashed, not color-only; no Spotlight data renders placeholders in place', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('#ab-spotlight')).toBeHidden();
+    await expect(page.locator('#ab-spotlight')).toBeVisible();
     await expect(page.locator('#ab-spotlight')).toHaveAttribute('aria-busy', 'false');
+    await expect(page.locator('#ab-prompt-text')).toHaveText('Numbers appear once results are loaded.');
+    await expect(page.locator('#ab-checks-content')).toContainText('No data loaded');
     const bg = await page.evaluate(() => {
       const track = document.createElement('div');
       track.className = 'insight-dumbbell-track';
@@ -240,7 +254,7 @@ async function expectNextToBarbell(page, track) {
   });
   test('breakdown explanations use interestfor hint popovers instead of title attributes', async ({ page }) => {
     await page.goto('/');
-    await page.locator('#breakdowns > summary').click();
+    await openBreakdowns(page);
     const titleBtn = page.locator('.insights-panel[data-panel="model"] .insights-panel-title-btn');
     await expect(titleBtn).toBeVisible();
     await expect(titleBtn).not.toHaveAttribute('title', /.*/);
@@ -261,6 +275,7 @@ async function expectNextToBarbell(page, track) {
     await expect(legendHint).toBeHidden();
   });
   test('agent table scroll wrapper is a labeled, focusable region; spotlight meter has no title tooltips', async ({ page }) => {
+    await page.route('**/api/suites*', route => route.fulfill({ json: SHOWCASE_SUITES_FIXTURE }));
     await page.goto('/');
     const wrap = page.locator('.agent-table-wrap');
     await expect(wrap).toHaveAttribute('role', 'region');
@@ -273,6 +288,7 @@ async function expectNextToBarbell(page, track) {
   });
   test('switcher groups (#ab-agent-pills, #ab-task-pills, .metric-mode-toggle) use native fieldset/legend and pill-styled radio inputs with arrow-key selection', async ({ page }) => {
     const errors = collectErrors(page);
+    await page.route('**/api/suites*', route => route.fulfill({ json: SHOWCASE_SUITES_FIXTURE }));
     await page.goto('/');
     await expect(page.locator('#ab-spotlight')).toHaveAttribute('aria-busy', 'false');
     const agentGroup = page.locator('#ab-agent-pills');
@@ -318,7 +334,7 @@ async function expectNextToBarbell(page, track) {
     await expect(taskRadios.nth(0)).not.toBeChecked();
     await page.keyboard.press('Shift+Tab');
     await expect(agentRadios.nth(0)).toBeFocused();
-    await page.locator('#breakdowns > summary').click();
+    await openBreakdowns(page);
     await expect(page.getByRole('group', { name: 'Comparison check scope' })).toBeVisible();
     const modeAllRadio = page.locator('#insights-mode-all input[type="radio"]');
     const modeA11yRadio = page.locator('#insights-mode-a11y input[type="radio"]');

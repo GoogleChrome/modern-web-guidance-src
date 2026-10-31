@@ -22,7 +22,7 @@
 .ab-prompt-kicker { flex-shrink: 0; font-size: 0.8125rem; font-weight: 600; line-height: 1.4; color: var(--color-on-surface-variant); }
 .ab-prompt-text { margin: 0; flex: 1 1 auto; min-inline-size: 0; font-size: 0.8125rem; line-height: 1.45; color: var(--color-on-surface); }
 .ab-scorecard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-block-end: 1px solid var(--color-outline-variant); background: var(--color-surface-container-lowest); }
-.ab-score-card { grid-row: 1 / span 3; display: grid; grid-template-rows: subgrid; gap: 6px; padding: var(--space-2) var(--space-3); min-inline-size: 0; align-items: center; }
+.ab-score-card { grid-row: 1 / span 2; display: grid; grid-template-rows: subgrid; gap: 6px; padding: var(--space-2) var(--space-3); min-inline-size: 0; align-items: center; }
 .ab-score-card.unguided { background: var(--color-surface-container-low); }
 .ab-score-card.guided { border-inline-start: 1px solid var(--color-outline-variant); background: color-mix(in srgb, var(--color-accent-success) 6%, var(--color-surface-container-lowest)); }
 .ab-score-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-1) var(--space-2); }
@@ -44,8 +44,6 @@
 .ab-meter-seg { flex: 1 1 0; min-inline-size: 2px; border-radius: 2px; }
 .ab-meter-seg.pass { background: var(--color-accent-success); }
 .ab-meter-seg.fail { background: color-mix(in srgb, var(--color-accent-failure) 55%, var(--color-surface-container-low)); }
-.ab-verdict-summary { margin: 0; font-size: 0.8125rem; line-height: 1.35; color: var(--color-on-surface-variant); align-self: start; }
-.ab-score-card.guided .ab-verdict-summary { color: var(--color-on-surface); }
 .ab-checks-table-wrap { container-type: inline-size; overflow: auto; max-inline-size: 100%; max-block-size: 340px; }
 .ab-checks-table-wrap:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 .ab-checks-table { inline-size: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.8125rem; line-height: 1.35; }
@@ -100,19 +98,19 @@
 #ab-spotlight[aria-busy="true"] .ab-agent-pills { min-block-size: 2.1rem; min-inline-size: 24rem; }
 #ab-spotlight[aria-busy="true"] .ab-task-pills { min-block-size: 2.275rem; }
 #ab-spotlight[aria-busy="true"] .ab-prompt-banner { min-block-size: 4.6rem; }
-#ab-spotlight[aria-busy="true"] .ab-scorecard-grid { min-block-size: 5.95rem; }
+#ab-spotlight[aria-busy="true"] .ab-scorecard-grid { min-block-size: 3.5rem; }
 #ab-spotlight[aria-busy="true"] #ab-checks-content { min-block-size: 12.8rem; }
 #ab-spotlight[aria-busy="true"] .ab-frame-footer { min-block-size: 2.075rem; }
 @container spotlight (width < 52rem) {
 #ab-spotlight[aria-busy="true"] .ab-prompt-banner { min-block-size: 5.775rem; }
-#ab-spotlight[aria-busy="true"] .ab-scorecard-grid { min-block-size: 11.75rem; }
+#ab-spotlight[aria-busy="true"] .ab-scorecard-grid { min-block-size: 7rem; }
 #ab-spotlight[aria-busy="true"] #ab-checks-content { min-block-size: 14.625rem; }
 }
 @container spotlight (width < 40rem) {
 #ab-spotlight[aria-busy="true"] .ab-agent-pills { min-block-size: 2rem; min-inline-size: 21.2rem; }
 #ab-spotlight[aria-busy="true"] .ab-task-pills { min-block-size: 1.775rem; }
 #ab-spotlight[aria-busy="true"] .ab-prompt-banner { min-block-size: 12.1rem; }
-#ab-spotlight[aria-busy="true"] .ab-scorecard-grid { min-block-size: 15.15rem; }
+#ab-spotlight[aria-busy="true"] .ab-scorecard-grid { min-block-size: 9rem; }
 #ab-spotlight[aria-busy="true"] #ab-checks-content { min-block-size: 19.5rem; }
 #ab-spotlight[aria-busy="true"] .ab-frame-footer { min-block-size: 4.6rem; }
 }

@@ -20,6 +20,7 @@ import {
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { updateHeroFromSuites } from './hero.js';
+import { updateShowcaseFromSuites } from './showcase.js';
 
 /**
  * @typedef {import('./insights.js').ManifestSuite & {
@@ -515,9 +516,12 @@ async function fetchEvalsUncached(testId) {
 }
 
 function syncHero() {
-    updateHeroFromSuites(Object.values(allTestData), {
+    const suites = Object.values(allTestData);
+    updateShowcaseFromSuites(suites);
+    updateHeroFromSuites(suites, {
         fetchEvals: fetchEvalsForHero,
         onHydrated: () => {
+            updateShowcaseFromSuites(suites, { hydrated: true });
             refreshFilterOptions();
             renderSuites();
             const drawer = document.getElementById('breakdowns');

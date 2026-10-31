@@ -1,21 +1,12 @@
 import { escapeHtml, formatDuration, formatTokens, getAgentBadge, getScrollBehavior } from './utils.js';
 import { AGENT_FAMILIES } from './agents.js';
-/** @typedef {{ passed: number, total: number, rate: number, a11yPassed: number, a11yTotal: number, runtimeMs: number, uncachedTokens: number, totalTokens: number, guidesUsed: string[], addedLines: number, removedLines: number }} ShowcaseModeRun */
-/** @typedef {{ index: number, message: string, unguidedPassed: boolean, guidedPassed: boolean, flipped: boolean, isA11y: boolean, a11yLabel: string | null }} ShowcaseCheckItem */
-/** @typedef {{ unguided: string, guided: string }} ShowcaseApproach */
-/** @typedef {{ agentId: string, agentLabel: string, model: string, suiteId: string, date: string, approach?: ShowcaseApproach, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
-/** @typedef {{ id: string, label: string, category: string, categoryLabel: string, featureSummary: string, prompt: string, baseApp: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
-/** @typedef {{ generatedAt: string, tasks: ShowcaseTask[] }} ShowcasePayload */
+import { SHOWCASE_TASKS } from './showcase-config.js';
+import { selectRecentSuites, getSuiteTimestamp } from './insights.js';
+/** @typedef {import('./summary-extractor.js').ShowcaseModeRun & { rate: number }} ShowcaseModeRun */
+/** @typedef {import('./summary-extractor.js').ShowcaseCheck & { index: number, flipped: boolean }} ShowcaseCheckItem */
+/** @typedef {{ agentId: string, agentLabel: string, model: string, suiteId: string, date: string, unguided: ShowcaseModeRun, guided: ShowcaseModeRun, checks: ShowcaseCheckItem[] }} ShowcaseAgentPair */
+/** @typedef {{ id: string, label: string, category: string, prompt: string, agents: Record<string, ShowcaseAgentPair> }} ShowcaseTask */
 const AGENT_ORDER = AGENT_FAMILIES.map(f => f.id);
-/** @type {Record<string, string>} */
-const SHORT_TASK_LABELS = {
-    'highlight-text-ranges': 'Search highlights',
-    'animate-to-from-top-layer': 'Top-layer motion',
-    'flicker-free-client-side-ab-testing': 'Flicker-free A/B',
-    'faster-spa-view-transitions': 'SPA view cache',
-    'scrollspy': 'CSS scrollspy',
-    'interest-triggered-tooltips': 'Interest tooltips'
-};
 /** @type {Record<string, string>} */
 const GUIDE_CATEGORY_MAP = {
     'accessibility': 'accessibility', 'animate-to-from-top-layer': 'ui-behaviors', 'css': 'css',
@@ -32,37 +23,112 @@ const GUIDE_CATEGORY_MAP = {
     'same-document-transitions': 'ui-behaviors', 'scrollspy': 'ui-components',
     'search-hidden-content': 'ui-behaviors'
 };
-/** @param {ShowcaseTask} task
- * @param {ShowcaseAgentPair} pair */
-function getApproachContrast(task, pair) {
-    // Prose lives next to the run data in showcase-runs.json so regenerating the snapshot
-    // replaces both together; scores are rendered from pair.*.passed/total, not the prose.
-    return pair.approach || {
-        unguided: 'Standard unguided implementation without MWG skill.',
-        guided: `Guided implementation using ${task.featureSummary}.`
-    };
-}
 /** @type {ShowcaseTask[]} */
 let tasks = [];
 /** @type {string} */
-let activeTaskId = 'highlight-text-ranges';
+let activeTaskId = SHOWCASE_TASKS[0].id;
 /** @type {string} */
 let activeAgentId = AGENT_ORDER[0];
 let checksExpanded = false;
+let taskPillsListenersBound = false;
+let agentPillsListenersBound = false;
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
-document.addEventListener('DOMContentLoaded', () => { if (!rootEl) return; void loadShowcase(); });
-async function loadShowcase() {
+if (rootEl) {
+    renderPending({ loading: true });
+}
+/**
+ * Renders the Spotlight from each agent family's latest nightly suite, unfiltered. Suites carry
+ * per-check results for the featured tasks in `summary.showcase` (from the published manifest,
+ * or from evals.json hydration). When no data is loaded yet, renders placeholders in place to
+ * match the rest of the page and avoid layout shifts.
+ * @param {import('./insights.js').ManifestSuite[]} suites
+ * @param {{ hydrated?: boolean }} [options]
+ */
+export function updateShowcaseFromSuites(suites, { hydrated = false } = {}) {
     if (!rootEl) return;
-    try {
-        const res = await fetch('showcase-runs.json');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = /** @type {ShowcasePayload} */ (await res.json());
-        tasks = Array.isArray(data.tasks) ? data.tasks : [];
-        if (!tasks.length) { rootEl.hidden = true; rootEl.setAttribute('aria-busy', 'false'); return; }
-        if (!tasks.some(t => t.id === activeTaskId)) { activeTaskId = tasks[0].id; }
-        renderAll();
-        rootEl.setAttribute('aria-busy', 'false');
-    } catch (err) { console.warn('A/B Spotlight: could not load showcase-runs.json', err); rootEl.hidden = true; }
+    tasks = buildTasksFromRecentSuites(suites);
+    if (tasks.length && !tasks.some(t => t.id === activeTaskId)) {
+        activeTaskId = tasks[0].id;
+    }
+    const awaitingHydration = !hydrated && !tasks.length && hasUnhydratedRecentSuites(suites);
+    if (awaitingHydration) {
+        renderPending({ loading: true });
+        rootEl.setAttribute('aria-busy', 'true');
+        return;
+    }
+    renderAll();
+    rootEl.setAttribute('aria-busy', 'false');
+}
+
+/** @param {import('./insights.js').ManifestSuite[]} suites */
+function hasUnhydratedRecentSuites(suites) {
+    const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
+    return AGENT_FAMILIES.some(f => {
+        const suite = recent.get(f)?.[0];
+        return Boolean(suite && !suite.showcase);
+    });
+}
+
+/**
+ * @param {import('./insights.js').ManifestSuite[]} suites
+ * @returns {ShowcaseTask[]}
+ */
+function buildTasksFromRecentSuites(suites) {
+    const recent = selectRecentSuites(suites, { perAgentRecentN: 1 });
+    // Keep agent order aligned with headline AGENT_FAMILIES.
+    const families = AGENT_FAMILIES.filter(f => recent.has(f));
+    if (!families.length) return [];
+    /** @type {ShowcaseTask[]} */
+    const result = [];
+    for (const def of SHOWCASE_TASKS) {
+        /** @type {Record<string, ShowcaseAgentPair>} */
+        const agentPairs = {};
+        let prompt = '';
+        let discipline = '';
+        for (const family of families) {
+            const suite = recent.get(family)?.[0];
+            const slice = suite?.showcase?.[def.id];
+            if (!slice || !slice.guided || !slice.unguided) continue;
+            if (!prompt && slice.prompt) prompt = slice.prompt;
+            if (!discipline && slice.discipline) discipline = slice.discipline;
+            const ts = getSuiteTimestamp(suite);
+            const date = ts ? ts.slice(0, 10) : '';
+            const toRun = (/** @type {import('./summary-extractor.js').ShowcaseModeRun} */ r) => ({
+                ...r,
+                rate: r.total > 0 ? Math.round((r.passed / r.total) * 100) : 0
+            });
+            const bothGraded = !slice.unguided.earlyFailure && !slice.guided.earlyFailure;
+            const checks = (slice.checks || []).map((c, idx) => ({
+                index: idx + 1,
+                message: c.message,
+                unguidedPassed: Boolean(c.unguidedPassed),
+                guidedPassed: Boolean(c.guidedPassed),
+                flipped: bothGraded && !c.unguidedPassed && Boolean(c.guidedPassed),
+                isA11y: Boolean(c.isA11y),
+                a11yLabel: c.a11yLabel ?? null
+            }));
+            agentPairs[family.id] = {
+                agentId: family.id,
+                agentLabel: family.label,
+                model: suite?.model || '',
+                suiteId: suite?.testId || '',
+                date,
+                unguided: toRun(slice.unguided),
+                guided: toRun(slice.guided),
+                checks
+            };
+        }
+        if (Object.keys(agentPairs).length > 0) {
+            result.push({
+                id: def.id,
+                label: def.label,
+                category: GUIDE_CATEGORY_MAP[def.id] || discipline || 'ui-behaviors',
+                prompt,
+                agents: agentPairs
+            });
+        }
+    }
+    return result;
 }
 /** @returns {{ task: ShowcaseTask, pair: ShowcaseAgentPair } | null} */
 function getCurrentSelection() {
@@ -74,44 +140,73 @@ function getCurrentSelection() {
 }
 function renderAll() {
     const sel = getCurrentSelection();
-    if (!sel) return;
+    if (!sel) {
+        renderPending();
+        return;
+    }
     renderTaskPills(sel.task);
     renderAgentPills(sel.task, sel.pair);
     renderPromptBar(sel.task, sel.pair);
     renderScorecard(sel.task, sel.pair);
     renderChecks(sel.task, sel.pair);
 }
-let taskPillsListenersBound = false;
-let agentPillsListenersBound = false;
+/** @param {{ loading?: boolean }} [options] */
+function renderPending({ loading = false } = {}) {
+    renderTaskPills(null);
+    renderAgentPills(null, null);
+    const promptEl = document.getElementById('ab-prompt-text');
+    if (promptEl) {
+        promptEl.textContent = loading ? 'Loading task prompt…' : 'Numbers appear once results are loaded.';
+    }
+    const metaEl = document.getElementById('ab-run-provenance');
+    if (metaEl) metaEl.innerHTML = '<span class="ab-prov-item">Nightly evaluations</span>';
+    const naScore = '<span class="ab-score-pct mid"><span aria-hidden="true">—</span><span class="visually-hidden">not available</span></span>';
+    const uEl = document.getElementById('ab-score-unguided');
+    const gEl = document.getElementById('ab-score-guided');
+    if (uEl) {
+        uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> ${naScore} </div> </div> <div class="ab-check-meter" aria-hidden="true"></div> `;
+    }
+    if (gEl) {
+        gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> ${naScore} </div> </div> <div class="ab-check-meter" aria-hidden="true"></div> `;
+    }
+    const checksEl = document.getElementById('ab-checks-content');
+    if (checksEl) {
+        const naCell = '<span aria-hidden="true">—</span><span class="visually-hidden">not available</span>';
+        const rowMsg = loading ? 'Loading…' : 'No data loaded';
+        checksEl.innerHTML = ` <div id="ab-checks-table-wrap" class="ab-checks-table-wrap" tabindex="0" role="region" aria-label="Deterministic grader checks"> <table class="ab-checks-table"> <caption class="visually-hidden">Playwright grader assertions comparing unguided and guided runs</caption> <thead> <tr> <th scope="col" class="ab-col-num">#</th> <th scope="col">Grader assertion</th> <th scope="col" class="ab-col-status">Without MWG</th> <th scope="col" class="ab-col-status">With MWG</th> </tr> </thead> <tbody> <tr class="ab-check-row"> <td class="ab-check-num">—</td> <th scope="row" class="ab-check-msg">${rowMsg}</th> <td class="ab-check-cell" data-label="Without MWG">${naCell}</td> <td class="ab-check-cell" data-label="With MWG">${naCell}</td> </tr> </tbody> </table> </div> `;
+    }
+}
 /** @param {HTMLElement} container */
 function syncTaskPillsScrollShadows(container) {
     const maxScroll = container.scrollWidth - container.clientWidth;
     container.classList.toggle('has-scroll-left', container.scrollLeft > 4);
     container.classList.toggle('has-scroll-right', maxScroll - container.scrollLeft > 4);
 }
-/** @param {ShowcaseTask} currentTask */
+/** @param {ShowcaseTask | null} currentTask */
 function renderTaskPills(currentTask) {
     const container = document.getElementById('ab-task-pills');
     if (!container) return;
+    const list = tasks.length ? tasks : SHOWCASE_TASKS;
+    const activeId = currentTask ? currentTask.id : activeTaskId;
     const existingPills = /** @type {HTMLElement[]} */ (Array.from(container.querySelectorAll('.ab-task-pill')));
-    const sameTasks = existingPills.length === tasks.length &&
-        existingPills.every((el, idx) => el.getAttribute('data-task-id') === tasks[idx].id);
+    const sameTasks = existingPills.length === list.length &&
+        existingPills.every((el, idx) => el.getAttribute('data-task-id') === list[idx].id);
     if (!sameTasks) {
-        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend>` + tasks.map(t => {
-            const shortLabel = SHORT_TASK_LABELS[t.id] || t.label;
-            return `<label class="ab-task-pill" data-task-id="${escapeHtml(t.id)}"><input type="radio" name="ab-task" value="${escapeHtml(t.id)}"><span>${escapeHtml(shortLabel)}</span><span class="ab-task-delta-slot"></span></label>`;
+        container.innerHTML = `<legend class="visually-hidden">Select evaluation task</legend>` + list.map(t => {
+            return `<label class="ab-task-pill" data-task-id="${escapeHtml(t.id)}"><input type="radio" name="ab-task" value="${escapeHtml(t.id)}"><span>${escapeHtml(t.label)}</span><span class="ab-task-delta-slot"></span></label>`;
         }).join('');
     }
     container.querySelectorAll('.ab-task-pill').forEach(pill => {
         const taskId = pill.getAttribute('data-task-id');
         const task = tasks.find(t => t.id === taskId);
-        const isCurrent = taskId === currentTask.id;
+        const isCurrent = taskId === activeId;
         const input = pill.querySelector('input[type="radio"]');
         if (input instanceof HTMLInputElement) { input.checked = isCurrent; }
         const deltaSlot = pill.querySelector('.ab-task-delta-slot');
-        if (deltaSlot && task) {
-            const pair = task.agents[activeAgentId] || Object.values(task.agents)[0];
-            const deltaChecks = pair ? pair.guided.passed - pair.unguided.passed : 0;
+        if (deltaSlot) {
+            const pair = task ? (task.agents[activeAgentId] || Object.values(task.agents)[0]) : null;
+            const bothGraded = Boolean(pair && !pair.unguided.earlyFailure && !pair.guided.earlyFailure);
+            const deltaChecks = (pair && bothGraded) ? pair.guided.passed - pair.unguided.passed : 0;
             deltaSlot.innerHTML = (isCurrent && deltaChecks > 0)
                 ? `<span class="ab-task-delta"><span aria-hidden="true">+${deltaChecks}</span><span class="visually-hidden">, ${deltaChecks} more passing ${deltaChecks === 1 ? 'check' : 'checks'} with MWG</span></span>`
                 : '';
@@ -145,25 +240,27 @@ function renderTaskPills(currentTask) {
         });
     }
 }
-/** @param {ShowcaseTask} currentTask
- * @param {ShowcaseAgentPair} currentPair */
+/** @param {ShowcaseTask | null} currentTask
+ * @param {ShowcaseAgentPair | null} currentPair */
 function renderAgentPills(currentTask, currentPair) {
     const container = document.getElementById('ab-agent-pills');
     if (!container) return;
-    const orderedIds = AGENT_ORDER.filter(id => currentTask.agents[id]);
+    const orderedFamilies = currentTask
+        ? AGENT_FAMILIES.filter(f => currentTask.agents[f.id])
+        : AGENT_FAMILIES;
+    const activeId = currentPair ? currentPair.agentId : activeAgentId;
     const existingPills = /** @type {HTMLElement[]} */ (Array.from(container.querySelectorAll('.ab-agent-pill')));
-    const sameAgents = existingPills.length === orderedIds.length &&
-        existingPills.every((el, idx) => el.getAttribute('data-agent-id') === orderedIds[idx]);
+    const sameAgents = existingPills.length === orderedFamilies.length &&
+        existingPills.every((el, idx) => el.getAttribute('data-agent-id') === orderedFamilies[idx].id);
     if (!sameAgents) {
-        container.innerHTML = `<legend class="visually-hidden">Select coding agent</legend>` + orderedIds.map(id => {
-            const pair = currentTask.agents[id];
-            return `<label class="ab-agent-pill" data-agent-id="${escapeHtml(id)}"><input type="radio" name="ab-agent" value="${escapeHtml(id)}">${getAgentBadge(id)}${escapeHtml(pair.agentLabel)}</label>`;
+        container.innerHTML = `<legend class="visually-hidden">Select coding agent</legend>` + orderedFamilies.map(f => {
+            return `<label class="ab-agent-pill" data-agent-id="${escapeHtml(f.id)}"><input type="radio" name="ab-agent" value="${escapeHtml(f.id)}">${getAgentBadge(f.id)}${escapeHtml(f.label)}</label>`;
         }).join('');
     }
     container.querySelectorAll('.ab-agent-pill').forEach(pill => {
         const id = pill.getAttribute('data-agent-id');
         const input = pill.querySelector('input[type="radio"]');
-        if (input instanceof HTMLInputElement) { input.checked = id === currentPair.agentId; }
+        if (input instanceof HTMLInputElement) { input.checked = id === activeId; }
     });
     if (!agentPillsListenersBound) {
         agentPillsListenersBound = true;
@@ -178,12 +275,10 @@ function renderAgentPills(currentTask, currentPair) {
 /** @param {ShowcaseTask} task
  * @param {ShowcaseAgentPair} pair */
 function renderPromptBar(task, pair) {
-    const kickerEl = rootEl ? rootEl.querySelector('.ab-prompt-kicker') : null;
-    if (kickerEl) { kickerEl.textContent = 'Task prompt'; }
     const promptEl = document.getElementById('ab-prompt-text');
     const metaEl = document.getElementById('ab-run-provenance');
     if (promptEl) {
-        promptEl.textContent = `“${task.prompt}”`;
+        promptEl.textContent = task.prompt ? `“${task.prompt}”` : 'Task prompt unavailable.';
     }
     if (metaEl) {
         const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}#guide-${encodeURIComponent(task.id)}`;
@@ -225,22 +320,25 @@ function renderScorecard(task, pair) {
     if (!uEl || !gEl) return;
     const u = pair.unguided;
     const g = pair.guided;
+    const bothGraded = !u.earlyFailure && !g.earlyFailure;
     const deltaChecks = g.passed - u.passed;
     const deltaSign = deltaChecks > 0 ? `+${deltaChecks}` : (deltaChecks < 0 ? `−${Math.abs(deltaChecks)}` : '0');
     const deltaWord = Math.abs(deltaChecks) === 1 ? 'check' : 'checks';
     const deltaTone = deltaChecks > 0 ? 'good' : (deltaChecks < 0 ? 'cost' : 'flat');
     const deltaGlyph = deltaChecks > 0 ? '▲' : (deltaChecks < 0 ? '▼' : '•');
-    const contrast = getApproachContrast(task, pair);
-    const uMeterSegs = pair.checks.map(c => {
+    const deltaBadgeHtml = bothGraded
+        ? `<span class="delta ${deltaTone}"><span class="glyph" aria-hidden="true">${deltaGlyph}</span>${deltaSign} ${deltaWord}</span>`
+        : '';
+    const uMeterSegs = u.earlyFailure ? '' : pair.checks.map(c => {
         const st = c.unguidedPassed ? 'pass' : 'fail';
         return `<span class="ab-meter-seg ${st}"></span>`;
     }).join('');
-    const gMeterSegs = pair.checks.map(c => {
+    const gMeterSegs = g.earlyFailure ? '' : pair.checks.map(c => {
         const st = c.guidedPassed ? 'pass' : 'fail';
         return `<span class="ab-meter-seg ${st}${c.flipped ? ' is-flipped' : ''}"></span>`;
     }).join('');
-    const uTone = scoreTone(u.rate);
-    const gTone = scoreTone(g.rate);
+    const uTone = u.earlyFailure ? 'low' : scoreTone(u.rate);
+    const gTone = g.earlyFailure ? 'low' : scoreTone(g.rate);
     const uFailed = u.total - u.passed;
     const a11yActionHtml = '<span class="visually-hidden">: show accessibility assertions</span>';
     const uA11yHtml = u.a11yTotal > 0
@@ -249,8 +347,8 @@ function renderScorecard(task, pair) {
     const gA11yHtml = g.a11yTotal > 0
         ? `<button type="button" class="ab-score-a11y ${g.a11yPassed === g.a11yTotal ? 'pass' : 'fail'}">A11y ${g.a11yPassed}/${g.a11yTotal}${a11yActionHtml}</button>`
         : '';
-    uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span> <span class="ab-pass-summary">${uFailed > 0 ? `${uFailed} failed` : 'all passed'}</span> ${uA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div> <p class="ab-verdict-summary">${escapeHtml(contrast.unguided)}</p> `;
-    gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span> <span class="delta ${deltaTone}"><span class="glyph" aria-hidden="true">${deltaGlyph}</span>${deltaSign} ${deltaWord}</span> ${gA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div> <p class="ab-verdict-summary">${escapeHtml(contrast.guided)}</p> `;
+    uEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge unguided"><span class="legend-dot unguided" aria-hidden="true"></span>Without MWG</span> <span class="ab-score-pct ${uTone}">${u.passed}<span class="ab-score-denom">/${u.total}</span></span> <span class="ab-pass-summary">${u.earlyFailure ? 'run failed before grading' : (uFailed > 0 ? `${uFailed} failed` : 'all passed')}</span> ${uA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(u.runtimeMs)} · ${formatTokens(u.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${u.passed} of ${u.total} grader checks passed">${uMeterSegs}</div> `;
+    gEl.innerHTML = ` <div class="ab-score-header"> <div class="ab-score-header-main"> <span class="ab-mode-badge guided"><span class="legend-dot guided" aria-hidden="true"></span>With MWG</span> <span class="ab-score-pct ${gTone}">${g.passed}<span class="ab-score-denom">/${g.total}</span></span> ${deltaBadgeHtml} ${g.earlyFailure ? '<span class="ab-pass-summary">run failed before grading</span>' : ''} ${gA11yHtml} </div> <span class="ab-score-secondary">${formatDuration(g.runtimeMs)} · ${formatTokens(g.uncachedTokens)}</span> </div> <div class="ab-check-meter" role="img" aria-label="${g.passed} of ${g.total} grader checks passed">${gMeterSegs}</div> `;
     rootEl?.querySelectorAll('.ab-score-a11y').forEach(btn => { btn.addEventListener('click', () => expandAndFocusA11yChecks(task, pair)); });
 }
 /** @param {ShowcaseTask} task
@@ -263,15 +361,21 @@ function renderChecks(task, pair) {
     const canCollapse = totalChecks > previewCount;
     const collapsed = canCollapse && !checksExpanded;
     const a11yTotal = pair.checks.filter(c => c.isA11y).length || pair.guided.a11yTotal || 0;
-    const rowsHtml = pair.checks.map(c => {
-        const uBadge = c.unguidedPassed
-            ? '<span class="ab-check-status pass"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>'
-            : '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>';
-        const gBadge = c.guidedPassed
-            ? `<span class="ab-check-status pass${c.flipped ? ' is-flipped' : ''}"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>`: '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>'; const a11yTag = c.isA11y ?`<span class="ab-a11y-tag">A11y · ${escapeHtml(c.a11yLabel || 'Accessibility')}</span>`
-            : '';
+    const ungradedCell = '<span aria-hidden="true">—</span><span class="visually-hidden">not graded</span>';
+    const rowsHtml = totalChecks > 0 ? pair.checks.map(c => {
+        const uBadge = pair.unguided.earlyFailure
+            ? ungradedCell
+            : (c.unguidedPassed
+                ? '<span class="ab-check-status pass"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>'
+                : '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>');
+        const gBadge = pair.guided.earlyFailure
+            ? ungradedCell
+            : (c.guidedPassed
+                ? `<span class="ab-check-status pass${c.flipped ? ' is-flipped' : ''}"><span class="ab-status-glyph" aria-hidden="true">✓</span>Pass</span>`
+                : '<span class="ab-check-status fail"><span class="ab-status-glyph" aria-hidden="true">✗</span>Fail</span>');
+        const a11yTag = c.isA11y ? `<span class="ab-a11y-tag">A11y · ${escapeHtml(c.a11yLabel || 'Accessibility')}</span>` : '';
         return ` <tr class="ab-check-row${c.flipped ? ' is-flipped' : ''}"${c.isA11y ? ' data-a11y="true"' : ''}> <td class="ab-check-num">${c.index}</td> <th scope="row" class="ab-check-msg"> <span>${escapeHtml(cleanCheckMessage(c.message))}</span> ${a11yTag} </th> <td class="ab-check-cell" data-label="Without MWG">${uBadge}</td> <td class="ab-check-cell" data-label="With MWG">${gBadge}</td> </tr>`;
-    }).join('');
+    }).join('') : ` <tr class="ab-check-row"> <td class="ab-check-num">—</td> <th scope="row" class="ab-check-msg">Run failed before grading</th> <td class="ab-check-cell" data-label="Without MWG">${ungradedCell}</td> <td class="ab-check-cell" data-label="With MWG">${ungradedCell}</td> </tr>`;
     const collapsedLabel = a11yTotal > 0
         ? `Show all ${totalChecks} checks (${a11yTotal} a11y)`
         : `Show all ${totalChecks} checks`;

@@ -61,7 +61,8 @@ export function isNightlySuite(suite) { return typeof suite.testId === 'string' 
  * @param {AgentFamilyDef[]} [families=AGENT_FAMILIES] */
 export function getAgentFamily(agent, families = AGENT_FAMILIES) { if (!agent) return null; const needle = agent.toLowerCase(); return families.find(f => f.agents.includes(needle)) || null; }
 /** @param {ManifestSuite} suite */
-export function hasHeadlineStats(suite) { return Boolean(suite && suite.a11yStats); }
+// Also requires the A/B Spotlight slice, so manifests from older extractors get hydrated from evals.json.
+export function hasHeadlineStats(suite) { return Boolean(suite && suite.a11yStats && suite.showcase); }
 /** @param {ManifestSuite[]} suites
  * @param {InsightOptions} [options]
  * @returns {Map<AgentFamilyDef, ManifestSuite[]>} */

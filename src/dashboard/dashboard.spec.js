@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+/** Latest-nightly summaries (with Spotlight slices) for the three agent families, built from real October 27–28 nightlies. */
+const SHOWCASE_SUITES_FIXTURE = JSON.parse(readFileSync(new URL('./mock-results/showcase-suites.json', import.meta.url), 'utf8'));
 
 test.describe('Eval View Dashboard', () => {
   test('should load the dashboard and show expected content', async ({ page }) => {
@@ -255,6 +258,8 @@ const NIGHTLY_FIXTURE = {
       runtime: { guidedMedianMs: gMs, unguidedMedianMs: uMs, guidedMeanMs: gMs, unguidedMeanMs: uMs, medianDeltaPct: rtPct, fasterTaskPct: 58, fasterTasksCount: 89, pairedTaskCount: 153, guidedTimeouts: 0, unguidedTimeouts: 2 },
       tokens: { guidedUncachedMedian: gTok, unguidedUncachedMedian: uTok, uncachedMedianDeltaPct: tokPct, guidedTotalMedian: gTok, unguidedTotalMedian: uTok, guidedUncachedTotal: gTok * 100, unguidedUncachedTotal: uTok * 100, suiteUncachedDeltaPct: tokPct, guidedTotal: gTok * 120, unguidedTotal: uTok * 120, guidedCachedSharePct: 17, fewerUncachedTokensTaskPct: 61, fewerUncachedTasksCount: 94, pairedTaskCount: 153 }
     },
+    // Present (even when empty) on summaries from the current extractor, so the hero doesn't re-hydrate from evals.json.
+    showcase: {},
     guides: {
       'content-vis': { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60, a11y: { guidedPassed: 2, guidedTotal: 2, guidedRate: 100, unguidedPassed: 1, unguidedTotal: 2, unguidedRate: 50, uplift: 50 } }
     }
@@ -333,6 +338,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
   });
   test('renders A/B Task Spotlight, switches tasks/agents, and keeps mobile viewports overflow-free', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
+    await page.route('**/api/suites*', route => route.fulfill({ json: SHOWCASE_SUITES_FIXTURE }));
     await page.goto('/');
     const spotlight = page.locator('#ab-spotlight');
     await expect(spotlight).toHaveAttribute('aria-busy', 'false');

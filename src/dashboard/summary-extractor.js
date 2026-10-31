@@ -1,5 +1,6 @@
 import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
 import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
+import { SHOWCASE_GUIDE_IDS } from './showcase-config.js';
 const TIMEOUT_MS = 600000;
 
 /**
@@ -67,6 +68,37 @@ const TIMEOUT_MS = 600000;
  */
 
 /**
+ * @typedef {Object} ShowcaseModeRun
+ * @property {number} passed
+ * @property {number} total
+ * @property {number} a11yPassed
+ * @property {number} a11yTotal
+ * @property {number} runtimeMs
+ * @property {number} uncachedTokens
+ * @property {number} totalTokens
+ * @property {string[]} guidesUsed
+ * @property {boolean} earlyFailure true when the run failed before grading
+ */
+/**
+ * @typedef {Object} ShowcaseCheck
+ * @property {string} message
+ * @property {boolean} unguidedPassed
+ * @property {boolean} guidedPassed
+ * @property {boolean} isA11y
+ * @property {string | null} a11yLabel
+ */
+/**
+ * Compact per-check results for a featured A/B Spotlight task (see showcase-config.js), taken
+ * from the first run of each mode so the published manifest can drive the Spotlight directly.
+ * @typedef {Object} ShowcaseSlice
+ * @property {string} prompt
+ * @property {string} discipline
+ * @property {ShowcaseModeRun} unguided
+ * @property {ShowcaseModeRun} guided
+ * @property {ShowcaseCheck[]} checks
+ */
+
+/**
  * @typedef {Object} SuiteSummary
  * @property {string} testId
  * @property {string} timestamp
@@ -84,6 +116,7 @@ const TIMEOUT_MS = 600000;
  * @property {number} [unguidedErrorRate]
  * @property {number} [unguidedLeakRate]
  * @property {Record<string, GuideSummary>} guides
+ * @property {Record<string, ShowcaseSlice>} showcase featured Spotlight tasks present in this suite
  * @property {ReturnType<typeof calculateChartData>} chartData
  */
 
@@ -165,6 +198,9 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
      * @type {Record<string, Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>>}
      */
     const suiteGuideTasks = {};
+    /** First run of each mode for featured Spotlight guides, locked to the first task seen per guide.
+     * @type {Record<string, { task: string, guided?: import('../harness/lib/metrics.ts').RunResult, unguided?: import('../harness/lib/metrics.ts').RunResult }>} */
+    const showcaseRuns = {};
 
     scenarioKeys.forEach(key => {
         const parsedKey = parseResultKey(key);
@@ -207,6 +243,11 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         if (isGuided) guidedTotalRuns += runs.length;
         else if (isUnguided) unguidedTotalRuns += runs.length;
 
+        if (parsedKey && SHOWCASE_GUIDE_IDS.has(parsedKey.guide) && (parsedKey.runType === 'guided' || parsedKey.runType === 'unguided') && runs.length) {
+            const firstRun = runs.reduce((a, b) => ((b.runNumber ?? 0) < (a.runNumber ?? 0) ? b : a));
+            const entry = (showcaseRuns[parsedKey.guide] ||= { task: parsedKey.task });
+            if (entry.task === parsedKey.task) entry[parsedKey.runType] = firstRun;
+        }
         runs.forEach((/** @type {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} */ run) => {
             if (isEarlyFailureRun(run.results)) {
                 if (isGuided) guidedEarlyFailures++;
@@ -432,6 +473,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const unguidedLeakRate = unguidedTotalRuns > 0 ? Math.round((unguidedLeaks / unguidedTotalRuns) * 100) : 0;
 
     const chartData = calculateChartData(results, eligibleScenarios);
+    const showcase = buildShowcaseSlices(showcaseRuns);
 
     return {
         testId: testId,
@@ -450,6 +492,65 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         unguidedErrorRate: unguidedErrorRate,
         ...(unguidedLeakRate > 0 ? { unguidedLeakRate } : {}),
         guides: guidesFormatted,
+        showcase,
         chartData: chartData
     };
+}
+
+/**
+ * @param {Record<string, { guided?: import('../harness/lib/metrics.ts').RunResult, unguided?: import('../harness/lib/metrics.ts').RunResult }>} runsByGuide
+ * @returns {Record<string, ShowcaseSlice>}
+ */
+function buildShowcaseSlices(runsByGuide) {
+    /** @type {Record<string, ShowcaseSlice>} */
+    const slices = {};
+    for (const [guide, { guided, unguided }] of Object.entries(runsByGuide)) {
+        if (!guided || !unguided) continue;
+        /** @param {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} run */
+        const classify = (run) => (run.results || [])
+            .filter(c => !c.isEarlyFailure)
+            .map(c => ({ check: c, cls: classifyScenarioCheck(c, guide, run.discipline) }));
+        /** @param {import('../harness/lib/metrics.ts').RunResult & { guidesUsed?: string[] }} run @returns {ShowcaseModeRun} */
+        const toModeRun = (run) => {
+            const stats = getRunStats(run.results);
+            const a11y = classify(run).filter(x => x.cls.isAccessibility);
+            const tb = getTokenBreakdown(run.tokenUsage);
+            return {
+                passed: stats.passed,
+                total: stats.total,
+                a11yPassed: a11y.filter(x => x.check.passed).length,
+                a11yTotal: a11y.length,
+                runtimeMs: getAgentRuntimeMs(run),
+                uncachedTokens: tb.uncached,
+                totalTokens: tb.total,
+                guidesUsed: Array.isArray(run.guidesUsed) ? run.guidesUsed : [],
+                earlyFailure: isEarlyFailureRun(run.results)
+            };
+        };
+        // Align checks across modes by id (falling back to message); order follows whichever run was graded.
+        const gChecks = classify(guided);
+        const uChecks = classify(unguided);
+        const keyOf = (/** @type {{ id?: string, message?: string }} */ c) => c.id || c.message || '';
+        const uPassedByKey = new Map(uChecks.map(x => [keyOf(x.check), Boolean(x.check.passed)]));
+        const gPassedByKey = new Map(gChecks.map(x => [keyOf(x.check), Boolean(x.check.passed)]));
+        const ordered = gChecks.length ? gChecks : uChecks;
+        const subLabels = new Map(A11Y_SUBCATEGORIES.map(sc => [sc.id, sc.shortLabel]));
+        /** @type {ShowcaseCheck[]} */
+        const checks = ordered.map(({ check, cls }) => ({
+            message: check.message || '',
+            unguidedPassed: uPassedByKey.get(keyOf(check)) ?? false,
+            guidedPassed: gPassedByKey.get(keyOf(check)) ?? false,
+            isA11y: cls.isAccessibility,
+            a11yLabel: cls.subCategory ? (subLabels.get(cls.subCategory) ?? null) : null
+        }));
+        const meta = /** @type {{ prompt?: string, discipline?: string }} */ (guided);
+        slices[guide] = {
+            prompt: meta.prompt || /** @type {{ prompt?: string }} */ (unguided).prompt || '',
+            discipline: meta.discipline || '',
+            unguided: toModeRun(unguided),
+            guided: toModeRun(guided),
+            checks
+        };
+    }
+    return slices;
 }
