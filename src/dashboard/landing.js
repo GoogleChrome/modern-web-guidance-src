@@ -8,7 +8,6 @@ import {
     formatTokens,
     getAgentBadge,
     getScrollBehavior,
-    SERVING_DISPLAY_NAMES,
     AGENT_DISPLAY_NAMES,
     parseSuiteDateInfo,
     formatSuiteDate,
@@ -29,7 +28,6 @@ import { updateShowcaseFromSuites } from './showcase.js';
  *   source: import('./api.js').DataSource;
  *   timestamp: string;
  *   agent: string;
- *   serving: string;
  *   model: string;
  * }} LandingSuiteSummary
  */
@@ -48,8 +46,6 @@ let selectedTestIds = new Set(); // Compound keys picked in the "Filter runs" me
 let currentSourceFilter = 'all';
 /** @type {string} */
 let currentAgentFilter = 'all';
-/** @type {string} */
-let currentServingFilter = 'all';
 /** @type {string} */
 let currentModelFilter = 'all';
 /** @type {boolean} */
@@ -74,7 +70,6 @@ let currentGuideSort = 'alphabetic';
 let currentGuideSortDir = 'asc';
 /** @type {InsightsMode} */
 let currentInsightsMode = 'all';
-const servingDisplayNames = SERVING_DISPLAY_NAMES;
 const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
 function isRemoteDashboard() {
@@ -195,7 +190,6 @@ function setupTableFilters() {
             const mobileAgent = document.getElementById('mobile-filter-agent');
             if (mobileAgent instanceof HTMLSelectElement) { mobileAgent.value = val; syncSelectStyles(mobileAgent); }
         },
-        'filter-serving': (val) => currentServingFilter = val,
         'filter-model': (val) => currentModelFilter = val
     };
 
@@ -376,7 +370,7 @@ function setupInsightsControls() {
         if (btn instanceof HTMLButtonElement) {
             const key = btn.dataset.filterKey;
             const value = btn.dataset.filterValue;
-            if ((key === 'agent' || key === 'serving' || key === 'model') && value !== undefined) { setInsightFilter(key, value); }
+            if ((key === 'agent' || key === 'model') && value !== undefined) { setInsightFilter(key, value); }
             return;
         }
         if (!target.closest('a, button')) {
@@ -648,7 +642,6 @@ function registerSuiteSummary(summary, source, { refreshFilters = true } = {}) {
         source,
         timestamp: summary.timestamp || '',
         agent: summary.agent || 'unknown',
-        serving: summary.serving || 'unknown',
         model: summary.model || 'unknown'
     };
     if (refreshFilters) refreshFilterOptions();
@@ -657,7 +650,6 @@ function refreshFilterOptions() {
     updateFilterOptions('filter-model-group', 'model');
     updateFilterOptions('filter-agent-group', 'agent', agentDisplayNames);
     updateFilterOptions('mobile-filter-agent-group', 'agent', agentDisplayNames);
-    updateFilterOptions('filter-serving-group', 'serving', servingDisplayNames);
     updateSourceFilterOptions();
 }
 
@@ -679,7 +671,7 @@ function updateSourceFilterOptions() {
 /**
  * Rebuilds a header <select>'s option group from the distinct values seen so far.
  * @param {string} groupId
- * @param {'agent' | 'serving' | 'model'} key
+ * @param {'agent' | 'model'} key
  * @param {Record<string, string>} [displayNames]
  */
 function updateFilterOptions(groupId, key, displayNames = {}) {
@@ -741,7 +733,6 @@ function getFilteredKeys() {
         if (!t) return false;
         if (currentSourceFilter !== 'all' && t.source !== currentSourceFilter) return false;
         if (currentAgentFilter !== 'all' && t.agent !== currentAgentFilter) return false;
-        if (currentServingFilter !== 'all' && t.serving !== currentServingFilter) return false;
         if (currentModelFilter !== 'all' && t.model !== currentModelFilter) return false;
         return true;
     });
@@ -944,7 +935,6 @@ function renderSuites() {
                     </a>
                 </th>
                 <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
-                <td>${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)}</td>
                 <td class="model-cell">${escapeHtml(testInfo.model || '')}</td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate ?? ''}" data-barbell-g="${gRate ?? ''}" data-barbell-uplift="${overallPp ?? ''}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
                     <a href="${localLink}" class="uplift-link" interestfor="barbell-tooltip">
@@ -968,16 +958,14 @@ function renderSuites() {
 
 /**
  * Columns whose value is identical for every loaded run carry no information, so
- * hide them (Serving, Source) to keep the table within the page width. Cells stay
+ * hide them (Source) to keep the table within the page width. Cells stay
  * in the DOM so the stacked-layout labels (nth-child) keep lining up.
  */
 function syncOptionalColumns() {
     const table = document.querySelector('.suites-table');
     if (!table) return;
     const all = Object.values(allTestData);
-    const servings = new Set(all.map(t => t.serving));
     const sources = new Set(all.map(t => t.source));
-    table.classList.toggle('hide-serving', servings.size <= 1 && currentServingFilter === 'all');
     table.classList.toggle('hide-source', isRemoteDashboard() || (sources.size <= 1 && currentSourceFilter === 'all'));
 }
 
@@ -1024,12 +1012,12 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
 
 /**
  * Splits "nightly-2026-10-09_07-00-02-antigravity_cli" into a short label plus
- * any trailing owner tag, dropping the agent/serving tokens that other columns show.
+ * any trailing owner tag, dropping the agent tokens that other columns show.
  * @param {LandingSuiteSummary} testInfo
  * @returns {{ label: string, ldap: string }}
  */
 function formatSuiteLabel(testInfo) {
-    const { testId, agent, serving } = testInfo;
+    const { testId, agent } = testInfo;
     if (!testId) return { label: 'evaluation-run', ldap: '' };
 
     const timeRegex = /[-_]?\b\d{4}-\d{2}-\d{2}(?:[T_]\d{2}-\d{2}-\d{2})?\b[-_]?/;
@@ -1040,12 +1028,11 @@ function formatSuiteLabel(testInfo) {
     if (!suffix) return { label, ldap: '' };
     const normalize = (/** @type {string} */ s) => (s || '').toLowerCase().replace(/[-_]+/g, '');
     const normAgent = normalize(agent);
-    const normServing = normalize(serving);
     /** @type {string[]} */
     const otherTags = [];
     suffix.split('-').forEach(part => {
         const normPart = normalize(part);
-        if (normPart === normAgent || normPart === normServing) return;
+        if (normPart === normAgent) return;
         if (normPart === 'cli' || normPart === 'run' || normPart === 'skills') return;
         otherTags.push(part);
     });
@@ -1633,7 +1620,7 @@ function renderPivotInsights() {
 
 /**
  * Toggles one of the header filters from a pivot row (click again to clear).
- * @param {'agent' | 'serving' | 'model'} filterKey
+ * @param {'agent' | 'model'} filterKey
  * @param {string} value
  */
 function setInsightFilter(filterKey, value) {

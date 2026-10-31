@@ -49,7 +49,6 @@ document.addEventListener('DOMContentLoaded', async () => {
  * @property {string} timestamp
  * @property {string} source
  * @property {string} agent
- * @property {string} serving
  * @property {string} model
  * @property {Record<string, any>} guides
  */
@@ -70,7 +69,6 @@ function registerSuiteSummary(summary, source) {
         })(),
         source: source,
         agent: summary.agent || 'unknown',
-        serving: summary.serving || 'unknown',
         model: summary.model || 'unknown',
         guides: summary.guides || {}
     };
