@@ -10,6 +10,9 @@ web-feature-ids:
   - mutationobserver
   - resize-observer
   - web-animations
+  - forced-colors
+  - masks
+  - prefers-reduced-motion
 ---
 
 # Swipe to remove
@@ -27,19 +30,33 @@ The component has two layers: a **list** (the `<ul>`) and the **items** inside i
 ### Step 1: Mark up the list with track and content
 
 ```html
-<ul class="SwipeableList">
+<!-- tabindex="-1" lets focus move here when the last item is removed (Step 4). -->
+<h2 id="list-heading" tabindex="-1">Inbox</h2>
+
+<!-- Safari removes list semantics when list-style is none; role="list"
+     restores the item count for screen readers. -->
+<ul class="SwipeableList" role="list" aria-labelledby="list-heading">
   <li id="list-item-1" class="SwipeableList-item">
     <div class="SwipeableList-track">
-      <div class="SwipeableList-content">Item One</div>
-    </div>
-  </li>
-  <li id="list-item-2" class="SwipeableList-item">
-    <div class="SwipeableList-track">
-      <div class="SwipeableList-content">Item Two</div>
+      <div class="SwipeableList-content">
+        <span class="SwipeableList-label">Item One</span>
+        <!-- Swiping can't be done with a keyboard, a single tap or a screen
+             reader, so give each swipe action its own button. data-direction
+             is the swipe direction the button stands in for (Step 4), and
+             including the item name in the button text tells screen reader
+             users which row it acts on. This example has a single action. -->
+        <button type="button" class="SwipeableList-action" data-direction="right">
+          Remove<span class="visually-hidden"> Item One</span>
+        </button>
+      </div>
     </div>
   </li>
   <!-- ...more items... -->
 </ul>
+
+<!-- Screen readers only announce changes to a live region that was already
+     in the page, so render this empty and fill it on removal (Step 4). -->
+<p role="status" class="SwipeableList-status visually-hidden"></p>
 ```
 
 ### Step 2: Configure the track as a horizontal snap container with three snap points
@@ -76,7 +93,8 @@ The track configuration is gated behind an `.is-initialized` class on the list i
      back-gesture on iOS/Android. */
   overscroll-behavior-x: none;
 
-  /* Hide the scrollbar; the gesture is the affordance. */
+  /* Hide the scrollbar; the swipe doesn't need one, and the action
+     buttons (Step 1) are the visible alternative. */
   scrollbar-width: none;
 
   /* `mandatory` ensures the track always rests on a snap point
@@ -213,6 +231,25 @@ The placement, sizing, and motion below are a **starting suggestion**, not a req
 .SwipeableList-item.is-activating[data-swipe-direction="right"]::before {
   visibility: hidden;
 }
+
+/* Skip the icon pop for users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .SwipeableList-item.is-activating::before,
+  .SwipeableList-item.is-activating::after {
+    scale: 1;
+  }
+}
+
+/* Forced colors replaces the action background with Canvas, which hides the
+   white icon. Paint the icon shape in CanvasText instead so it stays visible. */
+@media (forced-colors: active) {
+  .SwipeableList-item.is-initialized::before,
+  .SwipeableList-item.is-initialized::after {
+    forced-color-adjust: none;
+    background: CanvasText;
+    mask: var(--action-icon) center / contain no-repeat;
+  }
+}
 ```
 
 ### Step 4: Detect the commit gesture with `IntersectionObserver`
@@ -222,10 +259,11 @@ Use `IntersectionObserver` rooted at the track, observing the content. As the us
 - `activateThreshold`: a high ratio (e.g., 0.8). When the visible portion of the content drops below this, the user is past the visual activate point. Toggle the icon-pop affordance.
 - `commitThreshold`: a low ratio (e.g., 0.2). When the visible portion drops below this, the user has committed. Start the remove animation **immediately**, without waiting for the snap gesture to fully settle. The collapsing row blends into the user's continuing swipe momentum, which feels more responsive than waiting for the snap to land before reacting.
 
-Two more concerns are handled here:
+Three more concerns are handled here:
 
 - **Lazy per-item setup**: a single outer `IntersectionObserver` rooted at the viewport drives setup and the start/stop of the inner swipe observers. Items only get wired up the first time they scroll into view, and items that scroll off-screen have their swipe observer paused. This keeps the active observer count bounded and avoids reading layout-dependent values (like `clientWidth`) before the item has been rendered.
 - **Dynamic items**: real lists grow over time (initial render, infinite scroll, server push). A `MutationObserver` on the `<ul>` registers any newly added items with the outer observer.
+- **Action buttons**: a click (or the Enter key) on an item's action button runs the same `commit` function as the swipe it stands in for, so both paths share the focus move, the announcement and the removal animation. The action color and icon are revealed by scrolling the track during a swipe, so they don't appear when a button is used.
 
 ```js
 // Per-item handles. Populated when an item is first lazily wired up; read by
@@ -288,9 +326,7 @@ function setupItem(item) {
       // The IO entry's boundingClientRect is the last reliable measurement
       // before the animation starts; reuse it for both the pre-collapse
       // height and the slide-off translate distance.
-      removeItem(item, content, direction, entry);
-      viewportObserver.unobserve(item);
-      observer.disconnect();
+      commit(direction, entry);
       return;
     }
 
@@ -308,15 +344,58 @@ function setupItem(item) {
     threshold: [commitThreshold, activateThreshold],
   });
 
+  // The swipe and the action buttons all commit through here, so they share
+  // one removal path. The guard stops a second swipe or click from removing
+  // the row twice.
+  function commit(direction, entry) {
+    if (item.classList.contains('is-removing')) return;
+    removeItem(item, content, direction, entry);
+    viewportObserver.unobserve(item);
+    observer.disconnect();
+  }
+
   // Return the handle without starting observation; the outer viewport observer
   // calls `observer.observe(content)` once the item is in view.
-  const handle = {observer, content};
+  const handle = {observer, content, track, commit};
   swipeObservers.set(item, handle);
   return handle;
 }
 
 async function removeItem(item, content, direction, entry) {
-  const opts = { duration: 300, easing: 'ease', fill: 'forwards' };
+  // Removing or inerting the row drops focus to <body> if focus is inside it,
+  // so move focus to the next row first (or the previous row, or the list
+  // heading when the list is now empty). Rows still collapsing are skipped.
+  // Keep focus on the same kind of element: if the row itself had focus
+  // (some browsers make the track a Tab stop even when it contains buttons),
+  // focus the next row, so the larger row focus indicator appears where the
+  // user expects it; otherwise focus the next row's first button.
+  const list = item.parentElement;
+  if (item.contains(document.activeElement)) {
+    const rows = [...list.children].filter(
+      (row) => row === item || !row.classList.contains('is-removing'),
+    );
+    const index = rows.indexOf(item);
+    const next = rows[index + 1] ?? rows[index - 1];
+    const listHeading = document.getElementById(list.getAttribute('aria-labelledby'));
+    const firstButton = next?.querySelector('button');
+    const target = document.activeElement.matches('.SwipeableList-track')
+      ? next?.querySelector('.SwipeableList-track')
+      : firstButton;
+    (target ?? listHeading).focus();
+    // Not every browser lets the track take focus; fall back to the button.
+    if (target && document.activeElement !== target) (firstButton ?? listHeading).focus();
+  }
+
+  // A row disappearing isn't announced, so say which item was removed in
+  // the page's role="status" element from Step 1.
+  const label = item.querySelector('.SwipeableList-label').textContent;
+  document.querySelector('.SwipeableList-status').textContent = `${label} removed`;
+
+  // Sliding the row off-screen is large movement, so skip it for users who
+  // prefer reduced motion and keep a shorter collapse instead.
+  // (150ms and 300ms are example durations.)
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const opts = { duration: reduce ? 150 : 300, easing: 'ease', fill: 'forwards' };
 
   const rect = entry.boundingClientRect;
   // Content's pixel offset from the track's left edge.
@@ -334,7 +413,7 @@ async function removeItem(item, content, direction, entry) {
   // smooth scroll-snap has scrolled the content fully off-screen.
   item.classList.add('is-removing');
   item.animate([{ height: `${rect.height}px` }, { height: '0px' }], opts);
-  content.animate([{ translate: `${translate}px` }], opts);
+  if (!reduce) content.animate([{ translate: `${translate}px` }], opts);
   await Promise.allSettled(
     item.getAnimations({ subtree: true }).map((a) => a.finished),
   );
@@ -365,8 +444,8 @@ function setupList(list) {
 
   // Pick up items added later (initial render after data loads, infinite
   // scroll, server push). Removals don't need MutationObserver handling —
-  // the commit branch above already unobserves the item before removing it
-  // from the DOM.
+  // `commit()` above already unobserves the item before removing it from the
+  // DOM.
   new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
@@ -377,6 +456,22 @@ function setupList(list) {
       }
     }
   }).observe(list, { childList: true });
+
+  // Delegate from the list so items added later work too. A keyboard user can
+  // reach a button before its row has scrolled into view, so set the item up
+  // on demand.
+  list.addEventListener('click', (event) => {
+    const button = event.target.closest('.SwipeableList-action');
+    const item = button?.closest('.SwipeableList-item');
+    if (!item) return;
+    const handle = swipeObservers.get(item) ?? setupItem(item);
+    // Commit in the direction of the swipe this button stands in for, passing
+    // the same measurements an IntersectionObserver entry carries.
+    handle.commit(button.dataset.direction, {
+      boundingClientRect: handle.content.getBoundingClientRect(),
+      rootBounds: handle.track.getBoundingClientRect(),
+    });
+  });
 }
 
 document.querySelectorAll('.SwipeableList').forEach(setupList);
@@ -396,15 +491,15 @@ The scroll/snap/observation mechanics are unchanged.
 
 A single row can also expose **two different actions**: one for a left swipe and one for a right swipe (e.g., "archive" on right, "delete" on left), the way many native mail apps do it. The scroll, snap, and commit-detection mechanics don't change at all — the only thing that changes is what happens at commit time.
 
-In Step 4, the commit branch always calls `removeItem(...)`. To support two actions, pick the handler based on `direction`:
+In Step 4, the `commit` function always calls `removeItem(...)`. To support two actions, pick the handler based on `direction`, and give each action its own button whose `data-direction` is the direction of the swipe it stands in for (Step 1):
 
 ```js
-if (ratio < commitThreshold) {
+function commit(direction, entry) {
+  if (item.classList.contains('is-removing')) return;
   const handler = direction === 'left' ? archiveItem : removeItem;
   handler(item, content, direction, entry);
   viewportObserver.unobserve(item);
   observer.disconnect();
-  return;
 }
 ```
 
@@ -453,10 +548,9 @@ With this setup, the spacers no longer need their own background-color (the trac
 - **DO** commit at a threshold *before* the snap settles (e.g., `commitThreshold ≈ 0.2`) rather than waiting for the content to be fully off-screen. This lets the remove animation start during the gesture, which feels significantly more responsive than waiting for the snap to land.
 - **DO** drive per-item setup from an outer viewport `IntersectionObserver` rather than wiring every item up at page load. This avoids reading layout-dependent values (`clientWidth`, etc.) before items have been rendered, and keeps the active observer count proportional to what the user can actually see.
 - **DO** use a `MutationObserver` on the list when items are added dynamically (initial render after data loads, infinite scroll, server push). Without it, items appended after page load won't get wired up.
-- **DO NOT** rely on `pointerdown`/`pointermove`/`pointerup` to drive a manual transform. You'll lose momentum, snap-back, keyboard accessibility, and reduced-motion handling that the browser gives you for free.
-- **DO** confirm destructive actions when appropriate. For "remove", consider showing an undo toast after the swipe completes; the gesture is fast and easy to trigger by accident.
-- **DO** ensure the scroll track is focusable, keyboard accessible, and that there is a visual focus affordance.
-- **DO** provide accessible alternatives for any relevant actions triggered by the swipe (e.g., a visible button, context menu, or edit mode).
+- **DO NOT** rely on `pointerdown`/`pointermove`/`pointerup` to drive a manual transform. You'll lose the momentum, snap-back, and keyboard scrolling that native scrolling gives you for free.
+- **DO** confirm destructive actions when appropriate. For "remove", consider showing an undo toast after the swipe completes; the gesture is fast and easy to trigger by accident. Also announce the result (for example, "Item One removed") by writing it into a `role="status"` element that is already in the page, because screen readers only announce changes to live regions that existed before the change.
+- **DO** give every swipe action a visible button (or menu item) that performs the same action with a single click or the Enter key, as WCAG 2.5.1 Pointer Gestures requires for path-based gestures. Make each button at least 24×24 CSS pixels (WCAG 2.5.8 Target Size (Minimum)) and name it after the item it acts on. Once a row contains a button, don't add `tabindex` to the track: arrow keys on a focused track commit the action with no confirmation.
 
 ## Fallback strategies
 
@@ -469,6 +563,8 @@ With this setup, the spacers no longer need their own background-color (the trac
 {{ BASELINE_STATUS("resize-observer") }}
 
 {{ BASELINE_STATUS("web-animations") }}
+
+{{ BASELINE_STATUS("masks") }}
 
 All newer features that are used are either not core to the experience or have robust fallbacks that can be reliably used now.
 
@@ -536,14 +632,14 @@ function setupItem(item) {
 }
 ```
 
-Unobserve the track before the row's height animation runs in `removeItem`, otherwise the height change re-triggers the resize callback during removal. Add this alongside the existing `viewportObserver.unobserve(item)` in the commit branch:
+Unobserve the track before the row's height animation runs in `removeItem`, otherwise the height change re-triggers the resize callback during removal. Add this alongside the existing `viewportObserver.unobserve(item)` in the `commit` function (Step 4):
 
 ```js
-if (ratio < commitThreshold) {
+function commit(direction, entry) {
+  if (item.classList.contains('is-removing')) return;
   removeItem(item, content, direction, entry);
   viewportObserver.unobserve(item);
   if (needsScrollWorkaround) trackResizeObserver.unobserve(track);
   observer.disconnect();
-  return;
 }
 ```
