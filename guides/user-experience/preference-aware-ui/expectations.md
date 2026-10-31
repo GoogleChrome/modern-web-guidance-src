@@ -1,0 +1,10 @@
+- With the color scheme emulated as `dark`, white text has a higher contrast ratio than black text against the page background (the `body` background color, or the `html` background color when the `body` background is transparent).
+- Switching the emulated color scheme from `light` to `dark` after load, without reloading, changes the page background color (`body`, or `html` when the `body` background is transparent).
+- In both `light` and `dark` color schemes, the `body` text color has a contrast ratio of at least 4.5:1 against the page background (`body`, or `html` when the `body` background is transparent).
+- If the page has a theme control (a button, checkbox, radio group, or select that overrides the system color scheme), a theme chosen with it is already applied when the `body` element is first inserted into the DOM on reload.
+- If the page has a theme control, the user can use it to return to following the system preference, after which changing the emulated color scheme changes the page background color.
+- With `prefers-reduced-motion: reduce` emulated, both from page load and after switching at runtime, every animation or transition that changes `transform`, `translate`, `scale`, or `rotate` under `no-preference` is either not running or has a longer duration.
+- With `prefers-reduced-motion: reduce` emulated, every `video` element with the `autoplay` attribute is paused.
+- Currency amounts, dates, or numbers with a grouping or decimal separator rendered by the page are formatted differently under the `de-DE` browser locale than under `en-US`.
+- If the page has optional media (a `<video>`, a third-party `<iframe>`, or media inserted by script), then with Save-Data enabled (the `Save-Data: on` request header and `navigator.connection.saveData` set to `true`), that media's video file or embedded content isn't downloaded until the user asks for it; a `<video>` with `preload="none"` and no `autoplay` meets this.
+- When `navigator.connection` is undefined, page scripts execute without uncaught errors.
