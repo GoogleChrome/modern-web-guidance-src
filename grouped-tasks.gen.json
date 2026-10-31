@@ -323,6 +323,9 @@
       "security": [
         "daily-grind"
       ],
+      "trusted-types": [
+        "daily-grind"
+      ],
       "validate-origins": [
         "daily-grind"
       ],
