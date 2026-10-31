@@ -72,20 +72,18 @@
 
       <section id="guide-section" aria-labelledby="guide-evals-heading">
         <div class="guide-section-header">
-          <h2 id="guide-evals-heading" class="guide-evals-heading">Guide evals</h2>
+          <div class="guide-title-group">
+            <h2 id="guide-evals-heading" class="guide-evals-heading">Guide evals</h2>
+            <span id="evals-count" class="evals-count" aria-live="polite"></span>
+          </div>
           <div class="guide-controls">
-            <label for="task-sort-select" class="sort-label">Sort tasks:</label>
-            <select id="task-sort-select" class="sort-select">
-              <option value="default">Category &amp; guide (default)</option>
-              <option value="uplift-desc">Pass-rate uplift (high → low)</option>
-              <option value="uplift-asc">Pass-rate uplift (low → high)</option>
-              <option value="a11y-desc">Accessibility uplift (high → low)</option>
-              <option value="time-saved">Time saved (fastest guided)</option>
-              <option value="time-overhead">Time overhead (slowest guided)</option>
-              <option value="tokens-saved">Uncached tokens saved (most efficient)</option>
-            </select>
+            <input type="search" id="eval-filter" class="eval-filter-input" placeholder="Filter guides or tasks…" autocomplete="off" aria-label="Filter guides or tasks">
+            <input type="search" id="eval-feature-filter" class="eval-filter-input" list="eval-features-datalist" placeholder="web-feature…" autocomplete="off" aria-label="Filter by web feature">
+            <datalist id="eval-features-datalist"></datalist>
+            <button type="button" id="eval-sort-reset" class="text-btn eval-sort-reset" hidden>Reset sort</button>
           </div>
         </div>
+        <div id="eval-category-pills" class="eval-category-pills" role="group" aria-label="Filter by category"></div>
         <div id="guide-grid" class="dashboard-grid" aria-busy="true"></div>
       </section>
     </main>

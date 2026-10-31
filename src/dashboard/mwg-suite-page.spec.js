@@ -131,7 +131,7 @@ test.describe('Suite page MWG compliance', () => {
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto('/dashboard.html?testId=example-result&task=task#guide-preload-prerender');
-    await page.locator('#task-sort-select').selectOption('uplift-asc');
+    await page.locator('#guide-grid .eval-col-sort-btn[data-sort="uplift"]').click();
     const target = page.locator('.task-accordion[data-guide="preload-prerender"]');
     await expect(target).toHaveClass(/open/);
     await expect(page.locator('#guide-grid')).not.toHaveAttribute('aria-busy', /./);
@@ -444,7 +444,7 @@ test.describe('Suite page MWG compliance', () => {
     await expect(page.locator('meta[name="text-scale"]')).toHaveAttribute('content', 'scale');
     await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
     await expect(page.locator('script[src="features-mapping.gen.js"]')).toHaveAttribute('defer', '');
-    const borders = await page.locator('#task-sort-select').evaluate(el => {
+    const borders = await page.locator('#eval-filter').evaluate(el => {
       const probe = document.createElement('div');
       probe.style.borderTop = '1px solid var(--color-outline)';
       document.body.append(probe);

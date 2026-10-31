@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
@@ -44,8 +44,83 @@ let currentTestID = null;
 let api;
 /** @type {'all' | 'a11y'} */
 let currentMetricMode = 'all';
-/** @type {string} */
+/** @type {'default' | 'uplift' | 'a11y' | 'time' | 'tokens'} */
 let currentTaskSort = 'default';
+/** @type {'asc' | 'desc'} */
+let currentTaskSortDir = 'desc';
+/** @type {string} */
+let currentCategoryFilter = 'all';
+/** @type {string} */
+let currentTextFilter = '';
+/** @type {string} */
+let currentFeatureFilter = '';
+/** @type {Set<string>} */
+const collapsedCategories = new Set();
+
+const DISCIPLINE_GUIDES = new Set([
+    'accessibility',
+    'css-layout',
+    'html',
+    'javascript',
+    'performance',
+    'security',
+    'web-platform-core',
+]);
+
+/** @type {Record<string, string>} */
+const CATEGORY_LABELS = {
+    discipline: 'Discipline',
+    css: 'CSS',
+    html: 'HTML',
+    javascript: 'JavaScript',
+    accessibility: 'Accessibility',
+    performance: 'Performance',
+    security: 'Security',
+    'built-in-ai': 'Built-in AI',
+    'web-apis': 'Web APIs',
+    media: 'Media',
+    privacy: 'Privacy',
+    other: 'Other',
+};
+
+/** @param {string} cat */
+function formatCategoryLabel(cat) {
+    if (CATEGORY_LABELS[cat]) return CATEGORY_LABELS[cat];
+    return cat.split('-').map(w => w ? w[0].toUpperCase() + w.slice(1) : '').join(' ');
+}
+
+/** @type {Promise<Map<string, string>> | null} */
+let guideCategoryMapPromise = null;
+
+/** @returns {Promise<Map<string, string>>} */
+function loadGuideCategoryMap() {
+    if (!guideCategoryMapPromise) {
+        guideCategoryMapPromise = (async () => {
+            const map = new Map();
+            try {
+                const res = await fetch('./grouped-tasks.gen.json');
+                if (res.ok) {
+                    const data = await res.json();
+                    const guides = data?.guides || {};
+                    for (const [cat, guideObj] of Object.entries(guides)) {
+                        if (!guideObj || typeof guideObj !== 'object') continue;
+                        for (const guideName of Object.keys(guideObj)) {
+                            const resolved = (DISCIPLINE_GUIDES.has(guideName) || guideName === cat) ? 'discipline' : cat;
+                            map.set(guideName, resolved);
+                        }
+                    }
+                }
+            } catch {
+                // Fallback to DISCIPLINE_GUIDES if grouped-tasks.gen.json is unavailable
+            }
+            for (const g of DISCIPLINE_GUIDES) {
+                if (!map.has(g)) map.set(g, 'discipline');
+            }
+            return map;
+        })();
+    }
+    return guideCategoryMapPromise;
+}
 
 // Module-scoped state
 let dashboardLoaded = false;
@@ -120,17 +195,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (target instanceof HTMLInputElement && (target.value === 'all' || target.value === 'a11y')) { setMode(target.value); }
         });
     }
-    const sortSelect = document.getElementById('task-sort-select');
-    if (sortSelect instanceof HTMLSelectElement) {
-        if (initialSort && Array.from(sortSelect.options).some(o => o.value === initialSort)) { currentTaskSort = initialSort; sortSelect.value = initialSort; }
-        sortSelect.addEventListener('change', () => {
-            currentTaskSort = sortSelect.value;
-            const url = new URL(window.location.href);
-            if (currentTaskSort === 'default') { url.searchParams.delete('sort'); } else { url.searchParams.set('sort', currentTaskSort); }
-            window.history.replaceState({}, '', url);
+    if (initialSort === 'uplift' || initialSort === 'uplift-desc') { currentTaskSort = 'uplift'; currentTaskSortDir = 'desc'; }
+    else if (initialSort === 'uplift-asc') { currentTaskSort = 'uplift'; currentTaskSortDir = 'asc'; }
+    else if (initialSort === 'a11y' || initialSort === 'a11y-desc') { currentTaskSort = 'a11y'; currentTaskSortDir = 'desc'; }
+    else if (initialSort === 'time' || initialSort === 'time-saved') { currentTaskSort = 'time'; currentTaskSortDir = 'asc'; }
+    else if (initialSort === 'time-overhead') { currentTaskSort = 'time'; currentTaskSortDir = 'desc'; }
+    else if (initialSort === 'tokens' || initialSort === 'tokens-saved') { currentTaskSort = 'tokens'; currentTaskSortDir = 'asc'; }
+
+    const evalFilterInput = document.getElementById('eval-filter');
+    if (evalFilterInput instanceof HTMLInputElement) {
+        evalFilterInput.addEventListener('input', () => {
+            currentTextFilter = evalFilterInput.value.trim().toLowerCase();
             if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
         });
     }
+    const evalFeatureInput = document.getElementById('eval-feature-filter');
+    if (evalFeatureInput instanceof HTMLInputElement) {
+        evalFeatureInput.addEventListener('input', () => {
+            currentFeatureFilter = evalFeatureInput.value.trim().toLowerCase();
+            if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+        });
+    }
+    const sortResetBtn = document.getElementById('eval-sort-reset');
+    sortResetBtn?.addEventListener('click', () => {
+        currentTaskSort = 'default';
+        currentTaskSortDir = 'desc';
+        const url = new URL(window.location.href);
+        url.searchParams.delete('sort');
+        window.history.replaceState({}, '', url);
+        if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+    });
     // Auth Button Handling (only for remote)
     if (api.source === 'remote') {
         initGoogleAuth(async () => {
@@ -778,14 +872,18 @@ function renderSummary(data) {
         e.preventDefault();
         const modeA11yBtn = document.getElementById('dash-mode-a11y-btn');
         if (modeA11yBtn instanceof HTMLElement) { modeA11yBtn.click(); }
-        const sortSelect = document.getElementById('task-sort-select');
-        if (sortSelect instanceof HTMLSelectElement && sortSelect.value !== 'a11y-desc') { sortSelect.value = 'a11y-desc'; sortSelect.dispatchEvent(new Event('change')); }
+        currentTaskSort = 'uplift';
+        currentTaskSortDir = 'desc';
+        const url = new URL(window.location.href);
+        url.searchParams.set('sort', 'uplift-desc');
+        window.history.replaceState({}, '', url);
+        if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
         const guideSection = document.getElementById('guide-section');
         guideSection?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
     });
     return extracted;
 }
-/** @typedef {{ appName: string, guide: string, scenarioName: string, unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
+/** @typedef {{ appName: string, guide: string, scenarioName: string, category: string, categoryLabel: string, featureIds: string[], unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
 const YIELD_BUDGET_MS = 50;
 /** @returns {Promise<void>} */
 function yieldToMain() {
@@ -968,10 +1066,18 @@ async function computeScenarios(data) {
             const leakCount = (unguidedRuns || []).filter(r => isUnguidedLeakRun(r, guide)).length;
             const hasLeak = leakCount > 0;
             const hasFailure = hasInfraError || hasBuildFailure;
+            const categoryMap = await loadGuideCategoryMap();
+            const category = categoryMap.get(guide) || 'other';
+            const categoryLabel = formatCategoryLabel(category);
+            const featuresMap = (typeof window !== 'undefined' && window.__featuresMapping) || {};
+            const featureIds = Array.isArray(featuresMap[guide]) ? featuresMap[guide] : [];
             scenarios.push({
                 appName,
                 guide,
                 scenarioName,
+                category,
+                categoryLabel,
+                featureIds,
                 unguidedRuns,
                 guidedRuns,
                 unguidedAvg,
@@ -999,6 +1105,101 @@ async function computeScenarios(data) {
     }
     return scenarios;
 }
+
+/** @param {string} a
+ * @param {string} b */
+function compareCategories(a, b) {
+    if (a === b) return 0;
+    if (a === 'discipline') return -1;
+    if (b === 'discipline') return 1;
+    if (a === 'other') return 1;
+    if (b === 'other') return -1;
+    return formatCategoryLabel(a).localeCompare(formatCategoryLabel(b));
+}
+
+/** @param {ScenarioItem[]} baseScenarios */
+function renderEvalFilterControls(baseScenarios) {
+    const datalist = document.getElementById('eval-features-datalist');
+    if (datalist) {
+        const allFeatures = [...new Set(baseScenarios.flatMap(s => s.featureIds))].sort();
+        datalist.innerHTML = allFeatures.map(f => `<option value="${escapeHtml(f)}">`).join('');
+    }
+    const pillsContainer = document.getElementById('eval-category-pills');
+    if (pillsContainer) {
+        /** @type {Map<string, number>} */
+        const counts = new Map();
+        for (const s of baseScenarios) {
+            counts.set(s.category, (counts.get(s.category) || 0) + 1);
+        }
+        const categories = Array.from(counts.keys()).sort(compareCategories);
+        if (currentCategoryFilter !== 'all' && !counts.has(currentCategoryFilter)) {
+            currentCategoryFilter = 'all';
+        }
+        const pills = [
+            `<button type="button" class="category-pill${currentCategoryFilter === 'all' ? ' active' : ''}" data-category="all" aria-pressed="${currentCategoryFilter === 'all'}">All <span class="pill-count">${baseScenarios.length}</span></button>`,
+            ...categories.map(cat => {
+                const active = currentCategoryFilter === cat;
+                return `<button type="button" class="category-pill${active ? ' active' : ''}" data-category="${escapeHtml(cat)}" aria-pressed="${active}">${escapeHtml(formatCategoryLabel(cat))} <span class="pill-count">${counts.get(cat)}</span></button>`;
+            })
+        ];
+        pillsContainer.innerHTML = pills.join('');
+        pillsContainer.querySelectorAll('.category-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cat = btn.getAttribute('data-category') || 'all';
+                currentCategoryFilter = (currentCategoryFilter === cat && cat !== 'all') ? 'all' : cat;
+                if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+            });
+        });
+    }
+}
+
+/** @returns {HTMLElement} */
+function buildEvalsTableHeader() {
+    const header = document.createElement('div');
+    header.className = 'evals-table-header';
+    const isA11yMode = currentMetricMode === 'a11y';
+    /** @param {'default' | 'uplift' | 'a11y' | 'time' | 'tokens'} col
+     * @param {string} label
+     * @param {string} [sub] */
+    const sortBtn = (col, label, sub = '') => {
+        const isSorted = currentTaskSort === col && col !== 'default';
+        const arrow = isSorted ? (currentTaskSortDir === 'asc' ? ' ↑' : ' ↓') : '';
+        const ariaSort = isSorted ? (currentTaskSortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+        return `<button type="button" class="eval-col-sort-btn${isSorted ? ' active' : ''}" data-sort="${col}" aria-sort="${ariaSort}"><span>${label}${arrow}</span>${sub ? `<span class="eval-col-sub">${sub}</span>` : ''}</button>`;
+    };
+    header.innerHTML = `
+        <div class="eval-col-task">${sortBtn('default', 'Guide / Task')}</div>
+        ${isA11yMode ? '' : `<div class="eval-col-a11y">${sortBtn('a11y', 'A11y')}</div>`}
+        <div class="eval-col-time">${sortBtn('time', 'Time', 'Unguided / Guided')}</div>
+        <div class="eval-col-tokens">${sortBtn('tokens', 'Tokens', 'Unguided / Guided')}</div>
+        <div class="eval-col-dumbbell"><span>Pass rate</span><span class="eval-col-sub">Unguided → Guided</span></div>
+        <div class="eval-col-uplift">${sortBtn('uplift', 'Uplift')}</div>
+    `;
+    header.querySelectorAll('.eval-col-sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const col = /** @type {'default' | 'uplift' | 'a11y' | 'time' | 'tokens'} */ (btn.getAttribute('data-sort') || 'default');
+            if (col === 'default') {
+                currentTaskSort = 'default';
+                currentTaskSortDir = 'desc';
+            } else if (currentTaskSort === col) {
+                currentTaskSortDir = currentTaskSortDir === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentTaskSort = col;
+                currentTaskSortDir = (col === 'time' || col === 'tokens') ? 'asc' : 'desc';
+            }
+            const url = new URL(window.location.href);
+            if (currentTaskSort === 'default') {
+                url.searchParams.delete('sort');
+            } else {
+                url.searchParams.set('sort', `${currentTaskSort}-${currentTaskSortDir}`);
+            }
+            window.history.replaceState({}, '', url);
+            if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+        });
+    });
+    return header;
+}
+
 /** @param {DashboardEvalsReport} data
  * @param {string} testId */
 async function renderGridOnce(data, testId) {
@@ -1012,46 +1213,153 @@ async function renderGridOnce(data, testId) {
     }
     const scenarios = await scenariosPromise;
     if (seq !== gridRenderSeq) return;
-    const filteredScenarios = currentMetricMode === 'a11y'
+    const baseScenarios = currentMetricMode === 'a11y'
         ? scenarios.filter(s => s.a11yCheckCount > 0)
         : scenarios.slice();
-    if (currentTaskSort === 'uplift-desc') { filteredScenarios.sort((a, b) => ((b.uplift ?? -999) - (a.uplift ?? -999)) || ((b.guidedAvg ?? -1) - (a.guidedAvg ?? -1))); } else if (currentTaskSort === 'uplift-asc') { filteredScenarios.sort((a, b) => ((a.uplift ?? 999) - (b.uplift ?? 999)) || ((a.guidedAvg ?? 999) - (b.guidedAvg ?? 999))); } else if (currentTaskSort === 'a11y-desc') {
-        filteredScenarios.sort((a, b) => (b.a11yCheckCount > 0 ? 1 : 0) - (a.a11yCheckCount > 0 ? 1 : 0) || ((b.a11yUplift ?? -999) - (a.a11yUplift ?? -999)) || (b.a11yCheckCount - a.a11yCheckCount));
-    } else if (currentTaskSort === 'time-saved') { filteredScenarios.sort((a, b) => ((a.runtimeDeltaMs ?? 999999999) - (b.runtimeDeltaMs ?? 999999999))); } else if (currentTaskSort === 'time-overhead') { filteredScenarios.sort((a, b) => ((b.runtimeDeltaMs ?? -999999999) - (a.runtimeDeltaMs ?? -999999999))); } else if (currentTaskSort === 'tokens-saved') { filteredScenarios.sort((a, b) => ((a.uncachedDeltaTokens ?? 999999999) - (b.uncachedDeltaTokens ?? 999999999))); }
+    renderEvalFilterControls(baseScenarios);
+
+    const filteredScenarios = baseScenarios.filter(s => {
+        if (currentCategoryFilter !== 'all' && s.category !== currentCategoryFilter) return false;
+        if (currentTextFilter) {
+            const hay = `${s.guide} ${s.appName} ${s.categoryLabel} ${s.featureIds.join(' ')}`.toLowerCase();
+            if (!hay.includes(currentTextFilter)) return false;
+        }
+        if (currentFeatureFilter) {
+            if (!s.featureIds.some(f => f.toLowerCase().includes(currentFeatureFilter))) return false;
+        }
+        return true;
+    });
+
+    const countEl = document.getElementById('evals-count');
+    if (countEl) {
+        countEl.textContent = filteredScenarios.length === baseScenarios.length
+            ? `${baseScenarios.length} evals`
+            : `${filteredScenarios.length} of ${baseScenarios.length} evals`;
+    }
+    const sortResetBtn = document.getElementById('eval-sort-reset');
+    if (sortResetBtn) {
+        sortResetBtn.hidden = currentTaskSort === 'default';
+    }
+
+    const dir = currentTaskSortDir === 'asc' ? 1 : -1;
+    if (currentTaskSort === 'uplift') {
+        filteredScenarios.sort((a, b) => {
+            const av = currentMetricMode === 'a11y' ? a.a11yUplift : a.uplift;
+            const bv = currentMetricMode === 'a11y' ? b.a11yUplift : b.uplift;
+            if (av === null && bv === null) return 0;
+            if (av === null) return 1;
+            if (bv === null) return -1;
+            return (av - bv) * dir;
+        });
+    } else if (currentTaskSort === 'a11y') {
+        filteredScenarios.sort((a, b) => {
+            if (a.a11yCheckCount === 0 && b.a11yCheckCount === 0) return 0;
+            if (a.a11yCheckCount === 0) return 1;
+            if (b.a11yCheckCount === 0) return -1;
+            return ((a.a11yUplift ?? -999) - (b.a11yUplift ?? -999)) * dir || (b.a11yCheckCount - a.a11yCheckCount);
+        });
+    } else if (currentTaskSort === 'time') {
+        filteredScenarios.sort((a, b) => {
+            if (a.runtimeDeltaMs === null && b.runtimeDeltaMs === null) return 0;
+            if (a.runtimeDeltaMs === null) return 1;
+            if (b.runtimeDeltaMs === null) return -1;
+            return (a.runtimeDeltaMs - b.runtimeDeltaMs) * dir;
+        });
+    } else if (currentTaskSort === 'tokens') {
+        filteredScenarios.sort((a, b) => {
+            if (a.uncachedDeltaTokens === null && b.uncachedDeltaTokens === null) return 0;
+            if (a.uncachedDeltaTokens === null) return 1;
+            if (b.uncachedDeltaTokens === null) return -1;
+            return (a.uncachedDeltaTokens - b.uncachedDeltaTokens) * dir;
+        });
+    } else {
+        filteredScenarios.sort((a, b) => compareCategories(a.category, b.category) || a.guide.localeCompare(b.guide) || a.appName.localeCompare(b.appName));
+    }
+
     sortedScenarios = filteredScenarios.map(item => item.scenarioName);
-    if (accordionCache.data !== data || accordionCache.mode !== currentMetricMode || accordionCache.testId !== testId) {
+    const cacheKeyMode = `${currentMetricMode}|${currentTaskSort === 'default' ? 'grouped' : 'flat'}`;
+    if (accordionCache.data !== data || accordionCache.mode !== cacheKeyMode || accordionCache.testId !== testId) {
         accordionCache.data = data;
-        accordionCache.mode = currentMetricMode;
+        accordionCache.mode = cacheKeyMode;
         accordionCache.testId = testId;
         accordionCache.nodes = new Map();
     }
     if (!guideGrid) return;
-    const canMoveInPlace = 'moveBefore' in Element.prototype
-        && guideGrid.children.length === filteredScenarios.length
-        && filteredScenarios.every(item => accordionCache.nodes.get(item.scenarioName)?.parentElement === guideGrid);
-    if (canMoveInPlace) {
-        for (const item of filteredScenarios) {
-            const accordion = accordionCache.nodes.get(item.scenarioName);
-            if (accordion) {
-                /** @type {HTMLElement & { moveBefore(node: Node, child: Node | null): void }} */
-(guideGrid).moveBefore(accordion, null);
-            }
-        }
+    guideGrid.classList.toggle('is-a11y-mode', currentMetricMode === 'a11y');
+    guideGrid.replaceChildren();
+    guideGrid.append(buildEvalsTableHeader());
+
+    if (filteredScenarios.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'evals-empty-state';
+        empty.textContent = 'No matching evals.';
+        guideGrid.append(empty);
         return;
     }
-    guideGrid.replaceChildren();
+
     let fragment = document.createDocumentFragment();
     let deadline = performance.now() + YIELD_BUDGET_MS;
-    for (const item of filteredScenarios) {
-        let accordion = accordionCache.nodes.get(item.scenarioName);
-        if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.scenarioName, accordion); }
-        fragment.append(accordion);
-        if (performance.now() >= deadline) {
-            guideGrid.append(fragment);
-            await yieldToMain();
-            if (seq !== gridRenderSeq) return;
-            fragment = document.createDocumentFragment();
-            deadline = performance.now() + YIELD_BUDGET_MS;
+
+    if (currentTaskSort === 'default' && currentCategoryFilter === 'all') {
+        /** @type {Map<string, ScenarioItem[]>} */
+        const byCat = new Map();
+        for (const item of filteredScenarios) {
+            const list = byCat.get(item.category) || [];
+            list.push(item);
+            byCat.set(item.category, list);
+        }
+        for (const [cat, items] of byCat.entries()) {
+            const section = document.createElement('div');
+            section.className = 'eval-category-section';
+            if (collapsedCategories.has(cat)) section.classList.add('collapsed');
+            const validUplifts = items
+                .map(i => currentMetricMode === 'a11y' ? i.a11yUplift : i.uplift)
+                .filter((/** @type {number | null} */ v) => v !== null);
+            const avgUplift = validUplifts.length > 0
+                ? Math.round(validUplifts.reduce((sum, v) => sum + v, 0) / validUplifts.length)
+                : null;
+            const catHeader = document.createElement('button');
+            catHeader.type = 'button';
+            catHeader.className = 'eval-category-header';
+            catHeader.setAttribute('aria-expanded', collapsedCategories.has(cat) ? 'false' : 'true');
+            catHeader.innerHTML = `
+                <span class="eval-category-title"><span class="chevron" aria-hidden="true">▼</span> ${escapeHtml(formatCategoryLabel(cat))}</span>
+                <span class="eval-category-meta">${items.length} ${items.length === 1 ? 'eval' : 'evals'}${avgUplift !== null ? ` · <strong class="${avgUplift > 0 ? 'positive' : avgUplift < 0 ? 'negative' : ''}">${avgUplift >= 0 ? '+' : ''}${avgUplift} pp avg</strong>` : ''}</span>
+            `;
+            const body = document.createElement('div');
+            body.className = 'eval-category-body';
+            catHeader.addEventListener('click', () => {
+                const isCollapsed = section.classList.toggle('collapsed');
+                if (isCollapsed) collapsedCategories.add(cat); else collapsedCategories.delete(cat);
+                catHeader.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+            });
+            for (const item of items) {
+                let accordion = accordionCache.nodes.get(item.scenarioName);
+                if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.scenarioName, accordion); }
+                body.append(accordion);
+            }
+            section.append(catHeader, body);
+            fragment.append(section);
+            if (performance.now() >= deadline) {
+                guideGrid.append(fragment);
+                await yieldToMain();
+                if (seq !== gridRenderSeq) return;
+                fragment = document.createDocumentFragment();
+                deadline = performance.now() + YIELD_BUDGET_MS;
+            }
+        }
+    } else {
+        for (const item of filteredScenarios) {
+            let accordion = accordionCache.nodes.get(item.scenarioName);
+            if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.scenarioName, accordion); }
+            fragment.append(accordion);
+            if (performance.now() >= deadline) {
+                guideGrid.append(fragment);
+                await yieldToMain();
+                if (seq !== gridRenderSeq) return;
+                fragment = document.createDocumentFragment();
+                deadline = performance.now() + YIELD_BUDGET_MS;
+            }
         }
     }
     guideGrid.append(fragment);
@@ -1062,7 +1370,7 @@ async function renderGridOnce(data, testId) {
  * @returns {HTMLElement} */
 function buildAccordion(item, testId) {
     const {
-        appName, guide, scenarioName, unguidedRuns, guidedRuns,
+        appName, guide, scenarioName, categoryLabel, featureIds, unguidedRuns, guidedRuns,
         unguidedAvg, guidedAvg, uplift,
         a11yUnguidedAvg, a11yGuidedAvg, a11yUplift, a11yCheckCount,
         uRuntimeMs, gRuntimeMs, uUncachedTokens, gUncachedTokens,
@@ -1082,14 +1390,30 @@ function buildAccordion(item, testId) {
     const scale = (/** @type {number} */ val) => `${val}%`;
     const modeParam = currentMetricMode === 'a11y' ? '&mode=a11y' : '';
     const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}${modeParam}`;
-    const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(formatTestName(scenarioName))}"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
-    const a11yPillHtml = a11yCheckCount > 0 ? (a11yUplift !== null ? `<span class="a11y-task-pill"> ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp) <span class="visually-hidden">accessibility checks: unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%</span> </span>` : `<span class="a11y-task-pill"> ${a11yCheckCount} a11y </span>`) : '';
+    const appSuffixHtml = appName && appName !== 'daily-grind'
+        ? ` <span class="task-app-tag">(${escapeHtml(appName)})</span>`
+        : '';
+    const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(guide)} (${escapeHtml(appName)})"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
+    const primaryFeatureId = featureIds[0] || '';
+    const featureChipHtml = primaryFeatureId && primaryFeatureId !== guide
+        ? `<span class="feature-chip">${escapeHtml(primaryFeatureId)}</span>`
+        : '';
+    const rowCategoryHtml = currentTaskSort !== 'default'
+        ? `<span class="row-category-tag">${escapeHtml(categoryLabel)}</span>`
+        : '';
+    const a11yColHtml = currentMetricMode === 'a11y' ? '' : (
+        a11yCheckCount > 0
+            ? `<div class="task-a11y-col"><span class="visually-hidden">Accessibility checks: ${a11yCheckCount} checks, unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%, change </span><span class="metric-before">${a11yCheckCount} ${a11yCheckCount === 1 ? 'check' : 'checks'}</span><span class="metric-after ${a11yUplift !== null && a11yUplift > 0 ? 'positive' : a11yUplift !== null && a11yUplift < 0 ? 'negative' : ''}">${a11yUplift !== null ? `${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp` : '—'}</span></div>`
+            : `<div class="task-a11y-col"><span class="metric-empty">—</span></div>`
+    );
     const hasRuntime = uRuntimeMs > 0 || gRuntimeMs > 0;
     const hasTokens = uUncachedTokens > 0 || gUncachedTokens > 0;
-    const stackedMetricsHtml = ` <div class="task-stacked-metrics">
-        ${hasRuntime ? `<div class="task-metric-stack"><span class="visually-hidden">Average completion time, unguided to guided: </span><span class="metric-before">${formatDuration(uRuntimeMs)}</span><span class="metric-after">${formatDuration(gRuntimeMs)}</span></div>` : '<div class="task-metric-stack"></div>'}
-        ${hasTokens ? `<div class="task-metric-stack"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span class="metric-before">${formatTokens(uUncachedTokens)}</span><span class="metric-after">${formatTokens(gUncachedTokens)}</span></div>` : '<div class="task-metric-stack"></div>'}
-    </div> `;
+    const timeColHtml = hasRuntime
+        ? `<div class="task-metric-stack"><span class="visually-hidden">Average completion time, unguided to guided: </span><span class="metric-before">${formatDuration(uRuntimeMs)}</span><span class="metric-after">${formatDuration(gRuntimeMs)}</span></div>`
+        : '<div class="task-metric-stack"><span class="metric-empty">—</span></div>';
+    const tokensColHtml = hasTokens
+        ? `<div class="task-metric-stack"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span class="metric-before">${formatTokens(uUncachedTokens)}</span><span class="metric-after">${formatTokens(gUncachedTokens)}</span></div>`
+        : '<div class="task-metric-stack"><span class="metric-empty">—</span></div>';
     const contentId = `${accordion.id}-content`;
     /** @type {string[]} */
     const hintPopovers = [];
@@ -1114,28 +1438,26 @@ function buildAccordion(item, testId) {
     const invalidBadgeHtml = displayUplift === null
         ? hintButton('invalid', '', 'INVALID', HINT_TEXT.invalid)
         : '';
-    const badgesHtml = [a11yPillHtml, infraBadgeHtml, buildBadgeHtml, leakBadgeHtml].filter(Boolean).join('');
+    const badgesHtml = [featureChipHtml, rowCategoryHtml, infraBadgeHtml, buildBadgeHtml, leakBadgeHtml].filter(Boolean).join('');
     accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <div class="task-title-row"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="chevron" aria-hidden="true">▶</span>
-                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
-                        <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
+                        <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(guide)}${appSuffixHtml}</span>
                     </button>
                 </h3>
                 ${trendLinkHtml}
             </div>
             ${badgesHtml ? `<div class="task-badges-row">${badgesHtml}</div>` : ''}
             </div>
-            <div class="right-section">
-                ${stackedMetricsHtml}
-                <div class="task-outcome-group">
-                    <div class="mini-dumbbell-track" aria-hidden="true">
-                        ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
-                        ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
-                        ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
-                    </div>
-                    ${displayUplift !== null ? `<div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}"> <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp </div>` : ` <div class="uplift-score invalid"> ${invalidBadgeHtml}
-                    </div>
-                    `}
-                </div> </div> </div> <div class="task-accordion-content" id="${contentId}" hidden="until-found"> <div class="task-accordion-body"> <div class="task-details-grid"> <div class="task-prompt-slot"><div class="expansion-loading">Loading details...</div></div> ${buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns)}
+            ${a11yColHtml}
+            ${timeColHtml}
+            ${tokensColHtml}
+            <div class="mini-dumbbell-track" aria-hidden="true">
+                ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
+                ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
+                ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
+            </div>
+            ${displayUplift !== null ? `<div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}"> <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp </div>` : ` <div class="uplift-score invalid"> ${invalidBadgeHtml}
+            </div>
+            `} </div> <div class="task-accordion-content" id="${contentId}" hidden="until-found"> <div class="task-accordion-body"> <div class="task-details-grid"> <div class="task-prompt-slot"><div class="expansion-loading">Loading details...</div></div> ${buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns)}
                 </div>
             </div>
         </div>
