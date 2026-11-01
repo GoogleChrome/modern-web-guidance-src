@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skeleton loading with border-shape</title>
+  <style>
+    @layer reset, page, prototype;
+
+    @layer reset {
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body,
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+    }
+
+    @layer page {
+      :root {
+        color-scheme: light dark;
+        --page: light-dark(#f5f6f8, #17191d);
+        --surface: light-dark(#fff, #22252b);
+        --ink: light-dark(#17191d, #f4f5f7);
+        --muted: light-dark(#626873, #aeb4bf);
+        --line: light-dark(#dfe2e7, #3b404a);
+        --pad: 1.25rem;
+      }
+
+      body {
+        min-block-size: 100vh;
+        background: var(--page);
+        color: var(--ink);
+        font: 1rem/1.5 system-ui, sans-serif;
+      }
+
+      main {
+        max-inline-size: 70rem;
+        margin-inline: auto;
+        padding: 2rem var(--pad);
+      }
+
+      h1 {
+        margin-block-end: 1.5rem;
+        font-size: 1.5rem;
+      }
+
+      .loading-status {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .toggle-loading {
+        margin-block-end: 1rem;
+      }
+
+      /* The toggle only runs script, so hide it without scripting */
+      @media (scripting: none) {
+        .toggle-loading { display: none; }
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+        gap: 1rem;
+      }
+
+      article {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      article> :not(.media) {
+        padding-inline: var(--pad);
+      }
+
+      article:not(:has(> .media, > .content > .media)) {
+        padding: var(--pad);
+      }
+
+      .media {
+        display: block;
+        inline-size: 100%;
+        aspect-ratio: 16 / 10;
+        object-fit: cover;
+      }
+
+      .content {
+        padding-block: var(--pad);
+      }
+
+      .content:has(> .media) {
+        display: grid;
+        grid-template-columns: 5rem minmax(0, 1fr);
+        align-items: start;
+        gap: 1rem;
+        padding: var(--pad);
+      }
+
+      .content>.media {
+        aspect-ratio: 1;
+        border-radius: 50%;
+      }
+
+
+      /* One consistent vertical rhythm between content items. Media is excluded
+         because it sits flush with the card edge. */
+      :is(article, .content, .content > div)> :not(.media)+* {
+        margin-block-start: var(--flow-space, .75rem);
+      }
+
+      h2 {
+        font-size: 1.4em;
+        line-height: 1.2;
+      }
+
+      p {
+        color: var(--muted);
+      }
+
+      ul {
+        padding-inline-start: 1.25em;
+        color: var(--muted);
+      }
+
+      li+li {
+        margin-block-start: .35rem;
+      }
+
+      article>a {
+        display: block;
+        color: inherit;
+      }
+
+      input,
+      button {
+        font: inherit;
+        inline-size: 100%;
+        padding: .6em .9em;
+        border: 1px solid var(--line);
+        border-radius: .4em;
+        background: var(--surface);
+        color: inherit;
+      }
+
+      button {
+        inline-size: auto;
+        font-weight: 700;
+      }
+
+
+    }
+
+    @layer prototype {
+      .skeleton[aria-busy="true"] {
+        --skeleton-tone: color-mix(in oklab, var(--surface) 88%, var(--ink));
+        /* not currentColor: bars set color: transparent */
+        --skeleton-highlight: color-mix(in oklab, var(--surface) 70%, white);
+      }
+
+      /* Forced colors replaces text and background colors, which would show the
+         real text and drop the fills. Opt the placeholders out (not the container:
+         the property inherits to the cards' borders) and use a system color, so
+         they follow the user's theme. */
+      @media (forced-colors: active) {
+        .skeleton[aria-busy="true"] {
+          --skeleton-tone: GrayText;
+          --skeleton-highlight: GrayText; /* Same as the tone: no shimmer */
+        }
+
+        .skeleton[aria-busy="true"] :is(p, h2, li, a, input, button, img, video, canvas, .media) {
+          forced-color-adjust: none;
+        }
+      }
+
+      /* One text bar as a closed rounded rectangle, ending at --end. --i is the
+         bar's line index; the bar sits on the line pitch (--bar-height +
+         --bar-gap, which is 1lh). It reads --bar-height, --bar-gap and
+         --bar-radius from the element it is used on. */
+      @function --bar(--i <number>, --end <length-percentage>, --start <length>: 0px) {
+        --y: calc(var(--i) * (var(--bar-height) + var(--bar-gap)));
+        result: move to calc(var(--start) + var(--bar-radius)) var(--y),
+          hline to calc(var(--end) - var(--bar-radius)),
+          arc to var(--end) calc(var(--y) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+          vline to calc(var(--y) + var(--bar-height) - var(--bar-radius)),
+          arc to calc(var(--end) - var(--bar-radius)) calc(var(--y) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
+          hline to calc(var(--start) + var(--bar-radius)),
+          arc to var(--start) calc(var(--y) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
+          vline to calc(var(--y) + var(--bar-radius)),
+          arc to calc(var(--start) + var(--bar-radius)) var(--y) of var(--bar-radius) var(--bar-radius) cw,
+          close;
+      }
+
+      /* Cap the visible cards with a fixed :nth-child() selector, which works
+         without JavaScript. 7 is an example value (it shows six cards). Whole
+         cards can be removed; in-card items may need visibility to reserve space. */
+      .skeleton[aria-busy="true"] > article:nth-child(n + 7) {
+        display: none;
+      }
+
+      /* The shimmer is painted on each shape's own background, so any element
+         works alone, even if only part of a card is loading.
+         background-attachment: fixed keeps every shape in one viewport-wide
+         coordinate space, so they sweep in sync. */
+      .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a)), input, button, .media) {
+        background-color: var(--skeleton-tone);
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a)), input, button, .media) {
+          background-image: linear-gradient(110deg, transparent 40%, var(--skeleton-highlight) 50%, transparent 60%);
+          background-repeat: no-repeat;
+          background-attachment: fixed;
+          background-size: 200% 100%;
+          background-position: 200% 0;
+          animation: sweep 1.8s linear infinite;
+        }
+      }
+
+      /* Real media: a length object-position pushes the picture out of the box
+         so the tone and shimmer background show through. Needs definite
+         dimensions. */
+      .skeleton[aria-busy="true"] .media {
+        object-position: -9999px 0;
+        background-color: var(--skeleton-tone);
+      }
+
+      /* Text: hide the content and fill with the tone. Each element below sets
+         --bars to its own shape(). The shape lives in a custom property, not
+         directly in border-shape, because a function call as a shape() command
+         can make some Chrome versions discard the rules that follow. */
+      .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+        /* Bar size follows the glyphs (cap height) and the gap fills the rest of
+           the line, so bars sit on the real line pitch at any size and leading. */
+        --bar-height: 1cap;
+        --bar-radius: calc(var(--bar-height) / 4);
+        --bar-gap: calc(1lh - var(--bar-height));
+        --block: calc(var(--lines, 1) * 1lh);
+        display: block;
+        inline-size: 100%;
+        min-block-size: var(--block);
+        line-clamp: var(--lines, 1);
+        overflow: hidden;
+        user-select: none;
+        background-color: var(--skeleton-tone);
+        border-shape: var(--bars);
+        color: transparent;
+        /* Underlines would otherwise show through transparent link text */
+        text-decoration: none;
+      }
+
+      /* Without border-shape the elements show as solid rounded blocks. The
+         height reservation still prevents layout shift. List bullets are part
+         of the shaped enhancement, so each item is one block that starts at the
+         real list's indent. */
+      @supports not (border-shape: shape(from 0 0, close)) {
+        .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+          border-radius: .5lh; /* Large enough to read as rounded at any block height */
+        }
+
+        .skeleton[aria-busy="true"] li {
+          margin-inline-start: 1.25em;
+          inline-size: auto;
+        }
+      }
+
+      /* Without line-clamp, cap the height at the bar count so overflow: hidden
+         clips surplus text. min-block-size alone would let the box grow. */
+      @supports not (line-clamp: 1) {
+        .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+          max-block-size: calc(var(--lines, 1) * 1lh);
+        }
+      }
+
+      /* Standalone links are a short single bar. Inline links inside text are
+         hidden with their parent, so they are excluded; :where() keeps the
+         selector's specificity unchanged. */
+      .skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
+        --bars: shape(from 0 0, --bar(0, 42%));
+      }
+
+      /* Inline links keep their own color and underline, so make them inherit the hidden text */
+      .skeleton[aria-busy="true"] :is(p, h2, li) a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+
+      /* Lists: the real ::marker plus a bar per item. The marker sits inside the
+         li box so overflow: hidden does not clip it; it takes the flat tone
+         (a marker cannot take the shimmer), and the bar starts after it. */
+      .skeleton[aria-busy="true"] li {
+        list-style-position: inside;
+        --text-start: 1.25em; /* Same indent as the real list, so bars start where the real text does */
+        --line-one: 72%;
+        --bars: shape(from 0 0, --bar(0, var(--line-one), var(--text-start)));
+      }
+
+      .skeleton[aria-busy="true"] li::marker {
+        color: var(--skeleton-tone);
+      }
+
+      .skeleton[aria-busy="true"] li:nth-child(2) {
+        --line-one: 56%;
+      }
+
+      .skeleton[aria-busy="true"] li:nth-child(3) {
+        --line-one: 64%;
+      }
+
+      /* Controls keep their real box (size, padding, border width and radius)
+         and only take the tone: hide the content and let the border blend in. */
+      .skeleton[aria-busy="true"] :is(input, button) {
+        color: transparent;
+        border-color: transparent;
+        caret-color: transparent;
+        background-image: none;
+        user-select: none;
+      }
+
+      .skeleton[aria-busy="true"] input::placeholder {
+        color: transparent;
+      }
+
+      .skeleton[aria-busy="true"] button > * {
+        visibility: hidden;
+      }
+
+      /* Each element lists its own bars (index, end position), because shape()
+         cannot repeat a path from a count. --lines sets the reserved height. */
+      .skeleton[aria-busy="true"] h2 {
+        --bars: shape(from 0 0, --bar(0, 88%));
+      }
+
+      .skeleton[aria-busy="true"] p {
+        --lines: 3;
+        --bars: shape(from 0 0, --bar(0, 100%), --bar(1, 92%), --bar(2, 68%));
+      }
+
+      /* A one-line paragraph, such as the metadata row, gets one short bar. Its
+         inline <time> needs no styling: it is hidden with the paragraph's text. */
+      .skeleton[aria-busy="true"] p:has(> time) {
+        --lines: 1;
+        --bars: shape(from 0 0, --bar(0, 48%));
+      }
+
+      @keyframes sweep {
+        from {
+          background-position: 200% 0;
+        }
+
+        to {
+          background-position: -100% 0;
+        }
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Skeleton card variations</h1>
+
+    <!-- Empty from the start: live regions announce changes, not text that arrives with them -->
+    <p class="loading-status" role="status"></p>
+    <button type="button" class="toggle-loading">Finish loading</button>
+    <section class="cards skeleton" aria-busy="true" inert aria-hidden="true">
+      <article>
+        <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
+        <div class="content">
+          <p><time datetime="2026-10-14">Updated yesterday</time> · 4 min read</p>
+          <h2></h2>
+          <p></p>
+        </div>
+      </article>
+
+      <article>
+        <div class="content">
+          <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
+          <div>
+            <h2>A heading with its real text still present while loading</h2>
+            <p>This deliberately longer paragraph tests that the fixed skeleton
+            block height clips surplus text instead of creating additional
+            skeleton lines or changing the <a href="#">card layout</a>.</p>
+          </div>
+        </div>
+      </article>
+
+      <article>
+        <h2></h2>
+        <ul>
+          <li></li>
+          <li></li>
+          <li></li>
+        </ul>
+        <input type="text" placeholder="Email address">
+        <button type="button">Subscribe</button>
+      </article>
+
+      <article>
+        <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
+        <div class="content">
+          <p><time datetime="2026-10-14">Updated yesterday</time> · 4 min read</p>
+          <h2></h2>
+          <p></p>
+        </div>
+      </article>
+
+      <article>
+        <div class="content">
+          <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
+          <div>
+            <h2>A heading with its real text still present while loading</h2>
+            <p>This deliberately longer paragraph tests that the fixed skeleton
+            block height clips surplus text instead of creating additional
+            skeleton lines or changing the <a href="#">card layout</a>.</p>
+          </div>
+        </div>
+      </article>
+
+      <article>
+        <h2></h2>
+        <ul>
+          <li></li>
+          <li></li>
+          <li></li>
+        </ul>
+        <input type="text" placeholder="Email address">
+        <button type="button">Subscribe</button>
+      </article>
+
+      <article>
+        <div class="content">
+          <img class="media" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Crect width='160' height='100' fill='%23201033'/%3E%3Ccircle cx='128' cy='22' r='10' fill='%23f4e9b8'/%3E%3Cpath d='M60 85V48a20 20 0 0 1 40 0v37l-7-6-6 6-7-6-7 6-7-6z' fill='%23eee'/%3E%3Ccircle cx='72' cy='50' r='4' fill='%23201033'/%3E%3Ccircle cx='88' cy='50' r='4' fill='%23201033'/%3E%3C/svg%3E" alt="">
+          <div>
+            <h2></h2>
+            <p></p>
+          </div>
+        </div>
+      </article>
+
+      <article>
+        <h2></h2>
+        <ul>
+          <li></li>
+          <li></li>
+          <li></li>
+        </ul>
+        <input type="text" placeholder="Email address">
+        <button type="button">Subscribe</button>
+      </article>
+
+    </section>
+  </main>
+  <script>
+    // One status region per independently loading area; this demo has one area.
+    const collection = document.querySelector('.skeleton');
+    const status = document.querySelector('.loading-status');
+    const toggle = document.querySelector('.toggle-loading');
+    const sample = { H2: 'Card title', P: 'Loaded content fills the three lines the skeleton reserved, so the card keeps its height.', LI: 'A list item' };
+    let announceTimer;
+    let lastMessage = '';
+
+    const startLoading = () => {
+      for (const el of collection.querySelectorAll('[data-sample]')) {
+        el.textContent = '';
+        delete el.dataset.sample;
+      }
+      collection.setAttribute('aria-busy', 'true');
+      collection.inert = true;
+      collection.setAttribute('aria-hidden', 'true');
+      // Set the text after the region exists, with a brief delay (example value)
+      announceTimer = setTimeout(() => {
+        // VoiceOver skips a message identical to the last one, even after the region is cleared: add a no-break space
+        let message = 'Loading cards…';
+        if (message === lastMessage) message += '\u00A0';
+        lastMessage = message;
+        status.textContent = message;
+      }, 100);
+      toggle.textContent = 'Finish loading';
+    };
+
+    const finishLoading = () => {
+      clearTimeout(announceTimer);
+      status.textContent = '';
+      for (const el of collection.querySelectorAll('h2:empty, p:empty, li:empty')) {
+        el.textContent = sample[el.tagName];
+        el.dataset.sample = '';
+      }
+      collection.removeAttribute('aria-busy');
+      collection.inert = false;
+      collection.removeAttribute('aria-hidden');
+      toggle.textContent = 'Show skeleton again';
+    };
+
+    toggle.addEventListener('click', () => {
+      if (collection.hasAttribute('aria-busy')) finishLoading();
+      else startLoading();
+    });
+
+    startLoading();
+  </script>
+</body>
+
+</html>
