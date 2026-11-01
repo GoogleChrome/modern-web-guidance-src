@@ -1591,7 +1591,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 .guide-title-group { display: flex; align-items: baseline; gap: 10px; }
 .evals-count { font-size: 0.82rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .guide-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-inline-size: 0; }
-.eval-filter-input { font-family: var(--font-sans); font-size: 0.84rem; padding: 6px 10px; border: 1px solid var(--color-field-border); border-radius: 6px; background: var(--color-surface-container-lowest); color: var(--color-on-surface); min-inline-size: 180px; }
+.eval-filter-input { font-family: var(--font-sans); font-size: 0.84rem; padding: 6px 10px; border: 1px solid var(--color-field-border); border-radius: 6px; background: var(--color-surface-container-lowest); color: var(--color-on-surface); min-inline-size: 300px; }
 .eval-filter-input:focus { outline: 2px solid var(--color-primary); outline-offset: -1px; }
 .eval-sort-reset { font-size: 0.8rem; }
 .eval-category-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
