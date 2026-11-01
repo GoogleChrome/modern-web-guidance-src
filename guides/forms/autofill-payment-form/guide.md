@@ -135,7 +135,7 @@ Add the `required` attribute to mandatory fields. Modern browsers automatically 
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("enterkeyhint") }}
+{{ BASELINE_STATUS("enterkeyhint") }}
 {{ BASELINE_STATUS("input-email-tel-url") }}
 {{ BASELINE_STATUS("inputmode") }}
 

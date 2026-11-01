@@ -149,13 +149,13 @@ Do not add a fallback value inside the `<progress>` element. It is not used by a
 
 #### Animation fallback
 
-{{ FEATURE_FALLBACKS("registered-custom-properties") }}
+{{ BASELINE_STATUS("registered-custom-properties") }}
 
 If `@property` is not supported, the ring will jump to the new value instantly instead of transitioning smoothly. In most cases this is fine, and does not break any functionality.
 
 If the transition is absolutely necessary, you can check for `@property` support and use a `requestAnimationFrame()` loop to interpolate `--value` in older browsers.
 
-{{ FEATURE_FALLBACKS("background-clip-border-area") }}
+{{ BASELINE_STATUS("background-clip-border-area") }}
 
 For browsers that don't yet support `background-clip: border-area`, fall back to a `mask-image` to hollow out the center of the `<progress>` element.
 
@@ -169,7 +169,7 @@ For browsers that don't yet support `background-clip: border-area`, fall back to
 }
 ```
 
-{{ FEATURE_FALLBACKS("attr") }}
+{{ BASELINE_STATUS("attr") }}
 
 For browsers that don't support the `attr()` CSS function for any property, use a `MutationObserver` to automatically sync the `value` attribute to the `--value` custom property.
 
