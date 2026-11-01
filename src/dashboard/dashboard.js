@@ -600,11 +600,8 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
 
         container.removeAttribute('aria-busy');
         container.innerHTML = `
+            <h1 class="suite-page-title">${escapeHtml(testId)}</h1>
             <div class="header-meta-grid">
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(testId)}</span>
-                    <span class="meta-label">Test ID</span>
-                </div>
                 <div class="header-meta-item">
                     <span class="meta-value">${escapeHtml(timeStr)}</span>
                     <span class="meta-label">Action Date</span>
