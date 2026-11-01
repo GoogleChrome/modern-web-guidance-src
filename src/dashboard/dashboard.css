@@ -1081,7 +1081,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 .assertion-error {
   color: var(--color-accent-failure);
   white-space: pre-wrap;
-  max-height: 80px;
+  max-height: 56px;
   overflow-y: auto;
   background: rgb(218 54 51 / 0.08);
   padding: 4px 6px;
@@ -1503,6 +1503,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 }
 .visually-hidden:where(:not(:focus-within, :active)) { clip-path: inset(50%); height: 1px; overflow: clip; position: absolute; white-space: nowrap; width: 1px; }
 :is(a, button, select, input, summary, [tabindex="0"], [role="button"]):focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+#main-content:focus-visible { outline: none; }
 .hidden, [hidden]:not([hidden="until-found"]) { display: none !important; }
 .text-warning { color: var(--color-accent-warning); }
 .text-success { color: var(--color-accent-success); }
