@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Breadcrumb demos</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: light-dark(#f6f7f9, #14161a);
+    --surface: light-dark(#fff, #1e2127);
+    --surface-2: light-dark(#eef0f4, #2a2e37);
+    --text: light-dark(#1d2129, #e8eaee);
+    --muted: light-dark(#5b6270, #a3a9b5);
+    --border: light-dark(#cfd4dc, #3a3f4a);
+    --accent: light-dark(#0b57d0, #8ab4f8);
+    --accent-contrast: light-dark(#fff, #0b1b33);
+    --accent-soft: light-dark(#e1ebfc, #26354f);
+    --focus: light-dark(#b3261e, #ffb4ab);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 2rem; background: var(--bg); color: var(--text); font: 1rem/1.5 system-ui, sans-serif; }
+  main { max-width: 60rem; margin-inline: auto; }
+  h1 { margin-block: 0 .25rem; }
+  .lede { color: var(--muted); margin-block: 0 2rem; }
+  section { background: var(--surface); border: 1px solid var(--border); border-radius: .75rem; padding: 1.25rem 1.5rem 1.5rem; margin-block: 1.25rem; }
+  section h2 { font-size: 1rem; margin: 0 0 .25rem; }
+  section > p { font-size: .875rem; color: var(--muted); margin: 0 0 1rem; }
+  .stack { display: grid; gap: 1.25rem; justify-items: start; }
+  .stack > .breadcrumb { justify-self: stretch; }
+
+  /* ===== BASE ===== */
+  .breadcrumb {
+    --gap: .5rem; --link: var(--accent); --current: var(--text);
+    container: bc / inline-size;
+  }
+  .breadcrumb ol {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: var(--gap); margin: 0; padding: 0; list-style: none;
+  }
+  .breadcrumb li { display: flex; align-items: center; gap: calc(var(--gap) / 2); }
+  .breadcrumb a, .breadcrumb button {
+    color: var(--link);
+    text-decoration-thickness: .08em;
+    text-underline-offset: .2em;
+  }
+  .breadcrumb a[aria-current="page"] { color: var(--current); font-weight: 600; text-decoration: none; }
+  .breadcrumb a:focus-visible, .breadcrumb button:focus-visible {
+    outline: 3px solid var(--focus); outline-offset: 2px;
+    /* Neighbors that overlap (shaped segments) or touch (a joined trigger) would cover an outside ring: lift this one */
+    position: relative; z-index: 1;
+  }
+
+  /* Decorative dividers: empty alt text keeps them out of the a11y tree */
+  .breadcrumb > ol > li + li::before { content: var(--sep, "/") / ""; color: var(--muted); margin-inline-end: calc(var(--gap) / 2); }
+  .breadcrumb[data-sep="chevron"] > ol > li + li::before {
+    content: ""; inline-size: .6em; block-size: .9em; background: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 10' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l4 4-4 4'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  /* ===== 1–2. Slash / chevron ===== */
+  .bc-slash > ol > li > a, .bc-chevron > ol > li > a { text-decoration: none; }
+  .bc-slash > ol > li > a:not([aria-current]):is(:hover, :focus-visible),
+  .bc-chevron > ol > li > a:not([aria-current]):is(:hover, :focus-visible) { text-decoration: underline; }
+
+  /* ===== 3. Underlined links (keep the divider: order alone does not read as a hierarchy) ===== */
+  .bc-underline a:not([aria-current]) { text-decoration: underline; }
+  .bc-underline a:not([aria-current]):hover { text-decoration-thickness: .2em; color: var(--text); }
+
+  /* ===== 4. Bar ===== */
+  .bc-bar ol { gap: 0; display: inline-flex; border: 1px solid var(--border); border-radius: .5rem; overflow: clip; background: var(--surface-2); }
+  .bc-bar li { gap: 0; }
+  .bc-bar li + li { border-inline-start: 1px solid var(--border); }
+  /* The chevron divider (data-sep) sits inside each segment after the first, so the bar still reads as a path */
+  .bc-bar > ol > li + li::before { margin-inline: .9rem 0; }
+  .bc-bar a { display: block; padding: .6rem 1.1rem; text-decoration: none; }
+  .bc-bar a:not([aria-current]):hover { background: var(--accent-soft); }
+  .bc-bar a[aria-current="page"] { background: var(--surface); }
+  /* The chevron sits in the <li>, outside the link: give the current <li> the link's background so no strip of the bar shows behind it */
+  .bc-bar > ol > li:has(> a[aria-current="page"]) { background: var(--surface); }
+  .bc-bar a:focus-visible { outline-offset: -3px; background: var(--accent-soft); }
+
+  /* 4b. Joined pill: the bar's segments inside one fully rounded container */
+  .bc-joined { --end-r: 999px; }
+  .bc-joined > ol { border-radius: var(--end-r); }
+  .bc-joined > ol > li:first-child > a { padding-inline-start: 1.4rem; }
+  .bc-joined > ol > li:last-child > a { padding-inline-end: 1.4rem; }
+  /* The end links share the container's end radius, so their inset focus ring follows the rounded ends */
+  .bc-joined > ol > li:first-child > a { border-start-start-radius: var(--end-r); border-end-start-radius: var(--end-r); }
+  .bc-joined > ol > li:last-child > a { border-start-end-radius: var(--end-r); border-end-end-radius: var(--end-r); }
+  @supports (corner-shape: squircle) {
+    .bc-joined.bc-squircle { --end-r: 1.4rem; }
+    .bc-joined.bc-squircle > ol { corner-shape: squircle; }
+    .bc-joined.bc-squircle > ol > li:is(:first-child, :last-child) > a { corner-shape: squircle; }
+  }
+
+  /* =========================================================
+     SHAPED SEGMENTS (arrow, slant)
+       --shape   polygon() for the segment
+       --inset   how far the shape eats into the horizontal padding
+       --overlap how much neighbors overlap
+       --space   visible gap between neighbors
+     Fallback: clip-path. Enhanced: border-shape.
+     ========================================================= */
+  .bc-shaped > ol, .bc-shaped > ol > li { gap: 0; }
+  .bc-shaped > ol > li + li { margin-inline-start: calc(var(--space, .25rem) - var(--overlap, 0px)); }
+  .bc-shaped > ol > li + li::before { content: none; }
+  .bc-shaped > ol > li > a {
+    display: block; text-decoration: none;
+    padding: .55rem calc(var(--inset) + .8rem);
+    background: var(--surface-2);
+    clip-path: var(--shape);
+  }
+  .bc-shaped > ol > li > a:not([aria-current]):hover { background: var(--accent-soft); }
+  .bc-shaped > ol > li > a[aria-current="page"] { background: var(--accent); color: var(--accent-contrast); }
+  .bc-shaped > ol > li > a:focus-visible {
+    outline-offset: -4px; background: var(--focus); color: var(--surface); text-decoration: underline;
+  }
+
+  /* 5. Arrow */
+  .bc-arrow { --point: clamp(.5rem, 2cqi, .8rem); --inset: var(--point); --overlap: calc(var(--point) - 3px); --space: 0px; }
+  .bc-arrow > ol > li > a { --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%, var(--point) 50%); }
+  .bc-arrow > ol > li:first-child > a { --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%); }
+
+  /* 6a. Slant "/": every segment, including first and last, is a full parallelogram */
+  .bc-slant { --slant: clamp(.4rem, 2cqi, .75rem); --inset: var(--slant); --overlap: var(--slant); --space: .25rem; }
+  .bc-slant > ol > li > a { --shape: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%); }
+
+  @supports (border-shape: polygon(0 0, 100% 0, 100% 100%)) {
+    .bc-shaped > ol > li > a {
+      clip-path: none;
+      border-shape: var(--shape);
+      border: 2px solid var(--border);
+    }
+    .bc-shaped > ol > li > a[aria-current="page"] { border-color: var(--accent); }
+    .bc-shaped > ol > li > a:focus-visible {
+      outline: 3px solid var(--focus); outline-offset: 2px;
+      background: var(--accent-soft); color: var(--link); text-decoration: underline;
+    }
+    .bc-shaped > ol > li > a[aria-current="page"]:focus-visible { background: var(--accent); color: var(--accent-contrast); }
+  }
+
+  /* RTL: polygons are physical, so mirror them (logical padding/margins already flip) */
+  .bc-arrow:dir(rtl) > ol > li > a { --shape: polygon(100% 0, var(--point) 0, 0 50%, var(--point) 100%, 100% 100%, calc(100% - var(--point)) 50%); }
+  .bc-arrow:dir(rtl) > ol > li:first-child > a { --shape: polygon(100% 0, var(--point) 0, 0 50%, var(--point) 100%, 100% 100%); }
+  .bc-slant:dir(rtl) > ol > li > a { --shape: polygon(0 0, calc(100% - var(--slant)) 0, 100% 100%, var(--slant) 100%); }
+  .breadcrumb[data-sep="chevron"]:dir(rtl) > ol > li + li::before { scale: -1 1; }
+
+  /* ===== 7. Pills ===== */
+  .bc-pills { --pill-r: 999px; }
+  .bc-pills > ol > li > a,
+  .bc-pills > ol > li > button {
+    display: block; padding: .35rem .9rem;
+    border: 1px solid var(--border); border-radius: var(--pill-r);
+    background: var(--surface-2); text-decoration: none;
+    transition: background-color .15s, border-color .15s;
+  }
+  .bc-pills > ol > li > a:not([aria-current]):hover { background: var(--accent-soft); border-color: var(--accent); }
+  .bc-pills > ol > li > a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+
+  /* Split pill: link + sibling trigger share one shape */
+  .bc-pills > ol > li:has(> a + .bc-trigger) { gap: 0; }
+  .bc-pills > ol > li > a:has(+ .bc-trigger) {
+    border-start-end-radius: 0; border-end-end-radius: 0;
+    border-inline-end-color: transparent;
+  }
+  .bc-pills > ol > li > a + .bc-trigger {
+    inline-size: auto; block-size: auto; align-self: stretch;
+    padding: 0 .65rem 0 .55rem;
+    border: 1px solid var(--border);
+    border-radius: var(--pill-r);
+    border-start-start-radius: 0; border-end-start-radius: 0;
+    background: var(--surface-2); color: var(--link);
+  }
+  .bc-pills > ol > li > a + .bc-trigger:hover,
+  .bc-pills > ol > li > a + .bc-trigger:has(+ :popover-open) {
+    background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+  }
+  .bc-pills > ol > li:has(> a:hover:not([aria-current])) > .bc-trigger { background: var(--accent-soft); border-color: var(--accent); }
+
+  .bc-pills > ol > li > .bc-expand { border-radius: var(--pill-r); padding: .35rem .8rem; inline-size: auto; block-size: auto; }
+
+  @supports (corner-shape: squircle) {
+    .bc-squircle { --pill-r: 1.1rem; }
+    .bc-squircle > ol > li > a,
+    .bc-squircle > ol > li > button { corner-shape: squircle; }
+  }
+
+  /* ===== 8. Tags ===== */
+  .bc-tags { --gap: .4rem; }
+  .bc-tags > ol > li > a, .bc-tags > ol > li > button {
+    display: block; padding: .3rem .7rem; text-decoration: none;
+    border-radius: var(--tag-r, .4rem);
+  }
+  .bc-tags > ol > li > a:not([aria-current]):hover { background: var(--accent-soft); text-decoration: underline; }
+  .bc-tags > ol > li > a[aria-current="page"] { background: var(--surface-2); }
+
+  @supports (corner-shape: bevel) {
+    .bc-bevel  { --tag-r: .7rem; }
+    .bc-scoop  { --tag-r: .8rem; }
+    .bc-notch  { --tag-r: .8rem; }
+    .bc-bevel > ol > li > a, .bc-bevel > ol > li > button { corner-shape: bevel; }
+    .bc-scoop > ol > li > a, .bc-scoop > ol > li > button { corner-shape: scoop; }
+    .bc-notch > ol > li > a, .bc-notch > ol > li > button { corner-shape: notch; }
+  }
+
+  /* ===== Sibling / overflow menus (popover) ===== */
+  .bc-trigger {
+    display: grid; place-items: center;
+    inline-size: 1.75rem; block-size: 1.75rem; padding: 0;
+    border: 1px solid transparent; border-radius: .4rem;
+    background: transparent; color: var(--muted); cursor: pointer; font: inherit; line-height: 1;
+  }
+  .bc-trigger svg { inline-size: .75rem; block-size: .75rem; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: rotate .15s; }
+  .bc-trigger:hover { background: var(--accent-soft); color: var(--accent); }
+  .bc-trigger:has(+ :popover-open) { background: var(--accent-soft); color: var(--accent); }
+  .bc-trigger:has(+ :popover-open) svg { rotate: 180deg; }
+  .bc-expand { font-weight: 700; letter-spacing: .05em; inline-size: auto; padding-inline: .5rem; border-color: var(--border); background: var(--surface-2); color: var(--link); }
+
+  .bc-menu {
+    margin: 0; padding: .35rem; list-style: none;
+    min-inline-size: 12rem; max-inline-size: min(22rem, 90vw);
+    border: 1px solid var(--border); border-radius: .6rem;
+    background: var(--surface); color: var(--text);
+    box-shadow: 0 8px 24px rgb(0 0 0 / .18);
+    inset: auto;
+  }
+  .bc-menu li { display: block; }
+  .bc-menu li::before { content: none !important; }
+  .bc-menu a {
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    padding: .45rem .7rem; border-radius: .4rem;
+    color: var(--text); text-decoration: none;
+  }
+  .bc-menu a:hover { background: var(--accent-soft); }
+  .bc-menu a:focus-visible { outline-offset: -2px; background: var(--accent-soft); }
+  .bc-menu a[aria-current] { font-weight: 600; color: var(--accent); }
+  .bc-menu a[aria-current]::after {
+    content: "Current" / "";
+    font-size: .75rem; font-weight: 600;
+    padding: .05rem .5rem; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent);
+  }
+
+  @supports (position-area: block-end) {
+    .bc-menu {
+      position-area: block-end span-inline-end;
+      margin-block-start: .35rem;
+      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bc-menu { transition: opacity .12s, display .12s allow-discrete, overlay .12s allow-discrete; }
+    .bc-menu:not(:popover-open) { opacity: 0; }
+    @starting-style { .bc-menu:popover-open { opacity: 0; } }
+  }
+
+  /* =========================================================
+     RESPONSIVE (container queries), only for [data-collapse]
+     Wide:   full trail
+     Medium: first, "…" popover, last two
+     Narrow: "‹ Parent" only
+     ========================================================= */
+  .breadcrumb .bc-overflow { display: none; }
+
+  @container bc (inline-size < 40rem) {
+    .breadcrumb .bc-overflow { display: flex; }
+    /* The "…" item is a plain button, not a shape: give it and the item after it a normal gap, not the overlap */
+    .bc-shaped > ol > li.bc-overflow, .bc-shaped > ol > li.bc-overflow + li { margin-inline-start: .25rem; }
+  }
+
+  @container bc (inline-size < 20rem) {
+    .breadcrumb[data-collapse] > ol > li:not(:nth-last-child(2)) { display: none; }
+    .breadcrumb[data-collapse] > ol > li:nth-last-child(2) { margin-inline-start: 0; }
+    .breadcrumb.breadcrumb[data-collapse] > ol > li:nth-last-child(2)::before {
+      content: "‹" / "";
+      mask: none; background: none; inline-size: auto; block-size: auto;
+      color: var(--muted); font-size: 1.25em; line-height: 1;
+      margin-inline-end: .4rem;
+    }
+  }
+
+  /* A bar that wraps breaks apart (and a 999px radius turns into an oval), so stack it as one column when its
+     segments no longer fit on a row. 24rem is an example breakpoint: just above the bars' natural width (about
+     23.5rem here), so they stack only when they would not fit. The chevron turns to point down. */
+  @container bc (inline-size < 24rem) {
+    .bc-bar > ol { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+    .bc-bar a { padding-block: .35rem; } /* Compact rows: three rows take less space than a wrapped bar */
+    .bc-bar > ol > li + li { border-inline-start: 0; border-block-start: 1px solid var(--border); }
+    .bc-bar a { flex: 1; }
+    .bc-joined > ol { border-radius: 1.4rem; }
+    .bc-joined > ol > li:first-child > a { border-radius: 1.4rem 1.4rem 0 0; }
+    .bc-joined > ol > li:last-child > a { border-radius: 0 0 1.4rem 1.4rem; }
+    .breadcrumb.bc-bar[data-sep="chevron"] > ol > li + li::before { rotate: 90deg; scale: none; }
+  }
+
+  /* ===== Resizable playground ===== */
+  .resizer {
+    resize: inline; overflow: auto;
+    inline-size: 100%; min-inline-size: 11rem; max-inline-size: 100%;
+    padding: .9rem 1rem .6rem;
+    border: 1px dashed var(--border); border-radius: .5rem;
+    background: var(--surface);
+  }
+  .resizer + .resizer { margin-block-start: 1rem; }
+  .readout { margin: .6rem 0 0; font: .75rem/1.4 ui-monospace, monospace; color: var(--muted); }
+  .width-control { display: flex; align-items: center; gap: .75rem; margin-block: 1rem .4rem; font-size: .85rem; }
+  .width-control input { flex: 1; max-inline-size: 24rem; }
+
+  @media (forced-colors: active) {
+    .breadcrumb a[aria-current="page"] { text-decoration: underline; }
+
+    /* The chevron is a masked background, which forced colors replaces: opt it out and use a system color */
+    .breadcrumb[data-sep="chevron"] > ol > li + li::before { forced-color-adjust: none; color: CanvasText; }
+    .bc-shaped > ol > li > a, .bc-pills a, .bc-trigger, .bc-menu { border: 1px solid LinkText; }
+
+    /* Without border-shape the shape comes from clip-path, which cuts the slanted sides off a border, and forced
+       colors removes the background that drew the shape. Use plain bordered segments and a text separator so the
+       trail still reads as a path. With border-shape the border follows the shape, so nothing changes. */
+    @supports not (border-shape: polygon(0 0, 100% 0, 100% 100%)) {
+      .bc-shaped > ol { gap: .5rem; }
+      .bc-shaped > ol > li > a { clip-path: none; border: 2px solid LinkText; }
+      .bc-shaped > ol > li + li { margin-inline-start: 0; }
+      .bc-shaped > ol > li + li::before { content: "›" / ""; margin-inline-end: .5rem; }
+      .bc-shaped > ol > li > a:focus-visible { outline: 3px solid Highlight; outline-offset: 2px; }
+    }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Breadcrumb demos</h1>
+  <p class="lede">A trail showing where you are in the site hierarchy, with links to each ancestor and, optionally, sibling pages in a dropdown. The current page is a link with <code>aria-current="page"</code>. Tab through each to check focus styles. The last section has resizable containers.</p>
+
+  <section>
+    <h2>1. Slash divider</h2>
+    <p>Plain links; underline on hover.</p>
+    <nav class="breadcrumb bc-slash" aria-label="Breadcrumbs, slash">
+      <ol>
+        <li><a href="/">Index</a></li>
+        <li><a href="/pg2">Second Page</a></li>
+        <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+      </ol>
+    </nav>
+  </section>
+
+  <section>
+    <h2>2. Chevron divider</h2>
+    <p>Masked SVG divider, never announced.</p>
+    <nav class="breadcrumb bc-chevron" data-sep="chevron" aria-label="Breadcrumbs, chevron">
+      <ol>
+        <li><a href="/">Index</a></li>
+        <li><a href="/pg2">Second Page</a></li>
+        <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+      </ol>
+    </nav>
+  </section>
+
+  <section>
+    <h2>3. Underlined links</h2>
+    <p>Links stay underlined so they don't rely on color alone, and the slash divider keeps the trail reading as a path.</p>
+    <nav class="breadcrumb bc-underline" aria-label="Breadcrumbs, underlined">
+      <ol>
+        <li><a href="/">Index</a></li>
+        <li><a href="/pg2">Second Page</a></li>
+        <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+      </ol>
+    </nav>
+  </section>
+
+  <section>
+    <h2>4. Bar</h2>
+    <p>One bordered container; each segment is a clear target, and a chevron between segments keeps it reading as a path.</p>
+    <nav class="breadcrumb bc-bar" data-sep="chevron" aria-label="Breadcrumbs, bar">
+      <ol>
+        <li><a href="/">Index</a></li>
+        <li><a href="/pg2">Second Page</a></li>
+        <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+      </ol>
+    </nav>
+  </section>
+
+  <section>
+    <h2>4b. Joined pill</h2>
+    <p>Segments share one rounded container, separated by a 1px border with no gap. Bottom: <code>corner-shape: squircle</code> where supported.</p>
+    <div class="stack">
+      <nav class="breadcrumb bc-bar bc-joined" data-sep="chevron" aria-label="Breadcrumbs, joined pill">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/pg2">Second Page</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+        </ol>
+      </nav>
+      <nav class="breadcrumb bc-bar bc-joined bc-squircle" data-sep="chevron" aria-label="Breadcrumbs, joined squircle">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/pg2">Second Page</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+        </ol>
+      </nav>
+    </div>
+  </section>
+
+  <section>
+    <h2>5. Arrow bar (<code>border-shape</code>, <code>clip-path</code> fallback)</h2>
+    <p>Where <code>border-shape</code> is supported the arrow is the real border box, so borders and focus outlines follow the shape. Otherwise it falls back to <code>clip-path</code> with a color-based focus style.</p>
+    <nav class="breadcrumb bc-shaped bc-arrow" aria-label="Breadcrumbs, arrow">
+      <ol>
+        <li><a href="/">Index</a></li>
+        <li><a href="/pg2">Second Page</a></li>
+        <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+      </ol>
+    </nav>
+  </section>
+
+  <section>
+    <h2>6. More <code>border-shape</code> ideas</h2>
+    <p>Slant <code>/</code> (angled at both ends)</p>
+    <div class="stack">
+      <nav class="breadcrumb bc-shaped bc-slant" aria-label="Breadcrumbs, slant">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/pg2">Second Page</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+        </ol>
+      </nav>
+    </div>
+  </section>
+
+  <section>
+    <h2>6b. Right-to-left</h2>
+    <p>Arrow and slant polygons are mirrored under <code>:dir(rtl)</code>; the chevron divider is flipped.</p>
+    <div class="stack">
+      <nav class="breadcrumb bc-shaped bc-arrow" dir="rtl" lang="he" aria-label="פירורי לחם, חץ">
+        <ol>
+          <li><a href="/">ראשי</a></li>
+          <li><a href="/pg2">עמוד שני</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">עמוד זה</a></li>
+        </ol>
+      </nav>
+      <nav class="breadcrumb bc-shaped bc-slant" dir="rtl" lang="he" aria-label="פירורי לחם, נטוי">
+        <ol>
+          <li><a href="/">ראשי</a></li>
+          <li><a href="/pg2">עמוד שני</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">עמוד זה</a></li>
+        </ol>
+      </nav>
+      <nav class="breadcrumb bc-chevron" data-sep="chevron" dir="rtl" lang="he" aria-label="פירורי לחם, שברון">
+        <ol>
+          <li><a href="/">ראשי</a></li>
+          <li><a href="/pg2">עמוד שני</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">עמוד זה</a></li>
+        </ol>
+      </nav>
+    </div>
+  </section>
+
+  <section>
+    <h2>7. Pills and squircle pills (<code>corner-shape</code>)</h2>
+    <p>Top: <code>border-radius: 999px</code>. Bottom: <code>corner-shape: squircle</code> where supported.</p>
+    <div class="stack">
+      <nav class="breadcrumb bc-pills" data-sep="chevron" aria-label="Breadcrumbs, pills">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/pg2">Second Page</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+        </ol>
+      </nav>
+      <nav class="breadcrumb bc-pills bc-squircle" data-sep="chevron" aria-label="Breadcrumbs, squircle pills">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/pg2">Second Page</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+        </ol>
+      </nav>
+    </div>
+  </section>
+
+  <section>
+    <h2>8. Tags: bevel, scoop, notch</h2>
+    <p>Backgrounds appear on interaction. Corner treatment comes from <code>corner-shape</code>.</p>
+    <div class="stack">
+      <nav class="breadcrumb bc-tags bc-bevel" data-sep="chevron" aria-label="Breadcrumbs, bevel">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/pg2">Second Page</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+        </ol>
+      </nav>
+      <nav class="breadcrumb bc-tags bc-scoop" data-sep="chevron" aria-label="Breadcrumbs, scoop">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/pg2">Second Page</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+        </ol>
+      </nav>
+      <nav class="breadcrumb bc-tags bc-notch" data-sep="chevron" aria-label="Breadcrumbs, notch">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/pg2">Second Page</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+        </ol>
+      </nav>
+    </div>
+  </section>
+
+  <section>
+    <h2>9. Sibling dropdowns (<code>popover</code>)</h2>
+    <p>Each ancestor can have a small button joined to its link that opens a list of sibling pages. The link still navigates to the ancestor. The current sibling is labeled “Current”.</p>
+    <div class="stack">
+      <nav class="breadcrumb bc-chevron" data-sep="chevron" aria-label="Breadcrumbs, siblings (chevron)">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li>
+            <a href="/docs/components">Components</a>
+            <button type="button" class="bc-trigger" popovertarget="sib-a" aria-label="Pages at the same level as Components">
+              <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <ul popover id="sib-a" class="bc-menu" aria-label="Components siblings">
+              <li><a href="/docs/foundations">Foundations</a></li>
+              <li><a href="/docs/components" aria-current="true">Components</a></li>
+              <li><a href="/docs/patterns">Patterns</a></li>
+              <li><a href="/docs/tokens">Tokens</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="/docs/components/forms">Forms</a>
+            <button type="button" class="bc-trigger" popovertarget="sib-b" aria-label="Pages at the same level as Forms">
+              <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <ul popover id="sib-b" class="bc-menu" aria-label="Forms siblings">
+              <li><a href="/docs/components/buttons">Buttons</a></li>
+              <li><a href="/docs/components/dialogs">Dialogs</a></li>
+              <li><a href="/docs/components/forms" aria-current="true">Forms</a></li>
+              <li><a href="/docs/components/navigation">Navigation</a></li>
+            </ul>
+          </li>
+          <li><a href="/docs/components/forms/inputs" aria-current="page">Inputs</a></li>
+        </ol>
+      </nav>
+
+      <nav class="breadcrumb bc-pills bc-squircle" data-sep="chevron" aria-label="Breadcrumbs, siblings (pills)">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li>
+            <a href="/docs/components">Components</a>
+            <button type="button" class="bc-trigger" popovertarget="sib-c" aria-label="Pages at the same level as Components">
+              <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <ul popover id="sib-c" class="bc-menu" aria-label="Components siblings">
+              <li><a href="/docs/foundations">Foundations</a></li>
+              <li><a href="/docs/components" aria-current="true">Components</a></li>
+              <li><a href="/docs/patterns">Patterns</a></li>
+              <li><a href="/docs/tokens">Tokens</a></li>
+            </ul>
+          </li>
+          <li><a href="/docs/components/forms" aria-current="page">Forms</a></li>
+        </ol>
+      </nav>
+    </div>
+  </section>
+
+  <section>
+    <h2>10. Deep nesting, collapsed (container query)</h2>
+    <p>Trails with more than three items get a “…” button (added by JS) that opens a popover listing the middle items. Below 40rem of container width the middle collapses; below 20rem the trail becomes a single “‹ Parent” link.</p>
+    <div class="stack">
+      <nav class="breadcrumb bc-chevron" data-sep="chevron" data-collapse aria-label="Breadcrumbs, deep (chevron)">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/docs">Docs</a></li>
+          <li><a href="/docs/components">Components</a></li>
+          <li><a href="/docs/components/forms">Forms</a></li>
+          <li><a href="/docs/components/forms/inputs">Inputs</a></li>
+          <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
+        </ol>
+      </nav>
+      <nav class="breadcrumb bc-pills bc-squircle" data-collapse data-sep="chevron" aria-label="Breadcrumbs, deep (pills)">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/docs">Docs</a></li>
+          <li><a href="/docs/components">Components</a></li>
+          <li><a href="/docs/components/forms">Forms</a></li>
+          <li><a href="/docs/components/forms/inputs">Inputs</a></li>
+          <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
+        </ol>
+      </nav>
+    </div>
+  </section>
+
+  <section>
+    <h2>11. Resize playground</h2>
+    <p>Use the width slider above each dashed box, or drag its bottom-right corner, to change the container's width.</p>
+
+    <div class="resizer">
+      <nav class="breadcrumb bc-chevron" data-sep="chevron" data-collapse aria-label="Breadcrumbs, resizable (chevron)">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/docs">Docs</a></li>
+          <li><a href="/docs/components">Components</a></li>
+          <li><a href="/docs/components/forms">Forms</a></li>
+          <li><a href="/docs/components/forms/inputs">Inputs</a></li>
+          <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
+        </ol>
+      </nav>
+      <p class="readout"></p>
+    </div>
+
+    <div class="resizer">
+      <nav class="breadcrumb bc-shaped bc-slant" data-collapse aria-label="Breadcrumbs, resizable (slant)">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/docs">Docs</a></li>
+          <li><a href="/docs/components">Components</a></li>
+          <li><a href="/docs/components/forms">Forms</a></li>
+          <li><a href="/docs/components/forms/inputs">Inputs</a></li>
+          <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
+        </ol>
+      </nav>
+      <p class="readout"></p>
+    </div>
+
+    <div class="resizer">
+      <nav class="breadcrumb bc-pills bc-squircle" data-collapse data-sep="chevron" aria-label="Breadcrumbs, resizable (pills)">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/docs">Docs</a></li>
+          <li><a href="/docs/components">Components</a></li>
+          <li><a href="/docs/components/forms">Forms</a></li>
+          <li><a href="/docs/components/forms/inputs">Inputs</a></li>
+          <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
+        </ol>
+      </nav>
+      <p class="readout"></p>
+    </div>
+  </section>
+</main>
+
+<script>
+  /* 1. Deep trails: add a "…" popover. While the container query shows the "…" item, the real middle items are
+        moved into the popover; they move back when it is hidden. */
+  let uid = 0;
+  document.querySelectorAll('.breadcrumb[data-collapse]').forEach((nav) => {
+    const list  = nav.querySelector('ol');
+    const items = [...list.children];
+    if (items.length <= 3) return;
+
+    const middle = items.slice(1, -2);
+
+    const id = `bc-overflow-${++uid}`;
+    const li = document.createElement('li');
+    li.className = 'bc-overflow';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bc-trigger bc-expand';
+    btn.textContent = '…';
+    btn.setAttribute('popovertarget', id);
+    btn.setAttribute('aria-label', `Show ${middle.length} more breadcrumbs`);
+
+    const menu = document.createElement('ul');
+    menu.popover = '';
+    menu.id = id;
+    menu.className = 'bc-menu';
+    menu.setAttribute('aria-label', 'Hidden breadcrumbs');
+
+    li.append(btn, menu);
+    items[0].after(li);
+
+    // The "…" item's display depends only on the container width, so moving items cannot retrigger this
+    new ResizeObserver(() => {
+      const collapsed = getComputedStyle(li).display !== 'none';
+      const focused = document.activeElement;
+      if (collapsed) menu.append(...middle);
+      else if (menu.children.length) {
+        menu.hidePopover();
+        li.after(...menu.children);
+      }
+      if (focused?.isConnected) focused.focus();
+    }).observe(nav);
+  });
+
+  /* 2. Close an open menu once focus lands outside it and its own trigger: popover light dismiss does not cover
+        keyboard focus leaving, and an open menu can cover the next focused control. */
+  document.addEventListener('focusin', ({ target }) => {
+    for (const menu of document.querySelectorAll('.bc-menu:popover-open')) {
+      if (!menu.contains(target) && !target.closest(`[popovertarget="${menu.id}"]`)) menu.hidePopover();
+    }
+  });
+
+  /* 3. Fallback positioning where CSS anchor positioning isn't available. */
+  if (!CSS.supports('position-area', 'block-end')) {
+    document.addEventListener('toggle', (e) => {
+      const menu = e.target;
+      if (!menu.matches?.('.bc-menu') || e.newState !== 'open') return;
+      const trigger = document.querySelector(`[popovertarget="${menu.id}"]`);
+      const r = trigger.getBoundingClientRect();
+      menu.style.position = 'fixed';
+      menu.style.insetBlockStart = `${r.bottom + 6}px`;
+      menu.style.insetInlineStart = `${Math.max(8, Math.min(r.left, innerWidth - menu.offsetWidth - 8))}px`;
+    }, true);
+  }
+
+  /* 4. Demo only: a width slider per playground box (works from the keyboard and on touch, where the drag corner
+        does not), plus a readout of the container width and active tier. The readout is a plain paragraph, not a
+        live region, so it is not announced on every change; the slider's aria-valuetext carries the same text. */
+  const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const sliders = new Map();
+  document.querySelectorAll('.resizer').forEach((box) => {
+    const nav = box.querySelector('.breadcrumb');
+    const chrome = (box.getBoundingClientRect().width - nav.getBoundingClientRect().width) / rootPx; // padding + border
+    const label = document.createElement('label');
+    label.className = 'width-control';
+    label.append('Container width');
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.step = 0.5;
+    const fit = () => {
+      range.min = Math.ceil(11 - chrome); // the box has min-inline-size: 11rem
+      range.max = Math.floor(box.parentElement.clientWidth / rootPx - chrome);
+    };
+    fit();
+    addEventListener('resize', fit);
+    range.addEventListener('input', () => { box.style.inlineSize = `${Number(range.value) + chrome}rem`; });
+    label.append(range);
+    box.before(label);
+    sliders.set(nav, range);
+  });
+
+  const ro = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      const nav = entry.target;
+      const out = nav.parentElement.querySelector('.readout');
+      const rem = entry.contentRect.width / rootPx;
+      const tier = rem < 20 ? 'narrow: “‹ Parent”' : rem < 40 ? 'medium: first, …, last two' : 'wide: full trail';
+      const text = `${rem.toFixed(1)}rem, ${tier}`;
+      out.textContent = text;
+      const range = sliders.get(nav);
+      range.value = rem; // keeps the slider in step when the corner is dragged
+      range.setAttribute('aria-valuetext', text);
+    }
+  });
+  sliders.forEach((_, nav) => ro.observe(nav));
+</script>
+</body>
+</html>
