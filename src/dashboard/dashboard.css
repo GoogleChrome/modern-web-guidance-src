@@ -636,7 +636,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 .task-app-tag {
   font-weight: 400;
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.76rem;
 }
 
 .row-category-tag {

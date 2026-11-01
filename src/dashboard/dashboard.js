@@ -52,8 +52,6 @@ let currentTaskSortDir = 'desc';
 let currentCategoryFilter = 'all';
 /** @type {string} */
 let currentTextFilter = '';
-/** @type {string} */
-let currentFeatureFilter = '';
 /** @type {Set<string>} */
 const collapsedCategories = new Set();
 
@@ -206,13 +204,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (evalFilterInput instanceof HTMLInputElement) {
         evalFilterInput.addEventListener('input', () => {
             currentTextFilter = evalFilterInput.value.trim().toLowerCase();
-            if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
-        });
-    }
-    const evalFeatureInput = document.getElementById('eval-feature-filter');
-    if (evalFeatureInput instanceof HTMLInputElement) {
-        evalFeatureInput.addEventListener('input', () => {
-            currentFeatureFilter = evalFeatureInput.value.trim().toLowerCase();
             if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
         });
     }
@@ -1110,8 +1101,18 @@ function compareCategories(a, b) {
 function renderEvalFilterControls(baseScenarios) {
     const datalist = document.getElementById('eval-features-datalist');
     if (datalist) {
-        const allFeatures = [...new Set(baseScenarios.flatMap(s => s.featureIds))].sort();
-        datalist.innerHTML = allFeatures.map(f => `<option value="${escapeHtml(f)}">`).join('');
+        /** @type {Map<string, number>} */
+        const featureCounts = new Map();
+        for (const s of baseScenarios) {
+            for (const f of s.featureIds) {
+                featureCounts.set(f, (featureCounts.get(f) || 0) + 1);
+            }
+        }
+        const allFeatures = Array.from(featureCounts.keys()).sort();
+        datalist.innerHTML = allFeatures.map(f => {
+            const count = featureCounts.get(f) || 0;
+            return `<option value="${escapeHtml(f)}">${count} ${count === 1 ? 'eval' : 'evals'}</option>`;
+        }).join('');
     }
     const pillsContainer = document.getElementById('eval-category-pills');
     if (pillsContainer) {
@@ -1210,11 +1211,9 @@ async function renderGridOnce(data, testId) {
     const filteredScenarios = baseScenarios.filter(s => {
         if (currentCategoryFilter !== 'all' && s.category !== currentCategoryFilter) return false;
         if (currentTextFilter) {
-            const hay = `${s.guide} ${s.appName} ${s.categoryLabel} ${s.featureIds.join(' ')}`.toLowerCase();
+            const displayApp = s.appName === 'task' ? 'gen1' : s.appName;
+            const hay = `${s.guide} ${displayApp} ${s.categoryLabel} ${s.featureIds.join(' ')}`.toLowerCase();
             if (!hay.includes(currentTextFilter)) return false;
-        }
-        if (currentFeatureFilter) {
-            if (!s.featureIds.some(f => f.toLowerCase().includes(currentFeatureFilter))) return false;
         }
         return true;
     });
@@ -1379,8 +1378,9 @@ function buildAccordion(item, testId) {
     const scale = (/** @type {number} */ val) => `${val}%`;
     const modeParam = currentMetricMode === 'a11y' ? '&mode=a11y' : '';
     const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}${modeParam}`;
-    const appSuffixHtml = appName && appName !== 'daily-grind'
-        ? ` <span class="task-app-tag">(${escapeHtml(appName)})</span>`
+    const displayAppName = appName === 'task' ? 'gen1' : appName;
+    const appSuffixHtml = displayAppName && displayAppName !== 'daily-grind'
+        ? ` <span class="task-app-tag">(${escapeHtml(displayAppName)})</span>`
         : '';
     const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(guide)} (${escapeHtml(appName)})"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
     const primaryFeatureId = featureIds[0] || '';
