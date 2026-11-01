@@ -830,6 +830,10 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   transition: color 0.1s ease;
 }
 
+.task-accordion-header:hover {
+  background: var(--color-surface-container-low);
+}
+
 .task-accordion-header:hover,
 .task-accordion.open .task-accordion-header {
   color: var(--text-primary);
