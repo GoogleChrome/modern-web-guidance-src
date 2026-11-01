@@ -1226,6 +1226,10 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   overflow: hidden;
 }
 
+.meta-value + .meta-value {
+  font-size: 0.72rem;
+}
+
 .tfoot-action-btn {
   font-size: 0.75rem;
   padding: 2px 4px;

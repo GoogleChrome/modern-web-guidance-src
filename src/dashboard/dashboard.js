@@ -609,16 +609,16 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                     <span class="meta-value">${escapeHtml(timeStr)}</span>
                     <span class="meta-label">Action Date</span>
                 </div>
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(model)}</span>
-                    <span class="meta-value">${escapeHtml(agent)}</span>
-                    <span class="meta-label">Model &times; Agent</span>
-                </div>
                 ${data.totalRuntime ?
                 `<div class="header-meta-item">
                     <span class="meta-value">${formatRuntime(data.totalRuntime)}</span>
                     <span class="meta-label">Total Runtime</span>
                 </div>` : ''}
+                <div class="header-meta-item">
+                    <span class="meta-value">${escapeHtml(model)}</span>
+                    <span class="meta-value">${escapeHtml(agent)}</span>
+                    <span class="meta-label">Model &times; Agent</span>
+                </div>
                 ${(data.cliVersion || data.skillVersion) ? `
                 <div class="header-meta-item">
                     ${data.cliVersion ? `<span class="meta-value">${escapeHtml(data.cliVersion)}</span>` : ''}
