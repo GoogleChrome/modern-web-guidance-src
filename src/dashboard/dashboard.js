@@ -1597,25 +1597,33 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                 if (!paths) return;
                 const { usedBasePath } = paths;
 
-                let promptText = '';
-                try {
-                    const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
-                    const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
-                    if (match) {
-                        const arrayStr = `[${match[1]}]`;
-                        const arr = JSON.parse(arrayStr);
-                        promptText = arr[1];
-                        const baseAppPath = arr[4];
-                        if (baseAppPath) baseApp = sampleRun.baseApp || baseAppPath.split('/').pop();
+                let promptText = sampleRun.prompt || '';
+                if (sampleRun.baseApp) baseApp = sampleRun.baseApp;
+                if (!promptText) {
+                    try {
+                        const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
+                        const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
+                        if (match) {
+                            const arrayStr = `[${match[1]}]`;
+                            const arr = JSON.parse(arrayStr);
+                            promptText = arr[1];
+                            const baseAppPath = arr[4];
+                            if (baseAppPath) baseApp = sampleRun.baseApp || baseAppPath.split('/').pop();
+                        }
+                    } catch (e) {
+                        console.log('Falling back to living guide file:', e);
                     }
-                } catch (e) {
-                    console.log('Falling back to living guide file:', e);
                 }
 
-                // Fallback to HEAD guide if run.mjs parsing fails
+                // Fallback to living guide target task.md if run.mjs parsing fails
                 if (!promptText) {
-                    const isNegative = sampleRun.taskName.endsWith('-negative');
-                    const taskPath = `tasks/${isNegative ? 'negative/' : ''}${sampleRun.taskName}.md`;
+                    const parsed = parseResultKey(`${scenarioName} - ${typeLabel}`);
+                    const guideName = parsed?.guide || '';
+                    const targetApp = parsed?.task || sampleRun.baseApp || 'daily-grind';
+                    const catMap = await loadGuideCategoryMap();
+                    const rawCat = catMap.get(guideName);
+                    const catDir = (rawCat && rawCat !== 'discipline' && rawCat !== 'other') ? rawCat : guideName;
+                    const taskPath = `guides/${catDir}/${guideName}/targets/${targetApp}/task.md`;
                     const text = await api.getFileText(taskPath);
 
                     const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
