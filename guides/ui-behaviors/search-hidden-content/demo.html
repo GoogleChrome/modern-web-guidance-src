@@ -69,7 +69,7 @@
 
   <!-- Separated UI using hidden="until-found" -->
   <div class="coupon-container">
-    <button id="reveal-btn">Reveal Discount Code</button>
+    <button id="reveal-btn" aria-expanded="false">Reveal Discount Code</button>
     
     <div id="coupon-panel" hidden="until-found">
       <p>Your secret discount code is: <strong>SAVE20</strong></p>
@@ -84,13 +84,15 @@
     revealBtn.addEventListener('click', () => {
       couponPanel.removeAttribute('hidden');
       revealBtn.textContent = 'Code Revealed!';
-      revealBtn.disabled = true;
+      revealBtn.setAttribute("aria-expanded", true);
+      revealBtn.setAttribute("aria-disabled", true);
     });
 
     // 2. Add 'beforematch' listener to sync UI if found via native search
     couponPanel.addEventListener('beforematch', () => {
       revealBtn.textContent = 'Code Found via Search!';
-      revealBtn.disabled = true;
+      revealBtn.setAttribute("aria-expanded", true);
+      revealBtn.setAttribute("aria-disabled", true);
     });
 
     // 3. Fallback feature detection for older browsers
