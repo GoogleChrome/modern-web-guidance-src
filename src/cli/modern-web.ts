@@ -60,6 +60,7 @@ Commands:
   search <query>            Search use cases by query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
+  analyze [dir] [options]   Analyze codebase for legacy web platform patterns
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   install [options]         Install the modern-web-guidance skill
   uninstall                 Uninstall the modern-web-guidance skill
@@ -79,6 +80,16 @@ async function main() {
     process.exit(0);
   }
 
+  const command = positionals[0];
+
+  if (command === "analyze") {
+    // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
+    const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
+    const result = await runAnalyzeCli(process.argv.slice(3));
+    writeAnalyzeCliResult(result);
+    process.exit(result.exitCode);
+  }
+
   if (values.help || positionals.length === 0) {
     printUsage();
     process.exit(values.help ? 0 : 1);
@@ -89,7 +100,6 @@ async function main() {
 
   let loggerInstance: ClearcutLogger | undefined;
   const getLogger = () => loggerInstance ??= new ClearcutLogger({ skillVersion });
-  const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
 
   if (command === "search") {

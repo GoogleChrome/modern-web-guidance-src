@@ -1,0 +1,277 @@
+/**
+ * Centralized LLM prompts, formatters, response schemas, and content-hashed version constants across the analyzing pipeline.
+ *
+ * Provides a single place to inspect, audit, and evolve prompts for:
+ * - Guide Triage (guide-triage.ts)
+ * - LLM Verifier candidate verification (llm-verifier.ts)
+ * - Detection Eval judge fact-checking (detection-eval.ts)
+ *
+ * Provides deterministic content hashing and thinking budget configuration.
+ */
+
+import { computePromptContentHash } from '../llm-verifier.ts';
+
+export const PROMPT_MODEL = 'gemini-3.8-flash';
+export const GUIDE_TRIAGE_THINKING_BUDGET = 2048;
+export const JUDGE_THINKING_BUDGET = 2048;
+
+export const GUIDE_TRIAGE_SYSTEM_PROMPT = `You are an expert static analysis triage classifier for the Modern Web Guidance catalog.
+Your task is to classify whether a published feature guide has a statically detectable brownfield target.
+
+You must classify the guide into exactly one of three Gate 0 buckets:
+1. 'detectable':
+   The guide replaces one or more concrete, identifiable legacy browser APIs, CSS property/selector workarounds, DOM markup patterns, or third-party npm packages in brownfield code.
+   Use guide.md AND the provided Upstream Explainer & Motivation Context (which states the problem the spec was created to solve and what developers did before it existed) to classify the guide.
+   Boundary rule: If a guide's feature replaces a specific legacy API, CSS property/selector, DOM attribute, or npm package in package.json, classify as 'detectable' and list those in candidateTechniques.
+   If a guide teaches a modern HTML/CSS/JS feature that directly replaces imperative JS boilerplate or legacy library triggers (e.g. declarative HTML attributes replacing imperative open/close listeners, or native HTML form attributes replacing missing/manual autofill wiring), classify as 'detectable'.
+   Guard against ungrounded over-calling: Do NOT classify a guide as 'detectable' merely because you can invent a hypothetical or tangential workaround from general knowledge. To classify as 'detectable', there must be a concrete, recognizable legacy API, CSS property/selector workaround, DOM attribute/pattern, or specific third-party npm library that developers actually used for this exact problem (supported by guide.md, the Explainer's motivation/prior-art, or established ecosystem usage).
+2. 'ui-recipe-multi-part':
+   The guide teaches how to combine multiple HTML/CSS/JS parts to build a general UI component, widget, or layout pattern where legacy implementations vary wildly and lack a specific legacy API, library, or single technique being replaced.
+   Boundary rule: If the guide teaches an architectural composition with no specific legacy API or library replaced, classify as 'ui-recipe-multi-part'. If there are still plausible heuristic hooks to search for in code, list them in candidateTechniques and set borderline: true.
+3. 'skip-no-old-way':
+   The guide introduces a net-new web platform capability (e.g. WebGPU, WebNN, Passkeys, Prompt API, View Transitions between pages) with no direct legacy browser workaround to migrate from.
+   If a guide introduces a capability that was not previously achievable in client-side code (or where the explainer states it was not possible before), classify as 'skip-no-old-way'.
+
+Guidelines for classification:
+- Read the entire guide markdown carefully, paying attention to the problem statement, code examples, and the underlying modern API.
+- Also inspect the Upstream Explainer & Motivation Context if provided.
+- Do NOT require quoting a "Before" section from guide.md to classify a guide as 'detectable'. Guides frequently focus only on the modern solution. Use ecosystem knowledge and explainer context to determine if common legacy workarounds, npm libraries, or idioms exist.
+- 1-to-1 Viability Check and Scope Boundaries for 'detectable':
+  1. True 1-to-1 Functional Replacement (replaces vs. doesNotReplace): The guide's modern feature must directly replace the legacy pattern 1-to-1. Both single-purpose npm micro-libraries (e.g. 'autosize', 'fitty', 'humanize-duration') and broader libraries whose common/basic use case is replaced by the modern feature (e.g. 'select2' / 'choices.js' for custom-styled selects, '@floating-ui/dom' / '@popperjs/core' for dropdown/menu positioning) belong in 'replaces' and 'candidateTechniques'. Any unsupported advanced library capabilities that the modern feature does NOT replace (such as remote 'ajax:' search, multi-select tag comboboxes, canvas zoom/pan transforms, or DOM-to-PDF screenshot rendering) must be listed in 'doesNotReplace', NEVER in 'replaces' or 'candidateTechniques'.
+  2. Idiomatic Pattern Isolation vs. Bare General-Purpose APIs: Do NOT discard valid legacy idioms that utilize general-purpose APIs. Specific legacy idioms like ResizeObserver callbacks toggling responsive breakpoint classes (before @container), IntersectionObserver callbacks toggling active nav/marker classes, scroll event listeners reading scrollY for progress indicators, or mutable Date math (before Temporal) ARE valid legacy targets: specify the exact idiom in 'replaces' and list non-legacy uses of that API (e.g. resizing a <canvas> pixel buffer, virtual scrolling, lazy-loading images, or epoch timestamp math) in 'doesNotReplace'.
+  3. Comprehensive Pattern Listing: List all concrete legacy techniques in 'replaces' and 'candidateTechniques'. Empirical wild prevalence is evaluated downstream via corpus queries rather than pre-judged at triage.
+- Identify all concrete legacy techniques in 'candidateTechniques' (array of strings, e.g. ["legacy-library-name", "custom wrapper"]).
+- Set 'borderline' to true if the classification is ambiguous or on the boundary between buckets, false otherwise.
+- Set 'brownfieldTarget' to a concise summary of candidateTechniques (e.g. candidateTechniques joined by "; "), or "none (multi-part UI recipe)" / "none (greenfield capability)".
+- Set 'evidenceFromGuide' to evidence from the guide text, explainer context, or web ecosystem knowledge identifying the legacy pattern or lack thereof.
+- Set 'reason' to a single crisp sentence explaining the classification decision.
+- Set 'evidenceSource' to 'guide', 'explainer', 'search', 'ecosystem-knowledge', or 'none' indicating which primary source justified your classification.`;
+
+export const GUIDE_TRIAGE_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    classification: {
+      type: 'STRING',
+      enum: ['detectable', 'ui-recipe-multi-part', 'skip-no-old-way'],
+    },
+    candidateTechniques: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'List of specific legacy techniques, npm libraries, JS idioms, CSS properties/selectors, or DOM patterns replaced by the guide. Empty array if none.',
+    },
+    replaces: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'Specific 1-to-1 legacy techniques, libraries, or workarounds directly replaced by the modern feature.',
+    },
+    doesNotReplace: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'Adjacent or non-1-to-1 techniques, libraries, or capabilities that the modern feature does NOT replace.',
+    },
+    borderline: {
+      type: 'BOOLEAN',
+      description: 'True if the classification is borderline or ambiguous, false if clear-cut.',
+    },
+    brownfieldTarget: {
+      type: 'STRING',
+      description: 'Summary of the legacy target, candidate techniques joined, or none.',
+    },
+    evidenceFromGuide: {
+      type: 'STRING',
+      description: 'Evidence from the guide text or web ecosystem knowledge identifying the legacy pattern or lack thereof.',
+    },
+    reason: {
+      type: 'STRING',
+      description: 'A crisp explanation of the classification decision.',
+    },
+    evidenceSource: {
+      type: 'STRING',
+      enum: ['guide', 'explainer', 'search', 'ecosystem-knowledge', 'none'],
+      description: 'Primary source of evidence that justified the classification.',
+    },
+  },
+  required: [
+    'classification',
+    'candidateTechniques',
+    'borderline',
+    'brownfieldTarget',
+    'evidenceFromGuide',
+    'reason',
+    'evidenceSource',
+  ],
+};
+
+export interface GuideTriagePromptGuideInput {
+  readonly guideId: string;
+  readonly category: string;
+  readonly markdownContent: string;
+  readonly guideHash?: string;
+  readonly explainerContext?: string;
+}
+
+export function formatGuideTriagePrompt(guide: GuideTriagePromptGuideInput): string {
+  const explainerSection =
+    guide.explainerContext && guide.explainerContext.trim().length > 0
+      ? `\n\n### Upstream W3C / TC39 / ChromeStatus Explainer & Motivation Context:\n${guide.explainerContext.trim()}`
+      : '';
+
+  return `## Guide: ${guide.guideId} (Category: ${guide.category})
+
+### Full Guide Markdown:
+\`\`\`markdown
+${guide.markdownContent}
+\`\`\`${explainerSection}
+
+Analyze the entire guide markdown above and classify it into one of: 'detectable', 'ui-recipe-multi-part', or 'skip-no-old-way'.
+Identify candidateTechniques (if any), borderline flag, brownfieldTarget, cite evidenceFromGuide (from the guide, explainer, or web ecosystem knowledge), select evidenceSource, and provide a 1-sentence reason.`;
+}
+
+export function computeGuideTriagePromptVersion(
+  temperature = 0.0,
+  enableSearchGrounding = true,
+): string {
+  const hash = computePromptContentHash({
+    model: PROMPT_MODEL,
+    systemPrompt: GUIDE_TRIAGE_SYSTEM_PROMPT,
+    userPromptTemplateSource: formatGuideTriagePrompt.toString(),
+    schema: GUIDE_TRIAGE_RESPONSE_SCHEMA,
+    thinkingBudget: GUIDE_TRIAGE_THINKING_BUDGET,
+    temperature,
+    enableSearchGrounding,
+  });
+  return `${PROMPT_MODEL}:gate0-v2-${hash}`;
+}
+
+export const GUIDE_TRIAGE_PROMPT_VERSION = computeGuideTriagePromptVersion();
+
+export {
+  computePromptContentHash,
+  VERIFIER_THINKING_BUDGET,
+  VERIFIER_SYSTEM_PROMPT,
+  VERIFIER_RESPONSE_SCHEMA,
+  VERIFIER_USER_PROMPT_TEMPLATE,
+  type VerifierPromptFindingInput,
+  type VerifierPromptRuleInput,
+  formatVerifierPrompt,
+  computeVerifierPromptVersion,
+  VERIFIER_PROMPT_VERSION,
+} from '../llm-verifier.ts';
+
+export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization judge evaluating whether a static code finding is a legitimate instance of legacy web platform code that should be modernized according to a Modern Web Guidance guide.
+
+The Modern Web Guidance mission is to identify old web patterns and brownfield library workarounds, and modernize them with standard web platform features to reduce dependencies and improve browser behavior.
+
+Core Evaluation Principles:
+- ASSUME MODERN PLATFORM SUPPORT: Target environments support the guide's modern web platform feature unless the code is inside an explicit feature-detection or fallback guard. Never reject a finding solely on browser support, runtime availability, or spec draft maturity.
+- GUIDES OFTEN ONLY SHOW THE MODERN "AFTER" API: Many guides in this catalog focus solely on teaching the modern web platform solution and do not include an explicit "Before" section or list every legacy library/workaround. Do NOT require the legacy pattern to be explicitly mentioned or quoted in guide.md. Use both guide.md AND your general knowledge of web development history and the web ecosystem to recognize when the highlighted code is a real legacy workaround, pre-standard idiom, or third-party library pattern that the guide's modern feature replaces.
+- INCREMENTAL DEPENDENCY REDUCTION IS A LEGIT MODERNIZE TARGET: Replacing a clean call site of an old library (moment, jQuery, etc.) is 'legit-modernize-target' even if other places in the file or app still use that library. Never vote 'loses-behavior' or 'no-payoff' just because the library is still imported or used elsewhere in the file.
+- CROSS-LAYER (JS -> CSS/HTML) REPLACEMENTS TAUGHT BY THE GUIDE ARE LEGIT MODERNIZE TARGETS: A modernization does not need to be a 1-line token swap at a single AST node (e.g., replacing .fadeOut(300, () => el.remove()) with CSS @starting-style + getAnimations() is 'legit-modernize-target').
+- STANDARDIZED NATIVE UI EQUIVALENTS ARE LEGIT MODERNIZE TARGETS: e.g., replacing ::-webkit-scrollbar-thumb { border-radius; :hover } with scrollbar-color / scrollbar-width is 'legit-modernize-target', NOT 'loses-behavior'. Only vote 'loses-behavior' on scrollbars when the CSS uses bespoke track/thumb art (linear-gradient, box-shadow, background images, multi-piece buttons) that scrollbar-color cannot represent.
+
+Detective-then-Judge methodology:
+1. \`matches_before_syntax\`: Does the highlighted code match an old workaround, pre-standard API, vendor-prefixed syntax, or library helper described or implied by the guide (including legacy libraries or workarounds that the guide's modern feature directly replaces)?
+2. \`has_fallback_or_feature_guard\`: Is this code an intentional progressive-enhancement fallback (@supports not (...)), feature-detection guard, ponyfill, or polyfill?
+3. \`modern_feature_applies_here\`: Does the modern web platform feature cover the capabilities needed at this call site without losing required behavior? (Always assume the modern feature is available).
+4. \`has_meaningful_payoff\`: Does modernizing this site provide a real win (simplifying code, improving platform behavior, or incrementally reducing usage of a legacy library), rather than a zero-payoff syntax swap?
+5. \`reasoning\`: Concise, objective reasoning explaining your factual analysis.
+6. \`verdict\`: One of the following 7 values strictly aligned with the criteria below:
+   - 'legit-modernize-target': Genuine legacy pattern where applying the guide is a clean win (the code matches the legacy/"Before" pattern or library workaround replaced by this guide, is not an intentional fallback, covers needed capabilities, and has meaningful payoff).
+   - 'not-old-pattern': Matcher misfired — this code isn't even doing the legacy pattern the guide replaces (detector mistake / token collision).
+   - 'fallback-or-guard': Intentional fallback, @supports check, feature guard, ponyfill, or polyfill.
+   - 'loses-behavior': Old pattern, but modern feature lacks capabilities used here (non-1:1 library component migration, custom side effects, order-dependent geometry, incompatible API contract, or unsupported library feature).
+   - 'no-payoff': Matches old syntax and modern feature applies, but rewriting here changes nothing meaningful (no-op syntax swap / zero-payoff syntax swap).
+   - 'guide-wrong': The guide's advice is bad or overstates what the feature does for this case (the guide itself is wrong to call this pattern a problem).
+   - 'unsure': Insufficient context in snippet/file to tell.`;
+
+export const JUDGE_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    matches_before_syntax: { type: 'BOOLEAN' },
+    has_fallback_or_feature_guard: { type: 'BOOLEAN' },
+    modern_feature_applies_here: { type: 'BOOLEAN' },
+    has_meaningful_payoff: { type: 'BOOLEAN' },
+    reasoning: { type: 'STRING' },
+    verdict: {
+      type: 'STRING',
+      enum: [
+        'legit-modernize-target',
+        'not-old-pattern',
+        'fallback-or-guard',
+        'loses-behavior',
+        'no-payoff',
+        'guide-wrong',
+        'unsure',
+      ],
+    },
+  },
+  required: [
+    'matches_before_syntax',
+    'has_fallback_or_feature_guard',
+    'modern_feature_applies_here',
+    'has_meaningful_payoff',
+    'reasoning',
+    'verdict',
+  ],
+};
+
+export interface BlindCardGuideSummaryInput {
+  readonly guideId?: string;
+  readonly markdownBody?: string;
+  readonly explainerContext?: string;
+}
+
+export interface BlindCardPromptInput {
+  readonly cardId?: string;
+  readonly file: string;
+  readonly line: number;
+  readonly guideId: string;
+  readonly codeSnippet: string;
+  readonly guideSummary: BlindCardGuideSummaryInput;
+}
+
+/**
+ * Formats a blind card finding for unbiased evaluation by human raters and the Detection Eval Judge.
+ */
+export function formatBlindCardPrompt(card: BlindCardPromptInput): string {
+  const markdownBody = card.guideSummary.markdownBody?.trim();
+  if (!markdownBody) {
+    throw new Error(
+      `formatBlindCardPrompt failed: card ${card.cardId ?? 'unknown'} (guideId: "${card.guideId}") is missing required guideSummary.markdownBody. Failing fast.`,
+    );
+  }
+
+  const explainerSection = card.guideSummary.explainerContext?.trim()
+    ? `\n\n## Upstream Feature Explainer & Motivation Context (${card.guideId})\n${card.guideSummary.explainerContext.trim()}`
+    : '';
+
+  return `## Modern Web Guidance Guide (${card.guideId})
+${markdownBody}${explainerSection}
+
+## Code Location
+- File: ${card.file}
+- Line: ${card.line}
+
+## Code Snippet
+\`\`\`
+${card.codeSnippet}
+\`\`\``;
+}
+
+export function computeJudgePromptVersion(
+  temperature = 0.2,
+): string {
+  const hash = computePromptContentHash({
+    model: PROMPT_MODEL,
+    systemPrompt: JUDGE_SYSTEM_PROMPT,
+    userPromptTemplateSource: formatBlindCardPrompt.toString(),
+    schema: JUDGE_RESPONSE_SCHEMA,
+    thinkingBudget: JUDGE_THINKING_BUDGET,
+    temperature,
+    enableSearchGrounding: false,
+  });
+  return `${PROMPT_MODEL}:detective-v7-${hash}`;
+}
+
+export const JUDGE_VERSION = computeJudgePromptVersion();
+
