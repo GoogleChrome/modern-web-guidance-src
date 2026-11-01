@@ -610,28 +610,20 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                     <span class="meta-label">Action Date</span>
                 </div>
                 <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(agent)}</span>
-                    <span class="meta-label">Agent</span>
-                </div>
-                <div class="header-meta-item">
                     <span class="meta-value">${escapeHtml(model)}</span>
-                    <span class="meta-label">Model</span>
+                    <span class="meta-value">${escapeHtml(agent)}</span>
+                    <span class="meta-label">Model &times; Agent</span>
                 </div>
                 ${data.totalRuntime ?
                 `<div class="header-meta-item">
                     <span class="meta-value">${formatRuntime(data.totalRuntime)}</span>
                     <span class="meta-label">Total Runtime</span>
                 </div>` : ''}
-                ${data.cliVersion ? `
+                ${(data.cliVersion || data.skillVersion) ? `
                 <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(data.cliVersion)}</span>
-                    <span class="meta-label">CLI Version</span>
-                </div>
-                ` : ''}
-                ${data.skillVersion ? `
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(data.skillVersion)}</span>
-                    <span class="meta-label">Skill Version</span>
+                    ${data.cliVersion ? `<span class="meta-value">${escapeHtml(data.cliVersion)}</span>` : ''}
+                    ${data.skillVersion ? `<span class="meta-value">${escapeHtml(data.skillVersion)}</span>` : ''}
+                    <span class="meta-label">CLI / Skill Version</span>
                 </div>
                 ` : ''}
                 ${jetskiVersion ? `
