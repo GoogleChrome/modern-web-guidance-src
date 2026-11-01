@@ -1439,7 +1439,7 @@ function buildAccordion(item, testId) {
         ? hintButton('invalid', '', 'INVALID', HINT_TEXT.invalid)
         : '';
     const badgesHtml = [featureChipHtml, rowCategoryHtml, infraBadgeHtml, buildBadgeHtml, leakBadgeHtml].filter(Boolean).join('');
-    accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <div class="task-title-row"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="chevron" aria-hidden="true">▶</span>
+    accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <div class="task-title-row"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="expand-icon" aria-hidden="true"></span>
                         <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(guide)}${appSuffixHtml}</span>
                     </button>
                 </h3>

@@ -650,11 +650,11 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 }
 
 .dashboard-grid {
-  --evals-cols: minmax(0, 1fr) 76px 76px 88px 200px 68px;
+  --evals-cols: minmax(0, 1fr) 72px 72px 84px 190px 88px;
 }
 
 .dashboard-grid.is-a11y-mode {
-  --evals-cols: minmax(0, 1fr) 76px 88px 200px 68px;
+  --evals-cols: minmax(0, 1fr) 72px 84px 190px 88px;
 }
 
 .evals-table-header {
@@ -668,7 +668,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   padding: 10px 16px;
   background: var(--color-surface-container-low);
   border: 1px solid var(--border-color);
-  border-radius: 8px 8px 0 0;
+  border-radius: 8px;
   font-size: 0.74rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -676,8 +676,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   color: var(--text-secondary);
 }
 
-.evals-table-header + .task-accordion,
-.evals-table-header + .eval-category-section {
+.evals-table-header + .task-accordion {
   border-top: 0;
 }
 
@@ -729,13 +728,11 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 }
 
 .eval-category-section {
+  margin-top: 12px;
   border: 1px solid var(--border-color);
-  border-top: 0;
+  border-radius: 8px;
+  overflow: hidden;
   background: var(--card-bg);
-}
-
-.eval-category-section:last-child {
-  border-radius: 0 0 8px 8px;
 }
 
 .eval-category-section.collapsed .eval-category-body {
@@ -751,8 +748,8 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   appearance: none;
   border: 0;
   border-bottom: 1px solid var(--border-color);
-  background: var(--color-surface-container-lowest);
-  padding: 9px 16px;
+  background: var(--color-surface-container-low);
+  padding: 8px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -766,12 +763,14 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 }
 
 .eval-category-header:hover {
-  background: var(--color-surface-container-low);
+  background: var(--color-surface-container);
 }
 
 .eval-category-title {
-  font-size: 0.85rem;
+  font-size: 0.76rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--text-primary);
   display: inline-flex;
   align-items: center;
@@ -860,7 +859,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  padding-inline-start: 22px;
+  padding-inline-start: 24px;
 }
 
 .task-accordion-header h3 {
@@ -981,11 +980,13 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 .mini-dumbbell-track .connector.regressed { background: repeating-linear-gradient(90deg, var(--color-accent-failure) 0 4px, transparent 4px 6px); }
 /* Uplift Score */
 .uplift-score {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: bold;
   color: var(--color-accent-success);
-  min-width: 100px;
+  min-width: 0;
   text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .uplift-score.negative {
@@ -995,11 +996,11 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 .uplift-score.flat { color: var(--text-secondary); }
 .task-toggle { appearance: none; background: none; border: 0; padding: 2px 4px; margin: -2px -4px; font: inherit; color: inherit; text-align: left; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; border-radius: 4px; }
 .task-toggle .feature-chip { margin-right: 0; }
-.chevron { display: inline-block; font-size: 0.75rem; transition: rotate 0.2s; }
-.task-accordion.open .chevron { rotate: 90deg; }
-@media (prefers-reduced-motion: reduce) {
-.chevron { transition: none; }
-}
+.expand-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; font-family: monospace; font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); opacity: 0.65; }
+.expand-icon::before { content: "+"; }
+.task-accordion.open .expand-icon::before { content: "−"; }
+.task-accordion-header:hover .expand-icon,
+.task-accordion.open .expand-icon { opacity: 1; color: var(--color-primary); }
 .task-title.has-failure { color: var(--color-accent-failure); }
 :where(.hint-trigger) { appearance: none; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; letter-spacing: inherit; }
 .hint-trigger { position: relative; cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
