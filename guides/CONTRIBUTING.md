@@ -9,7 +9,7 @@ For authoring permissions and contributor roles, see **[`GOVERNANCE.md`](../GOVE
 
 * **Vendor-Agnostic Core Guidance**: Core guides focus on web platform features tracked in (or pending inclusion in) [`web-features`](https://github.com/web-platform-dx/web-features) and [Browser Compat Data (BCD)](https://github.com/mdn/browser-compat-data). Browser-specific guidance (e.g., extension store or proprietary APIs) is never part of the core guidance and may only ship in separate, opt-in skill packs subject to the same review rules.
 * **Browser-Specific Implementation Details**: Guides must not reference browser-specific implementation details (e.g., a browser's bundled on-device model) without stating that they are browser-specific and may change.
-* **Baseline Target & Fallbacks**: Guidance targets **Baseline Widely available** web features, with mandatory fallback strategies or progressive enhancement patterns for Limited availability or Newly available features. When no reasonable alternative exists, the documented fallback may be to not use the feature.
+* **Baseline Target & Fallbacks**: Guidance targets **Baseline Widely available** web features, with mandatory fallback strategies or progressive enhancement patterns for Limited availability or Newly available features. When no reasonable alternative exists, the documented fallback may be to not use the feature if its browser support is narrower than the user’s support target.
 
 
 ## Feature Stability
