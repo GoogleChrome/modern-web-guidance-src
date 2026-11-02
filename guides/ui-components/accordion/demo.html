@@ -56,10 +56,24 @@
 
 		@media (prefers-reduced-motion: no-preference) {
 			details::details-content {
-				transition: block-size, content-visibility;
+				transition: block-size, content-visibility, display;
 				transition-duration: 0.3s;
 				transition-timing-function: ease-in-out;
 				transition-behavior: allow-discrete;
+			}
+		}
+	}
+
+	.accordion.unsearchable > details {
+		/* Excludes closed contents from find-in-page */
+		&:not([open])::details-content {
+			display: none;
+		}
+
+		/* Where the opening transition starts from, since display: none has no size */
+		&[open]::details-content {
+			@starting-style {
+				block-size: 0;
 			}
 		}
 	}
@@ -69,7 +83,7 @@
 
 <section>
 	<h2>Accordion using details</h2>
-	<div id="resources-accordion" role="region" aria-labelledby="resources">
+	<div class="accordion" id="resources-accordion" role="region" aria-labelledby="resources">
 		<h3 id="resources">Resources</h3>
 		<button type="button" commandfor="resources-accordion" command="--expand-all">Expand all</button>
 		<button type="button" commandfor="resources-accordion" command="--collapse-all">Collapse all</button>
@@ -86,7 +100,7 @@
 
 <section>
 	<h2>Exclusive accordion using details</h2>
-	<nav aria-labelledby="topics">
+	<nav class="accordion" aria-labelledby="topics">
 		<h3 id="topics">Topics</h3>
 		<details name="topics">
 			<summary>Development</summary>
@@ -99,10 +113,24 @@
 	</nav>
 </section>
 
-<!--
 <section>
-	<h2>Single exclusive accordion using details</h2>
-	<div role="region" aria-labelledby="plans" data-always-open>
+	<h2>Accordion excluded from find-in-page</h2>
+	<div class="accordion unsearchable" role="region" aria-labelledby="archive">
+		<h3 id="archive">Archive</h3>
+		<details>
+			<summary>2024</summary>
+			<p>2024 contents</p>
+		</details>
+		<details>
+			<summary>2023</summary>
+			<p>2023 contents</p>
+		</details>
+	</div>
+</section>
+
+<section>
+	<h2>Always-open exclusive accordion using details</h2>
+	<div class="accordion always-open" role="region" aria-labelledby="plans">
 		<h3 id="plans">Plans</h3>
 		<details name="plans" open>
 			<summary aria-disabled="true">Basic</summary>
@@ -114,7 +142,6 @@
 		</details>
 	</div>
 </section>
--->
 
 <script>
 document.addEventListener("command", event => {
@@ -125,11 +152,11 @@ document.addEventListener("command", event => {
 }, { capture: true });
 
 document.addEventListener("click", event => {
-	if (event.target.closest("[data-always-open] details[open] > summary")) event.preventDefault();
+	if (event.target.closest(".accordion.always-open details[open] > summary")) event.preventDefault();
 });
 
 document.addEventListener("toggle", event => {
-	if (!event.target.matches("[data-always-open] details")) return;
+	if (!event.target.matches(".accordion.always-open details")) return;
 	event.target.querySelector(":scope > summary").setAttribute("aria-disabled", event.target.open);
 }, { capture: true });
 </script>

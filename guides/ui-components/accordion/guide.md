@@ -37,11 +37,13 @@ If the accordion is a distinct section of the page, group its items in an elemen
 When each item is a section of the page, put its heading inside the `summary` element so screen reader users can move between items by heading. Keep the group heading outside the `details` elements.
 
 ```html
-<details class="accordion" aria-labelledby="faq-heading">
+<section class="accordion" aria-labelledby="faq-heading">
 	<h2 id="faq-heading">Frequently Asked Questions</h2>
-	<summary><h3>How do I reset my password?</h3></summary>
-	<!-- Answer -->
-</details>
+	<details>
+		<summary><h3>How do I reset my password?</h3></summary>
+		<!-- Answer -->
+	</details>
+</section>
 ```
 
 Accessibility notes:
@@ -75,12 +77,44 @@ Avoid exclusive accordions, as they can produce suboptimal user experience:
 - Sometimes users want to reference between the contents of multiple items, which exclusive accordions prevent.
 - They also can cause content to shift out of the user’s view which can cause significant problems for those using screen magnifiers.
 
+### Keeping one item always open
+
+To require that one item is always open, stop the open item’s `summary` from closing it and expose it as disabled. Opening another item still closes it through `name`. This compounds the downsides above, since users can never reclaim the space, so only use it when the layout depends on an item being open.
+
+```html
+<section class="accordion always-open" aria-labelledby="plans-heading">
+	<h2 id="plans-heading">Plans</h2>
+	<details name="plan" open>
+		<!-- Mirrors the open state; the script keeps it in sync -->
+		<summary aria-disabled="true">Basic</summary>
+		<!-- Basic plan -->
+	</details>
+	<details name="plan">
+		<summary>Pro</summary>
+		<!-- Pro plan -->
+	</details>
+</section>
+```
+
+```javascript
+// Enter and Space on a summary also dispatch click, so this covers keyboard too
+document.addEventListener("click", event => {
+	if (event.target.closest(".accordion.always-open details[open] > summary")) event.preventDefault();
+});
+
+// toggle does not bubble, hence capture
+document.addEventListener("toggle", event => {
+	if (!event.target.matches(".accordion.always-open details")) return;
+	event.target.querySelector(":scope > summary").setAttribute("aria-disabled", event.target.open);
+}, { capture: true });
+```
+
 ## Optional: Expand all and Collapse all buttons
 
 For non-exclusive accordions, Expand all and Collapse all buttons can improve user experience.
 
 ```html
-<section id="support-accordion" aria-labelledby="support">
+<section class="accordion" id="support-accordion" aria-labelledby="support">
 	<h2 id="support">Support</h2>
 	<button type="button" commandfor="support-accordion" command="--expand-all">Expand all</button>
 	<button type="button" commandfor="support-accordion" command="--collapse-all">Collapse all</button>
@@ -101,20 +135,11 @@ document.addEventListener("command", event => {
 
 To improve user experience, disable the Expand All button when all items are already expanded, and the Collapse All button when all items are already collapsed.
 
-### Excluding a `details` element’s contents from find-in-page
-
-If it’s undesirable for a `details` element’s contents to be included in what’s matched with the browser’s find-in-page feature, set the `::details-content` pseudo-element’s `display` property to `none`. This also disables the open and close animation below, since `display: none` cannot transition.
-
-```css
-/* Excludes the contents from find-in-page */
-details:not([open])::details-content {
-	display: none;
-}
-```
-
-### Styling and animating `details` and `summary`
+## Styling
 
 The disclosed content lives in the `::details-content` pseudo-element. While closed it is hidden with `content-visibility: hidden`, not `display: none`, which is what keeps it findable and lets its size animate. Style the item on `details`, the trigger on `summary`, and the content on `details::details-content`.
+
+### Slide up/down animation
 
 To animate opening and closing, transition `block-size` between `0` and its intrinsic size, and transition `content-visibility` discretely so the content stays rendered until the collapse finishes.
 
@@ -132,7 +157,7 @@ details:not([open])::details-content {
 /* Only animate for users who have not asked for reduced motion */
 @media (prefers-reduced-motion: no-preference) {
 	details::details-content {
-		transition: block-size, content-visibility;
+		transition: block-size, content-visibility, display;
 		/* Example duration; match the surrounding motion design */
 		transition-duration: 0.3s;
 		transition-timing-function: ease-in-out;
@@ -144,6 +169,26 @@ details:not([open])::details-content {
 
 See {{ GUIDE_REF("animate-to-intrinsic-sizes") }} for more details.
 
+## Excluding a `details` element’s contents from find-in-page
+
+If it’s undesirable for a `details` element’s contents to be included in what’s matched with the browser’s find-in-page feature, hide the closed contents with `display: none`. To keep the slide animation, set the collapsed size in `@starting-style`. See {{ GUIDE_REF("animate-element-entry-exit") }} for more details.
+
+```css
+.accordion.unsearchable > details {
+	/* Excludes the contents from find-in-page */
+	&:not([open])::details-content {
+		display: none;
+	}
+
+	/* Where the opening transition starts from, since display: none has no size */
+	&[open]::details-content {
+		@starting-style {
+			block-size: 0;
+		}
+	}
+}
+```
+
 ## Fallback strategies
 
 ### Mutually exclusive `details`
@@ -151,7 +196,7 @@ See {{ GUIDE_REF("animate-to-intrinsic-sizes") }} for more details.
 {{ BASELINE_STATUS("details-name") }}
 
 In browsers that don't support `name` on `details`, several items stay open, which is still a working (non-exclusive) accordion.
-If the exclusivity is crucial to the user experience, you can implement a fallback:
+If the exclusivity is crucial to the user experience, you can implement a fallback. It also keeps always-open accordions working, since the open item still closes when another opens:
 
 ```javascript
 // Only needed where the name attribute is unsupported
