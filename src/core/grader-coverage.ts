@@ -38,6 +38,10 @@ export function cleanText(text: string): string {
     .trim();
 }
 
+export function stripParentheticalExamples(text: string): string {
+  return text.replace(/\s*\((?:e\.g\.[,:]?|such as\b)(?:[^()]|\([^()]*\))*\)/gi, '');
+}
+
 export interface ManifestExpectationEntry {
   status: 'TESTED' | 'SKIPPED';
   reason: string;
@@ -51,7 +55,8 @@ const NUMBERED_MANIFEST_ENTRY_REGEX =
 
 /**
  * Extracts top-of-file manifest entries (`Expectation N: TESTED ...` or `Expectation N: SKIPPED: <reason>`)
- * keyed by 1-based expectation number. Stops scanning at the first `test` or `test.describe` block.
+ * keyed by 1-based expectation number. Stops scanning at the first `test` or `test.describe` block,
+ * and the first entry for a given expectation number wins.
  */
 export function extractManifestEntries(graderFilePath: string): Map<number, ManifestExpectationEntry> {
   const entries = new Map<number, ManifestExpectationEntry>();
@@ -73,7 +78,9 @@ export function extractManifestEntries(graderFilePath: string): Map<number, Mani
     const reason = (match[4] ?? match[5] ?? '').trim();
 
     for (let num = start; num <= end; num++) {
-      entries.set(num, { status, reason });
+      if (!entries.has(num)) {
+        entries.set(num, { status, reason });
+      }
     }
   }
 
@@ -82,11 +89,13 @@ export function extractManifestEntries(graderFilePath: string): Map<number, Mani
 
 
 /**
- * Extracts test titles from a Playwright grader.ts file.
+ * Extracts test titles from a Playwright grader.ts file, ignoring commented-out tests
+ * and `test.skip()` blocks without corrupting glob or URL string literals.
  */
 export function extractTestTitles(graderFilePath: string): string[] {
   if (!fs.existsSync(graderFilePath)) return [];
-  const content = fs.readFileSync(graderFilePath, 'utf8');
+  const rawContent = fs.readFileSync(graderFilePath, 'utf8');
+  const content = rawContent.replace(/^\s*(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/)/gm, ' ');
 
   const titles: string[] = [];
   const testRegex = /(?:^|\s)test(?:\.only)?\s*\(\s*(['"`])([\s\S]*?)\1\s*,/g;
@@ -152,12 +161,8 @@ export interface ValidateGraderCoverageOptions {
 export async function validateGraderExpectationCoverage(
   expectationsPath: string,
   graderPath: string,
-  thresholdOrOptions: number | ValidateGraderCoverageOptions = 0.50,
-  maybeOptions: ValidateGraderCoverageOptions = {}
+  opts: ValidateGraderCoverageOptions = {}
 ): Promise<GraderCoverageResult> {
-  const opts = typeof thresholdOrOptions === 'number'
-    ? { ...maybeOptions, threshold: thresholdOrOptions }
-    : thresholdOrOptions;
   const threshold = opts.threshold ?? 0.50;
   const isDisciplineGuide = opts.isDisciplineGuide ?? false;
 
@@ -212,7 +217,7 @@ export async function validateGraderExpectationCoverage(
     cleanedTestVectors = await Promise.all(testTitles.map(t => getVec(cleanText(t))));
 
     const expectationEntries = expectations.map(exp => {
-      const withoutExamples = exp.replace(/\s*\((?:e\.g\.[,:]?|such as\b)(?:[^()]|\([^()]*\))*\)/gi, '');
+      const withoutExamples = stripParentheticalExamples(exp);
       const firstSentence = withoutExamples.split(/[.!?]\s+/)[0];
       return {
         exp,

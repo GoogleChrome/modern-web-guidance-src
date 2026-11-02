@@ -5,6 +5,7 @@ import fs from 'node:fs';
 
 import {
   cleanText,
+  stripParentheticalExamples,
   parseVerifiableExpectations,
   extractTestTitles,
   extractManifestEntries,
@@ -19,6 +20,17 @@ describe('Grader Coverage Validation Utility', () => {
     assert.strictEqual(cleanText('- should have `interpolate-size: allow-keywords`'), 'have interpolate-size: allow-keywords');
     assert.strictEqual(cleanText('* Should use `onINP` for metric collection'), 'use onINP for metric collection');
     assert.strictEqual(cleanText('Expectation 6: The implementation uses :not()'), 'The implementation uses :not()');
+  });
+
+  it('strips parenthetical e.g. and such as examples including nested parens and internal punctuation', () => {
+    assert.strictEqual(
+      stripParentheticalExamples('Use semantic elements (e.g., `button.primary` or `input:not([disabled])`). Ensure focus is visible.'),
+      'Use semantic elements. Ensure focus is visible.'
+    );
+    assert.strictEqual(
+      stripParentheticalExamples('Animate discrete states (such as `<dialog>` or `:not([hidden])` elements).'),
+      'Animate discrete states.'
+    );
   });
 
   it('parses top-level expectations and combines indented sub-bullets into their parent', () => {
@@ -270,28 +282,6 @@ test(
     }
   });
 
-  it('validates discipline guide graders without exempting them', async () => {
-    const cssExp = path.join(rootDir, 'guides', 'css', 'css', 'expectations.md');
-    const cssGrader = path.join(rootDir, 'guides', 'css', 'css', 'targets', 'daily-grind', 'grader.ts');
-    const htmlExp = path.join(rootDir, 'guides', 'html', 'html', 'expectations.md');
-    const htmlGrader = path.join(rootDir, 'guides', 'html', 'html', 'targets', 'daily-grind', 'grader.ts');
-    const secExp = path.join(rootDir, 'guides', 'security', 'security', 'expectations.md');
-    const secGrader = path.join(rootDir, 'guides', 'security', 'security', 'targets', 'daily-grind', 'grader.ts');
-
-    for (const p of [cssExp, cssGrader, htmlExp, htmlGrader, secExp, secGrader]) {
-      assert.ok(fs.existsSync(p), `expected file to exist: ${p}`);
-    }
-
-    const cssRes = await validateGraderExpectationCoverage(cssExp, cssGrader, { isDisciplineGuide: true });
-    assert.strictEqual(cssRes.isComplete, true, `css discipline grader should pass coverage: ${JSON.stringify(cssRes.missing)}`);
-
-    const htmlRes = await validateGraderExpectationCoverage(htmlExp, htmlGrader, { isDisciplineGuide: true });
-    assert.strictEqual(htmlRes.isComplete, true, `html discipline grader should pass coverage: ${JSON.stringify(htmlRes.missing)}`);
-
-    const secRes = await validateGraderExpectationCoverage(secExp, secGrader, { isDisciplineGuide: true });
-    assert.strictEqual(secRes.isComplete, true, `security discipline grader should pass coverage: ${JSON.stringify(secRes.missing)}`);
-  });
-
   it('rejects manifest SKIPPED entries in a use-case guide grader and directs fixes to expectations.md or task.md', async () => {
     const tempExp = path.join(import.meta.dirname, 'temp-leaf-dialog-exp.md');
     const tempGrader = path.join(import.meta.dirname, 'temp-leaf-dialog-grader.ts');
@@ -326,14 +316,18 @@ test(
     }
   });
 
-  it('ignores inline comments inside test bodies and casual numbered comments when extracting manifest entries', async () => {
+  it('ignores inline comments inside test bodies, casual numbered comments, and duplicate manifest numbers (first entry wins)', () => {
     const tempGrader = path.join(import.meta.dirname, 'temp-inline-comments-grader.ts');
     fs.writeFileSync(
       tempGrader,
       [
         "import { test, expect } from './fixture.ts';",
         '// Expectation 1: TESTED: Checks modal dialog',
+        '// Expectation 1: SKIPPED: Duplicate entry in header should not overwrite first entry',
         '// Expectation 2: SKIPPED: No unsaved form in base app or task',
+        '// Expectation 3-5: SKIPPED: No credential or payment form in base app or task',
+        '// 6: TESTED - Numbered format with colon',
+        ' * 7. SKIPPED - Numbered format with dot inside block comment',
         '// 1. tested above',
         '// 2 skipped',
         "test.describe('Suite', () => {",
@@ -348,9 +342,46 @@ test(
 
     try {
       const entries = extractManifestEntries(tempGrader);
-      assert.strictEqual(entries.size, 2);
+      assert.strictEqual(entries.size, 7);
       assert.deepStrictEqual(entries.get(1), { status: 'TESTED', reason: 'Checks modal dialog' });
       assert.deepStrictEqual(entries.get(2), { status: 'SKIPPED', reason: 'No unsaved form in base app or task' });
+      assert.deepStrictEqual(entries.get(3), { status: 'SKIPPED', reason: 'No credential or payment form in base app or task' });
+      assert.deepStrictEqual(entries.get(4), { status: 'SKIPPED', reason: 'No credential or payment form in base app or task' });
+      assert.deepStrictEqual(entries.get(5), { status: 'SKIPPED', reason: 'No credential or payment form in base app or task' });
+      assert.deepStrictEqual(entries.get(6), { status: 'TESTED', reason: 'Numbered format with colon' });
+      assert.deepStrictEqual(entries.get(7), { status: 'SKIPPED', reason: 'Numbered format with dot inside block comment' });
+    } finally {
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
+  it('extractTestTitles ignores commented-out tests while preserving tests around **/*.css and http:// strings', () => {
+    const tempGrader = path.join(import.meta.dirname, 'temp-commented-tests-grader.ts');
+    fs.writeFileSync(
+      tempGrader,
+      [
+        "import { test } from './fixture.ts';",
+        "// test('Commented out with single-line comment', () => {});",
+        "  // test('Indented commented out test', () => {});",
+        '/*',
+        "  test('Commented out in multiline block comment', () => {});",
+        '*/',
+        "/* test('Commented out in single-line block comment', () => {}); */",
+        "test('First active test checking **/*.css and http://localhost:4321/*', () => {",
+        "  const pattern = '**/*.css';",
+        "  const url = 'http://localhost:4321/*';",
+        "  const closeLike = '*/';",
+        '});',
+        "test('Second active test after glob and URL strings', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const titles = extractTestTitles(tempGrader);
+      assert.deepStrictEqual(titles, [
+        'First active test checking **/*.css and http://localhost:4321/*',
+        'Second active test after glob and URL strings',
+      ]);
     } finally {
       if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
     }

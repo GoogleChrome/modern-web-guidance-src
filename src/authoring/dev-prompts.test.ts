@@ -181,7 +181,7 @@ test('buildTargetGraderPrompt includes discipline scoping only for discipline gu
 
   const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
   assert.ok(disciplinePrompt.includes('discipline guide'));
-  assert.ok(disciplinePrompt.includes('Decide relevance from the base application in your workspace'));
+  assert.ok(disciplinePrompt.includes('Decide relevance from the base application and `task.md`, not from the solution patches: do NOT test an expectation whose pattern exists only because a solution patch added it without the task asking for it.'));
   assert.ok(disciplinePrompt.includes('Skip an expectation only when its precondition is absent from both the base application and the task, or when the base application already satisfies it.'));
   assert.ok(disciplinePrompt.includes('A state the grader can create or simulate (a permission state, a viewport width, a failed or denied request, a removed global) is never a missing precondition; test it.'));
   assert.ok(disciplinePrompt.includes('Expectation N: SKIPPED: <one-line reason>'));
@@ -294,6 +294,7 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('add the needs-dev-rerun label'));
   assert.ok(prompt.includes('```diff'));
   assert.ok(prompt.includes('DIRECT FILE UPDATES REQUIREMENT'));
+  assert.ok(prompt.includes('Grader edits that delete or disable `test()` blocks or add `SKIPPED` manifest entries are automatically reverted'));
 });
 
 test('buildDevReportPrompt includes PR context and reviewer feedback instructions when provided', () => {

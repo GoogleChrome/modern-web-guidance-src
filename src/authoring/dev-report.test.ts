@@ -8,6 +8,7 @@ import {
   computeTargetSummary,
   buildInitialDevReport,
   findTestedToSkippedExpectations,
+  getReportGraderRevertReason,
   type TargetEvalSummary,
 } from './dev-report.ts';
 import { extractManifestEntries, extractTestTitles } from '../core/grader-coverage.ts';
@@ -443,4 +444,59 @@ test('extractTestTitles count detects deleted or test.skip() blocks in modified 
   assert.strictEqual(beforeCount, 2);
   assert.ok(extractTestTitles(deletedPath).length < beforeCount);
   assert.ok(extractTestTitles(skippedPath).length < beforeCount);
+});
+
+test('getReportGraderRevertReason flags new skips and dropped tests unless expectations.md changed', () => {
+  const beforeManifest = new Map([
+    [1, { status: 'TESTED' as const, reason: 'Modal open' }],
+    [2, { status: 'TESTED' as const, reason: 'Escape close' }],
+  ]);
+  const skippedManifest = new Map([
+    [1, { status: 'TESTED' as const, reason: 'Modal open' }],
+    [2, { status: 'SKIPPED' as const, reason: 'No Escape handler' }],
+  ]);
+
+  assert.strictEqual(
+    getReportGraderRevertReason({
+      expectationsChanged: false,
+      beforeManifest,
+      afterManifest: skippedManifest,
+      beforeTestCount: 2,
+      afterTestCount: 2,
+    }),
+    'changed Expectation 2 from `TESTED` to `SKIPPED`'
+  );
+
+  assert.strictEqual(
+    getReportGraderRevertReason({
+      expectationsChanged: false,
+      beforeManifest,
+      afterManifest: beforeManifest,
+      beforeTestCount: 2,
+      afterTestCount: 1,
+    }),
+    'reduced the number of `test()` blocks from 2 to 1'
+  );
+
+  assert.strictEqual(
+    getReportGraderRevertReason({
+      expectationsChanged: true,
+      beforeManifest,
+      afterManifest: skippedManifest,
+      beforeTestCount: 2,
+      afterTestCount: 1,
+    }),
+    null
+  );
+
+  assert.strictEqual(
+    getReportGraderRevertReason({
+      expectationsChanged: false,
+      beforeManifest,
+      afterManifest: beforeManifest,
+      beforeTestCount: 2,
+      afterTestCount: 2,
+    }),
+    null
+  );
 });
