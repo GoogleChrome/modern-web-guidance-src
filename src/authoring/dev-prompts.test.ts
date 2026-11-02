@@ -61,7 +61,12 @@ test('buildTargetGraderPrompt includes Option B scoping rules and locked solutio
   assert.ok(prompt.includes('getTargetFiles'));
   assert.ok(prompt.includes('getCssStyleSheet'));
   assert.ok(prompt.includes('CSSOMNom'));
-  assert.ok(prompt.includes('Static Analysis First'));
+  assert.ok(prompt.includes('Right Instrument for the Claim: Parsers vs. Browser'));
+  assert.ok(prompt.includes('Structure and API Usage (Parsers)'));
+  assert.ok(prompt.includes('Runtime Behavior (Browser)'));
+  assert.ok(prompt.includes('One Expectation per Test'));
+  assert.ok(prompt.includes('precondition assertion'));
+  assert.ok(prompt.includes('hooks (`id` or `data-` attributes) that `task.md` names'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Jetski CLI Solution'));
   assert.ok(prompt.includes('Claude Code Solution'));
@@ -241,6 +246,7 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions without 
   assert.ok(prompt.includes('Grounded in the Application'));
   assert.ok(prompt.includes('Never Copy Description Verbatim'));
   assert.ok(prompt.includes('Preserve High-Level Capability Boundary'));
+  assert.ok(prompt.includes('neutral hook (an `id` or `data-` attribute)'));
   assert.ok(prompt.includes('Apply fluid typography using modern CSS clamp() units across article cards'));
   assert.ok(!prompt.includes('guide.md'));
   assert.ok(!prompt.includes('expectations.md'));
@@ -272,6 +278,7 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('HIGH_UNGUIDED_PASS_RATE'));
   assert.ok(prompt.includes('CALIBRATION_FAILED'));
   assert.ok(prompt.includes('Treat `guide.md` as Authoritative over `expectations.md`'));
+  assert.ok(prompt.includes('do NOT hand-edit `targets/<target>/grader.ts` in the same pass'));
   assert.ok(prompt.includes('presume `targets/<target>/grader.ts` or `targets/<target>/task.md` is at fault'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Evaluation Results'));
