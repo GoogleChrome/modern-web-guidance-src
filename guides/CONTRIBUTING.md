@@ -9,7 +9,7 @@ For authoring permissions and contributor roles, see **[`GOVERNANCE.md`](../GOVE
 
 * **Vendor-Agnostic Core Guidance**: Core guides focus on web platform features tracked in (or pending inclusion in) [`web-features`](https://github.com/web-platform-dx/web-features) and [Browser Compat Data (BCD)](https://github.com/mdn/browser-compat-data). Browser-specific guidance (e.g., extension store or proprietary APIs) is never part of the core guidance and may only ship in separate, opt-in skill packs subject to the same review rules.
 * **Browser-Specific Implementation Details**: Guides must not reference browser-specific implementation details (e.g., a browser's bundled on-device model) without stating that they are browser-specific and may change.
-* **Baseline Target & Fallbacks**: Guidance targets **Baseline Widely available** web features, with mandatory fallback strategies or progressive enhancement patterns for Limited availability or Newly available features. When no reasonable alternative exists, the documented fallback may be to not use the feature if its browser support is narrower than the user’s support target.
+* **Baseline Target & Fallbacks**: Guidance targets **Baseline Widely available** web features, with mandatory fallback strategies or progressive enhancement patterns for Limited availability or Newly available features. When no reasonable alternative exists, the documented fallback may be to not use the feature if its browser support is narrower than the user's support target.
 
 
 ## Feature Stability
@@ -39,9 +39,8 @@ Content contributions progress through two stages, each governed by a normative 
 
 Translate a web platform feature into 2–5 distinct, action-oriented developer tasks (focusing on *what* the user is trying to accomplish rather than *how* the API works).
 
-1. Create `guides/<category>/<use-case-slug>/guide.md` containing only the YAML frontmatter stub (`name`, `description`, `web-feature-ids`).
-2. Validate structure with `pnpm test`.
-3. Open a [new-use-case issue](../.github/ISSUE_TEMPLATE/new-use-case.yml) or a draft/stub PR to align with the category's [Content Area Tech Lead (ATL)](../docs/ATLS.md) listed in [`.github/atls.json`](../.github/atls.json). *(Onboarded [Peers](../GOVERNANCE.md#peers) may fast-track directly to Stage 2).*
+* **Via a stub PR**: Create `guides/<category>/<use-case-slug>/guide.md` containing only the YAML frontmatter stub (`name`, `description`, `web-feature-ids`), validate structure with `pnpm test`, and open a draft/stub PR to align with the category's [Content Area Tech Lead (ATL)](../docs/ATLS.md) listed in [`.github/atls.json`](../.github/atls.json). *(Onboarded [Peers](../GOVERNANCE.md#peers) may fast-track directly to Stage 2).*
+* **Via an issue (no stub PR required)**: Alternatively, open a [`new-use-case` issue](../.github/ISSUE_TEMPLATE/new-use-case.yml) to propose the use case and align with the category's Content ATL.
 
 * **Authoritative Specification**: **[`.agents/skills/project-use-cases/SKILL.md`](../.agents/skills/project-use-cases/SKILL.md)** (and **[`project-discipline-guides`](../.agents/skills/project-discipline-guides/SKILL.md)** for category hub guides).
 
