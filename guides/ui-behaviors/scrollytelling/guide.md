@@ -125,7 +125,7 @@ When using the `view-timeline` property to create a scroll-driven animation:
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("scroll-driven-animations") }}
+{{ BASELINE_STATUS("scroll-driven-animations") }}
 
 For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
 
