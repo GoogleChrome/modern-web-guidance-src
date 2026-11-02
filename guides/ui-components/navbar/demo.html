@@ -641,11 +641,21 @@
       submenu.showPopover({ source: trigger });
     });
 
+    let focusPreviewing = false;
+
     // Focus preview: keyboard focus only, so a pointer click is not toggled twice
     trigger.addEventListener("focus", () => {
       if (!trigger.matches(":focus-visible")) return;
       if (!submenu.matches("[popover]") || submenu.matches(":popover-open")) return;
+      focusPreviewing = true;
       submenu.showPopover({ source: trigger });
+    });
+
+    // Close a submenu that focus opened once focus leaves the whole list item
+    dropdown.addEventListener("focusout", (event) => {
+      if (!focusPreviewing || dropdown.contains(event.relatedTarget)) return;
+      focusPreviewing = false;
+      submenu.hidePopover();
     });
 
     dropdown.addEventListener("pointerleave", () => {

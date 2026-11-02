@@ -166,7 +166,7 @@ Do not add document-level click-outside, Escape or focus-restoration handlers. T
 
 ### Hover preview
 
-In the wide layout, preview the submenu on hover as described in {{ GUIDE_REF("menu") }}. Also preview it when the trigger receives keyboard focus (`:focus-visible` only, so a pointer click is not toggled twice); `Enter` or `Space` still toggles it.
+In the wide layout, preview the submenu on hover as described in {{ GUIDE_REF("menu") }}. Also preview it when the trigger receives keyboard focus (`:focus-visible` only, so a pointer click is not toggled twice); `Enter` or `Space` still toggles it. Close a submenu that focus opened when focus leaves the submenu's whole list item (`focusout` with a `relatedTarget` outside it), so `Shift`+`Tab` away from the trigger closes it.
 
 Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_REF("menu") }}, including its viewport-overflow fallbacks. For collision-aware positioning of a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. This submenu opens below its trigger, so use the top-level `position-area` there, not the menu guide's side-by-side submenu placement. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
 

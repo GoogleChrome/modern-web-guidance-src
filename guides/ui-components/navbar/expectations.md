@@ -19,4 +19,5 @@
 - On wide layouts with a hover-capable pointer, hovering a submenu's trigger opens its submenu.
 - On wide layouts, the submenu still opens by click and by keyboard (`Enter`/`Space`) on its trigger button.
 - On wide layouts, moving keyboard focus to a submenu's trigger opens its submenu.
+- On wide layouts, a submenu opened by keyboard focus closes when focus moves out of its list item, and its trigger's `aria-expanded` becomes `false`.
 - High-contrast system support is provided under a `@media (forced-colors: active)` query to adapt custom borders, boundaries, and active-state visual indicators (e.g., using values like `CanvasText` and `Highlight`).
