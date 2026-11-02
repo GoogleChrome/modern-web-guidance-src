@@ -263,17 +263,11 @@
       }
 
       /* Without border-shape the elements show as solid rounded blocks. The
-         height reservation still prevents layout shift. List bullets are part
-         of the shaped enhancement, so each item is one block that starts at the
-         real list's indent. */
+         height reservation still prevents layout shift. List items keep their
+         outside bullet and are one block each. */
       @supports not (border-shape: shape(from 0 0, close)) {
         .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
           border-radius: .5lh; /* Large enough to read as rounded at any block height */
-        }
-
-        .skeleton[aria-busy="true"] li {
-          margin-inline-start: 1.25em;
-          inline-size: auto;
         }
       }
 
@@ -299,19 +293,27 @@
       }
 
 
-      /* Lists: the real ::marker plus a bar per item. The marker sits inside the
-         li box so overflow: hidden does not clip it; it takes the flat tone
-         (a marker cannot take the shimmer), and the bar starts after it. */
+      /* Lists: the real ::marker plus a bar per item. display: block would drop
+         the marker, so items stay list-item. The marker sits outside the li in
+         the list's own padding, so the bar starts at the item's edge, where the
+         real text does. The marker takes the flat tone (a marker cannot take
+         the shimmer). */
       .skeleton[aria-busy="true"] :is(ul, ol) {
-        padding-inline-start: 0; /* The bar's paren start offset supplies an indent */
+        padding-inline-start: 0;
       }
 
       .skeleton[aria-busy="true"] li {
-        list-style-position: inside;
-        margin-inline-start: 0; /* The bar's start offset supplies the indent */
-        --text-start: 1.25em; /* Same indent as the real list, so bars start where the real text does */
+        display: list-item;
+        list-style-position: outside;
+        margin-inline-start: 0;
         --line-one: 72%;
-        --bars: shape(from 0 0, --bar(0, var(--line-one), var(--text-start)));
+        --bars: shape(from 0 0, --bar(0, var(--line-one)));
+      }
+
+      @supports (border-shape: shape(from 0 0, close)) {
+        .skeleton[aria-busy="true"] li {
+          overflow: visible; /* Lets the outside marker show; the shape clips the fill */
+        }
       }
 
       .skeleton[aria-busy="true"] li::marker {

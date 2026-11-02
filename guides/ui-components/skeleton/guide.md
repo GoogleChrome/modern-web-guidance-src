@@ -147,18 +147,20 @@ Set the shape on `--bars` and read it with `border-shape: var(--bars)`. Do not c
 
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
-Keep the real `::marker` for the bullet. Set `list-style-position: inside` so the `overflow: hidden` above does not clip it, and give it the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Remove the list's own padding while loading and start the bar at the real list's indent instead, so the indent is applied once. This applies to numbered lists too.
+Keep the real `::marker` for the bullet. The shared `display: block` removes it, so set `display: list-item` with `list-style-position: outside`, and give the marker the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Leave the list's own padding alone: the outside marker sits in it and the bar starts at the item's edge, where the real text does, so the indent is applied once. Inside `border-shape` support, set `overflow: visible` so the marker is not clipped. This applies to numbered lists too.
 
 ```css
-.skeleton[aria-busy="true"] :is(ul, ol) {
-  padding-inline-start: 0; /* The bar's start offset supplies the indent */
+.skeleton[aria-busy="true"] li {
+  display: list-item;
+  list-style-position: outside;
+  --line-one: 72%; /* Vary this per item */
+  --bars: shape(from 0 0, --bar(0, var(--line-one)));
 }
 
-.skeleton[aria-busy="true"] li {
-  list-style-position: inside;
-  --text-start: 1.25em; /* Same indent as the real list, so the text does not shift */
-  --line-one: 72%;      /* Vary this per item */
-  --bars: shape(from 0 0, --bar(0, var(--line-one), var(--text-start)));
+@supports (border-shape: shape(from 0 0, close)) {
+  .skeleton[aria-busy="true"] li {
+    overflow: visible; /* Lets the outside marker show; the shape clips the fill */
+  }
 }
 
 .skeleton[aria-busy="true"] li::marker {
@@ -174,7 +176,7 @@ For more than one bar, call `--bar()` once per bar with its index and end positi
 |---|---|
 | `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--bar()` and set `--lines: 2` |
 | `p` | 3 bars, last one shorter like a real paragraph. A paragraph that is one line in the real template (a byline or metadata row, for example `p:has(> time)`) gets 1 short bar and `--lines: 1`, so the card does not read as extra paragraphs |
-| `li` | 1 bar each, with a small circle for the bullet; vary widths. Start the bar at the real list's indent so the text does not shift when content arrives |
+| `li` | 1 bar each, with a small circle for the bullet; vary widths. Keep the list's padding and an outside marker so the text does not shift when content arrives |
 | `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
 
 ## 4. Media and avatars
@@ -266,14 +268,10 @@ If your Baseline target does not support `border-shape`, use `@supports (border-
   .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
     border-radius: .5lh; /* Large enough to read as rounded at any block height */
   }
-
-  .skeleton[aria-busy="true"] li {
-    margin-inline-start: 1.25em; /* The real list's indent, so the text does not shift */
-  }
 }
 ```
 
-Multi-line bars, variable lengths and list bullets belong to the `border-shape` enhancement: without it, each element is one solid rounded block, and each list item is one block starting at the real indent.
+Multi-line bars and variable lengths belong to the `border-shape` enhancement: without it, each element is one solid rounded block, and each list item is one block that keeps its outside bullet.
 
 ### @function
 
