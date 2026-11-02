@@ -18,34 +18,66 @@ guides:
 
 Build accordions from a set of adjacent `details` elements.
 
-## Requirements for all accordions
-
-### Grouping the accordion items
-
-If the accordion is a distinct section of the page, group its items in an element with an accessible name, such as a `section` labeled by the group heading. Do not wrap every small accordion in a landmark or `region`; that adds navigation noise for screen reader users.
+If the accordion is a distinct section of the page, group its items in an element with an accessible name, such as a `section` labeled by the group heading.
 
 ```html
-<section aria-label="Frequently Asked Questions">
-	<!-- Accordion implementation -->
+<section class="accordion" aria-labelledby="faq-heading">
+	<h2 id="faq-heading">Frequently Asked Questions</h2>
+	<details>
+		<summary>Lorem ipsum dolor sit amet?</summary>
+		<!-- answer 1 -->
+	</details>
+	<details>
+		<summary>Consectetur adipiscing elit?</summary>
+		<!-- answer 2 -->
+	</details>
 </section>
 ```
 
-### Do not add custom keyboard navigation
+When each item is a section of the page, put its heading inside the `summary` element so screen reader users can move between items by heading. Keep the group heading outside the `details` elements.
 
-Do not add arrow key navigation, roving `tabindex`, or `Home`/`End` handling.
+```html
+<details class="accordion" aria-labelledby="faq-heading">
+	<h2 id="faq-heading">Frequently Asked Questions</h2>
+	<summary><h3>How do I reset my password?</h3></summary>
+	<!-- Answer -->
+</details>
+```
+
+Accessibility notes:
+- Do not wrap every small accordion in a landmark or `region`; that adds navigation noise for screen reader users.
+- Do not add arrow key navigation, roving `tabindex`, or `Home`/`End` handling.
 Accordion contents are often long enough to need scrolling, and arrow keys on a focused trigger are how keyboard users scroll.
+- If a heading for the entire accordion is not desirable, use an `aria-label` on the container element to provide an accessible name for the group.
 
-### Choosing whether to make the accordion mutually exclusive
+## Exclusive accordions
 
-The default should be to not use an exclusive accordion variation.
+An exclusive accordion only allows one item to be open at a time.
 
-A mutually exclusive accordion only allows one item to be open at a time. This should not be the default approach as it can be annoying for users. Sometimes users want to reference between the contents of multiple items and this behavior does not allow for that. They also can cause content to shift out of the user’s view which can cause significant problems for those using screen magnifiers.
+To make an accordion exclusive, add the same `name` to each `details` element that should be part of the exclusive group.
+Ensure that `name` is not used elsewhere on the page unless it is intended to be part of the same exclusive accordion group.
 
-A further variation is a single mutually exclusive accordion which requires at least one accordion item be open at a given time. Like mutually exclusive accordions these can be frustrating to users for the same reasons, but also do not allow the user to completely reduce the amount of space the entire accordion structure is using.
+```html
+<section class="accordion" aria-labelledby="faq-heading">
+	<h2 id="faq-heading">Frequently Asked Questions</h2>
+	<details name="faq-question">
+		<summary>Lorem ipsum dolor sit amet?</summary>
+		<!-- answer 1 -->
+	</details>
+	<details name="faq-question">
+		<summary>Consectetur adipiscing elit?</summary>
+		<!-- answer 2 -->
+	</details>
+</section>
+```
 
-### When to offer expand all and collapse all
+Avoid exclusive accordions, as they can produce suboptimal user experience:
+- Sometimes users want to reference between the contents of multiple items, which exclusive accordions prevent.
+- They also can cause content to shift out of the user’s view which can cause significant problems for those using screen magnifiers.
 
-Expand all and collapse all buttons can be very helpful for users, since they provide a quick way to show and hide all of the disclosed contents. They should not be added to mutually exclusive accordion variations as the “expand all” button would not work and the “collapse all” button would provide little benefit (i.e. it only saves closing a single item).
+## Optional: Expand all and Collapse all buttons
+
+For non-exclusive accordions, Expand all and Collapse all buttons can improve user experience.
 
 ```html
 <section id="support-accordion" aria-labelledby="support">
@@ -55,37 +87,6 @@ Expand all and collapse all buttons can be very helpful for users, since they pr
 	<!-- Accordion items -->
 </section>
 ```
-
-## Implementing an accordion using `details` and `summary` elements
-
-A set of adjacent `details` elements can be used to create an accordion.
-
-```html
-<section aria-labelledby="topics">
-	<h2 id="topics">Topics</h2>
-	<details>
-		<summary>Development</summary>
-		<!-- Development contents -->
-	</details>
-	<details>
-		<summary>Design</summary>
-		<!-- Design contents -->
-	</details>
-</section>
-```
-
-### Headings in accordion items
-
-When each item is a section of the page, put its heading inside the `summary` element so screen reader users can move between items by heading. Keep the group heading outside the `details` elements.
-
-```html
-<details>
-	<summary><h3>How do I reset my password?</h3></summary>
-	<!-- Answer -->
-</details>
-```
-
-### Adding expand all and collapse all buttons to a `details` accordion
 
 ```javascript
 document.addEventListener("command", event => {
@@ -98,9 +99,7 @@ document.addEventListener("command", event => {
 }, { capture: true }); // Command events do not bubble, hence capture
 ```
 
-### Making the `details` accordion mutually exclusive
-
-A group of `details` elements that share the same `name` attribute value work as an accordion that is mutually exclusive. When creating a mutually exclusive accordion with `details` elements, use a globally unique `name`, or other `details` elements that are not meant to be included in the accordion will participate in the mutually exclusive behavior.
+To improve user experience, disable the Expand All button when all items are already expanded, and the Collapse All button when all items are already collapsed.
 
 ### Excluding a `details` element’s contents from find-in-page
 
