@@ -424,7 +424,7 @@ async function loadTrialMetadata() {
   const guideLinkEl = /** @type {HTMLAnchorElement | null} */ (document.getElementById('summary-guide-link'));
   if (guideLinkEl) {
     guideLinkEl.innerText = guideName;
-    guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'local' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
+    guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'static' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
   }
 
   // Ensure suite directories exist locally
@@ -556,7 +556,7 @@ function updateExecutiveSummary() {
   const guideLinkEl = /** @type {HTMLAnchorElement | null} */ (document.getElementById('summary-guide-link'));
   if (guideLinkEl) {
     guideLinkEl.innerText = guideName;
-    guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'local' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
+    guideLinkEl.href = `guide.html?guide=${encodeURIComponent(guideName)}&source=${encodeURIComponent(isStatic ? 'static' : (new URLSearchParams(window.location.search).get('source') || 'local'))}`;
   }
 }
 

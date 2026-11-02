@@ -11,6 +11,8 @@ let isCompareMode = false;
 /** @type {TrialSelection[]} */
 let selectedPoints = []; // array of selected trial points
 let currentRunFilter = 'nightly';
+/** @type {((point: Element) => boolean) | null} */
+let renderTimelineTooltip = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const params = new URLSearchParams(window.location.search);
@@ -269,11 +271,12 @@ function setupNavigationControls(currentGuide) {
     const statusEl = document.getElementById('autocomplete-status');
     const goBtn = /** @type {HTMLButtonElement} */ ($('#go-guide-btn'));
 
-    const getNavUrl = (/** @type {string} */ targetGuide) => `guide.html?guide=${encodeURIComponent(targetGuide)}${modeSuffix}${currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`;
+    const runFilterSuffix = currentRunFilter !== 'nightly' ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : '';
+    const getNavUrl = (/** @type {string} */ targetGuide) => `guide.html?guide=${encodeURIComponent(targetGuide)}${modeSuffix}${runFilterSuffix}`;
 
     const backLink = document.querySelector('a[href^="./"]');
     if (backLink) {
-        backLink.setAttribute('href', `./${currentRunFilter ? `?runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`);
+        backLink.setAttribute('href', `./${currentRunFilter !== 'nightly' ? `?runFilter=${encodeURIComponent(currentRunFilter)}` : ''}`);
     }
 
     if (allGuides.length <= 1) {
@@ -715,6 +718,16 @@ function renderGraphs(guideName) {
 
                 if (isCompareMode) {
                     e.preventDefault();
+
+                    const existingIdx = selectedPoints.findIndex(p => p.dateKey === dateKey && p.combKey === combKey);
+                    if (existingIdx !== -1) {
+                        selectedPoints.splice(existingIdx, 1);
+                        point.querySelector('.compare-highlight')?.remove();
+                        runSelectorSlot.innerHTML = '';
+                        updateCompareBanner();
+                        return;
+                    }
+
                     // Render run selection dropdown ABOVE arrows inside the card header
                     document.querySelectorAll('.run-selector-slot').forEach(slot => slot.innerHTML = '');
 
@@ -732,12 +745,12 @@ function renderGraphs(guideName) {
 
                         runsOnDate.forEach((/** @type {any} */ r, /** @type {number} */ idx) => {
                             const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                            const rStats = r.guides[guideName];
+                            const rStats = getStats(r);
                             const opt = document.createElement('option');
                             opt.value = r.testId;
                             opt.setAttribute('data-runindex', (idx + 1).toString());
                             const isLatest = idx === runsOnDate.length - 1;
-                            opt.innerText = `Run ${idx + 1} (${isLatest ? 'Latest - ' : ''}${timeStr}) [${rStats ? rStats.guidedRate : 0}% guided]`;
+                            opt.innerText = `Run ${idx + 1} (${isLatest ? 'Latest - ' : ''}${timeStr}) [${rStats ? rStats.guidedRate : 0}% ${isA11yMode ? 'a11y' : 'guided'}]`;
                             if (r.testId === defaultRun.testId) {
                                 opt.selected = true;
                             }
@@ -749,15 +762,18 @@ function renderGraphs(guideName) {
                             const selectedOpt = select.options[select.selectedIndex];
                             const chosenRunIndex = parseInt(selectedOpt.getAttribute('data-runindex') || '1');
                             const chosenRun = runsOnDate.find((/** @type {any} */ r) => r.testId === chosenTestId) || defaultRun;
-                            handlePointSelection(chosenRun, point, combKey, guideName, chosenRunIndex);
+                            const chosenStats = getStats(chosenRun);
+                            handlePointSelection(chosenRun, point, combKey, guideName, chosenRunIndex, chosenStats ? chosenStats.guidedRate : 0);
                         });
 
                         selectorContainer.appendChild(select);
                         runSelectorSlot.appendChild(selectorContainer);
 
-                        handlePointSelection(defaultRun, point, combKey, guideName, defaultRunIndex);
+                        const defaultStats = getStats(defaultRun);
+                        handlePointSelection(defaultRun, point, combKey, guideName, defaultRunIndex, defaultStats ? defaultStats.guidedRate : 0);
                     } else {
-                        handlePointSelection(defaultRun, point, combKey, guideName, 1);
+                        const defaultStats = getStats(defaultRun);
+                        handlePointSelection(defaultRun, point, combKey, guideName, 1, defaultStats ? defaultStats.guidedRate : 0);
                     }
                 }
             });
@@ -810,15 +826,15 @@ function renderGraphs(guideName) {
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         ${runsOnDate.map((/** @type {any} */ r, /** @type {number} */ idx) => {
-                            const rStats = r.guides[guideName];
+                            const rStats = getStats(r);
                             const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                             const isLatest = idx === runsOnDate.length - 1;
                             return `
                                 <div style="font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <a href="dashboard.html?testId=${r.testId}&source=${r.source}#guide-${guideName}" style="color: var(--color-primary); font-weight: 600; text-decoration: none;">
+                                    <span style="color: var(--text-primary); font-weight: 500;">
                                         Run ${idx + 1} (${timeStr})${isLatest ? ' <span style="color:#64748b; font-weight:normal;">(Latest)</span>' : ''}
-                                    </a>
-                                    <span style="font-size:0.7rem; color: var(--text-secondary);">${rStats ? rStats.guidedRate : 0}% guided</span>
+                                    </span>
+                                    <span style="font-size:0.7rem; color: var(--text-secondary);">${rStats ? rStats.guidedRate : 0}% ${isA11yMode ? 'a11y' : 'guided'}</span>
                                 </div>
                             `;
                         }).join('')}
@@ -907,8 +923,9 @@ function clearSelections() {
  * @param {string} combKey
  * @param {string} guideName
  * @param {number} [runNumber=1]
+ * @param {number} [score=0]
  */
-function handlePointSelection(runData, group, combKey, guideName, runNumber = 1) {
+function handlePointSelection(runData, group, combKey, guideName, runNumber = 1, score = 0) {
     const testId = runData.testId;
     const dateKey = group.getAttribute('data-datekey') || '';
     const existingIdx = selectedPoints.findIndex(p => p.dateKey === dateKey && p.combKey === combKey);
@@ -927,7 +944,7 @@ function handlePointSelection(runData, group, combKey, guideName, runNumber = 1)
                 source: /** @type {'local' | 'static' | undefined} */ (runData.source), 
                 agent: runData.agent, 
                 model: runData.model,
-                score: runData.guides[guideName] ? runData.guides[guideName].guidedRate : 0
+                score
             };
         }
     } else {
@@ -939,7 +956,6 @@ function handlePointSelection(runData, group, combKey, guideName, runNumber = 1)
             }
         }
 
-        const stats = runData.guides[guideName];
         selectedPoints.push({ 
             testId, 
             dateKey,
@@ -948,7 +964,7 @@ function handlePointSelection(runData, group, combKey, guideName, runNumber = 1)
             source: /** @type {'local' | 'static' | undefined} */ (runData.source), 
             agent: runData.agent, 
             model: runData.model,
-            score: stats ? stats.guidedRate : 0
+            score
         });
 
         const x = parseFloat(group.getAttribute('data-x') || '0');
@@ -993,9 +1009,6 @@ function updateCompareBanner() {
         launchBtn.disabled = false;
     }
 }
-
-/** @type {((point: Element) => boolean) | null} */
-let renderTimelineTooltip = null;
 
 const timelineAnchor = document.createElement('span');
 timelineAnchor.className = 'timeline-anchor';

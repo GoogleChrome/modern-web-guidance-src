@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
     const runFilterParam = params.get('runFilter') ?? params.get('runName');
-    currentRunFilter = runFilterParam !== null ? runFilterParam : 'nightly';
+    currentRunFilter = runFilterParam !== null ? runFilterParam : (hasNightlyRuns(allTestData) ? 'nightly' : '');
     const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
     if (runFilterInput) {
         runFilterInput.value = currentRunFilter;
@@ -508,10 +508,8 @@ function updateUrlParams() {
 
     if (currentRunFilter === 'nightly') {
         url.searchParams.delete('runFilter');
-    } else if (currentRunFilter) {
-        url.searchParams.set('runFilter', currentRunFilter);
     } else {
-        url.searchParams.delete('runFilter');
+        url.searchParams.set('runFilter', currentRunFilter);
     }
 
     window.history.replaceState({}, '', url);
@@ -1464,7 +1462,7 @@ function renderPivotInsights() {
             let displayTitle = key;
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
-                const runFilterQuery = currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : '';
+                const runFilterQuery = currentRunFilter !== 'nightly' ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : '';
                 nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}${runFilterQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
                 effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
             } else if (filterKey === 'dimension') {
