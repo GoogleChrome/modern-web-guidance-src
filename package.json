@@ -82,7 +82,7 @@
     "esbuild": "^0.28.1",
     "gh-pages": "^6.3.0",
     "linkedom": "^0.18.12",
-    "minimatch": "^10.2.5",
+    "minimatch": "^11.0.1",
     "oxlint": "1.55.0",
     "playwright": "^1.58.2",
     "ts-morph": "^27.0.2",
