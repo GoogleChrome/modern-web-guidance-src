@@ -18,12 +18,7 @@ guides:
 
 # Accordion
 
-An accordion can be implemented with either `details` elements or using a robust custom approach. First determine which is appropriate:
-
-- If the accordion item triggers should also be heading elements, do not use `details` and `summary` elements as the headings can be obscured by `summary` elements. Use the custom implementation specified in this document.
-- If the accordion is used for essential content (e.g. within a site nav), prefer the custom implementation whether or not headers are used as it will be more clearly and consistently exposed to screen reader users.
-
-Once an approach is decided on, follow the requirements for all accordions, then follow the guidance for the specific approach. Do not mix guidance from the specific approaches.
+Build accordions from a set of adjacent `details` elements.
 
 ## Requirements for all accordions
 
@@ -45,7 +40,7 @@ An accordion must not have custom keyboard navigation: no arrow key navigation, 
 
 The default should be to not use an exclusive accordion variation.
 
-A mutually exclusive accordion only allows one item to be open at a time. This guide will demonstrate how to do so with both the `details` and custom approach, however, this should not be the default approach as it can be annoying for users. Sometimes users want to reference between the contents of multiple items and this behaviour does not allow for that. They also can cause content to shift out of the user’s view which can cause significant problems for those using screen magnifiers. 
+A mutually exclusive accordion only allows one item to be open at a time. This should not be the default approach as it can be annoying for users. Sometimes users want to reference between the contents of multiple items and this behaviour does not allow for that. They also can cause content to shift out of the user’s view which can cause significant problems for those using screen magnifiers.
 
 A further variation is a single mutually exlcusive accordion which requires at least one accordion item be open at a given time. Like mutually exlcusive accordions these can be frustrating to users for the same reasons, but also do not allow the user to completely reduce the amount of space the entire accordion structure is using.
 
@@ -80,6 +75,17 @@ A set of adjacent `details` elements can be used to create an accordion.
 </nav>
 ```
 
+### Headings in accordion items
+
+When each item is a section of the page, put its heading inside the `summary` element so screen reader users can move between items by heading. Keep the group heading outside the `details` elements.
+
+```html
+<details>
+	<summary><h3>How do I reset my password?</h3></summary>
+	<!-- Answer -->
+</details>
+```
+
 ### Adding expand all and collapse all buttons to a `details` accordion
 
 ```javascript
@@ -112,67 +118,29 @@ details:not([open])::details-content {
 
 Within the `details` element’s user-agent shadow root, there is a part-like pseudo-element called `::details-content` that contains the disclosed contents. By default, the element does not use `display: none` to hide the contents, but rather `content-visibility: hidden`.
 
-## Implementing a custom accordion
+## Fallback strategies
 
-Do not use `details` and `summary` elements in a custom accordion implementation.
+### Headings inside `summary` with JAWS and TalkBack
 
-Each item in the accordion should have:
+JAWS and TalkBack announce a `summary` only as a button and drop a heading nested inside it, so their users cannot move between accordion items by heading.
+All browsers and other screen readers expose the heading.
 
-- A trigger that is a `button` element in the `button` state and sets `aria-expanded` based on the state of its associated content (e.g. `<button type="button" aria-expanded="true">` would be an accordion trigger whose associated contents are expanded).
-- Immediately next to the trigger should be an element that wraps the contents controlled by the button.
-	- The trigger can set `aria-controls` to reference this element, however, this has no benefit for screen readers. It can be helpful for managing the state of the accordion item.
-
-When an accordion item’s trigger is also a heading, place the `button` element within the heading so that the heading’s semantics are not obscured by the `button` element which can expose its contents as presentational.
+If per-item heading navigation is a hard requirement for those users, give up `details` for those items: wrap a `button` with `aria-expanded` in the heading, and hide the content with `hidden="until-found"` so it stays findable.
+This loses the no-JavaScript behavior and native exclusivity of `details`, so do not use it by default.
 
 ```html
-<div role="region" aria-labelledby="services">
-	<h2 id="services">Services</h2>
-	<div>
-		<h3>
-			<button type="button" commandfor="design" command="--toggle" aria-expanded="true">Design</button>
-		</h3>
-		<div id="design">
-			<!-- Design contents -->
-		</div>
-	</div>
-	<div>
-		<h3>
-			<button type="button" commandfor="development" command="--toggle" aria-expanded="false">Development</button>
-		</h3>
-		<div id="development" hidden="until-found">
-			<!-- Development contents -->
-		</div>
-	</div>
-</div>
-<script>
-document.addEventListener("command", event => {
-	if (event.command !== "--toggle") return;
-	const content = event.target;
-	const trigger = event.source;
-
-	content.hidden = content.hidden ? false : "until-found";
-	trigger.setAttribute("aria-expanded", !content.hidden);
-}, { capture: true });
-</script>
+<h3>
+	<button type="button" aria-expanded="false" commandfor="answer-1" command="--toggle">How do I reset my password?</button>
+</h3>
+<div id="answer-1" hidden="until-found"><!-- Answer --></div>
 ```
 
-### Making the accordion contents findable
+The `--toggle` handler sets `hidden` to `"until-found"` or removes it and mirrors the result into `aria-expanded`.
+See {{ GUIDE_REF("custom-button-actions") }} for handling custom commands and {{ GUIDE_REF("search-hidden-content") }} for keeping `aria-expanded` in sync when find-in-page reveals the content.
 
-Use the `hidden` attribute in the `until-found` state to make the contents of an accordion item findable using a browser’s find-in-page feature. Listen for the `beforematch` event to update the accordion trigger accordingly and, if the accordion item is within a mutually exclusive set, to collapse other accordion items that are expanded.
-
-```javascript
-document.addEventListener("beforematch", event => {
-	const trigger = document.querySelector(`[commandfor="${CSS.escape(event.target.id)}"][command="--toggle"]`);
-	if (!trigger) return;
-
-	trigger.setAttribute("aria-expanded", true);
-}, { capture: true });
-```
-
-### Adding expand all and collapse all buttons to a custom accordion
-
-### Making the custom accordion mutually exclusive
-
-### Excluding an accordion item’s contents from find-in-page
-
-If it’s undesirable for an accordion item’s contents to be included in what’s matched with the browser’s find-in-page feature, use the `hidden` attribute in the `hidden` state (`hidden` with no value) instead of the `until-found` state.
+{#
+A custom `<h#><button aria-expanded>` + `hidden="until-found"` approach was removed:
+- "Headings inside `summary` are obscured": the HTML content model explicitly permits heading content in `summary`, and every current browser keeps the heading in its accessibility tree (verified 2026-11 via the macOS accessibility API for Safari 26 and Firefox 159, and Chrome's engine tree; Safari was the last to fix it, in 26.6, per TetraLogical's compatibility notes of 2026-10-10: https://tetralogical.com/resources/accessible-components-library/compatibility/). Only JAWS (https://github.com/FreedomScientific/VFO-standards-support/issues/105, closed unfixed 2023-08) and TalkBack still drop it. That is a fallback-section caveat, not a reason to drop the native element.
+- "Essential content such as site nav needs the custom approach": the actual objections to `details` for navigation (Roselli: https://adrianroselli.com/2019/04/details-summary-are-not-insert-control-here.html, O'Hara: https://www.scottohara.me/blog/2022/09/12/details-summary.html) are find-in-page auto-expansion, which `::details-content { display: none }` handles, and the HTML spec's rule that menu/tab widgets are not disclosure widgets, which applies equally to the custom pattern. Modern browser/AT pairings all announce the expanded/collapsed state. The guide's own example was a `details` accordion inside `nav`.
+The custom path also loses no-JS operation, native `name` exclusivity, native find-in-page reveal, and `::details-content` animation. It survives only as the fallback for the JAWS/TalkBack heading case below.
+#}
