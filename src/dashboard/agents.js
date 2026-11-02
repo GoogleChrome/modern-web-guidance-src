@@ -22,6 +22,7 @@ export const AGENTS = {
     antigravity_cli: { label: 'Antigravity CLI', badge: 'gemini' },
     jetski_cli: { label: 'Jetski CLI', badge: 'gemini' },
     gemini_cli: { label: 'Gemini CLI', badge: 'gemini' },
+    pi: { label: 'Pi CLI' },
 };
 
 /**

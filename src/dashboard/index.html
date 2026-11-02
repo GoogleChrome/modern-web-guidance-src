@@ -182,40 +182,12 @@
             <p class="browse-subtitle">Individual evaluation suites, newest first. Select a run for per-task diffs and logs.</p>
           </div>
           <div class="browse-controls">
-            <div class="filter-container-nav">
-              <div class="filter-runs-control">
-                <label for="filter-btn" class="filter-runs-label">
-                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 4h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1 0-1zm2 3.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1zm2 3.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1 0-1z"/></svg>
-                  Filter runs
-                </label>
-                <button id="filter-btn" class="secondary-btn filter-runs-trigger" type="button" popovertarget="filter-menu" aria-expanded="false" aria-controls="filter-menu">
-                  <span id="filter-btn-text">All selected</span>
-                  <svg class="filter-runs-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
-                  </svg>
-                </button>
-              </div>
-              <div id="filter-menu" class="filter-menu" popover>
-                <div class="filter-header">
-                  <span class="filter-header-title">Filter runs</span>
-                  <div class="filter-actions">
-                    <button id="select-all-btn" class="text-btn" type="button">All</button>
-                    <button id="deselect-all-btn" class="text-btn" type="button">None</button>
-                  </div>
-                </div>
-                <div class="filter-scheduled-row">
-                  <label class="toggle-label" for="scheduled-only-check">
-                    <input type="checkbox" id="scheduled-only-check" checked>
-                    Scheduled nightly/weekly runs only
-                  </label>
-                </div>
-                <div class="filter-search-wrap">
-                  <label for="filter-search" class="visually-hidden">Search runs</label>
-                  <input type="search" id="filter-search" class="filter-search" placeholder="Search runs…">
-                </div>
-                <div id="filter-list" class="filter-list"></div>
-              </div>
-            </div>
+            <label class="toggle-label" for="scheduled-only-check">
+              <input type="checkbox" id="scheduled-only-check" checked>
+              Scheduled runs only
+            </label>
+            <input type="search" id="filter-search" class="eval-filter-input" list="runs-filter-datalist" placeholder="Filter runs by ID, model, or agent…" autocomplete="off" aria-label="Filter runs by ID, model, or agent">
+            <datalist id="runs-filter-datalist"></datalist>
           </div>
         </div>
         <div class="mobile-suites-controls" aria-label="Sort and filter runs">

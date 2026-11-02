@@ -310,13 +310,11 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
     await page.locator('.sort-btn[data-sort="date"]').click();
     await expect(dateHeader).toHaveAttribute('aria-sort', 'ascending');
-    const filterBtnText = page.locator('#filter-btn-text');
-    await expect(filterBtnText).toHaveText('All selected (3)');
-    await page.locator('#filter-btn').click();
-    await page.locator('#deselect-all-btn').click();
-    await expect(filterBtnText).toHaveText('None selected');
-    await page.locator('#select-all-btn').click();
-    await page.locator('#filter-btn').click();
+    const filterSearch = page.locator('#filter-search');
+    await filterSearch.fill('claude');
+    await expect(suiteRows).toHaveCount(1);
+    await filterSearch.fill('');
+    await expect(suiteRows).toHaveCount(3);
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     await expect(page.locator('#breakdowns')).toHaveAttribute('open', '');
     await expect(page.locator('#insights-limit-input')).toHaveValue('5');

@@ -41,13 +41,15 @@ import { updateShowcaseFromSuites } from './showcase.js';
 /** @type {Record<string, LandingSuiteSummary>} */
 let allTestData = {};
 /** @type {Set<string>} */
-let selectedTestIds = new Set(); // Compound keys picked in the "Filter runs" menu
+let selectedTestIds = new Set();
 /** @type {SourceFilter} */
 let currentSourceFilter = 'all';
 /** @type {string} */
 let currentAgentFilter = 'all';
 /** @type {string} */
 let currentModelFilter = 'all';
+/** @type {string} */
+let currentSearchFilter = '';
 /** @type {boolean} */
 let scheduledOnly = true;
 /** @type {SuiteSortKey} */
@@ -101,8 +103,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         selectedTestIds = new Set(Object.keys(allTestData));
         applyTestsParam(params.get('tests'));
+        applySearchParam(params.get('q'));
 
-        renderFilterMenuItems();
         renderSuites();
         syncHero();
         applyGuidesHash(window.location.hash, true);
@@ -118,7 +120,7 @@ window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
     selectedTestIds = new Set(Object.keys(allTestData));
     applyTestsParam(params.get('tests'));
-    renderFilterMenuItems();
+    applySearchParam(params.get('q'));
     renderSuites();
     applyGuidesHash(window.location.hash, false);
 });
@@ -135,50 +137,24 @@ function applyTestsParam(testsParam) {
     if (matchIds.size > 0) { selectedTestIds = matchIds; }
 }
 
-function setupTestFilters() {
-    const filterBtn = document.getElementById('filter-btn');
-    const filterMenu = document.getElementById('filter-menu');
-    const selectAllBtn = document.getElementById('select-all-btn');
-    const deselectAllBtn = document.getElementById('deselect-all-btn');
-    const list = document.getElementById('filter-list');
+/** @param {string | null} qParam */
+function applySearchParam(qParam) {
+    currentSearchFilter = (qParam || '').trim().toLowerCase();
     const searchInput = document.getElementById('filter-search');
-    if (!filterBtn || !filterMenu || !list) return;
-    filterMenu.addEventListener('toggle', (e) => {
-        const isOpen = /** @type {ToggleEvent} */ (e).newState === 'open';
-        filterBtn.setAttribute('aria-expanded', String(isOpen));
-        if (isOpen && searchInput instanceof HTMLInputElement) {
-            searchInput.focus();
-        }
-    });
+    if (searchInput instanceof HTMLInputElement) {
+        searchInput.value = qParam ? qParam.trim() : '';
+    }
+}
 
-    selectAllBtn?.addEventListener('click', () => {
-        selectedTestIds = new Set(Object.keys(allTestData));
+function setupTestFilters() {
+    const searchInput = document.getElementById('filter-search');
+    if (!(searchInput instanceof HTMLInputElement)) return;
+    searchInput.addEventListener('input', () => {
+        currentSearchFilter = searchInput.value.trim().toLowerCase();
+        showAllStacked = false;
         updateUrlParams();
-        renderFilterMenuItems();
         renderSuites();
     });
-
-    deselectAllBtn?.addEventListener('click', () => {
-        selectedTestIds.clear();
-        updateUrlParams();
-        renderFilterMenuItems();
-        renderSuites();
-    });
-
-    searchInput?.addEventListener('input', (e) => {
-        const target = e.target;
-        if (!(target instanceof HTMLInputElement)) return;
-        const term = target.value.toLowerCase();
-        list.querySelectorAll('.filter-item').forEach(item => {
-            if (item instanceof HTMLElement) {
-                const labelEl = item.querySelector('.filter-item-label');
-                const label = labelEl ? (labelEl.textContent || '').toLowerCase() : '';
-                item.hidden = !label.includes(term);
-            }
-        });
-    });
-
-    renderFilterMenuItems();
 }
 
 function setupTableFilters() {
@@ -390,71 +366,6 @@ function syncSelectStyles(el) {
     el.classList.toggle('is-filtered', el.value !== 'all');
 }
 
-function renderFilterMenuItems() {
-    const list = document.getElementById('filter-list');
-    if (!list) return;
-    list.innerHTML = '';
-
-    const sortedIds = Object.keys(allTestData).sort((a, b) => {
-        return getSuiteDate(allTestData[b]).getTime() - getSuiteDate(allTestData[a]).getTime();
-    });
-
-    sortedIds.forEach(compoundKey => {
-        const testInfo = allTestData[compoundKey];
-        const item = document.createElement('label');
-        item.className = 'filter-item';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = selectedTestIds.has(compoundKey);
-        checkbox.value = compoundKey;
-        checkbox.addEventListener('change', () => {
-            if (checkbox.checked) { selectedTestIds.add(compoundKey); } else {
-                selectedTestIds.delete(compoundKey);
-            }
-            updateFilterButtonLabel();
-            updateUrlParams();
-            renderSuites();
-        });
-
-        const labelContent = document.createElement('div');
-        labelContent.className = 'filter-item-label';
-
-        const idSpan = document.createElement('span');
-        idSpan.textContent = testInfo.testId.replace('test_', '') + ` (${testInfo.source})`;
-
-        const dateSpan = document.createElement('span');
-        dateSpan.className = 'filter-item-date';
-        dateSpan.textContent = formatSuiteDateTime(getSuiteDateInfo(testInfo));
-
-        labelContent.append(idSpan, dateSpan);
-        item.append(checkbox, labelContent);
-        list.appendChild(item);
-    });
-    updateFilterButtonLabel();
-}
-function updateFilterButtonLabel() {
-    const btnText = document.getElementById('filter-btn-text');
-    const btn = document.getElementById('filter-btn');
-    if (!btnText || !btn) return;
-    const allIds = Object.keys(allTestData);
-    const total = allIds.length;
-    const selected = Array.from(selectedTestIds).filter(id => allTestData[id]);
-    const count = selected.length;
-    if (total === 0 || count === total) {
-        btnText.textContent = total > 0 ? `All selected (${total})` : 'All selected';
-        btn.classList.remove('is-filtered');
-    } else if (count === 0) { btnText.textContent = 'None selected'; btn.classList.add('is-filtered'); } else {
-        const selectedNames = selected.map(id => { const t = allTestData[id]; return t ? t.testId.replace('test_', '') : id; });
-        if (count === 1) { btnText.textContent = selectedNames[0]; } else if (count === 2) {
-            btnText.textContent = `${selectedNames[0]}, ${selectedNames[1]}`;
-        } else {
-            btnText.textContent = `${count} selected (${selectedNames[0]}, +${count - 1} more)`;
-        }
-        btn.classList.add('is-filtered');
-    }
-}
-
 function updateUrlParams() {
     const url = new URL(window.location.href);
     const allIds = Object.keys(allTestData);
@@ -462,6 +373,11 @@ function updateUrlParams() {
         url.searchParams.delete('tests');
     } else {
         url.searchParams.set('tests', Array.from(selectedTestIds).join(','));
+    }
+    if (currentSearchFilter) {
+        url.searchParams.set('q', currentSearchFilter);
+    } else {
+        url.searchParams.delete('q');
     }
     window.history.replaceState({}, '', url);
 }
@@ -607,7 +523,7 @@ async function loadRemoteTests() {
         } else {
             applyTestsParam(initialTests);
         }
-        renderFilterMenuItems();
+        applySearchParam(params.get('q'));
         renderSuites();
         syncHero();
 
@@ -651,6 +567,33 @@ function refreshFilterOptions() {
     updateFilterOptions('filter-agent-group', 'agent', agentDisplayNames);
     updateFilterOptions('mobile-filter-agent-group', 'agent', agentDisplayNames);
     updateSourceFilterOptions();
+    updateRunsFilterDatalist();
+}
+
+function updateRunsFilterDatalist() {
+    const datalist = document.getElementById('runs-filter-datalist');
+    if (!datalist) return;
+    /** @type {Map<string, { count: number, label: string }>} */
+    const suggestions = new Map();
+    for (const t of Object.values(allTestData)) {
+        if (t.model && t.model !== 'unknown') {
+            const prev = suggestions.get(t.model);
+            suggestions.set(t.model, { count: (prev?.count || 0) + 1, label: '' });
+        }
+        if (t.agent && t.agent !== 'unknown') {
+            const prev = suggestions.get(t.agent);
+            const display = agentDisplayNames[t.agent] || t.agent;
+            suggestions.set(t.agent, { count: (prev?.count || 0) + 1, label: display !== t.agent ? display : '' });
+        }
+    }
+    datalist.innerHTML = Array.from(suggestions.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([val, { count, label }]) => {
+            const countText = `${count} ${count === 1 ? 'run' : 'runs'}`;
+            const optionLabel = label ? `${label} · ${countText}` : countText;
+            return `<option value="${escapeHtml(val)}" label="${escapeHtml(optionLabel)}"></option>`;
+        })
+        .join('');
 }
 
 function updateSourceFilterOptions() {
@@ -694,10 +637,6 @@ function getSuiteDateInfo(testInfo) { return parseSuiteDateInfo(testInfo.timesta
 /** @param {LandingSuiteSummary} testInfo
  * @returns {Date} */
 function getSuiteDate(testInfo) { return getSuiteDateInfo(testInfo).date; }
-/** @param {import('./utils.js').SuiteDateInfo} dateInfo */
-function formatSuiteDateTime(dateInfo) {
-    return formatSuiteDate(dateInfo, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
-}
 
 /** @param {{ passed: number, total: number } | undefined} stats */
 function toRateExact(stats) { return stats && stats.total > 0 ? (stats.passed / stats.total) * 100 : 0; }
@@ -726,14 +665,23 @@ function a11yPair(a11y) {
     };
 }
 
-/** @returns {string[]} */
-function getFilteredKeys() {
+/**
+ * @param {{ ignoreModelFilter?: boolean }} [options]
+ * @returns {string[]}
+ */
+function getFilteredKeys({ ignoreModelFilter = false } = {}) {
     return Array.from(selectedTestIds).filter(compoundKey => {
         const t = allTestData[compoundKey];
         if (!t) return false;
         if (currentSourceFilter !== 'all' && t.source !== currentSourceFilter) return false;
         if (currentAgentFilter !== 'all' && t.agent !== currentAgentFilter) return false;
-        if (currentModelFilter !== 'all' && t.model !== currentModelFilter) return false;
+        if (!ignoreModelFilter && currentModelFilter !== 'all' && t.model !== currentModelFilter) return false;
+        if (currentSearchFilter) {
+            const { label, ldap } = formatSuiteLabel(t);
+            const agentDisplay = agentDisplayNames[t.agent] || t.agent || '';
+            const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap}`.toLowerCase();
+            if (!haystack.includes(currentSearchFilter)) return false;
+        }
         return true;
     });
 }
@@ -742,7 +690,7 @@ function getFilteredKeys() {
 function getVisibleKeys() {
     const filtered = getFilteredKeys();
     const anyScheduled = filtered.some(k => isScheduledSuite(allTestData[k].testId));
-    const keys = (scheduledOnly && anyScheduled)
+    const keys = (scheduledOnly && !currentSearchFilter && anyScheduled)
         ? filtered.filter(k => isScheduledSuite(allTestData[k].testId))
         : filtered;
     return sortSuiteKeys(keys);
@@ -1075,14 +1023,6 @@ function setupBarbellTooltip() {
 }
 function setupAnchorPositioningFallback() {
     if (SUPPORTS_ANCHOR_POSITIONING) return;
-    const filterMenu = document.getElementById('filter-menu');
-    const filterBtn = document.getElementById('filter-btn');
-    const placeFilterMenu = () => { if (filterMenu && filterBtn && isPopoverOpen(filterMenu)) placePopoverFallback(filterMenu, filterBtn, { align: 'end', gap: 8, fallbackHeight: 175 }); };
-    filterMenu?.addEventListener('beforetoggle', (e) => {
-        if (/** @type {ToggleEvent} */ (e).newState === 'open') requestAnimationFrame(placeFilterMenu);
-    });
-    filterMenu?.addEventListener('toggle', placeFilterMenu);
-    window.addEventListener('resize', placeFilterMenu, { passive: true });
     document.addEventListener('toggle', (e) => {
         const hint = e.target;
         if (!(hint instanceof HTMLElement) || !hint.classList.contains('hint-popover')) return;
@@ -1090,8 +1030,7 @@ function setupAnchorPositioningFallback() {
         const trigger = document.querySelector(`[interestfor="${CSS.escape(hint.id)}"]`);
         if (trigger) placePopoverFallback(hint, trigger, { align: hint.id.startsWith('hint-sort-uplift-') ? 'end' : 'start', fallbackHeight: 175 });
     }, true);
-    document.addEventListener('scroll', (e) => {
-        if (!(e.target instanceof Node && filterMenu?.contains(e.target))) placeFilterMenu();
+    document.addEventListener('scroll', () => {
         document.querySelectorAll('#barbell-tooltip, .hint-popover').forEach(el => { if (el instanceof HTMLElement) setPopoverOpen(el, false); });
     }, { capture: true, passive: true });
 }
@@ -1170,13 +1109,19 @@ function hideBarbellTooltip() {
     if (tooltip) setPopoverOpen(tooltip, false);
 }
 
-/** @returns {string[]} */
-function getInsightKeys() {
-    let keys = getVisibleKeys();
+/** @returns {{ showAll: boolean, limit: number }} */
+function getInsightWindowOptions() {
     const limitInput = document.getElementById('insights-limit-input');
     const showAllCheck = document.getElementById('insights-show-all-check');
     const showAll = showAllCheck instanceof HTMLInputElement ? showAllCheck.checked : false;
     const limit = limitInput instanceof HTMLInputElement ? (parseInt(limitInput.value) || 5) : 5;
+    return { showAll, limit };
+}
+
+/** @returns {string[]} */
+function getInsightKeys() {
+    let keys = getVisibleKeys();
+    const { showAll, limit } = getInsightWindowOptions();
     if (!showAll && keys.length > 0) {
         const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDateInfo(allTestData[k]));
         const sortedDates = [...new Set(keys.map(dayOf))].sort((a, b) => a.localeCompare(b));
@@ -1185,12 +1130,87 @@ function getInsightKeys() {
     }
     return keys;
 }
+
+/**
+ * Returns compound keys for the "By Model" breakdown. Unlike `getInsightKeys()`,
+ * this includes models that only have non-scheduled runs (such as `pi` evaluations
+ * on Mistral or Qwen) and applies the `limit` day window per model so models
+ * evaluated on earlier dates remain visible.
+ * @returns {string[]}
+ */
+function getModelInsightKeys() {
+    const candidates = getFilteredKeys({ ignoreModelFilter: true });
+    const { showAll, limit } = getInsightWindowOptions();
+    const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDateInfo(allTestData[k]));
+    /** @type {Map<string, string[]>} */
+    const byModel = new Map();
+    for (const k of candidates) {
+        const m = allTestData[k]?.model;
+        if (!m || m === 'unknown') continue;
+        let list = byModel.get(m);
+        if (!list) {
+            list = [];
+            byModel.set(m, list);
+        }
+        list.push(k);
+    }
+    /** @type {string[]} */
+    const result = [];
+    for (const modelKeys of byModel.values()) {
+        const anyScheduled = modelKeys.some(k => isScheduledSuite(allTestData[k].testId));
+        let scoped = (scheduledOnly && !currentSearchFilter && anyScheduled)
+            ? modelKeys.filter(k => isScheduledSuite(allTestData[k].testId))
+            : modelKeys;
+        if (!showAll && scoped.length > 0) {
+            const sortedDates = [...new Set(scoped.map(dayOf))].sort((a, b) => a.localeCompare(b));
+            const activeDates = new Set(sortedDates.slice(-limit));
+            scoped = scoped.filter(k => activeDates.has(dayOf(k)));
+        }
+        result.push(...scoped);
+    }
+    return result;
+}
 /** @typedef {{ uplift: number, uRate: number, gRate: number, uErr?: number, gErr?: number, rtDeltaPct?: number | null, tokDeltaPct?: number | null, description?: string }} PivotItem */
 /** @typedef {'alpha' | 'uplift-desc' | 'uplift-asc'} PanelSortMode */
 /** @type {Record<'model' | 'dimension', PanelSortMode>} */
 const currentPanelSorts = { model: 'alpha', dimension: 'uplift-desc' };
 /** @type {Record<'model' | 'dimension' | 'guide', boolean>} */
 const expandedPanels = { model: false, dimension: false, guide: false };
+
+/**
+ * @param {LandingSuiteSummary} testInfo
+ * @param {boolean} onlyA11y
+ * @returns {PivotItem | null}
+ */
+function buildModelPivotItem(testInfo, onlyA11y) {
+    const rt = testInfo.efficiencyStats?.runtime;
+    const rtDeltaPct = (rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0)) ? rt.medianDeltaPct : null;
+    const tok = testInfo.efficiencyStats?.tokens;
+    const tokDeltaPct = (tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0)) ? tok.uncachedMedianDeltaPct : null;
+    const earlyFailureRate = testInfo.earlyFailureRate || 0;
+    const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
+    const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
+    if (onlyA11y) {
+        const pair = a11yPair(testInfo.a11yStats);
+        const pairUplift = pair ? upliftPp(pair.u, pair.g) : null;
+        if (pair && pairUplift !== null) {
+            return { uplift: pairUplift, uRate: toRate(pair.u), gRate: toRate(pair.g), uErr, gErr, rtDeltaPct, tokDeltaPct };
+        }
+        return null;
+    }
+    if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
+        return {
+            uplift: Math.round(toRateExact(testInfo.guidedStats) - toRateExact(testInfo.unguidedStats)),
+            uRate: toRate(testInfo.unguidedStats),
+            gRate: toRate(testInfo.guidedStats),
+            uErr,
+            gErr,
+            rtDeltaPct,
+            tokDeltaPct
+        };
+    }
+    return null;
+}
 
 function renderPivotInsights() {
     const container = document.getElementById('insights-container');
@@ -1202,28 +1222,22 @@ function renderPivotInsights() {
         if (el instanceof HTMLElement && el.dataset.scrollSection) { savedScrollPositions[el.dataset.scrollSection] = el.scrollTop; }
     });
     const keys = getInsightKeys();
+    const modelKeys = getModelInsightKeys();
     const onlyA11y = currentInsightsMode === 'a11y';
     /** @type {{ model: Record<string, PivotItem[]>, guide: Record<string, PivotItem[]>, dimension: Record<string, PivotItem[]> }} */
     const grouped = { model: {}, guide: {}, dimension: {} };
+    modelKeys.forEach(compoundKey => {
+        const testInfo = allTestData[compoundKey];
+        if (!testInfo || !testInfo.model) return;
+        const item = buildModelPivotItem(testInfo, onlyA11y);
+        if (item) {
+            (grouped.model[testInfo.model] ||= []).push(item);
+        }
+    });
     keys.forEach(compoundKey => {
         const testInfo = allTestData[compoundKey];
         if (!testInfo) return;
-        const rt = testInfo.efficiencyStats?.runtime;
-        const rtDeltaPct = (rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0)) ? rt.medianDeltaPct : null;
-        const tok = testInfo.efficiencyStats?.tokens;
-        const tokDeltaPct = (tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0)) ? tok.uncachedMedianDeltaPct : null;
-        const earlyFailureRate = testInfo.earlyFailureRate || 0;
-        const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
-        const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
-
-        /** @type {PivotItem | null} */
-        let item = null;
         if (onlyA11y) {
-            const pair = a11yPair(testInfo.a11yStats);
-            const pairUplift = pair ? upliftPp(pair.u, pair.g) : null;
-            if (pair && pairUplift !== null) {
-                item = { uplift: pairUplift, uRate: toRate(pair.u), gRate: toRate(pair.g), uErr, gErr, rtDeltaPct, tokDeltaPct };
-            }
             const bySub = testInfo.a11yStats?.bySubCategory;
             if (bySub) {
                 A11Y_SUBCATEGORIES.forEach(sub => {
@@ -1241,19 +1255,6 @@ function renderPivotInsights() {
                     });
                 });
             }
-        } else if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
-            item = {
-                uplift: Math.round(toRateExact(testInfo.guidedStats) - toRateExact(testInfo.unguidedStats)),
-                uRate: toRate(testInfo.unguidedStats),
-                gRate: toRate(testInfo.guidedStats),
-                uErr,
-                gErr,
-                rtDeltaPct,
-                tokDeltaPct
-            };
-        }
-        if (item && testInfo.model) {
-            (grouped.model[testInfo.model] ||= []).push(item);
         }
 
         const suiteGuides = testInfo.guides || {};
