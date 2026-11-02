@@ -302,8 +302,13 @@
       /* Lists: the real ::marker plus a bar per item. The marker sits inside the
          li box so overflow: hidden does not clip it; it takes the flat tone
          (a marker cannot take the shimmer), and the bar starts after it. */
+      .skeleton[aria-busy="true"] :is(ul, ol) {
+        padding-inline-start: 0; /* The bar's paren start offset supplies an indent */
+      }
+
       .skeleton[aria-busy="true"] li {
         list-style-position: inside;
+        margin-inline-start: 0; /* The bar's start offset supplies the indent */
         --text-start: 1.25em; /* Same indent as the real list, so bars start where the real text does */
         --line-one: 72%;
         --bars: shape(from 0 0, --bar(0, var(--line-one), var(--text-start)));

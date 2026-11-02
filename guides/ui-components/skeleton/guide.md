@@ -147,9 +147,13 @@ Set the shape on `--bars` and read it with `border-shape: var(--bars)`. Do not c
 
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
-Keep the real `::marker` for the bullet. Set `list-style-position: inside` so the `overflow: hidden` above does not clip it, and give it the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Keep the list's own padding so the box matches the real list, then start the bar at the real list's indent. This applies to numbered lists too.
+Keep the real `::marker` for the bullet. Set `list-style-position: inside` so the `overflow: hidden` above does not clip it, and give it the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Remove the list's own padding while loading and start the bar at the real list's indent instead, so the indent is applied once. This applies to numbered lists too.
 
 ```css
+.skeleton[aria-busy="true"] :is(ul, ol) {
+  padding-inline-start: 0; /* The bar's start offset supplies the indent */
+}
+
 .skeleton[aria-busy="true"] li {
   list-style-position: inside;
   --text-start: 1.25em; /* Same indent as the real list, so the text does not shift */
