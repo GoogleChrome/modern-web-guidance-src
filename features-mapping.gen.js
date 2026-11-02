@@ -761,7 +761,8 @@ window.__featuresMapping = {
     "transition-behavior",
     "starting-style",
     "details-name",
-    "details"
+    "details",
+    "invoker-commands"
   ],
   "breadcrumbs": [
     "border-shape",

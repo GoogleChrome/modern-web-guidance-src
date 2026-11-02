@@ -2689,6 +2689,27 @@
       ]
     },
     {
+      "id": "accordion",
+      "category": "ui-components",
+      "title": "Accordion",
+      "description": "Build an accordion component with animation, optional exclusive (one-open-at-a-time) behavior, and brand-consistent styling.",
+      "features": [
+        "hidden-until-found",
+        "interpolate-size",
+        "transition-behavior",
+        "starting-style",
+        "details-name",
+        "details",
+        "invoker-commands"
+      ],
+      "demos": [
+        {
+          "id": "demo",
+          "path": "guides/ui-components/accordion/demo.html"
+        }
+      ]
+    },
+    {
       "id": "card",
       "category": "ui-components",
       "title": "Build a Card",
