@@ -6,6 +6,7 @@ import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/path
 import { setupGuideDevWorkDir, runAgent } from '../harness/lib/utils.ts';
 import { buildDevReportPrompt, buildApplyReviewFeedbackPrompt } from './dev-prompts.ts';
 import { testGrader } from '../grading/run-grader.ts';
+import { extractManifestEntries, type ManifestExpectationEntry } from '../core/grader-coverage.ts';
 
 export type DevReportFlag =
   | 'CALIBRATION_FAILED'
@@ -254,6 +255,22 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 }
 
 /**
+ * Returns 1-based expectation numbers that are SKIPPED in `after` and were not already SKIPPED in `before`.
+ */
+export function findTestedToSkippedExpectations(
+  before: ReadonlyMap<number, ManifestExpectationEntry>,
+  after: ReadonlyMap<number, ManifestExpectationEntry>
+): number[] {
+  const flipped: number[] = [];
+  for (const [num, afterEntry] of after.entries()) {
+    if (afterEntry.status === 'SKIPPED' && before.get(num)?.status !== 'SKIPPED') {
+      flipped.push(num);
+    }
+  }
+  return flipped.sort((a, b) => a - b);
+}
+
+/**
  * Runs the agent-driven evaluation report generation phase across all targets for a guide.
  */
 export async function runDevReport(
@@ -291,10 +308,12 @@ export async function runDevReport(
   const agent = getDefaultSolutionAgent();
   const { workDir, tempHome } = setupGuideDevWorkDir('report');
   const initialGraders = new Map<string, string>();
+  const initialManifests = new Map<string, Map<number, ManifestExpectationEntry>>();
   for (const s of summaries) {
     const graderPath = path.join(targetDir, TARGETS_DIR, s.baseApp, GRADER_FILE);
     if (fs.existsSync(graderPath)) {
       initialGraders.set(s.baseApp, fs.readFileSync(graderPath, 'utf8'));
+      initialManifests.set(s.baseApp, extractManifestEntries(graderPath));
     }
   }
 
@@ -355,6 +374,19 @@ export async function runDevReport(
         const originalContent = initialGraders.get(s.baseApp);
         const newContent = fs.readFileSync(graderPath, 'utf8');
         if (originalContent && originalContent !== newContent) {
+          const beforeManifest = initialManifests.get(s.baseApp) ?? new Map();
+          const afterManifest = extractManifestEntries(graderPath);
+          const flippedToSkipped = findTestedToSkippedExpectations(beforeManifest, afterManifest);
+          if (flippedToSkipped.length > 0) {
+            const listStr = flippedToSkipped.map(n => `Expectation ${n}`).join(', ');
+            console.warn(cRed(`⚠️  Modified ${s.baseApp} grader changed ${listStr} from TESTED to SKIPPED. Reverting grader.ts changes.`));
+            fs.writeFileSync(graderPath, originalContent);
+            if (fs.existsSync(finalReportPath)) {
+              const revertWarning = `\n\n> [!WARNING]\n> **Grader Modification Reverted**: The report agent's proposed adjustments to \`targets/${s.baseApp}/${GRADER_FILE}\` changed ${listStr} from \`TESTED\` to \`SKIPPED\` and were automatically reverted on disk.\n`;
+              fs.appendFileSync(finalReportPath, revertWarning);
+            }
+            continue;
+          }
           console.log(cCyan(`\nValidating calibration for modified ${s.baseApp} grader...`));
           const calib = await testGrader(path.join(targetDir, TARGETS_DIR, s.baseApp));
           if (!calib.success) {
