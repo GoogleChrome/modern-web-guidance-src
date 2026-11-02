@@ -95,7 +95,7 @@ Text, standalone links and list items share one rule that hides the content and 
 /* One rounded bar. --i is the line index, --end is where the bar ends, --start offsets it.
    Reads --bar-height, --bar-gap and --bar-radius from the element it is used on. */
 @function --bar(--i <number>, --end <length-percentage>, --start <length>: 0px) {
-  --y: calc(var(--i) * (var(--bar-height) + var(--bar-gap)));
+  --y: calc(var(--i) * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2);
   result: move to calc(var(--start) + var(--bar-radius)) var(--y),
     hline to calc(var(--end) - var(--bar-radius)),
     arc to var(--end) calc(var(--y) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
