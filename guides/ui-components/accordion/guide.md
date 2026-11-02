@@ -111,6 +111,19 @@ document.addEventListener("toggle", event => {
 }, { capture: true });
 ```
 
+Keep the disabled `summary` focusable so focus is not lost when the item a user just opened becomes disabled, but exclude it from hover and pointer styles so it does not look clickable:
+
+```css
+/* :where() keeps the guard from raising specificity */
+summary:where(:not([aria-disabled="true"])) {
+	cursor: pointer;
+
+	&:hover {
+		background: var(--color-hover);
+	}
+}
+```
+
 ## Optional: Expand all and Collapse all buttons
 
 For non-exclusive accordions, Expand all and Collapse all buttons can improve user experience.
@@ -143,7 +156,7 @@ The disclosed content lives in the `::details-content` pseudo-element. While clo
 
 ### Customizing the marker
 
-`summary` renders as a list item, so its disclosure triangle is a `::marker`. Remove it with `list-style: none` and draw your own with `::before`, which unlike `::marker` can be sized, positioned, and animated.
+`summary` renders as a list item, so its disclosure triangle is a `::marker`. Remove it with `list-style: none` and draw your own with `::after`, which unlike `::marker` can be sized, positioned, and animated.
 Render the icon as a mask so it follows the text color, and rotate it for the closed state so one icon serves both states and both writing directions.
 See {{ GUIDE_REF("icons") }} for more details on including and customizing icons via CSS.
 
@@ -153,12 +166,14 @@ summary {
 	list-style: none;
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: 0.5ch;
 
-	&::before {
+	&::after {
 		content: "";
 		inline-size: 1em;
 		block-size: 1em;
+		flex-shrink: 0;
 		background-color: currentColor;
 		/* Example chevron pointing down, the open state; any single-color SVG works */
 		mask: url("icons/chevron-down.svg") no-repeat center / contain;
@@ -166,17 +181,17 @@ summary {
 		rotate: -90deg;
 	}
 
-	&:dir(rtl)::before {
+	&:dir(rtl)::after {
 		rotate: 90deg;
 	}
 
 	/* Rotate rather than swap icons, so the change can animate */
-	details[open] > &::before {
+	details[open] > &::after {
 		rotate: 0deg;
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
-		&::before {
+		&::after {
 			transition: rotate 0.2s;
 		}
 	}

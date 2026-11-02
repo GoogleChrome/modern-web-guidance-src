@@ -6,68 +6,144 @@
 <title>Accordion</title>
 <style>
 	:root {
+		--color-text: light-dark(oklch(25% 0.02 255), oklch(93% 0.01 255));
+		--color-text-muted: light-dark(oklch(48% 0.02 255), oklch(72% 0.015 255));
+		--color-surface: light-dark(oklch(100% 0 0), oklch(21% 0.012 255));
+		--color-page: light-dark(oklch(98% 0.004 255), oklch(17% 0.01 255));
+		--color-border: light-dark(oklch(91% 0.008 255), oklch(32% 0.015 255));
+		--color-hover: light-dark(oklch(97% 0.006 255), oklch(25% 0.014 255));
+		--color-focus: light-dark(oklch(55% 0.18 255), oklch(72% 0.14 255));
+
 		font-family: system-ui;
+		line-height: 1.5;
+		color: var(--color-text);
+		background: var(--color-page);
 	}
 
-	details {
-		--accordion-border-radius: 0.5rem;
-		--accordion-margin-block: 1rem;
-		--accordion-item-trigger-padding-block: 0.5rem;
-		--accordion-item-content-padding: 1rem;
-		border: 2px solid light-dark(Black, White);
+	body {
+		max-inline-size: 40rem;
+		margin-inline: auto;
+		padding: 2rem 1rem 4rem;
 	}
 
-	details:first-of-type {
-		margin-block-start: var(--accordion-margin-block);
-		border-start-start-radius: var(--accordion-border-radius);
-		border-start-end-radius: var(--accordion-border-radius);
+	h2 {
+		margin-block: 3rem 1rem;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-text-muted);
 	}
 
-	details:last-of-type {
-		margin-block-end: var(--accordion-margin-block);
-		border-end-start-radius: var(--accordion-border-radius);
-		border-end-end-radius: var(--accordion-border-radius);
+	h3 {
+		margin-block: 0 0.75rem;
+		font-size: 1.25rem;
+		font-weight: 600;
 	}
 
-	details + details {
-		border-block-start-width: 0;
+	button {
+		font: inherit;
+		font-size: 0.875rem;
+		padding: 0.375rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.5rem;
+		color: inherit;
+		background: var(--color-surface);
+		cursor: pointer;
+
+		&:hover {
+			background: var(--color-hover);
+		}
+
+		& + & {
+			margin-inline-start: 0.25rem;
+		}
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--color-focus);
+		outline-offset: 2px;
+	}
+
+	.accordion > details {
+		--accordion-radius: 0.75rem;
+		--accordion-padding: 1rem;
+
+		border: 1px solid var(--color-border);
+		background: var(--color-surface);
+		/* Clips the hover background to the rounded corners */
+		overflow: clip;
+
+		&:first-of-type {
+			margin-block-start: 0.75rem;
+			border-start-start-radius: var(--accordion-radius);
+			border-start-end-radius: var(--accordion-radius);
+		}
+
+		&:last-of-type {
+			border-end-start-radius: var(--accordion-radius);
+			border-end-end-radius: var(--accordion-radius);
+		}
+
+		& + details {
+			border-block-start: 0;
+		}
 	}
 
 	summary {
-		border-radius: inherit;
-		padding-inline-start: var(--accordion-item-content-padding);
-		padding-block: var(--accordion-item-trigger-padding-block);
+		padding: 0.875rem var(--accordion-padding);
+		font-weight: 500;
 		list-style: none;
 		display: flex;
 		align-items: center;
-		gap: 0.5ch;
+		justify-content: space-between;
+		gap: 1rem;
 
-		&::before {
+		&:where(:not([aria-disabled="true"])) {
+			cursor: pointer;
+
+			&:hover {
+				background: var(--color-hover);
+			}
+		}
+
+		&:focus-visible {
+			/* Inset, since the item clips anything outside it */
+			outline-offset: -2px;
+		}
+
+		&::after {
 			content: "";
 			inline-size: 1em;
 			block-size: 1em;
-			background-color: currentColor;
+			flex-shrink: 0;
+			background-color: var(--color-text-muted);
 			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat center / contain;
 			rotate: -90deg;
 		}
 
-		&:dir(rtl)::before {
+		&:dir(rtl)::after {
 			rotate: 90deg;
 		}
 
-		details[open] > &::before {
+		details[open] > &::after {
 			rotate: 0deg;
 		}
 
 		@media (prefers-reduced-motion: no-preference) {
-			&::before {
+			&::after {
 				transition: rotate 0.2s;
 			}
 		}
 	}
 
 	details::details-content {
-		padding-inline: var(--accordion-item-content-padding);
+		padding-inline: var(--accordion-padding);
+		color: var(--color-text-muted);
+	}
+
+	details > :not(summary) {
+		margin-block: 0 1rem;
 	}
 
 	@supports (interpolate-size: allow-keywords) {
