@@ -130,7 +130,7 @@ Also add a disabled style for options that are offline or unavailable, and dim t
 
 ```css
 .checkbox:disabled { cursor: not-allowed; opacity: 0.5; }
-label:has(:disabled) { cursor: not-allowed; }
+label:has(:disabled) { color: #8e9196; cursor: not-allowed; }
 ```
 
 DO NOT remove focus indicators from the checkboxes.
