@@ -173,6 +173,19 @@ Set `--lines` to the bar count (default `1`). `line-clamp` limits the real text 
 
 For more than one bar, call `--skeleton-bar()` once per bar with its index and end position. `shape()` cannot repeat a path from a count, so each call is written out. Bars are offset by `n × 1lh`, and `--lines` is the bar count so `min-block-size` reserves the total height.
 
+Bars reused across elements can be memoized once in the shared rule, named by index and end position, so each element only lists them. They resolve against each element's own `--bar-*` values.
+
+```css
+.skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+  --skeleton-bar-0: --skeleton-bar(0);
+  --skeleton-bar-1-92p: --skeleton-bar(1, 92%);
+}
+
+.skeleton[aria-busy="true"] p {
+  --bars: shape(from 0 0, var(--skeleton-bar-0), var(--skeleton-bar-1-92p), --skeleton-bar(2, 68%));
+}
+```
+
 | Element | Treatment |
 |---|---|
 | `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--skeleton-bar()` and set `--lines: 2` |
