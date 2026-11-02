@@ -147,12 +147,17 @@ Set the shape on `--bars` and read it with `border-shape: var(--bars)`. Do not c
 
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
-Keep the real `::marker` for the bullet. The shared `display: block` removes it, so set `display: list-item` with `list-style-position: outside`, and give the marker the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Leave the list's own padding alone: the outside marker sits in it and the bar starts at the item's edge, where the real text does, so the indent is applied once. Inside `border-shape` support, set `overflow: visible` so the marker is not clipped. This applies to numbered lists too.
+Keep the real `::marker` for the bullet. The shared `display: block` removes it, so set `display: list-item` with `list-style-position: outside`, and give the marker the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Zero the list's padding and the item's start margin while loading, so the bar starts at the list's edge. Inside `border-shape` support, set `overflow: visible` so the marker is not clipped. This applies to numbered lists too.
 
 ```css
+.skeleton[aria-busy="true"] :is(ul, ol) {
+  padding-inline-start: 0;
+}
+
 .skeleton[aria-busy="true"] li {
   display: list-item;
   list-style-position: outside;
+  margin-inline-start: 0;
   --line-one: 72%; /* Vary this per item */
   --bars: shape(from 0 0, --bar(0, var(--line-one)));
 }
@@ -176,7 +181,7 @@ For more than one bar, call `--bar()` once per bar with its index and end positi
 |---|---|
 | `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--bar()` and set `--lines: 2` |
 | `p` | 3 bars, last one shorter like a real paragraph. A paragraph that is one line in the real template (a byline or metadata row, for example `p:has(> time)`) gets 1 short bar and `--lines: 1`, so the card does not read as extra paragraphs |
-| `li` | 1 bar each, keeping the real `::marker` as the bullet; vary widths. Keep the list's padding and an outside marker so the text does not shift when content arrives |
+| `li` | 1 bar each, keeping the real `::marker` as the bullet; vary widths. Zero the list's padding and the item's start margin so the text does not shift when content arrives |
 | `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
 
 ## 4. Media and avatars
