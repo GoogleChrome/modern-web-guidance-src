@@ -504,6 +504,110 @@ test('ast-helpers: AST combinators and branch-aware feature guards', async (t) =
     assert.equal(isProtectedByFeatureGuard(findCall('legacyEarlyReturn'), ['showModal']), true);
   });
 
+  await t.test('isProtectedByFeatureGuard: compound && / || and window.CSS.supports guards', () => {
+    const source = project.createSourceFile(
+      'compoundGuards.ts',
+      `
+      function compoundAndNegative() {
+        if (typeof CSS !== 'undefined' && !CSS.supports('field-sizing', 'content')) {
+          legacyCall();
+        }
+      }
+
+      function compoundOrNegative() {
+        if (typeof CSS === 'undefined' || !CSS.supports('field-sizing', 'content')) {
+          legacyCall();
+        }
+      }
+
+      function compoundAndPositiveElse() {
+        if (typeof CSS !== 'undefined' && CSS.supports('field-sizing', 'content')) {
+          modernCall();
+        } else {
+          legacyCall();
+        }
+      }
+
+      function optionalChainingNegative() {
+        if (!window.CSS?.supports?.('field-sizing', 'content')) {
+          legacyCall();
+        }
+      }
+
+      function compoundAndPositiveThen() {
+        if (typeof CSS !== 'undefined' && CSS.supports('field-sizing', 'content')) {
+          legacyCall();
+        }
+      }
+
+      function windowCssSupports() {
+        if (!window.CSS.supports('field-sizing', 'content')) {
+          legacyCall();
+        }
+      }
+
+      function globalThisCssSupports() {
+        if (!globalThis.CSS.supports('field-sizing', 'content')) {
+          legacyCall();
+        }
+      }
+      `,
+      { overwrite: true },
+    );
+
+    const getFnCall = (fnName: string, callPrefix: string) => {
+      const fn = source.getFunction(fnName);
+      assert.ok(fn, `missing function ${fnName}`);
+      const node = fn.getDescendants().find((n) => n.getText().startsWith(callPrefix));
+      assert.ok(node, `missing call starting with ${callPrefix} in ${fnName}`);
+      return node;
+    };
+
+    // 1. typeof CSS !== 'undefined' && !CSS.supports('field-sizing', 'content') (protected in then branch)
+    assert.equal(
+      isProtectedByFeatureGuard(getFnCall('compoundAndNegative', 'legacyCall'), ['field-sizing']),
+      true,
+    );
+
+    // 2. typeof CSS === 'undefined' || !CSS.supports('field-sizing', 'content') (protected in then branch)
+    assert.equal(
+      isProtectedByFeatureGuard(getFnCall('compoundOrNegative', 'legacyCall'), ['field-sizing']),
+      true,
+    );
+
+    // 3. typeof CSS !== 'undefined' && CSS.supports('field-sizing', 'content') (protected in else branch)
+    assert.equal(
+      isProtectedByFeatureGuard(getFnCall('compoundAndPositiveElse', 'legacyCall'), ['field-sizing']),
+      true,
+    );
+    assert.equal(
+      isProtectedByFeatureGuard(getFnCall('compoundAndPositiveElse', 'modernCall'), ['field-sizing']),
+      false,
+    );
+
+    // 4. !window.CSS?.supports?.('field-sizing', 'content') (protected in then branch)
+    assert.equal(
+      isProtectedByFeatureGuard(getFnCall('optionalChainingNegative', 'legacyCall'), ['field-sizing']),
+      true,
+    );
+
+    // 5. Negative test: typeof CSS !== 'undefined' && CSS.supports('field-sizing', 'content') (NOT protected in then branch)
+    assert.equal(
+      isProtectedByFeatureGuard(getFnCall('compoundAndPositiveThen', 'legacyCall'), ['field-sizing']),
+      false,
+    );
+
+    // Extra: window.CSS.supports and globalThis.CSS.supports
+    assert.equal(
+      isProtectedByFeatureGuard(getFnCall('windowCssSupports', 'legacyCall'), ['field-sizing']),
+      true,
+    );
+    assert.equal(
+      isProtectedByFeatureGuard(getFnCall('globalThisCssSupports', 'legacyCall'), ['field-sizing']),
+      true,
+    );
+  });
+
   await t.test('isGlobalReference matches globals and window/globalThis/self prefixes, respecting shadowing', () => {
     const source = project.createSourceFile(
       'globalRef.ts',
