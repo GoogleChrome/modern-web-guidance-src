@@ -104,7 +104,7 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
 2. [ ] **Step 2: Execute Evals & Check Base App** - Ran `gd eval` to establish a baseline and confirmed the base app (`index.html`) contains the necessary structural elements to support the required implementation.
 3. [ ] **Step 3: Inspect Results & Verify Tool Activation** - Reviewed the pass rates in `evals.json` and confirmed that the agent successfully discovered and utilized the relevant reference guide.
 4. [ ] **Step 4: Validate Grader Tolerance (False Negatives)** - Confirmed via `gd dev --test-grader` that the grader successfully passes a correct implementation (`demo.html`) and accurately fails an incorrect one (`negative-demo.html`) without relying on overly rigid regular expressions.
-5. [ ] **Step 5: Validate Guidance Coverage (True Negatives)** - Verified that all success criteria evaluated by the grader are explicitly documented as `MANDATORY` requirements in `guide.md`.
+5. [ ] **Step 5: Validate Guidance Coverage (True Negatives)** - Verified that required vs. optional is unambiguous in `guide.md` for all success criteria evaluated by the grader (`MANDATORY:` is emphasis for critical constraints, not a tag every graded step needs).
 6. [ ] **Step 6: Trace the Trajectory** - Read the agent's local execution thought logs (`session-*.json`) to diagnose and resolve any search query mismatches or silent implementation rejections.
 7. [ ] **Step 7: Final Integrity Audit** - Conducted a strict final review against all skill best practices to confirm that the 100% Guided Pass Rate was earned honestly and completely.
 
@@ -157,7 +157,7 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
 
 ### Step 5: Validate Guidance Coverage (True Negatives)
 - If the generated output in `index.html` is genuinely incorrect or missing required features, the agent failed due to a **true negative**.
-- **Clarify Requirements (`guide.md`)**: Update the guide to explicitly highlight mandatory steps using strong keywords like `"MANDATORY:"` and provide concrete code examples.
+- **Clarify Requirements (`guide.md`)**: Make it unambiguous that the missed step is required (not an example or optional enhancement) and provide concrete code examples. Reserve `"MANDATORY:"` for critical constraints agents keep skipping; it is not a tag every graded step needs.
 - **Compare Guide vs Expectations**: Directly cross-reference `expectations.md` against `guide.md`. Make absolutely sure that every single grading criteria is explicitly documented in the guide, as agents cannot be expected to implement undocumented rules.
 - Map any other unexplainable trajectory behavior to the failure patterns listed in **Section 3**.
 

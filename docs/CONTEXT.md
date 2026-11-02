@@ -66,7 +66,7 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 | `expectations.md` | SME (human) | Natural-language bulleted list of assertions that must be true if the guidance is followed correctly. Used as input for grader and solution generation. |
 | `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`jetski-solution.patch`, `gemini-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`). Used for grader calibration. |
 | `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated to pass golden patches 100% and zero-passrate baseline 0%. |
-| `targets/<base_app>/task.md` | Generated (`gd dev`) | Task frontmatter (`base_app`) and developer prompt instructions fed to evaluation agents. |
+| `targets/<base_app>/task.md` | Generated (`gd dev`) | Single-bullet developer prompt instructions (no YAML frontmatter) fed to evaluation agents. |
 | `results/guides/<category>/<slug>/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
 
 ### Discipline guides
