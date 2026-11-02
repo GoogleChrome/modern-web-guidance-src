@@ -44,57 +44,32 @@ function isCallableScope(
   );
 }
 
-function getForLoopDeclarations(scope: Node): readonly VariableDeclaration[] {
-  if (
-    Node.isForStatement(scope) ||
-    Node.isForOfStatement(scope) ||
-    Node.isForInStatement(scope)
-  ) {
-    const init = scope.getInitializer();
-    if (init && Node.isVariableDeclarationList(init)) {
-      return init.getDeclarations();
-    }
-  }
-  return [];
-}
-
-function hasBindingName(node: Node, targetName: string): boolean {
-  if (
-    Node.isVariableDeclaration(node) ||
-    Node.isParameterDeclaration(node) ||
-    Node.isBindingElement(node)
-  ) {
-    return hasBindingName(node.getNameNode(), targetName);
-  }
-  if (Node.isIdentifier(node)) {
-    return node.getText() === targetName;
-  }
-  if (Node.isObjectBindingPattern(node) || Node.isArrayBindingPattern(node)) {
-    return node
-      .getElements()
-      .some((el) => Node.isBindingElement(el) && hasBindingName(el, targetName));
-  }
-  return false;
+function hasBindingName(decl: VariableDeclaration, name: string): boolean {
+  const nameNode = decl.getNameNode();
+  return Node.isIdentifier(nameNode)
+    ? nameNode.getText() === name
+    : nameNode
+        .getDescendantsOfKind(SyntaxKind.BindingElement)
+        .some((el) => Node.isIdentifier(el.getNameNode()) && el.getName() === name);
 }
 
 interface ResolvedImport {
   readonly declaration: ImportDeclaration;
   readonly importedName: string;
-  readonly isNamespace: boolean;
 }
 
 function findImportBinding(sourceFile: SourceFile, localName: string): ResolvedImport | null {
   for (const declaration of sourceFile.getImportDeclarations()) {
     if (declaration.getDefaultImport()?.getText() === localName) {
-      return { declaration, importedName: 'default', isNamespace: false };
+      return { declaration, importedName: 'default' };
     }
     if (declaration.getNamespaceImport()?.getText() === localName) {
-      return { declaration, importedName: '*', isNamespace: true };
+      return { declaration, importedName: '*' };
     }
     for (const named of declaration.getNamedImports()) {
       const boundName = named.getAliasNode()?.getText() ?? named.getName();
       if (boundName === localName) {
-        return { declaration, importedName: named.getName(), isNamespace: false };
+        return { declaration, importedName: named.getName() };
       }
     }
   }
@@ -118,7 +93,7 @@ function resolveLexicalBinding(
 ): LexicalBinding | null {
   for (let current = startNode.getParent(); current; current = current.getParent()) {
     if (isCallableScope(current)) {
-      if (current.getParameters().some((param) => hasBindingName(param, name))) {
+      if (current.getParameter(name)) {
         return { kind: 'other' };
       }
       if (
@@ -138,28 +113,35 @@ function resolveLexicalBinding(
       }
     }
 
-    const loopDecl = getForLoopDeclarations(current).find((decl) => hasBindingName(decl, name));
-    if (loopDecl) {
-      return beforePos !== undefined && loopDecl.getStart() >= beforePos
-        ? { kind: 'other' }
-        : { kind: 'variable', node: loopDecl };
+    if (
+      Node.isForStatement(current) ||
+      Node.isForOfStatement(current) ||
+      Node.isForInStatement(current)
+    ) {
+      const init = current.getInitializer();
+      if (init && Node.isVariableDeclarationList(init)) {
+        const loopDecl = init.getDeclarations().find((d) => hasBindingName(d, name));
+        if (loopDecl) {
+          return beforePos !== undefined && loopDecl.getStart() >= beforePos
+            ? { kind: 'other' }
+            : { kind: 'variable', node: loopDecl };
+        }
+      }
     }
 
     if (Node.isBlock(current) || Node.isSourceFile(current)) {
-      for (const stmt of current.getStatements()) {
-        if (Node.isVariableStatement(stmt)) {
-          if (beforePos !== undefined && stmt.getStart() >= beforePos) {
-            continue;
-          }
-          const decl = stmt.getDeclarations().find((d) => hasBindingName(d, name));
-          if (decl) {
-            return { kind: 'variable', node: decl };
-          }
-        } else if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
-          return { kind: 'function', node: stmt };
-        } else if (Node.isClassDeclaration(stmt) && stmt.getName() === name) {
-          return { kind: 'other' };
-        }
+      const decl = current.getVariableDeclaration(
+        (d) => hasBindingName(d, name) && (beforePos === undefined || d.getStart() < beforePos),
+      );
+      if (decl) {
+        return { kind: 'variable', node: decl };
+      }
+      const func = current.getFunction(name);
+      if (func) {
+        return { kind: 'function', node: func };
+      }
+      if (current.getClass(name)) {
+        return { kind: 'other' };
       }
     }
 
@@ -183,7 +165,7 @@ export function resolveLocalExpression(node: Node, maxHops: number = 1): Node {
     const name = current.getText();
     const binding = resolveLexicalBinding(current, name, current.getStart());
     const init =
-      binding?.kind === 'variable' && binding.node.getName() === name
+      binding?.kind === 'variable' && Node.isIdentifier(binding.node.getNameNode())
         ? binding.node.getInitializer()
         : undefined;
     if (!init || init === current) {
@@ -289,7 +271,10 @@ function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): 
   const unwrapped = unwrapExpression(expr);
 
   if (Node.isIdentifier(unwrapped)) {
-    return featureTokens.some((token) => isGlobalReference(unwrapped, token));
+    return (
+      featureTokens.includes(unwrapped.getText()) &&
+      isUnshadowedGlobal(unwrapped, unwrapped.getText())
+    );
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
@@ -307,8 +292,7 @@ function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): 
   if (Node.isCallExpression(unwrapped)) {
     const callee = unwrapExpression(unwrapped.getExpression());
     if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'supports') {
-      const obj = unwrapExpression(callee.getExpression());
-      return isGlobalReference(obj, 'CSS');
+      return isGlobalReference(callee.getExpression(), 'CSS');
     }
     return false;
   }
@@ -810,11 +794,11 @@ export function isLibraryReference(
       );
     }
     if (binding.kind === 'import') {
-      const { declaration, importedName, isNamespace } = binding.importBinding;
+      const { declaration, importedName } = binding.importBinding;
       if (!matchesPackageSpec(getSafeModuleSpecifier(declaration), packages)) {
         return false;
       }
-      return isNamespace
+      return importedName === '*'
         ? allowDefaultImport
         : matchesExpectedPropertyName(importedName, identName, allowDefaultImport);
     }
