@@ -428,6 +428,7 @@
   <script>
     const status = document.getElementById('reorderStatus');
     const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const anchorSupported = CSS.supports('anchor-name', '--a');
     const EDGE_ZONE = 56;
     const MAX_SPEED = 700; // px per second at the edge, up to 2x beyond it
 
@@ -451,6 +452,8 @@
       let pointerStartNext = null;
       let dropBefore;
       let dropMarker = null;
+      let markerPrev = null;
+      let markerNext = null;
       let isMoving = false;
       let pointerX = 0;
       let pointerY = 0;
@@ -514,13 +517,39 @@
       function showDropMarker(before, siblings) {
         clearDropMarker();
         const index = before ? siblings.indexOf(before) : siblings.length;
-        siblings[index - 1]?.classList.add('drop-prev');
-        before?.classList.add('drop-next');
+        markerPrev = siblings[index - 1] ?? null;
+        markerNext = before;
+        markerPrev?.classList.add('drop-prev');
+        markerNext?.classList.add('drop-next');
         dropMarker = document.createElement('div');
         dropMarker.className = 'drop-marker';
         dropMarker.dataset.axis = inline ? 'inline' : 'block';
         dropMarker.setAttribute('aria-hidden', 'true');
         document.body.append(dropMarker);
+      }
+
+      // Fallback without anchor positioning: place the marker from the neighbors' rects, mirroring the anchored CSS.
+      function placeDropMarker() {
+        const gap = 'var(--drop-marker-gap)';
+        const centered = `((${gap} - var(--drop-marker-size)) / 2)`;
+        const prev = markerPrev?.getBoundingClientRect();
+        const next = markerNext?.getBoundingClientRect();
+        const rect = prev ?? next;
+        const style = dropMarker.style;
+        style.margin = '0';
+        if (inline) {
+          const rtl = isRtl();
+          style.top = `${rect.top}px`;
+          style.height = `${rect.height}px`;
+          const edge = prev
+            ? (rtl ? `${prev.left}px - ${gap} + ${centered}` : `${prev.right}px + ${centered}`)
+            : (rtl ? `${next.right}px + ${centered}` : `${next.left}px - ${gap} + ${centered}`);
+          style.left = `calc(${edge})`;
+        } else {
+          style.left = `${rect.left}px`;
+          style.width = `${rect.width}px`;
+          style.top = prev ? `calc(${prev.bottom}px + ${centered})` : `calc(${next.top}px - ${gap} + ${centered})`;
+        }
       }
 
       function finishPointerReorder(cancelled = false) {
@@ -621,9 +650,11 @@
           const y = clamped - bounds.top - list.clientTop + list.scrollTop;
           before = siblings.find((item) => y < item.offsetTop + item.offsetHeight / 2) ?? null;
         }
-        if (before === dropBefore) return;
-        dropBefore = before;
-        showDropMarker(before, siblings);
+        if (before !== dropBefore) {
+          dropBefore = before;
+          showDropMarker(before, siblings);
+        }
+        if (!anchorSupported) placeDropMarker();
       }
 
       function autoScroll(now) {

@@ -35,8 +35,8 @@ Keep the drag active and find the destination reliably:
 
 Don't reorder while the pointer moves: siblings that keep shifting feel slow and jittery. Keep the preview and the faded source item, and show a drop marker instead:
 
-- **Render a marker, not a shift.** Give the item before the drop spot an `anchor-name` (class `drop-prev`) and the item after it another (class `drop-next`), then position a `position: fixed`, `pointer-events: none`, `aria-hidden="true"` marker between them with `anchor()`, using the other anchor as the fallback at either end of the list. For a vertical list: `top: anchor(--drop-prev bottom, calc(anchor(--drop-next top) - var(--drop-marker-gap)))`, `left`/`right` from `anchor(--drop-prev left, anchor(--drop-next left))`, a `height` of `var(--drop-marker-size)`, and a `margin-block-start` of half the gap minus half the size. For a row use `inset-inline-start: anchor(--drop-prev end, …)` so it flips in right-to-left. A `::before` ring at the leading end makes the line read as an insertion point. Update the classes only when the drop spot changes, and remove them and the marker when the drag ends.
-- **Make it themeable.** Expose custom properties with defaults that fit the host design system rather than hard-coding values: `--drop-marker-color`, `--drop-marker-size`, `--drop-marker-dot`, `--drop-marker-gap`, `--drag-preview-opacity`, `--drag-preview-shadow`, and `--drag-placeholder-opacity`. Use `Highlight` for the marker under `forced-colors: active`.
+- **Render a marker, not a shift.** Give the item before the drop spot `anchor-name: --drop-prev` and the item after it `--drop-next`, then position a `position: fixed`, `pointer-events: none`, `aria-hidden="true"` marker between them, using the other anchor as the fallback at either end. Vertical: `top: anchor(--drop-prev bottom, calc(anchor(--drop-next top) - var(--drop-marker-gap)))` with `left`/`right` from the neighbors, offset by half the gap minus half the line size. Row: `inset-inline-start: anchor(--drop-prev end, …)` so it flips in right-to-left. A `::before` ring at the leading end marks the insertion point. Update the classes only when the drop spot changes; remove them and the marker when the drag ends.
+- **Make it themeable.** Drive color, line size, ring size, gap, preview opacity and shadow, and placeholder opacity from custom properties (such as `--drop-marker-color`) with defaults that suit the host design system, and use `Highlight` under `forced-colors: active`.
 - **Move once on release.** On `pointerup`, if the drop spot differs from the item's current next sibling, move the existing item node atomically with `container.moveBefore(item, referenceNode)` rather than recreating it, so internal state (such as focused controls, input values, scroll position, media, or custom element instances) and active pointer capture are preserved. Keyboard moves use the same call on each step. Then animate the move:
 
 - **Animate every move.** Items should visibly travel instead of jumping, including the move on release and keyboard moves. Record each sibling's `getBoundingClientRect()` before the move, then afterwards animate the `translate` property from the old offset (on both axes, correcting for any scroll that happened) to `0 0` (FLIP).
@@ -99,6 +99,12 @@ If your Baseline target does not support `moveBefore()`, feature-detect with `'m
 
 - **It drops active pointer capture.** Keep the `pointermove`, `pointerup`, and `pointercancel` listeners on `document`, where captured events still bubble. After the move, re-call `handle.setPointerCapture(event.pointerId)` when `hasPointerCapture()` is false, and end the drag on `lostpointercapture` only if capture is not re-established.
 - **It blurs focused descendants.** Explicitly call `.focus()` on the active handle or movement button after moving. Also delay the live-region update by about 500 ms (debounced, clearing the previous message first), because the focus re-announcement otherwise swallows the position announcement in screen readers such as VoiceOver in Safari.
+
+### Anchor positioning
+
+{{ BASELINE_STATUS("anchor-positioning") }}
+
+If your Baseline target does not support anchor positioning (detect with `CSS.supports('anchor-name', '--a')`), set the marker's `left`, `top`, and size from the two neighbors' `getBoundingClientRect()` on each drop-spot update and scroll step.
 
 ### `reading-flow`
 
