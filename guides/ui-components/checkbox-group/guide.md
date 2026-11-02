@@ -171,7 +171,7 @@ For long lists (provisionally about 12 or more options), keep the same markup an
 ```css
 .scroll-list {
   max-block-size: 16rem;
-  padding-inline-start: 0.25rem; /* room for focus rings clipped by overflow */
+  padding-inline-start: 0.25rem;
   overflow-y: auto;
   container-type: scroll-state;
 }
@@ -199,6 +199,8 @@ For long lists (provisionally about 12 or more options), keep the same markup an
 ```
 
 Without a visible cue, a list cut exactly between rows looks complete and overlay scrollbars stay hidden until scrolling. Follow the {{ GUIDE_REF("scrollability-affordance-hints") }} guide to show that more options are below (and above).
+
+Pad the scroll container's inline-start edge by at least the focus ring's outline width plus offset, because `overflow` clips the ring where the checkboxes touch the edge.
 
 Scrolling regions are keyboard-reachable in current browsers because the checkboxes inside them are focusable. If the list can contain no focusable options (for example all disabled), add `tabindex="0"` so keyboard users can still scroll it.
 
