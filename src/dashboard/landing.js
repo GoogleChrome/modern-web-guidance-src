@@ -18,6 +18,7 @@ import {
     SUPPORTS_ANCHOR_POSITIONING,
     placePopoverFallback,
     median,
+    hasNightlyRuns,
 } from './utils.js';
 import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
@@ -52,6 +53,7 @@ let currentAgentFilter = 'all';
 let currentServingFilter = 'all';
 /** @type {string} */
 let currentModelFilter = 'all';
+let currentRunFilter = 'nightly';
 /** @type {boolean} */
 let scheduledOnly = true;
 /** @type {SuiteSortKey} */
@@ -85,6 +87,12 @@ function isRemoteDashboard() {
 function isScheduledSuite(testId) { return /^(nightly|weekly)-/i.test(testId || ''); }
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        const params = new URLSearchParams(window.location.search);
+        const runFilterParam = params.get('runFilter') ?? params.get('runName');
+        if (runFilterParam !== null) {
+            currentRunFilter = runFilterParam;
+        }
+
         setupTestFilters();
         setupTableFilters();
         setupScheduledToggle();
@@ -92,16 +100,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupSortButtons();
         setupInsightsControls();
 
-        const params = new URLSearchParams(window.location.search);
-
         // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
         initGoogleAuth(async () => {
             await loadRemoteTests();
+            if (runFilterParam === null && hasNightlyRuns(allTestData)) {
+                currentRunFilter = 'nightly';
+                const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
+                if (runFilterInput) runFilterInput.value = currentRunFilter;
+                renderPivotInsights();
+            }
         });
 
         await loadLocalTests();
         if (getAccessToken()) {
             await loadRemoteTests();
+        }
+
+        if (runFilterParam === null) {
+            currentRunFilter = hasNightlyRuns(allTestData) ? 'nightly' : '';
+            const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
+            if (runFilterInput) runFilterInput.value = currentRunFilter;
         }
 
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -121,6 +139,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Handle browser back/forward
 window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
+    const runFilterParam = params.get('runFilter') ?? params.get('runName');
+    currentRunFilter = runFilterParam !== null ? runFilterParam : 'nightly';
+    const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
+    if (runFilterInput) {
+        runFilterInput.value = currentRunFilter;
+    }
+
     selectedTestIds = new Set(Object.keys(allTestData));
     applyTestsParam(params.get('tests'));
     renderFilterMenuItems();
@@ -324,6 +349,17 @@ function setupInsightsControls() {
     const limitInput = document.getElementById('insights-limit-input');
     const showAllCheck = document.getElementById('insights-show-all-check');
     const modeAllBtn = document.getElementById('insights-mode-all');
+    const runFilterInput = /** @type {HTMLInputElement | null} */ (document.getElementById('insights-run-filter-input'));
+
+    if (runFilterInput) {
+        runFilterInput.value = currentRunFilter;
+        runFilterInput.addEventListener('input', () => {
+            currentRunFilter = runFilterInput.value;
+            updateUrlParams();
+            renderPivotInsights();
+        });
+    }
+
     if (limitInput instanceof HTMLInputElement) {
         limitInput.addEventListener('change', () => {
             let val = parseInt(limitInput.value);
@@ -469,6 +505,15 @@ function updateUrlParams() {
     } else {
         url.searchParams.set('tests', Array.from(selectedTestIds).join(','));
     }
+
+    if (currentRunFilter === 'nightly') {
+        url.searchParams.delete('runFilter');
+    } else if (currentRunFilter) {
+        url.searchParams.set('runFilter', currentRunFilter);
+    } else {
+        url.searchParams.delete('runFilter');
+    }
+
     window.history.replaceState({}, '', url);
 }
 
@@ -642,6 +687,12 @@ function registerTestData(testId, source, parsed, forcedTimestamp) {
  *     in a batch, then call `refreshFilterOptions()` once afterward.
  */
 function registerSuiteSummary(summary, source, { refreshFilters = true } = {}) {
+    if (source === 'remote' && (allTestData[`${summary.testId}|||local`] || allTestData[`${summary.testId}|||static`])) {
+        return;
+    }
+    if ((source === 'local' || source === 'static') && allTestData[`${summary.testId}|||remote`]) {
+        delete allTestData[`${summary.testId}|||remote`];
+    }
     const compoundKey = `${summary.testId}|||${source}`;
     allTestData[compoundKey] = {
         ...summary,
@@ -1186,6 +1237,15 @@ function hideBarbellTooltip() {
 /** @returns {string[]} */
 function getInsightKeys() {
     let keys = getVisibleKeys();
+    if (currentRunFilter && currentRunFilter.trim()) {
+        const query = currentRunFilter.trim().toLowerCase();
+        keys = keys.filter(id => {
+            const testInfo = allTestData[id];
+            if (!testInfo) return false;
+            const testId = (testInfo.testId || '').toLowerCase();
+            return testId.includes(query);
+        });
+    }
     const limitInput = document.getElementById('insights-limit-input');
     const showAllCheck = document.getElementById('insights-show-all-check');
     const showAll = showAllCheck instanceof HTMLInputElement ? showAllCheck.checked : false;
@@ -1404,7 +1464,8 @@ function renderPivotInsights() {
             let displayTitle = key;
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
-                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
+                const runFilterQuery = currentRunFilter ? `&runFilter=${encodeURIComponent(currentRunFilter)}` : '';
+                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}${runFilterQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
                 effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
             } else if (filterKey === 'dimension') {
                 const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);
