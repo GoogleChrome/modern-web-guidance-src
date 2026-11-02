@@ -20,4 +20,6 @@
 - On wide layouts, the submenu still opens by click and by keyboard (`Enter`/`Space`) on its trigger button.
 - On wide layouts, moving keyboard focus to a submenu's trigger opens its submenu.
 - On wide layouts, a submenu opened by keyboard focus closes when focus moves out of its list item, and its trigger's `aria-expanded` becomes `false`.
+- On narrow layouts, the collapsing submenu list clips its slide-down with `clip-path: inset()` using a negative value, not `overflow: clip`, so focus rings on its links are not cut off.
+- When the viewport width changes while the collapsed navigation menu is open and the layout stays collapsed, the menu stays open.
 - High-contrast system support is provided under a `@media (forced-colors: active)` query to adapt custom borders, boundaries, and active-state visual indicators (e.g., using values like `CanvasText` and `Highlight`).
