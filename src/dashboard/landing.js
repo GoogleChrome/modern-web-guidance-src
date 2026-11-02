@@ -779,6 +779,11 @@ function renderSuites() {
     syncSortHeaders();
     const filteredKeys = getFilteredKeys();
     const visibleKeys = getVisibleKeys();
+    const anyScheduled = filteredKeys.some(k => isScheduledSuite(allTestData[k].testId));
+    const scheduledCheck = document.getElementById('scheduled-only-check');
+    if (scheduledCheck instanceof HTMLInputElement) {
+        scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
+    }
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
     const colCount = 9;
     const table = document.querySelector('.suites-table');
@@ -1518,7 +1523,7 @@ function renderPivotInsights() {
         <p class="insights-scope">Based on ${runCount} run${runCount === 1 ? '' : 's'} matching current filters (medians across runs).</p>
         ${dimensionPanelHtml}
         <div class="insights-panel" data-panel="model">
-            ${renderPanelHeader('model', `By Model${modeSuffix}`)}
+            ${renderPanelHeader('model', `By Model (${Object.keys(grouped.model).length})${modeSuffix}`)}
             ${renderPivotTable(grouped.model, 'model')}
             ${renderExpandRow('model')}
         </div>

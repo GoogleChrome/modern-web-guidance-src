@@ -63,7 +63,7 @@ export async function generateSuitesManifest(outputDir = defaultOutputDir, resul
     if (fs.existsSync(resultsSourceDir)) {
         const items = fs.readdirSync(resultsSourceDir, { withFileTypes: true });
         for (const item of items) {
-            if (item.isDirectory()) {
+            if (item.isDirectory() || item.isSymbolicLink()) {
                 const suiteDir = path.join(resultsSourceDir, item.name);
                 const evalsPath = path.join(suiteDir, 'evals.json');
                 if (fs.existsSync(evalsPath)) {
