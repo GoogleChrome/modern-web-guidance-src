@@ -667,9 +667,9 @@ describe('INCLUDE', () => {
     });
 
     it('emits heading, baseline status, and fallback content when features/<id>.md#fallbacks exists', () => {
-      const result = replaceMacros('{{ FEATURE_FALLBACKS("anchor-positioning") }}', 'test.md');
-      assert.match(result, /^### Fallbacks & browser support for Anchor positioning\n\n/);
-      assert.match(result, /@oddbird\/css-anchor-positioning/);
+      const result = replaceMacros('{{ FEATURE_FALLBACKS("popover") }}', 'test.md');
+      assert.match(result, /^### Fallbacks & browser support for Popover\n\n/);
+      assert.match(result, /@oddbird\/popover-polyfill/);
     });
 
     it('emits fallbacks without a status line for pending tmp-* features', () => {
