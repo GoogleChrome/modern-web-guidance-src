@@ -189,6 +189,6 @@ Because the trigger is a standard `<a href="...">` link, browsers without suppor
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ FEATURE("anchor-positioning", "popover-fallbacks") }}
 
 {{ FEATURE_FALLBACKS("cross-document-view-transitions") }}
