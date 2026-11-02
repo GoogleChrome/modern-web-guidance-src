@@ -297,6 +297,65 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
   return commands;
 }
 
+export function extractWebRunsFromCodexItem(obj: any): string[] {
+  const payload = obj?.payload || obj;
+  if (!payload) return [];
+
+  const itemType = payload.type || obj?.type;
+  if (itemType !== 'function_call' && itemType !== 'custom_tool_call') {
+    return [];
+  }
+
+  const raw = payload.input ?? payload.arguments ?? obj.input ?? obj.arguments;
+  if (typeof raw !== 'string' || !raw.includes('tools.web__run')) {
+    return [];
+  }
+
+  const results: string[] = [];
+  const prefix = 'tools.web__run(';
+  let searchFrom = 0;
+
+  while (searchFrom < raw.length) {
+    const start = raw.indexOf(prefix, searchFrom);
+    if (start === -1) break;
+
+    let depth = 0;
+    let quote: string | null = null;
+    let end = -1;
+
+    for (let i = start + prefix.length - 1; i < raw.length; i++) {
+      const ch = raw[i];
+      if (quote) {
+        if (ch === '\\') {
+          i++;
+        } else if (ch === quote) {
+          quote = null;
+        }
+      } else if (ch === '"' || ch === "'" || ch === '`') {
+        quote = ch;
+      } else if (ch === '(') {
+        depth++;
+      } else if (ch === ')') {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+
+    if (end !== -1) {
+      results.push(raw.slice(start, end));
+      searchFrom = end;
+    } else {
+      results.push(raw.slice(start));
+      break;
+    }
+  }
+
+  return results;
+}
+
 export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subagentsMap: Record<string, CodexRolloutLine[] | any[]> = {}): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   let currentThought = '';
@@ -342,6 +401,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         const callId = p.call_id;
         const cmdName = p.name || 'unknown';
         const commands = extractCommandsFromCodexItem(entry);
+        const webRuns = extractWebRunsFromCodexItem(entry);
 
         let actionType: NonNullable<StandardizedStep['action']>['type'] = mapToolType(cmdName);
         let actionName = cmdName;
@@ -353,7 +413,11 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         if (commands.length > 0 && !inputStr.includes('*** Begin Patch')) {
           actionType = 'run_command';
           actionName = commands[0];
-          params = { command: commands[0] };
+          params = {
+            command: commands[0],
+            ...(commands.length > 1 ? { commands } : {}),
+            ...(webRuns.length > 0 ? { webRuns } : {})
+          };
         } else if (inputStr.includes('*** Begin Patch') || inputStr.includes('Update File:') || inputStr.includes('Add File:')) {
           actionType = 'write_file';
           actionName = 'apply_patch';

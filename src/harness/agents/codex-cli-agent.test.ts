@@ -13,6 +13,7 @@ import {
 import {
   ensureFreshHostCodexAuth,
   extractCommandsFromCodexItem,
+  extractWebRunsFromCodexItem,
   parseCodexTrajectory
 } from './codex-cli-agent.ts';
 import { extractModelFromResults } from '../lib/collection.ts';
@@ -687,4 +688,55 @@ test('ensureFreshHostCodexAuth skips fresh tokens and rotates expiring tokens in
   } finally {
     removeTempDir(tempDir);
   }
+});
+
+test('parseCodexTrajectory preserves tools.web__run calls when batched with exec_command', () => {
+  const input = [
+    'text(await tools.web__run({search_query:[{q:"CSS @supports at-rule() syntax @layer"}],response_length:"short"}));',
+    'text(await tools.exec_command({cmd:"git status --short","max_output_tokens":1000}));',
+    'text(await tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access"}],response_length:"short"}));'
+  ].join(' ');
+
+  const item = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_batched_1',
+      name: 'exec',
+      input
+    }
+  };
+
+  const webRuns = extractWebRunsFromCodexItem(item);
+  assert.deepStrictEqual(webRuns, [
+    'tools.web__run({search_query:[{q:"CSS @supports at-rule() syntax @layer"}],response_length:"short"})',
+    'tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access"}],response_length:"short"})'
+  ]);
+
+  const summary = parseCodexTrajectory([item]);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+  assert.strictEqual(summary.steps[0].action?.name, 'git status --short');
+  assert.deepStrictEqual(summary.steps[0].action?.params, {
+    command: 'git status --short',
+    webRuns
+  });
+
+  const multiCmdItem = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_batched_2',
+      name: 'exec',
+      input: [
+        'text(await tools.exec_command({cmd:"pwd"}));',
+        'text(await tools.exec_command({cmd:"ls -la"}));'
+      ].join(' ')
+    }
+  };
+  const multiSummary = parseCodexTrajectory([multiCmdItem]);
+  assert.deepStrictEqual(multiSummary.steps[0].action?.params, {
+    command: 'pwd',
+    commands: ['pwd', 'ls -la']
+  });
 });

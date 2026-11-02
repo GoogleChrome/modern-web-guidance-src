@@ -391,6 +391,116 @@ test('trajectory_summary.json generation and priority read', async () => {
   }
 });
 
+test('hasTrajectoryGuideLeak ignores host node_modules and passive search result snippets', () => {
+  const tempDir = createTempDir();
+  try {
+    // 1. Host node_modules path reference + unrelated mention of guideName -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Checking dependencies for translator',
+          action: {
+            type: 'run_command',
+            name: 'ls /usr/local/google/home/user/modern-web-guidance-src/node_modules/.pnpm',
+            params: { command: 'ls /usr/local/google/home/user/modern-web-guidance-src/node_modules/.pnpm' }
+          },
+          outcome: { status: 'success', message: 'translator feature check' }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'translator'), false);
+
+    // 2. Passive web-search result snippet (turn0search0) where URL is not opened -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Searching web',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: 'SMS OTP form verification | Modern Web Guidance | Chrome for Developers (https://developer.chrome.com/docs/modern-web-guidance/guides/forms/sms-otp-form)\n\uE200cite\uE202turn0search0\uE201 [wordlim: 200] Published: 4 weeks ago'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'sms-otp-form'), false);
+
+    // 3. Truncated GitHub search result snippet -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Searching web',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: 'Script completed\nOutput:\n\nmodern-web-guidance/skills/modern-web-guidance/guides/webmcp/agentic-javascript-tools.md at main · GoogleChrome/modern-web-guidance · GitHub (https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guid... [truncated]'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'agentic-javascript-tools'), false);
+
+    // 4. Opened guide page (turn1view0) -> true
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Opening guide',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: 'Local Network Access | Modern Web Guidance | Chrome for Developers (https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access)\n\uE200cite\uE202turn1view0\uE201 [wordlim: 200] Source: open({"ref_id":"https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access"})'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'local-network-access'), true);
+
+    // 5. Opened guide page (turn1view0) followed by search result (turn1search0) in same outcome -> true
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Opening guide and searching MDN',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: '(https://raw.githubusercontent.com/GoogleChrome/modern-web-guidance/main/skills/modern-web-guidance/guides/performance/detect-initial-visibility-state.md)\n\uE200cite\uE202turn1view0\uE201 [wordlim: 200]\nMDN VisibilityState\n\uE200cite\uE202turn1search0\uE201 [wordlim: 200]'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'detect-initial-visibility-state'), true);
+
+    // 6. Search snippet body mentioning modern-web-guidance after \uE201 on the same line -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Searching web',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: 'SMS OTP | Modern Web Guidance (https://developer.chrome.com/docs/modern-web-guidance/guides/forms/sms-otp-form)\n\uE200cite\uE202turn0search0\uE201 [wordlim: 200] npx -y modern-web-guidance@latest retrieve sms-otp-form'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'sms-otp-form'), false);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
 test('generateNormalizedTrajectory dispatcher writes summary for given agent', async () => {
   const tempDir = createTempDir();
   try {
