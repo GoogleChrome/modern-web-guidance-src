@@ -762,12 +762,12 @@ function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
  * @param {{ less: string, more: string, noun: string }} words */
 function renderDeltaPill(deltaPct, words) {
     if (deltaPct < 0) {
-        return `<span class="eff-pill metric-delta positive"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}% ${escapeHtml(words.less)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
+        return `<span class="eff-pill metric-delta positive" title="${Math.abs(deltaPct)}% ${escapeHtml(words.less)}"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}%<span class="visually-hidden"> ${escapeHtml(words.less)} (${escapeHtml(words.noun)})</span></span>`;
     }
     if (deltaPct === 0) {
-        return `<span class="eff-pill metric-delta neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
+        return `<span class="eff-pill metric-delta neutral" title="No change (${escapeHtml(words.noun)})">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
     }
-    return `<span class="eff-pill metric-delta muted"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
+    return `<span class="eff-pill metric-delta muted" title="${deltaPct}% ${escapeHtml(words.more)}"><span aria-hidden="true">▲ </span>${deltaPct}%<span class="visually-hidden"> ${escapeHtml(words.more)} (${escapeHtml(words.noun)})</span></span>`;
 }
 /** @param {string} what */
 function renderNotAvailable(what) {
