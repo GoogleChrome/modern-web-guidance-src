@@ -211,12 +211,37 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
   margin: 0;
   border: 0;
   color: inherit;
-  max-width: 300px;
+  max-width: 340px;
   background: var(--card-bg);
   outline: 1px solid var(--border-color);
   border-radius: 12px;
   box-shadow: 0 8px 24px var(--color-shadow);
   padding: 16px;
+}
+
+.multi-run-popover {
+  position: absolute;
+  z-index: 2500;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.multi-run-popover select {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 #tooltip-chart { max-height: 250px; overflow: hidden; }
