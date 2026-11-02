@@ -9,15 +9,6 @@
 		font-family: system-ui;
 	}
 
-	[command="--toggle"]::before {
-		content: "+" / "";
-		margin-inline-end: 0.5ch;
-	}
-
-	[command="--toggle"][aria-expanded="true"]::before {
-		content: "−" / "";
-	}
-
 	details {
 		--accordion-border-radius: 0.5rem;
 		--accordion-margin-block: 1rem;
@@ -90,7 +81,7 @@
 
 <section>
 	<h2>Exclusive accordion using details</h2>
-  <nav aria-labelledby="topics">
+	<nav aria-labelledby="topics">
 		<h3 id="topics">Topics</h3>
 		<details name="topics">
 			<summary>Development</summary>
@@ -120,118 +111,12 @@
 </section>
 -->
 
-<section>
-	<h2>Custom accordion</h2>
-	<div id="services-accordion" role="region" aria-labelledby="services">
-		<h3 id="services">Services</h3>
-		<button type="button" commandfor="services-accordion" command="--expand-all">Expand all</button>
-		<button type="button" commandfor="services-accordion" command="--collapse-all">Collapse all</button>
-		<div>
-			<h4>
-				<button type="button" commandfor="design" command="--toggle" aria-expanded="true">Design</button>
-			</h4>
-			<div id="design">
-				<p>Design contents</p>
-			</div>
-		</div>
-		<div>
-			<h4>
-				<button type="button" commandfor="development" command="--toggle" aria-expanded="false">Development</button>
-			</h4>
-			<div id="development" hidden="until-found">
-				<p>Development contents</p>
-			</div>
-		</div>
-	</div>
-</section>
-
-<section>
-	<h2>Custom exclusive accordion</h2>
-	<div role="region" aria-labelledby="support" data-exclusive>
-		<h3 id="support">Support</h3>
-		<div>
-			<h4>
-				<button type="button" commandfor="email" command="--toggle" aria-expanded="true">Email</button>
-			</h4>
-			<div id="email">
-				<p>Email contents</p>
-			</div>
-		</div>
-		<div>
-			<h4>
-				<button type="button" commandfor="phone" command="--toggle" aria-expanded="false">Phone</button>
-			</h4>
-			<div id="phone" hidden="until-found">
-				<p>Phone contents</p>
-			</div>
-		</div>
-	</div>
-</section>
-
-<!--
-<section>
-	<h2>Custom single exclusive accordion</h2>
-	<div role="region" aria-labelledby="shipping" data-exclusive data-always-open>
-		<h3 id="shipping">Shipping</h3>
-		<div>
-			<h4>
-				<button type="button" commandfor="standard" command="--toggle" aria-expanded="true" aria-disabled="true">Standard</button>
-			</h4>
-			<div id="standard">
-				<p>Standard contents</p>
-			</div>
-		</div>
-		<div>
-			<h4>
-				<button type="button" commandfor="express" command="--toggle" aria-expanded="false" aria-disabled="false">Express</button>
-			</h4>
-			<div id="express" hidden="until-found">
-				<p>Express contents</p>
-			</div>
-		</div>
-	</div>
-</section>
--->
-
 <script>
-function setExpanded(trigger, expanded) {
-	trigger.commandForElement.hidden = expanded ? false : "until-found";
-	trigger.setAttribute("aria-expanded", expanded);
-	if (trigger.closest("[data-always-open]")) trigger.setAttribute("aria-disabled", expanded);
-}
-
-function collapseOthers(trigger) {
-	const accordion = trigger.closest("[data-exclusive]");
-	if (!accordion) return;
-
-	for (const other of accordion.querySelectorAll('[command="--toggle"]')) {
-		if (other !== trigger) setExpanded(other, false);
-	}
-}
-
-document.addEventListener("command", event => {
-	if (event.command !== "--toggle") return;
-	const expanded = Boolean(event.target.hidden);
-	if (!expanded && event.source.closest("[data-always-open]")) return;
-
-	if (expanded) collapseOthers(event.source);
-	setExpanded(event.source, expanded);
-}, { capture: true });
-
 document.addEventListener("command", event => {
 	if (event.command !== "--expand-all" && event.command !== "--collapse-all") return;
 	const expanded = event.command === "--expand-all";
 
 	for (const details of event.target.querySelectorAll("details")) details.open = expanded;
-	for (const trigger of event.target.querySelectorAll('[command="--toggle"]')) setExpanded(trigger, expanded);
-}, { capture: true });
-
-document.addEventListener("beforematch", event => {
-	const trigger = document.querySelector(`[commandfor="${CSS.escape(event.target.id)}"][command="--toggle"]`);
-	if (!trigger) return;
-
-	collapseOthers(trigger);
-	setExpanded(trigger, true);
 }, { capture: true });
 
 document.addEventListener("click", event => {
