@@ -11,7 +11,7 @@
 - Skeleton colors are derived from the surface with `color-mix()` using an explicit color space.
 - A shimmer gradient is painted on each placeholder shape's own background with `background-attachment: fixed`, so all shapes sweep in sync without a parent overlay. The shimmer gradient and animation are only applied under `prefers-reduced-motion: no-preference`.
 - Skeleton list items keep their real `::marker` with `display: list-item` and `list-style-position: outside`, and the marker is colored with the skeleton tone.
-- The `ul` or `ol` of a skeleton list has `padding-inline-start: 0`, and its items have `margin-inline-start: 0`, while loading.
+- The `ul` or `ol` of a skeleton list keeps the same `padding-inline-start` while loading as when loaded, and its items have `margin-inline-start: 0`.
 - Only a limited number of cards are visible while loading, even if more are in the markup.
 - Under `forced-colors: active`, the skeleton placeholders (not the container) set `forced-color-adjust: none` and are filled with a system color.
 - The skeleton container has `inert` and `aria-hidden="true"` while loading.

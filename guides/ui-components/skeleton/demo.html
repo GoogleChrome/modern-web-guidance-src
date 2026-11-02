@@ -83,7 +83,7 @@
         background: var(--surface);
       }
 
-      article> :not(.media) {
+      article:has(> .media)> :not(.media) {
         padding-inline: var(--pad);
       }
 
@@ -295,13 +295,9 @@
 
       /* Lists: the real ::marker plus a bar per item. display: block would drop
          the marker, so items stay list-item. The marker sits outside the li in
-         the list's own padding, so the bar starts at the item's edge, where the
-         real text does. The marker takes the flat tone (a marker cannot take
-         the shimmer). */
-      .skeleton[aria-busy="true"] :is(ul, ol) {
-        padding-inline-start: 0;
-      }
-
+         the list's own padding, which stays untouched so the list does not
+         shift when loading finishes. The marker takes the flat tone (a marker
+         cannot take the shimmer). */
       .skeleton[aria-busy="true"] li {
         display: list-item;
         list-style-position: outside;
