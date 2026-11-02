@@ -249,20 +249,42 @@ export function extractTimestamp(entry: any): string | undefined {
 
 /**
  * Extracts retrieved guide IDs from a shell command string invoking `modern-web-guidance retrieve`.
- * Strips trailing shell delimiters (such as `;` in chained commands) and supports comma-separated lists.
+ * Strips trailing shell delimiters (such as `;` in chained commands) and supports comma- or space-separated lists.
  */
 export function extractRetrievedGuidesFromCommand(command: string): string[] {
   if (!command.includes('modern-web-guidance') || !command.includes('retrieve')) {
     return [];
   }
+  const normalized = command
+    .replace(/\\+u003e/gi, '>')
+    .replace(/\\+u003c/gi, '<')
+    .replace(/\\+u0026/gi, '&');
   const guides: string[] = [];
-  const regex = /(?:--)?retrieve\s+(?:\\*"([^"\\]+)\\*"|'([^']+)'|([^\s"';|&><)`\\]+))/gi;
+  const invocationRegex =
+    /(?:\b(?:npx|pnpx|pnpm|node)(?:\.cmd)?\s+(?:-[a-z]+\s+)*)?[^\s"';|&><)`\\]*modern-web-guidance(?:@[^\s"';|&><)`\\]+|\/[^\s"';|&><)`\\]*modern-web\.[cm]?[jt]s)?(?:\s+(?:--skill-version(?:=\S+|\s+\S+)|--[a-z-]+(?:=\S+)?))*\s+(?:--)?retrieve\s+([^;|&><`\n\r)]+)/gi;
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(command)) !== null) {
-    const rawArg = match[1] ?? match[2] ?? match[3] ?? '';
-    for (const part of rawArg.split(',')) {
-      const cleaned = part.trim().replace(/^["'\\]+|["'\\;]+$/g, '');
-      if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned.toLowerCase() !== 'id') {
+  while ((match = invocationRegex.exec(normalized)) !== null) {
+    // Ignore inline markdown code references inside guide text, e.g. `(via \`npx -y modern-web-guidance@latest retrieve "css"\`)`
+    const lineStart = normalized.lastIndexOf('\n', match.index) + 1;
+    const linePrefix = normalized.slice(lineStart, match.index);
+    if ((linePrefix.split('`').length - 1) % 2 === 1) {
+      continue;
+    }
+    const argSegment = match[1]
+      .split(/","|"\}/)[0]
+      .replace(/\s+\d+$/, '')
+      .trim();
+    const tokens = argSegment.split(/[\s,]+/);
+    for (let i = 0; i < tokens.length; i++) {
+      const cleaned = tokens[i].trim().replace(/^["'\\]+|["'\\;]+$/g, '');
+      if (!cleaned) continue;
+      if (cleaned.startsWith('-')) {
+        if (cleaned === '--skill-version') {
+          i++;
+        }
+        continue;
+      }
+      if (/^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned.toLowerCase() !== 'id') {
         guides.push(cleaned);
       }
     }

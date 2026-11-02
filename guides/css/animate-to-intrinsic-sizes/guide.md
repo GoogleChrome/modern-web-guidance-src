@@ -114,7 +114,7 @@ triggerBtn?.addEventListener('click', () => {
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("interpolate-size") }}
+{{ BASELINE_STATUS("interpolate-size") }}
 {{ BASELINE_STATUS("calc-size") }}
 
 `interpolate-size` and `calc-size()` are progressive enhancements. Browsers that do not support them will perform an instant jump to the target size.

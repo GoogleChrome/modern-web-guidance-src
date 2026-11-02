@@ -1,10 +1,57 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { tokenize, buildBm25Index, rankBm25, reciprocalRankFusion } from "./bm25.ts";
+import { tokenize, stemEnglishMinimal, buildBm25Index, rankBm25, reciprocalRankFusion } from "./bm25.ts";
 
 describe("tokenize", () => {
-  it("lowercases, keeps inner hyphens, drops stopwords and single characters", () => {
-    assert.deepStrictEqual(tokenize("Style the :user-invalid state of a Form"), ["style", "user-invalid", "state", "form"]);
+  it("lowercases, keeps inner hyphens, drops stopwords and single characters (pinned to origin/main)", () => {
+    assert.deepStrictEqual(tokenize("Style the :user-invalid state of a Form"), [
+      "style",
+      "user-invalid",
+      "state",
+      "form",
+    ]);
+  });
+
+  it("leaves compound terms, plural endings, and tokens unstemmed for static embedder compatibility", () => {
+    assert.deepStrictEqual(tokenize("overscroll-behavior queries backdrops"), [
+      "overscroll-behavior",
+      "queries",
+      "backdrops",
+    ]);
+  });
+});
+
+describe("stemEnglishMinimal", () => {
+  // Ported from Apache Lucene org.apache.lucene.analysis.en.TestEnglishMinimalStemFilter
+  it("matches Lucene TestEnglishMinimalStemFilter test vectors", () => {
+    assert.strictEqual(stemEnglishMinimal("queries"), "query");
+    assert.strictEqual(stemEnglishMinimal("phrases"), "phrase");
+    assert.strictEqual(stemEnglishMinimal("corpus"), "corpus");
+    assert.strictEqual(stemEnglishMinimal("stress"), "stress");
+    assert.strictEqual(stemEnglishMinimal("kings"), "king");
+    assert.strictEqual(stemEnglishMinimal("panels"), "panel");
+    assert.strictEqual(stemEnglishMinimal("aerodynamics"), "aerodynamic");
+    assert.strictEqual(stemEnglishMinimal("congress"), "congress");
+    assert.strictEqual(stemEnglishMinimal("serious"), "serious");
+  });
+
+  it("leaves words shorter than 3 characters or not ending in s untouched", () => {
+    assert.strictEqual(stemEnglishMinimal(""), "");
+    assert.strictEqual(stemEnglishMinimal("a"), "a");
+    assert.strictEqual(stemEnglishMinimal("is"), "is");
+    assert.strictEqual(stemEnglishMinimal("as"), "as");
+    assert.strictEqual(stemEnglishMinimal("us"), "us");
+    assert.strictEqual(stemEnglishMinimal("js"), "js");
+    assert.strictEqual(stemEnglishMinimal("dialog"), "dialog");
+  });
+
+  it("handles -es fallthrough and guarded vowel cases", () => {
+    // -ees, -oes, -aes are guarded from dropping s
+    assert.strictEqual(stemEnglishMinimal("trees"), "trees");
+    assert.strictEqual(stemEnglishMinimal("shoes"), "shoes");
+    // Other -es words fall through and drop the final s
+    assert.strictEqual(stemEnglishMinimal("styles"), "style");
+    assert.strictEqual(stemEnglishMinimal("axes"), "axe");
   });
 });
 
@@ -46,6 +93,30 @@ describe("rankBm25", () => {
     // Each id has score from its best chunk; focused beats scattered
     assert.strictEqual(results.length, 2);
     assert.ok(results[0].score > results[1].score);
+  });
+
+  it("matches singular and plural queries in both directions", () => {
+    const pluralIndex = buildBm25Index([
+      { id: "popover-doc", text: "Native popover element supports light dismiss and backdrop styling." },
+      { id: "dialog-doc", text: "Manage modal dialogs with multiple backdrops." },
+    ]);
+
+    // Plural query matches singular in document
+    assert.deepStrictEqual(rankBm25(pluralIndex, "popovers").map((r) => r.id), ["popover-doc"]);
+
+    // Singular query matches plural in document
+    assert.deepStrictEqual(rankBm25(pluralIndex, "dialog").map((r) => r.id), ["dialog-doc"]);
+
+    // Both documents match queries for backdrops / backdrop
+    const pluralQueryResults = rankBm25(pluralIndex, "backdrops").map((r) => r.id);
+    assert.ok(pluralQueryResults.includes("popover-doc"));
+    assert.ok(pluralQueryResults.includes("dialog-doc"));
+    assert.strictEqual(pluralQueryResults.length, 2);
+
+    const singularQueryResults = rankBm25(pluralIndex, "backdrop").map((r) => r.id);
+    assert.ok(singularQueryResults.includes("popover-doc"));
+    assert.ok(singularQueryResults.includes("dialog-doc"));
+    assert.strictEqual(singularQueryResults.length, 2);
   });
 });
 

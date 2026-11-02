@@ -105,7 +105,7 @@ Snapping occurs due to scrolling, which does not move keyboard focus. However, k
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("container-scroll-state-queries") }}
+{{ BASELINE_STATUS("container-scroll-state-queries") }}
 
 For browsers that do not support scroll-state queries, you should provide a functional base experience where all items are legible, even without the "active" highlight.
 

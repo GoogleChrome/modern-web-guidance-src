@@ -4,7 +4,7 @@
 
 This document describes the goals, architecture, contributor workflow, and current state of the Modern Web Guidance project. It is intended both as LLM context (for feeding into subsequent AI-assisted work) and as a human-readable project overview.
 
-Last updated: 2026-10-30.
+Last updated: 2026-11-02.
 
 ---
 

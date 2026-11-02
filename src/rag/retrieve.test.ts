@@ -23,7 +23,7 @@ function runCli(args: string[], options: { cwd: string }): child_process.SpawnSy
 }
 
 const otGuide = USE_CASES.find((u) => (u.originTrials?.length ?? 0) > 0)!;
-const nonOtGuide = USE_CASES.find((u) => !u.originTrials?.length)!;
+const nonOtGuide = USE_CASES.find((u) => !u.originTrials?.length && u.tokenCount < 1500)!;
 
 describe('retrieveUseCase and Origin Trial gate', () => {
   let tempDir: string;

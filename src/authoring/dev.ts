@@ -95,7 +95,7 @@ export const devCli = {
  * ordered by git history (so merges count); uncommitted inputs count as changed when `outputs` are
  * committed and unmodified. Uncommitted `outputs`, or no git repo, fall back to modification times.
  */
-function changedSince(inputs: string[], outputs: string[]): boolean {
+export function changedSince(inputs: string[], outputs: string[]): boolean {
   const ins = inputs.filter(p => fs.existsSync(p));
   const outs = outputs.filter(p => fs.existsSync(p));
   if (ins.length === 0 || outs.length === 0) return false;
