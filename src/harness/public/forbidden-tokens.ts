@@ -42,6 +42,24 @@ export function forbiddenTokens(explicit: readonly string[] = [], env = process.
   return tokens;
 }
 
+/**
+ * Version counter (`PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION`) stamped into build
+ * state so bumping it forces already-built suites to be rescanned against an
+ * updated token list without recording the tokens themselves. Unset or blank
+ * means `0`; anything other than decimal digits is refused.
+ */
+export function forbiddenTokensVersion(env = process.env): number {
+  const raw = (env['PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION'] ?? '').trim();
+  if (raw === '') {
+    return 0;
+  }
+  const parsed = Number(raw);
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(parsed)) {
+    throw new Error(`PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION must be a non-negative integer, got ${JSON.stringify(raw)}`);
+  }
+  return parsed;
+}
+
 function isCi(env: NodeJS.ProcessEnv): boolean {
   return env['CI'] !== undefined && env['CI'] !== '' && env['CI'] !== 'false';
 }
