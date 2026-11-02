@@ -48,14 +48,19 @@
 			interpolate-size: allow-keywords;
 			overflow: clip;
 			contain: layout;
-			transition:
-				block-size 0.3s ease-in-out,
-				content-visibility 0.3s ease-in-out;
-			transition-behavior: allow-discrete;
 		}
 
-		details:not(:open, [open])::details-content {
+		details:not([open])::details-content {
 			block-size: 0;
+		}
+
+		@media (prefers-reduced-motion: no-preference) {
+			details::details-content {
+				transition: block-size, content-visibility;
+				transition-duration: 0.3s;
+				transition-timing-function: ease-in-out;
+				transition-behavior: allow-discrete;
+			}
 		}
 	}
 </style>
