@@ -1,0 +1,106 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..505be08 100644
+--- a/index.html
++++ b/index.html
+@@ -29,6 +29,7 @@
+ 
+     /* Navigation */
+     nav {
++      --contrast-bg: var(--primary);
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -56,14 +57,14 @@
+     }
+ 
+     nav a {
+-      color: white;
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+-      color: var(--accent);
++      text-decoration: underline;
++      text-underline-offset: 4px;
+     }
+ 
+     .logout-link {
+@@ -121,6 +122,7 @@
+     }
+ 
+     .btn {
++      --contrast-bg: var(--primary);
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+@@ -128,15 +130,16 @@
+       text-decoration: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      box-shadow: inset 0 0 0 2px currentColor;
+     }
+ 
+     footer {
++      --contrast-bg: var(--secondary);
+       background: var(--secondary);
++      color: black;
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -148,10 +151,28 @@
+ 
+     .footer-links a {
+       margin: 0 10px;
+-      color: var(--text);
++      color: inherit;
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Dynamic fallback for browsers with relative colors and sign(). */
++    @supports (color: oklch(from red max(0, sign(0.623 - l)) 0 h)) {
++      nav,
++      .btn,
++      footer {
++        color: oklch(from var(--contrast-bg) max(0, sign(0.623 - l)) 0 h);
++      }
++    }
++
++    /* Prefer the browser's maximum-contrast black or white foreground. */
++    @supports (color: contrast-color(red)) {
++      nav,
++      .btn,
++      footer {
++        color: contrast-color(var(--contrast-bg));
++      }
++    }
+   </style>
+ </head>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..43e7284 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"const fs = require('node:fs'); fs.mkdirSync('dist', { recursive: true }); fs.copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

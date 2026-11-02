@@ -1,1 +1,1 @@
-- Enable the web application to access resources on a user's local network or loopback interface.
+- Add an interactive equipment connection panel to the Daily Grind homepage that lets baristas and customers connect from the browser to both a Wi-Fi coffee brewer on their local network and a companion brewing utility running on their local loopback interface, with clear permission status and error feedback.

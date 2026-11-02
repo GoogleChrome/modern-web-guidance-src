@@ -10,8 +10,9 @@ Retrieval is evaluated against three complementary query sets paired with pooled
 
 | Dataset | Location | Size | Description |
 | :--- | :--- | :---: | :--- |
-| **`wild`** | GCS (`out/benchmarks/wild/v1/`, gitignored) | 1,000 | Anonymized real-world search queries sampled from 90-day CLI telemetry (stratified across head/tail traffic and near-threshold `0.30..0.42` similarity). Downloaded and SHA-256-verified automatically via `ensureWildDataset()`. |
-| **`harness`** | `data/harness-{queries,qrels}.jsonl` | 160 | Real `skill_search` queries mined from nightly evaluation trajectories across Antigravity CLI, Claude Code, Codex CLI, and Jetski CLI, paired with `expectedGuide` task targets and pooled multi-label qrels. |
+| **`wild`** | GCS (`gs://guidance-rag-evals/v2/`, cached at `out/benchmarks/wild/v2/`, gitignored) | 4,000 | Anonymized real-world search queries sampled from post-#1850 CLI telemetry with a fixed 50/50 dev/test split (2,000 dev / 2,000 test, stratified by query word count). Downloaded and SHA-256-verified automatically via `ensureWildDataset()`. Historical `v1` (1,000 pre-#1850 queries) remains archived in GCS (`gs://guidance-rag-evals/v1/`) and accessible via `--wild-version v1`. |
+| **`agent`** | `data/agent-{queries,qrels}.jsonl` | 1,029 | Real `skill_search` queries mined from nightly evaluation trajectories across Antigravity CLI, Claude Code, Codex CLI, and Jetski CLI, deduplicated by normalized query text, filtered for prompt and trajectory answer leakage, and partitioned by connected components of expected guides into a dev/test split (515 dev / 514 test, no shared guides) evaluated with guide-cluster bootstrap CIs. |
+| **`harness`** | `data/harness-{queries,qrels}.jsonl` | 160 | Historical frozen agent query benchmark (pre-#2056) retained for reproducing legacy evaluation numbers. |
 | **`oos`** | `data/oos-{queries,qrels}.jsonl` | 90 | Curated out-of-scope queries (`50` far out-of-domain like Python/Kubernetes/SQL, `40` near-miss web topics outside our corpus like React hooks, Next.js App Router, Tailwind, WebGL) to measure false-positive admission and wasted context tokens. |
 
 ### Grading Scale
@@ -34,11 +35,20 @@ In blind validation against 69 human judgments across wild and harness queries, 
 ## Running the Benchmark
 
 ```bash
-# Run full benchmark (wild + harness + oos) on the current working tree:
+# Run full benchmark on the dev split (wild + agent dev splits + oos) on the current working tree:
 pnpm benchmark:rag
+
+# Run benchmark specifically on the held-out test split (for final reporting):
+pnpm benchmark:rag --split test
+
+# Run benchmark on all splits combined:
+pnpm benchmark:rag --split all
 
 # Run only checked-in public datasets (no GCS credentials required; runs in CI):
 pnpm benchmark:rag --public-only
+
+# Run against historical wild-v1 dataset:
+pnpm benchmark:rag --wild-version v1
 
 # A/B compare a branch or commit against origin/main (with paired 95% bootstrap CIs):
 pnpm benchmark:rag --base origin/main --head HEAD

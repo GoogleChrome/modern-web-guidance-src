@@ -194,8 +194,7 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
   const report = buildInitialDevReport(tmpDir, summaries, { category, name });
   assert.ok(report.includes('# Evaluation Report: size-aware-styling'));
   assert.ok(report.includes('> [!NOTE]'));
-  assert.ok(report.includes('needs-eval-gen'));
-  assert.ok(report.includes('needs-eval-run'));
+  assert.ok(report.includes('needs-dev-rerun'));
   assert.ok(report.includes('## Summary'));
   assert.ok(report.includes('<!-- TODO: Complete overall summary across all targets -->'));
   assert.ok(report.indexOf('## Summary') < report.indexOf('## Target: `daily-grind`'));
@@ -211,7 +210,7 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
 
   const healthyReport = buildInitialDevReport(tmpDir, [summaries[0]!], { category, name });
   assert.ok(!healthyReport.includes('> [!NOTE]'));
-  assert.ok(!healthyReport.includes('needs-eval-gen'));
+  assert.ok(!healthyReport.includes('needs-dev-rerun'));
 });
 
 test('computeTargetSummary creates CALIBRATION_FAILED summary directly from calibration error details', () => {

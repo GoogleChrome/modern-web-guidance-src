@@ -3,7 +3,7 @@
 import { parseArgs } from 'util';
 import path from 'path';
 import fs from 'fs';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import omelette from 'omelette';
 import { cRed, cCyan, cBold, cDim } from '../src/core/colors.ts';
 import { resolveSuiteConfig } from '../src/harness/config.ts';
@@ -305,7 +305,18 @@ async function main() {
         break;
       }
 
-      // Default dev-guide pipeline
+      // Default dev-guide pipeline. From main, work on a new gd-dev/ branch so generation and
+      // post-report fixes land in separate commits (an existing branch may be stale, so skip it).
+      const branch = (await import('../src/authoring/pr.ts')).devPrBranch(path.basename(path.resolve(dir)));
+      try {
+        const current = execSync('git branch --show-current', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+        if (current === 'main' && fs.existsSync(path.resolve(dir))) {
+          execSync(`git checkout -b "${branch}"`, { stdio: 'ignore' });
+          console.log(cCyan(`Switched to new branch '${branch}'.`));
+        }
+      } catch {
+        console.warn(cDim(`Could not switch to branch '${branch}'; continuing on the current branch.`));
+      }
       const { devGuide } = await import('../src/authoring/dev.ts');
       const mergedSuiteConfig = await resolveSuiteConfig(values.config as string | undefined);
       const success = await devGuide(dir, {

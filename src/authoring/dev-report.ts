@@ -43,8 +43,6 @@ export async function applyPrReviewFeedback(
   const agent = getDefaultSolutionAgent();
   const { workDir, tempHome } = setupGuideDevWorkDir('review-feedback');
 
-  const shouldTouchTargets = prContext.rerunMode !== 'needs-eval-gen';
-
   try {
     if (fs.existsSync(path.join(targetDir, GUIDE_FILE))) {
       fs.copyFileSync(path.join(targetDir, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
@@ -52,7 +50,7 @@ export async function applyPrReviewFeedback(
     if (fs.existsSync(path.join(targetDir, EXPECTATIONS_FILE))) {
       fs.copyFileSync(path.join(targetDir, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
     }
-    if (shouldTouchTargets && fs.existsSync(path.join(targetDir, TARGETS_DIR))) {
+    if (fs.existsSync(path.join(targetDir, TARGETS_DIR))) {
       fs.cpSync(path.join(targetDir, TARGETS_DIR), path.join(workDir, 'targets'), { recursive: true });
     }
 
@@ -77,11 +75,9 @@ export async function applyPrReviewFeedback(
     if (fs.existsSync(workExp)) {
       fs.copyFileSync(workExp, path.join(targetDir, EXPECTATIONS_FILE));
     }
-    if (shouldTouchTargets) {
-      const workTargets = path.join(workDir, 'targets');
-      if (fs.existsSync(workTargets)) {
-        fs.cpSync(workTargets, path.join(targetDir, TARGETS_DIR), { recursive: true });
-      }
+    const workTargets = path.join(workDir, 'targets');
+    if (fs.existsSync(workTargets)) {
+      fs.cpSync(workTargets, path.join(targetDir, TARGETS_DIR), { recursive: true });
     }
   } finally {
     fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
@@ -230,8 +226,7 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
   if (anyUnhealthy) {
     content += `> [!NOTE]\n`;
     content += `> **Reviewer Next Steps**: If any targets are flagged or require adjustments, recommended fixes have already been applied directly to the files in this PR.\n`;
-    content += `> - For edits to \`guide.md\` or \`expectations.md\`: review the changes, then add the **\`needs-eval-gen\`** label to regenerate solutions, tasks, and graders on the next \`gd dev-gap\` run.\n`;
-    content += `> - For edits to \`targets/\` (\`task.md\` or \`grader.ts\`): review the changes, then add the **\`needs-eval-run\`** label to re-run calibration and agent evaluations.\n\n`;
+    content += `> - After reviewing, add the **\`needs-dev-rerun\`** label. The next \`gd dev-gap\` run regenerates whatever the changed files require: edits to \`guide.md\` or \`expectations.md\` regenerate all target artifacts, edits to \`task.md\` regenerate the solution patches and \`grader.ts\`, and edits to \`grader.ts\` re-run calibration and agent evaluations.\n\n`;
   }
 
   content += `## Summary\n\n`;

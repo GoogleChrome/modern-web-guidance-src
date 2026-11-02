@@ -1,0 +1,1 @@
+- Refactor the Seasonal Favorites cards (Maple Oat Latte, Dark Roast Espresso, and Cold Brew) in `index.html` into a reusable card component so each drink's title, description, action link, and an optional "Limited" badge can be supplied from the page, which may add or remove the badge later, while keeping the card layout and styles isolated from global CSS.

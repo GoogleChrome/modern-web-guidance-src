@@ -1,0 +1,1 @@
+- Update The Daily Grind homepage in `index.html` to include third-party scripts, stylesheets, fonts, and images for the hero banner and seasonal favorites cards, ensuring the browser cryptographically verifies that those external assets haven't been tampered with while controlling whether the requests send user credentials or referrer information.

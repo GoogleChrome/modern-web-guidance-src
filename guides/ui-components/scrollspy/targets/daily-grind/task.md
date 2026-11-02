@@ -1,1 +1,1 @@
-- Highlight the currently visible section of the page in the navigation menu.
+- Convert the Daily Grind sticky navigation bar links (Menu, Locations, Rewards, and My Account) into in-page section anchors with corresponding content sections on the homepage, and highlight whichever section is currently visible in the navigation bar as the user scrolls.

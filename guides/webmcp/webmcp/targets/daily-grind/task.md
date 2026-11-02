@@ -1,1 +1,1 @@
-- Implement WebMCP in the application to expose client-side functionality as tools to AI agents.
+- Implement WebMCP on the Daily Grind homepage to expose client-side browser tools that let AI agents query the "Seasonal Favorites" coffee menu and trigger interactive drink orders or UI updates on the page.

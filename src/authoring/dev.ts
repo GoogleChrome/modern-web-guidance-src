@@ -1,12 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import matter from '@11ty/gray-matter';
 import { rootDir, guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
 import { spawnAsync } from '../harness/lib/agent-shared.ts';
 import { Agents, type SuiteConfig } from '../harness/config.ts';
+import { ensureFreshHostCodexAuth } from '../harness/agents/codex-cli-agent.ts';
 import { collectGuidesUsed } from '../harness/lib/guide-usage.ts';
 import { setupGuideDevWorkDir, runAgent, copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
 import {
@@ -89,6 +90,60 @@ export const devCli = {
   },
 };
 
+/**
+ * Returns true if any of `inputs` changed after `outputs` were last written. Committed changes are
+ * ordered by git history (so merges count); uncommitted inputs count as changed when `outputs` are
+ * committed and unmodified. Uncommitted `outputs`, or no git repo, fall back to modification times.
+ */
+export function changedSince(inputs: string[], outputs: string[]): boolean {
+  const ins = inputs.filter(p => fs.existsSync(p));
+  const outs = outputs.filter(p => fs.existsSync(p));
+  if (ins.length === 0 || outs.length === 0) return false;
+
+  const byMtime = () =>
+    Math.max(...ins.map(p => fs.statSync(p).mtimeMs)) > Math.max(...outs.map(p => fs.statSync(p).mtimeMs));
+  const git = (args: string[]): string =>
+    execFileSync('git', args, { cwd: path.dirname(outs[0]), encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+
+  try {
+    const isDirty = (p: string) => git(['status', '--porcelain', '--', p]) !== '';
+    if (outs.some(isDirty)) return byMtime();
+    if (ins.some(isDirty)) return true;
+    const lastOutputCommit = git(['log', '-1', '--format=%H', '--', ...outs]);
+    if (!lastOutputCommit) return byMtime();
+    return git(['rev-list', '--count', `${lastOutputCommit}..HEAD`, '--', ...ins]) !== '0';
+  } catch {
+    return byMtime();
+  }
+}
+
+/**
+ * Deletes the stale artifacts of a target capsule so `devGuide` (which skips files that already
+ * exist) regenerates them, based on what changed since its golden solution patches were generated:
+ * - `guide.md` / `expectations.md`: wipe the target and regenerate everything.
+ * - `task.md`: regenerate the solution patches and `grader.ts` (keep `task.md` and `zero-passrate.patch`).
+ * - Otherwise (e.g. only `grader.ts`): nothing; calibration and evals still run.
+ * Comparing against the solution patches keeps reruns idempotent: once they are regenerated, an
+ * earlier input change no longer counts.
+ */
+export function applyTargetRerun(guideDir: string, targetCapsuleDir: string): 'regenerate-all' | 'regenerate-solutions' | 'none' {
+  const solutionPatches = Object.values(SOLUTION_PATCH_FILES).map(f => path.join(targetCapsuleDir, f));
+  const target = path.basename(targetCapsuleDir);
+  if (changedSince([GUIDE_FILE, EXPECTATIONS_FILE].map(f => path.join(guideDir, f)), solutionPatches)) {
+    console.log(cYellow(`\n${GUIDE_FILE} or ${EXPECTATIONS_FILE} changed since ${target} was generated; regenerating all ${target} artifacts.`));
+    fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
+    return 'regenerate-all';
+  }
+  if (changedSince([path.join(targetCapsuleDir, TASK_FILE)], solutionPatches)) {
+    console.log(cYellow(`\n${TASK_FILE} changed since the ${target} solution patches were generated; regenerating solution patches and ${GRADER_FILE}.`));
+    for (const f of [...Object.values(SOLUTION_PATCH_FILES), GRADER_FILE]) {
+      fs.rmSync(path.join(targetCapsuleDir, f), { force: true });
+    }
+    return 'regenerate-solutions';
+  }
+  return 'none';
+}
+
 function printInventory(inv: GuideInventory, targets: readonly string[] = SUPPORTED_BASE_APPS): void {
   const icon = (exists: boolean, willGenerate = false, warn = false) => {
     if (exists && !warn) return '\u2705';
@@ -153,14 +208,9 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
     await applyPrReviewFeedback(targetDir, options.prContext);
   }
 
-  // Under needs-eval-gen, wipe targets after Step 0 so Step 2 regenerates all target artifacts from source guidance
-  if (options.prContext?.rerunMode === 'needs-eval-gen') {
-    for (const t of targets) {
-      const targetCapsuleDir = path.join(targetDir, TARGETS_DIR, t);
-      if (fs.existsSync(targetCapsuleDir)) {
-        fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
-      }
-    }
+  // After Step 0, regenerate only what the changed files require (needs-dev-rerun and local `gd dev` runs alike).
+  for (const t of targets) {
+    applyTargetRerun(targetDir, path.join(targetDir, TARGETS_DIR, t));
   }
 
   // Step 0.5: Excise old eval artifacts if they exist
@@ -282,6 +332,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
 async function generateTargetPatch(guideDirAbs: string, baseApp: string, patchType: SolutionAgent | 'zero-passrate'): Promise<void> {
   const agent = patchType === 'zero-passrate' ? getDefaultSolutionAgent() : patchType;
+  if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
   const { workDir, tempHome } = setupGuideDevWorkDir(`${baseApp}-${patchType}`, undefined, agent);
   try {
     await copyBaseAppToWorkspace(baseApp, workDir);

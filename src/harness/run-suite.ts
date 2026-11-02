@@ -8,6 +8,7 @@ import { baseAppsDir, suitesDir } from '../core/paths.ts';
 import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
+import { ensureFreshHostCodexAuth } from './agents/codex-cli-agent.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
 import { determineAgent } from '../cli/telemetry/detect-agent.ts';
 
@@ -114,6 +115,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     console.log(`\nStarting execution for ${numRuns} runs`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
+      if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
       console.log(`\n${'='.repeat(60)}`);
       console.log(`>>> STARTING RUN ${runNumber} <<<`);
       console.log(`${'='.repeat(60)}\n`);
