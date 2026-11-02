@@ -1,6 +1,5 @@
 import {
     initGoogleAuth,
-    authenticatedFetch,
     getAccessToken,
     escapeHtml,
     timeAgo,
@@ -22,6 +21,8 @@ import { A11Y_SUBCATEGORIES } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { updateHeroFromSuites } from './hero.js';
 import { updateShowcaseFromSuites } from './showcase.js';
+import { ApiClient, isAuthRejection } from './api.js';
+import { isLocalServer, reloadAsRemote, resolveDataSource } from './data-source.js';
 
 /**
  * @typedef {import('./insights.js').ManifestSuite & {
@@ -52,6 +53,8 @@ let currentModelFilter = 'all';
 let currentSearchFilter = '';
 /** @type {boolean} */
 let scheduledOnly = true;
+/** @type {'remote' | 'public' | null} */
+let loadedManifestSource = null;
 /** @type {SuiteSortKey} */
 let currentSuiteSort = 'date';
 /** @type {SortDirection} */
@@ -73,10 +76,6 @@ let currentGuideSortDir = 'asc';
 let currentInsightsMode = 'all';
 const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
-function isRemoteDashboard() {
-    return window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-}
-
 /** @param {string} testId */
 function isScheduledSuite(testId) { return /^(nightly|weekly)-/i.test(testId || ''); }
 document.addEventListener('DOMContentLoaded', async () => {
@@ -90,14 +89,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const params = new URLSearchParams(window.location.search);
 
-        // Wait for auth before loading if remote is needed. We load local immediately, remote when auth'd
+        // A page that read the public copy reloads so every row comes from the bucket;
+        // the dev server merges the bucket into its local results in place.
         initGoogleAuth(async () => {
-            await loadRemoteTests();
+            const source = resolveDataSource();
+            if (source === 'remote' || source === 'public') {
+                reloadAsRemote();
+                return;
+            }
+            await loadManifestTests('remote');
         });
 
-        await loadLocalTests();
-        if (getAccessToken()) {
-            await loadRemoteTests();
+        if (resolveDataSource(params) === 'public') {
+            await loadManifestTests('public');
+        } else {
+            await loadLocalTests();
+            if (getAccessToken()) {
+                await loadManifestTests('remote');
+            }
         }
 
         selectedTestIds = new Set(Object.keys(allTestData));
@@ -414,11 +423,8 @@ function fetchEvalsForHero(testId) {
  * @returns {Promise<import('../harness/lib/metrics.ts').EvalsReport>} */
 async function fetchEvalsUncached(testId) {
     const match = Object.values(allTestData).find(s => s.testId === testId);
-    if (match?.source === 'remote') {
-        const url = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent(`${testId}/evals.json`)}?alt=media&t=${Date.now()}`;
-        const res = await authenticatedFetch(url);
-        if (!res.ok) throw new Error(`Failed to fetch remote evals for ${testId}`);
-        return res.json();
+    if (match?.source === 'remote' || match?.source === 'public') {
+        return new ApiClient(match.source).getEvals(testId);
     }
     const fetchPath = match?.source === 'static' ? `results/${testId}/evals.json` : `${testId}/evals.json?source=local`;
     const res = await fetch(`${fetchPath}${fetchPath.includes('?') ? '&' : '?'}t=${Date.now()}`);
@@ -428,8 +434,11 @@ async function fetchEvalsUncached(testId) {
 
 function syncHero() {
     const suites = Object.values(allTestData);
+    const resolved = resolveDataSource();
+    const source = resolved === 'remote' && loadedManifestSource ? loadedManifestSource : resolved;
     updateShowcaseFromSuites(suites);
     updateHeroFromSuites(suites, {
+        source,
         fetchEvals: fetchEvalsForHero,
         onHydrated: () => {
             updateShowcaseFromSuites(suites, { hydrated: true });
@@ -442,9 +451,7 @@ function syncHero() {
 }
 
 async function loadLocalTests() {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return; // Avoid 404s by skipping local network fetches when hosted on GitHub Pages
-    }
+    if (!isLocalServer()) return;
 
     try {
         let response = await fetch(`/api/suites?t=${Date.now()}`);
@@ -497,24 +504,22 @@ async function loadLocalTests() {
     }
 }
 
-async function loadRemoteTests() {
+/** @param {'remote' | 'public'} source */
+async function loadManifestTests(source) {
+    loadedManifestSource = source;
     try {
-        const fileUrl = `https://storage.googleapis.com/storage/v1/b/guidance-evals/o/${encodeURIComponent('suites.gen.json')}?alt=media&t=${Date.now()}`;
-        const response = await authenticatedFetch(fileUrl);
-        if (!response.ok) throw new Error('Failed to fetch remote suites manifest');
-
-        const manifest = await response.json();
-        if (Array.isArray(manifest) && manifest.length > 0) {
+        const manifest = await new ApiClient(source).getSuitesManifest();
+        if (manifest.length > 0) {
             setEmptyState(null);
             for (const item of manifest) {
                 if (item && item.testId) {
-                    registerSuiteSummary(item, 'remote', { refreshFilters: false });
+                    registerSuiteSummary(item, source, { refreshFilters: false });
                 }
             }
             refreshFilterOptions();
         }
 
-        // Re-render UI now that we have remote data
+        // Re-render UI now that we have manifest data
         const params = new URLSearchParams(window.location.search);
         let initialTests = params.get('tests');
         if (!initialTests || initialTests.trim() === '') {
@@ -527,7 +532,11 @@ async function loadRemoteTests() {
         syncHero();
 
     } catch (error) {
-        console.error('Error loading remote suites:', error);
+        console.error(`Error loading ${source} suites:`, error);
+        // The bucket rejected the token; show the public copy rather than nothing.
+        if (source === 'remote' && isAuthRejection(error)) {
+            await loadManifestTests('public');
+        }
     }
 }
 
@@ -598,8 +607,8 @@ function updateRunsFilterDatalist() {
 function updateSourceFilterOptions() {
     const group = document.querySelector('#filter-source optgroup');
     if (!group) return;
-    const sourceLabels = { local: 'Local', remote: 'Remote', static: 'Static' };
-    const values = /** @type {Array<'local' | 'remote' | 'static'>} */ (
+    const sourceLabels = { local: 'Local', remote: 'Remote', static: 'Static', public: 'Public' };
+    const values = /** @type {Array<import('./data-source.js').DataSource>} */ (
         [...new Set(Object.values(allTestData).map(t => t.source).filter(Boolean))].sort()
     );
     if (values.length === 0) return;
@@ -918,7 +927,7 @@ function syncOptionalColumns() {
     if (!table) return;
     const all = Object.values(allTestData);
     const sources = new Set(all.map(t => t.source));
-    table.classList.toggle('hide-source', isRemoteDashboard() || (sources.size <= 1 && currentSourceFilter === 'all'));
+    table.classList.toggle('hide-source', !isLocalServer() || (sources.size <= 1 && currentSourceFilter === 'all'));
 }
 
 /**

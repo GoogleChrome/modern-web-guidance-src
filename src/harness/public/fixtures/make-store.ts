@@ -6,7 +6,8 @@ import { CLOUDTOP_HOST, REPO_CHECKOUT } from './leak-samples.ts';
 
 /**
  * A bucket-shaped temp directory built from the checked-in sample nightly, for
- * tests that run the real builder without credentials.
+ * tests that run the real builder without credentials. Shared by the harness
+ * unit tests and the dashboard e2e spec so both exercise the same shape.
  */
 
 export const FIXTURE_SUITE = 'nightly-2026-10-20_20-43-48-codex_cli';
