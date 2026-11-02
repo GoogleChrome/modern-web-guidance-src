@@ -719,7 +719,7 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   cursor: pointer;
   display: inline-flex;
   flex-direction: column;
-  align-items: inherit;
+  align-items: center;
 }
 
 .eval-col-sort-btn:hover,

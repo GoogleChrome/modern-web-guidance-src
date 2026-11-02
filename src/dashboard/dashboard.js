@@ -1382,7 +1382,8 @@ function buildAccordion(item, testId) {
     const appSuffixHtml = displayAppName && displayAppName !== 'daily-grind'
         ? ` <span class="task-app-tag">(${escapeHtml(displayAppName)})</span>`
         : '';
-    const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(guide)} (${escapeHtml(appName)})"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
+    const trendLabel = `View trend over time for ${escapeHtml(guide)} (${escapeHtml(appName)})`;
+    const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="${trendLabel}" title="${trendLabel}"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
     const primaryFeatureId = featureIds[0] || '';
     const featureChipHtml = primaryFeatureId && primaryFeatureId !== guide
         ? `<span class="feature-chip">${escapeHtml(primaryFeatureId)}</span>`

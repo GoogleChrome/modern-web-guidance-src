@@ -331,11 +331,11 @@ export function capitalize(s) {
  * @returns {string}
  */
 export function formatTokens(tokens) {
-    if (!tokens) return '0 tok';
+    if (!tokens) return '0';
     // undefined so it uses the user's locale.
     return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
         .format(tokens)
-        .toLowerCase() + ' tok';
+        .toLowerCase();
 }
 
 /**
