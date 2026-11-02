@@ -8,6 +8,11 @@
   <style>
     @layer reset, page, prototype;
 
+    /* The fallback writes each bar out as a shape(); the function version loads
+       after it and wins wherever @function is supported. */
+    @import url(skeleton-bars-shape.css) layer(prototype);
+    @import url(skeleton-bars-function.css) layer(prototype) supports(at-rule(@function));
+
     @layer reset {
 
       *,
@@ -186,24 +191,7 @@
         }
       }
 
-      /* One text bar as a closed rounded rectangle, ending at --end. --i is the
-         bar's line index; the bar sits on the line pitch (--bar-height +
-         --bar-gap, which is 1lh). It reads --bar-height, --bar-gap and
-         --bar-radius from the element it is used on. */
-      @function --skeleton-bar(--i <number>: 0, --end <length-percentage>: 100%, --start <length>: 0px) {
-        --y: calc(var(--i) * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2);
-        result: move to calc(var(--start) + var(--bar-radius)) var(--y),
-          hline to calc(var(--end) - var(--bar-radius)),
-          arc to var(--end) calc(var(--y) + var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-          vline to calc(var(--y) + var(--bar-height) - var(--bar-radius)),
-          arc to calc(var(--end) - var(--bar-radius)) calc(var(--y) + var(--bar-height)) of var(--bar-radius) var(--bar-radius) cw,
-          hline to calc(var(--start) + var(--bar-radius)),
-          arc to var(--start) calc(var(--y) + var(--bar-height) - var(--bar-radius)) of var(--bar-radius) var(--bar-radius) cw,
-          vline to calc(var(--y) + var(--bar-radius)),
-          arc to calc(var(--start) + var(--bar-radius)) var(--y) of var(--bar-radius) var(--bar-radius) cw,
-          close;
-      }
-
+      /* Each bar written out as a shape() subpath, for browsers without @function */
       /* Cap the visible cards with a fixed :nth-child() selector, which works
          without JavaScript. 7 is an example value (it shows six cards). Whole
          cards can be removed; in-card items may need visibility to reserve space. */
@@ -282,10 +270,6 @@
       /* Standalone links are a short single bar. Inline links inside text are
          hidden with their parent, so they are excluded; :where() keeps the
          selector's specificity unchanged. */
-      .skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
-        --bars: shape(from 0 0, --skeleton-bar(0, 42%));
-      }
-
       /* Inline links keep their own color and underline, so make them inherit the hidden text */
       .skeleton[aria-busy="true"] :is(p, h2, li) a {
         color: inherit;
@@ -303,7 +287,6 @@
         list-style-position: outside;
         margin-inline-start: 0;
         --line-one: 72%;
-        --bars: shape(from 0 0, --skeleton-bar(0, var(--line-one)));
       }
 
       @supports (border-shape: shape(from 0 0, close)) {
@@ -342,22 +325,16 @@
         visibility: hidden;
       }
 
-      /* Each element lists its own bars (index, end position), because shape()
-         cannot repeat a path from a count. --lines sets the reserved height. */
-      .skeleton[aria-busy="true"] h2 {
-        --bars: shape(from 0 0, --skeleton-bar(0, 88%));
-      }
-
+      /* --lines sets the reserved height; the bars themselves are in the
+         imported stylesheets. */
       .skeleton[aria-busy="true"] p {
         --lines: 3;
-        --bars: shape(from 0 0, --skeleton-bar(0, 100%), --skeleton-bar(1, 92%), --skeleton-bar(2, 68%));
       }
 
       /* A one-line paragraph, such as the metadata row, gets one short bar. Its
          inline <time> needs no styling: it is hidden with the paragraph's text. */
       .skeleton[aria-busy="true"] p:has(> time) {
         --lines: 1;
-        --bars: shape(from 0 0, --skeleton-bar(0, 48%));
       }
 
       @keyframes sweep {
