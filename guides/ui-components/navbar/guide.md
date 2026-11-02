@@ -202,7 +202,7 @@ If the navigation is animated (optional; add it when the abrupt open and close f
 
 Optional. In the narrow layout the submenu is an inline list toggled with `hidden`, which opens instantly by default and is fully functional that way. To slide it open and closed:
 
-- Keep the `[hidden]` list rendered with `display: grid` and `block-size: 0`, then transition `block-size` to `auto` with `interpolate-size: allow-keywords` and `overflow: clip`.
+- Keep the `[hidden]` list rendered with `display: grid` and `block-size: 0`, then transition `block-size` to `auto` with `interpolate-size: allow-keywords` and `clip-path: inset(-6px)` to clip the slide without cutting off the focus ring (not `overflow: clip`, which clips the ring; `6px` is an example, use at least the ring's outline width plus offset).
 - Include `content-visibility: hidden` with `allow-discrete` in the transition so the content stays rendered until the close finishes.
 - Scope it to the collapsed layout and `prefers-reduced-motion: no-preference`; outside it, `[hidden]` must stay `display: none`. In the wide layout the submenu is a popover and must not be clipped.
 - For the general technique, see {{ GUIDE_REF("animate-to-intrinsic-sizes") }}.

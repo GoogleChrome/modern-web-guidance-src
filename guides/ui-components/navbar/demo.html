@@ -453,7 +453,7 @@
 
         .dropdown-list {
           interpolate-size: allow-keywords;
-          overflow: clip;
+          clip-path: inset(-6px); /* Clips the slide like overflow: clip, but leaves room for the focus ring; at least the ring's outline width plus offset */
           transition:
             block-size 180ms ease,
             padding-block 180ms ease,
