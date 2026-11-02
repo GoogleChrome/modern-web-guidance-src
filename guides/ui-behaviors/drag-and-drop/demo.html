@@ -19,6 +19,15 @@
       --line: #a9bdb1;
       --accent: #007d69;
 
+      /* Drag styling hooks: override these to match a design system. */
+      --drop-marker-color: var(--accent);
+      --drop-marker-size: 3px;
+      --drop-marker-dot: 0.75rem;
+      --drop-marker-gap: 0.75rem;
+      --drag-preview-opacity: 0.9;
+      --drag-preview-shadow: 0 12px 28px rgb(25 52 45 / 28%);
+      --drag-placeholder-opacity: 0.35;
+
       /* SVG Icon Variables */
       --icon-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='5' r='1'/%3E%3Ccircle cx='9' cy='12' r='1'/%3E%3Ccircle cx='9' cy='19' r='1'/%3E%3Ccircle cx='15' cy='5' r='1'/%3E%3Ccircle cx='15' cy='12' r='1'/%3E%3Ccircle cx='15' cy='19' r='1'/%3E%3C/svg%3E");
       --icon-chevron-up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='18 15 12 9 6 15'/%3E%3C/svg%3E");
@@ -88,16 +97,78 @@
     }
 
     .task.pointer-dragging {
-      opacity: 0.35;
+      opacity: var(--drag-placeholder-opacity);
+    }
+
+    .task.drop-prev {
+      anchor-name: --drop-prev;
+    }
+
+    .task.drop-next {
+      anchor-name: --drop-next;
+    }
+
+    /* Sits in the gap between the items around the drop spot, so nothing shifts until release. */
+    .drop-marker {
+      position: fixed;
+      z-index: 1;
+      pointer-events: none;
+      border-radius: 999px;
+      background: var(--drop-marker-color);
+    }
+
+    .drop-marker::before {
+      content: "";
+      position: absolute;
+      box-sizing: border-box;
+      inline-size: var(--drop-marker-dot);
+      block-size: var(--drop-marker-dot);
+      border: var(--drop-marker-size) solid var(--drop-marker-color);
+      border-radius: 50%;
+      background: var(--canvas);
+    }
+
+    .drop-marker[data-axis="block"] {
+      left: anchor(--drop-prev left, anchor(--drop-next left));
+      right: anchor(--drop-prev right, anchor(--drop-next right));
+      height: var(--drop-marker-size);
+      top: anchor(--drop-prev bottom, calc(anchor(--drop-next top) - var(--drop-marker-gap)));
+      margin-block-start: calc((var(--drop-marker-gap) - var(--drop-marker-size)) / 2);
+    }
+
+    .drop-marker[data-axis="block"]::before {
+      inset-inline-start: 0;
+      inset-block-start: 50%;
+      translate: -50% -50%;
+    }
+
+    .drop-marker[data-axis="inline"] {
+      top: anchor(--drop-prev top, anchor(--drop-next top));
+      bottom: anchor(--drop-prev bottom, anchor(--drop-next bottom));
+      width: var(--drop-marker-size);
+      inset-inline-start: anchor(--drop-prev end, calc(anchor(--drop-next start) - var(--drop-marker-gap)));
+      margin-inline-start: calc((var(--drop-marker-gap) - var(--drop-marker-size)) / 2);
+    }
+
+    .drop-marker[data-axis="inline"]::before {
+      inset-block-start: 0;
+      inset-inline-start: 50%;
+      translate: -50% -50%;
+    }
+
+    @media (forced-colors: active) {
+      .drop-marker {
+        background: Highlight;
+      }
     }
 
     .drag-preview {
       position: fixed;
-      z-index: 1;
+      z-index: 2;
       pointer-events: none;
-      opacity: 0.9;
+      opacity: var(--drag-preview-opacity);
       transform: scale(1.02);
-      box-shadow: 0 12px 28px rgb(25 52 45 / 28%);
+      box-shadow: var(--drag-preview-shadow);
     }
 
     .task:not(.pointer-dragging):has(.drag-handle:focus-visible),
@@ -378,6 +449,8 @@
       let activePointerId = null;
       let pointerHandle = null;
       let pointerStartNext = null;
+      let dropBefore;
+      let dropMarker = null;
       let isMoving = false;
       let pointerX = 0;
       let pointerY = 0;
@@ -431,8 +504,32 @@
         }
       }
 
+      function clearDropMarker() {
+        dropMarker?.remove();
+        dropMarker = null;
+        list.querySelectorAll('.drop-prev, .drop-next').forEach((el) => el.classList.remove('drop-prev', 'drop-next'));
+      }
+
+      // The marker is anchored to the items on either side of the drop spot; the list itself doesn't change.
+      function showDropMarker(before, siblings) {
+        clearDropMarker();
+        const index = before ? siblings.indexOf(before) : siblings.length;
+        siblings[index - 1]?.classList.add('drop-prev');
+        before?.classList.add('drop-next');
+        dropMarker = document.createElement('div');
+        dropMarker.className = 'drop-marker';
+        dropMarker.dataset.axis = inline ? 'inline' : 'block';
+        dropMarker.setAttribute('aria-hidden', 'true');
+        document.body.append(dropMarker);
+      }
+
       function finishPointerReorder(cancelled = false) {
         if (!pointerItem) return;
+        clearDropMarker();
+        if (!cancelled && dropBefore !== undefined && dropBefore !== pointerItem.nextElementSibling) {
+          moveItem(pointerItem, dropBefore);
+        }
+        dropBefore = undefined;
         updateDisabledStates();
         const label = pointerItem.dataset.label;
         const position = getPosition(pointerItem);
@@ -489,7 +586,7 @@
       function cancelPointerReorder(event) {
         if (event.key !== 'Escape') return;
         event.preventDefault();
-        moveItem(pointerItem, pointerStartNext, true);
+        pointerItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         finishPointerReorder(true);
       }
 
@@ -504,9 +601,6 @@
 
       // Compare the pointer, clamped to the list, with layout midpoints along the list's axis. Layout positions
       // ignore in-flight FLIP translates, and a pointer past either edge still resolves to the first or last place.
-      // Swap eagerly: the dragged item passes a sibling a quarter of the way in, and only returns past it at three quarters.
-      const swapPoint = (item) => item.compareDocumentPosition(pointerItem) & Node.DOCUMENT_POSITION_PRECEDING ? 0.25 : 0.75;
-
       function updateDropTarget() {
         const bounds = list.getBoundingClientRect();
         const siblings = [...list.querySelectorAll(':scope > .task')].filter((item) => item !== pointerItem);
@@ -517,18 +611,19 @@
           // offsetLeft and scrollLeft share one coordinate space in both directions (scrollLeft is negative once
           // a right-to-left list is scrolled), so the same sum works for either.
           const x = clamped - bounds.left - list.clientLeft + list.scrollLeft;
-          // DOM order runs right to left in RTL, so progress through an item is measured from its right edge.
+          // DOM order runs right to left in RTL, so an item comes first when the pointer is past its midpoint.
           before = siblings.find((item) => {
-            const progress = (x - item.offsetLeft) / item.offsetWidth;
-            return (rtl ? 1 - progress : progress) < swapPoint(item);
+            const middle = item.offsetLeft + item.offsetWidth / 2;
+            return rtl ? x > middle : x < middle;
           }) ?? null;
         } else {
           const clamped = Math.min(Math.max(pointerY, bounds.top), bounds.bottom);
           const y = clamped - bounds.top - list.clientTop + list.scrollTop;
-          before = siblings.find((item) => (y - item.offsetTop) / item.offsetHeight < swapPoint(item)) ?? null;
+          before = siblings.find((item) => y < item.offsetTop + item.offsetHeight / 2) ?? null;
         }
-        if (before === pointerItem.nextElementSibling) return;
-        moveItem(pointerItem, before);
+        if (before === dropBefore) return;
+        dropBefore = before;
+        showDropMarker(before, siblings);
       }
 
       function autoScroll(now) {
