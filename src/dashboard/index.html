@@ -220,10 +220,10 @@
                   <label for="filter-model" class="visually-hidden">Filter by model</label>
                   <select id="filter-model" class="header-filter-select header-filter-select-left"><option value="all">Model</option><optgroup label="Select model" id="filter-model-group"></optgroup></select>
                 </th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="uplift">Pass rate</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y subscore</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="time">Median time</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="tokens">Median uncached tokens</button></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="uplift">Pass rate</button><span class="eval-col-sub">Unguided → Guided</span></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y subscore</button><span class="eval-col-sub">Unguided → Guided</span></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="time">Median time</button><span class="eval-col-sub">Unguided / Guided</span></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="tokens">Median uncached tokens</button><span class="eval-col-sub">Unguided / Guided</span></th>
                 <th scope="col" id="header-source">
                   <label for="filter-source" class="visually-hidden">Filter by source</label>
                   <select id="filter-source" class="header-filter-select"><option value="all">Source</option><optgroup label="Select source"><option value="local">Local</option><option value="remote">Remote</option></optgroup></select>

@@ -864,26 +864,27 @@ function renderSuites() {
         } else { a11yCellHtml = renderNotAvailable('Accessibility subscore'); }
 
         const timeCellHtml = hasRuntime && rt
-            ? `<div class="eff-cell-main"> <span class="metric-primary"><span class="visually-hidden">Median time: unguided </span>${formatDuration(rt.unguidedMedianMs)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatDuration(rt.guidedMedianMs)}</strong></span> ${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median time' })} </div>`
+            ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median time: unguided </span>${formatDuration(rt.unguidedMedianMs)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatDuration(rt.guidedMedianMs)}</span></div>${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median time' })}</div>`
             : renderNotAvailable('Median time');
         const tokenCellHtml = hasTokens && tok
-            ? `<div class="eff-cell-main"> <span class="metric-primary"><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatTokens(tok.guidedUncachedMedian)}</strong></span> ${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })} </div>`
+            ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatTokens(tok.guidedUncachedMedian)}</span></div>${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })}</div>`
             : renderNotAvailable('Median uncached tokens');
 
         const badges = [!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : '', isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''].join('');
+        const adhocLabelHtml = !scheduled && label ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
 
         const metaParts = [
-            !scheduled && label ? escapeHtml(label) : '',
-            taskCount > 0 ? `${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}` : '',
-            escapeHtml(timeAgo(date)),
-            ldap ? escapeHtml(ldap) : ''
+            taskCount > 0 ? `<span class="nowrap">${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}</span>` : '',
+            `<span class="nowrap">${escapeHtml(timeAgo(date))}</span>`,
+            ldap ? `<span class="nowrap">${escapeHtml(ldap)}</span>` : ''
         ].filter(Boolean).join(' · ');
 
         html += `
             <tr class="suite-table-row${isFaulty ? ' faulty' : ''}${scheduled ? '' : ' adhoc'}" data-test-id="${escapeHtml(testId)}">
                 <th scope="row" class="suite-cell">
                     <a href="${localLink}" class="suite-link">
-                        <time class="suite-label" datetime="${date.toISOString()}">${escapeHtml(dateDisplay)}</time>${badges}
+                        <span class="suite-title-row"><time class="suite-label" datetime="${date.toISOString()}">${escapeHtml(dateDisplay)}</time>${badges}</span>
+                        ${adhocLabelHtml}
                         <span class="suite-meta">${metaParts}</span>
                     </a>
                 </th>
@@ -1426,7 +1427,7 @@ function renderPivotInsights() {
             const errAttr = filterKey === 'model' && (avgUErr > 0 || avgGErr > 0) ? '1' : '';
             const staticRowCls = filterKey === 'dimension' ? ' is-static' : '';
             const barbellTrackHtml = `<span class="insight-dumbbell-track" aria-hidden="true"> ${uBandHtml} ${gBandHtml} <span class="connector${regressedCls}" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></span> <span class="dot unguided" style="left: ${uRate}%;"></span> <span class="dot guided" style="left: ${gRate}%;"></span> </span>`;
-            const rateTextHtml = `<span class="rate-text"> <span class="visually-hidden">Median unguided </span>${uRate}% <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span>${gRate}% <span class="delta ${medUplift > 0 ? 'up' : (medUplift < 0 ? 'down' : 'flat')}">(${sign}${medUplift} pp)</span> </span>`;
+            const rateTextHtml = `<span class="rate-text"> <span class="visually-hidden">Median unguided </span>${uRate}% <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span><span class="rate-g">${gRate}%</span> <span class="delta ${medUplift > 0 ? 'up' : (medUplift < 0 ? 'down' : 'flat')}">(${sign}${medUplift} pp)</span> </span>`;
             const barbellCellHtml = filterKey === 'dimension'
                 ? `<button type="button" class="pivot-barbell-btn" interestfor="barbell-tooltip" aria-label="${escapeHtml(`${displayTitle}: median unguided ${uRate}%, guided ${gRate}% (${sign}${medUplift} pp)`)}">${barbellTrackHtml}${rateTextHtml} </button>`
                 : `${barbellTrackHtml}${rateTextHtml}`;
