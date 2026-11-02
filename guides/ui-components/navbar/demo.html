@@ -670,11 +670,15 @@
 
     // Collapse only when the inline row does not fit: show it inline and check for overflow.
     function syncLayoutState() {
+      const wasOpen = menu.matches(":popover-open");
       menu.removeAttribute("popover");
       header.dataset.nav = "inline";
       const wide = inner.scrollWidth <= inner.clientWidth;
       header.dataset.nav = wide ? "inline" : "collapsed";
-      if (!wide) menu.setAttribute("popover", "auto");
+      if (!wide) {
+        menu.setAttribute("popover", "auto");
+        if (wasOpen) menu.showPopover(); // Removing the attribute closed it; stay open while collapsed
+      }
 
       if (wide === isWide) return;
       isWide = wide;
