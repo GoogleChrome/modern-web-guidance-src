@@ -793,11 +793,11 @@ function renderSummary(data) {
             </div>
         </article>
 
-        <!-- Card 3: Completion Time (U → G) -->
+        <!-- Card 3: Task Duration (U → G) -->
         <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label"><span aria-hidden="true">⏱</span> Median agent time</span>
-                ${hasRuntime ? deltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median agent time' }) : ''}
+                <span class="meta-label"><span aria-hidden="true">⏱</span> Median agent duration</span>
+                ${hasRuntime ? deltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median agent duration' }) : ''}
             </div>
             <div class="narrative-hero-pair">
                 <span><span class="visually-hidden">Unguided </span>${formatDuration(rt.unguidedMedianMs)}</span>
@@ -1160,7 +1160,7 @@ function buildEvalsTableHeader() {
     header.innerHTML = `
         <div class="eval-col-task">${sortBtn('default', 'Guide / Task')}</div>
         ${isA11yMode ? '' : `<div class="eval-col-a11y">${sortBtn('a11y', 'A11y')}</div>`}
-        <div class="eval-col-time">${sortBtn('time', 'Time', 'Unguided / Guided')}</div>
+        <div class="eval-col-time">${sortBtn('time', 'Duration', 'Unguided / Guided')}</div>
         <div class="eval-col-tokens">${sortBtn('tokens', 'Tokens', 'Unguided / Guided')}</div>
         <div class="eval-col-dumbbell"><span>Pass rate</span><span class="eval-col-sub">Unguided → Guided</span></div>
         <div class="eval-col-uplift">${sortBtn('uplift', 'Uplift')}</div>
@@ -1398,7 +1398,7 @@ function buildAccordion(item, testId) {
     const hasRuntime = uRuntimeMs > 0 || gRuntimeMs > 0;
     const hasTokens = uUncachedTokens > 0 || gUncachedTokens > 0;
     const timeColHtml = hasRuntime
-        ? `<div class="task-metric-stack"><span class="visually-hidden">Average completion time, unguided to guided: </span><span class="metric-before">${formatDuration(uRuntimeMs)}</span><span class="metric-after">${formatDuration(gRuntimeMs)}</span></div>`
+        ? `<div class="task-metric-stack"><span class="visually-hidden">Average duration, unguided to guided: </span><span class="metric-before">${formatDuration(uRuntimeMs)}</span><span class="metric-after">${formatDuration(gRuntimeMs)}</span></div>`
         : '<div class="task-metric-stack"><span class="metric-empty">—</span></div>';
     const tokensColHtml = hasTokens
         ? `<div class="task-metric-stack"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span class="metric-before">${formatTokens(uUncachedTokens)}</span><span class="metric-after">${formatTokens(gUncachedTokens)}</span></div>`
@@ -1714,7 +1714,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                          }
                          ${isLeak ? `<span class="run-chip-leak">Unguided Leak<span class="visually-hidden">: accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}</span></span>` : ''}
                          ${buildFailureReason ? `<details class="tfoot-chip-details"><summary class="tfoot-chip-build-failed">Build Failed</summary><p class="tfoot-chip-msg">${escapeHtml(buildFailureReason)}</p></details>` : ''}
-                         ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent time: </span>${formatDuration(taskRuntime)}</span>` : ''}
+                         ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent duration: </span>${formatDuration(taskRuntime)}</span>` : ''}
                          ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)} uncached<span class="visually-hidden">, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
                          <div class="tfoot-chip-actions">
                              ${sessionFile ? `<button type="button" class="tfoot-action-btn" data-action="trajectory" data-base-path="${escapeHtml(usedBasePath)}" data-session-file="${escapeHtml(sessionFile)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}

@@ -864,8 +864,8 @@ function renderSuites() {
         } else { a11yCellHtml = renderNotAvailable('Accessibility subscore'); }
 
         const timeCellHtml = hasRuntime && rt
-            ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median time: unguided </span>${formatDuration(rt.unguidedMedianMs)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatDuration(rt.guidedMedianMs)}</span></div>${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median time' })}</div>`
-            : renderNotAvailable('Median time');
+            ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median duration: unguided </span>${formatDuration(rt.unguidedMedianMs)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatDuration(rt.guidedMedianMs)}</span></div>${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median duration' })}</div>`
+            : renderNotAvailable('Median duration');
         const tokenCellHtml = hasTokens && tok
             ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatTokens(tok.guidedUncachedMedian)}</span></div>${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })}</div>`
             : renderNotAvailable('Median uncached tokens');
@@ -1414,7 +1414,7 @@ function renderPivotInsights() {
                 const fmtSignedPct = (/** @type {number} */ v) => v > 0 ? `+${v}%` : (v < 0 ? `−${Math.abs(v)}%` : '0%');
                 const parts = [
                     `${items.length} ${items.length === 1 ? 'run' : 'runs'}`,
-                    rtMed !== null ? `time ${fmtSignedPct(rtMed)}` : '',
+                    rtMed !== null ? `duration ${fmtSignedPct(rtMed)}` : '',
                     tokMed !== null ? `tokens ${fmtSignedPct(tokMed)}` : ''
                 ].filter(Boolean);
                 effSummary = `<span class="pivot-trials">${escapeHtml(parts.join(' · '))}</span>`;

@@ -357,7 +357,7 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .suites-table thead { display: none; }
 .suites-table tr { margin: 8px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
 .suites-table tbody th { position: static; min-width: 0; background: var(--color-surface-container-low); }
-.suites-table { --label-2: "Agent"; --label-3: "Model"; --label-4: "Pass rate"; --label-5: "A11y subscore"; --label-6: "Median time"; --label-7: "Median uncached tokens"; --label-8: "Source"; }
+.suites-table { --label-2: "Agent"; --label-3: "Model"; --label-4: "Pass rate"; --label-5: "A11y subscore"; --label-6: "Median duration"; --label-7: "Median uncached tokens"; --label-8: "Source"; }
 .suites-table td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; width: auto; min-inline-size: 0; text-align: right; }
 .suites-table td::before { font-weight: 600; color: var(--text-secondary); text-align: left; flex-shrink: 0; }
 .suites-table.hide-source td:nth-child(8) { display: none; }
