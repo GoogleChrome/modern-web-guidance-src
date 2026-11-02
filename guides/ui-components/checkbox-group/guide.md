@@ -5,6 +5,7 @@ web-feature-ids:
   - subgrid
   - indeterminate
   - accent-color
+  - container-scroll-state-queries
   # - tmp-customizable-select-listbox # pending a11y SME
 guides:
   - checkbox
@@ -213,3 +214,7 @@ Scrolling regions are keyboard-reachable in current browsers because the checkbo
 If your Baseline target does not support `accent-color`, use the custom `appearance: none` styling from the {{ GUIDE_REF("checkbox") }} guide behind `@supports not (accent-color: auto)`.
 
 {{ BASELINE_STATUS("indeterminate") }}
+
+{{ BASELINE_STATUS("container-scroll-state-queries") }}
+
+If your Baseline target does not support scroll-state queries, omit the bottom fade. This is graceful degradation: the list still scrolls and the count in the `<output>` still reports how many options exist, but nothing signals that more options are below.
