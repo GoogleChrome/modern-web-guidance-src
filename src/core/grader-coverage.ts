@@ -44,7 +44,7 @@ export interface ManifestExpectationEntry {
 }
 
 const MANIFEST_ENTRY_REGEX =
-  /^\s*(?:\/\/|\/?\*+)\s*(?:[-*]\s*)?(?:(?:Expectations?|Exp)\s+)?(\d+)(?:\s*[-–]\s*(\d+))?(?:\s*\([^)]*\))?\s*(?:[:.)]|[-–—]+)?\s*\b(TESTED|SKIPPED)\b(?:\s*[:—–-]+\s*(.*)|\s+(.*))?$/i;
+  /^\s*(?:\/\/|\/?\*+)\s*(?:[-*]\s*)?(?:Expectations?|Exp)\s+(\d+)(?:\s*[-–]\s*(\d+))?(?:\s*\([^)]*\))?\s*(?:[:.)]|[-–—]+)?\s*\b(TESTED|SKIPPED)\b(?:\s*[:—–-]+\s*(.*)|\s+(.*))?$/i;
 
 /**
  * Extracts top-of-file manifest entries (`Expectation N: TESTED ...` or `Expectation N: SKIPPED: <reason>`)
