@@ -15,8 +15,9 @@ guides:
 A context menu provides quick access to actions related to a specific item or region. In a list of items, they are triggered by a single button. They can also be a secondary interaction, triggered by right-clicking or long-pressing, and allow the primary click or touch action to remain dedicated to tasks like selection, navigation, or drag-and-drop.
 
 - **Right-click + Visible Menu Button (Recommended):** Needed when the menu is the primary way to reach those actions on the current view, and supports touch, keyboard, and discoverability.
-- **Right-click Only:** Only valid when the same actions are already accessible elsewhere (e.g., on the item's detail page or a persistent toolbar).
 - **Visible Menu Button Only:** Use if Right-click behavior is not needed.
+
+A Right-click Only option is only accessible when the item can first be selected, and then the same actions are accessible elsewhere (e.g., in a persistent toolbar).
 
 ## Implementation
 
