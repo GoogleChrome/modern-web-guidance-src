@@ -17,6 +17,37 @@ export function tokenize(text: string): string[] {
   return (text.toLowerCase().match(/[a-z0-9][a-z0-9-]+/g) ?? []).filter((t) => !STOPWORDS.has(t));
 }
 
+/**
+ * Minimal plural stemmer for English, ported from Apache Lucene's
+ * `org.apache.lucene.analysis.en.EnglishMinimalStemmer`.
+ *
+ * Implements the "S-Stemmer" from Donna Harman, "How Effective Is Suffixing?" (1991).
+ */
+export function stemEnglishMinimal(word: string): string {
+  const len = word.length;
+  if (len < 3 || word[len - 1] !== "s") return word;
+
+  switch (word[len - 2]) {
+    case "u":
+    case "s":
+      return word;
+    case "e":
+      if (len > 3 && word[len - 3] === "i" && word[len - 4] !== "a" && word[len - 4] !== "e") {
+        return word.slice(0, len - 3) + "y";
+      }
+      if (word[len - 3] === "i" || word[len - 3] === "a" || word[len - 3] === "o" || word[len - 3] === "e") {
+        return word;
+      }
+      /* intentional fallthrough */
+    default:
+      return word.slice(0, len - 1);
+  }
+}
+
+function tokenizeBm25(text: string): string[] {
+  return tokenize(text).map(stemEnglishMinimal);
+}
+
 export interface Bm25Doc {
   id: string;
   length: number;
@@ -33,7 +64,7 @@ export function buildBm25Index(docs: { id: string; text: string }[]): Bm25Index 
   if (docs.length === 0) throw new Error("buildBm25Index: no documents");
   const docFreq = new Map<string, number>();
   const indexDocs = docs.map((doc) => {
-    const tokens = tokenize(doc.text);
+    const tokens = tokenizeBm25(doc.text);
     const freqs = new Map<string, number>();
     for (const t of tokens) freqs.set(t, (freqs.get(t) ?? 0) + 1);
     for (const t of freqs.keys()) docFreq.set(t, (docFreq.get(t) ?? 0) + 1);
@@ -54,7 +85,7 @@ export function rankBm25(
   b = DEFAULT_BM25_B
 ): { id: string; score: number }[] {
   const n = index.docs.length;
-  const termIdfs = [...new Set(tokenize(query))].map((term) => {
+  const termIdfs = [...new Set(tokenizeBm25(query))].map((term) => {
     const df = index.docFreq.get(term) ?? 0;
     return { term, idf: Math.log(1 + (n - df + 0.5) / (df + 0.5)) };
   });

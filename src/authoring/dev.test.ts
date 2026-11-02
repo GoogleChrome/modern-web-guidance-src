@@ -462,3 +462,23 @@ test('applyTargetRerun falls back to modification times outside a git repo', asy
   fs.writeFileSync(path.join(targetDir, 'task.md'), '- edited task\n');
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-solutions');
 });
+
+test('changedSince detects when expectations.md is modified after grader.ts', async (t) => {
+  const { changedSince } = await import('./dev.ts');
+  const { run, write, guideDir } = await setupRerunRepo(t);
+  const expPath = `${guideDir}/expectations.md`;
+  const graderPath = `${guideDir}/targets/daily-grind/grader.ts`;
+
+  // Initially committed together -> not stale
+  assert.strictEqual(changedSince([expPath], [graderPath]), false);
+
+  // Content author commits a new expectation without touching grader.ts -> stale
+  write('expectations.md', '- Expectation one\n- Expectation two\n');
+  run('git commit -q -am "content: add second expectation"');
+  assert.strictEqual(changedSince([expPath], [graderPath]), true);
+
+  // Grader is subsequently updated -> no longer stale
+  write('targets/daily-grind/grader.ts', '// updated grader\n');
+  run('git commit -q -am "test: update grader"');
+  assert.strictEqual(changedSince([expPath], [graderPath]), false);
+});
