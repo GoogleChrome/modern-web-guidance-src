@@ -147,7 +147,7 @@
       opacity: 0.6;
     }
 
-    .task:has(> .drag-handle) {
+    .task:has(> .drag-handle):not(.drag-preview) {
       position: relative;
     }
 
@@ -504,6 +504,9 @@
 
       // Compare the pointer, clamped to the list, with layout midpoints along the list's axis. Layout positions
       // ignore in-flight FLIP translates, and a pointer past either edge still resolves to the first or last place.
+      // Swap eagerly: the dragged item passes a sibling a quarter of the way in, and only returns past it at three quarters.
+      const swapPoint = (item) => item.compareDocumentPosition(pointerItem) & Node.DOCUMENT_POSITION_PRECEDING ? 0.25 : 0.75;
+
       function updateDropTarget() {
         const bounds = list.getBoundingClientRect();
         const siblings = [...list.querySelectorAll(':scope > .task')].filter((item) => item !== pointerItem);
@@ -514,15 +517,15 @@
           // offsetLeft and scrollLeft share one coordinate space in both directions (scrollLeft is negative once
           // a right-to-left list is scrolled), so the same sum works for either.
           const x = clamped - bounds.left - list.clientLeft + list.scrollLeft;
-          // DOM order runs right to left in RTL, so an item comes first when the pointer is past its midpoint.
+          // DOM order runs right to left in RTL, so progress through an item is measured from its right edge.
           before = siblings.find((item) => {
-            const middle = item.offsetLeft + item.offsetWidth / 2;
-            return rtl ? x > middle : x < middle;
+            const progress = (x - item.offsetLeft) / item.offsetWidth;
+            return (rtl ? 1 - progress : progress) < swapPoint(item);
           }) ?? null;
         } else {
           const clamped = Math.min(Math.max(pointerY, bounds.top), bounds.bottom);
           const y = clamped - bounds.top - list.clientTop + list.scrollTop;
-          before = siblings.find((item) => y < item.offsetTop + item.offsetHeight / 2) ?? null;
+          before = siblings.find((item) => (y - item.offsetTop) / item.offsetHeight < swapPoint(item)) ?? null;
         }
         if (before === pointerItem.nextElementSibling) return;
         moveItem(pointerItem, before);
