@@ -43,12 +43,15 @@ export interface ManifestExpectationEntry {
   reason: string;
 }
 
-const MANIFEST_ENTRY_REGEX =
+const PREFIXED_MANIFEST_ENTRY_REGEX =
   /^\s*(?:\/\/|\/?\*+)\s*(?:[-*]\s*)?(?:Expectations?|Exp)\s+(\d+)(?:\s*[-–]\s*(\d+))?(?:\s*\([^)]*\))?\s*(?:[:.)]|[-–—]+)?\s*\b(TESTED|SKIPPED)\b(?:\s*[:—–-]+\s*(.*)|\s+(.*))?$/i;
+
+const NUMBERED_MANIFEST_ENTRY_REGEX =
+  /^\s*(?:\/\/|\/?\*+)\s*(?:[-*]\s*)?(\d+)(?:\s*[-–]\s*(\d+))?(?:\s*\([^)]*\))?\s*[:.]\s*(TESTED|SKIPPED)\b(?:\s*[:—–-]+\s*(.*))?$/;
 
 /**
  * Extracts top-of-file manifest entries (`Expectation N: TESTED ...` or `Expectation N: SKIPPED: <reason>`)
- * keyed by 1-based expectation number.
+ * keyed by 1-based expectation number. Stops scanning at the first `test` or `test.describe` block.
  */
 export function extractManifestEntries(graderFilePath: string): Map<number, ManifestExpectationEntry> {
   const entries = new Map<number, ManifestExpectationEntry>();
@@ -56,8 +59,12 @@ export function extractManifestEntries(graderFilePath: string): Map<number, Mani
   const content = fs.readFileSync(graderFilePath, 'utf8');
 
   for (const rawLine of content.split('\n')) {
+    if (/^\s*test(?:\.[a-zA-Z]+)?\s*\(/.test(rawLine)) {
+      break;
+    }
+
     const line = rawLine.replace(/\*\/\s*$/, '').trimEnd();
-    const match = MANIFEST_ENTRY_REGEX.exec(line);
+    const match = PREFIXED_MANIFEST_ENTRY_REGEX.exec(line) ?? NUMBERED_MANIFEST_ENTRY_REGEX.exec(line);
     if (!match) continue;
 
     const start = Number.parseInt(match[1], 10);
@@ -82,7 +89,7 @@ export function extractTestTitles(graderFilePath: string): string[] {
   const content = fs.readFileSync(graderFilePath, 'utf8');
 
   const titles: string[] = [];
-  const testRegex = /(?:^|\s)test(?:\.(?:only|skip))?\s*\(\s*(['"`])([\s\S]*?)\1\s*,/g;
+  const testRegex = /(?:^|\s)test(?:\.only)?\s*\(\s*(['"`])([\s\S]*?)\1\s*,/g;
   let match: RegExpExecArray | null;
   while ((match = testRegex.exec(content)) !== null) {
     const rawTitle = match[2].trim();
@@ -128,24 +135,38 @@ export interface GraderCoverageResult {
   isComplete: boolean;
   graderPath: string;
   expectationsPath: string;
+  isDisciplineGuide?: boolean;
   matches: ExpectationMatch[];
   missing: ExpectationMatch[];
 }
 
+export interface ValidateGraderCoverageOptions {
+  threshold?: number;
+  isDisciplineGuide?: boolean;
+}
+
 /**
  * Validates that every expectation in expectations.md is covered by >= 1 test in the target grader.ts
- * or by a manifest SKIPPED entry with a non-empty reason.
+ * (or, for discipline guides only, by a manifest SKIPPED entry with a non-empty reason in a complete 1..N manifest).
  */
 export async function validateGraderExpectationCoverage(
   expectationsPath: string,
   graderPath: string,
-  threshold = 0.50
+  thresholdOrOptions: number | ValidateGraderCoverageOptions = 0.50,
+  maybeOptions: ValidateGraderCoverageOptions = {}
 ): Promise<GraderCoverageResult> {
+  const opts = typeof thresholdOrOptions === 'number'
+    ? { ...maybeOptions, threshold: thresholdOrOptions }
+    : thresholdOrOptions;
+  const threshold = opts.threshold ?? 0.50;
+  const isDisciplineGuide = opts.isDisciplineGuide ?? false;
+
   if (!fs.existsSync(expectationsPath) || !fs.existsSync(graderPath)) {
     return {
       isComplete: true,
       graderPath,
       expectationsPath,
+      isDisciplineGuide,
       matches: [],
       missing: []
     };
@@ -160,12 +181,14 @@ export async function validateGraderExpectationCoverage(
       isComplete: true,
       graderPath,
       expectationsPath,
+      isDisciplineGuide,
       matches: [],
       missing: []
     };
   }
 
-  const hasNonSkippedExpectation = expectations.some((_, idx) => manifestEntries.get(idx + 1)?.status !== 'SKIPPED');
+  const hasNonSkippedExpectation = !isDisciplineGuide
+    || expectations.some((_, idx) => manifestEntries.get(idx + 1)?.status !== 'SKIPPED');
 
   let rawTestVectors: number[][] = [];
   let cleanedTestVectors: number[][] = [];
@@ -211,6 +234,15 @@ export async function validateGraderExpectationCoverage(
   for (let eIdx = 0; eIdx < expectations.length; eIdx++) {
     const manifestEntry = manifestEntries.get(eIdx + 1);
     if (manifestEntry?.status === 'SKIPPED') {
+      if (!isDisciplineGuide) {
+        matches.push({
+          expectation: expectations[eIdx],
+          isCovered: false,
+          bestMatchTest: 'SKIPPED in manifest (use-case graders must test every expectation; fix in expectations.md or task.md)',
+          similarity: 0,
+        });
+        continue;
+      }
       const hasReason = manifestEntry.reason.length > 0;
       const isCovered = hasReason && manifestIsComplete;
       let bestMatchTest = `SKIPPED: ${manifestEntry.reason}`;
@@ -266,6 +298,7 @@ export async function validateGraderExpectationCoverage(
     isComplete: missing.length === 0,
     graderPath,
     expectationsPath,
+    isDisciplineGuide,
     matches,
     missing,
   };
@@ -288,12 +321,16 @@ export function formatCoverageFailureMessage(result: GraderCoverageResult, repoR
       ? `"${m.bestMatchTest}" (similarity: ${m.similarity.toFixed(2)})`
       : 'None';
 
+    const scopeGuidance = result.isDisciplineGuide
+      ? `- If this requirement's precondition is absent from both the target app and task (or already satisfied by the base app): Ensure the top-of-file manifest in ${relGrader} lists all expectations (1..${totalExpectations || 'N'}) and records "// Expectation ${expNumber}: SKIPPED: <one-line reason>".`
+      : `- Use-case graders must test every expectation (SKIPPED manifest entries are not allowed); if this requirement does not apply to the target app, update ${relExp} or task.md instead of skipping it in ${relGrader}.`;
+
     return `${idx + 1}. Expectation ${expNumber}: "${m.expectation}"
    Closest test found: ${bestTestSnippet}
    👉 Action required:
       - If this requirement is NOT yet tested in this grader: Add a test case verifying this behavior.
       - If this requirement IS already tested: Update/rephrase the test name in ${relGrader} so it more clearly describes the requirement.
-      - If this requirement's precondition is absent from both the target app and task: Ensure the top-of-file manifest in ${relGrader} lists all expectations (1..${totalExpectations || 'N'}) and records "// Expectation ${expNumber}: SKIPPED: <missing precondition>".`;
+      ${scopeGuidance}`;
   }).join('\n\n');
 
   return `${header}\n${details}`;

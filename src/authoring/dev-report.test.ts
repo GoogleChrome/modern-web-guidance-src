@@ -10,7 +10,7 @@ import {
   findTestedToSkippedExpectations,
   type TargetEvalSummary,
 } from './dev-report.ts';
-import { extractManifestEntries } from '../core/grader-coverage.ts';
+import { extractManifestEntries, extractTestTitles } from '../core/grader-coverage.ts';
 import { getGuideResultsDir } from '../core/paths.ts';
 import { findSharedFailingTests, collectSpecs, isSpecSkipped } from '../grading/run-grader.ts';
 import { Agents } from '../harness/config.ts';
@@ -406,4 +406,41 @@ test('findTestedToSkippedExpectations detects newly introduced SKIPPED entries i
   assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, afterManifest), [2, 4]);
   assert.deepStrictEqual(findTestedToSkippedExpectations(noPriorManifest, afterManifest), [2, 3, 4]);
   assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, beforeManifest), []);
+});
+
+test('extractTestTitles count detects deleted or test.skip() blocks in modified graders', (t) => {
+  const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-dropped-tests-'));
+  const beforePath = path.join(rootTmp, 'before-grader.ts');
+  const deletedPath = path.join(rootTmp, 'deleted-grader.ts');
+  const skippedPath = path.join(rootTmp, 'skipped-grader.ts');
+
+  t.after(() => {
+    fs.rmSync(rootTmp, { recursive: true, force: true });
+  });
+
+  fs.writeFileSync(
+    beforePath,
+    [
+      "test('Checks modal opening', () => {});",
+      "test('Checks Escape dismissal', () => {});",
+    ].join('\n')
+  );
+  fs.writeFileSync(
+    deletedPath,
+    [
+      "test('Checks modal opening', () => {});",
+    ].join('\n')
+  );
+  fs.writeFileSync(
+    skippedPath,
+    [
+      "test('Checks modal opening', () => {});",
+      "test.skip('Checks Escape dismissal', () => {});",
+    ].join('\n')
+  );
+
+  const beforeCount = extractTestTitles(beforePath).length;
+  assert.strictEqual(beforeCount, 2);
+  assert.ok(extractTestTitles(deletedPath).length < beforeCount);
+  assert.ok(extractTestTitles(skippedPath).length < beforeCount);
 });

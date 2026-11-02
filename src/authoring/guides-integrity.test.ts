@@ -134,7 +134,9 @@ describe('Guides Validation (Single Source of Truth)', () => {
           // Stale graders (expectations.md modified after grader.ts) are tracked in #1815.
           if (changedSince([expectationsPath], [targetGraderPath])) return;
 
-          const result = await validateGraderExpectationCoverage(expectationsPath, targetGraderPath);
+          const result = await validateGraderExpectationCoverage(expectationsPath, targetGraderPath, {
+            isDisciplineGuide: guide.isDisciplineGuide,
+          });
           if (!result.isComplete) {
             assert.fail(formatCoverageFailureMessage(result, REPO_ROOT));
           }

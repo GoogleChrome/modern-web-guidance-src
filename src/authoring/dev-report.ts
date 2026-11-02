@@ -6,7 +6,7 @@ import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/path
 import { setupGuideDevWorkDir, runAgent } from '../harness/lib/utils.ts';
 import { buildDevReportPrompt, buildApplyReviewFeedbackPrompt } from './dev-prompts.ts';
 import { testGrader } from '../grading/run-grader.ts';
-import { extractManifestEntries, type ManifestExpectationEntry } from '../core/grader-coverage.ts';
+import { extractManifestEntries, extractTestTitles, type ManifestExpectationEntry } from '../core/grader-coverage.ts';
 
 export type DevReportFlag =
   | 'CALIBRATION_FAILED'
@@ -333,11 +333,13 @@ export async function runDevReport(
   const { workDir, tempHome } = setupGuideDevWorkDir('report');
   const initialGraders = new Map<string, string>();
   const initialManifests = new Map<string, Map<number, ManifestExpectationEntry>>();
+  const initialTestCounts = new Map<string, number>();
   for (const s of summaries) {
     const graderPath = path.join(targetDir, TARGETS_DIR, s.baseApp, GRADER_FILE);
     if (fs.existsSync(graderPath)) {
       initialGraders.set(s.baseApp, fs.readFileSync(graderPath, 'utf8'));
       initialManifests.set(s.baseApp, extractManifestEntries(graderPath));
+      initialTestCounts.set(s.baseApp, extractTestTitles(graderPath).length);
     }
   }
 
@@ -407,6 +409,17 @@ export async function runDevReport(
             fs.writeFileSync(graderPath, originalContent);
             if (fs.existsSync(finalReportPath)) {
               const revertWarning = `\n\n> [!WARNING]\n> **Grader Modification Reverted**: The report agent's proposed adjustments to \`targets/${s.baseApp}/${GRADER_FILE}\` changed ${listStr} from \`TESTED\` to \`SKIPPED\` and were automatically reverted on disk.\n`;
+              fs.appendFileSync(finalReportPath, revertWarning);
+            }
+            continue;
+          }
+          const beforeTestCount = initialTestCounts.get(s.baseApp) ?? 0;
+          const afterTestCount = extractTestTitles(graderPath).length;
+          if (afterTestCount < beforeTestCount) {
+            console.warn(cRed(`⚠️  Modified ${s.baseApp} grader reduced test count from ${beforeTestCount} to ${afterTestCount}. Reverting grader.ts changes.`));
+            fs.writeFileSync(graderPath, originalContent);
+            if (fs.existsSync(finalReportPath)) {
+              const revertWarning = `\n\n> [!WARNING]\n> **Grader Modification Reverted**: The report agent's proposed adjustments to \`targets/${s.baseApp}/${GRADER_FILE}\` reduced the number of \`test()\` blocks from ${beforeTestCount} to ${afterTestCount} and were automatically reverted on disk.\n`;
               fs.appendFileSync(finalReportPath, revertWarning);
             }
             continue;
