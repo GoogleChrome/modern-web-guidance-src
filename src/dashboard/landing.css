@@ -66,11 +66,8 @@ th[aria-sort="ascending"] .sort-btn::after { content: "↑"; content: "↑" / ""
 .suite-label { display: inline; color: var(--text-primary); font-size: var(--font-md); font-weight: 600; white-space: nowrap; }
 .suite-adhoc-name { display: block; margin-top: 2px; font-family: var(--font-mono); font-size: var(--font-xs); font-weight: 500; color: var(--text-primary); overflow-wrap: anywhere; }
 .suite-meta { display: block; margin-top: 2px; font-size: var(--font-xs); font-weight: 400; color: var(--text-secondary); }
-.suite-name { font-family: var(--font-sans); font-size: var(--font-xs); font-weight: 500; }
 .suites-table td.agent-cell, .agent-cell { white-space: nowrap; text-align: left; }
 .suites-table td.model-cell, .model-cell { color: var(--text-secondary); white-space: nowrap; text-align: left; font-size: var(--font-sm); line-height: 1.3; }
-.tasks-cell { font-weight: 600; }
-.tasks-runs { color: var(--text-secondary); font-size: var(--font-base); font-weight: 400; }
 .source-cell { text-transform: capitalize; }
 .metric-cell { min-inline-size: 104px; }
 .tokens-cell { min-inline-size: 128px; }

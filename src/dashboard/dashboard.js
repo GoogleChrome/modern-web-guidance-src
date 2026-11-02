@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
@@ -84,7 +84,7 @@ const CATEGORY_LABELS = {
 /** @param {string} cat */
 function formatCategoryLabel(cat) {
     if (CATEGORY_LABELS[cat]) return CATEGORY_LABELS[cat];
-    return cat.split('-').map(w => w ? w[0].toUpperCase() + w.slice(1) : '').join(' ');
+    return cat.split('-').map(capitalize).join(' ');
 }
 
 /** @type {Promise<Map<string, string>> | null} */
@@ -193,12 +193,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (target instanceof HTMLInputElement && (target.value === 'all' || target.value === 'a11y')) { setMode(target.value); }
         });
     }
-    if (initialSort === 'uplift' || initialSort === 'uplift-desc') { currentTaskSort = 'uplift'; currentTaskSortDir = 'desc'; }
-    else if (initialSort === 'uplift-asc') { currentTaskSort = 'uplift'; currentTaskSortDir = 'asc'; }
-    else if (initialSort === 'a11y' || initialSort === 'a11y-desc') { currentTaskSort = 'a11y'; currentTaskSortDir = 'desc'; }
-    else if (initialSort === 'time' || initialSort === 'time-saved') { currentTaskSort = 'time'; currentTaskSortDir = 'asc'; }
-    else if (initialSort === 'time-overhead') { currentTaskSort = 'time'; currentTaskSortDir = 'desc'; }
-    else if (initialSort === 'tokens' || initialSort === 'tokens-saved') { currentTaskSort = 'tokens'; currentTaskSortDir = 'asc'; }
+    const sortMatch = initialSort?.match(/^(uplift|a11y|time|tokens)(?:-(asc|desc))?$/);
+    if (sortMatch) {
+        currentTaskSort = /** @type {'uplift' | 'a11y' | 'time' | 'tokens'} */ (sortMatch[1]);
+        currentTaskSortDir = /** @type {'asc' | 'desc'} */ (sortMatch[2] || ((currentTaskSort === 'time' || currentTaskSort === 'tokens') ? 'asc' : 'desc'));
+    }
 
     const evalFilterInput = document.getElementById('eval-filter');
     if (evalFilterInput instanceof HTMLInputElement) {
@@ -557,20 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * @param {number} ms
- */
-function formatRuntime(ms) {
-    if (!ms) return '-';
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    if (minutes > 0) {
-        return `${minutes}m ${remainingSeconds}s`;
-    }
-    return `${seconds}s`;
-}
-
-/**
  * @param {string} testId
  * @param {string | null} jetskiVersion
  * @param {string | null} timestamp
@@ -599,7 +584,7 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
                 </div>
                 ${data.totalRuntime ?
                 `<div class="header-meta-item">
-                    <span class="meta-value">${formatRuntime(data.totalRuntime)}</span>
+                    <span class="meta-value">${formatDuration(data.totalRuntime)}</span>
                     <span class="meta-label">Total Runtime</span>
                 </div>` : ''}
                 <div class="header-meta-item">
@@ -937,6 +922,9 @@ async function computeScenarios(data) {
         return a.localeCompare(b);
     });
 
+    const categoryMap = await loadGuideCategoryMap();
+    const featuresMap = (typeof window !== 'undefined' && window.__featuresMapping) || {};
+
     /** @type {ScenarioItem[]} */
     const scenarios = [];
 
@@ -1046,10 +1034,8 @@ async function computeScenarios(data) {
             const leakCount = (unguidedRuns || []).filter(r => isUnguidedLeakRun(r, guide)).length;
             const hasLeak = leakCount > 0;
             const hasFailure = hasInfraError || hasBuildFailure;
-            const categoryMap = await loadGuideCategoryMap();
             const category = categoryMap.get(guide) || 'other';
             const categoryLabel = formatCategoryLabel(category);
-            const featuresMap = (typeof window !== 'undefined' && window.__featuresMapping) || {};
             const featureIds = Array.isArray(featuresMap[guide]) ? featuresMap[guide] : [];
             scenarios.push({
                 appName,
@@ -1230,38 +1216,25 @@ async function renderGridOnce(data, testId) {
     }
 
     const dir = currentTaskSortDir === 'asc' ? 1 : -1;
-    if (currentTaskSort === 'uplift') {
+    if (currentTaskSort === 'default') {
+        filteredScenarios.sort((a, b) => compareCategories(a.category, b.category) || a.guide.localeCompare(b.guide) || a.appName.localeCompare(b.appName));
+    } else {
+        /** @param {ScenarioItem} item */
+        const getSortVal = (item) => {
+            if (currentTaskSort === 'uplift') return currentMetricMode === 'a11y' ? item.a11yUplift : item.uplift;
+            if (currentTaskSort === 'a11y') return item.a11yCheckCount > 0 ? item.a11yUplift : null;
+            if (currentTaskSort === 'time') return item.runtimeDeltaMs;
+            return item.uncachedDeltaTokens;
+        };
         filteredScenarios.sort((a, b) => {
-            const av = currentMetricMode === 'a11y' ? a.a11yUplift : a.uplift;
-            const bv = currentMetricMode === 'a11y' ? b.a11yUplift : b.uplift;
+            const av = getSortVal(a);
+            const bv = getSortVal(b);
             if (av === null && bv === null) return 0;
             if (av === null) return 1;
             if (bv === null) return -1;
-            return (av - bv) * dir;
+            const diff = (av - bv) * dir;
+            return currentTaskSort === 'a11y' && diff === 0 ? b.a11yCheckCount - a.a11yCheckCount : diff;
         });
-    } else if (currentTaskSort === 'a11y') {
-        filteredScenarios.sort((a, b) => {
-            if (a.a11yCheckCount === 0 && b.a11yCheckCount === 0) return 0;
-            if (a.a11yCheckCount === 0) return 1;
-            if (b.a11yCheckCount === 0) return -1;
-            return ((a.a11yUplift ?? -999) - (b.a11yUplift ?? -999)) * dir || (b.a11yCheckCount - a.a11yCheckCount);
-        });
-    } else if (currentTaskSort === 'time') {
-        filteredScenarios.sort((a, b) => {
-            if (a.runtimeDeltaMs === null && b.runtimeDeltaMs === null) return 0;
-            if (a.runtimeDeltaMs === null) return 1;
-            if (b.runtimeDeltaMs === null) return -1;
-            return (a.runtimeDeltaMs - b.runtimeDeltaMs) * dir;
-        });
-    } else if (currentTaskSort === 'tokens') {
-        filteredScenarios.sort((a, b) => {
-            if (a.uncachedDeltaTokens === null && b.uncachedDeltaTokens === null) return 0;
-            if (a.uncachedDeltaTokens === null) return 1;
-            if (b.uncachedDeltaTokens === null) return -1;
-            return (a.uncachedDeltaTokens - b.uncachedDeltaTokens) * dir;
-        });
-    } else {
-        filteredScenarios.sort((a, b) => compareCategories(a.category, b.category) || a.guide.localeCompare(b.guide) || a.appName.localeCompare(b.appName));
     }
 
     sortedScenarios = filteredScenarios.map(item => item.scenarioName);
@@ -1287,15 +1260,18 @@ async function renderGridOnce(data, testId) {
 
     let fragment = document.createDocumentFragment();
     let deadline = performance.now() + YIELD_BUDGET_MS;
+    const flushIfNeeded = async () => {
+        if (performance.now() < deadline) return true;
+        guideGrid.append(fragment);
+        await yieldToMain();
+        if (seq !== gridRenderSeq) return false;
+        fragment = document.createDocumentFragment();
+        deadline = performance.now() + YIELD_BUDGET_MS;
+        return true;
+    };
 
     if (currentTaskSort === 'default' && currentCategoryFilter === 'all') {
-        /** @type {Map<string, ScenarioItem[]>} */
-        const byCat = new Map();
-        for (const item of filteredScenarios) {
-            const list = byCat.get(item.category) || [];
-            list.push(item);
-            byCat.set(item.category, list);
-        }
+        const byCat = Map.groupBy(filteredScenarios, item => item.category);
         for (const [cat, items] of byCat.entries()) {
             const section = document.createElement('div');
             section.className = 'eval-category-section';
@@ -1328,26 +1304,14 @@ async function renderGridOnce(data, testId) {
             }
             section.append(catHeader, body);
             fragment.append(section);
-            if (performance.now() >= deadline) {
-                guideGrid.append(fragment);
-                await yieldToMain();
-                if (seq !== gridRenderSeq) return;
-                fragment = document.createDocumentFragment();
-                deadline = performance.now() + YIELD_BUDGET_MS;
-            }
+            if (!(await flushIfNeeded())) return;
         }
     } else {
         for (const item of filteredScenarios) {
             let accordion = accordionCache.nodes.get(item.scenarioName);
             if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.scenarioName, accordion); }
             fragment.append(accordion);
-            if (performance.now() >= deadline) {
-                guideGrid.append(fragment);
-                await yieldToMain();
-                if (seq !== gridRenderSeq) return;
-                fragment = document.createDocumentFragment();
-                deadline = performance.now() + YIELD_BUDGET_MS;
-            }
+            if (!(await flushIfNeeded())) return;
         }
     }
     guideGrid.append(fragment);

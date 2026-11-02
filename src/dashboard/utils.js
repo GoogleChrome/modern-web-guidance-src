@@ -542,26 +542,6 @@ export function calculateChartData(results, optionsOrEligible = {}) {
     };
 }
 
-
-/**
- * @param {string} name
- * @returns {string}
- */
-export function formatTestName(name) {
-    if (!name) return name;
-    const parsedKey = parseResultKey(name);
-    if (parsedKey) {
-        const { task: taskName, guide: guideName } = parsedKey;
-        
-        const featuresMap = (typeof window !== 'undefined' && window.__featuresMapping) || {};
-        const featureId = (featuresMap[guideName] && featuresMap[guideName][0]) || 'uncategorized';
-        const displayName = `${guideName} (${taskName})`;
-
-        return `${featureId}: ${displayName}`;
-    }
-    return name.split(' - ').join(' / ');
-}
-
 // Google Identity Services (OAuth) Integration
 const GOOGLE_CLIENT_ID = '169412140096-fk4rtf6iqk982d43385s1ilucrda91g2.apps.googleusercontent.com';
 /** @type {string | null} */

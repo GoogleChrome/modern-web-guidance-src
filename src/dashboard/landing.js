@@ -36,7 +36,7 @@ import { updateShowcaseFromSuites } from './showcase.js';
 /** @typedef {'alphabetic' | 'uplift' | 'unguided' | 'guided' | 'variance'} GuideSortKey */
 /** @typedef {'asc' | 'desc'} SortDirection */
 /** @typedef {'all' | 'a11y'} InsightsMode */
-/** @typedef {'date' | 'tasks' | 'uplift' | 'a11y' | 'time' | 'tokens'} SuiteSortKey */
+/** @typedef {'date' | 'uplift' | 'a11y' | 'time' | 'tokens'} SuiteSortKey */
 
 /** @type {Record<string, LandingSuiteSummary>} */
 let allTestData = {};
@@ -60,7 +60,6 @@ let currentSuiteSortDir = 'desc';
 /** @type {Record<SuiteSortKey, SortDirection>} */
 const DEFAULT_SORT_DIR = {
     date: 'desc',
-    tasks: 'desc',
     uplift: 'desc',
     a11y: 'desc',
     time: 'asc',
@@ -703,8 +702,6 @@ function getSortValue(t, key) {
     switch (key) {
         case 'date':
             return getSuiteDate(t).getTime();
-        case 'tasks':
-            return t.taskCount || 0;
         case 'uplift':
             return hasBothSides(t.unguidedStats, t.guidedStats) ? toRateExact(t.guidedStats) - toRateExact(t.unguidedStats) : null;
         case 'a11y': { const pair = a11yPair(t.a11yStats); return pair && hasBothSides(pair.u, pair.g) ? toRateExact(pair.g) - toRateExact(pair.u) : null; }
@@ -785,7 +782,7 @@ function renderSuites() {
         scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
     }
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
-    const colCount = 9;
+    const colCount = 8;
     const table = document.querySelector('.suites-table');
     const pageSize = isStacked ? STACKED_PAGE_SIZE : DESKTOP_PAGE_SIZE;
     const paged = !showAllStacked && visibleKeys.length > pageSize;
@@ -1124,17 +1121,21 @@ function getInsightWindowOptions() {
     return { showAll, limit };
 }
 
+/** @param {string[]} keys
+ * @param {number} limit
+ * @returns {string[]} */
+function filterRecentDays(keys, limit) {
+    const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDateInfo(allTestData[k]));
+    const sortedDates = [...new Set(keys.map(dayOf))].sort((a, b) => a.localeCompare(b));
+    const activeDates = new Set(sortedDates.slice(-limit));
+    return keys.filter(k => activeDates.has(dayOf(k)));
+}
+
 /** @returns {string[]} */
 function getInsightKeys() {
-    let keys = getVisibleKeys();
+    const keys = getVisibleKeys();
     const { showAll, limit } = getInsightWindowOptions();
-    if (!showAll && keys.length > 0) {
-        const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDateInfo(allTestData[k]));
-        const sortedDates = [...new Set(keys.map(dayOf))].sort((a, b) => a.localeCompare(b));
-        const activeDates = new Set(sortedDates.slice(-limit));
-        keys = keys.filter(k => activeDates.has(dayOf(k)));
-    }
-    return keys;
+    return (!showAll && keys.length > 0) ? filterRecentDays(keys, limit) : keys;
 }
 
 /**
@@ -1145,21 +1146,10 @@ function getInsightKeys() {
  * @returns {string[]}
  */
 function getModelInsightKeys() {
-    const candidates = getFilteredKeys({ ignoreModelFilter: true });
+    const candidates = getFilteredKeys({ ignoreModelFilter: true })
+        .filter(k => Boolean(allTestData[k]?.model && allTestData[k].model !== 'unknown'));
     const { showAll, limit } = getInsightWindowOptions();
-    const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDateInfo(allTestData[k]));
-    /** @type {Map<string, string[]>} */
-    const byModel = new Map();
-    for (const k of candidates) {
-        const m = allTestData[k]?.model;
-        if (!m || m === 'unknown') continue;
-        let list = byModel.get(m);
-        if (!list) {
-            list = [];
-            byModel.set(m, list);
-        }
-        list.push(k);
-    }
+    const byModel = Map.groupBy(candidates, k => allTestData[k].model);
     /** @type {string[]} */
     const result = [];
     for (const modelKeys of byModel.values()) {
@@ -1168,9 +1158,7 @@ function getModelInsightKeys() {
             ? modelKeys.filter(k => isScheduledSuite(allTestData[k].testId))
             : modelKeys;
         if (!showAll && scoped.length > 0) {
-            const sortedDates = [...new Set(scoped.map(dayOf))].sort((a, b) => a.localeCompare(b));
-            const activeDates = new Set(sortedDates.slice(-limit));
-            scoped = scoped.filter(k => activeDates.has(dayOf(k)));
+            scoped = filterRecentDays(scoped, limit);
         }
         result.push(...scoped);
     }
