@@ -216,6 +216,28 @@
       max-block-size: 16rem;
       padding-inline-end: 0.5rem;
       overflow-y: auto;
+      container-type: scroll-state;
+    }
+
+    /* Fade at the bottom edge while more options are below. */
+    .scroll-list::after {
+      content: "";
+      display: block;
+      grid-column: 1 / -1;
+      position: sticky;
+      inset-block-end: 0;
+      block-size: 1.5rem;
+      margin-block-start: -1.5rem;
+      background: linear-gradient(to top, rgb(0 0 0 / 0.2), transparent);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    @container scroll-state(scrollable: bottom) {
+      .scroll-list::after {
+        opacity: 1;
+      }
     }
   </style>
 </head>

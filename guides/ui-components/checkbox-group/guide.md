@@ -9,6 +9,7 @@ web-feature-ids:
   # - tmp-customizable-select-listbox # pending a11y SME
 guides:
   - checkbox
+  - scrollability-affordance-hints
 ---
 
 # Checkbox Group
@@ -172,8 +173,32 @@ For long lists (provisionally about 12 or more options), keep the same markup an
 .scroll-list {
   max-block-size: 16rem;
   overflow-y: auto;
+  container-type: scroll-state;
+}
+
+/* Fade at the bottom edge while more options are below */
+.scroll-list::after {
+  content: "";
+  display: block;
+  grid-column: 1 / -1; /* span every column when the list is a grid */
+  position: sticky;
+  inset-block-end: 0;
+  block-size: 1.5rem;
+  margin-block-start: -1.5rem;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.2), transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+@container scroll-state(scrollable: bottom) {
+  .scroll-list::after {
+    opacity: 1;
+  }
 }
 ```
+
+Without a visible cue, a list cut exactly between rows looks complete and overlay scrollbars stay hidden until scrolling. Follow the {{ GUIDE_REF("scrollability-affordance-hints") }} guide to show that more options are below (and above).
 
 Scrolling regions are keyboard-reachable in current browsers because the checkboxes inside them are focusable. If the list can contain no focusable options (for example all disabled), add `tabindex="0"` so keyboard users can still scroll it.
 
