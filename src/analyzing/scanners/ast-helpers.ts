@@ -308,7 +308,7 @@ function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): 
     const callee = unwrapExpression(unwrapped.getExpression());
     if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'supports') {
       const obj = unwrapExpression(callee.getExpression());
-      return Node.isIdentifier(obj) && obj.getText() === 'CSS';
+      return isGlobalReference(obj, 'CSS');
     }
     return false;
   }
@@ -345,6 +345,18 @@ function conditionCheckPolarity(
   ) {
     const inner = conditionCheckPolarity(unwrapped.getOperand(), featureTokens);
     return inner === 'positive' ? 'negative' : inner === 'negative' ? 'positive' : null;
+  }
+
+  if (Node.isBinaryExpression(unwrapped)) {
+    const op = unwrapped.getOperatorToken().getKind();
+    if (op === SyntaxKind.AmpersandAmpersandToken || op === SyntaxKind.BarBarToken) {
+      const left = conditionCheckPolarity(unwrapped.getLeft(), featureTokens);
+      const right = conditionCheckPolarity(unwrapped.getRight(), featureTokens);
+      if (left && right) {
+        return left === right ? left : null;
+      }
+      return left ?? right;
+    }
   }
 
   const condText = unwrapped.getText();
