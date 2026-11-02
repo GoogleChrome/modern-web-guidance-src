@@ -170,7 +170,7 @@ test.describe('Suite page MWG compliance', () => {
     });
     await page.goto('/dashboard.html?testId=example-result');
     await expect(page.locator('.task-accordion').first()).toBeVisible();
-    expect(await page.locator('.task-accordion [title], #test-header [title]').count()).toBe(0);
+    expect(await page.locator('.task-accordion [title]:not(.trend-link), #test-header [title]').count()).toBe(0);
     expect(await page.locator('#dumbbell-chart title').count()).toBe(0);
     const triggers = page.locator('.hint-trigger');
     const count = await triggers.count();

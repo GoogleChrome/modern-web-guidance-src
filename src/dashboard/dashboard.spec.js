@@ -377,6 +377,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(barbellTooltip).toBeHidden();
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     const dimBarbell = page.locator('.insights-dimension-panel .insight-dumbbell-cell button[interestfor="barbell-tooltip"]').first();
+    await dimBarbell.scrollIntoViewIfNeeded();
     await dimBarbell.focus();
     await expect(barbellTooltip).toBeVisible();
     await page.keyboard.press('Escape');
