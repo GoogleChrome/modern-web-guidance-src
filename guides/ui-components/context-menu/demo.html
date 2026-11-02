@@ -213,7 +213,7 @@
       </button>
       <div id="menu1" popover="auto">
         <div focusgroup="menu nomemory" aria-labelledby="trigger1">
-          <button type="button" autofocus>Edit</button>
+          <button type="button">Edit</button>
           <button type="button">Share</button>
           <hr />
           <button type="button">Delete</button>
@@ -336,6 +336,12 @@
 
       // 2. Toggle Handler (Focus & ARIA)
       document.querySelectorAll("[popover]").forEach((menu) => {
+        const handlePointerMove = (event) => {
+          const item = event.target.closest("button");
+          if (!item || item.closest("[popover]") !== menu || item === document.activeElement) return;
+          item.focus({ preventScroll: true, focusVisible: false });
+        };
+
         menu.addEventListener("toggle", (event) => {
           const triggerId = menu
             .querySelector("[aria-labelledby]")
@@ -347,19 +353,21 @@
           if (event.newState === "open") {
             if (trigger && trigger.setAttribute)
               trigger.setAttribute("aria-expanded", "true");
-
+console.log({has: enterOnOpen.has(menu)})
             if (enterOnOpen.has(menu)) {
               const firstItem = menu.querySelector("button:not([disabled])");
               if (firstItem) {
-                firstItem.focus();
+                firstItem.focus({focusVisible: true});
               }
               enterOnOpen.delete(menu);
             }
+            menu.addEventListener("pointermove", handlePointerMove);
           } else {
             if (trigger && trigger.setAttribute)
               trigger.setAttribute("aria-expanded", "false");
+            menu.removeEventListener("pointermove", handlePointerMove);
           }
-          });
+        });
 
           // Differentiate between sources, and make it styleable
           menu.addEventListener("beforetoggle", (event) => {

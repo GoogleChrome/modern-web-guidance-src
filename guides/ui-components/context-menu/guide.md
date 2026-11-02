@@ -1,6 +1,6 @@
 ---
 name: context-menu
-description: Build a context menu component that displays a list of options or actions when users right-click or long-press on an element.
+description: Build a context menu component that displays a list of options or actions when users right-click on an element.
 web-feature-ids:
   - popover
   - anchor-positioning
@@ -12,7 +12,7 @@ guides:
 
 # Context Menu
 
-A context menu provides quick access to actions related to a specific item or region. In a list of items, they are triggered by a single button. They can also be a secondary interaction, triggered by right-clicking or long-pressing, and allow the primary click or touch action to remain dedicated to tasks like selection, navigation, or drag-and-drop.
+A context menu provides quick access to actions related to a specific item or region. In a list of items, they are triggered by a single button. They can also be a secondary interaction, triggered by right-clicking or (in some cases) long-pressing, and allow the primary click or touch action to remain dedicated to tasks like selection, navigation, or drag-and-drop.
 
 - **Right-click + Visible Menu Button (Recommended):** Needed when the menu is the primary way to reach those actions on the current view, and supports touch, keyboard, and discoverability.
 - **Visible Menu Button Only:** Use if Right-click behavior is not needed.
@@ -53,7 +53,7 @@ Use CSS Anchor Positioning to align the popover to its anchor while also prevent
 
 ### 2. Method A: Right-Click Trigger (Cursor-Anchored)
 
-To position the menu exactly at the cursor, use an invisible anchor element placed with JavaScript when the user right-clicks or long presses. Put this element inside the element that triggers the context menu.
+To position the menu exactly at the cursor, use an invisible anchor element placed with JavaScript when the user right-clicks. On some platforms this may also be triggered with a long press, but that is not a universal behavior. Put this element inside the element that triggers the context menu.
 
 ```html
 <span class="menu-anchor"></span>
