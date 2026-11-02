@@ -171,6 +171,7 @@ For long lists (provisionally about 12 or more options), keep the same markup an
 ```css
 .scroll-list {
   max-block-size: 16rem;
+  padding-inline-start: 0.25rem; /* room for focus rings clipped by overflow */
   overflow-y: auto;
   container-type: scroll-state;
 }
