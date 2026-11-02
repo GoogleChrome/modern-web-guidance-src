@@ -15,9 +15,6 @@
       --text-color: #1f1f1f;
       --text-muted: #5e6064;
       --text-disabled: #8e9196;
-
-      --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
-      --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
     }
 
     *,
@@ -112,71 +109,6 @@
     .checkbox:disabled {
       cursor: not-allowed;
       opacity: 0.5;
-    }
-
-    /* Fallback: browsers without accent-color get the custom icon styling. */
-    @supports not (accent-color: auto) {
-      .checkbox {
-        --checkbox-size: 1.25em;
-        --checkbox-icon-size: 0.7em;
-
-        appearance: none;
-        display: inline-grid;
-        place-content: center;
-        inline-size: var(--checkbox-size);
-        color: #ffffff;
-        background-color: var(--surface);
-        border: 2px solid var(--border-color);
-        border-radius: 4px;
-        outline: 2px solid transparent;
-        outline-offset: 2px;
-      }
-
-      .checkbox:hover:not(:disabled) {
-        border-color: var(--border-color-hover);
-      }
-
-      .checkbox:focus-visible {
-        outline-color: var(--brand-primary);
-      }
-
-      .checkbox::before {
-        content: "";
-        inline-size: var(--checkbox-icon-size);
-        aspect-ratio: 1;
-        background-color: currentColor;
-        mask: var(--checkbox-icon) no-repeat center / contain;
-        scale: 0;
-      }
-
-      @media (prefers-reduced-motion: no-preference) {
-        .checkbox::before {
-          transition: scale 150ms ease;
-        }
-      }
-
-      @media (forced-colors: active) {
-        .checkbox::before {
-          background-color: CanvasText;
-        }
-      }
-
-      .checkbox:checked {
-        --checkbox-icon: var(--icon-check);
-      }
-
-      .checkbox:indeterminate {
-        --checkbox-icon: var(--icon-dash);
-      }
-
-      .checkbox:is(:checked, :indeterminate) {
-        background-color: var(--brand-primary);
-        border-color: var(--brand-primary);
-      }
-
-      .checkbox:is(:checked, :indeterminate)::before {
-        scale: 1;
-      }
     }
 
     label:has(:disabled) {
