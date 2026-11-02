@@ -48,13 +48,20 @@
       color: #5e6064;
     }
 
-    section {
+    fieldset {
+      position: relative;
       margin-bottom: 1.5rem;
-      padding: 1.5rem;
+      padding: 3rem 1.5rem 1.5rem 1.5rem;
       background-color: var(--background-color);
       border: 1px solid #e1e2e4;
       border-radius: 8px;
       box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+    }
+
+    legend {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
     }
 
     h2 {
@@ -243,8 +250,10 @@
   </header>
 
   <main>
-    <section>
-      <h2>Native checkboxes with <code>accent-color</code></h2>
+    <fieldset>
+      <legend>
+        <h2>Native checkboxes with <code>accent-color</code></h2>
+      </legend>
 
       <div class="form-group">
         <label>
@@ -262,10 +271,12 @@
           Native checkbox, disabled and checked
         </label>
       </div>
-    </section>
+    </fieldset>
 
-    <section>
-      <h2>Custom checkboxes with <code>appearance: none</code></h2>
+    <fieldset>
+      <legend>
+        <h2>Custom checkboxes with <code>appearance: none</code></h2>
+      </legend>
 
       <div class="form-group">
         <label>
@@ -294,7 +305,7 @@
           Toggle indeterminate states
         </button>
       </div>
-    </section>
+    </fieldset>
   </main>
 
   <script>
