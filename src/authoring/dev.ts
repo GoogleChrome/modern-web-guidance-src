@@ -117,20 +117,22 @@ export function changedSince(inputs: string[], outputs: string[]): boolean {
   }
 }
 
-function descriptionChangedSince(guidePath: string, outputs: string[]): boolean {
+function descriptionChangedSince(guidePath: string, outputs: string[]): 'changed' | 'unchanged' | 'unknown' {
   const outs = outputs.filter(p => fs.existsSync(p));
-  if (outs.length === 0) return true;
+  if (outs.length === 0) return 'unknown';
   const git = (args: string[]): string =>
     execFileSync('git', args, { cwd: path.dirname(guidePath), encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
 
   try {
-    if (outs.some(p => git(['status', '--porcelain', '--', p]) !== '')) return true;
+    if (outs.some(p => git(['status', '--porcelain', '--', p]) !== '')) return 'unknown';
     const lastOutputCommit = git(['log', '-1', '--format=%H', '--', ...outs]);
-    if (!lastOutputCommit) return true;
+    if (!lastOutputCommit) return 'unknown';
     const prevGuide = git(['show', `${lastOutputCommit}:./${path.basename(guidePath)}`]);
-    return extractGuideDescription(prevGuide) !== extractGuideDescription(fs.readFileSync(guidePath, 'utf-8'));
+    return extractGuideDescription(prevGuide) !== extractGuideDescription(fs.readFileSync(guidePath, 'utf-8'))
+      ? 'changed'
+      : 'unchanged';
   } catch {
-    return true;
+    return 'unknown';
   }
 }
 
@@ -153,8 +155,12 @@ export function applyTargetRerun(
   const target = path.basename(targetCapsuleDir);
   const guidePath = path.join(guideDir, GUIDE_FILE);
   if (changedSince([guidePath, path.join(guideDir, EXPECTATIONS_FILE)], solutionPatches)) {
-    if (descriptionChangedSince(guidePath, solutionPatches)) {
-      console.log(cYellow(`\n${GUIDE_FILE} description changed since ${target} was generated; regenerating all ${target} artifacts.`));
+    const descStatus = descriptionChangedSince(guidePath, solutionPatches);
+    if (descStatus !== 'unchanged') {
+      const reason = descStatus === 'changed'
+        ? `${GUIDE_FILE} description changed since ${target} was generated`
+        : `${GUIDE_FILE} or ${EXPECTATIONS_FILE} changed since ${target} was generated (description history unavailable)`;
+      console.log(cYellow(`\n${reason}; regenerating all ${target} artifacts.`));
       fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
       return 'regenerate-all';
     }

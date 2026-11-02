@@ -465,13 +465,25 @@ test('applyTargetRerun detects edits merged in from main', async (t) => {
   run('git checkout -q gd-dev/sample-guide && git merge -q --no-edit main');
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-patches');
   assert.ok(exists('targets/daily-grind/task.md'));
+
+  write('targets/daily-grind/grader.ts', '// grader v3\n');
+  write('targets/daily-grind/patches/zero-passrate.patch', 'v3\n');
+  for (const p of patches) write(p, `${p} v3\n`);
+  run('git add -A && git commit -q -m "feat(guide): regenerate patches"');
+
+  run('git checkout -q main');
+  write('guide.md', '---\ndescription: Description edit on main.\n---\n# Guide body edit on main\n');
+  run('git commit -q -am "guides: revise description"');
+  run('git checkout -q gd-dev/sample-guide && git merge -q --no-edit main');
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-all');
+  assert.ok(!exists('targets/daily-grind'));
 });
 
-test('applyTargetRerun detects uncommitted task.md edits even when patches were rewritten with newer mtimes', async (t) => {
+test('applyTargetRerun detects uncommitted review-feedback edits even when patches were rewritten with newer mtimes', async (t) => {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const { applyTargetRerun } = await import('./dev.ts');
-  const { write, exists, patches, guideDir, targetDir } = await setupRerunRepo(t);
+  const { run, write, exists, patches, guideDir, targetDir } = await setupRerunRepo(t);
 
   // Mirrors the review-feedback step: task.md is edited, then targets/ is copied back, rewriting
   // the unchanged patches with fresh mtimes.
@@ -479,7 +491,28 @@ test('applyTargetRerun detects uncommitted task.md edits even when patches were 
   for (const p of patches) write(p, `${p}\n`);
   assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-solutions');
 
-  // If a solution patch itself is dirty, description history cannot be trusted -> wipe target.
+  write('targets/daily-grind/grader.ts', '// grader v2\n');
+  for (const p of patches) write(p, `${p}\n`);
+  run('git add -A && git commit -q -m "feat(guide): regenerate solutions"');
+
+  // Uncommitted guide.md body edit with clean committed patches -> keep task.md, regenerate patches + grader.
+  write('guide.md', '---\ndescription: Original description.\n---\n# Guide body edited from review feedback\n');
+  for (const p of patches) write(p, `${p}\n`);
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-patches');
+  assert.ok(exists('targets/daily-grind/task.md'));
+  assert.ok(!exists('targets/daily-grind/grader.ts') && !exists('targets/daily-grind/patches/zero-passrate.patch') && !patches.some(exists));
+
+  write('targets/daily-grind/grader.ts', '// grader v2\n');
+  write('targets/daily-grind/patches/zero-passrate.patch', '');
+  for (const p of patches) write(p, `${p}\n`);
+
+  // Uncommitted guide.md description edit with clean committed patches -> wipe target.
+  write('guide.md', '---\ndescription: Description edited from review feedback.\n---\n# Guide\n');
+  assert.strictEqual(applyTargetRerun(guideDir, targetDir), 'regenerate-all');
+  assert.ok(!exists('targets/daily-grind'));
+
+  // Restore committed target artifacts, then make a solution patch dirty -> description history cannot be trusted -> wipe target.
+  run('git checkout -q -- .');
   const past = new Date(Date.now() - 60_000);
   for (const p of patches) {
     write(p, `${p} dirty\n`);
