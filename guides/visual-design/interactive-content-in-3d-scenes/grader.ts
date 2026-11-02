@@ -232,8 +232,8 @@ test.describe('Interactive 3D Content Grader', () => {
       if (typeof WebGL2RenderingContext !== 'undefined') {
         delete (WebGL2RenderingContext.prototype as any).texElementSubImage2D;
       }
-      if (typeof GPUQueue !== 'undefined') {
-        delete (GPUQueue.prototype as any).drawElementImageToTexture;
+      if (typeof (window as any).GPUQueue !== 'undefined') {
+        delete (window as any).GPUQueue.prototype.drawElementImageToTexture;
       }
     });
 

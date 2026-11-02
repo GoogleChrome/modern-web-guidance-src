@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import matter from '@11ty/gray-matter';
@@ -267,14 +268,13 @@ test.skip('THIRD_PARTY_NOTICES validation', async () => {
   const content = await fs.readFile(noticesPath, 'utf8');
   
   // Check for some expected dependencies
-  assert.ok(content.includes('Name: @tensorflow/tfjs-core'), 'Should contain @tensorflow/tfjs-core');
   assert.ok(content.includes('Name: @huggingface/tokenizers'), 'Should contain @huggingface/tokenizers');
   
   // Check structure
   assert.ok(content.includes('-------------------- DEPENDENCY DIVIDER --------------------'), 'Should contain dividers');
 });
 
-test('packaged dist contains tokenizer files and no .cache', async () => {
+test('packaged dist contains static-model files and no .cache', async () => {
   const packJson = execSync('npm pack --dry-run --json', { encoding: 'utf8', cwd: STAGING_DIR });
   const parsed = JSON.parse(packJson);
   const pkgInfo = Array.isArray(parsed) ? parsed[0] : parsed;
@@ -288,14 +288,18 @@ test('packaged dist contains tokenizer files and no .cache', async () => {
   const metaFiles = paths.filter((p: string) => p.endsWith('.meta.json'));
   assert.strictEqual(metaFiles.length, 0, `Expected 0 .meta.json files in pack, found: ${metaFiles.join(', ')}`);
 
-  // Must have tokenizer files
+  // Must have static model files
   assert.ok(
-    paths.some((p: string) => p.endsWith('tfjs-model-minilm/tokenizer.json.gz')),
-    'Pack must contain tokenizer.json.gz'
+    paths.some((p: string) => p.endsWith('static-model/words.json')),
+    'Pack must contain static-model/words.json'
   );
   assert.ok(
-    paths.some((p: string) => p.endsWith('tfjs-model-minilm/tokenizer_config.json')),
-    'Pack must contain tokenizer_config.json'
+    paths.some((p: string) => p.endsWith('static-model/words.i8')),
+    'Pack must contain static-model/words.i8'
+  );
+  assert.ok(
+    paths.some((p: string) => p.endsWith('static-model/words.scale.f32')),
+    'Pack must contain static-model/words.scale.f32'
   );
 });
 
@@ -341,6 +345,31 @@ test('no build-machine rootDir path leak in bundled dist binaries', async () => 
   const searchMjs = await fs.readFile(path.join(STAGING_DIR, 'skills/modern-web-guidance/search.mjs'), 'utf8');
   assert.strictEqual(searchMjs.includes(ROOT_DIR), false, 'search.mjs should not contain build-machine rootDir');
 });
+
+test('packaged dist contains complete 256-d teacher vectors for all chunks', async () => {
+  const zlib = await import('node:zlib');
+  const vectorFile = path.join(STAGING_DIR, 'skills/modern-web-guidance/use-cases.vectors.gen.json.gz');
+  const compressed = await fs.readFile(vectorFile);
+  const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8'));
+  assert.ok(items.length > 0, 'Corpus should contain chunks');
+  for (const item of items) {
+    assert.strictEqual(
+      item.vector.length,
+      256,
+      `Chunk "${item.id}" should have 256-d vector, got ${item.vector.length}`
+    );
+  }
+});
+
+test('release gate pipeline hash differs between dev and release builds', async () => {
+  const { computePipelineHash } = await import('./build-guides.ts');
+  const { scanAllGuides } = await import('../core/guide-validation.ts');
+  const readyGuides = scanAllGuides().filter(inv => inv.isPublished).slice(0, 5);
+  const hashDev = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, false);
+  const hashRelease = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, true);
+  assert.notStrictEqual(hashDev, hashRelease, 'Pipeline hash must differ when failOnMissingVectors differs');
+});
+
 
 
 
