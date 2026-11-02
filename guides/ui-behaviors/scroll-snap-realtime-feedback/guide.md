@@ -184,18 +184,40 @@ Keep `focusgroup="toolbar wrap"` in the markup. If `'focusGroup' in HTMLElement.
 if (!('focusGroup' in HTMLElement.prototype)) {
   document.querySelectorAll('[focusgroup~="toolbar"]').forEach(group => {
     group.setAttribute('role', 'toolbar');
+
+    const items = () => [...group.querySelectorAll('button')]
+      .filter(item => item.closest('[focusgroup]') === group)
+      .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
+
+    const syncTabIndex = () => {
+      const list = items();
+      let current = list.indexOf(document.activeElement);
+
+      if (current < 0) {
+        current = list.indexOf(list.find(item => item.getAttribute('aria-current') === 'true'));
+      }
+
+      list.forEach((item, index) => {
+        item.tabIndex = current === index ? 0 : -1;
+      });
+    };
+
+    group.addEventListener('focusin', syncTabIndex);
     group.addEventListener('keydown', event => {
       if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-      const items = [...group.querySelectorAll('button')]
-        .filter(item => item.closest('[focusgroup]') === group)
-        .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
-      const current = items.indexOf(document.activeElement);
+      const list = items();
+      const current = list.indexOf(document.activeElement);
       if (current < 0) return;
-      const next = (current + (event.key === 'ArrowLeft' ? -1 : 1) + items.length) % items.length;
+      const next = (current + (event.key === 'ArrowLeft' ? -1 : 1) + list.length) % list.length;
       event.preventDefault();
       event.stopImmediatePropagation();
-      items[next].focus({ preventScroll: true });
+      list.forEach((item, index) => {
+        item.tabIndex = index === next ? 0 : -1;
+      });
+      list[next].focus({ preventScroll: true });
     }, true);
+
+    syncTabIndex();
   });
 }
 ```
