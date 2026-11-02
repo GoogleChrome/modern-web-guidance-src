@@ -59,7 +59,7 @@ web-feature-ids:
   * **Actionable rationale for coding agents:** Put concise "why" explanations directly in `guide.md` prose or inline code comments whenever an agent might otherwise doubt or misapply a non-obvious pattern.
 * **Self-Contained:** DO NOT include any external links in the markdown body (`[link text](url)`), and DO NOT rely on internal `{{ GUIDE_REF("...") }}` cross-references to supply required implementation details. All required knowledge to use the feature MUST be fully synthesized into the markdown body (or transcluded at build time via `INCLUDE`/`FEATURE`). Agents must not be slowed down or require additional retrievals to implement the guidance.
 * **American English:** Always author guidance in American English (`behavior`, `color`, `synchronize`, `center`, `optimize`, etc.) for consistency across documentation, RAG tokens, and search embeddings.
-* **Callouts:** Use GitHub alert syntax (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`), with the body on the following `>` lines. Validation rejects bold-label callouts (`> **Note:** …`) and other alert types; the static-site build converts alerts to DevSite notices.
+* **Callouts:** Use GitHub alert syntax (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`), with the body on the following `>` lines. Validation rejects bold-label callouts (`> **Note:** …`) and other alert types; the devsite build converts alerts to DevSite notices.
 
 ### 3. Code Snippets
 
@@ -118,7 +118,7 @@ If the primary implementation uses features that are not Baseline Widely Availab
 | `{{ FEATURE("feature-id", "section") }}` | Sugar for `INCLUDE("features/<feature-id>.md#<section>")`. |
 | `{{ FEATURE_FALLBACKS("feature-id") }}` | `### Fallbacks & browser support for <Feature name>` + `BASELINE_STATUS` + the `#fallbacks` section. If `#fallbacks` is empty, emits only `BASELINE_STATUS` (no heading). |
 | `{{ FEATURE_ISSUES("feature-id") }}` | `### Issues to be aware of when using <Feature name>` + the `#issues` section. Returns `""` if `#issues` is empty/missing. |
-| `{{ GUIDE_REF("guide-slug") }}` | Cross-reference to another guide (`\`guide-slug\` (via \`npx -y modern-web-guidance@latest retrieve "guide-slug"\`)` in `skills-cli`; markdown link in `static-site`). |
+| `{{ GUIDE_REF("guide-slug") }}` | Cross-reference to another guide (`\`guide-slug\` (via \`npx -y modern-web-guidance@latest retrieve "guide-slug"\`)` in `skills-cli`; markdown link in `devsite`). |
 
 * **Errors**: invalid feature/guide ID or missing required argument → `MacroError` (build fails loudly). Missing referenced *content* in `INCLUDE`/`FEATURE` (file or section) → `MacroError` for `INCLUDE`/`FEATURE`, or falls back to `BASELINE_STATUS` / `""` for `FEATURE_FALLBACKS` / `FEATURE_ISSUES`.
 * **Section IDs**: slugified heading text (`### Fallback strategies` → `fallback-strategies`), or an explicit `{#id}` suffix on the heading. Avoid leaving an explicit `{#section-id}` suffix on a heading in `guide.md` when `slugify(heading)` already matches `#section-id`.

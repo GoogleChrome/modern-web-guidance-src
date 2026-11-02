@@ -3,134 +3,299 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Results - All Runs</title>
+  <meta name="text-scale" content="scale">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111418" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Modern Web Guidance Evaluation Dashboard: Compare guided vs. unguided AI coding agent pass rates, accessibility subscores, completion time, and token efficiency across suites.">
+  <title>Modern Web Guidance Evals: Measurably better web code with Modern Web Guidance</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="landing.css">
-  <link rel="stylesheet" href="dashboard-layout.css">
+  <link rel="stylesheet" href="hero.css">
+  <link rel="stylesheet" href="showcase.css">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <div class="landing-container">
     <header class="header-nav">
+      <a href="#main-content" class="skip-link visually-hidden">Skip to main content</a>
       <div>
         <h1 class="landing-title">Modern Web Guidance Evals</h1>
       </div>
-      <div class="filter-container-nav" style="display: flex; gap: 10px; align-items: center;">
-        <a href="demos/" class="secondary-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M4 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2.5 3a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .757.429l3-1.5a.5.5 0 0 0 0-.858l-3-1.5A.5.5 0 0 0 6.5 6z"/>
-          </svg>
-          Browse Demos
-        </a>
-        <button id="auth-btn" class="secondary-btn" style="display: none;">
-          Sign in with Google
+      <div class="header-actions">
+        <nav class="header-links" aria-label="Project links">
+          <a href="demos/" class="header-link">Browse Demos</a>
+          <a href="https://developer.chrome.com/docs/modern-web-guidance" class="header-link" rel="noopener">Docs</a>
+          <a href="https://github.com/GoogleChrome/modern-web-guidance-src" class="header-link" rel="noopener">GitHub</a>
+        </nav>
+        <button id="auth-btn" class="secondary-btn" type="button" style="display: none;" aria-label="Sign in with Google">
+          Sign in<span class="auth-btn-long"> with Google</span>
         </button>
-        <button id="filter-btn" class="secondary-btn">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"
-            style="vertical-align: text-bottom; margin-right: 4px;">
-            <path
-              d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z" />
-          </svg>
-          Filter Runs
-        </button>
-        <div id="filter-menu" class="filter-menu hidden">
-          <div class="filter-header">
-            <span class="filter-header-title">Select Test Runs</span>
-            <div class="filter-actions">
-              <button id="select-all-btn" class="text-btn">All</button>
-              <button id="deselect-all-btn" class="text-btn">None</button>
-            </div>
-          </div>
-          <div style="padding: 10px; border-bottom: 1px solid var(--border-color);">
-            <input type="text" id="filter-search" placeholder="Search tests..."
-              style="width: 100%; box-sizing: border-box; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.9em; outline: none;">
-          </div>
-          <div id="filter-list" class="filter-list">
-            <!-- Checkboxes injected by JS -->
-          </div>
-        </div>
       </div>
     </header>
-
-    <!-- Suites Tab -->
-    <div id="suites-tab" class="tab-content active">
-      <details class="insights-drawer">
-        <summary class="insights-summary">Uplift Comparisons</summary>
-        <div class="timeline-filter-controls" style="margin: 12px 0 6px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <label for="insights-limit-input" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">Show most recent</label>
-            <input type="number" id="insights-limit-input" value="15" min="1" max="365" style="width: 60px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-align: center; outline: none;">
-            <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">days of data</span>
+    <main id="main-content" tabindex="-1">
+      <section id="hero" class="hero" aria-labelledby="hero-heading" aria-busy="true">
+        <div class="hero-top">
+          <h2 id="hero-heading" class="hero-heading"><span class="hero-accent">Measurably better web code</span> with Modern Web Guidance</h2>
+          <p class="hero-lede">
+            Same agent, same set of tasks, <strong>with and without Modern Web Guidance</strong>. Every nightly run gives <span id="hero-lede-agents"><span class="agent-badge claude" aria-hidden="true">✱</span>Claude Code, <span class="agent-badge openai" aria-hidden="true">❂</span>Codex CLI, and <span class="agent-badge gemini" aria-hidden="true">✦</span>Antigravity CLI</span> identical feature prompts on starter web apps, then grades the resulting code in a real browser against automated best-practice checks.
+          </p>
+        </div>
+        <p id="hero-live" class="visually-hidden" role="status" aria-live="polite"></p>
+        <div id="hero-status" class="hero-status" hidden>
+          <span id="hero-status-text"></span>
+          <button id="hero-auth-btn" class="primary-btn" type="button" hidden>Sign in with Google</button>
+        </div>
+        <ul id="hero-takeaways" class="hero-takeaways" role="list" aria-label="Headline results">
+          <li class="takeaway takeaway-primary" data-metric="overall">
+            <h3 class="takeaway-label">Change in aggregate pass rate of using best practices</h3>
+            <p class="takeaway-figure">…</p>
+            <p class="takeaway-statement">percentage-point lift</p>
+            <p class="takeaway-qualifier">Loading…</p>
+          </li>
+          <li class="takeaway takeaway-secondary" data-metric="a11y">
+            <h3 class="takeaway-label">Accessibility</h3>
+            <p class="takeaway-figure">…</p>
+            <p class="takeaway-qualifier">Loading…</p>
+          </li>
+        </ul>
+        <p id="hero-eyebrow" class="hero-eyebrow">Nightly evaluations · loading latest results…</p>
+      </section>
+      <section id="ab-spotlight" class="ab-spotlight page-section" aria-labelledby="ab-spotlight-heading" aria-busy="true">
+        <div class="ab-spotlight-header">
+          <div class="ab-spotlight-titles">
+            <h2 id="ab-spotlight-heading" class="ab-spotlight-heading section-heading">Inspect a single paired run, with and without Modern Web Guidance</h2>
+            <p class="ab-spotlight-sub">Side-by-side grader results from a single nightly run per agent on a synthetic benchmark task. Shows one run rather than an aggregate, including checks the guided run missed.</p>
           </div>
-          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
-            <input type="checkbox" id="insights-show-all-check" style="cursor: pointer;">
-            <span>Show all</span>
-          </label>
+          <div class="ab-toolbar-controls">
+            <fieldset id="ab-agent-pills" class="ab-agent-pills" aria-controls="ab-comparison-frame">
+              <legend class="visually-hidden">Select coding agent</legend>
+            </fieldset>
+          </div>
         </div>
-        <div id="insights-container" class="insights-grid">
-          <!-- Populated by JS -->
+        <fieldset id="ab-task-pills" class="ab-task-pills" aria-controls="ab-comparison-frame">
+          <legend class="visually-hidden">Select evaluation task</legend>
+        </fieldset>
+        <div id="ab-comparison-frame" class="ab-comparison-frame">
+          <div class="ab-prompt-banner">
+            <span class="ab-prompt-kicker">Task prompt</span>
+            <p id="ab-prompt-text" class="ab-prompt-text">Loading task prompt…</p>
+          </div>
+          <div class="ab-scorecard-grid">
+            <div id="ab-score-unguided" class="ab-score-card unguided" role="region" aria-label="Unguided run evaluation result"></div>
+            <div id="ab-score-guided" class="ab-score-card guided" role="region" aria-label="Guided run evaluation result"></div>
+          </div>
+          <div id="ab-checks-content"></div>
+          <div class="ab-frame-footer">
+            <div id="ab-run-provenance" class="ab-run-provenance"></div>
+          </div>
         </div>
-      </details>
-
-      <div class="suites-table-container">
-        <table class="suites-table">
-          <thead>
-            <tr>
-              <th style="text-align: left;">Suite ID & Date</th>
-              <th>
-                <select id="filter-agent" class="header-filter-select">
-                  <option value="all">Agent</option>
-                  <optgroup label="Select Agent" id="filter-agent-group">
-                    <!-- populated dynamically -->
-                  </optgroup>
-                </select>
-              </th>
-              <th>
-                <select id="filter-serving" class="header-filter-select">
-                  <option value="all">Serving</option>
-                  <optgroup label="Select Architecture" id="filter-serving-group">
-                    <!-- populated dynamically -->
-                  </optgroup>
-                </select>
-              </th>
-              <th>
-                <select id="filter-model" class="header-filter-select">
-                  <option value="all">Model</option>
-                  <optgroup label="Select Model" id="filter-model-group">
-                    <!-- populated dynamically -->
-                  </optgroup>
-                </select>
-              </th>
-              <th># Tasks</th>
-              <th style="text-align: center; padding-right: 15px;">Uplift</th>
-              <th id="header-source">
-                <select id="filter-source" class="header-filter-select">
-                  <option value="all">Source</option>
-                  <optgroup label="Select Source">
-                    <option value="local">Local</option>
-                    <option value="remote">Remote</option>
-                  </optgroup>
-                </select>
-              </th>
-            </tr>
-          </thead>
-          <tbody id="suites-list">
-            <!-- populated by JS -->
-          </tbody>
+      </section>
+      <section id="agents-section" class="hero-agents page-section" aria-labelledby="agents-heading">
+        <div class="hero-agents-header">
+          <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
+          <p class="hero-agents-note">Pooled across the latest nightly runs per agent. Time, token, per-model, and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> live in the drawer below.</p>
+        </div>
+        <div class="agent-table-wrap" tabindex="0" role="region" aria-labelledby="agent-table-caption">
+          <table class="agent-table">
+            <caption id="agent-table-caption" class="visually-hidden">Latest nightly runs per agent family, pooled. Unguided → guided.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Agent</th>
+                <th scope="col">Pass rate</th>
+                <th scope="col">Accessibility</th>
+                <th scope="col">Runs</th>
+              </tr>
+            </thead>
+            <tbody id="agent-table-body">
+              <tr><th scope="row">Loading…</th><td data-label="Pass rate">—</td><td data-label="Accessibility">—</td><td data-label="Runs">—</td></tr>
+            </tbody>
           </table>
+        </div>
+        <div class="hero-drawers">
+          <details class="insights-drawer" id="breakdowns">
+            <summary class="insights-summary">Breakdowns by model and guide</summary>
+            <div class="insights-controls">
+              <div class="insights-window">
+                <label for="insights-limit-input">Most recent</label>
+                <input type="number" id="insights-limit-input" value="5" min="1" max="365" autocomplete="off">
+                <span>days of data</span>
+                <label class="toggle-label" for="insights-show-all-check"><input type="checkbox" id="insights-show-all-check"> Show all</label>
+              </div>
+              <fieldset class="metric-mode-toggle">
+                <legend class="visually-hidden">Comparison check scope</legend>
+                <label id="insights-mode-all" class="metric-mode-btn"><input type="radio" name="insights-mode" value="all" checked>All checks</label>
+                <label id="insights-mode-a11y" class="metric-mode-btn"><input type="radio" name="insights-mode" value="a11y">Accessibility subscore</label>
+              </fieldset>
+            </div>
+            <div id="insights-container" class="insights-grid"></div>
+          </details>
+          <details class="hero-method" id="hero-method">
+            <summary>How we test &amp; measure</summary>
+            <div class="hero-method-body">
+              <dl>
+                <div class="method-item">
+                  <dt>Controlled A/B tasks</dt>
+                  <dd>Each benchmark task starts with a small starter web app and a synthetic feature prompt (for example, "add search-term highlighting" or "animate this dialog open and closed"). We run the exact same agent, model, and prompt twice: once <strong>without MWG</strong> and once <strong>with MWG</strong> installed as a skill. Nothing else changes between the two runs.</dd>
+                </div>
+                <div class="method-item">
+                  <dt>Grading &amp; pass rate</dt>
+                  <dd>After the agent finishes editing code, an automated test script opens the app in a headless browser (Playwright) and inspects the code to check each best-practice requirement. Pass rate is total checks passed divided by total checks run. If an agent crashes or times out before tests can run, that run counts as one failed check. Changes are shown in <strong>percentage points (pp)</strong>. Moving from 25% to 90% is +65 pp.</dd>
+                </div>
+                <div class="method-item">
+                  <dt>Why isn't "With MWG" 100%?</dt>
+                  <dd>Guidance is documentation an AI agent reads rather than a code generator. Guided runs still miss some checks for three practical reasons: <strong>skipped details</strong> (an agent may follow 15 of 16 steps in a guide and overlook one, such as a fallback for older browsers), <strong>choosing when to consult a guide</strong> (task prompts never mention MWG by name, so the agent must recognize on its own which guide applies), and <strong>strict test edge cases</strong> that nightly runs help us catch and refine.</dd>
+                </div>
+                <div class="method-item">
+                  <dt>Accessibility subscore</dt>
+                  <dd>Pass rate on accessibility checks across all guides, beyond dedicated accessibility guides. Covers keyboard support, focus and <code>inert</code> handling, <code>prefers-reduced-motion</code> and contrast, ARIA roles and announcements, and form labels.</dd>
+                </div>
+                <div class="method-item">
+                  <dt>Completion time</dt>
+                  <dd>Median wall-clock time the agent spends coding a task, excluding our browser grading step. Because each agent CLI operates differently, we compare median time per agent rather than combining times across different agents.</dd>
+                </div>
+                <div class="method-item">
+                  <dt>Token usage (uncached)</dt>
+                  <dd>Tokens measure how much text the AI model reads and writes. As an agent works across multiple steps, it repeatedly re-sends earlier conversation history from a fast cache, which can make up most of the raw token count. We report <strong>uncached tokens</strong> (<code>total − cached</code>) so you see the newly read guides, code edits, and reasoning each task actually required.</dd>
+                </div>
+                <div class="method-item">
+                  <dt>Scheduled nightly runs</dt>
+                  <dd>Automated benchmark suites (<code>nightly-&lt;date&gt;-&lt;agent&gt;</code>) run against the full task set on a regular schedule. Headline numbers combine the <span id="method-recent-n">latest nightly run</span> from each agent<span id="method-agents"></span>.</dd>
+                </div>
+                <div class="method-item">
+                  <dt>Open-source benchmark</dt>
+                  <dd>All guides, starter apps, task prompts, and browser test scripts are public in <a href="https://github.com/GoogleChrome/modern-web-guidance-src" rel="noopener">GoogleChrome/modern-web-guidance-src</a>.</dd>
+                </div>
+              </dl>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section id="browse-section" class="browse-section page-section" aria-labelledby="browse-heading">
+        <div class="browse-header">
+          <div class="browse-intro">
+            <h2 id="browse-heading" class="browse-title section-heading">Browse all runs</h2>
+            <p class="browse-subtitle">Individual evaluation suites, newest first. Select a run for per-task diffs and logs.</p>
+          </div>
+          <div class="browse-controls">
+            <div class="filter-container-nav">
+              <div class="filter-runs-control">
+                <label for="filter-btn" class="filter-runs-label">
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 4h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1 0-1zm2 3.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1zm2 3.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1 0-1z"/></svg>
+                  Filter runs
+                </label>
+                <button id="filter-btn" class="secondary-btn filter-runs-trigger" type="button" popovertarget="filter-menu" aria-expanded="false" aria-controls="filter-menu">
+                  <span id="filter-btn-text">All selected</span>
+                  <svg class="filter-runs-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                  </svg>
+                </button>
+              </div>
+              <div id="filter-menu" class="filter-menu" popover>
+                <div class="filter-header">
+                  <span class="filter-header-title">Filter runs</span>
+                  <div class="filter-actions">
+                    <button id="select-all-btn" class="text-btn" type="button">All</button>
+                    <button id="deselect-all-btn" class="text-btn" type="button">None</button>
+                  </div>
+                </div>
+                <div class="filter-scheduled-row">
+                  <label class="toggle-label" for="scheduled-only-check">
+                    <input type="checkbox" id="scheduled-only-check" checked>
+                    Scheduled nightly/weekly runs only
+                  </label>
+                </div>
+                <div class="filter-search-wrap">
+                  <label for="filter-search" class="visually-hidden">Search runs</label>
+                  <input type="search" id="filter-search" class="filter-search" placeholder="Search runs…">
+                </div>
+                <div id="filter-list" class="filter-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mobile-suites-controls" aria-label="Sort and filter runs">
+          <label for="mobile-sort-select" class="visually-hidden">Sort runs</label>
+          <select id="mobile-sort-select" class="header-filter-select header-filter-select-left">
+            <option value="date:desc">Sort: Newest</option>
+            <option value="date:asc">Sort: Oldest</option>
+            <option value="uplift:desc">Sort: Pass-rate lift</option>
+            <option value="a11y:desc">Sort: A11y lift</option>
+            <option value="time:asc">Sort: Fastest time</option>
+            <option value="tokens:asc">Sort: Fewest tokens</option>
+          </select>
+          <label for="mobile-filter-agent" class="visually-hidden">Filter runs by agent</label>
+          <select id="mobile-filter-agent" class="header-filter-select header-filter-select-left">
+            <option value="all">All agents</option>
+            <optgroup label="Select agent" id="mobile-filter-agent-group"></optgroup>
+          </select>
+        </div>
+        <div class="suites-table-container">
+          <table class="suites-table">
+            <caption class="visually-hidden">Evaluation suite runs comparing unguided and guided results. Pass-rate change in percentage points (pp); time and token change in %, lower is better.</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="col-suite" aria-sort="descending"><button type="button" class="sort-btn" data-sort="date">Suite &amp; date</button></th>
+                <th scope="col" class="col-agent">
+                  <label for="filter-agent" class="visually-hidden">Filter by agent</label>
+                  <select id="filter-agent" class="header-filter-select header-filter-select-left"><option value="all">Agent</option><optgroup label="Select agent" id="filter-agent-group"></optgroup></select>
+                </th>
+                <th scope="col">
+                  <label for="filter-serving" class="visually-hidden">Filter by serving</label>
+                  <select id="filter-serving" class="header-filter-select"><option value="all">Serving</option><optgroup label="Select architecture" id="filter-serving-group"></optgroup></select>
+                </th>
+                <th scope="col" class="col-model">
+                  <label for="filter-model" class="visually-hidden">Filter by model</label>
+                  <select id="filter-model" class="header-filter-select header-filter-select-left"><option value="all">Model</option><optgroup label="Select model" id="filter-model-group"></optgroup></select>
+                </th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="uplift">Pass rate</button></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y subscore</button></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="time">Median time</button></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="tokens">Median uncached tokens</button></th>
+                <th scope="col" id="header-source">
+                  <label for="filter-source" class="visually-hidden">Filter by source</label>
+                  <select id="filter-source" class="header-filter-select"><option value="all">Source</option><optgroup label="Select source"><option value="local">Local</option><option value="remote">Remote</option></optgroup></select>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="suites-list"></tbody>
+          </table>
+        </div>
+        <p id="suites-count" class="suites-count" aria-live="polite"></p>
+      </section>
+
+      <div id="empty-state" class="empty-state" hidden>
+        <p>No test runs found yet. Run the test suite to get started.</p>
       </div>
-    </div>
-
-    <div id="empty-state" class="empty-state" style="display: none;">
-      <p>No test runs found yet. Run the test suite to get started.</p>
-    </div>
+    </main>
   </div>
 
-  <div id="tooltip-container" class="tooltip-container hidden">
-    <div id="tooltip-header"></div>
-    <div id="tooltip-chart"></div>
-  </div>
+  <div id="barbell-tooltip" class="barbell-tooltip" popover="hint" role="tooltip"></div>
 
+  <script type="module">
+    // Conditional polyfills for popover (#filter-menu, #barbell-tooltip, hint popovers), CSS anchor
+    // positioning, and interestfor (barbell preview, breakdown hints), only loaded where the native feature is missing.
+    // Vendored copies (MWG secure-external-subresources): this origin holds the GCS OAuth token, so it
+    // must not run unpinned third-party code from a CDN. See vendor/README.md for versions.
+    // Known polyfill limit: its touch long-press only matches button[interestfor], so without native
+    // interestfor (Firefox, Safari) the <a interestfor> triggers (.uplift-link, .a11y-link,
+    // .pivot-link) don't preview on touch. Their content stays reachable by following the link.
+    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+      import("./vendor/interestfor.js").catch(() => {});
+    }
+    if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+      import("./vendor/popover-polyfill.js").catch(() => {});
+    }
+    if (!("anchorName" in document.documentElement.style)) {
+      import("./vendor/css-anchor-positioning.js").catch(() => {});
+    }
+  </script>
+  <script type="module" src="hero.js"></script>
+  <script type="module" src="showcase.js"></script>
   <script type="module" src="landing.js"></script>
 </body>
 </html>

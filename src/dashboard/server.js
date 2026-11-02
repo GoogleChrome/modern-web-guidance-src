@@ -77,6 +77,19 @@ if (STATIC) {
   });
 } else {
 
+const manifestOutDir = path.join(outDir, 'dashboard');
+if (
+  !fs.existsSync(path.join(manifestOutDir, 'features-mapping.gen.js')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'demos.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'grouped-tasks.gen.json')) ||
+  !fs.existsSync(path.join(manifestOutDir, 'suites.gen.json'))
+) {
+  const resultsSourceDir = process.env.USE_MOCK_RESULTS === 'true'
+    ? path.join(dashboardDir, 'mock-results')
+    : suitesDir;
+  await runAllManifests({ outputDir: manifestOutDir, resultsSourceDir });
+}
+
 /** @type {Record<string, string>} */
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -430,7 +443,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     let filePath;
-    if (checkPath === 'features-mapping.gen.js' || checkPath === 'features_mapping.gen.js' || checkPath === 'grouped-tasks.gen.json' || checkPath === 'suites.gen.json') {
+    if (
+      checkPath === 'features-mapping.gen.js' ||
+      checkPath === 'features_mapping.gen.js' ||
+      checkPath === 'grouped-tasks.gen.json' ||
+      checkPath === 'suites.gen.json'
+    ) {
       const canonicalCheckPath = checkPath === 'features_mapping.gen.js' ? 'features-mapping.gen.js' : checkPath;
       filePath = path.join(outDir, 'dashboard', canonicalCheckPath);
     } else if (checkPath.startsWith('base_apps/')) {

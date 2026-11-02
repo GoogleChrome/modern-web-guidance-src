@@ -5,6 +5,8 @@ import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from './macros.ts';
 import { validateFeature, resolveFeatureId } from './baseline.ts';
+import { isKnownCategory, CATEGORIES } from './categories.ts';
+import { buildHeadingMap } from './headings.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
@@ -44,7 +46,6 @@ export const DISCIPLINE_GUIDES = new Set([
   'motion',
   'passkeys',
   'responsive-design',
-  'selector-atrule-combinations',
   'typography',
   'visual-effects',
   'web-components',
@@ -358,9 +359,14 @@ export function validateGuide(filePath: string): ValidationResult {
 
   const maskedBody = maskComments(body);
   const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
-  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'static-site' } : {}));
+  errors.push(...validateCategory(filePath, relativePath));
+  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'devsite' } : {}));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
+  errors.push(...validateHeadingHtmlTags(maskedBody, relativePath));
+  errors.push(...validateSecureSrc(maskedBody, relativePath));
+  errors.push(...validateCodeFences(body, relativePath));
   errors.push(...validateCallouts(maskedBody, relativePath));
+  errors.push(...validateAnchorLinks(maskedBody, relativePath));
   errors.push(...validatePendingGuideRefs(body, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
@@ -1148,6 +1154,108 @@ export function validateBaselineClaims(body: string, relativePath: string, data?
     }
   });
 
+  return errors;
+}
+
+/**
+ * Validates that a guide located inside guides/ resides in a recognized category directory.
+ */
+export function validateCategory(filePath: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const relToGuides = path.relative(guidesDir, filePath);
+  if (!relToGuides.startsWith('..') && !path.isAbsolute(relToGuides)) {
+    const parts = relToGuides.split(path.sep);
+    if (parts.length >= 2) {
+      const category = parts[0];
+      if (!isKnownCategory(category)) {
+        errors.push(`Unknown category "${category}" for guide ${relativePath}. Registered categories: ${CATEGORIES.map(c => c.slug).join(', ')}.`);
+      }
+    }
+  }
+  return errors;
+}
+
+/**
+ * Validates that headings do not contain unescaped HTML tags (e.g. `## Using <dialog>`).
+ * Tags must be wrapped in backticks to prevent DevSite TOC / HTML rendering corruption.
+ */
+export function validateHeadingHtmlTags(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const tokens = marked.lexer(body);
+  marked.walkTokens(tokens, token => {
+    if (token.type === 'heading') {
+      const textWithoutCode = token.raw.replace(/`[^`]*`/g, '');
+      const match = textWithoutCode.match(/<([a-zA-Z0-9:-]+)(?:\s+[^>]*)?\/?>/);
+      if (match) {
+        errors.push(`Unescaped HTML tag <${match[1]}> in heading "${token.text}" in ${relativePath}. Wrap tag names in backticks.`);
+      }
+    }
+  });
+  return errors;
+}
+
+/**
+ * Validates that `src="..."` attributes do not use insecure HTTP URLs outside of code blocks.
+ */
+export function validateSecureSrc(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const textWithoutCode = body
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/~~~[\s\S]*?~~~/g, '')
+    .replace(/`[^`]*`/g, '');
+  const httpMatches = textWithoutCode.match(/src=["']http:\/\/[^"']+/g);
+  if (httpMatches) {
+    for (const m of httpMatches) {
+      errors.push(`Insecure HTTP url in ${m} in ${relativePath}. Use HTTPS instead.`);
+    }
+  }
+  return errors;
+}
+
+/**
+ * Validates code fence indentation and ensures all code fences are properly closed.
+ */
+export function validateCodeFences(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const lines = body.split('\n');
+  let openFence: { indent: string; char: string; length: number; line: number } | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(/^([ \t]*)(`{3,}|~{3,})/);
+    if (!openFence) {
+      if (match) {
+        openFence = { indent: match[1], char: match[2][0], length: match[2].length, line: i + 1 };
+      }
+    } else {
+      const closeMatch = line.match(/^([ \t]*)(`{3,}|~{3,})[ \t]*$/);
+      if (closeMatch && closeMatch[2][0] === openFence.char && closeMatch[2].length >= openFence.length) {
+        if (closeMatch[1] !== openFence.indent) {
+          errors.push(`Closing code fence indentation (${closeMatch[1].length} spaces on line ${i + 1}) does not match opening fence (${openFence.indent.length} spaces on line ${openFence.line}) in ${relativePath}.`);
+        }
+        openFence = null;
+      }
+    }
+  }
+  if (openFence) {
+    errors.push(`Unclosed code fence opened on line ${openFence.line} in ${relativePath}.`);
+  }
+  return errors;
+}
+
+/**
+ * Validates that all internal page `#anchor` links resolve to headings present on the page.
+ */
+export function validateAnchorLinks(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const { headingMap } = buildHeadingMap(body);
+  const anchorMatches = body.matchAll(/\[([^\]]+)\]\(#([^)]+)\)/g);
+  for (const match of anchorMatches) {
+    const fragment = match[2];
+    const resolved = headingMap.get(fragment) ?? headingMap.get(fragment.replace(/-/g, '_'));
+    if (!resolved) {
+      errors.push(`Unresolved anchor "#${fragment}" in ${relativePath}. No matching heading found on this page.`);
+    }
+  }
   return errors;
 }
 
