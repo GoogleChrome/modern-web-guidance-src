@@ -7,7 +7,9 @@ web-feature-ids:
   - interpolate-size
   - transition-behavior
   - details-name
+  - dir-pseudo
   - details
+  - details-content
   - invoker-commands
 guides:
   - search-hidden-content
@@ -139,6 +141,48 @@ To improve user experience, disable the Expand All button when all items are alr
 
 The disclosed content lives in the `::details-content` pseudo-element. While closed it is hidden with `content-visibility: hidden`, not `display: none`, which is what keeps it findable and lets its size animate. Style the item on `details`, the trigger on `summary`, and the content on `details::details-content`.
 
+### Customizing the marker
+
+`summary` renders as a list item, so its disclosure triangle is a `::marker`. Remove it with `list-style: none` and draw your own with `::before`, which unlike `::marker` can be sized, positioned, and animated.
+Render the icon as a mask so it follows the text color, and rotate it for the closed state so one icon serves both states and both writing directions.
+See {{ GUIDE_REF("icons") }} for more details on including and customizing icons via CSS.
+
+```css
+summary {
+	/* Removes the default triangle */
+	list-style: none;
+	display: flex;
+	align-items: center;
+	gap: 0.5ch;
+
+	&::before {
+		content: "";
+		inline-size: 1em;
+		block-size: 1em;
+		background-color: currentColor;
+		/* Example chevron pointing down, the open state; any single-color SVG works */
+		mask: url("icons/chevron-down.svg") no-repeat center / contain;
+		/* Closed: point toward the inline end */
+		rotate: -90deg;
+	}
+
+	&:dir(rtl)::before {
+		rotate: 90deg;
+	}
+
+	/* Rotate rather than swap icons, so the change can animate */
+	details[open] > &::before {
+		rotate: 0deg;
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		&::before {
+			transition: rotate 0.2s;
+		}
+	}
+}
+```
+
 ### Slide up/down animation
 
 To animate opening and closing, transition `block-size` between `0` and its intrinsic size, and transition `content-visibility` discretely so the content stays rendered until the collapse finishes.
@@ -220,6 +264,8 @@ if (!Object.hasOwn(HTMLDetailsElement.prototype, "name")) {
 If your Baseline target does not support invoker commands, the buttons do nothing. Feature-detect with `Object.hasOwn(HTMLButtonElement.prototype, "commandForElement")` and fall back to `click` listeners that run the same loop. See {{ GUIDE_REF("custom-button-actions") }} for more details.
 
 ### Open and close animation
+
+{{ BASELINE_STATUS("details-content") }}
 
 {{ BASELINE_STATUS("interpolate-size") }}
 
