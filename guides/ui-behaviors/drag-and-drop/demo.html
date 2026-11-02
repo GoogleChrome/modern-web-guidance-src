@@ -55,9 +55,15 @@
       max-width: 32rem;
       max-height: 22rem;
       margin: 0;
-      padding: 1rem;
+      padding: 1rem 1rem 0;
       overflow-y: auto;
       list-style: none;
+    }
+
+    /* The end space is a margin on the last item because Safari leaves a grid or flex container's end padding
+       out of its scrollable overflow. */
+    .task-list > .task:last-child {
+      margin-block-end: 1rem;
     }
 
     /* A row of cards: the same code reorders it along the inline axis. */
@@ -65,7 +71,13 @@
       display: flex;
       max-width: none;
       max-height: none;
+      padding: 1rem 0 1rem 1rem;
       overflow: auto hidden;
+    }
+
+    .task-list[data-axis="inline"] > .task:last-child {
+      margin-block-end: 0;
+      margin-inline-end: 1rem;
     }
 
     .task-list[data-axis="inline"] .task {
@@ -100,12 +112,11 @@
       opacity: var(--drag-placeholder-opacity);
     }
 
-    .task.drop-prev {
-      anchor-name: --drop-prev;
-    }
-
-    .task.drop-next {
-      anchor-name: --drop-next;
+    /* Without a clone the source item is the drag feedback, so lift it instead of fading it. */
+    .task-list:not([data-preview="clone"]) .task.pointer-dragging {
+      opacity: 1;
+      scale: 1.02;
+      box-shadow: var(--drag-preview-shadow);
     }
 
     /* Sits in the gap between the items around the drop spot, so nothing shifts until release. */
@@ -129,11 +140,7 @@
     }
 
     .drop-marker[data-axis="block"] {
-      left: anchor(--drop-prev left, anchor(--drop-next left));
-      right: anchor(--drop-prev right, anchor(--drop-next right));
       height: var(--drop-marker-size);
-      top: anchor(--drop-prev bottom, calc(anchor(--drop-next top) - var(--drop-marker-gap)));
-      margin-block-start: calc((var(--drop-marker-gap) - var(--drop-marker-size)) / 2);
     }
 
     .drop-marker[data-axis="block"]::before {
@@ -143,11 +150,7 @@
     }
 
     .drop-marker[data-axis="inline"] {
-      top: anchor(--drop-prev top, anchor(--drop-next top));
-      bottom: anchor(--drop-prev bottom, anchor(--drop-next bottom));
       width: var(--drop-marker-size);
-      inset-inline-start: anchor(--drop-prev end, calc(anchor(--drop-next start) - var(--drop-marker-gap)));
-      margin-inline-start: calc((var(--drop-marker-gap) - var(--drop-marker-size)) / 2);
     }
 
     .drop-marker[data-axis="inline"]::before {
@@ -326,13 +329,14 @@
 <body>
   <main>
     <h1>Tasks</h1>
-    <p>Three ways to reorder, shown separately because a real implementation picks one keyboard interaction. Every move
-      is announced in one live region at the bottom.</p>
+    <p>Ways to reorder, shown separately because a real implementation picks one. Every move is announced in one live
+      region at the bottom.</p>
 
     <section>
-      <h2>1. Drag handle, vertical</h2>
+      <h2>1. Drag handle with a drop marker, vertical</h2>
       <p>Drag an item with its handle, or press <kbd>Space</kbd> on a focused handle to grab it, move it with
-        <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Esc</kbd> to cancel.</p>
+        <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Esc</kbd> to cancel. The default for a single axis: the source item
+        fades in place and a marker shows where it will land.</p>
       <ol class="task-list" id="taskList" data-axis="block">
       <li class="task" data-reorder-item data-label="Outline project">
         <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project"
@@ -353,7 +357,25 @@
     </section>
 
     <section>
-      <h2>2. Move buttons, vertical</h2>
+      <h2>2. Drag handle with a clone, vertical</h2>
+      <p>The same drag, plus a clone of the item that follows the pointer. Use it when the items are large or the
+        marker alone is hard to follow.</p>
+      <ol class="task-list" id="cloneList" data-axis="block" data-preview="clone">
+      <li class="task" data-reorder-item data-label="Review research">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Review research <input value="Collect source notes"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Schedule review">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Schedule review <input value="Invite the team"></label>
+      </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>3. Move buttons, vertical</h2>
       <p>No handle and no dragging: visible buttons move an item up or down. This is the most discoverable option and
         works in screen-reader browse modes.</p>
       <ol class="task-list" id="buttonList" data-axis="block">
@@ -394,7 +416,7 @@
     </section>
 
     <section>
-      <h2>3. Drag handle, horizontal</h2>
+      <h2>4. Drag handle, horizontal</h2>
       <p>The same code along the inline axis. Drag a card, or grab it with <kbd>Space</kbd> and move it with
         <kbd>ArrowLeft</kbd> or <kbd>ArrowRight</kbd>. The arrows follow the visual direction, so they flip in
         right-to-left layouts.</p>
@@ -428,7 +450,6 @@
   <script>
     const status = document.getElementById('reorderStatus');
     const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-    const anchorSupported = CSS.supports('anchor-name', '--a');
     const EDGE_ZONE = 56;
     const MAX_SPEED = 700; // px per second at the edge, up to 2x beyond it
 
@@ -443,6 +464,7 @@
     // One reorderable list. `data-axis` is "block" (vertical) or "inline" (horizontal, reading direction aware).
     function setupReorderable(list) {
       const inline = list.dataset.axis === 'inline';
+      const clonePreview = list.dataset.preview === 'clone';
       let pointerItem = null;
       let pointerPreview = null;
       let pointerOffsetX = 0;
@@ -510,17 +532,14 @@
       function clearDropMarker() {
         dropMarker?.remove();
         dropMarker = null;
-        list.querySelectorAll('.drop-prev, .drop-next').forEach((el) => el.classList.remove('drop-prev', 'drop-next'));
       }
 
-      // The marker is anchored to the items on either side of the drop spot; the list itself doesn't change.
+      // The marker sits between the items on either side of the drop spot; the list itself doesn't change.
       function showDropMarker(before, siblings) {
         clearDropMarker();
         const index = before ? siblings.indexOf(before) : siblings.length;
         markerPrev = siblings[index - 1] ?? null;
         markerNext = before;
-        markerPrev?.classList.add('drop-prev');
-        markerNext?.classList.add('drop-next');
         dropMarker = document.createElement('div');
         dropMarker.className = 'drop-marker';
         dropMarker.dataset.axis = inline ? 'inline' : 'block';
@@ -528,7 +547,7 @@
         document.body.append(dropMarker);
       }
 
-      // Fallback without anchor positioning: place the marker from the neighbors' rects, mirroring the anchored CSS.
+      // Place the marker from the neighbors' rects on every drop-spot update and scroll step.
       function placeDropMarker() {
         const gap = 'var(--drop-marker-gap)';
         const centered = `((${gap} - var(--drop-marker-size)) / 2)`;
@@ -556,7 +575,7 @@
         if (!pointerItem) return;
         clearDropMarker();
         if (!cancelled && dropBefore !== undefined && dropBefore !== pointerItem.nextElementSibling) {
-          moveItem(pointerItem, dropBefore);
+          moveItem(pointerItem, dropBefore, true);
         }
         dropBefore = undefined;
         updateDisabledStates();
@@ -569,18 +588,16 @@
         }
         const item = pointerItem;
         const preview = pointerPreview;
-        const from = preview.getBoundingClientRect();
+        const from = preview?.getBoundingClientRect();
         // Finish the item's in-flight FLIP animation so the target is its real layout position.
         item.getAnimations().forEach((animation) => animation.finish());
         const to = item.getBoundingClientRect();
         const done = () => {
           // A new drag of this item may already be running; don't clear its placeholder state.
           if (item !== pointerItem) item.classList.remove('pointer-dragging');
-          preview.remove();
+          preview?.remove();
         };
-        if (reduceMotion.matches) {
-          done();
-        } else {
+        if (!reduceMotion.matches && preview) {
           const snap = preview.animate(
             { translate: [`0 0`, `${to.left - from.left}px ${to.top - from.top}px`] },
             { duration: 200, easing: 'ease-out', fill: 'forwards' }
@@ -589,6 +606,7 @@
         }
         pointerItem = null;
         pointerPreview = null;
+        if (reduceMotion.matches || !preview) done();
         activePointerId = null;
         pointerHandle?.removeEventListener('lostpointercapture', onLostPointerCapture);
         pointerHandle = null;
@@ -623,8 +641,10 @@
         if (event.pointerId !== activePointerId) return;
         pointerX = event.clientX;
         pointerY = event.clientY;
-        pointerPreview.style.left = `${pointerX - pointerOffsetX}px`;
-        pointerPreview.style.top = `${pointerY - pointerOffsetY}px`;
+        if (pointerPreview) {
+          pointerPreview.style.left = `${pointerX - pointerOffsetX}px`;
+          pointerPreview.style.top = `${pointerY - pointerOffsetY}px`;
+        }
         updateDropTarget();
       }
 
@@ -654,7 +674,7 @@
           dropBefore = before;
           showDropMarker(before, siblings);
         }
-        if (!anchorSupported) placeDropMarker();
+        placeDropMarker();
       }
 
       function autoScroll(now) {
@@ -690,17 +710,19 @@
         pointerOffsetX = event.clientX - rect.left;
         pointerOffsetY = event.clientY - rect.top;
 
-        pointerPreview = pointerItem.cloneNode(true);
-        pointerPreview.classList.remove('pointer-dragging');
-        // A clone never matches :focus-visible, so carry the keyboard focus ring over to the preview.
-        pointerPreview.classList.toggle('has-focus', handle.matches(':focus-visible'));
-        pointerPreview.classList.add('drag-preview');
-        pointerPreview.setAttribute('aria-hidden', 'true');
-        pointerPreview.inert = true;
-        pointerPreview.style.width = `${rect.width}px`;
-        pointerPreview.style.left = `${rect.left}px`;
-        pointerPreview.style.top = `${rect.top}px`;
-        document.body.append(pointerPreview);
+        if (clonePreview) {
+          pointerPreview = pointerItem.cloneNode(true);
+          pointerPreview.classList.remove('pointer-dragging');
+          // A clone never matches :focus-visible, so carry the keyboard focus ring over to the preview.
+          pointerPreview.classList.toggle('has-focus', handle.matches(':focus-visible'));
+          pointerPreview.classList.add('drag-preview');
+          pointerPreview.setAttribute('aria-hidden', 'true');
+          pointerPreview.inert = true;
+          pointerPreview.style.width = `${rect.width}px`;
+          pointerPreview.style.left = `${rect.left}px`;
+          pointerPreview.style.top = `${rect.top}px`;
+          document.body.append(pointerPreview);
+        }
         pointerItem.classList.add('pointer-dragging');
         document.documentElement.classList.add('is-dragging');
         pointerX = event.clientX;

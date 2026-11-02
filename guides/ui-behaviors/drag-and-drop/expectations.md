@@ -2,6 +2,8 @@
 - During a pointer drag, sibling items do not change position.
 - During a pointer drag, a drop marker between the two items around the drop spot shows where the dragged item will land.
 - Showing the drop marker does not shift the layout of the items.
+- While the list autoscrolls during a drag, the drop marker stays between the two items around the drop spot.
+- When the drop spot is after the last item, the drop marker is positioned inside the scroll container.
 - The dragged item's DOM position changes once, on release.
 - The drop marker's color and size come from CSS custom properties.
 - In a horizontal row, dragging an item with a pointer along the row's axis changes its DOM position by its horizontal position, and the visible order of the items matches their DOM order.
@@ -14,12 +16,13 @@
 - Focus remains on the keyboard reordering mechanism after reordering, shifting to an alternative control on the same item when necessary to prevent focus loss.
 - Moving the first item toward the start or the last item toward the end with the keyboard mechanism leaves the DOM order unchanged.
 - If the keyboard mechanism is a drag handle, `Space` or `Enter` toggles a grabbed state exposed with `aria-pressed`, arrow keys move the item only while grabbed, and `Escape` restores the item's original position.
-- Reordering is animated: displaced siblings and a released drag preview travel to their new positions instead of jumping, and the animation is skipped under `prefers-reduced-motion: reduce`.
+- Reordering is animated: displaced siblings travel to their new positions instead of jumping, and the animation is skipped under `prefers-reduced-motion: reduce`.
+- When a drag shows a clone preview, the clone follows the pointer, is `aria-hidden="true"` and `inert`, and is removed when the drag ends.
 - When the items are in a scrollable container, holding a dragged item near or beyond the container's start or end edge on its axis scrolls the container, and the item can still be dropped at the first or last position.
 - Reordering actions are announced in a live region with the item's new position.
 - Releasing a drag without changing the item's position (such as a plain click on the handle) does not announce a move.
 - A grabbed item is dropped, and its `aria-pressed` reset, when its handle loses focus.
-- After a keyboard move or an `Escape` cancel, the moved item is scrolled into view within its scrollable container.
+- After a keyboard move, an `Escape` cancel, or a pointer drop, the moved item is scrolled into view within its scrollable container.
 - When keyboard focus enters an item in a scrollable container, the whole item, including its focus ring, is scrolled into view.
 - The collection renders its items in a readable and usable default DOM order before any reordering interaction occurs.
 - At a 320 px viewport width, the items and their movement controls fit without horizontal scrolling.
