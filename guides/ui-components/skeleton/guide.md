@@ -89,12 +89,12 @@ MANDATORY: Handle forced colors. It replaces text and background colors, so the 
 
 ## 3. Text
 
-Text, standalone links and list items share one rule that hides the content and applies the fill. Each element then sets its own bars in a `--bars` custom property, built from a small `--bar()` CSS function, so headings, paragraphs and links differ in bar count and length and not in the rule. Links inside a paragraph, list item or heading are not styled separately: they are hidden along with the surrounding text, so the selector excludes them. `:where()` keeps its specificity unchanged.
+Text, standalone links and list items share one rule that hides the content and applies the fill. Each element then sets its own bars in a `--bars` custom property, built from a small `--skeleton-bar()` CSS function, so headings, paragraphs and links differ in bar count and length and not in the rule. Links inside a paragraph, list item or heading are not styled separately: they are hidden along with the surrounding text, so the selector excludes them. `:where()` keeps its specificity unchanged.
 
 ```css
 /* One rounded bar. --i is the line index, --end is where the bar ends, --start offsets it.
    Reads --bar-height, --bar-gap and --bar-radius from the element it is used on. */
-@function --bar(--i <number>, --end <length-percentage>, --start <length>: 0px) {
+@function --skeleton-bar(--i <number>: 0, --end <length-percentage>: 100%, --start <length>: 0px) {
   --y: calc(var(--i) * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2);
   result: move to calc(var(--start) + var(--bar-radius)) var(--y),
     hline to calc(var(--end) - var(--bar-radius)),
@@ -128,22 +128,22 @@ Text, standalone links and list items share one rule that hides the content and 
 /* Inline links keep their own color and underline, so make them inherit the hidden text */
 .skeleton[aria-busy="true"] :is(p, h2, li) a { color: inherit; text-decoration: none; }
 
-/* Each bar is --bar(line index, end position); --lines is the bar count (default 1) */
+/* Each bar is --skeleton-bar(line index, end position); --lines is the bar count (default 1) */
 .skeleton[aria-busy="true"] h2 {
-  --bars: shape(from 0 0, --bar(0, 88%));
+  --bars: shape(from 0 0, --skeleton-bar(0, 88%));
 }
 
 .skeleton[aria-busy="true"] p {
   --lines: 3;
-  --bars: shape(from 0 0, --bar(0, 100%), --bar(1, 92%), --bar(2, 68%));
+  --bars: shape(from 0 0, --skeleton-bar(0, 100%), --skeleton-bar(1, 92%), --skeleton-bar(2, 68%));
 }
 
 .skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
-  --bars: shape(from 0 0, --bar(0, 42%));
+  --bars: shape(from 0 0, --skeleton-bar(0, 42%));
 }
 ```
 
-Set the shape on `--bars` and read it with `border-shape: var(--bars)`. Do not call `--bar()` directly inside a `border-shape: shape()` declaration: some browsers then discard the rules that follow it.
+Set the shape on `--bars` and read it with `border-shape: var(--bars)`. Do not call `--skeleton-bar()` directly inside a `border-shape: shape()` declaration: some browsers then discard the rules that follow it.
 
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
@@ -155,7 +155,7 @@ Keep the real `::marker` for the bullet. The shared `display: block` removes it,
   list-style-position: outside;
   margin-inline-start: 0;
   --line-one: 72%; /* Vary this per item */
-  --bars: shape(from 0 0, --bar(0, var(--line-one)));
+  --bars: shape(from 0 0, --skeleton-bar(0, var(--line-one)));
 }
 
 @supports (border-shape: shape(from 0 0, close)) {
@@ -171,11 +171,11 @@ Keep the real `::marker` for the bullet. The shared `display: block` removes it,
 
 Set `--lines` to the bar count (default `1`). `line-clamp` limits the real text to that many lines, and the `lh`-based `min-block-size` reserves their height, because `line-clamp` alone does not reserve height. A `min-block-size` does not stop surplus text from growing the box, so where `line-clamp` is unsupported, use the fallback below.
 
-For more than one bar, call `--bar()` once per bar with its index and end position. `shape()` cannot repeat a path from a count, so each call is written out. Bars are offset by `n × 1lh`, and `--lines` is the bar count so `min-block-size` reserves the total height.
+For more than one bar, call `--skeleton-bar()` once per bar with its index and end position. `shape()` cannot repeat a path from a count, so each call is written out. Bars are offset by `n × 1lh`, and `--lines` is the bar count so `min-block-size` reserves the total height.
 
 | Element | Treatment |
 |---|---|
-| `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--bar()` and set `--lines: 2` |
+| `h1`–`h3` | 1 bar, sized by the heading's own font size so hierarchy matches the real template. For headings that usually wrap, add a second `--skeleton-bar()` and set `--lines: 2` |
 | `p` | 3 bars, last one shorter like a real paragraph. A paragraph that is one line in the real template (a byline or metadata row, for example `p:has(> time)`) gets 1 short bar and `--lines: 1`, so the card does not read as extra paragraphs |
 | `li` | 1 bar each, keeping the real `::marker` as the bullet; vary widths. Zero the list's padding and the item's start margin so the text does not shift when content arrives |
 | `a` | Standalone link (not inside `p`, `li` or a heading): 1 short bar (ending at 42%). Inline links are hidden with the surrounding text |
@@ -239,7 +239,7 @@ Put a representative label in the skeleton markup (as in the example above) so t
 
 A skeleton is a simplification, not a copy. Keep what defines the silhouette (media, title, a few lines of body, the primary action) and hide the rest.
 
-- Cap long text at 3–4 bars by calling `--bar()` that many times. `line-clamp` (or its fallback) and `overflow: hidden` keep surplus text from adding lines. Cap collections at a few items as described below.
+- Cap long text at 3–4 bars by calling `--skeleton-bar()` that many times. `line-clamp` (or its fallback) and `overflow: hidden` keep surplus text from adding lines. Cap collections at a few items as described below.
 - To cap items, use a fixed `:nth-child(n + N)` selector with `display: none`. If the count must come from a custom property, read it in a small script, because CSS cannot use a custom property inside `:nth-child()`.
 - Remove whole cards or rows with `display: none`. For items inside a card, use `visibility: hidden` so the card height does not change when the real content arrives.
 - Decide what to hide by asking whether removing it changes the container's height. If it does, keep or reserve it.

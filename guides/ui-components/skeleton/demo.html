@@ -190,7 +190,7 @@
          bar's line index; the bar sits on the line pitch (--bar-height +
          --bar-gap, which is 1lh). It reads --bar-height, --bar-gap and
          --bar-radius from the element it is used on. */
-      @function --bar(--i <number>, --end <length-percentage>, --start <length>: 0px) {
+      @function --skeleton-bar(--i <number>: 0, --end <length-percentage>: 100%, --start <length>: 0px) {
         --y: calc(var(--i) * (var(--bar-height) + var(--bar-gap)) + var(--bar-gap) / 2);
         result: move to calc(var(--start) + var(--bar-radius)) var(--y),
           hline to calc(var(--end) - var(--bar-radius)),
@@ -283,7 +283,7 @@
          hidden with their parent, so they are excluded; :where() keeps the
          selector's specificity unchanged. */
       .skeleton[aria-busy="true"] a:where(:not(:is(p, li, h1, h2, h3) a)) {
-        --bars: shape(from 0 0, --bar(0, 42%));
+        --bars: shape(from 0 0, --skeleton-bar(0, 42%));
       }
 
       /* Inline links keep their own color and underline, so make them inherit the hidden text */
@@ -303,7 +303,7 @@
         list-style-position: outside;
         margin-inline-start: 0;
         --line-one: 72%;
-        --bars: shape(from 0 0, --bar(0, var(--line-one)));
+        --bars: shape(from 0 0, --skeleton-bar(0, var(--line-one)));
       }
 
       @supports (border-shape: shape(from 0 0, close)) {
@@ -345,19 +345,19 @@
       /* Each element lists its own bars (index, end position), because shape()
          cannot repeat a path from a count. --lines sets the reserved height. */
       .skeleton[aria-busy="true"] h2 {
-        --bars: shape(from 0 0, --bar(0, 88%));
+        --bars: shape(from 0 0, --skeleton-bar(0, 88%));
       }
 
       .skeleton[aria-busy="true"] p {
         --lines: 3;
-        --bars: shape(from 0 0, --bar(0, 100%), --bar(1, 92%), --bar(2, 68%));
+        --bars: shape(from 0 0, --skeleton-bar(0, 100%), --skeleton-bar(1, 92%), --skeleton-bar(2, 68%));
       }
 
       /* A one-line paragraph, such as the metadata row, gets one short bar. Its
          inline <time> needs no styling: it is hidden with the paragraph's text. */
       .skeleton[aria-busy="true"] p:has(> time) {
         --lines: 1;
-        --bars: shape(from 0 0, --bar(0, 48%));
+        --bars: shape(from 0 0, --skeleton-bar(0, 48%));
       }
 
       @keyframes sweep {
