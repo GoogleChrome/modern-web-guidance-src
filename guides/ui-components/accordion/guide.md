@@ -92,7 +92,7 @@ When each item is a section of the page, put its heading inside the `summary` el
 document.addEventListener("command", event => {
 	if (!event.target.matches("[data-accordion]")) return;
 
-	for (const details of event.target.querySelector(":scope > details")) {
+	for (const details of event.target.querySelectorAll(":scope > details")) {
 		if (event.command === "--expand-all") details.open = true;
 		else if (event.command === "--collapse-all") details.open = false;
 	}
