@@ -5,7 +5,6 @@ web-feature-ids:
   - subgrid
   - indeterminate
   - accent-color
-  - masks
   # - tmp-customizable-select-listbox # pending a11y SME
 guides:
   - checkbox
@@ -208,8 +207,6 @@ Scrolling regions are keyboard-reachable in current browsers because the checkbo
 
 {{ FEATURE_FALLBACKS("accent-color") }}
 
-If your Baseline target does not support `accent-color`, use the `@supports not (accent-color: auto)` block above. This is a faithful fallback: the checkbox keeps its brand colors, icons, and indeterminate dash.
-
-{{ BASELINE_STATUS("masks") }}
+If your Baseline target does not support `accent-color`, use the custom `appearance: none` styling from the {{ GUIDE_REF("checkbox") }} guide behind `@supports not (accent-color: auto)`.
 
 {{ BASELINE_STATUS("indeterminate") }}
