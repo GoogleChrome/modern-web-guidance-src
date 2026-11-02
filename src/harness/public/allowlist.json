@@ -7,5 +7,21 @@
   ],
   "exclude": [],
   "overrides": [],
-  "releasedModels": []
+  "releasedModels": [
+    "claude-fable-5-1",
+    "claude-opus-4-7",
+    "claude-opus-4-8",
+    "claude-opus-5",
+    "claude-opus-5-5",
+    "claude-sonnet-5",
+    "claude-sonnet-5-5",
+    "gemini-3.8-flash",
+    "gpt-5.5",
+    "gpt-5.6-sol",
+    "gpt-6-astra",
+    "gpt-6.1-sol"
+  ],
+  "retention": {
+    "maxSuites": 30
+  }
 }
