@@ -496,6 +496,87 @@ test('hasTrajectoryGuideLeak ignores host node_modules and passive search result
       ]
     });
     assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'sms-otp-form'), false);
+
+    // 7. Truncated developer.chrome.com snippet on a search_query-only webRuns step -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Searching web for dialog',
+          action: {
+            type: 'other',
+            name: 'exec',
+            params: {
+              value: 'text(await tools.web__run({search_query:[{q:"modern-web-guidance dialog"}],response_length:"short"}));',
+              webRuns: ['tools.web__run({search_query:[{q:"modern-web-guidance dialog"}],response_length:"short"})']
+            }
+          },
+          outcome: {
+            status: 'success',
+            message: 'MDN dialog\n\uE200cite\uE202turn0search0\uE201\nDialog | Modern Web Guidance | Chrome for Developers (https://developer.chrome.com/docs/modern-web-guidance/guides/html/dialog... [truncated]'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'dialog'), false);
+
+    // 8. Cross-step isolation: unrelated modern-web-guidance mention in step 1 + guideName in step 2 -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Step 1',
+          action: {
+            type: 'run_command',
+            name: 'curl https://developer.chrome.com/docs/modern-web-guidance/guides/css/other-guide',
+            params: { command: 'curl https://developer.chrome.com/docs/modern-web-guidance/guides/css/other-guide' }
+          },
+          outcome: { status: 'success', message: 'other-guide content' }
+        },
+        {
+          stepNumber: 2,
+          thought: 'Implementing popover component',
+          action: {
+            type: 'run_command',
+            name: 'rg popover src/',
+            params: { command: 'rg popover src/' }
+          },
+          outcome: { status: 'success', message: 'src/popover.ts' }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'popover'), false);
+
+    // 9. Checkout named modern-web-guidance (without -src) and Windows-escaped paths -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Checking processes',
+          action: {
+            type: 'run_command',
+            name: 'ps aux',
+            params: { command: 'ps aux', winPath: 'C:\\node_modules\\bin' }
+          },
+          outcome: {
+            status: 'success',
+            message: '/Users/dev/modern-web-guidance/node_modules/.bin/codex translator'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'translator'), false);
+
+    // 10. retrievedGuides or fileReadGuides top-level arrays -> true
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      retrievedGuides: ['local-network-access'],
+      steps: []
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'local-network-access'), true);
   } finally {
     removeTempDir(tempDir);
   }

@@ -739,4 +739,43 @@ test('parseCodexTrajectory preserves tools.web__run calls when batched with exec
     command: 'pwd',
     commands: ['pwd', 'ls -la']
   });
+
+  // Standalone tools.web__run call (no exec_command) also attaches params.webRuns
+  const standaloneWebItem = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_standalone_web',
+      name: 'exec',
+      input: 'text(await tools.web__run({search_query:[{q:"HTML in canvas"}],response_length:"short"}));\n'
+    }
+  };
+  const standaloneSummary = parseCodexTrajectory([standaloneWebItem]);
+  assert.strictEqual(standaloneSummary.steps.length, 1);
+  assert.strictEqual(standaloneSummary.steps[0].action?.type, 'other');
+  assert.deepStrictEqual(standaloneSummary.steps[0].action?.params, {
+    value: 'text(await tools.web__run({search_query:[{q:"HTML in canvas"}],response_length:"short"}));\n',
+    webRuns: ['tools.web__run({search_query:[{q:"HTML in canvas"}],response_length:"short"})']
+  });
+
+  // Non-code_mode web_search_call items are recorded in trajectory steps
+  const webSearchItem = {
+    type: 'response_item',
+    payload: {
+      type: 'web_search_call',
+      id: 'ws_1',
+      status: 'completed',
+      action: {
+        type: 'open_page',
+        url: 'https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access'
+      }
+    }
+  };
+  const wsSummary = parseCodexTrajectory([webSearchItem]);
+  assert.strictEqual(wsSummary.steps.length, 1);
+  assert.strictEqual(wsSummary.steps[0].action?.name, 'web_search');
+  assert.deepStrictEqual(wsSummary.steps[0].action?.params, {
+    type: 'open_page',
+    url: 'https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access'
+  });
 });

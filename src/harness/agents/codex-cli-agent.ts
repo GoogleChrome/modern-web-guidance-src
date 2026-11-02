@@ -297,16 +297,7 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
   return commands;
 }
 
-export function extractWebRunsFromCodexItem(obj: any): string[] {
-  const payload = obj?.payload || obj;
-  if (!payload) return [];
-
-  const itemType = payload.type || obj?.type;
-  if (itemType !== 'function_call' && itemType !== 'custom_tool_call') {
-    return [];
-  }
-
-  const raw = payload.input ?? payload.arguments ?? obj.input ?? obj.arguments;
+export function extractWebRunsFromText(raw: string): string[] {
   if (typeof raw !== 'string' || !raw.includes('tools.web__run')) {
     return [];
   }
@@ -354,6 +345,19 @@ export function extractWebRunsFromCodexItem(obj: any): string[] {
   }
 
   return results;
+}
+
+export function extractWebRunsFromCodexItem(obj: any): string[] {
+  const payload = obj?.payload || obj;
+  if (!payload) return [];
+
+  const itemType = payload.type || obj?.type;
+  if (itemType !== 'function_call' && itemType !== 'custom_tool_call') {
+    return [];
+  }
+
+  const raw = payload.input ?? payload.arguments ?? obj.input ?? obj.arguments;
+  return typeof raw === 'string' ? extractWebRunsFromText(raw) : [];
 }
 
 export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subagentsMap: Record<string, CodexRolloutLine[] | any[]> = {}): TrajectorySummary {
@@ -423,12 +427,24 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
           actionName = 'apply_patch';
           const fileMatch = inputStr.match(/\*\*\*\s*(?:Update|Add)\s*File:\s*([^\n\r\\"]+)/i);
           const patchPath = fileMatch ? fileMatch[1].trim() : '';
-          params = { path: patchPath, patch: inputStr };
+          params = {
+            path: patchPath,
+            patch: inputStr,
+            ...(webRuns.length > 0 ? { webRuns } : {})
+          };
         } else {
           try {
             params = typeof p.arguments === 'string' ? JSON.parse(p.arguments) : (p.arguments || p.input);
           } catch {
             params = p.arguments || p.input;
+          }
+          if (webRuns.length > 0) {
+            params =
+              params && typeof params === 'object' && !Array.isArray(params)
+                ? { ...params, webRuns }
+                : params !== undefined
+                  ? { value: params, webRuns }
+                  : { webRuns };
           }
         }
 
@@ -445,6 +461,23 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         }
         if (callId) {
           callMap.set(callId, step);
+        }
+        currentThought = '';
+      }
+
+      if (entry.type === 'response_item' && entry.payload?.type === 'web_search_call') {
+        const p = entry.payload;
+        const action = p.action && typeof p.action === 'object' ? p.action : {};
+        const step: StandardizedStep = {
+          stepNumber: 0,
+          timestamp,
+          subagentId,
+          thought: currentThought || 'Executing web_search',
+          action: standardizeAction('other', 'web_search', action)
+        };
+        steps.push(step);
+        if (subagentId) {
+          subagentStepCounts[subagentId] = (subagentStepCounts[subagentId] || 0) + 1;
         }
         currentThought = '';
       }
