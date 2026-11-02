@@ -1,10 +1,11 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { test, describe, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { collectGuidesUsed, collectGuidanceToolsUsed, guideIdsFromLog, hasTrajectoryGuideLeak } from './guide-usage.ts';
 
-const tempDir = path.join(process.cwd(), 'temp-guide-usage-test');
+const tempDir = path.join(os.tmpdir(), `guide-usage-test-${process.pid}`);
 
 describe('guide-usage', () => {
   afterEach(() => {
@@ -52,6 +53,15 @@ describe('guide-usage', () => {
 
     const tools = await collectGuidanceToolsUsed(tempDir);
     assert.deepEqual(tools, ['other-tool', 'modern-web-guidance']);
+  });
+
+  test('collectGuidanceToolsUsed ignores empty 0-byte modern-web.log', async () => {
+    fs.mkdirSync(tempDir, { recursive: true });
+    fs.writeFileSync(path.join(tempDir, 'trajectory_summary.json'), '{"toolsUsed": ["other-tool"]}');
+    fs.writeFileSync(path.join(tempDir, 'modern-web.log'), '');
+
+    const tools = await collectGuidanceToolsUsed(tempDir);
+    assert.deepEqual(tools, ['other-tool']);
   });
 
   test('hasTrajectoryGuideLeak checks modern-web.log', () => {

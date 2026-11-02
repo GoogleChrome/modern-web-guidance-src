@@ -68,8 +68,8 @@ export async function collectGuidesUsed(dirPath: string): Promise<GuideUsage> {
 
 export async function collectGuidanceToolsUsed(dir: string): Promise<string[]> {
   const toolsUsed = stringArrayOrEmpty(readSummary(dir)?.toolsUsed);
-  const logExists = fs.existsSync(path.join(dir, MODERN_WEB_LOG_FILE));
-  if (logExists && !toolsUsed.includes(GUIDANCE_TOOL_NAME)) {
+  const logSize = fs.statSync(path.join(dir, MODERN_WEB_LOG_FILE), { throwIfNoEntry: false })?.size ?? 0;
+  if (logSize > 0 && !toolsUsed.includes(GUIDANCE_TOOL_NAME)) {
     toolsUsed.push(GUIDANCE_TOOL_NAME);
   }
   return toolsUsed;
