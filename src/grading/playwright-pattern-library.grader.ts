@@ -37,4 +37,12 @@ test.describe('Playwright Pattern Library (Best Practices)', () => {
     
     expect(positions.bTop).toBeGreaterThanOrEqual(positions.aBottom);
   });
+
+  test('Pattern 4: Interaction and State Changes (Locators & Assertions)', async ({ page }) => {
+    await page.goto('data:text/html,<button onclick="document.getElementById(\'panel\').hidden = false">Show</button><div id="panel" hidden>Details</div>');
+
+    // GOOD: Locate via platform semantics (ARIA role) or a hook named in task.md
+    await page.getByRole('button', { name: 'Show' }).click();
+    await expect(page.locator('#panel')).toBeVisible();
+  });
 });
