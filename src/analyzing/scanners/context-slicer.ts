@@ -359,7 +359,13 @@ export function sliceStructuredContext(
   sourceFile?: SourceFile,
 ): { codeSnippet: string; contextSlice: string; lineContent: string } {
   const lines = fileContent.split('\n');
-  const lineContent = (lines[targetLine - 1] ?? '').trim();
+  let lineContent = (lines[targetLine - 1] ?? '').trim();
+  if (lineContent.startsWith('<') && !lineContent.includes('>')) {
+    for (let idx = targetLine; idx < Math.min(lines.length, targetLine + 5); idx++) {
+      lineContent += ` ${(lines[idx] ?? '').trim()}`;
+      if (lineContent.includes('>')) break;
+    }
+  }
   const codeSnippet = extractCompactSnippet(fileContent, targetLine);
   const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase();
   const isPackageJson =

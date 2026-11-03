@@ -84,7 +84,14 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
         isEventTargetExpression(firstArg) &&
         isDialogTargetText(unwrapExpression(expr.getExpression()).getText().trim(), targetNode)
       ) {
-        found = true;
+        const parent = child.getParent();
+        if (
+          parent &&
+          Node.isPrefixUnaryExpression(parent) &&
+          parent.getOperatorToken() === SyntaxKind.ExclamationToken
+        ) {
+          found = true;
+        }
         return;
       }
 

@@ -78,9 +78,12 @@ function hasAriaButtonRoleAssignment(targetNode: Node, variableName: string): bo
  * properly distinguishing positive requirements from negated guards (e.g. !e.ctrlKey).
  */
 function requiresCtrlOrMetaModifier(condText: string): boolean {
-  const hasPositiveCtrl = /(?:^|[^!.\w])(?:e|event|evt)?\.?ctrlKey\b(?!\s*===?\s*false)/.test(condText);
-  const hasPositiveMeta = /(?:^|[^!.\w])(?:e|event|evt)?\.?metaKey\b(?!\s*===?\s*false)/.test(condText);
-  const hasPositiveAlt = /(?:^|[^!.\w])(?:e|event|evt)?\.?altKey\b(?!\s*===?\s*false)/.test(condText);
+  if (/!\s*\([^)]*\b(?:ctrlKey|metaKey|altKey)\b/.test(condText)) {
+    return false;
+  }
+  const hasPositiveCtrl = /(?:^|[^!])(?:\b[a-zA-Z_$][\w$]*\.)?\bctrlKey\b(?!\s*===?\s*false)/.test(condText);
+  const hasPositiveMeta = /(?:^|[^!])(?:\b[a-zA-Z_$][\w$]*\.)?\bmetaKey\b(?!\s*===?\s*false)/.test(condText);
+  const hasPositiveAlt = /(?:^|[^!])(?:\b[a-zA-Z_$][\w$]*\.)?\baltKey\b(?!\s*===?\s*false)/.test(condText);
   return hasPositiveCtrl || hasPositiveMeta || hasPositiveAlt;
 }
 

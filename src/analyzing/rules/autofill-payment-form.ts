@@ -178,20 +178,7 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
       return null;
     }
 
-    // 6. Check existing autocomplete attribute value
-    const autocompleteAttr =
-      element.getAttribute('autocomplete') ?? element.getAttribute('autoComplete');
-    if (
-      autocompleteAttr
-        ?.trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .some((token) => VALID_PAYMENT_AUTOCOMPLETE_TOKENS.has(token))
-    ) {
-      return null;
-    }
-
-    // 8. Security code with type="password" anti-pattern check
+    // 6. Security code with type="password" anti-pattern check
     if (rawType === 'password') {
       if (CARD_CSC_REGEX.test(combinedIdentifiers)) {
         return {
@@ -203,12 +190,25 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
       return null;
     }
 
-    // 9. Card number with type="number" anti-pattern check
+    // 7. Card number with type="number" anti-pattern check
     if (rawType === 'number' && CARD_NUMBER_REGEX.test(combinedIdentifiers)) {
       return {
         message:
           'Payment card number input uses type="number"; modernize to type="text" with inputmode="numeric" and autocomplete="cc-number".',
       };
+    }
+
+    // 8. Check existing autocomplete attribute value
+    const autocompleteAttr =
+      element.getAttribute('autocomplete') ?? element.getAttribute('autoComplete');
+    if (
+      autocompleteAttr
+        ?.trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .some((token) => VALID_PAYMENT_AUTOCOMPLETE_TOKENS.has(token))
+    ) {
+      return null;
     }
 
     // 10. Check specific payment card fields missing autocomplete

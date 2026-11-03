@@ -322,7 +322,7 @@ export async function runAnalyzeCli(
 
   const dirStat = await stat(resolvedDir).catch(() => null);
   if (!dirStat) {
-    return errorCliResult(`Target directory not found: ${targetDir}`, isJson, targetDir);
+    return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
   }
   if (!dirStat.isFile() && !dirStat.isDirectory()) {
     return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
@@ -340,12 +340,13 @@ export async function runAnalyzeCli(
   if (activeRuleCount > 0) {
     if (dirStat.isFile()) {
       const files = new Map<string, string>();
-      if (dirStat.size <= MAX_SOURCE_FILE_BYTES) {
-        const content = await readFile(resolvedDir, 'utf8');
-        const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
-        const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
-        files.set(fileKey, content);
+      if (dirStat.size > MAX_SOURCE_FILE_BYTES) {
+        return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`, isJson, targetDir);
       }
+      const content = await readFile(resolvedDir, 'utf8');
+      const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
+      const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
+      files.set(fileKey, content);
       findings = scanFiles(files, activeRules, { includeDocsAndTests: true });
     } else {
       findings = await scanRepoFiles(resolvedDir, activeRules, {

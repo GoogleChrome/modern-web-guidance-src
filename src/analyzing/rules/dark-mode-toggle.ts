@@ -31,7 +31,7 @@ const STORAGE_THEME_KEY_REGEX =
   /\blocalStorage\.(?:getItem|setItem|removeItem)\s*\(\s*['"][^'"]*(?:theme|dark|color-scheme|colorScheme|mode)[^'"]*['"]|\blocalStorage\.(?:theme|darkMode|colorScheme)\b/i;
 
 const ROOT_RECEIVER_REGEX =
-  /(?:document\.documentElement|document\.body|document\.querySelector\(\s*['"](?:html|body|:root)['"]\s*\)|\b(?:html|root|body|doc| docEl|rootEl)\b)/i;
+  /^(?:document\.documentElement|document\.body|document\.querySelector\(\s*['"](?:html|body|:root)['"]\s*\)|(?:html|root|body|doc|docEl|rootEl))$/i;
 
 const GENERATED_DOC_SKIP_REGEX =
   /\b(?:tsd-theme|typedoc|ace\/theme|monaco\.editor\.setTheme|prism-|dokka-dark-mode|sourceset_dependencies\.js|data-content_root|pydata-sphinx-theme|DOCUMENTATION_OPTIONS|docfx:)\b|dataset\.mode\s*=\s*localStorage\.getItem|--color-code-foreground|_static\/pygments\.css/i;

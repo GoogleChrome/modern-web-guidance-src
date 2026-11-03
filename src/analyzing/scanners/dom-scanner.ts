@@ -134,6 +134,10 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
       column: tagStartCol,
       attributes,
     });
+    if ((tagName === 'script' || tagName === 'style') && html[i - 2] !== '/') {
+      const closeIdx = html.toLowerCase().indexOf(`</${tagName}`, i);
+      advanceTo(closeIdx === -1 ? len : closeIdx);
+    }
   }
 
   return tokens;

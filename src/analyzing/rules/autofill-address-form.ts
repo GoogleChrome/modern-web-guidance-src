@@ -15,8 +15,8 @@ const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 function isEnclosedInForm(documentText: string, targetLine: number): boolean {
   // Preserve line numbers when masking comments and script blocks
   const maskedText = documentText
-    .replace(/<!--[\s\S]*?-->/g, (match) => ' '.repeat(match.length))
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (match) => ' '.repeat(match.length));
+    .replace(/<!--[\s\S]*?-->/g, (match) => match.replace(/[^\n]/g, ' '))
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (match) => match.replace(/[^\n]/g, ' '));
   const lines = maskedText.split('\n');
   const textBefore = lines.slice(0, targetLine).join('\n');
 
@@ -139,7 +139,7 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
       return null;
     }
 
-    const matchedField = name || id;
+    const matchedField = isPostalAddressIdentifier(name) ? name : id;
     const isTextarea = element.tagName.toLowerCase() === 'textarea';
     const isPostal =
       matchedField.toLowerCase().includes('zip') ||
@@ -149,10 +149,15 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
       : isTextarea
         ? 'street-address'
         : 'address-line1';
+    const suggestedTokens = isPostal
+      ? 'postal-code'
+      : isTextarea
+        ? 'street-address'
+        : 'address-line1 / street-address';
 
     return {
       message:
-        `Address form field ("${matchedField}") inside form lacks autocomplete="${targetToken}"; add standard autocomplete (${isTextarea ? 'street-address' : 'address-line1'}${isPostal ? '' : ' / street-address'}) to enable browser autofill.`,
+        `Address form field ("${matchedField}") inside form lacks autocomplete="${targetToken}"; add standard autocomplete (${suggestedTokens}) to enable browser autofill.`,
     };
   },
 };

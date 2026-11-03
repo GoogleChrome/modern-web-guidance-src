@@ -48,10 +48,13 @@ function hasMinMaxFontSizeOption(call: CallExpression): boolean {
 }
 
 function isJQueryLikeTarget(target: Node): boolean {
+  if (Node.isCallExpression(target)) {
+    const callee = unwrapExpression(target.getExpression());
+    return Node.isIdentifier(callee) && (callee.getText().startsWith('$') || callee.getText() === 'jQuery');
+  }
   return (
     (Node.isIdentifier(target) &&
       (target.getText().startsWith('$') || target.getText() === 'jQuery')) ||
-    Node.isCallExpression(target) ||
     (Node.isPropertyAccessExpression(target) &&
       (target.getName().startsWith('$') || target.getName() === 'jQuery'))
   );

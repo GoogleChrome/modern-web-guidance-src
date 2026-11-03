@@ -24,7 +24,7 @@ npx -y modern-web-guidance@latest analyze [path/to/project] [options]
 
 | Flag | Type | Description |
 | :--- | :--- | :--- |
-| `[dir]` | Positional | Directory to analyze (defaults to current working directory). |
+| `[path]` | Positional | Directory or file to analyze (defaults to current working directory). |
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--include-docs-and-tests` | Flag | Include documentation, example, demo, and test files (skipped by default). |

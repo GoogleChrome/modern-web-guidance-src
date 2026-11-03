@@ -110,7 +110,7 @@ export const customTextDecorationsCssMatcher: CssRuleMatcher = {
     const borderBottom =
       styleRule.getPropertyValue('border-bottom') ||
       styleRule.getPropertyValue('border-bottom-width');
-    if (!borderBottom || borderBottom === 'none' || borderBottom === '0') {
+    if (!borderBottom || /^(?:none|0(?:px|rem|em)?|transparent)(?:\s*!important)?$/i.test(borderBottom.trim())) {
       return null;
     }
 
