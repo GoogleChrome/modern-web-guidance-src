@@ -107,12 +107,7 @@ The master is a convenience control. The options remain the source of truth, and
 * Keep the label static ("Select all ..."). A label that flips between "Select all" and "Deselect all" is announced as a change in meaning to screen reader users, while the checked and mixed states already convey the current status.
 * Give the master no `name` attribute so it is not submitted with the form. Only the options carry `name` and `value`.
 * If there are no enabled options, set `disabled` on the master.
-* For filtered or paginated lists, the master applies to the visible, enabled options only. Name that scope in the label (for example "Select all 12 shown") and recompute the master's state whenever the visible set changes.
-
-```js
-// After filtering or when the enabled set changes, rebuild `items` and re-sync.
-master.disabled = items.length === 0;
-```
+* For filtered or paginated lists, filter `options` to the visible, enabled items only, name that scope in the label (for example "Select all 12 shown"), and re-run `sync()` whenever the visible or enabled set changes.
 
 ## 3. Styling
 
