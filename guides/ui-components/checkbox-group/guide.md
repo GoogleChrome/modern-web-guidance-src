@@ -132,6 +132,8 @@ label:has(:disabled) { color: #8e9196; cursor: not-allowed; }
 
 DO NOT remove focus indicators from the checkboxes.
 
+{{ FEATURE_ISSUES("accent-color") }}
+
 ## 4. Aligned layout with subgrid
 
 Make the option list a grid and have each row use `subgrid`, so the checkbox, name, and secondary column (for example a model code) align across all rows regardless of content width.
