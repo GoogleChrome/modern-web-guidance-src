@@ -71,7 +71,6 @@ document.addEventListener('command', (event) => {
 
 - **One element for sighted and screen reader users:** `report()` sets `data-copied` (or `data-failed`) on the button and writes the message into the bubble, which is both the visible feedback and the live region. Sighted and screen reader users then get the same message for both outcomes. Keep messages short ("Copied", "Copy failed").
 - **Show and hide the bubble with `opacity`,** not `display: none` or `visibility: hidden`, which take it out of the accessibility tree so the text is not announced.
-- **Announce repeats:** VoiceOver skips a message identical to the previous one from the same region, even if the region was emptied in between. Track the last message in a variable (not by reading the bubble, which is cleared) and, when a message repeats, append a no-break space (`\u00A0`) so it differs. It is not read aloud. One page-wide value is the simplest way to track it: a message from another button's bubble gets the space too, which is harmless. Do not use `ariaNotify()` for this.
 - **Clean up:** after a short timeout, remove the state attributes and clear the bubble's text, so no stale "Copied" is left for screen reader browse mode.
 - **Not color alone:** swap the icon (copy to check) on success and use the bubble text for both outcomes.
 - **Repeat clicks:** clear the pending timeout and restart the animation instead of stacking timers. DO NOT disable the button while showing feedback: copying is idempotent, and disabling drops keyboard focus, announces a misleading unavailable state, and blocks retrying after a failure.
@@ -79,16 +78,13 @@ document.addEventListener('command', (event) => {
 
 ```js
 const timers = new WeakMap();
-let lastMessage = ''; // One page-wide value is the simplest way to track repeats; VoiceOver skips a repeat from the same region
 
 function report(button, ok) {
   const tip = button.nextElementSibling; // the role="status" bubble
   clearTimeout(timers.get(button));
   button.removeAttribute('data-copied');
   button.removeAttribute('data-failed');
-  let message = ok ? 'Copied' : 'Copy failed';
-  if (message === lastMessage) message += '\u00A0'; // differs from the last one, so it is announced
-  lastMessage = message;
+  const message = ok ? 'Copied' : 'Copy failed';
   tip.textContent = '';
   void button.offsetWidth; // restart the CSS animation
   button.setAttribute(ok ? 'data-copied' : 'data-failed', '');
@@ -100,8 +96,6 @@ function report(button, ok) {
   }, 2000));
 }
 ```
-
-{# Maintainer note: the no-break space workaround is for a VoiceOver bug (WebKit bug 222189, rdar://74532730) and is what WordPress's a11y package does (packages/a11y/src/shared/filter-message.ts). A tester found that in Chrome and Safari TP VoiceOver does read a repeat from a different region and skips only a repeat from the same bubble, so the guide no longer claims it skips across regions. ariaNotify() was tried and rejected: missing in a Safari that should have it, and on iPhone VoiceOver read the button name over the announcement. Revisit when it is dependable. #}
 
 ### 3. Copy the current selection (optional)
 
@@ -172,3 +166,17 @@ Register only one of the two paths so a click never copies twice.
 Only the optional selection button (step 3) uses Popover.
 
 {{ FEATURE_FALLBACKS("popover") }}
+
+### Repeated announcements (VoiceOver)
+
+VoiceOver skips a message identical to the previous one from the same region, even if the region was emptied in between. Track the last message in a variable (not by reading the bubble, which is cleared) and, when a message repeats, append a no-break space (`\u00A0`) so it differs. It is not read aloud. One page-wide value is the simplest way to track it: a message from another button's bubble gets the space too, which is harmless. Do not use `ariaNotify()` for this.
+
+```js
+let lastMessage = '';
+
+// In report(), replace `const message` with `let message`, then:
+if (message === lastMessage) message += '\u00A0'; // differs from the last one, so it is announced
+lastMessage = message;
+```
+
+{# Maintainer note: the no-break space workaround is for a VoiceOver bug (WebKit bug 222189, rdar://74532730) and is what WordPress's a11y package does (packages/a11y/src/shared/filter-message.ts). A tester found that in Chrome and Safari TP VoiceOver does read a repeat from a different region and skips only a repeat from the same bubble, so the guide no longer claims it skips across regions. ariaNotify() was tried and rejected: missing in a Safari that should have it, and on iPhone VoiceOver read the button name over the announcement. Revisit when it is dependable. #}
