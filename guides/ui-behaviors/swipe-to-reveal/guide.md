@@ -190,6 +190,8 @@ for (const trigger of document.querySelectorAll('.SwipeReveal-content [aria-labe
 }
 ```
 
+Along with this, use {{ GUIDE_REF('scroll-snap-realtime-feedback') }} to ensure that the accessibility state information is kept up to date, if someone swipes open the associated content, rather than triggering it directly with the button.
+
 ## Best practices and pitfalls
 
 - **DO** use `scroll-snap-type: x mandatory` rather than `proximity`. With `proximity`, a light swipe can leave the action buttons or side menu partially exposed at rest.
