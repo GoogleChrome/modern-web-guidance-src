@@ -136,28 +136,32 @@ DO NOT remove focus indicators from the checkboxes.
 
 ## 4. Aligned layout with subgrid
 
-Make the option list a grid and have each row use `subgrid`, so the checkbox, name, and secondary column (for example a model code) align across all rows regardless of content width.
+Style `.master` with a 44px minimum hit target and a visual separator, then make `.options` a grid whose direct `<label>` children use `subgrid` (without `<ul>`/`<li>` wrappers) so the checkbox, name, and optional secondary column align across all rows:
 
 ```css
-.options {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  column-gap: 0.75rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.master {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-block-size: 44px;
+  margin-block-end: 0.5rem;
+  padding-block-end: 0.5rem;
+  border-block-end: 1px solid #e1e2e4; /* Example divider */
+  font-weight: 600;
+  cursor: pointer;
 }
 
-/* Both the row and its label span all columns and inherit the tracks */
-.options li,
+.options {
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* Use auto 1fr when options have no secondary column */
+  column-gap: 0.75rem;
+}
+
 .options label {
   display: grid;
   grid-template-columns: subgrid;
   grid-column: 1 / -1;
   align-items: center;
-}
-
-.options label {
   min-block-size: 44px;
   cursor: pointer;
 }
