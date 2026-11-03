@@ -112,12 +112,14 @@ Add this only for long prose where users want a floating button on selection. Sk
 When a page repeats copyable elements (code blocks, list rows, token or ID cells), a visible button on each one adds noise. Keep the button hidden until the element is hovered, reveal it for keyboard users too, and never make it hover-only.
 
 ```css
-.copyable { position: relative; }
-.copyable .copy { position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; }
+/* Touch devices (no hover): the button stays visible, so keep it in flow where it cannot cover content */
+.copyable { display: flex; align-items: start; gap: .5rem; }
+.copyable .copy-button { flex: none; order: 1; }
 
-/* Only hide where hover exists; touch devices keep the button visible */
+/* Only hide where hover exists; the overlay is then revealed on demand */
 @media (hover: hover) {
-  .copyable .copy-button { opacity: 0; transition: opacity .15s; }
+  .copyable { display: block; position: relative; }
+  .copyable .copy-button { position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; opacity: 0; transition: opacity .15s; }
   .copyable:hover .copy-button,
   .copyable:focus-within .copy-button,
   .copyable .copy-button:focus-visible,
@@ -128,7 +130,7 @@ When a page repeats copyable elements (code blocks, list rows, token or ID cells
 
 - Hide with `opacity` only. `display: none` and `visibility: hidden` remove the button from the tab order, so keyboard users could never reach it.
 - Reveal on `:focus-within` of the container, as well as `:hover`, so the button shows when focus is on it or on focusable content in the block (such as a scrollable `<pre tabindex="0">`).
-- Keep it visible on `(hover: none)` devices, where there is no hover to reveal it.
+- Keep it visible on `(hover: none)` devices, where there is no hover to reveal it. Lay it out in flow beside the content there so it never covers it.
 - Keep it visible while feedback shows (`data-copied` / `data-failed`), so the state does not vanish when the pointer leaves.
 - Keep the button's 24×24 px minimum size and its accessible name; a hidden-by-opacity button is still announced by screen readers.
 - DO NOT add `aria-hidden`, `inert` or `hidden` to the button to "hide" it, and do not toggle them on hover. Screen reader users (VoiceOver included) must be able to reach it with no hover, and focus moving onto it (including a screen reader cursor that moves focus) is what makes it visible.
