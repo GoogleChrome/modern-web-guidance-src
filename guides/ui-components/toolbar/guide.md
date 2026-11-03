@@ -69,7 +69,7 @@ try {
 
 ## Keyboard navigation
 
-MANDATORY: Only one item is in the tab order at a time. Put `focusgroup="toolbar wrap"` on the `role="toolbar"` container: the browser provides the roving tab stop, arrow-key movement across all groups (wrapping at the ends, reversed in RTL), `Home`/`End`, and focus restoration after a click. Do not add a second roving-tabindex system alongside it. Where `focusgroup` is unsupported, install the fallback in "Fallbacks and browser support" below.
+MANDATORY: Only one item is in the tab order at a time. Put `focusgroup="toolbar wrap"` on the `role="toolbar"` container: the browser provides the roving tab stop, arrow-key movement across all groups (wrapping at the ends, reversed in RTL), `Home`/`End`, and focus restoration after a click. Do not add a second roving-tabindex system alongside it. Where `focusgroup` is unsupported, install the fallback in "Fallbacks" below.
 
 ## Vertical toolbar
 
@@ -133,7 +133,7 @@ Add a trailing "More actions" menu when the toolbar has secondary actions or mus
 * Implement the menu itself (popover, keyboard, focus, checkable items) as described in {{ GUIDE_REF("menu") }}; do not repeat that guidance here.
 * Announce the result of every menu activation using the same live region as the toolbar's action buttons (for example "Strikethrough on" or "Formatting cleared").
 
-## Fallbacks and browser support
+## Fallbacks
 
 {{ BASELINE_STATUS("focusgroup") }}
 
