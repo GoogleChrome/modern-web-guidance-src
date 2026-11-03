@@ -69,25 +69,29 @@ MANDATORY: Derive the master's state from the options whenever any option change
 
 ```js
 const master = document.querySelector('#select-all');
-const summary = document.querySelector('fieldset output');
-// Exclude disabled options; they must never be changed by select-all.
-const items = [...document.querySelectorAll('input[name="robot"]:not(:disabled)')];
+const group = master.closest('fieldset');
+const summary = group.querySelector('output');
+const options = [...group.querySelectorAll('input[name="robot"]')];
 
 function sync() {
-  const checked = items.filter((item) => item.checked).length;
-  master.disabled = items.length === 0;
-  master.checked = items.length > 0 && checked === items.length;
-  // Mixed only when some, but not all, options are checked.
-  master.indeterminate = checked > 0 && checked < items.length;
+  // Filter dynamically so options disabled or enabled at runtime stay in sync.
+  const enabled = options.filter((item) => !item.disabled);
+  const checked = enabled.filter((item) => item.checked).length;
+  master.disabled = enabled.length === 0;
+  master.checked = enabled.length > 0 && checked === enabled.length;
+  // Mixed only when some, but not all, enabled options are checked.
+  master.indeterminate = checked > 0 && checked < enabled.length;
   // Announce the running count so bulk changes are not silent.
-  summary.textContent = `${checked} of ${items.length} available units active`;
+  summary.textContent = `${checked} of ${enabled.length} available units active`;
 }
 
 master.addEventListener('change', () => {
-  items.forEach((item) => (item.checked = master.checked));
+  for (const item of options) {
+    if (!item.disabled) item.checked = master.checked;
+  }
   sync();
 });
-items.forEach((item) => item.addEventListener('change', sync));
+options.forEach((item) => item.addEventListener('change', sync));
 sync(); // Reflect options that are checked on page load.
 ```
 
