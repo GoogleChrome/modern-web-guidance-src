@@ -6,10 +6,10 @@ It replaces the 23.4 MB `all-MiniLM-L6-v2` TensorFlow.js runtime with a zero-dep
 
 | File | Format | Size (raw / gzip) | Contents |
 | :--- | :--- | :---: | :--- |
-| `words.json` | JSON `string[]` | 298 KB / 90 KB | Sorted 27,833-word vocabulary (guide corpus tokens + search aliases + general-English whole words) |
-| `words.i8` | `Int8Array(V × 256)` | 7.1 MB / 5.1 MB | Symmetric per-row `Int8` quantized 256-d unit vectors (`E`) |
-| `words.scale.f32` | `Float32Array(V)` | 111 KB / 92 KB | Per-word weight folded with row quantization scale (`W[i] * (maxAbs[i] / 127)`) |
-| `chunks.json` | JSON `string[]` | 119 KB / 24 KB | Content-hash index of 1,773 teacher-embedded guide chunks |
+| `words.json` | JSON `string[]` | 314 KB / 94 KB | Sorted 29,195-word vocabulary (guide corpus tokens + search aliases + general-English whole words) |
+| `words.i8` | `Int8Array(V × 256)` | 7.5 MB / 5.3 MB | Symmetric per-row `Int8` quantized 256-d unit vectors (`E`) |
+| `words.scale.f32` | `Float32Array(V)` | 117 KB / 96 KB | Per-word weight folded with row quantization scale (`W[i] * (maxAbs[i] / 127)`) |
+| `chunks.json` | JSON `string[]` | 121 KB / 25 KB | Content-hash index of 1,803 teacher-embedded guide chunks |
 | `chunks.i8` | `Int8Array(N × 256)` | 454 KB / 395 KB | Symmetric per-row `Int8` quantized 256-d teacher document vectors |
 | `chunks.scale.f32` | `Float32Array(N)` | 7.1 KB / 7.0 KB | Per-chunk quantization scales (`maxAbs / 127`) |
 
