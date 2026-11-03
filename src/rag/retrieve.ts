@@ -16,15 +16,15 @@ function formatOriginTrialGateMessage(guideId: string, originTrials: OriginTrial
   const urlSuffix = uniqueUrls ? ` (${uniqueUrls})` : "";
   return `> [!CAUTION]
 >
-> **Origin Trial features MUST be explicitly authorized by a direct user request.** Never enable Origin Trial guidance or implement experimental Origin Trial APIs (${featureIds}) autonomously (i.e., do not attempt to bypass this gate or write Origin Trial code from memory unless the user has explicitly opted in).
+> **Origin Trial features require explicit project opt-in.** Never bypass this gate (do not run \`set-allow-origin-trials\` yourself, edit \`.mwgrc\`, or read raw \`.md\` guide files from disk), and never adopt ${featureIds} unless the user explicitly asked for it.
 >
-> Guide \`${guideId}\` depends on an active Origin Trial${urlSuffix}, which is experimental, subject to change, and requires manual token registration.
->
-> Ask the user if they want to opt in to Origin Trial guidance for this project. To authorize it, the user must run this command themselves in their terminal:
+> Guide \`${guideId}\` covers an active Origin Trial (${featureIds})${urlSuffix}, which is experimental and subject to change. Ask the user if they want to opt in by running this command in their terminal:
 >
 > \`\`\`sh
 > npx modern-web-guidance@latest set-allow-origin-trials
-> \`\`\``;
+> \`\`\`
+>
+> If you still write ${featureIds} code without this guide, add a bullet for \`${guideId}\` under your final \`### Modern Web Guidance\` section disclosing that it was blocked by the Origin Trial gate (unlock with \`npx modern-web-guidance@latest set-allow-origin-trials\`) and that your ${featureIds} code was written from model memory and risks being outdated.`;
 }
 
 export async function retrieveUseCase(useCaseId: string, options?: { cwd?: string }): Promise<string> {
