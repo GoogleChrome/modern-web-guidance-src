@@ -14,7 +14,7 @@ guides:
 
 # Checkbox Group
 
-A checkbox group lets users pick any number of options, and a master checkbox selects or clears all of them at once. When only some options are checked, the master shows the mixed (indeterminate) state. For the checkbox styling itself (icons, animation, `accent-color`), follow the `checkbox` guide's approach; this guide covers the group structure, the master behavior, and the layout.
+A checkbox group lets users pick any number of options, and a master checkbox selects or clears all of them at once. When only some options are checked, the master shows the mixed (indeterminate) state. For the checkbox styling itself (icons, animation, `accent-color`), see {{ GUIDE_REF("checkbox") }}; this guide covers the group structure, the master behavior, and the layout.
 
 ## Choosing the pattern
 
