@@ -214,16 +214,15 @@
     /* ---------- Example 5: reveal-on-hover button ---------- */
 
     .code-block.reveal {
-      position: relative;
+      /* Touch devices (no hover) keep the button visible, so it sits in flow beside the code instead of covering it */
+      display: flex;
+      align-items: start;
+      gap: .5rem;
+      padding: .5rem;
 
-      /* Padding only clears the button at the end of the scroll range; the button's opaque background keeps it legible over long lines */
-      pre { padding-inline-end: 3.5rem; }
+      pre { flex: 1; min-width: 0; padding: .5rem; }
 
-      .copy {
-        position: absolute;
-        inset-block-start: .5rem;
-        inset-inline-end: .5rem;
-      }
+      .copy { flex: none; order: 1; }
 
       .copy-button {
         background: color-mix(in srgb, var(--surface) 85%, transparent);
@@ -234,6 +233,19 @@
 
       /* Hidden with opacity only: display/visibility would remove the button from the tab order */
       @media (hover: hover) {
+        display: block;
+        position: relative;
+        padding: 0;
+
+        /* Padding only clears the button at the end of the scroll range; the button's opaque background keeps it legible over long lines */
+        pre { padding: 1rem 3.5rem 1rem 1rem; }
+
+        .copy {
+          position: absolute;
+          inset-block-start: .5rem;
+          inset-inline-end: .5rem;
+        }
+
         .copy-button {
           opacity: 0;
           transition: opacity .15s, color .15s, background-color .15s, border-color .15s;
