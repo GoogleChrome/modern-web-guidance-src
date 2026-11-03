@@ -38,6 +38,7 @@ Place a hidden `<select>` with the same `name` and `<label>` next to the fallbac
 ```html
 <div id="enhanced" hidden>
   <label for="fruit-select">Fruit</label>
+  <!-- Disabled until script removes the fallback; `hidden` alone would still submit this field -->
   <select id="fruit-select" name="fruit" class="combo" disabled>
     <button type="button"><selectedcontent></selectedcontent></button>
     <option value="" hidden>Select a fruit</option>
@@ -52,6 +53,10 @@ Place a hidden `<select>` with the same `name` and `<label>` next to the fallbac
 ```css
 .combo, .combo::picker(select) { appearance: base-select; }
 .combo option[hidden] { display: none; }
+
+/* Keep a visible outline on the focused option: a background tint alone has too little
+   contrast and disappears in forced colors */
+.combo option:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
 
 .combo::picker(select) {
   /* Fits the filter plus about 5-6 rows (example value); the list scrolls beyond it */
