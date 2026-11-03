@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
 import { MAX_SOURCE_FILE_BYTES, scanFiles, scanRepoFiles } from './scanners/index.ts';
-import type { AnalyzerFinding, AnalyzerRule, VerifierRubric } from './schema.ts';
+import type {
+  AnalyzerFinding,
+  AnalyzerRule,
+  VerifierRubric,
+} from './schema.ts';
 
 export interface AnalyzeCliFinding {
   readonly file: string;
@@ -36,6 +40,7 @@ export interface AnalyzeJsonOutput {
   readonly activeGuideCount?: number;
   readonly error?: string;
   readonly skippedDocsAndTestsCount?: number;
+  readonly note?: string;
 }
 
 export interface AnalyzeCliExecutionOptions {
@@ -177,6 +182,10 @@ export function formatHumanReadable(
       ? [
           `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
           `0 findings from ${plural(activeGuideCount, 'qualified guide')}.`,
+          fmt(
+            'dim',
+            `Note: analyze covers legacy patterns for ~20% of the guidance corpus. Use 'modern-web-guidance search <topic>' for general UI/platform guidance.`,
+          ),
           ...(skippedNotice ? [skippedNotice] : []),
         ]
       : [
@@ -297,6 +306,7 @@ export async function runAnalyzeCli(
         guide: { type: 'string' },
         'include-docs-and-tests': { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
+        'skill-version': { type: 'string' },
       },
       allowPositionals: true,
       strict: true,
@@ -366,6 +376,11 @@ export async function runAnalyzeCli(
     guides,
     activeRuleCount,
     activeGuideCount,
+    ...(totalFindings === 0 && isDefaultQualifiedMode
+      ? {
+          note: `No legacy patterns found from the ${activeRuleCount} supported analyzer rules (~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+        }
+      : {}),
     ...(skippedDocsAndTestsCount > 0 ? { skippedDocsAndTestsCount } : {}),
   };
 

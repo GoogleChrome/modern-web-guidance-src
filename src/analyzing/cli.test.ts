@@ -116,6 +116,10 @@ describe('runAnalyzeCli', () => {
         resDefault.output,
         new RegExp(`0 findings from ${QUALIFIED_GUIDE_IDS.length} qualified guides\\.`),
       );
+      assert.match(
+        resDefault.output,
+        /Note: analyze covers legacy patterns for ~20% of the guidance corpus\. Use 'modern-web-guidance search <topic>' for general UI\/platform guidance\./,
+      );
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
       assert.equal(resDefaultJson.exitCode, 0);
@@ -125,6 +129,10 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.targetDir, emptyDir);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
+      assert.equal(
+        parsedDefault.note,
+        `No legacy patterns found from the ${QUALIFIED_RULES.length} supported analyzer rules (~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+      );
     });
   });
 
@@ -134,6 +142,29 @@ describe('runAnalyzeCli', () => {
       isDefaultQualifiedMode: true,
     });
     assert.match(reducedZeroOutput, /0 findings from 1 qualified guide\./);
+    assert.match(
+      reducedZeroOutput,
+      /Note: analyze covers legacy patterns for ~20% of the guidance corpus\. Use 'modern-web-guidance search <topic>' for general UI\/platform guidance\./,
+    );
+  });
+
+  it('accepts --skill-version without errors in both leading and trailing positions', async () => {
+    await withTempDir(async (testDir) => {
+      const resTrailing = await runAnalyzeCli([testDir, '--skill-version', '2026_01_01-test']);
+      assert.equal(resTrailing.exitCode, 0);
+
+      const resLeading = await runAnalyzeCli(['--skill-version', '2026_01_01-test', testDir]);
+      assert.equal(resLeading.exitCode, 0);
+
+      const resJson = await runAnalyzeCli([testDir, '--json', '--skill-version', '2026_01_01-test']);
+      assert.equal(resJson.exitCode, 0);
+      assert.ok(resJson.data);
+      assert.equal(resJson.data.totalFindings, 0);
+      assert.equal(
+        resJson.data.note,
+        `No legacy patterns found from the ${QUALIFIED_RULES.length} supported analyzer rules (~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+      );
+    });
   });
 
   it('outputs human-readable grouped summary with retrieveCommand and file:line', async () => {
@@ -269,6 +300,7 @@ describe('runAnalyzeCli', () => {
       const parsedNone = JSON.parse(resNone.output) as AnalyzeJsonOutput;
       assert.equal(parsedNone.totalFindings, 0);
       assert.deepEqual(parsedNone.guides, []);
+      assert.equal(parsedNone.note, undefined);
     });
   });
 

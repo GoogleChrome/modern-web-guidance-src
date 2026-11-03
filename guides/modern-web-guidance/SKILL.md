@@ -42,6 +42,7 @@ If `retrieve` saves large output (> 9.5 KB) to a temporary file to prevent trunc
 When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
 - **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
 - **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
+- **Do not run `analyze`**: Verify against the retrieved guide text. `analyze` detects legacy patterns to modernize, not whether new implementations correctly follow retrieved guides.
 
 ### Step 4. Disclose Skill Usage
 
@@ -54,6 +55,8 @@ When you consult `modern-web-guidance` for a task, end the response where you de
 ## Modernize an existing codebase
 
 **Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `analyze` when asked to add, update, fix, or audit a specific feature or component—use Step 1 `search` for those), run the 4-step modernization flow:
+
+> **Note**: `analyze` scans for a curated subset of ~35 legacy patterns (~20% of the guidance corpus); always use `search` for specific UI or platform features.
 
 ```sh
 npx -y modern-web-guidance@latest analyze <path> --json
