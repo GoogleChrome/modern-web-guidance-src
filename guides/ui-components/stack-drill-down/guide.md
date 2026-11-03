@@ -7,7 +7,6 @@ web-feature-ids:
   - scroll-driven-animations
   - scroll-snap
   - scroll-snap-events
-  - system-color
 ---
 
 # Stack Drill Down
