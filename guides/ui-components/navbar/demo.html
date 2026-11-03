@@ -58,7 +58,7 @@
     .site-header {
       border-block-end: 1px solid var(--border);
       background: var(--page-background);
-      /* is-collapsed is added by script when the inline row does not fit */
+      /* is-wide is added by script when the inline row fits */
     }
 
     .header-inner {
@@ -269,11 +269,11 @@
     /*
       Narrow layout.
 
-      The popover is approximately 80% of the viewport width,
+      The popover is up to 80% of the viewport width (capped at 24rem),
       positioned below the menu button and aligned with its
       right edge.
     */
-    .is-collapsed {
+    .site-header {
       .site-menu {
         position: fixed;
         inset: auto;
@@ -284,7 +284,7 @@
         inset-inline-end: 1rem; /* fallback */
         inset-inline-end: anchor(--menu-button end);
 
-        inline-size: 80dvw;
+        inline-size: min(80dvw, 24rem);
         max-inline-size: calc(100dvw - 2rem);
 
         block-size: fit-content;
@@ -315,7 +315,7 @@
       The same navigation element becomes part of the header
       rather than an overlay.
     */
-    .site-header:not(.is-collapsed) {
+    .site-header.is-wide {
       .menu-button {
         display: none;
       }
@@ -358,10 +358,11 @@
       .dropdown-list[popover] {
         position: absolute;
         position-area: block-end span-inline-end;
-        position-try-fallbacks: flip-block;
+        position-try-fallbacks: flip-block, flip-inline;
         inset: auto;
         inset-block: auto;
         height: auto;
+        clip-path: none;
         gap: 0.25rem;
         inline-size: max-content;
         min-inline-size: 12rem;
@@ -376,6 +377,11 @@
         border-radius: 0.5rem;
         background: var(--surface-raised);
         box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 15%);
+      }
+
+      /* Also hides the list while it has no popover, so it cannot widen the measured row. */
+      .dropdown-list:not(:popover-open) {
+        display: none;
       }
 
       .dropdown-list:popover-open {
@@ -406,7 +412,13 @@
     }
 
     @media (prefers-reduced-motion: no-preference) {
-      .site-header:not(.is-collapsed) {
+      .site-header.is-wide {
+        .site-menu {
+          opacity: 1;
+          transform: none;
+          transition: none;
+        }
+
         .dropdown-list[popover] {
           opacity: 0;
           transform: translateY(-0.25rem);
@@ -428,7 +440,7 @@
         }
       }
 
-      .is-collapsed {
+      .site-header {
         .site-menu {
           transition:
             display 180ms allow-discrete,
@@ -540,7 +552,7 @@
               >
                 <span>Services</span>
               </button>
-              <ul id="services-menu" class="dropdown-list" popover="auto">
+              <ul id="services-menu" class="dropdown-list">
                 <li>
                   <a href="design.html">Design</a>
                 </li>
@@ -677,9 +689,9 @@
       const wasOpen = menu.matches(":popover-open");
       header.classList.add("is-measuring");
       menu.removeAttribute("popover");
-      header.classList.remove("is-collapsed");
+      header.classList.add("is-wide");
       const wide = inner.scrollWidth <= inner.clientWidth;
-      header.classList.toggle("is-collapsed", !wide);
+      header.classList.toggle("is-wide", wide);
       if (!wide) {
         menu.setAttribute("popover", "auto");
         if (wasOpen) menu.showPopover(); // Removing the attribute closed it; stay open while collapsed
