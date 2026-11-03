@@ -150,7 +150,10 @@ The `<select>` does not dispatch `toggle`, so reset the filter on the events tha
 
 ```js
 const reset = () => { filter.value = ''; update(); };
-select.addEventListener('change', reset);
+select.addEventListener('change', (event) => {
+  // The filter input is inside the <select>; its own change event bubbles here.
+  if (event.target === select) reset();
+});
 select.addEventListener('focusout', e => { if (!select.contains(e.relatedTarget)) reset(); });
 ```
 

@@ -213,7 +213,9 @@
 
     const reset = () => { filter.value = ''; update(); };
     // Chrome does not fire toggle on <select>, so reset on every close path
-    select.addEventListener('change', reset);
+    select.addEventListener('change', (event) => {
+      if (event.target === select) reset();
+    });
     select.addEventListener('focusout', e => { if (!select.contains(e.relatedTarget)) reset(); });
   }
 </script>
