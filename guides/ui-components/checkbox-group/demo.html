@@ -219,104 +219,78 @@
       <fieldset>
         <legend>Ship crew</legend>
 
-        <label class="master">
+        <label class="master" for="select-all-crew">
           <input type="checkbox" id="select-all-crew" class="checkbox" aria-controls="crew-ada crew-bolt crew-cog crew-dial crew-echo crew-flux crew-gear crew-hex crew-ion crew-jolt crew-kilo crew-lathe" />
           Select all crew
         </label>
 
-        <ul class="options scroll-list" id="crew">
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-ada" name="crew" value="ada" checked />
-              <span>Ada Navigator</span>
-              <span class="model">AN-01</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-bolt" name="crew" value="bolt" />
-              <span>Bolt Engineer</span>
-              <span class="model">BE-02</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-cog" name="crew" value="cog" checked />
-              <span>Cog Mechanic</span>
-              <span class="model">CM-03</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-dial" name="crew" value="dial" />
-              <span>Dial Pilot</span>
-              <span class="model">DP-04</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-echo" name="crew" value="echo" />
-              <span>Echo Radio Operator</span>
-              <span class="model">ER-05</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-flux" name="crew" value="flux" />
-              <span>Flux Technician</span>
-              <span class="model">FT-06</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-gear" name="crew" value="gear" />
-              <span>Gear Quartermaster</span>
-              <span class="model">GQ-07</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-hex" name="crew" value="hex" />
-              <span>Hex Analyst</span>
-              <span class="model">HA-08</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-ion" name="crew" value="ion" />
-              <span>Ion Gunner</span>
-              <span class="model">IG-09</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-jolt" name="crew" value="jolt" />
-              <span>Jolt Medic</span>
-              <span class="model">JM-10</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-kilo" name="crew" value="kilo" />
-              <span>Kilo Cook</span>
-              <span class="model">KC-11</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-lathe" name="crew" value="lathe" />
-              <span>Lathe Fabricator</span>
-              <span class="model">LF-12</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="crew-mono" name="crew" value="mono" disabled />
-              <span>Mono Cadet (on leave)</span>
-              <span class="model">MC-13</span>
-            </label>
-          </li>
-        </ul>
+        <div class="options scroll-list" id="crew">
+          <label for="crew-ada">
+            <input type="checkbox" class="checkbox" id="crew-ada" name="crew" value="ada" checked />
+            <span>Ada Navigator</span>
+            <span class="model">AN-01</span>
+          </label>
+          <label for="crew-bolt">
+            <input type="checkbox" class="checkbox" id="crew-bolt" name="crew" value="bolt" />
+            <span>Bolt Engineer</span>
+            <span class="model">BE-02</span>
+          </label>
+          <label for="crew-cog">
+            <input type="checkbox" class="checkbox" id="crew-cog" name="crew" value="cog" checked />
+            <span>Cog Mechanic</span>
+            <span class="model">CM-03</span>
+          </label>
+          <label for="crew-dial">
+            <input type="checkbox" class="checkbox" id="crew-dial" name="crew" value="dial" />
+            <span>Dial Pilot</span>
+            <span class="model">DP-04</span>
+          </label>
+          <label for="crew-echo">
+            <input type="checkbox" class="checkbox" id="crew-echo" name="crew" value="echo" />
+            <span>Echo Radio Operator</span>
+            <span class="model">ER-05</span>
+          </label>
+          <label for="crew-flux">
+            <input type="checkbox" class="checkbox" id="crew-flux" name="crew" value="flux" />
+            <span>Flux Technician</span>
+            <span class="model">FT-06</span>
+          </label>
+          <label for="crew-gear">
+            <input type="checkbox" class="checkbox" id="crew-gear" name="crew" value="gear" />
+            <span>Gear Quartermaster</span>
+            <span class="model">GQ-07</span>
+          </label>
+          <label for="crew-hex">
+            <input type="checkbox" class="checkbox" id="crew-hex" name="crew" value="hex" />
+            <span>Hex Analyst</span>
+            <span class="model">HA-08</span>
+          </label>
+          <label for="crew-ion">
+            <input type="checkbox" class="checkbox" id="crew-ion" name="crew" value="ion" />
+            <span>Ion Gunner</span>
+            <span class="model">IG-09</span>
+          </label>
+          <label for="crew-jolt">
+            <input type="checkbox" class="checkbox" id="crew-jolt" name="crew" value="jolt" />
+            <span>Jolt Medic</span>
+            <span class="model">JM-10</span>
+          </label>
+          <label for="crew-kilo">
+            <input type="checkbox" class="checkbox" id="crew-kilo" name="crew" value="kilo" />
+            <span>Kilo Cook</span>
+            <span class="model">KC-11</span>
+          </label>
+          <label for="crew-lathe">
+            <input type="checkbox" class="checkbox" id="crew-lathe" name="crew" value="lathe" />
+            <span>Lathe Fabricator</span>
+            <span class="model">LF-12</span>
+          </label>
+          <label for="crew-mono">
+            <input type="checkbox" class="checkbox" id="crew-mono" name="crew" value="mono" disabled />
+            <span>Mono Cadet (on leave)</span>
+            <span class="model">MC-13</span>
+          </label>
+        </div>
 
         <output id="crew-status" aria-live="polite"></output>
       </fieldset>
