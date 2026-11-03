@@ -88,62 +88,89 @@
   /* The end links share the container's end radius, so their inset focus ring follows the rounded ends */
   .bc-joined > ol > li:first-child > a { border-start-start-radius: var(--end-r); border-end-start-radius: var(--end-r); }
   .bc-joined > ol > li:last-child > a { border-start-end-radius: var(--end-r); border-end-end-radius: var(--end-r); }
-  @supports (corner-shape: squircle) {
-    .bc-joined.bc-squircle { --end-r: 1.4rem; }
-    .bc-joined.bc-squircle > ol { corner-shape: squircle; }
-    .bc-joined.bc-squircle > ol > li:is(:first-child, :last-child) > a { corner-shape: squircle; }
-  }
 
   /* =========================================================
-     SHAPED SEGMENTS (arrow, slant)
-       --shape   polygon() for the segment
-       --inset   how far the shape eats into the horizontal padding
-       --overlap how much neighbors overlap
-       --space   visible gap between neighbors
-     Fallback: clip-path. Enhanced: border-shape.
+     SHAPED SEGMENTS
+       Slant and arrow: corner-shape: bevel + irregular logical radii (borders and outlines follow the shape).
+       Without corner-shape they stay plain bordered segments with the "/" divider.
+       Arrow also needs sibling-index(): earlier segments stack above later ones so each tip covers the next segment.
+       Notched arrow: border-shape (clip-path fallback), for the shape corner-shape cannot make.
      ========================================================= */
-  .bc-shaped > ol, .bc-shaped > ol > li { gap: 0; }
-  .bc-shaped > ol > li + li { margin-inline-start: calc(var(--space, .25rem) - var(--overlap, 0px)); }
-  .bc-shaped > ol > li + li::before { content: none; }
   .bc-shaped > ol > li > a {
     display: block; text-decoration: none;
-    padding: .55rem calc(var(--inset) + .8rem);
+    padding: .55rem .8rem;
     background: var(--surface-2);
-    clip-path: var(--shape);
+    border: 2px solid var(--border);
   }
   .bc-shaped > ol > li > a:not([aria-current]):hover { background: var(--accent-soft); }
-  .bc-shaped > ol > li > a[aria-current="page"] { background: var(--accent); color: var(--accent-contrast); }
+  .bc-shaped > ol > li > a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
   .bc-shaped > ol > li > a:focus-visible {
-    outline-offset: -4px; background: var(--focus); color: var(--surface); text-decoration: underline;
+    outline: 3px solid var(--focus); outline-offset: -4px;
+    background: var(--accent-soft); color: var(--link); text-decoration: underline;
+  }
+  .bc-shaped > ol > li > a[aria-current="page"]:focus-visible { background: var(--accent); color: var(--accent-contrast); }
+
+  .bc-slant { --edge: clamp(.4rem, 2cqi, .75rem); }
+  .bc-arrow { --edge: clamp(.5rem, 2cqi, .8rem); }
+
+  @supports (corner-shape: bevel) {
+    /* 6a. Slant "/": start-start and end-end corners bevel across the full height, so RTL mirrors itself */
+    .bc-slant > ol, .bc-slant > ol > li { gap: 0; }
+    .bc-slant > ol > li + li::before { content: none; }
+    .bc-slant > ol > li > a {
+      corner-shape: bevel;
+      padding-inline: calc(var(--edge) + .8rem);
+      border-start-start-radius: var(--edge) 100%;
+      border-end-end-radius: var(--edge) 100%;
+    }
+    /* Overlap by the slant, minus a small visible gap, so the angled edges run parallel */
+    .bc-slant > ol > li + li { margin-inline-start: calc(.25rem - var(--edge)); }
   }
 
-  /* 5. Arrow */
-  .bc-arrow { --point: clamp(.5rem, 2cqi, .8rem); --inset: var(--point); --overlap: calc(var(--point) - 3px); --space: 0px; }
-  .bc-arrow > ol > li > a { --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%, var(--point) 50%); }
-  .bc-arrow > ol > li:first-child > a { --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%); }
+  @supports (corner-shape: bevel) and (z-index: sibling-index()) {
+    /* 5. Arrow: both end corners bevel to a point; each tip overlaps the flat start edge of the next segment */
+    .bc-arrow > ol, .bc-arrow > ol > li { gap: 0; }
+    .bc-arrow > ol > li + li::before { content: none; }
+    .bc-arrow > ol > li > a {
+      corner-shape: bevel;
+      padding-inline: calc(var(--edge) + .8rem);
+      border-start-end-radius: var(--edge) 50%;
+      border-end-end-radius: var(--edge) 50%;
+    }
+    .bc-arrow > ol > li + li { margin-inline-start: calc(var(--edge) * -1); }
+    /* Reverse stacking: earlier segments sit above later ones; the focused one above all */
+    .bc-arrow > ol > li { position: relative; z-index: calc(sibling-count() - sibling-index()); }
+    .bc-arrow > ol > li:has(> a:focus-visible) { z-index: calc(sibling-count() + 1); }
+  }
 
-  /* 6a. Slant "/": every segment, including first and last, is a full parallelogram */
-  .bc-slant { --slant: clamp(.4rem, 2cqi, .75rem); --inset: var(--slant); --overlap: var(--slant); --space: .25rem; }
-  .bc-slant > ol > li > a { --shape: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%); }
+  /* 6. Notched arrow: a concave leading edge corner-shape cannot make */
+  .bc-notched { --point: clamp(.5rem, 2cqi, .8rem); }
+  .bc-notched > ol, .bc-notched > ol > li { gap: 0; }
+  .bc-notched > ol > li + li { margin-inline-start: calc(.25rem - var(--point)); }
+  .bc-notched > ol > li + li::before { content: none; }
+  .bc-notched > ol > li > a {
+    padding-inline: calc(var(--point) + .8rem);
+    --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%, var(--point) 50%);
+    clip-path: var(--shape);
+  }
+  .bc-notched > ol > li:first-child > a { --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%); }
+  .bc-notched > ol > li > a:focus-visible { outline: none; background: var(--focus); color: var(--surface); }
 
   @supports (border-shape: polygon(0 0, 100% 0, 100% 100%)) {
-    .bc-shaped > ol > li > a {
+    .bc-notched > ol > li > a {
       clip-path: none;
       border-shape: var(--shape);
-      border: 2px solid var(--border);
     }
-    .bc-shaped > ol > li > a[aria-current="page"] { border-color: var(--accent); }
-    .bc-shaped > ol > li > a:focus-visible {
+    .bc-notched > ol > li > a:focus-visible {
       outline: 3px solid var(--focus); outline-offset: 2px;
-      background: var(--accent-soft); color: var(--link); text-decoration: underline;
+      background: var(--accent-soft); color: var(--link);
     }
-    .bc-shaped > ol > li > a[aria-current="page"]:focus-visible { background: var(--accent); color: var(--accent-contrast); }
+    .bc-notched > ol > li > a[aria-current="page"]:focus-visible { background: var(--accent); color: var(--accent-contrast); }
   }
 
-  /* RTL: polygons are physical, so mirror them (logical padding/margins already flip) */
-  .bc-arrow:dir(rtl) > ol > li > a { --shape: polygon(100% 0, var(--point) 0, 0 50%, var(--point) 100%, 100% 100%, calc(100% - var(--point)) 50%); }
-  .bc-arrow:dir(rtl) > ol > li:first-child > a { --shape: polygon(100% 0, var(--point) 0, 0 50%, var(--point) 100%, 100% 100%); }
-  .bc-slant:dir(rtl) > ol > li > a { --shape: polygon(0 0, calc(100% - var(--slant)) 0, 100% 100%, var(--slant) 100%); }
+  /* RTL: border-shape polygons are physical, so mirror them (logical padding/margins and corner radii already flip) */
+  .bc-notched:dir(rtl) > ol > li > a { --shape: polygon(100% 0, var(--point) 0, 0 50%, var(--point) 100%, 100% 100%, calc(100% - var(--point)) 50%); }
+  .bc-notched:dir(rtl) > ol > li:first-child > a { --shape: polygon(100% 0, var(--point) 0, 0 50%, var(--point) 100%, 100% 100%); }
   .breadcrumb[data-sep="chevron"]:dir(rtl) > ol > li + li::before { scale: -1 1; }
 
   /* ===== 7. Pills ===== */
@@ -179,12 +206,6 @@
   .bc-pills > ol > li:has(> a:hover:not([aria-current])) > .bc-trigger { background: var(--accent-soft); border-color: var(--accent); }
 
   .bc-pills > ol > li > .bc-expand { border-radius: var(--pill-r); padding: .35rem .8rem; inline-size: auto; block-size: auto; }
-
-  @supports (corner-shape: squircle) {
-    .bc-squircle { --pill-r: 1.1rem; }
-    .bc-squircle > ol > li > a,
-    .bc-squircle > ol > li > button { corner-shape: squircle; }
-  }
 
   /* ===== 8. Tags ===== */
   .bc-tags { --gap: .4rem; }
@@ -314,15 +335,15 @@
     .breadcrumb[data-sep="chevron"] > ol > li + li::before { forced-color-adjust: none; color: CanvasText; }
     .bc-shaped > ol > li > a, .bc-pills a, .bc-trigger, .bc-menu { border: 1px solid LinkText; }
 
-    /* Without border-shape the shape comes from clip-path, which cuts the slanted sides off a border, and forced
+    /* Without border-shape the notched arrow comes from clip-path, which cuts the slanted sides off a border, and forced
        colors removes the background that drew the shape. Use plain bordered segments and a text separator so the
        trail still reads as a path. With border-shape the border follows the shape, so nothing changes. */
     @supports not (border-shape: polygon(0 0, 100% 0, 100% 100%)) {
-      .bc-shaped > ol { gap: .5rem; }
-      .bc-shaped > ol > li > a { clip-path: none; border: 2px solid LinkText; }
-      .bc-shaped > ol > li + li { margin-inline-start: 0; }
-      .bc-shaped > ol > li + li::before { content: "›" / ""; margin-inline-end: .5rem; }
-      .bc-shaped > ol > li > a:focus-visible { outline: 3px solid Highlight; outline-offset: 2px; }
+      .bc-notched > ol { gap: .5rem; }
+      .bc-notched > ol > li > a { clip-path: none; border: 2px solid LinkText; }
+      .bc-notched > ol > li + li { margin-inline-start: 0; }
+      .bc-notched > ol > li + li::before { content: "›" / ""; margin-inline-end: .5rem; }
+      .bc-notched > ol > li > a:focus-visible { outline: 3px solid Highlight; outline-offset: 2px; }
     }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -383,16 +404,9 @@
 
   <section>
     <h2>4b. Joined pill</h2>
-    <p>Segments share one rounded container, separated by a 1px border with no gap. Bottom: <code>corner-shape: squircle</code> where supported.</p>
+    <p>Segments share one rounded container, separated by a 1px border with no gap.</p>
     <div class="stack">
       <nav class="breadcrumb bc-bar bc-joined" data-sep="chevron" aria-label="Breadcrumbs, joined pill">
-        <ol>
-          <li><a href="/">Index</a></li>
-          <li><a href="/pg2">Second Page</a></li>
-          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
-        </ol>
-      </nav>
-      <nav class="breadcrumb bc-bar bc-joined bc-squircle" data-sep="chevron" aria-label="Breadcrumbs, joined squircle">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/pg2">Second Page</a></li>
@@ -403,8 +417,8 @@
   </section>
 
   <section>
-    <h2>5. Arrow bar (<code>border-shape</code>, <code>clip-path</code> fallback)</h2>
-    <p>Where <code>border-shape</code> is supported the arrow is the real border box, so borders and focus outlines follow the shape. Otherwise it falls back to <code>clip-path</code> with a color-based focus style.</p>
+    <h2>5. Arrow bar (<code>corner-shape: bevel</code>)</h2>
+    <p>Each segment's end corners bevel to a point and overlap the next segment, stacked in reverse source order with <code>sibling-index()</code>. Without <code>corner-shape</code> or <code>sibling-index()</code> the segments stay plain with a divider.</p>
     <nav class="breadcrumb bc-shaped bc-arrow" aria-label="Breadcrumbs, arrow">
       <ol>
         <li><a href="/">Index</a></li>
@@ -415,10 +429,17 @@
   </section>
 
   <section>
-    <h2>6. More <code>border-shape</code> ideas</h2>
-    <p>Slant <code>/</code> (angled at both ends)</p>
+    <h2>6. More shapes</h2>
+    <p>Slant <code>/</code> (<code>corner-shape: bevel</code>) and a notched arrow (<code>border-shape</code>, <code>clip-path</code> fallback)</p>
     <div class="stack">
       <nav class="breadcrumb bc-shaped bc-slant" aria-label="Breadcrumbs, slant">
+        <ol>
+          <li><a href="/">Index</a></li>
+          <li><a href="/pg2">Second Page</a></li>
+          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
+        </ol>
+      </nav>
+      <nav class="breadcrumb bc-shaped bc-notched" aria-label="Breadcrumbs, notched arrow">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/pg2">Second Page</a></li>
@@ -430,7 +451,7 @@
 
   <section>
     <h2>6b. Right-to-left</h2>
-    <p>Arrow and slant polygons are mirrored under <code>:dir(rtl)</code>; the chevron divider is flipped.</p>
+    <p>Corner radii are logical, so arrow and slant mirror themselves. The notched arrow's polygons are mirrored under <code>:dir(rtl)</code>; the chevron divider is flipped.</p>
     <div class="stack">
       <nav class="breadcrumb bc-shaped bc-arrow" dir="rtl" lang="he" aria-label="פירורי לחם, חץ">
         <ol>
@@ -457,17 +478,10 @@
   </section>
 
   <section>
-    <h2>7. Pills and squircle pills (<code>corner-shape</code>)</h2>
-    <p>Top: <code>border-radius: 999px</code>. Bottom: <code>corner-shape: squircle</code> where supported.</p>
+    <h2>7. Pills</h2>
+    <p><code>border-radius: 999px</code> with a divider between pills.</p>
     <div class="stack">
       <nav class="breadcrumb bc-pills" data-sep="chevron" aria-label="Breadcrumbs, pills">
-        <ol>
-          <li><a href="/">Index</a></li>
-          <li><a href="/pg2">Second Page</a></li>
-          <li><a href="/pg2/this-pg" aria-current="page">This Page</a></li>
-        </ol>
-      </nav>
-      <nav class="breadcrumb bc-pills bc-squircle" data-sep="chevron" aria-label="Breadcrumbs, squircle pills">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/pg2">Second Page</a></li>
@@ -540,7 +554,7 @@
         </ol>
       </nav>
 
-      <nav class="breadcrumb bc-pills bc-squircle" data-sep="chevron" aria-label="Breadcrumbs, siblings (pills)">
+      <nav class="breadcrumb bc-pills" data-sep="chevron" aria-label="Breadcrumbs, siblings (pills)">
         <ol>
           <li><a href="/">Index</a></li>
           <li>
@@ -575,7 +589,7 @@
           <li><a href="/docs/components/forms/inputs/text" aria-current="page">Text input</a></li>
         </ol>
       </nav>
-      <nav class="breadcrumb bc-pills bc-squircle" data-collapse data-sep="chevron" aria-label="Breadcrumbs, deep (pills)">
+      <nav class="breadcrumb bc-pills" data-collapse data-sep="chevron" aria-label="Breadcrumbs, deep (pills)">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/docs">Docs</a></li>
@@ -621,7 +635,7 @@
     </div>
 
     <div class="resizer">
-      <nav class="breadcrumb bc-pills bc-squircle" data-collapse data-sep="chevron" aria-label="Breadcrumbs, resizable (pills)">
+      <nav class="breadcrumb bc-pills" data-collapse data-sep="chevron" aria-label="Breadcrumbs, resizable (pills)">
         <ol>
           <li><a href="/">Index</a></li>
           <li><a href="/docs">Docs</a></li>

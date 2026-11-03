@@ -1,16 +1,12 @@
 ---
 name: breadcrumbs
-description: Build a breadcrumb trail that shows the user's location within a site hierarchy and lets them navigate to ancestor pages, and optionally sibling pages via a dropdown menu.
+description: Build a breadcrumb trail that shows the user's location within a site hierarchy and lets them navigate to ancestor pages.
 web-feature-ids:
   - border-shape
   - corner-shape
-  - popover
-  - anchor-positioning
-  - container-queries
-  - has
+  - sibling-count
   - forced-colors
   - focus-visible
-  - prefers-reduced-motion
   - clip-path
   - logical-properties
 guides:
@@ -20,11 +16,11 @@ guides:
 
 # Build breadcrumbs
 
-Breadcrumbs show where the user is in a site hierarchy and link to each ancestor page. Optionally, each ancestor can expose a dropdown of sibling pages, and long trails can collapse on narrow containers.
+Breadcrumbs show where the user is in a site hierarchy and link to each ancestor page.
 
-This is not for switching between views of the same page (tabs) or for site-wide navigation (a navbar). For the dropdown's menu mechanics, see {{ GUIDE_REF("menu") }}.
+This is not for switching between views of the same page (tabs) or for site-wide navigation (a navbar).
 
-{# Maintainer note: the tabs, navbar, element-shape, overflow-popup and responsive-disclosure guides are still empty shells, so they are not linked. When they are written, link tabs and navbar from the first sentence, element-shape from "Shaped segments" and "Corner treatments", and overflow-popup and responsive-disclosure from "Collapsing long trails". #}
+{# Maintainer note: the tabs, navbar, element-shape and overflow-popup guides are still empty shells, so they are not linked. When they are written, link tabs and navbar from the first sentence, element-shape from "Shaped segments", and overflow-popup from "Optional UX enhancements". #}
 
 ## 1. Semantics
 
@@ -47,63 +43,85 @@ This is not for switching between views of the same page (tabs) or for site-wide
 - **DO NOT** drop the separator in chip-like styles. Pills, tags and a segmented bar without one look like tabs or filters (items on the same level), not a hierarchy. Plain text with no divider is also weak, since order is then the only cue; avoid it.
 - Choose a visual variant:
   - **Plain (slash or chevron):** use when the trail should stay visually quiet. Underline links at rest, or at least on hover and focus, so they never rely on color alone.
-  - **Bar:** one bordered, segmented container with `overflow: clip`; use when segments need large, clear touch targets. Keep a separator in each segment after the first. A bar must not wrap: when its segments no longer fit on one row, stack it in a column in a container query set just above the bar's natural width (measure it and round up, so it stacks only when it would not fit), with compact rows (smaller block padding), separated by a 1px `border-block-start` and the chevron turned to point down and use a fixed `border-radius` for a joined pill, since `999px` becomes an oval once it grows tall. For a joined pill, round the container (`border-radius: 999px`, or `corner-shape: squircle` with a smaller radius) and separate segments with a 1px `border-inline-start` and no gap. Give the current page's `<li>` the same background as its link, so the chevron outside the link does not sit on the bar's background. Round the container, not the individual links, so the clip handles the end caps, and give the end links the same end radius so an inset focus ring follows the rounded ends instead of being cut off.
+  - **Bar:** one bordered, segmented container with `overflow: clip`; use when segments need large, clear touch targets. Keep a separator in each segment after the first. A bar must not wrap: when its segments no longer fit on one row, stack it in a column in a container query set just above the bar's natural width (measure it and round up, so it stacks only when it would not fit), with compact rows (smaller block padding), separated by a 1px `border-block-start` and the chevron turned to point down and use a fixed `border-radius` for a joined pill, since `999px` becomes an oval once it grows tall. For a joined pill, round the container (`border-radius: 999px`) and separate segments with a 1px `border-inline-start` and no gap. Give the current page's `<li>` the same background as its link, so the chevron outside the link does not sit on the bar's background. Round the container, not the individual links, so the clip handles the end caps, and give the end links the same end radius so an inset focus ring follows the rounded ends instead of being cut off.
   - **Pills / tags:** use rounded or shaped links when the trail is a prominent control, with a separator between them. Show backgrounds only on hover for tags.
 - Style the current page distinctly (weight, color) and non-current links with a hover state.
 - Custom palettes must meet WCAG AA contrast (4.5:1 for text) for links, hover, and the current page against their actual backgrounds (e.g. dark red on light gray). Keep a non-color cue on the current page, such as font weight.
 - Provide a clear `:focus-visible` outline. For shaped or clipped segments use a negative `outline-offset` or a background/color change, since outlines get clipped.
-- Lift the focused control above its neighbors (`position: relative; z-index: 1` on `a:focus-visible, button:focus-visible`). Neighbors that overlap it (shaped segments) or touch it (a joined dropdown trigger) are painted later and cover an outside ring.
+- Lift the focused link above its neighbors (`position: relative; z-index: 1` on `a:focus-visible`). Neighbors that overlap it (shaped segments) are painted later and cover an outside ring.
 - In `forced-colors: active`, restore borders and an underline on `[aria-current="page"]` since backgrounds are removed. An icon divider drawn as a masked background also needs `forced-color-adjust: none` and a system color such as `CanvasText`, since forced colors replaces the background.
 
-### Shaped segments (slant or arrow)
+### Shaped segments
 
-Pick **one** shape per trail: slant or arrow. The snippets below are alternatives, not meant to be combined.
+Pick the simplest technique that produces the shape, and use **one** shape per trail. The snippets are alternatives, not meant to be combined.
 
-- Define each segment's polygon in a custom property (`--shape`) and apply it with `border-shape` so borders and focus outlines follow the shape.
-- Selectors are illustrative; use your own hook (`.breadcrumb` here). Scope to `> ol > li > a` so dropdown menu links aren't shaped. Only add per-variant classes if one page really shows several variants.
+- Selectors are illustrative; use your own hook (`.breadcrumb` here). Scope to `> ol > li > a`.
 - Make the slant or point size responsive with `clamp()` and container units (`cqi`).
-- Pair state colors with the shape: hover and current-page styles must use background or text color, not border color, so they still show under the `clip-path` fallback. Keep the focus style visually distinct from hover.
-- The overlap margin applies to shaped segments only. A collapsed trail's "…" item is a plain button, so give it and the item after it a normal gap, or they overlap the button and cover its focus ring.
-- Overlapped segments should stack in reverse source order so each earlier segment sits above the next: `.breadcrumb > ol > li { position: relative; z-index: calc(sibling-count() - sibling-index()); }`, with the focused control lifted above all of them (`z-index: calc(sibling-count() + 1)`). Guard with `@supports (z-index: sibling-index())`; without support, later segments paint on top, which is acceptable.
-- Polygons are physically directional and logical properties don't flip `polygon()` coordinates, so each shape needs an explicit `:dir(rtl)` mirror, included in the snippets.
+- Pair state colors with the shape: hover and current-page styles must use background or text color, not border color. Keep the focus style visually distinct from hover.
+- Use a negative `outline-offset` for focus, since outside outlines are covered by neighbors.
 
-#### Slant (`/`)
+#### Overlapping segments
 
-Every segment, including the first and last, gets the same parallelogram. Reuse the slant size for the polygon offsets, the horizontal padding (so text clears the angled edges), and the negative margin (so neighbors interlock):
+Overlapping segments communicate hierarchy even without a separator. Pull each segment under the previous one with a negative inline margin, and stack them in reverse source order so each earlier segment sits above the next. `sibling-index()` and `sibling-count()` make this possible without per-item rules:
 
 ```css
-/* SLANT ONLY. --slant is an example size; keep it small relative to the segment height */
+.breadcrumb > ol > li { position: relative; z-index: calc(sibling-count() - sibling-index()); }
+/* The focused segment sits above every other segment (the li is the stacking context, so lift it, not the link) */
+.breadcrumb > ol > li:has(> a:focus-visible) { z-index: calc(sibling-count() + 1); }
+```
+
+#### Simple irregular shapes (`corner-shape`)
+
+Prefer `corner-shape: bevel` with an irregular `border-radius` for parallelograms and arrows. It has better browser support than `border-shape`, and borders, outlines and backgrounds follow the shape. Use logical corner properties so RTL mirrors automatically; no `:dir(rtl)` rule is needed.
+
+Slant (`/`): bevel the start-start and end-end corners with a horizontal radius of the slant and a vertical radius of 100%.
+
+Arrow (`>`): bevel both end corners with a horizontal radius of the point and a vertical radius of 50%. Overlap the next segment so the tip of each segment covers the flat start edge of the next.
+
+```css
 .breadcrumb { --slant: clamp(.4rem, 2cqi, .75rem); }
 .breadcrumb > ol, .breadcrumb > ol > li { gap: 0; }
 .breadcrumb > ol > li > a {
   display: block;
-  /* Top edge shifted right, bottom edge shifted left: leans like "/" */
-  --shape: polygon(var(--slant) 0, 100% 0, calc(100% - var(--slant)) 100%, 0 100%);
+  corner-shape: bevel;
   /* Extra inline padding equal to the slant keeps text out of the angled corners */
   padding: .55rem calc(var(--slant) + .8rem);
-  border-shape: var(--shape);
+}
+/* The shape shows direction, so drop the separator */
+.breadcrumb > ol > li + li::before { content: none; }
+
+/* SLANT ONLY: leans like "/" in LTR and "\" in RTL */
+.breadcrumb > ol > li > a {
+  border-start-start-radius: var(--slant) 100%;
+  border-end-end-radius: var(--slant) 100%;
 }
 /* Overlap by the slant, minus a small visible gap (example .25rem), so the angled edges run parallel */
 .breadcrumb > ol > li + li { margin-inline-start: calc(.25rem - var(--slant)); }
-/* RTL mirror: leans like "\" */
-.breadcrumb:dir(rtl) > ol > li > a {
-  --shape: polygon(0 0, calc(100% - var(--slant)) 0, 100% 100%, var(--slant) 100%);
+
+/* ARROW ONLY: tip on the end side; a contrasting segment border separates the overlapped edges */
+.breadcrumb > ol > li > a {
+  border-start-end-radius: var(--slant) 50%;
+  border-end-end-radius: var(--slant) 50%;
 }
+.breadcrumb > ol > li + li { margin-inline-start: calc(var(--slant) * -1); }
 ```
 
-#### Arrow (`>`)
+#### Fully irregular shapes (`border-shape`)
 
-Each segment points forward; the first item has a flat leading edge. Overlap neighbors by slightly less than `--point` (no gap), and use the same padding and margin approach as the slant.
+Use `border-shape` only for shapes `corner-shape` cannot make, such as a notched arrow with a concave leading edge. Define the polygon in a custom property (`--shape`) and apply it with `border-shape` so borders and focus outlines follow the shape. Polygons are physically directional and logical properties don't flip `polygon()` coordinates, so each shape needs an explicit `:dir(rtl)` mirror.
 
 ```css
-/* ARROW ONLY. */
+/* The first item drops the inner notch vertex so its leading edge stays flat */
 .breadcrumb > ol > li > a {
   --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%, var(--point) 50%);
+  padding: .55rem calc(var(--point) + .8rem);
+  border-shape: var(--shape);
 }
-/* First item: drop the inner notch vertex so its leading edge stays flat */
 .breadcrumb > ol > li:first-child > a {
   --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%);
 }
+/* Overlap by slightly less than --point so the notch and tip interlock */
+.breadcrumb > ol > li + li { margin-inline-start: calc(.25rem - var(--point)); }
 /* RTL mirror: swap 0 with 100% and calc(100% - var(--point)) with var(--point) in each x coordinate */
 .breadcrumb:dir(rtl) > ol > li > a {
   --shape: polygon(100% 0, var(--point) 0, 0 50%, var(--point) 100%, 100% 100%, calc(100% - var(--point)) 50%);
@@ -113,78 +131,32 @@ Each segment points forward; the first item has a flat leading edge. Overlap nei
 }
 ```
 
-### Corner treatments (pills, tags)
+## 3. Optional UX enhancements
 
-- Use `corner-shape` (`squircle`, `bevel`, `scoop`, `notch`) together with `border-radius`; the radius controls the size and `corner-shape` the form.
+These are optional. Implement them only when the trail needs them, and choose the implementation yourself.
 
-## 3. Sibling dropdowns (optional)
-
-Add when ancestors have meaningful siblings (e.g. docs sections); skip for simple trails.
-
-- Keep the ancestor link navigating. Add a **separate** `<button type="button" popovertarget>` right after it in the same `<li>`; never put the toggle inside the `<a>`.
-- Give the button an `aria-label` naming its purpose (e.g. "Pages at the same level as Components") and hide its chevron icon with `aria-hidden="true"`.
-- The menu is a `[popover]` `<ul>` of links, labeled with `aria-label`. Mark the sibling matching the current ancestor with `aria-current="true"` and visually label it.
-- For the menu's popover, anchor positioning and entry/exit motion, follow {{ GUIDE_REF("menu") }}.
-- Rotate the trigger chevron while open: `.trigger:has(+ :popover-open)`.
-- For pills, join link and trigger into one shape by squaring the touching corners (`border-start-end-radius: 0` etc., using logical properties).
-- Close an open menu when keyboard focus leaves it. `popover` light dismiss covers clicks outside and `Esc`, but not `Tab`, and a menu left open can cover the next focused control. This also applies to the "…" list in section 4. Scope it to the breadcrumb's own menus so it never closes unrelated popovers, such as a toast or tooltip.
-
-```js
-// Close an open breadcrumb menu once focus lands outside it and its own trigger (the trigger is excluded so toggling it still works).
-// Scope to the breadcrumb <nav> (use your own selector) so unrelated popovers stay open.
-const trail = document.querySelector('nav[aria-label="Breadcrumbs"]');
-document.addEventListener('focusin', ({ target }) => {
-  for (const menu of trail.querySelectorAll('[popover]:popover-open')) {
-    if (!menu.contains(target) && !target.closest(`[popovertarget="${menu.id}"]`)) menu.hidePopover();
-  }
-});
-```
-
-## 4. Collapsing long trails
-
-Collapse any trail with more than 3 items on narrow containers instead of letting it wrap; wrapped trails take 2-3 rows on a phone.
-
-- Make the `<nav>` a size container (`container-type: inline-size`, in the snippet below) so it responds to its own width, not the viewport.
-- Keep the first item and the last two. Add a "…" `<li>` after the first item, containing a `<button type="button" popovertarget>` (with `aria-label="Show N more breadcrumbs"`) and a `[popover]` `<ul>` that lists the hidden links.
-- Show the "…" item only when collapsed (`display: none` by default, `display: flex` in a container query). The container query is the single source of truth for when the trail is collapsed; no rule hides the middle items.
-- Move the real middle `<li>` links into the popover's list when the "…" item is visible, and back into the trail when it is not. Don't duplicate them. A `ResizeObserver` on the `<nav>` re-checks on resize, and the check reads `getComputedStyle(overflow).display`. The "…" item's `display` depends only on the container's width, so moving items cannot cause a resize loop. Without script, the full trail stays visible and the "…" item stays hidden.
-- Moving a link drops focus if it had it, so restore focus afterwards. Close the popover when expanding back to the full trail.
-
-```css
-.breadcrumb { container-type: inline-size; }
-.breadcrumb .overflow { display: none; }
-/* 40rem is an example breakpoint */
-@container (inline-size < 40rem) {
-  .breadcrumb .overflow { display: flex; }
-}
-```
-
-```js
-const nav = document.querySelector('nav[aria-label="Breadcrumbs"]');
-const trail = nav.querySelector('ol');
-const overflow = trail.querySelector('.overflow');
-const menu = overflow.querySelector('[popover]');
-
-function sync() {
-  const collapsed = getComputedStyle(overflow).display !== 'none';
-  // Middle items: everything except the first, the last two and the "…" item
-  const items = [...trail.children].filter((li, i, all) =>
-    li !== overflow && i !== 0 && i < all.length - 2);
-  const focused = document.activeElement;
-  if (collapsed) menu.append(...items);
-  else if (menu.children.length) {
-    menu.hidePopover();
-    overflow.after(...menu.children);
-  }
-  focused?.isConnected && focused.focus();
-}
-new ResizeObserver(sync).observe(nav);
-```
-
-- Optional, for very narrow containers: show only the parent link with a leading "‹" (decorative, empty alt text) by hiding every `<li>` except `:nth-last-child(2)`.
-- Hidden items must be removed with `display: none` so that they leave the tab order and accessibility tree.
+- **Sibling menus:** when ancestors have meaningful siblings (e.g. docs sections), let an ancestor expose its siblings in a menu. Keep the ancestor link navigating and put the toggle in a separate button, never inside the `<a>`. For menu mechanics, see {{ GUIDE_REF("menu") }}.
+- **Long trails:** collapse the middle of a trail with more than 3 items on narrow containers instead of letting it wrap, keeping the first item and the last two. Put the hidden links in a popup opened from a "…" button, and keep the full trail when script is unavailable.
 
 ## Fallback strategy
+
+### `corner-shape`
+
+{{ BASELINE_STATUS("corner-shape") }}
+
+- Rounded corners are not an acceptable fallback for slants and arrows. Keep plain bordered rectangular segments with a separator (`li + li::before`) as the base style, and put everything from the shape snippets that makes the shape (`corner-shape`, the radii, the padding, the overlap margins and `content: none` on the separator) inside `@supports (corner-shape: bevel)`, so unshaped segments neither overlap nor lose their separator.
+
+### `sibling-index()` and `sibling-count()`
+
+{{ BASELINE_STATUS("sibling-count") }}
+
+- Without support, later segments paint on top: slants are unaffected, but arrow tips are hidden. Put the stacking rules in `@supports (z-index: sibling-index())`, and gate the arrow shape on both `corner-shape` and `sibling-index()` so it stays plain with a separator otherwise:
+
+```css
+@supports (corner-shape: bevel) and (z-index: sibling-index()) {
+  /* Arrow-only shape, overlap and stacking rules from above */
+}
+```
 
 ### `border-shape`
 
@@ -206,17 +178,3 @@ new ResizeObserver(sync).observe(nav);
 ```
 
 - The trail remains fully functional; only borders and outlines differ.
-
-### `corner-shape`
-
-{{ BASELINE_STATUS("corner-shape") }}
-
-- Graceful degradation: unsupported browsers keep the plain `border-radius` corners. Wrap `corner-shape` in `@supports (corner-shape: squircle)` and tune the radius there.
-
-{{ FEATURE_FALLBACKS("popover") }}
-
-### Anchor positioning
-
-{{ BASELINE_STATUS("anchor-positioning") }}
-
-- Wrap anchor-based placement in `@supports (position-area: block-end)`. Otherwise, on the popover's `toggle` event (`newState === "open"`), set `position: fixed` and compute `inset-block-start`/`inset-inline-start` from the trigger's `getBoundingClientRect()`, clamped to the viewport.
