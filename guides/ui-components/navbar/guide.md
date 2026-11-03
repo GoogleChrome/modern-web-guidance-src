@@ -214,7 +214,7 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("anchor-positioning") }}
+{{ BASELINE_STATUS("anchor-positioning") }}
 
 For the mobile menu, put an absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid. Without Anchor Positioning the menu still opens as a popover at a fixed offset from the top of the viewport.
 
