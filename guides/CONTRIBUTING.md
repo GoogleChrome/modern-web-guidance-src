@@ -65,7 +65,7 @@ After drafting `guide.md`, `demo.html`, and `expectations.md`, ask your coding a
 Please run the project-guide-validation skill on my guide: guides/<category>/<use-case-slug>
 ```
 
-This tests `demo.html` in a real browser session via DevTools MCP, checks accessibility alignment against [`guides/accessibility/accessibility/guide.md`](./accessibility/accessibility/guide.md), and verifies 1-to-1 traceability across `guide.md`, `demo.html`, and `expectations.md`.
+This tests `demo.html` in a real browser session via DevTools MCP, checks accessibility alignment against [`guides/accessibility/accessibility/guide.md`](./accessibility/accessibility/guide.md), and verifies every outcome `guide.md` requires has an expectation in `expectations.md`, and `demo.html` exercises each one.
 
 
 ## Guidance PR Checklist

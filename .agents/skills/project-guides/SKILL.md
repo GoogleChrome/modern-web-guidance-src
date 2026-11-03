@@ -27,7 +27,7 @@ When a developer asks an AI coding assistant to implement something, the assista
 | `targets/<base_app>/grader.ts` | Playwright test suite run against the eval agent's output | ❌ No |
 | `targets/<base_app>/task.md` | Simulated developer prompts fed to the eval agent by the harness | ❌ No |
 
-**Implication for Stage 2 authoring (`guide.md`, `demo.html`, & `expectations.md`):** Content contributors and Peers strictly author `guide.md`, `demo.html`, and `expectations.md` (and self-validate with the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill). You do not hand-author solution patches, `grader.ts`, or `task.md`—Stage 3 evaluation generation and calibration (`gd dev` and `gd pr`) are handled downstream by maintainers and evaluation tooling (see [`src/harness/README.md`](../../../src/harness/README.md)).
+**Implication for Stage 2 authoring (`guide.md`, `demo.html`, & `expectations.md`):** Stage 2 ends at `guide.md`, `demo.html`, and `expectations.md` (self-validated with the [`project-guide-validation`](../project-guide-validation/SKILL.md) skill). `task.md`, the solution patches, and `grader.ts` are generated downstream in Stage 3 by `gd dev` (see [`src/harness/README.md`](../../../src/harness/README.md)); people can hand-edit them, and agents only when a person asks.
 
 **Implication for `guide.md`:** Because `guide.md` is the agent's only source of truth, it must be entirely self-contained. Do not rely on agents reading `expectations.md`, any target patch, or any external link to understand how to implement the use case.
 

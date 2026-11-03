@@ -70,7 +70,7 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 |---|---|---|
 | `guide.md` | SME (human) | The guidance itself, read by coding agents via Skills (`SKILL.md` is reserved for the entrypoint and standalone skills). Normative rules and build-time macros (`BASELINE_STATUS`, `INCLUDE`, `FEATURE`, `FEATURE_FALLBACKS`, `FEATURE_ISSUES`, `GUIDE_REF`) are specified in [`project-guides`](../.agents/skills/project-guides/SKILL.md). |
 | `demo.html` | SME (human) | Gold-standard standalone implementation of the use case. |
-| `expectations.md` | SME (human) | Natural-language bulleted list of observable assertions used as input for grader and solution generation (see [`project-guides`](../.agents/skills/project-guides/SKILL.md) and [`project-evals`](../.agents/skills/project-evals/SKILL.md)). |
+| `expectations.md` | SME (human) | Natural-language bulleted list of observable assertions used as input for grader generation (see [`project-guides`](../.agents/skills/project-guides/SKILL.md) and [`project-evals`](../.agents/skills/project-evals/SKILL.md)). |
 | `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`antigravity-solution.patch` / `jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`). Used for grader calibration. |
 | `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated to pass golden patches 100% and zero-passrate baseline 0%. |
 | `targets/<base_app>/task.md` | Generated (`gd dev`) | Single-bullet developer prompt tailored to `<base_app>` fed to evaluation agents. |
