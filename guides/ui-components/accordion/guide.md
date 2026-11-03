@@ -207,6 +207,9 @@ details::details-content {
 	/* Lets block-size transition to and from its intrinsic auto size */
 	interpolate-size: allow-keywords;
 	overflow: clip;
+	/* Keeps layout containment constant across states; otherwise content-visibility toggling it
+	   makes the transition jitter when the content has outward margins (e.g. a nested p) */
+	contain: layout;
 }
 
 details:not([open])::details-content {
