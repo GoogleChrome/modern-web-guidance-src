@@ -6,12 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Text formatting toolbar</title>
   <script type="module">
-    // Load each polyfill only when native support is missing. CDN URLs are for the demo; prefer bundling.
+    // Load the polyfill only when native support is missing. CDN URLs are for the demo; prefer bundling.
     if (!("popover" in HTMLElement.prototype)) {
       await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
-    }
-    if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
-      await import("https://unpkg.com/interestfor@latest");
     }
   </script>
   <style>
@@ -213,7 +210,7 @@
       [data-icon="copy"] { --icon: var(--i-copy); }
       [data-icon="select"] { --icon: var(--i-select); }
 
-      /* Tooltips: interest invokers + popover="hint", anchored to the invoking button */
+      /* Tooltips: title is the baseline; script upgrades it to interest invokers + popover="hint" anchored to the invoking button */
       [popover="hint"] {
         inset: auto;
         margin: 0.4rem 0;
@@ -234,12 +231,9 @@
         position-try-fallbacks: flip-inline;
       }
 
-      /* The interestfor polyfill reads delays from custom properties, so set them this way */
       [data-item][interestfor] {
-        --interest-delay-start: 400ms;
-        interest-delay-start: var(--interest-delay-start);
-        --interest-delay-end: 100ms;
-        interest-delay-end: var(--interest-delay-end);
+        interest-delay-start: 400ms;
+        interest-delay-end: 100ms;
       }
 
       /* Overflow popup: top layer, light dismiss, anchored to the More button */
@@ -273,10 +267,9 @@
         }
       }
 
-      /* Without anchor positioning, popovers center in the viewport: hide tooltips (the buttons have
-         aria-labels) and position the menu from script instead */
+      /* Without anchor positioning, popovers center in the viewport: position the menu from script instead
+         (tooltips stay as native title tooltips) */
       @supports not (position-area: block-end) {
-        [popover="hint"] { display: none; }
         #more-menu {
           position: fixed;
           inset: auto;
@@ -314,45 +307,45 @@
 <body>
   <main class="demo">
     <noscript><p>This toolbar needs JavaScript for its keyboard navigation and actions.</p></noscript>
-    <div role="toolbar" id="text-bar" aria-label="Text formatting" aria-controls="preview">
+    <div role="toolbar" id="text-bar" focusgroup="toolbar wrap" aria-label="Text formatting" aria-controls="preview">
       <div role="group" aria-label="Style">
         <button type="button" class="btn" data-item data-icon="bold" data-style="bold" aria-pressed="false"
-          aria-label="Bold" interestfor="tip-bold"></button>
+          aria-label="Bold" title="Bold"></button>
         <button type="button" class="btn" data-item data-icon="italic" data-style="italic" aria-pressed="false"
-          aria-label="Italic" interestfor="tip-italic"></button>
+          aria-label="Italic" title="Italic"></button>
         <button type="button" class="btn" data-item data-icon="underline" data-style="underline" aria-pressed="false"
-          aria-label="Underline" interestfor="tip-underline"></button>
+          aria-label="Underline" title="Underline"></button>
       </div>
       <span role="separator" aria-orientation="vertical"></span>
       <div role="group" aria-label="Alignment">
         <button type="button" class="btn" data-item data-icon="left" data-align="left" aria-pressed="true"
-          aria-label="Align left" interestfor="tip-left"></button>
+          aria-label="Align left" title="Align left"></button>
         <button type="button" class="btn" data-item data-icon="center" data-align="center" aria-pressed="false"
-          aria-label="Align center" interestfor="tip-center"></button>
+          aria-label="Align center" title="Align center"></button>
         <button type="button" class="btn" data-item data-icon="right" data-align="right" aria-pressed="false"
-          aria-label="Align right" interestfor="tip-right"></button>
+          aria-label="Align right" title="Align right"></button>
       </div>
       <span role="separator" aria-orientation="vertical"></span>
       <div role="group" aria-label="Actions">
         <button type="button" class="btn" data-item data-icon="copy" data-action="copy" aria-label="Copy text"
-          interestfor="tip-copy"></button>
+          title="Copy text"></button>
         <button type="button" class="btn" data-item data-icon="select" data-action="select" aria-label="Select text"
-          interestfor="tip-select"></button>
+          title="Select text"></button>
       </div>
       <span role="separator" aria-orientation="vertical"></span>
       <button type="button" class="btn" data-item data-icon="more" aria-label="More actions" aria-haspopup="menu"
-        aria-expanded="false" popovertarget="more-menu" interestfor="tip-more"></button>
+        aria-expanded="false" popovertarget="more-menu" title="More actions"></button>
     </div>
 
     <div class="stage">
       <!-- Vertical toolbar: aria-orientation="vertical" and Up/Down arrows instead of Left/Right -->
-      <div role="toolbar" aria-label="Zoom" aria-orientation="vertical" aria-controls="preview">
+      <div role="toolbar" focusgroup="toolbar wrap block" aria-label="Zoom" aria-orientation="vertical" aria-controls="preview">
         <button type="button" class="btn" data-item data-icon="plus" data-action="zoom-in" aria-label="Zoom in"
-          interestfor="tip-zoom-in"></button>
+          title="Zoom in"></button>
         <button type="button" class="btn" data-item data-icon="minus" data-action="zoom-out" aria-label="Zoom out"
-          interestfor="tip-zoom-out"></button>
+          title="Zoom out"></button>
         <button type="button" class="btn" data-item data-icon="reset" data-action="zoom-reset" aria-label="Reset zoom"
-          interestfor="tip-zoom-reset"></button>
+          title="Reset zoom"></button>
       </div>
 
       <p class="preview" id="preview"><span>The quick brown fox jumps over the lazy dog. Use the toolbar to change how
@@ -371,20 +364,21 @@
     </div>
   </main>
 
-  <div id="tip-bold" popover="hint">Bold</div>
-  <div id="tip-italic" popover="hint">Italic</div>
-  <div id="tip-underline" popover="hint">Underline</div>
-  <div id="tip-left" popover="hint">Align left</div>
-  <div id="tip-center" popover="hint">Align center</div>
-  <div id="tip-right" popover="hint">Align right</div>
-  <div id="tip-copy" popover="hint">Copy text</div>
-  <div id="tip-select" popover="hint">Select text</div>
-  <div id="tip-zoom-in" class="tip-inline" popover="hint">Zoom in</div>
-  <div id="tip-zoom-out" class="tip-inline" popover="hint">Zoom out</div>
-  <div id="tip-zoom-reset" class="tip-inline" popover="hint">Reset zoom</div>
-  <div id="tip-more" popover="hint">More actions</div>
 
   <script type="module">
+    // Upgrade title tooltips only when interest invokers and anchor positioning both work
+    if ("interestForElement" in HTMLButtonElement.prototype && CSS.supports("position-area", "block-end")) {
+      document.querySelectorAll("[role=toolbar] button[title]").forEach((b, i) => {
+        const tip = Object.assign(document.createElement("div"), { id: `tip-${i}`, textContent: b.title });
+        tip.popover = "hint";
+        // Vertical toolbars place the hint on the inline axis so it never covers the next control
+        if (b.closest("[role=toolbar]").getAttribute("aria-orientation") === "vertical") tip.className = "tip-inline";
+        b.setAttribute("interestfor", tip.id);
+        b.removeAttribute("title"); // avoid a second, native tooltip
+        b.after(tip);
+      });
+    }
+
     const bar = document.querySelector("#text-bar");
     const items = [...bar.querySelectorAll("[data-item]")];
     const more = items.at(-1);
@@ -393,9 +387,9 @@
     const flag = (el, attr, on) => el.setAttribute(attr, String(on));
     const move = (list, from, to) => list[(to + list.length) % list.length].focus();
 
-    // Roving tabindex for every toolbar: one tab stop; arrows/Home/End move focus and wrap.
+    // Fallback only where native focusgroup is missing: roving tabindex, one tab stop; arrows/Home/End move focus and wrap.
     // The arrow keys follow aria-orientation, and horizontal Left/Right flip in RTL.
-    for (const toolbar of document.querySelectorAll('[role="toolbar"]')) {
+    for (const toolbar of "focusGroup" in HTMLElement.prototype ? [] : document.querySelectorAll('[role="toolbar"]')) {
       const list = [...toolbar.querySelectorAll("[data-item]")];
       list.forEach((b, i) => (b.tabIndex = i ? -1 : 0));
       toolbar.addEventListener("focusin", ({ target }) => {

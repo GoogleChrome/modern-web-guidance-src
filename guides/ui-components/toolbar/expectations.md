@@ -3,7 +3,8 @@
 - Related toolbar controls are wrapped in `role="group"` elements that each have a non-empty `aria-label`.
 - Adjacent `role="group"` elements in the toolbar are divided by an element with `role="separator"`.
 - Every icon-only toolbar button has a non-empty `aria-label`.
-- Initially, exactly one toolbar item has `tabindex="0"` and all other toolbar items have `tabindex="-1"`.
+- The toolbar container has a `focusgroup` attribute whose value includes `toolbar`.
+- Pressing `Tab` from the first toolbar item moves focus out of the toolbar rather than to the next item.
 - In a horizontal toolbar, pressing `ArrowRight` on an item moves focus to the next item.
 - Pressing `Home` on a toolbar item moves focus to the first item.
 - Clicking a toggle button that is not part of a mutually exclusive set flips its `aria-pressed` value between `true` and `false`.
