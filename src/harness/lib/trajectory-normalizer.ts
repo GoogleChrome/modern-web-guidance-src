@@ -332,7 +332,7 @@ export function categorizeAction(
     if (cmdLower.includes('retrieve')) {
       return 'guide_retrieval';
     }
-    if (cmdLower.includes('search')) {
+    if (cmdLower.includes('search') || cmdLower.includes('analyze')) {
       return 'skill_search';
     }
   }

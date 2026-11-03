@@ -6,6 +6,7 @@ import { join, dirname, basename } from "node:path";
 import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { retrieveUseCase, OriginTrialGateError } from "../rag/retrieve.ts";
+import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
@@ -60,6 +61,7 @@ Commands:
   search <query>            Search use cases by query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
+  analyze [path] [options]  Analyze codebase for legacy web platform patterns
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   install [options]         Install the modern-web-guidance skill
   uninstall                 Uninstall the modern-web-guidance skill
@@ -79,6 +81,22 @@ async function main() {
     process.exit(0);
   }
 
+  const command = positionals[0];
+
+  if (command === "analyze") {
+    // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
+    const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
+    const result = await runAnalyzeCli(process.argv.slice(3));
+    if (result.data) {
+      logToolResult(
+        "analyze",
+        result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
+      );
+    }
+    writeAnalyzeCliResult(result);
+    process.exit(result.exitCode);
+  }
+
   if (values.help || positionals.length === 0) {
     printUsage();
     process.exit(values.help ? 0 : 1);
@@ -89,7 +107,6 @@ async function main() {
 
   let loggerInstance: ClearcutLogger | undefined;
   const getLogger = () => loggerInstance ??= new ClearcutLogger({ skillVersion });
-  const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
 
   if (command === "search") {
