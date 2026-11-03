@@ -111,10 +111,6 @@ Options:
   -h, --help                Show this help message
 `.trim();
 
-export function renderAnalyzeHelp(): string {
-  return ANALYZE_CLI_HELP;
-}
-
 function joinRubricItems(items: readonly string[]): string {
   return elideText(
     items.map((s) => s.trim().replace(/\.+$/, '')).join('; '),

@@ -7,7 +7,6 @@ import {
   ANALYZE_CLI_HELP,
   elideText,
   formatHumanReadable,
-  renderAnalyzeHelp,
   runAnalyzeCli,
   sampleDiversifiedFindings,
   writeAnalyzeCliResult,
@@ -35,12 +34,12 @@ describe('runAnalyzeCli', () => {
     const res1 = await runAnalyzeCli(['--help']);
     assert.equal(res1.exitCode, 0);
     assert.match(res1.output, /Usage: modern-web-guidance analyze/);
+    assert.equal(res1.output, `${ANALYZE_CLI_HELP}\n`);
 
     const res2 = await runAnalyzeCli(['analyze', '-h']);
     assert.equal(res2.exitCode, 0);
     assert.match(res2.output, /Usage: modern-web-guidance analyze/);
-
-    assert.equal(renderAnalyzeHelp(), ANALYZE_CLI_HELP);
+    assert.equal(res2.output, `${ANALYZE_CLI_HELP}\n`);
   });
 
   it('handles non-existent target directory with error and exit code 1', async () => {
