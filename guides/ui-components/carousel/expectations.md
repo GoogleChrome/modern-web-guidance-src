@@ -31,7 +31,7 @@
 - Activating fallback previous/next buttons moves the carousel to the adjacent slide.
 - Activating a fallback marker button navigates to its corresponding slide.
 - Every fallback marker button has an accessible name identifying its destination slide.
-- Fallback markers update `aria-current="true"` to reflect the currently active slide, driven by settled scroll position rather than by the marker click.
+- Fallback markers update `aria-current="true"` to reflect the active slide as soon as a marker or fallback previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
 - When `:target-current` is unsupported, the active native marker is still visually distinguished from script state.
 - Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
 - The carousel does not autoplay slides or continuously poll scroll positions on every animation frame.

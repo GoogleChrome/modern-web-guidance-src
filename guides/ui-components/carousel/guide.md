@@ -211,6 +211,10 @@ The track remains natively scrollable with touch, pointer, and keyboard input. J
 
 Wrap the parking rule in `@supports` for `sibling-index()`. Without support, leave the carousel as a finite list: skip the parking and keep disabling the controls at the ends.
 
+{# WORKAROUND, remove when fixed: Chrome drops keyboard focus from native ::scroll-button() when looping reorders the slides, and Next/Previous stop early. TODO: add the Chromium bug link here and consider a BCD key request. #}
+
+**Temporary workaround for keyboard focus (Chrome).** Reordering slides while looping makes Chrome drop focus from native `::scroll-button()` controls, so keyboard users cannot activate them repeatedly. Until this is fixed, on the first `Tab` keydown hide the native buttons (for example a `data-html-buttons` attribute on the track with `::scroll-button(*) { display: none; }`) and reveal the HTML Previous and Next buttons, which keep focus. Comment this code as a workaround so it can be removed once Chrome fixes the bug.
+
 ### Scroll-driven effects
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}
