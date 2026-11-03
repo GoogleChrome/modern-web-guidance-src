@@ -21,11 +21,15 @@ To adapt to the user's preferences in older browsers, use `prefers-color-scheme`
   /* Define brand colors for each mode */
   --color-brand-light: #0056b3;
   --color-brand-dark: #00e5ff;
+  --color-brand-text-light: white;
+  --color-brand-text-dark: #001f24;
   --color-brand: var(--color-brand-light);
+  --color-brand-text: var(--color-brand-text-light);
 
   /* MANDATORY: Fallback for browsers without light-dark support */
   @media (prefers-color-scheme: dark) {
     --color-brand: var(--color-brand-dark);
+    --color-brand-text: var(--color-brand-text-dark);
   }
 
   /* Ignored in older browsers */
@@ -34,5 +38,6 @@ To adapt to the user's preferences in older browsers, use `prefers-color-scheme`
 
 button.primary {
 	background-color: var(--color-brand);
+	color: var(--color-brand-text);
 }
 ```
