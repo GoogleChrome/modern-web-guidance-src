@@ -110,4 +110,11 @@ describe("searchUseCases", () => {
     assert.ok(results.length > 0, "Should return results for web feature ID query");
     assert.strictEqual(results[0].id, "search-hidden-content");
   });
+
+  it("returns results for single-token API queries", async () => {
+    for (const q of ["fetchpriority", "startViewTransition", "WebGPU", "LCP", "INP", "webmcp", "content-visibility", "@starting-style", "field-sizing"]) {
+      const results = await searchUseCases(q, 5);
+      assert.ok(results.length > 0, `Single-token API query "${q}" should return results`);
+    }
+  });
 });

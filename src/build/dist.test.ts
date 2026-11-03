@@ -280,9 +280,6 @@ test.skip('THIRD_PARTY_NOTICES validation', async () => {
 
   const content = await fs.readFile(noticesPath, 'utf8');
   
-  // Check for some expected dependencies
-  assert.ok(content.includes('Name: @huggingface/tokenizers'), 'Should contain @huggingface/tokenizers');
-  
   // Check structure
   assert.ok(content.includes('-------------------- DEPENDENCY DIVIDER --------------------'), 'Should contain dividers');
 });

@@ -25,9 +25,6 @@ importers:
       '@google/gemini-cli':
         specifier: 0.65.0
         version: 0.65.0
-      '@huggingface/tokenizers':
-        specifier: ^0.2.0
-        version: 0.2.0
       '@huggingface/transformers':
         specifier: ^4.3.1
         version: 4.3.1(@types/node@25.6.0)
