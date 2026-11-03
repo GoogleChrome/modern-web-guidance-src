@@ -75,14 +75,17 @@ const options = [...group.querySelectorAll('input[name="robot"]')];
 
 function sync() {
   // Filter dynamically so options disabled or enabled at runtime stay in sync.
-  const enabled = options.filter((item) => !item.disabled);
-  const checked = enabled.filter((item) => item.checked).length;
-  master.disabled = enabled.length === 0;
-  master.checked = enabled.length > 0 && checked === enabled.length;
+  const { on = [], off = [] } = Object.groupBy(
+    options.filter((item) => !item.disabled),
+    (item) => (item.checked ? 'on' : 'off'),
+  );
+  const total = on.length + off.length;
+  master.disabled = total === 0;
+  master.checked = total > 0 && off.length === 0;
   // Mixed only when some, but not all, enabled options are checked.
-  master.indeterminate = checked > 0 && checked < enabled.length;
+  master.indeterminate = on.length > 0 && off.length > 0;
   // Announce the running count so bulk changes are not silent.
-  summary.textContent = `${checked} of ${enabled.length} available units active`;
+  summary.textContent = `${on.length} of ${total} available units active`;
 }
 
 master.addEventListener('change', () => {
