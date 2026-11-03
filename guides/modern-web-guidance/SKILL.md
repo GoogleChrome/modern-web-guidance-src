@@ -35,7 +35,7 @@ Once you have relevant `id`(s) from the search results, call `retrieve` to get t
 npx -y modern-web-guidance@latest retrieve "<id>"
 ```
 
-If the output is truncated, you must repeat the command but redirect to a file and read that file.
+If `retrieve` saves large output (> 9.5 KB) to a temporary file to prevent truncation, read that file path in full using your file-reading tool (reading remaining line ranges if needed)—do not use `cat` or `head`.
 
 ### Step 3. Verify Guidance Compliance
 

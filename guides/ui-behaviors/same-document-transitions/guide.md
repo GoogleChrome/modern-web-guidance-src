@@ -167,7 +167,7 @@ The pseudo-elements are snapshots of the live elements, so you can also use `obj
 
 ## Fallback Strategies
 
-{{ FEATURE_FALLBACKS("view-transitions") }}
+{{ BASELINE_STATUS("view-transitions") }}
 
 The View Transitions API is designed for progressive enhancement. Browsers that do not support it will simply execute the DOM update immediately without animation.
 

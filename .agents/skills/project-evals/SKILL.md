@@ -55,7 +55,7 @@ Write a natural-language, bulleted list of assertions that must be true if an ag
 2. **Never Copy Description Verbatim**: Do not copy the frontmatter `description` string verbatim into `task.md`. Adapt the desired user outcome into a natural developer request situated in the target app.
 3. **Derived Strictly from `guide.md` Frontmatter Description**: `task.md` is generated with structural context isolation: only the frontmatter `description` string and the base app codebase are provided. Neither `guide.md` nor `expectations.md` are present, physically preventing spoiler leakage.
 4. **Preserve High-Level Capability Boundary**: Keep the execution context and functional boundary from the frontmatter `description` clear (e.g., distinguishing on-device / built-in browser capabilities from external cloud APIs) so the implementing agent knows what problem domain it is solving.
-5. **No Technical or API Dictation**: NEVER name specific web platform APIs, CSS properties/at-rules, or method names (e.g., do not say `"use @view-transition"`, `"use window.Translator"`, or `"call signalAllAcceptedCredentials"`). Describe the desired user outcome instead.
+5. **No Technical or API Dictation (Neutral Hooks Allowed)**: NEVER name specific web platform APIs, CSS properties/at-rules, or method names (e.g., do not say `"use @view-transition"`, `"use window.Translator"`, or `"call signalAllAcceptedCredentials"`). Describe the desired user outcome instead. `task.md` may name a neutral hook (an `id` or `data-` attribute) for an element the grader needs to locate, named after the app content it shows or manages rather than an HTML element, attribute, CSS feature, or API (e.g. `id="passkey-list"`, never `id="share-dialog"` or `data-popover`). Routes or endpoints that do not exist in the base app are never invented.
 6. **Single-line bullet format**: Must be formatted strictly as a single line prefixed with `- `, with no YAML frontmatter and no internal line breaks.
 7. **Imperative Action Request & Natural Tone**: Phrase as a direct developer request to an AI coding assistant (`"Add..."`, `"Update..."`, `"Implement..."`), casual and natural, never as an advisory question (`"How can I...?"`).
 8. **No Internal References**: Never mention `guide.md`, guidance skills, or the guidance project.
@@ -66,14 +66,16 @@ Write a natural-language, bulleted list of assertions that must be true if an ag
 
 Graders are generated from [`src/grading/template.grader.ts`](../../../src/grading/template.grader.ts) and calibrated against the 3 golden solution patches (`100%`) and `zero-passrate.patch` (`0%`).
 
-### 1. Assertion Hierarchy: Static Analysis First
-Unlike single-file `demo.html` checks, target app tasks (`daily-grind`, `devtools-times`) do not prescribe URL routes, mock REST API endpoints, or button selectors in `task.md`.
-- **Prioritize static AST analysis** over browser execution:
+### 1. Right Instrument for the Claim: Parsers vs. Browser
+Unlike single-file `demo.html` checks, target app tasks (`daily-grind`, `devtools-times`) never invent URL routes or mock REST API endpoints in `task.md`, though `task.md` may name a neutral hook (an `id` or `data-` attribute) for an element the grader needs.
+- **Structure and API usage → Parsers**: Check structure and API usage with parsers, never regex on source:
   - **Linkedom** (`getHtmlDocuments`) for HTML structure and DOM querying.
   - **CSSOMNom** (`getCssStyleSheet`) for CSS rules, at-rules (`@media`, `@supports`, `@container`, `@view-transition`), and declarations.
   - **ts-morph** (`getJsProject`) for JS/TS syntax, API calls, and state wiring.
   - **Never use regex** on HTML, CSS, or JS/TS source strings to verify syntax.
-- **Browser E2E checks only when strictly necessary**: Only use Playwright browser tests for runtime layout geometry or computed style checks on existing base-app elements. **Never** write Browser E2E tests that navigate to newly invented routes, intercept custom REST API URLs/payloads, or click patch-specific selectors that only exist in the 3 golden solution patches.
+- **Runtime behavior → Browser**: Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright:
+  - Browser tests locate elements through base-app markup, hooks that `task.md` names, or platform semantics (element types, ARIA roles, standard attributes).
+  - **Never** use invented routes, custom REST API endpoints/payloads, or IDs or classes that exist only in the 3 golden solution patches.
 
 ### 2. Anti-Overfitting to Golden Solution Patches
 The 3 golden solution patches (`claude`, `codex`, `jetski`) are generated from `task.md` + `guide.md` (without seeing `expectations.md`) and are **locked** during calibration. They represent valid implementations, **not** an exhaustive specification.
@@ -85,7 +87,7 @@ The 3 golden solution patches (`claude`, `codex`, `jetski`) are generated from `
 - **Utility CSS flexibility**: In apps using Tailwind or utility CSS, accept either standard CSS declarations (`getCssStyleSheet`) or equivalent utility classes (`getHtmlDocuments`).
 
 ### 3. No Vacuous Checks or Swallowed Errors
-- **Single assertion per `test()` block**: Write one assertion per `test('...', ...)` block for clear failure diagnostics.
+- **One expectation per `test()` block**: Each `test('...', ...)` block checks a single expectation for clear failure diagnostics, with a precondition assertion (e.g., asserting the list isn't empty) allowed before the main assertion.
 - **No vacuous guards**: Never write `if (items.length > 0) { expect(...); }`, `hasFeature && (items.length === 0 || ...)`, or `if (files.length === 0) { expect(false).toBe(true); return; }`. Always assert `expect(items.length).toBeGreaterThan(0)` before asserting `.every(...)` or item properties.
 - **Never use `test.skip()`** or wrap assertions in `try/catch` blocks that swallow errors.
 

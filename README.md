@@ -185,7 +185,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 </details>
 
 <details>
-<summary><strong>186 real-world developer use cases</strong></summary>
+<summary><strong>188 real-world developer use cases</strong></summary>
 
 <h3>accessibility</h3>
 
@@ -387,6 +387,10 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 - **[spinner](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/spinner.md)**: Build a loading spinner that communicates busy state to all users, respects reduced-motion preferences, and animates efficiently.
 - **[stack-drill-down](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/ui-components/stack-drill-down.md)**: Build full-screen hierarchical navigation that lets users drill down into nested views and swipe or navigate back to return, with browser history kept in sync.
 
+<h3>user-experience</h3>
+
+- **[content-first-noise-reduction](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/user-experience/content-first-noise-reduction.md)**: Maximize content and reduce noise by removing blocking popups, keeping persistent navigation compact, and moving secondary content behind on-demand disclosure.
+
 <h3>visual-design</h3>
 
 - **[adapt-scrollbar-to-contrast-preferences](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/visual-design/adapt-scrollbar-to-contrast-preferences.md)**: Enhance scrollbar visibility for users who prefer high-contrast interfaces
@@ -420,6 +424,7 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 
 - **[agentic-forms](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/webmcp/agentic-forms.md)**: Expose client-side functionality as tools to AI agents by annotating standard HTML forms with WebMCP attributes.
 - **[agentic-javascript-tools](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/webmcp/agentic-javascript-tools.md)**: Programmatically register client-side JavaScript functions as tools for AI agents using the WebMCP Imperative API.
+- **[webmcp](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/webmcp/webmcp.md)**: Use this guide to implement WebMCP in browser applications, exposing client-side functionality as tools to AI agents via declarative or imperative APIs.
 </details>
 <!-- INJECT_SKILL_COVERAGE_END -->
 
@@ -546,16 +551,16 @@ We developed a robust eval harness to ensure that the content is **empirically p
 <!-- INJECT_EVAL_RESULTS_START -->
 | Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
+| Nov 2 | codex_cli (gpt-6.1-sol) | 205 / 1729 | 55% → 82% (**+27pp**) |
+| Nov 2 | claude_code (opus-5-5) | 205 / 1729 | 58% → 90% (**+32pp**) |
+| Nov 1 | antigravity_cli (gemini-4-argon) | 205 / 1705 | 61% → 96% (**+35pp**) |
+| Oct 30 | codex_cli (gpt-6.1-sol) | 204 / 1721 | 55% → 84% (**+29pp**) |
+| Oct 30 | claude_code (opus-5-5) | 204 / 1721 | 58% → 91% (**+33pp**) |
+| Oct 30 | antigravity_cli (gemini-4-argon) | 204 / 1637 | 61% → 96% (**+35pp**) |
+| Oct 28 | codex_cli (gpt-6.1-sol) | 198 / 1675 | 56% → 85% (**+29pp**) |
+| Oct 28 | claude_code (fable-5-1) | 198 / 1646 | 54% → 90% (**+36pp**) |
+| Oct 28 | antigravity_cli (gemini-4-argon) | 197 / 1629 | 60% → 95% (**+35pp**) |
 | Oct 25 | claude_code (sonnet-5-5) | 168 / 1422 | 56% → 90% (**+34pp**) |
-| Oct 24 | antigravity_cli (gemini-4-argon) | 168 / 1373 | 65% → 95% (**+30pp**) |
-| Oct 23 | codex_cli (gpt-6.1-sol) | 168 / 1422 | 58% → 85% (**+27pp**) |
-| Oct 22 | claude_code (sonnet-5-5) | 168 / 1422 | 56% → 86% (**+30pp**) |
-| Oct 22 | antigravity_cli (gemini-4-argon) | 172 / 1445 | 68% → 96% (**+28pp**) |
-| Oct 20 | codex_cli (gpt-6.1-sol) | 172 / 1450 | 58% → 80% (**+22pp**) |
-| Oct 20 | claude_code (sonnet-5-5) | 172 / 1450 | 54% → 89% (**+35pp**) |
-| Oct 20 | antigravity_cli (gemini-4-argon) | 172 / 1450 | 65% → 95% (**+30pp**) |
-| Oct 19 | codex_cli (gpt-6.1-sol) | 172 / 1445 | 56% → 83% (**+27pp**) |
-| Oct 19 | claude_code (sonnet-5-5) | 171 / 1438 | 56% → 88% (**+32pp**) |
 <!-- INJECT_EVAL_RESULTS_END -->
 
 

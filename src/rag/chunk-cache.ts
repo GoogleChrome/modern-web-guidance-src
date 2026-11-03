@@ -12,7 +12,7 @@ import {
 } from "../core/guide-validation.ts";
 import { replaceMacros, type BuildTarget } from "../core/macros.ts";
 import { getFeatureName } from "../core/baseline.ts";
-import { chunkMarkdown } from "../build/build-guides.ts";
+import { chunkMarkdown, formatChunkHeader } from "../build/build-guides.ts";
 import { config } from "../core/skills-config.ts";
 
 export const TEACHER_MODEL = "gemini-embedding-001";
@@ -202,18 +202,19 @@ export function scanCorpusChunks(target: BuildTarget = "skills-cli"): GuideChunk
       throw new Error(`Guide has no H1 heading or frontmatter title: ${guidePath}`);
     }
 
+    const header = formatChunkHeader(title, inv.name, inv.category, featureIds);
     const summaryChunk = `# ${title}\n\n${data.description}`;
     const chunks = [...chunkMarkdown(processedMarkdown), summaryChunk];
 
     for (const chunk of chunks) {
-      const embeddedText = `${inv.name}: ${data.description}\n\n${chunk}`;
+      const embeddedText = `${header}\n\n${chunk}`;
       const hash = computeChunkHash(embeddedText);
       allChunks.push({
         guideId: inv.name,
         category: inv.category,
         description: data.description,
         featuresUsed,
-        chunkContent: chunk,
+        chunkContent: embeddedText,
         embeddedText,
         hash,
       });
