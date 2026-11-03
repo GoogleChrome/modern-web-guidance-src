@@ -116,7 +116,7 @@
 
   <div class="field" id="enhanced" hidden>
     <label for="fruit-select">Fruit</label>
-    <select id="fruit-select" name="fruit" class="combo">
+    <select id="fruit-select" name="fruit" class="combo" disabled>
       <button type="button"><selectedcontent></selectedcontent></button>
       <option value="" hidden>Select a fruit</option>
       <option value="Apple">Apple</option>
@@ -152,6 +152,7 @@
 
     // Swap: only one control may be submitted under the same name
     fallback.remove();
+    select.disabled = false;
     enhanced.hidden = false;
 
     const update = () => {

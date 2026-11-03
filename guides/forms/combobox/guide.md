@@ -38,7 +38,7 @@ Place a hidden `<select>` with the same `name` and `<label>` next to the fallbac
 ```html
 <div id="enhanced" hidden>
   <label for="fruit-select">Fruit</label>
-  <select id="fruit-select" name="fruit" class="combo">
+  <select id="fruit-select" name="fruit" class="combo" disabled>
     <button type="button"><selectedcontent></selectedcontent></button>
     <option value="" hidden>Select a fruit</option>
     <option value="Apple">Apple</option>
@@ -83,6 +83,7 @@ if (CSS.supports('appearance', 'base-select')) {
 
   // Only one control may submit under this name
   document.getElementById('fallback').remove();
+  select.disabled = false;
   document.getElementById('enhanced').hidden = false;
 }
 ```
