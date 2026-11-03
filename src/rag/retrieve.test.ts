@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import child_process from 'node:child_process';
-import { retrieveUseCase, OriginTrialGateError, VolatileFeatureGateError } from './retrieve.ts';
+import { retrieveUseCase, OriginTrialGateError, VolatileFeatureGateError, FeatureGateError } from './retrieve.ts';
 import { searchUseCases } from './search.ts';
 import { USE_CASES } from './guides.ts';
 
@@ -41,6 +41,7 @@ describe('retrieveUseCase and Origin Trial gate', () => {
     await assert.rejects(
       () => retrieveUseCase(otGuide.id, { cwd: tempDir }),
       (err: unknown) => {
+        assert.ok(err instanceof FeatureGateError);
         assert.ok(err instanceof OriginTrialGateError);
         assert.ok(err.message.includes('> [!CAUTION]'));
         assert.ok(err.message.includes(otGuide.originTrials![0].id!));
@@ -62,6 +63,7 @@ describe('retrieveUseCase and Origin Trial gate', () => {
     await assert.rejects(
       () => retrieveUseCase(otGuide.id, { cwd: tempDir }),
       (err: unknown) => {
+        assert.ok(err instanceof FeatureGateError);
         assert.ok(err instanceof OriginTrialGateError);
         assert.ok(err.message.includes('"allowOriginTrials": false'));
         assert.ok(err.message.includes(`do not adopt ${otGuide.originTrials![0].id!}`));
@@ -152,6 +154,7 @@ describe('retrieveUseCase and Volatile Feature gate', () => {
     await assert.rejects(
       () => retrieveUseCase(volatileGuide.id, { cwd: tempDir }),
       (err: unknown) => {
+        assert.ok(err instanceof FeatureGateError);
         assert.ok(err instanceof VolatileFeatureGateError);
         assert.ok(err.message.includes('> [!CAUTION]'));
         assert.ok(err.message.includes(volatileGuide.volatileFeatures![0].id!));
@@ -172,6 +175,7 @@ describe('retrieveUseCase and Volatile Feature gate', () => {
     await assert.rejects(
       () => retrieveUseCase(volatileGuide.id, { cwd: tempDir }),
       (err: unknown) => {
+        assert.ok(err instanceof FeatureGateError);
         assert.ok(err instanceof VolatileFeatureGateError);
         assert.ok(err.message.includes('"allowVolatileFeatures": false'));
         assert.ok(err.message.includes(`do not adopt ${volatileGuide.volatileFeatures![0].id!}`));
@@ -185,6 +189,7 @@ describe('retrieveUseCase and Volatile Feature gate', () => {
     await assert.rejects(
       () => retrieveUseCase(volatileGuide.id, { cwd: tempDir }),
       (err: unknown) => {
+        assert.ok(err instanceof FeatureGateError);
         assert.ok(err instanceof VolatileFeatureGateError);
         const featureIds = volatileGuide.volatileFeatures!.map((vf) => vf.id).filter(Boolean).join(', ');
         assert.ok(err.message.includes('explicitly named that specific API/feature'));
@@ -202,6 +207,7 @@ describe('retrieveUseCase and Volatile Feature gate', () => {
     await assert.rejects(
       () => retrieveUseCase(multiOtGuide.id, { cwd: tempDir }),
       (err: unknown) => {
+        assert.ok(err instanceof FeatureGateError);
         assert.ok(err instanceof OriginTrialGateError);
         assert.ok(err.message.includes('covers active Origin Trials ('));
         assert.ok(err.message.includes(', which are experimental and may still change.'));

@@ -236,17 +236,49 @@ describe('Guides Validation (Single Source of Truth)', () => {
     }
   });
 
-  it('validates that all feature IDs in features/volatile-features.json are valid', async () => {
+  it('validates that all feature IDs and fields in features/origin-trials.json are valid', async () => {
+    const { validateFeature } = await import('../core/baseline.ts');
+    const otPath = path.join(REPO_ROOT, 'features', 'origin-trials.json');
+    const otRegistry = JSON.parse(fs.readFileSync(otPath, 'utf8'));
+
+    for (const [fid, entry] of Object.entries<any>(otRegistry)) {
+      const res = validateFeature(fid);
+      if (!res.isValid) {
+        assert.fail(`Feature ID "${fid}" in features/origin-trials.json is invalid: ${res.errorMessage}`);
+      }
+      assert.ok(
+        typeof entry.chromestatus_url === 'string' && entry.chromestatus_url.startsWith('https://chromestatus.com/feature/'),
+        `Origin trial "${fid}" must have a valid chromestatus_url`
+      );
+    }
+  });
+
+  it('validates that all feature IDs and fields in features/volatile-features.json are valid', async () => {
     const { validateFeature } = await import('../core/baseline.ts');
     const volatilePath = path.join(REPO_ROOT, 'features', 'volatile-features.json');
     const volatileRegistry = JSON.parse(fs.readFileSync(volatilePath, 'utf8'));
 
-    for (const fid of Object.keys(volatileRegistry)) {
+    for (const [fid, entry] of Object.entries<any>(volatileRegistry)) {
       const res = validateFeature(fid);
       if (!res.isValid) {
         assert.fail(`Feature ID "${fid}" in features/volatile-features.json is invalid: ${res.errorMessage}`);
       }
+      const hasPinned = entry.pinned === true;
+      const hasValidWindow =
+        typeof entry.window_ends === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(entry.window_ends) &&
+        !Number.isNaN(Date.parse(entry.window_ends));
+      assert.ok(
+        hasPinned || hasValidWindow,
+        `Volatile feature "${fid}" must specify either pinned: true or a valid YYYY-MM-DD window_ends`
+      );
     }
+  });
+
+  it('validates volatile feature expirations helper', async () => {
+    const { checkVolatileFeatureExpirations } = await import('../core/feature-gates.ts');
+    const expired = checkVolatileFeatureExpirations();
+    assert.strictEqual(expired.length, 0, `Expired volatile features found: ${JSON.stringify(expired)}`);
   });
 
   it('validates that all graders conform to static anti-pattern checks', async () => {

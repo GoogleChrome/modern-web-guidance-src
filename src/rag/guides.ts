@@ -2,7 +2,7 @@ import { promises as fs, readFileSync, existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import type { OriginTrialMetadata, VolatileFeatureMetadata } from "../core/guide-validation.ts";
+import type { OriginTrialMetadata, VolatileFeatureMetadata } from "../core/feature-gates.ts";
 
 export interface UseCase {
   id: string;

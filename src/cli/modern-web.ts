@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
 import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { retrieveUseCase, OriginTrialGateError, VolatileFeatureGateError } from "../rag/retrieve.ts";
+import { retrieveUseCase, FeatureGateError } from "../rag/retrieve.ts";
 import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
 import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
@@ -186,7 +186,7 @@ async function main() {
         await getLogger().logRetrieveResult(Date.now() - startTime, true, id);
       } catch (error) {
         hasError = true;
-        if (error instanceof OriginTrialGateError || error instanceof VolatileFeatureGateError) {
+        if (error instanceof FeatureGateError) {
           console.error(error.message);
         } else {
           console.error(`Retrieve failed for ${id}:`, error);

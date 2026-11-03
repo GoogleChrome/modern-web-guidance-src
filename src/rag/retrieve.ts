@@ -1,17 +1,28 @@
 import { getGuide, getUseCase } from "./guides.ts";
 import { logToolResult } from "./logger.ts";
 import { readMwgrc, normalizeBaselineTarget } from "../core/mwgrc.ts";
+import { FEATURE_GATES } from "../core/feature-gates.ts";
 
-export class OriginTrialGateError extends Error {
-  constructor(message: string) {
+export class FeatureGateError extends Error {
+  readonly gateKey: "allowOriginTrials" | "allowVolatileFeatures";
+
+  constructor(message: string, gateKey: "allowOriginTrials" | "allowVolatileFeatures") {
     super(message);
+    this.name = "FeatureGateError";
+    this.gateKey = gateKey;
+  }
+}
+
+export class OriginTrialGateError extends FeatureGateError {
+  constructor(message: string) {
+    super(message, "allowOriginTrials");
     this.name = "OriginTrialGateError";
   }
 }
 
-export class VolatileFeatureGateError extends Error {
+export class VolatileFeatureGateError extends FeatureGateError {
   constructor(message: string) {
-    super(message);
+    super(message, "allowVolatileFeatures");
     this.name = "VolatileFeatureGateError";
   }
 }
@@ -85,42 +96,36 @@ export async function retrieveUseCase(useCaseId: string, options?: { cwd?: strin
   const config = readMwgrc(options?.cwd);
 
   if (originTrials.length > 0 || volatileFeatures.length > 0) {
-    if (originTrials.length > 0 && config.allowOriginTrials !== true) {
-      const featureIds = originTrials.map((ot) => ot.id).filter(Boolean).join(", ");
-      const uniqueUrls = [...new Set(originTrials.map((ot) => ot.chromestatus_url).filter(Boolean))].join(", ");
-      const urlSuffix = uniqueUrls ? ` (${uniqueUrls})` : "";
-      const singular = originTrials.length === 1;
-      throw new OriginTrialGateError(
-        formatGateMessage({
-          guideId: useCaseId,
-          featureIds,
-          optInKey: "allowOriginTrials",
-          cliCommand: "set-allow-origin-trials",
-          headingLabel: "Origin Trial features",
-          guideSummary: `${singular ? "an active Origin Trial" : "active Origin Trials"} (${featureIds})${urlSuffix}`,
-          verb: singular ? "is" : "are",
-          riskAdjective: "experimental",
-          explicitOptOut: config.allowOriginTrials === false,
-        }),
-      );
-    }
-    if (volatileFeatures.length > 0 && config.allowVolatileFeatures !== true) {
-      const featureIds = volatileFeatures.map((vf) => vf.id).filter(Boolean).join(", ");
-      const singular = volatileFeatures.length === 1;
-      throw new VolatileFeatureGateError(
-        formatGateMessage({
-          guideId: useCaseId,
-          featureIds,
-          optInKey: "allowVolatileFeatures",
-          cliCommand: "set-allow-volatile-features",
-          headingLabel: "volatile features",
-          guideSummary: `${singular ? "a volatile feature" : "volatile features"} (${featureIds})`,
-          verb: singular ? "is" : "are",
-          riskAdjective: "shipped in only a single browser engine",
-          explicitOptOut: config.allowVolatileFeatures === false,
-        }),
-      );
-    }
+    const gateChecks = [
+      {
+        spec: FEATURE_GATES["origin-trials"],
+        items: originTrials,
+        ErrorClass: OriginTrialGateError,
+      },
+      {
+        spec: FEATURE_GATES["volatile-features"],
+        items: volatileFeatures,
+        ErrorClass: VolatileFeatureGateError,
+      },
+    ] as const;
+
+    for (const { spec, items, ErrorClass } of gateChecks) {
+      if (items.length > 0 && config[spec.optInKey] !== true) {
+        const featureIds = items.map((f) => f.id).join(", ");
+        throw new ErrorClass(
+          formatGateMessage({
+            guideId: useCaseId,
+            featureIds,
+            optInKey: spec.optInKey,
+            cliCommand: spec.cliCommand,
+            headingLabel: spec.headingLabel,
+            guideSummary: spec.formatSummary(items as any),
+            verb: items.length === 1 ? "is" : "are",
+            riskAdjective: spec.riskAdjective,
+            explicitOptOut: config[spec.optInKey] === false,
+          }),
+        );
+      }
     }
   }
 

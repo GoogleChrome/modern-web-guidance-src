@@ -11,6 +11,14 @@ import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
+import {
+  getOriginTrialsRegistry,
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+  type OriginTrialEntry,
+  type OriginTrialMetadata,
+  type VolatileFeatureMetadata,
+} from './feature-gates.ts';
 
 const REPO_ROOT = rootDir;
 
@@ -73,95 +81,13 @@ export interface PreparedGuide {
   volatileFeatures?: VolatileFeatureMetadata[];
 }
 
-export interface OriginTrialMetadata {
-  id?: string;
-  name?: string;
-  chromestatus_url?: string;
-}
-
-export interface VolatileFeatureMetadata {
-  id?: string;
-  pinned?: boolean;
-  window_ends?: string;
-}
-
-const ORIGIN_TRIALS_FILE = path.join(REPO_ROOT, 'features', 'origin-trials.json');
-let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
-
-const VOLATILE_FEATURES_FILE = path.join(REPO_ROOT, 'features', 'volatile-features.json');
-let cachedVolatileFeatures: Record<string, VolatileFeatureMetadata> | null = null;
-
-export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
-  if (!cachedOriginTrials) {
-    try {
-      const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
-      cachedOriginTrials = JSON.parse(raw);
-    } catch (e: unknown) {
-      if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: unknown }).code === 'ENOENT') {
-        cachedOriginTrials = {};
-      } else {
-        throw new Error(`Failed to parse Origin Trials registry at ${ORIGIN_TRIALS_FILE}: ${(e as Error).message}`);
-      }
-    }
-  }
-  return cachedOriginTrials!;
-}
-
-export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata | undefined {
-  const registry = getOriginTrialsRegistry();
-  const entry = registry[featureId];
-  return entry ? { ...entry, id: featureId } : undefined;
-}
-
-export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
-  const registry = getOriginTrialsRegistry();
-  const found: OriginTrialMetadata[] = [];
-  for (const id of featureIds) {
-    if (registry[id]) {
-      found.push({ ...registry[id], id });
-    }
-  }
-  return found;
-}
-
-export function getVolatileFeaturesRegistry(): Record<string, VolatileFeatureMetadata> {
-  if (!cachedVolatileFeatures) {
-    try {
-      const raw = fs.readFileSync(VOLATILE_FEATURES_FILE, 'utf8');
-      cachedVolatileFeatures = JSON.parse(raw);
-    } catch (e: unknown) {
-      if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: unknown }).code === 'ENOENT') {
-        cachedVolatileFeatures = {};
-      } else {
-        throw new Error(`Failed to parse Volatile Features registry at ${VOLATILE_FEATURES_FILE}: ${(e as Error).message}`);
-      }
-    }
-  }
-  return cachedVolatileFeatures!;
-}
-
-export function getGuideVolatileFeatures(featureIds: string[]): VolatileFeatureMetadata[] {
-  const registry = getVolatileFeaturesRegistry();
-  const found: VolatileFeatureMetadata[] = [];
-  for (const id of featureIds) {
-    if (registry[id]) {
-      found.push({ ...registry[id], id });
-    }
-  }
-  return found;
-}
-
 export interface GraduatedOriginTrial {
   featureId: string;
   supportedBrowsers: string[];
 }
 
-/**
- * Checks all features in the Origin Trials registry against the web-features package.
- * Returns any Origin Trial feature that now has browser support in web-features.
- */
 export function checkOriginTrialGraduations(
-  registry: Record<string, OriginTrialMetadata> = getOriginTrialsRegistry()
+  registry: Record<string, OriginTrialEntry> = getOriginTrialsRegistry(),
 ): GraduatedOriginTrial[] {
   const graduated: GraduatedOriginTrial[] = [];
   for (const featureId of Object.keys(registry)) {
@@ -186,6 +112,23 @@ export function checkOriginTrialGraduations(
   }
   return graduated;
 }
+
+export {
+  FEATURE_GATES,
+  getOriginTrialsRegistry,
+  getVolatileFeaturesRegistry,
+  getOriginTrialMetadata,
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+  checkVolatileFeatureExpirations,
+  isVolatileActive,
+  type FeatureGateSpec,
+  type OriginTrialEntry,
+  type VolatileFeatureEntry,
+  type OriginTrialMetadata,
+  type VolatileFeatureMetadata,
+  type ExpiredVolatileFeature,
+} from './feature-gates.ts';
 
 
 export interface GuideInventoryResult {

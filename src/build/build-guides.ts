@@ -15,9 +15,11 @@ import {
   stripAllComments,
   isDraftStub,
   stripLeadingH1,
+} from "../core/guide-validation.ts";
+import {
   getGuideOriginTrials,
   getGuideVolatileFeatures,
-} from "../core/guide-validation.ts";
+} from "../core/feature-gates.ts";
 import { isTmpFeature } from "../core/feature-parser.ts";
 import { config } from "../core/skills-config.ts";
 import { getFeatureName } from "../core/baseline.ts";
