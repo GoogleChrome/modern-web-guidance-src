@@ -65,10 +65,10 @@ if ('moveBefore' in Element.prototype) {
 
 ## Accessibility considerations
 
-Make sure that moving or reparenting an element does not cause a change of context that can be disorienting, such as a loss of keyboard focus to the top of the `<body>` element.
+Make sure that moving or reparenting an element does not cause any potentially disorienting changes of context, such as a loss of keyboard focus to the page's `<body>` element.
 
-Where possible, make sure that the change is triggered by the user rather than automatically to prevent unexpected changes of content.
+Where possible, make sure that the change is triggered by the user, rather than an automatic change, to prevent unexpected changes of context.
 
-Make sure that moving or reparenting an element does not affect the meaning of the overall content. For example, if a page contains several panels of content that can be, or are intended to be, read independently and in any order, the meaning of the overall content is not affected through repositioning. However, if these panels of content must be presented in a certain sequence in order to be understood, repositioning can break the sequence even if the visual order still makes sense, which can disorient people who cannot see the content and who use a screen reader.
+Make sure that moving or reparenting an element does not affect the meaning of the overall content. For example, if a page contains several panels of content that can be, or are intended to be, read independently and in any order, the meaning of the overall content is not affected through repositioning. However, if these panels of content must be presented in a certain sequence in order to be understood, repositioning can break the reading sequence even if the visual order still makes sense. This can disorient people who cannot see the content and who use a screen reader.
 
 If moving or reparenting an element triggers a change that is important for people to know about, for example moving a video from one area of the page to a "Favorites" list in another area of the page, use a live region to confirm that the move was was successful.
