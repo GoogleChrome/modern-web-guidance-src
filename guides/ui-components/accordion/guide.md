@@ -36,17 +36,9 @@ If the accordion is a distinct section of the page, group its items in an elemen
 </section>
 ```
 
-When each item is a section of the page, put its heading inside the `summary` element so screen reader users can move between items by heading. Keep the group heading outside the `details` elements.
-
-```html
-<section class="accordion" aria-labelledby="faq-heading">
-	<h2 id="faq-heading">Frequently Asked Questions</h2>
-	<details>
-		<summary><h3>How do I reset my password?</h3></summary>
-		<!-- Answer -->
-	</details>
-</section>
-```
+**Warning:** Do not put headings inside `summary`. JAWS and TalkBack expose `summary` as a button and drop any heading inside it, so their users cannot move between items by heading.
+If each item needs its own heading, build a custom accordion instead (see below).
+{# JAWS: https://github.com/FreedomScientific/VFO-standards-support/issues/105 (wontfix). TalkBack: https://tetralogical.com/resources/accessible-components-library/compatibility/ #}
 
 Accessibility notes:
 - Do not wrap every small accordion in a landmark or `region`; that adds navigation noise for screen reader users.
@@ -254,6 +246,43 @@ If it’s undesirable for a `details` element’s contents to be included in wha
 }
 ```
 
+## Custom accordion
+
+Use a custom accordion only when each item is a section of the page that needs its own heading, such as a FAQ or a long reference page where screen reader users move between items by heading.
+It costs JavaScript for every behavior, including exclusivity, and loses the `::details-content` animation, so prefer `details` everywhere else.
+
+Place the `button` inside the heading so the heading keeps its semantics, and put the content element immediately after the heading.
+Hide the content with `hidden="until-found"` so it stays findable, or with plain `hidden` to exclude it from find-in-page.
+`aria-controls` on the trigger is optional; screen readers gain nothing from it.
+
+```html
+<section class="accordion" aria-labelledby="faq-heading">
+	<h2 id="faq-heading">Frequently Asked Questions</h2>
+	<h3>
+		<button type="button" commandfor="answer-1" command="--toggle" aria-expanded="false">How do I reset my password?</button>
+	</h3>
+	<div id="answer-1" hidden="until-found"><!-- Answer --></div>
+</section>
+```
+
+```javascript
+document.addEventListener("command", event => {
+	if (event.command !== "--toggle") return;
+	const content = event.target;
+
+	content.hidden = content.hidden ? false : "until-found";
+	event.source.setAttribute("aria-expanded", !content.hidden);
+}, { capture: true }); // Command events do not bubble, hence capture
+
+// Find-in-page reveals the content directly, so mirror that into the trigger
+document.addEventListener("beforematch", event => {
+	document.querySelector(`[commandfor="${CSS.escape(event.target.id)}"]`)?.setAttribute("aria-expanded", "true");
+});
+```
+
+To make it exclusive, hide the other items' content and reset their triggers in both handlers, since find-in-page can also open an item.
+See {{ GUIDE_REF("custom-button-actions") }} for more details on custom commands and {{ GUIDE_REF("search-hidden-content") }} for `hidden="until-found"`.
+
 ## Fallback strategies
 
 ### Mutually exclusive `details`
@@ -294,31 +323,8 @@ If your Baseline target does not support invoker commands, the buttons do nothin
 
 The animation is a progressive enhancement and needs no fallback. Without `interpolate-size`, items open and close instantly. Without `transition-behavior`, the content hides at the start of the collapse and the height animates empty, while opening still animates.
 
-### Headings inside `summary` with JAWS and TalkBack
-
-JAWS and TalkBack announce a `summary` only as a button and drop a heading nested inside it, so their users cannot move between accordion items by heading.
-All browsers and other screen readers expose the heading.
-
-If per-item heading navigation is a hard requirement for those users, give up `details` for those items: wrap a `button` with `aria-expanded` in the heading, and hide the content with `hidden="until-found"` so it stays findable.
-This loses the no-JavaScript behavior and native exclusivity of `details`, so do not use it by default.
-
-```html
-<h3>
-	<button type="button" aria-expanded="false" commandfor="answer-1" command="--toggle">How do I reset my password?</button>
-</h3>
-<div id="answer-1" hidden="until-found"><!-- Answer --></div>
-```
+### Custom accordion
 
 {{ BASELINE_STATUS("hidden-until-found") }}
 
 Where `until-found` is unsupported, the attribute behaves as plain `hidden`: the content is hidden but not findable, and the accordion still works.
-
-The `--toggle` handler sets `hidden` to `"until-found"` or removes it and mirrors the result into `aria-expanded`.
-See {{ GUIDE_REF("custom-button-actions") }} for handling custom commands and {{ GUIDE_REF("search-hidden-content") }} for keeping `aria-expanded` in sync when find-in-page reveals the content.
-
-{#
-A custom `<h#><button aria-expanded>` + `hidden="until-found"` approach was removed:
-- "Headings inside `summary` are obscured": the HTML content model explicitly permits heading content in `summary`, and every current browser keeps the heading in its accessibility tree (verified 2026-11 via the macOS accessibility API for Safari 26 and Firefox 159, and Chrome's engine tree; Safari was the last to fix it, in 26.6, per TetraLogical's compatibility notes of 2026-10-10: https://tetralogical.com/resources/accessible-components-library/compatibility/). Only JAWS (https://github.com/FreedomScientific/VFO-standards-support/issues/105, closed unfixed 2023-08) and TalkBack still drop it. That is a fallback-section caveat, not a reason to drop the native element.
-- "Essential content such as site nav needs the custom approach": the actual objections to `details` for navigation (Roselli: https://adrianroselli.com/2019/04/details-summary-are-not-insert-control-here.html, O'Hara: https://www.scottohara.me/blog/2022/09/12/details-summary.html) are find-in-page auto-expansion, which `::details-content { display: none }` handles, and the HTML spec's rule that menu/tab widgets are not disclosure widgets, which applies equally to the custom pattern. Modern browser/AT pairings all announce the expanded/collapsed state. The guide's own example was a `details` accordion inside `nav`.
-The custom path also loses no-JS operation, native `name` exclusivity, native find-in-page reveal, and `::details-content` animation. It survives only as the fallback for the JAWS/TalkBack heading case below.
-#}

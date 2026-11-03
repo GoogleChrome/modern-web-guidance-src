@@ -65,7 +65,7 @@
 		outline-offset: 2px;
 	}
 
-	.accordion > details {
+	.accordion > :is(details, div) {
 		--accordion-radius: 0.75rem;
 		--accordion-border-width: 1px;
 		/* Radius of the summary, so it sits flush inside the item's border */
@@ -80,7 +80,7 @@
 			border-start-start-radius: var(--accordion-radius);
 			border-start-end-radius: var(--accordion-radius);
 
-			> summary {
+			> :is(summary, h1, h2, h3, h4, h5, h6) {
 				border-start-start-radius: var(--accordion-inner-radius);
 				border-start-end-radius: var(--accordion-inner-radius);
 			}
@@ -91,18 +91,18 @@
 			border-end-end-radius: var(--accordion-radius);
 
 			/* When open, the content sits below the summary, so its bottom stays square */
-			&:not([open]) > summary {
+			&:where(:not([open]), :has(> :is(h1, h2, h3, h4, h5, h6) > [aria-expanded="false"])) > :is(summary, h1, h2, h3, h4, h5, h6) {
 				border-end-start-radius: var(--accordion-inner-radius);
 				border-end-end-radius: var(--accordion-inner-radius);
 			}
 		}
 
-		& + details {
+		& + :is(details, div) {
 			border-block-start: 0;
 		}
 	}
 
-	summary {
+	.accordion :is(summary, :is(h1, h2, h3, h4, h5, h6) > button) {
 		padding: 0.875rem var(--accordion-padding);
 		font-weight: 500;
 		list-style: none;
@@ -137,7 +137,8 @@
 			rotate: 90deg;
 		}
 
-		details[open] > &::before {
+		details[open] > &::before,
+		&[aria-expanded="true"]::before {
 			rotate: 0deg;
 		}
 
@@ -148,12 +149,29 @@
 		}
 	}
 
-	details::details-content {
+	/* Custom item: the heading wraps the trigger, so reset both to look like a summary */
+	.accordion > div > :is(h1, h2, h3, h4, h5, h6) {
+		margin: 0;
+		font-size: inherit;
+
+		> button {
+			font-size: inherit;
+			inline-size: 100%;
+			border: 0;
+			border-radius: inherit;
+			background: none;
+			text-align: start;
+		}
+	}
+
+	details::details-content,
+	.accordion > div > :not(h1, h2, h3, h4, h5, h6) {
 		padding-inline: var(--accordion-padding);
 		color: var(--color-text-muted);
 	}
 
-	details > :not(summary) {
+	details > :not(summary),
+	.accordion > div > :not(h1, h2, h3, h4, h5, h6) > * {
 		margin-block: 0 1rem;
 	}
 
@@ -257,7 +275,34 @@
 	</div>
 </section>
 
+<section>
+	<h2>Custom accordion with headings</h2>
+	<div class="accordion" role="region" aria-labelledby="faq">
+		<h3 id="faq">FAQ</h3>
+		<div>
+			<h4><button type="button" commandfor="reset-password" command="--toggle" aria-expanded="true">How do I reset my password?</button></h4>
+			<div id="reset-password"><p>Reset password contents</p></div>
+		</div>
+		<div>
+			<h4><button type="button" commandfor="delete-account" command="--toggle" aria-expanded="false">How do I delete my account?</button></h4>
+			<div id="delete-account" hidden="until-found"><p>Delete account contents</p></div>
+		</div>
+	</div>
+</section>
+
 <script>
+document.addEventListener("command", event => {
+	if (event.command !== "--toggle") return;
+	const content = event.target;
+
+	content.hidden = content.hidden ? false : "until-found";
+	event.source.setAttribute("aria-expanded", !content.hidden);
+}, { capture: true });
+
+document.addEventListener("beforematch", event => {
+	document.querySelector(`[commandfor="${CSS.escape(event.target.id)}"]`)?.setAttribute("aria-expanded", "true");
+});
+
 document.addEventListener("command", event => {
 	if (event.command !== "--expand-all" && event.command !== "--collapse-all") return;
 	const expanded = event.command === "--expand-all";
