@@ -624,7 +624,7 @@ The features that may require fallbacks are scroll-snap-events and scroll-driven
 
 #### Scroll snap events
 
-{{ FEATURE_FALLBACKS("scroll-snap-events") }}
+{{ BASELINE_STATUS("scroll-snap-events") }}
 
 The `scrollsnapchange` event is the cleanest way to detect "the active view changed" — one listener on the stack, fired exactly once per snap commit. In browsers without it, the same effect can be polyfilled with an `IntersectionObserver` watching each view for full visibility inside the stack. The fallback dispatches into the same `onActiveViewChanged` function the primary path uses, so all the state-transition logic stays in one place.
 
@@ -669,7 +669,7 @@ if (!('onscrollsnapchange' in HTMLElement.prototype)) {
 
 #### Scroll-driven animations
 
-{{ FEATURE_FALLBACKS("scroll-driven-animations") }}
+{{ BASELINE_STATUS("scroll-driven-animations") }}
 
 The scroll-driven parallax / dim / shadow effect is a progressive enhancement on top of the navigation core. The CSS `@supports (animation-timeline: view())` gate (shown in step 2) confines the animation to supporting browsers; everywhere else the views simply cut between snap stops with no transition. The component is fully functional without the parallax — snap, history sync, focus management, and `inert` all still work.
 

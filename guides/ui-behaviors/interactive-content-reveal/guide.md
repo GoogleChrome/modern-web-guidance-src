@@ -101,7 +101,7 @@ container.addEventListener('pointermove', (e) => {
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("registered-custom-properties") }}
+{{ BASELINE_STATUS("registered-custom-properties") }}
 
 ### Non-registered Property Fallback
 Browsers that support `mask-image` but not `@property` will still show the spotlight, but the movement will jump between on and off states because they cannot interpolate values inside a `radial-gradient`. Provide fallback values when using `var()`.

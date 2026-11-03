@@ -508,6 +508,27 @@ function requireTitle(title: unknown, filePath: string): string {
   return title.trim();
 }
 
+export function formatChunkHeader(
+  title: string,
+  id: string,
+  category: string,
+  featureIds: string[],
+): string {
+  const header = `${title}\n${id} (${category})`;
+  if (featureIds.length === 0) return header;
+
+  const features = featureIds.map((rawFid) => {
+    const name = getFeatureName(rawFid);
+    const fid = rawFid.replace(/^tmp-/, "");
+    const aliases = [...new Set([fid, fid.replaceAll("-", " ")])].filter(
+      (a) => a.toLowerCase() !== name.toLowerCase()
+    );
+    return aliases.length > 0 ? `${name} (${aliases.join(", ")})` : name;
+  });
+
+  return `${header}\nFeatures: ${features.join(", ")}`;
+}
+
 async function processSingleGuideFile(
   filePath: string,
   category: string,
@@ -645,8 +666,10 @@ async function processSingleGuideFile(
     ? [`${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`]
     : [...chunkMarkdown(processedMarkdown), summaryChunk];
 
+  const header = formatChunkHeader(title, id, category, featureIds);
+
   for (const chunk of chunks) {
-    const embeddingText = `${id} (${category})\nFeatures: ${featuresUsed.join(", ")}\n\n${chunk}`;
+    const embeddingText = `${header}\n\n${chunk}`;
     const vector = await embedder.embed(embeddingText);
 
     storeUseCases.push({
@@ -655,7 +678,7 @@ async function processSingleGuideFile(
       category,
       featuresUsed,
       tokenCount,
-      chunkContent: chunk,
+      chunkContent: embeddingText,
       vector
     });
   }
