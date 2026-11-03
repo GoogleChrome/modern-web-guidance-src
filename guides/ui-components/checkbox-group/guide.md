@@ -35,29 +35,25 @@ MANDATORY: Wrap the group in a `<fieldset>` with a `<legend>` so assistive techn
 <fieldset>
   <legend>Active automatons</legend>
 
-  <label class="master">
+  <label class="master" for="select-all">
     <input type="checkbox" class="checkbox" id="select-all"
            aria-controls="robot-1" />
     Select all automatons
   </label>
 
-  <ul class="options">
-    <li>
-      <label>
-        <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" />
-        <span>Clockwork Courier</span>
-        <span class="model">CW-01</span>
-      </label>
-    </li>
+  <div class="options">
+    <label for="robot-1">
+      <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" />
+      <span>Clockwork Courier</span>
+      <span class="model">CW-01</span>
+    </label>
     <!-- A disabled option is excluded from select-all -->
-    <li>
-      <label>
-        <input type="checkbox" class="checkbox" id="robot-2" name="robot" value="rustbucket" disabled />
-        <span>Rust Bucket (offline)</span>
-        <span class="model">RB-0</span>
-      </label>
-    </li>
-  </ul>
+    <label for="robot-2">
+      <input type="checkbox" class="checkbox" id="robot-2" name="robot" value="rustbucket" disabled />
+      <span>Rust Bucket (offline)</span>
+      <span class="model">RB-0</span>
+    </label>
+  </div>
 
   <output aria-live="polite"></output>
 </fieldset>
