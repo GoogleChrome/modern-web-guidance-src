@@ -48,7 +48,7 @@ For most styling purposes (e.g. colors, borders, backgrounds, typography, etc) t
 - Use `:placeholder-shown` and `::placeholder` to style input placeholders.
 - Use `field-sizing: content` to make text fields size to content.
 - For `<textarea>` elements, use `resize: vertical` to disable horizontal resizing.
-- Do not use `resize: none` on `<textarea>` elements to disable all resizing.
+- Do not use `resize: none` on `<textarea>` elements to disable all resizing, without an alternative resizing mechanism.
 
 ### Multiple choice controls (select, radios, checkboxes)
 
