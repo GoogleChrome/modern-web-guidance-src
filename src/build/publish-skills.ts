@@ -141,10 +141,23 @@ const releaseNotes = await generateReleaseNotes({
 async function validate(newVersion: string) {
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
-  console.log(`\nEnsuring all guide chunks have cached teacher vectors...`);
-  const embedResult = await embedGuideChunks();
-  if (embedResult.newEmbeds > 0 || embedResult.prunedCount > 0) {
-    console.log(`✅ Updated static chunk vector cache (+${embedResult.newEmbeds} embedded, -${embedResult.prunedCount} pruned).`);
+  if (isDryRun) {
+    console.log(`\nVerifying that all guide chunks have cached teacher vectors...`);
+    const checkResult = await embedGuideChunks({ check: true });
+    if (checkResult.missing.length > 0) {
+      const missingGuides = [...new Set(checkResult.missing.map((c) => c.guideId))];
+      throw new Error(
+        `Publish aborted: ${checkResult.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:\n` +
+          missingGuides.map((g) => `  - ${g}`).join("\n") +
+          `\nRun 'node src/rag/embed-chunks.ts' before publishing.`
+      );
+    }
+  } else {
+    console.log(`\nEnsuring all guide chunks have cached teacher vectors...`);
+    const embedResult = await embedGuideChunks();
+    if (embedResult.newEmbeds > 0 || embedResult.prunedCount > 0) {
+      console.log(`✅ Updated static chunk vector cache (+${embedResult.newEmbeds} embedded, -${embedResult.prunedCount} pruned).`);
+    }
   }
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);

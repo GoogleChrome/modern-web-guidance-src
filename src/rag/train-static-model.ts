@@ -39,7 +39,8 @@ import { replaceMacros } from "../core/macros.ts";
 import { outDir, rootDir } from "../core/paths.ts";
 import { config } from "../core/skills-config.ts";
 import { chunkMarkdown } from "../build/build-guides.ts";
-import { tokenize } from "./bm25.ts";
+import { tokenize, tokenizeBm25 } from "./bm25.ts";
+import { loadChunkCache } from "./chunk-cache.ts";
 import { dotProduct } from "./search.ts";
 import {
   accumulateNormalizedVector,
@@ -143,28 +144,53 @@ function normQuery(q: string): string {
   return q.trim().toLowerCase().split(/\s+/).join(" ");
 }
 
-function loadExcludedEvalQueries(): Set<string> {
-  const excluded = new Set<string>();
+export interface ExcludedEvalQueries {
+  exact: Set<string>;
+  stemSignatures: Set<string>;
+  isExcluded(query: string): boolean;
+}
+
+export function loadExcludedEvalQueries(): ExcludedEvalQueries {
+  const exact = new Set<string>();
+  const stemSignatures = new Set<string>();
   const candidateFiles = [
     path.join(rootDir, "src/rag/benchmarks/data/harness-queries.jsonl"),
     path.join(rootDir, "src/rag/benchmarks/data/oos-queries.jsonl"),
+    path.join(rootDir, "src/rag/benchmarks/data/agent-queries.jsonl"),
     path.join(outDir, "benchmarks/wild/v1/wild-queries.jsonl"),
+    path.join(outDir, "benchmarks/wild/v2/wild-queries.jsonl"),
   ];
   for (const file of candidateFiles) {
-    if (!fs.existsSync(file)) continue;
+    if (!fs.existsSync(file)) {
+      console.warn(`⚠️  Warning: eval queries holdout file missing: ${file}`);
+      continue;
+    }
     const lines = fs.readFileSync(file, "utf8").split("\n").filter(Boolean);
     for (const line of lines) {
       try {
         const parsed = JSON.parse(line) as { query?: string };
-        if (typeof parsed.query === "string") {
-          excluded.add(normQuery(parsed.query));
+        if (typeof parsed.query === "string" && parsed.query.trim()) {
+          const q = parsed.query;
+          exact.add(normQuery(q));
+          const stemSig = tokenizeBm25(q).sort().join(" ");
+          if (stemSig) {
+            stemSignatures.add(stemSig);
+          }
         }
       } catch {
         // Ignore malformed lines
       }
     }
   }
-  return excluded;
+  return {
+    exact,
+    stemSignatures,
+    isExcluded(query: string): boolean {
+      if (exact.has(normQuery(query))) return true;
+      const stemSig = tokenizeBm25(query).sort().join(" ");
+      return stemSig.length > 0 && stemSignatures.has(stemSig);
+    },
+  };
 }
 
 interface CorpusScan {
@@ -392,18 +418,62 @@ async function main(): Promise<void> {
   if (values["extra-queries"]) {
     const extraPath = path.resolve(values["extra-queries"]);
     const raw = fs.readFileSync(extraPath, "utf8").trim();
+    const queryDf = new Map<string, number>();
+
+    const isCleanQuery = (q: string): boolean => {
+      if (/(?:daily[- ]grind|barista|chronicle|launchpad)/i.test(q)) return false;
+      if (/[\\/]|\.tsx?\b|\.jsx?\b|\.vue\b|\.svelte\b|\.css\b|\.html?\b|\.json\b|\.md\b|http/i.test(q)) return false;
+      if (/--|[{}()[\];=<>]/i.test(q)) return false;
+      return true;
+    };
+
+    const processQuery = (rawQuery: string, count: number) => {
+      const q = rawQuery.trim().toLowerCase().replace(/\s+/g, " ");
+      if (!q || !isCleanQuery(q)) return;
+
+      const words = q.split(/\s+/).filter(Boolean);
+      // Rule 1: 2-8 words only for Tokenlearn
+      // Rule 2: count >= 2 for queries
+      if (words.length >= 2 && words.length <= 8 && count >= 2) {
+        extraQueries.push(q);
+      }
+
+      // Rule 2: distinct query DF for new vocabulary words
+      const toks = new Set(tokenize(q));
+      for (const t of toks) {
+        if (/^[a-z][a-z0-9]{2,24}$/.test(t)) {
+          queryDf.set(t, (queryDf.get(t) ?? 0) + 1);
+        }
+      }
+    };
+
     if (extraPath.endsWith(".jsonl")) {
       for (const line of raw.split("\n").filter(Boolean)) {
-        const row = JSON.parse(line) as { query?: string } | string;
+        const row = JSON.parse(line) as { query?: string; n?: number; count?: number } | string;
         const q = typeof row === "string" ? row : row.query;
-        if (q) extraQueries.push(q.trim());
+        const count =
+          typeof row === "object" && row !== null
+            ? (typeof row.n === "number" ? row.n : typeof row.count === "number" ? row.count : 2)
+            : 2;
+        if (q) processQuery(q, count);
       }
     } else {
       const parsed = JSON.parse(raw) as Record<string, string[]> | string[];
       const flat = Array.isArray(parsed) ? parsed : Object.values(parsed).flat();
       for (const q of flat) {
-        if (typeof q === "string") extraQueries.push(q.trim());
+        if (typeof q === "string") processQuery(q, 2);
       }
+    }
+
+    let addedExtraTokens = 0;
+    for (const [t, dfCount] of queryDf) {
+      if (dfCount >= 5 && !vocabSet.has(t)) {
+        vocabSet.add(t);
+        addedExtraTokens++;
+      }
+    }
+    if (addedExtraTokens > 0) {
+      console.log(`Added ${addedExtraTokens} frequent web-dev tokens (query DF >= 5) from extraQueries to vocabulary.`);
     }
   }
 
@@ -438,10 +508,10 @@ async function main(): Promise<void> {
   if (!values["skip-tokenlearn"]) {
     const excluded = loadExcludedEvalQueries();
     const allTrainCandidates = [...new Set([...syntheticQueries, ...extraQueries])].filter(
-      (q) => q && !excluded.has(normQuery(q)) && q.split(/\s+/).length <= 40
+      (q) => q && !excluded.isExcluded(q) && q.split(/\s+/).length <= 40
     );
     console.log(
-      `Embedding ${allTrainCandidates.length} training queries with ${teacherModel} (excluded ${excluded.size} eval queries)...`
+      `Embedding ${allTrainCandidates.length} training queries with ${teacherModel} (excluded ${excluded.exact.size} exact / ${excluded.stemSignatures.size} stemmed eval holdouts)...`
     );
     const teacherTrain = await embedWithTeacher(
       allTrainCandidates,
@@ -451,16 +521,43 @@ async function main(): Promise<void> {
       cacheDir
     );
 
+    // Rule 4: On-topic relevance gate (Teacher cosine >= 0.55 to at least one guide chunk)
+    const chunkCache = loadChunkCache(targetDir);
+    const chunkVecs = [...chunkCache.values()];
+    if (chunkVecs.length === 0) {
+      throw new Error(`Cannot run on-topic relevance gate: no guide chunks found in ${targetDir}`);
+    }
+    console.log(`Loaded ${chunkVecs.length} guide chunk vectors for on-topic relevance gating.`);
+
     let seed = 7;
     const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
 
+    let filteredOffTopicCount = 0;
     const data: Array<{ enc: Array<[number, number]>; tgt: Float32Array }> = [];
     for (const t of allTrainCandidates) {
       const enc = encodeTokens(t, wordIndex);
       const rawVec = teacherTrain.get(t);
       if (enc.length > 0 && rawVec) {
-        data.push({ enc, tgt: truncateAndNormalize256(rawVec) });
+        const tgt = truncateAndNormalize256(rawVec);
+
+        let maxCos = -1;
+        for (let c = 0; c < chunkVecs.length; c++) {
+          const cos = dotProduct(tgt, chunkVecs[c]);
+          if (cos > maxCos) {
+            maxCos = cos;
+            if (maxCos >= 0.55) break;
+          }
+        }
+
+        if (maxCos >= 0.55) {
+          data.push({ enc, tgt });
+        } else {
+          filteredOffTopicCount++;
+        }
       }
+    }
+    if (filteredOffTopicCount > 0) {
+      console.log(`Filtered out ${filteredOffTopicCount} off-topic queries (max chunk cosine < 0.55).`);
     }
 
     const shuffled = data

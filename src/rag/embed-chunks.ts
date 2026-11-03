@@ -168,12 +168,14 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
 
   const prunedCount = existingCache.size + newEmbeds - activeCache.size;
 
-  const saveStats = saveChunkCache(activeCache, cacheDir);
-  console.log(
-    `Saved chunk cache to ${cacheDir}: ${saveStats.count} chunks (${(saveStats.bytes / 1024).toFixed(1)} KB)`
-  );
-  if (prunedCount > 0) {
-    console.log(`Pruned ${prunedCount} stale chunk entries.`);
+  if (newEmbeds > 0 || prunedCount > 0 || options.force) {
+    const saveStats = saveChunkCache(activeCache, cacheDir);
+    console.log(
+      `Saved chunk cache to ${cacheDir}: ${saveStats.count} chunks (${(saveStats.bytes / 1024).toFixed(1)} KB)`
+    );
+    if (prunedCount > 0) {
+      console.log(`Pruned ${prunedCount} stale chunk entries.`);
+    }
   }
 
   return {
