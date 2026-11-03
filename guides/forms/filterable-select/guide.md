@@ -1,14 +1,14 @@
 ---
-name: combobox
-description: "Build a combobox: a text input combined with a filterable popup list of options the user can type into to narrow and select from."
+name: filterable-select
+description: "Build a filterable select: a text input combined with a filterable popup list of options the user can type into to narrow and select from."
 web-feature-ids:
   - customizable-select
   - datalist
 ---
 
-# Combobox
+# Filterable select
 
-A combobox pairs a text field with a popup list: the user types to narrow the options and can either pick one or submit their own free-form value. Build it on top of a customizable `<select>` (`appearance: base-select`) so the popup, keyboard handling, light dismiss, `Escape`, focus management, and form submission all come from the platform, and only the filter and "add" behavior is written in JavaScript. For browsers without customizable select, the same markup degrades to an `<input list>` bound to a `<datalist>`.
+A filterable select pairs a text field with a popup list: the user types to narrow the options and can either pick one or submit their own free-form value. Build it on top of a customizable `<select>` (`appearance: base-select`) so the popup, keyboard handling, light dismiss, `Escape`, focus management, and form submission all come from the platform, and only the filter and "add" behavior is written in JavaScript. For browsers without customizable select, the same markup degrades to an `<input list>` bound to a `<datalist>`.
 
 If the user only needs to narrow a fixed list and never enter a value that is not already an option, build the same control without the "Add" button (steps 3–6 minus the `add` pieces) and drop the `<input list>` free-form fallback in favor of a plain `<select>`.
 
@@ -18,7 +18,7 @@ If the user only needs to narrow a fixed list and never enter a value that is no
 
 ### 1. Author the fallback markup first
 
-Write a standard `<input list>` + `<datalist>` combobox in HTML. It works everywhere and is what non-supporting browsers keep. Give it a `<label>`, a `name`, and `autocomplete="off"` so the browser's own autofill suggestions do not compete with the list.
+Write a standard `<input list>` + `<datalist>` filterable select in HTML. It works everywhere and is what non-supporting browsers keep. Give it a `<label>`, a `name`, and `autocomplete="off"` so the browser's own autofill suggestions do not compete with the list.
 
 ```html
 <div id="fallback">
@@ -189,7 +189,7 @@ select.addEventListener('focusout', e => { if (!select.contains(e.relatedTarget)
 
 ## Fallback strategies
 
-Treat the customizable select as a progressive enhancement over `<input list>` + `<datalist>`. Gate the enhancement on `CSS.supports('appearance', 'base-select')`, and remove the fallback control when enhancing so that exactly one field with the shared `name` is submitted. Users of non-supporting browsers still get a native combobox that filters as they type and accepts free-form values; what they lose is the styled picker, the explicit "Add" affordance, and the option count announcement.
+Treat the customizable select as a progressive enhancement over `<input list>` + `<datalist>`. Gate the enhancement on `CSS.supports('appearance', 'base-select')`, and remove the fallback control when enhancing so that exactly one field with the shared `name` is submitted. Users of non-supporting browsers still get a native filterable select that filters as they type and accepts free-form values; what they lose is the styled picker, the explicit "Add" affordance, and the option count announcement.
 
 {{ FEATURE_FALLBACKS("customizable-select") }}
 
