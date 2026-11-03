@@ -171,13 +171,13 @@ When `::scroll-button()` is unavailable, reveal the HTML Previous and Next butto
 
 {{ BASELINE_STATUS("scroll-markers") }}
 
-When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named native `<button>` per slide that scrolls the track to that slide. Do not set `aria-current` here; the single settled-scroll handler described in Status updates and fallback controls does that.
+When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named native `<button>` per slide that scrolls the track to that slide. Do not set `aria-current` here; the current-slide handler described in Status updates and fallback controls does that.
 
 ### Marker state
 
 {{ BASELINE_STATUS("scroll-marker-targets") }}
 
-If `:target-current` is unavailable, highlight the active marker from script state: the settled-scroll handler marks the current slide (for example with `data-current`), and CSS targets that slide's `::scroll-marker` and the fallback marker's `aria-current` state. Never leave the active marker unstyled.
+If `:target-current` is unavailable, highlight the active marker from script state: the live current-slide update marks the current slide (for example with `data-current`) as the track scrolls, not only once it settles, and CSS targets that slide's `::scroll-marker` and the fallback marker's `aria-current` state. Never leave the active marker unstyled.
 
 ### Anchor positioning
 
@@ -219,14 +219,15 @@ Treat slide effects as optional enhancements and keep them inside `@media (prefe
 
 ### Status updates and fallback controls
 
-Update slide state after scrolling settles rather than on every animation frame, and measure only the carousel's scrolling axis.
+Update the active marker as the track scrolls (throttled to one update per animation frame) so fallback markers keep pace with native `:target-current`, and run announcements and button state after scrolling settles. Measure only the carousel's scrolling axis.
 
 Write a small script that adapts to your markup and covers these requirements:
 
 - **Detect each feature separately.** Feature-detect native scroll buttons (including the anchor positioning they depend on) and native scroll markers with `CSS.supports`. Hide the fallback controls only for features that exist natively, and wire up only the missing ones.
 - **Track the current slide** along the carousel's scrolling axis, for horizontal or vertical layouts.
-- **Update state after scrolling settles**, not on every frame, from a single handler driven by the settled scroll position: announce "Slide N of M" in the status region, mark the active fallback marker with `aria-current="true"`, and update the fallback buttons' disabled state. Controls only initiate scrolling; they never update state directly.
-- **Settle on `scrollend`**, with a debounced `scroll` listener only where `scrollend` is unsupported. Do not run both, and do not reorder or re-scroll the track (such as when parking a slide) while a scroll is still in flight, because that cancels it.
+- **Update the active marker live.** From a `scroll` listener throttled with `requestAnimationFrame`, compute the nearest slide and set the active fallback marker (`aria-current="true"` and `data-current`) immediately, and also set it from the pending target the moment a marker or fallback Previous/Next button is clicked, so the dots change when the user decides, as native `::scroll-button()` and `:target-current` do, instead of after the slide moves. Skip the write when the current slide is unchanged.
+- **Update the rest after scrolling settles**, from a single handler driven by the settled scroll position: announce "Slide N of M" in the status region and update the fallback buttons' disabled state. Controls only initiate scrolling; they never update state directly.
+- **Settle on `scrollend`**, with a debounced `scroll` listener only where `scrollend` is unsupported. Do not run two settle handlers, and do not reorder or re-scroll the track (such as when parking a slide) while a scroll is still in flight, because that cancels it.
 - **Resolve fallback clicks from a pending target.** Make rapid previous/next clicks build on the slide already being scrolled to, not on the nearest slide, and clear the target when scrolling settles. Native `::scroll-button()` controls aim from the in-flight scroll position, so with smooth scrolling a rapid click repeats the same slide. Before the press is handled, finish the running scroll instantly (a `pointerdown` listener on the track whose target is the track itself, which is how presses on its pseudo-element buttons arrive) and park the end slides, then let the native click proceed. Ignore a `scrollend` that arrives after the next scroll has started, because acting on it (such as parking) cancels that scroll.
 - **Start on the first slide without script.** Parking the last slide before the first shifts the initial scroll position, so set `scroll-initial-target: nearest` on the first slide. Scroll to the first slide from script as well, for browsers without it.
 - **Respect reduced motion** for any smooth scrolling.

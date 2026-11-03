@@ -330,12 +330,26 @@
 
     // Fallback clicks made mid-scroll build on the pending target, so rapid clicks are not lost.
     let pending = null;
+    // Highlight the active marker right away, as native :target-current does, rather than after scrolling settles.
+    const mark = (item) => {
+      const i = slides.indexOf(item);
+      slides.forEach((s, j) => s.toggleAttribute("data-current", j === i));
+      markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
+    };
+    const aim = (item) => {
+      pending = item;
+      mark(item);
+      show(item);
+    };
     const step = (dir) => {
       const target = neighbor(pending ?? nearest(), dir);
-      if (!target) return;
-      pending = target;
-      show(target);
+      if (target) aim(target);
     };
+    let markFrame = 0;
+    track.addEventListener("scroll", () => {
+      cancelAnimationFrame(markFrame);
+      markFrame = requestAnimationFrame(() => mark(pending ?? nearest()));
+    }, { passive: true });
 
     // Native scroll buttons aim from the in-flight position, so a click mid-scroll would repeat the same slide.
     // Finish the running scroll first; presses on the buttons and markers target the track itself.
@@ -369,7 +383,7 @@
       markers = slides.map((slide, i) => {
         const button = Object.assign(document.createElement("button"), { type: "button" });
         button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
-        button.addEventListener("click", () => show(slide));
+        button.addEventListener("click", () => aim(slide));
         markerNav.append(button);
         return button;
       });
@@ -402,8 +416,7 @@
         park(item);
       }
       status.textContent = `Slide ${i + 1} of ${slides.length}`;
-      slides.forEach((s, j) => s.toggleAttribute("data-current", j === i));
-      markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
+      mark(item);
       prevBtn.disabled = !neighbor(item, -1);
       nextBtn.disabled = !neighbor(item, 1);
     }
