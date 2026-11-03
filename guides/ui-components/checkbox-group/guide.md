@@ -201,7 +201,7 @@ For long lists (provisionally about 12 or more options), keep the same markup an
 }
 ```
 
-Without a visible cue, a list cut exactly between rows looks complete and overlay scrollbars stay hidden until scrolling. Follow the {{ GUIDE_REF("scrollability-affordance-hints") }} guide to show that more options are below (and above).
+Without a visible cue, a list cut exactly between rows looks complete and overlay scrollbars stay hidden until scrolling. See {{ GUIDE_REF("scrollability-affordance-hints") }} to show that more options are below (and above).
 
 Pad the scroll container's inline-start edge by at least the focus ring's outline width plus offset, because `overflow` clips the ring where the checkboxes touch the edge.
 
