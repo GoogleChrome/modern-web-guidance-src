@@ -101,7 +101,7 @@ Clicking an indeterminate master resolves to checked (all options selected), bec
 
 The master is a convenience control. The options remain the source of truth, and the master's state is always derived from them.
 
-* Include a master only when the group has 4 or more options and selecting all or none is a plausible task. Omit it for 2-3 options.
+* Include a master only when the group has 4 or more options and selecting all or none is a plausible user goal.
 * DO NOT add a master when selecting everything is destructive or risky (for example deleting items or granting permissions).
 * Place the master first inside the `<fieldset>`, before the options, and separate it visually (for example a divider or heavier font weight) so it reads as a control over the group, not as another option.
 * Keep the label static ("Select all ..."). A label that flips between "Select all" and "Deselect all" is announced as a change in meaning to screen reader users, while the checked and mixed states already convey the current status.
