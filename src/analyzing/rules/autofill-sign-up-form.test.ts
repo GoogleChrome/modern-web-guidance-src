@@ -69,6 +69,25 @@ void test('autofill-sign-up-form: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /new-password/);
   });
+
+  await t.test('flags single-password SignUpForm component with heading and submit cues', () => {
+    const jsx = `
+      export function SignUpForm() {
+        return (
+          <form onSubmit={handleSubmit}>
+            <h2>Sign Up</h2>
+            <input type="password" id="password" />
+            <button type="submit">Sign Up</button>
+          </form>
+        );
+      }
+    `;
+    const matches = withVirtualSourceFile('src/components/SignUpForm.tsx', jsx, (sourceFile) =>
+      scanJsx('src/components/SignUpForm.tsx', sourceFile, [matcher]),
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /new-password/);
+  });
 });
 
 void test('autofill-sign-up-form: negative / exempt cases', async (t) => {
@@ -79,6 +98,20 @@ void test('autofill-sign-up-form: negative / exempt cases', async (t) => {
       </form>
     `;
     const matches = scanHtml('compliant.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts sign-in form with footer sign-up link (stays autofill-sign-in-form)', () => {
+    const html = `
+      <form>
+        <h2>Sign In</h2>
+        <input type="email" />
+        <input type="password" id="password" />
+        <button type="submit">Log In</button>
+        <p>New here? <a href="/signup">Sign Up</a></p>
+      </form>
+    `;
+    const matches = scanHtml('login.html', html, [matcher]);
     assert.equal(matches.length, 0);
   });
 

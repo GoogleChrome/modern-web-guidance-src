@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanCss } from '../scanners/css-scanner.ts';
-import { flickerFreeClientSideAbTestingMatcher } from './flicker-free-client-side-ab-testing.ts';
+import { scanFiles } from '../scanners/index.ts';
+import {
+  flickerFreeClientSideAbTestingMatcher,
+  flickerFreeClientSideAbTestingRule,
+} from './flicker-free-client-side-ab-testing.ts';
 
 void test('flicker-free-client-side-ab-testing CSS matcher', async (t) => {
   await t.test('flags .async-hide { opacity: 0 !important } anti-flicker rule', () => {
@@ -36,5 +40,37 @@ void test('flicker-free-client-side-ab-testing CSS matcher', async (t) => {
     `;
     const matches = scanCss('styles.css', css, [flickerFreeClientSideAbTestingMatcher]);
     assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts HTML file when script already uses blocking="render"', () => {
+    const htmlWithBlocking = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>.async-hide { opacity: 0 !important; }</style>
+          <script async blocking="render" src="https://example.com/ab.js"></script>
+        </head>
+      </html>
+    `;
+    const findingsWithBlocking = scanFiles(
+      new Map([['index.html', htmlWithBlocking]]),
+      [flickerFreeClientSideAbTestingRule],
+    );
+    assert.equal(findingsWithBlocking.length, 0);
+
+    const htmlWithoutBlocking = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>.async-hide { opacity: 0 !important; }</style>
+          <script async src="https://example.com/ab.js"></script>
+        </head>
+      </html>
+    `;
+    const findingsWithoutBlocking = scanFiles(
+      new Map([['index.html', htmlWithoutBlocking]]),
+      [flickerFreeClientSideAbTestingRule],
+    );
+    assert.equal(findingsWithoutBlocking.length, 1);
   });
 });

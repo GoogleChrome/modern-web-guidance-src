@@ -366,6 +366,142 @@ function hasExplicitSignInWordSequence(words: readonly string[]): boolean {
   return false;
 }
 
+function hasSignUpBasenameCue(filePath: string | undefined): boolean {
+  if (!filePath) return false;
+  if (
+    NON_SIGNUP_CHANGE_OR_PROFILE_PATH_REGEX.test(filePath) ||
+    NON_SIGNUP_ADMIN_OR_SHOWCASE_PATH_REGEX.test(filePath)
+  ) {
+    return false;
+  }
+  const filename = filePath.split(/[\\/]/).pop() ?? '';
+  const baseWords = tokenizeIdentifierWords(filename);
+  if (
+    hasExplicitSignInWordSequence(baseWords) ||
+    baseWords.some((w) => w === 'auth' || w === 'authenticate' || w === 'authentication')
+  ) {
+    return false;
+  }
+  for (let i = 0; i < baseWords.length; i++) {
+    const w = baseWords[i]!;
+    const next = baseWords[i + 1];
+    if (
+      w === 'signup' ||
+      w === 'register' ||
+      w === 'registration' ||
+      w === 'createaccount' ||
+      (w === 'sign' && next === 'up') ||
+      (w === 'create' && next !== undefined && CREATE_ACCOUNT_COMPANION_WORDS.has(next))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function extractHeadingAndSubmitTexts(formBody: string): string[] {
+  if (!formBody) return [];
+  const texts: string[] = [];
+
+  const headingRegex = /<(?:h[1-6]|H[1-6])\b[^>]*>([\s\S]*?)<\/(?:h[1-6]|H[1-6])>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = headingRegex.exec(formBody)) !== null) {
+    const inner = match[1] ?? '';
+    const cleaned = inner.replace(/<[^>]+>/g, ' ').trim();
+    if (cleaned) texts.push(cleaned);
+  }
+
+  const buttonRegex =
+    /<(?:button|Button)\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\})*)>([\s\S]*?)<\/(?:button|Button)>/gi;
+  while ((match = buttonRegex.exec(formBody)) !== null) {
+    const attrs = match[1] ?? '';
+    const isNonSubmit =
+      /\btype\s*=\s*(?:["'](?:button|reset)["']|\{(?:["'](?:button|reset)["'])\})/i.test(attrs);
+    if (!isNonSubmit) {
+      const inner = match[2] ?? '';
+      const cleaned = inner.replace(/<[^>]+>/g, ' ').trim();
+      if (cleaned) texts.push(cleaned);
+    }
+  }
+
+  const inputRegex =
+    /<(?:input|Input)\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\})*)\/?>/gi;
+  while ((match = inputRegex.exec(formBody)) !== null) {
+    const attrs = match[1] ?? '';
+    if (/\btype\s*=\s*(?:["']submit["']|\{(?:["']submit["'])\})/i.test(attrs)) {
+      const valMatch = attrs.match(
+        /\bvalue\s*=\s*(?:"([^"]*)"|'([^']*)'|\{(?:["']([^"']*)["'])\})/i,
+      );
+      const val = (valMatch ? (valMatch[1] ?? valMatch[2] ?? valMatch[3] ?? '') : '').trim();
+      if (val) texts.push(val);
+      const ariaMatch = attrs.match(
+        /\baria-label\s*=\s*(?:"([^"]*)"|'([^']*)'|\{(?:["']([^"']*)["'])\})/i,
+      );
+      const aria = (ariaMatch ? (ariaMatch[1] ?? ariaMatch[2] ?? ariaMatch[3] ?? '') : '').trim();
+      if (aria) texts.push(aria);
+    }
+  }
+
+  return texts;
+}
+
+function hasSignInCueInHeadingOrSubmit(texts: readonly string[]): boolean {
+  for (const text of texts) {
+    const words = tokenizeIdentifierWords(text);
+    if (hasExplicitSignInWordSequence(words)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isExplicitSignUpText(text: string): boolean {
+  const words = tokenizeIdentifierWords(text);
+  if (hasExplicitSignInWordSequence(words)) {
+    return false;
+  }
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]!;
+    const next = words[i + 1];
+    if (
+      w === 'signup' ||
+      w === 'register' ||
+      w === 'registration' ||
+      w === 'createaccount'
+    ) {
+      return true;
+    }
+    if (w === 'sign') {
+      if (next === 'up' || (next === 'me' && words[i + 2] === 'up')) {
+        return true;
+      }
+    }
+    if (w === 'create') {
+      for (let j = i + 1; j <= Math.min(words.length - 1, i + 3); j++) {
+        if (CREATE_ACCOUNT_COMPANION_WORDS.has(words[j]!)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function hasSignUpCueInHeadingOrSubmit(texts: readonly string[]): boolean {
+  return texts.some(isExplicitSignUpText);
+}
+
+function isSignUpByPathOrVisibleFormText(
+  enclosingForm: EnclosingFormContext,
+  filePath?: string,
+): boolean {
+  const texts = extractHeadingAndSubmitTexts(enclosingForm.body);
+  if (hasSignInCueInHeadingOrSubmit(texts)) {
+    return false;
+  }
+  return hasSignUpBasenameCue(filePath) || hasSignUpCueInHeadingOrSubmit(texts);
+}
+
 /**
  * Single source of truth partitioning eligible password fields into:
  * - `true`: new-credential field (`new-password`, owned by `autofill-sign-up-form`)
@@ -374,6 +510,7 @@ function hasExplicitSignInWordSequence(words: readonly string[]): boolean {
 export function isNewCredentialPasswordField(
   element: DomElementView,
   enclosingForm: EnclosingFormContext,
+  filePath?: string,
 ): boolean {
   const name = element.getAttribute('name') ?? '';
   const id = element.getAttribute('id') ?? '';
@@ -409,10 +546,14 @@ export function isNewCredentialPasswordField(
   if (hasExistingLabel && !hasNewLabel) return false;
   if (hasNewLabel) return true;
 
-  return (
+  if (
     isSignUpOrPasswordResetForm(enclosingForm.attrs) ||
     formPairsGenericPasswordWithConfirm(enclosingForm.body)
-  );
+  ) {
+    return true;
+  }
+
+  return isSignUpByPathOrVisibleFormText(enclosingForm, filePath);
 }
 
 function countExistingPasswordInputs(passwordInputs: readonly string[]): number {
@@ -542,7 +683,7 @@ export function classifyPasswordCredentialElement(
   ).trim();
 
   return {
-    isNewCredential: isNewCredentialPasswordField(element, enclosingForm),
+    isNewCredential: isNewCredentialPasswordField(element, enclosingForm, ctx.filePath),
     autocompleteTokens: autocompleteRaw ? autocompleteRaw.toLowerCase().split(/\s+/) : [],
   };
 }

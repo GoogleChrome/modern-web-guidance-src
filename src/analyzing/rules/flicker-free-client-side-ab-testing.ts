@@ -15,11 +15,12 @@ export const flickerFreeClientSideAbTestingMatcher: CssRuleMatcher = {
   kind: 'css',
   fastTokens: ['async-hide', 'ab-loading'],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
+    const sourceText = ctx.rawFileText ?? ctx.stylesheetText;
     if (
-      ctx.stylesheetText.includes('blocking="render"') ||
-      ctx.stylesheetText.includes("blocking='render'") ||
-      ctx.stylesheetText.includes("HTMLScriptElement.prototype, 'blocking'") ||
-      ctx.stylesheetText.includes('HTMLScriptElement.prototype, "blocking"')
+      sourceText.includes('blocking="render"') ||
+      sourceText.includes("blocking='render'") ||
+      sourceText.includes("HTMLScriptElement.prototype, 'blocking'") ||
+      sourceText.includes('HTMLScriptElement.prototype, "blocking"')
     ) {
       return null;
     }

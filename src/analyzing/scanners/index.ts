@@ -242,7 +242,9 @@ function scanExtractedStyles(
   const findings: AnalyzerFinding[] = [];
   for (const blankedCss of extractStyleBlocks(ctx.relPath, ctx.content)) {
     if (!isMinifiedContent(blankedCss)) {
-      findings.push(...materializeRuleMatches(ctx, scanCssRules(ctx.relPath, blankedCss, rules)));
+      findings.push(
+        ...materializeRuleMatches(ctx, scanCssRules(ctx.relPath, blankedCss, rules, ctx.content)),
+      );
     }
   }
   return findings;

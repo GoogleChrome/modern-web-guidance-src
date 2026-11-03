@@ -30,6 +30,7 @@ function collectPropertyNames(text: string, regex: RegExp, target: Set<string>):
 function prepareCssContext(
   filePath: string,
   cssContent: string,
+  rawFileText?: string,
 ): PreparedCssContext | null {
   let sheet;
   try {
@@ -60,6 +61,7 @@ function prepareCssContext(
   const ctx: CssMatcherContext = {
     filePath,
     stylesheetText: cssContent,
+    rawFileText: rawFileText ?? cssContent,
     styleRules,
     stylesheetHasProperty: (prop: string) => allProperties.has(prop.toLowerCase()),
     stylesheetHasValue: (substr: string) => cssContent.includes(substr),
@@ -76,6 +78,7 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
   filePath: string,
   cssContent: string,
   rules: readonly T[],
+  rawFileText?: string,
 ): { rule: T; match: AnalyzerMatch }[] {
   const activeRules = rules.filter((rule) =>
     matchesFastTokens(cssContent, rule.matcher.fastTokens),
@@ -84,7 +87,7 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
     return [];
   }
 
-  const prepared = prepareCssContext(filePath, cssContent);
+  const prepared = prepareCssContext(filePath, cssContent, rawFileText);
   if (!prepared) {
     return [];
   }
@@ -120,10 +123,12 @@ export function scanCss(
   filePath: string,
   cssContent: string,
   rules: readonly CssRuleMatcher[],
+  rawFileText?: string,
 ): AnalyzerMatch[] {
   return scanCssRules(
     filePath,
     cssContent,
     rules.map((matcher) => ({ matcher })),
+    rawFileText,
   ).map(({ match }) => match);
 }

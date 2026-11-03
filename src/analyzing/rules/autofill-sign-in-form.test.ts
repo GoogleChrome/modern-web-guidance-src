@@ -102,9 +102,41 @@ void test('autofill-sign-in-form: positive brownfield matches', async (t) => {
     const matches = scanHtml('quick-auth.html', html, [matcher]);
     assert.equal(matches.length, 1);
   });
+
+  await t.test('flags sign-in form even when it includes footer link to sign-up', () => {
+    const html = `
+      <form>
+        <h2>Sign In</h2>
+        <input type="email" />
+        <input type="password" id="password" />
+        <button type="submit">Log In</button>
+        <p>New here? <a href="/signup">Sign Up</a></p>
+      </form>
+    `;
+    const matches = scanHtml('login.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /current-password/);
+  });
 });
 
 void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
+  await t.test('exempts single-password SignUpForm component with heading and submit cues (owned by autofill-sign-up-form)', () => {
+    const jsx = `
+      export function SignUpForm() {
+        return (
+          <form onSubmit={handleSubmit}>
+            <h2>Sign Up</h2>
+            <input type="password" id="password" />
+            <button type="submit">Sign Up</button>
+          </form>
+        );
+      }
+    `;
+    const matches = withVirtualSourceFile('src/components/SignUpForm.tsx', jsx, (sourceFile) =>
+      scanJsx('src/components/SignUpForm.tsx', sourceFile, [matcher]),
+    );
+    assert.equal(matches.length, 0);
+  });
   await t.test('exempts inputs with autocomplete="current-password"', () => {
     const html = `
       <form action="/login" method="post">

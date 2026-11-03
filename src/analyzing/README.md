@@ -116,16 +116,16 @@ For autonomous AI coding agents (such as Claude Code or Codex), modernizing exis
 
 ```mermaid
 flowchart TD
-    Scan["1. Detect Legacy Patterns<br/><code>analyze [dir] --json</code>"] --> Plan["2. Plan & Report<br/>Present modernization diff to user"]
-    Plan --> Retrieve["3. Retrieve Guidance<br/><code>retrieve &lt;guideId&gt;</code>"]
+    Scan["1. Detect Legacy Patterns<br/><code>analyze [path] --json</code>"] --> Report["2. Report & Plan<br/>Summarize verified findings"]
+    Report --> Retrieve["3. Retrieve Guidance<br/><code>retrieve &lt;guideId&gt;</code>"]
     Retrieve --> Modernize["4. Modernize & Verify<br/>Apply modern platform standard<br/>Re-run <code>analyze</code> to verify"]
     Modernize --> Disclose["5. Disclose & Summarize<br/>Report modernizations & Baseline targets"]
 ```
 
-1. **Detect Legacy Patterns (`analyze`)**: Execute `npx modern-web-guidance analyze <dir> --json` to detect candidate modernization targets across the project. `analyze` finds legacy patterns and stops there.
-2. **Plan & Confirm**: Group detected findings by `guideId`, inspect source contexts against the verification rubric (`keepWhen`/`dropWhen`), and report a clear modernization proposal to the developer before editing code.
-3. **Retrieve Guidance**: For each approved guide ID, run `npx modern-web-guidance retrieve "<guideId>"` to fetch the complete canonical guidance, including edge cases, accessibility invariants, and fallback strategies.
-4. **Modernize & Verify**: Update legacy code to standard web platform features (e.g. native `<dialog>`, `content-visibility`, `autocomplete`). Re-run `analyze <dir> --json` to verify that findings are eliminated without regressions.
+1. **Detect Legacy Patterns (`analyze`)**: Execute `npx modern-web-guidance analyze <path> --json` to detect candidate modernization targets across a directory or file. `analyze` finds legacy patterns and stops there.
+2. **Verify & Report**: Inspect detected findings against each rule's verification rubric (`keepWhen`/`dropWhen`), drop false positives, and report verified findings (alongside the modernization plan, if editing) to the user.
+3. **Retrieve Guidance**: When modernizing rather than only reporting, run `npx modern-web-guidance retrieve "<guideId>"` to fetch the complete canonical guidance, including edge cases, accessibility invariants, and fallback strategies.
+4. **Modernize & Verify**: Update legacy code to standard web platform features (e.g. native `<dialog>`, `content-visibility`, `autocomplete`). Re-run `analyze <path> --json` on modified files to confirm that findings are eliminated without regressions.
 5. **Disclose & Summarize**: End the turn with a concise summary describing the modernized APIs and any browser Baseline implications.
 
 ---
@@ -322,9 +322,6 @@ node --test "src/analyzing/**/*.test.ts"
 
 # Run preflight verification (build, typecheck, lint):
 pnpm run preflight
-
-# Run Detection Eval Judge benchmark on evaluation decks:
-node --env-file=.env src/analyzing/eval/detection-eval.ts
 ```
 
 ---
@@ -354,7 +351,7 @@ Follow this 4-step workflow to author, test, and qualify a rule for modern web g
 
 ### Step 4: Held-Out Qualification
 1. **Run preflight checks**: `pnpm run preflight` and `node --test "src/analyzing/**/*.test.ts"`.
-2. **Run detection evaluation**: `node --env-file=.env src/analyzing/eval/detection-eval.ts`.
+2. **Run detection evaluation**: Multi-judge evaluation is run against `src/analyzing/eval/detection-eval.ts` on the evaluation decks.
 3. **Qualification criteria**:
    - **Experimental Rule**: Active under evaluation and tightening prior to default shipping.
    - **Qualified Rule**: Promoted to `QUALIFIED_RULES` (`QUALIFIED_GUIDE_IDS`) in `src/analyzing/rules/` for default terminal shipping once it clears the multi-judge qualification standard on the `held-out` split (Post-Verifier Precision $\ge 90\%$ and either Static Matcher Precision $\ge 80\%$ at $n \ge 10$, or $\ge 90\%$ at $n \ge 5$ for rare patterns).
