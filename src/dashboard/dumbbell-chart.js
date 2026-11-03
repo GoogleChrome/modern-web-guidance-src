@@ -627,7 +627,7 @@ export class DumbbellChart {
             const fmtTime = (/** @type {number} */ ms) => (ms && ms > 0) ? formatDuration(ms) : '-';
             tip.innerHTML = ` <div class="dumbbell-tooltip"> <div class="dumbbell-tooltip-left"> <div class="dumbbell-tooltip-title${item.uFailed || item.gFailed ? ' text-warning' : ''}">${escapeHtml(item.useCaseId)} (${escapeHtml(item.taskName)})</div> <div class="dumbbell-tooltip-feature">feature: ${escapeHtml(featureName)}</div> ${(uRuntimeMs > 0 || gRuntimeMs > 0 || uTokens > 0 || gTokens > 0) ? `
                          <div class="dumbbell-tooltip-metrics">
-                            ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<div>Time (U → G): <strong>${fmtTime(uRuntimeMs)} → ${fmtTime(gRuntimeMs)}</strong> <span class="${runtimeDeltaCls}">(${runtimeDeltaSign}${runtimeDeltaPct}%)</span></div>` : ''}
+                            ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<div>Duration (U → G): <strong>${fmtTime(uRuntimeMs)} → ${fmtTime(gRuntimeMs)}</strong> <span class="${runtimeDeltaCls}">(${runtimeDeltaSign}${runtimeDeltaPct}%)</span></div>` : ''}
                             ${(uUncached > 0 || gUncached > 0) ? `<div>Uncached Tokens: <strong>${uUncached.toLocaleString()} → ${gUncached.toLocaleString()}</strong> <span class="${uncachedDeltaCls}">(${uncachedDeltaSign}${uncachedDeltaPct}%)</span></div>` : ''}
                             ${(uTokens > 0 || gTokens > 0) ? ` <div>Total Tokens: <strong>${uTokens.toLocaleString()} → ${gTokens.toLocaleString()}</strong>${gCachedPct > 0 ? ` <span>(${gCachedPct}% cached)</span>` : ''}</div> ` : ''}
                          </div>

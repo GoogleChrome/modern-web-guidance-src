@@ -4,7 +4,8 @@ import path from 'node:path';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { generateDemosManifest, stagePages } from './generate-manifests.js';
+import { generateDemosManifest, generateGroupedTasksManifest, stagePages } from './generate-manifests.js';
+import { DISCIPLINE_GUIDES } from '../core/guide-validation.ts';
 import { rootDir } from '../core/paths.ts';
 
 let tempDir = '';
@@ -59,4 +60,11 @@ test('stagePages copies demo assets but not eval sources', () => {
 
     const stagedDemo = fs.readFileSync(path.join(stageDir, 'guides/css/animate-to-intrinsic-sizes/demo.html'), 'utf8');
     assert.ok(stagedDemo.includes('location.search.includes("preview=1")'), 'staged demo HTML should include preview focus/scroll shim');
+});
+
+test('generateGroupedTasksManifest includes sorted disciplineGuides alongside category-keyed guides', async () => {
+    await generateGroupedTasksManifest(manifestDir);
+    const written = JSON.parse(fs.readFileSync(path.join(manifestDir, 'grouped-tasks.gen.json'), 'utf8'));
+    assert.deepEqual(written.disciplineGuides, [...DISCIPLINE_GUIDES].sort());
+    assert.ok(Array.isArray(written.guides.css?.['css-layout']), 'named discipline guide retains its filesystem category directory');
 });
