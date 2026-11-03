@@ -41,14 +41,14 @@ In this example, a feed starts scrolled to a specific "featured" item rather tha
 
 ## Accessibility considerations
 
-While this approach scrolls content in to view, benefiting people who can see the screen, this approach does not handle focus considerations, nor affect the accessibility tree, meaning that the CSS alone will not allow people using screen readers, and/or people using a keyboard to identify the prioritised content.
+In addition to visibly scrolling the content into view, focus must also be moved to the visually prioritised content.
 
-Depending on the content, there may be two primary ways to ensure focus moves to the visually prioritised content:
+Depending on the content, there are two primary ways to ensure focus moves to the visually prioritised content:
 
-* If the prioritised content sits inside a component that is part of a larger screen (e.g. the prioritised content is a recent message that is part of a live chat component, inside a shopping website), then upon entering component, there could be a skip link to redirect focus to, and therefore trigger an announcement, of the prioritised content. This could also be paired with a roving tabindex approach, in which only one primary control in the component receives focus by default, following which, navigation is done using the arrow keys.
-* If the prioritised content is directly part of the primary content (e.g. the prioritised content is a message directly inside a live chat application), then scripting should be used to ensure that focus moves to this content first when entering the page. No additional changes to the tab order should be needed, as once this prioritised content receives focus, the default navigation experience should be sufficient.
+* If the prioritised content sits inside a component that is part of a larger screen (e.g. the prioritised content is a recent message that is part of a live chat component, inside a shopping website), then upon entering component, use a skip link and pair it with a roving tabindex. The skip link will redirect focus to the prioritised content and trigger a screen reader announcement. The roving tabindex will ensure only one primary control in the component receives focus by default, following which, people can navigate using the arrow keys.
+* If the prioritised content is directly part of the primary content (e.g. the prioritised content is a message directly inside a live chat application), then provide a control to move focus to the visually prioritised content. If there is navigation UI around the visually prioritised content, and the navigation controls receive focus without changing the visually prioritised content, then it would be sufficient to provide a control alongside the pre-existing navigational controls, which when activated, would move focus to the visually prioritised content. If there isn't navigation UI visible at the same time, then a skip link could be provided at the start of the DOM to allow people to quickly navigate to the visually prioritised content.
 
-Furthermore, it may not be clear why specific content has been displayed in the viewport by default. To help people with cognitive disabilities, if the prioritised content is not the most recent content (e.g. the latest message in a chat application), there should be an affordance as to why this content is being displayed on render (e.g. a pin to convey that an older message has been pinned).
+If the prioritised content is not the most recent content (e.g. the latest message in a chat application), provide a way to indicate why this content is being displayed on render, such as a pin icon to convey that an older message has been pinned.
 
 ## Fallback Strategy
 
