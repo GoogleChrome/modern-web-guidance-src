@@ -88,9 +88,46 @@ void test('autofill-sign-up-form: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /new-password/);
   });
+
+  await t.test('flags single-password SignUpForm with JSX spaced braces like type={ "submit" } and type={ \'button\' }', () => {
+    const jsx = `
+      export function SignUpForm() {
+        return (
+          <form onSubmit={handleSubmit}>
+            <input type="password" id="password" />
+            <button type={ 'button' } onClick={handleCancel}>Cancel</button>
+            <button type={ "submit" }>Sign Up</button>
+          </form>
+        );
+      }
+    `;
+    const matches = withVirtualSourceFile('src/components/SignUpForm.tsx', jsx, (sourceFile) =>
+      scanJsx('src/components/SignUpForm.tsx', sourceFile, [matcher]),
+    );
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /new-password/);
+  });
 });
 
 void test('autofill-sign-up-form: negative / exempt cases', async (t) => {
+  await t.test('exempts sign-in form with JSX type={ \'button\' } secondary sign-up button', () => {
+    const jsx = `
+      export function SignInForm() {
+        return (
+          <form onSubmit={handleSubmit}>
+            <h2>Sign In</h2>
+            <input type="password" id="password" />
+            <button type={ "submit" }>Sign In</button>
+            <button type={ 'button' } onClick={switchToSignUp}>Sign Up</button>
+          </form>
+        );
+      }
+    `;
+    const matches = withVirtualSourceFile('src/components/SignInForm.tsx', jsx, (sourceFile) =>
+      scanJsx('src/components/SignInForm.tsx', sourceFile, [matcher]),
+    );
+    assert.equal(matches.length, 0);
+  });
   await t.test('exempts inputs already specifying autocomplete="new-password"', () => {
     const html = `
       <form action="/signup" method="post">
