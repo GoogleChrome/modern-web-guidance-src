@@ -177,48 +177,38 @@
       <fieldset>
         <legend>Active automatons</legend>
 
-        <label class="master">
+        <label class="master" for="select-all">
           <input type="checkbox" id="select-all" class="checkbox" aria-controls="robot-1 robot-2 robot-3 robot-4" />
           Select all automatons
         </label>
 
-        <ul class="options" id="options">
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" />
-              <span>Clockwork Courier</span>
-              <span class="model">CW-01</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="robot-2" name="robot" value="brass" checked />
-              <span>Brass Barista</span>
-              <span class="model">BB-220</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="robot-3" name="robot" value="sentinel" />
-              <span>Sentinel Gatekeeper</span>
-              <span class="model">SG-7</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="robot-4" name="robot" value="gardener" checked />
-              <span>Gardener Drone</span>
-              <span class="model">GD-3000</span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" class="checkbox" id="robot-5" name="robot" value="rustbucket" disabled />
-              <span>Rust Bucket (offline)</span>
-              <span class="model">RB-0</span>
-            </label>
-          </li>
-        </ul>
+        <div class="options" id="options">
+          <label for="robot-1">
+            <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork" />
+            <span>Clockwork Courier</span>
+            <span class="model">CW-01</span>
+          </label>
+          <label for="robot-2">
+            <input type="checkbox" class="checkbox" id="robot-2" name="robot" value="brass" checked />
+            <span>Brass Barista</span>
+            <span class="model">BB-220</span>
+          </label>
+          <label for="robot-3">
+            <input type="checkbox" class="checkbox" id="robot-3" name="robot" value="sentinel" />
+            <span>Sentinel Gatekeeper</span>
+            <span class="model">SG-7</span>
+          </label>
+          <label for="robot-4">
+            <input type="checkbox" class="checkbox" id="robot-4" name="robot" value="gardener" checked />
+            <span>Gardener Drone</span>
+            <span class="model">GD-3000</span>
+          </label>
+          <label for="robot-5">
+            <input type="checkbox" class="checkbox" id="robot-5" name="robot" value="rustbucket" disabled />
+            <span>Rust Bucket (offline)</span>
+            <span class="model">RB-0</span>
+          </label>
+        </div>
 
         <output id="status" aria-live="polite"></output>
       </fieldset>
