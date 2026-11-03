@@ -196,7 +196,8 @@
         else if (first) first.focus();
       } else if (e.key === 'Escape' && filter.value) {
         e.preventDefault();
-        reset();
+        filter.value = '';
+        update();
       } else if (e.key !== 'Escape' && e.key !== 'Tab') {
         e.stopPropagation();
       }
@@ -212,7 +213,12 @@
       option.focus();
     });
 
-    const reset = () => { filter.value = ''; update(); };
+    const reset = () => {
+      filter.value = '';
+      for (const o of options()) o.hidden = false;
+      add.hidden = true;
+      status.textContent = '';
+    };
     // Chrome does not fire toggle on <select>, so reset on every close path
     select.addEventListener('change', (event) => {
       if (event.target === select) reset();

@@ -163,7 +163,12 @@ add.addEventListener('click', () => {
 The `<select>` does not dispatch `toggle`, so reset the filter on the events that do fire on every close path: `change` (fires when the picker commits, including when it closes with the same value) and `focusout` leaving the control.
 
 ```js
-const reset = () => { filter.value = ''; update(); };
+const reset = () => {
+  filter.value = '';
+  for (const o of options()) o.hidden = false;
+  add.hidden = true;
+  status.textContent = '';                 // the list is closed, so announce nothing
+};
 select.addEventListener('change', (event) => {
   // The filter input is inside the <select>; its own change event bubbles here.
   if (event.target === select) reset();
