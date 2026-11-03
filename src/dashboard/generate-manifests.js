@@ -91,7 +91,7 @@ export async function generateSuitesManifest(outputDir = defaultOutputDir, resul
 
 export async function generateGroupedTasksManifest(outputDir = defaultOutputDir) {
     fs.mkdirSync(outputDir, { recursive: true });
-    const { getTaskMap } = await import('../core/guide-validation.ts');
+    const { getTaskMap, DISCIPLINE_GUIDES } = await import('../core/guide-validation.ts');
     const taskMap = getTaskMap();
     /** @type {Record<string, Record<string, string[]>>} */
     const grouped = {};
@@ -107,7 +107,10 @@ export async function generateGroupedTasksManifest(outputDir = defaultOutputDir)
     }
     
     const outputPath = path.join(outputDir, 'grouped-tasks.gen.json');
-    fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped }, null, 2));
+    fs.writeFileSync(outputPath, JSON.stringify({
+        guides: grouped,
+        disciplineGuides: [...DISCIPLINE_GUIDES].sort(),
+    }, null, 2));
 }
 
 const STATIC_WEB_EXTS = new Set([

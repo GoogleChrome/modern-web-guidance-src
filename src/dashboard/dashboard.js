@@ -55,27 +55,24 @@ let currentTextFilter = '';
 /** @type {Set<string>} */
 const collapsedCategories = new Set();
 
-const DISCIPLINE_GUIDES = new Set([
-    'accessibility',
-    'css-layout',
-    'html',
-    'javascript',
-    'performance',
-    'security',
-    'web-platform-core',
-]);
-
 /** @type {Record<string, string>} */
 const CATEGORY_LABELS = {
     discipline: 'Discipline',
     css: 'CSS',
     html: 'HTML',
+    js: 'JavaScript',
     javascript: 'JavaScript',
     accessibility: 'Accessibility',
     performance: 'Performance',
     security: 'Security',
     'built-in-ai': 'Built-in AI',
     'web-apis': 'Web APIs',
+    'ui-atoms': 'UI Atoms',
+    'ui-components': 'UI Components',
+    'ui-behaviors': 'UI Behaviors',
+    pwa: 'PWA',
+    wasm: 'WebAssembly',
+    webmcp: 'WebMCP',
     media: 'Media',
     privacy: 'Privacy',
     other: 'Other',
@@ -87,10 +84,10 @@ function formatCategoryLabel(cat) {
     return cat.split('-').map(capitalize).join(' ');
 }
 
-/** @type {Promise<Map<string, string>> | null} */
+/** @type {Promise<Map<string, { category: string, dir: string }>> | null} */
 let guideCategoryMapPromise = null;
 
-/** @returns {Promise<Map<string, string>>} */
+/** @returns {Promise<Map<string, { category: string, dir: string }>>} */
 function loadGuideCategoryMap() {
     if (!guideCategoryMapPromise) {
         guideCategoryMapPromise = (async () => {
@@ -99,20 +96,24 @@ function loadGuideCategoryMap() {
                 const res = await fetch('./grouped-tasks.gen.json');
                 if (res.ok) {
                     const data = await res.json();
+                    const disciplineSet = new Set(Array.isArray(data?.disciplineGuides) ? data.disciplineGuides : []);
                     const guides = data?.guides || {};
                     for (const [cat, guideObj] of Object.entries(guides)) {
                         if (!guideObj || typeof guideObj !== 'object') continue;
                         for (const guideName of Object.keys(guideObj)) {
-                            const resolved = (DISCIPLINE_GUIDES.has(guideName) || guideName === cat) ? 'discipline' : cat;
-                            map.set(guideName, resolved);
+                            const isDiscipline = disciplineSet.has(guideName) || guideName === cat;
+                            map.set(guideName, {
+                                category: isDiscipline ? 'discipline' : cat,
+                                dir: cat,
+                            });
                         }
+                    }
+                    for (const g of disciplineSet) {
+                        if (!map.has(g)) map.set(g, { category: 'discipline', dir: g });
                     }
                 }
             } catch {
-                // Fallback to DISCIPLINE_GUIDES if grouped-tasks.gen.json is unavailable
-            }
-            for (const g of DISCIPLINE_GUIDES) {
-                if (!map.has(g)) map.set(g, 'discipline');
+                // Ignore if grouped-tasks.gen.json is unavailable
             }
             return map;
         })();
@@ -180,9 +181,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const setMode = (/** @type {'all' | 'a11y'} */ mode) => {
             if (currentMetricMode !== mode) {
                 currentMetricMode = mode;
+                const normalizedA11ySort = mode === 'a11y' && currentTaskSort === 'a11y';
+                if (normalizedA11ySort) {
+                    currentTaskSort = 'uplift';
+                }
                 syncDashModeButtons(mode);
                 const url = new URL(window.location.href);
                 if (mode === 'a11y') { url.searchParams.set('mode', 'a11y'); } else { url.searchParams.delete('mode'); }
+                if (normalizedA11ySort && url.searchParams.has('sort')) {
+                    url.searchParams.set('sort', `${currentTaskSort}-${currentTaskSortDir}`);
+                }
                 window.history.replaceState({}, '', url);
                 if (allTestData && currentTestID) { renderDashboardDumbbellChart(allTestData); rerenderGrid(allTestData, currentTestID); }
             }
@@ -195,7 +203,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const sortMatch = initialSort?.match(/^(uplift|a11y|time|tokens)(?:-(asc|desc))?$/);
     if (sortMatch) {
-        currentTaskSort = /** @type {'uplift' | 'a11y' | 'time' | 'tokens'} */ (sortMatch[1]);
+        const rawSort = /** @type {'uplift' | 'a11y' | 'time' | 'tokens'} */ (sortMatch[1]);
+        currentTaskSort = (rawSort === 'a11y' && currentMetricMode === 'a11y') ? 'uplift' : rawSort;
         currentTaskSortDir = /** @type {'asc' | 'desc'} */ (sortMatch[2] || ((currentTaskSort === 'time' || currentTaskSort === 'tokens') ? 'asc' : 'desc'));
     }
 
@@ -1034,7 +1043,7 @@ async function computeScenarios(data) {
             const leakCount = (unguidedRuns || []).filter(r => isUnguidedLeakRun(r, guide)).length;
             const hasLeak = leakCount > 0;
             const hasFailure = hasInfraError || hasBuildFailure;
-            const category = categoryMap.get(guide) || 'other';
+            const category = categoryMap.get(guide)?.category || 'other';
             const categoryLabel = formatCategoryLabel(category);
             const featureIds = Array.isArray(featuresMap[guide]) ? featuresMap[guide] : [];
             scenarios.push({
@@ -1575,8 +1584,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                     const guideName = parsed?.guide || '';
                     const targetApp = parsed?.task || sampleRun.baseApp || 'daily-grind';
                     const catMap = await loadGuideCategoryMap();
-                    const rawCat = catMap.get(guideName);
-                    const catDir = (rawCat && rawCat !== 'discipline' && rawCat !== 'other') ? rawCat : guideName;
+                    const catDir = catMap.get(guideName)?.dir || guideName;
                     const taskPath = `guides/${catDir}/${guideName}/targets/${targetApp}/task.md`;
                     const text = await api.getFileText(taskPath);
 
@@ -2335,6 +2343,8 @@ function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
                     const accordionEl = (task && document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"][data-task="${CSS.escape(task)}"]`))
                         || document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"]`);
                     if (accordionEl) {
+                        const catSection = accordionEl.closest('.eval-category-section.collapsed');
+                        if (catSection) /** @type {HTMLElement | null} */ ($('.eval-category-header', catSection))?.click();
                         accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                         if (!accordionEl.classList.contains('open')) {
                             const header = $('.task-accordion-header', accordionEl);

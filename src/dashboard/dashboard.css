@@ -783,6 +783,12 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   transition: transform 0.15s ease;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .eval-category-title .chevron {
+    transition: none;
+  }
+}
+
 .eval-category-meta {
   font-size: 0.78rem;
   color: var(--text-secondary);

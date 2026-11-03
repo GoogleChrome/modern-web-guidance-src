@@ -780,6 +780,7 @@ function renderSuites() {
     const scheduledCheck = document.getElementById('scheduled-only-check');
     if (scheduledCheck instanceof HTMLInputElement) {
         scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
+        scheduledCheck.disabled = Boolean(currentSearchFilter) || !anyScheduled;
     }
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
     const colCount = 8;

@@ -313,8 +313,10 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     const filterSearch = page.locator('#filter-search');
     await filterSearch.fill('claude');
     await expect(suiteRows).toHaveCount(1);
+    await expect(page.locator('#scheduled-only-check')).toBeDisabled();
     await filterSearch.fill('');
     await expect(suiteRows).toHaveCount(3);
+    await expect(page.locator('#scheduled-only-check')).toBeEnabled();
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     await expect(page.locator('#breakdowns')).toHaveAttribute('open', '');
     await expect(page.locator('#insights-limit-input')).toHaveValue('5');
@@ -406,5 +408,18 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(page.locator('#autocomplete-list')).toBeHidden();
     await searchInput.press('Enter');
     await expect(page).toHaveURL(/guide=preload-prerender/);
+  });
+  test('normalizes sort=a11y-desc onto Uplift in a11y mode and uncollapses category on dumbbell click', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/dashboard.html?testId=example-result&mode=a11y&sort=a11y-desc');
+    await expect(page.locator('.eval-col-sort-btn[data-sort="uplift"]')).toHaveAttribute('aria-sort', 'descending');
+    await page.goto('/dashboard.html?testId=example-result');
+    const firstCatSection = page.locator('.eval-category-section').first();
+    await expect(firstCatSection).toBeVisible();
+    await firstCatSection.locator('.eval-category-header').click();
+    await expect(firstCatSection).toHaveClass(/collapsed/);
+    await page.locator('#dumbbell-chart .dc-hit').first().click();
+    await expect(firstCatSection).not.toHaveClass(/collapsed/);
+    await expect(firstCatSection.locator('.task-accordion').first()).toHaveClass(/open/);
   });
 });
