@@ -5,8 +5,4 @@
 - A link with a hover reveal underline trims its line with `text-decoration-inset` at rest, and returns the inset to `0` on both `:hover` and `:focus-visible`.
 - The hover reveal declares its underline separately from `text-decoration-inset`, without wrapping the inset in `@supports`, so the underline is visible where `text-decoration-inset` is unsupported.
 - `text-decoration-skip-ink: auto` and `text-decoration-skip-spaces` are not declared when they would only restate the default or have no effect.
-- A draw-on custom line is a pseudo-element on a plain `<a>`, drawn with `border-shape` (or `border-block-end` for a straight line) and revealed by transitioning `clip-path` on both `:hover` and `:focus-visible`, not an inline SVG.
-- The draw-on line's `border-shape` is applied inside `@supports (border-shape: circle(50%))`, and a straight line that still draws on is used outside it.
 - Hover reveal and draw-on animations are not applied when `prefers-reduced-motion: reduce` matches, and the line is fully visible otherwise.
-- A gradient outline around text uses `background-clip: border-area` over a transparent border, so the inside of the element is transparent, with `background-clip: border-area` inside `@supports (background-clip: border-area)` and the gradient still drawn outside it (an opaque padding-box layer over the gradient, or a masked pseudo-element), not a plain solid border.
-- A text outline shaped by `border-shape` applies `border-shape` inside `@supports (border-shape: circle(50%))` and reproduces the shape outside it, such as with a `clip-path` pseudo-element, rather than falling back to a plain rounded border.
