@@ -165,9 +165,14 @@ test.describe('out-of-order-html-streaming Target Grader', () => {
           const val = cascaded.getPropertyValue(prop).trim();
           return val.length > 0 && val !== 'auto' && val !== 'none' && val !== '0' && val !== '0px';
         });
+        const inlineStyle = String(el.getAttribute?.('style') || '');
+        const hasInlineDimension =
+          /\b(?:min-height|aspect-ratio|min-block-size|height|block-size)\s*:\s*(?!auto\b|none\b|0(?:px)?\b)\S+/i.test(
+            inlineStyle
+          );
         const className = String(el.getAttribute?.('class') || '');
         const hasUtilityDimension = /\b(min-h-|aspect-|h-\d|h-\[)/.test(className);
-        return hasCssDimension || hasUtilityDimension;
+        return hasCssDimension || hasInlineDimension || hasUtilityDimension;
       });
     });
 
@@ -200,16 +205,39 @@ test.describe('out-of-order-html-streaming Target Grader', () => {
     const pipeToCalls = allCalls.filter((call) => getCalledMethodName(call) === 'pipeTo');
     expect(pipeToCalls.length).toBeGreaterThan(0);
 
+    function collectCallsWithVarResolution(node: Node, visited = new Set<string>()): CallExpression[] {
+      const calls: CallExpression[] = [
+        ...(node.isKind(SyntaxKind.CallExpression) ? [node] : []),
+        ...node.getDescendantsOfKind(SyntaxKind.CallExpression),
+      ];
+      const identifiers = [
+        ...(node.isKind(SyntaxKind.Identifier) ? [node] : []),
+        ...node.getDescendantsOfKind(SyntaxKind.Identifier),
+      ];
+      const sf = node.getSourceFile();
+      for (const id of identifiers) {
+        const name = id.getText();
+        if (visited.has(name)) continue;
+        visited.add(name);
+        for (const decl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+          if (decl.getName() === name) {
+            const init = decl.getInitializer();
+            if (init) {
+              calls.push(...collectCallsWithVarResolution(init, visited));
+            }
+          }
+        }
+      }
+      return calls;
+    }
+
     const hasDecodedStreamPipeTo = pipeToCalls.some((pipeToCall) => {
       const expr = pipeToCall.getExpression();
       if (!expr.isKind(SyntaxKind.PropertyAccessExpression)) return false;
 
       // Receiver of .pipeTo(...) must decode via .textStream() or .pipeThrough(new TextDecoderStream())
       const receiver = expr.getExpression();
-      const receiverCalls = [
-        ...(receiver.isKind(SyntaxKind.CallExpression) ? [receiver] : []),
-        ...receiver.getDescendantsOfKind(SyntaxKind.CallExpression),
-      ];
+      const receiverCalls = collectCallsWithVarResolution(receiver);
 
       const usesTextStream = receiverCalls.some((c) => getCalledMethodName(c) === 'textStream');
       const usesTextDecoderStream = receiverCalls.some((c) => {
@@ -220,15 +248,12 @@ test.describe('out-of-order-html-streaming Target Grader', () => {
 
       if (!usesTextStream && !usesTextDecoderStream) return false;
 
-      // Argument of .pipeTo(arg) is either directly a streaming HTML method call,
+      // Argument of .pipeTo(arg) is either directly a streaming HTML method call (or variable bound to one),
       // or a parameter of a helper function that is called with a streaming HTML method call
       const arg = pipeToCall.getArguments()[0];
       if (!arg) return false;
 
-      const argCalls = [
-        ...(arg.isKind(SyntaxKind.CallExpression) ? [arg] : []),
-        ...arg.getDescendantsOfKind(SyntaxKind.CallExpression),
-      ];
+      const argCalls = collectCallsWithVarResolution(arg);
       if (argCalls.some((c) => Boolean(getCalledMethodName(c) && STREAMING_HTML_METHODS.test(getCalledMethodName(c)!)))) {
         return true;
       }
@@ -253,10 +278,7 @@ test.describe('out-of-order-html-streaming Target Grader', () => {
           return allCalls.some((c) => {
             if (c.getExpression().getText() !== helperName) return false;
             return c.getArguments().some((callArg) => {
-              const nestedCalls = [
-                ...(callArg.isKind(SyntaxKind.CallExpression) ? [callArg] : []),
-                ...callArg.getDescendantsOfKind(SyntaxKind.CallExpression),
-              ];
+              const nestedCalls = collectCallsWithVarResolution(callArg);
               return nestedCalls.some(
                 (nc) => Boolean(getCalledMethodName(nc) && STREAMING_HTML_METHODS.test(getCalledMethodName(nc)!))
               );
@@ -285,68 +307,74 @@ test.describe('out-of-order-html-streaming Target Grader', () => {
     });
     expect(safeHtmlCalls.length).toBeGreaterThan(0);
 
-    // Locate functions handling untrusted customer reviews
+    const unsafeHtmlCalls = allCalls.filter((call) => {
+      const name = getCalledMethodName(call);
+      return Boolean(name && UNSAFE_HTML_METHODS.test(name));
+    });
+
     const allFunctions = sourceFiles.flatMap((sf) => [
       ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
       ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
       ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
     ]);
 
-    const reviewFunctions = allFunctions.filter((fn) => {
-      // Exclude outer module/IIFE wrappers that declare multiple sub-functions
+    function getFunctionName(fn: Node): string {
+      if (fn.isKind(SyntaxKind.FunctionDeclaration)) {
+        return fn.getName() || '';
+      }
+      return fn.getFirstAncestorByKind(SyntaxKind.VariableDeclaration)?.getName() || '';
+    }
+
+    function isReviewSpecificFunction(fn: Node): boolean {
       if (fn.getDescendantsOfKind(SyntaxKind.FunctionDeclaration).length > 0) {
         return false;
       }
-      const fnName = fn.isKind(SyntaxKind.FunctionDeclaration)
-        ? fn.getName() || ''
-        : fn.getFirstAncestorByKind(SyntaxKind.VariableDeclaration)?.getName() || '';
+      const fnName = getFunctionName(fn);
       if (/review/i.test(fnName)) return true;
       const fnText = fn.getText();
       return !fnName && /review/i.test(fnText) && !/promo/i.test(fnText);
-    });
-    expect(reviewFunctions.length).toBeGreaterThan(0);
+    }
 
-    // None of the review functions may call an *Unsafe HTML method
-    const reviewCallsUnsafe = reviewFunctions.some((fn) =>
-      fn.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
-        const name = getCalledMethodName(call);
-        return Boolean(name && UNSAFE_HTML_METHODS.test(name));
-      })
-    );
+    // Check whether a CallExpression (or its enclosing review-scoped statement/function) targets customer reviews
+    function callTargetsReviews(call: CallExpression): boolean {
+      if (/review/i.test(call.getText())) return true;
+      const stmt = call.getFirstAncestorByKind(SyntaxKind.ExpressionStatement) || call.getFirstAncestorByKind(SyntaxKind.TryStatement);
+      if (stmt && /review/i.test(stmt.getText()) && !/promo/i.test(stmt.getText())) return true;
+      const enclosingFn = call.getFirstAncestor(
+        (node: Node): boolean =>
+          node.isKind(SyntaxKind.FunctionDeclaration) ||
+          node.isKind(SyntaxKind.FunctionExpression) ||
+          node.isKind(SyntaxKind.ArrowFunction)
+      );
+      return Boolean(enclosingFn && isReviewSpecificFunction(enclosingFn));
+    }
+
+    // 1. No *Unsafe() method may target customer reviews directly or inside a review function
+    const reviewCallsUnsafe = unsafeHtmlCalls.some((call) => callTargetsReviews(call));
     expect(reviewCallsUnsafe).toBe(false);
 
-    // At least one review function must use a safe HTML method directly or via a helper function
-    const reviewUsesSafeMethod = reviewFunctions.some((fn) => {
-      const fnCalls = fn.getDescendantsOfKind(SyntaxKind.CallExpression);
-      const directSafe = fnCalls.some((call) => {
-        const name = getCalledMethodName(call);
-        return Boolean(name && SAFE_HTML_METHODS.test(name));
-      });
-      if (directSafe) return true;
-
-      // Check helper functions called by the review function (e.g. setSafeHTML(reviews, ...))
-      return fnCalls.some((call) => {
-        const calledIdent = call.getExpression().getText();
-        return allFunctions.some((helperFn) => {
-          const helperName = helperFn.isKind(SyntaxKind.FunctionDeclaration)
-            ? helperFn.getName()
-            : helperFn.getFirstAncestorByKind(SyntaxKind.VariableDeclaration)?.getName();
-          if (!helperName || helperName !== calledIdent) return false;
-          const helperCalls = helperFn.getDescendantsOfKind(SyntaxKind.CallExpression);
-          const helperHasSafe = helperCalls.some((hc) => {
-            const name = getCalledMethodName(hc);
-            return Boolean(name && SAFE_HTML_METHODS.test(name));
-          });
-          const helperHasUnsafe = helperCalls.some((hc) => {
-            const name = getCalledMethodName(hc);
-            return Boolean(name && UNSAFE_HTML_METHODS.test(name));
-          });
-          return helperHasSafe && !helperHasUnsafe;
+    // 2. Customer reviews must be written using a safe HTML method (directly or via a helper function that uses a safe method and no unsafe methods)
+    const directSafeReviewCall = safeHtmlCalls.some((call) => callTargetsReviews(call));
+    const helperSafeReviewCall = allCalls.some((call) => {
+      if (!callTargetsReviews(call)) return false;
+      const calledIdent = call.getExpression().getText();
+      return allFunctions.some((helperFn) => {
+        const helperName = getFunctionName(helperFn);
+        if (!helperName || helperName !== calledIdent) return false;
+        const helperCalls = helperFn.getDescendantsOfKind(SyntaxKind.CallExpression);
+        const helperHasSafe = helperCalls.some((hc) => {
+          const name = getCalledMethodName(hc);
+          return Boolean(name && SAFE_HTML_METHODS.test(name));
         });
+        const helperHasUnsafe = helperCalls.some((hc) => {
+          const name = getCalledMethodName(hc);
+          return Boolean(name && UNSAFE_HTML_METHODS.test(name));
+        });
+        return helperHasSafe && !helperHasUnsafe;
       });
     });
 
-    expect(reviewUsesSafeMethod).toBe(true);
+    expect(directSafeReviewCall || helperSafeReviewCall).toBe(true);
   });
 
   test('The runScripts: true option is only passed to an unsafe method when writing content that contains trusted <script> elements', () => {
@@ -365,26 +393,45 @@ test.describe('out-of-order-html-streaming Target Grader', () => {
     );
     expect(runScriptsTrueProps.length).toBeGreaterThan(0);
 
+    const allCalls = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+
+    // Resolve the CallExpression(s) that receive a given `runScripts: true` property assignment
+    // (either inline or via a local options variable)
+    function findReceivingCalls(prop: Node): CallExpression[] {
+      const directCall = prop.getFirstAncestorByKind(SyntaxKind.CallExpression);
+      if (directCall) return [directCall];
+
+      const varDecl = prop.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
+      const varName = varDecl?.getName();
+      if (!varName) return [];
+
+      return allCalls.filter((call) =>
+        call.getArguments().some((arg) => arg.getText() === varName)
+      );
+    }
+
     // Every { runScripts: true } must be passed to an *Unsafe HTML method for the trusted CMS promo content
     const allValidRunScriptsCalls = runScriptsTrueProps.every((prop) => {
-      const callExpr = prop.getFirstAncestorByKind(SyntaxKind.CallExpression);
-      if (!callExpr) return false;
+      const receivingCalls = findReceivingCalls(prop);
+      if (receivingCalls.length === 0) return false;
 
-      const methodName = getCalledMethodName(callExpr);
-      if (!methodName || !UNSAFE_HTML_METHODS.test(methodName)) return false;
+      return receivingCalls.every((callExpr) => {
+        const methodName = getCalledMethodName(callExpr);
+        if (!methodName || !UNSAFE_HTML_METHODS.test(methodName)) return false;
 
-      const enclosingFn = callExpr.getFirstAncestor(
-        (node: Node): boolean =>
-          node.isKind(SyntaxKind.FunctionDeclaration) ||
-          node.isKind(SyntaxKind.FunctionExpression) ||
-          node.isKind(SyntaxKind.ArrowFunction)
-      );
-      const contextText = (enclosingFn ?? callExpr).getText();
+        const enclosingFn = callExpr.getFirstAncestor(
+          (node: Node): boolean =>
+            node.isKind(SyntaxKind.FunctionDeclaration) ||
+            node.isKind(SyntaxKind.FunctionExpression) ||
+            node.isKind(SyntaxKind.ArrowFunction)
+        );
+        const contextText = (enclosingFn ?? callExpr).getText();
 
-      // Must be used for the trusted promo/CMS content and never for untrusted reviews
-      const isTrustedPromoContext = /promo|cms|<script/i.test(contextText);
-      const isReviewContext = /review/i.test(callExpr.getText());
-      return isTrustedPromoContext && !isReviewContext;
+        // Must be used for the trusted promo/CMS/<script> content and never for untrusted reviews
+        const isTrustedPromoContext = /promo|cms|<script/i.test(contextText);
+        const isReviewCall = /review/i.test(callExpr.getText());
+        return isTrustedPromoContext && !isReviewCall;
+      });
     });
 
     expect(allValidRunScriptsCalls).toBe(true);
