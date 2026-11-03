@@ -15,6 +15,7 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
+    if: github.repository == 'GoogleChrome/modern-web-guidance-src'
     permissions:
       contents: read
       pull-requests: read
