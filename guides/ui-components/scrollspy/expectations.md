@@ -4,4 +4,4 @@
 - The link corresponding to the section currently in view is visually highlighted with a color change. The color difference must have sufficient contrast or at least one non-color indicator (like font-weight, underline, or an indicator dot).
 - The `aria-current` attribute is set to `"true"` on the navigation link corresponding to the visible section and `"false"` on all other links.
 - The `aria-current` state is synchronized with the visible section when scrolling stops (e.g., using a `scrollend` event listener).
-- An `IntersectionObserver` fallback applies the `\:target-current` class to the active navigation link in browsers that do not support the native CSS scrollspy features.
+- An `IntersectionObserver` fallback applies the `target-current` class to the active navigation link in browsers that do not support the native CSS scrollspy features.
