@@ -300,7 +300,6 @@ The analyzer gates rules on evaluation against held-out repositories before any 
 
 ### Evaluation Subsystem (`src/analyzing/eval/`)
 
-- **`guide-triage.ts`**: Implements the 2-axis triage taxonomy (`Detection` and `Update Scope`) and maintains canonical metadata for all web platform guides.
 - **`detection-eval.ts`**: Runs multi-pass LLM judge evaluation (`gemini-3.8-flash`) against human-graded cards to measure true-positive and matcher misfire rates with majority voting.
 - **`llm-verifier.ts`**: Implements the offline qualification and evaluation LLM verifier evaluating candidate matches against `verifierRubric` (`keepWhen` / `dropWhen`) specifications.
 - **`stats.ts`**: Statistical foundations implementing Wilson binomial confidence intervals, sequential stopping decisions, and TPR/TNR metrics.

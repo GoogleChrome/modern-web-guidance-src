@@ -24,7 +24,7 @@ The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for leg
 
 Upfront classification and scoping of a published feature guide (`guideId`) before any **Static Matcher** is authored. Defines **`replaces`** (the concrete legacy APIs, CSS workarounds, DOM idioms, or npm packages the guide's modern feature replaces), **`doesNotReplace`** (lookalike patterns that are out of scope), and scores the guide's cleanest legacy **Sub-Pattern** on two orthogonal axes: **`Detection`** (`'direct-token' | 'structural-ast' | 'needs-verifier' | 'no-legacy-pattern'`) and **`Update Scope`** (`'local-swap' | 'cross-layer-refactor' | 'widget-recipe' | 'n/a'`). The authoritative definitions of each `Detection` and `UpdateScope` value live on the TypeScript types in `src/analyzing/schema.ts`.
 
-* _Reference_: `src/analyzing/schema.ts#Detection`, `src/analyzing/schema.ts#UpdateScope`, `src/analyzing/schema.ts#GuideTriage`, `src/analyzing/eval/guide-triage.ts#triageGuide`
+* _Reference_: `src/analyzing/schema.ts#Detection`, `src/analyzing/schema.ts#UpdateScope`, `src/analyzing/schema.ts#GuideTriage`
 * _Avoid_: `DetectionKind`, `Gate 0`, `Stage 0`, `Legacy Pattern Spec`, `Rewrite Scope`, `Brownfield Rubric`, `Candidate Techniques`, `clean-1-to-1`, `needs-care`, `ui-recipe-multi-part`, `skip-no-old-way`
 
 ### Static Matcher

@@ -2,16 +2,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   computePromptContentHash,
-  computeGuideTriagePromptVersion,
   computeVerifierPromptVersion,
   computeJudgePromptVersion,
   formatBlindCardPrompt,
-  formatGuideTriagePrompt,
   formatVerifierPrompt,
-  GUIDE_TRIAGE_PROMPT_VERSION,
-  GUIDE_TRIAGE_RESPONSE_SCHEMA,
-  GUIDE_TRIAGE_SYSTEM_PROMPT,
-  GUIDE_TRIAGE_THINKING_BUDGET,
   JUDGE_RESPONSE_SCHEMA,
   JUDGE_SYSTEM_PROMPT,
   JUDGE_THINKING_BUDGET,
@@ -25,19 +19,6 @@ import {
 
 describe('prompts: content-hashed versions', () => {
   it('matches deterministic 8-char SHA-256 hashes and pinned version identities', () => {
-    const triageHash = computePromptContentHash({
-      model: PROMPT_MODEL,
-      systemPrompt: GUIDE_TRIAGE_SYSTEM_PROMPT,
-      userPromptTemplateSource: formatGuideTriagePrompt.toString(),
-      schema: GUIDE_TRIAGE_RESPONSE_SCHEMA,
-      thinkingBudget: GUIDE_TRIAGE_THINKING_BUDGET,
-      temperature: 0.0,
-      enableSearchGrounding: true,
-    });
-    assert.strictEqual(GUIDE_TRIAGE_PROMPT_VERSION, `${PROMPT_MODEL}:gate0-v2-${triageHash}`);
-    assert.match(GUIDE_TRIAGE_PROMPT_VERSION, /^gemini-3\.8-flash:gate0-v2-[0-9a-f]{8}$/);
-    assert.strictEqual(computeGuideTriagePromptVersion(), GUIDE_TRIAGE_PROMPT_VERSION);
-
     const verifierHash = computePromptContentHash({
       model: PROMPT_MODEL,
       systemPrompt: VERIFIER_SYSTEM_PROMPT,
@@ -67,27 +48,6 @@ describe('prompts: content-hashed versions', () => {
 });
 
 describe('prompts: prompt formatters and schema validation', () => {
-  it('formats Guide Triage prompt with and without upstream explainer context', () => {
-    const base = formatGuideTriagePrompt({
-      guideId: 'test-guide',
-      category: 'css',
-      markdownContent: '# Test Guide\n\nUse text-wrap: balance.',
-    });
-    assert.match(base, /## Guide: test-guide \(Category: css\)/);
-    assert.match(base, /Use text-wrap: balance\./);
-    assert.match(base, /candidateTechniques/);
-    assert.match(base, /borderline flag/);
-
-    const withExplainer = formatGuideTriagePrompt({
-      guideId: 'test-guide',
-      category: 'css',
-      markdownContent: '# Test Guide\n\nUse text-wrap: balance.',
-      explainerContext: 'CSSWG proposal: developers currently use JS libraries like balance-text.',
-    });
-    assert.match(withExplainer, /### Upstream W3C \/ TC39 \/ ChromeStatus Explainer & Motivation Context:/);
-    assert.match(withExplainer, /developers currently use JS libraries like balance-text\./);
-  });
-
   it('formats Verifier prompt with full guide.md and rubric criteria', () => {
     const formatted = formatVerifierPrompt(
       {
