@@ -1,419 +1,508 @@
+diff --git a/README.md b/README.md
+index 4479b53..36e683f 100644
+--- a/README.md
++++ b/README.md
+@@ -15,3 +15,16 @@ The application will now be running on `http://localhost:11224`.
+ - **[React](https://react.dev/)**: Used for UI components.
+ - **[Tailwind CSS](https://tailwindcss.com/)**: For styling the application.
+ - **[Astro DB](https://docs.astro.build/en/guides/database/)**: Powers the comments feature, using a libSQL-compatible database.
++
++## smallpt WebAssembly demo
++
++The home page embeds [smallpt](http://www.kevinbeason.com/smallpt/), Kevin Beason's
++99-line C++ path tracer, compiled to WebAssembly and run in a Web Worker
++(`src/components/SmallptDemo.tsx`, `public/smallpt/`). The source and build
++script live in `wasm/smallpt/`; the compiled `smallpt.js`/`smallpt.wasm` are
++checked in so no Emscripten toolchain is needed for a normal build. To rebuild
++them after changing the C++ (requires `em++` from the Emscripten SDK):
++
++```sh
++pnpm run build:wasm
++```
 diff --git a/package.json b/package.json
-index 5e71a8a..1a53fd3 100644
+index 820c637..f200146 100644
 --- a/package.json
 +++ b/package.json
 @@ -6,6 +6,7 @@
      "dev": "astro dev",
      "start": "HOST=0.0.0.0 PORT=${PORT:-11224} node ./dist/server/entry.mjs",
      "build": "astro build",
-+    "build:wasm": "bash scripts/build-wasm.sh",
++    "build:wasm": "sh wasm/smallpt/build.sh",
      "preview": "astro preview",
      "astro": "astro"
    },
-diff --git a/public/wasm/image-gen.mjs b/public/wasm/image-gen.mjs
+diff --git a/public/smallpt/smallpt-worker.js b/public/smallpt/smallpt-worker.js
 new file mode 100644
-index 0000000..f4d654d
+index 0000000..6044f1d
 --- /dev/null
-+++ b/public/wasm/image-gen.mjs
++++ b/public/smallpt/smallpt-worker.js
+@@ -0,0 +1,37 @@
++// Web Worker that drives the smallpt WebAssembly module off the main thread.
++// Protocol:
++//   main -> worker: { type: 'render', jobId, width, height, spp, seed, colors: [[r,g,b], ...] }
++//   worker -> main: { type: 'ready', spheres }
++//                   { type: 'rows', jobId, row, rows, pixels }   (RGBA8, transferred)
++//                   { type: 'done', jobId, ms }
++//                   { type: 'error', jobId, message }
++import createSmallpt from './smallpt.js';
++
++const ROWS_PER_CHUNK = 8;
++const modulePromise = createSmallpt();
++
++modulePromise
++  .then((M) => self.postMessage({ type: 'ready', spheres: M._sphere_count() }))
++  .catch((e) => self.postMessage({ type: 'error', message: String(e?.message ?? e) }));
++
++self.onmessage = async (event) => {
++  const { type, jobId, width, height, spp, seed, colors } = event.data;
++  if (type !== 'render') return;
++  try {
++    const M = await modulePromise;
++    colors.forEach(([r, g, b], i) => M._set_sphere_color(i, r, g, b));
++    const t0 = performance.now();
++    M._begin_render(width, height, spp, seed | 0);
++    for (let row = 0; row < height; row += ROWS_PER_CHUNK) {
++      const rows = Math.min(ROWS_PER_CHUNK, height - row);
++      M._render_rows(row, row + rows);
++      // Re-read HEAPU8 after every call: ALLOW_MEMORY_GROWTH can swap the buffer.
++      const ptr = M._pixels() + row * width * 4;
++      const pixels = new Uint8ClampedArray(M.HEAPU8.buffer, ptr, rows * width * 4).slice();
++      self.postMessage({ type: 'rows', jobId, row, rows, pixels }, [pixels.buffer]);
++    }
++    self.postMessage({ type: 'done', jobId, ms: performance.now() - t0 });
++  } catch (e) {
++    self.postMessage({ type: 'error', jobId, message: String(e?.message ?? e) });
++  }
++};
+diff --git a/public/smallpt/smallpt.js b/public/smallpt/smallpt.js
+new file mode 100644
+index 0000000..7490455
+--- /dev/null
++++ b/public/smallpt/smallpt.js
 @@ -0,0 +1,2 @@
-+async function createImageGenModule(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=true;var ENVIRONMENT_IS_WORKER=false;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("image-gen.wasm")}return new URL("image-gen.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};var getCFunc=ident=>{var func=Module["_"+ident];return func};var writeArrayToMemory=(array,buffer)=>{HEAP8.set(array,buffer)};var lengthBytesUTF8=str=>{var len=0;for(var i=0;i<str.length;++i){var c=str.charCodeAt(i);if(c<=127){len++}else if(c<=2047){len+=2}else if(c>=55296&&c<=57343){len+=4;++i}else{len+=3}}return len};var stringToUTF8Array=(str,heap,outIdx,maxBytesToWrite)=>{if(!(maxBytesToWrite>0))return 0;var startIdx=outIdx;var endIdx=outIdx+maxBytesToWrite-1;for(var i=0;i<str.length;++i){var u=str.codePointAt(i);if(u<=127){if(outIdx>=endIdx)break;heap[outIdx++]=u}else if(u<=2047){if(outIdx+1>=endIdx)break;heap[outIdx++]=192|u>>6;heap[outIdx++]=128|u&63}else if(u<=65535){if(outIdx+2>=endIdx)break;heap[outIdx++]=224|u>>12;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63}else{if(outIdx+3>=endIdx)break;heap[outIdx++]=240|u>>18;heap[outIdx++]=128|u>>12&63;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63;i++}}heap[outIdx]=0;return outIdx-startIdx};var stringToUTF8=(str,outPtr,maxBytesToWrite)=>stringToUTF8Array(str,HEAPU8,outPtr,maxBytesToWrite);var stackAlloc=sz=>__emscripten_stack_alloc(sz);var stringToUTF8OnStack=str=>{var size=lengthBytesUTF8(str)+1;var ret=stackAlloc(size);stringToUTF8(str,ret,size);return ret};var UTF8Decoder=new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>{if(!ptr)return"";var end=findStringEnd(HEAPU8,ptr,maxBytesToRead,ignoreNul);return UTF8Decoder.decode(HEAPU8.subarray(ptr,end))};var ccall=(ident,returnType,argTypes,args,opts)=>{var toC={string:str=>{var ret=0;if(str!==null&&str!==undefined&&str!==0){ret=stringToUTF8OnStack(str)}return ret},array:arr=>{var ret=stackAlloc(arr.length);writeArrayToMemory(arr,ret);return ret}};function convertReturnValue(ret){if(returnType==="string"){return UTF8ToString(ret)}if(returnType==="boolean")return Boolean(ret);return ret}var func=getCFunc(ident);var cArgs=[];var stack=0;if(args){for(var i=0;i<args.length;i++){var converter=toC[argTypes[i]];if(converter){if(stack===0)stack=stackSave();cArgs[i]=converter(args[i])}else{cArgs[i]=args[i]}}}var ret=func(...cArgs);function onDone(ret){if(stack!==0)stackRestore(stack);return convertReturnValue(ret)}ret=onDone(ret);return ret};var cwrap=(ident,returnType,argTypes,opts)=>{var numericArgs=!argTypes||argTypes.every(type=>type==="number"||type==="boolean");var numericRet=returnType!=="string";if(numericRet&&numericArgs&&!opts){return getCFunc(ident)}return(...args)=>ccall(ident,returnType,argTypes,args,opts)};{}Module["cwrap"]=cwrap;var _get_buffer,_free,_malloc,_generate_image,__emscripten_timeout,__emscripten_stack_restore,__emscripten_stack_alloc,_emscripten_stack_get_current,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_get_buffer=Module["_get_buffer"]=wasmExports["h"];_free=Module["_free"]=wasmExports["i"];_malloc=Module["_malloc"]=wasmExports["j"];_generate_image=Module["_generate_image"]=wasmExports["k"];__emscripten_timeout=wasmExports["l"];__emscripten_stack_restore=wasmExports["m"];__emscripten_stack_alloc=wasmExports["n"];_emscripten_stack_get_current=wasmExports["o"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={c:__abort_js,b:__emscripten_runtime_keepalive_clear,d:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();if(ABORT)return;initRuntime();postRun()}var wasmExports;wasmExports=await createWasm();await run();
-+;return Module}export default createImageGenModule;
-diff --git a/public/wasm/image-gen.wasm b/public/wasm/image-gen.wasm
++async function createSmallpt(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{}var _sphere_count,_set_sphere_color,_begin_render,_render_rows,_pixels,__emscripten_timeout,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_sphere_count=Module["_sphere_count"]=wasmExports["h"];_set_sphere_color=Module["_set_sphere_color"]=wasmExports["i"];_begin_render=Module["_begin_render"]=wasmExports["j"];_render_rows=Module["_render_rows"]=wasmExports["k"];_pixels=Module["_pixels"]=wasmExports["l"];__emscripten_timeout=wasmExports["m"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={d:__abort_js,b:__emscripten_runtime_keepalive_clear,c:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();if(ABORT)return;initRuntime();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}export default createSmallpt;
+diff --git a/public/smallpt/smallpt.wasm b/public/smallpt/smallpt.wasm
 new file mode 100755
-index 0000000..b92f4aa
-Binary files /dev/null and b/public/wasm/image-gen.wasm differ
-diff --git a/scripts/build-wasm.sh b/scripts/build-wasm.sh
-new file mode 100755
-index 0000000..d02054d
---- /dev/null
-+++ b/scripts/build-wasm.sh
-@@ -0,0 +1,34 @@
-+#!/usr/bin/env bash
-+# Compiles src/wasm/image-gen/image_gen.cpp to a WebAssembly ES module.
-+#
-+# Requires the Emscripten SDK (emcc) on PATH: https://emscripten.org/docs/getting_started/downloads.html
-+#
-+# Output is written to public/wasm/ so Astro serves it as a static asset and
-+# the compiled artifacts can be checked into the repo, letting `astro build`
-+# run without needing Emscripten installed.
-+
-+set -euo pipefail
-+
-+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-+
-+SRC="${ROOT_DIR}/src/wasm/image-gen/image_gen.cpp"
-+OUT_DIR="${ROOT_DIR}/public/wasm"
-+OUT_JS="${OUT_DIR}/image-gen.mjs"
-+
-+mkdir -p "${OUT_DIR}"
-+
-+emcc "${SRC}" \
-+  -sEXPORT_ES6 \
-+  -sENVIRONMENT=web \
-+  -sSTRICT \
-+  -sALLOW_MEMORY_GROWTH \
-+  -sMODULARIZE \
-+  -sEXPORT_NAME=createImageGenModule \
-+  -sEXPORTED_FUNCTIONS=_generate_image,_get_buffer,_malloc,_free \
-+  -sEXPORTED_RUNTIME_METHODS=cwrap,HEAPU8 \
-+  -sFILESYSTEM=0 \
-+  -Oz -flto \
-+  -o "${OUT_JS}"
-+
-+echo "Built ${OUT_JS} ($(du -h "${OUT_JS}" | cut -f1)) and its companion .wasm"
-diff --git a/src/components/ImageGenerator.tsx b/src/components/ImageGenerator.tsx
+index 0000000..e69de29
+diff --git a/src/components/SmallptDemo.tsx b/src/components/SmallptDemo.tsx
 new file mode 100644
-index 0000000..7c518ab
+index 0000000..39aff97
 --- /dev/null
-+++ b/src/components/ImageGenerator.tsx
-@@ -0,0 +1,130 @@
-+import React, { useEffect, useRef, useState } from 'react';
++++ b/src/components/SmallptDemo.tsx
+@@ -0,0 +1,182 @@
++import { useCallback, useEffect, useRef, useState } from 'react';
 +
-+const IMAGE_WIDTH = 480;
-+const IMAGE_HEIGHT = 320;
++// smallpt's scene: indices into the `spheres[]` array in wasm/smallpt/smallpt.cpp.
++const SPHERE_NAMES = ['Left wall', 'Right wall', 'Back wall', 'Front wall', 'Floor', 'Ceiling', 'Mirror ball', 'Glass ball', 'Light'];
++const DEFAULT_COLORS: Color[] = [
++  [0.75, 0.25, 0.25], [0.25, 0.25, 0.75], [0.75, 0.75, 0.75], [0, 0, 0],
++  [0.75, 0.75, 0.75], [0.75, 0.75, 0.75], [0.999, 0.999, 0.999], [0.999, 0.999, 0.999], [0, 0, 0],
++];
++const WIDTH = 480;
++const HEIGHT = 360;
++const SPP = 16; // samples per pixel (smallpt uses 2x2 sub-pixels, so a multiple of 4)
 +
-+type WorkerResponse =
-+  | { type: 'ready' }
-+  | { type: 'result'; requestId: number; width: number; height: number; pixels: ArrayBuffer }
-+  | { type: 'error'; message: string; requestId?: number };
++type Color = [number, number, number];
++type Phase = 'loading' | 'idle' | 'rendering' | 'error';
 +
-+export default function ImageGenerator() {
++type WorkerMessage =
++  | { type: 'ready'; spheres: number }
++  | { type: 'rows'; jobId: number; row: number; rows: number; pixels: Uint8ClampedArray<ArrayBuffer> }
++  | { type: 'done'; jobId: number; ms: number }
++  | { type: 'error'; jobId?: number; message: string };
++
++function hslToRgb(h: number, s: number, l: number): Color {
++  const k = (n: number) => (n + h / 30) % 12;
++  const a = s * Math.min(l, 1 - l);
++  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
++  return [f(0), f(8), f(4)];
++}
++
++// Random albedos: saturated mid-tones for the diffuse walls, bright tints for the
++// mirror and glass balls. Kept below 1.0 so the path tracer stays energy-conserving.
++function randomColors(): Color[] {
++  return DEFAULT_COLORS.map((c, i) => {
++    if (i === 8) return c; // the light's colour stays black; it only emits
++    const hue = Math.random() * 360;
++    if (i === 6 || i === 7) return hslToRgb(hue, 0.4 + Math.random() * 0.4, 0.82 + Math.random() * 0.12);
++    return hslToRgb(hue, 0.5 + Math.random() * 0.45, 0.4 + Math.random() * 0.3);
++  });
++}
++
++function toCss([r, g, b]: Color): string {
++  const c = (v: number) => Math.round(Math.pow(Math.min(1, Math.max(0, v)), 1 / 2.2) * 255);
++  return `rgb(${c(r)} ${c(g)} ${c(b)})`;
++}
++
++export default function SmallptDemo() {
 +  const canvasRef = useRef<HTMLCanvasElement>(null);
 +  const workerRef = useRef<Worker | null>(null);
-+  const requestIdRef = useRef(0);
-+  const pendingRequestIdRef = useRef<number | null>(null);
-+
-+  const [isReady, setIsReady] = useState(false);
-+  const [isGenerating, setIsGenerating] = useState(false);
++  const jobRef = useRef(0);
++  const [phase, setPhase] = useState<Phase>('loading');
++  const [progress, setProgress] = useState(0);
++  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
 +  const [error, setError] = useState<string | null>(null);
-+  const [hasImage, setHasImage] = useState(false);
++  const [colors, setColors] = useState<Color[]>(DEFAULT_COLORS);
++  const base = import.meta.env.BASE_URL;
 +
-+  const drawPixels = (width: number, height: number, pixels: ArrayBuffer) => {
-+    const canvas = canvasRef.current;
-+    const context = canvas?.getContext('2d');
-+    if (!canvas || !context) return;
++  // Spawn the worker and, once its wasm module is ready, render `initialColors`.
++  // Rendering happens in a synchronous loop inside the worker, so cancelling a
++  // job means terminating that worker and starting a fresh one.
++  const spawnWorker = useCallback((initialColors: Color[]) => {
++    workerRef.current?.terminate();
++    const worker = new Worker(`${base}smallpt/smallpt-worker.js`, { type: 'module' });
++    workerRef.current = worker;
++    setPhase('loading');
++    setProgress(0);
++    setElapsedMs(null);
++    setColors(initialColors);
 +
-+    canvas.width = width;
-+    canvas.height = height;
-+    const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height);
-+    context.putImageData(imageData, 0, 0);
-+    setHasImage(true);
-+  };
++    const paintBlack = () => {
++      const ctx = canvasRef.current?.getContext('2d');
++      if (!ctx) return;
++      ctx.fillStyle = '#111';
++      ctx.fillRect(0, 0, WIDTH, HEIGHT);
++    };
++
++    worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
++      const msg = event.data;
++      if (msg.type === 'ready') {
++        paintBlack();
++        const jobId = ++jobRef.current;
++        setPhase('rendering');
++        worker.postMessage({
++          type: 'render',
++          jobId,
++          width: WIDTH,
++          height: HEIGHT,
++          spp: SPP,
++          seed: Math.floor(Math.random() * 0xffff),
++          colors: initialColors,
++        });
++        return;
++      }
++      if (msg.type === 'error') {
++        setPhase('error');
++        setError(msg.message);
++        return;
++      }
++      if (msg.jobId !== jobRef.current) return; // stale job
++      if (msg.type === 'rows') {
++        const ctx = canvasRef.current?.getContext('2d');
++        if (ctx) ctx.putImageData(new ImageData(msg.pixels, WIDTH, msg.rows), 0, msg.row);
++        setProgress((msg.row + msg.rows) / HEIGHT);
++      } else if (msg.type === 'done') {
++        setPhase('idle');
++        setProgress(1);
++        setElapsedMs(msg.ms);
++      }
++    };
++    worker.onerror = (event) => {
++      setPhase('error');
++      setError(event.message || 'Failed to load the smallpt worker.');
++    };
++  }, [base]);
 +
 +  useEffect(() => {
-+    const worker = new Worker(new URL('../workers/image-gen.worker.ts', import.meta.url), {
-+      type: 'module',
-+    });
-+    workerRef.current = worker;
-+
-+    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-+      const message = event.data;
-+
-+      if (message.type === 'ready') {
-+        setIsReady(true);
-+        requestImage();
-+        return;
-+      }
-+
-+      if (message.type === 'result') {
-+        if (message.requestId !== pendingRequestIdRef.current) return;
-+        drawPixels(message.width, message.height, message.pixels);
-+        setIsGenerating(false);
-+        setError(null);
-+        return;
-+      }
-+
-+      if (message.type === 'error') {
-+        setError(message.message);
-+        setIsGenerating(false);
-+      }
-+    };
-+
-+    worker.onerror = (event: ErrorEvent) => {
-+      event.preventDefault();
-+      setError(event.message || 'The image generator worker crashed.');
-+      setIsGenerating(false);
-+    };
-+
-+    worker.postMessage({
-+      type: 'init',
-+      wasmUrl: `${import.meta.env.BASE_URL}wasm/image-gen.mjs`,
-+    });
-+
++    if (typeof Worker === 'undefined' || typeof WebAssembly === 'undefined') {
++      setPhase('error');
++      setError('This browser does not support Web Workers or WebAssembly.');
++      return;
++    }
++    spawnWorker(DEFAULT_COLORS);
 +    return () => {
-+      worker.terminate();
++      workerRef.current?.terminate();
 +      workerRef.current = null;
 +    };
-+    // eslint-disable-next-line react-hooks/exhaustive-deps
-+  }, []);
++  }, [spawnWorker]);
 +
-+  const requestImage = () => {
-+    const worker = workerRef.current;
-+    if (!worker) return;
-+
-+    const requestId = requestIdRef.current + 1;
-+    requestIdRef.current = requestId;
-+    pendingRequestIdRef.current = requestId;
-+
-+    setIsGenerating(true);
-+    setError(null);
-+
-+    worker.postMessage({
-+      type: 'generate',
-+      requestId,
-+      width: IMAGE_WIDTH,
-+      height: IMAGE_HEIGHT,
-+      seed: Math.floor(Math.random() * 0xffffffff),
-+    });
-+  };
++  const busy = phase === 'rendering';
++  const status =
++    phase === 'loading' ? 'Loading WebAssembly module…'
++    : phase === 'error' ? `Error: ${error}`
++    : busy ? `Rendering ${WIDTH}×${HEIGHT} at ${SPP} spp… ${Math.round(progress * 100)}%`
++    : elapsedMs !== null ? `Rendered ${WIDTH}×${HEIGHT} at ${SPP} spp in ${(elapsedMs / 1000).toFixed(1)} s`
++    : 'Ready';
 +
 +  return (
-+    <div className="flex flex-col items-center gap-4">
-+      <div
-+        className="relative w-full max-w-lg overflow-hidden rounded-lg border border-gray-300 bg-gray-900"
-+        style={{ aspectRatio: `${IMAGE_WIDTH} / ${IMAGE_HEIGHT}` }}
-+      >
-+        <canvas ref={canvasRef} className="h-full w-full" aria-label="Generated fractal image" />
-+        {!hasImage && (
-+          <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">
-+            {error ? 'Unable to render image.' : 'Loading image generator…'}
-+          </div>
-+        )}
++    <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-start">
++      <div>
++        <canvas
++          ref={canvasRef}
++          width={WIDTH}
++          height={HEIGHT}
++          className="w-full h-auto bg-gray-900 rounded shadow"
++          aria-label="Path-traced Cornell box rendered by smallpt compiled to WebAssembly"
++        />
++        <div className="mt-3 h-1.5 w-full bg-gray-200 rounded overflow-hidden" aria-hidden="true">
++          <div
++            className="h-full bg-amber-400 transition-[width] duration-150"
++            style={{ width: `${Math.round(progress * 100)}%` }}
++          />
++        </div>
++        <p className="mt-2 text-sm text-gray-600" role="status" aria-live="polite">{status}</p>
 +      </div>
-+
-+      <div className="flex items-center gap-3">
++      <div className="space-y-4">
 +        <button
 +          type="button"
-+          onClick={requestImage}
-+          disabled={!isReady}
-+          className="rounded-md bg-amber-400 px-4 py-2 font-semibold text-gray-900 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
++          onClick={() => spawnWorker(randomColors())}
++          disabled={phase === 'error'}
++          className="w-full bg-gray-800 text-white text-sm font-semibold py-2.5 px-4 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
 +        >
-+          Generate new image
++          {busy ? 'Restart with random colors' : 'Render again with random colors'}
 +        </button>
-+        {isGenerating && <span className="text-sm text-gray-500">Rendering…</span>}
++        <ul className="grid grid-cols-3 lg:grid-cols-2 gap-2 text-xs text-gray-700">
++          {colors.map((c, i) => (
++            <li key={SPHERE_NAMES[i]} className="flex items-center gap-2">
++              <span
++                className="inline-block w-5 h-5 rounded-full border border-gray-300 shrink-0"
++                style={{ background: i === 8 ? '#fffbe6' : toCss(c) }}
++                aria-hidden="true"
++              />
++              {SPHERE_NAMES[i]}
++            </li>
++          ))}
++        </ul>
++        <p className="text-xs text-gray-500">
++          Kevin Beason's <a className="underline hover:text-amber-500" href="http://www.kevinbeason.com/smallpt/">smallpt</a>,
++          99 lines of C++, compiled with Emscripten and running in a Web Worker. Light bounces are
++          sampled with Monte Carlo integration, so each run looks slightly different.
++        </p>
 +      </div>
-+
-+      {error && <p className="text-sm text-red-600">{error}</p>}
 +    </div>
 +  );
 +}
-diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
-index bd5dada..06d620f 100644
---- a/src/pages/multimedia.astro
-+++ b/src/pages/multimedia.astro
-@@ -1,6 +1,7 @@
- ---
- import Layout from '../layouts/Layout.astro';
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..9b80cf3 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -5,6 +5,7 @@ import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
+ import Ad from '../components/AdSlotBanner';
  import { getCollection } from 'astro:content';
-+import ImageGenerator from '../components/ImageGenerator';
+ import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import SmallptDemo from '../components/SmallptDemo.tsx';
+ import type { RenderResult } from 'astro:content';
  
- const multimedia = await getCollection('multimedia');
- ---
-@@ -17,5 +18,14 @@ const multimedia = await getCollection('multimedia');
-                 ))}
-             </ul>
-         </div>
+ const articles = await getCollection('articles');
+@@ -60,6 +61,13 @@ politicsArticles[2] = {
+     </main>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
++        <!-- smallpt path tracer compiled to WebAssembly, rendered client-side in a Web Worker -->
++        <section class="p-4 md:p-6">
++            <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-2">Interactive: a path tracer in your browser</h2>
++            <p class="text-gray-600 mb-6">The classic <em>smallpt</em> renderer, compiled from C++ to WebAssembly. Every pixel is traced live on your device.</p>
++            <SmallptDemo client:load />
++        </section>
 +
-+        <div class="mt-10 pt-8 border-t-2">
-+            <h2 class="text-2xl font-bold text-gray-900 mb-2">AI Art Generator</h2>
-+            <p class="text-gray-600 mb-6">
-+                Generate a one-of-a-kind fractal image, rendered instantly in your browser by a
-+                WebAssembly module.
-+            </p>
-+            <ImageGenerator client:load />
-+        </div>
-     </div>
- </Layout>
-\ No newline at end of file
-diff --git a/src/wasm/image-gen/image_gen.cpp b/src/wasm/image-gen/image_gen.cpp
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
+diff --git a/wasm/smallpt/LICENSE.txt b/wasm/smallpt/LICENSE.txt
 new file mode 100644
-index 0000000..78865d6
+index 0000000..08255c8
 --- /dev/null
-+++ b/src/wasm/image-gen/image_gen.cpp
-@@ -0,0 +1,96 @@
-+// Procedural fractal image generator compiled to WebAssembly with Emscripten.
-+//
-+// Rebuild with `npm run build:wasm` (see scripts/build-wasm.sh). The compiled
-+// output (public/wasm/image-gen.mjs + image-gen.wasm) is checked in so the
-+// site does not need Emscripten installed to run `astro build`.
++++ b/wasm/smallpt/LICENSE.txt
+@@ -0,0 +1,22 @@
++LICENSE
 +
-+#include <cstdint>
-+#include <cstdlib>
++Copyright (c) 2006-2008 Kevin Beason (kevin.beason@gmail.com)
++
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of this software and associated documentation files (the
++"Software"), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish,
++distribute, sublicense, and/or sell copies of the Software, and to
++permit persons to whom the Software is furnished to do so, subject to
++the following conditions:
++
++The above copyright notice and this permission notice shall be included
++in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/wasm/smallpt/build.sh b/wasm/smallpt/build.sh
+new file mode 100755
+index 0000000..b913752
+--- /dev/null
++++ b/wasm/smallpt/build.sh
+@@ -0,0 +1,20 @@
++#!/bin/sh
++# Builds smallpt to WebAssembly. Requires the Emscripten SDK (em++ on PATH).
++# Output goes to public/smallpt/ and is served as a static asset.
++set -eu
++cd "$(dirname "$0")"
++OUT=../../public/smallpt
++mkdir -p "$OUT"
++em++ smallpt.cpp -o "$OUT/smallpt.js" \
++  -O3 -flto -fno-exceptions -fno-rtti \
++  -sSTRICT \
++  -sEXPORT_ES6 \
++  -sEXPORT_NAME=createSmallpt \
++  -sENVIRONMENT=web,worker \
++  -sALLOW_MEMORY_GROWTH \
++  -sSTACK_SIZE=8MB \
++  -sFILESYSTEM=0 \
++  -sEXPORTED_RUNTIME_METHODS=HEAPU8 \
++  --no-entry \
++  "$@"
++ls -la "$OUT"
+diff --git a/wasm/smallpt/smallpt.cpp b/wasm/smallpt/smallpt.cpp
+new file mode 100644
+index 0000000..0a5ad71
+--- /dev/null
++++ b/wasm/smallpt/smallpt.cpp
+@@ -0,0 +1,147 @@
++// smallpt, a Path Tracer by Kevin Beason, 2008 (http://www.kevinbeason.com/smallpt/)
++// Ported to WebAssembly: the rendering core is unchanged; main() has been replaced
++// with a small C API (begin_render / render_rows / pixels) so a Web Worker can
++// drive the renderer incrementally and stream rows to a canvas. See LICENSE.txt.
++#include <math.h>
++#include <stdlib.h>
++#include <stdint.h>
++#include <string.h>
 +#include <emscripten/emscripten.h>
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++static const int NUM_SPHERES = sizeof(spheres)/sizeof(Sphere);
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++
++// ---- WebAssembly API (replaces the original main()) -----------------------
++static int W = 0, H = 0, SAMPS = 1;       // image size, samples per subpixel
++static unsigned short SEED = 0;           // extra entropy mixed into erand48 state
++static Vec *acc = 0;                      // accumulated radiance per pixel
++static uint8_t *pix = 0;                  // RGBA8 output buffer (top row first)
++static Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++static Vec cx, cy;
 +
 +extern "C" {
 +
-+static uint8_t* g_buffer = nullptr;
-+static int g_buffer_width = 0;
-+static int g_buffer_height = 0;
++EMSCRIPTEN_KEEPALIVE int sphere_count(void){ return NUM_SPHERES; }
 +
-+// Ensures a pixel buffer (RGBA8, width * height * 4 bytes) of the requested
-+// size is available and returns a pointer to it so JS can read it out of
-+// wasm memory once generate_image() has populated it.
-+EMSCRIPTEN_KEEPALIVE
-+uint8_t* get_buffer(int width, int height) {
-+  if (g_buffer != nullptr &&
-+      (g_buffer_width != width || g_buffer_height != height)) {
-+    free(g_buffer);
-+    g_buffer = nullptr;
-+  }
-+
-+  g_buffer_width = width;
-+  g_buffer_height = height;
-+
-+  if (g_buffer == nullptr) {
-+    g_buffer = static_cast<uint8_t*>(malloc(static_cast<size_t>(width) *
-+                                             static_cast<size_t>(height) * 4));
-+  }
-+
-+  return g_buffer;
++// Overwrite the diffuse/specular colour (albedo) of sphere i. Emission is kept.
++EMSCRIPTEN_KEEPALIVE void set_sphere_color(int i, double r, double g, double b){
++  if (i < 0 || i >= NUM_SPHERES) return;
++  spheres[i].c = Vec(r, g, b);
 +}
 +
-+// Renders a Julia-set fractal into the shared pixel buffer. `seed` drives the
-+// complex constant and color palette so every call produces a distinct image.
-+EMSCRIPTEN_KEEPALIVE
-+void generate_image(int width, int height, uint32_t seed) {
-+  uint8_t* buffer = get_buffer(width, height);
-+  if (buffer == nullptr) {
-+    return;
-+  }
++// Prepare a w x h render with `spp` samples per pixel (rounded down to a
++// multiple of 4, as in the original 2x2 sub-pixel layout).
++EMSCRIPTEN_KEEPALIVE void begin_render(int w, int h, int spp, int seed){
++  delete[] acc; delete[] pix;
++  W = w; H = h; SAMPS = spp/4 > 0 ? spp/4 : 1; SEED = (unsigned short)seed;
++  acc = new Vec[W*H];
++  pix = new uint8_t[W*H*4];
++  memset(pix, 0, W*H*4);
++  cx = Vec(W*.5135/H); cy = (cx%cam.d).norm()*.5135;
++}
 +
-+  // Simple xorshift PRNG seeded per-call, kept deterministic for a given seed.
-+  uint32_t rng = seed == 0 ? 1 : seed;
-+  auto next_rand = [&rng]() -> uint32_t {
-+    rng ^= rng << 13;
-+    rng ^= rng >> 17;
-+    rng ^= rng << 5;
-+    return rng;
-+  };
-+
-+  const double cReal = -0.8 + (static_cast<double>(next_rand() % 1000) / 1000.0 - 0.5) * 0.6;
-+  const double cImag = 0.156 + (static_cast<double>(next_rand() % 1000) / 1000.0 - 0.5) * 0.6;
-+  const int hueShift = static_cast<int>(next_rand() % 256);
-+  const int maxIterations = 220;
-+
-+  for (int py = 0; py < height; py++) {
-+    for (int px = 0; px < width; px++) {
-+      double x = (px - width / 2.0) * (3.0 / width);
-+      double y = (py - height / 2.0) * (3.0 / height);
-+
-+      int iteration = 0;
-+      while (x * x + y * y <= 4.0 && iteration < maxIterations) {
-+        double xTemp = x * x - y * y + cReal;
-+        y = 2.0 * x * y + cImag;
-+        x = xTemp;
-+        iteration++;
-+      }
-+
-+      int index = (py * width + px) * 4;
-+      if (iteration == maxIterations) {
-+        buffer[index + 0] = 8;
-+        buffer[index + 1] = 8;
-+        buffer[index + 2] = 16;
-+        buffer[index + 3] = 255;
-+      } else {
-+        double t = static_cast<double>(iteration) / maxIterations;
-+        int r = static_cast<int>(9.0 * (1.0 - t) * t * t * t * 255.0);
-+        int g = static_cast<int>(15.0 * (1.0 - t) * (1.0 - t) * t * t * 255.0);
-+        int b = static_cast<int>(8.5 * (1.0 - t) * (1.0 - t) * (1.0 - t) * t * 255.0);
-+
-+        buffer[index + 0] = static_cast<uint8_t>((r + hueShift) % 256);
-+        buffer[index + 1] = static_cast<uint8_t>((g + hueShift / 2) % 256);
-+        buffer[index + 2] = static_cast<uint8_t>((b + hueShift / 3) % 256);
-+        buffer[index + 3] = 255;
-+      }
++// Render image rows [row0, row1) where row 0 is the TOP of the image, then
++// convert them to RGBA8 in the pixel buffer. The loop body is the original
++// smallpt inner loop; smallpt's `y` counts from the bottom, so y = H-1-row.
++EMSCRIPTEN_KEEPALIVE void render_rows(int row0, int row1){
++  if (!acc) return;
++  if (row0 < 0) row0 = 0; if (row1 > H) row1 = H;
++  int w = W, h = H, samps = SAMPS; Vec r;
++  for (int row = row0; row < row1; row++){
++    int y = h-1-row;
++    for (unsigned short x=0, Xi[3]={0,SEED,(unsigned short)(y*y*y)}; x<w; x++)
++      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          acc[i] = acc[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++    for (int x=0; x<w; x++){
++      int i = row*w + x;
++      pix[i*4+0] = (uint8_t)toInt(acc[i].x);
++      pix[i*4+1] = (uint8_t)toInt(acc[i].y);
++      pix[i*4+2] = (uint8_t)toInt(acc[i].z);
++      pix[i*4+3] = 255;
 +    }
 +  }
 +}
 +
-+}  // extern "C"
-diff --git a/src/workers/image-gen.worker.ts b/src/workers/image-gen.worker.ts
-new file mode 100644
-index 0000000..e06bff8
---- /dev/null
-+++ b/src/workers/image-gen.worker.ts
-@@ -0,0 +1,83 @@
-+// Runs the image-gen WebAssembly module off the main thread so generating a
-+// new image never blocks page interactivity (hover states, clicks, etc).
++// Pointer into linear memory of the W*H*4 RGBA8 buffer. Re-read HEAPU8 after
++// every call: ALLOW_MEMORY_GROWTH may replace the underlying ArrayBuffer.
++EMSCRIPTEN_KEEPALIVE uint8_t* pixels(void){ return pix; }
 +
-+interface ImageGenModule {
-+  HEAPU8: Uint8Array;
-+  cwrap: (
-+    ident: string,
-+    returnType: string | null,
-+    argTypes: string[]
-+  ) => (...args: number[]) => number;
-+}
-+
-+type WorkerRequest =
-+  | { type: 'init'; wasmUrl: string }
-+  | { type: 'generate'; requestId: number; width: number; height: number; seed: number };
-+
-+type WorkerResponse =
-+  | { type: 'ready' }
-+  | { type: 'result'; requestId: number; width: number; height: number; pixels: ArrayBuffer }
-+  | { type: 'error'; message: string; requestId?: number };
-+
-+let modulePromise: Promise<ImageGenModule> | null = null;
-+let generateImage: ((width: number, height: number, seed: number) => void) | null = null;
-+let getBuffer: ((width: number, height: number) => number) | null = null;
-+
-+async function loadModule(wasmUrl: string): Promise<ImageGenModule> {
-+  const createImageGenModule = (await import(/* @vite-ignore */ wasmUrl)).default as (
-+    args?: Record<string, unknown>
-+  ) => Promise<ImageGenModule>;
-+  return createImageGenModule();
-+}
-+
-+self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
-+  const message = event.data;
-+
-+  try {
-+    if (message.type === 'init') {
-+      modulePromise ??= loadModule(message.wasmUrl);
-+      const wasmModule = await modulePromise;
-+      generateImage = wasmModule.cwrap('generate_image', null, ['number', 'number', 'number']) as (
-+        width: number,
-+        height: number,
-+        seed: number
-+      ) => void;
-+      getBuffer = wasmModule.cwrap('get_buffer', 'number', ['number', 'number']) as (
-+        width: number,
-+        height: number
-+      ) => number;
-+      const ready: WorkerResponse = { type: 'ready' };
-+      self.postMessage(ready);
-+      return;
-+    }
-+
-+    if (message.type === 'generate') {
-+      if (!modulePromise || !generateImage || !getBuffer) {
-+        throw new Error('WebAssembly module has not been initialized yet.');
-+      }
-+
-+      const wasmModule = await modulePromise;
-+      const { width, height, seed, requestId } = message;
-+
-+      generateImage(width, height, seed);
-+      const bufferPointer = getBuffer(width, height);
-+      const pixels = wasmModule.HEAPU8.slice(bufferPointer, bufferPointer + width * height * 4);
-+
-+      const response: WorkerResponse = {
-+        type: 'result',
-+        requestId,
-+        width,
-+        height,
-+        pixels: pixels.buffer,
-+      };
-+      self.postMessage(response, [pixels.buffer]);
-+    }
-+  } catch (error) {
-+    const response: WorkerResponse = {
-+      type: 'error',
-+      message: error instanceof Error ? error.message : 'Unknown error generating image.',
-+      requestId: message.type === 'generate' ? message.requestId : undefined,
-+    };
-+    self.postMessage(response);
-+  }
-+};
++} // extern "C"

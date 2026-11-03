@@ -44,6 +44,9 @@ jobs:
       - name: Verify publish-skills (Dry Run)
         run: pnpm run publish-skills --dry-run
 
+      - name: Build DevSite target
+        run: pnpm run build:devsite
+
       - name: RAG Benchmark (Public Datasets)
         run: |
           pnpm run benchmark:rag --ci --markdown /tmp/rag-bench-ci.md
