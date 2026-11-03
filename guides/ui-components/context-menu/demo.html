@@ -353,7 +353,6 @@
           if (event.newState === "open") {
             if (trigger && trigger.setAttribute)
               trigger.setAttribute("aria-expanded", "true");
-console.log({has: enterOnOpen.has(menu)})
             if (enterOnOpen.has(menu)) {
               const firstItem = menu.querySelector("button:not([disabled])");
               if (firstItem) {
