@@ -80,23 +80,12 @@ Because a 2D panning surface often lacks focusable child controls (for example, 
 
 {{ BASELINE_STATUS("scroll-axis-lock") }}
 
-Choose between **progressive enhancement** and a **JavaScript fallback** based on your application's requirements:
+Browsers that do not recognize `scroll-axis-lock: none` ignore the declaration and keep their default `auto` 2D scrolling behavior, which still rails gestures that begin predominantly along a single axis. Because unrestricted two-dimensional panning is the core requirement of this use case, provide the JavaScript fallback below for browsers where `scroll-axis-lock` is not supported.
 
-### Option 1: Progressive Enhancement (No JavaScript)
-
-Use progressive enhancement when preserving native compositor-thread touch scrolling, inertial fling momentum, and pinch-to-zoom is more important than eliminating axis-locking in unsupported browsers:
-
-- **Supporting browsers**: The browser prevents its axis-locking ("railing") heuristic from kicking in on the 2D scroll container during scroll gestures.
-- **Unsupported browsers**: Browsers that do not recognize `scroll-axis-lock: none` safely ignore the declaration and keep their default `auto` 2D scrolling behavior—scrolling across both axes natively, while still railing gestures that begin predominantly along a single axis.
-
-### Option 2: JavaScript Fallback (`wheel` + `pointermove` with `scrollLeft`/`scrollTop`)
-
-If unrestricted two-dimensional panning across all browsers is required, use `@supports not (scroll-axis-lock: none)` and `CSS.supports('scroll-axis-lock', 'none')` to conditionally intercept `wheel` and pointer drag gestures.
-
-Because `wheel` (`e.deltaX`, `e.deltaY`) and `pointermove` (`e.clientX`, `e.clientY`) expose raw, unlocked 2D deltas before the browser's scrolling engine applies axis-locking, you can apply those deltas directly to `scrollLeft` and `scrollTop`:
+Use `@supports not (scroll-axis-lock: none)` and `CSS.supports('scroll-axis-lock', 'none')` to conditionally intercept `wheel` and pointer drag gestures only when native support is missing. Because `wheel` (`e.deltaX`, `e.deltaY`) and `pointermove` (`e.clientX`, `e.clientY`) expose raw, unlocked 2D deltas before the browser's scrolling engine applies axis-locking, apply those deltas directly to `scrollLeft` and `scrollTop`:
 
 - **Why `scrollLeft`/`scrollTop` instead of CSS `transform`**: Updating `scrollLeft` and `scrollTop` keeps the element as a true scroll container. The browser automatically clamps scroll positions to `[0, scrollWidth - clientWidth]` and `[0, scrollHeight - clientHeight]`, native scrollbars stay synchronized, keyboard Arrow-key scrolling continues to work, and `scroll` events and `IntersectionObserver` fire normally.
-- **Trade-offs**: Intercepting `wheel` with `{ passive: false }` moves scrolling onto the main thread, and setting `touch-action: none` on touchscreens disables native inertial fling momentum after `pointerup` (as well as native pinch-to-zoom).
+- **Trade-offs**: Intercepting `wheel` with `{ passive: false }` moves scrolling onto the main thread, and setting `touch-action: none` on touchscreens disables native compositor touch scrolling, inertial fling momentum after `pointerup`, and native pinch-to-zoom in unsupported browsers. Keeping both rules gated behind `@supports not (scroll-axis-lock: none)` and `CSS.supports('scroll-axis-lock', 'none')` preserves native compositor scrolling where `scroll-axis-lock` is supported.
 
 ```css
 /* Only disable native touch scrolling when scroll-axis-lock is unsupported
