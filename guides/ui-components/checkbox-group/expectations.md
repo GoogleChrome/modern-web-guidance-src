@@ -10,5 +10,5 @@
 - An `<output>` live region (or element with `aria-live`) inside the fieldset is updated with a count summary when the checked options change.
 - The master checkbox is `disabled` when there are no enabled option checkboxes.
 - Checkboxes are styled with the CSS `accent-color` property (or custom `appearance: none` styling).
-- The options container uses a grid layout and each option row uses `grid-template-columns: subgrid`.
+- The options container uses a grid layout with each option row using `grid-template-columns: subgrid` when rows have a secondary column, or a flex label (`display: flex`) when rows only have a label.
 - Disabled checkboxes have `cursor: not-allowed` and reduced opacity.

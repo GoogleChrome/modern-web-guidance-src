@@ -139,7 +139,7 @@ DO NOT remove focus indicators from the checkboxes.
 
 ## 4. Aligned layout with subgrid
 
-Style `.master` with a 44px minimum hit target and a visual separator, then make `.options` a grid whose direct `<label>` children use `subgrid` (without `<ul>`/`<li>` wrappers) so the checkbox, name, and optional secondary column align across all rows:
+Style `.master` with a 44px minimum hit target and a visual separator. When rows have a secondary column, make `.options` a grid whose direct `<label>` children use `subgrid` (without `<ul>`/`<li>` wrappers) so the checkbox, name, and secondary column align across all rows. Wrap each column's content in a single `<span>`, because every direct child of the label becomes its own grid item:
 
 ```css
 .master {
@@ -165,6 +165,18 @@ Style `.master` with a 44px minimum hit target and a visual separator, then make
   grid-template-columns: subgrid;
   grid-column: 1 / -1;
   align-items: center;
+  min-block-size: 44px;
+  cursor: pointer;
+}
+```
+
+When rows only have a label and no secondary column, skip subgrid and use a flex label instead, so arbitrary inline content in the label needs no `<span>` wrappers:
+
+```css
+.options label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   min-block-size: 44px;
   cursor: pointer;
 }
