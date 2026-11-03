@@ -127,6 +127,8 @@ if ("interestForElement" in HTMLButtonElement.prototype && CSS.supports("positio
 
 ## Overflow menu for secondary actions (optional)
 
+Two patterns fit a toolbar into a narrow space: an overflow menu, better on desktop, or a horizontally scrollable toolbar with no scrollbar and scroll hints, better on mobile. For the scrollable pattern use `overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity`, and hint at hidden controls with edge fades (`mask-image`) or a partly visible last item. Choose by input type (`@media (pointer: coarse)`) or container width.
+
 Add a trailing "More actions" menu when the toolbar has secondary actions or must fit narrow containers; skip it if every control is common and fits. If items must move into the menu dynamically as space runs out, build that overflow behavior yourself.
 
 * Make the trigger the last toolbar item, `aria-label="More actions"`, with the conventional three vertical dots icon (`⋮`), drawn from CSS like the other icons.
