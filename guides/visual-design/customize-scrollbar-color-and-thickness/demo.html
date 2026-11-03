@@ -51,7 +51,7 @@
         /* 1. Modern standards-compliant styling */
         .scroller.custom-scrollbar {
             /* DO: Use standard properties natively */
-            scrollbar-color: #00bcd4 #e0f7fa;
+            scrollbar-color: #00796b #e0f7fa;
             scrollbar-width: thin;
             /* DO: Force track background to be visible on macOS */
             scrollbar-gutter: stable;
@@ -74,7 +74,7 @@
             }
 
             .scroller.custom-scrollbar::-webkit-scrollbar-thumb {
-                background: #00bcd4;
+                background: #00796b;
                 border-radius: 4px;
             }
 
@@ -93,8 +93,8 @@
 <body>
 
     <div class="container">
-        <h2 class="header">Custom Color & Thin</h2>
-        <div class="scroller custom-scrollbar">
+        <h2 class="header" id="custom-scrollbar-heading">Custom Color & Thin</h2>
+        <div class="scroller custom-scrollbar" tabindex="0" role="region" aria-labelledby="custom-scrollbar-heading">
             <p>
                 This box demonstrates a scrollable container with customized scrollbar color AND thickness.
             </p>
@@ -113,8 +113,8 @@
     </div>
     
     <div class="container">
-        <h2 class="header">No Scrollbar</h2>
-        <div class="scroller no-scrollbar">
+        <h2 class="header" id="no-scrollbar-heading">No Scrollbar</h2>
+        <div class="scroller no-scrollbar" tabindex="0" role="region" aria-labelledby="no-scrollbar-heading">
             <p>
                 This box demonstrates a scrollable container that has its scrollbar completely hidden, but remains scrollable!
             </p>
