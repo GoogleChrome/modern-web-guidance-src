@@ -155,7 +155,6 @@ if (!globalThis.CommandEvent) {
       this.command = command;
     }
   }
-}
 
 // 3. The fallback: Dispatch events manually if native support is missing
   document.addEventListener('click', (event) => {
@@ -172,6 +171,7 @@ if (!globalThis.CommandEvent) {
       }));
     }
   });
+}
 
 // 4. **Mandatory:** Register the unified listener directly on the target element
 document.getElementById('action-target').addEventListener('command', (event) => {

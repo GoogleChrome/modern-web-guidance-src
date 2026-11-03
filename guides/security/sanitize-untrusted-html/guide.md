@@ -71,7 +71,7 @@ preview.replaceChildren(...doc.body.childNodes);
 
 ## Fallbacks & browser support for Sanitizer API
 
-{{ FEATURE_FALLBACKS("sanitizer") }}
+{{ BASELINE_STATUS("sanitizer") }}
 
 If the native Sanitizer API is not available in your target browsers, load a library like **DOMPurify** only when native support is missing, to avoid shipping it to browsers that don't need it. Use `in` checks for feature detection so the check itself works in older browsers.
 

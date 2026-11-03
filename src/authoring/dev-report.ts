@@ -226,7 +226,7 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
   if (anyUnhealthy) {
     content += `> [!NOTE]\n`;
     content += `> **Reviewer Next Steps**: If any targets are flagged or require adjustments, recommended fixes have already been applied directly to the files in this PR.\n`;
-    content += `> - After reviewing, add the **\`needs-dev-rerun\`** label. The next \`gd dev-gap\` run regenerates whatever the changed files require: edits to \`guide.md\` or \`expectations.md\` regenerate all target artifacts, edits to \`task.md\` regenerate the solution patches and \`grader.ts\`, and edits to \`grader.ts\` re-run calibration and agent evaluations.\n\n`;
+    content += `> - After reviewing, add the **\`needs-dev-rerun\`** label. The next \`gd dev-gap\` run regenerates whatever the changed files require: edits to the \`description\` in \`guide.md\` regenerate all target artifacts, other edits to \`guide.md\` or \`expectations.md\` keep \`task.md\` and regenerate the patches and \`grader.ts\`, edits to \`task.md\` regenerate the solution patches and \`grader.ts\`, and edits to \`grader.ts\` re-run calibration and agent evaluations.\n\n`;
   }
 
   content += `## Summary\n\n`;
