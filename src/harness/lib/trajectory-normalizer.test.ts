@@ -855,4 +855,39 @@ test('extractSubagentIdFromFilename extracts clean subagent id across formats an
   assert.strictEqual(extractSubagentIdFromFilename('/path/to/subagent-agent-worker.jsonl'), 'worker');
 });
 
+test('generateNormalizedTrajectory enriches summary with guides and tool usage from modern-web.log', async () => {
+  const tempDir = createTempDir();
+  try {
+    const rawEntry = {
+      role: 'assistant',
+      timestamp: '2026-08-10T10:00:00.000Z',
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'call_1',
+            name: 'Bash',
+            input: { command: 'ls -la' }
+          }
+        ]
+      }
+    };
+    fs.writeFileSync(path.join(tempDir, 'session-1.jsonl'), JSON.stringify(rawEntry));
+    fs.writeFileSync(
+      path.join(tempDir, 'modern-web.log'),
+      JSON.stringify({ tool: 'get_best_practices', result: [{ id: 'dialog-closedby' }, { id: 'popover-api' }] }) + '\n'
+    );
+
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Enrich from log test');
+
+    const summary = readTrajectorySummary(tempDir);
+    assert.ok(summary);
+    assert.deepStrictEqual(summary.retrievedGuides, ['dialog-closedby', 'popover-api']);
+    assert.deepStrictEqual(summary.toolsUsed, ['modern-web-guidance']);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+
 
