@@ -77,8 +77,9 @@
       padding: 0.5rem 0.75rem; border-radius: calc(var(--radius) - 0.25rem); cursor: pointer;
     }
     .combo option:hover, .combo option:focus-visible, .combo-add:hover, .combo-add:focus-visible {
-      background: var(--accent-soft); outline: none;
+      background: var(--accent-soft);
     }
+    .combo option:focus-visible, .combo-add:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
     .combo option:checked { font-weight: 600; }
     .combo option::checkmark { order: 1; margin-inline-start: auto; color: var(--accent); }
     .combo option[hidden], .combo-add[hidden] { display: none; }
