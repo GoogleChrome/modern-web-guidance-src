@@ -135,7 +135,8 @@
       }
 
       /* WORKAROUND (Chrome bug, remove when fixed): set from script on the first Tab, because native
-         buttons lose focus when looping reorders the slides */
+         buttons lose focus when looping reorders the slides.
+         Bug: https://issues.chromium.org/issues/581318163 */
       .carousel-track[data-html-buttons]::scroll-button(*) {
         display: none;
       }
@@ -388,7 +389,7 @@
     prevBtn.addEventListener("click", () => step(-1));
     nextBtn.addEventListener("click", () => step(1));
     // WORKAROUND (Chrome bug, remove when fixed): reordering slides makes Chrome drop focus from native
-    // scroll buttons, so keyboard users get the HTML buttons instead. TODO: link the Chromium bug.
+    // scroll buttons, so keyboard users get the HTML buttons instead. Bug: https://issues.chromium.org/issues/581318163
     if (hasButtons) {
       document.addEventListener("keydown", (e) => {
         if (e.key !== "Tab") return;
