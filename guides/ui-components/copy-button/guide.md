@@ -114,12 +114,13 @@ When a page repeats copyable elements (code blocks, list rows, token or ID cells
 ```css
 /* Touch devices (no hover): the button stays visible, so keep it in flow where it cannot cover content */
 .copyable { display: flex; align-items: start; gap: .5rem; }
-.copyable .copy-button { flex: none; order: 1; }
+.copyable .copy { flex: none; order: 1; }
 
 /* Only hide where hover exists; the overlay is then revealed on demand */
 @media (hover: hover) {
   .copyable { display: block; position: relative; }
-  .copyable .copy-button { position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; opacity: 0; transition: opacity .15s; }
+  .copyable .copy { position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; } /* .copy is the bubble's positioning context, so move it, not the button */
+  .copyable .copy-button { opacity: 0; transition: opacity .15s; }
   .copyable:hover .copy-button,
   .copyable:focus-within .copy-button,
   .copyable .copy-button:focus-visible,
