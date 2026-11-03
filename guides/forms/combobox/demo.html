@@ -178,7 +178,7 @@
     filter.addEventListener('pointerdown', focusFilter);
     filter.addEventListener('click', focusFilter);
     // Opening via mouse or keyboard should land in the filter so the user can type immediately
-    select.addEventListener('click', focusFilter);
+    select.addEventListener('click', e => { if (e.target !== add) focusFilter(); });
     select.addEventListener('keydown', e => {
       if (e.target === select && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) focusFilter();
     });
