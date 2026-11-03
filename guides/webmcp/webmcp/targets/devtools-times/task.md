@@ -1,1 +1,1 @@
-- Implement WebMCP across The DevTools Times so AI agents can discover and invoke both its search and reading-list forms and its client-side article utilities as browser tools.
+- Expose client-side browser tools across The DevTools Times so AI agents in the browser can discover and invoke both its search and reading-list forms and its client-side article utilities.
