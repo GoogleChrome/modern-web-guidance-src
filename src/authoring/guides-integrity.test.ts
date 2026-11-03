@@ -263,45 +263,19 @@ describe('Guides Validation (Single Source of Truth)', () => {
       if (!res.isValid) {
         assert.fail(`Feature ID "${fid}" in features/volatile-features.json is invalid: ${res.errorMessage}`);
       }
-      const hasPinned = entry.pinned === true;
-      const hasValidWindow =
-        typeof entry.window_ends === 'string' &&
-        /^\d{4}-\d{2}-\d{2}$/.test(entry.window_ends) &&
-        !Number.isNaN(Date.parse(entry.window_ends));
       assert.ok(
-        hasPinned || hasValidWindow,
-        `Volatile feature "${fid}" must specify either pinned: true or a valid YYYY-MM-DD window_ends`
+        typeof entry.reason === 'string' && entry.reason.length > 0,
+        `Volatile feature "${fid}" must specify a non-empty reason (e.g., 'recent-single-engine' or 'built-in-ai')`
       );
     }
   });
 
-  it('validates volatile feature expirations helper', async () => {
-    const { checkVolatileFeatureExpirations } = await import('../core/feature-gates.ts');
-    const expired = checkVolatileFeatureExpirations();
-    assert.strictEqual(expired.length, 0, `Expired volatile features found: ${JSON.stringify(expired)}`);
-  });
+  it('correctly evaluates volatile feature active status', async () => {
+    const { isVolatileActive } = await import('../core/feature-gates.ts');
 
-  it('correctly evaluates volatile feature active status and expiration boundaries with synthetic fixtures', async () => {
-    const { isVolatileActive, checkVolatileFeatureExpirations } = await import('../core/feature-gates.ts');
-
-    // Test isVolatileActive boundaries
-    assert.strictEqual(isVolatileActive({ pinned: true }, '2026-11-03'), true, 'pinned is always active');
-    assert.strictEqual(isVolatileActive({ window_ends: '2026-11-04' }, '2026-11-03'), true, 'future date is active');
-    assert.strictEqual(isVolatileActive({ window_ends: '2026-11-03' }, '2026-11-03'), true, 'same-day boundary is active');
-    assert.strictEqual(isVolatileActive({ window_ends: '2026-11-02' }, '2026-11-03'), false, 'past date is inactive');
-    assert.strictEqual(isVolatileActive({}, '2026-11-03'), false, 'empty entry is inactive');
-
-    // Test checkVolatileFeatureExpirations with synthetic registry
-    const mockRegistry = {
-      'feat-pinned': { pinned: true, window_ends: '2020-01-01' },
-      'feat-future': { window_ends: '2026-12-01' },
-      'feat-today': { window_ends: '2026-11-03' },
-      'feat-expired': { window_ends: '2026-11-01' },
-    };
-    const expired = checkVolatileFeatureExpirations(mockRegistry, '2026-11-03');
-    assert.deepStrictEqual(expired, [
-      { featureId: 'feat-expired', windowEnds: '2026-11-01' }
-    ]);
+    assert.strictEqual(isVolatileActive({ reason: 'recent-single-engine' }), true);
+    assert.strictEqual(isVolatileActive({ reason: 'built-in-ai' }), true);
+    assert.strictEqual(isVolatileActive(undefined), false);
   });
 
   it('validates that all graders conform to static anti-pattern checks', async () => {

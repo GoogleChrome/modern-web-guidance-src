@@ -120,14 +120,12 @@ export {
   getOriginTrialMetadata,
   getGuideOriginTrials,
   getGuideVolatileFeatures,
-  checkVolatileFeatureExpirations,
   isVolatileActive,
   type FeatureGateSpec,
   type OriginTrialEntry,
   type VolatileFeatureEntry,
   type OriginTrialMetadata,
   type VolatileFeatureMetadata,
-  type ExpiredVolatileFeature,
 } from './feature-gates.ts';
 
 

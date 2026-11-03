@@ -8,8 +8,7 @@ export interface OriginTrialEntry {
 }
 
 export interface VolatileFeatureEntry {
-  pinned?: boolean;
-  window_ends?: string;
+  reason?: string;
 }
 
 export interface OriginTrialMetadata extends OriginTrialEntry {
@@ -18,11 +17,6 @@ export interface OriginTrialMetadata extends OriginTrialEntry {
 
 export interface VolatileFeatureMetadata extends VolatileFeatureEntry {
   readonly id: string;
-}
-
-export interface ExpiredVolatileFeature {
-  featureId: string;
-  windowEnds: string;
 }
 
 export interface FeatureGateSpec<T extends { id: string } = { id: string }> {
@@ -101,13 +95,8 @@ export function resetRegistryCache(): void {
   registryCache.clear();
 }
 
-export function isVolatileActive(
-  entry: VolatileFeatureEntry,
-  currentDate = new Date().toISOString().slice(0, 10),
-): boolean {
-  if (entry.pinned) return true;
-  if (entry.window_ends) return entry.window_ends >= currentDate;
-  return false;
+export function isVolatileActive(entry?: VolatileFeatureEntry): boolean {
+  return entry !== undefined;
 }
 
 export function getOriginTrialsRegistry(): Record<string, OriginTrialEntry> {
@@ -140,22 +129,9 @@ export function getGuideVolatileFeatures(featureIds: string[]): VolatileFeatureM
   const found: VolatileFeatureMetadata[] = [];
   for (const id of featureIds) {
     const entry = registry[id];
-    if (entry && isVolatileActive(entry)) {
+    if (entry) {
       found.push({ ...entry, id });
     }
   }
   return found;
-}
-
-export function checkVolatileFeatureExpirations(
-  registry: Record<string, VolatileFeatureEntry> = getVolatileFeaturesRegistry(),
-  currentDate = new Date().toISOString().slice(0, 10),
-): ExpiredVolatileFeature[] {
-  const expired: ExpiredVolatileFeature[] = [];
-  for (const [featureId, entry] of Object.entries(registry)) {
-    if (!entry.pinned && entry.window_ends && entry.window_ends < currentDate) {
-      expired.push({ featureId, windowEnds: entry.window_ends });
-    }
-  }
-  return expired;
 }

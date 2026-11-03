@@ -1,35 +1,35 @@
 {
   "connection-allowlists": {
-    "window_ends": "2026-11-25"
+    "reason": "recent-single-engine"
   },
   "frame-sizing": {
-    "window_ends": "2026-12-22"
+    "reason": "recent-single-engine"
   },
   "languagedetector": {
-    "pinned": true
+    "reason": "built-in-ai"
   },
   "languagemodel": {
-    "pinned": true
+    "reason": "built-in-ai"
   },
   "scroll-axis-lock": {
-    "window_ends": "2026-12-08"
+    "reason": "recent-single-engine"
   },
   "summarizer": {
-    "pinned": true
+    "reason": "built-in-ai"
   },
   "text-decoration-skip-spaces": {
-    "window_ends": "2027-01-06"
+    "reason": "recent-single-engine"
   },
   "tmp-camera-microphone": {
-    "window_ends": "2026-12-08"
+    "reason": "recent-single-engine"
   },
   "tmp-webcrypto-modern-algos": {
-    "window_ends": "2027-01-06"
+    "reason": "recent-single-engine"
   },
   "translator": {
-    "pinned": true
+    "reason": "built-in-ai"
   },
   "window-drag": {
-    "window_ends": "2026-11-25"
+    "reason": "recent-single-engine"
   }
 }
