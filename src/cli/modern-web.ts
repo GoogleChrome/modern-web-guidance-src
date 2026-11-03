@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { retrieveUseCase, OriginTrialGateError } from "../rag/retrieve.ts";
 import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
+import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
@@ -62,6 +63,7 @@ Commands:
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
   analyze [path] [options]  Analyze codebase for legacy web platform patterns
+  set-baseline <target>     Set project Baseline target in .mwgrc (widely, newly, limited, or YYYY)
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   install [options]         Install the modern-web-guidance skill
   uninstall                 Uninstall the modern-web-guidance skill
@@ -256,6 +258,17 @@ async function main() {
     if (result.error) {
       console.error("Update failed:", result.error);
     }
+  } else if (command === "set-baseline") {
+    const normalized = normalizeBaselineTarget(arg);
+    if (!normalized) {
+      console.error(
+        `Invalid baseline target: ${JSON.stringify(arg)}. Expected one of: widely, newly, limited, or a 4-digit year (e.g., 2024).`
+      );
+      process.exit(1);
+    }
+    const targetPath = writeMwgrc({ baseline: normalized });
+    console.log(`Set Baseline target to "${normalized}" in ${targetPath}.`);
+    process.exit(0);
   } else if (command === "set-allow-origin-trials") {
     const code = await handleSetAllowOriginTrials();
     process.exit(code);

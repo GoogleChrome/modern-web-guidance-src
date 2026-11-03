@@ -4,6 +4,7 @@ import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents, type SuiteConfig } from '../config.ts';
 import { ZERO_PASSRATE_PATCH_FILE } from '../../core/guide-validation.ts';
 import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
+import { normalizeBaselineTarget, type MwgConfig } from '../../core/mwgrc.ts';
 import { rootDir, guidesDir } from '../../core/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../core/patch-utils.ts';
 import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
@@ -465,8 +466,17 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
 
   // Guided sandboxes are pre-opted-in so OT guides can be retrieved; .mwgrc must land in the
   // root commit so it stays out of agent.patch (suite templates arrive with .git already).
+  // Also write to homeDir so agents that `cd /tmp` before running `npx modern-web-guidance`
+  // still resolve the sandbox's .mwgrc via the HOME fallback.
   if (runType === 'guided') {
-    fs.writeFileSync(path.join(workDir, '.mwgrc'), JSON.stringify({ allowOriginTrials: true }, null, 2) + '\n', 'utf8');
+    const mwgConfig: MwgConfig = { allowOriginTrials: true };
+    const normalizedBaseline = normalizeBaselineTarget(process.env.BASELINE_TARGET);
+    if (normalizedBaseline && normalizedBaseline !== 'widely') {
+      mwgConfig.baseline = normalizedBaseline;
+    }
+    const serialized = JSON.stringify(mwgConfig, null, 2) + '\n';
+    fs.writeFileSync(path.join(workDir, '.mwgrc'), serialized, 'utf8');
+    fs.writeFileSync(path.join(homeDir, '.mwgrc'), serialized, 'utf8');
   }
   if (!fs.existsSync(path.join(workDir, '.git'))) {
     initGitRepo(workDir);
@@ -611,7 +621,7 @@ export async function runCliAgentCommand(
   const resultsRoot = path.join(rootDir, 'results');
   const sanitizedEnv = Object.fromEntries(
     Object.entries(process.env).filter(
-      ([k]) => !/^(npm_|PNPM_|pnpm_|GD_SUITE_CONFIG$|MODERN_WEB_LOG_DIR$|INIT_CWD$|NODE_PATH$|OLDPWD$)/.test(k)
+      ([k]) => !/^(npm_|PNPM_|pnpm_|GD_SUITE_CONFIG$|MODERN_WEB_LOG_DIR$|BASELINE_TARGET$|INIT_CWD$|NODE_PATH$|OLDPWD$)/.test(k)
     )
   ) as NodeJS.ProcessEnv;
   sanitizedEnv.PWD = workDir;
@@ -845,13 +855,15 @@ export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, pro
 export function getGraderScriptContent(
   targetDir: string,
   graderPath: string,
-  guideName: string
+  guideName: string,
+  baselineTarget?: string
 ): string {
   const runGraderModulePath = path.join(rootDir, 'src/grading/run-grader.ts');
   const targetFile = path.join(targetDir, 'index.html');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
   const agentPatch = path.join(targetDir, 'agent.patch');
   const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
+  const resolvedBaselineTarget = baselineTarget || 'widely';
 
   return `import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
@@ -863,9 +875,12 @@ async function run() {
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
-      'inherit',
-      patchFile,
-      zeroPassrateFile
+      {
+        stdio: 'inherit',
+        patchFile,
+        zeroPassrateFile,
+        baselineTarget: ${JSON.stringify(resolvedBaselineTarget)},
+      }
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {
