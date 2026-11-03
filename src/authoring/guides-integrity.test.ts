@@ -281,6 +281,29 @@ describe('Guides Validation (Single Source of Truth)', () => {
     assert.strictEqual(expired.length, 0, `Expired volatile features found: ${JSON.stringify(expired)}`);
   });
 
+  it('correctly evaluates volatile feature active status and expiration boundaries with synthetic fixtures', async () => {
+    const { isVolatileActive, checkVolatileFeatureExpirations } = await import('../core/feature-gates.ts');
+
+    // Test isVolatileActive boundaries
+    assert.strictEqual(isVolatileActive({ pinned: true }, '2026-11-03'), true, 'pinned is always active');
+    assert.strictEqual(isVolatileActive({ window_ends: '2026-11-04' }, '2026-11-03'), true, 'future date is active');
+    assert.strictEqual(isVolatileActive({ window_ends: '2026-11-03' }, '2026-11-03'), true, 'same-day boundary is active');
+    assert.strictEqual(isVolatileActive({ window_ends: '2026-11-02' }, '2026-11-03'), false, 'past date is inactive');
+    assert.strictEqual(isVolatileActive({}, '2026-11-03'), false, 'empty entry is inactive');
+
+    // Test checkVolatileFeatureExpirations with synthetic registry
+    const mockRegistry = {
+      'feat-pinned': { pinned: true, window_ends: '2020-01-01' },
+      'feat-future': { window_ends: '2026-12-01' },
+      'feat-today': { window_ends: '2026-11-03' },
+      'feat-expired': { window_ends: '2026-11-01' },
+    };
+    const expired = checkVolatileFeatureExpirations(mockRegistry, '2026-11-03');
+    assert.deepStrictEqual(expired, [
+      { featureId: 'feat-expired', windowEnds: '2026-11-01' }
+    ]);
+  });
+
   it('validates that all graders conform to static anti-pattern checks', async () => {
     const { checkAllGraders, formatViolations } = await import('../core/grader-lint.ts');
     const violations = checkAllGraders({ repoRoot: REPO_ROOT });

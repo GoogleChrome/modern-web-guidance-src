@@ -110,6 +110,7 @@ export async function computePipelineHash(
     path.join(rootDir, "src/rag/static-model/chunks.i8"),
     path.join(rootDir, "src/rag/static-model/chunks.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
+    path.join(rootDir, "src/core/feature-gates.ts"),
     path.join(rootDir, "features/origin-trials.json"),
     path.join(rootDir, "features/volatile-features.json"),
     path.join(rootDir, "src/build/devsite-markdown.ts"),
