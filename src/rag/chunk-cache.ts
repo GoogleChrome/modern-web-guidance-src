@@ -197,7 +197,7 @@ export function scanCorpusChunks(target: BuildTarget = "skills-cli"): GuideChunk
     const featuresUsed = featureIds.map(getFeatureName);
 
     const h1Title = extractH1Heading(processedMarkdown);
-    const title = (h1Title || data.title || "").trim();
+    const title = ((typeof data.title === "string" && data.title.trim()) || h1Title || "").trim();
     if (!title) {
       throw new Error(`Guide has no H1 heading or frontmatter title: ${guidePath}`);
     }

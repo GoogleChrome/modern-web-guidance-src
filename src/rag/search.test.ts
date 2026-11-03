@@ -15,7 +15,7 @@ describe("searchUseCases", () => {
     assert.strictEqual(bestMatch.id, "autofill-address-form", "Best match should be autofill-address-form");
     
     const similarity = bestMatch.similarity;
-    assert.ok(similarity > 0.58, `Similarity ${similarity} should be greater than 0.58`);
+    assert.ok(similarity > 0.3, `Similarity ${similarity} should be greater than 0.3`);
     assert.ok(bestMatch.tokenCount > 0, 'Best match should have tokenCount > 0');
   });
 
@@ -52,7 +52,7 @@ describe("searchUseCases", () => {
       embed: async () => Array.from({ length: 256 }, () => 0),
     };
     // Nonce query with zero BM25 lexical matches in the guide corpus
-    const results = await searchUseCases("xyznonexistentunmatchedterm998877", 5, 0.58, mockEmbedder);
+    const results = await searchUseCases("xyznonexistentunmatchedterm998877", 5, 0.3, mockEmbedder);
     assert.strictEqual(results.length, 0);
   });
 
@@ -60,8 +60,8 @@ describe("searchUseCases", () => {
     const zeroEmbedder: EmbedderLike = {
       embed: async () => Array.from({ length: 256 }, () => 0),
     };
-    // Dense similarity is 0 (below 0.58 floor), but BM25 matches "autofill address form".
-    const results = await searchUseCases("autofill address form", 5, 0.58, zeroEmbedder);
+    // Dense similarity is 0 (below 0.3 floor), but BM25 matches "autofill address form".
+    const results = await searchUseCases("autofill address form", 5, 0.3, zeroEmbedder);
     assert.ok(results.length > 0, "Should return BM25 matches even when dense similarity is 0");
     const match = results.find((r) => r.id === "autofill-address-form");
     assert.ok(match, "BM25 should surface autofill-address-form");
@@ -74,7 +74,7 @@ describe("searchUseCases", () => {
     };
     // "i18n pluralization" has 1 BM25 match and 0 dense similarity (below floor).
     // When dense is below floor, only BM25 matches are returned without sub-floor dense padding.
-    const results = await searchUseCases("i18n pluralization", 10, 0.58, zeroEmbedder);
+    const results = await searchUseCases("i18n pluralization", 10, 0.3, zeroEmbedder);
     assert.strictEqual(results.length, 1, "Should return only the BM25 match, not padded to limit=10");
     assert.strictEqual(results[0].id, "state-aware-sticky-headers");
     assert.strictEqual(results[0].similarity, 0);
@@ -85,16 +85,16 @@ describe("searchUseCases", () => {
     const zeroEmbedder: EmbedderLike = {
       embed: async () => Array.from({ length: 256 }, () => 0),
     };
-    const results = await searchUseCases("payment card checkout", 5, 0.58, zeroEmbedder);
+    const results = await searchUseCases("payment card checkout", 5, 0.3, zeroEmbedder);
     assert.ok(results.length > 0);
     assert.strictEqual(results[0].similarity, 0, "Similarity for zero-dense match should be 0");
   });
 
   it("above-floor behavior is unchanged and preserves dense similarities", async () => {
-    const results = await searchUseCases("autofill address form", 5, 0.58);
+    const results = await searchUseCases("autofill address form", 5, 0.3);
     assert.ok(results.length > 0);
     assert.strictEqual(results[0].id, "autofill-address-form");
-    assert.ok(results[0].similarity > 0.58);
+    assert.ok(results[0].similarity > 0.3);
   });
   it("keeps sibling guides on a cluster query", async () => {
     const ids = (await searchUseCases("tooltip on hover")).map((r) => r.id);
@@ -112,7 +112,7 @@ describe("searchUseCases", () => {
   });
 
   it("returns results for single-token API queries", async () => {
-    for (const q of ["fetchpriority", "startViewTransition", "WebGPU", "LCP", "INP", "webmcp", "content-visibility", "@starting-style", "field-sizing"]) {
+    for (const q of ["fetchpriority", "startViewTransition", "WebGPU", "LCP", "INP", "webmcp", "content-visibility", "@starting-style", "field-sizing", "bento"]) {
       const results = await searchUseCases(q, 5);
       assert.ok(results.length > 0, `Single-token API query "${q}" should return results`);
     }

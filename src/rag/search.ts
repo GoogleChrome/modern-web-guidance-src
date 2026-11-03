@@ -35,13 +35,12 @@ export interface EmbedderLike {
 
 /**
  * Query-level cosine floor: if dense top-1 is below this similarity AND BM25 has no matches, `[]` is returned.
- * Calibrated empirically across all in-domain dev queries (n=979 of Wild-v2 1,000):
- *   min: 0.6296 ("removable filter chips"), p1: 0.7223, p5: 0.7518, median: 0.8177.
- * With min 0.6296 minus a 0.05 safety margin, 0.58 guarantees 0 empty results on all in-domain queries.
- * On OOS queries (n=90), top-1 cosine has median 0.7676, with 97.8% (88/90) admitted at 0.58.
- * (Full OOS rejection with static queries awaits query-side centering in a future milestone).
+ * Across all 29,195 words in `words.json`, single-word top-1 cosine starts at 0.475 ("chips", "bento" 0.532),
+ * and in-domain `wild-v2-dev` queries span 0.636..0.899 (median 0.821).
+ * Keeping 0.30 ensures 100% of known vocabulary words use their dense vector while zero-vector / unknown queries
+ * with no BM25 matches return `[]`.
  */
-export const DEFAULT_MIN_SIMILARITY = 0.58;
+export const DEFAULT_MIN_SIMILARITY = 0.3;
 
 let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 
