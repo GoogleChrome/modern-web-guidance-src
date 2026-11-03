@@ -48,7 +48,7 @@ Securely verify the assertion returned by the client to authenticate the user:
 
 ### HTML Form Annotation
 
-Annotate your username and password inputs to natively leverage Conditional UI. Autocomplete tokens combine the webauthn spec parameters, and autofocus triggers the browser autofill popup immediately when the input is focused.
+Annotate your username and password inputs to natively leverage Conditional UI. Autocomplete tokens combine the webauthn spec parameters.
 
 ```html
 <!-- Autocomplete tokens must contain webauthn space-separated -->
@@ -57,7 +57,6 @@ Annotate your username and password inputs to natively leverage Conditional UI. 
     type="text"
     name="username"
     autocomplete="username webauthn"
-    autofocus
     data-testid="username-field"
   />
   <input type="password" name="password" autocomplete="current-password" />
