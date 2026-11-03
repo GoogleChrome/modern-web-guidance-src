@@ -107,22 +107,22 @@ Add this only for long prose where users want a floating button on selection. Sk
 - Call `preventDefault()` on the popover's `pointerdown` to keep the selection. This also stops the button from taking focus on click or tap, so `:focus-within` cannot tell you that a press is in progress. Set a flag on the popover's `pointerdown` and, while it is set, do not hide the popover even if the selection collapses (some touch browsers clear it anyway). Clear the flag and re-check when the copy feedback ends (and on `pointercancel`). Otherwise, hide it on `Escape`, and when the selection collapses unless keyboard focus is inside the popover (re-check when focus leaves it).
 - DO NOT hide the popover when the copy feedback timeout ends: a keyboard user's focus is on its button, and hiding it drops focus to the page, so the next `Tab` starts from the top. If `Escape` hides it while focus is inside, first move focus to the container: set `tabindex="-1"` on it just before the move and remove it on `blur`. Do not leave it in the markup, because a focusable container makes `Tab` skip the copy button in Firefox after a click in the text.
 
-### 4. Buttons shown only on hover or focus (optional)
+### 4. Repeated copyable elements (optional)
 
-Code blocks often keep the button hidden until the block is hovered. Reveal it for keyboard users too, and never make it hover-only.
+When a page repeats copyable elements (code blocks, list rows, token or ID cells), a visible button on each one adds noise. Keep the button hidden until the element is hovered, reveal it for keyboard users too, and never make it hover-only.
 
 ```css
-.code-block { position: relative; }
-.code-block .copy { position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; }
+.copyable { position: relative; }
+.copyable .copy { position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem; }
 
 /* Only hide where hover exists; touch devices keep the button visible */
 @media (hover: hover) {
-  .code-block .copy-button { opacity: 0; transition: opacity .15s; }
-  .code-block:hover .copy-button,
-  .code-block:focus-within .copy-button,
-  .code-block .copy-button:focus-visible,
-  .code-block .copy-button[data-copied],
-  .code-block .copy-button[data-failed] { opacity: 1; }
+  .copyable .copy-button { opacity: 0; transition: opacity .15s; }
+  .copyable:hover .copy-button,
+  .copyable:focus-within .copy-button,
+  .copyable .copy-button:focus-visible,
+  .copyable .copy-button[data-copied],
+  .copyable .copy-button[data-failed] { opacity: 1; }
 }
 ```
 
