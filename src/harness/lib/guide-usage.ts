@@ -11,7 +11,7 @@ const TRUNCATED_SEARCH_HEADER_RE =
   /(?:^|\n)[^\n\uE200]*\(https?:\/\/[^\s()]*modern-web-guidance[^\s()]*\.\.\. \[truncated\]$/;
 
 function isSearchOnlyWebRun(call: string): boolean {
-  return /\bsearch_query\s*:/.test(call) && !/\bopen\s*:/.test(call);
+  return /["']?\bsearch_query["']?\s*:/.test(call) && !/["']?\bopen["']?\s*:/.test(call);
 }
 
 function stripHostNodeModules(text: string): string {
