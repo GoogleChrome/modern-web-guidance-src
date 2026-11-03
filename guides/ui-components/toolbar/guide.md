@@ -39,12 +39,12 @@ MANDATORY: Put `role="toolbar"` and an `aria-label` on the container. Wrap relat
 ```html
 <div role="toolbar" aria-label="Text formatting" aria-controls="preview">
   <div role="group" aria-label="Style">
-    <button type="button" aria-pressed="false" aria-label="Bold" interestfor="tip-bold"></button>
+    <button type="button" aria-pressed="false" aria-label="Bold" title="Bold"></button>
   </div>
   <span role="separator" aria-orientation="vertical"></span>
   <!-- Overflow trigger: the last item in the toolbar -->
   <button type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"
-    popovertarget="more-menu" interestfor="tip-more"></button>
+    popovertarget="more-menu" title="More actions"></button>
 </div>
 ```
 
@@ -91,13 +91,25 @@ Choose a vertical toolbar when controls stack along a side edge (a tool palette 
 
 ## Tooltips for icon-only buttons
 
-Use interest invokers (`interestfor`) with `popover="hint"`, which shows the tooltip without closing an open menu popover.
+Give each icon-only button a `title` as the baseline tooltip. Only where both interest invokers and anchor positioning are supported, upgrade it to an interest invoker with `popover="hint"`, which shows the tooltip without closing an open menu popover. Elsewhere the native `title` tooltip stays.
 
 MANDATORY: Position the hint on the axis the toolbar does not stack along: `position-area: block-end` (fallback `flip-block`) for a horizontal toolbar, `position-area: inline-end` (fallback `flip-inline`) for a vertical one. A hint placed along the stacking axis covers the next control and swallows its click, because the hint stays open while the pointer is over it.
 
 ```html
-<button type="button" aria-label="Bold" interestfor="tip-bold">…</button>
-<div id="tip-bold" popover="hint">Bold</div>
+<button type="button" aria-label="Bold" title="Bold">…</button>
+```
+
+```js
+// Upgrade title tooltips only when interest invokers and anchor positioning both work
+if ("interestForElement" in HTMLButtonElement.prototype && CSS.supports("position-area", "block-end")) {
+  toolbar.querySelectorAll("button[title]").forEach((b, i) => {
+    const tip = Object.assign(document.createElement("div"), { id: `tip-${i}`, textContent: b.title });
+    tip.popover = "hint";
+    b.setAttribute("interestfor", tip.id);
+    b.removeAttribute("title"); // avoid a second, native tooltip
+    b.after(tip);
+  });
+}
 ```
 
 {{ FEATURE("interest-invokers", "accessibility") }}
@@ -185,7 +197,7 @@ if (!('focusGroup' in HTMLElement.prototype)) {
 
 {{ BASELINE_STATUS("popover-hint") }}
 
-The popover polyfill does not add `popover="hint"`. Where `popover` exists without `hint`, two tooltips can stay open at once (for example one opened by focus and one by hover). Treat this as graceful degradation: tooltips are supplementary because every icon-only button already has an `aria-label`, so no other fallback is needed.
+The popover polyfill does not add `popover="hint"`. Where `popover` exists without `hint`, two tooltips can stay open at once (for example one opened by focus and one by hover). Treat this as graceful degradation: the upgrade only runs where interest invokers are supported, and other browsers keep the native `title` tooltip.
 
 {{ BASELINE_STATUS("async-clipboard", "api.Clipboard.writeText") }}
 
@@ -193,11 +205,10 @@ Where the Clipboard API is unavailable, `navigator.clipboard` is undefined and t
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
-Without anchor positioning, a popover is placed by the UA at the center of the viewport. For tooltips, hide them instead of showing them detached from their button (graceful degradation, safe because of the `aria-label`). For the overflow menu, position it from script so it stays attached to its trigger. Keep both inside `@supports not (position-area: block-end)` so supporting browsers are unaffected.
+Without anchor positioning, a popover is placed by the UA at the center of the viewport. Tooltips need no fallback: the `title` upgrade above is skipped without anchor positioning. For the overflow menu, position it from script so it stays attached to its trigger. Keep the CSS inside `@supports not (position-area: block-end)` so supporting browsers are unaffected.
 
 ```css
 @supports not (position-area: block-end) {
-  [popover="hint"] { display: none; }
   #more-menu {
     /* Viewport coordinates are set from script when the menu opens */
     position: fixed;
