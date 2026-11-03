@@ -108,7 +108,6 @@
 		list-style: none;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
 		gap: 1rem;
 
 		&:where(:not([aria-disabled="true"])) {
@@ -124,7 +123,7 @@
 			outline-offset: -2px;
 		}
 
-		&::after {
+		&::before {
 			content: "";
 			inline-size: 1em;
 			block-size: 1em;
@@ -134,16 +133,16 @@
 			rotate: -90deg;
 		}
 
-		&:dir(rtl)::after {
+		&:dir(rtl)::before {
 			rotate: 90deg;
 		}
 
-		details[open] > &::after {
+		details[open] > &::before {
 			rotate: 0deg;
 		}
 
 		@media (prefers-reduced-motion: no-preference) {
-			&::after {
+			&::before {
 				transition: rotate 0.2s;
 			}
 		}

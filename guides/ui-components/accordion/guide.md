@@ -156,9 +156,13 @@ The disclosed content lives in the `::details-content` pseudo-element. While clo
 
 ### Customizing the marker
 
-`summary` renders as a list item, so its disclosure triangle is a `::marker`. Remove it with `list-style: none` and draw your own with `::after`, which unlike `::marker` can be sized, positioned, and animated.
+`summary` renders as a list item, so its disclosure triangle is a `::marker`. Remove it with `list-style: none` and draw your own with `::before`, which unlike `::marker` can be sized, positioned, and animated.
 Render the icon as a mask so it follows the text color, and rotate it for the closed state so one icon serves both states and both writing directions.
 See {{ GUIDE_REF("icons") }} for more details on including and customizing icons via CSS.
+
+Prefer keeping the marker directly next to the label text, not pushed to the opposite edge of the summary, especially for accordions that can get wide.
+A marker far from its label makes it harder for users to associate with the correct label, and falls outside the field of view of users with low vision or screen magnification.
+Right before the label text is preferable to right after, as it facilitates vertical scanning.
 
 ```css
 summary {
@@ -166,10 +170,9 @@ summary {
 	list-style: none;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	gap: 0.5ch;
 
-	&::after {
+	&::before {
 		content: "";
 		inline-size: 1em;
 		block-size: 1em;
@@ -181,17 +184,17 @@ summary {
 		rotate: -90deg;
 	}
 
-	&:dir(rtl)::after {
+	&:dir(rtl)::before {
 		rotate: 90deg;
 	}
 
 	/* Rotate rather than swap icons, so the change can animate */
-	details[open] > &::after {
+	details[open] > &::before {
 		rotate: 0deg;
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
-		&::after {
+		&::before {
 			transition: rotate 0.2s;
 		}
 	}
