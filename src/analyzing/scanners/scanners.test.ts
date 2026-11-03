@@ -41,6 +41,32 @@ void test('dom-scanner: HTML bare-attributes and JSX-DOM bridge', async (t) => {
     assert.equal(inputToken.attributes['type'], 'password');
   });
 
+  await t.test('tokenizeHtmlTags ignores < inside script and style bodies', () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-size: 14px; }
+  </style>
+  <script>
+    if (a < b) {
+      console.log('test <tag>');
+    }
+  </script>
+</head>
+<body>
+  <input type="text" id="target">
+</body>
+</html>`;
+
+    const tokens = tokenizeHtmlTags(html);
+    const tagNames = tokens.map((tok) => tok.tagName);
+    assert.deepEqual(tagNames, ['html', 'head', 'style', 'script', 'body', 'input']);
+    const inputToken = tokens.find((tok) => tok.tagName === 'input');
+    assert.ok(inputToken);
+    assert.equal(inputToken.line, 14);
+  });
+
   await t.test('scanHtml flags elements using DomRuleMatcher', () => {
     const html = `<form>
   <input type="password" id="user-password">

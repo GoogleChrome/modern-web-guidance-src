@@ -50,7 +50,13 @@ function hasMinMaxFontSizeOption(call: CallExpression): boolean {
 function isJQueryLikeTarget(target: Node): boolean {
   if (Node.isCallExpression(target)) {
     const callee = unwrapExpression(target.getExpression());
-    return Node.isIdentifier(callee) && (callee.getText().startsWith('$') || callee.getText() === 'jQuery');
+    if (Node.isIdentifier(callee)) {
+      return callee.getText().startsWith('$') || callee.getText() === 'jQuery';
+    }
+    if (Node.isPropertyAccessExpression(callee)) {
+      return isJQueryLikeTarget(unwrapExpression(callee.getExpression()));
+    }
+    return false;
   }
   return (
     (Node.isIdentifier(target) &&
@@ -189,8 +195,8 @@ function isFitTextCall(
       return false;
     }
 
-    // Skip zero-arg calls on non-jQuery objects (e.g. this.fitText(), customScripts.fitText())
-    if (!isJQueryLikeTarget(target) && call.getArguments().length === 0) {
+    // Skip calls on non-jQuery objects (e.g. this.fitText(), customScripts.fitText())
+    if (!isJQueryLikeTarget(target)) {
       return false;
     }
 

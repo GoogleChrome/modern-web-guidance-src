@@ -81,9 +81,9 @@ function requiresCtrlOrMetaModifier(condText: string): boolean {
   if (/!\s*\([^)]*\b(?:ctrlKey|metaKey|altKey)\b/.test(condText)) {
     return false;
   }
-  const hasPositiveCtrl = /(?:^|[^!])(?:\b[a-zA-Z_$][\w$]*\.)?\bctrlKey\b(?!\s*===?\s*false)/.test(condText);
-  const hasPositiveMeta = /(?:^|[^!])(?:\b[a-zA-Z_$][\w$]*\.)?\bmetaKey\b(?!\s*===?\s*false)/.test(condText);
-  const hasPositiveAlt = /(?:^|[^!])(?:\b[a-zA-Z_$][\w$]*\.)?\baltKey\b(?!\s*===?\s*false)/.test(condText);
+  const hasPositiveCtrl = /(?:^|[^!.\w])(?:\b[a-zA-Z_$][\w$]*\.)?\bctrlKey\b(?!\s*===?\s*false)/.test(condText);
+  const hasPositiveMeta = /(?:^|[^!.\w])(?:\b[a-zA-Z_$][\w$]*\.)?\bmetaKey\b(?!\s*===?\s*false)/.test(condText);
+  const hasPositiveAlt = /(?:^|[^!.\w])(?:\b[a-zA-Z_$][\w$]*\.)?\baltKey\b(?!\s*===?\s*false)/.test(condText);
   return hasPositiveCtrl || hasPositiveMeta || hasPositiveAlt;
 }
 

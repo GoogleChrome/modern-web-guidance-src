@@ -18,6 +18,7 @@ import {
   QUALIFIED_GUIDE_IDS,
   QUALIFIED_RULES,
 } from './rules/index.ts';
+import { MAX_SOURCE_FILE_BYTES } from './scanners/index.ts';
 import type { AnalyzerRule } from './schema.ts';
 
 async function withTempDir(fn: (dir: string) => Promise<void>): Promise<void> {
@@ -42,11 +43,11 @@ describe('runAnalyzeCli', () => {
     assert.equal(res2.output, `${ANALYZE_CLI_HELP}\n`);
   });
 
-  it('handles non-existent target directory with error and exit code 1', async () => {
+  it('handles non-existent target path with error and exit code 1', async () => {
     const nonExistentPath = join(tmpdir(), `non-existent-dir-${Date.now()}`);
     const resHuman = await runAnalyzeCli([nonExistentPath]);
     assert.equal(resHuman.exitCode, 1);
-    assert.match(resHuman.output, /Error: Target directory not found/);
+    assert.match(resHuman.output, /Error: Target path not found/);
 
     const resJson = await runAnalyzeCli([nonExistentPath, '--json']);
     assert.equal(resJson.exitCode, 1);
@@ -54,7 +55,7 @@ describe('runAnalyzeCli', () => {
     const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
     assert.equal(parsed.totalFindings, 0);
     assert.equal(parsed.guides.length, 0);
-    assert.match(parsed.error ?? '', /Target directory not found/);
+    assert.match(parsed.error ?? '', /Target path not found/);
 
     const stdoutChunks: string[] = [];
     const stderrChunks: string[] = [];
@@ -86,6 +87,25 @@ describe('runAnalyzeCli', () => {
       process.stderr.write = origStderrWrite;
       process.exitCode = origExitCode;
     }
+  });
+
+  it('rejects single target file exceeding MAX_SOURCE_FILE_BYTES with error and exit code 1', async () => {
+    await withTempDir(async (testDir) => {
+      const largeFile = join(testDir, 'large.html');
+      await writeFile(largeFile, Buffer.alloc(MAX_SOURCE_FILE_BYTES + 10));
+
+      const resHuman = await runAnalyzeCli([largeFile]);
+      assert.equal(resHuman.exitCode, 1);
+      assert.match(resHuman.output, /Error: Target file exceeds maximum size/);
+
+      const resJson = await runAnalyzeCli([largeFile, '--json']);
+      assert.equal(resJson.exitCode, 1);
+      assert.ok(resJson.data, 'Expected data payload on --json error');
+      const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
+      assert.equal(parsed.totalFindings, 0);
+      assert.equal(parsed.guides.length, 0);
+      assert.match(parsed.error ?? '', /Target file exceeds maximum size/);
+    });
   });
 
   it('reports zero findings cleanly in default qualified mode', async () => {

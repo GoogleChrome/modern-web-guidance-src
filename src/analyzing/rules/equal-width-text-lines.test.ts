@@ -52,6 +52,8 @@ void test('equal-width-text-lines JS matcher', async (t) => {
       canvas.fitText(ctx, 'heading');
       chart.fitText();
       this.fitText();
+      this.fitText(el);
+      this.canvas.fitText(text, maxWidth);
       function localHelper() {
         function fitText(str) { return str.trim(); }
         fitText('hello');

@@ -124,8 +124,8 @@ export const validateInputAfterInteractionCssMatcher: CssRuleMatcher = {
       return null;
     }
 
-    // Carve out rules owned by required-field-feedback or select-menu-interaction,
-    // as well as shared :valid + :invalid layout rules.
+    // Carve out rules owned by the forms/required-field-feedback guide (rule not yet default-shipping)
+    // or select-menu-interaction, as well as shared :valid + :invalid layout rules.
     if (
       REQUIRED_INVALID_SELECTOR_REGEX.test(selectorWithoutNot) ||
       TOUCHED_DIRTY_INVALID_SELECTOR_REGEX.test(selectorWithoutNot) ||

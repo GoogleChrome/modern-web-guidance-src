@@ -15,8 +15,8 @@ const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 function isEnclosedInForm(documentText: string, targetLine: number): boolean {
   // Preserve line numbers when masking comments and script blocks
   const maskedText = documentText
-    .replace(/<!--[\s\S]*?-->/g, (match) => ' '.repeat(match.length))
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (match) => ' '.repeat(match.length));
+    .replace(/<!--[\s\S]*?-->/g, (match) => match.replace(/[^\n]/g, ' '))
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (match) => match.replace(/[^\n]/g, ' '));
   const lines = maskedText.split('\n');
   const textBefore = lines.slice(0, targetLine).join('\n');
 

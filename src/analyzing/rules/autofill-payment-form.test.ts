@@ -69,6 +69,19 @@ void test('autofill-payment-form: positive brownfield matches', async (suiteCont
     assert.match(matches[0]?.message ?? '', /cc-csc/);
   });
 
+  await suiteContext.test('flags input[name="cvv"] type="password" even when autocomplete="cc-csc" is already present', () => {
+    const html = `
+      <form action="/pay" method="post">
+        <label for="cvv">Security Code</label>
+        <input type="password" id="cvv" name="cvv" autocomplete="cc-csc" maxlength="4">
+      </form>
+    `;
+    const matches = scanHtml('pay.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /type="password"/);
+    assert.match(matches[0]?.message ?? '', /cc-csc/);
+  });
+
   await suiteContext.test('flags input[name="card_number"] type="number" anti-pattern inside form', () => {
     const html = `
       <form action="/pay" method="post">

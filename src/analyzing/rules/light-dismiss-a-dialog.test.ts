@@ -153,4 +153,16 @@ void test('light-dismiss-a-dialog: negative / exempt cases', async (t) => {
     const matches = matchJsRule(lightDismissADialogJsMatcher, 'close-btn.js', code);
     assert.equal(matches.length, 0);
   });
+
+  await t.test('exempts positive dialog.contains(event.target) click listener', () => {
+    const code = `
+      document.addEventListener('click', (event) => {
+        if (dialog.contains(event.target)) {
+          highlightDialog(dialog);
+        }
+      });
+    `;
+    const matches = matchJsRule(lightDismissADialogJsMatcher, 'inside-click.js', code);
+    assert.equal(matches.length, 0);
+  });
 });
