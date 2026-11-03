@@ -141,6 +141,11 @@
         opacity: 0.3;
         pointer-events: none;
       }
+
+      /* Set from script on the first Tab: native buttons lose focus when looping reorders the slides */
+      .carousel-track[data-html-buttons]::scroll-button(*) {
+        display: none;
+      }
     }
 
     @supports selector(::scroll-marker) {
@@ -356,7 +361,7 @@
       lastPos = pos;
     }, { passive: true });
     track.addEventListener("scrollend", () => { heading = 0; });
-    track.addEventListener("pointerdown", (e) => {
+    const settleBeforePress = (e) => {
       const current = nearest();
       // Not aligned with a slide means a scroll is running; scroll events can lag, so derive the direction if needed.
       if (e.target !== track || Math.abs(offsetToCenter(current)) < 1) return;
@@ -366,12 +371,23 @@
       show(ahead[0], "instant");
       // Park the end slides now, so the native button already has a neighbor to aim at.
       sync();
+    };
+    track.addEventListener("pointerdown", settleBeforePress);
+    // Keyboard activation of a native scroll button needs the same preparation as a pointer press.
+    track.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") settleBeforePress(e);
     });
 
     controls.hidden = hasButtons;
-    if (!hasButtons) {
-      prevBtn.addEventListener("click", () => step(-1));
-      nextBtn.addEventListener("click", () => step(1));
+    prevBtn.addEventListener("click", () => step(-1));
+    nextBtn.addEventListener("click", () => step(1));
+    // Keyboard users get the HTML buttons instead: reordering slides makes Chrome drop focus from native ones.
+    if (hasButtons) {
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Tab") return;
+        controls.hidden = false;
+        track.dataset.htmlButtons = "";
+      }, { once: true });
     }
     markerNav.hidden = hasMarkers;
     if (!hasMarkers) {
@@ -390,7 +406,7 @@
       // Snapping off while the slides are reordered: Firefox otherwise re-snaps to another slide and loops
       track.style.scrollSnapType = "none";
       // Safari paints the reordered layout for a frame before the compensating scroll lands; locking overflow hides that flicker
-      track.style.overflowY = "hidden";
+      if (document.activeElement !== track) track.style.overflowY = "hidden";
       track.style.setProperty("--current", slides.indexOf(item));
       track.scrollBy({ top: offsetToCenter(item) - before, behavior: "instant" });
       track.style.scrollSnapType = "";
