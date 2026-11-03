@@ -26,7 +26,7 @@ This is not for switching between views of the same page (tabs) or for site-wide
 
 {# Maintainer note: the tabs, navbar, element-shape, overflow-popup and responsive-disclosure guides are still empty shells, so they are not linked. When they are written, link tabs and navbar from the first sentence, element-shape from "Shaped segments" and "Corner treatments", and overflow-popup and responsive-disclosure from "Collapsing long trails". #}
 
-## 1. Semantics (MANDATORY)
+## 1. Semantics
 
 - Wrap the trail in `<nav aria-label="Breadcrumbs">` containing an ordered list (`<ol>`) of `<li>` items, each holding an `<a>`. Order conveys hierarchy, so use `ol`, not `ul`.
 - Give each `<nav>` a unique label if a page has several landmarks (e.g. "Breadcrumbs").
@@ -64,6 +64,7 @@ Pick **one** shape per trail: slant or arrow. The snippets below are alternative
 - Make the slant or point size responsive with `clamp()` and container units (`cqi`).
 - Pair state colors with the shape: hover and current-page styles must use background or text color, not border color, so they still show under the `clip-path` fallback. Keep the focus style visually distinct from hover.
 - The overlap margin applies to shaped segments only. A collapsed trail's "…" item is a plain button, so give it and the item after it a normal gap, or they overlap the button and cover its focus ring.
+- Overlapped segments should stack in reverse source order so each earlier segment sits above the next: `.breadcrumb > ol > li { position: relative; z-index: calc(sibling-count() - sibling-index()); }`, with the focused control lifted above all of them (`z-index: calc(sibling-count() + 1)`). Guard with `@supports (z-index: sibling-index())`; without support, later segments paint on top, which is acceptable.
 - Polygons are physically directional and logical properties don't flip `polygon()` coordinates, so each shape needs an explicit `:dir(rtl)` mirror, included in the snippets.
 
 #### Slant (`/`)
@@ -123,10 +124,8 @@ Add when ancestors have meaningful siblings (e.g. docs sections); skip for simpl
 - Keep the ancestor link navigating. Add a **separate** `<button type="button" popovertarget>` right after it in the same `<li>`; never put the toggle inside the `<a>`.
 - Give the button an `aria-label` naming its purpose (e.g. "Pages at the same level as Components") and hide its chevron icon with `aria-hidden="true"`.
 - The menu is a `[popover]` `<ul>` of links, labeled with `aria-label`. Mark the sibling matching the current ancestor with `aria-current="true"` and visually label it.
-- Position the popover below the trigger with anchor positioning (`position-area: block-end span-inline-end`, `position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline`). Reset the UA `inset: auto` and `margin`.
-- Keep the combined `flip-block flip-inline` fallback last. On a narrow screen near the bottom, the menu is too wide for the inline-end side and too tall for below, so each single flip fixes only one axis and the browser keeps the base placement, covering the trigger or running off screen.
+- For the menu's popover, anchor positioning and entry/exit motion, follow {{ GUIDE_REF("menu") }}.
 - Rotate the trigger chevron while open: `.trigger:has(+ :popover-open)`.
-- Wrap entry/exit fades in `prefers-reduced-motion: no-preference`.
 - For pills, join link and trigger into one shape by squaring the touching corners (`border-start-end-radius: 0` etc., using logical properties).
 - Close an open menu when keyboard focus leaves it. `popover` light dismiss covers clicks outside and `Esc`, but not `Tab`, and a menu left open can cover the next focused control. This also applies to the "…" list in section 4. Scope it to the breadcrumb's own menus so it never closes unrelated popovers, such as a toast or tooltip.
 
