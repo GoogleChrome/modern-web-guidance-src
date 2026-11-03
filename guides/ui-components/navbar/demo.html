@@ -58,7 +58,7 @@
     .site-header {
       border-block-end: 1px solid var(--border);
       background: var(--page-background);
-      /* data-nav="collapsed" is set by script when the inline row does not fit */
+      /* is-collapsed is added by script when the inline row does not fit */
     }
 
     .header-inner {
@@ -273,7 +273,7 @@
       positioned below the menu button and aligned with its
       right edge.
     */
-    .site-header[data-nav="collapsed"] {
+    .is-collapsed {
       .site-menu {
         position: fixed;
         inset: auto;
@@ -315,7 +315,7 @@
       The same navigation element becomes part of the header
       rather than an overlay.
     */
-    .site-header:not([data-nav="collapsed"]) {
+    .site-header:not(.is-collapsed) {
       .menu-button {
         display: none;
       }
@@ -407,7 +407,7 @@
     }
 
     @media (prefers-reduced-motion: no-preference) {
-      .site-header:not([data-nav="collapsed"]) {
+      .site-header:not(.is-collapsed) {
         .dropdown-list[popover] {
           opacity: 0;
           transform: translateY(-0.25rem);
@@ -429,7 +429,7 @@
         }
       }
 
-      .site-header[data-nav="collapsed"] {
+      .is-collapsed {
         .site-menu {
           transition:
             display 180ms allow-discrete,
@@ -672,9 +672,9 @@
     function syncLayoutState() {
       const wasOpen = menu.matches(":popover-open");
       menu.removeAttribute("popover");
-      header.dataset.nav = "inline";
+      header.classList.remove("is-collapsed");
       const wide = inner.scrollWidth <= inner.clientWidth;
-      header.dataset.nav = wide ? "inline" : "collapsed";
+      header.classList.toggle("is-collapsed", !wide);
       if (!wide) {
         menu.setAttribute("popover", "auto");
         if (wasOpen) menu.showPopover(); // Removing the attribute closed it; stay open while collapsed
