@@ -354,8 +354,7 @@
         block-size: 0.2rem;
       }
 
-      /* Desktop flyout style for the native submenu popover. Scoped to [popover]
-         so the list stays a plain inline list if the script does not run. */
+      /* Desktop flyout style for the native submenu popover. */
       .dropdown-list[popover] {
         position: absolute;
         position-area: block-end span-inline-end;
@@ -469,6 +468,11 @@
       }
     }
 
+    /* Measuring toggles the layout classes synchronously; do not animate those changes. */
+    .is-measuring * {
+      transition: none !important;
+    }
+
     @media (forced-colors: active) {
 
       .site-menu,
@@ -536,7 +540,7 @@
               >
                 <span>Services</span>
               </button>
-              <ul id="services-menu" class="dropdown-list">
+              <ul id="services-menu" class="dropdown-list" popover="auto">
                 <li>
                   <a href="design.html">Design</a>
                 </li>
@@ -671,6 +675,7 @@
     // Collapse only when the inline row does not fit: show it inline and check for overflow.
     function syncLayoutState() {
       const wasOpen = menu.matches(":popover-open");
+      header.classList.add("is-measuring");
       menu.removeAttribute("popover");
       header.classList.remove("is-collapsed");
       const wide = inner.scrollWidth <= inner.clientWidth;
@@ -679,6 +684,8 @@
         menu.setAttribute("popover", "auto");
         if (wasOpen) menu.showPopover(); // Removing the attribute closed it; stay open while collapsed
       }
+
+      requestAnimationFrame(() => header.classList.remove("is-measuring"));
 
       if (wide === isWide) return;
       isWide = wide;

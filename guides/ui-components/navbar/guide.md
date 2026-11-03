@@ -62,7 +62,7 @@ Use one `<nav>` landmark for narrow and wide layouts. Wrap it in a semantic `<he
           >
             Services
           </button>
-          <ul id="services-menu" class="dropdown-list">
+          <ul id="services-menu" class="dropdown-list" popover="auto">
             <li><a href="design.html">Design</a></li>
             <li><a href="development.html">Development</a></li>
           </ul>
@@ -145,14 +145,14 @@ When the row fits, hide the collapsed-layout trigger and reset the popover prese
 }
 ```
 
-CSS changes the presentation, but JavaScript decides which layout applies and must also synchronize the `popover` attribute with it. Measure the inline row: show it inline, compare `scrollWidth` with `clientWidth` on the header's inner row, then toggle `is-collapsed`. Keep the navigation as a popover only in the collapsed layout; remove the attribute in the inline layout. Removing it closes an open popover, so note whether the menu was open and call `showPopover()` again if the layout is still collapsed; otherwise a resize closes the open menu. Run one shared function from a `ResizeObserver` (on width changes only, since collapsing changes the header's height) and again when `document.fonts.ready` resolves. Do not infer the layout from a hidden trigger.
+CSS changes the presentation, but JavaScript decides which layout applies and must also synchronize the `popover` attribute with it. Measure the inline row: show it inline, compare `scrollWidth` with `clientWidth` on the header's inner row, then toggle `is-collapsed`. Add a temporary `is-measuring` class that sets `transition: none` on descendants for the measurement and remove it in `requestAnimationFrame`, otherwise the menu animates from its inline styles on every resize and flickers. Keep the navigation as a popover only in the collapsed layout; remove the attribute in the inline layout. Removing it closes an open popover, so note whether the menu was open and call `showPopover()` again if the layout is still collapsed; otherwise a resize closes the open menu. Run one shared function from a `ResizeObserver` (on width changes only, since collapsing changes the header's height) and again when `document.fonts.ready` resolves. Do not infer the layout from a hidden trigger.
 
 
 ## Nested Site Navigation
 
 Use a `<button>` with `aria-expanded` and `aria-controls` as the trigger for nested site navigation, followed immediately by the submenu list. DO NOT use `<details>` and `<summary>`: `<summary>` has no ARIA role mapping, so screen readers announce it inconsistently (for example as a "disclosure triangle") and some do not announce the open state.
 
-One list must be an inline disclosure when narrow and a floating popover when wide. A top-layer popover cannot render in flow, so `popover` is set only in the wide layout, where `popovertarget` opens it natively. In the narrow layout a small click handler toggles `hidden` and `aria-expanded`. Hide the narrow submenu from script, not in the markup, so its links stay visible without scripting.
+One list must be an inline disclosure when narrow and a floating popover when wide. A top-layer popover cannot render in flow, so `popover` stays only in the wide layout, where `popovertarget` opens it natively. Put `popover="auto"` in the markup so the wide layout also works without script. In the narrow layout a small click handler toggles `hidden` and `aria-expanded`. Hide the narrow submenu from script, not in the markup.
 
 Synchronize the layout state from the same function that handles the navigation list. When inline, set `popover="auto"` on the submenu, show it and let the native `toggle` event drive `aria-expanded`. When narrow, remove `popover`, set `hidden` from script and let a click handler toggle `hidden` and `aria-expanded`:
 
@@ -172,7 +172,7 @@ Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_R
 
 ```css
 .site-header:not(.is-collapsed) {
-  .dropdown-list[popover] { /* Scoped to the popover, so the list stays inline without scripting */
+  .dropdown-list[popover] {
     position: absolute;
     position-area: block-end span-inline-end;
     position-try-fallbacks: flip-block;
