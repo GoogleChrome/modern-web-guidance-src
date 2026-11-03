@@ -137,8 +137,8 @@ filter.addEventListener('keydown', e => {
   } else if (e.key === 'Enter') {
     e.preventDefault();                    // do not submit the form from inside the picker
     const first = options().find(o => !o.hidden);
-    if (first) first.focus();              // next Enter commits natively
-    else if (!add.hidden) add.click();
+    if (!add.hidden) add.click();          // typed text is not an exact match, so Enter adds it
+    else if (first) first.focus();         // next Enter commits natively
   } else if (e.key === 'Escape' && filter.value) {
     e.preventDefault();                    // first Escape clears the filter; second closes natively
     filter.value = ''; update();

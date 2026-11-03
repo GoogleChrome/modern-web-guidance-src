@@ -191,8 +191,8 @@
         // close natively (there is no hidePicker() API)
         e.preventDefault();
         const first = options().find(o => !o.hidden);
-        if (first) first.focus();
-        else if (!add.hidden) add.click();
+        if (!add.hidden) add.click();
+        else if (first) first.focus();
       } else if (e.key === 'Escape' && filter.value) {
         e.preventDefault();
         reset();
