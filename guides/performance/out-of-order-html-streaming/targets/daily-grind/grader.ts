@@ -156,7 +156,6 @@ test.describe('out-of-order-html-streaming Target Grader', () => {
       const candidateElements: any[] = [
         range.container,
         ...range.fallbackElements,
-        ...range.fallbackElements.flatMap((el: any) => Array.from(el.querySelectorAll('*'))),
       ].filter(Boolean);
 
       return candidateElements.some((el: any) => {
