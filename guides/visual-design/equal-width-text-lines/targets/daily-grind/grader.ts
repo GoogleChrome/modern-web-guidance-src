@@ -135,7 +135,7 @@ test.describe('Equal-Width Text Lines Target Grader', () => {
     const docs = getHtmlDocuments(targetFiles);
     const spans = docs.flatMap(d => Array.from(d.document.querySelectorAll('.lockup > span, .lockup span, h1:has(span) > span')));
     const hasDisplayBlock = lineRule?.style.getPropertyValue('display') === 'block'
-      || spans.some(s => getCascadedStyle(s, styleRules).getPropertyValue('display') === 'block');
+      || spans.some((s: any) => getCascadedStyle(s, styleRules).getPropertyValue('display') === 'block');
     expect(Boolean(hasDisplayBlock)).toBe(true);
   });
 
@@ -146,7 +146,7 @@ test.describe('Equal-Width Text Lines Target Grader', () => {
     const docs = getHtmlDocuments(targetFiles);
     const spans = docs.flatMap(d => Array.from(d.document.querySelectorAll('.lockup > span, .lockup span, h1:has(span) > span')));
     const hasNowrap = lineRule?.style.getPropertyValue('white-space') === 'nowrap'
-      || spans.some(s => getCascadedStyle(s, styleRules).getPropertyValue('white-space') === 'nowrap');
+      || spans.some((s: any) => getCascadedStyle(s, styleRules).getPropertyValue('white-space') === 'nowrap');
     expect(Boolean(hasNowrap)).toBe(true);
   });
 

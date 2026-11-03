@@ -51,6 +51,19 @@ When you consult `modern-web-guidance` for a task, end the response where you de
   - **Never** guess `<id>`s or quotes from memory after context compaction (re-run `search`/`retrieve` if needed), and credit **only** guide-backed changes from the current turn.
 - **When searched/listed in this turn but zero guides applied**: Write one first-person sentence naming which topics or guides you checked in `modern-web-guidance` and why none applied (omit if any guide applied).
 
+## Modernize an existing codebase
+
+**Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `analyze` when asked to add, update, fix, or audit a specific feature or component—use Step 1 `search` for those), run the 4-step modernization flow:
+
+```sh
+npx -y modern-web-guidance@latest analyze <path> --json
+```
+
+1. **Scan**: Run `analyze <path> --json` to detect legacy web platform patterns across a directory or file.
+2. **Verify**: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, vendor code, lookalikes).
+3. **Report**: Summarize verified findings (and the modernization plan, if editing) for the user.
+4. **Modernize** (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement, and re-run `analyze <path>` on the modified files to confirm resolution.
+
 ## Using npx / pnpx
 
 - **Runner & Permissions**: Prefer `pnpx` over `npx` if `pnpm` is available (`pnpx` does not use `-y`); on Windows, use `npx.cmd`. When requesting tool permissions, allowlist `npx -y modern-web-guidance@latest *` (or `pnpx modern-web-guidance@latest *`) specifically, never bare `npx *` or `pnpx *`.
