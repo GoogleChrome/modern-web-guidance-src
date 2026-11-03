@@ -207,15 +207,19 @@ Pad the scroll container's inline-start edge by at least the focus ring's outlin
 
 Scrolling regions are keyboard-reachable in current browsers because the checkboxes inside them are focusable. If the list can contain no focusable options (for example all disabled), add `tabindex="0"` so keyboard users can still scroll it.
 
-## Fallbacks
+## Fallback strategies
+
+### Subgrid
 
 {{ BASELINE_STATUS("subgrid") }}
 
 {{ FEATURE_FALLBACKS("accent-color") }}
 
-If your Baseline target does not support `accent-color`, use the custom `appearance: none` styling from the {{ GUIDE_REF("checkbox") }} guide behind `@supports not (accent-color: auto)`.
+### `:indeterminate`
 
 {{ BASELINE_STATUS("indeterminate") }}
+
+### Container scroll-state queries
 
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
 
