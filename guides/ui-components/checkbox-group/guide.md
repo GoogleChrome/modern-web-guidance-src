@@ -182,6 +182,25 @@ When rows only have a label and no secondary column, skip subgrid and use a flex
 }
 ```
 
+### Hint text
+
+For a de-emphasized hint under the main label, put it inside the label as a `<small>` with an `id`, and reference it from the input with `aria-describedby`. Without the reference, screen readers merge the hint into the label name. Keep the hint's contrast at 4.5:1 or better.
+
+```html
+<label for="robot-1">
+  <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork"
+         aria-describedby="robot-1-hint" />
+  <span>Clockwork Courier</span>
+  <small class="hint" id="robot-1-hint">Delivers parcels across the workshop.</small>
+</label>
+```
+
+Place the hint in the name's column under the label (`grid-column: 2` with subgrid; a column-direction wrapper with flex), and style it smaller and muted with at least 4.5:1 contrast.
+
+### Radio groups
+
+A radio group (mutually exclusive choice) uses the same structure: a `<fieldset>` with a `<legend>`, labeled native `<input type="radio">` elements sharing one `name`, the same layout, hint text, and `accent-color` styling. Omit the master checkbox, the indeterminate state, and the `sync()` script, and preselect a default option when one makes sense.
+
 ### Long lists
 
 For long lists (provisionally about 12 or more options), keep the same markup and bound the list's height so the form stays compact. Leave the master checkbox outside the scroll container so it stays visible.
