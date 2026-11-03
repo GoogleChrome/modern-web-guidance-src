@@ -1,6 +1,9 @@
 ---
 name: webmcp
 description: Use this guide to implement WebMCP in browser applications, exposing client-side functionality as tools to AI agents via declarative or imperative APIs.
+web-feature-ids:
+  - declarative-webmcp
+  - document-modelcontext
 ---
 
 # WebMCP
