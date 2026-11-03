@@ -8,7 +8,7 @@ description: |
 
 # Modern Web Guidance
 
-Search and retrieve standardized modern web best practices at the **start** of implementing or updating any web UI, CSS layout/animation, or client-side JS logic (dates/timezones, sanitization, performance, accessibility, UX fixes) before writing ad-hoc solutions or adding dependencies, or to detect legacy patterns and modernize existing codebases.
+Search and retrieve standardized modern web best practices at the **start** of implementing or updating any web UI, CSS layout/animation, or client-side JS logic (dates/timezones, sanitization, performance, accessibility, UX fixes) before writing ad-hoc solutions or adding dependencies.
 
 ## Usage Instructions
 
@@ -53,16 +53,16 @@ When you consult `modern-web-guidance` for a task, end the response where you de
 
 ## Modernize an existing codebase
 
-When asked to update, audit, or modernize existing code, run the 4-step modernization flow using `analyze`:
+**Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `analyze` when asked to add, update, fix, or audit a specific feature or component—use Step 1 `search` for those), run the 4-step modernization flow:
 
 ```sh
-npx -y modern-web-guidance@latest analyze <dir> --json
+npx -y modern-web-guidance@latest analyze <path> --json
 ```
 
-1. **Scan**: Run `analyze <dir> --json` to detect legacy web platform patterns.
+1. **Scan**: Run `analyze <path> --json` to detect legacy web platform patterns across a directory or file.
 2. **Verify**: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, vendor code, lookalikes).
 3. **Plan**: Report verified findings and a modernization plan to the user before editing code.
-4. **Modernize**: Retrieve each guide (`retrieve "<guide-id>"` via Step 2) and apply modern standard replacements, re-running `analyze` to confirm resolution.
+4. **Modernize**: Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement, and re-run `analyze <path>` on the modified files to confirm those findings are resolved.
 
 ## Using npx / pnpx
 

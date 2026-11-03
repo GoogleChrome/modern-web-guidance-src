@@ -1,9 +1,9 @@
-import { stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { readFile, stat } from 'node:fs/promises';
+import { basename, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
-import { scanRepoFiles } from './scanners/index.ts';
+import { MAX_SOURCE_FILE_BYTES, scanFiles, scanRepoFiles } from './scanners/index.ts';
 import type { AnalyzerFinding, AnalyzerRule, VerifierRubric } from './schema.ts';
 
 export interface AnalyzeCliFinding {
@@ -47,6 +47,8 @@ export interface AnalyzeCliExecutionOptions {
 export interface AnalyzeCliResult {
   readonly exitCode: number;
   readonly output: string;
+  readonly stdout?: string;
+  readonly stderr?: string;
   readonly data?: AnalyzeJsonOutput;
 }
 
@@ -95,12 +97,12 @@ export function sampleDiversifiedFindings(
 }
 
 export const ANALYZE_CLI_HELP = `
-Usage: modern-web-guidance analyze <dir> [options]
+Usage: modern-web-guidance analyze [path] [options]
 
 Analyze a codebase for legacy web platform patterns to detect modernization opportunities.
 
 Arguments:
-  <dir>                     Directory to analyze (defaults to current directory)
+  [path]                    Directory or file to analyze (defaults to current directory)
 
 Options:
   --json                    Output findings as structured JSON for coding agents
@@ -108,6 +110,10 @@ Options:
   --include-docs-and-tests  Include documentation, example, demo, and test files in analysis
   -h, --help                Show this help message
 `.trim();
+
+export function renderAnalyzeHelp(): string {
+  return ANALYZE_CLI_HELP;
+}
 
 function joinRubricItems(items: readonly string[]): string {
   return elideText(
@@ -223,9 +229,11 @@ export function formatHumanReadable(
 function errorCliResult(error: string, isJson: boolean, targetDir = '.'): AnalyzeCliResult {
   if (isJson) {
     const data: AnalyzeJsonOutput = { targetDir, totalFindings: 0, guides: [], error };
-    return { exitCode: 1, output: `${JSON.stringify(data, null, 2)}\n`, data };
+    const output = `${JSON.stringify(data, null, 2)}\n`;
+    return { exitCode: 1, output, stdout: output, stderr: '', data };
   }
-  return { exitCode: 1, output: `Error: ${error}\n` };
+  const output = `Error: ${error}\n`;
+  return { exitCode: 1, output, stdout: '', stderr: output };
 }
 
 function groupFindingsByGuide(
@@ -305,21 +313,23 @@ export async function runAnalyzeCli(
   }
 
   if (parsed.values.help) {
-    return { exitCode: 0, output: `${ANALYZE_CLI_HELP}\n` };
+    const output = `${ANALYZE_CLI_HELP}\n`;
+    return { exitCode: 0, output, stdout: output, stderr: '' };
   }
 
   const isJson = Boolean(parsed.values.json);
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
   const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
   const targetDir = parsed.positionals[0] || '.';
-  const resolvedDir = resolve(options?.cwd ?? process.cwd(), targetDir);
+  const baseCwd = options?.cwd ?? process.cwd();
+  const resolvedDir = resolve(baseCwd, targetDir);
 
   const dirStat = await stat(resolvedDir).catch(() => null);
-  if (!dirStat?.isDirectory()) {
-    const error = dirStat
-      ? `Target path is not a directory: ${targetDir}`
-      : `Target directory not found: ${targetDir}`;
-    return errorCliResult(error, isJson, targetDir);
+  if (!dirStat) {
+    return errorCliResult(`Target directory not found: ${targetDir}`, isJson, targetDir);
+  }
+  if (!dirStat.isFile() && !dirStat.isDirectory()) {
+    return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
   }
 
   const isDefaultQualifiedMode = !guideFilter && options?.rules === undefined;
@@ -329,14 +339,26 @@ export async function runAnalyzeCli(
   const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
 
   const scanStats: { skippedDocsAndTestsCount?: number } = {};
-  const findings =
-    activeRuleCount > 0
-      ? await scanRepoFiles(resolvedDir, activeRules, {
-          maxFiles: options?.maxFiles,
-          includeDocsAndTests,
-          stats: scanStats,
-        })
-      : [];
+  let findings: AnalyzerFinding[] = [];
+
+  if (activeRuleCount > 0) {
+    if (dirStat.isFile()) {
+      const files = new Map<string, string>();
+      if (dirStat.size <= MAX_SOURCE_FILE_BYTES) {
+        const content = await readFile(resolvedDir, 'utf8');
+        const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
+        const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
+        files.set(fileKey, content);
+      }
+      findings = scanFiles(files, activeRules, { includeDocsAndTests: true });
+    } else {
+      findings = await scanRepoFiles(resolvedDir, activeRules, {
+        maxFiles: options?.maxFiles,
+        includeDocsAndTests,
+        stats: scanStats,
+      });
+    }
+  }
   const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount ?? 0;
 
   const guides = groupFindingsByGuide(findings, activeRules);
@@ -351,7 +373,8 @@ export async function runAnalyzeCli(
   };
 
   if (isJson) {
-    return { exitCode: 0, output: `${JSON.stringify(data, null, 2)}\n`, data };
+    const output = `${JSON.stringify(data, null, 2)}\n`;
+    return { exitCode: 0, output, stdout: output, stderr: '', data };
   }
 
   const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter, {
@@ -359,7 +382,7 @@ export async function runAnalyzeCli(
     isDefaultQualifiedMode,
     skippedDocsAndTestsCount,
   });
-  return { exitCode: 0, output, data };
+  return { exitCode: 0, output, stdout: output, stderr: '', data };
 }
 
 export function writeAnalyzeCliResult(result: AnalyzeCliResult): number {

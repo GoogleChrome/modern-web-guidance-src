@@ -68,6 +68,9 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
   const cliSearchCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest search "accordion"' }, undefined, 'run_command');
   assert.strictEqual(cliSearchCat, 'skill_search');
 
+  const cliAnalyzeCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest analyze src/ --json' }, undefined, 'run_command');
+  assert.strictEqual(cliAnalyzeCat, 'skill_search');
+
   const cliRetrieveCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' }, undefined, 'run_command');
   assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
 

@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { retrieveUseCase, OriginTrialGateError } from "../rag/retrieve.ts";
+import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
@@ -33,7 +34,7 @@ Commands:
   search <query>            Search use cases by query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
-  analyze [dir] [options]   Analyze codebase for legacy web platform patterns
+  analyze [path] [options]  Analyze codebase for legacy web platform patterns
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   install [options]         Install the modern-web-guidance skill
   uninstall                 Uninstall the modern-web-guidance skill
@@ -59,6 +60,12 @@ async function main() {
     // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
     const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
     const result = await runAnalyzeCli(process.argv.slice(3));
+    if (result.data) {
+      logToolResult(
+        "analyze",
+        result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
+      );
+    }
     writeAnalyzeCliResult(result);
     process.exit(result.exitCode);
   }

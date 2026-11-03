@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+  ANALYZE_CLI_HELP,
   elideText,
   formatHumanReadable,
+  renderAnalyzeHelp,
   runAnalyzeCli,
   sampleDiversifiedFindings,
   writeAnalyzeCliResult,
@@ -37,6 +39,8 @@ describe('runAnalyzeCli', () => {
     const res2 = await runAnalyzeCli(['analyze', '-h']);
     assert.equal(res2.exitCode, 0);
     assert.match(res2.output, /Usage: modern-web-guidance analyze/);
+
+    assert.equal(renderAnalyzeHelp(), ANALYZE_CLI_HELP);
   });
 
   it('handles non-existent target directory with error and exit code 1', async () => {
@@ -544,6 +548,85 @@ describe('runAnalyzeCli', () => {
           /Rule "test-multirule\/broken-rule" is missing a required summary string/,
         );
       });
+    });
+  });
+
+  it('scans a single file path and returns findings when legacy pattern exists, 0 after modernization', async () => {
+    await withTempDir(async (testDir) => {
+      const TEST_RULES: readonly AnalyzerRule[] = [
+        {
+          id: 'test-single-file/form-autofill',
+          guideId: 'autofill-sign-in-form',
+          guideHash: '1234567890ab',
+          summary: 'Add autocomplete attributes to sign-in form inputs',
+          matcher: {
+            kind: 'dom',
+            selector: 'input[type="password"]',
+            fastTokens: ['type="password"'],
+            matchElement: (el) => {
+              if (!el.hasAttribute('autocomplete')) {
+                return { message: 'Password input missing autocomplete attribute' };
+              }
+              return null;
+            },
+          },
+          verifierRubric: {
+            keepWhen: ['Sign-in form inputs lack autocomplete attributes'],
+            dropWhen: ['Inputs already declare autocomplete attributes'],
+          },
+        },
+      ];
+
+      const filePath = join(testDir, 'SignInForm.html');
+      await writeFile(
+        filePath,
+        '<form action="/login"><input type="password" name="password"><button>Log In</button></form>',
+        'utf8',
+      );
+
+      // 1. Initial scan on single file returns findings (exitCode 0)
+      const resFindings = await runAnalyzeCli([filePath, '--json'], { rules: TEST_RULES });
+      assert.equal(resFindings.exitCode, 0);
+      assert.ok(resFindings.data, 'Expected JSON data in result');
+      const parsedFindings = JSON.parse(resFindings.output) as AnalyzeJsonOutput;
+      assert.equal(parsedFindings.totalFindings, 1);
+      assert.equal(parsedFindings.targetDir, filePath);
+      assert.equal(parsedFindings.guides.length, 1);
+      assert.equal(parsedFindings.guides[0]?.guideId, 'autofill-sign-in-form');
+      assert.equal(parsedFindings.guides[0]?.rules[0]?.findings[0]?.file, 'SignInForm.html');
+
+      // Human-readable scan on single file also works
+      const resHuman = await runAnalyzeCli([filePath], { rules: TEST_RULES });
+      assert.equal(resHuman.exitCode, 0);
+      assert.match(resHuman.output, /Found 1 modernization opportunity across 1 guide:/);
+      assert.match(resHuman.output, /SignInForm\.html:1/);
+
+      // Single file path containing "test" is not skipped by docs/tests filter
+      const testFilePath = join(testDir, 'component.test.html');
+      await writeFile(
+        testFilePath,
+        '<form action="/login"><input type="password" name="password"></form>',
+        'utf8',
+      );
+      const resTestFile = await runAnalyzeCli([testFilePath, '--json'], { rules: TEST_RULES });
+      assert.equal(resTestFile.exitCode, 0);
+      const parsedTestFile = JSON.parse(resTestFile.output) as AnalyzeJsonOutput;
+      assert.equal(parsedTestFile.totalFindings, 1);
+
+      // 2. Modernize the file: add autocomplete="current-password"
+      await writeFile(
+        filePath,
+        '<form action="/login"><input type="password" name="password" autocomplete="current-password"><button>Log In</button></form>',
+        'utf8',
+      );
+
+      // Scan modernized file returns 0 findings
+      const resClean = await runAnalyzeCli([filePath, '--json'], { rules: TEST_RULES });
+      assert.equal(resClean.exitCode, 0);
+      assert.ok(resClean.data, 'Expected JSON data in result');
+      const parsedClean = JSON.parse(resClean.output) as AnalyzeJsonOutput;
+      assert.equal(parsedClean.totalFindings, 0);
+      assert.deepEqual(parsedClean.guides, []);
     });
   });
 });
