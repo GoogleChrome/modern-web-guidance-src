@@ -40,7 +40,6 @@ import { outDir, rootDir } from "../core/paths.ts";
 import { config } from "../core/skills-config.ts";
 import { chunkMarkdown } from "../build/build-guides.ts";
 import { tokenize, tokenizeBm25 } from "./bm25.ts";
-import { loadChunkCache } from "./chunk-cache.ts";
 import { dotProduct } from "./search.ts";
 import {
   accumulateNormalizedVector,
@@ -420,25 +419,11 @@ async function main(): Promise<void> {
     const raw = fs.readFileSync(extraPath, "utf8").trim();
     const queryDf = new Map<string, number>();
 
-    const isCleanQuery = (q: string): boolean => {
-      if (/(?:daily[- ]grind|barista|chronicle|launchpad)/i.test(q)) return false;
-      if (/[\\/]|\.tsx?\b|\.jsx?\b|\.vue\b|\.svelte\b|\.css\b|\.html?\b|\.json\b|\.md\b|http/i.test(q)) return false;
-      if (/--|[{}()[\];=<>]/i.test(q)) return false;
-      return true;
-    };
+    const processQuery = (rawQuery: string) => {
+      const q = rawQuery.trim();
+      if (!q) return;
+      extraQueries.push(q);
 
-    const processQuery = (rawQuery: string, count: number) => {
-      const q = rawQuery.trim().toLowerCase().replace(/\s+/g, " ");
-      if (!q || !isCleanQuery(q)) return;
-
-      const words = q.split(/\s+/).filter(Boolean);
-      // Rule 1: 2-8 words only for Tokenlearn
-      // Rule 2: count >= 2 for queries
-      if (words.length >= 2 && words.length <= 8 && count >= 2) {
-        extraQueries.push(q);
-      }
-
-      // Rule 2: distinct query DF for new vocabulary words
       const toks = new Set(tokenize(q));
       for (const t of toks) {
         if (/^[a-z][a-z0-9]{2,24}$/.test(t)) {
@@ -449,19 +434,15 @@ async function main(): Promise<void> {
 
     if (extraPath.endsWith(".jsonl")) {
       for (const line of raw.split("\n").filter(Boolean)) {
-        const row = JSON.parse(line) as { query?: string; n?: number; count?: number } | string;
+        const row = JSON.parse(line) as { query?: string } | string;
         const q = typeof row === "string" ? row : row.query;
-        const count =
-          typeof row === "object" && row !== null
-            ? (typeof row.n === "number" ? row.n : typeof row.count === "number" ? row.count : 2)
-            : 2;
-        if (q) processQuery(q, count);
+        if (q) processQuery(q);
       }
     } else {
       const parsed = JSON.parse(raw) as Record<string, string[]> | string[];
       const flat = Array.isArray(parsed) ? parsed : Object.values(parsed).flat();
       for (const q of flat) {
-        if (typeof q === "string") processQuery(q, 2);
+        if (typeof q === "string") processQuery(q);
       }
     }
 
@@ -521,43 +502,16 @@ async function main(): Promise<void> {
       cacheDir
     );
 
-    // Rule 4: On-topic relevance gate (Teacher cosine >= 0.55 to at least one guide chunk)
-    const chunkCache = loadChunkCache(targetDir);
-    const chunkVecs = [...chunkCache.values()];
-    if (chunkVecs.length === 0) {
-      throw new Error(`Cannot run on-topic relevance gate: no guide chunks found in ${targetDir}`);
-    }
-    console.log(`Loaded ${chunkVecs.length} guide chunk vectors for on-topic relevance gating.`);
-
     let seed = 7;
     const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
 
-    let filteredOffTopicCount = 0;
     const data: Array<{ enc: Array<[number, number]>; tgt: Float32Array }> = [];
     for (const t of allTrainCandidates) {
       const enc = encodeTokens(t, wordIndex);
       const rawVec = teacherTrain.get(t);
       if (enc.length > 0 && rawVec) {
-        const tgt = truncateAndNormalize256(rawVec);
-
-        let maxCos = -1;
-        for (let c = 0; c < chunkVecs.length; c++) {
-          const cos = dotProduct(tgt, chunkVecs[c]);
-          if (cos > maxCos) {
-            maxCos = cos;
-            if (maxCos >= 0.55) break;
-          }
-        }
-
-        if (maxCos >= 0.55) {
-          data.push({ enc, tgt });
-        } else {
-          filteredOffTopicCount++;
-        }
+        data.push({ enc, tgt: truncateAndNormalize256(rawVec) });
       }
-    }
-    if (filteredOffTopicCount > 0) {
-      console.log(`Filtered out ${filteredOffTopicCount} off-topic queries (max chunk cosine < 0.55).`);
     }
 
     const shuffled = data
