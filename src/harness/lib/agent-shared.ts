@@ -464,12 +464,12 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   }
 
-  // Guided sandboxes are pre-opted-in so OT guides can be retrieved; .mwgrc must land in the
+  // Guided sandboxes are pre-opted-in so gated guides can be retrieved; .mwgrc must land in the
   // root commit so it stays out of agent.patch (suite templates arrive with .git already).
   // Also write to homeDir so agents that `cd /tmp` before running `npx modern-web-guidance`
   // still resolve the sandbox's .mwgrc via the HOME fallback.
   if (runType === 'guided') {
-    const mwgConfig: MwgConfig = { allowOriginTrials: true };
+    const mwgConfig: MwgConfig = { allowOriginTrials: true, allowVolatileFeatures: true };
     const normalizedBaseline = normalizeBaselineTarget(process.env.BASELINE_TARGET);
     if (normalizedBaseline && normalizedBaseline !== 'widely') {
       mwgConfig.baseline = normalizedBaseline;

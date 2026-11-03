@@ -70,6 +70,7 @@ export interface PreparedGuide {
   relativeSubdir: string;
   statusName: ProjectStatus | null;
   originTrials?: OriginTrialMetadata[];
+  volatileFeatures?: VolatileFeatureMetadata[];
 }
 
 export interface OriginTrialMetadata {
@@ -78,8 +79,17 @@ export interface OriginTrialMetadata {
   chromestatus_url?: string;
 }
 
+export interface VolatileFeatureMetadata {
+  id?: string;
+  pinned?: boolean;
+  window_ends?: string;
+}
+
 const ORIGIN_TRIALS_FILE = path.join(REPO_ROOT, 'features', 'origin-trials.json');
 let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
+
+const VOLATILE_FEATURES_FILE = path.join(REPO_ROOT, 'features', 'volatile-features.json');
+let cachedVolatileFeatures: Record<string, VolatileFeatureMetadata> | null = null;
 
 export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
   if (!cachedOriginTrials) {
@@ -106,6 +116,33 @@ export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata |
 export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
   const registry = getOriginTrialsRegistry();
   const found: OriginTrialMetadata[] = [];
+  for (const id of featureIds) {
+    if (registry[id]) {
+      found.push({ ...registry[id], id });
+    }
+  }
+  return found;
+}
+
+export function getVolatileFeaturesRegistry(): Record<string, VolatileFeatureMetadata> {
+  if (!cachedVolatileFeatures) {
+    try {
+      const raw = fs.readFileSync(VOLATILE_FEATURES_FILE, 'utf8');
+      cachedVolatileFeatures = JSON.parse(raw);
+    } catch (e: unknown) {
+      if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: unknown }).code === 'ENOENT') {
+        cachedVolatileFeatures = {};
+      } else {
+        throw new Error(`Failed to parse Volatile Features registry at ${VOLATILE_FEATURES_FILE}: ${(e as Error).message}`);
+      }
+    }
+  }
+  return cachedVolatileFeatures!;
+}
+
+export function getGuideVolatileFeatures(featureIds: string[]): VolatileFeatureMetadata[] {
+  const registry = getVolatileFeaturesRegistry();
+  const found: VolatileFeatureMetadata[] = [];
   for (const id of featureIds) {
     if (registry[id]) {
       found.push({ ...registry[id], id });
@@ -509,6 +546,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       relativeSubdir,
       statusName,
       originTrials: getGuideOriginTrials(featureIds),
+      volatileFeatures: getGuideVolatileFeatures(featureIds),
     });
   }
 

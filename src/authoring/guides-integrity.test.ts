@@ -236,6 +236,19 @@ describe('Guides Validation (Single Source of Truth)', () => {
     }
   });
 
+  it('validates that all feature IDs in features/volatile-features.json are valid', async () => {
+    const { validateFeature } = await import('../core/baseline.ts');
+    const volatilePath = path.join(REPO_ROOT, 'features', 'volatile-features.json');
+    const volatileRegistry = JSON.parse(fs.readFileSync(volatilePath, 'utf8'));
+
+    for (const fid of Object.keys(volatileRegistry)) {
+      const res = validateFeature(fid);
+      if (!res.isValid) {
+        assert.fail(`Feature ID "${fid}" in features/volatile-features.json is invalid: ${res.errorMessage}`);
+      }
+    }
+  });
+
   it('validates that all graders conform to static anti-pattern checks', async () => {
     const { checkAllGraders, formatViolations } = await import('../core/grader-lint.ts');
     const violations = checkAllGraders({ repoRoot: REPO_ROOT });

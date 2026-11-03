@@ -67,14 +67,14 @@ describe('createWorkDir', () => {
     }
   });
 
-  test('provisions .mwgrc with allowOriginTrials: true before git init in single-task workDir for guided run', () => {
+  test('provisions .mwgrc with opt-in flags before git init in single-task workDir for guided run', () => {
     const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-test-'));
     try {
       const workDir = createWorkDir('', tempHome, 'guided');
       const mwgrcPath = path.join(workDir, '.mwgrc');
       assert.ok(fs.existsSync(mwgrcPath), '.mwgrc should exist in workDir');
       const config = JSON.parse(fs.readFileSync(mwgrcPath, 'utf8'));
-      assert.deepStrictEqual(config, { allowOriginTrials: true });
+      assert.deepStrictEqual(config, { allowOriginTrials: true, allowVolatileFeatures: true });
 
       // Verify .mwgrc is tracked in git and clean in git status
       const status = spawnSync('git', ['status', '--porcelain'], { cwd: workDir, encoding: 'utf8' }).stdout.trim();
@@ -99,7 +99,7 @@ describe('createWorkDir', () => {
     }
   });
 
-  test('provisions .mwgrc with allowOriginTrials: true before git init in templated suite workDir', () => {
+  test('provisions .mwgrc with opt-in flags before git init in templated suite workDir', () => {
     const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-suite-'));
     const templateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'template-test-'));
     fs.writeFileSync(path.join(templateDir, 'package.json'), '{"name":"test-app"}\n');
@@ -109,7 +109,7 @@ describe('createWorkDir', () => {
       const mwgrcPath = path.join(workDir, '.mwgrc');
       assert.ok(fs.existsSync(mwgrcPath), '.mwgrc should exist in workDir');
       const config = JSON.parse(fs.readFileSync(mwgrcPath, 'utf8'));
-      assert.deepStrictEqual(config, { allowOriginTrials: true });
+      assert.deepStrictEqual(config, { allowOriginTrials: true, allowVolatileFeatures: true });
 
       const status = spawnSync('git', ['status', '--porcelain'], { cwd: workDir, encoding: 'utf8' }).stdout.trim();
       assert.strictEqual(status, '', 'workDir git status should be clean after initGitRepo');

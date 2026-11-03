@@ -62,11 +62,11 @@ describe('modern-web CLI', () => {
   });
 
   it('automatically saves large (> 9.5 KB) output to a temporary UTF-8 file while keeping <= 9.5 KB output inline', () => {
-    const smallRes = runCLI(['retrieve', '2d-panning']);
+    const smallRes = runCLI(['retrieve', 'accessible-generated-content']);
     assert.strictEqual(smallRes.status, 0);
-    assert.ok(smallRes.stdout.includes('--- Guide for 2d-panning ---'), 'Small guide should print inline to stdout');
+    assert.ok(smallRes.stdout.includes('--- Guide for accessible-generated-content ---'), 'Small guide should print inline to stdout');
 
-    const res = runCLI(['retrieve', '2d-panning,css']);
+    const res = runCLI(['retrieve', 'accessible-generated-content,css']);
     assert.strictEqual(res.status, 0);
     const match = res.stdout.trim().match(/^Output \([\d.]+ KB, \d+ lines\) saved to (\S+) to prevent CLI stdout truncation\./);
     assert.ok(match, `Expected saved file path message, got: ${res.stdout}`);
@@ -75,7 +75,7 @@ describe('modern-web CLI', () => {
     try {
       assert.ok(fs.existsSync(savedPath), `Saved file should exist at ${savedPath}`);
       const content = fs.readFileSync(savedPath, 'utf8');
-      const firstIdx = content.indexOf('--- Guide for 2d-panning ---');
+      const firstIdx = content.indexOf('--- Guide for accessible-generated-content ---');
       const secondIdx = content.indexOf('--- Guide for css ---');
       assert.ok(firstIdx !== -1 && secondIdx !== -1, 'Both guides should be present in saved file');
       assert.ok(firstIdx < secondIdx, 'Guides should appear in the exact order requested');
@@ -88,7 +88,7 @@ describe('modern-web CLI', () => {
     const redirectedPath = path.join(os.tmpdir(), `mwg-redirect-test-${process.pid}-${Date.now()}.md`);
     const fd = fs.openSync(redirectedPath, 'w');
     try {
-      const result = spawnSync('node', [scriptPath, 'retrieve', 'css,2d-panning'], {
+      const result = spawnSync('node', [scriptPath, 'retrieve', 'css,accessible-generated-content'], {
         stdio: ['ignore', fd, 'pipe'],
         env: { ...process.env, NO_COLOR: '1', DISABLE_TELEMETRY: '1' }
       });
@@ -99,7 +99,7 @@ describe('modern-web CLI', () => {
 
     try {
       const content = fs.readFileSync(redirectedPath, 'utf8');
-      assert.ok(content.includes('--- Guide for 2d-panning ---'));
+      assert.ok(content.includes('--- Guide for accessible-generated-content ---'));
       assert.ok(content.includes('--- Guide for css ---'));
       assert.ok(!content.includes('saved to '), 'Redirected file should contain raw guide markdown, not a file pointer');
     } finally {

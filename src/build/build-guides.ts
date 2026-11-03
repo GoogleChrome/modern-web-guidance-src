@@ -16,6 +16,7 @@ import {
   isDraftStub,
   stripLeadingH1,
   getGuideOriginTrials,
+  getGuideVolatileFeatures,
 } from "../core/guide-validation.ts";
 import { isTmpFeature } from "../core/feature-parser.ts";
 import { config } from "../core/skills-config.ts";
@@ -108,6 +109,7 @@ export async function computePipelineHash(
     path.join(rootDir, "src/rag/static-model/chunks.scale.f32"),
     path.join(rootDir, "src/core/guide-validation.ts"),
     path.join(rootDir, "features/origin-trials.json"),
+    path.join(rootDir, "features/volatile-features.json"),
     path.join(rootDir, "src/build/devsite-markdown.ts"),
     path.join(rootDir, "src/core/categories.ts"),
     path.join(rootDir, "src/core/headings.ts"),
@@ -678,6 +680,7 @@ async function processSingleGuideFile(
   const featureIds: string[] = data['web-feature-ids'] || [];
   const featuresUsed = featureIds.map(getFeatureName);
   const originTrials = getGuideOriginTrials(featureIds);
+  const volatileFeatures = getGuideVolatileFeatures(featureIds);
   const tokenCount = embedder.countTokens ? await embedder.countTokens(processedMarkdown) : 0;
 
   useCases.push({
@@ -687,6 +690,7 @@ async function processSingleGuideFile(
     featuresUsed,
     tokenCount,
     ...(originTrials.length > 0 ? { originTrials } : {}),
+    ...(volatileFeatures.length > 0 ? { volatileFeatures } : {}),
   });
 
   const h1Title = extractH1Heading(processedMarkdown);
