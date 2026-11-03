@@ -7,9 +7,8 @@ import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { retrieveUseCase, FeatureGateError } from "../rag/retrieve.ts";
 import { logToolResult } from "../rag/logger.ts";
-import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
+import { handleSetAllowOriginTrials, handleSetAllowVolatileFeatures } from "./set-allow-gate.ts";
 import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
-import { handleSetAllowVolatileFeatures } from "./set-allow-volatile-features.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";

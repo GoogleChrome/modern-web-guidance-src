@@ -3,9 +3,11 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { handleSetAllowGate } from './set-allow-gate.ts';
-import { handleSetAllowOriginTrials } from './set-allow-origin-trials.ts';
-import { handleSetAllowVolatileFeatures } from './set-allow-volatile-features.ts';
+import {
+  handleSetAllowGate,
+  handleSetAllowOriginTrials,
+  handleSetAllowVolatileFeatures,
+} from './set-allow-gate.ts';
 import { FEATURE_GATES } from '../core/feature-gates.ts';
 
 describe('handleSetAllowGate', () => {

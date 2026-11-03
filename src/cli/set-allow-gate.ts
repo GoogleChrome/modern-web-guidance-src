@@ -7,13 +7,21 @@
 import * as readline from "node:readline/promises";
 import { resolveMwgrcPath, writeMwgrc } from "../core/mwgrc.ts";
 import { determineAgent } from "./telemetry/detect-agent.ts";
-import type { FeatureGateSpec } from "../core/feature-gates.ts";
+import { FEATURE_GATES, type FeatureGateSpec } from "../core/feature-gates.ts";
 
 export interface SetAllowGateOptions {
   isAgent?: boolean;
   isTTY?: boolean;
   askConfirmation?: (targetPath: string) => Promise<boolean>;
   cwd?: string;
+}
+
+export async function handleSetAllowOriginTrials(opts?: SetAllowGateOptions): Promise<number> {
+  return handleSetAllowGate(FEATURE_GATES["origin-trials"], opts);
+}
+
+export async function handleSetAllowVolatileFeatures(opts?: SetAllowGateOptions): Promise<number> {
+  return handleSetAllowGate(FEATURE_GATES["volatile-features"], opts);
 }
 
 async function defaultAskConfirmation(promptText: string): Promise<boolean> {
