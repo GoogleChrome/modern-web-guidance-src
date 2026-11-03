@@ -60,8 +60,8 @@ node src/rag/embed-chunks.ts --check
 
 ### 3. Release & Publish Gate
 
-The release script (`node src/build/publish-skills.ts`) strictly enforces vector completeness before publishing:
-1. It runs `embedGuideChunks({ check: true })`. If any chunk lacks a cached vector, publishing **fails loudly** and stops before creating packages or git tags.
+The release script (`node src/build/publish-skills.ts`) automatically ensures vector completeness before publishing:
+1. It runs `embedGuideChunks()`, automatically embedding any missing chunks (requiring `GEMINI_API_KEY` in `.env` or environment) and pruning stale entries. Any updated `src/rag/static-model/chunks.*` files are automatically committed and pushed to `main` right alongside `README.md` and `src/build/eval-results-summary.json`.
 2. `build-dist.ts` and `build-guides.ts` enforce `--fail-on-missing-vectors` during release builds.
 3. Distribution tests (`src/build/dist.test.ts`) assert that 100% of chunks in `use-cases.vectors.gen.json.gz` contain valid 256-d vectors.
 
