@@ -147,7 +147,7 @@
     }
 
     .site-menu::backdrop {
-      background: rgb(0 0 0 / 30%);
+      background: transparent; /* Keeps the menu button visible and clickable */
     }
 
     /* :where() keeps the specificity of a single class, so later overrides still win. */
@@ -707,14 +707,18 @@
       setExpanded(false);
     }
 
-    // Height changes from collapsing also notify the observer; only react to width.
-    new ResizeObserver(([entry]) => {
-      if (entry.contentRect.width === lastWidth) return;
-      lastWidth = entry.contentRect.width;
-      syncLayoutState();
+    // While inline, any resize of the header or the row (including font loading) is remeasured.
+    // While collapsed, remeasure only when the header grows, so shrinking never flips to inline and back.
+    // Tradeoff: a collapsed menu that shrinks by itself stays collapsed until the header grows.
+    new ResizeObserver(() => {
+      const width = header.clientWidth;
+      const grew = width > lastWidth;
+      lastWidth = width;
+      if (isWide !== false || grew) syncLayoutState();
     }).observe(header);
-
-    document.fonts.ready.then(syncLayoutState);
+    new ResizeObserver(() => {
+      if (isWide !== false) syncLayoutState();
+    }).observe(menu);
   </script>
 </body>
 
