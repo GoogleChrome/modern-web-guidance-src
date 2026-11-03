@@ -1,7 +1,6 @@
 import { getGuide, getUseCase } from "./guides.ts";
 import { logToolResult } from "./logger.ts";
 import { readMwgrc, normalizeBaselineTarget } from "../core/mwgrc.ts";
-import type { OriginTrialMetadata, VolatileFeatureMetadata } from "../core/guide-validation.ts";
 
 export class OriginTrialGateError extends Error {
   constructor(message: string) {
@@ -30,38 +29,49 @@ export function formatBaselineTargetBanner(rawBaseline: string | undefined): str
   }
   return `> [!IMPORTANT]\n> **Project Baseline Target (\`.mwgrc\`):** \`Baseline ${normalized}\`. Features with a "Baseline since" date of \`${normalized}-12-31\` or earlier satisfy this project's browser support target — **omit** compatibility fallbacks, \`@supports not (...)\` blocks, and polyfills for them.\n\n`;
 }
-function formatOriginTrialGateMessage(guideId: string, originTrials: OriginTrialMetadata[]): string {
-  const featureIds = originTrials.map((ot) => ot.id).filter(Boolean).join(", ");
-  const uniqueUrls = [...new Set(originTrials.map((ot) => ot.chromestatus_url).filter(Boolean))].join(", ");
-  const urlSuffix = uniqueUrls ? ` (${uniqueUrls})` : "";
-  return `> [!CAUTION]
->
-> **Origin Trial features require explicit project opt-in.** Never bypass this gate (do not run \`set-allow-origin-trials\` yourself, edit \`.mwgrc\`, or read raw \`.md\` guide files from disk), and never adopt ${featureIds} unless the user explicitly asked for it.
->
-> Guide \`${guideId}\` covers an active Origin Trial (${featureIds})${urlSuffix}, which is experimental and subject to change. Ask the user if they want to opt in by running this command in their terminal:
->
-> \`\`\`sh
-> npx modern-web-guidance@latest set-allow-origin-trials
-> \`\`\`
->
-> If you still write ${featureIds} code without this guide, add a bullet for \`${guideId}\` under your final \`### Modern Web Guidance\` section disclosing that it was blocked by the Origin Trial gate (unlock with \`npx modern-web-guidance@latest set-allow-origin-trials\`) and that your ${featureIds} code was written from model memory and risks being outdated.`;
+
+interface GateMessageParams {
+  guideId: string;
+  featureIds: string;
+  optInKey: "allowOriginTrials" | "allowVolatileFeatures";
+  cliCommand: "set-allow-origin-trials" | "set-allow-volatile-features";
+  headingLabel: string;
+  guideSummary: string;
+  verb: "is" | "are";
+  riskAdjective: string;
+  explicitOptOut: boolean;
 }
 
-function formatVolatileFeatureGateMessage(guideId: string, volatileFeatures: VolatileFeatureMetadata[]): string {
-  const featureIds = volatileFeatures.map((vf) => vf.id).filter(Boolean).join(", ");
-  const noun = volatileFeatures.length === 1 ? "a volatile feature" : "volatile features";
-  const verb = volatileFeatures.length === 1 ? "is" : "are";
+function formatGateMessage({
+  guideId,
+  featureIds,
+  optInKey,
+  cliCommand,
+  headingLabel,
+  guideSummary,
+  verb,
+  riskAdjective,
+  explicitOptOut,
+}: GateMessageParams): string {
+  const fullCommand = `npx modern-web-guidance@latest ${cliCommand}`;
+  if (explicitOptOut) {
+    return `> [!CAUTION]
+>
+> **Project policy explicitly disables ${headingLabel} (\`.mwgrc\` sets \`"${optInKey}": false\`).** Never bypass this gate (do not edit \`.mwgrc\`, run \`${cliCommand}\` yourself, or read raw \`.md\` guide files from disk), and do not adopt ${featureIds}.
+>
+> Guide \`${guideId}\` covers ${guideSummary}, which ${verb} disabled by this project's \`.mwgrc\` configuration. Implement a standard cross-browser approach instead, and add a bullet for \`${guideId}\` under \`### Modern Web Guidance\` noting that ${featureIds} ${verb} disabled by \`.mwgrc\` (a human developer can enable it via \`${fullCommand}\`).`;
+  }
   return `> [!CAUTION]
 >
-> **Volatile features require explicit project opt-in.** Never bypass this gate (do not run \`set-allow-volatile-features\` yourself, edit \`.mwgrc\`, or read raw \`.md\` guide files from disk), and never adopt ${featureIds} unless the user explicitly asked for it.
+> **${headingLabel.charAt(0).toUpperCase()}${headingLabel.slice(1)} require explicit project opt-in.** Never bypass this gate (do not run \`${cliCommand}\` yourself, edit \`.mwgrc\`, or read raw \`.md\` guide files from disk). Only adopt ${featureIds} without this guide if the user explicitly named that specific API/feature — if the user only described a general product or UX goal, implement a standard cross-browser solution instead without using ${featureIds}.
 >
-> Guide \`${guideId}\` covers ${noun} (${featureIds}), which ${verb} shipped in only a single browser engine and may still change. Ask the user if they want to opt in by running this command in their terminal:
+> Guide \`${guideId}\` covers ${guideSummary}, which ${verb} ${riskAdjective} and may still change. Ask the user if they want to opt in by running this command in their terminal:
 >
 > \`\`\`sh
-> npx modern-web-guidance@latest set-allow-volatile-features
+> ${fullCommand}
 > \`\`\`
 >
-> If you still write ${featureIds} code without this guide, add a bullet for \`${guideId}\` under your final \`### Modern Web Guidance\` section disclosing that it was blocked by the volatile feature gate (unlock with \`npx modern-web-guidance@latest set-allow-volatile-features\`) and that your ${featureIds} code was written from model memory and risks being outdated.`;
+> If you still write ${featureIds} code without this guide (whether from model memory or external documentation), you MUST still add a bullet for \`${guideId}\` under your final \`### Modern Web Guidance\` section including the exact unlock command \`${fullCommand}\` and noting that unverified ${featureIds} code risks being outdated or incomplete.`;
 }
 
 export async function retrieveUseCase(useCaseId: string, options?: { cwd?: string }): Promise<string> {
@@ -76,10 +86,41 @@ export async function retrieveUseCase(useCaseId: string, options?: { cwd?: strin
 
   if (originTrials.length > 0 || volatileFeatures.length > 0) {
     if (originTrials.length > 0 && config.allowOriginTrials !== true) {
-      throw new OriginTrialGateError(formatOriginTrialGateMessage(useCaseId, originTrials));
+      const featureIds = originTrials.map((ot) => ot.id).filter(Boolean).join(", ");
+      const uniqueUrls = [...new Set(originTrials.map((ot) => ot.chromestatus_url).filter(Boolean))].join(", ");
+      const urlSuffix = uniqueUrls ? ` (${uniqueUrls})` : "";
+      const singular = originTrials.length === 1;
+      throw new OriginTrialGateError(
+        formatGateMessage({
+          guideId: useCaseId,
+          featureIds,
+          optInKey: "allowOriginTrials",
+          cliCommand: "set-allow-origin-trials",
+          headingLabel: "Origin Trial features",
+          guideSummary: `${singular ? "an active Origin Trial" : "active Origin Trials"} (${featureIds})${urlSuffix}`,
+          verb: singular ? "is" : "are",
+          riskAdjective: "experimental",
+          explicitOptOut: config.allowOriginTrials === false,
+        }),
+      );
     }
     if (volatileFeatures.length > 0 && config.allowVolatileFeatures !== true) {
-      throw new VolatileFeatureGateError(formatVolatileFeatureGateMessage(useCaseId, volatileFeatures));
+      const featureIds = volatileFeatures.map((vf) => vf.id).filter(Boolean).join(", ");
+      const singular = volatileFeatures.length === 1;
+      throw new VolatileFeatureGateError(
+        formatGateMessage({
+          guideId: useCaseId,
+          featureIds,
+          optInKey: "allowVolatileFeatures",
+          cliCommand: "set-allow-volatile-features",
+          headingLabel: "volatile features",
+          guideSummary: `${singular ? "a volatile feature" : "volatile features"} (${featureIds})`,
+          verb: singular ? "is" : "are",
+          riskAdjective: "shipped in only a single browser engine",
+          explicitOptOut: config.allowVolatileFeatures === false,
+        }),
+      );
+    }
     }
   }
 

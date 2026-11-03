@@ -57,6 +57,20 @@ describe('retrieveUseCase and Origin Trial gate', () => {
     assert.ok(guide.length > 0);
   });
 
+  test('distinguishes explicit allowOriginTrials: false opt-out in CAUTION message', async () => {
+    fs.writeFileSync(path.join(tempDir, '.mwgrc'), JSON.stringify({ allowOriginTrials: false }));
+    await assert.rejects(
+      () => retrieveUseCase(otGuide.id, { cwd: tempDir }),
+      (err: unknown) => {
+        assert.ok(err instanceof OriginTrialGateError);
+        assert.ok(err.message.includes('"allowOriginTrials": false'));
+        assert.ok(err.message.includes(`do not adopt ${otGuide.originTrials![0].id!}`));
+        assert.ok(!err.message.includes('If you still write'));
+        return true;
+      }
+    );
+  });
+
   test('succeeds on regular non-OT, non-volatile guides without .mwgrc', async () => {
     const guide = await retrieveUseCase(regularGuide.id, { cwd: tempDir });
     assert.ok(guide.length > 0);
@@ -151,6 +165,49 @@ describe('retrieveUseCase and Volatile Feature gate', () => {
     fs.writeFileSync(path.join(tempDir, '.mwgrc'), JSON.stringify({ allowVolatileFeatures: true }));
     const guide = await retrieveUseCase(volatileGuide.id, { cwd: tempDir });
     assert.ok(guide.length > 0);
+  });
+
+  test('distinguishes explicit allowVolatileFeatures: false opt-out in CAUTION message', async () => {
+    fs.writeFileSync(path.join(tempDir, '.mwgrc'), JSON.stringify({ allowVolatileFeatures: false }));
+    await assert.rejects(
+      () => retrieveUseCase(volatileGuide.id, { cwd: tempDir }),
+      (err: unknown) => {
+        assert.ok(err instanceof VolatileFeatureGateError);
+        assert.ok(err.message.includes('"allowVolatileFeatures": false'));
+        assert.ok(err.message.includes(`do not adopt ${volatileGuide.volatileFeatures![0].id!}`));
+        assert.ok(!err.message.includes('If you still write'));
+        return true;
+      }
+    );
+  });
+
+  test('unconfigured volatile gate requires unlock command for both memory and external docs', async () => {
+    await assert.rejects(
+      () => retrieveUseCase(volatileGuide.id, { cwd: tempDir }),
+      (err: unknown) => {
+        assert.ok(err instanceof VolatileFeatureGateError);
+        const featureIds = volatileGuide.volatileFeatures!.map((vf) => vf.id).filter(Boolean).join(', ');
+        assert.ok(err.message.includes('explicitly named that specific API/feature'));
+        assert.ok(err.message.includes('whether from model memory or external documentation'));
+        assert.ok(err.message.includes(`noting that unverified ${featureIds} code risks being outdated or incomplete.`));
+        assert.ok(err.message.includes('npx modern-web-guidance@latest set-allow-volatile-features'));
+        return true;
+      }
+    );
+  });
+
+  test('pluralizes gate summary and verb for multi-feature Origin Trial guides', async () => {
+    const multiOtGuide = USE_CASES.find((u) => (u.originTrials?.length ?? 0) > 1);
+    if (!multiOtGuide) return;
+    await assert.rejects(
+      () => retrieveUseCase(multiOtGuide.id, { cwd: tempDir }),
+      (err: unknown) => {
+        assert.ok(err instanceof OriginTrialGateError);
+        assert.ok(err.message.includes('covers active Origin Trials ('));
+        assert.ok(err.message.includes(', which are experimental and may still change.'));
+        return true;
+      }
+    );
   });
 
   test('CLI retrieve comma-separated IDs prints regular guide, gates volatile guide, without unhandled stack trace', () => {
