@@ -163,7 +163,27 @@ Register only one of the two paths so a click never copies twice.
 
 {{ BASELINE_STATUS("async-clipboard", "api.Clipboard.writeText") }}
 
-`navigator.clipboard` is only available in secure contexts (`https:` or `localhost`), and the write is rejected when permission is denied. `copy()` already covers both: a missing `navigator.clipboard` throws inside the `try`, so the failure message is shown and announced. DO NOT add a `document.execCommand('copy')` fallback: it is deprecated, and serving the page over HTTPS removes the cause.
+`navigator.clipboard` is only available in secure contexts (`https:` or `localhost`), and the write is rejected when permission is denied. `copy()` already covers both: a missing `navigator.clipboard` throws inside the `try`, so the failure message is shown and announced. Serve the page over HTTPS: that is the real fix.
+
+Only as a last resort, when you cannot control the protocol of the host page (for example a component embedded on third-party sites), fall back to the deprecated `document.execCommand('copy')` so copying still works for the user. It must run synchronously inside the user's click handler, so use it only when `navigator.clipboard` is missing or the write rejects:
+
+```js
+function legacyCopy(text) {
+  const field = Object.assign(document.createElement('textarea'), { value: text });
+  field.setAttribute('readonly', '');
+  field.style.cssText = 'position:fixed;inset-block-start:0;opacity:0';
+  document.body.append(field);
+  field.select();
+  try { return document.execCommand('copy'); } finally { field.remove(); }
+}
+
+// In copy(), replace the plain write with:
+try {
+  await navigator.clipboard.writeText(text);
+} catch {
+  if (!legacyCopy(text)) throw new Error('Copy failed'); // reaches the existing failure path
+}
+```
 
 Only the optional selection button (step 3) uses Popover.
 
