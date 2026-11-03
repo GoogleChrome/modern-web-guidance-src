@@ -110,6 +110,19 @@ const update = () => {
   status.textContent = `${count} option${count === 1 ? '' : 's'} available`;
 };
 filter.addEventListener('input', update);
+
+// The select's own handling can move focus away from the input after pointerdown,
+// so refocus once the browser's default handling has finished
+const focusFilter = () => requestAnimationFrame(() => {
+  if (select.matches(':open') && document.activeElement !== filter) filter.focus();
+});
+filter.addEventListener('pointerdown', focusFilter);
+filter.addEventListener('click', focusFilter);
+// Opening via mouse or keyboard should land in the filter so the user can type immediately
+select.addEventListener('click', focusFilter);
+select.addEventListener('keydown', e => {
+  if (e.target === select && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) focusFilter();
+});
 ```
 
 ### 5. Let the platform commit and close the picker
