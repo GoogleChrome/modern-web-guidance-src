@@ -117,22 +117,58 @@ export function changedSince(inputs: string[], outputs: string[]): boolean {
   }
 }
 
+function descriptionChangedSince(guidePath: string, outputs: string[]): 'changed' | 'unchanged' | 'unknown' {
+  const outs = outputs.filter(p => fs.existsSync(p));
+  if (outs.length === 0) return 'unknown';
+  const git = (args: string[]): string =>
+    execFileSync('git', args, { cwd: path.dirname(guidePath), encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+
+  try {
+    if (outs.some(p => git(['status', '--porcelain', '--', p]) !== '')) return 'unknown';
+    const lastOutputCommit = git(['log', '-1', '--format=%H', '--', ...outs]);
+    if (!lastOutputCommit) return 'unknown';
+    const prevGuide = git(['show', `${lastOutputCommit}:./${path.basename(guidePath)}`]);
+    return extractGuideDescription(prevGuide) !== extractGuideDescription(fs.readFileSync(guidePath, 'utf-8'))
+      ? 'changed'
+      : 'unchanged';
+  } catch {
+    return 'unknown';
+  }
+}
+
 /**
  * Deletes the stale artifacts of a target capsule so `devGuide` (which skips files that already
  * exist) regenerates them, based on what changed since its golden solution patches were generated:
- * - `guide.md` / `expectations.md`: wipe the target and regenerate everything.
+ * - `guide.md` `description` (or undetermined history): wipe the target and regenerate everything.
+ * - Other `guide.md` / `expectations.md` edits: regenerate all patches (`*-solution.patch` and
+ *   `zero-passrate.patch`) and `grader.ts` (keep `task.md`).
  * - `task.md`: regenerate the solution patches and `grader.ts` (keep `task.md` and `zero-passrate.patch`).
  * - Otherwise (e.g. only `grader.ts`): nothing; calibration and evals still run.
  * Comparing against the solution patches keeps reruns idempotent: once they are regenerated, an
  * earlier input change no longer counts.
  */
-export function applyTargetRerun(guideDir: string, targetCapsuleDir: string): 'regenerate-all' | 'regenerate-solutions' | 'none' {
+export function applyTargetRerun(
+  guideDir: string,
+  targetCapsuleDir: string
+): 'regenerate-all' | 'regenerate-patches' | 'regenerate-solutions' | 'none' {
   const solutionPatches = Object.values(SOLUTION_PATCH_FILES).map(f => path.join(targetCapsuleDir, f));
   const target = path.basename(targetCapsuleDir);
-  if (changedSince([GUIDE_FILE, EXPECTATIONS_FILE].map(f => path.join(guideDir, f)), solutionPatches)) {
-    console.log(cYellow(`\n${GUIDE_FILE} or ${EXPECTATIONS_FILE} changed since ${target} was generated; regenerating all ${target} artifacts.`));
-    fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
-    return 'regenerate-all';
+  const guidePath = path.join(guideDir, GUIDE_FILE);
+  if (changedSince([guidePath, path.join(guideDir, EXPECTATIONS_FILE)], solutionPatches)) {
+    const descStatus = descriptionChangedSince(guidePath, solutionPatches);
+    if (descStatus !== 'unchanged') {
+      const reason = descStatus === 'changed'
+        ? `${GUIDE_FILE} description changed since ${target} was generated`
+        : `${GUIDE_FILE} or ${EXPECTATIONS_FILE} changed since ${target} was generated (description history unavailable)`;
+      console.log(cYellow(`\n${reason}; regenerating all ${target} artifacts.`));
+      fs.rmSync(targetCapsuleDir, { recursive: true, force: true });
+      return 'regenerate-all';
+    }
+    console.log(cYellow(`\n${GUIDE_FILE} or ${EXPECTATIONS_FILE} changed since ${target} was generated; keeping ${TASK_FILE} and regenerating ${target} patches and ${GRADER_FILE}.`));
+    for (const f of [...Object.values(SOLUTION_PATCH_FILES), ZERO_PASSRATE_PATCH_FILE, GRADER_FILE]) {
+      fs.rmSync(path.join(targetCapsuleDir, f), { force: true });
+    }
+    return 'regenerate-patches';
   }
   if (changedSince([path.join(targetCapsuleDir, TASK_FILE)], solutionPatches)) {
     console.log(cYellow(`\n${TASK_FILE} changed since the ${target} solution patches were generated; regenerating solution patches and ${GRADER_FILE}.`));

@@ -281,7 +281,7 @@ export function buildApplyReviewFeedbackPrompt(opts: ReviewFeedbackPromptOptions
 
   let rerunNote = '';
   if (opts.rerunMode === 'needs-dev-rerun') {
-    rerunNote = `\n> [!NOTE]\n> This rerun is in \`needs-dev-rerun\` mode: after this step, files are regenerated based on what changed. If \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` changes, every file under \`targets/\` is regenerated, so do not also edit target files in that case. If only \`targets/<target>/${TASK_FILE}\` changes, the solution patches and \`grader.ts\` are regenerated from the new task.\n`;
+    rerunNote = `\n> [!NOTE]\n> This rerun is in \`needs-dev-rerun\` mode: after this step, files are regenerated based on what changed. If the \`description\` in \`${GUIDE_FILE}\` changes, every file under \`targets/\` is regenerated, so do not also edit target files in that case. For any other \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` change, \`targets/<target>/${TASK_FILE}\` is kept and the patches and \`grader.ts\` are regenerated, so do not also edit \`grader.ts\` in that case. If only \`targets/<target>/${TASK_FILE}\` changes, the solution patches and \`grader.ts\` are regenerated from the new task.\n`;
   }
 
   return `${contextBlock}

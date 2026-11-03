@@ -325,6 +325,7 @@ test('buildApplyReviewFeedbackPrompt explains needs-dev-rerun regeneration', () 
     rerunMode: 'needs-dev-rerun',
   });
   assert.ok(prompt.includes('`needs-dev-rerun` mode'));
+  assert.ok(prompt.includes('`targets/<target>/task.md` is kept'));
   assert.ok(prompt.includes('the solution patches and `grader.ts` are regenerated from the new task'));
   assert.ok(!prompt.includes('will be wiped'));
 });
