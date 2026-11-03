@@ -11,6 +11,7 @@ web-feature-ids:
   - focus-visible
   - prefers-reduced-motion
   - logical-properties
+  - focusgroup
 guides:
   # - overflow-popup
   # - navbar
@@ -66,46 +67,18 @@ try {
 }
 ```
 
-## Keyboard navigation (roving tabindex)
+## Keyboard navigation
 
-MANDATORY: Only one item is in the tab order at a time.
-
-{# Maintainer note: Roving tabindex is used instead of the focusgroup attribute (which the menu guide uses) on purpose. For a toolbar, focusgroup has no user-visible advantage, and without native support it needs this same script as a fallback, so shipping the script alone is simpler. Revisit if focusgroup becomes Baseline Widely Available. #}
-
-* The active item has `tabindex="0"`; all others have `tabindex="-1"`. Initially the first item is active.
-* On `focusin`, move `tabindex="0"` to the focused item so returning to the toolbar (including after a click) restores position.
-* In a horizontal toolbar, `ArrowRight`/`ArrowLeft` move to the next/previous item across all groups and wrap at the ends. In RTL, reverse the directions. Do not wire `ArrowUp`/`ArrowDown`.
-* In a vertical toolbar (see below), `ArrowDown`/`ArrowUp` move to the next/previous item instead, and `ArrowLeft`/`ArrowRight` do nothing.
-* `Home`/`End` move to the first/last item.
-* Call `preventDefault()` only for keys the toolbar handles so `Tab` keeps working.
-
-```js
-// items = every toolbar control across all groups, in DOM order
-items.forEach((b, i) => (b.tabIndex = i ? -1 : 0));
-bar.addEventListener("focusin", ({ target }) => {
-  if (items.includes(target)) items.forEach((b) => (b.tabIndex = b === target ? 0 : -1));
-});
-// Read direction at event time so runtime dir changes are honored
-const rtl = getComputedStyle(bar).direction === "rtl";
-```
+MANDATORY: Only one item is in the tab order at a time. Put `focusgroup="toolbar wrap"` on the `role="toolbar"` container: the browser provides the roving tab stop, arrow-key movement across all groups (wrapping at the ends, reversed in RTL), `Home`/`End`, and focus restoration after a click. Do not add a second roving-tabindex system alongside it. Where `focusgroup` is unsupported, install the fallback in "Fallbacks and browser support" below.
 
 ## Vertical toolbar
 
 Choose a vertical toolbar when controls stack along a side edge (a tool palette or zoom controls beside a canvas); otherwise use a horizontal one. Everything above applies except:
 
-* Set `aria-orientation="vertical"` on the toolbar. The default for `role="toolbar"` is horizontal, so omit it there.
-* Lay items out in a column (`flex-direction: column`, no wrapping), and read the orientation from the attribute when handling keys.
+* Set `aria-orientation="vertical"` on the toolbar and use `focusgroup="toolbar wrap block"` so `ArrowDown`/`ArrowUp` move between items.
+* Lay items out in a column (`flex-direction: column`, no wrapping).
 * A separator between stacked items is horizontal: use `aria-orientation="horizontal"` (the separator default) there, not `vertical`.
 * Tooltips open beside the button (`position-area: inline-end`), not below it; see Tooltips below.
-
-```js
-const vertical = toolbar.getAttribute("aria-orientation") === "vertical";
-// Only horizontal toolbars flip with direction: RTL does not flip Up/Down
-const rtl = getComputedStyle(toolbar).direction === "rtl";
-const steps = vertical
-  ? { ArrowDown: 1, ArrowUp: -1 }
-  : { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 };
-```
 
 ## Visible states
 
@@ -176,6 +149,35 @@ menu.addEventListener("keydown", (e) => {
 ```
 
 ## Fallbacks and browser support
+
+{{ BASELINE_STATUS("focusgroup") }}
+
+Keep `focusgroup` in the markup. Only if `'focusGroup' in HTMLElement.prototype` is false, load a roving-tabindex fallback; never install it when native focusgroup is present. If your support target requires full support, skip `focusgroup` and use the fallback alone. The fallback implements what focusgroup does natively:
+
+* The active item has `tabindex="0"`; all others have `tabindex="-1"`. Initially the first item is active.
+* On `focusin`, move `tabindex="0"` to the focused item so returning to the toolbar (including after a click) restores position.
+* In a horizontal toolbar, `ArrowRight`/`ArrowLeft` move to the next/previous item across all groups and wrap at the ends. In RTL, reverse the directions. Do not wire `ArrowUp`/`ArrowDown`.
+* In a vertical toolbar, `ArrowDown`/`ArrowUp` move to the next/previous item instead, and `ArrowLeft`/`ArrowRight` do nothing.
+* `Home`/`End` move to the first/last item.
+* Call `preventDefault()` only for keys the toolbar handles so `Tab` keeps working.
+
+```js
+if (!('focusGroup' in HTMLElement.prototype)) {
+  // items = every toolbar control across all groups, in DOM order
+  items.forEach((b, i) => (b.tabIndex = i ? -1 : 0));
+  bar.addEventListener("focusin", ({ target }) => {
+    if (items.includes(target)) items.forEach((b) => (b.tabIndex = b === target ? 0 : -1));
+  });
+  // Read direction and orientation at event time so runtime changes are honored
+  const vertical = bar.getAttribute("aria-orientation") === "vertical";
+  // Only horizontal toolbars flip with direction: RTL does not flip Up/Down
+  const rtl = getComputedStyle(bar).direction === "rtl";
+  const steps = vertical
+    ? { ArrowDown: 1, ArrowUp: -1 }
+    : { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 };
+  // keydown: look up steps[key] (or Home/End), move focus, preventDefault only for handled keys
+}
+```
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
 
