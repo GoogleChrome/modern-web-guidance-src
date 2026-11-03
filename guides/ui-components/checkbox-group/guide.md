@@ -109,7 +109,7 @@ The master is a convenience control. The options remain the source of truth, and
 * Place the master first inside the `<fieldset>`, before the options, and separate it visually (for example a divider or heavier font weight) so it reads as a control over the group, not as another option.
 * Keep the label static ("Select all ..."). A label that flips between "Select all" and "Deselect all" is announced as a change in meaning to screen reader users, while the checked and mixed states already convey the current status.
 * Give the master no `name` attribute so it is not submitted with the form. Only the options carry `name` and `value`.
-* If there are no enabled options, set `disabled` on the master.
+* If there are no enabled options (including an empty list), set `disabled` on the master and leave it unchecked and not indeterminate.
 * For filtered or paginated lists, filter `options` to the visible, enabled items only, name that scope in the label (for example "Select all 12 shown"), and re-run `sync()` whenever the visible or enabled set changes.
 
 ## 3. Styling
