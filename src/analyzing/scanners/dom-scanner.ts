@@ -10,6 +10,9 @@ interface HtmlTagToken {
   readonly attributes: Readonly<Record<string, string>>;
 }
 
+const SCRIPT_CLOSE_TAG_REGEX = /<\/script(?=[\s/>]|$)/gi;
+const STYLE_CLOSE_TAG_REGEX = /<\/style(?=[\s/>]|$)/gi;
+
 /**
  * Linearly tokenizes an HTML string to record exact line, column, and attributes
  * (including bare boolean attributes) for all opening tags.
@@ -135,8 +138,10 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
       attributes,
     });
     if ((tagName === 'script' || tagName === 'style') && html[i - 2] !== '/') {
-      const closeIdx = html.toLowerCase().indexOf(`</${tagName}`, i);
-      advanceTo(closeIdx === -1 ? len : closeIdx);
+      const closeRe = tagName === 'script' ? SCRIPT_CLOSE_TAG_REGEX : STYLE_CLOSE_TAG_REGEX;
+      closeRe.lastIndex = i;
+      const match = closeRe.exec(html);
+      advanceTo(match ? match.index : len);
     }
   }
 

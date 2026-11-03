@@ -67,6 +67,23 @@ void test('dom-scanner: HTML bare-attributes and JSX-DOM bridge', async (t) => {
     assert.equal(inputToken.line, 14);
   });
 
+  await t.test('tokenizeHtmlTags avoids index drift with non-1:1 case-folding characters before script', () => {
+    const prefix = 'İ'.repeat(20);
+    const html = `<div class="card">${prefix}</div>
+<script>
+  if (a < b) {
+    console.log('test');
+  }
+</script>
+<input id="after-script" type="text">`;
+
+    const tokens = tokenizeHtmlTags(html);
+    const inputToken = tokens.find((tok) => tok.attributes['id'] === 'after-script');
+    assert.ok(inputToken, 'expected input token after script to be found');
+    assert.equal(inputToken.line, 7);
+    assert.equal(inputToken.tagName, 'input');
+  });
+
   await t.test('scanHtml flags elements using DomRuleMatcher', () => {
     const html = `<form>
   <input type="password" id="user-password">
