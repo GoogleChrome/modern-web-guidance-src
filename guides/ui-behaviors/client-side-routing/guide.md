@@ -1,6 +1,6 @@
 ---
 name: client-side-routing
-description: Route link clicks, Back, and Forward in a single-page app without full page reloads, while keeping scroll position, focus, and loading feedback correct.
+description: Route link clicks, Back, and Forward in a single-page app without full page reloads, with animated transitions between views and correct scroll position, focus, and loading feedback.
 web-feature-ids:
   - navigation
   - view-transitions
