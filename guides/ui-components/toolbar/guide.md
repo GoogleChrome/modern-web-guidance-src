@@ -135,11 +135,13 @@ Add a trailing "More actions" menu when the toolbar has secondary actions or mus
 * Anchor the `popover` container to its trigger (`inset: auto; position-area: block-end span-inline-start; position-try-fallbacks: flip-block, flip-inline`) and nest `<div focusgroup="menu nomemory" aria-label="More actions">` inside it, adding `role="menu"`, `role="menuitem"`, `tabindex="-1"`, and `ArrowDown`/`ArrowUp`/`Home`/`End` only when `'focusGroup' in HTMLElement.prototype` is false. Sync `aria-expanded` and focus the first item on `toggle`, close the popover on `Tab` without trapping focus, and let `Space` on `role="menuitemcheckbox"` toggle `aria-checked` without closing. For nested submenus or radio groups, see {{ GUIDE_REF("menu") }}.
 * Announce the result of every menu activation in the toolbar's live region, such as `"Strikethrough on"` or `"Formatting cleared"`. When closing the menu returns focus to the trigger, delay the live-region write slightly—for example `500ms`—so the focus-change announcement does not preempt it.
 
-## Fallbacks
+## Fallback strategies
+
+### Fallbacks & browser support for `focusgroup`
 
 {{ BASELINE_STATUS("focusgroup") }}
 
-Keep `focusgroup` in the markup. Only if `'focusGroup' in HTMLElement.prototype` is false, load a roving-tabindex fallback; never install it when native focusgroup is present. If your support target requires full support, skip `focusgroup` and use the fallback alone. The fallback implements what focusgroup does natively:
+Keep `focusgroup` in the markup. Only if `'focusGroup' in HTMLElement.prototype` is false, load a roving-tabindex fallback; never install it when native focusgroup is present. The fallback implements what focusgroup does natively:
 
 * The active item has `tabindex="0"`; all others have `tabindex="-1"`. Initially the first item is active.
 * On `focusin`, move `tabindex="0"` to the focused item so returning to the toolbar (including after a click) restores position.
