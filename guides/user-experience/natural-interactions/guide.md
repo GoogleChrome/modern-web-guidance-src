@@ -107,11 +107,13 @@ For large, rapid translations (such as a full-screen sheet sliding into view), a
 - Controls or details revealed in place on hover, such as card actions, must also appear on keyboard focus and be visible by default on devices without hover:
 
 ```css
-.card .actions { opacity: 0; }
-.card:hover .actions,
-.card:focus-within .actions { opacity: 1; }
-@media (hover: none) {
-  .card .actions { opacity: 1; }
+.card .actions {
+  opacity: 0;
+
+  .card:hover &,
+  .card:focus-within & { opacity: 1; }
+
+  @media (hover: none) { opacity: 1; }
 }
 ```
 
