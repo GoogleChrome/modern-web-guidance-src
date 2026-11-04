@@ -86,14 +86,7 @@ The drag handle that is exposed to assistive technologies must be a dedicated bu
 
 ```html
 <button type="button" aria-label="Notes panel handle. Use arrow keys to move.">
-  <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-    <circle cx="9" cy="5" r="1.5" />
-    <circle cx="15" cy="5" r="1.5" />
-    <circle cx="9" cy="12" r="1.5" />
-    <circle cx="15" cy="12" r="1.5" />
-    <circle cx="9" cy="19" r="1.5" />
-    <circle cx="15" cy="19" r="1.5" />
-  </svg>
+  <!-- handle icon -->
 </button>
 ```
 
