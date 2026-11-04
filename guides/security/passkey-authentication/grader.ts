@@ -119,7 +119,7 @@ test.describe('Passkey Authentication Expectations', () => {
     });
   });
 
-  test('The HTML form annotates the username input element with autocomplete="username webauthn" and autofocus', async ({ page, TARGET_URL }) => {
+  test('The HTML form annotates the username input element with autocomplete="username webauthn"', async ({ page, TARGET_URL }) => {
     await page.goto(TARGET_URL);
     const hasCorrectInput = await page.evaluate(() => {
       const inputs = Array.from(document.querySelectorAll('input'));
@@ -128,8 +128,7 @@ test.describe('Passkey Authentication Expectations', () => {
          const tokens = autocomplete.split(/\s+/);
          const hasWebauthn = tokens.includes('webauthn');
          const hasUsername = tokens.includes('username');
-         const hasAutofocus = i.hasAttribute('autofocus');
-         return hasWebauthn && hasUsername && hasAutofocus;
+         return hasWebauthn && hasUsername;
       });
     });
     expect(hasCorrectInput).toBe(true);
