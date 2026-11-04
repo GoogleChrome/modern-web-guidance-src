@@ -657,20 +657,16 @@
       submenu.showPopover({ source: trigger });
     });
 
-    let focusPreviewing = false;
-
     // Focus preview: keyboard focus only, so a pointer click is not toggled twice
     trigger.addEventListener("focus", () => {
       if (!trigger.matches(":focus-visible")) return;
       if (!submenu.matches("[popover]") || submenu.matches(":popover-open")) return;
-      focusPreviewing = true;
       submenu.showPopover({ source: trigger });
     });
 
-    // Close a submenu that focus opened once focus leaves the whole list item
+    // Close the wide submenu once focus moves to an element outside the list item
     dropdown.addEventListener("focusout", (event) => {
-      if (!focusPreviewing || dropdown.contains(event.relatedTarget)) return;
-      focusPreviewing = false;
+      if (!submenu.matches(":popover-open") || !event.relatedTarget || dropdown.contains(event.relatedTarget)) return;
       submenu.hidePopover();
     });
 
