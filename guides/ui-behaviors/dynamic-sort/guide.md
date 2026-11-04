@@ -89,8 +89,6 @@ function reorderWithTransition(list, orderedNodes) {
 * **Large lists:** every named element is captured as an image, so naming hundreds of items is expensive. `match-element` names every matching element too, so it is no cheaper than explicit names. Skip the transition when the list is larger than a few hundred items, or limit the transition to a bounded set of items (for example the first N) and set `view-transition-name: none` on the rest.
 * **Interactivity:** a document-level view transition blocks pointer events on the whole page while it runs, whereas `list.startViewTransition()` only affects the list's subtree. Prefer the scoped form, and keep the animation brief either way. Names only need to be unique within the scope. For table rows, scope the `<table>` (or a wrapper around it). See {{ GUIDE_REF("scoped-component-transitions") }} for scoped transition details.
 
-{{ BASELINE_STATUS("view-transitions-element-scoped") }}
-
 ## Announce the change once
 
 Reordering moves many nodes, but the user performed one action. **DO NOT** put `aria-live` on the list, which would announce every moved item. Instead:
@@ -129,6 +127,8 @@ status.textContent = `Sorted by price, low to high, ${orderedNodes.length} items
 * Above roughly a thousand items, virtualize the list instead of keeping every node in the DOM. Skip the view transition when virtualizing.
 
 ## Fallbacks
+
+{{ BASELINE_STATUS("view-transitions-element-scoped") }}
 
 If your Baseline target does not support `element.startViewTransition()`, use `document.startViewTransition()`. If it does not support that either, reorder without animation. The list still sorts correctly and the announcement is unchanged, so this is graceful degradation: the animation enhances the use case but is not core to it.
 
