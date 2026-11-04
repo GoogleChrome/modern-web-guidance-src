@@ -298,9 +298,10 @@ test.describe('natural-interactions Target Grader', () => {
         const pRect = popover.getBoundingClientRect();
         const tRect = trigger.getBoundingClientRect();
 
-        // Check if the popover was explicitly positioned above the trigger (its bottom edge near trigger's top edge)
-        // or below the trigger (or using CSS position-area: bottom* where top edge is nearest trigger).
-        const explicitlyAbove = pRect.bottom <= tRect.top + 20 && pRect.top > 0;
+        // Check if the popover was explicitly positioned above the trigger (without CSS position-area flipping)
+        // or below the trigger (or using CSS position-area / position-try-fallbacks where transform-origin is top*).
+        const hasPositionArea = Boolean(cs.positionArea && cs.positionArea !== 'none');
+        const explicitlyAbove = !hasPositionArea && pRect.bottom <= tRect.top + 20 && pRect.top > 0;
         const isNearestYEdge = explicitlyAbove
           ? Math.abs(oy - pRect.height) <= 5
           : oy <= 5;
