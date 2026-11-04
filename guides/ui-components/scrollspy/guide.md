@@ -82,6 +82,19 @@ nav a:target-current {
 </script>
 ```
 
+## Accessibility considerations
+
+To ensure that people can navigate the scrollable region after selecting an anchor element, apply the corresponding element with a `tabindex="-1"` attribute. This will allow the element to receive focus, and allow people using a keyboard to scroll the container, or easily navigate from that content.
+
+```html
+<li><a href="#section-2">Section 2</a></li>
+…
+<!-- Adding a tabindex="-1" attribute to the heading will mean that it can receive focus after being navigated to -->
+<h2 id="#section-2" tabindex="-1">Section 2</h2>
+```
+
+To ensure consistent operability across different browsers and assistive technology combinations, if the scrollable container is not the `<body>` element, ensure that it can receive focus (by applying `tabindex="0"`), and has an accessible name that describes the content, along with an appropriate role (such as `role="region"`), if it does not already have an implicit role (which elements like `<main>` do).
+
 ## Best Practices
 
 - **DO** use `scroll-target-group: auto` on a dedicated container for navigation links: This ensures the browser knows which links should be tracked.
@@ -92,7 +105,7 @@ nav a:target-current {
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("scroll-target-group") }}
+{{ BASELINE_STATUS("scroll-target-group") }}
 
 For browsers that do not support `scroll-target-group`, you should use a fallback based on the `IntersectionObserver` API.
 
@@ -112,7 +125,7 @@ For browsers that do not support `scroll-target-group`, you should use a fallbac
           navLinks.forEach(link => {
             const isActive = link.getAttribute('href') === `#${id}`;
             // Use the escaped colon class for consistent styling
-            link.classList.toggle('\:target-current', isActive);
+            link.classList.toggle('target-current', isActive);
             link.setAttribute('aria-current', isActive);
           });
         }
@@ -125,8 +138,8 @@ For browsers that do not support `scroll-target-group`, you should use a fallbac
 
 <style>
   /* Fallback style if :target-current is not supported.
-     Use :is() to combine the native pseudo-class with a fallback class for older browsers. DO NOT use `nav a:target-current, nav a.\:target-current, as the unrecognized pseudoselector invalidates the entire rule in older browsers. */
-  nav a:is(:target-current, .\:target-current) {
+     Use :is() to combine the native pseudo-class with a fallback class for older browsers. DO NOT use `nav a:target-current, nav a.target-current, as the unrecognized pseudoselector invalidates the entire rule in older browsers. */
+  nav a:is(:target-current, .target-current) {
     color: var(--accent, #007bff);
     border-bottom-color: var(--accent, #007bff);
     font-weight: bold;

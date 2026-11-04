@@ -1,0 +1,361 @@
+diff --git a/index.html b/index.html
+index 66c9173..3657e3a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,71 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Custom Element: my-toggle */
++    my-toggle:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to {
++        opacity: 1;
++      }
++    }
++
++    my-toggle {
++      display: inline-block;
++    }
++
++    .toggle-card {
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      background: white;
++      padding: 10px 18px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .toggle-card.is-disabled {
++      opacity: 0.6;
++      pointer-events: none;
++    }
++
++    .toggle-label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .toggle-count {
++      background: var(--accent);
++      color: var(--primary);
++      padding: 2px 8px;
++      border-radius: 12px;
++      font-weight: bold;
++      font-size: 0.85rem;
++    }
++
++    .toggle-btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 6px 14px;
++      border-radius: 5px;
++      cursor: pointer;
++      font-size: 0.85rem;
++      transition: background 0.3s;
++    }
++
++    .toggle-btn:hover {
++      background: #3e2723;
++    }
++
++    .toggle-btn:disabled {
++      background: #9e9e9e;
++      cursor: not-allowed;
++    }
+   </style>
+ </head>
+ 
+@@ -177,6 +242,9 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <div style="text-align: center; margin: 20px 0;">
++        <my-toggle count="3" label="Seasonal Favorites"></my-toggle>
++      </div>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -207,6 +275,102 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="my-toggle.js"></script>
++  <script>
++    if (typeof customElements !== 'undefined' && !customElements.get('my-toggle')) {
++      class MyToggle extends HTMLElement {
++        static observedAttributes = ['label', 'count', 'disabled'];
++
++        constructor() {
++          super();
++        }
++
++        get count() {
++          const val = this.getAttribute('count');
++          if (val === null) return 0;
++          const num = Number(val);
++          return Number.isNaN(num) ? 0 : num;
++        }
++
++        set count(v) {
++          const num = Number(v);
++          const str = String(Number.isNaN(num) ? 0 : num);
++          if (this.getAttribute('count') !== str) {
++            this.setAttribute('count', str);
++          }
++        }
++
++        get label() {
++          return this.getAttribute('label') ?? '';
++        }
++
++        set label(v) {
++          if (v) {
++            const str = String(v);
++            if (this.getAttribute('label') !== str) {
++              this.setAttribute('label', str);
++            }
++          } else {
++            if (this.hasAttribute('label')) {
++              this.removeAttribute('label');
++            }
++          }
++        }
++
++        get disabled() {
++          return this.hasAttribute('disabled');
++        }
++
++        set disabled(on) {
++          const bool = Boolean(on);
++          if (this.toggleAttribute) {
++            this.toggleAttribute('disabled', bool);
++          } else {
++            if (bool) {
++              if (!this.hasAttribute('disabled')) {
++                this.setAttribute('disabled', '');
++              }
++            } else {
++              if (this.hasAttribute('disabled')) {
++                this.removeAttribute('disabled');
++              }
++            }
++          }
++        }
++
++        connectedCallback() {
++          this.render();
++        }
++
++        connectedMoveCallback() {}
++
++        disconnectedCallback() {}
++
++        attributeChangedCallback(name, oldVal, newVal) {
++          if (oldVal !== newVal) {
++            this.render();
++          }
++        }
++
++        render() {
++          const count = this.count;
++          const label = this.label;
++          const disabled = this.disabled;
++          this.innerHTML = `
++            <div class="toggle-card${disabled ? ' is-disabled' : ''}">
++              <span class="label toggle-label">${label}</span>
++              <span class="count toggle-count">${count}</span>
++              <button type="button" class="btn toggle-btn"${disabled ? ' disabled' : ''}>
++                ${label ? label + ': ' : ''}${count}
++              </button>
++            </div>
++          `;
++        }
++      }
++
++      customElements.define('my-toggle', MyToggle);
++    }
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/my-toggle.js b/my-toggle.js
+new file mode 100644
+index 0000000..2f2d3cd
+--- /dev/null
++++ b/my-toggle.js
+@@ -0,0 +1,152 @@
++/**
++ * MyToggle autonomous custom element.
++ *
++ * Implements attribute/property reflection for:
++ * - count (numeric)
++ * - label (string)
++ * - disabled (boolean)
++ *
++ * @extends {HTMLElement}
++ */
++export class MyToggle extends HTMLElement {
++  /**
++   * Observed attributes snapshotted at customElements.define() time.
++   * @type {string[]}
++   */
++  static observedAttributes = ['label', 'count', 'disabled'];
++
++  constructor() {
++    super();
++  }
++
++  /**
++   * Numeric count property reflected to/from 'count' attribute.
++   * Coerced to number on read; serialized to string on write.
++   * @returns {number}
++   */
++  get count() {
++    const val = this.getAttribute('count');
++    if (val === null) return 0;
++    const num = Number(val);
++    return Number.isNaN(num) ? 0 : num;
++  }
++
++  /**
++   * @param {number | string} v
++   */
++  set count(v) {
++    const num = Number(v);
++    const str = String(Number.isNaN(num) ? 0 : num);
++    if (this.getAttribute('count') !== str) {
++      this.setAttribute('count', str);
++    }
++  }
++
++  /**
++   * String label property reflected to/from 'label' attribute.
++   * @returns {string}
++   */
++  get label() {
++    return this.getAttribute('label') ?? '';
++  }
++
++  /**
++   * @param {string | null | undefined} v
++   */
++  set label(v) {
++    if (v) {
++      const str = String(v);
++      if (this.getAttribute('label') !== str) {
++        this.setAttribute('label', str);
++      }
++    } else {
++      if (this.hasAttribute('label')) {
++        this.removeAttribute('label');
++      }
++    }
++  }
++
++  /**
++   * Boolean disabled property reflected to/from 'disabled' attribute.
++   * Setting false removes the attribute rather than writing "false".
++   * @returns {boolean}
++   */
++  get disabled() {
++    return this.hasAttribute('disabled');
++  }
++
++  /**
++   * @param {boolean | unknown} on
++   */
++  set disabled(on) {
++    const bool = Boolean(on);
++    if (this.toggleAttribute) {
++      this.toggleAttribute('disabled', bool);
++    } else {
++      if (bool) {
++        if (!this.hasAttribute('disabled')) {
++          this.setAttribute('disabled', '');
++        }
++      } else {
++        if (this.hasAttribute('disabled')) {
++          this.removeAttribute('disabled');
++        }
++      }
++    }
++  }
++
++  /**
++   * Lifecycle: Element inserted into DOM.
++   */
++  connectedCallback() {
++    this.render();
++  }
++
++  /**
++   * Lifecycle: Element moved via Node.moveBefore().
++   */
++  connectedMoveCallback() {
++    // Preserve state across Node.moveBefore()
++  }
++
++  /**
++   * Lifecycle: Element removed from DOM.
++   */
++  disconnectedCallback() {
++    // Teardown
++  }
++
++  /**
++   * Lifecycle: Observed attribute changed.
++   * @param {string} name
++   * @param {string | null} oldVal
++   * @param {string | null} newVal
++   */
++  attributeChangedCallback(name, oldVal, newVal) {
++    if (oldVal !== newVal) {
++      this.render();
++    }
++  }
++
++  /**
++   * Render component state into the DOM.
++   */
++  render() {
++    const count = this.count;
++    const label = this.label;
++    const disabled = this.disabled;
++    this.innerHTML = `
++      <div class="toggle-card${disabled ? ' is-disabled' : ''}">
++        <span class="label toggle-label">${label}</span>
++        <span class="count toggle-count">${count}</span>
++        <button type="button" class="btn toggle-btn"${disabled ? ' disabled' : ''}>
++          ${label ? label + ': ' : ''}${count}
++        </button>
++      </div>
++    `;
++  }
++}
++
++if (typeof customElements !== 'undefined' && !customElements.get('my-toggle')) {
++  customElements.define('my-toggle', MyToggle);
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..f643a51 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node --check my-toggle.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []

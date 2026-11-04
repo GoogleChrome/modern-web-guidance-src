@@ -1,0 +1,12 @@
+- The overlay is a `<dialog>` with a non-empty accessible name (`aria-labelledby` or `aria-label`).
+- A modal dialog is opened with `showModal()` or `command="show-modal"`, and `:modal` matches while it is open.
+- Focus returns to the invoking element when a modal dialog closes.
+- Pressing `Esc` closes an open modal dialog unless `closedby="none"` is set.
+- When light dismiss is requested on a dialog, clicking the backdrop closes it.
+- A backdrop-click fallback, if present, does not close the dialog when a press starts inside the dialog and ends on the backdrop.
+- When a dialog guards unsaved form changes, it has `closedby="none"`.
+- When a dialog guards unsaved form changes, it stays open after a cancel request with unsaved edits until the user confirms.
+- A non-modal dialog panel leaves the page behind it interactive.
+- While a modal dialog is open, content outside it is not focusable.
+- No `<dialog>` has `role="dialog"` or `aria-modal`.
+- While a modal dialog is open, scrolling over its backdrop or inside it does not scroll the page behind it.

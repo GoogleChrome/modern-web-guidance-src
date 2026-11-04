@@ -63,7 +63,7 @@ export async function generateSuitesManifest(outputDir = defaultOutputDir, resul
     if (fs.existsSync(resultsSourceDir)) {
         const items = fs.readdirSync(resultsSourceDir, { withFileTypes: true });
         for (const item of items) {
-            if (item.isDirectory()) {
+            if (item.isDirectory() || item.isSymbolicLink()) {
                 const suiteDir = path.join(resultsSourceDir, item.name);
                 const evalsPath = path.join(suiteDir, 'evals.json');
                 if (fs.existsSync(evalsPath)) {
@@ -91,7 +91,7 @@ export async function generateSuitesManifest(outputDir = defaultOutputDir, resul
 
 export async function generateGroupedTasksManifest(outputDir = defaultOutputDir) {
     fs.mkdirSync(outputDir, { recursive: true });
-    const { getTaskMap } = await import('../core/guide-validation.ts');
+    const { getTaskMap, DISCIPLINE_GUIDES } = await import('../core/guide-validation.ts');
     const taskMap = getTaskMap();
     /** @type {Record<string, Record<string, string[]>>} */
     const grouped = {};
@@ -107,7 +107,10 @@ export async function generateGroupedTasksManifest(outputDir = defaultOutputDir)
     }
     
     const outputPath = path.join(outputDir, 'grouped-tasks.gen.json');
-    fs.writeFileSync(outputPath, JSON.stringify({ guides: grouped }, null, 2));
+    fs.writeFileSync(outputPath, JSON.stringify({
+        guides: grouped,
+        disciplineGuides: [...DISCIPLINE_GUIDES].sort(),
+    }, null, 2));
 }
 
 const STATIC_WEB_EXTS = new Set([
@@ -236,7 +239,7 @@ export function stagePages(stageDir = path.join(outDir, 'dashboard-pages'), mani
 /**
  * Main CLI Orchestrator
  */
-export async function runAllManifests({ resultsOnly = false, outputDir = defaultOutputDir } = {}) {
+export async function runAllManifests({ resultsOnly = false, outputDir = defaultOutputDir, resultsSourceDir = suitesDir } = {}) {
     fs.mkdirSync(outputDir, { recursive: true });
     if (!resultsOnly) {
         console.log('🔄 Generating features mapping...');
@@ -248,7 +251,7 @@ export async function runAllManifests({ resultsOnly = false, outputDir = default
     }
 
     console.log('🔄 Generating suites manifests...');
-    await generateSuitesManifest(outputDir);
+    await generateSuitesManifest(outputDir, resultsSourceDir);
 }
 
 // CLI Runner

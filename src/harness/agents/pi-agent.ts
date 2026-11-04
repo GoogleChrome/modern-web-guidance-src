@@ -221,11 +221,16 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
             if (toolName === 'read' && (params.path || params.file_path)) {
               const filePath = (params.path || params.file_path) as string;
               if (filePath.includes('/skills/') || filePath.includes('.agents/skills/')) {
-                const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
-                              filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
-                              filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
-                if (match && match[1] !== 'guide') {
-                  fileReadGuides.add(match[1]);
+                const skillMatch = filePath.match(/\/skills\/([^/]+)\/SKILL\.md$/);
+                if (skillMatch) {
+                  toolsUsed.add(skillMatch[1]);
+                } else {
+                  const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
+                                filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
+                                filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
+                  if (match && match[1] !== 'guide') {
+                    fileReadGuides.add(match[1]);
+                  }
                 }
               }
             } else if (toolName === 'bash' && params.command) {

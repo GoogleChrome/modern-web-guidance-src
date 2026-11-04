@@ -29,6 +29,9 @@
       "Read"
     ],
     "websiteURL": "https://developer.chrome.com/docs/modern-web-guidance",
+    "supportURL": "https://github.com/GoogleChrome/modern-web-guidance-src/issues",
+    "privacyPolicyURL": "https://policies.google.com/privacy",
+    "termsOfServiceURL": "https://policies.google.com/terms",
     "defaultPrompt": [
       "Audit this project for modern web best practices and modernization opportunities",
       "What is the recommended modern way to implement responsive dialogs and popovers?"

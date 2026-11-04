@@ -61,7 +61,12 @@ test('buildTargetGraderPrompt includes Option B scoping rules and locked solutio
   assert.ok(prompt.includes('getTargetFiles'));
   assert.ok(prompt.includes('getCssStyleSheet'));
   assert.ok(prompt.includes('CSSOMNom'));
-  assert.ok(prompt.includes('Static Analysis First'));
+  assert.ok(prompt.includes('Right Instrument for the Claim: Parsers vs. Browser'));
+  assert.ok(prompt.includes('Structure and API Usage (Parsers)'));
+  assert.ok(prompt.includes('Runtime Behavior (Browser)'));
+  assert.ok(prompt.includes('One Expectation per Test'));
+  assert.ok(prompt.includes('precondition assertion'));
+  assert.ok(prompt.includes('hooks (`id` or `data-` attributes) that `task.md` names'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Jetski CLI Solution'));
   assert.ok(prompt.includes('Claude Code Solution'));
@@ -70,6 +75,8 @@ test('buildTargetGraderPrompt includes Option B scoping rules and locked solutio
   assert.ok(prompt.includes('LOCKED'));
   assert.ok(prompt.includes('No Patch-Specific Identifier Overfitting'));
   assert.ok(prompt.includes('No Vacuous Guards or `test.skip()`'));
+  assert.ok(prompt.includes('Fallback Expectations (`skipUnless`)'));
+  assert.ok(prompt.includes('skipUnless'));
   assert.ok(prompt.includes('npx oxlint'));
 });
 
@@ -180,6 +187,31 @@ test('buildTargetGraderPrompt includes discipline scoping only for discipline gu
   assert.ok(!standardPrompt.includes('discipline guide'));
 });
 
+test('buildTargetGraderPrompt requires a test for every expectation only for non-discipline guides', () => {
+  const baseOpts = {
+    guideFile: 'guide.md',
+    expectationsFile: 'expectations.md',
+    solutionPatchFiles: {
+      [Agents.JETSKI_CLI]: 'patches/jetski-solution.patch',
+    },
+    zeroPassratePatchFile: 'patches/zero-passrate.patch',
+    graderFile: 'grader.ts',
+    baseApp: 'devtools-times',
+    templateFile: 'template.grader.ts',
+  };
+  const coverageRule = 'Every top-level expectation in `expectations.md` must have at least one dedicated';
+
+  const standardPrompt = buildTargetGraderPrompt(baseOpts);
+  assert.ok(standardPrompt.includes(coverageRule));
+  assert.ok(standardPrompt.includes('Do not omit, merge, or skip any expectation'));
+
+  const retryPrompt = buildTargetGraderPrompt({ ...baseOpts, failureContext: 'Golden test failed' });
+  assert.ok(retryPrompt.includes(coverageRule));
+
+  const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
+  assert.ok(!disciplinePrompt.includes(coverageRule));
+});
+
 test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping only for discipline guides', () => {
   const baseSolutionOpts = {
     guideFile: 'guide.md',
@@ -216,6 +248,7 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions without 
   assert.ok(prompt.includes('Grounded in the Application'));
   assert.ok(prompt.includes('Never Copy Description Verbatim'));
   assert.ok(prompt.includes('Preserve High-Level Capability Boundary'));
+  assert.ok(prompt.includes('neutral hook (an `id` or `data-` attribute)'));
   assert.ok(prompt.includes('Apply fluid typography using modern CSS clamp() units across article cards'));
   assert.ok(!prompt.includes('guide.md'));
   assert.ok(!prompt.includes('expectations.md'));
@@ -247,13 +280,13 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('HIGH_UNGUIDED_PASS_RATE'));
   assert.ok(prompt.includes('CALIBRATION_FAILED'));
   assert.ok(prompt.includes('Treat `guide.md` as Authoritative over `expectations.md`'));
+  assert.ok(prompt.includes('do NOT hand-edit `targets/<target>/grader.ts` in the same pass'));
   assert.ok(prompt.includes('presume `targets/<target>/grader.ts` or `targets/<target>/task.md` is at fault'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Evaluation Results'));
   assert.ok(prompt.includes('Diagnostic Analysis & Actionable Recommendations'));
   assert.ok(prompt.includes('ROOT-CAUSE DIAGNOSIS RULES'));
-  assert.ok(prompt.includes('needs-eval-gen'));
-  assert.ok(prompt.includes('needs-eval-run'));
+  assert.ok(prompt.includes('add the needs-dev-rerun label'));
   assert.ok(prompt.includes('```diff'));
   assert.ok(prompt.includes('DIRECT FILE UPDATES REQUIREMENT'));
 });
@@ -287,15 +320,16 @@ test('buildDevReportPrompt includes PR context and reviewer feedback instruction
   assert.ok(prompt.includes('without blindly overwriting human-authored changes'));
 });
 
-test('buildApplyReviewFeedbackPrompt formats context and includes needs-eval-gen note when applicable', () => {
+test('buildApplyReviewFeedbackPrompt explains needs-dev-rerun regeneration', () => {
   const prompt = buildApplyReviewFeedbackPrompt({
     guideName: 'dialog',
-    comments: 'Please fix selector',
-    rerunMode: 'needs-eval-gen',
+    comments: 'Please tighten the task',
+    rerunMode: 'needs-dev-rerun',
   });
-  assert.ok(prompt.includes('Please fix selector'));
-  assert.ok(prompt.includes('needs-eval-gen'));
-  assert.ok(prompt.includes('all target capsules under `targets/` will be wiped'));
+  assert.ok(prompt.includes('`needs-dev-rerun` mode'));
+  assert.ok(prompt.includes('`targets/<target>/task.md` is kept'));
+  assert.ok(prompt.includes('the solution patches and `grader.ts` are regenerated from the new task'));
+  assert.ok(!prompt.includes('will be wiped'));
 });
 
 import { rootDir } from '../core/paths.ts';
