@@ -24,13 +24,13 @@
 - The carousel track remains scrollable via touch, pointer, and native keyboard scrolling without requiring JavaScript.
 - Native controls retain their keyboard behavior; custom key handling does not intercept keys from focused links, form fields, scroll buttons, or markers.
 - Keyboard users can Tab sequentially through controls without encountering a keyboard trap.
-- Support for `::scroll-button()` and `::scroll-marker` is detected independently using `CSS.supports`.
-- Fallback HTML controls are revealed only when their corresponding native feature is absent, without rendering duplicate controls when support is partial.
-- Fallback previous/next buttons precede the track in DOM order, so in mixed-support browsers they come before any native marker group in sequential focus order.
-- Activating fallback previous/next buttons moves the carousel to the adjacent slide.
-- Activating a fallback marker button navigates to its corresponding slide.
-- Every fallback marker button has an accessible name identifying its destination slide.
-- Fallback markers update `aria-current="true"` to reflect the active slide as soon as a marker or fallback previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
+- When `::scroll-button()` or `::scroll-marker` is unsupported, support for each is detected independently using `CSS.supports`.
+- When `::scroll-button()` or `::scroll-marker` is unsupported, fallback HTML controls stay hidden while their corresponding native controls are shown (unless swapped in for keyboard focus while looping, which hides the native scroll buttons), without rendering duplicate controls when support is partial.
+- When `::scroll-button()` or anchor positioning is unsupported, fallback previous/next buttons precede the track in DOM order so they come before any native marker group in sequential focus order.
+- When `::scroll-button()` or anchor positioning is unsupported, activating fallback previous/next buttons moves the carousel to the adjacent slide.
+- When `::scroll-marker` is unsupported, activating a fallback marker button navigates to its corresponding slide.
+- When `::scroll-marker` is unsupported, every fallback marker button has an accessible name identifying its destination slide.
+- When `::scroll-marker` is unsupported, fallback markers update `aria-current="true"` to reflect the active slide as soon as a marker or fallback previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
 - When `:target-current` is unsupported, the active native marker is still visually distinguished from script state.
 - Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
 - The carousel does not autoplay slides or continuously poll scroll positions on every animation frame.
