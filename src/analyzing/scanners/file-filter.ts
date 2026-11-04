@@ -27,6 +27,12 @@ export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'generated',
   'snapshots',
   'extracted_snapshots',
+  '.agents',
+  '.claude',
+  '.gemini',
+  '.cursor',
+  '.codex',
+  '.antigravitycli',
 ]);
 
 const CHECKED_IN_VENDOR_DIR_SEGMENTS: ReadonlySet<string> = new Set([
@@ -250,7 +256,9 @@ function hasPathSegment(
   normalizedPath: string,
   segmentsSet: ReadonlySet<string>,
 ): boolean {
-  const segments = normalizedPath.split('/').filter(Boolean);
+  const segments = normalizedPath
+    .split('/')
+    .filter((s) => s && s !== '.' && s !== '..');
   return (
     segments.slice(0, -1).some((seg) => segmentsSet.has(seg)) ||
     (segments.length === 1 && segmentsSet.has(segments[0] ?? ''))
@@ -297,13 +305,15 @@ export function isVendoredOrGeneratedPath(
   options?: FileFilterOptions,
 ): boolean {
   const normalized = normalizePath(relPath);
-  const segments = normalized.split('/').filter(Boolean);
+  const segments = normalized
+    .split('/')
+    .filter((s) => s && s !== '.' && s !== '..');
   const ignoredDirs = options?.customIgnoredDirs ?? VENDORED_DIR_SEGMENTS;
   const dirSegments = segments.slice(0, -1);
 
   return (
     isExcludedCorpusNonAppPath(normalized) ||
-    dirSegments.some((seg) => ignoredDirs.has(seg)) ||
+    dirSegments.some((seg) => ignoredDirs.has(seg) || seg.startsWith('.')) ||
     (options?.excludeCorpusNonAppDirs === true && isCorpusNonAppPath(normalized)) ||
     DEFAULT_IGNORED_EXTENSIONS.some((ext) => normalized.endsWith(ext))
   );
@@ -453,7 +463,15 @@ export function shouldScanFile(
  * (e.g. node_modules, dist, build, out, .cache) that should never be scanned.
  */
 export function isBuildOrInstallPath(relPath: string): boolean {
-  return hasPathSegment(normalizePath(relPath), BUILD_OR_INSTALL_DIR_SEGMENTS);
+  const normalized = normalizePath(relPath);
+  const segments = normalized
+    .split('/')
+    .filter((s) => s && s !== '.' && s !== '..');
+  const dirSegments = segments.slice(0, -1);
+  return (
+    hasPathSegment(normalized, BUILD_OR_INSTALL_DIR_SEGMENTS) ||
+    dirSegments.some((seg) => seg.startsWith('.'))
+  );
 }
 
 /**

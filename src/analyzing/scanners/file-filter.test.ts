@@ -1,14 +1,26 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { promisify } from 'node:util';
+import { SyntaxKind } from 'ts-morph';
+import type { AnalyzerRule } from '../schema.ts';
 import {
+  BUILD_OR_INSTALL_DIR_SEGMENTS,
   DOCS_AND_TESTS_DIR_SEGMENTS,
   hasVendoredLicenseHeader,
+  isBuildOrInstallPath,
   isDocsOrTestsPath,
   isExcludedCorpusNonAppPath,
   isMinifiedContent,
   isVendoredOrGeneratedPath,
   shouldScanFile,
 } from './file-filter.ts';
+import { scanRepoFiles } from './index.ts';
+
+const execFileAsync = promisify(execFile);
 
 describe('file-filter vendored and hashed asset exclusions', () => {
   it('excludes unminified vendored library filenames regardless of directory', async (t) => {
@@ -333,5 +345,178 @@ describe('file-filter vendored and hashed asset exclusions', () => {
   it('rejects files exceeding 1 MB source cap', () => {
     assert.equal(shouldScanFile('src/small.js', 'const x = 1;\n'.repeat(100)), true);
     assert.equal(shouldScanFile('src/bundle.js', 'a'.repeat(1_000_001)), false);
+  });
+});
+
+describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and walker fallback', () => {
+  const scanMeRule: AnalyzerRule = {
+    id: 'test-scan-me',
+    guideId: 'test-guide',
+    guideHash: '0123456789ab',
+    summary: 'Flags scanMe calls for file discovery testing',
+    verifierRubric: { keepWhen: ['calls'], dropWhen: [] },
+    matcher: {
+      kind: 'js',
+      fastTokens: ['scanMe'],
+      matchFile: (sourceFile) => {
+        const matches = [];
+        for (const descendant of sourceFile.getDescendants()) {
+          if (
+            descendant.getKind() === SyntaxKind.Identifier &&
+            descendant.getText() === 'scanMe'
+          ) {
+            matches.push({
+              line: descendant.getStartLineNumber(),
+              message: 'scanMe called',
+            });
+          }
+        }
+        return matches;
+      },
+    },
+  };
+
+  it('excludes agent and tooling dot-directories (.agents, .claude, .gemini, .cursor, .codex, .antigravitycli)', async (t) => {
+    const requiredAgentDirs = [
+      '.agents',
+      '.claude',
+      '.gemini',
+      '.cursor',
+      '.codex',
+      '.antigravitycli',
+    ];
+
+    for (const dir of requiredAgentDirs) {
+      assert.equal(
+        BUILD_OR_INSTALL_DIR_SEGMENTS.has(dir),
+        true,
+        `BUILD_OR_INSTALL_DIR_SEGMENTS must contain ${dir}`,
+      );
+    }
+
+    const agentPaths = [
+      '.agents/skills/impeccable/scripts/live-browser.js',
+      '.claude/skills/foo.js',
+      '.gemini/skills/helper.ts',
+      '.cursor/rules/style.js',
+      '.codex/skills/runner.js',
+      '.antigravitycli/scripts/automation.mjs',
+    ];
+
+    for (const p of agentPaths) {
+      await t.test(`excludes ${p}`, () => {
+        assert.equal(isVendoredOrGeneratedPath(p), true);
+        assert.equal(isBuildOrInstallPath(p), true);
+        assert.equal(shouldScanFile(p), false);
+      });
+    }
+
+    assert.equal(shouldScanFile('src/components/button.tsx'), true);
+  });
+
+  it('ignores custom gitignored build directories via git ls-files while scanning untracked non-ignored files', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'git-ignore-discovery-'));
+    try {
+      await execFileAsync('git', ['init', '-q'], { cwd: tempDir });
+      await writeFile(join(tempDir, '.gitignore'), 'custom-build-out/\n');
+      await mkdir(join(tempDir, 'custom-build-out'), { recursive: true });
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+
+      await writeFile(
+        join(tempDir, 'custom-build-out', 'leaked.js'),
+        'function leak() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, 'src', 'app.js'),
+        'function app() { scanMe(); }',
+      );
+
+      // Stage and commit src/app.js and .gitignore
+      await execFileAsync('git', ['add', '.gitignore', 'src/app.js'], { cwd: tempDir });
+      await execFileAsync(
+        'git',
+        ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'initial commit'],
+        { cwd: tempDir },
+      );
+
+      // Create an untracked non-ignored source file
+      await writeFile(
+        join(tempDir, 'src', 'untracked.js'),
+        'function untracked() { scanMe(); }',
+      );
+
+      const findings = await scanRepoFiles(tempDir, [scanMeRule]);
+
+      assert.equal(findings.length, 2, 'Must find exactly 2 files (app.js and untracked.js)');
+      const foundFiles = new Set(findings.map((f) => f.file));
+      assert.equal(foundFiles.has('src/app.js'), true);
+      assert.equal(foundFiles.has('src/untracked.js'), true);
+      assert.equal(foundFiles.has('custom-build-out/leaked.js'), false);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('handles tracked files deleted from disk gracefully without throwing ENOENT', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'git-deleted-discovery-'));
+    try {
+      await execFileAsync('git', ['init', '-q'], { cwd: tempDir });
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+
+      await writeFile(
+        join(tempDir, 'src', 'deleted.js'),
+        'function deleted() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, 'src', 'kept.js'),
+        'function kept() { scanMe(); }',
+      );
+
+      await execFileAsync('git', ['add', '.'], { cwd: tempDir });
+      await execFileAsync(
+        'git',
+        ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'initial commit'],
+        { cwd: tempDir },
+      );
+
+      // Remove tracked file from disk so git ls-files still lists it in the index
+      await rm(join(tempDir, 'src', 'deleted.js'));
+
+      const findings = await scanRepoFiles(tempDir, [scanMeRule]);
+
+      assert.equal(findings.length, 1, 'Must find only the kept file');
+      assert.equal(findings[0]?.file, 'src/kept.js');
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to filesystem walker in non-git directory while skipping dot-dirs and build output', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'non-git-discovery-'));
+    try {
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+      await mkdir(join(tempDir, 'dist'), { recursive: true });
+      await mkdir(join(tempDir, '.agents', 'skills'), { recursive: true });
+
+      await writeFile(
+        join(tempDir, 'src', 'app.js'),
+        'function app() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, 'dist', 'bundle.js'),
+        'function bundle() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, '.agents', 'skills', 'tool.js'),
+        'function tool() { scanMe(); }',
+      );
+
+      const findings = await scanRepoFiles(tempDir, [scanMeRule]);
+
+      assert.equal(findings.length, 1, 'Must find only src/app.js');
+      assert.equal(findings[0]?.file, 'src/app.js');
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
