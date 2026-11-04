@@ -194,7 +194,7 @@ Smooth scrolling is optional. The example enables it only when reduced motion is
 
 {{ BASELINE_STATUS("scrollend") }}
 
-If `scrollend` is unavailable, use the debounced `scroll` listener to update status after scrolling settles, and run the update once on load so the initial state is correct.
+If `scrollend` is unavailable, use a debounced `scroll` listener to run the settled-scroll handler. Run the initial marker, button, and parking sync once on load, leaving the polite status region empty until user-initiated scrolling settles so page load is not interrupted.
 
 {{ BASELINE_STATUS("scroll-snap-events") }}
 
