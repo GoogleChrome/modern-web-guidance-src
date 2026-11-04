@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
-import { execSync } from "node:child_process";
 import matter from "@11ty/gray-matter";
 import { marked } from "marked";
 import { parseArgs } from "node:util";
 
 import { replaceMacros, type BuildTarget } from "../core/macros.ts";
+import { gitExec } from "../core/git-utils.ts";
 import {
   scanAllGuides,
   type GuideInventory,
@@ -208,11 +208,9 @@ export function loadGitFileDates(): GitInfo {
   const fileDates = new Map<string, string>();
   let sourceCommit = "unknown";
   try {
-    sourceCommit = execSync("git rev-parse HEAD", { cwd: WORKSPACE_ROOT, encoding: "utf-8" }).trim();
-    const raw = execSync('git log --format="COMMIT %cs" --name-only HEAD -- guides/ features/', {
+    sourceCommit = gitExec(["rev-parse", "HEAD"], { cwd: WORKSPACE_ROOT }).trim();
+    const raw = gitExec(["log", "--format=COMMIT %cs", "--name-only", "HEAD", "--", "guides/", "features/"], {
       cwd: WORKSPACE_ROOT,
-      encoding: "utf-8",
-      maxBuffer: 50 * 1024 * 1024,
     });
     let currentDate = "";
     for (const line of raw.split("\n")) {

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Embedder } from '../rag/transformers-embedder.ts';
 
 const embedCache = new Map<string, number[]>();
+const inflightEmbeds = new Map<string, Promise<number[]>>();
 
 function dotProduct(a: number[], b: number[]): number {
   let dot = 0;
@@ -148,12 +149,22 @@ export async function validateGraderExpectationCoverage(
   await embedder.init();
 
   async function getVec(t: string): Promise<number[]> {
-    let v = embedCache.get(t);
-    if (!v) {
-      v = await embedder.embed(t);
-      embedCache.set(t, v);
+    const cached = embedCache.get(t);
+    if (cached) return cached;
+    let pending = inflightEmbeds.get(t);
+    if (!pending) {
+      pending = (async () => {
+        try {
+          const v = await embedder.embed(t);
+          embedCache.set(t, v);
+          return v;
+        } finally {
+          inflightEmbeds.delete(t);
+        }
+      })();
+      inflightEmbeds.set(t, pending);
     }
-    return v;
+    return pending;
   }
 
   const rawTestVectors = await Promise.all(testTitles.map(getVec));
