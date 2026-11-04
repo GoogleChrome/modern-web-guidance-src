@@ -41,26 +41,73 @@
   .field { margin-block-end: 1.25rem; }
   .hint { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.8125rem; min-block-size: 1.25rem; }
 
-  input[list], .combo, .combo-filter {
+  .filterable-select, .filter, .multi-trigger {
     inline-size: 100%; padding: 0.625rem 0.75rem; font: inherit; color: inherit;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   }
-  input[list]:focus-visible, .combo:focus-visible, .combo-filter:focus-visible {
+  .filterable-select:focus-visible, .filter:focus-visible, .multi-trigger:focus-visible {
     outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
   }
 
+  :root {
+    --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>");
+    --icon-chevron: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  }
+  .multi-trigger {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    text-align: start; cursor: pointer; anchor-name: --toppings;
+  }
+  .multi-trigger:hover { border-color: var(--accent); }
+  .multi-trigger::after {
+    content: ""; inline-size: 1em; aspect-ratio: 1; flex: none; color: var(--muted);
+    background-color: currentColor; mask: var(--icon-chevron) no-repeat center / contain;
+    @media (prefers-reduced-motion: no-preference) { transition: rotate 0.2s ease; }
+  }
+  .multi-trigger:has(+ .multi-panel:popover-open)::after { rotate: 180deg; }
+  .multi-panel {
+    margin: 0; padding: 0.5rem; inline-size: anchor-size(--toppings width);
+    position-anchor: --toppings; position-area: block-end; margin-block: 0.375rem;
+    position-try-fallbacks: flip-block;
+    max-block-size: 18rem; overflow: auto; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+  .multi-panel fieldset { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+  .multi-panel legend { position: absolute; clip-path: inset(50%); inline-size: 1px; block-size: 1px; overflow: hidden; }
+  .multi-panel label {
+    display: flex; align-items: center; gap: 0.625rem; margin: 0; font-weight: 400;
+    min-block-size: 2.75rem; padding: 0.5rem 0.75rem; border-radius: calc(var(--radius) - 0.25rem); cursor: pointer;
+  }
+  .multi-panel label:hover { background: var(--accent-soft); }
+  .multi-panel label[hidden], .multi-empty[hidden] { display: none; }
+  .multi-panel input[type="checkbox"] {
+    appearance: none; display: inline-grid; place-content: center; flex: none;
+    inline-size: 1.25em; aspect-ratio: 1; margin: 0; cursor: pointer;
+    border: 2px solid currentColor; border-radius: 0.25em;
+
+    &::before {
+      content: ""; inline-size: 0.8em; aspect-ratio: 1; scale: 0;
+      background-color: var(--accent); mask: var(--icon-check) no-repeat center / contain;
+      @media (prefers-reduced-motion: no-preference) { transition: scale 0.15s ease; }
+      @media (forced-colors: active) { background-color: CanvasText; }
+    }
+    &:checked::before { scale: 1; }
+    &:checked { border-color: var(--accent); }
+    &:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  }
+  .multi-empty { padding: 0.5rem 0.75rem; color: var(--muted); }
+
   @supports (appearance: base-select) {
-    .combo, .combo::picker(select) { appearance: base-select; }
-    .combo {
+    .filterable-select, .filterable-select::picker(select) { appearance: base-select; }
+    .filterable-select {
       display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
       text-align: start; cursor: pointer; transition: border-color 0.15s;
     }
-    .combo:hover { border-color: var(--accent); }
-    .combo:has(option[value=""]:checked) { color: var(--muted); }
-    .combo::picker-icon { transition: rotate 0.2s ease; color: var(--muted); }
-    .combo:open::picker-icon { rotate: 180deg; }
+    .filterable-select:hover { border-color: var(--accent); }
+    .filterable-select:has(option[value=""]:checked) { color: var(--muted); }
+    .filterable-select::picker-icon { transition: rotate 0.2s ease; color: var(--muted); }
+    .filterable-select:open::picker-icon { rotate: 180deg; }
 
-    .combo::picker(select) {
+    .filterable-select::picker(select) {
       margin-block: 0.375rem;
       inline-size: anchor-size(width); max-block-size: 18rem;
       padding: 0.5rem; background: var(--surface); color: var(--text);
@@ -68,56 +115,37 @@
       opacity: 0; translate: 0 -0.25rem;
       transition: opacity 0.15s, translate 0.15s, display 0.15s allow-discrete, overlay 0.15s allow-discrete;
     }
-    .combo:open::picker(select) { opacity: 1; translate: 0 0; }
-    @starting-style { .combo:open::picker(select) { opacity: 0; translate: 0 -0.25rem; } }
+    .filterable-select:open::picker(select) { opacity: 1; translate: 0 0; }
+    @starting-style { .filterable-select:open::picker(select) { opacity: 0; translate: 0 -0.25rem; } }
+    @media (prefers-reduced-motion: reduce) {
+      .filterable-select::picker(select) { transition-duration: 0.01ms; translate: none; }
+    }
 
-    .combo-filter { padding: 0.5rem 0.75rem; margin-block-end: 0.5rem; border-radius: calc(var(--radius) - 0.25rem); }
-    .combo option, .combo-add {
+    .filter { padding: 0.5rem 0.75rem; margin-block-end: 0.5rem; border-radius: calc(var(--radius) - 0.25rem); }
+    .filterable-select option {
       display: flex; align-items: center; gap: 0.5rem;
       padding: 0.5rem 0.75rem; border-radius: calc(var(--radius) - 0.25rem); cursor: pointer;
     }
-    .combo option:hover, .combo option:focus-visible, .combo-add:hover, .combo-add:focus-visible {
-      background: var(--accent-soft);
-    }
-    .combo option:focus-visible, .combo-add:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-    .combo option:checked { font-weight: 600; }
-    .combo option::checkmark { order: 1; margin-inline-start: auto; color: var(--accent); }
-    .combo option[hidden], .combo-add[hidden] { display: none; }
-    .combo-add {
-      inline-size: 100%; text-align: start; font: inherit; color: var(--accent);
-      border: 0; background: none; border-block-start: 1px solid var(--border);
-      border-radius: 0 0 calc(var(--radius) - 0.25rem) calc(var(--radius) - 0.25rem); margin-block-start: 0.25rem;
-    }
-    .combo-add::before { content: "+"; font-weight: 700; }
+    .filterable-select option:hover, .filterable-select option:focus-visible { background: var(--accent-soft); }
+    .filterable-select option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .filterable-select option:checked { font-weight: 600; }
+    .filterable-select option::checkmark { order: 1; margin-inline-start: auto; color: var(--accent); }
+    .filterable-select option[hidden] { display: none; }
+    .empty[hidden] { display: none; }
+    .empty { padding: 0.5rem 0.75rem; color: var(--muted); }
   }
+
 </style>
 </head>
 <body>
 <main class="card">
 <h1>Pick a fruit</h1>
-<p class="lede">Type to filter the list, or add your own if it isn’t there.</p>
+<p class="lede">Type to filter the list, then choose one option.</p>
 
 <form>
-  <!-- Fallback markup, replaced by script when customizable select is supported -->
-  <div class="field" id="fallback">
-    <label for="fruit-input">Fruit</label>
-    <input id="fruit-input" name="fruit" list="fruits" autocomplete="off">
-    <datalist id="fruits">
-      <option value="Apple"></option>
-      <option value="Apricot"></option>
-      <option value="Banana"></option>
-      <option value="Blueberry"></option>
-      <option value="Cherry"></option>
-      <option value="Grape"></option>
-      <option value="Mango"></option>
-      <option value="Orange"></option>
-      <option value="Peach"></option>
-    </datalist>
-  </div>
-
-  <div class="field" id="enhanced" hidden>
+  <div class="field">
     <label for="fruit-select">Fruit</label>
-    <select id="fruit-select" name="fruit" class="combo" disabled>
+    <select id="fruit-select" name="fruit" class="filterable-select">
       <button type="button"><selectedcontent></selectedcontent></button>
       <option value="" hidden>Select a fruit</option>
       <option value="Apple">Apple</option>
@@ -132,31 +160,36 @@
     </select>
     <p id="status" class="hint" role="status" aria-live="polite"></p>
   </div>
+
+  <div class="field">
+    <label id="toppings-label">Toppings (choose any)</label>
+    <button type="button" id="toppings-trigger" class="multi-trigger" popovertarget="toppings-panel"
+            aria-labelledby="toppings-label" aria-describedby="toppings-selected">Select toppings</button>
+    <p id="toppings-selected" class="hint">None selected</p>
+    <div id="toppings-panel" class="multi-panel" popover>
+      <input type="text" class="filter" autocomplete="off" placeholder="Type to filter…" aria-label="Filter toppings" autofocus>
+      <fieldset>
+        <legend>Toppings</legend>
+        <label><input type="checkbox" name="toppings" value="Basil"> Basil</label>
+        <label><input type="checkbox" name="toppings" value="Mushrooms"> Mushrooms</label>
+        <label><input type="checkbox" name="toppings" value="Olives"> Olives</label>
+        <label><input type="checkbox" name="toppings" value="Onions"> Onions</label>
+        <label><input type="checkbox" name="toppings" value="Peppers"> Peppers</label>
+        <label><input type="checkbox" name="toppings" value="Pineapple"> Pineapple</label>
+      </fieldset>
+      <div class="multi-empty" hidden>No matches</div>
+    </div>
+    <p id="toppings-status" class="hint" role="status" aria-live="polite"></p>
+  </div>
 </form>
 </main>
 
 <script>
-  if (CSS.supports('appearance', 'base-select')) {
-    const fallback = document.getElementById('fallback');
-    const enhanced = document.getElementById('enhanced');
-    const select = document.getElementById('fruit-select');
-    // The HTML parser closes <select> on <input>/<button>, so build these via DOM
-    const filter = Object.assign(document.createElement('input'), {
-      type: 'text', className: 'combo-filter', placeholder: 'Type to filter or add…', autocomplete: 'off'
-    });
-    filter.setAttribute('aria-label', 'Filter fruit');
-    const add = Object.assign(document.createElement('button'), { type: 'button', className: 'combo-add', hidden: true });
-    select.querySelector('option').before(filter);
-    select.append(add);
-    const status = document.getElementById('status');
+  // Shared filtering: hides non-matching options and reports the count
+  function createFilter({ select, filter, status, empty }) {
     const options = () => [...select.querySelectorAll('option:not([value=""])')];
 
-    // Swap: only one control may be submitted under the same name
-    fallback.remove();
-    select.disabled = false;
-    enhanced.hidden = false;
-
-    const update = () => {
+    const apply = () => {
       const q = filter.value.trim().toLowerCase();
       let count = 0;
       for (const o of options()) {
@@ -164,13 +197,27 @@
         o.hidden = !match;
         if (match) count++;
       }
-      const exact = options().some(o => o.textContent.toLowerCase() === q);
-      add.hidden = !q || exact;
-      add.textContent = `Add “${filter.value.trim()}”`;
+      if (empty) empty.hidden = count > 0;
       status.textContent = `${count} option${count === 1 ? '' : 's'} available`;
     };
+    filter.addEventListener('input', apply);
+    return { options, update: apply };
+  }
 
-    filter.addEventListener('input', update);
+  if (CSS.supports('appearance', 'base-select')) {
+    const select = document.getElementById('fruit-select');
+    // The HTML parser closes <select> on <input>, so build these via DOM
+    const filter = Object.assign(document.createElement('input'), {
+      type: 'text', className: 'filter', placeholder: 'Type to filter…', autocomplete: 'off'
+    });
+    filter.setAttribute('aria-label', 'Filter fruit');
+    const empty = Object.assign(document.createElement('div'), { className: 'empty', hidden: true, textContent: 'No matches' });
+    select.querySelector('option').before(filter);
+    select.append(empty);
+
+    const status = document.getElementById('status');
+    const { options, update } = createFilter({ select, filter, status, empty });
+
     // The select's own handling can move focus away from the input after pointerdown,
     // so refocus once the browser's default handling has finished
     const focusFilter = () => requestAnimationFrame(() => {
@@ -179,52 +226,83 @@
     filter.addEventListener('pointerdown', focusFilter);
     filter.addEventListener('click', focusFilter);
     // Opening via mouse or keyboard should land in the filter so the user can type immediately
-    select.addEventListener('click', e => { if (e.target !== add) focusFilter(); });
+    select.addEventListener('click', focusFilter);
     select.addEventListener('keydown', e => {
       if (e.target === select && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) focusFilter();
     });
-    // Keep typing characters (incl. space) from triggering select type-ahead
+    // Keep typing characters (including space) out of <select> type-ahead; let the platform handle Escape/Tab
     filter.addEventListener('keydown', e => {
+      const first = options().find(o => !o.hidden);
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        options().find(o => !o.hidden)?.focus();
+        first?.focus();
       } else if (e.key === 'Enter') {
-        // Move focus to the match; a second Enter lets the select commit and
-        // close natively (there is no hidePicker() API)
         e.preventDefault();
-        const first = options().find(o => !o.hidden);
-        if (!add.hidden) add.click();
-        else if (first) first.focus();
+        first?.focus();
       } else if (e.key === 'Escape' && filter.value) {
         e.preventDefault();
-        filter.value = '';
-        update();
+        filter.value = ''; update();
       } else if (e.key !== 'Escape' && e.key !== 'Tab') {
         e.stopPropagation();
       }
     });
 
-    add.addEventListener('click', () => {
-      const text = filter.value.trim();
-      const option = new Option(text, text);
-      add.before(option);
-      option.selected = true;
-      filter.value = text;
-      update();
-      option.focus();
-    });
-
+    // <select> has no toggle event, so reset on the events that fire on every close path
     const reset = () => {
       filter.value = '';
       for (const o of options()) o.hidden = false;
-      add.hidden = true;
+      empty.hidden = true;
       status.textContent = '';
     };
-    // Chrome does not fire toggle on <select>, so reset on every close path
-    select.addEventListener('change', (event) => {
-      if (event.target === select) reset();
-    });
+    select.addEventListener('change', e => { if (e.target === select) reset(); });
     select.addEventListener('focusout', e => { if (!select.contains(e.relatedTarget)) reset(); });
+  }
+
+  // Multiple selection: checkboxes in a popover, filtered by a text input
+  {
+    const panel = document.getElementById('toppings-panel');
+    const selected = document.getElementById('toppings-selected');
+    const status = document.getElementById('toppings-status');
+    const filter = panel.querySelector('input[type="text"]');
+    const empty = panel.querySelector('.multi-empty');
+    const items = [...panel.querySelectorAll('label')];
+
+    const updateSelected = () => {
+      const names = [...panel.querySelectorAll('input:checked')].map(b => b.parentElement.textContent.trim());
+      selected.textContent = names.join(', ') || 'None selected';
+    };
+    filter.addEventListener('input', () => {
+      const q = filter.value.trim().toLowerCase();
+      let count = 0;
+      for (const l of items) {
+        l.hidden = !l.textContent.toLowerCase().includes(q);
+        if (!l.hidden) count++;
+      }
+      empty.hidden = count > 0;
+      status.textContent = `${count} option${count === 1 ? '' : 's'} available`;
+    });
+    filter.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+    const visible = () => items.filter(l => !l.hidden).map(l => l.querySelector('input'));
+    filter.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); visible()[0]?.focus(); }
+    });
+    // Arrow keys move through the visible checkboxes; Tab and Space keep working natively
+    panel.addEventListener('keydown', e => {
+      if (!['ArrowDown', 'ArrowUp'].includes(e.key) || e.target.type !== 'checkbox') return;
+      e.preventDefault();
+      const list = visible();
+      const i = list.indexOf(e.target) + (e.key === 'ArrowDown' ? 1 : -1);
+      (list[i] ?? (i < 0 ? filter : list.at(-1))).focus();
+    });
+    panel.addEventListener('change', updateSelected);
+    panel.addEventListener('toggle', e => {
+      if (e.newState === 'closed') {
+        filter.value = '';
+        items.forEach(l => l.hidden = false);
+        empty.hidden = true;
+        status.textContent = '';
+      }
+    });
   }
 </script>
 </body>

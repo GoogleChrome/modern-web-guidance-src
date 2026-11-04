@@ -4,11 +4,20 @@
 - At runtime, the `<select>` contains a descendant `<input type="text">` filter field (inserted by script, not present in the parsed HTML source) that appears before the first `<option>`.
 - Typing into the filter input hides `<option>` elements whose text does not contain the typed string and leaves matching `<option>` elements visible.
 - Typing printable characters into the filter input does not change the `<select>` element's `value` (type-ahead selection is suppressed).
-- When the typed text does not exactly match any existing `<option>`, a `<button>` inside the `<select>` becomes visible whose activation appends a new `<option>` whose `value` and text equal the typed text and marks it as selected.
-- After adding a free-form value, `new FormData(form).get(name)` returns that value.
+- When no `<option>` matches the typed text, an empty-state element inside the `<select>` becomes visible; it is hidden again when at least one option matches.
 - Pressing Enter inside the filter input does not submit the form.
-- Pressing Enter inside the filter input when the add button is hidden and at least one `<option>` is visible moves focus to the first visible `<option>`.
-- Pressing Enter inside the filter input when the add button is visible activates it, appending the typed value as a new selected `<option>`.
+- Pressing Enter inside the filter input moves focus to the first visible `<option>`.
 - An element with `role="status"` (or `aria-live`) updates its text content with the number of matching options as the filter changes.
-- The HTML source includes an `<input list>` bound to a `<datalist>` under the same `name` as the `<select>`.
-- The script gates the customizable-select enhancement on `CSS.supports('appearance', 'base-select')` and removes the `<datalist>`-based control when enhancing.
+- The `::picker(select)` rule declares an entry transition using `@starting-style` and a `transition` that includes `display` and `overlay` with `allow-discrete`.
+- The script gates the customizable-select enhancement on `CSS.supports('appearance', 'base-select')`; without it the control remains a plain `<select>`.
+- A multiple-selection control has a trigger `<button>` with `popovertarget` referencing an element with the `popover` attribute.
+- The popover contains a text filter input and `<input type="checkbox">` elements that share one `name`.
+- Typing into the popover's filter input hides checkbox labels whose text does not contain the typed string.
+- Checkboxes that are checked before filtering remain checked after being hidden and are included in `new FormData(form).getAll(name)`.
+- A text element associated with the trigger lists the labels of the checked checkboxes and updates as they change.
+- Under `prefers-reduced-motion: reduce`, the `::picker(select)` transition duration is effectively zero or its transition is removed.
+- Pressing ArrowDown in the popover's filter input moves focus to the first visible checkbox.
+- Checkboxes in the multiple-selection popover use `appearance: none` with a `mask` for the check icon.
+- Checkboxes in the multiple-selection popover have a visible `:focus-visible` style.
+- Pressing ArrowDown on a checkbox in the popover moves focus to the next visible checkbox, and ArrowUp on the first visible checkbox moves focus to the filter input.
+- When the popover closes, the filter input is cleared and all checkbox labels are visible again.
