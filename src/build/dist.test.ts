@@ -356,24 +356,19 @@ test('no build-machine rootDir path leak in bundled dist binaries', async () => 
   assert.strictEqual(searchMjs.includes(ROOT_DIR), false, 'search.mjs should not contain build-machine rootDir');
 });
 
-test('packaged dist contains 256-d teacher vectors for cached chunks', async () => {
+test('packaged dist contains complete 256-d vectors for all chunks', async () => {
   const zlib = await import('node:zlib');
   const vectorFile = path.join(STAGING_DIR, 'skills/modern-web-guidance/use-cases.vectors.gen.json.gz');
   const compressed = await fs.readFile(vectorFile);
   const items: UseCaseVector[] = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8'));
   assert.ok(items.length > 0, 'Corpus should contain chunks');
-  let embeddedCount = 0;
   for (const item of items) {
-    assert.ok(
-      item.vector.length === 256 || item.vector.length === 0,
-      `Chunk "${item.id}" should have 256-d vector (or 0 when modified in a PR before release embed), got ${item.vector.length}`
+    assert.strictEqual(
+      item.vector.length,
+      256,
+      `Chunk "${item.id}" should have 256-d vector, got ${item.vector.length}`
     );
-    if (item.vector.length === 256) embeddedCount++;
   }
-  assert.ok(
-    embeddedCount >= items.length * 0.9,
-    `Expected at least 90% of chunks to have cached 256-d teacher vectors, got ${embeddedCount}/${items.length}`
-  );
 });
 
 test('release gate pipeline hash differs between dev and release builds', async () => {

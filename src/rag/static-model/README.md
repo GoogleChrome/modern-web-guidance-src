@@ -6,12 +6,12 @@ It replaces the 23.4 MB `all-MiniLM-L6-v2` TensorFlow.js runtime with a zero-dep
 
 | File | Format | Size (raw / gzip) | Contents |
 | :--- | :--- | :---: | :--- |
-| `words.json` | JSON `string[]` | 314 KB / 94 KB | Sorted 29,195-word vocabulary (guide corpus tokens + search aliases + general-English whole words) |
+| `words.json` | JSON `string[]` | 314 KB / 94 KB | Sorted 29,165-word vocabulary (guide corpus tokens + search aliases + general-English whole words, excluding `bm25.ts` stopwords) |
 | `words.i8` | `Int8Array(V × 256)` | 7.5 MB / 5.3 MB | Symmetric per-row `Int8` quantized 256-d unit vectors (`E`) |
 | `words.scale.f32` | `Float32Array(V)` | 117 KB / 96 KB | Per-word weight folded with row quantization scale (`W[i] * (maxAbs[i] / 127)`) |
-| `chunks.json` | JSON `string[]` | 121 KB / 25 KB | Content-hash index of 1,803 teacher-embedded guide chunks |
-| `chunks.i8` | `Int8Array(N × 256)` | 454 KB / 395 KB | Symmetric per-row `Int8` quantized 256-d teacher document vectors |
-| `chunks.scale.f32` | `Float32Array(N)` | 7.1 KB / 7.0 KB | Per-chunk quantization scales (`maxAbs / 127`) |
+| `chunks.json` | JSON `string[]` | 121 KB / 25 KB | Content-hash index of 1,809 teacher-embedded guide chunks |
+| `chunks.i8` | `Int8Array(N × 256)` | 463 KB / 397 KB | Symmetric per-row `Int8` quantized 256-d teacher document vectors |
+| `chunks.scale.f32` | `Float32Array(N)` | 7.2 KB / 7.0 KB | Per-chunk quantization scales (`maxAbs / 127`) |
 
 At runtime, search operates via asymmetric dense retrieval + BM25 fusion:
 - **Queries** are embedded client-side via [`StaticEmbedder.embedSync`](../static-embedder.ts) in <1 ms using the static word table (`words.*`).
@@ -33,8 +33,7 @@ Any change to guide prose, chunk boundaries, baseline data, or macro expansions 
 ### 1. Day-to-Day Development & CI Builds (`pnpm build`)
 
 - Builds use the committed chunk cache.
-- If a guide is edited or added and its teacher vectors are not yet in `chunks.*`, `build-guides.ts` issues a loud console warning naming the guide and indexes the chunk for **BM25 search only** (`vector: []`).
-- This allows day-to-day editing and test runs without requiring network access or `GEMINI_API_KEY`.
+- If a guide is edited or added and its teacher vectors are not yet in `chunks.*`, `build-guides.ts` issues a console warning naming the guide, records the chunk in `missingChunks` (so `--fail-on-missing-vectors` blocks release builds until `embed-chunks.ts` is run), and embeds the chunk with `StaticEmbedder` so `gd dev`, PR evaluations, and `bench-rag.ts` still have a 256-d dense vector without requiring network access or `GEMINI_API_KEY`.
 
 ### 2. Pre-Release Embedding Script (`node src/rag/embed-chunks.ts`)
 
@@ -81,10 +80,16 @@ node src/rag/train-static-model.ts
 What [`src/rag/train-static-model.ts`](../train-static-model.ts) does:
 1. **Vocabulary union:** Scans all published `guides/**/*.md` files and unions their tokens with the existing `src/rag/static-model/words.json`.
 2. **Incremental teacher distillation:** Calls `gemini-embedding-001` (`RETRIEVAL_QUERY`, 768-d → MRL 256-d) only for newly added words or training queries not already present in `out/static-model-cache/`.
-3. **Corpus IDF + Tokenlearn fit:** Recomputes `idfcap` weights across current guide chunks and runs 12 epochs of Adagrad (`LR = 0.01`, `MU = 0.05` L2 regularization toward initial teacher word vectors) so bag-of-words combinations match whole-query teacher embeddings. All benchmark queries (`harness`, `oos`, `wild`) are strictly excluded from training.
+3. **Corpus IDF + Tokenlearn fit:** Recomputes `idfcap` weights across current guide chunks (including formatted chunk headers) and runs 12 epochs of Adagrad (`LR = 0.01`, `MU = 0.05` L2 regularization toward initial teacher word vectors) so bag-of-words combinations match whole-query teacher embeddings. All benchmark queries (`harness`, `oos`, `agent`, `wild-v1`, `wild-v2`) are strictly excluded from training (matching both exact normalized queries and stemmed token signatures).
 4. **Quantization & export:** Writes updated `words.json`, `words.i8`, and `words.scale.f32`, then verifies `Float32 → Int8` cosine fidelity (`> 0.999`).
 
-If you also have an offline JSONL of historical telemetry queries or search aliases to include in the Tokenlearn step, pass `--extra-queries path/to/queries.jsonl`:
+### Committed Table Provenance
+
+The committed `words.{json,i8,scale.f32}` table (`29,165` words) was distilled from `gemini-embedding-001` (`RETRIEVAL_QUERY`, 768-d → MRL 256-d) and fit across `32,915` holdout-scrubbed queries:
+- `2,999` synthetic corpus queries (guide IDs, titles, descriptions, and H2/H3 headings across all published guides)
+- `29,916` unique historical CLI `search_use_cases` telemetry queries collected between `2026-03` and `2026-10` (`30,007` unique queries minus `91` exact/stemmed overlaps with held-out `wild-v1`, `wild-v2`, `agent`, `harness`, and `oos` splits)
+
+Exact command used to produce the committed table:
 
 ```bash
 node src/rag/train-static-model.ts --extra-queries path/to/train-queries.jsonl
