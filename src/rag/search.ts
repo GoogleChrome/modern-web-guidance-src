@@ -15,6 +15,8 @@ export interface UseCaseResult {
   similarity: number;
 }
 
+export type CompactSearchResult = Pick<UseCaseResult, "id" | "description">;
+
 export interface UseCaseVector {
   id: string;
   description: string;
@@ -80,13 +82,13 @@ function loadVectors(): UseCaseVector[] {
 
 /**
  * Hybrid retrieval: guides are ranked by their best-matching chunk (dense cosine) and by per-chunk max-pooled BM25,
- * then merged with reciprocal rank fusion. `minSimilarity` gates the query, not individual guides: if no
- * chunk in the corpus reaches it, nothing is returned; otherwise lexical matches with weaker cosine can surface.
+ * then merged with reciprocal rank fusion. `minSimilarity` gates the query, not individual guides: `[]` is returned
+ * only when dense top-1 is below the floor AND BM25 has no matches; otherwise lexical matches with weaker cosine can surface.
  * The reported `similarity` is still the guide's best dense cosine.
  */
 export async function searchUseCases(
   query: string,
-  limit = 5,
+  limit = 10,
   minSimilarity = DEFAULT_MIN_SIMILARITY,
   embedder?: EmbedderLike
 ): Promise<UseCaseResult[]> {
@@ -108,12 +110,18 @@ export async function searchUseCases(
     }
   }
   const dense = [...best.values()].sort((a, b) => b.similarity - a.similarity);
-  if (dense.length === 0 || dense[0].similarity < minSimilarity) {
+  const bm25Matches = rankBm25(cachedCorpus.bm25, query);
+
+  const topDenseSim = dense.length > 0 ? dense[0].similarity : 0;
+  if (topDenseSim < minSimilarity && bm25Matches.length === 0) {
     logToolResult("search_use_cases", []);
     return [];
   }
 
-  const fused = reciprocalRankFusion([dense.map((r) => r.item.id), rankBm25(cachedCorpus.bm25, query).map((r) => r.id)]);
+  const fused = reciprocalRankFusion([
+    topDenseSim < minSimilarity ? [] : dense.map((r) => r.item.id),
+    bm25Matches.map((r) => r.id),
+  ]);
 
   const limitedResults = fused.slice(0, limit).map(({ id }) => {
     const r = best.get(id);
@@ -124,7 +132,7 @@ export async function searchUseCases(
       category: r.item.category,
       featuresUsed: r.item.featuresUsed.length > 0 ? r.item.featuresUsed : undefined,
       tokenCount: r.item.tokenCount,
-      similarity: parseFloat(r.similarity.toFixed(4))
+      similarity: parseFloat(r.similarity.toFixed(4)),
     };
   });
 

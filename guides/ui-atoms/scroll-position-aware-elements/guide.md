@@ -43,7 +43,8 @@ Place the element inside the container and style it. By default, it should be hi
 }
 ```
 
-> **Important:** Sticky or floating elements hover above the scrollable content. Ensure that the main content has sufficient bottom padding or margin so that the last few elements are not permanently covered by the button when the user scrolls completely to the bottom.
+> [!IMPORTANT]
+> Sticky or floating elements hover above the scrollable content. Ensure that the main content has sufficient bottom padding or margin so that the last few elements are not permanently covered by the button when the user scrolls completely to the bottom.
 
 ### 3. Respond to the Scroll State
 

@@ -25,13 +25,13 @@ Last updated: 2026-07-10.
 
 ```
 modern-web-guidance-src/
+  AGENTS.md                     # Entry-point instructions and skill routing for AI agents
   guides/                     # All guide content, organized by discipline
     performance/              # e.g. batch-analytics-events, optimize-image-priority
     overlays/                 # e.g. light-dismiss-dialog, declarative-dialog-popover-control
     css-layout/               # e.g. animate-to-intrinsic-sizes
     accessibility/            # (empty so far)
     security/                 # (empty so far)
-    AGENTS.md                 # Instructions for AI agents working in this repo
   features/                   # Feature definitions and snippets for transclusion
   skills-src/                 # Source files for standalone Agent Skills
   src/
@@ -134,7 +134,7 @@ pnpm link --global && gd setup-completion
 | `gd dev <dir>` | The main pipeline command. Takes a guide from "has guide.md + expectations.md" through target generation, calibration, agent tests, and report creation (`--targets <apps>`). |
 | `gd dev <dir> --test-grader` | Run calibration check across target apps (golden patches should pass 100%, zero-passrate should fail 100%). |
 | `gd pr <dir>` | Opens a GitHub Pull Request with auto-labeled classification and `report.md` body. |
-| `gd dev-gap` | Scans guides on disk for non-draft guides with `guide.md` and `expectations.md` that are missing evals (plus open PRs labeled `needs-eval-gen` or `needs-eval-run`), and runs `gd dev` + `gd pr` for each one (`--dry-run`, `--limit <n>`, `--targets <apps>`, defaulting to `daily-grind`). |
+| `gd dev-gap` | Scans guides on disk for non-draft guides with `guide.md` and `expectations.md` that are missing evals (plus open PRs labeled `needs-dev-rerun`), and runs `gd dev` + `gd pr` for each one (`--dry-run`, `--limit <n>`, `--targets <apps>`, defaulting to `daily-grind`). |
 | `gd dev-all` | Batch process all incomplete guides. |
 
 **Evaluation:**
@@ -291,7 +291,7 @@ Guides are read by AI coding agents, not humans directly. Key requirements:
 - Use `{{ BASELINE_STATUS("feature-id") }}` macro for browser support display
 - Use `{{ INCLUDE("path[#section]") }}` to transclude a whole markdown file or one section. Bare paths resolve from repo root; `./`/`../` resolve relative to the calling file
 - Use `{{ FEATURE("feature-id", "section") }}` as a shorthand for `INCLUDE("features/<feature-id>.md#<section>")`
-- Use `{{ FEATURE_FALLBACKS("feature-id") }}` (preferred) inside the "Fallback strategies" section — emits a sub-heading, `BASELINE_STATUS`, and the `#fallbacks` section from `features/<feature-id>.md` if it exists
+- Use `{{ FEATURE_FALLBACKS("feature-id") }}` inside the "Fallback strategies" section when `features/<feature-id>.md` has a `## Fallbacks` section — emits a sub-heading, `BASELINE_STATUS`, and the `#fallbacks` section (throws `MacroError` if the file or section is missing or empty; use `{{ BASELINE_STATUS("feature-id") }}` with inline fallback prose otherwise)
 - Use `{{ FEATURE_ISSUES("feature-id") }}` to surface known gotchas from `features/<feature-id>.md#issues`, or `""` if no such section exists
 
 ### Writing expectations.md

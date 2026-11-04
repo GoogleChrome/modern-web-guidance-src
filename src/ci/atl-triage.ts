@@ -578,6 +578,10 @@ export function upsertDemoPreviewInBody(headRef: string, currentBody: string, fi
     .sort()
     .map(f => `[\`${f.replace(/^guides\/|\/demo\.html$/g, '')}\`](${PREVIEW_BLOB_BASE}/${headRef}/${f})`);
 
+  if (!links.length && !currentBody.includes(PREVIEW_START)) {
+    return currentBody;
+  }
+
   const list = links.length === 1 ? links[0] : links.map(l => `\n- ${l}`).join('');
   const section = links.length ? `${PREVIEW_START}\n---\n🎨 **Demo preview:** ${list}\n${PREVIEW_END}` : '';
   const stripped = currentBody.replace(/\s*<!-- mwg-demo-preview:start -->[\s\S]*?<!-- mwg-demo-preview:end -->/g, '').trimEnd();

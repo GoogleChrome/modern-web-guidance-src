@@ -3,9 +3,10 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
-import { maskComments } from './macros.ts';
+import { maskComments, validateMacros } from './macros.ts';
+import { guidesDir } from './paths.ts';
 
 describe('extractH1Heading and extractAllH1Headings', () => {
   test('extracts standard ATX H1 heading', () => {
@@ -119,6 +120,82 @@ describe('parseExpectations', () => {
     assert.deepStrictEqual(result.mustPass, []);
     assert.deepStrictEqual(result.mustFail, []);
     assert.deepStrictEqual(result.appAgnostic, []);
+  });
+});
+
+describe('GUIDE_REF publication target validation', () => {
+  test('allows references to published guides', () => {
+    assert.deepStrictEqual(validateMacros('See {{ GUIDE_REF("forms") }}.', 'test.md', { target: 'devsite' }), []);
+  });
+
+  test('rejects references to unpublished guides', () => {
+    const errors = validateMacros(`See {{ GUIDE_REF('slider-tooltip') }}.`, 'test.md', { target: 'devsite' });
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /GUIDE_REF\("slider-tooltip"\).*unpublished/);
+  });
+
+  test('validateGuide only enforces it for published (non-draft) guides', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-ref-'));
+    const guidePath = path.join(dir, 'ref-test', 'guide.md');
+    fs.mkdirSync(path.dirname(guidePath));
+    const write = (draftLine: string) => fs.writeFileSync(guidePath, `---\nname: ref-test\ndescription: d\nweb-feature-ids: []\n${draftLine}---\n# Ref test\n\nSee {{ GUIDE_REF("slider-tooltip") }}.\n`);
+    try {
+      write('');
+      assert.ok(validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+      write('draft: wip\n');
+      assert.ok(!validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('validatePendingGuideRefs', () => {
+  const pending = (slug: string) => `Intro.\n\n{# PENDING_GUIDE_REF: For tooltips, see {{ GUIDE_REF("${slug}") }}. #}\n`;
+
+  test('allows parking a link to an unpublished guide', () => {
+    assert.deepStrictEqual(validatePendingGuideRefs(pending('slider-tooltip'), 'test.md'), []);
+  });
+
+  test('fails once the target guide is published', () => {
+    const errors = validatePendingGuideRefs(pending('forms'), 'test.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /"forms" is now published.*remove the \{# PENDING_GUIDE_REF/);
+  });
+
+  test('fails on unknown slugs and on markers without a GUIDE_REF', () => {
+    assert.match(validatePendingGuideRefs(pending('no-such-guide-xyz'), 'test.md')[0], /unknown guide "no-such-guide-xyz"/);
+    assert.match(validatePendingGuideRefs('{# PENDING_GUIDE_REF: nothing here #}', 'test.md')[0], /contains no/);
+  });
+
+  test('ignores ordinary maintainer comments', () => {
+    assert.deepStrictEqual(validatePendingGuideRefs('{# see {{ GUIDE_REF("forms") }} someday #}', 'test.md'), []);
+  });
+});
+
+describe('validateCallouts', () => {
+  test('allows known GitHub alert types and plain blockquotes', () => {
+    const body = `> [!NOTE]\n> A note.\n\n> [!important]\n> Lowercase is fine.\n\n> Just a quote.\n\n> **Note on kid handling:** prose label, not a callout.\n`;
+    assert.deepStrictEqual(validateCallouts(body, 'test.md'), []);
+  });
+
+  test('rejects unknown alert types', () => {
+    const errors = validateCallouts(`> [!DANGER]\n> Boom.\n`, 'test.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Unsupported alert type "\[!DANGER\]"/);
+  });
+
+  test('rejects bold-label callouts, including inside list items', () => {
+    const body = `> **Important:** Top level.\n\n- item\n\n  > **Note**: Nested.\n`;
+    const errors = validateCallouts(body, 'test.md');
+    assert.strictEqual(errors.length, 2);
+    assert.match(errors[0], /\[!IMPORTANT\]/);
+    assert.match(errors[1], /\[!NOTE\]/);
+  });
+
+  test('ignores callout-like text inside code fences', () => {
+    const body = '```md\n> **Note:** example\n> [!BOGUS]\n```\n';
+    assert.deepStrictEqual(validateCallouts(body, 'test.md'), []);
   });
 });
 
@@ -1062,6 +1139,84 @@ Body`, undefined, true);
       getPendingGuideStage(wipInv, ['guide.md']),
       ProjectStatus.NeedsGuidance
     );
+  });
+});
+
+describe('validateCategory', () => {
+  test('allows known category paths', () => {
+    const cssGuide = path.join(guidesDir, 'css', 'sub', 'guide.md');
+    assert.deepStrictEqual(validateCategory(cssGuide, 'guides/css/sub/guide.md'), []);
+  });
+
+  test('flags unknown category paths', () => {
+    const unknownGuide = path.join(guidesDir, 'unknown-cat', 'sub', 'guide.md');
+    const errors = validateCategory(unknownGuide, 'guides/unknown-cat/sub/guide.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Unknown category "unknown-cat"/);
+    assert.doesNotMatch(errors[0], /\[object Object\]/);
+    assert.match(errors[0], /Registered categories: .*\bcss\b/);
+  });
+});
+
+describe('validateHeadingHtmlTags', () => {
+  test('allows headings with code spans and no unescaped html tags', () => {
+    assert.deepStrictEqual(validateHeadingHtmlTags('## Using `<dialog>` element\n', 'guide.md'), []);
+  });
+
+  test('flags unescaped html tags in headings', () => {
+    const errors = validateHeadingHtmlTags('## Using <dialog> element\n', 'guide.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Unescaped HTML tag <dialog>/);
+  });
+});
+
+describe('validateSecureSrc', () => {
+  test('allows https URLs in src', () => {
+    assert.deepStrictEqual(validateSecureSrc('<img src="https://example.com/pic.png">', 'guide.md'), []);
+  });
+
+  test('flags insecure http URLs in src', () => {
+    const errors = validateSecureSrc('<img src="http://example.com/pic.png">', 'guide.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Insecure HTTP url/);
+  });
+});
+
+describe('validateCodeFences', () => {
+  test('allows matching code fence indentation', () => {
+    assert.deepStrictEqual(validateCodeFences('```js\nconst x = 1;\n```\n', 'guide.md'), []);
+    assert.deepStrictEqual(validateCodeFences('    ```js\n    const x = 1;\n    ```\n', 'guide.md'), []);
+  });
+
+  test('flags mismatched closing code fence indentation', () => {
+    const errors = validateCodeFences('```js\nconst x = 1;\n  ```\n', 'guide.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Closing code fence indentation/);
+  });
+
+  test('flags unclosed code fences', () => {
+    const errors = validateCodeFences('```js\nconst x = 1;\n', 'guide.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Unclosed code fence/);
+  });
+});
+
+describe('validateAnchorLinks', () => {
+  test('allows valid anchor links to headings on the page', () => {
+    const md = '## My Section\n\nSee [section](#my-section).\n';
+    assert.deepStrictEqual(validateAnchorLinks(md, 'guide.md'), []);
+  });
+
+  test('allows anchor links matching explicit heading IDs', () => {
+    const md = '## My Section {: #custom-id }\n\nSee [section](#custom-id).\n';
+    assert.deepStrictEqual(validateAnchorLinks(md, 'guide.md'), []);
+  });
+
+  test('flags unresolvable anchor links', () => {
+    const md = '## My Section\n\nSee [missing](#non-existent-section).\n';
+    const errors = validateAnchorLinks(md, 'guide.md');
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /Unresolved anchor "#non-existent-section"/);
   });
 });
 

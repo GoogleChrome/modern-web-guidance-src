@@ -10,7 +10,12 @@ import {
   extractCodexCliModel,
   extractCodexCliTokenUsage
 } from '../lib/trajectory-normalizer.ts';
-import { extractCommandsFromCodexItem, parseCodexTrajectory } from './codex-cli-agent.ts';
+import {
+  ensureFreshHostCodexAuth,
+  extractCommandsFromCodexItem,
+  extractWebRunsFromCodexItem,
+  parseCodexTrajectory
+} from './codex-cli-agent.ts';
 import { extractModelFromResults } from '../lib/collection.ts';
 import { Agents } from '../config.ts';
 
@@ -629,4 +634,148 @@ test('parseCodexTrajectory extracts token usage from token_usage_record entries'
 
   const summary = parseCodexTrajectory(rollout);
   assert.deepStrictEqual(summary.tokenUsage, { total: 450, cached: 150 });
+});
+
+function makeFakeJwt(expSeconds: number): string {
+  const b64 = (obj: object) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  return `${b64({ alg: 'RS256' })}.${b64({ exp: expSeconds })}.sig`;
+}
+
+test('ensureFreshHostCodexAuth skips fresh tokens and rotates expiring tokens in-place', async () => {
+  const tempDir = createTempDir();
+  try {
+    const authPath = path.join(tempDir, 'auth.json');
+    const nowSec = Math.floor(Date.now() / 1000);
+    const writeAuth = (expOffsetSec: number, refreshAgeDays: number, refreshToken = 'rt_old') =>
+      fs.writeFileSync(authPath, JSON.stringify({
+        auth_mode: 'chatgpt',
+        tokens: { access_token: makeFakeJwt(nowSec + expOffsetSec), refresh_token: refreshToken, account_id: 'acc_1' },
+        last_refresh: new Date(Date.now() - refreshAgeDays * 86400_000).toISOString()
+      }));
+
+    // 1. Fresh token (9d remaining, refreshed 1h ago) -> no-op
+    writeAuth(9 * 86400, 1 / 24, 'rt_fresh');
+    let fetchCalls = 0;
+    const skipped = await ensureFreshHostCodexAuth(authPath, (async () => {
+      fetchCalls++;
+      throw new Error('Should not fetch when fresh');
+    }) as unknown as typeof fetch);
+    assert.strictEqual(skipped, false);
+    assert.strictEqual(fetchCalls, 0);
+
+    // 2. Expiring token (12h remaining, refreshed 9d ago) -> refreshes once and updates auth.json
+    writeAuth(12 * 3600, 9, 'rt_old');
+    const newAccessJwt = makeFakeJwt(nowSec + 10 * 86400);
+    const mockFetch = (async (_url: string, init?: RequestInit) => {
+      fetchCalls++;
+      assert.strictEqual(JSON.parse(String(init?.body)).refresh_token, 'rt_old');
+      return new Response(JSON.stringify({ id_token: 'id_new', access_token: newAccessJwt, refresh_token: 'rt_new' }));
+    }) as unknown as typeof fetch;
+
+    const [r1, r2] = await Promise.all([
+      ensureFreshHostCodexAuth(authPath, mockFetch),
+      ensureFreshHostCodexAuth(authPath, mockFetch)
+    ]);
+    assert.deepStrictEqual([r1, r2, fetchCalls], [true, true, 1]);
+
+    const saved = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+    assert.deepStrictEqual(saved.tokens, {
+      access_token: newAccessJwt,
+      refresh_token: 'rt_new',
+      id_token: 'id_new',
+      account_id: 'acc_1'
+    });
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('parseCodexTrajectory preserves tools.web__run calls when batched with exec_command', () => {
+  const input = [
+    'text(await tools.web__run({search_query:[{q:"CSS @supports at-rule() syntax @layer"}],response_length:"short"}));',
+    'text(await tools.exec_command({cmd:"git status --short","max_output_tokens":1000}));',
+    'text(await tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access"}],response_length:"short"}));'
+  ].join(' ');
+
+  const item = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_batched_1',
+      name: 'exec',
+      input
+    }
+  };
+
+  const webRuns = extractWebRunsFromCodexItem(item);
+  assert.deepStrictEqual(webRuns, [
+    'tools.web__run({search_query:[{q:"CSS @supports at-rule() syntax @layer"}],response_length:"short"})',
+    'tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access"}],response_length:"short"})'
+  ]);
+
+  const summary = parseCodexTrajectory([item]);
+  assert.strictEqual(summary.steps.length, 1);
+  assert.strictEqual(summary.steps[0].action?.type, 'run_command');
+  assert.strictEqual(summary.steps[0].action?.name, 'git status --short');
+  assert.deepStrictEqual(summary.steps[0].action?.params, {
+    command: 'git status --short',
+    webRuns
+  });
+
+  const multiCmdItem = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_batched_2',
+      name: 'exec',
+      input: [
+        'text(await tools.exec_command({cmd:"pwd"}));',
+        'text(await tools.exec_command({cmd:"ls -la"}));'
+      ].join(' ')
+    }
+  };
+  const multiSummary = parseCodexTrajectory([multiCmdItem]);
+  assert.deepStrictEqual(multiSummary.steps[0].action?.params, {
+    command: 'pwd',
+    commands: ['pwd', 'ls -la']
+  });
+
+  // Standalone tools.web__run call (no exec_command) also attaches params.webRuns
+  const standaloneWebItem = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_standalone_web',
+      name: 'exec',
+      input: 'text(await tools.web__run({search_query:[{q:"HTML in canvas"}],response_length:"short"}));\n'
+    }
+  };
+  const standaloneSummary = parseCodexTrajectory([standaloneWebItem]);
+  assert.strictEqual(standaloneSummary.steps.length, 1);
+  assert.strictEqual(standaloneSummary.steps[0].action?.type, 'other');
+  assert.deepStrictEqual(standaloneSummary.steps[0].action?.params, {
+    value: 'text(await tools.web__run({search_query:[{q:"HTML in canvas"}],response_length:"short"}));\n',
+    webRuns: ['tools.web__run({search_query:[{q:"HTML in canvas"}],response_length:"short"})']
+  });
+
+  // Non-code_mode web_search_call items are recorded in trajectory steps
+  const webSearchItem = {
+    type: 'response_item',
+    payload: {
+      type: 'web_search_call',
+      id: 'ws_1',
+      status: 'completed',
+      action: {
+        type: 'open_page',
+        url: 'https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access'
+      }
+    }
+  };
+  const wsSummary = parseCodexTrajectory([webSearchItem]);
+  assert.strictEqual(wsSummary.steps.length, 1);
+  assert.strictEqual(wsSummary.steps[0].action?.name, 'web_search');
+  assert.deepStrictEqual(wsSummary.steps[0].action?.params, {
+    type: 'open_page',
+    url: 'https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access'
+  });
 });

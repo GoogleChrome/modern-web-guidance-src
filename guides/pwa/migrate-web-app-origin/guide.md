@@ -94,7 +94,7 @@ By default, a migration is suggested to users. To make the transition mandatory,
 
 ## Fallbacks & browser support
 
-{{ FEATURE_FALLBACKS("app-migration") }}
+{{ BASELINE_STATUS("app-migration") }}
 
 ### Manual reinstallation prompt
 

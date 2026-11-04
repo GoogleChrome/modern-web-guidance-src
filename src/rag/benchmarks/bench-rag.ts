@@ -8,6 +8,7 @@ import { parseArgs } from "node:util";
 import { guidesDir, outDir, rootDir } from "../../core/paths.ts";
 import {
   ensureWildDataset,
+  filterDatasetBySplit,
   isRecord,
   loadPublicDataset,
   type LoadedDataset,
@@ -21,6 +22,8 @@ import {
 } from "./metrics.ts";
 import type { EmbedderLike, UseCaseResult } from "../search.ts";
 
+/** Calibrated ~5pp below main's 0.849 to catch ranking regressions without tripping on minor token drift. */
+const AGENT_SANITY_NDCG_FLOOR = 0.80;
 const HARNESS_SANITY_NDCG_FLOOR = 0.80;
 
 interface TargetSpec {
@@ -186,6 +189,23 @@ function ensureWorktreeBuilt(targetDir: string, seedFromRoot = true): void {
   const legacyBuildScript = path.join(targetDir, "serving/scripts/build-guides.ts");
 
   if (fs.existsSync(modernBuildScript)) {
+    const targetNodeModules = path.join(targetDir, "node_modules");
+    let rootNodeModules: string | null = null;
+    let cur = rootDir;
+    while (cur !== path.dirname(cur)) {
+      const nm = path.join(cur, "node_modules");
+      if (fs.existsSync(nm)) {
+        rootNodeModules = nm;
+        break;
+      }
+      cur = path.dirname(cur);
+    }
+    if (!fs.existsSync(targetNodeModules) && rootNodeModules) {
+      try {
+        fs.symlinkSync(rootNodeModules, targetNodeModules, "junction");
+      } catch {}
+    }
+
     const targetCacheDir = path.join(targetDir, "out/build/skills-cli");
     const rootCacheDir = path.join(rootDir, "out/build/skills-cli");
     if (seedFromRoot && targetDir !== rootDir && !fs.existsSync(targetCacheDir) && fs.existsSync(rootCacheDir)) {
@@ -316,9 +336,26 @@ function fmtBootstrapDelta(d: BootstrapDelta, fmtVal: (v: number) => string, suf
   return `${main} [${low}, ${high}]${d.significant ? " *" : ""}`;
 }
 
-export function renderSingleMarkdown(label: string, summaries: DatasetSummary[]): string {
+export function renderSingleMarkdown(
+  label: string,
+  summaries: DatasetSummary[],
+  datasets?: LoadedDataset[]
+): string {
   const lines: string[] = [];
   lines.push(`### RAG Benchmark — \`${label}\``);
+  if (datasets && datasets.length > 0) {
+    const provLines = datasets
+      .filter((d) => d.manifest)
+      .map((d) => {
+        const qrelsKey = Object.keys(d.manifest?.files ?? {}).find((k) => k.endsWith("qrels.jsonl"));
+        const qrelsSha = qrelsKey ? d.manifest?.files[qrelsKey]?.sha256 : undefined;
+        return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}${d.manifest?.dateRange ? `, date range: \`${d.manifest?.dateRange}\`` : ""}`;
+      });
+    if (provLines.length > 0) {
+      lines.push("");
+      lines.push(...provLines);
+    }
+  }
   lines.push("");
   lines.push(
     "| Dataset | Queries (Ans / OOS) | nDCG@5 | Success@1 | Hit@1 (g=2) | MRR@5 | Recall@5 | LeafRecall@5 | Disc@1 | Expected@1 | Avg Guides | Avg Tokens (Ans) | Empty% (Ans) | OOS Admit% (Near / Far) | Avg OOS Tokens | Unjudged% |"
@@ -344,10 +381,24 @@ export function renderSingleMarkdown(label: string, summaries: DatasetSummary[])
 export function renderComparisonMarkdown(
   baseLabel: string,
   headLabel: string,
-  comparisons: DatasetComparison[]
+  comparisons: DatasetComparison[],
+  datasets?: LoadedDataset[]
 ): string {
   const lines: string[] = [];
   lines.push(`### RAG Benchmark A/B — \`${baseLabel}\` → \`${headLabel}\``);
+  if (datasets && datasets.length > 0) {
+    const provLines = datasets
+      .filter((d) => d.manifest)
+      .map((d) => {
+        const qrelsKey = Object.keys(d.manifest?.files ?? {}).find((k) => k.endsWith("qrels.jsonl"));
+        const qrelsSha = qrelsKey ? d.manifest?.files[qrelsKey]?.sha256 : undefined;
+        return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}${d.manifest?.dateRange ? `, date range: \`${d.manifest?.dateRange}\`` : ""}`;
+      });
+    if (provLines.length > 0) {
+      lines.push("");
+      lines.push(...provLines);
+    }
+  }
   lines.push("");
 
   const ppFmt = (v: number) => (v * 100).toFixed(1);
@@ -418,22 +469,38 @@ export function renderComparisonMarkdown(
   return lines.join("\n");
 }
 
-async function loadRequestedDatasets(names: string[], explicitWild: boolean): Promise<LoadedDataset[]> {
+async function loadRequestedDatasets(
+  names: string[],
+  explicitWild: boolean,
+  options: { wildVersion?: string; split?: "dev" | "test" | "all" } = {}
+): Promise<LoadedDataset[]> {
   const loaded: LoadedDataset[] = [];
   for (const name of names) {
-    if (name === "harness" || name === "oos") {
-      loaded.push(loadPublicDataset(name));
+    if (name === "agent" || name === "harness" || name === "oos") {
+      let ds = loadPublicDataset(name);
+      if (name === "agent" && options.split && options.split !== "all") {
+        ds = filterDatasetBySplit(ds, options.split);
+      }
+      loaded.push(ds);
     } else if (name === "wild") {
+      let wild: LoadedDataset;
       try {
-        loaded.push(await ensureWildDataset());
+        wild = await ensureWildDataset(options.wildVersion);
       } catch (err) {
         if (explicitWild) throw err;
         console.warn(
           `[benchmark:rag] Skipping private 'wild' dataset (${err instanceof Error ? err.message : String(err)}). Running public datasets only.`
         );
+        continue;
       }
+      const supportsSplit =
+        wild.queries.length > 0 && wild.queries.every((q) => q.split === "dev" || q.split === "test");
+      if (options.split && options.split !== "all" && supportsSplit) {
+        wild = filterDatasetBySplit(wild, options.split);
+      }
+      loaded.push(wild);
     } else {
-      throw new Error(`Unknown dataset "${name}". Expected one of: wild, harness, oos.`);
+      throw new Error(`Unknown dataset "${name}". Expected one of: wild, agent, harness, oos.`);
     }
   }
   return loaded;
@@ -452,8 +519,21 @@ async function main(): Promise<void> {
       "use-current-guides": { type: "boolean", default: false },
       json: { type: "string" },
       markdown: { type: "string" },
+      split: { type: "string", default: "dev" },
+      "wild-version": { type: "string" },
     },
   });
+
+  const rawSplit = values.split;
+  if (rawSplit !== undefined && rawSplit !== "dev" && rawSplit !== "test" && rawSplit !== "all") {
+    throw new Error(`Invalid --split "${rawSplit}". Expected "dev", "test", or "all".`);
+  }
+  const split = (rawSplit ?? "dev") as "dev" | "test" | "all";
+
+  const rawWildVersion = values["wild-version"];
+  if (rawWildVersion !== undefined && (!rawWildVersion.trim() || rawWildVersion.includes("/"))) {
+    throw new Error(`Invalid --wild-version "${rawWildVersion}". Expected non-empty version name.`);
+  }
 
   const evalOpts: EvaluateTargetOptions = {
     limit: parseInt(values.limit ?? "5", 10),
@@ -464,10 +544,13 @@ async function main(): Promise<void> {
   const explicitDatasets = values.datasets
     ? values.datasets.split(",").map((s) => s.trim()).filter(Boolean)
     : undefined;
-  const datasetNames = explicitDatasets ?? (isPublicOnly ? ["harness", "oos"] : ["wild", "harness", "oos"]);
+  const datasetNames = explicitDatasets ?? (isPublicOnly ? ["agent", "oos"] : ["wild", "agent", "oos"]);
   const explicitWild = Boolean(explicitDatasets?.includes("wild"));
 
-  const datasets = await loadRequestedDatasets(datasetNames, explicitWild);
+  const datasets = await loadRequestedDatasets(datasetNames, explicitWild, {
+    wildVersion: rawWildVersion,
+    split,
+  });
   if (datasets.length === 0) {
     throw new Error("No benchmark datasets loaded.");
   }
@@ -502,7 +585,7 @@ async function runSingleBenchmark(
     return s;
   });
 
-  const md = renderSingleMarkdown(headEval.label, summaries);
+  const md = renderSingleMarkdown(headEval.label, summaries, datasets);
   console.log(`\n${md}\n`);
 
   if (values.markdown) {
@@ -522,6 +605,11 @@ async function runSingleBenchmark(
       if (s.answerableQueries > 0 && s.unjudgedRate > maxUnjudged) {
         failures.push(
           `Dataset '${s.dataset}' unjudged rate ${(s.unjudgedRate * 100).toFixed(1)}% exceeds max ${(maxUnjudged * 100).toFixed(1)}%. Run 'node src/rag/benchmarks/judge-fill.ts' to grade newly surfaced guides.`
+        );
+      }
+      if ((s.dataset === "agent" || s.dataset.startsWith("agent-")) && s.ndcg5 < AGENT_SANITY_NDCG_FLOOR) {
+        failures.push(
+          `Dataset '${s.dataset}' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${AGENT_SANITY_NDCG_FLOOR.toFixed(3)}.`
         );
       }
       if (s.dataset === "harness" && s.ndcg5 < HARNESS_SANITY_NDCG_FLOOR) {
@@ -555,7 +643,7 @@ async function runComparisonBenchmark(
     comparisons.push(compareDatasetSummaries(b, h));
   }
 
-  const md = renderComparisonMarkdown(baseEval.label, headEval.label, comparisons);
+  const md = renderComparisonMarkdown(baseEval.label, headEval.label, comparisons, datasets);
   console.log(`\n${md}\n`);
 
   if (values.markdown) {

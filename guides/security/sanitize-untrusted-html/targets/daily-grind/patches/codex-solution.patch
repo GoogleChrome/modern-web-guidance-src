@@ -1,0 +1,262 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..8a0d447 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,43 @@
+       background: #3e2723;
+     }
+ 
++    .reviews, .review-form {
++      margin-top: 24px;
++      border-top: 1px solid var(--secondary);
++      padding-top: 20px;
++      text-align: left;
++    }
++
++    .reviews h4 { margin-bottom: 8px; }
++    .review-list { list-style: none; }
++    .review-list li {
++      padding: 12px 0;
++      border-bottom: 1px solid var(--secondary);
++      overflow-wrap: anywhere;
++    }
++    .review-content p + p { margin-top: 8px; }
++    .review-content ul, .review-content ol { padding-left: 24px; }
++    .review-content blockquote { border-left: 3px solid var(--secondary); padding-left: 12px; }
++    .review-form { max-width: 650px; margin: 32px auto 0; }
++    .review-form label { display: block; font-weight: 600; margin-top: 16px; }
++    .review-form select, .review-form textarea {
++      display: block;
++      width: 100%;
++      margin-top: 6px;
++      padding: 10px;
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      font: inherit;
++      background: white;
++      color: var(--text);
++    }
++    .review-form textarea { resize: vertical; }
++    .review-form button { border: 0; font: inherit; cursor: pointer; }
++    .review-form button:disabled { opacity: 0.65; cursor: wait; }
++    .review-form :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
++    .review-help, .empty-reviews { font-size: 0.9rem; }
++    #review-status { margin-top: 12px; min-height: 1.6em; }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -182,18 +219,50 @@
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <section class="reviews" aria-label="Maple Oat Latte customer reviews">
++            <h4>Customer reviews</h4>
++            <p class="empty-reviews">No reviews yet. Share the first sip!</p>
++            <ul class="review-list" id="maple-reviews"></ul>
++          </section>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <section class="reviews" aria-label="Dark Roast Espresso customer reviews">
++            <h4>Customer reviews</h4>
++            <p class="empty-reviews">No reviews yet. Share the first sip!</p>
++            <ul class="review-list" id="espresso-reviews"></ul>
++          </section>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <section class="reviews" aria-label="Cold Brew customer reviews">
++            <h4>Customer reviews</h4>
++            <p class="empty-reviews">No reviews yet. Share the first sip!</p>
++            <ul class="review-list" id="cold-brew-reviews"></ul>
++          </section>
+         </div>
+       </div>
++      <form id="review-form" class="review-form">
++        <h3>Share your review</h3>
++        <p>Reviews appear on this page until you reload it.</p>
++        <label for="review-drink">Drink</label>
++        <select id="review-drink" name="drink" required>
++          <option value="maple-reviews">Maple Oat Latte</option>
++          <option value="espresso-reviews">Dark Roast Espresso</option>
++          <option value="cold-brew-reviews">Cold Brew</option>
++        </select>
++        <label for="review-feedback">Your review</label>
++        <p id="review-help" class="review-help">Use plain text or HTML: &lt;p&gt;, &lt;br&gt;, &lt;b&gt;, &lt;strong&gt;, &lt;i&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, and &lt;blockquote&gt;. Other tags and all attributes are removed. Maximum 5,000 characters.</p>
++        <textarea id="review-feedback" name="feedback" rows="5" maxlength="5000" required
++          aria-describedby="review-help" placeholder="A &lt;strong&gt;delicious&lt;/strong&gt; start to my morning!"></textarea>
++        <button class="btn" type="submit" disabled>Submit review</button>
++        <p id="review-status" role="status" aria-live="polite"></p>
++        <noscript>Enable JavaScript to submit a review.</noscript>
++      </form>
+     </section>
+   </main>
+ 
+@@ -207,6 +276,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/reviews.ts"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..86bb594 100644
+--- a/package.json
++++ b/package.json
+@@ -1,8 +1,17 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build"
++  },
++  "dependencies": {
++    "dompurify": "^3.3.0"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3",
++    "vite": "^6.4.1"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/reviews.ts b/reviews.ts
+new file mode 100644
+index 0000000..cc110e7
+--- /dev/null
++++ b/reviews.ts
+@@ -0,0 +1,100 @@
++export {};
++
++const allowedElements = ['p', 'br', 'b', 'strong', 'i', 'em', 'ul', 'ol', 'li', 'blockquote'];
++
++// Keep these types local for TypeScript DOM libraries without the Sanitizer API.
++type SanitizingElement = HTMLDivElement & {
++  setHTML: (html: string, options: {
++    sanitizer: { elements: string[]; attributes: string[] };
++  }) => void;
++};
++
++let purifierPromise: Promise<typeof import('dompurify')['default']> | undefined;
++
++async function renderFeedback(container: HTMLDivElement, html: string): Promise<void> {
++  if ('setHTML' in Element.prototype) {
++    (container as SanitizingElement).setHTML(html, {
++      sanitizer: { elements: allowedElements, attributes: [] },
++    });
++    return;
++  }
++
++  // Download the fallback only when native sanitization is unavailable.
++  purifierPromise ??= import('dompurify').then((module) => module.default).catch((error: unknown) => {
++    purifierPromise = undefined;
++    throw error;
++  });
++  const purifier = await purifierPromise;
++  const fragment = purifier.sanitize(html, {
++    ALLOWED_TAGS: [...allowedElements, '#text'],
++    ALLOWED_ATTR: [],
++    ALLOW_ARIA_ATTR: false,
++    ALLOW_DATA_ATTR: false,
++    KEEP_CONTENT: false,
++    RETURN_DOM_FRAGMENT: true,
++  });
++  // Move sanitized nodes directly; never serialize and reparse untrusted HTML.
++  container.replaceChildren(fragment);
++}
++
++const form = document.querySelector<HTMLFormElement>('#review-form');
++const drink = document.querySelector<HTMLSelectElement>('#review-drink');
++const feedback = document.querySelector<HTMLTextAreaElement>('#review-feedback');
++const status = document.querySelector<HTMLParagraphElement>('#review-status');
++const submit = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
++const destinations = new Map([
++  ['maple-reviews', document.querySelector<HTMLUListElement>('#maple-reviews')],
++  ['espresso-reviews', document.querySelector<HTMLUListElement>('#espresso-reviews')],
++  ['cold-brew-reviews', document.querySelector<HTMLUListElement>('#cold-brew-reviews')],
++]);
++
++if (form && drink && feedback && status && submit) {
++  submit.disabled = false;
++  let submitting = false;
++
++  form.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    if (submitting || !form.reportValidity()) return;
++
++    const destination = destinations.get(drink.value);
++    if (!destination) {
++      status.textContent = 'Please select a drink.';
++      return;
++    }
++    const rawFeedback = feedback.value;
++    if (!rawFeedback.trim() || rawFeedback.length > 5000) {
++      status.textContent = 'Please write a review between 1 and 5,000 characters.';
++      feedback.focus();
++      return;
++    }
++
++    submitting = true;
++    submit.disabled = true;
++    status.textContent = 'Preparing your review…';
++    try {
++      const content = document.createElement('div');
++      content.className = 'review-content';
++      await renderFeedback(content, rawFeedback);
++      if (!content.textContent?.trim()) {
++        status.textContent = 'Please include some review text using the supported formatting.';
++        feedback.focus();
++        return;
++      }
++
++      const item = document.createElement('li');
++      item.append(content);
++      destination.append(item);
++      const emptyMessage = destination.parentElement?.querySelector('.empty-reviews');
++      if (emptyMessage instanceof HTMLElement) emptyMessage.hidden = true;
++      // Preserve any new text typed while the fallback was loading.
++      if (feedback.value === rawFeedback) feedback.value = '';
++      status.textContent = 'Your review has been added.';
++      feedback.focus();
++    } catch {
++      status.textContent = 'Your review could not be displayed safely. Please try again.';
++    } finally {
++      submitting = false;
++      submit.disabled = false;
++    }
++  });
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..7029126
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "noEmit": true,
++    "skipLibCheck": true
++  },
++  "include": ["reviews.ts"]
++}

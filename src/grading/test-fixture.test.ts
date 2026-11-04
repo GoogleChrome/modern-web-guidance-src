@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { getCssStyleSheet, getHtmlDocuments, getJsProject } from './test-fixture.ts';
-import { CSSPropertyRule, CSSStyleRule } from 'cssomnom';
+import { CSSContainerRule, CSSPropertyRule, CSSStyleRule } from 'cssomnom';
 import { SyntaxKind } from 'ts-morph';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -103,6 +103,87 @@ progress.progress-ring {
 
       const propRule = rules.find((r): r is CSSPropertyRule => r instanceof CSSPropertyRule && r.name === '--value');
       assert.ok(propRule, 'Should preserve top-level @property --value rule in global.css after Astro inline styles');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getCssStyleSheet ignores unparsed JSX inline style expressions and unwraps :global() in .astro files without corrupting subsequent rules', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-astro-style-test-'));
+    try {
+      const astroFile = path.join(tempDir, 'ArticleTeaser.astro');
+      fs.writeFileSync(
+        astroFile,
+        [
+          '---',
+          'const explicitSurface = "featured";',
+          '---',
+          '<article style={explicitSurface ? `--surface: ${explicitSurface};` : undefined} class="teaser">',
+          '  <span class="badge">Featured</span>',
+          '</article>',
+          '<style>',
+          '  :global(:where([data-surface="featured"])) .badge { display: inline-flex; }',
+          '</style>',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const cssFile = path.join(tempDir, 'global.css');
+      fs.writeFileSync(
+        cssFile,
+        [
+          '.surface-featured { --surface: featured; }',
+          '@container style(--surface: featured) { .badge { display: block; } }',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([astroFile, cssFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      const whereRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes(':where(')
+      );
+      assert.ok(whereRule, 'Should unwrap :global() and parse :where() fallback rule in Astro <style>');
+
+      const surfaceRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.surface-featured'
+      );
+      assert.ok(surfaceRule, 'Should preserve top-level .surface-featured CSSStyleRule after Astro file');
+      assert.strictEqual(surfaceRule.style.getPropertyValue('--surface').trim(), 'featured');
+
+      const containerRule = rules.find((r): r is CSSContainerRule => r instanceof CSSContainerRule);
+      assert.ok(containerRule, 'Should preserve top-level @container rule after Astro file');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getCssStyleSheet isolates unterminated comments, strings, and url() in one source from subsequent files', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-css-isolation-test-'));
+    try {
+      const htmlFile = path.join(tempDir, 'index.html');
+      fs.writeFileSync(
+        htmlFile,
+        [
+          '<div style="color: red; background: url(">a</div>',
+          '<p style="font-family: &quot;Unclosed">b</p>',
+          '<style>.broken { color: red; /* unclosed comment</style>',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const cssFile = path.join(tempDir, 'global.css');
+      fs.writeFileSync(cssFile, '.after { color: blue; }', 'utf8');
+
+      const stylesheet = getCssStyleSheet([htmlFile, cssFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      const afterRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.after'
+      );
+      assert.ok(afterRule, 'Should preserve .after rule from global.css despite broken earlier sources');
+      assert.strictEqual(afterRule.style.getPropertyValue('color').trim(), 'blue');
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -225,6 +306,60 @@ const isComplete = value < 100;
       const contentEl = doc.querySelector('.progress-ring-content');
       assert.ok(contentEl, 'Should find content element via class:list');
       assert.ok(contentEl.classList.contains('base-content'), 'Should retain static class when merged with class:list');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getHtmlDocuments exposes <?...> processing instructions as comment nodes like browsers do', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-html-pi-test-'));
+    try {
+      const htmlFile = path.join(tempDir, 'index.html');
+      fs.writeFileSync(
+        htmlFile,
+        `<!DOCTYPE html>
+<html><head><title>a <?start> title</title></head><body>
+<section id="favorites"><?start name="favorites"><p class="fallback">Loading…</p><?end></section>
+<?marker name="m">
+<!-- existing <?start name="ignored"> comment -->
+<template for="favorites"><ul><li>Latte</li></ul></template>
+<script>const s = '<?start name="x">';</script>
+<style>.a::after { content: "<?end>"; }</style>
+<textarea><?marker name="t"></textarea>
+</body></html>`,
+        'utf8'
+      );
+
+      const docs = getHtmlDocuments([htmlFile]);
+      assert.strictEqual(docs.length, 1);
+      const doc = docs[0].document;
+
+      const comments: string[] = [];
+      const walker = doc.createTreeWalker(doc, 128 /* NodeFilter.SHOW_COMMENT */);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) comments.push(n.data);
+      assert.deepStrictEqual(comments, [
+        '?start name="favorites"',
+        '?end',
+        '?marker name="m"',
+        ' existing <?start name="ignored"> comment ',
+      ]);
+
+      const section = doc.querySelector('#favorites');
+      const kids = Array.from(section.childNodes as ArrayLike<any>);
+      assert.deepStrictEqual(
+        kids.map((n) => [n.nodeType, n.nodeType === 8 ? n.data : n.className]),
+        [[8, '?start name="favorites"'], [1, 'fallback'], [8, '?end']],
+        'Fallback content should remain between the start and end markers'
+      );
+
+      const template = doc.querySelector('template[for="favorites"]');
+      assert.ok(template, 'Should parse <template for>');
+      assert.ok(template.content.querySelector('li'), 'Template content should parse');
+
+      assert.strictEqual(doc.querySelector('script').textContent, `const s = '<?start name="x">';`);
+      assert.strictEqual(doc.querySelector('style').textContent, '.a::after { content: "<?end>"; }');
+      assert.strictEqual(doc.querySelector('textarea').textContent, '<?marker name="t">');
+      assert.strictEqual(doc.querySelector('title').textContent, 'a <?start> title');
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
