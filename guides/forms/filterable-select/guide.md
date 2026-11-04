@@ -47,6 +47,9 @@ A native `<select>` with a `<label>` and a `name` is the fallback. Add a hidden 
 .filterable-select::picker(select) {
   /* Fits the filter plus about 5-6 rows (example value); the list scrolls beyond it */
   max-block-size: 18rem;
+  /* Keeps Chrome from shrinking the list to the filter plus one row */
+  min-block-size: min(18rem, 50dvh);
+  overflow-y: auto;
   margin-block: 0.375rem;
 }
 ```
