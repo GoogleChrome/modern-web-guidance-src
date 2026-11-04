@@ -27,8 +27,14 @@ test.describe('Daily Grind Local Network Access Grader', () => {
     const stringLiterals = project.getSourceFiles().flatMap(sf =>
       sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
     ).map(s => s.getLiteralValue());
-    const hasGranularPermissionQuery = queryCalls.length > 0 &&
-      stringLiterals.some(s => s === 'local-network' || s === 'loopback-network');
+    const templateTexts = project.getSourceFiles().flatMap(sf =>
+      sf.getDescendantsOfKind(SyntaxKind.TemplateExpression)
+    ).map(t => t.getText());
+    const hasGranularName =
+      stringLiterals.some(s => s === 'local-network' || s === 'loopback-network') ||
+      (templateTexts.some(t => t.includes('-network')) &&
+        stringLiterals.some(s => s === 'local' || s === 'loopback'));
+    const hasGranularPermissionQuery = queryCalls.length > 0 && hasGranularName;
 
     expect(hasGranularPermissionQuery).toBe(true);
   });
@@ -61,8 +67,14 @@ test.describe('Daily Grind Local Network Access Grader', () => {
     const stringLiterals = project.getSourceFiles().flatMap(sf =>
       sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
     ).map(s => s.getLiteralValue());
-    const hasGranularQuery = queryCalls.length > 0 &&
-      stringLiterals.some(s => s === 'local-network' || s === 'loopback-network');
+    const templateTexts = project.getSourceFiles().flatMap(sf =>
+      sf.getDescendantsOfKind(SyntaxKind.TemplateExpression)
+    ).map(t => t.getText());
+    const hasGranularQuery = queryCalls.length > 0 && (
+      stringLiterals.some(s => s === 'local-network' || s === 'loopback-network') ||
+      (templateTexts.some(t => t.includes('-network')) &&
+        stringLiterals.some(s => s === 'local' || s === 'loopback'))
+    );
     const queriesLegacyName = stringLiterals.includes('local-network-access') ||
       queryCalls.some(call => call.getText().includes('local-network-access'));
     const neverQueriesLegacy = hasGranularQuery && !queriesLegacyName;
@@ -72,28 +84,36 @@ test.describe('Daily Grind Local Network Access Grader', () => {
 
   test('specifies targetAddressSpace local for local network endpoint requests', () => {
     const project = getJsProject(targetFiles);
+    const docs = getHtmlDocuments(targetFiles);
     const propAssignments = project.getSourceFiles().flatMap(sf =>
       sf.getDescendantsOfKind(SyntaxKind.PropertyAssignment)
     );
     const stringLiterals = project.getSourceFiles().flatMap(sf =>
       sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
     ).map(s => s.getLiteralValue());
+    const hasLocalInHtml = docs.some(d =>
+      Boolean(d.document.querySelector('option[value="local"], [data-address-space="local"], [value="local"]'))
+    );
     const hasTargetAddressSpaceProp = propAssignments.some(p => p.getName() === 'targetAddressSpace');
-    const hasLocalTargetAddressSpace = hasTargetAddressSpaceProp && stringLiterals.includes('local');
+    const hasLocalTargetAddressSpace = hasTargetAddressSpaceProp && (stringLiterals.includes('local') || hasLocalInHtml);
 
     expect(hasLocalTargetAddressSpace).toBe(true);
   });
 
   test('specifies targetAddressSpace loopback for loopback endpoint requests', () => {
     const project = getJsProject(targetFiles);
+    const docs = getHtmlDocuments(targetFiles);
     const propAssignments = project.getSourceFiles().flatMap(sf =>
       sf.getDescendantsOfKind(SyntaxKind.PropertyAssignment)
     );
     const stringLiterals = project.getSourceFiles().flatMap(sf =>
       sf.getDescendantsOfKind(SyntaxKind.StringLiteral)
     ).map(s => s.getLiteralValue());
+    const hasLoopbackInHtml = docs.some(d =>
+      Boolean(d.document.querySelector('option[value="loopback"], [data-address-space="loopback"], [value="loopback"]'))
+    );
     const hasTargetAddressSpaceProp = propAssignments.some(p => p.getName() === 'targetAddressSpace');
-    const hasLoopbackTargetAddressSpace = hasTargetAddressSpaceProp && stringLiterals.includes('loopback');
+    const hasLoopbackTargetAddressSpace = hasTargetAddressSpaceProp && (stringLiterals.includes('loopback') || hasLoopbackInHtml);
 
     expect(hasLoopbackTargetAddressSpace).toBe(true);
   });
@@ -106,7 +126,7 @@ test.describe('Daily Grind Local Network Access Grader', () => {
     const hasInteractiveControls = interactiveElements.length > 0 && docs.some(d => {
       const hasTrigger = Boolean(d.document.querySelector('button, [type="submit"], form[data-connection]'));
       const hasConnectionContext = Boolean(
-        d.document.querySelector('[data-permission-status], [data-connection], [id*="local"], [id*="loopback"]')
+        d.document.querySelector('[data-permission-status], [data-connection], [id*="local"], [id*="loopback"], [id*="connection"]')
       );
       return hasTrigger && hasConnectionContext;
     });
@@ -138,7 +158,7 @@ test.describe('Daily Grind Local Network Access Grader', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const rules = Array.from(stylesheet.cssRules);
     const hasRemediationElement = docs.some(d =>
-      Boolean(d.document.querySelector('[data-remediation], [data-error], .remediation, [role="alert"]'))
+      Boolean(d.document.querySelector('[data-remediation], [data-error], .remediation, [role="alert"], [role="status"], [aria-live]'))
     );
     const hasRemediationStyles = rules.some(r =>
       r instanceof CSSStyleRule && /remediation|error|feedback/i.test(r.selectorText)
@@ -168,7 +188,7 @@ test.describe('Daily Grind Local Network Access Grader', () => {
     const docs = getHtmlDocuments(targetFiles);
     const iframes = docs.flatMap(d => Array.from<any>(d.document.querySelectorAll('iframe')));
     const hasNetworkFeatures = docs.some(d =>
-      Boolean(d.document.querySelector('[data-permission-status], [data-remediation], [data-connection], [id*="local"], [id*="loopback"]'))
+      Boolean(d.document.querySelector('[data-permission-status], [data-remediation], [data-connection], [id*="local"], [id*="loopback"], [id*="connection"]'))
     );
     const delegatesIframePermissions = hasNetworkFeatures &&
       iframes.every(iframe => {

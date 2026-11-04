@@ -20,6 +20,7 @@ export interface PlaywrightOptions {
   jsonOutputName?: string;
   patchFile?: string;
   stdio?: 'inherit' | 'ignore' | 'pipe';
+  baselineTarget?: string;
 }
 
 async function stageGradingWorkspace(
@@ -54,6 +55,7 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     TARGET_FILE: opts.targetPathAbs,
+    BASELINE_TARGET: opts.baselineTarget || process.env.BASELINE_TARGET || 'widely',
   };
 
   if (opts.patchFile) {
@@ -78,14 +80,26 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
   });
 }
 
+export interface RunPlaywrightOptions {
+  stdio?: 'inherit' | 'ignore' | 'pipe';
+  patchFile?: string;
+  zeroPassrateFile?: string;
+  testResultsDir?: string;
+  baselineTarget?: string;
+}
+
 export async function runPlaywright(
   targetPathAbs: string,
   graderPath: string,
-  stdio: 'inherit' | 'ignore' | 'pipe' = 'inherit',
-  patchFile?: string,
-  zeroPassrateFile?: string,
-  testResultsDir?: string
+  options: RunPlaywrightOptions = {}
 ): Promise<any> {
+  const {
+    stdio = 'inherit',
+    patchFile,
+    zeroPassrateFile,
+    testResultsDir,
+    baselineTarget,
+  } = options;
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
 
   const isDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory();
@@ -113,7 +127,8 @@ export async function runPlaywright(
       testResultsDir: resolvedTestResultsDir,
       jsonOutputName: tmpJson,
       patchFile: patchFile,
-      stdio: stdio === 'ignore' ? 'pipe' : stdio
+      stdio: stdio === 'ignore' ? 'pipe' : stdio,
+      baselineTarget
     });
 
     if (child.stderr) {
@@ -149,7 +164,13 @@ async function runPlaywrightCalibration(
   zeroPassrateFile?: string,
   testResultsDir?: string
 ): Promise<any> {
-  const results = await runPlaywright(targetPathAbs, graderPath, 'ignore', patchFile, zeroPassrateFile, testResultsDir)
+  const results = await runPlaywright(targetPathAbs, graderPath, {
+    stdio: 'ignore',
+    patchFile,
+    zeroPassrateFile,
+    testResultsDir,
+    baselineTarget: 'widely',
+  })
     .catch(err => {
       result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
       return null;
@@ -170,13 +191,27 @@ async function runPlaywrightCalibration(
 
 export interface PlaywrightSuite {
   title: string;
-  specs?: Array<{ title: string; ok: boolean }>;
+  specs?: Array<{
+    title: string;
+    ok: boolean;
+    tests?: Array<{ status?: string; results?: Array<{ status?: string }> }>;
+  }>;
   suites?: PlaywrightSuite[];
 }
 
-function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): string[] {
+export function isSpecSkipped(spec: {
+  tests?: Array<{ status?: string; results?: Array<{ status?: string }> }>;
+}): boolean {
+  if (!spec.tests || spec.tests.length === 0) return false;
+  return spec.tests.every(
+    t => t.status === 'skipped' || (t.results && t.results.length > 0 && t.results.every(r => r.status === 'skipped'))
+  );
+}
+
+export function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): string[] {
   const results: string[] = [];
   for (const spec of suite.specs || []) {
+    if (isSpecSkipped(spec)) continue;
     if (spec.ok === ok) results.push(`${prefix}${spec.title}`);
   }
   for (const child of suite.suites || []) {
@@ -188,6 +223,7 @@ function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): string[
 export function printFailingSpecs(suite: PlaywrightSuite, prefix = ''): void {
   const specs = suite.specs || [];
   for (const spec of specs) {
+    if (isSpecSkipped(spec)) continue;
     if (!spec.ok) {
       console.log(cRed(`  - Failed: ${prefix}${spec.title}`));
     }
@@ -202,6 +238,7 @@ export function printFailingSpecs(suite: PlaywrightSuite, prefix = ''): void {
 export function printPassingSpecs(suite: PlaywrightSuite, prefix = ''): void {
   const specs = suite.specs || [];
   for (const spec of specs) {
+    if (isSpecSkipped(spec)) continue;
     if (spec.ok) {
       console.log(cRed(`  - Passed (should have failed): ${prefix}${spec.title}`));
     }
@@ -262,6 +299,18 @@ export interface CalibrationResult {
   errorDetails?: string;
   solutions: Partial<Record<SolutionAgent, SolutionTestResult>>;
   zeroPassrate: { passed: number; failed: number; passingTests: string[] };
+  sharedFailingTests?: string[];
+}
+
+export function findSharedFailingTests(
+  solutions: Partial<Record<SolutionAgent, SolutionTestResult>>,
+  activeAgents: SolutionAgent[]
+): string[] {
+  if (activeAgents.length === 0) return [];
+  const lists = activeAgents.map(a => solutions[a]?.failingTests ?? []);
+  if (lists.some(l => l.length === 0)) return [];
+  const [first, ...rest] = lists;
+  return first.filter(testTitle => rest.every(l => l.includes(testTitle)));
 }
 
 export async function testTargetGrader(guideDirAbs: string, baseApp: string): Promise<CalibrationResult> {
@@ -372,10 +421,19 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   await Promise.all([...solutionCalibrationTasks, zeroPassrateTask]);
 
   if (!allSolutionsPassed || zeroPassrateFailed) {
+    const sharedFailingTests = findSharedFailingTests(result.solutions, activeAgents);
+    if (sharedFailingTests.length > 0) {
+      result.sharedFailingTests = sharedFailingTests;
+    }
+    const sharedBanner = sharedFailingTests.length > 0
+      ? `\n\n⚠️  SHARED FAILING TESTS ACROSS ALL ${activeAgents.length} GOLDEN SOLUTIONS (fail-fast calibration abort):\n` +
+        sharedFailingTests.map(t => `   - ${t}`).join('\n')
+      : '';
     const statusSummary = activeAgents.map(a => `   - ${a}: ${solutionStatus[a] || 'Unknown'}`).join('\n') +
       `\n   - zero-passrate: ${zeroPassrateStatus}`;
     result.errorDetails = `Calibration results summary:\n${statusSummary}\n\n` +
-      (solutionErrors.length > 0 ? `Solution failure details:\n\n` + solutionErrors.join('\n\n---\n\n') : '') +
+      sharedBanner +
+      (solutionErrors.length > 0 ? `\n\nSolution failure details:\n\n` + solutionErrors.join('\n\n---\n\n') : '') +
       (zeroPassrateFailed && result.zeroPassrate.passed > 0 ? `\n\nZero-passrate details:\n${zeroPassrateStatus}` : '');
     return result;
   }

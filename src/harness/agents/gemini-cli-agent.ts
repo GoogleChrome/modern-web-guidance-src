@@ -8,6 +8,7 @@ import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
   extractTimestamp,
   mapToolType,
   truncateMessage,
@@ -236,13 +237,8 @@ export function extractGeminiMetadata(session: any, subagentsMap: Record<string,
               }
             } else if (tc.name === 'run_shell_command' && tc.args?.command) {
               const command = tc.args.command;
-              if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
-                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                if (match) {
-                  for (const g of match[1].split(',').map((s: string) => s.trim())) {
-                    retrievedGuides.add(g);
-                  }
-                }
+              for (const g of extractRetrievedGuidesFromCommand(command)) {
+                retrievedGuides.add(g);
               }
             }
           }

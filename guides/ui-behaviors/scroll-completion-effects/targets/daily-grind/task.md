@@ -1,0 +1,1 @@
+- Update the navigation to smoothly scroll to target elements and trigger visual effects, animations, or focus changes on the target element only after the smooth scroll has finished.

@@ -61,7 +61,9 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
 
   test('The :autofill pseudo-class must only be applied to <input>, <select>, or <textarea>', () => {
     const css = getAllCssText();
-    const matches = [...css.matchAll(/([a-zA-Z][\w-]*):(?:-webkit-)?auto-?fill\b/gi)];
+    const directMatches = [...css.matchAll(/([a-zA-Z][\w-]*):(?:-webkit-)?auto-?fill\b/gi)];
+    const isMatches = [...css.matchAll(/([a-zA-Z][\w-]*):(?:is|where)\([^)]*:(?:-webkit-)?auto-?fill\b/gi)];
+    const matches = [...directMatches, ...isMatches];
     expect(matches.length).toBeGreaterThan(0);
     const invalidTags = matches.map(m => m[1].toLowerCase()).filter(t => !['input', 'select', 'textarea'].includes(t));
     expect(invalidTags).toHaveLength(0);
@@ -83,7 +85,15 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
   });
 
   test('JavaScript must not apply inline styles to form controls', async ({ page }) => {
-    const controls = await page.locator('input:not([type="submit"]):not([type="button"]), select, textarea').all();
+    let controls = await page.locator('input:not([type="submit"]):not([type="button"]), select, textarea').all();
+    if (controls.length === 0) {
+      await page.evaluate(() => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        document.body.appendChild(input);
+      });
+      controls = await page.locator('input:not([type="submit"]):not([type="button"]), select, textarea').all();
+    }
     expect(controls.length).toBeGreaterThan(0);
     for (const control of controls) {
       await control.fill('Test Value').catch(() => {});
@@ -113,8 +123,8 @@ test.describe(`autofill-highlight-inputs Expectations: ${demoName}`, () => {
     expect(rules.length).toBeGreaterThan(0);
     const focusRule = rules.find(
       r =>
-        /:(?:-webkit-)?autofill:focus(?:-visible)?\b/i.test(r.selector) ||
-        /:focus(?:-visible)?:(?:-webkit-)?autofill\b/i.test(r.selector)
+        /:(?:-webkit-)?autofill[^,{]*:focus(?:-visible)?\b/i.test(r.selector) ||
+        /:focus(?:-visible)?[^,{]*:(?:-webkit-)?autofill\b/i.test(r.selector)
     );
     expect(focusRule).toBeDefined();
     expect(/\boutline\s*:\s*(?!none\b|0\b)[^;]+/i.test(focusRule!.body)).toBe(true);

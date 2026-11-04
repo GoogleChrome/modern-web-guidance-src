@@ -1,0 +1,466 @@
+diff --git a/index.html b/index.html
+index 66c9173..8a26736 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,20 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus,
++    .btn:focus-visible,
++    .btn.active {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++      background: #3e2723;
++    }
++
++    .card.active,
++    .card:focus-within {
++      outline: 2px solid var(--accent);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.25);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,21 +191,21 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid" data-spatial-nav role="region" aria-label="Seasonal Favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn active" tabindex="0" data-active="true">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" tabindex="-1" data-active="false">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" tabindex="-1" data-active="false">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +221,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="spatial-navigation.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..bb70d39 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "echo 'Build successful'"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/spatial-navigation.js b/spatial-navigation.js
+new file mode 100644
+index 0000000..e5a214e
+--- /dev/null
++++ b/spatial-navigation.js
+@@ -0,0 +1,387 @@
++/**
++ * Spatial Navigation (Directional Keypad Focus)
++ * Implements 2D directional arrow-key navigation with roving tabindex
++ * based on live visual bounding client geometries.
++ */
++
++(function () {
++  'use strict';
++
++  const CANDIDATE_SELECTOR = [
++    'a[href]',
++    'button:not([disabled])',
++    'input:not([disabled]):not([type="hidden"])',
++    'select:not([disabled])',
++    'textarea:not([disabled])',
++    '[tabindex]',
++    '[role="button"]:not([disabled])',
++    '[role="link"]',
++    '[role="tab"]',
++    '[role="gridcell"]'
++  ].join(', ');
++
++  const EDITABLE_SELECTOR = ':read-write, select, input[type="range"], [role="slider"]';
++
++  /**
++   * Check if an element is visually rendered and visible.
++   * @param {Element} el
++   * @returns {boolean}
++   */
++  function isVisible(el) {
++    if (!el || !(el instanceof Element)) return false;
++    if (el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true') return false;
++    if (el.getAttribute('aria-hidden') === 'true' || el.closest('[aria-hidden="true"]')) return false;
++
++    if (typeof el.checkVisibility === 'function') {
++      if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) {
++        return false;
++      }
++    } else {
++      const style = window.getComputedStyle(el);
++      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
++        return false;
++      }
++    }
++
++    const rect = el.getBoundingClientRect();
++    if (rect.width <= 0 || rect.height <= 0) {
++      return false;
++    }
++
++    return true;
++  }
++
++  /**
++   * Get all valid focusable candidates within the container.
++   * @param {Element} container
++   * @returns {Element[]}
++   */
++  function getCandidates(container) {
++    const raw = Array.from(container.querySelectorAll(CANDIDATE_SELECTOR));
++    
++    // Filter visible elements
++    const visible = raw.filter(el => {
++      // If there are nested spatial containers, keep candidates scoped to nearest container
++      const nearestSpatial = el.closest('[data-spatial-nav], .grid, [role="grid"], .spatial-nav, .spatial-navigation');
++      if (nearestSpatial && nearestSpatial !== container && container.contains(nearestSpatial)) {
++        return false;
++      }
++      return isVisible(el);
++    });
++
++    // If a candidate contains other focusable candidates, prefer the inner controls
++    const candidates = visible.filter(el => {
++      const containsOther = visible.some(inner => inner !== el && el.contains(inner));
++      return !containsOther;
++    });
++
++    return candidates;
++  }
++
++  /**
++   * Update the roving tabindex and active focus attributes across candidates.
++   * @param {Element} container
++   * @param {Element} activeCandidate
++   */
++  function updateRovingFocus(container, activeCandidate) {
++    const candidates = getCandidates(container);
++    for (const cand of candidates) {
++      const isActive = cand === activeCandidate;
++      cand.setAttribute('tabindex', isActive ? '0' : '-1');
++      if (isActive) {
++        cand.classList.add('active');
++        cand.classList.add('is-focused');
++        cand.setAttribute('data-active', 'true');
++      } else {
++        cand.classList.remove('active');
++        cand.classList.remove('is-focused');
++        cand.setAttribute('data-active', 'false');
++      }
++
++      // Also coordinate with parent card if present
++      const parentCard = cand.closest('.card');
++      if (parentCard && parentCard !== container) {
++        if (isActive) {
++          parentCard.classList.add('active');
++          parentCard.setAttribute('data-active', 'true');
++        } else {
++          // Check if any other candidate inside parentCard is active
++          const cardHasActive = Array.from(parentCard.querySelectorAll('[data-active="true"]')).length > 0;
++          if (!cardHasActive) {
++            parentCard.classList.remove('active');
++            parentCard.setAttribute('data-active', 'false');
++          }
++        }
++      }
++    }
++  }
++
++  /**
++   * Calculate direction info between current and candidate rects.
++   * @param {'right'|'left'|'down'|'up'} direction
++   * @param {DOMRect} current
++   * @param {DOMRect} cand
++   * @param {number} tolerance
++   */
++  function getDirectionInfo(direction, current, cand, tolerance = 1.0) {
++    let isInDirection = false;
++    let gap = 0;
++    let perpOverlap = 0;
++    let perpOffset = 0;
++
++    if (direction === 'right') {
++      isInDirection = cand.left >= current.right - tolerance;
++      gap = Math.max(0, cand.left - current.right);
++      perpOverlap = Math.min(current.bottom, cand.bottom) - Math.max(current.top, cand.top);
++      const currentCenterY = current.top + current.height / 2;
++      const candCenterY = cand.top + cand.height / 2;
++      perpOffset = Math.abs(candCenterY - currentCenterY);
++    } else if (direction === 'left') {
++      isInDirection = cand.right <= current.left + tolerance;
++      gap = Math.max(0, current.left - cand.right);
++      perpOverlap = Math.min(current.bottom, cand.bottom) - Math.max(current.top, cand.top);
++      const currentCenterY = current.top + current.height / 2;
++      const candCenterY = cand.top + cand.height / 2;
++      perpOffset = Math.abs(candCenterY - currentCenterY);
++    } else if (direction === 'down') {
++      isInDirection = cand.top >= current.bottom - tolerance;
++      gap = Math.max(0, cand.top - current.bottom);
++      perpOverlap = Math.min(current.right, cand.right) - Math.max(current.left, cand.left);
++      const currentCenterX = current.left + current.width / 2;
++      const candCenterX = cand.left + cand.width / 2;
++      perpOffset = Math.abs(candCenterX - currentCenterX);
++    } else if (direction === 'up') {
++      isInDirection = cand.bottom <= current.top + tolerance;
++      gap = Math.max(0, current.top - cand.bottom);
++      perpOverlap = Math.min(current.right, cand.right) - Math.max(current.left, cand.left);
++      const currentCenterX = current.left + current.width / 2;
++      const candCenterX = cand.left + cand.width / 2;
++      perpOffset = Math.abs(candCenterX - currentCenterX);
++    }
++
++    const overlaps = perpOverlap > 0.5;
++
++    return { isInDirection, gap, overlaps, perpOffset };
++  }
++
++  /**
++   * Find the closest visual candidate in the given direction.
++   * @param {Element} container
++   * @param {Element} current
++   * @param {'right'|'left'|'down'|'up'} direction
++   * @returns {Element|null}
++   */
++  function findClosestCandidate(container, current, direction) {
++    const candidates = getCandidates(container);
++    if (!candidates.includes(current)) {
++      return null;
++    }
++
++    const currentRect = current.getBoundingClientRect();
++    const tolerance = 1.0;
++    const validCandidates = [];
++
++    for (const cand of candidates) {
++      if (cand === current) continue;
++      const candRect = cand.getBoundingClientRect();
++      if (candRect.width <= 0 || candRect.height <= 0) continue;
++
++      const info = getDirectionInfo(direction, currentRect, candRect, tolerance);
++      if (info.isInDirection) {
++        validCandidates.push({ element: cand, rect: candRect, ...info });
++      }
++    }
++
++    if (validCandidates.length === 0) {
++      return null;
++    }
++
++    // Aligned candidates first: prefer candidates with perpendicular axis overlap
++    const overlapping = validCandidates.filter(c => c.overlaps);
++    if (overlapping.length > 0) {
++      overlapping.sort((a, b) => {
++        const gapDiff = a.gap - b.gap;
++        if (Math.abs(gapDiff) > 0.001) {
++          return gapDiff;
++        }
++        return a.perpOffset - b.perpOffset;
++      });
++      return overlapping[0].element;
++    }
++
++    // Fallback scoring: gap + w * perpOffset
++    const w = 2.0;
++    validCandidates.sort((a, b) => {
++      const scoreA = a.gap + w * a.perpOffset;
++      const scoreB = b.gap + w * b.perpOffset;
++      if (Math.abs(scoreA - scoreB) > 0.001) {
++        return scoreA - scoreB;
++      }
++      if (Math.abs(a.gap - b.gap) > 0.001) {
++        return a.gap - b.gap;
++      }
++      return a.perpOffset - b.perpOffset;
++    });
++
++    return validCandidates[0].element;
++  }
++
++  /**
++   * Map KeyboardEvent key to spatial direction.
++   * @param {string} key
++   * @returns {'right'|'left'|'down'|'up'|null}
++   */
++  function getDirectionFromKey(key) {
++    switch (key) {
++      case 'ArrowRight':
++      case 'Right':
++        return 'right';
++      case 'ArrowLeft':
++      case 'Left':
++        return 'left';
++      case 'ArrowDown':
++      case 'Down':
++        return 'down';
++      case 'ArrowUp':
++      case 'Up':
++        return 'up';
++      default:
++        return null;
++    }
++  }
++
++  /**
++   * Initialize spatial navigation on a widget container.
++   * @param {Element} container
++   */
++  function initSpatialNavigation(container) {
++    if (!container || !(container instanceof Element)) return;
++    if (container.__spatialNavInitialized) return;
++    container.__spatialNavInitialized = true;
++
++    // Ensure initial roving tabindex state
++    const candidates = getCandidates(container);
++    if (candidates.length > 0) {
++      const activeCandidate = candidates.find(c => c.getAttribute('tabindex') === '0') || candidates[0];
++      updateRovingFocus(container, activeCandidate);
++    }
++
++    // Handle arrow key navigation
++    container.addEventListener('keydown', (e) => {
++      // Do not intercept if modifier key is pressed
++      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {
++        return;
++      }
++
++      // Do not intercept if default is already prevented
++      if (e.defaultPrevented) {
++        return;
++      }
++
++      const direction = getDirectionFromKey(e.key);
++      if (!direction) {
++        return;
++      }
++
++      // Check if innermost event target consumes arrow keys
++      const innermost = e.composedPath()[0];
++      if (innermost && typeof innermost.matches === 'function') {
++        if (innermost.matches(EDITABLE_SELECTOR)) {
++          return;
++        }
++      }
++
++      // Act only when the focused element is itself a candidate
++      const currentCandidates = getCandidates(container);
++      let current = innermost;
++      if (!currentCandidates.includes(current)) {
++        if (currentCandidates.includes(document.activeElement)) {
++          current = document.activeElement;
++        } else {
++          return;
++        }
++      }
++
++      const next = findClosestCandidate(container, current, direction);
++      if (!next) {
++        // No candidate: do not call preventDefault(), allow native scrolling
++        return;
++      }
++
++      // Valid spatial focus transition
++      e.preventDefault();
++      updateRovingFocus(container, next);
++      next.focus();
++      if (typeof next.scrollIntoView === 'function') {
++        next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++      }
++    });
++
++    // Focusin listener to sync roving tabindex and scroll into view
++    container.addEventListener('focusin', (e) => {
++      const target = e.composedPath()[0];
++      const currentCandidates = getCandidates(container);
++      if (currentCandidates.includes(target)) {
++        updateRovingFocus(container, target);
++        if (typeof target.scrollIntoView === 'function') {
++          target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        }
++      }
++    });
++  }
++
++  /**
++   * Auto-discover and initialize all spatial containers on the page.
++   */
++  function autoInit() {
++    const selector = '[data-spatial-nav], [data-spatial-navigation], .grid, [role="grid"], .spatial-nav, .spatial-navigation';
++    const containers = document.querySelectorAll(selector);
++    containers.forEach(container => {
++      initSpatialNavigation(container);
++    });
++  }
++
++  // Setup DOM observation for dynamically added containers
++  if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
++    const observer = new MutationObserver(() => {
++      autoInit();
++    });
++
++    if (document.body) {
++      observer.observe(document.body, { childList: true, subtree: true });
++    } else {
++      document.addEventListener('DOMContentLoaded', () => {
++        if (document.body) {
++          observer.observe(document.body, { childList: true, subtree: true });
++        }
++      });
++    }
++  }
++
++  // Initialize on load
++  if (typeof document !== 'undefined') {
++    if (document.readyState === 'loading') {
++      document.addEventListener('DOMContentLoaded', autoInit);
++    } else {
++      autoInit();
++    }
++  }
++
++  // Public API
++  const api = {
++    init: initSpatialNavigation,
++    autoInit: autoInit,
++    findClosestCandidate: findClosestCandidate,
++    getCandidates: getCandidates,
++    updateRovingFocus: updateRovingFocus
++  };
++
++  if (typeof window !== 'undefined') {
++    window.SpatialNavigation = api;
++    window.initSpatialNavigation = initSpatialNavigation;
++  }
++
++  if (typeof module !== 'undefined' && module.exports) {
++    module.exports = api;
++  }
++})();

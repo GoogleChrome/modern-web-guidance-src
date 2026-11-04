@@ -14,10 +14,11 @@ Carousel slide effects are a great way to add visual interest to a carousel. As 
 
 Here’s how to create carousel slide effects:
 
-1.  **Create a scroller:** This element will act as the container for your carousel slides. In this example it uses `overflow-x: scroll` to allow horizontal scrolling.
+1.  **Create a scroller:** This element will act as the container for your carousel slides. In this example it uses `overflow-x: scroll` to allow horizontal scrolling. When the slides contain no focusable elements, give the scroller `tabindex="0"` and an accessible name, because not every browser makes a scroll container keyboard-focusable. The name needs a role that supports one: a `<ul>` already has the `list` role, but a `<div>` needs one, for example `role="region"`.
 
     ```html
-    <ul class="scroller">
+    <!-- The slides contain no focusable elements, so the scroller takes focus itself. The label is an example. -->
+    <ul class="scroller" tabindex="0" aria-label="Slides">
       <li class="entry">1</li>
       <li class="entry">2</li>
       <li class="entry">3</li>
@@ -77,11 +78,14 @@ This code animates the carousel items of a horizontal scroller on scroll using a
   }
 }
 
-.scroller > * {
-  /* Applies the animation using an `auto` duration */
-  animation: animate auto linear both;
-  /* Sets the animation timeline to use an anonymous view progress timeline, tracking the element's progress through the scroller on the inline axis */
-  animation-timeline: view(inline);
+/* Only runs the effect when the user has no reduced-motion preference */
+@media (prefers-reduced-motion: no-preference) {
+  .scroller > * {
+    /* Applies the animation using an `auto` duration */
+    animation: animate auto linear both;
+    /* Sets the animation timeline to use an anonymous view progress timeline, tracking the element's progress through the scroller on the inline axis */
+    animation-timeline: view(inline);
+  }
 }
 ```
 
@@ -102,14 +106,17 @@ This code animates the carousel items of a horizontal scroller on scroll using a
   }
 }
 
-/* This creates a named view-timeline on each carousel item. The timeline is used to drive the animation that is applied on the same element. */
-.scroller > * {
-  /* Applies the animation using an `auto` duration */
-  animation: animate auto linear both;
-  /* Defines a named view progress timeline, tracking the element's progress through the scroller on the inline axis */
-  view-timeline: --item inline;
-  /* Sets the animation timeline to use the named view progress timeline defined above */
-  animation-timeline: --item;
+/* Only runs the effect when the user has no reduced-motion preference */
+@media (prefers-reduced-motion: no-preference) {
+  /* This creates a named view-timeline on each carousel item. The timeline is used to drive the animation that is applied on the same element. */
+  .scroller > * {
+    /* Applies the animation using an `auto` duration */
+    animation: animate auto linear both;
+    /* Defines a named view progress timeline, tracking the element's progress through the scroller on the inline axis */
+    view-timeline: --item inline;
+    /* Sets the animation timeline to use the named view progress timeline defined above */
+    animation-timeline: --item;
+  }
 }
 ```
 
@@ -147,11 +154,13 @@ In browsers with built-in support for scroll-driven animations, ALWAYS use the n
 
 Note that not every effect can be recreated using the fallbacks approach.
 
-For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses the Web Animations API (`Element.animate()`) to create a paused animation for each item in the carousel. It then listens to the `scroll` event on the scroller and updates the `currentTime` of each animation based on the item's scroll progress within the scroller.
+For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses the Web Animations API (`Element.animate()`) to create a paused animation for each item in the carousel. It then listens to the `scroll` event on the scroller and updates the `currentTime` of each animation based on the item's scroll progress within the scroller. The `prefers-reduced-motion` media query in the CSS doesn't affect the animations the script creates, so the script checks the preference with `matchMedia()` and only runs when the user has no reduced-motion preference.
 
 ```js
 // Fallback for browsers that don't support scroll-driven animations
-if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)')) {
+// Like the CSS, it only runs when the user has no reduced-motion preference.
+if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)') &&
+    matchMedia('(prefers-reduced-motion: no-preference)').matches) {
   const scroller = document.querySelector('.scroller');
   const entries = document.querySelectorAll('.entry');
 

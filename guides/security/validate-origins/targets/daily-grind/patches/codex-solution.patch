@@ -1,0 +1,609 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..f0a232b
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,4 @@
++node_modules/
++dist/
++test-results/
++playwright-report/
+diff --git a/browser-tests/security.spec.ts b/browser-tests/security.spec.ts
+new file mode 100644
+index 0000000..4247fa3
+--- /dev/null
++++ b/browser-tests/security.spec.ts
+@@ -0,0 +1,77 @@
++import { test, expect } from '@playwright/test';
++
++for (const disableOrigin of [false, true]) {
++  test(`origin boundaries and real sandbox senders (Origin removed: ${disableOrigin})`, async ({ page }) => {
++    const errors: Error[] = [];
++    page.on('pageerror', (error) => errors.push(error));
++    if (disableOrigin) {
++      await page.addInitScript(() => {
++        Reflect.deleteProperty(globalThis, 'Origin');
++      });
++    }
++    await page.goto('/');
++    expect(await page.evaluate(() => typeof Reflect.get(globalThis, 'Origin')))
++      .toBe(disableOrigin ? 'undefined' : 'function');
++    await expect(page.locator('#widget-status')).toHaveText('Rewards widget connected.');
++
++    async function checkOrigin(url: string, accepted: boolean) {
++      await page.locator('#origin-input').fill(url);
++      await page.getByRole('button', { name: 'Check origin', exact: true }).click();
++      await expect(page.locator('#origin-result')).toContainText(accepted ? 'Accepted:' : 'Rejected:');
++    }
++    await checkOrigin('https://app.trusted-origin.example:443/path?foo=1', true);
++    await checkOrigin('https://app.trusted-origin.example.attacker.example', false);
++    await checkOrigin('https://billing.trusted-origin.example', false);
++    await checkOrigin('null', false);
++    await checkOrigin('data:text/html,test', false);
++    await checkOrigin('https://', false);
++
++    async function checkSite(url: string, accepted: boolean) {
++      await page.locator('#site-input').fill(url);
++      await page.getByRole('button', { name: 'Check destination' }).click();
++      await expect(page.locator('#site-result')).toContainText(accepted ? 'Accepted:' : 'Rejected:');
++      if (accepted) await expect(page.locator('#continue-link')).toBeVisible();
++      else {
++        await expect(page.locator('#continue-link')).toBeHidden();
++        await expect(page.locator('#continue-link')).not.toHaveAttribute('href');
++      }
++    }
++    await checkSite('https://billing.trusted-origin.example:8443/orders', true);
++    await checkSite('http://billing.trusted-origin.example', false);
++    await checkSite('https://app.trusted-origin.example.attacker.example', false);
++    await checkSite('null', false);
++
++    // Exercise the page's real account message listener with synthetic test events.
++    await page.evaluate(() => {
++      window.dispatchEvent(new MessageEvent('message', {
++        origin: 'https://app.trusted-origin.example:443/account',
++        data: { type: 'rewards-update', points: 42 },
++      }));
++    });
++    await expect(page.locator('#reward-points')).toHaveText('42');
++    await page.evaluate(() => {
++      window.dispatchEvent(new MessageEvent('message', {
++        origin: 'https://app.trusted-origin.example.attacker.example',
++        data: { type: 'rewards-update', points: 1000 },
++      }));
++    });
++    await expect(page.locator('#message-status')).toContainText('rejected');
++    await expect(page.locator('#reward-points')).toHaveText('42');
++
++    await page.frameLocator('#rewards-widget').getByRole('button').click();
++    await expect(page.locator('#widget-status')).toContainText('accepted');
++    await page.frameLocator('#other-widget').getByRole('button').click();
++    await expect(page.locator('#widget-status')).toContainText('rejected');
++    await page.frameLocator('#rewards-widget').getByRole('button').click();
++    await expect(page.locator('#widget-status')).toContainText('accepted');
++    expect(errors).toEqual([]);
++  });
++}
++
++test('returnTo is validated before offering navigation', async ({ page }) => {
++  await page.goto('/?returnTo=' + encodeURIComponent('https://billing.trusted-origin.example/orders'));
++  await expect(page.locator('#continue-link')).toHaveAttribute('href', 'https://billing.trusted-origin.example/orders');
++  await page.goto('/?returnTo=' + encodeURIComponent('data:text/html,untrusted'));
++  await expect(page.locator('#site-result')).toContainText('Rejected:');
++  await expect(page.locator('#continue-link')).not.toHaveAttribute('href');
++});
+diff --git a/index.html b/index.html
+index 66c9173..b53ae58 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,20 @@
+       color: var(--primary);
+     }
+ 
++    .account-tools { margin-top: 40px; }
++    .account-tools .card { text-align: left; }
++    .account-tools label { display: block; margin-top: 12px; }
++    .account-tools input { width: 100%; padding: 10px; font: inherit; }
++    .account-tools button { border: 0; cursor: pointer; font: inherit; }
++    .account-tools output { display: block; margin-top: 12px; }
++    .account-tools iframe { width: 100%; height: 110px; border: 1px solid var(--secondary); margin-top: 12px; }
++    [hidden] { display: none !important; }
++    @media (max-width: 650px) {
++      nav { flex-direction: column; gap: 12px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 10px; }
++      nav ul li { margin-left: 0; }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -195,6 +209,37 @@
+         </div>
+       </div>
+     </section>
++    <section class="account-tools" aria-labelledby="account-heading">
++      <h2 id="account-heading">Your Account &amp; Rewards</h2>
++      <p>Account provider: <strong>https://app.trusted-origin.example</strong></p>
++      <p>Reward points: <strong id="reward-points">0</strong></p>
++      <p id="message-status" role="status">Waiting for an account update.</p>
++      <div class="grid">
++        <form id="origin-form" class="card">
++          <h3>Check an account origin</h3>
++          <p>Account updates require the exact trusted origin.</p>
++          <label for="origin-input">Account URL</label>
++          <input id="origin-input" type="text" value="https://app.trusted-origin.example:443/account" spellcheck="false">
++          <button class="btn" type="submit">Check origin</button>
++          <output id="origin-result" aria-live="polite"></output>
++        </form>
++        <form id="site-form" class="card">
++          <h3>Continue to a related site</h3>
++          <p>Use an HTTPS destination within trusted-origin.example.</p>
++          <label for="site-input">Destination URL</label>
++          <input id="site-input" type="text" value="https://billing.trusted-origin.example:8443/orders" spellcheck="false">
++          <button class="btn" type="submit">Check destination</button>
++          <output id="site-result" aria-live="polite"></output>
++          <a id="continue-link" class="btn" hidden>Continue</a>
++        </form>
++        <div class="card">
++          <h3>Connected rewards widget</h3>
++          <iframe id="rewards-widget" title="Connected rewards widget" sandbox="allow-scripts"></iframe>
++          <iframe id="other-widget" title="Separate rewards widget" sandbox="allow-scripts"></iframe>
++          <p id="widget-status" role="status">Connecting your rewards widget…</p>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +252,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/src/main.ts"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..9a3b488 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,20 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build",
++    "test": "vitest run",
++    "test:browser": "playwright test"
++  },
++  "type": "module",
++  "dependencies": {
++    "tldts": "^7.0.0"
++  },
++  "devDependencies": {
++    "@playwright/test": "^1.58.2",
++    "typescript": "^5.9.0",
++    "vite": "^6.1.0",
++    "vitest": "^3.0.0"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/playwright.config.ts b/playwright.config.ts
+new file mode 100644
+index 0000000..a5b46a5
+--- /dev/null
++++ b/playwright.config.ts
+@@ -0,0 +1,14 @@
++import { defineConfig } from '@playwright/test';
++
++export default defineConfig({
++  testDir: './browser-tests',
++  use: {
++    baseURL: 'http://127.0.0.1:11222',
++    launchOptions: { args: ['--enable-experimental-web-platform-features'] },
++  },
++  webServer: {
++    command: 'npm start',
++    url: 'http://127.0.0.1:11222',
++    reuseExistingServer: false,
++  },
++});
+diff --git a/src/main.ts b/src/main.ts
+new file mode 100644
+index 0000000..495e75c
+--- /dev/null
++++ b/src/main.ts
+@@ -0,0 +1,104 @@
++import { createOriginValidator, createSandboxVerifier } from './origin-validation';
++
++export const TRUSTED_URL = 'https://app.trusted-origin.example';
++export const { isTrustedSameOrigin, isAllowedSameSiteUrl } = createOriginValidator(TRUSTED_URL);
++
++function element<T extends HTMLElement>(id: string): T {
++  const result = document.getElementById(id);
++  if (!result) throw new Error(`Missing element: ${id}`);
++  return result as T;
++}
++
++const messageStatus = element('message-status');
++const widgetStatus = element('widget-status');
++const sandbox = element<HTMLIFrameElement>('rewards-widget');
++let verifyWidget: ReturnType<typeof createSandboxVerifier> | undefined;
++
++// A fresh verifier prevents pins from surviving a new iframe document.
++sandbox.addEventListener('load', () => {
++  const peer = sandbox.contentWindow;
++  verifyWidget = peer ? createSandboxVerifier(peer) : undefined;
++  // Messages are ordered per sender; init arrives before subsequent updates.
++  peer?.postMessage({ type: 'initialize' }, '*');
++});
++
++window.addEventListener('message', (event: MessageEvent<unknown>) => {
++  const data = event.data;
++  if (typeof data !== 'object' || data === null || !('type' in data)) return;
++
++  if (data.type === 'init' || data.type === 'widget-update') {
++    const accepted = verifyWidget?.(event) ?? false;
++    widgetStatus.textContent = accepted
++      ? data.type === 'init' ? 'Rewards widget connected.' : 'Rewards update accepted from your widget.'
++      : 'Rewards update rejected: sender is not the connected widget.';
++    return;
++  }
++
++  if (data.type === 'rewards-update') {
++    if (!isTrustedSameOrigin(event)) {
++      messageStatus.textContent = 'Account message rejected: untrusted origin.';
++      return;
++    }
++    if (!('points' in data) || typeof data.points !== 'number' ||
++      !Number.isSafeInteger(data.points) || data.points < 0) {
++      messageStatus.textContent = 'Account message rejected: invalid reward points.';
++      return;
++    }
++    element('reward-points').textContent = String(data.points);
++    messageStatus.textContent = 'Account message accepted.';
++  }
++});
++
++const originForm = element<HTMLFormElement>('origin-form');
++originForm.addEventListener('submit', (event) => {
++  event.preventDefault();
++  const accepted = isTrustedSameOrigin(element<HTMLInputElement>('origin-input').value);
++  element('origin-result').textContent = accepted ? 'Accepted: trusted account origin.' : 'Rejected: untrusted or invalid origin.';
++});
++
++const siteForm = element<HTMLFormElement>('site-form');
++siteForm.addEventListener('submit', (event) => {
++  event.preventDefault();
++  const candidate = element<HTMLInputElement>('site-input').value;
++  const accepted = isAllowedSameSiteUrl(candidate);
++  const link = element<HTMLAnchorElement>('continue-link');
++  link.hidden = !accepted;
++  if (accepted) link.href = new URL(candidate).href;
++  else link.removeAttribute('href');
++  element('site-result').textContent = accepted ? 'Accepted: same-site destination.' : 'Rejected: external, insecure, or invalid destination.';
++});
++
++// URLSearchParams decodes returnTo; URL validation runs before creating a link.
++const returnTo = new URL(window.location.href).searchParams.get('returnTo');
++if (returnTo !== null) {
++  element<HTMLInputElement>('site-input').value = returnTo;
++  siteForm.requestSubmit();
++}
++
++// Native anchor extraction works for existing relative links as well.
++const pageValidator = createOriginValidator(window.location.href);
++for (const link of document.querySelectorAll<HTMLAnchorElement>('a[href]')) {
++  link.dataset.site = pageValidator.isAllowedSameSiteUrl(link) ? 'internal' : 'external';
++}
++
++// Set srcdoc after handlers are installed, so initialization cannot be missed.
++sandbox.srcdoc = `<!doctype html><html lang="en"><meta charset="utf-8">
++  <style>body{font:14px system-ui;color:#3e2723}button{padding:8px;cursor:pointer}</style>
++  <p>Your rewards widget</p><button type="button">Refresh rewards</button>
++  <script>
++    addEventListener('message', function(event) {
++      if (event.source === parent && event.data?.type === 'initialize') {
++        parent.postMessage({type:'init'}, '*');
++      }
++    });
++    document.querySelector('button').onclick = function() {
++      parent.postMessage({type:'widget-update'}, '*');
++    };
++  <\/script></html>`;
++
++element<HTMLIFrameElement>('other-widget').srcdoc = `<!doctype html><html lang="en"><meta charset="utf-8">
++  <style>body{font:14px system-ui;color:#3e2723}button{padding:8px;cursor:pointer}</style>
++  <p>A separate widget</p><button type="button">Send rewards update</button>
++  <script>document.querySelector('button').onclick = function() {
++    parent.postMessage({type:'widget-update'}, '*');
++  };<\/script></html>`;
+diff --git a/src/origin-validation.ts b/src/origin-validation.ts
+new file mode 100644
+index 0000000..fc9523a
+--- /dev/null
++++ b/src/origin-validation.ts
+@@ -0,0 +1,122 @@
++import { getDomain } from 'tldts';
++
++// Local types for the experimental browser API, which is not yet in lib.dom.
++export interface BrowserOrigin {
++  readonly opaque: boolean;
++  isSameOrigin(other: BrowserOrigin): boolean;
++  isSameSite(other: BrowserOrigin): boolean;
++}
++
++export interface OriginConstructor {
++  new (): BrowserOrigin;
++  from(candidate: unknown): BrowserOrigin;
++}
++
++function originApi(): OriginConstructor | undefined {
++  const api = (globalThis as typeof globalThis & { Origin?: OriginConstructor }).Origin;
++  return typeof api === 'function' && typeof api.from === 'function' ? api : undefined;
++}
++
++function isMessage(candidate: unknown): candidate is MessageEvent<unknown> {
++  return typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent;
++}
++
++function extractOrigin(api: OriginConstructor, candidate: unknown): BrowserOrigin {
++  try {
++    return api.from(candidate);
++  } catch (error) {
++    // Synthetic events lack a browser-internal origin. Parsing their string is
++    // safe for tuple validation, but must never be used to pin opaque identity.
++    if (isMessage(candidate)) return api.from(candidate.origin);
++    throw error;
++  }
++}
++
++function extractUrl(candidate: unknown): URL {
++  if (typeof candidate === 'string') return new URL(candidate);
++  if (candidate instanceof URL) return new URL(candidate.href);
++  if (isMessage(candidate)) return new URL(candidate.origin);
++  if (candidate === globalThis && typeof location !== 'undefined') {
++    return new URL(location.href);
++  }
++  if (
++    (typeof HTMLAnchorElement !== 'undefined' && candidate instanceof HTMLAnchorElement) ||
++    (typeof HTMLAreaElement !== 'undefined' && candidate instanceof HTMLAreaElement)
++  ) return new URL(candidate.href);
++  throw new TypeError('Unsupported origin input');
++}
++
++export function createOriginValidator(trustedUrl: string) {
++  const reference = new URL(trustedUrl);
++  if (reference.origin === 'null') throw new TypeError('The trusted origin must be non-opaque');
++
++  function isTrustedSameOrigin(candidate: unknown): boolean {
++    try {
++      const api = originApi();
++      if (api) {
++        const origin = extractOrigin(api, candidate);
++        return !origin.opaque && origin.isSameOrigin(api.from(reference));
++      }
++      const url = extractUrl(candidate);
++      return url.origin !== 'null' && url.origin === reference.origin;
++    } catch {
++      return false;
++    }
++  }
++
++  function isAllowedSameSiteUrl(candidate: unknown): boolean {
++    try {
++      const api = originApi();
++      if (api) {
++        const origin = extractOrigin(api, candidate);
++        return !origin.opaque && origin.isSameSite(api.from(reference));
++      }
++      const url = extractUrl(candidate);
++      if (url.origin === 'null' || url.protocol !== reference.protocol) return false;
++      if (url.hostname === reference.hostname) return true;
++      // Include private suffixes to keep distinct shared-hosting tenants apart.
++      const site = getDomain(reference.hostname, { allowPrivateDomains: true });
++      return site !== null && getDomain(url.hostname, { allowPrivateDomains: true }) === site;
++    } catch {
++      return false;
++    }
++  }
++
++  return { isTrustedSameOrigin, isAllowedSameSiteUrl };
++}
++
++/** One verifier per iframe lifetime. Recreate it after the iframe navigates. */
++export function createSandboxVerifier(expectedWidgetWindow: Window) {
++  const api = originApi();
++  let pinnedOrigin: BrowserOrigin | undefined = api ? new api() : undefined;
++  let pinned = false;
++
++  return (event: MessageEvent<unknown>): boolean => {
++    try {
++      if (event.source !== expectedWidgetWindow) return false;
++      const data: unknown = event.data;
++      const isInit = typeof data === 'object' && data !== null &&
++        'type' in data && data.type === 'init';
++      if (api) {
++        // Use the event itself: serialized "null" cannot preserve identity.
++        const sender = api.from(event);
++        if (!sender.opaque) return false;
++        if (!pinned) {
++          if (!isInit) return false;
++          pinnedOrigin = sender;
++          pinned = true;
++        }
++        return pinnedOrigin !== undefined && sender.isSameOrigin(pinnedOrigin);
++      }
++      // Older browsers can bind the peer by WindowProxy, never by "null" alone.
++      if (event.origin !== 'null') return false;
++      if (!pinned) {
++        if (!isInit) return false;
++        pinned = true;
++      }
++      return true;
++    } catch {
++      return false;
++    }
++  };
++}
+diff --git a/tests/origin-validation.test.ts b/tests/origin-validation.test.ts
+new file mode 100644
+index 0000000..23c46e7
+--- /dev/null
++++ b/tests/origin-validation.test.ts
+@@ -0,0 +1,128 @@
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import { getDomain } from 'tldts';
++import { createOriginValidator, createSandboxVerifier, type BrowserOrigin } from '../src/origin-validation';
++
++afterEach(() => vi.unstubAllGlobals());
++
++// Model the browser extraction contract, including the identity that synthetic
++// MessageEvent objects cannot carry. Browser tests exercise real iframe events.
++const eventOrigins = new WeakMap<MessageEvent, TestOrigin>();
++class TestOrigin implements BrowserOrigin {
++  readonly opaque: boolean;
++  constructor(readonly url?: URL) { this.opaque = !url || url.origin === 'null'; }
++  static from(candidate: unknown): TestOrigin {
++    if (candidate instanceof TestOrigin) return candidate;
++    if (candidate instanceof MessageEvent) {
++      const origin = eventOrigins.get(candidate);
++      if (!origin) throw new TypeError('Synthetic event');
++      return origin;
++    }
++    if (typeof candidate === 'string' || candidate instanceof URL) {
++      return new TestOrigin(new URL(String(candidate)));
++    }
++    throw new TypeError('Unsupported input');
++  }
++  isSameOrigin(other: BrowserOrigin): boolean {
++    if (!(other instanceof TestOrigin)) throw new TypeError('Expected Origin');
++    return this.opaque || other.opaque ? this === other : this.url!.origin === other.url!.origin;
++  }
++  isSameSite(other: BrowserOrigin): boolean {
++    if (!(other instanceof TestOrigin)) throw new TypeError('Expected Origin');
++    if (this.opaque || other.opaque) return this === other;
++    const a = this.url!;
++    const b = other.url!;
++    const siteA = getDomain(a.hostname, { allowPrivateDomains: true }) ?? a.hostname;
++    const siteB = getDomain(b.hostname, { allowPrivateDomains: true }) ?? b.hostname;
++    return a.protocol === b.protocol && siteA === siteB;
++  }
++}
++
++for (const native of [false, true]) {
++  describe(native ? 'Origin API' : 'URL fallback', () => {
++    function validator(url = 'https://app.trusted-origin.example') {
++      vi.stubGlobal('Origin', native ? TestOrigin : undefined);
++      return createOriginValidator(url);
++    }
++
++    it('accepts normalized trusted URLs and synthetic message events', () => {
++      const check = validator().isTrustedSameOrigin;
++      expect(check('https://app.trusted-origin.example:443/path?query=1')).toBe(true);
++      expect(check(new URL('https://APP.TRUSTED-ORIGIN.EXAMPLE/path'))).toBe(true);
++      expect(check(new MessageEvent('message', { origin: 'https://app.trusted-origin.example' }))).toBe(true);
++    });
++
++    it('rejects prefix spoofing, subdomains, credentials tricks and port changes', () => {
++      const check = validator().isTrustedSameOrigin;
++      for (const url of [
++        'https://app.trusted-origin.example.attacker.example',
++        'https://billing.trusted-origin.example',
++        'https://app.trusted-origin.example@attacker.example',
++        'https://app.trusted-origin.example:8443',
++        'http://app.trusted-origin.example',
++      ]) expect(check(url), url).toBe(false);
++    });
++
++    it('accepts same-site subdomains and nondefault ports, rejects scheme downgrades', () => {
++      const check = validator().isAllowedSameSiteUrl;
++      expect(check('https://billing.trusted-origin.example:8443/orders')).toBe(true);
++      expect(check('https://trusted-origin.example')).toBe(true);
++      expect(check('http://billing.trusted-origin.example')).toBe(false);
++      expect(check('https://app.trusted-origin.example.attacker.example')).toBe(false);
++    });
++
++    it('handles multi-label public suffixes and private hosting domains', () => {
++      const uk = validator('https://app.example.co.uk').isAllowedSameSiteUrl;
++      expect(uk('https://billing.example.co.uk:8443')).toBe(true);
++      expect(uk('https://attacker.co.uk')).toBe(false);
++      const github = validator('https://tenant-a.github.io').isAllowedSameSiteUrl;
++      expect(github('https://sub.tenant-a.github.io')).toBe(true);
++      expect(github('https://tenant-b.github.io')).toBe(false);
++    });
++
++    it('fails closed for invalid, opaque, and unsupported inputs without throwing', () => {
++      const v = validator();
++      for (const candidate of ['null', 'example', 'https://', 'data:text/plain,test',
++        'javascript:alert(1)', '', null, undefined, {}, { href: 'https://app.trusted-origin.example' },
++        new MessageEvent('message', { origin: 'null' })]) {
++        expect(v.isTrustedSameOrigin(candidate)).toBe(false);
++        expect(v.isAllowedSameSiteUrl(candidate)).toBe(false);
++      }
++    });
++
++    it('does not group distinct IP addresses or localhost names into one site', () => {
++      expect(validator('https://127.0.0.1').isAllowedSameSiteUrl('https://127.0.0.2')).toBe(false);
++      expect(validator('https://localhost').isAllowedSameSiteUrl('https://other.localhost')).toBe(false);
++      expect(validator('https://127.0.0.1').isAllowedSameSiteUrl('https://127.0.0.1:8443')).toBe(true);
++    });
++
++    it('pins only init from the expected sandbox, then rejects other senders', () => {
++      validator();
++      const peer = {} as Window;
++      const other = {} as Window;
++      const identity = new TestOrigin();
++      const check = createSandboxVerifier(peer);
++      function event(source: Window, type: string, origin = identity) {
++        const message = new MessageEvent('message', { origin: 'null', data: { type } });
++        Object.defineProperty(message, 'source', { value: source });
++        eventOrigins.set(message, origin);
++        return message;
++      }
++      expect(check(event(peer, 'widget-update'))).toBe(false);
++      expect(check(event(other, 'init'))).toBe(false);
++      expect(check(event(peer, 'init'))).toBe(true);
++      expect(check(event(peer, 'widget-update'))).toBe(true);
++      expect(check(event(other, 'widget-update'))).toBe(false);
++      if (native) {
++        // Even the same WindowProxy with a new document's opaque origin fails.
++        expect(check(event(peer, 'init', new TestOrigin()))).toBe(false);
++        const synthetic = new MessageEvent('message', { origin: 'null', data: { type: 'init' } });
++        Object.defineProperty(synthetic, 'source', { value: peer });
++        expect(check(synthetic)).toBe(false);
++      }
++    });
++  });
++}
++
++it('rejects an opaque trusted configuration', () => {
++  expect(() => createOriginValidator('data:text/plain,test')).toThrow(TypeError);
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..7b04fa8
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "noEmit": true,
++    "skipLibCheck": true
++  },
++  "include": ["src", "tests", "browser-tests", "*.config.ts"]
++}
+diff --git a/vitest.config.ts b/vitest.config.ts
+new file mode 100644
+index 0000000..3b4d273
+--- /dev/null
++++ b/vitest.config.ts
+@@ -0,0 +1,3 @@
++import { defineConfig } from 'vitest/config';
++
++export default defineConfig({ test: { include: ['tests/**/*.test.ts'] } });

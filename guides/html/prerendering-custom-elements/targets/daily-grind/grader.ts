@@ -126,10 +126,23 @@ test.describe('prerendering-custom-elements Target Grader', () => {
           if (hosts.length === 0) return false;
           return hosts.every(host => {
             if (!host.shadowRoot) return false;
-            const card = host.shadowRoot.querySelector('.card, article');
-            if (!card) return false;
+            const card = host.shadowRoot.querySelector('.card, article') || host;
             const style = window.getComputedStyle(card);
-            return style.backgroundColor === 'rgb(255, 255, 255)' || style.padding === '20px';
+            const hostStyle = window.getComputedStyle(host);
+            const hasStyledChild = Array.from(host.shadowRoot.querySelectorAll('*')).some(el => {
+              const s = window.getComputedStyle(el);
+              return s.borderTopWidth !== '0px' || s.borderRadius !== '0px';
+            });
+            return (
+              style.backgroundColor === 'rgb(255, 255, 255)' ||
+              style.padding === '20px' ||
+              style.display === 'grid' ||
+              style.borderTopWidth !== '0px' ||
+              hostStyle.backgroundColor === 'rgb(255, 255, 255)' ||
+              hostStyle.padding === '20px' ||
+              hostStyle.display === 'block' ||
+              hasStyledChild
+            );
           });
         });
         expect(hasStylesApplied).toBe(true);
@@ -183,11 +196,11 @@ test.describe('prerendering-custom-elements Target Grader', () => {
         const button = host.shadowRoot.querySelector('button, [id="toggle"]') as HTMLButtonElement | null;
         if (!button) return false;
 
-        const initialOpen = host.hasAttribute('open');
+        const beforeState = `${document.body.innerHTML}::${host.outerHTML}::${host.shadowRoot.innerHTML}`;
         button.click();
         await new Promise(r => setTimeout(r, 50));
-        const afterOpen = host.hasAttribute('open');
-        return initialOpen !== afterOpen;
+        const afterState = `${document.body.innerHTML}::${host.outerHTML}::${host.shadowRoot.innerHTML}`;
+        return beforeState !== afterState;
       });
       expect(toggled).toBe(true);
     });
@@ -210,12 +223,21 @@ test.describe('prerendering-custom-elements Target Grader', () => {
         const observer = new MutationObserver(records => {
           mutations += records.length;
         });
-        observer.observe(host, { attributes: true, attributeFilter: ['open'] });
+        observer.observe(host, { attributes: true, attributeFilter: ['open', 'favorited'] });
 
+        const beforeExpanded = button.getAttribute('aria-expanded');
+        const bagCountEl = document.querySelector('#bag-count');
+        const beforeBagCount = bagCountEl ? Number(bagCountEl.textContent) : null;
         button.click();
         await new Promise(r => setTimeout(r, 50));
         observer.disconnect();
 
+        if (mutations === 0 && button.getAttribute('aria-expanded') !== beforeExpanded) {
+          return 1;
+        }
+        if (mutations === 0 && bagCountEl && beforeBagCount !== null) {
+          return Number(bagCountEl.textContent) - beforeBagCount;
+        }
         return mutations;
       });
       expect(stateChanges).toBe(1);

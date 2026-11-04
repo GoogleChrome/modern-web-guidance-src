@@ -29,10 +29,6 @@ on:
         default: 'true'
         type: boolean
 
-concurrency:
-  group: guide-sync-${{ github.event.pull_request.number || 'main' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 permissions:
   contents: read
   issues: write
@@ -43,7 +39,12 @@ env:
 
 jobs:
   sync:
-    if: github.event_name != 'issues' || !endsWith(github.actor, '[bot]')
+    if: >-
+      github.repository == 'GoogleChrome/modern-web-guidance-src' &&
+      (github.event_name != 'issues' || !endsWith(github.actor, '[bot]'))
+    concurrency:
+      group: guide-sync-${{ github.event.pull_request.number || 'main' }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,7 +66,7 @@ jobs:
 
       - name: Generate GitHub App token
         if: ${{ vars.GH_APP_ID != '' }}
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token
         with:
           app-id: ${{ vars.GH_APP_ID }}

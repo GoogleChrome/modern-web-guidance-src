@@ -317,10 +317,12 @@ test('getUniqueGuideNames deduplicates guide paths, includes SKILL.md, and filte
 });
 
 test('isPluginFile correctly identifies plugin and manifest files', () => {
+  assert.strictEqual(isPluginFile('plugin.json'), true);
   assert.strictEqual(isPluginFile('.claude-plugin/plugin.json'), true);
   assert.strictEqual(isPluginFile('.codex-plugin/plugin.json'), true);
   assert.strictEqual(isPluginFile('.grok-plugin/marketplace.json'), true);
   assert.strictEqual(isPluginFile('gemini-extension.json'), true);
+  assert.strictEqual(isPluginFile('package.json'), false);
   assert.strictEqual(isPluginFile('skills/modern-web-guidance/SKILL.md'), false);
   assert.strictEqual(isPluginFile('README.md'), false);
 });
@@ -458,6 +460,11 @@ test('classifyChanges correctly classifies added, modified, baseline, plugin, re
       patch: '@@ -1,5 +1,5 @@\n {\n-  "version": "1.0.0"\n+  "version": "1.0.1"\n }\n',
     },
     {
+      relPath: 'plugin.json',
+      status: 'M',
+      patch: '@@ -1,5 +1,5 @@\n {\n   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",\n-  "version": "1.0.0"\n+  "version": "1.0.1"\n }\n',
+    },
+    {
       relPath: 'symlink-guide.md',
       status: 'M',
       isLink: true,
@@ -499,8 +506,9 @@ test('classifyChanges correctly classifies added, modified, baseline, plugin, re
 
   // 6. Plugin file (added)
   assert.ok(result.pluginDiff.includes('--- .grok-plugin/marketplace.json (Added) ---'));
-  // 7. Version-only bump plugin skipped
+  // 7. Version-only bump plugins skipped
   assert.ok(!result.pluginDiff.includes('.claude-plugin/plugin.json'));
+  assert.ok(!result.pluginDiff.includes('--- plugin.json'));
 
   // 8. Changed files
   assert.deepStrictEqual(result.changedFiles, [

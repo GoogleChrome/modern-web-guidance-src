@@ -1,5 +1,5 @@
 - The implementation MUST feature-detect the `Temporal` API using `typeof Temporal === 'undefined'` before usage.
-- The implementation MUST conditionally load a Temporal polyfill (e.g., `@js-temporal/polyfill`) only if native support is absent.
+- The implementation MUST conditionally load a Temporal polyfill (e.g., `temporal-polyfill`) only if native support is absent.
 - The implementation MUST manually assign the loaded polyfill to `globalThis.Temporal` to ensure it is globally accessible if the application logic relies on the global name.
 - The implementation MUST use `Temporal.ZonedDateTime` as the primary type for calculating differences between real-world events that occur in specific time zones.
 - The implementation MUST calculate the time elapsed since a start event using the `.since()` method on a `Temporal.ZonedDateTime` instance.
