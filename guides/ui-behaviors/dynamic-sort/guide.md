@@ -38,11 +38,11 @@ function reorder(container, orderedNodes) {
 
 ### Reordering table rows
 
-For a `<table>`, move the `<tr>` elements within their `<tbody>` using the same function: `reorder(tbody, orderedRows)`. Never reorder `<th>` header rows or recreate the `<tbody>`. Give rows `view-transition-name: match-element`, and keep the single status announcement.
+For a `<table>`, move the `<tr>` elements within their `<tbody>` using the same function: `reorder(tbody, orderedRows)`. Never reorder `<th>` header rows or recreate the `<tbody>`. Optionally give rows `view-transition-name: match-element` to animate them, and keep the single status announcement.
 
-## Animate the reorder with view transitions
+## Optionally animate the reorder with view transitions
 
-Wrap the DOM reorder in a view transition and give every item a unique `view-transition-name` so each one animates from its old position to its new one. Without it the list snaps.
+Animation is an enhancement; the reorder works without it. To animate, wrap the DOM reorder in a view transition and give every item a unique `view-transition-name` so each one animates from its old position to its new one. Without it the list snaps.
 
 Use `view-transition-name: match-element` so you do not need to generate a name per item.
 
