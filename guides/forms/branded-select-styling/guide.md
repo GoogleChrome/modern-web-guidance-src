@@ -93,7 +93,7 @@ The following example demonstrates a custom select styled with a monospace font 
 
 - **DO** use `appearance: base-select` when your design system requires high-fidelity, visual consistency across all form controls that cannot be achieved with standard cross-browser select overrides.
 - **DO NOT** use this if you rely on the operating system's native picker experience (e.g., the standard scroll wheel picker on iOS devices). Opting into `base-select` opts out of native mobile UI controls in favor of web-rendered top-layer menus.
-- **DO** verify that color contrast meets WCAG standards. The customizable picker allows you to set ad-hoc colors, but you are responsible for ensuring text remains legible against custom backgrounds.
+- **DO** verify that color contrast meets WCAG standards (at least `3:1` with the background color). The customizable picker allows you to set ad-hoc colors, but you are responsible for ensuring text remains legible against custom backgrounds.
 {{ FEATURE("customizable-select", "usage") }}
 
 ## Fallback strategies
