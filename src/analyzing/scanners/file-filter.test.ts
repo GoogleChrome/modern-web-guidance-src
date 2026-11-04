@@ -376,6 +376,30 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
     },
   };
 
+  async function withTempDir(
+    prefix: string,
+    fn: (tempDir: string) => Promise<void>,
+  ): Promise<void> {
+    const tempDir = await mkdtemp(join(tmpdir(), prefix));
+    try {
+      await fn(tempDir);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }
+
+  async function initGitRepo(dir: string): Promise<void> {
+    await execFileAsync('git', ['init', '-q'], { cwd: dir });
+  }
+
+  async function gitCommit(dir: string, message: string): Promise<void> {
+    await execFileAsync(
+      'git',
+      ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', message],
+      { cwd: dir },
+    );
+  }
+
   it('excludes agent and tooling dot-directories (.agents, .claude, .gemini, .cursor, .codex, .antigravitycli, etc.)', async (t) => {
     const requiredAgentDirs = [
       '.agents',
@@ -431,9 +455,8 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
   });
 
   it('ignores custom gitignored build directories via git ls-files while scanning untracked non-ignored files', async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), 'git-ignore-discovery-'));
-    try {
-      await execFileAsync('git', ['init', '-q'], { cwd: tempDir });
+    await withTempDir('git-ignore-discovery-', async (tempDir) => {
+      await initGitRepo(tempDir);
       await writeFile(join(tempDir, '.gitignore'), 'custom-build-out/\n');
       await mkdir(join(tempDir, 'custom-build-out'), { recursive: true });
       await mkdir(join(tempDir, 'src'), { recursive: true });
@@ -447,15 +470,9 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
         'function app() { scanMe(); }',
       );
 
-      // Stage and commit src/app.js and .gitignore
       await execFileAsync('git', ['add', '.gitignore', 'src/app.js'], { cwd: tempDir });
-      await execFileAsync(
-        'git',
-        ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'initial commit'],
-        { cwd: tempDir },
-      );
+      await gitCommit(tempDir, 'initial commit');
 
-      // Create an untracked non-ignored source file
       await writeFile(
         join(tempDir, 'src', 'untracked.js'),
         'function untracked() { scanMe(); }',
@@ -463,20 +480,16 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
 
       const findings = await scanRepoFiles(tempDir, [scanMeRule]);
 
-      assert.equal(findings.length, 2, 'Must find exactly 2 files (app.js and untracked.js)');
-      const foundFiles = new Set(findings.map((f) => f.file));
-      assert.equal(foundFiles.has('src/app.js'), true);
-      assert.equal(foundFiles.has('src/untracked.js'), true);
-      assert.equal(foundFiles.has('custom-build-out/leaked.js'), false);
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
+      assert.deepEqual(
+        findings.map((f) => f.file).sort(),
+        ['src/app.js', 'src/untracked.js'],
+      );
+    });
   });
 
   it('handles tracked files deleted from disk gracefully without throwing ENOENT', async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), 'git-deleted-discovery-'));
-    try {
-      await execFileAsync('git', ['init', '-q'], { cwd: tempDir });
+    await withTempDir('git-deleted-discovery-', async (tempDir) => {
+      await initGitRepo(tempDir);
       await mkdir(join(tempDir, 'src'), { recursive: true });
 
       await writeFile(
@@ -489,27 +502,19 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
       );
 
       await execFileAsync('git', ['add', '.'], { cwd: tempDir });
-      await execFileAsync(
-        'git',
-        ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'initial commit'],
-        { cwd: tempDir },
-      );
+      await gitCommit(tempDir, 'initial commit');
 
       // Remove tracked file from disk so git ls-files still lists it in the index
       await rm(join(tempDir, 'src', 'deleted.js'));
 
       const findings = await scanRepoFiles(tempDir, [scanMeRule]);
 
-      assert.equal(findings.length, 1, 'Must find only the kept file');
-      assert.equal(findings[0]?.file, 'src/kept.js');
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
+      assert.deepEqual(findings.map((f) => f.file), ['src/kept.js']);
+    });
   });
 
   it('falls back to filesystem walker in non-git directory while skipping dot-dirs and build output', async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), 'non-git-discovery-'));
-    try {
+    await withTempDir('non-git-discovery-', async (tempDir) => {
       await mkdir(join(tempDir, 'src'), { recursive: true });
       await mkdir(join(tempDir, 'dist'), { recursive: true });
       await mkdir(join(tempDir, '.agents', 'skills'), { recursive: true });
@@ -529,24 +534,16 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
 
       const findings = await scanRepoFiles(tempDir, [scanMeRule]);
 
-      assert.equal(findings.length, 1, 'Must find only src/app.js');
-      assert.equal(findings[0]?.file, 'src/app.js');
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
+      assert.deepEqual(findings.map((f) => f.file), ['src/app.js']);
+    });
   });
 
   it('falls back to directory walker when target directory is inside a gitignored folder of enclosing git repo', async () => {
-    const enclosingRepo = await mkdtemp(join(tmpdir(), 'git-enclosing-repo-'));
-    try {
-      await execFileAsync('git', ['init', '-q'], { cwd: enclosingRepo });
+    await withTempDir('git-enclosing-repo-', async (enclosingRepo) => {
+      await initGitRepo(enclosingRepo);
       await writeFile(join(enclosingRepo, '.gitignore'), 'tmp/\n');
       await execFileAsync('git', ['add', '.gitignore'], { cwd: enclosingRepo });
-      await execFileAsync(
-        'git',
-        ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'init'],
-        { cwd: enclosingRepo },
-      );
+      await gitCommit(enclosingRepo, 'init');
 
       // Create a sub-app inside the gitignored tmp/ directory
       const subAppDir = join(enclosingRepo, 'tmp', 'sub-app');
@@ -559,10 +556,7 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
       // Scanning the sub-app directly must discover and scan app.js via fallback to walker
       const findings = await scanRepoFiles(subAppDir, [scanMeRule]);
 
-      assert.equal(findings.length, 1, 'Must find app.js in subAppDir');
-      assert.equal(findings[0]?.file, 'app.js');
-    } finally {
-      await rm(enclosingRepo, { recursive: true, force: true });
-    }
+      assert.deepEqual(findings.map((f) => f.file), ['app.js']);
+    });
   });
 });

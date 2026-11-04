@@ -393,7 +393,7 @@ export function scanFiles(
   return findings;
 }
 
-interface WalkDirState {
+interface ScanRepoState {
   readonly repoDirPath: string;
   readonly fileMap: Map<string, string>;
   readonly maxFiles: number;
@@ -403,27 +403,16 @@ interface WalkDirState {
 
 const execFileAsync = promisify(execFile);
 
-async function processCandidateFile(
-  fullPath: string,
+/**
+ * Classifies a candidate path synchronously without disk I/O.
+ * Returns 'candidate' if the file should be read and scanned, or 'skip' otherwise.
+ * Accurately increments skippedDocsAndTestsCount for test/doc files.
+ */
+function classifyCandidatePath(
   relPath: string,
-  state: WalkDirState,
-  options?: { knownToExist?: boolean },
-): Promise<void> {
-  if (state.fileMap.size >= state.maxFiles) {
-    return;
-  }
-
-  const isDocsOrTests =
-    !state.fileFilterOptions?.includeDocsAndTests && isDocsOrTestsPath(relPath);
-  const mightScan =
-    shouldScanFile(relPath, undefined, state.fileFilterOptions) ||
-    isCandidateVendoredFile(relPath);
-
-  if (!mightScan && !isDocsOrTests) {
-    return;
-  }
-
-  if (isDocsOrTests && options?.knownToExist) {
+  state: ScanRepoState,
+): 'candidate' | 'skip' {
+  if (!state.fileFilterOptions?.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
     if (
       shouldScanFile(relPath, undefined, {
         ...state.fileFilterOptions,
@@ -432,47 +421,52 @@ async function processCandidateFile(
     ) {
       state.skippedDocsAndTestsCount++;
     }
-    return;
+    return 'skip';
   }
 
+  if (
+    shouldScanFile(relPath, undefined, state.fileFilterOptions) ||
+    isCandidateVendoredFile(relPath)
+  ) {
+    return 'candidate';
+  }
+
+  return 'skip';
+}
+
+/**
+ * Reads a single candidate file from disk atomically, validating file type, size cap, and content filters.
+ */
+async function tryReadFileContent(
+  fullPath: string,
+  relPath: string,
+  filterOptions?: FileFilterOptions,
+): Promise<string | undefined> {
   try {
     const handle = await open(fullPath, 'r');
     try {
       const fileStat = await handle.stat();
-      if (!fileStat.isFile()) {
-        return;
+      if (!fileStat.isFile() || fileStat.size > MAX_SOURCE_FILE_BYTES) {
+        return undefined;
       }
-
-      if (isDocsOrTests) {
-        if (
-          shouldScanFile(relPath, undefined, {
-            ...state.fileFilterOptions,
-            includeDocsAndTests: true,
-          })
-        ) {
-          state.skippedDocsAndTestsCount++;
-        }
-        return;
+      const content = await handle.readFile('utf8');
+      if (
+        shouldScanFile(relPath, content, filterOptions) ||
+        isCandidateVendoredFile(relPath, content)
+      ) {
+        return content;
       }
-
-      if (fileStat.size <= MAX_SOURCE_FILE_BYTES) {
-        const content = await handle.readFile('utf8');
-        if (
-          shouldScanFile(relPath, content, state.fileFilterOptions) ||
-          isCandidateVendoredFile(relPath, content)
-        ) {
-          state.fileMap.set(relPath, content);
-        }
-      }
+      return undefined;
     } finally {
       await handle.close();
     }
   } catch {
-    // Missing/deleted file (ENOENT), directory, unreadable, or binary file
+    // Missing/deleted file (ENOENT), unreadable, or binary file
+    return undefined;
   }
 }
 
-async function walkDirectory(currentDir: string, state: WalkDirState): Promise<void> {
+async function walkDirectory(currentDir: string, state: ScanRepoState): Promise<void> {
   if (state.fileMap.size >= state.maxFiles) {
     return;
   }
@@ -508,15 +502,18 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
       continue;
     }
 
-    if (entry.isFile()) {
-      await processCandidateFile(fullPath, relPath, state, { knownToExist: true });
+    if (entry.isFile() && classifyCandidatePath(relPath, state) === 'candidate') {
+      const content = await tryReadFileContent(fullPath, relPath, state.fileFilterOptions);
+      if (content !== undefined) {
+        state.fileMap.set(relPath, content);
+      }
     }
   }
 }
 
 async function tryEnumerateGitFiles(
   repoDirPath: string,
-  state: WalkDirState,
+  state: ScanRepoState,
 ): Promise<boolean> {
   const resolvedRepoDir = resolve(repoDirPath);
   let stdout: string;
@@ -545,8 +542,16 @@ async function tryEnumerateGitFiles(
       break;
     }
     const relPath = rawPath.replace(/\\/g, '/');
-    const fullPath = join(resolvedRepoDir, relPath);
-    await processCandidateFile(fullPath, relPath, state, { knownToExist: false });
+    if (classifyCandidatePath(relPath, state) === 'candidate') {
+      const content = await tryReadFileContent(
+        join(resolvedRepoDir, relPath),
+        relPath,
+        state.fileFilterOptions,
+      );
+      if (content !== undefined) {
+        state.fileMap.set(relPath, content);
+      }
+    }
   }
 
   return true;
@@ -562,7 +567,7 @@ export async function scanRepoFiles(
 ): Promise<AnalyzerFinding[]> {
   const fileMap = new Map<string, string>();
   const fileFilterOptions = resolveFileFilterOptions(options);
-  const state: WalkDirState = {
+  const state: ScanRepoState = {
     repoDirPath,
     fileMap,
     maxFiles: options?.maxFiles ?? 5000,
