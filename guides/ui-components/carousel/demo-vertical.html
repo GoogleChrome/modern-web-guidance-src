@@ -152,6 +152,11 @@
       }
 
       ::scroll-marker-group {
+        position: absolute;
+        position-anchor: --carousel-track;
+        inset-inline-start: calc(anchor(end) + 0.75rem);
+        inset-block-start: anchor(center);
+        translate: 0 -50%;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -181,9 +186,14 @@
     }
 
     .fallback-controls {
+      position: absolute;
+      z-index: 1;
+      inset-block: 0.5rem;
+      inset-inline-start: calc(min(16rem, 100vw - 8rem) / 2);
+      translate: -50% 0;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: space-between;
       gap: 1rem;
     }
 
