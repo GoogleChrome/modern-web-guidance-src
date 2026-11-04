@@ -17,6 +17,7 @@ import {
 } from './dev-prompts.ts';
 import { cRed, cGreen, cYellow, cCyan, cBold, cDim } from '../core/colors.ts';
 import { capturePatchFromGit, initGitRepo } from '../core/patch-utils.ts';
+import { findGraderFiles } from '../core/grader-lint.ts';
 import {
   type GuideInventory,
   GUIDE_FILE,
@@ -66,31 +67,27 @@ export function extractGuideDescription(rawGuideContent: string): string {
   return desc;
 }
 
+function runGitInDir(cwd: string, args: readonly string[]): string {
+  return gitExec(args, { cwd, stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+}
+
 export const devCli = {
   commitStepArtifacts(guideDir: string, commitMessage: string): boolean {
     try {
-      const branch = gitExec(['branch', '--show-current'], {
-        stdio: ['pipe', 'pipe', 'ignore'],
-      }).trim();
+      const branch = runGitInDir('.', ['branch', '--show-current']);
       if (!branch.startsWith('gd-dev/')) return false;
 
-      const status = gitExec(['status', '--porcelain', '--', guideDir], {
-        stdio: ['pipe', 'pipe', 'ignore'],
-      }).trim();
+      const status = runGitInDir('.', ['status', '--porcelain', '--', guideDir]);
       if (!status) return false;
 
-      gitExec(['add', '--', guideDir], { stdio: ['pipe', 'pipe', 'ignore'] });
-      gitExec(['commit', '-m', commitMessage], { stdio: ['pipe', 'pipe', 'ignore'] });
+      runGitInDir('.', ['add', '--', guideDir]);
+      runGitInDir('.', ['commit', '-m', commitMessage]);
       return true;
     } catch {
       return false;
     }
   },
 };
-
-function runGitInDir(cwd: string, args: readonly string[]): string {
-  return gitExec(args, { cwd, stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-}
 
 /**
  * Returns true if any of `inputs` changed after `outputs` were last written. Committed changes are
@@ -124,31 +121,19 @@ export function changedSince(inputs: string[], outputs: string[]): boolean {
  */
 export function findStaleTargets(repoRootDir: string): Set<string> {
   const guidesRoot = path.join(repoRootDir, 'guides');
-  if (!fs.existsSync(guidesRoot)) return new Set();
-
   const pairs: Array<{ expRel: string; graderRel: string; expAbs: string; graderAbs: string }> = [];
-  for (const cat of fs.readdirSync(guidesRoot, { withFileTypes: true })) {
-    if (!cat.isDirectory() || cat.name.startsWith('.')) continue;
-    const catDir = path.join(guidesRoot, cat.name);
-    for (const guide of fs.readdirSync(catDir, { withFileTypes: true })) {
-      if (!guide.isDirectory() || guide.name.startsWith('.')) continue;
-      const guideDir = path.join(catDir, guide.name);
-      const expAbs = path.join(guideDir, EXPECTATIONS_FILE);
-      const targetsDir = path.join(guideDir, TARGETS_DIR);
-      if (!fs.existsSync(expAbs) || !fs.existsSync(targetsDir)) continue;
-      const expRel = `guides/${cat.name}/${guide.name}/${EXPECTATIONS_FILE}`;
-      for (const app of fs.readdirSync(targetsDir, { withFileTypes: true })) {
-        if (!app.isDirectory() || app.name.startsWith('.')) continue;
-        const graderAbs = path.join(targetsDir, app.name, GRADER_FILE);
-        if (!fs.existsSync(graderAbs)) continue;
-        pairs.push({
-          expRel,
-          graderRel: `guides/${cat.name}/${guide.name}/${TARGETS_DIR}/${app.name}/${GRADER_FILE}`,
-          expAbs,
-          graderAbs,
-        });
-      }
-    }
+  for (const graderAbs of findGraderFiles(repoRootDir)) {
+    const relParts = path.relative(guidesRoot, graderAbs).split(path.sep);
+    if (relParts.length !== 5 || relParts[2] !== TARGETS_DIR || relParts.some(p => p.startsWith('.'))) continue;
+    const [cat, guide, , app] = relParts;
+    const expAbs = path.join(guidesRoot, cat, guide, EXPECTATIONS_FILE);
+    if (!fs.existsSync(expAbs)) continue;
+    pairs.push({
+      expRel: `guides/${cat}/${guide}/${EXPECTATIONS_FILE}`,
+      graderRel: `guides/${cat}/${guide}/${TARGETS_DIR}/${app}/${GRADER_FILE}`,
+      expAbs,
+      graderAbs,
+    });
   }
   if (pairs.length === 0) return new Set();
 

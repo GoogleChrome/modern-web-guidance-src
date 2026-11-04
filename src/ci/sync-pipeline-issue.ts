@@ -245,26 +245,6 @@ function hasAnySubstantiveDiff(cwd: string, evalSha: string, expSha: string, fil
   }
 }
 
-function findSubstantiveDiffPaths(
-  cwd: string,
-  evalSha: string,
-  expSha: string,
-  filePaths: readonly string[],
-  out = new Set<string>()
-): Set<string> {
-  if (filePaths.length === 0 || !hasAnySubstantiveDiff(cwd, evalSha, expSha, filePaths)) {
-    return out;
-  }
-  if (filePaths.length === 1) {
-    out.add(filePaths[0]);
-    return out;
-  }
-  const mid = Math.floor(filePaths.length / 2);
-  findSubstantiveDiffPaths(cwd, evalSha, expSha, filePaths.slice(0, mid), out);
-  findSubstantiveDiffPaths(cwd, evalSha, expSha, filePaths.slice(mid), out);
-  return out;
-}
-
 function collectGitGuideHistory(): Map<string, GitFileHistory> {
   const cwd = rootDir;
   const history = new Map<string, GitFileHistory>();
@@ -335,23 +315,11 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
     }
   }
 
-  const diffGroups = new Map<string, { evalSha: string; expSha: string; items: Array<{ expPath: string; entry: GitFileHistory }> }>();
   for (const [slug, entry] of history.entries()) {
     if (entry.expTs <= entry.evalTs || !entry.evalSha || !entry.expSha) continue;
-    const key = `${entry.evalSha}\0${entry.expSha}`;
-    let group = diffGroups.get(key);
-    if (!group) {
-      group = { evalSha: entry.evalSha, expSha: entry.expSha, items: [] };
-      diffGroups.set(key, group);
-    }
-    group.items.push({ expPath: `guides/${slug}/${EXPECTATIONS_FILE}`, entry });
-  }
-
-  for (const { evalSha, expSha, items } of diffGroups.values()) {
-    const substantive = findSubstantiveDiffPaths(cwd, evalSha, expSha, items.map(it => it.expPath));
-    for (const { expPath, entry } of items) {
-      entry.isSubstantiveDiff = substantive.has(expPath);
-    }
+    entry.isSubstantiveDiff = hasAnySubstantiveDiff(cwd, entry.evalSha, entry.expSha, [
+      `guides/${slug}/${EXPECTATIONS_FILE}`,
+    ]);
   }
 
   return history;
@@ -661,12 +629,12 @@ export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
   );
 
   const points: WeeklyProgressPoint[] = dateShas.map(({ date, sha }) => {
-    const analysis = analyses.get(sha)!;
+    const { complete, needsEvals } = analyses.get(sha) ?? { complete: 0, needsEvals: 0 };
     return {
       date,
       label: formatShortDate(date),
-      complete: analysis.complete,
-      contentLanded: analysis.complete + analysis.needsEvals,
+      complete,
+      contentLanded: complete + needsEvals,
     };
   });
 

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { gitExec } from '../core/git-utils.ts';
+import { initGitRepo } from '../core/patch-utils.ts';
 import { parsePassRates } from '../harness/lib/utils.ts';
 
 test('parsePassRates parses multi-dimensional base-app scores correctly', () => {
@@ -263,10 +264,7 @@ test('devCli.commitStepArtifacts commits modified guide files when on a feature 
   });
 
   process.chdir(tmpRepo);
-  gitExec(['init', '-q'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
-  gitExec(['config', 'user.name', 'Test'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
-  gitExec(['config', 'user.email', 'test@example.com'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
-  gitExec(['commit', '-q', '--allow-empty', '-m', 'initial commit'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
+  initGitRepo(tmpRepo);
   gitExec(['checkout', '-q', '-b', 'gd-dev/sample-guide'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
 
   const guideDir = path.join(tmpRepo, 'guides', 'css', 'sample-guide');
@@ -308,10 +306,7 @@ test('devCli.commitStepArtifacts returns false when not on a gd-dev/ branch', as
   });
 
   process.chdir(tmpRepo);
-  gitExec(['init', '-q'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
-  gitExec(['config', 'user.name', 'Test'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
-  gitExec(['config', 'user.email', 'test@example.com'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
-  gitExec(['commit', '-q', '--allow-empty', '-m', 'initial commit'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
+  initGitRepo(tmpRepo);
   gitExec(['checkout', '-q', '-b', 'feat/my-feature'], { cwd: tmpRepo, isolated: true, stdio: 'ignore' });
 
   const guideDir = path.join(tmpRepo, 'guides', 'css', 'sample-guide');

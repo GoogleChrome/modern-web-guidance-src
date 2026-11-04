@@ -59,10 +59,9 @@ export function readGitObjectsBatch(cwd: string, specs: readonly string[]): Map<
       continue;
     }
 
-    const firstSpace = header.indexOf(' ');
-    const secondSpace = header.indexOf(' ', firstSpace + 1);
-    const type = firstSpace !== -1 && secondSpace !== -1 ? header.slice(firstSpace + 1, secondSpace) : '';
-    const size = secondSpace !== -1 ? Number(header.slice(secondSpace + 1)) : Number.NaN;
+    const parts = header.split(' ');
+    const type = parts[1];
+    const size = parts.length === 3 ? Number(parts[2]) : Number.NaN;
     if (!type || !Number.isInteger(size) || size < 0 || pos + size > outBuf.length) {
       throw new Error(`Invalid git cat-file --batch entry "${header}" for ${spec}`);
     }

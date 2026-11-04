@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { gitExec } from './git-utils.ts';
-import { extractTargetFilesFromPatch, applyPatchSync, capturePatchFromGit } from './patch-utils.ts';
+import { extractTargetFilesFromPatch, applyPatchSync, capturePatchFromGit, initGitRepo } from './patch-utils.ts';
 
 describe('extractTargetFilesFromPatch', () => {
   test('extracts modified file paths from unified diff headers and ignores deleted files', () => {
@@ -134,13 +134,8 @@ describe('applyPatchSync', () => {
 });
 
 function initTestRepo(repoDir: string) {
-  const opts = { cwd: repoDir, isolated: true, stdio: 'ignore' as const };
-  gitExec(['init', '-q'], opts);
-  gitExec(['config', 'user.name', 'Test'], opts);
-  gitExec(['config', 'user.email', 'test@example.com'], opts);
   fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
-  gitExec(['add', '.'], opts);
-  gitExec(['commit', '-q', '-m', 'init'], opts);
+  initGitRepo(repoDir);
 }
 
 describe('capturePatchFromGit', () => {
@@ -213,22 +208,15 @@ describe('capturePatchFromGit', () => {
     fs.mkdirSync(repoDir, { recursive: true });
 
     try {
-      // 1. Initial harness repo setup with initial commit
       const opts = { cwd: repoDir, isolated: true, stdio: 'ignore' as const };
-      gitExec(['init', '-q'], opts);
-      gitExec(['config', 'user.name', 'AI'], opts);
-      gitExec(['config', 'user.email', 'ai@example.com'], opts);
       fs.writeFileSync(path.join(repoDir, 'index.html'), '<html>original</html>\n');
-      gitExec(['add', '.'], opts);
-      gitExec(['commit', '-q', '-m', 'init'], opts);
+      initGitRepo(repoDir);
 
-      // 2. Agent modifies files AND runs git commit
       fs.writeFileSync(path.join(repoDir, 'index.html'), '<html>updated</html>\n');
       fs.writeFileSync(path.join(repoDir, 'translator.js'), 'console.log("translator");\n');
       gitExec(['add', '.'], opts);
       gitExec(['commit', '-q', '-m', 'Agent commit'], opts);
 
-      // 3. capturePatchFromGit should capture diff against the initial commit
       const result = capturePatchFromGit(repoDir, patchDest);
       assert.strictEqual(result.success, true);
       assert.strictEqual(fs.existsSync(patchDest), true);

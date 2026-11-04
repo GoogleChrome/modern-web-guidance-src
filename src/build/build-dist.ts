@@ -25,32 +25,26 @@ async function acquireLock(lockFilePath: string) {
       if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
     }
 
-    let lockStale = false;
+    let stale = false;
     try {
       const pid = parseInt(fs.readFileSync(lockFilePath, 'utf-8').trim(), 10);
-      if (!Number.isInteger(pid) || pid <= 0) {
-        lockStale = true;
-      } else {
-        process.kill(pid, 0);
-      }
+      if (Number.isInteger(pid) && pid > 0) process.kill(pid, 0);
+      else stale = true;
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code;
-      if (code === 'ESRCH' || code === 'ENOENT') {
-        lockStale = true;
-      }
+      if (code === 'ESRCH' || code === 'ENOENT') stale = true;
     }
 
-    if (lockStale) {
-      try {
-        fs.unlinkSync(lockFilePath);
-      } catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
-      }
+    if (!stale) {
+      console.log(" Another build is in progress. Waiting...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
       continue;
     }
-
-    console.log(" Another build is in progress. Waiting...");
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      fs.unlinkSync(lockFilePath);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    }
   }
 }
 
