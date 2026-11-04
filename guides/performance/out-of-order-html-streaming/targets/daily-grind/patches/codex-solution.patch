@@ -1,0 +1,312 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..4cd3360
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,10 @@
++import { readFile, mkdir, copyFile } from 'node:fs/promises';
++import { Script } from 'node:vm';
++
++const html = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)) {
++  new Script(match[1], { filename: 'index.html' });
++}
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
++console.log('Built dist/index.html; inline JavaScript syntax verified.');
+diff --git a/index.html b/index.html
+index 66c9173..55d583b 100644
+--- a/index.html
++++ b/index.html
+@@ -108,6 +108,7 @@
+     }
+ 
+     .card {
++      min-height: 210px;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -120,6 +121,11 @@
+       color: var(--primary);
+     }
+ 
++    .skeleton { background: var(--secondary); }
++    .skeleton p { margin-top: 2rem; }
++    .supplement { margin-top: 40px; }
++    #menu-status { min-height: 1.6em; text-align: center; }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -175,9 +181,40 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++    <section aria-labelledby="seasonal-heading">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
++      <p id="menu-status" role="status">Loading seasonal favorites…</p>
++      <div id="seasonal-cards" class="grid" aria-label="Seasonal coffee cards">
++        <?start name="seasonal-cards">
++        <div class="card skeleton"><p>Loading coffee…</p></div>
++        <div class="card skeleton"><p>Loading coffee…</p></div>
++        <div class="card skeleton"><p>Loading coffee…</p></div>
++        <?end>
++      </div>
++    </section>
++    <section class="supplement" aria-labelledby="reviews-heading">
++      <h2 id="reviews-heading">Customer Reviews</h2>
++      <div id="customer-reviews"><p>Customer reviews will appear here when available.</p></div>
++      <p id="reviews-status" role="status"></p>
++    </section>
++    <aside class="supplement" aria-label="Seasonal promotion">
++      <div id="cms-promo"><p>Discover more seasonal offers in store.</p></div>
++      <p id="promo-status" role="status"></p>
++    </aside>
++  </main>
++
++  <footer>
++    <div class="footer-links">
++      <a href="/about">Our Story</a> |
++      <a href="/careers">Join the Team</a> |
++      <a href="/contact">Contact Us</a> |
++      <a href="/privacy-policy">Privacy</a>
++    </div>
++    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
++  </footer>
++
++  <!-- These cards can arrive later in the same server response, after the shell. -->
++  <template for="seasonal-cards">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -193,19 +230,196 @@
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+-      </div>
+-    </section>
+-  </main>
++  </template>
+ 
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
++  <script>
++    (() => {
++      'use strict';
++
++      const cards = document.getElementById('seasonal-cards');
++      const menuStatus = document.getElementById('menu-status');
++      const reviews = document.getElementById('customer-reviews');
++      const promo = document.getElementById('cms-promo');
++      if (!cards || !menuStatus || !reviews || !promo) return;
++
++      // Native parsers consume the template. Older browsers leave both the
++      // template and processing instructions (as comments) for this fallback.
++      const initialCards = document.querySelector('template[for="seasonal-cards"]');
++      if (initialCards instanceof HTMLTemplateElement) {
++        const walker = document.createTreeWalker(cards, NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_PROCESSING_INSTRUCTION);
++        let start = null;
++        let node;
++        while ((node = walker.nextNode())) {
++          if (/^\?start\s+name="seasonal-cards"\s*\??$/.test(node.nodeValue || '')) start = node;
++          if (start && /^\?end\s*\??$/.test(node.nodeValue || '')) {
++            const range = document.createRange();
++            range.setStartBefore(start);
++            range.setEndAfter(node);
++            range.deleteContents();
++            range.insertNode(initialCards.content.cloneNode(true));
++            initialCards.remove();
++            break;
++          }
++        }
++      }
++      menuStatus.textContent = '';
++
++      // Narrow allowlist fallback for browsers without the native safe setter.
++      // Rebuild nodes: never copy event handlers, styles, embeds, or scripts.
++      function safeFragment(html) {
++        const parsed = new DOMParser().parseFromString(html, 'text/html');
++        const allowed = new Set(['DIV', 'ARTICLE', 'H3', 'P', 'A', 'BLOCKQUOTE', 'CITE', 'STRONG', 'EM', 'UL', 'LI', 'SPAN', 'BR']);
++        const blocked = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'SVG', 'MATH', 'TEMPLATE']);
++        function copy(source, target) {
++          for (const child of source.childNodes) {
++            if (child.nodeType === Node.TEXT_NODE) {
++              target.appendChild(document.createTextNode(child.textContent || ''));
++            } else if (child instanceof Element && !blocked.has(child.tagName)) {
++              if (!allowed.has(child.tagName)) {
++                copy(child, target);
++                continue;
++              }
++              const clean = document.createElement(child.localName);
++              for (const name of ['card', 'btn']) {
++                if (child.classList.contains(name)) clean.classList.add(name);
++              }
++              if (child.tagName === 'A' && child.hasAttribute('href')) {
++                try {
++                  const url = new URL(child.getAttribute('href'), location.href);
++                  if (url.protocol === 'https:' || url.protocol === 'http:') clean.setAttribute('href', url.href);
++                } catch { /* Ignore invalid URLs. */ }
++              }
++              copy(child, clean);
++              target.appendChild(clean);
++            }
++          }
++        }
++        const fragment = document.createDocumentFragment();
++        copy(parsed.body, fragment);
++        return fragment;
++      }
++
++      async function setSafeHTML(target, response) {
++        if (response.body && typeof target.streamHTML === 'function') {
++          await response.body.pipeThrough(new TextDecoderStream()).pipeTo(target.streamHTML());
++        } else {
++          const html = await response.text();
++          if (typeof target.setHTML === 'function') target.setHTML(html);
++          else target.replaceChildren(safeFragment(html));
++        }
++      }
++
++      async function fetchHTML(path) {
++        const response = await fetch(path, { headers: { Accept: 'text/html' }, cache: 'no-store' });
++        if (!response.ok) throw new Error(`HTML request failed: ${response.status}`);
++        if (!response.headers.get('content-type')?.toLowerCase().startsWith('text/html')) {
++          throw new Error('Expected an HTML fragment');
++        }
++        return response;
++      }
++
++      // Server contract: fragment endpoints return text/html. The SSE endpoint
++      // sends `event: menu-changed` (with a data field) after menu edits.
++      // Local menu editors can also dispatch `menu-changed` on window.
++      // Serialize refreshes so an older stream cannot overwrite a newer menu.
++      let refreshing = false;
++      let refreshPending = false;
++      async function refreshMenu() {
++        refreshPending = true;
++        if (refreshing) return;
++        refreshing = true;
++        try {
++          while (refreshPending) {
++            refreshPending = false;
++            menuStatus.textContent = 'Updating seasonal favorites…';
++            let previousCards = null;
++            try {
++              const response = await fetchHTML('/api/menu/seasonal');
++              // Keep the focused link intact until the visitor leaves the cards.
++              if (cards.contains(document.activeElement)) {
++                await new Promise(resolve => {
++                  const onFocusOut = () => queueMicrotask(() => {
++                    if (!cards.contains(document.activeElement)) {
++                      cards.removeEventListener('focusout', onFocusOut);
++                      resolve();
++                    }
++                  });
++                  cards.addEventListener('focusout', onFocusOut);
++                });
++              }
++              previousCards = Array.from(cards.childNodes, node => node.cloneNode(true));
++              cards.setAttribute('aria-busy', 'true');
++              await setSafeHTML(cards, response);
++              menuStatus.textContent = 'Seasonal favorites updated.';
++            } catch {
++              if (previousCards) cards.replaceChildren(...previousCards);
++              menuStatus.textContent = 'The menu could not be refreshed. Please try again.';
++            } finally {
++              cards.removeAttribute('aria-busy');
++            }
++          }
++        } finally {
++          refreshing = false;
++        }
++      }
++      window.addEventListener('menu-changed', refreshMenu);
++      if (typeof EventSource === 'function') {
++        let menuEvents;
++        const connectMenuEvents = () => {
++          menuEvents = new EventSource('/api/menu/events');
++          menuEvents.addEventListener('menu-changed', refreshMenu);
++          // Reconcile edits missed while disconnected, including initial connect.
++          menuEvents.addEventListener('open', refreshMenu);
++        };
++        connectMenuEvents();
++        window.addEventListener('pagehide', () => menuEvents.close());
++        window.addEventListener('pageshow', event => {
++          if (event.persisted) connectMenuEvents();
++        });
++      }
++
++      async function loadReviews() {
++        try {
++          // Customer submissions must always go through a SAFE API.
++          await setSafeHTML(reviews, await fetchHTML('/api/reviews'));
++        } catch {
++          document.getElementById('reviews-status').textContent = 'Reviews are currently unavailable.';
++        }
++      }
++
++      async function loadPromo() {
++        try {
++          // This fixed same-origin endpoint must contain only our trusted CMS
++          // output. Never pass customer submissions through this path.
++          const response = await fetchHTML('/api/cms/seasonal-promo');
++          if (response.body && typeof promo.streamHTMLUnsafe === 'function') {
++            await response.body.pipeThrough(new TextDecoderStream())
++              .pipeTo(promo.streamHTMLUnsafe({ runScripts: true }));
++          } else if (typeof promo.setHTMLUnsafe === 'function') {
++            promo.setHTMLUnsafe(await response.text(), { runScripts: true });
++          } else {
++            // Fallback deliberately preserves the trust boundary and executes
++            // embedded scripts only for this first-party CMS fragment.
++            const template = document.createElement('template');
++            template.innerHTML = await response.text();
++            const scripts = Array.from(template.content.querySelectorAll('script'));
++            promo.replaceChildren(template.content);
++            for (const inert of scripts) {
++              const active = document.createElement('script');
++              for (const attribute of inert.attributes) active.setAttribute(attribute.name, attribute.value);
++              active.textContent = inert.textContent;
++              inert.replaceWith(active);
++            }
++          }
++        } catch {
++          document.getElementById('promo-status').textContent = 'Seasonal offers are currently unavailable.';
++        }
++      }
++
++      void loadReviews();
++      void loadPromo();
++    })();
++  </script>
+ 
+ </body>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

@@ -1,4 +1,4 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
+import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
 import { extractSuiteSummary } from './summary-extractor.js';
 import { ApiClient } from './api.js';
@@ -44,8 +44,82 @@ let currentTestID = null;
 let api;
 /** @type {'all' | 'a11y'} */
 let currentMetricMode = 'all';
-/** @type {string} */
+/** @type {'default' | 'uplift' | 'a11y' | 'time' | 'tokens'} */
 let currentTaskSort = 'default';
+/** @type {'asc' | 'desc'} */
+let currentTaskSortDir = 'desc';
+/** @type {string} */
+let currentCategoryFilter = 'all';
+/** @type {string} */
+let currentTextFilter = '';
+/** @type {Set<string>} */
+const collapsedCategories = new Set();
+
+/** @type {Record<string, string>} */
+const CATEGORY_LABELS = {
+    discipline: 'Discipline',
+    css: 'CSS',
+    html: 'HTML',
+    js: 'JavaScript',
+    javascript: 'JavaScript',
+    accessibility: 'Accessibility',
+    performance: 'Performance',
+    security: 'Security',
+    'built-in-ai': 'Built-in AI',
+    'web-apis': 'Web APIs',
+    'ui-atoms': 'UI Atoms',
+    'ui-components': 'UI Components',
+    'ui-behaviors': 'UI Behaviors',
+    pwa: 'PWA',
+    wasm: 'WebAssembly',
+    webmcp: 'WebMCP',
+    media: 'Media',
+    privacy: 'Privacy',
+    other: 'Other',
+};
+
+/** @param {string} cat */
+function formatCategoryLabel(cat) {
+    if (CATEGORY_LABELS[cat]) return CATEGORY_LABELS[cat];
+    return cat.split('-').map(capitalize).join(' ');
+}
+
+/** @type {Promise<Map<string, { category: string, dir: string }>> | null} */
+let guideCategoryMapPromise = null;
+
+/** @returns {Promise<Map<string, { category: string, dir: string }>>} */
+function loadGuideCategoryMap() {
+    if (!guideCategoryMapPromise) {
+        guideCategoryMapPromise = (async () => {
+            const map = new Map();
+            try {
+                const res = await fetch('./grouped-tasks.gen.json');
+                if (res.ok) {
+                    const data = await res.json();
+                    const disciplineSet = new Set(Array.isArray(data?.disciplineGuides) ? data.disciplineGuides : []);
+                    const guides = data?.guides || {};
+                    for (const [cat, guideObj] of Object.entries(guides)) {
+                        if (!guideObj || typeof guideObj !== 'object') continue;
+                        for (const guideName of Object.keys(guideObj)) {
+                            const isDiscipline = disciplineSet.has(guideName) || guideName === cat;
+                            map.set(guideName, {
+                                category: isDiscipline ? 'discipline' : cat,
+                                dir: cat,
+                            });
+                        }
+                    }
+                    for (const g of disciplineSet) {
+                        if (!map.has(g)) map.set(g, { category: 'discipline', dir: g });
+                    }
+                }
+            } catch {
+                // Ignore if grouped-tasks.gen.json is unavailable
+            }
+            return map;
+        })();
+    }
+    return guideCategoryMapPromise;
+}
 
 // Module-scoped state
 let dashboardLoaded = false;
@@ -107,9 +181,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const setMode = (/** @type {'all' | 'a11y'} */ mode) => {
             if (currentMetricMode !== mode) {
                 currentMetricMode = mode;
+                const normalizedA11ySort = mode === 'a11y' && currentTaskSort === 'a11y';
+                if (normalizedA11ySort) {
+                    currentTaskSort = 'uplift';
+                }
                 syncDashModeButtons(mode);
                 const url = new URL(window.location.href);
                 if (mode === 'a11y') { url.searchParams.set('mode', 'a11y'); } else { url.searchParams.delete('mode'); }
+                if (normalizedA11ySort && url.searchParams.has('sort')) {
+                    url.searchParams.set('sort', `${currentTaskSort}-${currentTaskSortDir}`);
+                }
                 window.history.replaceState({}, '', url);
                 if (allTestData && currentTestID) { renderDashboardDumbbellChart(allTestData); rerenderGrid(allTestData, currentTestID); }
             }
@@ -120,17 +201,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (target instanceof HTMLInputElement && (target.value === 'all' || target.value === 'a11y')) { setMode(target.value); }
         });
     }
-    const sortSelect = document.getElementById('task-sort-select');
-    if (sortSelect instanceof HTMLSelectElement) {
-        if (initialSort && Array.from(sortSelect.options).some(o => o.value === initialSort)) { currentTaskSort = initialSort; sortSelect.value = initialSort; }
-        sortSelect.addEventListener('change', () => {
-            currentTaskSort = sortSelect.value;
-            const url = new URL(window.location.href);
-            if (currentTaskSort === 'default') { url.searchParams.delete('sort'); } else { url.searchParams.set('sort', currentTaskSort); }
-            window.history.replaceState({}, '', url);
+    const sortMatch = initialSort?.match(/^(uplift|a11y|time|tokens)(?:-(asc|desc))?$/);
+    if (sortMatch) {
+        const rawSort = /** @type {'uplift' | 'a11y' | 'time' | 'tokens'} */ (sortMatch[1]);
+        currentTaskSort = (rawSort === 'a11y' && currentMetricMode === 'a11y') ? 'uplift' : rawSort;
+        currentTaskSortDir = /** @type {'asc' | 'desc'} */ (sortMatch[2] || ((currentTaskSort === 'time' || currentTaskSort === 'tokens') ? 'asc' : 'desc'));
+    }
+
+    const evalFilterInput = document.getElementById('eval-filter');
+    if (evalFilterInput instanceof HTMLInputElement) {
+        evalFilterInput.addEventListener('input', () => {
+            currentTextFilter = evalFilterInput.value.trim().toLowerCase();
             if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
         });
     }
+    const sortResetBtn = document.getElementById('eval-sort-reset');
+    sortResetBtn?.addEventListener('click', () => {
+        currentTaskSort = 'default';
+        currentTaskSortDir = 'desc';
+        const url = new URL(window.location.href);
+        url.searchParams.delete('sort');
+        window.history.replaceState({}, '', url);
+        if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+    });
     // Auth Button Handling (only for remote)
     if (api.source === 'remote') {
         initGoogleAuth(async () => {
@@ -472,20 +565,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * @param {number} ms
- */
-function formatRuntime(ms) {
-    if (!ms) return '-';
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    if (minutes > 0) {
-        return `${minutes}m ${remainingSeconds}s`;
-    }
-    return `${seconds}s`;
-}
-
-/**
  * @param {string} testId
  * @param {string | null} jetskiVersion
  * @param {string | null} timestamp
@@ -498,63 +577,35 @@ function renderTestHeader(testId, jetskiVersion, timestamp, data) {
 
         let agent = 'unknown';
         let model = 'unknown';
-        let serving = 'unknown';
 
         if (data) {
             agent = data.agent || 'unknown';
-            if (data.serving !== undefined) {
-                serving = data.serving;
-            } else if (data.enableSkills !== undefined) {
-                serving = data.enableSkills ? 'skills' : 'mcp';
-            }
-            /** @type {Record<string, string>} */
-            const servingDisplayNames = {
-                'skills': 'Skills',
-                'skills_cli': 'Skills (CLI)',
-                'mcp': 'MCP'
-            };
-            serving = servingDisplayNames[serving] || serving;
             model = data.model || 'unknown';
         }
 
         container.removeAttribute('aria-busy');
         container.innerHTML = `
+            <h1 class="suite-page-title">${escapeHtml(testId)}</h1>
             <div class="header-meta-grid">
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(testId)}</span>
-                    <span class="meta-label">Test ID</span>
-                </div>
                 <div class="header-meta-item">
                     <span class="meta-value">${escapeHtml(timeStr)}</span>
                     <span class="meta-label">Action Date</span>
                 </div>
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(agent)}</span>
-                    <span class="meta-label">Agent</span>
-                </div>
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(model)}</span>
-                    <span class="meta-label">Model</span>
-                </div>
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(serving)}</span>
-                    <span class="meta-label">Serving Mode</span>
-                </div>
                 ${data.totalRuntime ?
                 `<div class="header-meta-item">
-                    <span class="meta-value">${formatRuntime(data.totalRuntime)}</span>
+                    <span class="meta-value">${formatDuration(data.totalRuntime)}</span>
                     <span class="meta-label">Total Runtime</span>
                 </div>` : ''}
-                ${data.cliVersion ? `
                 <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(data.cliVersion)}</span>
-                    <span class="meta-label">CLI Version</span>
+                    <span class="meta-value">${escapeHtml(model)}</span>
+                    <span class="meta-value">${escapeHtml(agent)}</span>
+                    <span class="meta-label">Model &times; Agent</span>
                 </div>
-                ` : ''}
-                ${data.skillVersion ? `
+                ${(data.cliVersion || data.skillVersion) ? `
                 <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(data.skillVersion)}</span>
-                    <span class="meta-label">Skill Version</span>
+                    ${data.cliVersion ? `<span class="meta-value">${escapeHtml(data.cliVersion)}</span>` : ''}
+                    ${data.skillVersion ? `<span class="meta-value">${escapeHtml(data.skillVersion)}</span>` : ''}
+                    <span class="meta-label">CLI / Skill Version</span>
                 </div>
                 ` : ''}
                 ${jetskiVersion ? `
@@ -736,11 +787,11 @@ function renderSummary(data) {
             </div>
         </article>
 
-        <!-- Card 3: Completion Time (U → G) -->
+        <!-- Card 3: Task Duration (U → G) -->
         <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label"><span aria-hidden="true">⏱</span> Median agent time</span>
-                ${hasRuntime ? deltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median agent time' }) : ''}
+                <span class="meta-label"><span aria-hidden="true">⏱</span> Median agent duration</span>
+                ${hasRuntime ? deltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median agent duration' }) : ''}
             </div>
             <div class="narrative-hero-pair">
                 <span><span class="visually-hidden">Unguided </span>${formatDuration(rt.unguidedMedianMs)}</span>
@@ -795,14 +846,18 @@ function renderSummary(data) {
         e.preventDefault();
         const modeA11yBtn = document.getElementById('dash-mode-a11y-btn');
         if (modeA11yBtn instanceof HTMLElement) { modeA11yBtn.click(); }
-        const sortSelect = document.getElementById('task-sort-select');
-        if (sortSelect instanceof HTMLSelectElement && sortSelect.value !== 'a11y-desc') { sortSelect.value = 'a11y-desc'; sortSelect.dispatchEvent(new Event('change')); }
+        currentTaskSort = 'uplift';
+        currentTaskSortDir = 'desc';
+        const url = new URL(window.location.href);
+        url.searchParams.set('sort', 'uplift-desc');
+        window.history.replaceState({}, '', url);
+        if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
         const guideSection = document.getElementById('guide-section');
         guideSection?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
     });
     return extracted;
 }
-/** @typedef {{ appName: string, guide: string, scenarioName: string, unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
+/** @typedef {{ appName: string, guide: string, scenarioName: string, category: string, categoryLabel: string, featureIds: string[], unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
 const YIELD_BUDGET_MS = 50;
 /** @returns {Promise<void>} */
 function yieldToMain() {
@@ -875,6 +930,9 @@ async function computeScenarios(data) {
         }
         return a.localeCompare(b);
     });
+
+    const categoryMap = await loadGuideCategoryMap();
+    const featuresMap = (typeof window !== 'undefined' && window.__featuresMapping) || {};
 
     /** @type {ScenarioItem[]} */
     const scenarios = [];
@@ -985,10 +1043,16 @@ async function computeScenarios(data) {
             const leakCount = (unguidedRuns || []).filter(r => isUnguidedLeakRun(r, guide)).length;
             const hasLeak = leakCount > 0;
             const hasFailure = hasInfraError || hasBuildFailure;
+            const category = categoryMap.get(guide)?.category || 'other';
+            const categoryLabel = formatCategoryLabel(category);
+            const featureIds = Array.isArray(featuresMap[guide]) ? featuresMap[guide] : [];
             scenarios.push({
                 appName,
                 guide,
                 scenarioName,
+                category,
+                categoryLabel,
+                featureIds,
                 unguidedRuns,
                 guidedRuns,
                 unguidedAvg,
@@ -1016,6 +1080,111 @@ async function computeScenarios(data) {
     }
     return scenarios;
 }
+
+/** @param {string} a
+ * @param {string} b */
+function compareCategories(a, b) {
+    if (a === b) return 0;
+    if (a === 'discipline') return -1;
+    if (b === 'discipline') return 1;
+    if (a === 'other') return 1;
+    if (b === 'other') return -1;
+    return formatCategoryLabel(a).localeCompare(formatCategoryLabel(b));
+}
+
+/** @param {ScenarioItem[]} baseScenarios */
+function renderEvalFilterControls(baseScenarios) {
+    const datalist = document.getElementById('eval-features-datalist');
+    if (datalist) {
+        /** @type {Map<string, number>} */
+        const featureCounts = new Map();
+        for (const s of baseScenarios) {
+            for (const f of s.featureIds) {
+                featureCounts.set(f, (featureCounts.get(f) || 0) + 1);
+            }
+        }
+        const allFeatures = Array.from(featureCounts.keys()).sort();
+        datalist.innerHTML = allFeatures.map(f => {
+            const count = featureCounts.get(f) || 0;
+            return `<option value="${escapeHtml(f)}">${count} ${count === 1 ? 'eval' : 'evals'}</option>`;
+        }).join('');
+    }
+    const pillsContainer = document.getElementById('eval-category-pills');
+    if (pillsContainer) {
+        /** @type {Map<string, number>} */
+        const counts = new Map();
+        for (const s of baseScenarios) {
+            counts.set(s.category, (counts.get(s.category) || 0) + 1);
+        }
+        const categories = Array.from(counts.keys()).sort(compareCategories);
+        if (currentCategoryFilter !== 'all' && !counts.has(currentCategoryFilter)) {
+            currentCategoryFilter = 'all';
+        }
+        const pills = [
+            `<button type="button" class="category-pill${currentCategoryFilter === 'all' ? ' active' : ''}" data-category="all" aria-pressed="${currentCategoryFilter === 'all'}">All <span class="pill-count">${baseScenarios.length}</span></button>`,
+            ...categories.map(cat => {
+                const active = currentCategoryFilter === cat;
+                return `<button type="button" class="category-pill${active ? ' active' : ''}" data-category="${escapeHtml(cat)}" aria-pressed="${active}">${escapeHtml(formatCategoryLabel(cat))} <span class="pill-count">${counts.get(cat)}</span></button>`;
+            })
+        ];
+        pillsContainer.innerHTML = pills.join('');
+        pillsContainer.querySelectorAll('.category-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cat = btn.getAttribute('data-category') || 'all';
+                currentCategoryFilter = (currentCategoryFilter === cat && cat !== 'all') ? 'all' : cat;
+                if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+            });
+        });
+    }
+}
+
+/** @returns {HTMLElement} */
+function buildEvalsTableHeader() {
+    const header = document.createElement('div');
+    header.className = 'evals-table-header';
+    const isA11yMode = currentMetricMode === 'a11y';
+    /** @param {'default' | 'uplift' | 'a11y' | 'time' | 'tokens'} col
+     * @param {string} label
+     * @param {string} [sub] */
+    const sortBtn = (col, label, sub = '') => {
+        const isSorted = currentTaskSort === col && col !== 'default';
+        const arrow = isSorted ? (currentTaskSortDir === 'asc' ? ' ↑' : ' ↓') : '';
+        const ariaSort = isSorted ? (currentTaskSortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+        return `<button type="button" class="eval-col-sort-btn${isSorted ? ' active' : ''}" data-sort="${col}" aria-sort="${ariaSort}"><span>${label}${arrow}</span>${sub ? `<span class="eval-col-sub">${sub}</span>` : ''}</button>`;
+    };
+    header.innerHTML = `
+        <div class="eval-col-task">${sortBtn('default', 'Guide / Task')}</div>
+        ${isA11yMode ? '' : `<div class="eval-col-a11y">${sortBtn('a11y', 'A11y')}</div>`}
+        <div class="eval-col-time">${sortBtn('time', 'Duration', 'Unguided / Guided')}</div>
+        <div class="eval-col-tokens">${sortBtn('tokens', 'Tokens', 'Unguided / Guided')}</div>
+        <div class="eval-col-dumbbell"><span>Pass rate</span><span class="eval-col-sub">Unguided → Guided</span></div>
+        <div class="eval-col-uplift">${sortBtn('uplift', 'Uplift')}</div>
+    `;
+    header.querySelectorAll('.eval-col-sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const col = /** @type {'default' | 'uplift' | 'a11y' | 'time' | 'tokens'} */ (btn.getAttribute('data-sort') || 'default');
+            if (col === 'default') {
+                currentTaskSort = 'default';
+                currentTaskSortDir = 'desc';
+            } else if (currentTaskSort === col) {
+                currentTaskSortDir = currentTaskSortDir === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentTaskSort = col;
+                currentTaskSortDir = (col === 'time' || col === 'tokens') ? 'asc' : 'desc';
+            }
+            const url = new URL(window.location.href);
+            if (currentTaskSort === 'default') {
+                url.searchParams.delete('sort');
+            } else {
+                url.searchParams.set('sort', `${currentTaskSort}-${currentTaskSortDir}`);
+            }
+            window.history.replaceState({}, '', url);
+            if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+        });
+    });
+    return header;
+}
+
 /** @param {DashboardEvalsReport} data
  * @param {string} testId */
 async function renderGridOnce(data, testId) {
@@ -1029,46 +1198,129 @@ async function renderGridOnce(data, testId) {
     }
     const scenarios = await scenariosPromise;
     if (seq !== gridRenderSeq) return;
-    const filteredScenarios = currentMetricMode === 'a11y'
+    const baseScenarios = currentMetricMode === 'a11y'
         ? scenarios.filter(s => s.a11yCheckCount > 0)
         : scenarios.slice();
-    if (currentTaskSort === 'uplift-desc') { filteredScenarios.sort((a, b) => ((b.uplift ?? -999) - (a.uplift ?? -999)) || ((b.guidedAvg ?? -1) - (a.guidedAvg ?? -1))); } else if (currentTaskSort === 'uplift-asc') { filteredScenarios.sort((a, b) => ((a.uplift ?? 999) - (b.uplift ?? 999)) || ((a.guidedAvg ?? 999) - (b.guidedAvg ?? 999))); } else if (currentTaskSort === 'a11y-desc') {
-        filteredScenarios.sort((a, b) => (b.a11yCheckCount > 0 ? 1 : 0) - (a.a11yCheckCount > 0 ? 1 : 0) || ((b.a11yUplift ?? -999) - (a.a11yUplift ?? -999)) || (b.a11yCheckCount - a.a11yCheckCount));
-    } else if (currentTaskSort === 'time-saved') { filteredScenarios.sort((a, b) => ((a.runtimeDeltaMs ?? 999999999) - (b.runtimeDeltaMs ?? 999999999))); } else if (currentTaskSort === 'time-overhead') { filteredScenarios.sort((a, b) => ((b.runtimeDeltaMs ?? -999999999) - (a.runtimeDeltaMs ?? -999999999))); } else if (currentTaskSort === 'tokens-saved') { filteredScenarios.sort((a, b) => ((a.uncachedDeltaTokens ?? 999999999) - (b.uncachedDeltaTokens ?? 999999999))); }
+    renderEvalFilterControls(baseScenarios);
+
+    const filteredScenarios = baseScenarios.filter(s => {
+        if (currentCategoryFilter !== 'all' && s.category !== currentCategoryFilter) return false;
+        if (currentTextFilter) {
+            const displayApp = s.appName === 'task' ? 'gen1' : s.appName;
+            const hay = `${s.guide} ${displayApp} ${s.categoryLabel} ${s.featureIds.join(' ')}`.toLowerCase();
+            if (!hay.includes(currentTextFilter)) return false;
+        }
+        return true;
+    });
+
+    const countEl = document.getElementById('evals-count');
+    if (countEl) {
+        countEl.textContent = filteredScenarios.length === baseScenarios.length
+            ? `${baseScenarios.length} evals`
+            : `${filteredScenarios.length} of ${baseScenarios.length} evals`;
+    }
+    const sortResetBtn = document.getElementById('eval-sort-reset');
+    if (sortResetBtn) {
+        sortResetBtn.hidden = currentTaskSort === 'default';
+    }
+
+    const dir = currentTaskSortDir === 'asc' ? 1 : -1;
+    if (currentTaskSort === 'default') {
+        filteredScenarios.sort((a, b) => compareCategories(a.category, b.category) || a.guide.localeCompare(b.guide) || a.appName.localeCompare(b.appName));
+    } else {
+        /** @param {ScenarioItem} item */
+        const getSortVal = (item) => {
+            if (currentTaskSort === 'uplift') return currentMetricMode === 'a11y' ? item.a11yUplift : item.uplift;
+            if (currentTaskSort === 'a11y') return item.a11yCheckCount > 0 ? item.a11yUplift : null;
+            if (currentTaskSort === 'time') return item.runtimeDeltaMs;
+            return item.uncachedDeltaTokens;
+        };
+        filteredScenarios.sort((a, b) => {
+            const av = getSortVal(a);
+            const bv = getSortVal(b);
+            if (av === null && bv === null) return 0;
+            if (av === null) return 1;
+            if (bv === null) return -1;
+            const diff = (av - bv) * dir;
+            return currentTaskSort === 'a11y' && diff === 0 ? b.a11yCheckCount - a.a11yCheckCount : diff;
+        });
+    }
+
     sortedScenarios = filteredScenarios.map(item => item.scenarioName);
-    if (accordionCache.data !== data || accordionCache.mode !== currentMetricMode || accordionCache.testId !== testId) {
+    const cacheKeyMode = `${currentMetricMode}|${currentTaskSort === 'default' ? 'grouped' : 'flat'}`;
+    if (accordionCache.data !== data || accordionCache.mode !== cacheKeyMode || accordionCache.testId !== testId) {
         accordionCache.data = data;
-        accordionCache.mode = currentMetricMode;
+        accordionCache.mode = cacheKeyMode;
         accordionCache.testId = testId;
         accordionCache.nodes = new Map();
     }
     if (!guideGrid) return;
-    const canMoveInPlace = 'moveBefore' in Element.prototype
-        && guideGrid.children.length === filteredScenarios.length
-        && filteredScenarios.every(item => accordionCache.nodes.get(item.scenarioName)?.parentElement === guideGrid);
-    if (canMoveInPlace) {
-        for (const item of filteredScenarios) {
-            const accordion = accordionCache.nodes.get(item.scenarioName);
-            if (accordion) {
-                /** @type {HTMLElement & { moveBefore(node: Node, child: Node | null): void }} */
-(guideGrid).moveBefore(accordion, null);
-            }
-        }
+    guideGrid.classList.toggle('is-a11y-mode', currentMetricMode === 'a11y');
+    guideGrid.replaceChildren();
+    guideGrid.append(buildEvalsTableHeader());
+
+    if (filteredScenarios.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'evals-empty-state';
+        empty.textContent = 'No matching evals.';
+        guideGrid.append(empty);
         return;
     }
-    guideGrid.replaceChildren();
+
     let fragment = document.createDocumentFragment();
     let deadline = performance.now() + YIELD_BUDGET_MS;
-    for (const item of filteredScenarios) {
-        let accordion = accordionCache.nodes.get(item.scenarioName);
-        if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.scenarioName, accordion); }
-        fragment.append(accordion);
-        if (performance.now() >= deadline) {
-            guideGrid.append(fragment);
-            await yieldToMain();
-            if (seq !== gridRenderSeq) return;
-            fragment = document.createDocumentFragment();
-            deadline = performance.now() + YIELD_BUDGET_MS;
+    const flushIfNeeded = async () => {
+        if (performance.now() < deadline) return true;
+        guideGrid.append(fragment);
+        await yieldToMain();
+        if (seq !== gridRenderSeq) return false;
+        fragment = document.createDocumentFragment();
+        deadline = performance.now() + YIELD_BUDGET_MS;
+        return true;
+    };
+
+    if (currentTaskSort === 'default' && currentCategoryFilter === 'all') {
+        const byCat = Map.groupBy(filteredScenarios, item => item.category);
+        for (const [cat, items] of byCat.entries()) {
+            const section = document.createElement('div');
+            section.className = 'eval-category-section';
+            if (collapsedCategories.has(cat)) section.classList.add('collapsed');
+            const validUplifts = items
+                .map(i => currentMetricMode === 'a11y' ? i.a11yUplift : i.uplift)
+                .filter((/** @type {number | null} */ v) => v !== null);
+            const avgUplift = validUplifts.length > 0
+                ? Math.round(validUplifts.reduce((sum, v) => sum + v, 0) / validUplifts.length)
+                : null;
+            const catHeader = document.createElement('button');
+            catHeader.type = 'button';
+            catHeader.className = 'eval-category-header';
+            catHeader.setAttribute('aria-expanded', collapsedCategories.has(cat) ? 'false' : 'true');
+            catHeader.innerHTML = `
+                <span class="eval-category-title"><span class="chevron" aria-hidden="true">▼</span> ${escapeHtml(formatCategoryLabel(cat))}</span>
+                <span class="eval-category-meta">${items.length} ${items.length === 1 ? 'eval' : 'evals'}${avgUplift !== null ? ` · <strong class="${avgUplift > 0 ? 'positive' : avgUplift < 0 ? 'negative' : ''}">${avgUplift >= 0 ? '+' : ''}${avgUplift} pp avg</strong>` : ''}</span>
+            `;
+            const body = document.createElement('div');
+            body.className = 'eval-category-body';
+            catHeader.addEventListener('click', () => {
+                const isCollapsed = section.classList.toggle('collapsed');
+                if (isCollapsed) collapsedCategories.add(cat); else collapsedCategories.delete(cat);
+                catHeader.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+            });
+            for (const item of items) {
+                let accordion = accordionCache.nodes.get(item.scenarioName);
+                if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.scenarioName, accordion); }
+                body.append(accordion);
+            }
+            section.append(catHeader, body);
+            fragment.append(section);
+            if (!(await flushIfNeeded())) return;
+        }
+    } else {
+        for (const item of filteredScenarios) {
+            let accordion = accordionCache.nodes.get(item.scenarioName);
+            if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.scenarioName, accordion); }
+            fragment.append(accordion);
+            if (!(await flushIfNeeded())) return;
         }
     }
     guideGrid.append(fragment);
@@ -1079,7 +1331,7 @@ async function renderGridOnce(data, testId) {
  * @returns {HTMLElement} */
 function buildAccordion(item, testId) {
     const {
-        appName, guide, scenarioName, unguidedRuns, guidedRuns,
+        appName, guide, scenarioName, categoryLabel, featureIds, unguidedRuns, guidedRuns,
         unguidedAvg, guidedAvg, uplift,
         a11yUnguidedAvg, a11yGuidedAvg, a11yUplift, a11yCheckCount,
         uRuntimeMs, gRuntimeMs, uUncachedTokens, gUncachedTokens,
@@ -1099,10 +1351,32 @@ function buildAccordion(item, testId) {
     const scale = (/** @type {number} */ val) => `${val}%`;
     const modeParam = currentMetricMode === 'a11y' ? '&mode=a11y' : '';
     const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}${modeParam}`;
-    const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(formatTestName(scenarioName))}"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
-    const a11yPillHtml = a11yCheckCount > 0 ? (a11yUplift !== null ? `<span class="a11y-task-pill"> ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp) <span class="visually-hidden">accessibility checks: unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%</span> </span>` : `<span class="a11y-task-pill"> ${a11yCheckCount} a11y </span>`) : '';
-    const metaChipsHtml = ` <div class="task-efficiency-meta"> ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average completion time, unguided to guided: </span><span aria-hidden="true">⏱</span> ${formatDuration(uRuntimeMs)} → ${formatDuration(gRuntimeMs)}</span>` : ''}
-            ${(uUncachedTokens > 0 || gUncachedTokens > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span aria-hidden="true">🪙</span> ${formatTokens(uUncachedTokens)} → ${formatTokens(gUncachedTokens)}</span>` : ''} </div> `;
+    const displayAppName = appName === 'task' ? 'gen1' : appName;
+    const appSuffixHtml = displayAppName && displayAppName !== 'daily-grind'
+        ? ` <span class="task-app-tag">(${escapeHtml(displayAppName)})</span>`
+        : '';
+    const trendLabel = `View trend over time for ${escapeHtml(guide)} (${escapeHtml(appName)})`;
+    const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="${trendLabel}" title="${trendLabel}"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
+    const primaryFeatureId = featureIds[0] || '';
+    const featureChipHtml = primaryFeatureId && primaryFeatureId !== guide
+        ? `<span class="feature-chip">${escapeHtml(primaryFeatureId)}</span>`
+        : '';
+    const rowCategoryHtml = currentTaskSort !== 'default'
+        ? `<span class="row-category-tag">${escapeHtml(categoryLabel)}</span>`
+        : '';
+    const a11yColHtml = currentMetricMode === 'a11y' ? '' : (
+        a11yCheckCount > 0
+            ? `<div class="task-a11y-col"><span class="visually-hidden">Accessibility checks: ${a11yCheckCount} checks, unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%, change </span><span class="metric-before">${a11yCheckCount} ${a11yCheckCount === 1 ? 'check' : 'checks'}</span><span class="metric-after ${a11yUplift !== null && a11yUplift > 0 ? 'positive' : a11yUplift !== null && a11yUplift < 0 ? 'negative' : ''}">${a11yUplift !== null ? `${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp` : '—'}</span></div>`
+            : `<div class="task-a11y-col"><span class="metric-empty">—</span></div>`
+    );
+    const hasRuntime = uRuntimeMs > 0 || gRuntimeMs > 0;
+    const hasTokens = uUncachedTokens > 0 || gUncachedTokens > 0;
+    const timeColHtml = hasRuntime
+        ? `<div class="task-metric-stack"><span class="visually-hidden">Average duration, unguided to guided: </span><span class="metric-before">${formatDuration(uRuntimeMs)}</span><span class="metric-after">${formatDuration(gRuntimeMs)}</span></div>`
+        : '<div class="task-metric-stack"><span class="metric-empty">—</span></div>';
+    const tokensColHtml = hasTokens
+        ? `<div class="task-metric-stack"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span class="metric-before">${formatTokens(uUncachedTokens)}</span><span class="metric-after">${formatTokens(gUncachedTokens)}</span></div>`
+        : '<div class="task-metric-stack"><span class="metric-empty">—</span></div>';
     const contentId = `${accordion.id}-content`;
     /** @type {string[]} */
     const hintPopovers = [];
@@ -1127,27 +1401,26 @@ function buildAccordion(item, testId) {
     const invalidBadgeHtml = displayUplift === null
         ? hintButton('invalid', '', 'INVALID', HINT_TEXT.invalid)
         : '';
-    accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="chevron" aria-hidden="true">▶</span>
-                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
-                        <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
+    const badgesHtml = [featureChipHtml, rowCategoryHtml, infraBadgeHtml, buildBadgeHtml, leakBadgeHtml].filter(Boolean).join('');
+    accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <div class="task-title-row"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="expand-icon" aria-hidden="true"></span>
+                        <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(guide)}${appSuffixHtml}</span>
                     </button>
                 </h3>
                 ${trendLinkHtml}
-                ${a11yPillHtml}
-                ${infraBadgeHtml}
-                ${buildBadgeHtml}
-                ${leakBadgeHtml}
             </div>
-            <div class="right-section">
-                ${metaChipsHtml}
-                <div class="mini-dumbbell-track" aria-hidden="true">
-                    ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
-                    ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
-                    ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
-                </div>
-                ${displayUplift !== null ? `<div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}"> <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp </div>` : ` <div class="uplift-score invalid"> ${invalidBadgeHtml}
-                </div>
-                `} </div> </div> <div class="task-accordion-content" id="${contentId}" hidden="until-found"> <div class="task-accordion-body"> <div class="task-details-grid"> <div class="task-prompt-slot"><div class="expansion-loading">Loading details...</div></div> ${buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns)}
+            ${badgesHtml ? `<div class="task-badges-row">${badgesHtml}</div>` : ''}
+            </div>
+            ${a11yColHtml}
+            ${timeColHtml}
+            ${tokensColHtml}
+            <div class="mini-dumbbell-track" aria-hidden="true">
+                ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
+                ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
+                ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
+            </div>
+            ${displayUplift !== null ? `<div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}"> <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp </div>` : ` <div class="uplift-score invalid"> ${invalidBadgeHtml}
+            </div>
+            `} </div> <div class="task-accordion-content" id="${contentId}" hidden="until-found"> <div class="task-accordion-body"> <div class="task-details-grid"> <div class="task-prompt-slot"><div class="expansion-loading">Loading details...</div></div> ${buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns)}
                 </div>
             </div>
         </div>
@@ -1287,25 +1560,32 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                 if (!paths) return;
                 const { usedBasePath } = paths;
 
-                let promptText = '';
-                try {
-                    const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
-                    const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
-                    if (match) {
-                        const arrayStr = `[${match[1]}]`;
-                        const arr = JSON.parse(arrayStr);
-                        promptText = arr[1];
-                        const baseAppPath = arr[4];
-                        if (baseAppPath) baseApp = sampleRun.baseApp || baseAppPath.split('/').pop();
+                let promptText = sampleRun.prompt || '';
+                if (sampleRun.baseApp) baseApp = sampleRun.baseApp;
+                if (!promptText) {
+                    try {
+                        const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
+                        const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
+                        if (match) {
+                            const arrayStr = `[${match[1]}]`;
+                            const arr = JSON.parse(arrayStr);
+                            promptText = arr[1];
+                            const baseAppPath = arr[4];
+                            if (baseAppPath) baseApp = sampleRun.baseApp || baseAppPath.split('/').pop();
+                        }
+                    } catch (e) {
+                        console.log('Falling back to living guide file:', e);
                     }
-                } catch (e) {
-                    console.log('Falling back to living guide file:', e);
                 }
 
-                // Fallback to HEAD guide if run.mjs parsing fails
+                // Fallback to living guide target task.md if run.mjs parsing fails
                 if (!promptText) {
-                    const isNegative = sampleRun.taskName.endsWith('-negative');
-                    const taskPath = `tasks/${isNegative ? 'negative/' : ''}${sampleRun.taskName}.md`;
+                    const parsed = parseResultKey(`${scenarioName} - ${typeLabel}`);
+                    const guideName = parsed?.guide || '';
+                    const targetApp = parsed?.task || sampleRun.baseApp || 'daily-grind';
+                    const catMap = await loadGuideCategoryMap();
+                    const catDir = catMap.get(guideName)?.dir || guideName;
+                    const taskPath = `guides/${catDir}/${guideName}/targets/${targetApp}/task.md`;
                     const text = await api.getFileText(taskPath);
 
                     const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
@@ -1407,8 +1687,8 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                          }
                          ${isLeak ? `<span class="run-chip-leak">Unguided Leak<span class="visually-hidden">: accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}</span></span>` : ''}
                          ${buildFailureReason ? `<details class="tfoot-chip-details"><summary class="tfoot-chip-build-failed">Build Failed</summary><p class="tfoot-chip-msg">${escapeHtml(buildFailureReason)}</p></details>` : ''}
-                         ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent time: </span>${formatDuration(taskRuntime)}</span>` : ''}
-                         ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)} uncached<span class="visually-hidden">, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
+                         ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent duration: </span>${formatDuration(taskRuntime)}</span>` : ''}
+                         ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)}<span class="visually-hidden"> uncached tokens, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
                          <div class="tfoot-chip-actions">
                              ${sessionFile ? `<button type="button" class="tfoot-action-btn" data-action="trajectory" data-base-path="${escapeHtml(usedBasePath)}" data-session-file="${escapeHtml(sessionFile)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
                              ${patchFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${patchFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${patchFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button type="button" class="tfoot-action-btn" data-action="diff" data-setup-path="${escapeHtml(setupPath)}" data-result-path="${escapeHtml(resultPath)}" data-scenario-name="${escapeHtml(scenarioName)}" data-run-number="${run.runNumber}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
@@ -2063,6 +2343,8 @@ function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
                     const accordionEl = (task && document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"][data-task="${CSS.escape(task)}"]`))
                         || document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"]`);
                     if (accordionEl) {
+                        const catSection = accordionEl.closest('.eval-category-section.collapsed');
+                        if (catSection) /** @type {HTMLElement | null} */ ($('.eval-category-header', catSection))?.click();
                         accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                         if (!accordionEl.classList.contains('open')) {
                             const header = $('.task-accordion-header', accordionEl);
