@@ -4,15 +4,18 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
+  getHtmlDocuments,
+  getJsProject,
 } from '../../../../../src/grading/test-fixture.ts';
 import {
+  parse,
   CSSRule,
   CSSGroupingRule,
   CSSStyleRule,
   CSSContainerRule,
-  type CSSStyleSheet,
 } from 'cssomnom';
+import { parseHTML } from 'linkedom';
+import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
 
 // @ts-expect-error TS1470: Playwright executes grader.ts as an ES module where import.meta.url is available
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -44,112 +47,237 @@ function collectAllCssRules(ruleList: Iterable<CSSRule>): CSSRule[] {
   return result;
 }
 
-function isHostSelector(selectorText: string): boolean {
-  return /(^|,)\s*:host(\b|\(|$)/.test(selectorText) && !selectorText.includes(':host-context(');
+function parseCssBlock(cssText: string): CSSRule[] {
+  if (!cssText.trim()) return [];
+  try {
+    const sheet = parse(cssText);
+    return collectAllCssRules(Array.from(sheet.cssRules));
+  } catch {
+    return [];
+  }
+}
+
+function unwrapExpression(node: Node | undefined): Node | undefined {
+  let current = node;
+  while (
+    current &&
+    (Node.isParenthesizedExpression(current) ||
+      Node.isAsExpression(current) ||
+      Node.isTypeAssertion(current) ||
+      Node.isSatisfiesExpression(current) ||
+      Node.isNonNullExpression(current))
+  ) {
+    current = current.getExpression();
+  }
+  return current;
+}
+
+function resolveStaticString(
+  node: Node | undefined,
+  sourceFile: SourceFile,
+  visited = new Set<string>()
+): string | undefined {
+  const target = unwrapExpression(node);
+  if (!target) return undefined;
+
+  if (Node.isStringLiteral(target) || Node.isNoSubstitutionTemplateLiteral(target)) {
+    return target.getLiteralValue();
+  }
+
+  if (Node.isTemplateExpression(target)) {
+    let text = target.getHead().getLiteralText();
+    for (const span of target.getTemplateSpans()) {
+      const exprText = resolveStaticString(span.getExpression(), sourceFile, visited);
+      text += (exprText ?? '') + span.getLiteral().getLiteralText();
+    }
+    return text;
+  }
+
+  if (Node.isIdentifier(target)) {
+    const name = target.getText();
+    if (visited.has(name)) return undefined;
+    visited.add(name);
+    const decl = sourceFile
+      .getDescendantsOfKind(SyntaxKind.VariableDeclaration)
+      .find((d) => d.getName() === name);
+    if (decl) {
+      return resolveStaticString(decl.getInitializer(), sourceFile, visited);
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Extracts CSS rules from the outer Light DOM page stylesheets (.css files and
+ * document <style> elements outside of <template> trees) using Linkedom + CSSOMNom.
+ */
+function getOuterCssRules(files: string[]): CSSRule[] {
+  const rules: CSSRule[] = [];
+
+  for (const file of files) {
+    if (file.endsWith('.css') && fs.existsSync(file) && fs.statSync(file).isFile()) {
+      rules.push(...parseCssBlock(fs.readFileSync(file, 'utf-8')));
+    }
+  }
+
+  for (const { document } of getHtmlDocuments(files)) {
+    document.querySelectorAll('style').forEach((styleEl: any) => {
+      if (styleEl.closest?.('template')) return;
+      if (styleEl.textContent) {
+        rules.push(...parseCssBlock(styleEl.textContent));
+      }
+    });
+  }
+
+  return rules;
+}
+
+/**
+ * Extracts CSS rules from component shadow stylesheets using Linkedom (<template> trees
+ * and HTML fragments) and ts-morph (CSSStyleSheet.replaceSync / replace calls and
+ * shadow template HTML strings).
+ */
+function getShadowCssRules(files: string[]): CSSRule[] {
+  const rules: CSSRule[] = [];
+  const extractStylesFromHtmlFragment = (html: string) => {
+    if (!html.includes('<style')) return;
+    try {
+      const { document } = parseHTML(html);
+      document.querySelectorAll('style').forEach((styleEl: any) => {
+        if (styleEl.textContent) {
+          rules.push(...parseCssBlock(styleEl.textContent));
+        }
+      });
+    } catch {
+      // ignore malformed HTML fragment
+    }
+  };
+
+  // 1. HTML <template> elements via Linkedom
+  for (const { document } of getHtmlDocuments(files)) {
+    document.querySelectorAll('template').forEach((tmpl: any) => {
+      const html = tmpl.innerHTML || tmpl.content?.innerHTML || '';
+      extractStylesFromHtmlFragment(html);
+    });
+  }
+
+  // 2. JS/TS AST via ts-morph (template innerHTML strings and Constructable Stylesheets)
+  const project = getJsProject(files);
+  for (const sf of project.getSourceFiles()) {
+    // 2a. Calls to sheet.replaceSync(css) or sheet.replace(css)
+    for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+      const callee = unwrapExpression(call.getExpression());
+      if (Node.isPropertyAccessExpression(callee)) {
+        const method = callee.getName();
+        if (method === 'replaceSync' || method === 'replace') {
+          const cssArg = resolveStaticString(call.getArguments()[0], sf);
+          if (cssArg) {
+            rules.push(...parseCssBlock(cssArg));
+          }
+        }
+      }
+    }
+
+    // 2b. String/template literals containing <style> markup (e.g. template.innerHTML = `...`)
+    for (const node of [
+      ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+      ...sf.getDescendantsOfKind(SyntaxKind.TemplateExpression),
+      ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
+    ]) {
+      if (Node.isTemplateExpression(node.getParent()?.getParent())) continue;
+      const val = resolveStaticString(node, sf);
+      if (val && val.includes('<style')) {
+        extractStylesFromHtmlFragment(val);
+      }
+    }
+  }
+
+  return rules;
+}
+
+function splitTopLevelSelectors(selectorList: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of selectorList) {
+    if (ch === '(' || ch === '[') depth++;
+    else if (ch === ')' || ch === ']') depth = Math.max(0, depth - 1);
+    if (ch === ',' && depth === 0) {
+      parts.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+/**
+ * Matches a selector list where at least one selector targets `:host` or `:host(...)`
+ * directly as the subject (not a descendant like `:host .child` and not `:host-context()`).
+ */
+function isHostSubjectSelector(selectorText: string): boolean {
+  if (selectorText.includes(':host-context(')) return false;
+  return splitTopLevelSelectors(selectorText).some((sel) => {
+    if (!sel.startsWith(':host')) return false;
+    const rest = sel.slice(':host'.length);
+    if (rest === '') return true;
+    if (!rest.startsWith('(')) return false;
+    // Walk balanced parentheses after :host(
+    let depth = 0;
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i] === '(') depth++;
+      else if (rest[i] === ')') {
+        depth--;
+        if (depth === 0) {
+          const afterHostFn = rest.slice(i + 1);
+          // Allow pseudo-classes on the host itself (e.g. :host([variant]):hover), but no combinators/whitespace outside parens
+          return !/[\s>+~]/.test(afterHostFn);
+        }
+      }
+    }
+    return false;
+  });
+}
+
+/**
+ * Matches a selector list containing an unconditional `:host` selector.
+ */
+function isPlainHostSelector(selectorText: string): boolean {
+  return splitTopLevelSelectors(selectorText).some((sel) => sel === ':host');
 }
 
 test.describe('styling-web-components Target Grader', () => {
   // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
 
   test("The component's shadow stylesheet sets the host's display with a :host rule", () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(Array.from(stylesheet.cssRules));
-    const hostRules = allRules.filter(
-      (r): r is CSSStyleRule => r instanceof CSSStyleRule && isHostSelector(r.selectorText)
+    const shadowRules = getShadowCssRules(targetFiles);
+    const plainHostRules = shadowRules.filter(
+      (r): r is CSSStyleRule => r instanceof CSSStyleRule && isPlainHostSelector(r.selectorText)
     );
 
-    expect(hostRules.length).toBeGreaterThan(0);
+    expect(plainHostRules.length).toBeGreaterThan(0);
 
-    const setsHostDisplay = hostRules.some(
+    const setsHostDisplay = plainHostRules.some(
       (r) => r.style.getPropertyValue('display').trim().length > 0
     );
     expect(setsHostDisplay).toBe(true);
   });
 
   test("The component's shadow stylesheet does not use :host-context()", () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(Array.from(stylesheet.cssRules));
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+    const shadowRules = getShadowCssRules(targetFiles);
+    const styleRules = shadowRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
 
-    const hostRules = styleRules.filter((r) => isHostSelector(r.selectorText));
+    const hostRules = styleRules.filter((r) => isHostSubjectSelector(r.selectorText));
     expect(hostRules.length).toBeGreaterThan(0);
 
     const hostContextRules = styleRules.filter((r) => r.selectorText.includes(':host-context('));
     expect(hostContextRules).toHaveLength(0);
   });
 
-  test('Public theming custom properties are read with a var() fallback and are not declared on :host', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(Array.from(stylesheet.cssRules));
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-
-    const hostRules = styleRules.filter((r) => isHostSelector(r.selectorText));
-    expect(hostRules.length).toBeGreaterThan(0);
-
-    const declaredOnHost = new Set<string>();
-    for (const rule of hostRules) {
-      for (let i = 0; i < rule.style.length; i++) {
-        const prop = rule.style.item(i);
-        if (prop.startsWith('--')) {
-          declaredOnHost.add(prop);
-        }
-      }
-    }
-
-    // Any custom property declared directly on :host must be a private alias (--_*)
-    const publicDeclaredOnHost = Array.from(declaredOnHost).filter(
-      (prop) => !prop.startsWith('--_')
-    );
-    expect(publicDeclaredOnHost).toHaveLength(0);
-
-    // Verify public custom properties are read with a var(--public-prop, fallback) expression
-    const publicVarWithFallbackCount = styleRules.reduce((count, rule) => {
-      let matches = 0;
-      for (let i = 0; i < rule.style.length; i++) {
-        const prop = rule.style.item(i);
-        const val = rule.style.getPropertyValue(prop);
-        if (/var\(\s*--(?!_)[a-zA-Z0-9_-]+\s*,/.test(val)) {
-          matches++;
-        }
-      }
-      return count + matches;
-    }, 0);
-
-    expect(publicVarWithFallbackCount).toBeGreaterThan(0);
-  });
-
-  test('The outer stylesheet uses ::part() to style exposed shadow parts', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(Array.from(stylesheet.cssRules));
-    const partRules = allRules.filter(
-      (r): r is CSSStyleRule =>
-        r instanceof CSSStyleRule && r.selectorText.includes('::part(') && r.style.length > 0
-    );
-
-    expect(partRules.length).toBeGreaterThan(0);
-  });
-
-  test('The shadow stylesheet defines container-type: inline-size and a @container rule', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(Array.from(stylesheet.cssRules));
-
-    const containerRules = allRules.filter(
-      (r): r is CSSContainerRule => r instanceof CSSContainerRule && r.cssRules.length > 0
-    );
-    expect(containerRules.length).toBeGreaterThan(0);
-
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-    const hasInlineSizeContainer = styleRules.some((r) => {
-      const containerType = r.style.getPropertyValue('container-type');
-      const containerShorthand = r.style.getPropertyValue('container');
-      return (
-        /\binline-size\b/.test(containerType) || /\binline-size\b/.test(containerShorthand)
-      );
-    });
-    expect(hasInlineSizeContainer).toBe(true);
-  });
-
-  // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
+  // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR + PARSER VERIFICATION) ---
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page }) => {
@@ -178,18 +306,53 @@ test.describe('styling-web-components Target Grader', () => {
       await page.goto('http://localhost/index.html');
     });
 
-    test('Setting a public theming custom property on a Light DOM ancestor changes an internal element computed style', async ({
+    test("Public theming custom properties (such as --card-bg) are read with a var() fallback and are not declared on :host; private aliases on :host that read them (such as --_card-bg: var(--card-bg, white)) are allowed. Setting the public property on any Light DOM ancestor changes the host's or an internal element's computed style", async ({
       page,
     }) => {
+      // 1. Static shadow CSSOM check: public custom properties are read with var() fallback and not declared on :host
+      const shadowRules = getShadowCssRules(targetFiles);
+      const styleRules = shadowRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+
+      const hostRules = styleRules.filter((r) => isHostSubjectSelector(r.selectorText));
+      expect(hostRules.length).toBeGreaterThan(0);
+
+      const declaredOnHost = new Set<string>();
+      for (const rule of hostRules) {
+        for (let i = 0; i < rule.style.length; i++) {
+          const prop = rule.style.item(i);
+          if (prop.startsWith('--')) {
+            declaredOnHost.add(prop);
+          }
+        }
+      }
+
+      const publicDeclaredOnHost = Array.from(declaredOnHost).filter(
+        (prop) => !prop.startsWith('--_')
+      );
+      expect(publicDeclaredOnHost).toHaveLength(0);
+
+      const publicVarWithFallbackCount = styleRules.reduce((count, rule) => {
+        let matches = 0;
+        for (let i = 0; i < rule.style.length; i++) {
+          const prop = rule.style.item(i);
+          const val = rule.style.getPropertyValue(prop);
+          if (/var\(\s*--(?!_)[a-zA-Z0-9_-]+\s*,/.test(val)) {
+            matches++;
+          }
+        }
+        return count + matches;
+      }, 0);
+      expect(publicVarWithFallbackCount).toBeGreaterThan(0);
+
+      // 2. Runtime check: setting the public custom property on a Light DOM ancestor changes host or internal element computed style
       const result = await page.evaluate(() => {
         const customElementsWithShadow = Array.from(document.querySelectorAll('main *')).filter(
           (el): el is HTMLElement => el.tagName.includes('-') && Boolean(el.shadowRoot)
         );
         if (customElementsWithShadow.length === 0) {
-          return { cardCount: 0, internalStyleChanged: false };
+          return { cardCount: 0, styleChanged: false };
         }
 
-        // Collect all public custom property names (--name, not --_name) referenced via var() in shadow stylesheets
         const publicProps = new Set<string>();
         for (const host of customElementsWithShadow) {
           const shadow = host.shadowRoot!;
@@ -209,14 +372,13 @@ test.describe('styling-web-components Target Grader', () => {
             }
           }
           const combined = styleTexts.join('\n');
-          const matches = combined.matchAll(/var\(\s*(--(?!_)[a-zA-Z0-9_-]+)/g);
-          for (const m of matches) {
+          for (const m of combined.matchAll(/var\(\s*(--(?!_)[a-zA-Z0-9_-]+)/g)) {
             publicProps.add(m[1]);
           }
         }
 
         if (publicProps.size === 0) {
-          return { cardCount: customElementsWithShadow.length, internalStyleChanged: false };
+          return { cardCount: customElementsWithShadow.length, styleChanged: false };
         }
 
         const testColor = 'rgb(18, 52, 86)';
@@ -230,16 +392,14 @@ test.describe('styling-web-components Target Grader', () => {
           'outlineColor',
         ] as const;
 
-        // Snapshot host and internal element styles before setting custom properties on the Light DOM ancestor
         const beforeSnapshots = customElementsWithShadow.map((host) => {
-          const internals = [host, ...Array.from(host.shadowRoot!.querySelectorAll('*'))];
-          return internals.map((el) => {
+          const elements = [host, ...Array.from(host.shadowRoot!.querySelectorAll('*'))];
+          return elements.map((el) => {
             const cs = window.getComputedStyle(el);
             return trackedProps.map((p) => cs[p]);
           });
         });
 
-        // Set public custom properties on the Light DOM parent of the cards
         const ancestors = new Set<HTMLElement>();
         for (const host of customElementsWithShadow) {
           if (host.parentElement) {
@@ -252,22 +412,21 @@ test.describe('styling-web-components Target Grader', () => {
           }
         }
 
-        let internalStyleChanged = false;
+        let styleChanged = false;
         customElementsWithShadow.forEach((host, hostIdx) => {
-          const internals = [host, ...Array.from(host.shadowRoot!.querySelectorAll('*'))];
-          internals.forEach((el, elIdx) => {
+          const elements = [host, ...Array.from(host.shadowRoot!.querySelectorAll('*'))];
+          elements.forEach((el, elIdx) => {
             const cs = window.getComputedStyle(el);
             const before = beforeSnapshots[hostIdx][elIdx];
             trackedProps.forEach((p, propIdx) => {
               const afterVal = cs[p];
               if (afterVal !== before[propIdx] && afterVal === testColor) {
-                internalStyleChanged = true;
+                styleChanged = true;
               }
             });
           });
         });
 
-        // Clean up ancestor inline styles
         for (const ancestor of ancestors) {
           for (const prop of publicProps) {
             ancestor.style.removeProperty(prop);
@@ -276,17 +435,26 @@ test.describe('styling-web-components Target Grader', () => {
 
         return {
           cardCount: customElementsWithShadow.length,
-          internalStyleChanged,
+          styleChanged,
         };
       });
 
       expect(result.cardCount).toBeGreaterThan(0);
-      expect(result.internalStyleChanged).toBe(true);
+      expect(result.styleChanged).toBe(true);
     });
 
-    test('The shadow tree exposes internal elements via part and the outer stylesheet changes their computed styles via ::part()', async ({
+    test('The shadow tree exposes designated internal elements via the part attribute, and the outer stylesheet styles them across the shadow boundary using the ::part() pseudo-element to change their computed styles', async ({
       page,
     }) => {
+      // 1. Static outer CSSOM check: outer Light DOM stylesheet contains ::part() rules
+      const outerRules = getOuterCssRules(targetFiles);
+      const partRules = outerRules.filter(
+        (r): r is CSSStyleRule =>
+          r instanceof CSSStyleRule && r.selectorText.includes('::part(') && r.style.length > 0
+      );
+      expect(partRules.length).toBeGreaterThan(0);
+
+      // 2. Runtime check: shadow tree exposes [part] elements and outer ::part() rules change their computed style
       const result = await page.evaluate(() => {
         const customElementsWithShadow = Array.from(document.querySelectorAll('main *')).filter(
           (el): el is HTMLElement => el.tagName.includes('-') && Boolean(el.shadowRoot)
@@ -341,9 +509,27 @@ test.describe('styling-web-components Target Grader', () => {
       expect(result.partStyleChanged).toBe(true);
     });
 
-    test('The inline-size container has a display other than inline or contents and @container changes an internal element computed style across its breakpoint', async ({
+    test("The element given container-type: inline-size (on the host or an internal wrapper) has a display property other than inline or contents, and a @container rule in the shadow stylesheet changes an internal element's computed style when the component's inline size crosses its breakpoint", async ({
       page,
     }) => {
+      // 1. Static shadow CSSOM check: shadow stylesheet defines container-type: inline-size and a @container rule
+      const shadowRules = getShadowCssRules(targetFiles);
+      const containerRules = shadowRules.filter(
+        (r): r is CSSContainerRule => r instanceof CSSContainerRule && r.cssRules.length > 0
+      );
+      expect(containerRules.length).toBeGreaterThan(0);
+
+      const styleRules = shadowRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+      const hasInlineSizeContainer = styleRules.some((r) => {
+        const containerType = r.style.getPropertyValue('container-type');
+        const containerShorthand = r.style.getPropertyValue('container');
+        return (
+          /\binline-size\b/.test(containerType) || /\binline-size\b/.test(containerShorthand)
+        );
+      });
+      expect(hasInlineSizeContainer).toBe(true);
+
+      // 2. Runtime check: inline-size container has display !== 'inline' / 'contents' and @container changes internal computed style across breakpoint
       const result = await page.evaluate(() => {
         const customElementsWithShadow = Array.from(document.querySelectorAll('main *')).filter(
           (el): el is HTMLElement => el.tagName.includes('-') && Boolean(el.shadowRoot)
