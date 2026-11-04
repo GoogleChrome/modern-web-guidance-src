@@ -219,9 +219,11 @@
 
     // Mandatory Aria-Invalid synchronization for Native Mode
     const syncNativeAriaInvalid = (input) => {
-      if (!input.checkValidity()) {
+      // Gate on the browser's interaction-aware state (:user-invalid/:user-valid)
+      // so fields that were only tabbed through are not announced as invalid.
+      if (input.matches(':user-invalid')) {
         input.setAttribute('aria-invalid', 'true');
-      } else {
+      } else if (input.matches(':user-valid')) {
         input.removeAttribute('aria-invalid');
       }
     };
