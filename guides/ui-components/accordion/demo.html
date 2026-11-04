@@ -55,9 +55,11 @@
 			background: var(--color-hover);
 		}
 
-		& + & {
-			margin-inline-start: 0.25rem;
-		}
+	}
+
+	[command="--toggle-all"][aria-expanded="true"] .expand,
+	[command="--toggle-all"][aria-expanded="false"] .collapse {
+		display: none;
 	}
 
 	:focus-visible {
@@ -217,8 +219,10 @@
 	<h2>Accordion using details</h2>
 	<div class="accordion" id="resources-accordion" role="region" aria-labelledby="resources">
 		<h3 id="resources">Resources</h3>
-		<button type="button" commandfor="resources-accordion" command="--expand-all">Expand all</button>
-		<button type="button" commandfor="resources-accordion" command="--collapse-all">Collapse all</button>
+		<button type="button" commandfor="resources-accordion" command="--toggle-all" aria-expanded="false">
+			<span class="expand">Expand all</span>
+			<span class="collapse">Collapse all</span>
+		</button>
 		<details open>
 			<summary>Articles</summary>
 			<p>Articles contents</p>
@@ -304,10 +308,20 @@ document.addEventListener("beforematch", event => {
 });
 
 document.addEventListener("command", event => {
-	if (event.command !== "--expand-all" && event.command !== "--collapse-all") return;
-	const expanded = event.command === "--expand-all";
+	if (event.command !== "--toggle-all") return;
+	const expand = event.source.getAttribute("aria-expanded") !== "true";
 
-	for (const details of event.target.querySelectorAll("details")) details.open = expanded;
+	for (const details of event.target.querySelectorAll(":scope > details")) details.open = expand;
+}, { capture: true });
+
+document.addEventListener("toggle", event => {
+	if (!event.target.matches(".accordion > details")) return;
+	const accordion = event.target.parentElement;
+	const button = accordion.querySelector(':scope > [command="--toggle-all"]');
+	if (!button) return;
+
+	const items = accordion.querySelectorAll(":scope > details");
+	button.setAttribute("aria-expanded", Array.prototype.every.call(items, details => details.open));
 }, { capture: true });
 
 document.addEventListener("click", event => {
