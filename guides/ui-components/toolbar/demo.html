@@ -163,18 +163,6 @@
           mask: var(--icon) center / contain no-repeat;
         }
 
-        /* Non-color cue for the toggled-on state */
-        &::after {
-          content: "";
-          position: absolute;
-          inset-block-end: 0.25rem;
-          inset-inline: 0.75rem;
-          block-size: 2px;
-          border-radius: 1px;
-          background: var(--accent);
-          opacity: 0;
-        }
-
         @media (hover: hover) {
           &:hover { --btn-bg: color-mix(in oklch, var(--ink) 8%, transparent); }
         }
@@ -192,8 +180,6 @@
         &[aria-pressed="true"] {
           --btn-bg: color-mix(in oklch, var(--accent) 20%, transparent);
           --icon-color: var(--accent);
-
-          &::after { opacity: 1; }
         }
 
         &[aria-disabled="true"] {
@@ -264,8 +250,6 @@
           gap: 0.75rem;
           padding-inline: 0.75rem;
           text-align: start;
-
-          &::after { display: none; }
         }
 
         & [aria-checked="true"] {
@@ -306,7 +290,6 @@
       @media (forced-colors: active) {
         .btn::before { background-color: ButtonText; }
         .btn[aria-pressed="true"], #more-menu [aria-checked="true"] { outline: 2px solid Highlight; }
-        .btn[aria-pressed="true"]::after { background: Highlight; }
       }
     }
   </style>
