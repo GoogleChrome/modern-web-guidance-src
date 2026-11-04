@@ -56,10 +56,6 @@ Use `view-transition-name: match-element` so you do not need to generate a name 
   view-transition-name: match-element;
 }
 
-::view-transition-group(*) {
-  animation-duration: 250ms; /* example value; keep movement brief */
-}
-
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),
