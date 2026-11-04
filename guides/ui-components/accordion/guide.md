@@ -249,7 +249,7 @@ If it’s undesirable for a `details` element’s contents to be included in wha
 ## Custom accordion
 
 Use a custom accordion only when each item is a section of the page that needs its own heading, such as a FAQ or a long reference page where screen reader users move between items by heading.
-It costs JavaScript for every behavior, including exclusivity, and loses the `::details-content` animation, so prefer `details` everywhere else.
+It costs JavaScript for every behavior, including exclusivity, so prefer `details` everywhere else.
 
 Place the `button` inside the heading so the heading keeps its semantics, and put the content element immediately after the heading.
 Hide the content with `hidden="until-found"` so it stays findable, or with plain `hidden` to exclude it from find-in-page.
