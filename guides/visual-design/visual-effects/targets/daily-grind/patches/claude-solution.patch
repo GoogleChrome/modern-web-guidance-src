@@ -1,110 +1,170 @@
 diff --git a/index.html b/index.html
-index 66c9173..bd38006 100644
+index 66c9173..81a6332 100644
 --- a/index.html
 +++ b/index.html
-@@ -88,9 +88,69 @@
-       padding: 0 20px;
+@@ -12,6 +12,18 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --in-oklab: ;
++      --in-oklch: ;
++      --pie-1: #4e342e;
++      --pie-2: #ffab40;
++      --pie-3: #8d6e63;
++    }
++
++    @supports (background: linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++        --in-oklch: in oklch;
++      }
      }
  
-+    .hero {
+     * {
+@@ -75,10 +87,15 @@
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
 +      isolation: isolate;
-+      background:
-+        linear-gradient(160deg in oklch, oklch(35% 0.08 50 / 0.85), oklch(30% 0.1 30 / 0.55) 55%, oklch(75% 0.15 70 / 0.45)),
-+        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
 +      background-color: #3e2723;
-+      background-size: cover;
-+      background-position: center;
-+      background-blend-mode: multiply, normal;
-+    }
-+
-     .hero h1 {
-       font-size: 3rem;
-       margin-bottom: 1rem;
-+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
-+    }
-+
-+    /* Seasonal cards */
-+    .card {
-+      --stripe-1: #fff;
-+      --stripe-2: #fbf6f3;
-+      background: repeating-linear-gradient(-45deg, var(--stripe-1) 0 10px, var(--stripe-2) 0 20px);
++      background-image:
++        repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.05) 0 1em, transparent 0 2em),
++        linear-gradient(to bottom var(--in-oklab), rgba(62, 39, 35, 0.45), rgba(20, 10, 8, 0.8)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background-blend-mode: normal, multiply, normal;
++      background-size: auto, auto, cover;
++      background-position: 0 0, center, center;
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -111,8 +128,69 @@
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 +      box-shadow:
-+        0 1px 1px rgba(62, 39, 35, 0.12),
-+        0 2px 2px rgba(62, 39, 35, 0.12),
-+        0 4px 4px rgba(62, 39, 35, 0.12),
-+        0 8px 8px rgba(62, 39, 35, 0.1),
-+        0 16px 16px rgba(62, 39, 35, 0.08);
++        0 1px 1px rgba(0, 0, 0, 0.08),
++        0 2px 2px rgba(0, 0, 0, 0.08),
++        0 4px 4px rgba(0, 0, 0, 0.08),
++        0 8px 8px rgba(0, 0, 0, 0.08),
++        0 16px 16px rgba(0, 0, 0, 0.08);
+       text-align: center;
++      overflow: hidden;
 +    }
 +
-+    .card:nth-child(2) {
-+      background:
-+        radial-gradient(circle, rgba(78, 52, 46, 0.12) 1.5px, transparent 2.5px) 0 0 / 14px 14px,
-+        white;
++    .card::before {
++      content: "";
++      display: block;
++      height: 14px;
++      margin: -20px -20px 16px;
++      background: repeating-conic-gradient(var(--primary) 0 25%, var(--accent) 0 50%) 0 / 14px 14px;
 +    }
 +
-+    .card:nth-child(3) {
-+      background: repeating-conic-gradient(#fff 0 25%, #f6efec 0 50%) 0 / 20px 20px;
++    .grid {
++      padding: 20px;
++      border-radius: 12px;
++      --dot: radial-gradient(circle, rgba(78, 52, 46, 0.18) 2px, transparent 3px);
++      background: var(--dot) 0 0, var(--dot) 12px 12px, var(--secondary);
++      background-size: 24px 24px;
++    }
++
++    .stripes {
++      height: 6px;
++      margin: 12px 0;
++      background: linear-gradient(to right, var(--accent) 50%, var(--primary) 0) 0 / 12px;
 +    }
 +
 +    .pie {
-+      --p: 50%;
-+      width: 60px;
++      width: 90px;
 +      aspect-ratio: 1;
 +      border-radius: 50%;
-+      margin: 0 auto 12px;
-+      background: conic-gradient(var(--accent) var(--p), transparent 0%) var(--secondary);
-+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
++      margin: 12px auto 8px;
++      background: conic-gradient(var(--pie-1) 0 var(--a), var(--pie-2) 0 calc(var(--a) + var(--b)), var(--pie-3) 0);
 +    }
 +
-+    .sr-only {
-+      position: absolute;
-+      width: 1px;
-+      height: 1px;
-+      overflow: hidden;
-+      clip-path: inset(50%);
-+      white-space: nowrap;
++    .flavor {
++      font-size: 0.8rem;
++      border-collapse: collapse;
++      margin: 0 auto;
 +    }
 +
-+    footer {
-+      background:
-+        repeating-linear-gradient(-45deg, transparent 0 12px, color-mix(in oklab, var(--primary) 8%, transparent) 0 24px),
-+        var(--secondary);
++    .flavor caption {
++      font-weight: bold;
++      margin-bottom: 4px;
++    }
++
++    .flavor th,
++    .flavor td {
++      padding: 1px 8px;
++      text-align: left;
++    }
++
++    .flavor .sw {
++      display: inline-block;
++      width: 0.7em;
++      height: 0.7em;
++      margin-right: 4px;
++      border-radius: 50%;
      }
  
-     /* Content Sections */
-@@ -179,21 +239,35 @@
-       <h2 style="text-align: center;">Seasonal Favorites</h2>
-       <div class="grid">
+     .card h3 {
+@@ -122,7 +200,8 @@
+ 
+     .btn {
+       display: inline-block;
+-      background: var(--primary);
++      background: linear-gradient(to bottom var(--in-oklab), #6d4c41, var(--primary));
++      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.2);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+@@ -132,7 +211,7 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: linear-gradient(to bottom var(--in-oklab), #5d4037, #3e2723);
+     }
+ 
+     footer {
+@@ -181,16 +260,37 @@
          <div class="card">
-+          <div class="pie" style="--p: 40%" aria-hidden="true"></div>
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div class="pie" style="--a:40%;--b:35%" aria-hidden="true"></div>
++          <table class="flavor">
++            <caption>Flavor profile</caption>
++            <tr><th scope="row"><span class="sw" style="background:var(--pie-1)"></span>Sweet</th><td>40%</td></tr>
++            <tr><th scope="row"><span class="sw" style="background:var(--pie-2)"></span>Creamy</th><td>35%</td></tr>
++            <tr><th scope="row"><span class="sw" style="background:var(--pie-3)"></span>Nutty</th><td>25%</td></tr>
++          </table>
            <a href="/menu/seasonal" class="btn">View Details</a>
          </div>
          <div class="card">
-+          <div class="pie" style="--p: 90%" aria-hidden="true"></div>
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div class="pie" style="--a:50%;--b:30%" aria-hidden="true"></div>
++          <table class="flavor">
++            <caption>Flavor profile</caption>
++            <tr><th scope="row"><span class="sw" style="background:var(--pie-1)"></span>Bold</th><td>50%</td></tr>
++            <tr><th scope="row"><span class="sw" style="background:var(--pie-2)"></span>Smoky</th><td>30%</td></tr>
++            <tr><th scope="row"><span class="sw" style="background:var(--pie-3)"></span>Bitter</th><td>20%</td></tr>
++          </table>
            <a href="/menu/espresso" class="btn">View Details</a>
          </div>
          <div class="card">
-+          <div class="pie" style="--p: 70%" aria-hidden="true"></div>
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div class="pie" style="--a:45%;--b:35%" aria-hidden="true"></div>
++          <table class="flavor">
++            <caption>Flavor profile</caption>
++            <tr><th scope="row"><span class="sw" style="background:var(--pie-1)"></span>Smooth</th><td>45%</td></tr>
++            <tr><th scope="row"><span class="sw" style="background:var(--pie-2)"></span>Chocolatey</th><td>35%</td></tr>
++            <tr><th scope="row"><span class="sw" style="background:var(--pie-3)"></span>Acidic</th><td>20%</td></tr>
++          </table>
            <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
        </div>
-+      <table class="sr-only">
-+        <caption>Coffee strength of each seasonal favorite</caption>
-+        <thead>
-+          <tr><th scope="col">Drink</th><th scope="col">Strength</th></tr>
-+        </thead>
-+        <tbody>
-+          <tr><th scope="row">Maple Oat Latte</th><td>40%</td></tr>
-+          <tr><th scope="row">Dark Roast Espresso</th><td>90%</td></tr>
-+          <tr><th scope="row">Cold Brew</th><td>70%</td></tr>
-+        </tbody>
-+      </table>
-     </section>
-   </main>
- 
