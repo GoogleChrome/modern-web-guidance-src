@@ -13,7 +13,9 @@ guides:
 
 Use this pattern when a user-triggered action changes the order of a list, card grid or table. Examples: a product list ordered by price, or a card grid ordered A→Z. Focus is on the control, so no item is mid-interaction when the list reorders.
 
-This guide is agnostic about how the new order is computed (comparators, collation, server responses, framework state) and about the control that triggers it. It covers only how to apply a new order to the DOM: moving nodes, animating, announcing, and performance. Column header semantics (`<button>` in `<th>`, `aria-sort`) belong to a sortable-table guide. It does not cover lists that re-sort because their data changed while an item is focused or being edited, or drag-to-reorder.
+This guide is agnostic about how the new order is computed (comparators, collation, server responses, framework state) and about the control that triggers it. It covers only how to apply a new order to the DOM: moving nodes, animating, announcing, and performance.
+
+{# Column header semantics (`<button>` in `<th>`, `aria-sort`) belong to a sortable-table guide. This guide does not cover lists that re-sort because their data changed while an item is focused or being edited, or drag-to-reorder. #}
 
 ## Reorder the existing nodes
 
