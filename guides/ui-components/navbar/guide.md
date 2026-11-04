@@ -225,6 +225,8 @@ Use logical properties for sizing, spacing, and positioning. Use `dvw` and `dvh`
 
 {{ FEATURE_FALLBACKS("popover") }}
 
+### Fallbacks & browser support for Anchor positioning
+
 {{ BASELINE_STATUS("anchor-positioning") }}
 
 For the mobile menu, put an absolute fallback declaration before the `anchor()` declaration. Do not wrap this simple fallback in an `@supports` rule: an unsupported `anchor()` declaration is discarded while the preceding declaration remains valid. Without Anchor Positioning the menu still opens as a popover at a fixed offset from the top of the viewport.
@@ -239,7 +241,9 @@ For the mobile menu, put an absolute fallback declaration before the `anchor()` 
 }
 ```
 
-For the wide floating submenu, use the Anchor Positioning fallbacks in {{ GUIDE_REF("menu") }}.
+For the wide floating submenu, without CSS Anchor Positioning a popover falls back to centered viewport placement, which detaches the submenu from its navbar trigger. Override the submenu to `position: fixed; margin: 0` inside `@supports not (position-area: block-end)`, and when `event.newState === "open" && !CSS.supports("position-area", "block-end")` in the submenu's `toggle` handler, compute `top` and `left` from `trigger.getBoundingClientRect()` and `submenu.getBoundingClientRect()` (placing it below the trigger, flipping above if `top + size.height > innerHeight`, and clamping `left` to `[0, innerWidth - size.width]`).
+
+### Transitions
 
 {{ BASELINE_STATUS("starting-style") }}
 
