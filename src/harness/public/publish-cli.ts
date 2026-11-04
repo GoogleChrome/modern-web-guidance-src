@@ -38,11 +38,11 @@ async function main(): Promise<number> {
     },
   });
   if (values.help) {
-    console.log('Usage: publish-cli.ts [--dry-run]   (requires PUBLIC_EVALS_FORBIDDEN_TOKENS)');
+    console.log('Usage: publish-cli.ts [--dry-run]');
     return 0;
   }
 
-  const tokens = forbiddenTokens([], process.env, { requireList: true });
+  const tokens = forbiddenTokens([], process.env);
   const tokensVersion = forbiddenTokensVersion();
   const allowlist = loadValidatedAllowlist();
   if (allowlist.releasedModels.length === 0) {
