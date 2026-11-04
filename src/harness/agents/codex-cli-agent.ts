@@ -504,6 +504,33 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         }
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
+          const stepParams =
+            step.action?.params && typeof step.action.params === 'object'
+              ? (step.action.params as Record<string, unknown>)
+              : undefined;
+          if (stepParams && Array.isArray(stepParams.webRuns)) {
+            const failedUrls = Array.from(
+              outStr.matchAll(/(?:Failed to fetch|URL)\s+(https?:\/\/\S+?)(?::(?:\s|$)|\s+is not accessible)/g),
+              (m) => m[1]
+            );
+            if (failedUrls.length > 0) {
+              stepParams.webRuns = (stepParams.webRuns as unknown[]).map((r) => {
+                if (typeof r !== 'string') return r;
+                let cleaned = r;
+                for (const url of failedUrls) {
+                  cleaned = cleaned.replaceAll(url, '');
+                }
+                return cleaned;
+              });
+              if (typeof stepParams.value === 'string') {
+                let cleanedVal = stepParams.value;
+                for (const url of failedUrls) {
+                  cleanedVal = cleanedVal.replaceAll(url, '');
+                }
+                stepParams.value = cleanedVal;
+              }
+            }
+          }
           const isError =
             p.is_error === true ||
             outStr.startsWith('Script failed') ||
