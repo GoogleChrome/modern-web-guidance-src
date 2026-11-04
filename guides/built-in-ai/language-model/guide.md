@@ -110,7 +110,15 @@ const mainSession = await LanguageModel.create({
 
 const branchA = await mainSession.clone();
 const branchB = await mainSession.clone();
-// Destroy the base after cloning — the clones own their own context from here.
+
+// Run independent tasks on each clone, then destroy the clones when done.
+await branchA.prompt('Greet the crew.');
+branchA.destroy();
+
+await branchB.prompt('Chart a course.');
+branchB.destroy();
+
+// Keep mainSession if you plan to clone it again later, or destroy it once no more clones are needed.
 mainSession.destroy();
 ```
 
@@ -230,8 +238,9 @@ only what you need.
 
 **Do:** Explicitly call [`destroy()`](https://developer.chrome.com/docs/ai/prompt-api#terminate_a_session) on
 sessions that you no longer need, to free up memory when a feature
-is no longer in use. If you use a cloning pattern, keep the base session and
-destroy the clones you no longer need.
+is no longer in use. If you use a cloning pattern, keep the base session while
+you still need to create new clones, destroy each cloned session as soon as its
+task finishes, and destroy the base session once no further clones are needed.
 
 **Don't:** Keep multiple large sessions active. Each session consumes memory,
 which creates unnecessary resource usage and might become a problem. Sessions
