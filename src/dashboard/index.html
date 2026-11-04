@@ -97,7 +97,7 @@
       <section id="agents-section" class="hero-agents page-section" aria-labelledby="agents-heading">
         <div class="hero-agents-header">
           <h2 id="agents-heading" class="hero-agents-heading section-heading">By agent family</h2>
-          <p class="hero-agents-note">Pooled across the latest nightly runs per agent. Time, token, per-model, and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> live in the drawer below.</p>
+          <p class="hero-agents-note">Pooled across the latest nightly runs per agent. Duration, token, per-model, and <a href="#a11y-guides" class="takeaway-action-link" data-open-guides="a11y">per-guide accessibility breakdowns</a> live in the drawer below.</p>
         </div>
         <div class="agent-table-wrap" tabindex="0" role="region" aria-labelledby="agent-table-caption">
           <table class="agent-table">
@@ -154,8 +154,8 @@
                   <dd>Pass rate on accessibility checks across all guides, beyond dedicated accessibility guides. Covers keyboard support, focus and <code>inert</code> handling, <code>prefers-reduced-motion</code> and contrast, ARIA roles and announcements, and form labels.</dd>
                 </div>
                 <div class="method-item">
-                  <dt>Completion time</dt>
-                  <dd>Median wall-clock time the agent spends coding a task, excluding our browser grading step. Because each agent CLI operates differently, we compare median time per agent rather than combining times across different agents.</dd>
+                  <dt>Task duration</dt>
+                  <dd>Median wall-clock duration the agent spends coding a task, excluding our browser grading step. Because each agent CLI operates differently, we compare median duration per agent rather than combining durations across different agents.</dd>
                 </div>
                 <div class="method-item">
                   <dt>Token usage (uncached)</dt>
@@ -182,40 +182,12 @@
             <p class="browse-subtitle">Individual evaluation suites, newest first. Select a run for per-task diffs and logs.</p>
           </div>
           <div class="browse-controls">
-            <div class="filter-container-nav">
-              <div class="filter-runs-control">
-                <label for="filter-btn" class="filter-runs-label">
-                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 4h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1 0-1zm2 3.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1zm2 3.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1 0-1z"/></svg>
-                  Filter runs
-                </label>
-                <button id="filter-btn" class="secondary-btn filter-runs-trigger" type="button" popovertarget="filter-menu" aria-expanded="false" aria-controls="filter-menu">
-                  <span id="filter-btn-text">All selected</span>
-                  <svg class="filter-runs-chevron" aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
-                  </svg>
-                </button>
-              </div>
-              <div id="filter-menu" class="filter-menu" popover>
-                <div class="filter-header">
-                  <span class="filter-header-title">Filter runs</span>
-                  <div class="filter-actions">
-                    <button id="select-all-btn" class="text-btn" type="button">All</button>
-                    <button id="deselect-all-btn" class="text-btn" type="button">None</button>
-                  </div>
-                </div>
-                <div class="filter-scheduled-row">
-                  <label class="toggle-label" for="scheduled-only-check">
-                    <input type="checkbox" id="scheduled-only-check" checked>
-                    Scheduled nightly/weekly runs only
-                  </label>
-                </div>
-                <div class="filter-search-wrap">
-                  <label for="filter-search" class="visually-hidden">Search runs</label>
-                  <input type="search" id="filter-search" class="filter-search" placeholder="Search runs…">
-                </div>
-                <div id="filter-list" class="filter-list"></div>
-              </div>
-            </div>
+            <label class="toggle-label" for="scheduled-only-check">
+              <input type="checkbox" id="scheduled-only-check" checked>
+              Scheduled runs only
+            </label>
+            <input type="search" id="filter-search" class="eval-filter-input" list="runs-filter-datalist" placeholder="Filter runs by ID, model, or agent…" autocomplete="off" aria-label="Filter runs by ID, model, or agent">
+            <datalist id="runs-filter-datalist"></datalist>
           </div>
         </div>
         <div class="mobile-suites-controls" aria-label="Sort and filter runs">
@@ -225,7 +197,7 @@
             <option value="date:asc">Sort: Oldest</option>
             <option value="uplift:desc">Sort: Pass-rate lift</option>
             <option value="a11y:desc">Sort: A11y lift</option>
-            <option value="time:asc">Sort: Fastest time</option>
+            <option value="time:asc">Sort: Shortest duration</option>
             <option value="tokens:asc">Sort: Fewest tokens</option>
           </select>
           <label for="mobile-filter-agent" class="visually-hidden">Filter runs by agent</label>
@@ -236,7 +208,7 @@
         </div>
         <div class="suites-table-container">
           <table class="suites-table">
-            <caption class="visually-hidden">Evaluation suite runs comparing unguided and guided results. Pass-rate change in percentage points (pp); time and token change in %, lower is better.</caption>
+            <caption class="visually-hidden">Evaluation suite runs comparing unguided and guided results. Pass-rate change in percentage points (pp); duration and token change in %, lower is better.</caption>
             <thead>
               <tr>
                 <th scope="col" class="col-suite" aria-sort="descending"><button type="button" class="sort-btn" data-sort="date">Suite &amp; date</button></th>
@@ -244,18 +216,14 @@
                   <label for="filter-agent" class="visually-hidden">Filter by agent</label>
                   <select id="filter-agent" class="header-filter-select header-filter-select-left"><option value="all">Agent</option><optgroup label="Select agent" id="filter-agent-group"></optgroup></select>
                 </th>
-                <th scope="col">
-                  <label for="filter-serving" class="visually-hidden">Filter by serving</label>
-                  <select id="filter-serving" class="header-filter-select"><option value="all">Serving</option><optgroup label="Select architecture" id="filter-serving-group"></optgroup></select>
-                </th>
                 <th scope="col" class="col-model">
                   <label for="filter-model" class="visually-hidden">Filter by model</label>
                   <select id="filter-model" class="header-filter-select header-filter-select-left"><option value="all">Model</option><optgroup label="Select model" id="filter-model-group"></optgroup></select>
                 </th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="uplift">Pass rate</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y subscore</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="time">Median time</button></th>
-                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="tokens">Median uncached tokens</button></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="uplift">Pass rate</button><span class="eval-col-sub">Unguided → Guided</span></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="a11y">A11y subscore</button><span class="eval-col-sub">Unguided → Guided</span></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="time">Median duration</button><span class="eval-col-sub">Unguided / Guided</span></th>
+                <th scope="col" class="col-metric"><button type="button" class="sort-btn" data-sort="tokens">Median uncached tokens</button><span class="eval-col-sub">Unguided / Guided</span></th>
                 <th scope="col" id="header-source">
                   <label for="filter-source" class="visually-hidden">Filter by source</label>
                   <select id="filter-source" class="header-filter-select"><option value="all">Source</option><optgroup label="Select source"><option value="local">Local</option><option value="remote">Remote</option></optgroup></select>
