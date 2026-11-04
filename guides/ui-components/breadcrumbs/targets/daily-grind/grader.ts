@@ -45,8 +45,8 @@ async function ensureMultiItemBreadcrumbTrail(page: Page, baseUrl: string): Prom
         navs.find((n) => n.querySelector('ol')) ||
         navs.find((n) => /breadcrumb/i.test(n.getAttribute('aria-label') || '') || /breadcrumb/i.test(n.className));
       if (!bcNav) return 0;
-      const items = Array.from(bcNav.querySelectorAll<HTMLLIElement>('ol > li')).filter(
-        (li) => !li.hidden && li.querySelector('a')
+      const items = Array.from(bcNav.querySelectorAll<HTMLLIElement>('ol > li, ul > li')).filter(
+        (li) => !li.hidden && window.getComputedStyle(li).display !== 'none'
       );
       return items.length;
     });
@@ -92,10 +92,13 @@ async function ensureMultiItemBreadcrumbTrail(page: Page, baseUrl: string): Prom
     return;
   }
 
-  // Or try clicking a card's "View Details" link if prevented by JS
+  // Or try clicking a card's "View Details" link if prevented by JS; restore baseUrl if it navigated to 404
   const detailBtn = page.locator('.card a.btn').first();
   if ((await detailBtn.count()) > 0) {
     await detailBtn.click().catch(() => {});
+    if ((await getTrailItemCount()) === 0) {
+      await page.goto(baseUrl);
+    }
   }
 }
 
@@ -122,39 +125,58 @@ test.describe('breadcrumbs Target Grader', () => {
     expect(hasValidAriaLabel).toBe(true);
   });
 
-  test('The <nav> contains an ordered list (<ol>) whose breadcrumb trail <li> items (excluding any collapsed overflow <li>) each contain an <a>', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const breadcrumbLists = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('nav ol'))
-    );
-    expect(breadcrumbLists.length).toBeGreaterThan(0);
-
-    const ol = breadcrumbLists[0] as any;
-    const allLiItems = Array.from(ol.children).filter(
-      (el: any) => el.tagName?.toLowerCase() === 'li'
-    );
-    expect(allLiItems.length).toBeGreaterThan(0);
-
-    // Filter out any collapsed overflow <li> (which typically holds a "..." toggle button and no trail link)
-    const trailLiItems = allLiItems.filter((li: any) => {
-      const hasOverflowButtonOnly =
-        Boolean(li.querySelector('button')) && !li.querySelector('a');
-      return !hasOverflowButtonOnly;
-    });
-    expect(trailLiItems.length).toBeGreaterThan(0);
-
-    const everyItemHasAnchor = trailLiItems.every((li: any) =>
-      Boolean(li.querySelector('a'))
-    );
-    expect(everyItemHasAnchor).toBe(true);
-  });
-
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
       await ensureMultiItemBreadcrumbTrail(page, TARGET_URL);
+    });
+
+    test('The <nav> contains an ordered list (<ol>) whose breadcrumb trail <li> items (excluding any collapsed overflow <li>) each contain an <a>', async ({
+      page,
+    }) => {
+      const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+      const staticLists = docs.flatMap((d) =>
+        Array.from(d.document.querySelectorAll('nav ol'))
+      );
+      expect(staticLists.length).toBeGreaterThan(0);
+
+      const listState = await page.evaluate(() => {
+        const navs = Array.from(document.querySelectorAll('nav'));
+        const bcNav =
+          navs.find((n) => n.querySelector('ol')) ||
+          navs.find((n) => /breadcrumb/i.test(n.getAttribute('aria-label') || '') || /breadcrumb/i.test(n.className));
+        if (!bcNav) return null;
+
+        const ol = bcNav.querySelector(':scope > ol, ol');
+        if (!ol) return { hasOl: false, trailItemCount: 0, everyItemHasAnchor: false };
+
+        const allLiItems = Array.from(ol.children).filter(
+          (el): el is HTMLLIElement =>
+            el.tagName.toLowerCase() === 'li' &&
+            !(el as HTMLLIElement).hidden &&
+            window.getComputedStyle(el).display !== 'none'
+        );
+
+        // Exclude collapsed overflow <li> (holds a toggle <button> and no direct trail <a>)
+        const trailLiItems = allLiItems.filter((li) => {
+          const hasDirectAnchor = Boolean(li.querySelector(':scope > a'));
+          const hasOverflowButton = Boolean(li.querySelector(':scope > button'));
+          return !(hasOverflowButton && !hasDirectAnchor);
+        });
+
+        return {
+          hasOl: true,
+          trailItemCount: trailLiItems.length,
+          everyItemHasAnchor: trailLiItems.every((li) => Boolean(li.querySelector(':scope > a'))),
+        };
+      });
+
+      expect(listState).not.toBeNull();
+      expect(listState!.hasOl).toBe(true);
+      expect(listState!.trailItemCount).toBeGreaterThanOrEqual(2);
+      expect(listState!.everyItemHasAnchor).toBe(true);
     });
 
     test('The last item\'s link has aria-current="page", and no other trail link has it', async ({
@@ -165,18 +187,21 @@ test.describe('breadcrumbs Target Grader', () => {
         const bcNav = navs.find((n) => n.querySelector('ol'));
         if (!bcNav) return null;
 
-        const items = Array.from(bcNav.querySelectorAll<HTMLLIElement>('ol > li')).filter(
-          (li) => !li.hidden && li.querySelector('a')
-        );
-        const links = items.map((li) => li.querySelector('a')!);
+        const items = Array.from(bcNav.querySelectorAll<HTMLLIElement>('ol > li')).filter((li) => {
+          if (li.hidden || window.getComputedStyle(li).display === 'none') return false;
+          const hasDirectAnchor = Boolean(li.querySelector(':scope > a'));
+          const hasOverflowButton = Boolean(li.querySelector(':scope > button'));
+          return !(hasOverflowButton && !hasDirectAnchor);
+        });
+
         return {
-          count: links.length,
-          ariaCurrents: links.map((a) => a.getAttribute('aria-current')),
+          count: items.length,
+          ariaCurrents: items.map((li) => li.querySelector(':scope > a')?.getAttribute('aria-current') ?? null),
         };
       });
 
       expect(ariaCurrentState).not.toBeNull();
-      expect(ariaCurrentState!.count).toBeGreaterThan(0);
+      expect(ariaCurrentState!.count).toBeGreaterThanOrEqual(2);
 
       const { ariaCurrents } = ariaCurrentState!;
       expect(ariaCurrents[ariaCurrents.length - 1]).toBe('page');
@@ -188,12 +213,12 @@ test.describe('breadcrumbs Target Grader', () => {
     test('Divider characters are not present as text nodes in the DOM; when dividers are rendered between items, they are generated via CSS so the accessible names of the list items contain no divider characters', async ({
       page,
     }) => {
-      // Static CSS check + runtime DOM check
+      // Static CSS check + runtime DOM and accessibility tree check
       const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
       const styleRules = collectStyleRules(Array.from(stylesheet.cssRules));
       const hasCssGeneratedSeparatorOrShape = styleRules.some((rule) => {
         const sel = rule.selectorText || '';
-        const contentVal = rule.style.getPropertyValue('content') || '';
+        const contentVal = (rule.style.getPropertyValue('content') || '').trim();
         const maskVal =
           rule.style.getPropertyValue('mask') ||
           rule.style.getPropertyValue('mask-image') ||
@@ -204,9 +229,11 @@ test.describe('breadcrumbs Target Grader', () => {
         const borderShapeVal = rule.style.getPropertyValue('border-shape') || '';
         const clipPathVal = rule.style.getPropertyValue('clip-path') || '';
 
+        const hasEmptyAltContent = /\/\s*(?:""|'')\s*$/.test(contentVal);
+        const isEmptyContentWithMask =
+          (contentVal === '""' || contentVal === "''") && maskVal.length > 0;
         const isPseudoWithAltOrMask =
-          /::?(before|after)\b/.test(sel) &&
-          (contentVal.includes('/') || maskVal.length > 0 || contentVal.length > 0);
+          /::?(before|after)\b/.test(sel) && (hasEmptyAltContent || isEmptyContentWithMask);
         const isShapedSegment =
           cornerShapeVal.length > 0 ||
           borderShapeVal.length > 0 ||
@@ -216,27 +243,26 @@ test.describe('breadcrumbs Target Grader', () => {
       });
       expect(hasCssGeneratedSeparatorOrShape).toBe(true);
 
-      const domDividerCheck = await page.evaluate(() => {
+      const domAndA11yDividerCheck = await page.evaluate(() => {
         const navs = Array.from(document.querySelectorAll('nav'));
         const bcNav = navs.find((n) => n.querySelector('ol'));
         if (!bcNav) return null;
 
         const ol = bcNav.querySelector('ol')!;
         const dividerRegex = /[/›>»\\|]/;
+        const edgeDividerRegex = /^[/›>»\\|]|[/›>»\\|]$/;
 
-        // Check direct text nodes inside <ol> and <li> (outside <a>) and inside <a>
+        // Check text nodes outside <a> (or inside aria-hidden spans) and leading/trailing dividers on <a>
         const hasDividerTextNode = (root: Node): boolean => {
           const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
           let node: Node | null;
           while ((node = walker.nextNode())) {
-            const parentEl = node.parentElement;
-            if (parentEl && parentEl.getAttribute('aria-hidden') === 'true') {
-              // Still shouldn't be a raw text node divider in DOM per expectation
-              if (dividerRegex.test((node.textContent || '').trim())) {
-                return true;
-              }
-            }
-            if (dividerRegex.test((node.textContent || '').trim())) {
+            const text = (node.textContent || '').trim();
+            if (!text) continue;
+            const anchor = node.parentElement?.closest('a');
+            if (!anchor) {
+              if (dividerRegex.test(text)) return true;
+            } else if (edgeDividerRegex.test(text)) {
               return true;
             }
           }
@@ -244,22 +270,41 @@ test.describe('breadcrumbs Target Grader', () => {
         };
 
         const items = Array.from(ol.querySelectorAll<HTMLLIElement>(':scope > li')).filter(
-          (li) => !li.hidden && li.querySelector('a')
+          (li) => !li.hidden && window.getComputedStyle(li).display !== 'none' && li.querySelector(':scope > a')
         );
+
+        // Verify any non-empty text pseudo-element on trail items uses empty alt text (/ "")
+        const hasExposedPseudoDivider = items.some((li) => {
+          const link = li.querySelector(':scope > a')!;
+          for (const [el, pseudo] of [
+            [li, '::before'],
+            [li, '::after'],
+            [link, '::before'],
+            [link, '::after'],
+          ] as const) {
+            const c = window.getComputedStyle(el, pseudo).content.trim();
+            if (c && c !== 'none' && c !== 'normal' && c !== '""' && c !== "''") {
+              if (!/\/\s*(?:""|'')\s*$/.test(c)) return true;
+            }
+          }
+          return false;
+        });
 
         return {
           itemCount: items.length,
           hasDomDividerText: hasDividerTextNode(ol),
-          itemTexts: items.map((li) => (li.textContent || '').trim()),
+          hasExposedPseudoDivider,
         };
       });
 
-      expect(domDividerCheck).not.toBeNull();
-      expect(domDividerCheck!.itemCount).toBeGreaterThanOrEqual(2);
-      expect(domDividerCheck!.hasDomDividerText).toBe(false);
-      for (const text of domDividerCheck!.itemTexts) {
-        expect(text).not.toMatch(/[/›>»\\|]/);
-      }
+      expect(domAndA11yDividerCheck).not.toBeNull();
+      expect(domAndA11yDividerCheck!.itemCount).toBeGreaterThanOrEqual(2);
+      expect(domAndA11yDividerCheck!.hasDomDividerText).toBe(false);
+      expect(domAndA11yDividerCheck!.hasExposedPseudoDivider).toBe(false);
+
+      // Verify the accessibility tree of the list contains no standalone divider text nodes
+      const a11ySnapshot = await page.locator('nav:has(ol) ol').first().ariaSnapshot();
+      expect(a11ySnapshot).not.toMatch(/-\s*text:\s*["']?[/›>»\\|]["']?\s*$/m);
     });
 
     test('Each trail item after the first has a visible separator before it: a generated ::before or ::after divider, or an arrow or slant segment shape', async ({
@@ -301,38 +346,46 @@ test.describe('breadcrumbs Target Grader', () => {
         if (!bcNav) return null;
 
         const items = Array.from(bcNav.querySelectorAll<HTMLLIElement>('ol > li')).filter(
-          (li) => !li.hidden && li.querySelector('a')
+          (li) => !li.hidden && window.getComputedStyle(li).display !== 'none' && li.querySelector(':scope > a')
         );
         if (items.length < 2) return { itemCount: items.length, allAfterFirstSeparated: false };
 
+        const isPseudoActive = (st: CSSStyleDeclaration) => {
+          const c = st.content;
+          const hasTextContent =
+            Boolean(c) && c !== 'none' && c !== 'normal' && c !== '""' && c !== "''";
+          const hasMask =
+            (st.maskImage && st.maskImage !== 'none') ||
+            (st.webkitMaskImage && st.webkitMaskImage !== 'none');
+          const hasVisibleBgOrBorder =
+            (st.backgroundImage && st.backgroundImage !== 'none') ||
+            (st.backgroundColor &&
+              st.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+              st.backgroundColor !== 'transparent' &&
+              parseFloat(st.width) > 0 &&
+              parseFloat(st.height) > 0) ||
+            parseFloat(st.borderTopWidth) > 0 ||
+            parseFloat(st.borderRightWidth) > 0 ||
+            parseFloat(st.borderBottomWidth) > 0 ||
+            parseFloat(st.borderLeftWidth) > 0;
+          return Boolean(hasTextContent || hasMask || (c === '""' && hasVisibleBgOrBorder));
+        };
+
         const checkItemSeparated = (li: Element, index: number): boolean => {
           const prevLi = items[index - 1];
-          const link = li.querySelector('a')!;
+          const link = li.querySelector(':scope > a')!;
+          const prevLink = prevLi.querySelector(':scope > a')!;
 
           const liBefore = window.getComputedStyle(li, '::before');
-          const liAfter = window.getComputedStyle(li, '::after');
           const prevLiAfter = window.getComputedStyle(prevLi, '::after');
           const linkBefore = window.getComputedStyle(link, '::before');
-
-          const isPseudoActive = (st: CSSStyleDeclaration) => {
-            const c = st.content;
-            const hasContent = c && c !== 'none' && c !== 'normal' && c !== '""' && c !== "''";
-            const hasMask =
-              (st.maskImage && st.maskImage !== 'none') ||
-              (st.webkitMaskImage && st.webkitMaskImage !== 'none');
-            const hasBgOrBorder =
-              (st.backgroundImage && st.backgroundImage !== 'none') ||
-              parseFloat(st.borderTopWidth) > 0 ||
-              parseFloat(st.borderRightWidth) > 0 ||
-              parseFloat(st.width) > 0;
-            return Boolean(hasContent || hasMask || (c === '""' && hasBgOrBorder));
-          };
+          const prevLinkAfter = window.getComputedStyle(prevLink, '::after');
 
           if (
             isPseudoActive(liBefore) ||
-            isPseudoActive(liAfter) ||
             isPseudoActive(prevLiAfter) ||
-            isPseudoActive(linkBefore)
+            isPseudoActive(linkBefore) ||
+            isPseudoActive(prevLinkAfter)
           ) {
             return true;
           }
@@ -356,9 +409,14 @@ test.describe('breadcrumbs Target Grader', () => {
           );
         };
 
-        const allAfterFirstSeparated = items
-          .slice(1)
-          .every((li, idx) => checkItemSeparated(li, idx + 1));
+        const firstLink = items[0].querySelector(':scope > a')!;
+        const firstHasLeadingDivider =
+          isPseudoActive(window.getComputedStyle(items[0], '::before')) ||
+          isPseudoActive(window.getComputedStyle(firstLink, '::before'));
+
+        const allAfterFirstSeparated =
+          !firstHasLeadingDivider &&
+          items.slice(1).every((li, idx) => checkItemSeparated(li, idx + 1));
 
         return {
           itemCount: items.length,
@@ -374,6 +432,13 @@ test.describe('breadcrumbs Target Grader', () => {
     test('Links in the trail show a visible focus indicator (non-zero outline or distinct style) when focused with the keyboard', async ({
       page,
     }) => {
+      const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+      const styleRules = collectStyleRules(Array.from(stylesheet.cssRules));
+      const hasAuthorFocusRule = styleRules.some((rule) =>
+        /:focus(-visible)?\b/.test(rule.selectorText || '')
+      );
+      expect(hasAuthorFocusRule).toBe(true);
+
       const linkLocator = page.locator('nav:has(ol) ol > li > a').first();
       expect(await linkLocator.count()).toBeGreaterThan(0);
 
@@ -425,15 +490,18 @@ test.describe('breadcrumbs Target Grader', () => {
         };
       });
 
-      const hasVisibleOutline =
-        afterFocus.outlineStyle !== 'none' && afterFocus.outlineWidth > 0;
+      const hasVisibleCustomOutline =
+        afterFocus.outlineStyle !== 'none' &&
+        afterFocus.outlineStyle !== 'auto' &&
+        afterFocus.outlineWidth > 0;
       const hasDistinctStyle =
         afterFocus.backgroundColor !== beforeFocus.backgroundColor ||
         afterFocus.color !== beforeFocus.color ||
         afterFocus.boxShadow !== beforeFocus.boxShadow ||
         afterFocus.textDecorationLine !== beforeFocus.textDecorationLine;
 
-      expect(hasVisibleOutline || hasDistinctStyle).toBe(true);
+      expect(afterFocus.matchesFocusVisible).toBe(true);
+      expect(hasVisibleCustomOutline || hasDistinctStyle).toBe(true);
     });
 
     test('Hovering a non-current trail link changes its computed color, background color, or text decoration', async ({
@@ -494,10 +562,17 @@ test.describe('breadcrumbs Target Grader', () => {
         const bcNav = navs.find((n) => n.querySelector('ol'));
         if (!bcNav) return null;
 
-        const currentLink = bcNav.querySelector('ol > li > a[aria-current="page"]');
-        const otherLinks = Array.from(
-          bcNav.querySelectorAll('ol > li > a:not([aria-current="page"])')
-        );
+        const allTrailLinks = Array.from(
+          bcNav.querySelectorAll<HTMLAnchorElement>('ol > li > a')
+        ).filter((a) => {
+          const li = a.closest('li');
+          return Boolean(li && !li.hidden && window.getComputedStyle(li).display !== 'none');
+        });
+        const currentLink =
+          bcNav.querySelector<HTMLAnchorElement>('ol > li > a[aria-current="page"]') ||
+          allTrailLinks[allTrailLinks.length - 1] ||
+          null;
+        const otherLinks = allTrailLinks.filter((a) => a !== currentLink);
         if (!currentLink || otherLinks.length === 0) return null;
 
         const curStyle = window.getComputedStyle(currentLink);
@@ -575,55 +650,61 @@ test.describe('breadcrumbs Target Grader', () => {
 
         expect(usesLogicalCornerRadii || usesRtlPolygonMirror).toBe(true);
 
-        // Also verify in the browser that switching dir="ltr" to dir="rtl" flips the physical corner radii or polygon shape
+        // Verify in the browser that switching an ancestor container from dir="ltr" to dir="rtl" flips the physical corner radii or polygon shape
         const rtlComparison = await page.evaluate(() => {
           const navs = Array.from(document.querySelectorAll('nav'));
           const bcNav = navs.find((n) => n.querySelector('ol')) as HTMLElement | undefined;
           if (!bcNav) return null;
 
-          const link = bcNav.querySelector('ol > li:last-child > a') as HTMLElement | null;
-          if (!link) return null;
+          const links = Array.from(bcNav.querySelectorAll<HTMLElement>('ol > li > a'));
+          if (links.length === 0) return null;
 
-          const prevDir = bcNav.getAttribute('dir');
-          bcNav.setAttribute('dir', 'ltr');
-          const ltrStyle = window.getComputedStyle(link);
-          const ltrSnapshot = {
-            tl: ltrStyle.borderTopLeftRadius,
-            tr: ltrStyle.borderTopRightRadius,
-            br: ltrStyle.borderBottomRightRadius,
-            bl: ltrStyle.borderBottomLeftRadius,
-            clipPath: ltrStyle.clipPath,
-            borderShape: ltrStyle.getPropertyValue('border-shape').trim(),
-            shapeVar: ltrStyle.getPropertyValue('--shape').trim(),
-          };
+          const dirTarget = bcNav.parentElement || document.documentElement;
+          const prevDir = dirTarget.getAttribute('dir');
 
-          bcNav.setAttribute('dir', 'rtl');
-          const rtlStyle = window.getComputedStyle(link);
-          const rtlSnapshot = {
-            tl: rtlStyle.borderTopLeftRadius,
-            tr: rtlStyle.borderTopRightRadius,
-            br: rtlStyle.borderBottomRightRadius,
-            bl: rtlStyle.borderBottomLeftRadius,
-            clipPath: rtlStyle.clipPath,
-            borderShape: rtlStyle.getPropertyValue('border-shape').trim(),
-            shapeVar: rtlStyle.getPropertyValue('--shape').trim(),
-          };
+          const snapshotLinks = () =>
+            links.map((link) => {
+              const st = window.getComputedStyle(link);
+              return {
+                tl: st.borderTopLeftRadius,
+                tr: st.borderTopRightRadius,
+                br: st.borderBottomRightRadius,
+                bl: st.borderBottomLeftRadius,
+                clipPath: st.clipPath,
+                borderShape: st.getPropertyValue('border-shape').trim(),
+                shapeVar: st.getPropertyValue('--shape').trim(),
+              };
+            });
 
-          if (prevDir === null) bcNav.removeAttribute('dir');
-          else bcNav.setAttribute('dir', prevDir);
+          dirTarget.setAttribute('dir', 'ltr');
+          const ltrSnapshots = snapshotLinks();
+
+          dirTarget.setAttribute('dir', 'rtl');
+          const rtlSnapshots = snapshotLinks();
+
+          if (prevDir === null) dirTarget.removeAttribute('dir');
+          else dirTarget.setAttribute('dir', prevDir);
 
           // Check if physical top-left / top-right or bottom-left / bottom-right swapped or polygon changed
-          const radiiMirrored =
-            (ltrSnapshot.tl !== ltrSnapshot.tr || ltrSnapshot.bl !== ltrSnapshot.br) &&
-            ltrSnapshot.tl === rtlSnapshot.tr &&
-            ltrSnapshot.tr === rtlSnapshot.tl &&
-            ltrSnapshot.bl === rtlSnapshot.br &&
-            ltrSnapshot.br === rtlSnapshot.bl;
+          const radiiMirrored = ltrSnapshots.some((ltr, i) => {
+            const rtl = rtlSnapshots[i];
+            return (
+              (ltr.tl !== ltr.tr || ltr.bl !== ltr.br) &&
+              ltr.tl === rtl.tr &&
+              ltr.tr === rtl.tl &&
+              ltr.bl === rtl.br &&
+              ltr.br === rtl.bl
+            );
+          });
 
-          const polygonMirrored =
-            (ltrSnapshot.clipPath !== 'none' && ltrSnapshot.clipPath !== rtlSnapshot.clipPath) ||
-            (ltrSnapshot.borderShape !== '' && ltrSnapshot.borderShape !== rtlSnapshot.borderShape) ||
-            (ltrSnapshot.shapeVar !== '' && ltrSnapshot.shapeVar !== rtlSnapshot.shapeVar);
+          const polygonMirrored = ltrSnapshots.some((ltr, i) => {
+            const rtl = rtlSnapshots[i];
+            return (
+              (ltr.clipPath !== 'none' && ltr.clipPath !== rtl.clipPath) ||
+              (ltr.borderShape !== '' && ltr.borderShape !== rtl.borderShape) ||
+              (ltr.shapeVar !== '' && ltr.shapeVar !== rtl.shapeVar)
+            );
+          });
 
           return { radiiMirrored, polygonMirrored };
         });
