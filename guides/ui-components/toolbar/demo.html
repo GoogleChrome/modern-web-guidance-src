@@ -362,13 +362,15 @@
 
     <p class="status" role="status"></p>
 
-    <div id="more-menu" popover role="menu" aria-label="More actions">
-      <button type="button" class="btn" role="menuitemcheckbox" aria-checked="false" data-icon="strike"
-        data-style="strike" tabindex="-1"><span>Strikethrough</span></button>
-      <button type="button" class="btn" role="menuitemcheckbox" aria-checked="false" data-icon="super"
-        data-style="super" tabindex="-1"><span>Superscript</span></button>
-      <button type="button" class="btn" role="menuitem" data-icon="clear" data-clear tabindex="-1"><span>Clear
-          formatting</span></button>
+    <div id="more-menu" popover>
+      <div focusgroup="menu nomemory" aria-label="More actions">
+        <button type="button" class="btn" role="menuitemcheckbox" aria-checked="false" data-icon="strike"
+          data-style="strike"><span>Strikethrough</span></button>
+        <button type="button" class="btn" role="menuitemcheckbox" aria-checked="false" data-icon="super"
+          data-style="super"><span>Superscript</span></button>
+        <button type="button" class="btn" data-icon="clear" data-clear><span>Clear
+            formatting</span></button>
+      </div>
     </div>
   </main>
 
