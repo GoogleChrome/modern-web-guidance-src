@@ -341,6 +341,45 @@ describe('runAnalyzeCli', () => {
     });
   });
 
+  it('skips string option values when resolving targetDir on parse error', async () => {
+    const resSkillVer = await runAnalyzeCli([
+      '--skill-version',
+      '2026_01_01',
+      '--unknown-flag',
+      'some/dir',
+      '--json',
+    ]);
+    assert.equal(resSkillVer.exitCode, 1);
+    assert.ok(resSkillVer.data);
+    const parsedSkillVer = JSON.parse(resSkillVer.output) as AnalyzeJsonOutput;
+    assert.equal(parsedSkillVer.targetDir, 'some/dir');
+    assert.match(parsedSkillVer.error ?? '', /Unknown option '--unknown-flag'/);
+
+    const resGuide = await runAnalyzeCli([
+      '--guide',
+      'dialog-focus',
+      '--unknown-flag',
+      'other/dir',
+      '--json',
+    ]);
+    assert.equal(resGuide.exitCode, 1);
+    assert.ok(resGuide.data);
+    const parsedGuide = JSON.parse(resGuide.output) as AnalyzeJsonOutput;
+    assert.equal(parsedGuide.targetDir, 'other/dir');
+    assert.match(parsedGuide.error ?? '', /Unknown option '--unknown-flag'/);
+
+    const resNoDir = await runAnalyzeCli([
+      '--skill-version',
+      '2026_01_01',
+      '--unknown-flag',
+      '--json',
+    ]);
+    assert.equal(resNoDir.exitCode, 1);
+    assert.ok(resNoDir.data);
+    const parsedNoDir = JSON.parse(resNoDir.output) as AnalyzeJsonOutput;
+    assert.equal(parsedNoDir.targetDir, '.');
+  });
+
   it('caps terminal findings at 5 per guide and renders overflow summary line', async () => {
     await withTempDir(async (testDir) => {
       for (let i = 1; i <= 8; i++) {

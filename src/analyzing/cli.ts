@@ -314,7 +314,13 @@ export async function runAnalyzeCli(
   } catch (err: unknown) {
     const error = err instanceof Error ? err.message : String(err);
     const isJson = cleanArgs.includes('--json');
-    const targetDir = cleanArgs.find((a) => !a.startsWith('-')) || '.';
+    const targetDir =
+      cleanArgs.find(
+        (a, i) =>
+          !a.startsWith('-') &&
+          cleanArgs[i - 1] !== '--skill-version' &&
+          cleanArgs[i - 1] !== '--guide',
+      ) || '.';
     return errorCliResult(error, isJson, targetDir);
   }
 
