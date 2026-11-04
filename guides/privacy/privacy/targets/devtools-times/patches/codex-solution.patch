@@ -1,0 +1,330 @@
+diff --git a/astro.config.mjs b/astro.config.mjs
+index cc5869a..1512050 100644
+--- a/astro.config.mjs
++++ b/astro.config.mjs
+@@ -17,6 +17,14 @@ export default defineConfig({
+     mode: "standalone",
+   }),
+   output: "server",
++  session: {
++    cookie: {
++      name: "astro-session",
++      httpOnly: true,
++      secure: true,
++      sameSite: "lax",
++    },
++  },
+ 
+   image: {
+     service: {
+@@ -44,4 +52,4 @@ export default defineConfig({
+       }
+     ]
+   }
+-});
+\ No newline at end of file
++});
+diff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml
+new file mode 100644
+index 0000000..24a72ca
+--- /dev/null
++++ b/pnpm-workspace.yaml
+@@ -0,0 +1,3 @@
++allowBuilds:
++  '@parcel/watcher': true
++  esbuild: true
+diff --git a/src/components/SearchButton.tsx b/src/components/SearchButton.tsx
+index 3f57913..6728d42 100644
+--- a/src/components/SearchButton.tsx
++++ b/src/components/SearchButton.tsx
+@@ -14,14 +14,9 @@ export default function SearchButton() {
+     const [isLoading, setIsLoading] = useState(false);
+ 
+     const openSearch = async () => {
+-        try {
+-            setArticles([]);
+-            setIsFlyoutOpen(true);
+-        } catch (error) {
+-            console.error('Failed to fetch articles:', error);
+-        } finally {
+-            setIsLoading(false);
+-        }
++        setArticles([]);
++        setIsFlyoutOpen(true);
++        setIsLoading(false);
+     };
+ 
+     const closeSearch = () => {
+diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
+index 9dabc6e..1c79234 100644
+--- a/src/components/SearchFlyout.tsx
++++ b/src/components/SearchFlyout.tsx
+@@ -36,8 +36,8 @@ export default function SearchFlyout({ articles, onClose }: Props) {
+                 const response = await fetch(`${import.meta.env.BASE_URL}api/articles.json`);
+                 const data = await response.json();
+                 setSuggestions(getShuffledItems(data, 3));
+-            } catch (error) {
+-                console.error('Failed to fetch suggestions:', error);
++            } catch {
++                setSuggestions([]);
+             }
+         };
+ 
+diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
+index a7c52b6..c728c13 100644
+--- a/src/components/SignInForm.tsx
++++ b/src/components/SignInForm.tsx
+@@ -30,7 +30,6 @@ export default function SignInForm() {
+         setError(`Login failed: ${data.error || 'Unknown error'}`);
+       } else {
+         setSuccess('Login successful!');
+-        // You might store the token here if needed, e.g., localStorage.setItem('token', data.token);
+       }
+     } catch (err) {
+       setError('An unexpected error occurred. Please try again later.');
+@@ -63,11 +62,17 @@ export default function SignInForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
++            autoComplete="username"
++            aria-describedby="signin-username-help"
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="signin-username-help" className="text-xs text-gray-500 mt-1">
++            Used only to look up your account for this sign-in request.
++          </p>
+         </div>
+         
+         <div>
+@@ -77,11 +82,17 @@ export default function SignInForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
++            autoComplete="current-password"
++            aria-describedby="signin-password-help"
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="signin-password-help" className="text-xs text-gray-500 mt-1">
++            Sent securely for authentication and never stored in this browser.
++          </p>
+         </div>
+ 
+         <button
+@@ -93,6 +104,12 @@ export default function SignInForm() {
+         >
+           {loading ? 'Signing in...' : 'Sign In'}
+         </button>
++        <a
++          href={import.meta.env.BASE_URL}
++          className="block text-center text-sm font-medium text-gray-700 hover:text-amber-700"
++        >
++          Continue reading without an account
++        </a>
+       </form>
+     </div>
+   );
+diff --git a/src/components/SignUpForm.tsx b/src/components/SignUpForm.tsx
+index 589fe62..03ab9fc 100644
+--- a/src/components/SignUpForm.tsx
++++ b/src/components/SignUpForm.tsx
+@@ -64,11 +64,17 @@ export default function SignUpForm() {
+           <input
+             type="text"
+             id="username"
++            name="username"
+             value={username}
+             onChange={(e) => setUsername(e.target.value)}
++            autoComplete="username"
++            aria-describedby="signup-username-help"
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
++          <p id="signup-username-help" className="text-xs text-gray-500 mt-1">
++            Used only to create and identify your account.
++          </p>
+         </div>
+         
+         <div>
+@@ -78,13 +84,19 @@ export default function SignUpForm() {
+           <input
+             type="password"
+             id="password"
++            name="password"
+             value={password}
+             onChange={(e) => setPassword(e.target.value)}
++            autoComplete="new-password"
++            aria-describedby="signup-password-help signup-password-requirements"
+             required
+             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           />
+-          <p className="text-xs text-gray-500 mt-1">
+-             Must be at least 8 characters and contain a number.
++          <p id="signup-password-help" className="text-xs text-gray-500 mt-1">
++            Sent only to create your account and never stored in this browser.
++          </p>
++          <p id="signup-password-requirements" className="text-xs text-gray-500 mt-1">
++            Must be at least 8 characters and contain a number.
+           </p>
+         </div>
+ 
+@@ -98,6 +110,12 @@ export default function SignUpForm() {
+         >
+           {loading ? 'Signing up...' : 'Sign Up'}
+         </button>
++        <a
++          href={import.meta.env.BASE_URL}
++          className="block text-center text-sm font-medium text-gray-700 hover:text-amber-700"
++        >
++          Continue reading without an account
++        </a>
+       </form>
+     </div>
+   );
+diff --git a/src/content/articles/coastal-pulse.md b/src/content/articles/coastal-pulse.md
+index 6ebd777..28dd1fc 100644
+--- a/src/content/articles/coastal-pulse.md
++++ b/src/content/articles/coastal-pulse.md
+@@ -28,11 +28,6 @@ While the salt air can be corrosive to infrastructure, the trade-off is a front-
+     // Fetch current tide levels
+     // This request will encounter a 302 Redirect
+     fetch('/api/tide-levels')
+-        .then(response => {
+-            console.log(`Tide API status: ${response.status}`);
+-            if (response.redirected) {
+-                console.warn("Tide API was redirected to:", response.url);
+-            }
+-        })
+-        .catch(err => console.error("Error fetching tide levels:", err));
++        .then(() => undefined)
++        .catch(() => undefined);
+ </script>
+diff --git a/src/content/articles/coffee-alchemy.md b/src/content/articles/coffee-alchemy.md
+index 44b75eb..f3a945a 100644
+--- a/src/content/articles/coffee-alchemy.md
++++ b/src/content/articles/coffee-alchemy.md
+@@ -24,10 +24,6 @@ Whether enjoyed as a concentrated espresso or a diluted pour-over, coffee remain
+ <script>
+     // Attempt to brew some coffee stats
+     fetch('/api/coffee-brew')
+-        .then(response => {
+-            if (!response.ok) {
+-                console.error(`Brewing failed: ${response.status} ${response.statusText}`);
+-            }
+-        })
+-        .catch(err => console.error("Network error while brewing:", err));
++        .then(() => undefined)
++        .catch(() => undefined);
+ </script>
+diff --git a/src/content/articles/silent-architects.md b/src/content/articles/silent-architects.md
+index af5a7fe..180838d 100644
+--- a/src/content/articles/silent-architects.md
++++ b/src/content/articles/silent-architects.md
+@@ -21,25 +21,3 @@ Beyond just being "oxygen factories," plants are sophisticated organisms with co
+ *   **Human Utility:** From the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry.
+ 
+ Whether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world.
+-
+-<script>
+-    // Just blindly setting a "cache" to avoid refetching data, 
+-    // but the developer accidentally set it way too large and on the wrong path scope?
+-    // Actually, let's just make it a large cookie for this specific API path to cause the 431.
+-    
+-    // Split into multiple cookies to avoid browser single-cookie size limits (usually ~4KB)
+-    // but still trigger the total header size check in the API (>4KB).
+-    const largeValue = "A".repeat(2000); 
+-    
+-    document.cookie = `plant_stats_cache_1=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_2=${largeValue}; path=/api/plant-stats`;
+-    document.cookie = `plant_stats_cache_3=${largeValue}; path=/api/plant-stats`;
+-
+-    fetch('/api/plant-stats')
+-        .then(res => {
+-            if (res.status === 431) {
+-                console.error("Too much data in headers!");
+-            }
+-        })
+-        .catch(err => console.error(err));
+-</script>
+diff --git a/src/content/articles/super-bowl-lx.md b/src/content/articles/super-bowl-lx.md
+index 700e5ae..803580a 100644
+--- a/src/content/articles/super-bowl-lx.md
++++ b/src/content/articles/super-bowl-lx.md
+@@ -28,7 +28,7 @@ Early lines favor Seattle by 2.5 points, but New England’s top-ranked scoring
+         })
+         .then(data => {
+             if (data && data.trending) {
+-                console.log('Valid trending article');
++                document.documentElement.dataset.featuredStory = 'true';
+             }
+         })
+         .catch(err => {
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..473fec8 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -21,17 +21,6 @@ const baseUrl = import.meta.env.BASE_URL;
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>{title}</title>
+ 
+-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+-    <link
+-      href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
+-      rel="stylesheet"
+-    />
+-
+-    <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
+-    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
+-
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..6c6ab7a 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -9,5 +9,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++  response.headers.set('Permissions-Policy', [
++    'accelerometer=()',
++    'camera=()',
++    'geolocation=()',
++    'gyroscope=()',
++    'magnetometer=()',
++    'microphone=()',
++    'payment=()',
++    'usb=()',
++  ].join(', '));
++  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
++
++  return response;
+ });
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..0f4f27d 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -1,7 +1,7 @@
+ @import "tailwindcss";
+ 
+ .font-brand {
+-  font-family: "Grenze", serif;
++  font-family: Georgia, "Times New Roman", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}

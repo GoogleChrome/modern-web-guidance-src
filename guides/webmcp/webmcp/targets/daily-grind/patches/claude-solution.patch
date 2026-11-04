@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+index 66c9173..de7e483 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,107 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (document.modelContext) {
++      const controller = new AbortController();
++      const { signal } = controller;
++
++      document.modelContext.registerTool({
++        name: 'get-seasonal-menu',
++        description: 'Retrieves the current seasonal favorite drinks displayed on the page, including each drink name and description.',
++        execute: async () => {
++          const cards = document.querySelectorAll('.card');
++          const items = Array.from(cards).map(card => ({
++            name: card.querySelector('h3')?.textContent || '',
++            description: card.querySelector('p')?.textContent || ''
++          }));
++          return { content: [{ type: 'text', text: JSON.stringify(items) }] };
++        },
++        annotations: { readOnlyHint: true }
++      }, signal);
++
++      document.modelContext.registerTool({
++        name: 'order-drink',
++        description: 'Places an order for a drink from the menu. This initiates a real purchase and charges the customer.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            drinkName: {
++              type: 'string',
++              description: 'The name of the drink to order, such as "Maple Oat Latte" or "Cold Brew"'
++            },
++            size: {
++              type: 'string',
++              description: 'The cup size for the drink: "small", "medium", or "large"'
++            },
++            quantity: {
++              type: 'number',
++              description: 'How many of this drink to order'
++            }
++          },
++          required: ['drinkName']
++        },
++        execute: async ({ drinkName, size, quantity }) => {
++          size = size || 'medium';
++          quantity = quantity || 1;
++          const banner = document.createElement('div');
++          banner.setAttribute('role', 'status');
++          banner.textContent = 'Order placed: ' + quantity + 'x ' + size + ' ' + drinkName;
++          banner.style.cssText = 'background:#4CAF50;color:white;padding:12px;text-align:center;';
++          document.body.insertBefore(banner, document.body.firstChild);
++          await new Promise(function (resolve) {
++            requestAnimationFrame(function () {
++              requestAnimationFrame(resolve);
++            });
++          });
++          return {
++            content: [{
++              type: 'text',
++              text: JSON.stringify({
++                status: 'confirmed',
++                drink: drinkName,
++                size: size,
++                quantity: quantity
++              })
++            }]
++          };
++        },
++        annotations: { consequentialHint: true }
++      }, signal);
++
++      document.modelContext.registerTool({
++        name: 'get-page-section',
++        description: 'Reads the visible text content from a named section of the page. Results may contain third-party or user-generated content loaded from external sources.',
++        inputSchema: {
++          type: 'object',
++          properties: {
++            selector: {
++              type: 'string',
++              description: 'A CSS selector for the page section to read, such as "main", "footer", or "nav"'
++            }
++          },
++          required: ['selector']
++        },
++        execute: async ({ selector }) => {
++          var el = document.querySelector(selector);
++          if (!el) {
++            return {
++              content: [{ type: 'text', text: JSON.stringify({ error: 'No element found for selector: ' + selector }) }]
++            };
++          }
++          return {
++            content: [{ type: 'text', text: el.textContent.trim() }]
++          };
++        },
++        annotations: { readOnlyHint: true, untrustedContentHint: true }
++      }, signal);
++
++      window.addEventListener('pagehide', function () {
++        controller.abort();
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..2f2ebf5 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "echo 'Static site — no build step required.'"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []

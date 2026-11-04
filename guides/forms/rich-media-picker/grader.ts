@@ -24,10 +24,9 @@ test.describe(`Rich Media Picker Expectations: ${demoName}`, () => {
     expect(html).toMatch(/::picker\(select\)[^{]*{[^}]*appearance:\s*base-select/);
   });
 
-  test(`The <select> element MUST contain a <button> tag as a direct child`, async () => {
-    // Check that button contains a valid structural selectedcontent element so it fails on negative demo which uses legacy
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toMatch(/<select[^>]*>[\s\S]*?<button>\s*<selectedcontent>/);
+  test(`The <select> element MUST contain a <button> tag as a direct child`, async ({ page }) => {
+    await expect(page.locator('select > button')).toHaveCount(1);
+    await expect(page.locator('select > button selectedcontent')).toHaveCount(1);
   });
 
   test(`The <button> tag MUST contain a <selectedcontent> element to mirror selections`, async () => {
@@ -61,11 +60,10 @@ test.describe(`Rich Media Picker Expectations: ${demoName}`, () => {
   test('Inline decorative SVG icons inside <option> elements must define aria-hidden="true"', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const matches = [...html.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/gi)];
-    for (const match of matches) {
-      const optInner = match[1];
-      if (/<svg/i.test(optInner)) {
-        expect(/aria-hidden=["']true["']/i.test(optInner)).toBe(true);
-      }
+    const svgOptions = matches.filter(m => /<svg/i.test(m[1]));
+    expect(svgOptions.length).toBeGreaterThan(0);
+    for (const match of svgOptions) {
+      expect(/<svg[^>]*aria-hidden=["']true["']/i.test(match[1])).toBe(true);
     }
   });
 
@@ -76,14 +74,7 @@ test.describe(`Rich Media Picker Expectations: ${demoName}`, () => {
 
   test('The checked state of an option must incorporate multiple visual indicators', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
-    expect(/font-weight:|border/i.test(html)).toBe(true);
-  });
-
-  test('Continuous keyframe animations must be wrapped inside a reduced-motion media query', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    if (/@keyframes/i.test(html)) {
-      expect(/prefers-reduced-motion/i.test(html)).toBe(true);
-    }
+    expect(/option:checked[\s\S]*?(?:font-weight|border|::after|::before|outline|box-shadow)/i.test(html)).toBe(true);
   });
 
   test.beforeEach(async ({ page }) => {

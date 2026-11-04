@@ -9,12 +9,14 @@ web-feature-ids:
 
 The Declarative API transforms standard HTML `<form>` elements into WebMCP tools via attributes. The browser synthesizes a JSON Schema from the form inputs and handles agent interactions.
 
+**Angular Signal Forms:** **DO NOT** add `toolname`/`tooldescription` to forms built with `form()` from `@angular/forms/signals`. Instead, add `provideExperimentalWebMcpForms()` to the app providers and pass the `experimentalWebMcpTool: { name, description }` option to `form()`. Angular then registers the form through the Imperative API, building the schema from the signal model and wiring it to validation and submission. Using both approaches registers the same form twice.
+
 ## Form Attributes
 
 *   `toolname`: Unique name for the tool.
-*   `tooldescription`: Purpose of the tool.
+*   `tooldescription`: What the tool does and when an agent should use it. Do not list the form's fields, options, or limits: the browser already includes them in the schema it builds from the form controls.
 *   `toolautosubmit`: (Optional) If present, the agent can submit the form without waiting for user interaction. 
-*   `toolparamdescription`: (Optional) Provides a way to define a property description within the JSON Schema.
+*   `toolparamdescription`: (Optional) Provides a way to define a property description within the JSON Schema. Use it to explain what the value means (for example, with sample values), not to repeat the control's options or limits.
     *   **Resolution Order**: The browser uses `toolparamdescription` if present. In its absence, it uses the `textContent` of the associated `<label>` (skipping labelable descendants). If no label exists, it falls back to the `aria-description`.
     *   **Grouping (Fieldsets)**: To attach a description to a group of related elements (like `<input type="radio">` buttons), place `toolparamdescription` on the nearest parent `<fieldset>` element so it applies to the parameter group as a whole.
 
@@ -69,15 +71,22 @@ document.querySelector('form').addEventListener('submit', (event) => {
 
 ## Lifecycle Events
 
-The window emits events when agents start or stop interacting with a tool:
+`document.modelContext` emits events when agents start or stop interacting with a tool: `toolactivated` fires when tool execution starts, and `toolcancel` fires when it is canceled.
 
 ```javascript
-window.addEventListener('toolactivated', ({ toolName }) => {
-  console.log(`Tool "${toolName}" was activated by the agent.`);
+// Starting in Chrome 156, these events are dispatched on `document.modelContext`.
+// Older versions dispatch them on `window`. Feature-detect the event handler
+// property to pick the right target for backward compatibility.
+const targetFor = (type, listener, options) =>
+  (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
+    .addEventListener(type, listener, options);
+
+targetFor('toolactivated', ({ toolName }) => {
+  console.log(`Tool "${toolName}" started execution.`);
 });
 
-window.addEventListener('toolcancel', ({ toolName }) => {
-  console.log(`Tool "${toolName}" interaction was cancelled.`);
+targetFor('toolcancel', ({ toolName }) => {
+  console.log(`Tool "${toolName}" execution is cancelled.`);
 });
 ```
 

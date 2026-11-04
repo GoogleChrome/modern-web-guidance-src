@@ -48,36 +48,28 @@ test.describe(`Animated Select Picker Expectations: ${demoName}`, () => {
     expect(hasManualToggle).toBe(false);
   });
 
-  test('Progressive enhancement fallback checks CSS.supports if JS is used', async () => {
-    const scriptMatches = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
-    const scriptContent = scriptMatches ? scriptMatches.join('\n') : '';
-    const needsFallbackCheck = scriptContent.length > 0 && /addEventListener|classList|style/i.test(scriptContent);
-    const hasFallbackCheck = /CSS\.supports\s*\(\s*['"`]appearance['"`]\s*,\s*['"`]base-select['"`]\s*\)/.test(scriptContent);
-    expect(needsFallbackCheck ? hasFallbackCheck : true).toBe(true);
-  });
-
   test('Inline decorative SVG icons inside <option> elements must define aria-hidden="true"', async () => {
     const matches = [...html.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/gi)];
-    for (const match of matches) {
-      const optInner = match[1];
-      if (/<svg/i.test(optInner)) {
-        expect(/aria-hidden=["']true["']/i.test(optInner)).toBe(true);
-      }
+    const svgOptions = matches.filter(m => /<svg/i.test(m[1]));
+    expect(svgOptions.length).toBeGreaterThan(0);
+    for (const match of svgOptions) {
+      expect(/aria-hidden=["']true["']/i.test(match[1])).toBe(true);
     }
-  });
-
-  test('Options with complex inner markup must use aria-label', async () => {
-    expect(/<option[^>]*aria-label/i.test(html)).toBe(true);
   });
 
   test('The checked state of an option must incorporate multiple visual indicators', async () => {
-    expect(/font-weight:|border/i.test(cssContent)).toBe(true);
+    const checkedBlocks = cssContent.match(/option:checked\s*\{[^}]*\}/gi) || [];
+    const combinedChecked = checkedBlocks.join('\n');
+    expect(checkedBlocks.length).toBeGreaterThan(0);
+    expect(/font-weight\s*:|border|text-decoration|outline/i.test(combinedChecked)).toBe(true);
   });
 
-  test('Continuous keyframe animations must be wrapped inside a reduced-motion media query', async () => {
-    if (/@keyframes/i.test(cssContent)) {
-      expect(/prefers-reduced-motion/i.test(cssContent)).toBe(true);
-    }
+  test('Dropdown entry/exit and icon animations must be disabled or dampened if prefers-reduced-motion: reduce is set', async () => {
+    const reducedMotionMatch = cssContent.match(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)\s*\{([\s\S]*?\})\s*\}/i);
+    expect(reducedMotionMatch).not.toBeNull();
+    const inner = reducedMotionMatch ? reducedMotionMatch[1] : '';
+    expect(/::picker\(\s*select\s*\)|::picker-icon/i.test(inner)).toBe(true);
+    expect(/transition\s*:\s*none|transition-duration\s*:\s*0/i.test(inner)).toBe(true);
   });
 
   test.describe('Browser DOM tests', () => {

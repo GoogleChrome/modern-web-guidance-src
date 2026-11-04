@@ -1,14 +1,14 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+
+import { guidesDir as libGuidesDir, outDir, rootDir, suitesDir } from '../../../../src/core/paths.ts';
 
 const BUCKET_NAME = 'guidance-evals';
 
 // Resolve local directories
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, '../../../..');
-const resultsDir = path.join(repoRoot, 'harness', 'results');
+const repoRoot = rootDir;
+const resultsDir = suitesDir;
 
 function getSlug(taskName: string): string {
   return taskName.toLowerCase().replace(/[^a-z0-9_-]/g, '').replace(/\s+/g, '-');
@@ -223,7 +223,7 @@ async function main() {
     }
   }
 
-  // Ensure harness/results directory exists
+  // Ensure results/suites directory exists
   fs.mkdirSync(resultsDir, { recursive: true });
 
   const activeAgents = Object.keys(latestByAgent).filter(agent => latestByAgent[agent as keyof typeof latestByAgent]) as ('claude_code' | 'codex_cli' | 'jetski_cli')[];
@@ -386,11 +386,10 @@ async function main() {
   console.log(`\nAnalysis completed. Flagged ${flaggedTasks.length} out of ${allTasks.size} tasks.`);
 
   // Generate reports
-  const outputDir = path.join(__dirname, '../artifacts');
+  const outputDir = path.join(outDir, 'nightly-investigation');
   fs.mkdirSync(outputDir, { recursive: true });
 
-  const guidesDir = path.join(repoRoot, 'guides');
-  const guideDirsMap = findGuideDirs(guidesDir);
+  const guideDirsMap = findGuideDirs(libGuidesDir);
 
   const markdownReportPath = path.join(outputDir, 'nightly_investigation_report.md');
 

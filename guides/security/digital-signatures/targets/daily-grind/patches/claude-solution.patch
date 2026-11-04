@@ -1,0 +1,113 @@
+diff --git a/index.html b/index.html
+index 66c9173..a35157f 100644
+--- a/index.html
++++ b/index.html
+@@ -195,8 +195,108 @@
+         </div>
+       </div>
+     </section>
++    <section class="card" style="margin-top:30px; text-align:left;" id="signing">
++      <h2>Sign &amp; Verify Order Receipts</h2>
++      <p>Signature suite: <strong id="sig-suite">detecting…</strong></p>
++      <p><label>Receipt payload<br>
++        <input id="sig-payload" style="width:100%" value='{"order":"1042","item":"Cold Brew","total":"4.50"}'></label></p>
++      <p><label>Context (domain separation)<br>
++        <input id="sig-context" style="width:100%" value="receipt-v1"></label></p>
++      <button class="btn" id="sig-sign" style="border:0;cursor:pointer">Sign &amp; Verify</button>
++      <p>Public key (<span id="sig-keyformat">-</span>): <code id="sig-pubkey" style="word-break:break-all">-</code></p>
++      <p>Signature: <code id="sig-signature" style="word-break:break-all">-</code></p>
++      <p>Verification status: <strong id="sig-status">Not verified</strong></p>
++    </section>
+   </main>
+ 
++  <script>
++    const ML_DSA_PUBLIC_KEY_ALGORITHMS = { 1312: 'ML-DSA-44', 1952: 'ML-DSA-65', 2592: 'ML-DSA-87' };
++
++    function supportsPostQuantumSignatures() {
++      return typeof globalThis.SubtleCrypto?.supports === 'function' &&
++        SubtleCrypto.supports('sign', 'ML-DSA-65');
++    }
++
++    async function generateSigningKeyPair() {
++      if (supportsPostQuantumSignatures()) {
++        const keyPair = await crypto.subtle.generateKey('ML-DSA-65', false, ['sign', 'verify']);
++        const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey('raw-public', keyPair.publicKey));
++        return { suite: 'ML-DSA-65', keyFormat: 'raw-public', keyPair, publicKeyBytes };
++      }
++      const keyPair = await crypto.subtle.generateKey('Ed25519', false, ['sign', 'verify']);
++      const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
++      return { suite: 'Ed25519', keyFormat: 'raw', keyPair, publicKeyBytes };
++    }
++
++    function frameFallbackInput(payloadBytes, contextBytes) {
++      if (contextBytes.byteLength > 255) {
++        throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
++      }
++      const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
++      framed[0] = contextBytes.byteLength;
++      framed.set(contextBytes, 1);
++      framed.set(payloadBytes, 1 + contextBytes.byteLength);
++      return framed;
++    }
++
++    async function signPayload(privateKey, payloadBytes, contextBytes = new Uint8Array(0)) {
++      if (privateKey.algorithm.name.startsWith('ML-DSA')) {
++        const sig = await crypto.subtle.sign(
++          { name: privateKey.algorithm.name, context: contextBytes }, privateKey, payloadBytes);
++        return new Uint8Array(sig);
++      }
++      const sig = await crypto.subtle.sign('Ed25519', privateKey, frameFallbackInput(payloadBytes, contextBytes));
++      return new Uint8Array(sig);
++    }
++
++    async function verifyPayload(publicKeyOrBytes, signatureBytes, payloadBytes, contextBytes = new Uint8Array(0)) {
++      let publicKey = publicKeyOrBytes;
++      if (!(publicKeyOrBytes instanceof CryptoKey)) {
++        const bytes = publicKeyOrBytes instanceof Uint8Array ? publicKeyOrBytes : new Uint8Array(publicKeyOrBytes);
++        const mlDsaName = ML_DSA_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
++        publicKey = mlDsaName
++          ? await crypto.subtle.importKey('raw-public', bytes, mlDsaName, true, ['verify'])
++          : await crypto.subtle.importKey('raw', bytes, 'Ed25519', true, ['verify']);
++      }
++      if (publicKey.algorithm.name.startsWith('ML-DSA')) {
++        return crypto.subtle.verify(
++          { name: publicKey.algorithm.name, context: contextBytes }, publicKey, signatureBytes, payloadBytes);
++      }
++      return crypto.subtle.verify('Ed25519', publicKey, signatureBytes, frameFallbackInput(payloadBytes, contextBytes));
++    }
++
++    const toHex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
++
++    (async () => {
++      const $ = (id) => document.getElementById(id);
++      const status = $('sig-status');
++      let signer;
++      try {
++        signer = await generateSigningKeyPair();
++        $('sig-suite').textContent = signer.suite;
++        $('sig-keyformat').textContent = signer.keyFormat;
++        $('sig-pubkey').textContent = toHex(signer.publicKeyBytes).slice(0, 64) + '… (' + signer.publicKeyBytes.length + ' bytes)';
++      } catch (e) {
++        $('sig-suite').textContent = 'unavailable';
++        status.textContent = 'Error: ' + e.message;
++        return;
++      }
++      $('sig-sign').addEventListener('click', async () => {
++        try {
++          const enc = new TextEncoder();
++          const payload = enc.encode($('sig-payload').value);
++          const context = enc.encode($('sig-context').value);
++          const signature = await signPayload(signer.keyPair.privateKey, payload, context);
++          $('sig-signature').textContent = toHex(signature).slice(0, 64) + '… (' + signature.length + ' bytes)';
++          const ok = await verifyPayload(signer.publicKeyBytes, signature, payload, context);
++          status.textContent = ok ? 'Valid signature ✔' : 'Invalid signature ✘';
++        } catch (e) {
++          status.textContent = 'Error: ' + e.message;
++        }
++      });
++    })();
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

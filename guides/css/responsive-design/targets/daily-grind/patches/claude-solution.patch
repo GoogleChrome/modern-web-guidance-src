@@ -1,0 +1,36 @@
+diff --git a/index.html b/index.html
+index 66c9173..3a6f911 100644
+--- a/index.html
++++ b/index.html
+@@ -74,7 +74,8 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60dvh;
++      aspect-ratio: 16 / 7;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -107,6 +108,21 @@
+       margin-top: 20px;
+     }
+ 
++    .container section {
++      container-type: inline-size;
++      container-name: favorites;
++    }
++
++    @container favorites (max-width: 600px) {
++      .grid {
++        grid-template-columns: 1fr;
++      }
++
++      .card {
++        padding: 14px;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;

@@ -1,0 +1,3 @@
+- Stylesheets define `::before` or `::after` pseudo-element rules that use the `content` alternative text syntax (`content: "..." / ""`) to prevent purely decorative generated text or glyphs from being announced by screen readers.
+- Elements styled with `::before` or `::after` generated content rules using `/` alternative text convey their meaningful label, state, or instruction through DOM text or ARIA attributes rather than relying solely on CSS `content`.
+- Every `::before` or `::after` `content` declaration that uses the `/` alternative text syntax either silences non-image decorative text with `/ ""` (never `url(...) / ""`) or specifies a non-empty `<alt>` string that differs from the primary `content` value and does not duplicate the host element's DOM text.

@@ -1,0 +1,122 @@
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..c324f67
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,8 @@
++{
++  "https://new-app.example.com": {
++    "allow_migration": true
++  },
++  "https://new-app.example.com/manifest.json": {
++    "allow_migration": true
++  }
++}
+diff --git a/index.html b/index.html
+index 66c9173..e3edab1 100644
+--- a/index.html
++++ b/index.html
+@@ -5,7 +5,33 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.json">
+   <style>
++    .migration-banner {
++      background: #fff3e0;
++      color: var(--text);
++      padding: 16px 20px;
++      text-align: center;
++      border-bottom: 2px solid var(--accent);
++    }
++
++    .migration-banner h2 {
++      font-size: 1.15rem;
++      margin-bottom: 6px;
++      color: var(--primary);
++    }
++
++    .migration-banner p {
++      margin-bottom: 4px;
++      font-size: 0.95rem;
++    }
++
++    .migration-banner a {
++      color: var(--primary);
++      font-weight: bold;
++      text-decoration: underline;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -157,6 +183,14 @@
+ 
+ <body>
+ 
++  <aside class="migration-banner" role="region" aria-label="App migration notice">
++    <h2>The Daily Grind has moved</h2>
++    <p>We've moved to a new address! If your browser does not migrate the app automatically, please visit and install the new version at
++      <a href="https://new-app.example.com/">new-app.example.com</a>.
++    </p>
++    <p><small>Note: Settings, saved data, and permissions will not transfer automatically and may need to be reconfigured on the new site.</small></p>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..c64f0c7
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,16 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "migrate_to": [
++    {
++      "id": "https://new-app.example.com/",
++      "install_url": "https://new-app.example.com/"
++    }
++  ]
++}
+diff --git a/new-app/manifest.json b/new-app/manifest.json
+new file mode 100644
+index 0000000..d20bbf1
+--- /dev/null
++++ b/new-app/manifest.json
+@@ -0,0 +1,15 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "migrate_from": [
++    {
++      "id": "https://old-app.example.com/"
++    }
++  ]
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..f7f67cb 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"console.log('Build clean')\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

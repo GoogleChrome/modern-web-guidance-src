@@ -1,0 +1,383 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..5f6b244 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -22,7 +22,10 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             <div class="lg:col-span-1 flex flex-col">
+                 <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                    <h1
++                        class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors"
++                        style={`view-transition-name: article-title-${article.id}`}
++                    >
+                         {article.data.title}
+                     </h1>
+                     <p class="mt-4 text-lg text-gray-700">
+@@ -39,13 +42,14 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+             </div>
+             <div class="lg:col-span-2">
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-                    <Image 
+-                        src={image} 
++                    <Image
++                        src={image}
+                         alt=""
+                         width={800}
+                         height={533}
+                         format="webp"
+                         class="w-full h-auto object-cover"
++                        style={`view-transition-name: article-image-${article.id}`}
+                     />
+                 </a>
+             </div>
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..646ae69 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
+ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+ ---
+ 
+-<header class="font-inter group relative bg-white">
++<header id="site-header" class="font-inter group relative bg-white">
+   <!-- Row 1: Search, Subscribe, Log In -->
+   <div class="container mx-auto px-4 py-2 border-b border-gray-300">
+     <div class="flex justify-between items-center">
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..e57fd22 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,13 +4,25 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
+ 
+-import { ClientRouter } from "astro:transitions";
++export interface AboveTheFoldTarget {
++  /** id (without '#') of the element that must be parsed before the page is allowed to paint */
++  id: string;
++  /** optional media query restricting when this element is render-blocking */
++  media?: string;
++}
+ 
+ export interface Props {
+   title: string;
++  /**
++   * Elements that must finish parsing before this page is allowed to render.
++   * Used to back a `<link rel="expect">` per entry so cross-document view
++   * transitions never snapshot a blank or half-parsed page.
++   * Defaults to just the site header, which is present above the fold on every page.
++   */
++  aboveTheFold?: AboveTheFoldTarget[];
+ }
+ 
+-const { title } = Astro.props;
++const { title, aboveTheFold = [{ id: "site-header" }] } = Astro.props;
+ const baseUrl = import.meta.env.BASE_URL;
+ ---
+ 
+@@ -34,7 +46,14 @@ const baseUrl = import.meta.env.BASE_URL;
+ 
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    <!--
++      DO: Block rendering until above-the-fold content has been parsed, so the
++      cross-document view transition never snapshots a blank or incomplete page.
++      Only elements visible in the initial viewport are listed here.
++    -->
++    {aboveTheFold.map(({ id, media }) => (
++      <link rel="expect" href={`#${id}`} blocking="render" media={media} />
++    ))}
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/layouts/LegalLayout.astro b/src/layouts/LegalLayout.astro
+index 0baf98a..4a32bbd 100644
+--- a/src/layouts/LegalLayout.astro
++++ b/src/layouts/LegalLayout.astro
+@@ -7,9 +7,9 @@ export interface Props {
+ 
+ const { title } = Astro.props;
+ ---
+-<Layout title={title}>
++<Layout title={title} aboveTheFold={[{ id: "site-header" }, { id: "legal-heading" }]}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
++        <h1 id="legal-heading" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">{title}</h1>
+         <div class="prose max-w-none">
+             <slot />
+         </div>
+diff --git a/src/pages/404.astro b/src/pages/404.astro
+index 356186f..5aa4b44 100644
+--- a/src/pages/404.astro
++++ b/src/pages/404.astro
+@@ -3,8 +3,8 @@
+ import Layout from '../layouts/Layout.astro';
+ ---
+ 
+-<Layout title="Page Not Found">
+-    <div class="flex flex-col items-center justify-center text-center py-20">
++<Layout title="Page Not Found" aboveTheFold={[{ id: "site-header" }, { id: "not-found-content" }]}>
++    <div id="not-found-content" class="flex flex-col items-center justify-center text-center py-20">
+         <h1 class="text-6xl font-bold text-amber-400">404</h1>
+         <p class="text-2xl font-semibold text-gray-800 mt-4">Seite nicht gefunden</p>
+         <p class="text-gray-600 mt-2">Die von Ihnen angeforderte Seite konnte nicht gefunden werden.</p>
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..f303499 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -35,56 +35,66 @@ const readingList = await Astro.session?.get('readingList') || [];
+ const isBookmarked = readingList.includes(article.slug);
+ ---
+ 
+-<Layout title={article.data.title}>
++<Layout
++    title={article.data.title}
++    aboveTheFold={[{ id: "site-header" }, { id: "article-header" }]}
++>
+     <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <!-- Breadcrumbs/Category -->
+-        <div class="text-base text-gray-600 font-semibold mb-2">
+-            <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
+-        </div>
++        <div id="article-header">
++            <!-- Breadcrumbs/Category -->
++            <div class="text-base text-gray-600 font-semibold mb-2">
++                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
++            </div>
+ 
+-        <!-- Headline -->
+-        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
+-            {article.data.title}
+-        </h1>
+-        
+-        <!-- Sub-headline / Lead Paragraph -->
+-        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
+-            {article.data.summary}
+-        </p>
+-
+-        <!-- Author / Date -->
+-        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
+-            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
+-        </div>
++            <!-- Headline -->
++            <h1
++                class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight"
++                style={`view-transition-name: article-title-${article.id}`}
++            >
++                {article.data.title}
++            </h1>
++
++            <!-- Sub-headline / Lead Paragraph -->
++            <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
++                {article.data.summary}
++            </p>
++
++            <!-- Author / Date -->
++            <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
++                By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
++            </div>
+ 
+-        <!-- Main Article Image -->
+-        <figure class="mb-5">
+-            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
+-            {article.data.prompt_comment ? (
+-                <img 
+-                    src={article.data.image}
+-                    alt={article.data.title}
+-                    width="1200"
+-                    height="675"
+-                    class="w-full h-auto"
+-                    crossorigin="use-credentials"
+-                />
+-            ) : (
+-                <Image 
+-                    src={articleImage} 
+-                    alt={article.data.title} 
+-                    width={1200}
+-                    height={675}
+-                    format="webp"
+-                    class="w-full h-auto"
+-                />
+-            )}
+-            {article.data.image_caption && (
+-                <figcaption class="text-xs text-gray-500 mt-2 px-2">
+-                    {article.data.image_caption}
+-                </figcaption>
+-            )}
+-        </figure>
++            <!-- Main Article Image -->
++            <figure class="mb-5">
++                {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
++                {article.data.prompt_comment ? (
++                    <img
++                        src={article.data.image}
++                        alt={article.data.title}
++                        width="1200"
++                        height="675"
++                        class="w-full h-auto"
++                        crossorigin="use-credentials"
++                        style={`view-transition-name: article-image-${article.id}`}
++                    />
++                ) : (
++                    <Image
++                        src={articleImage}
++                        alt={article.data.title}
++                        width={1200}
++                        height={675}
++                        format="webp"
++                        class="w-full h-auto"
++                        style={`view-transition-name: article-image-${article.id}`}
++                    />
++                )}
++                {article.data.image_caption && (
++                    <figcaption class="text-xs text-gray-500 mt-2 px-2">
++                        {article.data.image_caption}
++                    </figcaption>
++                )}
++            </figure>
++        </div>
+ 
+         <!-- Share Buttons & Comments -->
+         <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..7f523ac 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -37,10 +37,13 @@ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArt
+ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+ ---
+ 
+-<Layout title={`Category: ${capitalizedCategory}`}>
++<Layout
++    title={`Category: ${capitalizedCategory}`}
++    aboveTheFold={[{ id: "site-header" }, { id: "category-hero" }]}
++>
+     <div class="pb-8">
+         <!-- Dynamic Category Header -->
+-        <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
++        <header id="category-hero" class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
+             {heroImage && (
+                 <Image 
+                     src={heroImage} 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..2e81a43 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -37,9 +37,16 @@ politicsArticles[2] = {
+   };
+ ---
+ 
+-<Layout title="The DevTools Times">
++<Layout
++    title="The DevTools Times"
++    aboveTheFold={[
++        { id: "site-header" },
++        { id: "top-stories" },
++        { id: "top-article", media: "screen and (width > 768px)" },
++    ]}
++>
+     <!-- Top Stories Bar -->
+-    <div class="bg-white border-b border-gray-300">
++    <div id="top-stories" class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {topStories.map(article => (
+@@ -55,7 +62,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main id="top-article" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
+index bd5dada..25d974d 100644
+--- a/src/pages/multimedia.astro
++++ b/src/pages/multimedia.astro
+@@ -4,9 +4,9 @@ import { getCollection } from 'astro:content';
+ 
+ const multimedia = await getCollection('multimedia');
+ ---
+-<Layout title="Multimedia">
++<Layout title="Multimedia" aboveTheFold={[{ id: "site-header" }, { id: "page-heading" }]}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
++        <h1 id="page-heading" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Multimedia</h1>
+         <div class="prose max-w-none">
+             <p>Watch our latest multimedia content.</p>
+             <ul>
+diff --git a/src/pages/reports.astro b/src/pages/reports.astro
+index f6a1fc6..62af65c 100644
+--- a/src/pages/reports.astro
++++ b/src/pages/reports.astro
+@@ -4,9 +4,9 @@ import { getCollection } from 'astro:content';
+ 
+ const reports = await getCollection('reports');
+ ---
+-<Layout title="Reports">
++<Layout title="Reports" aboveTheFold={[{ id: "site-header" }, { id: "page-heading" }]}>
+     <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
+-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
++        <h1 id="page-heading" class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
+         <div class="prose max-w-none">
+             <p>Read our latest reports.</p>
+             <ul>
+diff --git a/src/pages/signin.astro b/src/pages/signin.astro
+index 6844450..89b9629 100644
+--- a/src/pages/signin.astro
++++ b/src/pages/signin.astro
+@@ -3,8 +3,8 @@ import Layout from '../layouts/Layout.astro';
+ import SignInForm from '../components/SignInForm';
+ ---
+ 
+-<Layout title="Sign In | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++<Layout title="Sign In | The DevTools Times" aboveTheFold={[{ id: "site-header" }, { id: "auth-form" }]}>
++  <div id="auth-form" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignInForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/pages/signup.astro b/src/pages/signup.astro
+index dc93e5d..1f25832 100644
+--- a/src/pages/signup.astro
++++ b/src/pages/signup.astro
+@@ -3,8 +3,8 @@ import Layout from '../layouts/Layout.astro';
+ import SignUpForm from '../components/SignUpForm';
+ ---
+ 
+-<Layout title="Sign Up | The DevTools Times">
+-  <div class="py-12 px-4 sm:px-6 lg:px-8">
++<Layout title="Sign Up | The DevTools Times" aboveTheFold={[{ id: "site-header" }, { id: "auth-form" }]}>
++  <div id="auth-form" class="py-12 px-4 sm:px-6 lg:px-8">
+     <SignUpForm client:load />
+   </div>
+ </Layout>
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..2f0e57a 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,20 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++/*
++  MANDATORY: Opt in to cross-document view transitions on every page.
++  `navigation: auto` enables transitions for standard navigations
++  (link clicks, form submissions, back/forward).
++*/
++@view-transition {
++  navigation: auto;
++}
++
++/* MANDATORY Copy-Paste Safety: Disable cross-document view transitions for users requesting reduced motion */
++@media (prefers-reduced-motion: reduce) {
++  @view-transition {
++    navigation: none;
++  }
+ }
+\ No newline at end of file

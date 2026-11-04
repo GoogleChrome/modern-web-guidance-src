@@ -1,0 +1,3 @@
+- The implementation MUST use `:user-invalid` and `:user-valid` rather than `:invalid` and `:valid` for form validation styling so error states appear only after user interaction.
+- The implementation MUST use `field-sizing: content` on auto-growing text inputs or `<textarea>` elements.
+- The implementation MUST NOT apply `user-select: none` to `<p>` elements or their ancestors.

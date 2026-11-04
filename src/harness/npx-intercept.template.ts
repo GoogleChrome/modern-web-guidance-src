@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+
+/**
+ * @file npx-intercept.template.ts
+ * @description This script acts as a shim for `npx` during evaluations.
+ * It intercepts calls to `npx -y modern-web-guidance@latest` and redirects them
+ * to the local build in `dist/skills-cli`, ensuring that agents use the fresh
+ * local guides instead of fetching the published package from the npm registry.
+ * All other `npx` calls fall back to the real system `npx`.
+ */
+
+import { spawn, spawnSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const invokedBin = path.basename(process.argv[1] || 'npx');
+const args = process.argv.slice(2);
+const pkgIdx = args.findIndex(a => /^modern-web-guidance(?:@.*)?$/.test(a));
+
+if (pkgIdx !== -1) {
+  const pkgSpec = args[pkgIdx];
+  const remainingArgs = args.slice(pkgIdx + 1);
+  const localCliPath = "__LOCAL_CLI_PATH__";
+  if (!localCliPath || !fs.existsSync(localCliPath)) {
+    console.error(`npm error 404 Not Found - GET https://registry.npmjs.org/${pkgSpec} - Not found`);
+    process.exit(1);
+  }
+
+  // Execute the local CLI instead of fetching from registry
+  const result = spawnSync(process.execPath, [localCliPath, ...remainingArgs], { stdio: 'inherit' });
+  process.exit(result.status ?? 0);
+}
+
+// Fallback to real binary (npx, pnpx, or pnpm)
+const currentDir = fs.realpathSync(path.dirname(fileURLToPath(import.meta.url)));
+
+// Find all matching binaries in PATH
+const binPaths = spawnSync('which', ['-a', invokedBin], { encoding: 'utf8' }).stdout.split('\n').filter(Boolean);
+
+// Find the first one that does not resolve to our shim directory
+const realBin = binPaths.find(p => {
+  try {
+    return path.dirname(fs.realpathSync(p)) !== currentDir;
+  } catch {
+    return false;
+  }
+});
+
+if (!realBin) {
+  console.error(`Could not find real ${invokedBin}`);
+  process.exit(1);
+}
+
+const env = { ...process.env };
+if (env.PATH) {
+  const pathDirs = env.PATH.split(path.delimiter);
+  env.PATH = pathDirs.filter(d => {
+    try {
+      return d !== currentDir && fs.realpathSync(d) !== currentDir;
+    } catch {
+      return d !== currentDir;
+    }
+  }).join(path.delimiter);
+}
+
+const child = spawn(realBin, args, {
+  stdio: [process.stdin.isTTY ? 'ignore' : 'inherit', 'inherit', 'inherit'],
+  env,
+  detached: true
+});
+
+const killGroup = () => {
+  try {
+    if (child.pid) process.kill(-child.pid, 'SIGKILL');
+  } catch {
+    // Process group already exited
+  }
+};
+
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+  process.on(sig, () => {
+    killGroup();
+  });
+}
+
+child.on('error', (err) => {
+  console.error(err);
+  process.exit(1);
+});
+
+child.on('exit', (code, signal) => {
+  killGroup();
+  process.exit(code ?? (signal ? 1 : 0));
+});

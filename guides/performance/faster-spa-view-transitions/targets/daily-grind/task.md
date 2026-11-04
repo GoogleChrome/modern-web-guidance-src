@@ -1,0 +1,1 @@
+- Convert the Daily Grind navigation links (Menu, Locations, Rewards, and My Account) into client-side SPA views and optimize view switching so returning to previously visited views is fast by preserving their offscreen DOM state instead of destroying and rebuilding them on every navigation.

@@ -1,0 +1,5 @@
+- The application checks for modern WebCrypto signature algorithm support using the static `SubtleCrypto.supports()` method and falls back to a classical WebCrypto signature algorithm (`Ed25519` or `ECDSA`) when unsupported.
+- When modern WebCrypto algorithms are supported, the application generates a key pair with `['sign', 'verify']` usages for `'ML-DSA-44'`, `'ML-DSA-65'`, or `'ML-DSA-87'`.
+- The application exports or imports the verification public key (or private seed) using the explicit modern WebCrypto raw key formats (`'raw-public'` or `'raw-seed'` for `ML-DSA`, falling back to `'raw'` for classical keys) rather than passing the legacy `'raw'` format to `ML-DSA`.
+- The application signs payload data using `crypto.subtle.sign()` with the active signature algorithm (including any configured domain-separation `context` for `ML-DSA`) and produces a non-empty signature.
+- The application verifies the signature against the payload using `crypto.subtle.verify()` and displays the verification status in the UI.

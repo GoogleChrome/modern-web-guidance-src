@@ -1,0 +1,1 @@
+- Implement privacy by design across the Daily Grind website's HTML markup, client-side scripts, and security headers, including data minimization, third-party audits, and secure data handling.

@@ -1,15 +1,52 @@
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
-// Helper to get target file path from environment variable
-const getTargetUrl = (): string => {
-  const targetFile = process.env.TARGET_FILE;
-  if (!targetFile) {
-    throw new Error('TARGET_FILE environment variable is not defined');
-  }
-  return `file://${targetFile}`;
-};
+const targetFile = process.env.TARGET_FILE || path.resolve(import.meta.dirname, 'demo.html');
+const targetDir = path.dirname(targetFile);
+const fileName = path.basename(targetFile);
+const getTargetUrl = (): string => `http://localhost/${fileName}`;
 
 test.describe('Cross-document Transitions Grader', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/**', async (route) => {
+      const url = new URL(route.request().url());
+      let reqPath = decodeURIComponent(url.pathname);
+      if (reqPath === '/' || reqPath === '') reqPath = `/${fileName}`;
+      const fullPath = path.join(targetDir, reqPath);
+      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        const ext = path.extname(fullPath).toLowerCase();
+        const contentType =
+          ext === '.html' ? 'text/html' :
+          ext === '.css' ? 'text/css' :
+          ext === '.js' || ext === '.mjs' ? 'application/javascript' :
+          'application/octet-stream';
+        await route.fulfill({
+          status: 200,
+          contentType,
+          body: fs.readFileSync(fullPath),
+        });
+      } else if (reqPath.endsWith('.html') && fs.existsSync(targetFile)) {
+        // Fallback when secondary HTML pages were not bundled separately:
+        // serve the main HTML with #previous pointing back to the main file
+        let html = fs.readFileSync(targetFile, 'utf-8');
+        html = html.replace(
+          /(<a\b[^>]*\bid=["']previous["'][^>]*\bhref=["'])[^"']*(['"][^>]*>)/i,
+          `$1/${fileName}$2`
+        ).replace(
+          /(<a\b[^>]*\bhref=["'])[^"']*(['"][^>]*\bid=["']previous["'][^>]*>)/i,
+          `$1/${fileName}$2`
+        );
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: html,
+        });
+      } else {
+        await route.continue();
+      }
+    });
+  });
 
   test('The @view-transition at-rule is defined with navigation: auto to enable cross-document transitions', async ({ page }) => {
     await page.goto(getTargetUrl());
@@ -132,7 +169,14 @@ test.describe('Cross-document Transitions Grader', () => {
       });
     });
 
-    await page.goto(`${getTargetUrl()}?page=1`);
+    await page.goto(getTargetUrl());
+    const usesQueryParam = await page.evaluate(() => {
+      const next = document.getElementById('next') as HTMLAnchorElement | null;
+      return Boolean(next && next.getAttribute('href')?.includes('?page='));
+    });
+    if (usesQueryParam) {
+      await page.goto(`${getTargetUrl()}?page=1`);
+    }
 
     // Click the next page link to trigger same-origin navigation
     await Promise.all([

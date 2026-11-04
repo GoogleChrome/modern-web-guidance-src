@@ -1,0 +1,343 @@
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..4a212f1 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -35,6 +35,108 @@ const baseUrl = import.meta.env.BASE_URL;
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+     <ClientRouter />
++    <script is:inline>
++      /**
++       * Navigates to a new view with a directional transition.
++       * @param {Function} updateDOM - Callback to update the DOM state.
++       * @param {string} direction - Either 'forward' or 'backward'.
++       */
++      function navigate(updateDOM, direction) {
++        // Feature detect for browsers that do not support View Transitions
++        if (!document.startViewTransition) {
++          if (typeof updateDOM === 'function') {
++            updateDOM();
++          }
++          return;
++        }
++
++        // Start transition with the specific navigation type
++        try {
++          const transition = document.startViewTransition({
++            update: typeof updateDOM === 'function' ? updateDOM : () => {},
++            types: [direction] // Matches the CSS :active-view-transition-type() selectors
++          });
++          if (transition && transition.types && typeof transition.types.add === 'function') {
++            try {
++              transition.types.add(direction);
++            } catch (_) {}
++          }
++          return transition;
++        } catch (e) {
++          const transition = document.startViewTransition(
++            typeof updateDOM === 'function' ? updateDOM : () => {}
++          );
++          if (transition && transition.types && typeof transition.types.add === 'function') {
++            try {
++              transition.types.add(direction);
++            } catch (_) {}
++          }
++          return transition;
++        }
++      }
++
++      window.navigate = navigate;
++
++      function handleDirectionalClick(event) {
++        const btn = event.target.closest('button, a');
++        if (!btn) return;
++
++        const btnText = (btn.textContent || '').trim().toLowerCase();
++        const directionAttr = btn.getAttribute('data-direction');
++
++        let direction = null;
++        if (directionAttr === 'forward' || directionAttr === 'backward') {
++          direction = directionAttr;
++        } else if (btnText === 'next' || btnText.startsWith('next')) {
++          direction = 'forward';
++        } else if (btnText === 'previous' || btnText.startsWith('prev') || btnText.startsWith('previous')) {
++          direction = 'backward';
++        }
++
++        if (!direction) return;
++
++        const targetUrl = btn.getAttribute('data-target-url') || (btn.tagName === 'A' ? btn.getAttribute('href') : null);
++
++        if (targetUrl) {
++          event.preventDefault();
++          event.stopPropagation();
++
++          const updateCallback = async () => {
++            try {
++              const res = await fetch(targetUrl);
++              const html = await res.text();
++              const parser = new DOMParser();
++              const doc = parser.parseFromString(html, 'text/html');
++
++              document.title = doc.title;
++              const currentMain = document.querySelector('main');
++              const newMain = doc.querySelector('main');
++              if (currentMain && newMain) {
++                currentMain.replaceWith(newMain);
++              } else {
++                document.body.innerHTML = doc.body.innerHTML;
++              }
++              window.history.pushState({}, '', targetUrl);
++            } catch (err) {
++              window.location.href = targetUrl;
++            }
++          };
++
++          navigate(updateCallback, direction);
++        }
++      }
++
++      document.addEventListener('click', handleDirectionalClick, true);
++
++      document.addEventListener('astro:before-swap', (e) => {
++        if (e.viewTransition && e.viewTransition.types) {
++          const dir = e.direction === 'back' ? 'backward' : 'forward';
++          try {
++            e.viewTransition.types.add(dir);
++          } catch (_) {}
++        }
++      });
++    </script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..c71030e 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -27,8 +27,17 @@ if (!article) return Astro.redirect('/404');
+ 
+ const { Content } = await render(article);
+ const allArticles = await getCollection('articles');
++allArticles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+ const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 3);
+ 
++const articleIndex = allArticles.findIndex(a => a.id === article.id);
++const prevArticle = articleIndex > 0 ? allArticles[articleIndex - 1] : allArticles[allArticles.length - 1];
++const nextArticle = articleIndex < allArticles.length - 1 ? allArticles[articleIndex + 1] : allArticles[0];
++
++const baseUrl = import.meta.env.BASE_URL;
++const prevUrl = `${baseUrl}articles/${prevArticle.id}`;
++const nextUrl = `${baseUrl}articles/${nextArticle.id}`;
++
+ const articleImage = await getArticleImage(article);
+ const relatedArticleImages = await Promise.all(relatedArticles.map(getArticleImage));
+ const readingList = await Astro.session?.get('readingList') || [];
+@@ -109,6 +118,34 @@ const isBookmarked = readingList.includes(article.slug);
+             <Content />
+         </div>
+ 
++        <!-- Article Directional Navigation -->
++        <nav class="flex justify-between items-center my-8 py-4 border-t border-b border-gray-200" aria-label="Article navigation">
++            <button
++                type="button"
++                id="prev-article"
++                data-direction="backward"
++                data-target-url={prevUrl}
++                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2 cursor-pointer transition-colors"
++            >
++                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
++                </svg>
++                Previous
++            </button>
++            <button
++                type="button"
++                id="next-article"
++                data-direction="forward"
++                data-target-url={nextUrl}
++                class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2 cursor-pointer transition-colors"
++            >
++                Next
++                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
++                </svg>
++            </button>
++        </nav>
++
+         <!-- ADVERTISEMENT -->
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:load />
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..3d953c0 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -41,7 +41,34 @@ politicsArticles[2] = {
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
++            <div class="flex justify-between items-center mb-3">
++                <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Top Stories</span>
++                <div class="flex space-x-2">
++                    <button
++                        type="button"
++                        id="prev-story"
++                        data-direction="backward"
++                        class="px-3 py-1 border border-gray-300 rounded text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-1 cursor-pointer transition-colors"
++                    >
++                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
++                        </svg>
++                        Previous
++                    </button>
++                    <button
++                        type="button"
++                        id="next-story"
++                        data-direction="forward"
++                        class="px-3 py-1 border border-gray-300 rounded text-xs font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-1 cursor-pointer transition-colors"
++                    >
++                        Next
++                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
++                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
++                        </svg>
++                    </button>
++                </div>
++            </div>
++            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="top-stories-container">
+                 {topStories.map(article => (
+                     <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
+                         <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+@@ -54,6 +81,63 @@ politicsArticles[2] = {
+         </div>
+     </div>
+ 
++    <script is:inline define:vars={{ allStoriesJson: articles.map(a => ({ id: a.id, title: a.data.title, date: a.data.date.toLocaleDateString(), baseUrl: import.meta.env.BASE_URL })) }}>
++        let storyPage = 0;
++        const pageSize = 3;
++        const totalPages = Math.ceil(allStoriesJson.length / pageSize);
++
++        function updateStoriesUI(page) {
++            const container = document.getElementById('top-stories-container');
++            if (!container) return;
++            const pageArticles = allStoriesJson.slice(page * pageSize, (page + 1) * pageSize);
++            container.innerHTML = pageArticles.map((article, idx) => `
++                <div class="border-l border-gray-300 pl-4 ${idx === 0 ? 'border-l-0 pl-0' : ''}">
++                    <a href="${article.baseUrl}articles/${article.id}">
++                        <h3 class="font-bold text-gray-900 hover:text-amber-400 cursor-pointer">${article.title}</h3>
++                    </a>
++                    <span class="text-xs text-gray-500">${article.date}</span>
++                </div>
++            `).join('');
++        }
++
++        const prevBtn = document.getElementById('prev-story');
++        const nextBtn = document.getElementById('next-story');
++
++        if (prevBtn) {
++            prevBtn.addEventListener('click', (e) => {
++                e.preventDefault();
++                e.stopPropagation();
++                const newPage = (storyPage - 1 + totalPages) % totalPages;
++                if (typeof window.navigate === 'function') {
++                    window.navigate(() => {
++                        storyPage = newPage;
++                        updateStoriesUI(storyPage);
++                    }, 'backward');
++                } else {
++                    storyPage = newPage;
++                    updateStoriesUI(storyPage);
++                }
++            });
++        }
++
++        if (nextBtn) {
++            nextBtn.addEventListener('click', (e) => {
++                e.preventDefault();
++                e.stopPropagation();
++                const newPage = (storyPage + 1) % totalPages;
++                if (typeof window.navigate === 'function') {
++                    window.navigate(() => {
++                        storyPage = newPage;
++                        updateStoriesUI(storyPage);
++                    }, 'forward');
++                } else {
++                    storyPage = newPage;
++                    updateStoriesUI(storyPage);
++                }
++            });
++        }
++    </script>
++
+     <!-- Main Content Area -->
+     <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..5578296 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,63 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++/* Defining Keyframes */
++@keyframes slide-to-left {
++  to {
++    transform: translateX(-100%);
++  }
++}
++
++@keyframes slide-from-right {
++  from {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-to-right {
++  to {
++    transform: translateX(100%);
++  }
++}
++
++@keyframes slide-from-left {
++  from {
++    transform: translateX(-100%);
++  }
++}
++
++/* Set up shared animation settings */
++::view-transition-group(root) {
++  animation-duration: 0.4s;
++  animation-timing-function: ease-in-out;
++}
++
++/* Applying Directional Animations */
++html:active-view-transition-type(forward)::view-transition-old(root),
++:active-view-transition-type(forward)::view-transition-old(root) {
++  animation-name: slide-to-left;
++}
++
++html:active-view-transition-type(forward)::view-transition-new(root),
++:active-view-transition-type(forward)::view-transition-new(root) {
++  animation-name: slide-from-right;
++}
++
++html:active-view-transition-type(backward)::view-transition-old(root),
++:active-view-transition-type(backward)::view-transition-old(root) {
++  animation-name: slide-to-right;
++}
++
++html:active-view-transition-type(backward)::view-transition-new(root),
++:active-view-transition-type(backward)::view-transition-new(root) {
++  animation-name: slide-from-left;
++}
++
++/* Accessibility */
++@media (prefers-reduced-motion: reduce) {
++  ::view-transition-group(root) {
++    animation: none !important;
++  }
+ }
+\ No newline at end of file

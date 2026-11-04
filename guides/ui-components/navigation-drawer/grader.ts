@@ -15,11 +15,12 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
 
   test.beforeEach(async ({ page }) => {
     const TARGET_URL = 'http://127.0.0.1/';
-    await page.route('http://127.0.0.1/*', async (route) => {
-      const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath.slice(1));
+    await page.route('http://127.0.0.1/**', async (route) => {
+      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+      const relPath = requestPath === '/' ? demoName : requestPath.replace(/^\/+/, '');
+      const localFilePath = path.resolve(targetDir, relPath);
 
-      if (fs.existsSync(localFilePath)) {
+      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
         await route.fulfill({ path: localFilePath });
       } else {
         await route.continue();
@@ -117,6 +118,7 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await clickTrigger(trigger);
     await expect(drawer).toBeVisible();
     await waitForOpen(page, trigger);
+    await page.waitForTimeout(350);
 
     const isBackdropVisible = await drawer.evaluate((el) => {
       const style = window.getComputedStyle(el, '::backdrop');
@@ -170,10 +172,10 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     
     if (sheetRect) {
       let clickX = 10;
-      if (sheetRect.x === 0) {
-        clickX = sheetRect.width + 10;
+      if (sheetRect.x <= 1) {
+        clickX = sheetRect.width + 20;
       }
-      await page.mouse.click(clickX, sheetRect.y + 10);
+      await page.mouse.click(clickX, Math.max(10, sheetRect.y + 20));
     } else {
       const vw = await page.evaluate(() => window.innerWidth);
       await page.mouse.click(vw - 10, 10);
@@ -342,20 +344,28 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await clickTrigger(trigger);
     await expect(drawer).toBeVisible();
     await waitForOpen(page, trigger);
+    await page.waitForTimeout(350);
     
-    const initialOpacity = await drawer.evaluate((el) => {
+    const getEffectiveBackdropOpacity = (el: Element) => {
       const style = window.getComputedStyle(el, '::backdrop');
-      return parseFloat(style.opacity);
-    });
+      const opacity = parseFloat(style.opacity);
+      const bg = style.backgroundColor || '';
+      const rgbaMatch = bg.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/);
+      const bgAlpha = rgbaMatch ? parseFloat(rgbaMatch[1]) : 1;
+      return (isNaN(opacity) ? 1 : opacity) * (isNaN(bgAlpha) ? 1 : bgAlpha);
+    };
+
+    const initialOpacity = await drawer.evaluate(getEffectiveBackdropOpacity);
     
     expect(isNaN(initialOpacity)).toBe(false);
     expect(initialOpacity).toBeGreaterThan(0);
     
     const scrolledHalf = await drawer.evaluate(async (el) => {
-      const e = Array.from(el.querySelectorAll('*')).find(x => x.scrollWidth > x.clientWidth) as HTMLElement;
+      const e = ([el, ...Array.from(el.querySelectorAll('*'))] as HTMLElement[]).find(x => x.scrollWidth > x.clientWidth);
       if (!e) return false;
       
       e.style.scrollSnapType = 'none';
+      e.style.scrollBehavior = 'auto';
       e.scrollLeft = (e.scrollWidth - e.clientWidth) / 2;
       e.dispatchEvent(new Event('scroll'));
       return true;
@@ -365,10 +375,7 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     
     await page.waitForTimeout(200);
     
-    const halfOpacity = await drawer.evaluate((el) => {
-      const style = window.getComputedStyle(el, '::backdrop');
-      return parseFloat(style.opacity);
-    });
+    const halfOpacity = await drawer.evaluate(getEffectiveBackdropOpacity);
     
     expect(isNaN(halfOpacity)).toBe(false);
     expect(halfOpacity).toBeLessThan(initialOpacity);

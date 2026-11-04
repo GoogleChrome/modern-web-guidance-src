@@ -1,0 +1,125 @@
+diff --git a/index.html b/index.html
+index 66c9173..a809e19 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="/webmcp.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..e6d767a 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check webmcp.js",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/webmcp.js b/webmcp.js
+new file mode 100644
+index 0000000..9b0f416
+--- /dev/null
++++ b/webmcp.js
+@@ -0,0 +1,95 @@
++// @ts-check
++
++/**
++ * @typedef {{
++ *   name: string;
++ *   description: string;
++ *   inputSchema?: Record<string, unknown>;
++ *   execute: (input?: unknown) => Promise<unknown>;
++ *   annotations?: Record<string, boolean>;
++ * }} WebMCPTool
++ *
++ * @typedef {{
++ *   registerTool: (tool: WebMCPTool, options: { signal: AbortSignal }) => void;
++ * }} WebMCPModelContext
++ */
++
++(function registerDailyGrindTools() {
++  /** @type {Document & { modelContext?: WebMCPModelContext }} */
++  const webMCPDocument = document;
++  const modelContext = webMCPDocument.modelContext;
++
++  if (!modelContext || typeof modelContext.registerTool !== 'function') {
++    return;
++  }
++
++  const toolLifecycle = new AbortController();
++
++  window.addEventListener(
++    'pagehide',
++    () => {
++      toolLifecycle.abort();
++    },
++    { once: true }
++  );
++
++  /**
++   * Waits for pending browser work so reads taken by tools reflect the current UI.
++   * @returns {Promise<void>}
++   */
++  const afterUISettles = () =>
++    new Promise((resolve) => {
++      requestAnimationFrame(() => {
++        resolve();
++      });
++    });
++
++  /**
++   * @param {Element} card
++   */
++  const favoriteFromCard = (card) => {
++    const title = card.querySelector('h3')?.textContent?.trim() || '';
++    const description = card.querySelector('p')?.textContent?.trim() || '';
++    const detailsHref = card.querySelector('a')?.getAttribute('href') || '';
++
++    return {
++      title,
++      description,
++      detailsHref,
++    };
++  };
++
++  /** @type {WebMCPTool[]} */
++  const tools = [
++    {
++      name: 'get-seasonal-favorites',
++      description:
++        'Read the currently displayed seasonal coffee favorites and their detail links.',
++      execute: async () => {
++        await afterUISettles();
++
++        return Array.from(document.querySelectorAll('.card')).map(favoriteFromCard);
++      },
++      annotations: { readOnlyHint: true },
++    },
++    {
++      name: 'get-page-navigation',
++      description:
++        'Read the primary navigation, account, logout, call-to-action, and footer links on the current page.',
++      execute: async () => {
++        await afterUISettles();
++
++        return Array.from(document.querySelectorAll('a')).map((link) => ({
++          label: link.textContent?.trim() || '',
++          href: link.getAttribute('href') || '',
++          isLogout: link.classList.contains('logout-link'),
++        }));
++      },
++      annotations: { readOnlyHint: true },
++    },
++  ];
++
++  tools.forEach((tool) => {
++    modelContext.registerTool(tool, { signal: toolLifecycle.signal });
++  });
++})();

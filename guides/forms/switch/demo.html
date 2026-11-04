@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Switch demo</title>
+
+    <script>
+        if (!('switch' in HTMLInputElement.prototype)) {
+            import('https://unpkg.com/input-switch-polyfill');
+        }
+    </script>
+
+    <style>
+        :root {
+            color-scheme: light dark;
+            --page-background: Canvas;
+            --surface-background: Canvas;
+            --text-color: CanvasText;
+            --muted-color: GrayText;
+            --border-color: #808080;
+            --track-off: #e5e5e5;
+            --accent-color: #1769e0;
+            --focus-color: #ff8c00;
+            accent-color: var(--accent-color);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-block-size: 100vh;
+            margin: 0;
+            padding-block: 2rem;
+            padding-inline: 1rem;
+            background: var(--page-background);
+            color: var(--text-color);
+            font-family: system-ui, sans-serif;
+            line-height: 1.5;
+        }
+
+        main {
+            inline-size: min(100%, 42rem);
+            margin-inline: auto;
+        }
+
+        .intro {
+            color: var(--muted-color);
+        }
+
+        .switches {
+            display: grid;
+            gap: 1rem;
+            margin-block: 2rem;
+            padding: 1.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            background: var(--surface-background);
+        }
+
+        .setting {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            cursor: pointer;
+        }
+
+        /* Switch styling */
+        input[type="checkbox"][switch] {
+            accent-color: var(--accent-color);
+            margin: 0;
+            cursor: pointer;
+        }
+
+        /* Focus outline for both native and polyfilled controls */
+        input[type="checkbox"][switch]:focus-visible {
+            outline: 3px solid var(--focus-color);
+            outline-offset: 4px;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Switch demo</h1>
+
+        <p class="intro">
+            This example uses a standard checkbox with the HTML <code>switch</code> attribute,
+            JavaScript feature detection, and a conditionally loaded polyfill for browsers lacking native support.
+        </p>
+
+        <section class="switches" aria-labelledby="switches-heading">
+            <h2 id="switches-heading">Preferences</h2>
+
+            <label class="setting">
+                Enable notifications
+                <input id="notifications" type="checkbox" switch>
+            </label>
+        </section>
+    </main>
+</body>
+</html>

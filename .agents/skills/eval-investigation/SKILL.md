@@ -42,15 +42,15 @@ However, **NEVER include timestamps** in your updates, as they add absolutely ze
 Artifacts generated during an evaluation run that log success rates, agent trajectories, and the final output produced by the agent.
 
 - **Eval Test Results** (`evals.json`)
-  - **Path**: `harness/results/<suite_id>/evals.json`
-  - **Purpose**: Reference to check overall pass rates, verify the success of individual test checks, and confirm which tools or skills were activated during guided runs to ensure the agent properly utilized the corresponding guide.
+  - **Path**: `results/suites/<suite_id>/evals.json`
+  - **Purpose**: Reference to check overall pass rates, verify the success of individual test checks, and inspect inline diagnostics on failed checks (`error`, `errorLocation`, `pageSnapshot`, and `browserErrors`). Also confirms which tools or skills were activated during guided runs to ensure the agent properly utilized the corresponding guide.
 
 - **Agent Trajectory** (`session-<timestamp>.json`)
-  - **Path**: `harness/results/<suite_id>/<run_number>/<use-case>/task/guided/session-<timestamp>.json`
+  - **Path**: `results/suites/<suite_id>/<run_number>/<use-case>/task/guided/session-<timestamp>.json`
   - **Purpose**: Review to trace the agent's step-by-step thought process. **Rule**: Always check the most recent run by timestamp; if stale, rerun the eval.
 
 - **Agent Output** (`index.html`)
-  - **Path**: `harness/results/<suite_id>/<run_number>/<use-case>/task/guided/index.html`
+  - **Path**: `results/suites/<suite_id>/<run_number>/<use-case>/task/guided/index.html`
   - **Purpose**: Inspect the exact markup, selectors, and resources produced or modified by the agent. *(Note: If expected changes are missing from index.html, check this directory for stray subresources created by the agent.)*
 
 ### Use Case Files
@@ -90,10 +90,10 @@ gd eval <path/to/use-case>
 To see which specific tests passed or failed, reference the generated `evals.json` file (detailed in the Quick Reference section).
 
 ### Via GCS (Remote / Historical)
-If you are reviewing a shared dashboard and need to investigate specific historical or remote evaluation results, download the entire suite directory recursively to your local harness path:
+If you are reviewing a shared dashboard and need to investigate specific historical or remote evaluation results, download the entire suite directory recursively to your local suites path:
 
 ```bash
-gcloud storage cp -r gs://guidance-evals/<suite_id> harness/results/
+gcloud storage cp -r gs://guidance-evals/<suite_id> results/suites/
 ```
 
 ## 2. Investigation Checklist
@@ -115,10 +115,10 @@ To guarantee full adherence to this protocol, you **MUST output this exact verif
 - **Explicit Target File (Optional)**: If an ambiguous prompt causes the agent to create new files instead of modifying existing ones, explicitly name the target file (e.g., `"in index.html"`) to guide it correctly. This is only necessary if the grader is strictly locked to that specific file.
 - **Legacy Fallbacks Are Automatic**: Prompts should almost never need to mandate that legacy fallbacks are applied. If the agent successfully discovers and reads the relevant guide, it will automatically follow any documented fallback requirements.
 - **Base App Alignment**: If the prompt instructs the agent to modify an existing element, confirm that such an element actually exists in the base app template.
-- **Prescriptive Constraints vs Open Solutions**: Update the prompt to prescribe specific validation constraints (such as IDs, class names, or resource filenames) if the grader requires them. However, **never** be prescriptive about the specific web platform mechanism.
+- **Neutral Hooks vs. Open Solutions**: `task.md` may name a neutral hook (an `id` or `data-` attribute) for an element the grader needs to locate, named after the app content it shows or manages rather than an HTML element, attribute, CSS feature, or API. Do not prescribe class names, resource filenames, or invented routes/endpoints, and **never** be prescriptive about the specific web platform mechanism.
   > [!IMPORTANT]
-  > **Functional Locators vs. Technical Solutions**
-  > It is completely acceptable (and sometimes necessary) to mandate specific DOM IDs or CSS classes (e.g., `"add a .fan-card class"`) if the grader requires them to locate elements. What is strictly banned is mandating the underlying implementation technology (e.g., commanding the model to `"use sibling-index()"` or `"use the Temporal API"`).
+  > **Neutral Hooks vs. Technical Solutions**
+  > It is acceptable to name a neutral `id` or `data-` attribute hook after the app content the element shows or manages (e.g., `id="passkey-list"` or `data-passkey-row`) if the grader requires it to locate a new element. What is strictly banned is naming a hook after an HTML element, attribute, CSS feature, or API (e.g., `id="share-dialog"` or `data-popover`), prescribing CSS classes or new resource filenames, or mandating the underlying implementation technology (e.g., commanding the model to `"use sibling-index()"` or `"use the Temporal API"`).
 - **Mandatory List Formatting**: The `task.md` file **must always be formatted as a markdown list** (`- item`). Even though the file may contain multiple unused prompts for future expansion, remember that the evaluation harness currently **only executes the very first list item**.
 - **No Line Breaks in the Target Prompt**: Anything you want included in the prompt that actually gets evaluated must be entirely contained on the first bullet point line without any line breaks.
 - **Over-Prescription "Smell"**: If both the unguided and guided tests pass at 100%, this is a strong code smell indicating that your prompt may be overly prescriptive and practically giving away the modern solution.

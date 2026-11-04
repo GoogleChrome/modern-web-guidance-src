@@ -1,0 +1,349 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..43037f0 100644
+--- a/index.html
++++ b/index.html
+@@ -209,4 +209,6 @@
+ 
+ </body>
+ 
++<script type="module" src="/src/main.ts"></script>
++
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..0bc1e9e 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,14 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "vite --host 0.0.0.0 --port ${PORT:-11222}",
++    "build": "tsc --noEmit && vite build",
++    "test": "vitest run"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3",
++    "vite": "^6.4.1",
++    "vitest": "^3.2.4"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/src/main.ts b/src/main.ts
+new file mode 100644
+index 0000000..53010da
+--- /dev/null
++++ b/src/main.ts
+@@ -0,0 +1,25 @@
++import { observeInteractionPaints, trackSoftNavigationLCP } from './paint-timing';
++
++// Local events let analytics consumers subscribe without inventing a backend.
++// Monitoring does not change the site's existing navigation behavior.
++const interactionObserver = observeInteractionPaints((entry) => {
++  window.dispatchEvent(new CustomEvent('daily-grind:interaction-paint', {
++    detail: {
++      interactionId: entry.interactionId,
++      duration: entry.duration,
++      element: entry.largestContentfulPaint.element,
++      size: entry.largestContentfulPaint.size,
++    },
++  }));
++});
++const softNavigationTracker = trackSoftNavigationLCP((report) => {
++  window.dispatchEvent(new CustomEvent('daily-grind:soft-navigation', { detail: report }));
++});
++
++// Keep the tracker alive across bfcache restores, but release it on real unloads.
++window.addEventListener('pagehide', (event) => {
++  if (!event.persisted) {
++    interactionObserver?.disconnect();
++    softNavigationTracker?.disconnect();
++  }
++});
+diff --git a/src/paint-timing.test.js b/src/paint-timing.test.js
+new file mode 100644
+index 0000000..6515d2a
+--- /dev/null
++++ b/src/paint-timing.test.js
+@@ -0,0 +1,117 @@
++import { afterEach, beforeEach, expect, it, vi } from 'vitest';
++import { observeInteractionPaints, trackSoftNavigationLCP } from './paint-timing';
++
++class MockObserver {
++  static supportedEntryTypes = ['soft-navigation', 'interaction-contentful-paint'];
++  static instances = [];
++  records = [];
++  observe = vi.fn();
++  disconnect = vi.fn();
++  constructor(callback) {
++    this.callback = callback;
++    MockObserver.instances.push(this);
++  }
++  takeRecords() {
++    return this.records.splice(0);
++  }
++  emit(...entries) {
++    this.callback({ getEntries: () => entries });
++  }
++}
++
++function paint(interactionId, size, presentationTime = 1500) {
++  return {
++    interactionId, startTime: 1000, presentationTime,
++    duration: presentationTime - 1000,
++    navigationId: 0,
++    largestContentfulPaint: { element: { id: 'coffee' }, size },
++  };
++}
++function navigation(interactionId, seed = null) {
++  return {
++    name: '/menu', navigationId: 42, interactionId,
++    startTime: 1000, duration: 200,
++    getLargestInteractionContentfulPaint: vi.fn(() => seed),
++  };
++}
++
++beforeEach(() => {
++  MockObserver.instances = [];
++  MockObserver.supportedEntryTypes = ['soft-navigation', 'interaction-contentful-paint'];
++  vi.stubGlobal('PerformanceObserver', MockObserver);
++  vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible' }));
++  vi.stubGlobal('window', new EventTarget());
++});
++afterEach(() => vi.unstubAllGlobals());
++
++it('skips unsupported APIs without registering any observers', () => {
++  for (const support of [[], ['soft-navigation'], undefined]) {
++    MockObserver.supportedEntryTypes = support;
++    expect(observeInteractionPaints(vi.fn())).toBeNull();
++    expect(trackSoftNavigationLCP(vi.fn())).toBeNull();
++  }
++  vi.stubGlobal('PerformanceObserver', undefined);
++  expect(observeInteractionPaints(vi.fn())).toBeNull();
++  expect(trackSoftNavigationLCP(vi.fn())).toBeNull();
++  expect(MockObserver.instances).toHaveLength(0);
++});
++
++it('supports interaction paints independently of soft navigation support', () => {
++  MockObserver.supportedEntryTypes = ['interaction-contentful-paint'];
++  const callback = vi.fn();
++  const observer = observeInteractionPaints(callback);
++  expect(observer.observe).toHaveBeenCalledWith({ type: 'interaction-contentful-paint', buffered: true });
++  const entry = paint(7, 100);
++  observer.emit(entry);
++  expect(callback).toHaveBeenCalledWith(entry);
++  expect(trackSoftNavigationLCP(vi.fn())).toBeNull();
++});
++
++it('seeds pre-URL paints and matches later paints by interaction rather than navigation ID', () => {
++  const report = vi.fn();
++  const tracker = trackSoftNavigationLCP(report);
++  expect(tracker.softNavObserver.observe).toHaveBeenCalledWith({ type: 'soft-navigation', buffered: true });
++  expect(tracker.icpObserver.observe).toHaveBeenCalledWith({ type: 'interaction-contentful-paint', buffered: true });
++  const seed = paint(7, 300);
++  const nav = navigation(7, seed);
++  tracker.softNavObserver.emit(nav);
++  expect(nav.getLargestInteractionContentfulPaint).toHaveBeenCalledOnce();
++  tracker.icpObserver.emit(paint(7, 100, 1200));
++  tracker.icpObserver.emit({ ...paint(8, 1000), navigationId: 42 });
++  tracker.finalizeCurrentSoftNav();
++  expect(report).toHaveBeenCalledWith({
++    url: '/menu', navigationId: 42, interactionId: 7,
++    fcpDuration: 200, lcpDuration: 500,
++    lcpElement: seed.largestContentfulPaint.element, lcpSize: 300,
++  });
++  tracker.disconnect();
++  expect(report).toHaveBeenCalledOnce();
++});
++
++it('flushes queued matching paints before reporting the outgoing navigation', () => {
++  const report = vi.fn();
++  const tracker = trackSoftNavigationLCP(report);
++  tracker.softNavObserver.emit(navigation(7, paint(7, 300)));
++  const larger = paint(7, 500, 1900);
++  tracker.icpObserver.records.push(larger);
++  tracker.softNavObserver.emit(navigation(8));
++  expect(report.mock.calls[0][0]).toMatchObject({ interactionId: 7, lcpDuration: 900, lcpSize: 500 });
++  document.visibilityState = 'hidden';
++  document.dispatchEvent(new Event('visibilitychange'));
++  expect(report.mock.calls[1][0]).toMatchObject({ interactionId: 8, lcpDuration: null, lcpElement: null, lcpSize: null });
++  window.dispatchEvent(new Event('pagehide'));
++  expect(report).toHaveBeenCalledTimes(2);
++  tracker.disconnect();
++  expect(tracker.softNavObserver.disconnect).toHaveBeenCalledOnce();
++  expect(tracker.icpObserver.disconnect).toHaveBeenCalledOnce();
++});
++
++it('updates LCP from a delivered larger paint with a different navigation ID', () => {
++  const report = vi.fn();
++  const tracker = trackSoftNavigationLCP(report);
++  tracker.softNavObserver.emit(navigation(7, paint(7, 300)));
++  tracker.icpObserver.emit(paint(7, 600, 1800));
++  tracker.finalizeCurrentSoftNav();
++  expect(report.mock.calls[0][0]).toMatchObject({ lcpDuration: 800, lcpSize: 600 });
++  tracker.disconnect();
++});
+diff --git a/src/paint-timing.ts b/src/paint-timing.ts
+new file mode 100644
+index 0000000..3c4cd4d
+--- /dev/null
++++ b/src/paint-timing.ts
+@@ -0,0 +1,132 @@
++// These experimental performance entries are not yet part of lib.dom.
++export interface InteractionContentfulPaint extends PerformanceEntry {
++  readonly interactionId: number;
++  readonly paintTime: number;
++  readonly presentationTime: number;
++  readonly largestContentfulPaint: {
++    readonly element: Element | null;
++    readonly size: number;
++    readonly url: string;
++    readonly id: string;
++    readonly renderTime: number;
++    readonly loadTime: number;
++  };
++}
++
++export interface SoftNavigation extends PerformanceEntry {
++  readonly navigationId: number;
++  readonly interactionId: number;
++  readonly presentationTime: number;
++  getLargestInteractionContentfulPaint(): InteractionContentfulPaint | null;
++}
++
++export interface SoftNavigationReport {
++  url: string;
++  navigationId: number;
++  interactionId: number;
++  fcpDuration: number;
++  lcpDuration: number | null;
++  lcpElement: Element | null;
++  lcpSize: number | null;
++}
++
++function supports(type: string): boolean {
++  return typeof PerformanceObserver !== 'undefined' &&
++    (PerformanceObserver.supportedEntryTypes?.includes(type) ?? false);
++}
++
++export function observeInteractionPaints(
++  onInteractionPaint: (entry: InteractionContentfulPaint) => void,
++): PerformanceObserver | null {
++  if (!supports('interaction-contentful-paint')) return null;
++  const observer = new PerformanceObserver((list) => {
++    for (const entry of list.getEntries()) {
++      onInteractionPaint(entry as InteractionContentfulPaint);
++    }
++  });
++  observer.observe({ type: 'interaction-contentful-paint', buffered: true });
++  return observer;
++}
++
++export function trackSoftNavigationLCP(
++  onSoftNavReport: (report: SoftNavigationReport) => void,
++) {
++  if (!supports('soft-navigation') || !supports('interaction-contentful-paint')) {
++    return null;
++  }
++
++  let activeSoftNav: SoftNavigation | null = null;
++  let activeLcpEntry: InteractionContentfulPaint | null = null;
++
++  function updatePaints(entries: PerformanceEntry[]) {
++    for (const entry of entries) {
++      const paint = entry as InteractionContentfulPaint;
++      // A buffered older paint must not replace a larger seeded candidate.
++      if (activeSoftNav && paint.interactionId === activeSoftNav.interactionId &&
++          (!activeLcpEntry ||
++           paint.largestContentfulPaint.size > activeLcpEntry.largestContentfulPaint.size ||
++           (paint.largestContentfulPaint.size === activeLcpEntry.largestContentfulPaint.size &&
++            paint.presentationTime > activeLcpEntry.presentationTime))) {
++        activeLcpEntry = paint;
++      }
++    }
++  }
++
++  function reportCurrent() {
++    if (!activeSoftNav) return;
++    const report: SoftNavigationReport = {
++      url: activeSoftNav.name,
++      navigationId: activeSoftNav.navigationId,
++      interactionId: activeSoftNav.interactionId,
++      fcpDuration: activeSoftNav.duration,
++      lcpDuration: activeLcpEntry
++        ? activeLcpEntry.presentationTime - activeSoftNav.startTime : null,
++      lcpElement: activeLcpEntry?.largestContentfulPaint.element ?? null,
++      lcpSize: activeLcpEntry?.largestContentfulPaint.size ?? null,
++    };
++    // Clear first so repeated lifecycle notifications cannot duplicate a report.
++    activeSoftNav = null;
++    activeLcpEntry = null;
++    onSoftNavReport(report);
++  }
++
++  const icpObserver = new PerformanceObserver((list) => updatePaints(list.getEntries()));
++  function updateNavigations(entries: PerformanceEntry[]) {
++    for (const entry of entries) {
++      // Include queued paints for the outgoing route before finalizing it.
++      updatePaints(icpObserver.takeRecords());
++      reportCurrent();
++      const softNavEntry = entry as SoftNavigation;
++      activeSoftNav = softNavEntry;
++      activeLcpEntry = softNavEntry.getLargestInteractionContentfulPaint();
++    }
++  }
++  const softNavObserver = new PerformanceObserver((list) => updateNavigations(list.getEntries()));
++
++  function finalizeCurrentSoftNav() {
++    updateNavigations(softNavObserver.takeRecords());
++    updatePaints(icpObserver.takeRecords());
++    reportCurrent();
++  }
++  function onVisibilityChange() {
++    if (document.visibilityState === 'hidden') finalizeCurrentSoftNav();
++  }
++
++  softNavObserver.observe({ type: 'soft-navigation', buffered: true });
++  icpObserver.observe({ type: 'interaction-contentful-paint', buffered: true });
++  document.addEventListener('visibilitychange', onVisibilityChange);
++  window.addEventListener('pagehide', finalizeCurrentSoftNav);
++
++  return {
++    softNavObserver,
++    icpObserver,
++    finalizeCurrentSoftNav,
++    disconnect() {
++      finalizeCurrentSoftNav();
++      softNavObserver.disconnect();
++      icpObserver.disconnect();
++      document.removeEventListener('visibilitychange', onVisibilityChange);
++      window.removeEventListener('pagehide', finalizeCurrentSoftNav);
++    },
++  };
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..ac94e85
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM"],
++    "strict": true,
++    "noEmit": true,
++    "skipLibCheck": true
++  },
++  "include": ["src"]
++}

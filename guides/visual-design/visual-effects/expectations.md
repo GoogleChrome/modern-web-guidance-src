@@ -1,0 +1,1 @@
+- The implementation MUST specify perceptual color interpolation spaces (`in oklch` or `in oklab`) when defining CSS gradients or `color-mix()` expressions.

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brand-Consistent Slider Demo</title>
+  <style>
+    :root {
+      --background: #fff;
+      --text: #111;
+      --card-bg: rgb(0 0 0 / 5%);
+      --brand-color: #06c;
+      --track-bg: #d9d9d9;
+      color-scheme: light dark;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #121212;
+        --text: #eee;
+        --card-bg: rgb(255 255 255 / 5%);
+        --brand-color: #66b3ff;
+        --track-bg: #404040;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      display: grid;
+      min-block-size: 80vh;
+      place-items: center;
+      margin: 0;
+      padding: 2rem;
+      background: var(--background);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+    }
+
+    .slider-card {
+      display: flex;
+      inline-size: min(100%, 25rem);
+      flex-direction: column;
+      gap: 1.5rem;
+      padding: 2rem;
+      border-radius: 0.75rem;
+      background: var(--card-bg);
+      box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 10%);
+    }
+
+    .slider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    label,
+    .value-display {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    label {
+      cursor: pointer;
+    }
+
+    .value-display {
+      color: var(--brand-color);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      --slider-track-size: 0.5rem;
+      --slider-thumb-size: 1.25rem;
+      --slider-track-radius: 999px;
+      --slider-thumb-radius: 50%;
+      --slider-track-color: var(--track-bg);
+      --slider-fill-color: var(--brand-color);
+      --slider-thumb-color: var(--slider-fill-color);
+      --slider-direction: to right;
+
+      /* Read min and max from attributes; --control-value is synced by the script below. */
+      --attr-min: attr(min type(<number>), 0);
+      --attr-max: attr(max type(<number>), 100);
+      --control-value: attr(value type(<number>), 50);
+      --slider-progress: calc(
+        progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%
+      );
+
+      appearance: none;
+      inline-size: 100%;
+      block-size: 2.5rem;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    @supports not (opacity: progress(1, 0, 100)) {
+      input[type="range"] {
+        --slider-progress: calc(
+          (var(--control-value) - var(--attr-min)) /
+          (var(--attr-max) - var(--attr-min)) * 100%
+        );
+      }
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      block-size: var(--slider-track-size);
+      border: 0;
+      border-radius: var(--slider-track-radius);
+      background: linear-gradient(
+        var(--slider-direction),
+        var(--slider-fill-color) var(--slider-progress),
+        var(--slider-track-color) var(--slider-progress)
+      );
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      inline-size: var(--slider-thumb-size);
+      block-size: var(--slider-thumb-size);
+      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
+      border: 0;
+      border-radius: var(--slider-thumb-radius);
+      background: var(--slider-thumb-color);
+    }
+
+    input[type="range"]::-moz-range-track {
+      block-size: var(--slider-track-size);
+      border: 0;
+      border-radius: var(--slider-track-radius);
+      background: var(--slider-track-color);
+    }
+
+    input[type="range"]::-moz-range-progress {
+      block-size: var(--slider-track-size);
+      border-radius: var(--slider-track-radius);
+      background: var(--slider-fill-color);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      inline-size: var(--slider-thumb-size);
+      block-size: var(--slider-thumb-size);
+      border: 0;
+      border-radius: var(--slider-thumb-radius);
+      background: var(--slider-thumb-color);
+    }
+
+    input[type="range"]:focus-visible {
+      outline: 2px solid var(--slider-fill-color);
+      outline-offset: 4px;
+    }
+
+    input[type="range"]:dir(rtl) {
+      --slider-direction: to left;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="slider-card">
+    <div class="slider-header">
+      <label id="volume-label" for="volume-slider">Volume</label>
+      <output id="value-display" class="value-display" for="volume-slider">70%</output>
+    </div>
+
+    <input type="range" id="volume-slider" value="70" />
+  </main>
+
+  <script>
+    const slider = document.getElementById('volume-slider');
+    const valueDisplay = document.getElementById('value-display');
+
+    function updateSlider() {
+      const formattedValue = `${slider.value}%`;
+
+      slider.style.setProperty('--attr-min', slider.min || 0);
+      slider.style.setProperty('--attr-max', slider.max || 100);
+      slider.style.setProperty('--control-value', slider.value);
+      valueDisplay.value = formattedValue;
+      slider.setAttribute('aria-valuetext', formattedValue);
+    }
+
+    updateSlider();
+    slider.addEventListener('input', updateSlider);
+  </script>
+</body>
+
+</html>

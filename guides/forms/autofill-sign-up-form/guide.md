@@ -2,6 +2,7 @@
 name: autofill-sign-up-form
 description: Build a sign-up form with correct autocomplete values and autofill support.
 web-feature-ids:
+  - autocorrect
   - input-email-tel-url
   - inputmode
 ---
@@ -31,11 +32,13 @@ To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a
 
 ### Make the most of HTML attributes
 
-Make it easy for users to enter data, by using the appropriate `<input>` element `<type>` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
+Make it easy for users to enter data, by using the appropriate `<input>` element with a `type` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
 
 Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
 Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
+
+Username and email inputs hold identifiers, not prose. Add `spellcheck="false"` so the browser does not rewrite them into something the account does not match. `autocorrect` and `autocapitalize` are always disabled for `input type="email"`, but are required for non-email usernames.
 
 ### Make buttons helpful
 
@@ -45,7 +48,11 @@ Give each form submit button a value that says what it does. Use a clear, recogn
 
 ### Use a single name input where possible
 
-Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler.
+Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler. Use `autocomplete="name"` for a single input for name.
+
+```html
+<input type="text" id="full-name" name="ful-name" autocomplete="name">
+```
 
 Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
 
@@ -69,7 +76,7 @@ Validate data entry both in realtime and before form submission. Use `type="emai
 
 Always use the `<form>` element when you're getting users to enter data
 
-Don't wrap inputs in a `<div>` and handle input data submission purely with JavaScript. It's generally better to use a `<form>` element. This makes your site accessible to screenreaders and other assistive devices, enables a range of built-in browser features, makes it simpler to build basic functional sign-up for older browsers, and can still work even if JavaScript fails.
+Don't wrap inputs in a `<div>` and handle input data submission purely with JavaScript. It's generally better to use a `<form>` element. This makes your site accessible to screen readers and other assistive devices, enables a range of built-in browser features, makes it simpler to build basic functional sign-up for older browsers, and can still work even if JavaScript fails.
 
 ### Don't double up inputs
 
@@ -79,7 +86,7 @@ Some sites force users to enter emails or passwords twice. That might reduce err
 
 Passwords inputs should have `type="password"` to hide password text and help the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
 
-You should add a **Show password** toggle to enable users to check the text they've entered—and don't forget to add a **Forgot password** link.
+You should add a **Show password** toggle to enable users to check the text they've entered.
 
 ### Give mobile users the right keyboard
 
@@ -100,9 +107,9 @@ You can help browsers store data correctly and autofill inputs, so users don't h
 1.  The `autocomplete`, `name`, `id`, and `type` attributes help browsers understand the role of inputs in order to store data that can later be used for autofill. To allow data to be stored for autofill, modern browsers also require inputs to have a stable `name` or `id` value (not randomly generated on each page load or site deployment), and to be in a `<form>` element with a `submit` button.
 1.  The `autocomplete` attribute helps browsers correctly autofill inputs using stored data.
 
-For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` and `id` values to help browsers differentiate between new and current passwords.
+For email inputs use `autocomplete="username"`, since `username` is recognized by password managers in modern browsers—even though you should use `type="email"` and you may want to use `id="email"` and `name="email"`. For password inputs, use the appropriate `autocomplete` value to help browsers differentiate between new and current passwords.
 
-### Use autocomplete="new-password" and id="new-password" for a new password
+### Use autocomplete="new-password" for a new password
 
 MANDATORY: For a sign-up form, use `autocomplete="new-password"`.
 
@@ -147,5 +154,6 @@ Also make sure to use `autocomplete="username"` for usernames.
 
 {{ BASELINE_STATUS("input-email-tel-url") }}
 {{ BASELINE_STATUS("inputmode") }}
+{{ BASELINE_STATUS("autocorrect") }}
 
 Autofill is a progressive enhancement. In browsers that do not support autofill, users will simply need to manually enter their sign-up credentials. The semantic HTML constraints (such as `type`, `inputmode`, and `required`) will still function appropriately to validate user input and provide the correct virtual keyboards.

@@ -18,6 +18,8 @@ Swipe-to-remove patterns are common in mobile applications but can be challengin
 
 The same pattern works for any single-action swipe (remove, archive, mark as read, snooze). The action visuals change; the mechanics do not.
 
+> If you instead want a horizontal swipe to snap open a set of action buttons or a side menu **without** automatically committing an action during the swipe, see {{ GUIDE_REF("swipe-to-reveal") }}.
+
 ## How to implement
 
 The component has two layers: a **list** (the `<ul>`) and the **items** inside it. Each item is structured as an outer `<li>`, an inner scroll **track** (the scroll container with the snap points), and a **content** element (the visible row). The action's revealed UI (trash icon, archive label, etc.) lives on either side of the content. The list owns shared wiring (lazy item setup, picking up newly added items); each item owns its own swipe detection.
@@ -144,7 +146,8 @@ The track configuration is gated behind an `.is-initialized` class on the list i
 
 The action color lives on the spacers (Step 2). The action **icon** lives on the list item itself, anchored to the row's left and right edges.
 
-> **Note:** Throughout this guide, "left" refers to the *left side of the row* (which is revealed by swiping right), and "right" refers to the *right side of the row* (revealed by swiping left).
+> [!NOTE]
+> Throughout this guide, "left" refers to the *left side of the row* (which is revealed by swiping right), and "right" refers to the *right side of the row* (revealed by swiping left).
 
 The placement, sizing, and motion below are a **starting suggestion**, not a requirement. Adjust the icon size, edge insets, threshold-pop scale, transition duration, and even the choice of pseudo-elements vs. real DOM nodes to match your design. The only mechanical requirement is that the icon sits behind the content (so the content can cover it pre-swipe) and inside the list item (so it doesn't scroll with the spacer). Everything else is taste.
 
@@ -471,19 +474,19 @@ All newer features that are used are either not core to the experience or have r
 
 ### Fallback for `overscroll-behavior`
 
-{{ FEATURE_FALLBACKS("overscroll-behavior") }}
+{{ BASELINE_STATUS("overscroll-behavior") }}
 
 No fallback is needed for this use case. Although `overscroll-behavior` has an interop issue that manifests on containers without scrollable overflow, the track here is always horizontally scrollable (three full-width columns inside a 100%-width container), so the property behaves consistently across browsers and the swipe gesture is reliably contained.
 
 ### Fallback for `scrollbar-width`
 
-{{ FEATURE_FALLBACKS("scrollbar-width") }}
+{{ BASELINE_STATUS("scrollbar-width") }}
 
 Hidden scrollbars are a visual enhancement, not the mechanism that makes swipe-to-remove work. If your Baseline target does not include `scrollbar-width`, the row still scrolls, snaps, detects commit, and removes correctly; the unsupported experience may simply show a horizontal scrollbar. If your product requires hidden scrollbars in older WebKit-derived browsers, you can add a narrowly scoped `::-webkit-scrollbar { display: none; }` rule for the swipe track.
 
 ### Fallback for `scroll-initial-target`
 
-{{ FEATURE_FALLBACKS("scroll-initial-target") }}
+{{ BASELINE_STATUS("scroll-initial-target") }}
 
 If your Baseline target does not include `scroll-initial-target`, scroll the track to the content programmatically inside `setupItem`. Detect with `CSS.supports`:
 

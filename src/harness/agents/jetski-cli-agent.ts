@@ -1,0 +1,510 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { DatabaseSync } from 'node:sqlite';
+import config, { Agents } from '../config.ts';
+import {
+  cleanupIsolatedHome,
+  parseAgentArgs,
+  exportTrajectories,
+  runCliAgentCommand,
+  createTrustedFolders,
+  copyFileIfExists,
+  setupIsolatedWorkDir,
+  isEnoent,
+  type GuideUsage
+} from '../lib/agent-shared.ts';
+import {
+  type StandardizedStep,
+  type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
+  extractTimestamp,
+  truncateMessage,
+  finalizeTrajectorySummary,
+  generateNormalizedTrajectory,
+  readTrajectorySummary,
+  standardizeAction
+} from '../lib/trajectory-normalizer.ts';
+
+const JETSKI_ERROR_STATUS_CODES = new Set([2, 4, 5]);
+const MAX_PAYLOAD_PREVIEW_LENGTH = 200;
+
+const PROTO_WIRE_TYPE = {
+  VARINT: 0,
+  FIXED64: 1,
+  LENGTH_DELIMITED: 2,
+  FIXED32: 5
+} as const;
+
+const METADATA_TAG_USAGE = 9;
+const USAGE_TAG_INPUT = 2;
+const USAGE_TAG_OUTPUT = 3;
+const USAGE_TAG_CACHED = 5;
+
+const TRAJECTORY_GLOB = '*.db';
+
+export function setupJetskiCliCredentials(tempHome: string): string {
+  const originalHome = process.env.HOME || process.cwd();
+  const jetskiSource = path.join(originalHome, '.gemini', 'jetski');
+  const jetskiDest = path.join(tempHome, '.gemini', 'jetski');
+  const geminiDest = path.join(tempHome, '.gemini');
+
+  fs.mkdirSync(jetskiDest, { recursive: true });
+
+  const filesToCopy = [
+    'installation_id',
+    'user_settings.pb',
+  ];
+
+  for (const file of filesToCopy) {
+    copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
+  }
+
+  // On macOS the CLI keeps its OAuth token in the login Keychain, which is
+  // located via $HOME/Library/Keychains. Without this, the isolated HOME makes
+  // silent auth fail and the CLI falls back to an interactive login prompt.
+  if (process.platform === 'darwin') {
+    const keychainsSource = path.join(originalHome, 'Library', 'Keychains');
+    const keychainsDest = path.join(tempHome, 'Library', 'Keychains');
+    if (fs.existsSync(keychainsSource) && !fs.existsSync(keychainsDest)) {
+      fs.mkdirSync(path.dirname(keychainsDest), { recursive: true });
+      fs.symlinkSync(keychainsSource, keychainsDest);
+    }
+  }
+
+  process.env.JETSKI_DIR = jetskiDest;
+  createTrustedFolders(geminiDest, [tempHome]);
+  return jetskiDest;
+}
+
+export function getJetskiCliCommandAndArgs(prompt: string): { command: string; commandArgs: string[] } {
+  const command = config.environment.jetskiCliBin;
+  const model = process.env.JETSKI_MODEL;
+  const commandArgs = [
+    '-p', prompt,
+    '--dangerously-skip-permissions',
+    ...(model ? ['--model', model] : [])
+  ];
+  return { command, commandArgs };
+}
+
+function exportJetskiTrajectories(workDir: string, targetDir: string): void {
+  const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
+  exportTrajectories(conversationsDir, '**/*.db', targetDir);
+}
+
+async function run() {
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-cli-agent.ts');
+  const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, templateDir, runType);
+
+  if (!workDir) {
+    throw new Error('Failed to initialize working directory');
+  }
+
+  try {
+    console.log(`Starting Jetski CLI agent in: ${workDir}`);
+
+    const { command, commandArgs } = getJetskiCliCommandAndArgs(userPrompt);
+
+    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
+
+    try {
+      await runCliAgentCommand(
+        command,
+        commandArgs,
+        workDir,
+        targetDir,
+        'Jetski CLI',
+        runType
+      );
+    } finally {
+      exportJetskiTrajectories(workDir, targetDir);
+      await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, userPrompt);
+    }
+
+    console.log("Jetski CLI agent finished successfully.");
+  } catch (err) {
+    console.error("Error during Jetski CLI execution:", err);
+    process.exitCode = 1;
+  } finally {
+    cleanupIsolatedHome(path.dirname(workDir));
+  }
+}
+
+export function findJsonObjectsInString(str: string): any[] {
+  const results: any[] = [];
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '{') {
+      let openBraces = 0;
+      let inString = false;
+      let escape = false;
+      let end = -1;
+
+      for (let j = i; j < str.length; j++) {
+        const char = str[j];
+        if (escape) {
+          escape = false;
+          continue;
+        }
+        if (char === '\\') {
+          escape = true;
+          continue;
+        }
+        if (char === '"') {
+          inString = !inString;
+          continue;
+        }
+        if (!inString) {
+          if (char === '{') openBraces++;
+          else if (char === '}') {
+            openBraces--;
+            if (openBraces === 0) {
+              end = j + 1;
+              break;
+            }
+          }
+        }
+      }
+
+      if (end !== -1) {
+        const candidate = str.substring(i, end);
+        try {
+          results.push(JSON.parse(candidate));
+          i = end - 1;
+        } catch {}
+      }
+    }
+  }
+  return results;
+}
+
+export function parseProtobuf(buffer: Buffer): Record<number, any[]> {
+  let pos = 0;
+  const fields: Record<number, any[]> = {};
+
+  while (pos < buffer.length) {
+    let tagHeader = 0;
+    let shift = 0;
+    while (pos < buffer.length) {
+      const b = buffer[pos++];
+      tagHeader |= (b & 0x7f) << shift;
+      shift += 7;
+      if ((b & 0x80) === 0) break;
+    }
+    const wireType = tagHeader & 0x07;
+    const fieldNum = tagHeader >> 3;
+    if (fieldNum === 0) break;
+
+    let value: any;
+    if (wireType === PROTO_WIRE_TYPE.VARINT) {
+      let val = 0;
+      let valShift = 0;
+      while (pos < buffer.length) {
+        const b = buffer[pos++];
+        val += (b & 0x7f) * Math.pow(2, valShift);
+        valShift += 7;
+        if ((b & 0x80) === 0) break;
+      }
+      value = val;
+    } else if (wireType === PROTO_WIRE_TYPE.LENGTH_DELIMITED) {
+      let len = 0;
+      let lenShift = 0;
+      while (pos < buffer.length) {
+        const b = buffer[pos++];
+        len += (b & 0x7f) * Math.pow(2, lenShift);
+        lenShift += 7;
+        if ((b & 0x80) === 0) break;
+      }
+      const data = buffer.subarray(pos, pos + len);
+      pos += len;
+
+      let nested: Record<number, any[]> | null = null;
+      try {
+        nested = parseProtobuf(data);
+        if (Object.keys(nested).length === 0) nested = null;
+      } catch {}
+
+      const str = data.toString('utf8');
+      const isClean = /^[\x20-\x7E\t\r\n]+$/.test(str) && str.length > 0;
+      value = nested || (isClean ? str : data);
+    } else if (wireType === PROTO_WIRE_TYPE.FIXED64) {
+      pos += 8;
+    } else if (wireType === PROTO_WIRE_TYPE.FIXED32) {
+      pos += 4;
+    } else {
+      break;
+    }
+
+    if (!fields[fieldNum]) fields[fieldNum] = [];
+    fields[fieldNum].push(value);
+  }
+  return fields;
+}
+
+function getSessionFiles(dir: string): string[] {
+  try {
+    const files = fs.globSync(TRAJECTORY_GLOB, { cwd: dir });
+    return (files as string[]).filter(f => !f.endsWith('-shm') && !f.endsWith('-wal'));
+  } catch (err) {
+    if (!isEnoent(err)) throw err;
+    return [];
+  }
+}
+
+export function getProtoStrings(node: any, results: string[] = []): string[] {
+  if (!node) return results;
+  if (typeof node === 'string') {
+    results.push(node);
+  } else if (Array.isArray(node)) {
+    for (const item of node) getProtoStrings(item, results);
+  } else if (typeof node === 'object' && !(node instanceof Uint8Array)) {
+    for (const k of Object.keys(node)) {
+      getProtoStrings(node[k], results);
+    }
+  }
+  return results;
+}
+
+export function findProtoTimestamp(node: unknown): string | undefined {
+  if (!node || typeof node !== 'object' || node instanceof Uint8Array || Buffer.isBuffer(node)) {
+    return undefined;
+  }
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findProtoTimestamp(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  const record = node as Record<string, unknown>;
+  const field1 = record[1];
+  const seconds = Array.isArray(field1) ? field1[0] : field1;
+  if (
+    typeof seconds === 'number' &&
+    Number.isInteger(seconds) &&
+    seconds >= 1_700_000_000 &&
+    seconds <= 2_100_000_000
+  ) {
+    const field2 = record[2];
+    const rawNanos = Array.isArray(field2) ? field2[0] : field2;
+    const nanos =
+      typeof rawNanos === 'number' &&
+      Number.isInteger(rawNanos) &&
+      rawNanos >= 0 &&
+      rawNanos < 1_000_000_000
+        ? rawNanos
+        : 0;
+    const ms = seconds * 1000 + Math.floor(nanos / 1e6);
+    return new Date(ms).toISOString();
+  }
+
+  for (const key of Object.keys(record)) {
+    const found = findProtoTimestamp(record[key]);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
+  const retrievedGuides: string[] = [];
+  const fileReadGuides: string[] = [];
+  const toolsUsed: string[] = [];
+  const steps: StandardizedStep[] = [];
+  const seenJsonHashes = new Set<string>();
+  let modelName = 'unknown';
+  let totalTokens = 0;
+  let totalCached = 0;
+  let hasTokens = false;
+
+  const files = getSessionFiles(dirPath);
+  for (const file of files) {
+    const fullPath = path.join(dirPath, file);
+    let db: DatabaseSync | null = null;
+    try {
+      db = new DatabaseSync(fullPath, { readOnly: true });
+      const rows = db.prepare('SELECT * FROM steps ORDER BY idx').all() as Array<{
+        idx?: number;
+        step_type?: number;
+        status?: number;
+        metadata?: Uint8Array;
+        step_payload?: Uint8Array;
+      }>;
+
+
+      for (const row of rows) {
+        let rowTimestamp: string | undefined;
+        if (row.metadata) {
+          const metadataBuffer = Buffer.isBuffer(row.metadata) ? row.metadata : Buffer.from(row.metadata);
+          const metaProto = parseProtobuf(metadataBuffer);
+          rowTimestamp = findProtoTimestamp(metaProto);
+          const usageNode = metaProto[METADATA_TAG_USAGE]?.[0];
+          if (usageNode && typeof usageNode === 'object') {
+            const input = (usageNode[USAGE_TAG_INPUT] && typeof usageNode[USAGE_TAG_INPUT][0] === 'number') ? usageNode[USAGE_TAG_INPUT][0] : 0;
+            const output = (usageNode[USAGE_TAG_OUTPUT] && typeof usageNode[USAGE_TAG_OUTPUT][0] === 'number') ? usageNode[USAGE_TAG_OUTPUT][0] : 0;
+            const cached = (usageNode[USAGE_TAG_CACHED] && typeof usageNode[USAGE_TAG_CACHED][0] === 'number') ? usageNode[USAGE_TAG_CACHED][0] : 0;
+            if (input > 0 || output > 0 || cached > 0) {
+              totalTokens += input + cached + output;
+              totalCached += cached;
+              hasTokens = true;
+            }
+          }
+        }
+
+        if (row.step_payload) {
+          const payloadBuffer = Buffer.isBuffer(row.step_payload) ? row.step_payload : Buffer.from(row.step_payload);
+          const payloadStr = payloadBuffer.toString('utf8');
+
+          const objs = findJsonObjectsInString(payloadStr);
+          const isErr = row.status !== undefined && JETSKI_ERROR_STATUS_CODES.has(row.status);
+          for (const obj of objs) {
+            if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) continue;
+            const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
+            if (seenJsonHashes.has(key)) continue;
+            seenJsonHashes.add(key);
+
+            const timestamp = extractTimestamp(obj) || rowTimestamp;
+            const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
+
+            if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {
+              const targetFile = obj.TargetFile || 'target_file';
+              const toolName = obj.ReplacementChunks ? 'multi_replace_file_content' : (obj.CodeContent ? 'write_to_file' : 'replace_file_content');
+              steps.push({
+                stepNumber: 0,
+                timestamp,
+                subagentId,
+                thought: obj.toolSummary || obj.toolAction || 'Modifying target file',
+                action: standardizeAction('write_file', toolName, {
+                  path: targetFile,
+                  targetFile,
+                  content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', MAX_PAYLOAD_PREVIEW_LENGTH)
+                }),
+                outcome: { status: isErr ? 'error' : 'success' }
+              });
+            } else if (obj.CommandLine || (obj.toolAction && obj.toolAction.includes('Running command'))) {
+              const actType = 'run_command' as const;
+              const actName = obj.CommandLine ? obj.CommandLine.split(' ')[0] : 'terminal_command';
+              const params = { ...obj, command: obj.CommandLine || obj.toolAction || '' };
+
+              steps.push({
+                stepNumber: 0,
+                timestamp,
+                subagentId,
+                thought: obj.toolSummary || obj.toolAction || 'Running terminal command',
+                action: standardizeAction(actType, actName, params),
+                outcome: { status: isErr ? 'error' : 'success' }
+              });
+            } else if (obj.AbsolutePath || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading')))) {
+              const filePath = obj.AbsolutePath || obj.path || obj.file_path || '';
+              steps.push({
+                stepNumber: 0,
+                timestamp,
+                subagentId,
+                thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
+                action: standardizeAction('read_file', 'view_file', { path: String(filePath) }),
+                outcome: { status: isErr ? 'error' : 'success' }
+              });
+            } else if (obj.DirectoryPath || obj.SearchDirectory) {
+              const dirPath = obj.DirectoryPath || obj.SearchDirectory || '';
+              steps.push({
+                stepNumber: 0,
+                timestamp,
+                subagentId,
+                thought: obj.toolSummary || obj.toolAction || 'Exploring workspace structure',
+                action: standardizeAction('read_file', 'list_dir', { path: String(dirPath) }),
+                outcome: { status: isErr ? 'error' : 'success' }
+              });
+            }
+          }
+
+          const proto = parseProtobuf(payloadBuffer);
+          const strings = getProtoStrings(proto);
+
+          for (const text of strings) {
+            // Shell commands & guide retrieval
+            retrievedGuides.push(...extractRetrievedGuidesFromCommand(text));
+
+            if (text.includes('/skills/') && text.endsWith('/guide.md')) {
+              const match = text.match(/\/skills\/[^/]+\/([^/]+)\/guide\.md$/);
+              if (match) {
+                fileReadGuides.push(match[1]);
+              }
+            }
+            if (text.includes('/skills/') && text.endsWith('/SKILL.md')) {
+              const match = text.match(/\/skills\/([^/]+)\/SKILL\.md$/);
+              if (match) {
+                toolsUsed.push(match[1]);
+              }
+            }
+          }
+        }
+      }
+
+      try {
+        const genRows = db.prepare('SELECT data FROM gen_metadata').all() as Array<{ data?: Uint8Array }>;
+        for (const row of genRows) {
+          if (!row.data) continue;
+          const genDataBuffer = Buffer.isBuffer(row.data) ? row.data : Buffer.from(row.data);
+          const proto = parseProtobuf(genDataBuffer);
+          const strings = getProtoStrings(proto);
+          const modelCandidate = strings.find(s => /^gemini/i.test(s));
+          if (modelCandidate) {
+            modelName = modelCandidate.split('|')[0].trim();
+            break;
+          }
+        }
+      } catch {}
+    } catch (err) {
+      console.warn(`Warning: Failed to parse Jetski CLI session from ${fullPath}:`, err);
+    } finally {
+      db?.close();
+    }
+  }
+
+  return {
+    agent: Agents.JETSKI_CLI,
+    steps,
+    retrievedGuides: [...new Set(retrievedGuides)],
+    fileReadGuides: [...new Set(fileReadGuides)],
+    toolsUsed: [...new Set(toolsUsed)],
+    model: modelName,
+    tokenUsage: hasTokens ? { total: totalTokens, cached: totalCached } : undefined
+  };
+}
+
+export async function parseJetskiTrajectory(dirPath: string): Promise<TrajectorySummary> {
+  const summary = parseJetskiCliSession(dirPath);
+  return finalizeTrajectorySummary(summary);
+}
+
+function getJetskiSummaryForDir(dir: string): TrajectorySummary {
+  return readTrajectorySummary(dir) || parseJetskiCliSession(dir);
+}
+
+export async function collectJetskiCliGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
+  const summary = getJetskiSummaryForDir(dirPath);
+  return {
+    retrievedGuides: summary?.retrievedGuides || [],
+    fileReadGuides: summary?.fileReadGuides || []
+  };
+}
+
+export function extractJetskiCliModel(resultsDir: string): string {
+  const summary = getJetskiSummaryForDir(resultsDir);
+  return summary?.model || 'unknown';
+}
+
+export function extractJetskiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
+  const summary = getJetskiSummaryForDir(dir);
+  return summary?.tokenUsage;
+}
+
+export function collectJetskiCliToolsFromTrajectory(dir: string): string[] {
+  const summary = getJetskiSummaryForDir(dir);
+  return summary?.toolsUsed || [];
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  run();
+}

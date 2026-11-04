@@ -1,7 +1,7 @@
 name: Bug report
 description: Report an error or issue with existing guidance or web platform feature details.
 title: "[Bug]: <Short description>"
-labels: ["bug"]
+type: Bug
 body:
   - type: input
     id: web-feature-id

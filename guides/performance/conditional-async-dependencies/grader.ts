@@ -152,7 +152,48 @@ test.describe('Conditional Async Dependencies Grader', () => {
     if (!targetFile) {
       throw new Error('TARGET_FILE environment variable is not set');
     }
-    expect(true).toBe(true);
+    const visited = new Set<string>();
+    const initialScripts = getModuleScriptContents(targetFile);
+    const rawScripts = [...initialScripts];
+
+    function collectImportedModules(code: string, baseDir: string) {
+      const importRegex = /\bimport\s+(?:[\s\S]*?\s+from\s+)?['"](\.[^'"]+)['"]/g;
+      let m;
+      while ((m = importRegex.exec(code)) !== null) {
+        const absPath = path.resolve(baseDir, m[1]);
+        if (!visited.has(absPath) && fs.existsSync(absPath)) {
+          visited.add(absPath);
+          const importedCode = fs.readFileSync(absPath, 'utf-8');
+          rawScripts.push(importedCode);
+          collectImportedModules(importedCode, path.dirname(absPath));
+        }
+      }
+    }
+
+    for (const script of initialScripts) {
+      collectImportedModules(script, path.dirname(targetFile));
+    }
+
+    expect(rawScripts.length).toBeGreaterThan(0);
+
+    // Strip static import lines before checking for dynamic import() calls
+    const scriptsWithDynamicImport = rawScripts.filter(code => {
+      const withoutStaticImports = code.replace(/^\s*import\s+(?:[\s\S]*?\s+from\s+)?['"][^'"]+['"]\s*;?/gm, '');
+      return /\bimport\s*\(/.test(withoutStaticImports);
+    });
+    expect(scriptsWithDynamicImport.length).toBe(1);
+
+    // Ensure no module is simultaneously imported multiple times across the module graph
+    const allStaticImports: string[] = [];
+    for (const code of rawScripts) {
+      const staticImports = Array.from(
+        code.matchAll(/^\s*import\s+(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/gm),
+        m => m[1]
+      );
+      allStaticImports.push(...staticImports);
+    }
+    const uniqueStaticImports = new Set(allStaticImports);
+    expect(uniqueStaticImports.size).toBe(allStaticImports.length);
   });
 
 });

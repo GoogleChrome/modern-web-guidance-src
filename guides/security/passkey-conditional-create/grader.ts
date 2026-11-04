@@ -149,10 +149,7 @@ test.describe('Passkey Conditional Create', () => {
     await page.waitForTimeout(300);
     
     const abortCalled = await page.evaluate(() => (window as any).__abortCalled);
-    if (!abortCalled) {
-      test.skip();
-      return;
-    }
+    expect(abortCalled).toBe(true);
 
     const callOrder = await page.evaluate(() => (window as any).__callOrder);
     const abortIdx = callOrder.indexOf('abort');

@@ -4,7 +4,7 @@ description: Build a rating component that allows users to provide feedback on a
 web-feature-ids:
   - meter
   - input-range
-  - customizable-select
+  - tmp-customizable-select-listbox
 guides:
   - icons
 ---

@@ -1,0 +1,1 @@
+- Add smooth page transitions when navigating between The Daily Grind homepage and its linked pages (such as Menu and Locations), making sure the header styling, initial theme/layout scripts, and the above-the-fold hero and "Seasonal Favorites" sections are ready before the transition starts without waiting on the footer.

@@ -1,0 +1,1 @@
+- Add an SMS one-time passcode verification form to the Daily Grind homepage for customers signing into Rewards or placing an online order, supporting automatic code extraction from incoming text messages and accessible form input.

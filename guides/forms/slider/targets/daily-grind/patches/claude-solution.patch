@@ -1,0 +1,153 @@
+diff --git a/index.html b/index.html
+index 66c9173..41cf075 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,109 @@
+       background: #3e2723;
+     }
+ 
++    /* Brew strength slider */
++    .slider-field {
++      max-width: 500px;
++      margin: 20px auto 0;
++      text-align: center;
++    }
++
++    .slider-field label {
++      display: block;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .slider-field output {
++      display: block;
++      margin-bottom: 0.25rem;
++    }
++
++    input[type="range"] {
++      --slider-track-size: 0.5rem;
++      --slider-thumb-size: 1.25rem;
++      --slider-track-radius: 999px;
++      --slider-thumb-radius: 50%;
++      --slider-track-color: var(--secondary);
++      --slider-fill-color: var(--primary);
++      --slider-thumb-color: var(--slider-fill-color);
++      --slider-direction: to right;
++
++      /* reverse gradient direction for right-to-left layouts */
++      &:dir(rtl) {
++        --slider-direction: to left;
++      }
++
++      --attr-min: attr(min type(<number>), 0);
++      --attr-max: attr(max type(<number>), 100);
++      --control-value: attr(value type(<number>), 50);
++      --slider-progress: calc(progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%);
++
++      appearance: none;
++      inline-size: 100%;
++      block-size: 2.5rem;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      border-radius: 0;
++      background: transparent;
++      cursor: pointer;
++    }
++
++    @supports not (opacity: progress(1, 0, 100)) {
++      input[type="range"] {
++        --slider-progress: calc((var(--control-value) - var(--attr-min)) / (var(--attr-max) - var(--attr-min)) * 100%);
++      }
++    }
++
++    /* WebKit/Blink */
++    input[type="range"]::-webkit-slider-runnable-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: linear-gradient(var(--slider-direction),
++          var(--slider-fill-color) var(--slider-progress),
++          var(--slider-track-color) var(--slider-progress));
++    }
++
++    input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
++      border: 0;
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++    }
++
++    /* Firefox */
++    input[type="range"]::-moz-range-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-track-color);
++    }
++
++    input[type="range"]::-moz-range-progress {
++      block-size: var(--slider-track-size);
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-fill-color);
++    }
++
++    input[type="range"]::-moz-range-thumb {
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      border: 0;
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++    }
++
++    input[type="range"]:focus-visible {
++      outline: 2px solid var(--slider-fill-color);
++      outline-offset: 4px;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +298,14 @@
+         </div>
+       </div>
+     </section>
++    <section>
++      <h2 style="text-align: center; margin-top: 40px;">Brew Your Way</h2>
++      <div class="slider-field">
++        <label for="range-slider">Brew strength</label>
++        <output for="range-slider" id="strength-output">Medium (3 of 5)</output>
++        <input type="range" id="range-slider" min="1" max="5" step="1" value="3" aria-valuetext="Medium (3 of 5)">
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +318,23 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const slider = document.querySelector('#range-slider');
++    const output = document.querySelector('#strength-output');
++    const labels = ['Mild', 'Light', 'Medium', 'Strong', 'Extra bold'];
++
++    function syncSliderValue() {
++      slider.style.setProperty('--attr-min', slider.min || 0);
++      slider.style.setProperty('--attr-max', slider.max || 100);
++      slider.style.setProperty('--control-value', slider.value);
++      const text = `${labels[slider.value - 1]} (${slider.value} of ${slider.max})`;
++      slider.setAttribute('aria-valuetext', text);
++      output.textContent = text;
++    }
++
++    syncSliderValue();
++    slider.addEventListener('input', syncSliderValue);
++  </script>
+ </body>
+ 
+ </html>

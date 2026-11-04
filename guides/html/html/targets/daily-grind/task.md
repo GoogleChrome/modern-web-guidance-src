@@ -1,0 +1,1 @@
+- Refactor the Daily Grind homepage markup (including the top navigation bar, the "Wake Up Your Senses" hero banner, the "Seasonal Favorites" drink cards, and the footer links) to follow modern HTML architecture and document landmark semantics.

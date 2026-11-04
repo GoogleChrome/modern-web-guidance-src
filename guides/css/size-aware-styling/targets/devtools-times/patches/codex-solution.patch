@@ -1,0 +1,148 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..cc62db6 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -52,32 +52,34 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
+-        <div class="flex flex-col flex-grow mt-3">
+-            <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+-            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+-                <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
+-                    {article.data.title}
+-                </h3>
+-                <p class="text-gray-600 mt-1">{article.data.summary}</p>
++    <div class="article-teaser-container h-full">
++        <article class="article-teaser-card flex h-full group">
++            <a class="article-teaser-media" href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                <Image
++                    src={image}
++                    alt={article.data.title}
++                    width={400}
++                    height={225}
++                    format="webp"
++                    class="w-full h-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                />
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
+-                <span class="text-sm font-medium flex items-center">
+-                    <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+-                    {article.data.readingTime} Min.
+-                </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++            <div class="article-teaser-content flex flex-col flex-grow mt-3">
++                <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
++                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
++                    <h3 class="text-lg md:text-xl font-brand text-gray-800 group-hover:text-amber-400 transition-colors flex-grow">
++                        {article.data.title}
++                    </h3>
++                    <p class="text-gray-600 mt-1">{article.data.summary}</p>
++                </a>
++                <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++                    <span class="text-sm font-medium flex items-center">
++                        <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
++                        {article.data.readingTime} Min.
++                    </span>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+-        </div>
+-    </article>
+-)}
+\ No newline at end of file
++        </article>
++    </div>
++)}
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..4b69e39 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,74 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
+-}
+\ No newline at end of file
++}
++
++/*
++ * Article teasers are used in both narrow grids and wide content regions. The
++ * wrapper establishes the component's own inline-size as the responsive input,
++ * so its layout does not depend on where it happens to be rendered.
++ */
++.article-teaser-container {
++  container-name: article-teaser;
++  container-type: inline-size;
++}
++
++/* Safe default for small containers and browsers without container queries. */
++.article-teaser-card {
++  flex-direction: column;
++}
++
++.article-teaser-media {
++  display: block;
++}
++
++/* Usable progressive fallback when container queries are unavailable. */
++@media (min-width: 600px) {
++  .article-teaser-card {
++    flex-direction: row;
++    align-items: stretch;
++    gap: 1rem;
++  }
++
++  .article-teaser-media {
++    flex: 0 0 40%;
++  }
++
++  .article-teaser-content {
++    margin-top: 0;
++  }
++}
++
++@supports (container-type: inline-size) {
++  /* Let component width, rather than viewport width, control enhanced layouts. */
++  @media (min-width: 600px) {
++    .article-teaser-card {
++      flex-direction: column;
++      gap: 0;
++    }
++
++    .article-teaser-media {
++      flex-basis: auto;
++    }
++
++    .article-teaser-content {
++      margin-top: 0.75rem;
++    }
++  }
++
++  @container (min-width: 400px) {
++    .article-teaser-card {
++      flex-direction: row;
++      align-items: stretch;
++      gap: 1rem;
++    }
++
++    .article-teaser-media {
++      flex: 0 0 40%;
++    }
++
++    .article-teaser-content {
++      margin-top: 0;
++    }
++  }
++}

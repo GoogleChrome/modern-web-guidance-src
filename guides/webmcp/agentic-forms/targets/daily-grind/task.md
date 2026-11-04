@@ -1,0 +1,1 @@
+- Add an interactive coffee finder or quick-order HTML form to the Daily Grind homepage and expose it as a declarative client-side browser tool so AI agents can fill and submit the form on the user's behalf.
