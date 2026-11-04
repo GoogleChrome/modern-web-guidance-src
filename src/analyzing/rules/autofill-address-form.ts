@@ -152,16 +152,11 @@ const autofillAddressFormMatcher: DomRuleMatcher = {
     const isPostal =
       matchedField.toLowerCase().includes('zip') ||
       matchedField.toLowerCase().includes('postal');
-    const targetToken = isPostal
-      ? 'postal-code'
+    const [targetToken, suggestedTokens] = isPostal
+      ? ['postal-code', 'postal-code']
       : isTextarea
-        ? 'street-address'
-        : 'address-line1';
-    const suggestedTokens = isPostal
-      ? 'postal-code'
-      : isTextarea
-        ? 'street-address'
-        : 'address-line1 / street-address';
+        ? ['street-address', 'street-address']
+        : ['address-line1', 'address-line1 / street-address'];
 
     return {
       message:

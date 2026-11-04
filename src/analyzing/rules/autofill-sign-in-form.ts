@@ -15,20 +15,23 @@ const VALID_PASSWORD_AUTOCOMPLETE_TOKENS: ReadonlySet<string> = new Set([
 const CONFIG_SECRET_INPUT_REGEX =
   /(?:proxy|database|\bdb[-_.]?(?:config|pass|pwd|password)|\bdb\b|smtp|webhook|api[-_]?key|apikey|client[-_]?secret)/i;
 
+const CONFIG_SECRET_ATTRS = [
+  'name',
+  'id',
+  'placeholder',
+  'aria-label',
+  'v-model',
+  'ng-model',
+  'data-ng-model',
+  'formControlName',
+  'data-bind',
+] as const;
+
 function isConfigSecretElement(element: DomElementView): boolean {
-  const name = element.getAttribute('name') ?? '';
-  const id = element.getAttribute('id') ?? '';
-  const placeholder = element.getAttribute('placeholder') ?? '';
-  const ariaLabel = element.getAttribute('aria-label') ?? '';
-  const modelBinding =
-    element.getAttribute('v-model') ??
-    element.getAttribute('ng-model') ??
-    element.getAttribute('data-ng-model') ??
-    element.getAttribute('formControlName') ??
-    element.getAttribute('data-bind') ??
-    '';
-  const combined = `${name} ${id} ${placeholder} ${ariaLabel} ${modelBinding}`.toLowerCase();
-  return CONFIG_SECRET_INPUT_REGEX.test(combined);
+  return CONFIG_SECRET_ATTRS.some((attr) => {
+    const val = element.getAttribute(attr);
+    return val !== null && CONFIG_SECRET_INPUT_REGEX.test(val);
+  });
 }
 
 const autofillSignInFormMatcher: DomRuleMatcher = {

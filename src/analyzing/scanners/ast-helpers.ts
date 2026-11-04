@@ -279,45 +279,70 @@ function getStaticStringValue(node: Node | undefined): string | null {
     : null;
 }
 
-function isFeatureTargetNode(
-  node: Node,
-  featureTokens: readonly string[],
-  seen: Set<Node>,
-): boolean {
-  if (isValidFeatureCondition(node, featureTokens, seen)) {
-    return true;
+function matchesTokenExact(name: string | null | undefined, featureTokens: readonly string[]): boolean {
+  if (!name) {
+    return false;
   }
-  const unwrapped = unwrapExpression(node);
-  let root: Node = unwrapped;
+  const lower = name.toLowerCase();
+  return featureTokens.some((token) => token.toLowerCase() === lower);
+}
+
+function matchesTokenNameOrSubstring(name: string | null | undefined, featureTokens: readonly string[]): boolean {
+  if (!name) {
+    return false;
+  }
+  const lower = name.toLowerCase();
+  return featureTokens.some((token) => {
+    const tokenLower = token.toLowerCase();
+    return lower === tokenLower || lower.includes(tokenLower);
+  });
+}
+
+function getRootExpression(node: Node): Node {
+  let root = unwrapExpression(node);
   while (Node.isPropertyAccessExpression(root)) {
     root = unwrapExpression(root.getExpression());
   }
-  if (Node.isIdentifier(root)) {
-    const rootText = root.getText();
-    return (
-      (BROWSER_GLOBAL_ROOTS.has(rootText) || /^HTML[A-Z]/.test(rootText)) &&
-      isUnshadowedGlobal(root, rootText)
-    );
-  }
-  return false;
+  return root;
 }
 
-function isValidFeatureTargetOrProp(
-  target: Node | undefined,
-  prop: Node | undefined,
-  featureTokens: readonly string[],
-  seen: Set<Node>,
-): boolean {
-  if (prop) {
-    const propText = getStaticStringValue(prop)?.toLowerCase();
-    if (propText && featureTokens.some((token) => token.toLowerCase() === propText)) {
-      return true;
+interface PropertyCheck {
+  readonly target: Node;
+  readonly prop: Node;
+}
+
+function extractPropertyCheck(node: Node): PropertyCheck | null {
+  if (Node.isBinaryExpression(node) && node.getOperatorToken().getKind() === SyntaxKind.InKeyword) {
+    return { target: node.getRight(), prop: node.getLeft() };
+  }
+
+  if (Node.isCallExpression(node)) {
+    const callee = unwrapExpression(node.getExpression());
+    if (Node.isPropertyAccessExpression(callee)) {
+      const method = callee.getName();
+      const args = node.getArguments();
+      const first = args[0];
+      const second = args[1];
+
+      if (method === 'hasOwn' && first && second && isGlobalReference(callee.getExpression(), 'Object')) {
+        return { target: first, prop: second };
+      }
+      if (method === 'hasOwnProperty' && first) {
+        return { target: callee.getExpression(), prop: first };
+      }
+      if (method === 'call' && first && second) {
+        const target = unwrapExpression(callee.getExpression());
+        const isHasOwn =
+          (Node.isIdentifier(target) && target.getText() === 'hasOwnProperty') ||
+          (Node.isPropertyAccessExpression(target) && target.getName() === 'hasOwnProperty');
+        if (isHasOwn) {
+          return { target: first, prop: second };
+        }
+      }
     }
   }
-  if (target && isFeatureTargetNode(target, featureTokens, seen)) {
-    return true;
-  }
-  return false;
+
+  return null;
 }
 
 /**
@@ -330,29 +355,33 @@ function isValidFeatureCondition(
   seen: Set<Node> = new Set(),
 ): boolean {
   const unwrapped = unwrapExpression(expr);
-  if (seen.has(unwrapped)) {
-    return false;
+
+  const propCheck = extractPropertyCheck(unwrapped);
+  if (propCheck) {
+    const propName = getStaticStringValue(propCheck.prop);
+    if (matchesTokenNameOrSubstring(propName, featureTokens)) {
+      return true;
+    }
+    return isValidFeatureCondition(propCheck.target, featureTokens, seen);
   }
 
   if (Node.isIdentifier(unwrapped)) {
-    const textLower = unwrapped.getText().toLowerCase();
-    if (
-      featureTokens.some((token) => token.toLowerCase() === textLower) &&
-      isUnshadowedGlobal(unwrapped, unwrapped.getText())
-    ) {
+    const name = unwrapped.getText();
+    if (matchesTokenExact(name, featureTokens) && isUnshadowedGlobal(unwrapped, name)) {
       return true;
+    }
+    if (seen.has(unwrapped)) {
+      return false;
     }
     seen.add(unwrapped);
     const resolved = resolveLocalExpression(unwrapped, 5);
-    if (resolved !== unwrapped && !seen.has(resolved)) {
-      return isValidFeatureCondition(resolved, featureTokens, seen);
-    }
-    return false;
+    return resolved !== unwrapped && !seen.has(resolved)
+      ? isValidFeatureCondition(resolved, featureTokens, seen)
+      : false;
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
     return (
-      unwrapped.getOperatorToken().getKind() === SyntaxKind.InKeyword ||
       isValidFeatureCondition(unwrapped.getLeft(), featureTokens, seen) ||
       isValidFeatureCondition(unwrapped.getRight(), featureTokens, seen)
     );
@@ -364,47 +393,31 @@ function isValidFeatureCondition(
 
   if (Node.isCallExpression(unwrapped)) {
     const callee = unwrapExpression(unwrapped.getExpression());
-    if (Node.isPropertyAccessExpression(callee)) {
-      const methodName = callee.getName();
-      if (methodName === 'supports') {
-        return isGlobalReference(callee.getExpression(), 'CSS');
-      }
-
-      const args = unwrapped.getArguments();
-      if (methodName === 'hasOwn') {
+    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'supports') {
+      if (isGlobalReference(callee.getExpression(), 'CSS')) {
+        const argsText = unwrapped.getArguments().map((a) => a.getText()).join(' ');
         return (
-          isGlobalReference(callee.getExpression(), 'Object') &&
-          isValidFeatureTargetOrProp(args[0], args[1], featureTokens, seen)
+          matchesTokenNameOrSubstring(argsText, featureTokens) ||
+          featureTokens.some((t) => t.toLowerCase() === 'css.supports')
         );
-      }
-      if (methodName === 'hasOwnProperty') {
-        return isValidFeatureTargetOrProp(callee.getExpression(), args[0], featureTokens, seen);
-      }
-      if (methodName === 'call') {
-        const callTarget = unwrapExpression(callee.getExpression());
-        const isHasOwnProp =
-          (Node.isIdentifier(callTarget) && callTarget.getText() === 'hasOwnProperty') ||
-          (Node.isPropertyAccessExpression(callTarget) && callTarget.getName() === 'hasOwnProperty');
-        if (isHasOwnProp) {
-          return isValidFeatureTargetOrProp(args[0], args[1], featureTokens, seen);
-        }
       }
     }
     return false;
   }
 
   if (Node.isPropertyAccessExpression(unwrapped)) {
-    let root: Node = unwrapped;
-    while (Node.isPropertyAccessExpression(root)) {
-      root = unwrapExpression(root.getExpression());
+    if (matchesTokenNameOrSubstring(unwrapped.getName(), featureTokens)) {
+      return true;
     }
+    const root = getRootExpression(unwrapped);
     if (Node.isIdentifier(root)) {
       const rootText = root.getText();
-      const propNameLower = unwrapped.getName().toLowerCase();
-      return (
-        (BROWSER_GLOBAL_ROOTS.has(rootText) && isUnshadowedGlobal(root, rootText)) ||
-        featureTokens.some((token) => token.toLowerCase() === propNameLower)
-      );
+      const isGlobalRoot =
+        (BROWSER_GLOBAL_ROOTS.has(rootText) || /^HTML[A-Z]/.test(rootText)) &&
+        isUnshadowedGlobal(root, rootText);
+      if (isGlobalRoot || matchesTokenExact(rootText, featureTokens)) {
+        return matchesTokenNameOrSubstring(unwrapped.getText(), featureTokens);
+      }
     }
   }
 
@@ -420,9 +433,6 @@ function conditionCheckPolarity(
   seen: Set<Node> = new Set(),
 ): 'positive' | 'negative' | null {
   const unwrapped = unwrapExpression(conditionExpr);
-  if (seen.has(unwrapped)) {
-    return null;
-  }
 
   if (
     Node.isPrefixUnaryExpression(unwrapped) &&
@@ -445,6 +455,9 @@ function conditionCheckPolarity(
   }
 
   if (Node.isIdentifier(unwrapped)) {
+    if (seen.has(unwrapped)) {
+      return null;
+    }
     seen.add(unwrapped);
     const resolved = resolveLocalExpression(unwrapped, 5);
     if (resolved !== unwrapped && !seen.has(resolved)) {
@@ -452,11 +465,7 @@ function conditionCheckPolarity(
     }
   }
 
-  const condTextLower = unwrapped.getText().toLowerCase();
-  if (
-    !featureTokens.some((token) => condTextLower.includes(token.toLowerCase())) ||
-    !isValidFeatureCondition(unwrapped, featureTokens, seen)
-  ) {
+  if (!isValidFeatureCondition(unwrapped, featureTokens, seen)) {
     return null;
   }
 

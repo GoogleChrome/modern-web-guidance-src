@@ -1036,6 +1036,9 @@ void test('ast-helpers: feature-guard AST blind spots and identifier resolution'
         if (!dialogOptions.hasOwnProperty('modal')) {
           dictionaryFallback2();
         }
+        if (!('modal' in dialogOptions)) {
+          dictionaryFallback3();
+        }
       }
     `;
 
@@ -1054,6 +1057,7 @@ void test('ast-helpers: feature-guard AST blind spots and identifier resolution'
       // even if the dictionary variable name contains a feature token like 'dialog'
       assert.equal(isProtectedByFeatureGuard(findCall('dictionaryFallback'), ['dialog']), false);
       assert.equal(isProtectedByFeatureGuard(findCall('dictionaryFallback2'), ['dialog']), false);
+      assert.equal(isProtectedByFeatureGuard(findCall('dictionaryFallback3'), ['dialog']), false);
     });
   });
 
