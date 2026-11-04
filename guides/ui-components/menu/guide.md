@@ -10,29 +10,24 @@ guides:
   - viewport-aware-dropdowns
 ---
 
-<!-- Baseline best practices to be referenced by any guide that involves a popup menu (dropdown menus, context menus, overflow menus, etc)
+{# Maintainer note: this is the shared core for every popup menu (menu buttons, overflow menus, context menus, submenus). It is agnostic to what opens the menu. Behavior that only exists when several menus form one bar (one Tab stop, Left/Right between menus, preview on focus, hover switching) lives in app-menus. #}
 
-Include:
-- fixed-size icon slot (no subgrid)
-- proper keyboard nav
-- safe triangles for submenus
-- converting to drawer on small screens?
--->
+# Build a popup menu
 
-# Build a dropdown menu
+This guide covers one popup menu: a list of commands or links that users move through with arrow keys. What opens it does not matter: a button (an "Actions" or overflow button), an item in another menu (a submenu), or no visible trigger at all (a context menu). The worked example is a document's actions menu, where items change the interface (duplicate, export, delete).
 
-This guide covers any popup menu: dropdown, context, overflow, and the menu bars that open them. The worked example is an application command menu, where items change the interface (create, save, preferences).
+Several triggers on one page are independent menus: each is its own `Tab` stop, and nothing links them. A row of menus that act as one widget (File, Edit, View: one `Tab` stop, `ArrowLeft`/`ArrowRight` between them, hover switching) is an application menu bar. Build each menu as described here, then see {{ GUIDE_REF("app-menus") }} for the bar.
 
 ### Commands, links, and what makes a menu
 
 Two independent choices. Everything else here applies to both.
 
-* **Element, per item.** A command is a `<button type="button">`; a destination is an `<a href>` that still opens in a new tab, copies as a URL, and works without script. A dropdown may mix them freely: two links and six commands, or one command and six links, changes nothing below.
-* **Interaction model, per dropdown.** Arrow keys, `Home`/`End`, and `Esc` make it a menu: add the focusgroup, let it infer `menuitem` on every item whether button or link, and make it look like one (a continuous bar or a trigger with a dropdown indicator; see "Menubar or separate menu buttons" below). A short list of links users `Tab` through is navigation: no focusgroup, no `role="menu"`, `role="menuitem"`, or `aria-haspopup="menu"`; keep the popover, `Esc`, and focus restoration, and see the navbar guide.
+* **Element, per item.** A command is a `<button type="button">`; a destination is an `<a href>` that still opens in a new tab, copies as a URL, and works without script. A menu may mix them freely: two links and six commands, or one command and six links, changes nothing below.
+* **Interaction model, per menu.** Arrow keys, `Home`/`End`, and `Esc` make it a menu: add the focusgroup, let it infer `menuitem` on every item whether button or link, and make it look like one (a trigger with a dropdown indicator, or a continuous bar for an application menu bar). A short list of links users `Tab` through is navigation: no focusgroup, no `role="menu"`, `role="menuitem"`, or `aria-haspopup="menu"`; keep the popover, `Esc`, and focus restoration. For navigation, see {{ GUIDE_REF("navbar") }}.
 
 Content never decides the roles. A "Products" dropdown of links can be a menu; an "Account" dropdown of commands cannot be navigation.
 
-Use the menu pattern only for a composite widget with one tab stop and arrow-key navigation. Use a `<div focusgroup="menu nomemory">`, not the HTML `<menu>` element. Do not add `role="menu"` or `role="menuitem"` in the shared markup: native focusgroup infers those roles, and explicit roles block that inference. Add them only in the unsupported-browser fallback below. `nomemory` makes reopening start at the first item. Focusgroup moves focus; script handles preview, activation, and focus restoration.
+Use the menu pattern only for a composite widget with one tab stop and arrow-key navigation. Use a `<div focusgroup="menu nomemory">`, not the HTML `<menu>` element. Do not add `role="menu"` or `role="menuitem"` in the shared markup: native focusgroup infers those roles, and explicit roles block that inference. Add them only in the unsupported-browser fallback below. `nomemory` makes reopening start at the first item. Focusgroup moves focus; script handles activation, submenu preview, and focus restoration.
 
 {# Maintainer note: Nest [focusgroup] inside [popover] rather than on the same element because Chromium clobbers focusgroup keyboard behavior on [popover] elements (https://issues.chromium.org/issues/564673920, https://github.com/whatwg/html/issues/11641). Placing each [popover] as the immediate nextElementSibling of its [commandfor] trigger suppresses the implicit aria-details relation per HTML-AAM (https://www.w3.org/TR/html-aam-1.0/#att-command-popovers) and allows nested submenus to use popover="auto" without light-dismissing their parent menu. #}
 
@@ -42,18 +37,20 @@ Make each trigger a command invoker with `commandfor` and `command="toggle-popov
 
 Place each popover immediately after its trigger. Browsers add an implicit `aria-details` relationship only when the popover is not the next sibling, so this placement avoids it without extra attributes.
 
+A menu with no trigger button (a context menu) opens from script with `showPopover({ source })`, where `source` is the element the menu anchors to. Name it with `aria-label` instead of `aria-labelledby`. Everything else below applies unchanged. {# PENDING_GUIDE_REF: For opening a menu from a right-click, see {{ GUIDE_REF("context-menu") }}. #}
+
 ```html
 <!-- Command invoker: the browser toggles the popover on click, Enter, and Space -->
-<button id="file-trigger" class="trigger" type="button" aria-haspopup="menu" aria-expanded="false"
-  commandfor="file-menu" command="toggle-popover">
-  File
+<button id="actions-trigger" class="trigger" type="button" aria-haspopup="menu" aria-expanded="false"
+  commandfor="actions-menu" command="toggle-popover">
+  Actions
 </button>
 <!-- Immediately after its trigger, so browsers add no implicit aria-details -->
-<div id="file-menu" popover="auto">
+<div id="actions-menu" popover="auto">
   <!-- Nested, not on the popover: Chromium otherwise drops focusgroup keyboard behavior -->
-  <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
-    <button type="button">New file</button>
-    <button type="button">Save</button>
+  <div focusgroup="menu nomemory" aria-labelledby="actions-trigger">
+    <button type="button">Duplicate</button>
+    <button type="button">Rename</button>
     <button id="export-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
       commandfor="export-menu" command="toggle-popover">
       Export <span aria-hidden="true">›</span>
@@ -69,16 +66,7 @@ Place each popover immediately after its trigger. Browsers add an implicit `aria
 </div>
 ```
 
-Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators in CSS, or add `aria-hidden="true"`. Give triggers with `aria-expanded="true"` a visible active style so users can tell which menu is open or previewed.
-
-### Menubar or separate menu buttons
-
-Pick one form for the top-level triggers. Role, keyboard model, and styling must match: visually separate buttons signal one `Tab` stop each.
-
-* **Menubar.** `role="menubar"` on the container (never on a popover), styled as one continuous bar with no gaps between triggers. One `Tab` stop; `ArrowLeft`/`ArrowRight` move between triggers; hover switches open menus. Use for an application command bar.
-* **Separate menu buttons.** Each trigger is its own `Tab` stop and looks like a standalone button. No `role="menubar"`, no arrow keys between triggers, no preview on focus, no hover switching. Wrap in `<nav>` if they navigate, otherwise no role. Use for toolbars and page headers.
-
-The rest of this guide describes the menubar form. For separate buttons, keep everything inside each menu and drop the menubar-level behavior.
+Name each menu with `aria-labelledby` pointing at its trigger. Keep decorative submenu indicators in CSS, or add `aria-hidden="true"`. Give triggers with `aria-expanded="true"` a visible active style so users can tell which menu is open. Style each trigger as a standalone button: it is its own `Tab` stop, and the styling must say so. Do not add `role="menubar"` or arrow keys between triggers; that is the application menu bar form.
 
 ### Position the menu with CSS Anchor Positioning
 
@@ -134,10 +122,6 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
     transition-duration: .1s;
     @starting-style { opacity: 0; translate: 0 -.25rem; }
   }
-  /* Switching between open menubar menus is instant, as in native menubars. */
-  [role="menubar"]:has(> [popover]:popover-open) > [popover] {
-    transition: none;
-  }
 }
 ```
 
@@ -147,24 +131,21 @@ Optional. Under 150 ms, `opacity` and a small `translate` only, same for submenu
 
 Do not add a second roving-tabindex system inside a focusgroup. Script covers only what the invokers and focusgroup do not:
 
-* **One tab stop for the menubar.** `Tab` enters at the first top-level trigger. `ArrowLeft` and `ArrowRight` move between top-level triggers and wrap at either end. `Home` and `End` on a trigger enter its menu at the first or last item.
-  * **Note: which trigger `Tab` returns to.** The APG allows either the first trigger or the last one used. The guide specifies the first, but the demo moves the tab stop with `ArrowLeft` and `ArrowRight`, so after keyboard navigation `Shift`+`Tab` returns to the last trigger reached. Pointer use does not move it, so the same sequence can land on a different trigger. Either behavior is acceptable; pick one and keep it consistent.
-* **Preview.** Focusing a top-level trigger shows its menu and sets `aria-expanded="true"`. Focus stays on the trigger, and no item is focused. Blurring the trigger closes a preview-only menu.
-* **Enter and Space on a preview.** They close the preview and keep focus on the trigger. The native `toggle-popover` action handles this, so the script must not intercept these keys.
-* **ArrowDown on a preview.** Converts it to an open menu and focuses the first item.
-* **Pointer click on an open or previewed trigger.** Closes it natively; it does not enter the menu.
-  * **Known difference on submenu triggers.** A pointer click on a submenu trigger also toggles natively, so it can close a submenu that hover already previewed, or open one that has not appeared yet. Native menus only open it and never close it. This is harmless, so the guide accepts it.
+* **The trigger is an ordinary button.** `Tab` reaches it like any other button, and focusing it does not open the menu. `Enter`, `Space`, and click toggle the menu natively, so the script must not intercept these keys.
+* **Keyboard open enters the menu.** Opening with `Enter` or `Space` focuses the first enabled item. `ArrowDown` on a trigger opens its menu if it is closed and focuses the first item either way, so arrow keys also work after a pointer open.
 * **Pointer click on a closed trigger.** Opens it natively. Focus stays on the trigger; no item is focused. Only keyboard opens enter the menu.
+* **Pointer click on an open trigger.** Closes it natively; it does not enter the menu.
+  * **Known difference on submenu triggers.** A pointer click on a submenu trigger also toggles natively, so it can close a submenu that hover already previewed, or open one that has not appeared yet. Native menus only open it and never close it. This is harmless, so the guide accepts it.
 * **Pointer over an item.** Focuses it without a ring, so hover and focus are one item.
-* **Pointer over another top-level trigger while a menu is open.** Closes it and previews the hovered one, focusing its trigger without a ring. Nothing open: hover does nothing.
-* **Pointer over a submenu trigger.** Previews its submenu after a short delay (pointer focus runs the same preview-on-focus). A sibling item closes it.
 * **Within a menu.** `ArrowUp` and `ArrowDown` move between enabled items. `Home` and `End` move to the first and last enabled item, which the script handles.
-* **ArrowLeft or ArrowRight in an open top-level menu.** Closes it and previews the adjacent menu with focus on its trigger, wrapping at either end. `ArrowDown` then enters it. Left and Right never land inside a menu.
-* **ArrowRight on a submenu trigger.** Opens the submenu and focuses its first item.
-* **ArrowRight on a submenu item without a child submenu.** Closes the hierarchy and previews the next top-level menu while focus stays on its trigger. `ArrowDown` then enters it.
+* **Submenu preview.** Focusing a submenu trigger, by arrow key or by pointer (which focuses it after a short delay), shows its submenu and sets `aria-expanded="true"`. Focus stays on the trigger, and no submenu item is focused. Moving to a sibling item closes the preview.
+* **Enter or Space on a previewed submenu trigger.** They close the preview and keep focus on the trigger. The native `toggle-popover` action handles this.
+* **ArrowRight on a submenu trigger.** Opens the submenu if needed and focuses its first item.
 * **ArrowLeft or Escape in a submenu.** Closes only that submenu and restores focus to its trigger. The parent menu stays open.
+* **Escape in a top-level menu.** Closes it and restores focus to its trigger.
 * **Enter or Space on a command.** Activates it and closes all open menus.
 * **Tab.** Leaves the menu system. Do not trap focus or step through every command. Closing must not leave focus inside hidden content.
+* **No trigger button.** A menu opened from script focuses its first item when it was opened from the keyboard, and on close restores focus to the element that had it before the menu opened.
 
 The `command` event fires before `toggle-popover` opens the menu, so focus cannot move into the menu there. Move focus in the `toggle` event instead. HTML restores focus only for the first `popover="auto"` in a stack, so nested levels must restore focus to their trigger explicitly.
 
@@ -175,17 +156,16 @@ Implement the behaviors above for your own markup. Arrow, `Home`/`End`, wrap-aro
 ### Keyboard and focus handling
 
 1. **One open path.** Opening by keyboard calls `trigger.click()`, so the invoker's `toggle-popover` is the only way a menu opens. Mark the menu so the `toggle` handler enters it, keyboard opens only. On a pointer open, `toggle` focuses the trigger without a ring instead, because `pointerdown` prevented focus and arrow keys must still work.
-2. **Preview on focus.** Focusing a trigger calls `showPopover({ source: trigger })` so the menu anchors to it. Ignore focus returning from inside the trigger's own menu, or from another window (flag on window `blur`, cleared a tick after window `focus`, or app-switching reopens the last menu). Hide a previewed menu on `blur` unless focus moved into it.
+2. **Submenu preview on focus.** Focusing a submenu trigger calls `showPopover({ source: trigger })` so the submenu anchors to it. Ignore focus returning from inside the trigger's own submenu (after `Escape`), or from another window (flag on window `blur`, cleared a tick after window `focus`). Hide a previewed submenu on `blur` unless focus moved into it. Top-level triggers get no preview: focusing them does nothing.
 3. **Move focus in `toggle`, not `command`.** `command` fires before the menu opens.
 4. **Restore focus to the trigger yourself.** Focus the trigger before `hidePopover()`. After a pointer activation, restore focus without a ring (`focus({ focusVisible: false })`), or the trigger shows the keyboard focus outline after a mouse click; keyboard activations keep the ring. A click with `event.detail === 0` came from the keyboard.
 5. **Close one level at a time.** Call `stopPropagation()` on `Escape` and `ArrowLeft` in a submenu, or the parent's listener closes it too.
 
 ### Pointer handling
 
-1. **Pointer click toggles.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus and start a preview mid-click. Remember which trigger was pressed. Clicking a closed or previewed trigger opens or closes it natively and never enters the menu; only keyboard opens enter it. Do not intercept the click.
-2. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, call `focus({ focusVisible: false })`; browsers that ignore the option paint no ring for pointer focus anyway.
-3. **Hover switches open menus.** On `pointerenter` of a top-level trigger while another top-level menu is open: hide it, focus the hovered trigger without a ring, and preview on focus (see above) previews it. Nothing open: do nothing.
-4. **Safe triangle.** A fixed CSS bridge is too narrow: it only works when the pointer starts near the parent's edge. Let CSS draw the bridge and use script only to report the pointer:
+1. **Pointer click toggles.** Call `preventDefault()` on `pointerdown` so the click doesn't move focus. Remember which trigger was pressed. Clicking a closed trigger opens it natively and never enters the menu; only keyboard opens enter it. Do not intercept the click.
+2. **Hover follows focus.** Style `:hover` and `:focus-visible` separately. On `pointermove` over an item, call `focus({ focusVisible: false })`; browsers that ignore the option paint no ring for pointer focus anyway. Pointer focus on a submenu trigger runs the same submenu preview as keyboard focus, after a short delay so a pointer crossing the item does not flash its submenu.
+3. **Safe triangle.** A fixed CSS bridge is too narrow: it only works when the pointer starts near the parent's edge. Let CSS draw the bridge and use script only to report the pointer:
    * Run this only when `matchMedia('(hover: hover)').matches`; it is irrelevant to touch and keyboard.
    * Start when the pointer leaves a submenu trigger whose submenu is open. Skip a `--below` submenu, which has no side edge.
    * Set `--bridge-x` and `--bridge-y` (the pointer, in px relative to the submenu), `--bridge-edge` (the submenu's near-edge x: `0` when the pointer is to its left, its width when it flipped) and `--bridge-height` on the submenu, and `data-bridge` to switch the bridge on.
@@ -248,7 +228,7 @@ Also:
 
 * **Outside focus.** Close every open menu when focus lands outside the menu system (a `document` `focusin` listener).
 * **Command activation.** Announce it, then hide the root menu and restore focus to its trigger, without a ring if the activation came from a pointer. For checkable items (`menuitemcheckbox`, `menuitemradio`), wait about 300 ms before closing so the changed check mark is visible. Style a closed trigger as active only on `:focus-visible`; otherwise the restored (ringless) focus leaves it highlighted after a pointer selection.
-* **`aria-expanded`.** Set it only in the `toggle` listener. It covers preview and open states, and the trigger's `aria-expanded` stays `"true"` while its menu is previewed or open.
+* **`aria-expanded`.** Set it only in the `toggle` listener. It covers preview and open states, and a trigger's `aria-expanded` stays `"true"` while its menu is previewed or open.
 * **Helpers.** The fallbacks below assume helpers you define for your markup: `triggers` (all `[commandfor]` buttons), `menuFor(trigger)`, `isOpen(menu)`, `closeAndRestore(menu, { fromPointer })` (focus the trigger, without a ring when `fromPointer`, then `menu.hidePopover()`), `enterOnOpen` (a `WeakSet` of menus to enter once open) and `pointerTrigger` (the trigger last pressed by a pointer).
 
 ### Submenus
@@ -277,13 +257,14 @@ Also:
 
 An instruction cannot guarantee behavior, so test the result. Open the page and check each of these with the real keyboard and mouse; fix and re-test any that fail:
 
-* **Keyboard.** `Tab` lands on the first trigger once; `ArrowDown` enters; `Escape` closes one level and returns focus to its trigger; `Tab` closes every menu.
-* **Pointer open.** Clicking a trigger opens its menu with focus on the trigger and no ring; clicking again closes it.
+* **Keyboard.** `Tab` lands on a trigger without opening its menu; `ArrowDown` opens and enters; `Escape` closes one level and returns focus to its trigger; `Tab` closes every menu.
+* **Pointer open.** Clicking a trigger opens its menu with focus on the trigger and no ring; `ArrowDown` then enters; clicking again closes it.
 * **Pointer command.** Clicking a command closes every menu and shows no focus ring on the trigger.
 * **Submenu.** Moving diagonally from the middle of a submenu trigger to a submenu item keeps it open; moving to an unrelated sibling closes it.
+* **Several triggers.** With one menu open, hovering or focusing another trigger neither opens it nor closes the open menu; `ArrowLeft` and `ArrowRight` on a trigger do nothing.
 * **Narrow screen.** At 375 px no submenu covers its own trigger.
 * **Check marks.** Checked items show a check mark.
-* **No leftovers.** No console errors, and no `popovertarget`, `popovertargetaction` or `aria-details` on triggers.
+* **No leftovers.** No console errors, and no `popovertarget`, `popovertargetaction`, `role="menubar"` or `aria-details` on triggers.
 
 ## Align menu item content
 
@@ -323,7 +304,7 @@ When a row has an icon, label, and shortcut or submenu indicator, reserve a fixe
 
 Put a trailing indicator or shortcut in a `<span class="hint" aria-hidden="true">` inside the button; the submenu trigger already announces its popup.
 
-## Progressive enhancement and fallbacks
+## Fallback strategies
 
 ### Fallbacks & browser support for focusgroup
 
@@ -331,7 +312,7 @@ Put a trailing indicator or shortcut in a `<span class="hint" aria-hidden="true"
 
 {# Maintainer note: Use a small capture-phase fallback instead of @microsoft/focusgroup-polyfill, which skips elements inside closed [popover] ancestors, retains references to detached DOM nodes, and misses preventDefault() on arrow keys in older Safari viewports. #}
 
-Keep `focusgroup="menu nomemory"` in the markup. If `'focusGroup' in HTMLElement.prototype` is false, install Up, Down, Home, and End, set `role="menu"` on each menu container, and `role="menuitem"` on buttons with no role; leave checkable items, `<hr>`, and `role="group"` alone. Never install it when native focusgroup is present. Left, Right, preview, open, and close are author script either way.
+Keep `focusgroup="menu nomemory"` in the markup. If `'focusGroup' in HTMLElement.prototype` is false, install Up, Down, Home, and End, set `role="menu"` on each menu container, and `role="menuitem"` on buttons with no role; leave checkable items, `<hr>`, and `role="group"` alone. Never install it when native focusgroup is present. Submenu preview, open, and close are author script either way.
 
 ```js
 if (!('focusGroup' in HTMLElement.prototype)) {
