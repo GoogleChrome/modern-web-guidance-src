@@ -1,9 +1,9 @@
 - Underlines, overlines, and strikethroughs are drawn with the native `text-decoration` properties, not with `border-bottom`, a background gradient, or a pseudo-element.
-- The decoration's style, color, and thickness, and the `text-underline-offset`, are read from CSS custom properties, so setting those properties on an ancestor changes the rendered decoration.
+- The decoration's style, color, and thickness, and the `text-underline-offset`, are read from CSS custom properties or zero-specificity `:where()` defaults, so later overrides win.
 - Decoration thickness and underline offset use relative units such as `em`, so they scale with the font size.
 - A decorated link is a real `<a>` with an `href` destination, not a `javascript:` URL with a script handler.
 - A link with a hover reveal underline trims its line with `text-decoration-inset` at rest, and returns the inset to `0` on both `:hover` and `:focus-visible`.
-- The hover reveal declares its underline separately from `text-decoration-inset`, without wrapping the inset in `@supports`, so the underline is visible where `text-decoration-inset` is unsupported.
+- The hover reveal declares its underline separately from `text-decoration-inset` and never only inside an `@supports` test for it, so the underline is visible where `text-decoration-inset` is unsupported.
 - When the underline of mixed-script or Japanese or Chinese text must skip glyph ink, `text-decoration-skip-ink: all` is used. `text-decoration-skip-ink: auto` and `text-decoration-skip-spaces` are not declared when they would only restate the default or have no effect.
 - `text-decoration-skip-spaces` is declared only on text that preserves its spaces, such as `white-space: pre`, `pre-wrap`, or `break-spaces`.
 - A draw-on custom line is a pseudo-element on a plain `<a>`, drawn with `border-shape` (or `border-block-end` for a straight line) and revealed by transitioning `clip-path` on both `:hover` and `:focus-visible`, not an inline SVG.
