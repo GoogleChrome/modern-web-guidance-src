@@ -41,6 +41,14 @@
         section:nth-child(4){ animation-timeline: --tl-4; }
         section:nth-child(5){ animation-timeline: --tl-5; }
       }
+
+      @media (prefers-reduced-motion: reduce) {
+        #animated section {
+          animation: none !important;
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      }
     }
 
     @layer base {

@@ -171,8 +171,9 @@ export function evaluateQuery(
     }
   }
 
-  const expectedHit1 = q.expectedGuide ? (returnedIds[0] === q.expectedGuide ? 1 : 0) : undefined;
-  const expectedHit5 = q.expectedGuide ? (returnedIds.includes(q.expectedGuide) ? 1 : 0) : undefined;
+  const expectedList = q.expectedGuides ?? (q.expectedGuide ? [q.expectedGuide] : []);
+  const expectedHit1 = expectedList.length > 0 ? (returnedIds[0] !== undefined && expectedList.includes(returnedIds[0]) ? 1 : 0) : undefined;
+  const expectedHit5 = expectedList.length > 0 ? (expectedList.some((id) => returnedIds.includes(id)) ? 1 : 0) : undefined;
 
   const disciplineTop1 = returnedIds.length > 0 && returnedIds[0] !== undefined && isDisciplineGuide(returnedIds[0]) ? 1 : 0;
   const disciplineTop5 = returnedIds.slice(0, k).some((guideId) => isDisciplineGuide(guideId)) ? 1 : 0;
@@ -323,14 +324,16 @@ export function pairedBootstrapDelta<T>(
   getBase: (item: T) => number,
   getHead: (item: T) => number,
   iterations?: number,
-  seed?: number
+  seed?: number,
+  getCluster?: (item: T) => string | undefined
 ): BootstrapDelta;
 export function pairedBootstrapDelta<T>(
   a: number[] | T[],
   b: number[] | ((item: T) => number),
   c?: number | ((item: T) => number),
   d = 2000,
-  e = 42
+  e = 42,
+  f?: (item: T) => string | undefined
 ): BootstrapDelta {
   let diffs: Float64Array;
   let baseSum = 0;
@@ -338,6 +341,7 @@ export function pairedBootstrapDelta<T>(
   let n: number;
   let iterations: number;
   let seed: number;
+  let clusterList: number[][] | undefined;
 
   if (typeof b === "function" && typeof c === "function") {
     const pairs = a as T[];
@@ -351,6 +355,16 @@ export function pairedBootstrapDelta<T>(
       baseSum += baseV;
       headSum += headV;
       diffs[i] = headV - baseV;
+    }
+    if (typeof f === "function") {
+      const clusters = new Map<string, number[]>();
+      for (let i = 0; i < n; i++) {
+        const key = f(pairs[i]) ?? String(i);
+        const list = clusters.get(key) ?? [];
+        list.push(i);
+        clusters.set(key, list);
+      }
+      clusterList = [...clusters.values()];
     }
   } else {
     const baseVals = a as number[];
@@ -379,12 +393,29 @@ export function pairedBootstrapDelta<T>(
 
   const rng = createPrng(seed);
   const bootDeltas = new Float64Array(iterations);
-  for (let bi = 0; bi < iterations; bi++) {
-    let sum = 0;
-    for (let i = 0; i < n; i++) {
-      sum += diffs[Math.floor(rng() * n)];
+
+  if (clusterList && clusterList.length > 0) {
+    const numClusters = clusterList.length;
+    for (let bi = 0; bi < iterations; bi++) {
+      let sum = 0;
+      let count = 0;
+      for (let ci = 0; ci < numClusters; ci++) {
+        const clusterIndices = clusterList[Math.floor(rng() * numClusters)];
+        for (let j = 0; j < clusterIndices.length; j++) {
+          sum += diffs[clusterIndices[j]];
+          count++;
+        }
+      }
+      bootDeltas[bi] = count > 0 ? sum / count : 0;
     }
-    bootDeltas[bi] = sum / n;
+  } else {
+    for (let bi = 0; bi < iterations; bi++) {
+      let sum = 0;
+      for (let i = 0; i < n; i++) {
+        sum += diffs[Math.floor(rng() * n)];
+      }
+      bootDeltas[bi] = sum / n;
+    }
   }
   bootDeltas.sort();
 
@@ -466,20 +497,25 @@ export function compareDatasetSummaries(
     (pair) => pair.b.leafRecall5 !== undefined && pair.h.leafRecall5 !== undefined
   );
 
+  const isAgent = base.dataset === "agent" || base.dataset.startsWith("agent-");
+  const getCluster = isAgent
+    ? (pair: { b: QueryEvalResult; h: QueryEvalResult }) => pair.b.expectedGuide ?? pair.b.qid
+    : undefined;
+
   return {
     dataset: base.dataset,
     base,
     head,
-    ndcg5Delta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.ndcg5!, (pair) => pair.h.ndcg5!),
-    success1Delta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.success1 ?? 0, (pair) => pair.h.success1 ?? 0),
-    tokensAnswerableDelta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.returnedTokens, (pair) => pair.h.returnedTokens),
+    ndcg5Delta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.ndcg5!, (pair) => pair.h.ndcg5!, 2000, 42, getCluster),
+    success1Delta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.success1 ?? 0, (pair) => pair.h.success1 ?? 0, 2000, 42, getCluster),
+    tokensAnswerableDelta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.returnedTokens, (pair) => pair.h.returnedTokens, 2000, 42, getCluster),
     oosAdmitDelta: oosPairs.length > 0 ? pairedBootstrapDelta(oosPairs, (pair) => isAdmitted(pair.b), (pair) => isAdmitted(pair.h)) : undefined,
     leafRecall5Delta:
       leafPairs.length > 0
-        ? pairedBootstrapDelta(leafPairs, (pair) => pair.b.leafRecall5!, (pair) => pair.h.leafRecall5!)
+        ? pairedBootstrapDelta(leafPairs, (pair) => pair.b.leafRecall5!, (pair) => pair.h.leafRecall5!, 2000, 42, getCluster)
         : undefined,
-    disciplineTop1Delta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.disciplineTop1 ?? 0, (pair) => pair.h.disciplineTop1 ?? 0),
-    disciplineTop5Delta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.disciplineTop5 ?? 0, (pair) => pair.h.disciplineTop5 ?? 0),
+    disciplineTop1Delta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.disciplineTop1 ?? 0, (pair) => pair.h.disciplineTop1 ?? 0, 2000, 42, getCluster),
+    disciplineTop5Delta: pairedBootstrapDelta(answerablePairs, (pair) => pair.b.disciplineTop5 ?? 0, (pair) => pair.h.disciplineTop5 ?? 0, 2000, 42, getCluster),
     wins,
     losses,
     ties,

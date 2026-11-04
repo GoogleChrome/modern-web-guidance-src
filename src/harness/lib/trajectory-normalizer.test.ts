@@ -68,6 +68,9 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
   const cliSearchCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest search "accordion"' }, undefined, 'run_command');
   assert.strictEqual(cliSearchCat, 'skill_search');
 
+  const cliAnalyzeCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest analyze src/ --json' }, undefined, 'run_command');
+  assert.strictEqual(cliAnalyzeCat, 'skill_search');
+
   const cliRetrieveCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' }, undefined, 'run_command');
   assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
 
@@ -391,6 +394,197 @@ test('trajectory_summary.json generation and priority read', async () => {
   }
 });
 
+test('hasTrajectoryGuideLeak ignores host node_modules and passive search result snippets', () => {
+  const tempDir = createTempDir();
+  try {
+    // 1. Host node_modules path reference + unrelated mention of guideName -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Checking dependencies for translator',
+          action: {
+            type: 'run_command',
+            name: 'ls /usr/local/google/home/user/modern-web-guidance-src/node_modules/.pnpm',
+            params: { command: 'ls /usr/local/google/home/user/modern-web-guidance-src/node_modules/.pnpm' }
+          },
+          outcome: { status: 'success', message: 'translator feature check' }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'translator'), false);
+
+    // 2. Passive web-search result snippet (turn0search0) where URL is not opened -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Searching web',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: 'SMS OTP form verification | Modern Web Guidance | Chrome for Developers (https://developer.chrome.com/docs/modern-web-guidance/guides/forms/sms-otp-form)\n\uE200cite\uE202turn0search0\uE201 [wordlim: 200] Published: 4 weeks ago'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'sms-otp-form'), false);
+
+    // 3. Truncated GitHub search result snippet -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Searching web',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: 'Script completed\nOutput:\n\nmodern-web-guidance/skills/modern-web-guidance/guides/webmcp/agentic-javascript-tools.md at main · GoogleChrome/modern-web-guidance · GitHub (https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guid... [truncated]'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'agentic-javascript-tools'), false);
+
+    // 4. Opened guide page (turn1view0) -> true
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Opening guide',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: 'Local Network Access | Modern Web Guidance | Chrome for Developers (https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access)\n\uE200cite\uE202turn1view0\uE201 [wordlim: 200] Source: open({"ref_id":"https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access"})'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'local-network-access'), true);
+
+    // 5. Opened guide page (turn1view0) followed by search result (turn1search0) in same outcome -> true
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Opening guide and searching MDN',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: '(https://raw.githubusercontent.com/GoogleChrome/modern-web-guidance/main/skills/modern-web-guidance/guides/performance/detect-initial-visibility-state.md)\n\uE200cite\uE202turn1view0\uE201 [wordlim: 200]\nMDN VisibilityState\n\uE200cite\uE202turn1search0\uE201 [wordlim: 200]'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'detect-initial-visibility-state'), true);
+
+    // 6. Search snippet body mentioning modern-web-guidance after \uE201 on the same line -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Searching web',
+          action: { type: 'run_command', name: 'exec', params: { command: 'exec' } },
+          outcome: {
+            status: 'success',
+            message: 'SMS OTP | Modern Web Guidance (https://developer.chrome.com/docs/modern-web-guidance/guides/forms/sms-otp-form)\n\uE200cite\uE202turn0search0\uE201 [wordlim: 200] npx -y modern-web-guidance@latest retrieve sms-otp-form'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'sms-otp-form'), false);
+
+    // 7. Truncated developer.chrome.com snippet on a search_query-only webRuns step -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Searching web for dialog',
+          action: {
+            type: 'other',
+            name: 'exec',
+            params: {
+              value: 'text(await tools.web__run({search_query:[{q:"modern-web-guidance dialog"}],response_length:"short"}));',
+              webRuns: ['tools.web__run({search_query:[{q:"modern-web-guidance dialog"}],response_length:"short"})']
+            }
+          },
+          outcome: {
+            status: 'success',
+            message: 'MDN dialog\n\uE200cite\uE202turn0search0\uE201\nDialog | Modern Web Guidance | Chrome for Developers (https://developer.chrome.com/docs/modern-web-guidance/guides/html/dialog... [truncated]'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'dialog'), false);
+
+    // 8. Cross-step isolation: unrelated modern-web-guidance mention in step 1 + guideName in step 2 -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Step 1',
+          action: {
+            type: 'run_command',
+            name: 'curl https://developer.chrome.com/docs/modern-web-guidance/guides/css/other-guide',
+            params: { command: 'curl https://developer.chrome.com/docs/modern-web-guidance/guides/css/other-guide' }
+          },
+          outcome: { status: 'success', message: 'other-guide content' }
+        },
+        {
+          stepNumber: 2,
+          thought: 'Implementing popover component',
+          action: {
+            type: 'run_command',
+            name: 'rg popover src/',
+            params: { command: 'rg popover src/' }
+          },
+          outcome: { status: 'success', message: 'src/popover.ts' }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'popover'), false);
+
+    // 9. Checkout named modern-web-guidance (without -src) and Windows-escaped paths -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Checking processes',
+          action: {
+            type: 'run_command',
+            name: 'ps aux',
+            params: { command: 'ps aux', winPath: 'C:\\node_modules\\bin' }
+          },
+          outcome: {
+            status: 'success',
+            message: '/Users/dev/modern-web-guidance/node_modules/.bin/codex translator'
+          }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'translator'), false);
+
+    // 10. retrievedGuides or fileReadGuides top-level arrays -> true
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      retrievedGuides: ['local-network-access'],
+      steps: []
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'local-network-access'), true);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
 test('generateNormalizedTrajectory dispatcher writes summary for given agent', async () => {
   const tempDir = createTempDir();
   try {
@@ -467,51 +661,71 @@ test('generateNormalizedTrajectory aggregates entries across multiple main sessi
 test('agent trajectory parsers strictly enforce modern-web-guidance retrieve filter', () => {
   const validCmd = 'npx -y modern-web-guidance@latest retrieve "dialog-closedby,light-dismiss"';
   const chainedCmd = 'npx -y modern-web-guidance@latest retrieve cpp-on-the-web; head -n 40 index.html && npx -y modern-web-guidance@latest retrieve "identify-inp-causes, support-global-calendar-systems"';
+  const spaceCmd = 'npx -y modern-web-guidance@latest retrieve accessible-generated-content 2d-panning > /tmp/mwg-guide.md 2>&1';
+  const directNodeMjsCmd = 'node /tmp/env/.agents/skills/modern-web-guidance/modern-web.mjs retrieve color';
+  const goJsonEscapedCmd = '{"CommandLine":"npx -y modern-web-guidance@latest retrieve \\"shadow-dom\\" \\u003e /tmp/mwg-guides.md \\u0026\\u0026 head -n 400 /tmp/mwg-guides.md","WaitMsBeforeAsync":5000,"toolSummary":"Retrieve web component guides"}';
   const legacyCmd = 'npx modern-web retrieve dialog-closedby';
-  const searchCmd = 'npx modern-web-guidance search "dialog"';
+  const searchCmd = 'npx modern-web-guidance search "retrieve password passkey"';
+  const inlineGuideRef = 'For more information, see `accessibility` (via `npx -y modern-web-guidance@latest retrieve "accessibility"`).';
   const genericCmd = 'curl https://example.com/retrieve/docs && git retrieve-branch';
 
   // 1. Claude
   const claudeMeta = extractClaudeMetadata([
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: validCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: chainedCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: spaceCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: directNodeMjsCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: goJsonEscapedCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: legacyCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: searchCmd } }] } },
+    { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: inlineGuideRef } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: genericCmd } }] } },
   ]);
-  assert.deepStrictEqual(claudeMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
+  assert.deepStrictEqual(claudeMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
   // 2. Codex
   const codexMeta = extractCodexMetadata([
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: validCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: chainedCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: spaceCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: directNodeMjsCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: goJsonEscapedCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: legacyCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: searchCmd }) } },
+    { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: inlineGuideRef }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: genericCmd }) } },
   ]);
-  assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
+  assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
   // 3. Gemini
   const geminiMeta = extractGeminiMetadata({
     messages: [
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: validCmd } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: chainedCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: spaceCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: directNodeMjsCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: goJsonEscapedCmd } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: legacyCmd } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: searchCmd } }] },
+      { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: inlineGuideRef } }] },
       { type: 'gemini', toolCalls: [{ name: 'run_shell_command', args: { command: genericCmd } }] },
     ]
   });
-  assert.deepStrictEqual(geminiMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
+  assert.deepStrictEqual(geminiMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
   // 4. Pi
   const piMeta = extractPiMetadata([
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: validCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: chainedCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: spaceCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: directNodeMjsCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: goJsonEscapedCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: legacyCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: searchCmd } }] } },
+    { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: inlineGuideRef } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: genericCmd } }] } },
   ]);
-  assert.deepStrictEqual(piMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems']);
+  assert.deepStrictEqual(piMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 });
 
 test('ensureFreshTrajectorySummary regenerates stale trajectory_summary.json missing normalizerVersion when raw session logs exist', async () => {
@@ -643,5 +857,40 @@ test('extractSubagentIdFromFilename extracts clean subagent id across formats an
   assert.strictEqual(extractSubagentIdFromFilename('subagent-worker.jsonl'), 'worker');
   assert.strictEqual(extractSubagentIdFromFilename('/path/to/subagent-agent-worker.jsonl'), 'worker');
 });
+
+test('generateNormalizedTrajectory enriches summary with guides and tool usage from modern-web.log', async () => {
+  const tempDir = createTempDir();
+  try {
+    const rawEntry = {
+      role: 'assistant',
+      timestamp: '2026-08-10T10:00:00.000Z',
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'call_1',
+            name: 'Bash',
+            input: { command: 'ls -la' }
+          }
+        ]
+      }
+    };
+    fs.writeFileSync(path.join(tempDir, 'session-1.jsonl'), JSON.stringify(rawEntry));
+    fs.writeFileSync(
+      path.join(tempDir, 'modern-web.log'),
+      JSON.stringify({ tool: 'get_best_practices', result: [{ id: 'dialog-closedby' }, { id: 'popover-api' }] }) + '\n'
+    );
+
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Enrich from log test');
+
+    const summary = readTrajectorySummary(tempDir);
+    assert.ok(summary);
+    assert.deepStrictEqual(summary.retrievedGuides, ['dialog-closedby', 'popover-api']);
+    assert.deepStrictEqual(summary.toolsUsed, ['modern-web-guidance']);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
 
 

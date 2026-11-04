@@ -6,6 +6,7 @@ import { type GuideInventory } from '../core/guide-validation.ts';
 import { rootDir } from '../core/paths.ts';
 import {
   buildPipelineReportData,
+  computeScaleMax,
   fetchWeeklyProgressHistory,
   filterCatchAllReviewers,
   countGen2Evals,
@@ -126,6 +127,23 @@ describe('fetchWeeklyProgressHistory & baseline', () => {
   });
 });
 
+describe('computeScaleMax', () => {
+  it('returns PIPELINE_SCALE_MAX (200) for values at or below default scale', () => {
+    assert.equal(computeScaleMax(0), 200);
+    assert.equal(computeScaleMax(129), 200);
+    assert.equal(computeScaleMax(194), 200);
+    assert.equal(computeScaleMax(200), 200);
+  });
+
+  it('dynamically expands in increments of 50 once values exceed 200', () => {
+    assert.equal(computeScaleMax(201), 250);
+    assert.equal(computeScaleMax(213), 250);
+    assert.equal(computeScaleMax(250), 250);
+    assert.equal(computeScaleMax(251), 300);
+    assert.equal(computeScaleMax(310), 350);
+  });
+});
+
 describe('renderTwoRowProgressBar', () => {
   it('renders exact 73-column bars for Guides and Evals rows with header, ruler, and legend', () => {
     const res = renderTwoRowProgressBar({
@@ -156,7 +174,7 @@ describe('renderTwoRowProgressBar', () => {
     assert.match(res.text, /█ landed on main {3}░ open PR {3}· not yet$/);
   });
 
-  it('safely clamps when counts are below baseline or over scale', () => {
+  it('safely clamps when counts are below baseline or over explicit scaleMax', () => {
     const below = renderTwoRowProgressBar({
       complete: 120,
       openEvalGuides: 5,
@@ -181,6 +199,7 @@ describe('renderTwoRowProgressBar', () => {
       openGuideGuides: 5,
       baseline: 127,
       staleEvalsCount: 0,
+      scaleMax: 200,
     });
     assert.equal(
       over.guidesRow,
@@ -191,6 +210,36 @@ describe('renderTwoRowProgressBar', () => {
       'Evals     ' + '█'.repeat(73) + '  205 +10 PRs'
     );
   });
+
+  it('dynamically expands scale past 200 when counts exceed default scale', () => {
+    const expanded = renderTwoRowProgressBar({
+      complete: 182,
+      openEvalGuides: 10,
+      contentLanded: 192,
+      openGuideGuides: 21,
+      baseline: 129,
+      staleEvalsCount: 9,
+    });
+    // Needed max is 192 + 21 = 213, expanding scaleMax to 250.
+    // barWidth = 250 - 129 = 121 columns.
+    // Guides: (192 - 129) = 63 '█', 21 '░', (121 - 63 - 21) = 37 '·' = 121
+    // Evals:  (182 - 129) = 53 '█', 10 '░', (121 - 53 - 10) = 58 '·' = 121
+    assert.equal(
+      expanded.guidesRow,
+      'Guides    ' + '█'.repeat(63) + '░'.repeat(21) + '·'.repeat(37) + '  192 +21 PRs'
+    );
+    assert.equal(
+      expanded.evalsRow,
+      'Evals     ' + '█'.repeat(53) + '░'.repeat(10) + '·'.repeat(58) + '  182 (9 stale) +10 PRs'
+    );
+    const [ticks, nums] = expanded.rulerLine.split('\n');
+    assert.deepEqual(
+      [...ticks].flatMap((c, i) => (c === '┬' ? [i] : [])),
+      [10, 30, 80, 130]
+    );
+    assert.equal(nums.trim().split(/\s+/).join(' '), '129 150 200 250');
+    assert.equal(nums.lastIndexOf('250') + 2, 10 + (250 - 129 - 1));
+  });
 });
 
 describe('renderProgressChart', () => {
@@ -200,13 +249,22 @@ describe('renderProgressChart', () => {
       { date: '2026-10-14', label: 'Oct 14', complete: 140, contentLanded: 168 },
     ];
     const chart = renderProgressChart(points);
-    assert.match(chart, /config:\s+xyChart:\s+height: 200/);
+    assert.match(chart, /config:\s+xyChart:\s+width: 800\s+height: 200\s+xAxis:\s+labelFontSize: 10/);
     assert.match(chart, /plotColorPalette: "#FBBC04, #4285F4"/);
     assert.match(chart, /xychart-beta/);
     assert.match(chart, /x-axis \["Jul 22", "Oct 14"\]/);
     assert.match(chart, /y-axis "Guides" 100 --> 200/);
     assert.match(chart, /bar "Guides landed" \[127, 168\]/);
     assert.match(chart, /bar "Evals landed" \[127, 140\]/);
+  });
+
+  it('dynamically expands y-axis scale past 200 when points exceed 200', () => {
+    const points: WeeklyProgressPoint[] = [
+      { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
+      { date: '2026-10-14', label: 'Oct 14', complete: 190, contentLanded: 215 },
+    ];
+    const chart = renderProgressChart(points);
+    assert.match(chart, /y-axis "Guides" 100 --> 250/);
   });
 });
 
@@ -691,7 +749,7 @@ describe('Discipline guides inclusion and issue header rendering', () => {
     // Weekly progress chart present with YAML frontmatter config
     assert.match(
       markdown,
-      /### Progress since Jul 22\n\n```mermaid\n---\nconfig:\n  xyChart:\n    height: 200\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4"\n---\nxychart-beta/
+      /### Progress since Jul 22\n\n```mermaid\n---\nconfig:\n  xyChart:\n    width: 800\n    height: 200\n    xAxis:\n      labelFontSize: 10\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4"\n---\nxychart-beta/
     );
 
   });

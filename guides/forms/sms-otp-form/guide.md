@@ -189,7 +189,7 @@ Inside the `<iframe>` document served by `https://bank.example`, run the same `<
 
 ### WebOTP API fallback
 
-{{ FEATURE_FALLBACKS("web-otp") }}
+{{ BASELINE_STATUS("web-otp") }}
 
 If your target browsers do not support the WebOTP API (`OTPCredential`), do not load a third-party JavaScript polyfill, as reading incoming SMS messages requires operating-system-level integration. Instead, rely on the three-tier progressive enhancement built into the `<input>` markup:
 
@@ -199,7 +199,7 @@ If your target browsers do not support the WebOTP API (`OTPCredential`), do not 
 
 ### Permissions Policy fallback
 
-{{ FEATURE_FALLBACKS("permissions-policy") }}
+{{ BASELINE_STATUS("permissions-policy") }}
 
 If the browser does not support delegating `otp-credentials` via `Permissions-Policy` and `<iframe allow="otp-credentials">`, the embedded verification `<form>` inside the cross-origin `<iframe>` degrades gracefully to `autocomplete="one-time-code"` keyboard suggestions and manual numeric input without throwing unhandled exceptions.
 
