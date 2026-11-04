@@ -6,16 +6,8 @@ import { baseAppsDir as defaultBaseAppsDir } from '../../core/paths.ts';
 import { extractSuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { SuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { EvalsReport, RunResult } from '../lib/metrics.ts';
-import {
-  applyPendingChanges,
-  newestFirst,
-  overrideFor,
-  PENDING_CHANGE_TTL_MS,
-  selectSuites,
-  suiteCreatedAt,
-  withinMaxAge,
-} from './allowlist.ts';
-import type { PendingChange, PublicAllowlist } from './allowlist.ts';
+import { newestFirst, overrideFor, selectSuites, suiteCreatedAt, withinMaxAge } from './allowlist.ts';
+import type { PublicAllowlist } from './allowlist.ts';
 import { OverrideError } from './overrides.ts';
 import { EXCLUDED_PATH_RE, MAX_PATCH_BYTES, patchFromFiles, preparePatch } from './patch.ts';
 import type { PreparedPatch } from './patch.ts';
@@ -45,9 +37,8 @@ import type { SuiteRef, SuiteStore } from './suite-store.ts';
  * incremental run costs one listing call plus whatever is new.
  *
  * `build-state.json` is published along with everything else, so it holds
- * only suite ids, generations, guide names, reason *codes*, the released
- * model list, and pending allowlist changes; never error messages, which can
- * quote what they rejected.
+ * only suite ids, generations, guide names, reason *codes*, and the released
+ * model list; never error messages, which can quote what they rejected.
  */
 
 /** Directory name under the output root. Served at the same path on GitHub Pages. */
@@ -106,10 +97,8 @@ export interface BuildOptions {
   forbiddenTokensVersion?: number;
   /** Rebuild every selected suite even if its recorded state matches. */
   force?: boolean;
-  /** Reference clock for retention and pending-change expiry (tests). */
+  /** Reference clock for retention (tests). */
   now?: Date;
-  /** Called with pending changes dropped because their TTL elapsed. */
-  onExpiredPending?: (expired: PendingChange[]) => void;
 }
 
 export interface SuiteBuildResult {
@@ -131,8 +120,6 @@ interface BuildState {
   builderVersion: string;
   forbiddenTokensVersion: number;
   suites: Record<string, SuiteState>;
-  /** Allowlist changes applied directly to the site whose PR has not merged yet; see `PendingChange`. */
-  pending: PendingChange[];
 }
 
 /** The allowlist inputs a suite's outcome depends on, so a change to any of them rebuilds it. */
@@ -149,9 +136,7 @@ interface SuiteState {
 
 /**
  * Builds every suite the allowlist selects (minus retention), removes suites
- * that are no longer selected, and rewrites the manifest. Pending allowlist
- * changes recorded in the output's state are layered over the allowlist first.
- * Throws only if nothing at all could be done; per-suite problems come back
+ * that are no longer selected, and rewrites the manifest. Throws only if nothing at all could be done; per-suite problems come back
  * as `skipped` or `failed` results.
  */
 export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteBuildResult[]> {
@@ -159,11 +144,7 @@ export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteB
   const refs = await options.store.listSuites();
   const refById = new Map(refs.map(ref => [ref.id, ref]));
   const state = readState(options.outDir);
-  const { allowlist, pending, expired } = applyPendingChanges(options.allowlist, state.pending, now);
-  if (expired.length > 0) {
-    options.onExpiredPending?.(expired);
-  }
-  const effective: BuildOptions = { ...options, allowlist };
+  const { allowlist } = options;
 
   const eligible = selectSuites(allowlist, refs.map(ref => ref.id))
     .map(id => ({ id, createdAt: suiteCreatedAt(id, refById.get(id)!.createdAt) }));
@@ -174,7 +155,7 @@ export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteB
   // already has a published copy on disk and hit a transient gate error keeps its slot so an
   // older suite is not built for one run only to be deleted on the next.
   const gated = await mapWithConcurrency(candidates, SUITE_CONCURRENCY, suiteId =>
-    publishability(suiteId, refById.get(suiteId)!, state, effective));
+    publishability(suiteId, refById.get(suiteId)!, state, options));
   const results: SuiteBuildResult[] = [];
   const slotHolders: Array<{ suiteId: string; report: EvalsReport | undefined; failed: boolean }> = [];
   for (let i = 0; i < candidates.length; i++) {
@@ -200,8 +181,8 @@ export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteB
 
   results.push(...await mapWithConcurrency(toBuild, SUITE_CONCURRENCY, async ({ suiteId, report }) => {
     const ref = refById.get(suiteId)!;
-    const previous = options.force ? undefined : unchangedOutcome(state, ref, effective);
-    return previous ?? buildSuite(suiteId, effective, report);
+    const previous = options.force ? undefined : unchangedOutcome(state, ref, options);
+    return previous ?? buildSuite(suiteId, options, report);
   }));
 
   // Anything on disk outside `selected` goes; a selected suite whose build failed this run
@@ -221,8 +202,8 @@ export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteB
   }
 
   // Manifest first: if it trips the leak check the state is not advanced, so the run is redone.
-  writeManifest(options.outDir, results, effective.forbiddenTokens);
-  writeState(options.outDir, results, deferred, refById, effective, pending);
+  writeManifest(options.outDir, results, options.forbiddenTokens);
+  writeState(options.outDir, results, deferred, refById, options);
   fs.rmSync(path.join(options.outDir, STAGING_DIR), { recursive: true, force: true });
   return results;
 }
@@ -411,75 +392,6 @@ export function writeManifest(outDir: string, results: readonly SuiteBuildResult
 }
 
 /**
- * Layers any active pending changes recorded in `<outDir>/public-evals/build-state.json`
- * over `allowlist`, returning the effective allowlist plus active and expired entries.
- */
-export function effectiveAllowlist(
-  allowlist: PublicAllowlist,
-  outDir: string,
-  now = new Date(),
-): { allowlist: PublicAllowlist; pending: PendingChange[]; expired: PendingChange[] } {
-  return applyPendingChanges(allowlist, readStateFile(outDir).pending, now);
-}
-
-/**
- * Records a pending allowlist change in the output's build state so later
- * builds keep applying it until the checked-in allowlist reflects it (or its
- * TTL expires). A `promote` or whole-suite `unpublish` replaces earlier
- * entries for that suite; guide-level `unpublish` entries for the same suite
- * merge their guide lists instead of overwriting each other, while an existing
- * whole-suite `unpublish` continues to hide the entire suite.
- */
-export function addPendingChange(outDir: string, change: PendingChange, now = new Date()): void {
-  const state = readStateFile(outDir);
-  const active = state.pending.filter(entry => now.getTime() - Date.parse(entry.createdAt) <= PENDING_CHANGE_TTL_MS);
-  const others = active.filter(entry => entry.suiteId !== change.suiteId);
-  const sameSuite = active.filter(entry => entry.suiteId === change.suiteId);
-
-  let updatedForSuite: PendingChange[];
-  if (change.command === 'promote' || change.guides.length === 0) {
-    updatedForSuite = [change];
-  } else if (sameSuite.some(entry => entry.command === 'unpublish' && entry.guides.length === 0)) {
-    updatedForSuite = sameSuite;
-  } else {
-    const priorPromote = sameSuite.find(entry => entry.command === 'promote');
-    const priorGuides = sameSuite.filter(entry => entry.command === 'unpublish').flatMap(entry => entry.guides);
-    const merged: PendingChange = {
-      command: 'unpublish',
-      suiteId: change.suiteId,
-      guides: [...new Set([...priorGuides, ...change.guides])],
-      createdAt: change.createdAt,
-    };
-    updatedForSuite = priorPromote ? [priorPromote, merged] : [merged];
-  }
-
-  state.pending = [...others, ...updatedForSuite];
-  writeStateFile(outDir, state);
-}
-
-/** Active pending changes a build in `outDir` would still apply on top of the allowlist. */
-export function pendingChanges(outDir: string, now = new Date()): PendingChange[] {
-  return readStateFile(outDir).pending.filter(
-    entry => now.getTime() - Date.parse(entry.createdAt) <= PENDING_CHANGE_TTL_MS,
-  );
-}
-
-/**
- * The `forbiddenTokensVersion` recorded in `outDir`'s build state, or
- * `undefined` when no suites have been recorded yet. Callers updating an
- * existing published site check this before running so they do not rescrub
- * already-published suites under a mismatched version.
- */
-export function publishedForbiddenTokensVersion(outDir: string): number | undefined {
-  const file = path.join(outDir, PUBLIC_EVALS_DIR, STATE_FILE);
-  if (!fs.existsSync(file)) {
-    return undefined;
-  }
-  const state = readStateFile(outDir);
-  return Object.keys(state.suites).length === 0 ? undefined : state.forbiddenTokensVersion;
-}
-
-/**
  * `<run>/<guide>/<task>/<guided|unguided>`, the layout both the harness and the
  * dashboard use. Throws if any segment could escape the suite directory or
  * is not a plain name, since the key comes from data in the bucket.
@@ -518,7 +430,7 @@ function stale(recorded: SuiteState, state: BuildState, ref: SuiteRef, options: 
 }
 
 function emptyState(): BuildState {
-  return { builderVersion: BUILDER_VERSION, forbiddenTokensVersion: 0, suites: {}, pending: [] };
+  return { builderVersion: BUILDER_VERSION, forbiddenTokensVersion: 0, suites: {} };
 }
 
 function readStateFile(outDir: string): BuildState {
@@ -527,7 +439,7 @@ function readStateFile(outDir: string): BuildState {
     return emptyState();
   }
   const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<BuildState>;
-  return { ...emptyState(), ...parsed, pending: parsed.pending ?? [], suites: parsed.suites ?? {} };
+  return { ...emptyState(), ...parsed, suites: parsed.suites ?? {} };
 }
 
 function writeStateFile(outDir: string, state: BuildState): void {
@@ -552,13 +464,11 @@ function writeState(
   deferred: readonly string[],
   refById: Map<string, SuiteRef>,
   options: BuildOptions,
-  pending: PendingChange[],
 ): void {
   const next: BuildState = {
     builderVersion: BUILDER_VERSION,
     forbiddenTokensVersion: options.forbiddenTokensVersion ?? 0,
     suites: {},
-    pending,
   };
   const entryFor = (suiteId: string, ref: SuiteRef): SuiteState => ({
     generation: ref.generation,
