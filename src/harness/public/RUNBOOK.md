@@ -119,8 +119,8 @@ Edit `/tmp/al.json`, rerun, and watch the summary line:
 | an unknown key | refused by the schema |
 | rerun with no edit | all `unchanged`, about two seconds |
 
-To see it in the dashboard, build into `out/` instead (`--out out`) and run
-`pnpm dashboard`; open an incognito window for the public view. Afterwards
+To see it in the dashboard, build into `out/` instead (`--out out`), run
+`pnpm dashboard`, and open `http://localhost:3000/?source=public`. Afterwards
 `git checkout src/harness/public/allowlist.json` if you touched it.
 
 ## Reading the build output

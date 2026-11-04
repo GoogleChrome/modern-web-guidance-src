@@ -358,6 +358,20 @@ test.describe('Signed-in view', () => {
     expect(authHeaders.every(h => h === 'Bearer googler-token')).toBe(true);
   });
 
+  test('on the dev server, a rejected token does not mix the public copy into the local view', async ({ page }) => {
+    await servePublicCopy(page, { token: 'expired-token' });
+    await mockPrivateBucket(page, { status: 403 });
+    /** @type {string[]} */
+    const publicRequests = [];
+    page.on('request', request => { if (request.url().includes('/public-evals/')) publicRequests.push(request.url()); });
+
+    // No ?source=, on localhost: local mode, with the bucket merged in for a signed-in user.
+    await page.goto('/');
+    await expect(page.locator('.suite-table-row', { hasText: 'example-result' }).first()).toBeVisible();
+    await expect(page.locator('.suite-table-row', { hasText: 'codex' })).toHaveCount(0);
+    expect(publicRequests).toEqual([]);
+  });
+
   test('Sign out forgets the token and returns to the public view', async ({ page }) => {
     const { googleRequests } = await servePublicCopy(page, { manageToken: false });
     await mockPrivateBucket(page);

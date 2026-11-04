@@ -544,8 +544,11 @@ async function loadManifestTests(source) {
 
     } catch (error) {
         console.error(`Error loading ${source} suites:`, error);
-        // The bucket rejected the token; show the public copy rather than nothing.
-        if (source === 'remote' && isAuthRejection(error)) {
+        // The bucket rejected the token; show the public copy rather than nothing. Not on the
+        // dev server's local view, where the bucket is merely merged in: a stale token there
+        // must not mix out/public-evals/ into local results. (Checked by mode rather than
+        // `=== 'remote'` because a 401 has already cleared the token by this point.)
+        if (source === 'remote' && resolveDataSource() !== 'local' && isAuthRejection(error)) {
             await loadManifestTests('public');
         }
     }
