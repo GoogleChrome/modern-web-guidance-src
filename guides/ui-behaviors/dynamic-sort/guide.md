@@ -121,6 +121,7 @@ status.textContent = `Sorted by price, low to high, ${orderedNodes.length} items
 * Layout and rendering are the cost, not computing the order. Reorder nodes in a single pass with no layout reads (`offsetTop`, `getBoundingClientRect()`) in the loop.
 * Add `content-visibility: auto` with `contain-intrinsic-size` to items in long lists so off-screen items skip rendering work.
 * Above roughly a thousand items, virtualize the list instead of keeping every node in the DOM. Skip the view transition when virtualizing.
+* For expensive reorders (very large lists, or an order set through several inputs), apply the new order only when the user confirms it, for example with an Apply button, instead of on every input change.
 
 ## Fallbacks
 
