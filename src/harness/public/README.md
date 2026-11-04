@@ -129,8 +129,7 @@ So nothing needs UI for it:
   publisher runs again: its directory is removed and the manifest rewritten.
 - `pnpm public:publish` is the only publisher to `gh-pages`. It is stateless:
   it checks out what is published, rebuilds from the checked-in allowlist, and
-  pushes. Wiring it to a scheduled trigger after the nightly uploads is a
-  follow-up; until then an operator runs it by hand after an allowlist PR merges.
+  pushes.
 - Retention (`retention.maxAgeDays`, `retention.maxSuitesPerAgent`, and
   `retention.maxSuites` in the allowlist) drops whole suites, oldest first by
   the run time in the suite id, to keep the site under GitHub Pages' 1 GB cap.
@@ -151,7 +150,7 @@ So nothing needs UI for it:
 
 | variable | purpose |
 |---|---|
-| `PUBLIC_EVALS_FORBIDDEN_TOKENS` | comma-separated operator LDAPs that must not appear in output; required when `CI` is set and for every `pnpm public:publish` run |
+| `PUBLIC_EVALS_FORBIDDEN_TOKENS` | comma-separated operator LDAPs that must not appear in output, beyond the OS user and the names harvested from each suite's paths; required when `CI` is set |
 | `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` | non-negative integer; bump after changing the list so already-built suites are rescanned |
 | `CI` | when set, the OS user is not added to the token list (on a runner it is just `runner`), and skip/failure reasons are not printed (only codes), since they may quote what was rejected |
 

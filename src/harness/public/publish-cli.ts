@@ -14,12 +14,15 @@ import { GcsSuiteStore } from './suite-store.ts';
 /**
  * CLI: publish the public copy of eval suites to `gh-pages`.
  *
- *   PUBLIC_EVALS_FORBIDDEN_TOKENS=a,b node src/harness/public/publish-cli.ts [--dry-run]
+ *   node src/harness/public/publish-cli.ts [--dry-run]
  *
  * Stateless: checks out what is currently published, rebuilds it from the
  * checked-in allowlist (incrementally, via the published `build-state.json`),
  * and pushes the result. `--dry-run` builds and reports without pushing.
- * Nothing is published if any suite failed.
+ * Nothing is published if any suite failed. Operator names come from
+ * `PUBLIC_EVALS_FORBIDDEN_TOKENS` when set (required in CI); locally the OS
+ * user and the usernames harvested from each suite's own paths cover the
+ * common case.
  */
 
 /** Throws when any result is `failed`, so a transient error never publishes a partial site. */

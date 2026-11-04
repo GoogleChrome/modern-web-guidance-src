@@ -36,23 +36,26 @@ request. After it merges, the next `pnpm public:publish` run applies it.
 ## Publishing
 
 Run from the repo root on a checkout of `main`, with gcloud credentials for
-the bucket, a git identity (`user.name` / `user.email`, as the `gh-pages`
-commit needs an author; a CI runner will have to set one), and
-`PUBLIC_EVALS_FORBIDDEN_TOKENS` set to the comma-separated LDAPs of everyone
-who runs suites:
+the bucket and a git identity (`user.name` / `user.email`, as the `gh-pages`
+commit needs an author; a CI runner will have to set one):
 
 ```bash
-PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob pnpm public:publish            # build and push gh-pages
-PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob pnpm public:publish --dry-run  # build and report only
+pnpm public:publish            # build and push gh-pages
+pnpm public:publish --dry-run  # build and report only
 ```
+
+Usernames are scrubbed from two sources: the names the builder harvests from
+each suite's own paths, plus your OS user. To add more (other operators whose
+runs are in the bucket), set `PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob`; in CI,
+where the OS user is just `runner`, that variable is required.
 
 It checks out the published `public-evals/` from `gh-pages`, rebuilds it from
 the checked-out allowlist (incrementally, so an unchanged site costs one
 listing call), prints the per-suite summary, and pushes. It refuses to push
-when `PUBLIC_EVALS_FORBIDDEN_TOKENS` is unset or malformed, when `gh-pages`
-moved while it was building, or when any suite `FAILED` (transient storage
-error): fix the cause and rerun. The publisher does not check which branch is
-checked out, so run it from `main` or the site will reflect a local allowlist.
+when `PUBLIC_EVALS_FORBIDDEN_TOKENS` is malformed, when `gh-pages` moved while
+it was building, or when any suite `FAILED` (transient storage error): fix the
+cause and rerun. The publisher does not check which branch is checked out, so
+run it from `main` or the site will reflect a local allowlist.
 
 ## Trying a change locally
 
@@ -101,7 +104,7 @@ To see it in the dashboard, build into `out/` instead (`--out out`), run
 
 | Variable | Purpose |
 |---|---|
-| `PUBLIC_EVALS_FORBIDDEN_TOKENS` | operator LDAPs that must not appear in output; required in CI and for every `pnpm public:publish` run |
+| `PUBLIC_EVALS_FORBIDDEN_TOKENS` | extra operator LDAPs that must not appear in output, beyond the OS user and the names harvested from each suite; required in CI |
 | `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` | non-negative integer; bump after changing the list so published suites are rescanned |
 | `CI` | when set, the OS user is not added to the token list |
 
