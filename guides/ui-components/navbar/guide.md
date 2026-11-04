@@ -154,12 +154,13 @@ Use a `<button>` with `aria-expanded` and `aria-controls` as the trigger for nes
 
 One list must be an inline disclosure when narrow and a floating popover when wide. A top-layer popover cannot render in flow, so `popover` is set only in the wide layout, where `popovertarget` opens it natively. Leave `popover` off the submenu in the markup: without script it stays a nested list inside the menu, matching the narrow layout. In the narrow layout a small click handler toggles `hidden` and `aria-expanded`. Hide the narrow submenu from script, not in the markup.
 
-Synchronize the layout state from the same function that handles the navigation list. When inline, set `popover="auto"` on the submenu, show it and let the native `toggle` event drive `aria-expanded`. When narrow, remove `popover`, set `hidden` from script and let a click handler toggle `hidden` and `aria-expanded`:
+Synchronize the layout state from the same function that handles the navigation list. When inline, set `popover="auto"` on the submenu, clear `hidden`, and let the native `toggle` event drive `aria-expanded`. When narrow, remove `popover`, set `hidden` from script, and let a click handler toggle `hidden` and `aria-expanded`:
 
 ```js
 const wide = inner.scrollWidth <= inner.clientWidth; // measured with is-wide set
 submenu.toggleAttribute("popover", wide);
 submenu.hidden = !wide;
+trigger.setAttribute("aria-expanded", "false");
 ```
 
 Do not add document-level click-outside, Escape or focus-restoration handlers. The native popover provides those interactions in the wide layout, and the narrow disclosure needs only the click handler. The declarative `popovertarget` makes the button the submenu's implicit anchor, so wide-layout positioning can use `position-area` without a separate `anchor-name` or `position-anchor` declaration.
