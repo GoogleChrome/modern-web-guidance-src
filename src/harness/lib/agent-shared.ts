@@ -7,6 +7,7 @@ import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { normalizeBaselineTarget, type MwgConfig } from '../../core/mwgrc.ts';
 import { rootDir, guidesDir } from '../../core/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../core/patch-utils.ts';
+import { gitExec } from '../../core/git-utils.ts';
 import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
 import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
@@ -481,7 +482,8 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
   if (!fs.existsSync(path.join(workDir, '.git'))) {
     initGitRepo(workDir);
   } else if (runType === 'guided') {
-    execSync('git add .mwgrc && git commit -q --amend --no-edit', { cwd: workDir, stdio: 'ignore' });
+    gitExec(['add', '.mwgrc'], { cwd: workDir, isolated: true, stdio: 'ignore' });
+    gitExec(['commit', '-q', '--amend', '--no-edit'], { cwd: workDir, isolated: true, stdio: 'ignore' });
   }
   return workDir;
 }
