@@ -168,7 +168,11 @@ if (!('focusGroup' in HTMLElement.prototype)) {
 }
 ```
 
-{{ FEATURE_FALLBACKS("interest-invokers") }}
+### Fallbacks & browser support for Interest invokers
+
+{{ BASELINE_STATUS("interest-invokers") }}
+
+Do not load an `interestfor` polyfill here: when native interest invokers or anchor positioning are missing, the upgrade script is skipped and buttons keep their baseline `title` tooltip.
 
 {{ FEATURE_FALLBACKS("popover") }}
 
