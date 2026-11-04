@@ -288,6 +288,28 @@ const __dirname = __dirnameFunction(__filename);
         metafile: true,
         minify: true,
         legalComments: "none",
+        plugins: [{
+          // Strip unused 2.37 MB TypeScript .d.ts standard library strings (lib.dom.d.ts,
+          // lib.webworker.d.ts, etc.) inlined in @ts-morph/common for in-memory type checking,
+          // which analyzer rules never invoke.
+          name: 'strip-ts-morph-lib-files',
+          setup(build) {
+            build.onLoad({ filter: /ts-morph-common\.js$/ }, async (args) => {
+              const source = await fs.promises.readFile(args.path, 'utf8');
+              const transformed = source.replace(
+                /const libFiles = \[[\s\S]*?\];\s*(function getLibFiles\(\))/m,
+                'const libFiles = [];\n$1'
+              );
+              if (transformed.length === source.length) {
+                throw new Error('strip-ts-morph-lib-files: failed to match and strip inlined libFiles array');
+              }
+              return {
+                contents: transformed,
+                loader: 'js',
+              };
+            });
+          },
+        }],
       });
 
       fs.writeFileSync(

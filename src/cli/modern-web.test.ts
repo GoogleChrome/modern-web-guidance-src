@@ -149,4 +149,64 @@ describe('modern-web CLI', () => {
       fs.rmSync(versionPath, { force: true });
     }
   });
+
+  it('exits with code 1 when analyze is called with unknown --guide ID', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
+    try {
+      const resJson = runCLI(['analyze', tempDir, '--guide', 'nonexistent-guide-id', '--json']);
+      assert.strictEqual(resJson.status, 1);
+      const data = JSON.parse(resJson.stdout);
+      assert.strictEqual(data.totalFindings, 0);
+      assert.match(data.error ?? '', /Unknown or unsupported analyzer guide ID: nonexistent-guide-id/);
+
+      const resHuman = runCLI(['analyze', tempDir, '--guide', 'nonexistent-guide-id']);
+      assert.strictEqual(resHuman.status, 1);
+      assert.match(resHuman.stderr, /Unknown or unsupported analyzer guide ID: nonexistent-guide-id/);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('only logs to modern-web.log when analyze exits with code 0 and result.data is present', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-log-test-'));
+    const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-logdir-'));
+    try {
+      const runCLIWithLogging = (args: string[]) => {
+        return spawnSync('node', [scriptPath, ...args], {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            NO_COLOR: '1',
+            DISABLE_TELEMETRY: '1',
+            ENABLE_FILE_LOGGING: 'true',
+            MODERN_WEB_LOG_DIR: logDir,
+          },
+        });
+      };
+
+      // 1. Failing analyze call (nonexistent path) -> exit code 1, should NOT log to modern-web.log
+      const nonExistentDir = path.join(tempDir, 'does-not-exist');
+      const failRes = runCLIWithLogging(['analyze', nonExistentDir, '--json']);
+      assert.strictEqual(failRes.status, 1);
+      const logPath = path.join(logDir, 'modern-web.log');
+      assert.strictEqual(fs.existsSync(logPath), false, 'Failed analyze run must not create modern-web.log');
+
+      // 2. Failing analyze call (unknown guide id) -> exit code 1, should NOT log to modern-web.log
+      const failGuideRes = runCLIWithLogging(['analyze', tempDir, '--guide', 'unknown-id', '--json']);
+      assert.strictEqual(failGuideRes.status, 1);
+      assert.strictEqual(fs.existsSync(logPath), false, 'Failed analyze run with unknown guide must not log');
+
+      // 3. Successful analyze call -> exit code 0, SHOULD log to modern-web.log
+      const okRes = runCLIWithLogging(['analyze', tempDir, '--json']);
+      assert.strictEqual(okRes.status, 0);
+      assert.strictEqual(fs.existsSync(logPath), true, 'Successful analyze run should create modern-web.log');
+      const logContent = fs.readFileSync(logPath, 'utf8');
+      const parsedLog = JSON.parse(logContent.trim());
+      assert.strictEqual(parsedLog.tool, 'analyze');
+      assert.ok(Array.isArray(parsedLog.result));
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+      fs.rmSync(logDir, { recursive: true, force: true });
+    }
+  });
 });

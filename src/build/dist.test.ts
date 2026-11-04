@@ -354,6 +354,31 @@ test('no build-machine rootDir path leak in bundled dist binaries', async () => 
 
   const searchMjs = await fs.readFile(path.join(STAGING_DIR, 'skills/modern-web-guidance/search.mjs'), 'utf8');
   assert.strictEqual(searchMjs.includes(ROOT_DIR), false, 'search.mjs should not contain build-machine rootDir');
+
+  const analyzeMjs = await fs.readFile(path.join(STAGING_DIR, 'skills/modern-web-guidance/analyze.mjs'), 'utf8');
+  assert.strictEqual(analyzeMjs.includes(ROOT_DIR), false, 'analyze.mjs should not contain build-machine rootDir');
+});
+
+test('bundled analyze.mjs executes cleanly and excludes inlined TypeScript .d.ts library payload', async () => {
+  const analyzePath = path.join(STAGING_DIR, 'skills/modern-web-guidance/analyze.mjs');
+  const stat = await fs.stat(analyzePath);
+
+  // The unstripped bundle is ~7.47 MB; stripping the 2.37 MB inlined libFiles reduces it to ~5.10 MB (< 6.0 MB)
+  assert.ok(stat.size < 6.0 * 1024 * 1024, `analyze.mjs should be smaller than 6 MB, was ${(stat.size / (1024 * 1024)).toFixed(2)} MB`);
+
+  const content = await fs.readFile(analyzePath, 'utf8');
+  assert.strictEqual(content.includes('ClassMemberDecoratorContext'), false, 'analyze.mjs should not contain inlined lib.decorators.d.ts');
+  assert.strictEqual(content.includes('/// <reference lib="dom"'), false, 'analyze.mjs should not contain inlined lib.d.ts text');
+
+  // Executes --help cleanly
+  const helpOut = execSync(`node ${JSON.stringify(analyzePath)} --help`, { encoding: 'utf8', cwd: ROOT_DIR });
+  assert.ok(helpOut.includes('Usage: modern-web-guidance analyze'), 'analyze.mjs --help should show usage');
+
+  // Executes --json cleanly
+  const jsonOut = execSync(`node ${JSON.stringify(analyzePath)} ${JSON.stringify(STAGING_DIR)} --json`, { encoding: 'utf8', cwd: ROOT_DIR });
+  const parsed = JSON.parse(jsonOut);
+  assert.ok(typeof parsed.totalFindings === 'number', 'analyze.mjs --json should return valid AnalyzeJsonOutput');
+  assert.ok(Array.isArray(parsed.guides), 'analyze.mjs --json should return guides array');
 });
 
 

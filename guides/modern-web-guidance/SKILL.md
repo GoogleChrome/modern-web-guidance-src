@@ -54,7 +54,7 @@ When you consult `modern-web-guidance` for a task, end the response where you de
 
 ## Alternative flow: Modernize an existing codebase
 
-**Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `analyze` when asked to add, update, fix, or audit a specific feature or component), run the 4-step modernization flow:
+**Only** when asked to modernize, upgrade, or scan for legacy web platform patterns (across a project, directory, or specific file)—do **not** run `analyze` when asked to build, add, fix, or refactor a specific feature or behavior—run the 4-step modernization flow:
 
 > **Note**: `analyze` scans for a curated subset (~20% of the guidance corpus).
 
@@ -64,7 +64,7 @@ npx -y modern-web-guidance@latest analyze <path> --json
 
 1. Scan: Run `analyze <path> --json` to detect legacy web platform patterns across a directory or file.
 2. Verify: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, vendor code, lookalikes).
-3. Report: Summarize verified findings (and the modernization plan, if editing) for the user.
+3. Report: Summarize verified findings (and the modernization plan, if editing) for the user. If `analyze` returns 0 verified findings, report that no covered legacy patterns were found and stop (do not fall back to speculative `search` queries or unrequested edits).
 4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement, and re-run `analyze <path>` on the modified files to confirm resolution.
 
 ## Using npx / pnpx

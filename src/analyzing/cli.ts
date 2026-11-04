@@ -347,6 +347,9 @@ export async function runAnalyzeCli(
   const isDefaultQualifiedMode = !guideFilter && options?.rules === undefined;
   const baseRules = options?.rules ?? QUALIFIED_RULES;
   const activeRules = guideFilter ? baseRules.filter((r) => r.guideId === guideFilter) : baseRules;
+  if (guideFilter && activeRules.length === 0) {
+    return errorCliResult(`Unknown or unsupported analyzer guide ID: ${guideFilter}`, isJson, targetDir);
+  }
   const activeRuleCount = activeRules.length;
   const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
 

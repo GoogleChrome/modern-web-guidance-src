@@ -296,11 +296,16 @@ describe('runAnalyzeCli', () => {
       assert.deepEqual(parsedHtml.guides.map((g) => g.guideId), ['autofill-sign-in-form']);
 
       const resNone = await runAnalyzeCli([testDir, '--guide', 'non-matching-guide', '--json']);
-      assert.equal(resNone.exitCode, 0);
+      assert.equal(resNone.exitCode, 1);
+      assert.ok(resNone.data, 'Expected data payload on --json error');
       const parsedNone = JSON.parse(resNone.output) as AnalyzeJsonOutput;
       assert.equal(parsedNone.totalFindings, 0);
       assert.deepEqual(parsedNone.guides, []);
-      assert.equal(parsedNone.note, undefined);
+      assert.match(parsedNone.error ?? '', /Unknown or unsupported analyzer guide ID: non-matching-guide/);
+
+      const resNoneHuman = await runAnalyzeCli([testDir, '--guide', 'non-matching-guide']);
+      assert.equal(resNoneHuman.exitCode, 1);
+      assert.match(resNoneHuman.output, /Error: Unknown or unsupported analyzer guide ID: non-matching-guide/);
     });
   });
 

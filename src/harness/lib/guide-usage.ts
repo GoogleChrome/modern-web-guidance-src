@@ -23,9 +23,14 @@ const SUMMARY_FILE = 'trajectory_summary.json';
 const GUIDANCE_TOOL_NAME = 'modern-web-guidance';
 
 /** One line of `modern-web.log`, as written by the local guidance server. */
-interface ModernWebLogEntry {
+export interface ModernWebLogEntry {
   tool?: string;
   result?: unknown;
+}
+
+export interface ToolUsageFromLog {
+  callCount: number;
+  guideIds: string[];
 }
 
 /**
@@ -45,16 +50,81 @@ function stringArrayOrEmpty(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 }
 
-/** Guide IDs served by `get_best_practices`, in first-seen order and deduped. */
-export function guideIdsFromLog(entries: ModernWebLogEntry[]): string[] {
+/**
+ * Guide IDs from `modern-web.log`, in first-seen order and deduped.
+ * Defaults to extracting from `get_best_practices` (and `retrieve`) to keep
+ * retrieved-guide metrics accurate, but can also filter by `analyze` or other tools.
+ */
+export function guideIdsFromLog(
+  entries: ModernWebLogEntry[],
+  tool: string | readonly string[] = ['get_best_practices', 'retrieve'],
+): string[] {
+  const allowedTools = new Set(Array.isArray(tool) ? tool : [tool]);
   const ids = new Set<string>();
   for (const entry of entries) {
-    if (entry?.tool !== 'get_best_practices' || !Array.isArray(entry.result)) continue;
+    if (!entry?.tool || !allowedTools.has(entry.tool) || !Array.isArray(entry.result)) continue;
     for (const r of entry.result) {
       if (typeof r?.id === 'string') ids.add(r.id);
     }
   }
   return [...ids];
+}
+
+/** Parses call count and surfaced guide IDs from `analyze` log entries. */
+export function analyzeUsageFromLog(entries: ModernWebLogEntry[]): ToolUsageFromLog {
+  let callCount = 0;
+  const guideIds = new Set<string>();
+  for (const entry of entries) {
+    if (entry?.tool !== 'analyze') continue;
+    callCount++;
+    if (Array.isArray(entry.result)) {
+      for (const r of entry.result) {
+        if (typeof r?.id === 'string') guideIds.add(r.id);
+      }
+    }
+  }
+  return {
+    callCount,
+    guideIds: [...guideIds],
+  };
+}
+
+/** Parses call count and surfaced guide IDs from `search` log entries. */
+export function searchUsageFromLog(entries: ModernWebLogEntry[]): ToolUsageFromLog {
+  let callCount = 0;
+  const guideIds = new Set<string>();
+  for (const entry of entries) {
+    if (entry?.tool !== 'search_use_cases' && entry?.tool !== 'search') continue;
+    callCount++;
+    if (Array.isArray(entry.result)) {
+      for (const r of entry.result) {
+        if (typeof r?.id === 'string') guideIds.add(r.id);
+      }
+    }
+  }
+  return {
+    callCount,
+    guideIds: [...guideIds],
+  };
+}
+
+/** Parses call count and surfaced guide IDs from `retrieve` log entries. */
+export function retrieveUsageFromLog(entries: ModernWebLogEntry[]): ToolUsageFromLog {
+  let callCount = 0;
+  const guideIds = new Set<string>();
+  for (const entry of entries) {
+    if (entry?.tool !== 'get_best_practices' && entry?.tool !== 'retrieve') continue;
+    callCount++;
+    if (Array.isArray(entry.result)) {
+      for (const r of entry.result) {
+        if (typeof r?.id === 'string') guideIds.add(r.id);
+      }
+    }
+  }
+  return {
+    callCount,
+    guideIds: [...guideIds],
+  };
 }
 
 export async function collectGuidesUsed(dirPath: string): Promise<GuideUsage> {
