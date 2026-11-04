@@ -261,15 +261,32 @@ import 'webauthn-polyfills';
 
 {{ BASELINE_STATUS("webauthn-signals") }}
 
-If the browser does not support `PublicKeyCredential.parseRequestOptionsFromJSON`, use the 'webauthn-polyfills': 
-  
-```html 
-<script type="module"> 
-  if (!PublicKeyCredential.parseRequestOptionsFromJSON) { 
-     await import('https://unpkg.com/webauthn-polyfills'); 
-   } 
- </script> 
-``` 
+The WebAuthn Signal API (`webauthn-signals`) is a progressive enhancement that synchronizes server-side credential deletions and account profile updates with the user's password manager. Because synchronization communicates directly with the browser or OS passkey provider, no polyfill is available if your Baseline target does not support `webauthn-signals`. Gate calls behind static feature detection on `PublicKeyCredential` so unsupported browsers skip background synchronization safely while server-side passkey listing, renaming, deletion, and user profile updates continue to work normally without throwing browser exceptions:
 
-This will also add support for `PublicKeyCredential.prototype.toJSON`.
+```javascript
+if (window.PublicKeyCredential && PublicKeyCredential.signalAllAcceptedCredentials) {
+  try {
+    await PublicKeyCredential.signalAllAcceptedCredentials({
+      rpId, // Server-provided RP ID (never window.location.hostname)
+      userId, // Valid unpadded Base64URL user ID
+      allAcceptedCredentialIds: credentialIds, // Valid unpadded Base64URL credential IDs
+    });
+  } catch (e) {
+    console.warn('SignalAllAcceptedCredentials sync warning:', e);
+  }
+}
+
+if (window.PublicKeyCredential && PublicKeyCredential.signalCurrentUserDetails) {
+  try {
+    await PublicKeyCredential.signalCurrentUserDetails({
+      rpId, // Server-provided RP ID (never window.location.hostname)
+      userId, // Valid unpadded Base64URL user ID
+      name: updatedName,
+      displayName: updatedDisplayName,
+    });
+  } catch (e) {
+    console.warn('SignalCurrentUserDetails sync warning:', e);
+  }
+}
+```
 

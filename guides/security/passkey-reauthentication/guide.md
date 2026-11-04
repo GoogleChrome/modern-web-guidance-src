@@ -3,6 +3,7 @@ name: passkey-reauthentication
 description: Verify a signed-in user's identity using their existing passkeys before a sensitive action.
 web-feature-ids:
   - webauthn
+  - webauthn-signals
 ---
 
 # Passkey Reauthentication
@@ -120,6 +121,14 @@ Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.ge
 ```js 
 import 'webauthn-polyfills';
 ``` 
+
+### Signal API Synchronization Fallback
+
+{{ BASELINE_STATUS("webauthn-signals") }}
+
+The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used to keep password managers in sync with the server credential state.
+
+- **Fallback Experience**: Gate calls behind `if (PublicKeyCredential.signalUnknownCredential)`. If unsupported, the background verification sync is bypassed gracefully without throwing browser exceptions.
 
 ### Easy JSON Serialization Fallback
 

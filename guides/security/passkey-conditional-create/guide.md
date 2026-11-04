@@ -34,8 +34,9 @@ if (capabilities.conditionalCreate) {
 ```
 
 ### 3. Create a passkey with Conditional Create
-* Pass `mediation: 'conditional'` within the `navigator.credentials.create()` options. This signals the browser to handle the passkey creation flow silently in the background or contextually without throwing obtrusive modal dialogs.
+* Ensure the server's registration options endpoint includes the predefined RP ID in `rp.id` so `publicKey.rp.id` is populated if `PublicKeyCredential.signalUnknownCredential()` runs in Step 6, because omitting `rp.id` in WebAuthn creation options leaves `publicKey.rp.id` undefined on the client.
 * Populate `excludeCredentials` with the user's existing passkey credential IDs to avoid registering duplicate keys.
+* Pass `mediation: 'conditional'` within the `navigator.credentials.create()` options. This signals the browser to handle the passkey creation flow silently in the background or contextually without throwing obtrusive modal dialogs.
 
 ### 4. Silent Error Handling
 * Wrap the passkey creation prompt (`navigator.credentials.create`) in a try/catch block. You MUST catch and silently ignore typical user-facing exceptions (`InvalidStateError`, `NotAllowedError`, `AbortError`) without rendering any error UI to the user.
@@ -61,7 +62,7 @@ async function triggerConditionalCreate(loginAbortController) {
   // 1. Abort any active autofill conditional-get controllers to clear the WebAuthn pipeline
   loginAbortController.abort();
 
-  // 2. Fetch creation options signaling the backend that this is a conditional request
+  // 2. Fetch creation options signaling the backend that this is a conditional request (server options must include rp.id)
   const creationOptionsJSON = await optionsFetch({ conditional: true });
   const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
 
