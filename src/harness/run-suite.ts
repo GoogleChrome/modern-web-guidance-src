@@ -18,7 +18,7 @@ const RUN_TYPES = ['guided', 'unguided'];
 let logStream: fs.WriteStream | null = null;
 
 
-const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, do NOT ask clarifying questions (make reasonable assumptions and proceed non-interactively), and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
