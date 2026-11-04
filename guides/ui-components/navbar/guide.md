@@ -167,20 +167,30 @@ Do not add document-level click-outside, Escape or focus-restoration handlers. T
 
 ### Hover preview
 
-In the wide layout, preview the submenu on hover as described in {{ GUIDE_REF("menu") }}. Also preview it when the trigger receives keyboard focus (`:focus-visible` only, so a pointer click is not toggled twice); `Enter` or `Space` still toggles it. Close a submenu that focus opened when focus leaves the submenu's whole list item (`focusout` with a `relatedTarget` outside it), so `Shift`+`Tab` away from the trigger closes it.
+In the wide layout, open the submenu (`submenu.showPopover({ source: trigger })`) on `pointerenter` of the parent `<li>` when `matchMedia("(hover: hover)").matches` and `event.pointerType !== "touch"`, and hide it on `pointerleave` if it is still only hover-previewed (if the user clicks the trigger while previewing, clear the preview flag and call `event.preventDefault()` so the click pins it open instead of toggling it closed). Also preview it when the trigger receives keyboard focus (`:focus-visible` only, so a pointer click is not toggled twice); `Enter` or `Space` still toggles it. Close the open submenu when focus moves to an element outside the submenu's whole list item (`focusout` with a non-null `relatedTarget` outside it), so tabbing or `Shift`+`Tab`bing away closes it.
 
-Position the wide submenu with CSS Anchor Positioning as described in {{ GUIDE_REF("menu") }}, including its viewport-overflow fallbacks. For collision-aware positioning of a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. This submenu opens below its trigger, so use the top-level `position-area` there, not the menu guide's side-by-side submenu placement. Set `height: auto` on a wide floating submenu when needed to prevent Safari from stretching the positioned popover to its placement area:
+Position the wide submenu below its trigger with CSS Anchor Positioning (`position-area: block-end span-inline-end` and `position-try-fallbacks: flip-block, flip-inline`). For collision-aware positioning of a plain popover, see {{ GUIDE_REF("viewport-aware-dropdowns") }}. Add a `::before` bridge across any margin gap above the submenu (with `overflow: visible` on the popover) so moving the pointer from the trigger into the submenu does not fire `pointerleave`, and set `height: auto` to prevent Safari from stretching the positioned popover to its placement area:
 
 ```css
 .site-header.is-wide {
   .dropdown-list[popover] {
     position: absolute;
     position-area: block-end span-inline-end;
-    position-try-fallbacks: flip-block;
+    position-try-fallbacks: flip-block, flip-inline;
     inset: auto;
     height: auto;
     inline-size: max-content;
     min-inline-size: 12rem;
+    margin-block-start: 0.5rem;
+    overflow: visible;
+  }
+
+  .dropdown-list::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 100%;
+    block-size: 0.5rem;
   }
 
   .dropdown-list:popover-open {
