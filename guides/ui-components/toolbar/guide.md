@@ -176,13 +176,19 @@ Do not load an `interestfor` polyfill here: when native interest invokers or anc
 
 {{ FEATURE_FALLBACKS("popover") }}
 
+### Fallbacks & browser support for `popover="hint"`
+
 {{ BASELINE_STATUS("popover-hint") }}
 
 The popover polyfill does not add `popover="hint"`. Where `popover` exists without `hint`, two tooltips can stay open at once (for example one opened by focus and one by hover). Treat this as graceful degradation: the upgrade only runs where interest invokers are supported, and other browsers keep the native `title` tooltip.
 
+### Fallbacks & browser support for Clipboard API
+
 {{ BASELINE_STATUS("async-clipboard", "api.Clipboard.writeText") }}
 
 Where the Clipboard API is unavailable, `navigator.clipboard` is undefined and the call throws, so the `catch` branch in the feedback snippet reports the failure.
+
+### Fallbacks & browser support for Anchor positioning
 
 {{ BASELINE_STATUS("anchor-positioning") }}
 
