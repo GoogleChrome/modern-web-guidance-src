@@ -37,7 +37,7 @@ MANDATORY: Put `role="toolbar"` and an `aria-label` on the container. Wrap relat
 * Disable with `aria-disabled="true"` rather than `disabled` so the control stays focusable and reachable by arrow keys. Ignore clicks while it is set.
 
 ```html
-<div role="toolbar" aria-label="Text formatting" aria-controls="preview">
+<div role="toolbar" focusgroup="toolbar wrap" aria-label="Text formatting" aria-controls="preview">
   <div role="group" aria-label="Style">
     <button type="button" aria-pressed="false" aria-label="Bold" title="Bold"></button>
   </div>
