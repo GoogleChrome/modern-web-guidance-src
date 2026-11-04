@@ -242,6 +242,17 @@
       outline-offset: 0.15rem;
     }
 
+    /* Bare :focus-visible only matches elements; keep pseudo-element rules separate so unsupported browsers don't drop :focus-visible */
+    .carousel-track::scroll-button(*):focus-visible {
+      outline: 0.2rem solid #f90;
+      outline-offset: 0.15rem;
+    }
+
+    .carousel-track > *::scroll-marker:focus-visible {
+      outline: 0.2rem solid #f90;
+      outline-offset: 0.15rem;
+    }
+
     .visually-hidden {
       position: absolute;
       inline-size: 1px;
