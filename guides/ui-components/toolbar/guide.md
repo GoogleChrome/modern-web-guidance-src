@@ -102,12 +102,12 @@ MANDATORY: Position the hint on the axis the toolbar does not stack along: `posi
 ```js
 // Upgrade title tooltips only when interest invokers and anchor positioning both work
 if ("interestForElement" in HTMLButtonElement.prototype && CSS.supports("position-area", "block-end")) {
-  toolbar.querySelectorAll("button[title]").forEach((b, i) => {
+  document.querySelectorAll('[role="toolbar"] button[title]').forEach((b, i) => {
     const tip = Object.assign(document.createElement("div"), { id: `tip-${i}`, textContent: b.title });
     tip.popover = "hint";
     b.setAttribute("interestfor", tip.id);
     b.removeAttribute("title"); // avoid a second, native tooltip
-    b.after(tip);
+    document.body.append(tip); // keep open hint nodes out of role="group" / role="toolbar"
   });
 }
 ```
