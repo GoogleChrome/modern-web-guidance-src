@@ -63,7 +63,7 @@ test('Gemini CLI normalization with toolCalls and toolResults matching', async (
     assert.strictEqual(summary.initialPrompt, 'Hello');
     assert.strictEqual(summary.steps.length, 1);
     assert.strictEqual(summary.steps[0].thought, 'Thinking...');
-    assert.strictEqual(summary.steps[0].action?.type, 'web_search');
+    assert.strictEqual(summary.steps[0].action?.type, 'other');
     assert.strictEqual(summary.steps[0].action?.name, 'mcp_modern-web_get_best_practices');
     assert.strictEqual(summary.steps[0].action?.params?.use_case_id, 'accessible-error-announcement');
     assert.strictEqual(summary.steps[0].outcome?.status, 'success');

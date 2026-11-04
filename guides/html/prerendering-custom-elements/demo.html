@@ -13,6 +13,7 @@
       <style>
         :host { display: block; max-inline-size: 24rem; }
         .card { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; }
+        :host([open]) .card { border-color: #06f; }
         button { cursor: pointer; }
       </style>
       <div class="card">
@@ -35,10 +36,7 @@
           this.attachShadow({ mode: 'open' });
           // (Client-only path would clone a template here.)
         }
-      }
-
-      connectedCallback() {
-        // Hydrate in place: wire behavior to existing markup. Do NOT re-render;
+        // Hydrate in place: wire behavior once to existing markup. Do NOT re-render;
         // that would discard the server's DOM and cause a flash.
         this.shadowRoot.getElementById('toggle')
           ?.addEventListener('click', () => {

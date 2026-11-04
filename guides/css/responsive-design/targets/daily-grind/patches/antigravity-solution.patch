@@ -1,0 +1,65 @@
+diff --git a/index.html b/index.html
+index 66c9173..af6f448 100644
+--- a/index.html
++++ b/index.html
+@@ -72,9 +72,18 @@
+       border-radius: 4px;
+     }
+ 
++    /* Responsive Media */
++    img,
++    video {
++      max-width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++    }
++
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 60dvh;
++      aspect-ratio: 16 / 7;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -100,6 +109,11 @@
+       padding: 0 20px;
+     }
+ 
++    .container section {
++      container-type: inline-size;
++      container-name: favorites;
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -107,6 +121,16 @@
+       margin-top: 20px;
+     }
+ 
++    @container favorites (max-width: 600px) {
++      .grid {
++        grid-template-columns: 1fr;
++      }
++
++      .card {
++        padding: 14px;
++      }
++    }
++
+     .card {
+       background: white;
+       padding: 20px;
+diff --git a/package.json b/package.json
+index 2bd4d77..01a6505 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "echo 'Build complete'",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

@@ -1,0 +1,76 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..0d52fb7
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,8 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const outputDirectory = new URL('./dist/', import.meta.url);
++await mkdir(outputDirectory, { recursive: true });
++await copyFile(
++  new URL('./index.html', import.meta.url),
++  new URL('index.html', outputDirectory),
++);
+diff --git a/index.html b/index.html
+index 66c9173..bbb0c7f 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,11 @@
+       background: #3e2723;
+     }
+ 
++    /* The link's HTML supplies its label; the arrow is purely decorative. */
++    .btn::after {
++      content: " →" / "";
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -152,6 +157,13 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Separators carry no meaning and should not be announced. */
++    .footer-links a + a::before {
++      content: "|" / "";
++      display: inline-block;
++      margin-right: 20px;
++    }
+   </style>
+ </head>
+ 
+@@ -199,9 +211,9 @@
+ 
+   <footer>
+     <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
++      <a href="/about">Our Story</a>
++      <a href="/careers">Join the Team</a>
++      <a href="/contact">Contact Us</a>
+       <a href="/privacy-policy">Privacy</a>
+     </div>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+diff --git a/package.json b/package.json
+index 2bd4d77..2edf8de 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check build.mjs && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

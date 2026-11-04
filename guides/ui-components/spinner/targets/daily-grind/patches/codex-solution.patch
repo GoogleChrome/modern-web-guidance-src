@@ -1,0 +1,288 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..e62fb29
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,6 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++for (const file of ['index.html', 'loading.js']) {
++  await copyFile(new URL(file, import.meta.url), new URL(`./dist/${file}`, import.meta.url));
++}
+diff --git a/index.html b/index.html
+index 66c9173..a28f759 100644
+--- a/index.html
++++ b/index.html
+@@ -121,7 +121,10 @@
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -135,6 +138,132 @@
+       background: #3e2723;
+     }
+ 
++    .btn[aria-disabled="true"] {
++      cursor: wait;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    @property --arc-start {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 0deg;
++    }
++
++    @property --arc-end {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 158deg;
++    }
++
++    @property --progress-dash-animation {
++      syntax: "*";
++      inherits: false;
++      initial-value: , progress-dash 3s ease-in-out infinite;
++    }
++
++    progress.loading-spinner:indeterminate {
++      --_from: calc(90deg + var(--arc-start, 0deg));
++      --_to: calc(90deg + var(--arc-end, 158deg));
++      --size: 1.25rem;
++      --thickness: 2px;
++      --spinner-duration: 1.5s;
++      --_used-spinner-duration: var(--spinner-duration);
++      display: inline-block;
++      flex: none;
++      width: var(--size);
++      height: var(--size);
++      color: inherit;
++      appearance: none;
++      border: 0;
++      border-radius: 50%;
++      vertical-align: middle;
++      background: conic-gradient(
++        from var(--_from),
++        currentColor calc(var(--_to) - var(--_from)),
++        transparent 0
++      ) rgb(255 255 255 / 25%);
++      animation: progress-spin var(--_used-spinner-duration) linear infinite
++        var(--progress-dash-animation, );
++    }
++
++    progress.loading-spinner[hidden] {
++      display: none;
++    }
++
++    progress.loading-spinner:indeterminate::-webkit-progress-bar {
++      display: none;
++      background: none;
++    }
++
++    progress.loading-spinner:indeterminate::-webkit-progress-value {
++      display: none;
++      background: none;
++    }
++
++    progress.loading-spinner:indeterminate::-moz-progress-bar {
++      display: none;
++      background: none;
++    }
++
++    progress.loading-spinner:indeterminate::slider-fill {
++      display: none;
++      background: none;
++    }
++
++    @supports (background-clip: border-area) {
++      progress.loading-spinner:indeterminate {
++        background-clip: border-area;
++        background-origin: border-box;
++        border: var(--thickness) solid transparent;
++      }
++    }
++
++    @supports not (background-clip: border-area) {
++      progress.loading-spinner:indeterminate {
++        --clip-boundary: calc(100% - var(--thickness));
++        mask-image: radial-gradient(farthest-side,
++          transparent var(--clip-boundary), black var(--clip-boundary));
++      }
++    }
++
++    @keyframes progress-spin {
++      to { transform: rotate(1turn); }
++    }
++
++    @keyframes progress-dash {
++      from { --arc-start: 0deg; --arc-end: 3deg; }
++      50% { --arc-start: 100deg; --arc-end: 358deg; }
++      to { --arc-start: 360deg; --arc-end: 363deg; }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      progress.loading-spinner:indeterminate {
++        --_used-spinner-duration: 6s;
++        /* Keep only the slow rotation; avoid the changing arc. */
++        animation: progress-spin var(--_used-spinner-duration) linear infinite;
++      }
++    }
++
++    @media (forced-colors: active) {
++      progress.loading-spinner:indeterminate {
++        background: none;
++        mask-image: none;
++        border: var(--thickness) solid ButtonText;
++        border-top-color: transparent;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -171,31 +300,44 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-loading-link data-loading-message="Starting your order…" aria-busy="false">
++      <progress aria-label="Starting your order" class="loading-spinner" hidden></progress>
++      <span>Order Now</span>
++    </a>
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section aria-labelledby="seasonal-heading" data-loading-region aria-busy="false">
++      <h2 id="seasonal-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-loading-link data-loading-message="Loading Maple Oat Latte details…" aria-busy="false">
++            <progress aria-label="Loading Maple Oat Latte details" class="loading-spinner" hidden></progress>
++            <span>View Details</span>
++          </a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-loading-link data-loading-message="Loading Dark Roast Espresso details…" aria-busy="false">
++            <progress aria-label="Loading Dark Roast Espresso details" class="loading-spinner" hidden></progress>
++            <span>View Details</span>
++          </a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-loading-link data-loading-message="Loading Cold Brew details…" aria-busy="false">
++            <progress aria-label="Loading Cold Brew details" class="loading-spinner" hidden></progress>
++            <span>View Details</span>
++          </a>
+         </div>
+       </div>
+     </section>
+   </main>
++  <p id="loading-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +349,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="./loading.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/loading.js b/loading.js
+new file mode 100644
+index 0000000..4ec3fed
+--- /dev/null
++++ b/loading.js
+@@ -0,0 +1,43 @@
++// Preserve native navigation, including keyboard activation and opening new tabs.
++const loadingLinks = document.querySelectorAll('a[data-loading-link]');
++const loadingStatus = document.getElementById('loading-status');
++
++for (const link of loadingLinks) {
++  if (!(link instanceof HTMLAnchorElement)) continue;
++
++  link.addEventListener('click', (event) => {
++    if (
++      event.defaultPrevented || event.button !== 0 || event.metaKey ||
++      event.ctrlKey || event.shiftKey || event.altKey ||
++      link.hasAttribute('download') || (link.target && link.target !== '_self')
++    ) return;
++
++    if (link.getAttribute('aria-busy') === 'true') {
++      event.preventDefault();
++      return;
++    }
++
++    link.setAttribute('aria-busy', 'true');
++    link.setAttribute('aria-disabled', 'true');
++    const spinner = link.querySelector('progress');
++    if (spinner) spinner.hidden = false;
++    link.closest('[data-loading-region]')?.setAttribute('aria-busy', 'true');
++    if (loadingStatus) {
++      loadingStatus.textContent = link.dataset.loadingMessage ?? 'Loading…';
++    }
++  });
++}
++
++// A page restored from the back/forward cache retains its previous DOM state.
++window.addEventListener('pageshow', () => {
++  for (const link of loadingLinks) {
++    link.setAttribute('aria-busy', 'false');
++    link.removeAttribute('aria-disabled');
++    const spinner = link.querySelector('progress');
++    if (spinner) spinner.hidden = true;
++  }
++  for (const region of document.querySelectorAll('[data-loading-region]')) {
++    region.setAttribute('aria-busy', 'false');
++  }
++  if (loadingStatus) loadingStatus.textContent = '';
++});
+diff --git a/package.json b/package.json
+index 2bd4d77..a84b2e1 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node --check loading.js && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

@@ -238,20 +238,6 @@ test.describe(`Forms Expectations: ${demoName}`, () => {
   });
 
   test('Implementation MUST use inputmode="numeric"', async ({ page }) => {
-    const needsNumeric = await page.evaluate(() => {
-      const fields = Array.from(document.querySelectorAll('input'));
-      return fields.some(f => {
-        const idOrName = (f.id + f.name + f.placeholder).toLowerCase();
-        return idOrName.includes('zip') || idOrName.includes('phone') || idOrName.includes('passcode') || idOrName.includes('card');
-      });
-    });
-    
-    if (!needsNumeric) {
-      // Skip if no field seems to need numeric input
-      expect(true).toBe(true);
-      return;
-    }
-    
     const hasInputMode = await page.locator('[inputmode="numeric"]').count();
     expect(hasInputMode).toBeGreaterThan(0);
   });

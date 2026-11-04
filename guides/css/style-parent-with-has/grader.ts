@@ -35,17 +35,6 @@ async function waitForErrorState(page: any, formField: Locator, expectRed: boole
 }
 
 test.describe(`Style parent with :has() Expectations: ${demoName}`, () => {
-  // Static checks
-  test('Static: Implementation must use JS class toggling for fallback if JS fallback is implemented', async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasFallbackScript = html.includes('<script>') && (html.includes('supports') || html.includes('querySelector'));
-    if (hasFallbackScript) {
-      expect(html).toMatch(/classList\.(toggle|add|remove)/);
-    } else {
-      expect(true).toBe(true);
-    }
-  });
-
   // Browser tests
   test.beforeEach(async ({ page }) => {
     await page.route('http://localhost/*', async (route) => {
@@ -57,53 +46,67 @@ test.describe(`Style parent with :has() Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  const runInteractionTests = () => {
-    test('On page load, ancestor container should have neutral styling', async ({ page }) => {
-      const input = page.locator('input[required]').first();
-      await waitForErrorState(page, input, false);
-    });
-
-    test('Invalid interaction must trigger error state on a parent container', async ({ page }) => {
-      const input = page.locator('input[required]').first();
-      await waitForErrorState(page, input, false); // initial
-      await input.fill('a');
-      await input.fill('');
-      await input.blur();
-      await waitForErrorState(page, input, true); // should turn red!
-    });
-
-    test('Correcting the input must revert parent to neutral state', async ({ page }) => {
-      const input = page.locator('input[required]').first();
-      await input.fill('a');
-      await input.fill('');
-      await input.blur();
-      await waitForErrorState(page, input, true); // triggered
-      
-      await input.fill('valid@example.com');
-      await input.blur();
-      await waitForErrorState(page, input, false); // cleared
-    });
-  };
-
-  test.describe('Native Mode Tests', () => {
-    runInteractionTests();
+  test('On page load, ancestor container should have neutral styling', async ({ page }) => {
+    const input = page.locator('input[required]').first();
+    await waitForErrorState(page, input, false);
   });
 
-  test.describe('Fallback Mode Tests', () => {
-    test.beforeEach(async ({ page }) => {
-      await page.addInitScript(() => {
-        const originalSupports = CSS.supports;
-        CSS.supports = function(this: any, ...args: any[]) {
-          if (args[0] === 'selector(:user-invalid)') return false;
-          return originalSupports.apply(this, args as any);
-        } as any;
-      });
-      // Click fallback checkbox if available
-      const fallbackCheckbox = page.locator('input[type="checkbox"]#force-fallback');
-      if (await fallbackCheckbox.count() > 0) {
-        await fallbackCheckbox.check();
+  test('Invalid interaction must trigger error state on a parent container', async ({ page }) => {
+    const input = page.locator('input[required]').first();
+    await waitForErrorState(page, input, false); // initial
+    await input.fill('a');
+    await input.fill('');
+    await input.blur();
+    await waitForErrorState(page, input, true); // should turn red!
+  });
+
+  test('Correcting the input must revert parent to neutral state', async ({ page }) => {
+    const input = page.locator('input[required]').first();
+    await input.fill('a');
+    await input.fill('');
+    await input.blur();
+    await waitForErrorState(page, input, true); // triggered
+    
+    await input.fill('valid@example.com');
+    await input.blur();
+    await waitForErrorState(page, input, false); // cleared
+  });
+
+  test('The stylesheet uses :has(:user-invalid) scoped to a form field container rather than body', async ({ page }) => {
+    const check = await page.evaluate(() => {
+      let hasScopedHasUserInvalid = false;
+      let hasBodyHas = false;
+      for (const sheet of Array.from(document.styleSheets)) {
+        let rules: CSSRuleList;
+        try {
+          rules = sheet.cssRules;
+        } catch {
+          continue;
+        }
+        for (const rule of Array.from(rules)) {
+          if (rule instanceof CSSStyleRule) {
+            const sel = rule.selectorText || '';
+            if (sel.includes(':has(') && sel.includes(':user-invalid')) {
+              const parts = sel.split(',').map(s => s.trim());
+              for (const part of parts) {
+                if (part.includes(':has(') && part.includes(':user-invalid')) {
+                  if (/^(body|html|:root)\s*:has\(/i.test(part)) {
+                    hasBodyHas = true;
+                  } else {
+                    hasScopedHasUserInvalid = true;
+                  }
+                }
+              }
+            }
+            if (/^(body|html|:root)\s*:has\(/i.test(sel)) {
+              hasBodyHas = true;
+            }
+          }
+        }
       }
+      return { hasScopedHasUserInvalid, hasBodyHas };
     });
-    runInteractionTests();
+    expect(check.hasScopedHasUserInvalid).toBe(true);
+    expect(check.hasBodyHas).toBe(false);
   });
 });

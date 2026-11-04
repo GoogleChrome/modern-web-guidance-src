@@ -1,0 +1,235 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..40e0c92
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,6 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++for (const file of ['index.html', 'slider.js']) {
++  await copyFile(new URL(file, import.meta.url), new URL(`dist/${file}`, import.meta.url));
++}
+diff --git a/index.html b/index.html
+index 66c9173..09fd333 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,106 @@
+       color: var(--primary);
+     }
+ 
++    .brew-preference {
++      max-inline-size: 600px;
++      margin: 40px auto 0;
++      padding: 24px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    .strength-heading {
++      display: flex;
++      flex-wrap: wrap;
++      justify-content: space-between;
++      gap: 8px 20px;
++      margin-block-start: 16px;
++      font-weight: 600;
++    }
++
++    .strength-scale {
++      display: flex;
++      justify-content: space-between;
++      font-size: 0.875rem;
++    }
++
++    input[type="range"] {
++      --slider-track-size: 0.5rem;
++      --slider-thumb-size: 1.5rem;
++      --slider-track-radius: 999px;
++      --slider-thumb-radius: 50%;
++      --slider-track-color: var(--secondary);
++      --slider-fill-color: var(--primary);
++      --slider-thumb-color: var(--primary);
++      --slider-direction: to right;
++      --attr-min: 1;
++      --attr-max: 5;
++      --control-value: 3;
++      --slider-progress: 50%;
++      appearance: none;
++      -webkit-appearance: none;
++      inline-size: 100%;
++      block-size: 2.75rem;
++      margin: 0;
++      padding: 0;
++      border: 0;
++      border-radius: 0;
++      background: transparent;
++      cursor: pointer;
++    }
++
++    input[type="range"]:dir(rtl) {
++      --slider-direction: to left;
++    }
++
++    input[type="range"]::-webkit-slider-runnable-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: linear-gradient(var(--slider-direction),
++        var(--slider-fill-color) var(--slider-progress),
++        var(--slider-track-color) var(--slider-progress));
++    }
++
++    input[type="range"]::-webkit-slider-thumb {
++      -webkit-appearance: none;
++      appearance: none;
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
++      border: 0;
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++    }
++
++    input[type="range"]::-moz-range-track {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-track-color);
++    }
++
++    input[type="range"]::-moz-range-progress {
++      block-size: var(--slider-track-size);
++      border: 0;
++      border-radius: var(--slider-track-radius);
++      background: var(--slider-fill-color);
++    }
++
++    input[type="range"]::-moz-range-thumb {
++      inline-size: var(--slider-thumb-size);
++      block-size: var(--slider-thumb-size);
++      border: 0;
++      border-radius: var(--slider-thumb-radius);
++      background: var(--slider-thumb-color);
++    }
++
++    input[type="range"]:focus-visible {
++      outline: 3px solid var(--slider-fill-color);
++      outline-offset: 4px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -195,6 +295,18 @@
+         </div>
+       </div>
+     </section>
++    <section class="brew-preference" aria-labelledby="brew-heading">
++      <h2 id="brew-heading">Find Your Daily Brew</h2>
++      <p>Choose how bold you like your coffee.</p>
++      <div class="strength-heading">
++        <label for="coffee-strength">Coffee strength</label>
++        <output id="strength-value" for="coffee-strength">Balanced · 3 of 5</output>
++      </div>
++      <input type="range" id="coffee-strength" min="1" max="5" step="1" value="3"
++        aria-describedby="strength-help" aria-valuetext="Balanced strength, 3 of 5">
++      <div class="strength-scale" aria-hidden="true"><span>Mild</span><span>Extra bold</span></div>
++      <p id="strength-help">From mild and mellow to rich and extra bold.</p>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +319,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="./slider.js"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..040bfb4 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,11 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "tsc --project tsconfig.json && node build.mjs"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/slider.js b/slider.js
+new file mode 100644
+index 0000000..54b6b75
+--- /dev/null
++++ b/slider.js
+@@ -0,0 +1,35 @@
++// @ts-check
++
++const slider = document.getElementById('coffee-strength');
++const output = document.getElementById('strength-value');
++const strengths = ['Mild', 'Smooth', 'Balanced', 'Bold', 'Extra bold'];
++
++if (slider instanceof HTMLInputElement && output instanceof HTMLOutputElement) {
++  function syncSliderValue() {
++    // Narrow again inside the callback so all DOM access remains type-safe.
++    if (!(slider instanceof HTMLInputElement) || !(output instanceof HTMLOutputElement)) return;
++
++    const min = slider.min === '' ? 0 : Number(slider.min);
++    const max = slider.max === '' ? 100 : Number(slider.max);
++    const value = slider.valueAsNumber;
++    const progress = max > min ? Math.min(1, Math.max(0, (value - min) / (max - min))) : 0;
++
++    // A numeric JS fallback works without typed attr(), progress(), or CSS division.
++    slider.style.setProperty('--attr-min', String(min));
++    slider.style.setProperty('--attr-max', String(max));
++    slider.style.setProperty('--control-value', slider.value);
++    slider.style.setProperty('--slider-progress', `${progress * 100}%`);
++
++    const strength = strengths[value - 1] ?? 'Custom';
++    output.value = `${strength} · ${value} of ${max}`;
++    slider.setAttribute('aria-valuetext', `${strength} strength, ${value} of ${max}`);
++  }
++
++  syncSliderValue();
++  slider.addEventListener('input', syncSliderValue);
++  // Keep styling current if the control's bounds or default value are updated.
++  new MutationObserver(syncSliderValue).observe(slider, {
++    attributes: true,
++    attributeFilter: ['min', 'max', 'value', 'step'],
++  });
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..6843fc0
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,13 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "noEmit": true,
++    "strict": true,
++    "noUncheckedIndexedAccess": true,
++    "types": [],
++    "target": "ES2022",
++    "lib": ["ES2022", "DOM"]
++  },
++  "include": ["slider.js"]
++}

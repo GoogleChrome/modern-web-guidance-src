@@ -1,0 +1,98 @@
+diff --git a/index.html b/index.html
+index 66c9173..163b4db 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,24 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++
++      --color-scheme: light;
++
++      @media (prefers-color-scheme: dark) {
++        --color-scheme: dark;
++      }
++
++      &:has(> head > meta[name="color-scheme"][content="dark"]),
++      &.dark,
++      &[data-theme="dark"] {
++        --color-scheme: dark;
++      }
++
++      &:has(> head > meta[name="color-scheme"][content="light"]),
++      &.light,
++      &[data-theme="light"] {
++        --color-scheme: light;
++      }
+     }
+ 
+     * {
+@@ -152,6 +170,56 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Applied rules keyed on the custom property using container style queries */
++    @container style(--color-scheme: dark) {
++      body {
++        color: #e5dcc5;
++        background-color: #1a120b;
++      }
++
++      .card {
++        background: #2b1d14;
++        color: #e5dcc5;
++        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
++      }
++
++      .card h3 {
++        color: var(--accent);
++      }
++
++      .card p {
++        color: #d7ccc8;
++      }
++
++      .btn {
++        background: #3e2723;
++      }
++
++      .btn:hover {
++        background: #4e342e;
++      }
++
++      footer {
++        background: #241710;
++      }
++
++      .footer-links a {
++        color: #d7ccc8;
++      }
++    }
++
++    @container not style(--color-scheme: dark) {
++      .if-dark {
++        display: none !important;
++      }
++    }
++
++    @container not style(--color-scheme: light) {
++      .if-light {
++        display: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..6238fbd 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "echo 'Build clean'",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

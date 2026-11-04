@@ -1,0 +1,6 @@
+- Hovering over the link opens its associated popover.
+- Focusing the link opens its associated popover.
+- The popover uses `position-area` to position itself relative to the trigger link.
+- The popover has a transition that includes `display: allow-discrete` and `overlay: allow-discrete`.
+- The popover has a `@starting-style` block that defines its initial state for entry animations (e.g. `opacity: 0`).
+- If `prefers-reduced-motion: reduce` is active, the popover opens without a transform or opacity transition.

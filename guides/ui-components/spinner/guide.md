@@ -113,26 +113,26 @@ progress.loading-spinner:indeterminate {
   animation:
     progress-spin var(--_used-spinner-duration) linear infinite
     var(--progress-dash-animation, );
+}
 
-  @keyframes progress-spin {
-    to {
-      rotate: 1turn;
-    }
+@keyframes progress-spin {
+  to {
+    rotate: 1turn;
   }
+}
 
-  @keyframes progress-dash {
-    from {
-      --arc-start: 0deg;
-      --arc-end: 3deg;
-    }
-    50% {
-      --arc-start: 100deg;
-      --arc-end: 358deg;
-    }
-    to {
-      --arc-start: 360deg;
-      --arc-end: 363deg;
-    }
+@keyframes progress-dash {
+  from {
+    --arc-start: 0deg;
+    --arc-end: 3deg;
+  }
+  50% {
+    --arc-start: 100deg;
+    --arc-end: 358deg;
+  }
+  to {
+    --arc-start: 360deg;
+    --arc-end: 363deg;
   }
 }
 ```
@@ -153,11 +153,11 @@ Users with motion sensitivities may find fast-spinning elements disorienting. Al
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("registered-custom-properties") }}
+{{ BASELINE_STATUS("registered-custom-properties") }}
 
 If `@property` is supported, the dash animation is automatically included via the `--progress-dash-animation` property's `initial-value`. In browsers without `@property` support, the property registration is ignored, and the animation falls back to a simple rotation. No JavaScript is required for this fallback.
 
-{{ FEATURE_FALLBACKS("background-clip-border-area") }}
+{{ BASELINE_STATUS("background-clip-border-area") }}
 
 For browsers that don't yet support `background-clip: border-area`, fall back to a `mask-image` to hollow out the center.
 

@@ -16,7 +16,7 @@ The callbacks themselves are well documented; these are the misconceptions that 
 - **`connectedCallback` can run more than once.** It fires on every insertion, so moving the element re-runs it. Make setup idempotent — don't assume a single first run.
 - **`connectedMoveCallback` skips the disconnect/reconnect pair on a move.** When an element is relocated with `Node.moveBefore()`, this callback fires *instead of* `disconnectedCallback` → `connectedCallback`, so state, focus, and iframe/media playback survive the move. Define it when your setup or teardown is expensive or observably re-runs.
 - **Tear down in `disconnectedCallback`.** Remove global listeners, timers, and observers or you leak; but the element may be re-inserted, so don't treat teardown as permanent.
-- **Do not depend on the full DOM being present in the constructor.** Attributes are usually (but not always) present; long lists of children may not have finished parsing. Use `connectedCallback` for one-shot initialization, `slotchange` to monitor direct children, and `attributeChangedCallback` to monitor attributes. `connectedCallback` may still fire before all children are parsed, so do not ignore subsequent `slotchange` / `attributeChangedCallback` calls.
+- **Call `super()` first in the constructor, and do not depend on the full DOM being present.** Calling `super()` after touching `this` throws a `ReferenceError`. Attributes are usually (but not always) present; long lists of children may not have finished parsing. Use `connectedCallback` for one-shot initialization, `slotchange` to monitor direct children, and `attributeChangedCallback` to monitor attributes. `connectedCallback` may still fire before all children are parsed, so do not ignore subsequent `slotchange` / `attributeChangedCallback` calls.
 - **`attributeChangedCallback` fires only for `observedAttributes`,** and should stay cheap for attributes that don't affect output.
 - **Lifecycle hooks and `observedAttributes` are snapshotted at registration.** `customElements.define()` reads both once; adding a hook or extending `observedAttributes` on the class *after* the call is silently ignored. In particular, `attributeChangedCallback` never fires unless `observedAttributes` was already present at `define()` time.
 
@@ -48,13 +48,17 @@ Keep the HTML attribute and the JS property in sync so the element is usable fro
 
 ```javascript
 class MyToggle extends HTMLElement {
-  static observedAttributes = ['label', 'disabled'];
+  static observedAttributes = ['label', 'count', 'disabled'];
 
   // String attribute reflected via getter/setter.
   get label() { return this.getAttribute('label') ?? ''; }
   set label(v) {
     v ? this.setAttribute('label', v) : this.removeAttribute('label');
   }
+
+  // Numeric attribute: coerce from string on read, serialize on write.
+  get count() { return Number(this.getAttribute('count')) || 0; }
+  set count(v) { this.setAttribute('count', String(v)); }
 
   // Boolean attribute: present = true, absent = false. Never set it to "false".
   get disabled() { return this.hasAttribute('disabled'); }
@@ -122,4 +126,4 @@ For styling these states — both inside the component and from a consumer's sty
 - Symbol-keyed properties are a middle ground: hidden from ordinary enumeration, but reachable by any code holding the symbol (export it, or expose it as a `static` field on the class). Because each symbol is unique, two symbols sharing a description never collide — handy when a subclass or sibling needs controlled access that `#` fields can't provide.
 - Do **not** shadow global attributes (`style`, `class`, `id`, `slot`, `part`, `title`, `lang`, `dir`) with your own properties; doing so breaks their built-in behavior. Note `disabled` is only global on form controls; on other elements you must implement its effect yourself.
 
-When naming a new API surface, follow the platform's own conventions — see the [W3C naming principles](https://www.w3.org/TR/design-principles/#naming-is-hard).
+When naming a new API surface, follow the platform's own conventions: use lowercase kebab-case with at least one hyphen for custom element tag names (for example `my-toggle`), `lowerCamelCase` for properties and methods, and lowercase attribute names synchronized with their corresponding properties.

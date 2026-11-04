@@ -10,7 +10,8 @@ import {
   getKnownCategories,
   KNOWN_CATEGORIES,
   extractFeatureIdsFromContent,
-  EVAL_PR_REVIEWER,
+  hasNoAtlTriageDirective,
+  upsertDemoPreviewInBody,
   featureGroups,
   githubApi
 } from './atl-triage.ts';
@@ -18,6 +19,7 @@ import { getTranscludedFeatureIds, parseArguments } from '../core/macro-parsing.
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import child_process from 'node:child_process';
 
 // Override GitHub tokens with dummy credentials so unmocked tests cannot mutate production resources
 process.env.GH_TOKEN = 'fake-test-token';
@@ -465,6 +467,12 @@ Affected web-feature IDs: [canvas-html](https://webstatus.dev/features/canvas-ht
     assert.deepStrictEqual(result.sort(), ['malchata', 'override-issue-reviewer'].sort());
   });
 
+  it('assigns the category ATL when new-use-case issue uses the issue template ### Category format', () => {
+    const description = `### Use case slug\n\nsome-use-case\n\n### Category\n\ncss-layout\n`;
+    const result = handleIssue(123, ['new-use-case'], description, mockConfig);
+    assert.deepStrictEqual(result, ['malchata']);
+  });
+
   it('skips auto-assigning ATLs who have previously been unassigned from the issue', () => {
     unassignedMock.mock.mockImplementation(() => ['RVISCOMI']); // Test mixed-case matching
 
@@ -597,6 +605,22 @@ Affected web-feature IDs: [canvas-html](https://webstatus.dev/features/canvas-ht
     assert.strictEqual(addIssueLabelsMock.mock.callCount(), 0);
     assert.strictEqual(addAssigneesMock.mock.callCount(), 0);
   });
+
+  it('skips triage when issue description contains <!-- no-atl-triage -->', () => {
+    addIssueLabelsMock.mock.resetCalls();
+    removeIssueLabelsMock.mock.resetCalls();
+    addAssigneesMock.mock.resetCalls();
+    const result = handleIssue(
+      123,
+      ['category:performance', 'content', 'accessibility'],
+      '🤖 Accessibility review issue.\n\n<!-- no-atl-triage -->',
+      mockConfig
+    );
+    assert.deepStrictEqual(result, []);
+    assert.strictEqual(addIssueLabelsMock.mock.callCount(), 0);
+    assert.strictEqual(removeIssueLabelsMock.mock.callCount(), 0);
+    assert.strictEqual(addAssigneesMock.mock.callCount(), 0);
+  });
 });
 
 describe('handlePR', () => {
@@ -614,38 +638,57 @@ describe('handlePR', () => {
   };
 
   let addReviewersMock: any;
+  let removeReviewersMock: any;
   let addPrLabelsMock: any;
   let removePrLabelsMock: any;
   let getPrUnlabeledMock: any;
   let getPrRemovedReviewersMock: any;
+  let getPrBotRequestedReviewersMock: any;
+  let getPrFileContentMock: any;
   let getPrIsDraftMock: any;
+  let getPrBodyMock: any;
 
   before(() => {
     addReviewersMock = mock.method(githubApi, 'addPrReviewers', () => {});
+    removeReviewersMock = mock.method(githubApi, 'removePrReviewers', () => {});
     addPrLabelsMock = mock.method(githubApi, 'addPrLabels', () => {});
     removePrLabelsMock = mock.method(githubApi, 'removePrLabels', () => {});
     getPrUnlabeledMock = mock.method(githubApi, 'getPrUnlabeledEvents', () => []);
     getPrRemovedReviewersMock = mock.method(githubApi, 'getPrRemovedReviewers', () => []);
+    getPrBotRequestedReviewersMock = mock.method(githubApi, 'getPrBotRequestedReviewers', () => []);
+    getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', () => null);
     getPrIsDraftMock = mock.method(githubApi, 'getPrIsDraft', () => false);
+    getPrBodyMock = mock.method(githubApi, 'getPrBody', () => '');
   });
 
   beforeEach(() => {
     addReviewersMock.mock.resetCalls();
+    removeReviewersMock.mock.resetCalls();
     addPrLabelsMock.mock.resetCalls();
     removePrLabelsMock.mock.resetCalls();
     getPrIsDraftMock.mock.resetCalls();
+    getPrBodyMock.mock.resetCalls();
+    getPrBotRequestedReviewersMock.mock.resetCalls();
+    getPrFileContentMock.mock.resetCalls();
     getPrUnlabeledMock.mock.mockImplementation(() => []);
     getPrRemovedReviewersMock.mock.mockImplementation(() => []);
+    getPrBotRequestedReviewersMock.mock.mockImplementation(() => []);
+    getPrFileContentMock.mock.mockImplementation(() => null);
     getPrIsDraftMock.mock.mockImplementation(() => false);
+    getPrBodyMock.mock.mockImplementation(() => '');
   });
 
   after(() => {
     addReviewersMock.mock.restore();
+    removeReviewersMock.mock.restore();
     addPrLabelsMock.mock.restore();
     removePrLabelsMock.mock.restore();
     getPrUnlabeledMock.mock.restore();
     getPrRemovedReviewersMock.mock.restore();
+    getPrBotRequestedReviewersMock.mock.restore();
+    getPrFileContentMock.mock.restore();
     getPrIsDraftMock.mock.restore();
+    getPrBodyMock.mock.restore();
   });
 
   it('requests review from matching ATLs for content files', () => {
@@ -674,7 +717,7 @@ describe('handlePR', () => {
     assert.deepStrictEqual(result.sort(), ['rviscomi', 'paulirish', 'philipwalton'].sort());
   });
 
-  it('returns empty array when only eval files are touched and no gd-dev labels are set', () => {
+  it('returns empty array when only eval files are touched and no gd-dev-content label is set', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/grader.ts',
       'guides/performance/deliver-optimized-decorative-images/tasks/task.md',
@@ -682,43 +725,11 @@ describe('handlePR', () => {
       'README.md'
     ];
 
-    const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles);
-    assert.deepStrictEqual(result, []);
+    assert.deepStrictEqual(handlePR(99999, 'some-contributor', mockConfig, mockFiles), []);
+    assert.deepStrictEqual(handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-eval']), []);
   });
 
-  it('requests review from the eval reviewer only (not ATLs) when gd-dev-eval label is set on eval-only changes', () => {
-    const mockFiles = [
-      'guides/performance/deliver-optimized-decorative-images/grader.ts',
-      'guides/performance/deliver-optimized-decorative-images/tasks/task.md',
-      'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/grader.ts',
-      'README.md'
-    ];
-
-    const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-eval']);
-    assert.deepStrictEqual(result, [EVAL_PR_REVIEWER]);
-  });
-
-  it('requests review from ATL and labels content when demo.html is modified, even with gd-dev-eval label', () => {
-    addPrLabelsMock.mock.resetCalls();
-    const mockFiles = [
-      'guides/performance/deliver-optimized-decorative-images/grader.ts',
-      'guides/performance/deliver-optimized-decorative-images/demo.html'
-    ];
-
-    const filesMock = mock.method(githubApi, 'getPrFiles', () => mockFiles);
-    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
-    try {
-      const result = handlePR(99999, 'some-contributor', mockConfig, undefined, undefined, ['gd-dev-eval']);
-      assert.deepStrictEqual(result.sort(), ['override-pr-reviewer', 'rviscomi', 'paulirish'].sort());
-      assert.strictEqual(addPrLabelsMock.mock.callCount(), 1);
-      assert.deepStrictEqual(addPrLabelsMock.mock.calls[0].arguments, [99999, ['content']]);
-    } finally {
-      filesMock.mock.restore();
-      reviewStateMock.mock.restore();
-    }
-  });
-
-  it('assigns corresponding ATL when gd-dev-content label is present even if only target eval files were touched', () => {
+  it('does NOT request Content ATL review when gd-dev-content label is present if only target eval files were touched', () => {
     const mockFiles = [
       'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/grader.ts',
       'guides/performance/deliver-optimized-decorative-images/targets/daily-grind/patches/zero-passrate.patch',
@@ -726,12 +737,24 @@ describe('handlePR', () => {
     ];
 
     const result = handlePR(99999, 'some-contributor', mockConfig, mockFiles, undefined, ['gd-dev-content']);
-    // 'deliver-optimized-decorative-images' has 'image-set' -> override-pr-reviewer + rviscomi, paulirish (performance)
-    // 'carousel-slide-effects' -> philipwalton (motion)
-    assert.deepStrictEqual(
-      result.sort(),
-      ['override-pr-reviewer', 'rviscomi', 'paulirish', 'philipwalton'].sort()
+    assert.deepStrictEqual(result, []);
+  });
+
+  it('requests review from configured skill owners when skills-src/<skill>/** is modified', () => {
+    const configWithExtensions = {
+      ...mockConfig,
+      default: {
+        ...mockConfig.default,
+        'chrome-extensions': ['oliverdunk', 'patrickkettner']
+      }
+    };
+    const result = handlePR(
+      99999,
+      'some-contributor',
+      configWithExtensions,
+      ['skills-src/chrome-extensions/SKILL.md']
     );
+    assert.deepStrictEqual(result.sort(), ['oliverdunk', 'patrickkettner'].sort());
   });
 
   it('filters out already requested and reviewed ATLs case-insensitively', () => {
@@ -1153,7 +1176,7 @@ describe('handlePR', () => {
       'guides/custom-fork-category/new-guide/guide.md'
     ]);
     const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
-    const getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', (_prNumber: number, filePath: string) => {
+    getPrFileContentMock.mock.mockImplementation((_prNumber: number, filePath: string) => {
       if (filePath === 'guides/custom-fork-category/new-guide/guide.md') {
         return `---
 name: new-guide
@@ -1187,7 +1210,6 @@ web-feature-ids:
     } finally {
       filesMock.mock.restore();
       reviewStateMock.mock.restore();
-      getPrFileContentMock.mock.restore();
     }
   });
 
@@ -1234,7 +1256,6 @@ web-feature-ids:
       'guides/modern-web-guidance/SKILL.md'
     ]);
     const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
-    const getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', () => null);
 
     try {
       const result = handlePR(99999, 'some-contributor', mockConfig);
@@ -1247,7 +1268,6 @@ web-feature-ids:
     } finally {
       filesMock.mock.restore();
       reviewStateMock.mock.restore();
-      getPrFileContentMock.mock.restore();
     }
   });
 
@@ -1258,7 +1278,6 @@ web-feature-ids:
       'src/core/guide-validation.ts'
     ]);
     const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({ reviewRequests: [], reviews: [] }));
-    const getPrFileContentMock = mock.method(githubApi, 'getPrFileContent', () => null);
 
     try {
       const result = handlePR(99999, 'some-contributor', mockConfig, undefined, undefined, ['content']);
@@ -1268,7 +1287,6 @@ web-feature-ids:
     } finally {
       filesMock.mock.restore();
       reviewStateMock.mock.restore();
-      getPrFileContentMock.mock.restore();
     }
   });
 
@@ -1309,6 +1327,108 @@ web-feature-ids:
       reviewStateMock.mock.restore();
     }
   });
+
+  it('skips triage if PR body contains <!-- no-atl-triage --> via options.prBody', () => {
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'guides/css-layout/grid-layout/guide.md'
+    ]);
+    try {
+      const result = handlePR(99999, 'some-contributor', mockConfig, undefined, undefined, [], {
+        prBody: '🤖 Summary\n\n<!-- no-atl-triage -->'
+      });
+      assert.deepStrictEqual(result, []);
+      assert.strictEqual(filesMock.mock.callCount(), 0);
+      assert.strictEqual(addPrLabelsMock.mock.callCount(), 0);
+      assert.strictEqual(addReviewersMock.mock.callCount(), 0);
+    } finally {
+      filesMock.mock.restore();
+    }
+  });
+
+  it('skips triage if PR body contains <!-- no-atl-triage --> via githubApi.getPrBody', () => {
+    getPrBodyMock.mock.mockImplementation(() => '🤖 PR description\n<!-- no-atl-triage -->');
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'guides/css-layout/grid-layout/guide.md'
+    ]);
+    try {
+      const result = handlePR(99999, 'some-contributor', mockConfig);
+      assert.deepStrictEqual(result, []);
+      assert.strictEqual(getPrBodyMock.mock.callCount(), 1);
+      assert.strictEqual(filesMock.mock.callCount(), 0);
+      assert.strictEqual(addPrLabelsMock.mock.callCount(), 0);
+      assert.strictEqual(addReviewersMock.mock.callCount(), 0);
+    } finally {
+      filesMock.mock.restore();
+    }
+  });
+
+  it('removes stale bot-requested ATL reviewers while keeping active ATLs, human-requested reviewers, and respecting dryRun', () => {
+    const filesMock = mock.method(githubApi, 'getPrFiles', () => [
+      'guides/css-layout/grid-layout/guide.md'
+    ]);
+    const reviewStateMock = mock.method(githubApi, 'getPrReviewState', () => ({
+      reviewRequests: ['LeaVerou', 'malchata', 'TravenReese'],
+      reviews: []
+    }));
+    getPrBotRequestedReviewersMock.mock.mockImplementation(() => ['leaverou', 'malchata']);
+
+    try {
+      // dryRun should not call removePrReviewers
+      handlePR(1862, 'some-contributor', mockConfig, undefined, undefined, [], { dryRun: true });
+      assert.strictEqual(removeReviewersMock.mock.callCount(), 0);
+
+      // Live run removes stale bot-requested LeaVerou, keeps active ATL malchata and human-requested TravenReese
+      assert.deepStrictEqual(handlePR(1862, 'some-contributor', mockConfig), []);
+      assert.strictEqual(removeReviewersMock.mock.callCount(), 1);
+      assert.deepStrictEqual(removeReviewersMock.mock.calls[0].arguments, [1862, ['LeaVerou']]);
+    } finally {
+      filesMock.mock.restore();
+      reviewStateMock.mock.restore();
+    }
+  });
+});
+
+describe('githubApi.getPrBotRequestedReviewers', () => {
+  it('returns only reviewers whose latest review_requested event came from a bot', () => {
+    const execMock = mock.method(child_process, 'execFileSync', () =>
+      'leaverou\ttrue\ntravenreese\tfalse\nbramus\ttrue\nbramus\tfalse\nrviscomi\tfalse\nrviscomi\ttrue\n'
+    );
+    try {
+      assert.deepStrictEqual(githubApi.getPrBotRequestedReviewers(1862), ['leaverou', 'rviscomi']);
+    } finally {
+      execMock.mock.restore();
+    }
+  });
+});
+
+describe('hasNoAtlTriageDirective', () => {
+  it('matches HTML comment <!-- no-atl-triage --> case-insensitively with optional whitespace', () => {
+    assert.strictEqual(hasNoAtlTriageDirective('<!-- no-atl-triage -->'), true);
+    assert.strictEqual(hasNoAtlTriageDirective('Some text\n<!--  NO-ATL-TRIAGE  -->\nMore text'), true);
+    assert.strictEqual(hasNoAtlTriageDirective('<!--no-atl-triage-->'), true);
+  });
+
+  it('does not match plain text mentions or empty strings', () => {
+    assert.strictEqual(hasNoAtlTriageDirective(''), false);
+    assert.strictEqual(hasNoAtlTriageDirective(null), false);
+    assert.strictEqual(hasNoAtlTriageDirective(undefined), false);
+    assert.strictEqual(hasNoAtlTriageDirective('Add support for no-atl-triage in descriptions'), false);
+  });
+
+  it('does not match directive inside inline code or fenced code blocks', () => {
+    assert.strictEqual(
+      hasNoAtlTriageDirective('Support `<!-- no-atl-triage -->` comment directive to skip ATL triage'),
+      false
+    );
+    assert.strictEqual(
+      hasNoAtlTriageDirective('Example:\n```markdown\n<!-- no-atl-triage -->\n```'),
+      false
+    );
+    assert.strictEqual(
+      hasNoAtlTriageDirective('Mentions `<!-- no-atl-triage -->` in prose\n\n<!-- no-atl-triage -->'),
+      true
+    );
+  });
 });
 
 describe('extractFeatureIdsFromContent', () => {
@@ -1332,3 +1452,34 @@ description: Some description
     assert.deepStrictEqual(extractFeatureIdsFromContent('---\nname: foo\n---\n'), []);
   });
 });
+
+describe('upsertDemoPreviewInBody', () => {
+  it('formats single and multiple demo links cleanly and updates idempotently', () => {
+    const body = '## Summary\n\nImproves dialog demo.';
+
+    const single = upsertDemoPreviewInBody('guides/ui-components/dialog', body, ['guides/ui-components/dialog/demo.html']);
+    assert.ok(single.includes('🎨 **Demo preview:** [`ui-components/dialog`](https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob/guides/ui-components/dialog/guides/ui-components/dialog/demo.html)'));
+
+    // Idempotent on second run
+    assert.strictEqual(upsertDemoPreviewInBody('guides/ui-components/dialog', single, ['guides/ui-components/dialog/demo.html']), single);
+
+    // Multiple demos / variants
+    const multi = upsertDemoPreviewInBody('1687-css-grid-lanes', body, [
+      'guides/css/grid-lanes/demo.html',
+      'guides/css/grid-lanes/demo-vertical.html'
+    ]);
+    assert.ok(multi.includes('🎨 **Demo preview:** \n- [`css/grid-lanes/demo-vertical.html`](https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob/1687-css-grid-lanes/guides/css/grid-lanes/demo-vertical.html)\n- [`css/grid-lanes`](https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob/1687-css-grid-lanes/guides/css/grid-lanes/demo.html)'));
+
+    // Removes block if subsequent commit drops demo changes
+    assert.strictEqual(upsertDemoPreviewInBody('guides/ui-components/dialog', single, ['README.md']), body);
+  });
+
+  it('does not touch PR body if no demos are modified and no preview block exists', () => {
+    const bodyWithNewline = '## Summary\n\nJust tooling changes.\n';
+    assert.strictEqual(
+      upsertDemoPreviewInBody('feat-branch', bodyWithNewline, ['src/ci/atl-triage.ts']),
+      bodyWithNewline
+    );
+  });
+});
+

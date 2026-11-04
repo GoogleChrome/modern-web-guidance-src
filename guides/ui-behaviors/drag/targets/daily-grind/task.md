@@ -1,0 +1,1 @@
+- Add a floating quick-order or coffee cart panel with interactive controls to the Daily Grind homepage that customers can drag around the screen by its header handle.

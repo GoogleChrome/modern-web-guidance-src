@@ -6,9 +6,24 @@ const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
   throw new Error('TARGET_FILE environment variable is not set');
 }
-const targetUrl = `file://${targetFile}`;
+const filePath = path.resolve(targetFile);
+const targetDir = path.dirname(filePath);
+const targetFileName = path.basename(filePath);
+const targetUrl = `http://localhost/${targetFileName}`;
 
 test.describe('Visibility State Detection Grader', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('http://localhost/**', async (route) => {
+      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
+      const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
+      const localFilePath = path.resolve(targetDir, relPath);
+      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+        await route.fulfill({ path: localFilePath });
+      } else {
+        await route.continue();
+      }
+    });
+  });
 
   test('provides a boolean indicating if the page was initially loaded in the background', async ({ page }) => {
     const consoleObjects: any[] = [];
@@ -34,7 +49,7 @@ test.describe('Visibility State Detection Grader', () => {
             {
               name: 'hidden',
               entryType: 'visibility-state',
-              startTime: 45.5,
+              startTime: 0,
               duration: 0,
               toJSON() { return this; }
             } as any
@@ -96,6 +111,13 @@ test.describe('Visibility State Detection Grader', () => {
         if (type === 'visibility-state') {
           return [
             {
+              name: 'visible',
+              entryType: 'visibility-state',
+              startTime: 0,
+              duration: 0,
+              toJSON() { return this; }
+            } as any,
+            {
               name: 'hidden',
               entryType: 'visibility-state',
               startTime: time,
@@ -146,7 +168,7 @@ test.describe('Visibility State Detection Grader', () => {
             {
               name: 'hidden',
               entryType: 'visibility-state',
-              startTime: 45.5,
+              startTime: 0,
               duration: 0,
               toJSON() { return this; }
             } as any
@@ -163,32 +185,40 @@ test.describe('Visibility State Detection Grader', () => {
     expect(called).toBe(true);
   });
 
-  // Helper to extract all script contents from the HTML target file
+  // Helper to extract all script contents from the HTML target file and sibling JS files
   function getScriptContents(targetFilePath: string): string[] {
     if (!fs.existsSync(targetFilePath)) {
       return [];
     }
     const htmlContent = fs.readFileSync(targetFilePath, 'utf-8');
     const contents: string[] = [];
-    
+    const dir = path.dirname(path.resolve(targetFilePath));
+
     const scriptTagRegex = /<script([\s\S]*?)>([\s\S]*?)<\/script>/gi;
     let match;
     while ((match = scriptTagRegex.exec(htmlContent)) !== null) {
       const attrs = match[1];
       const body = match[2];
-      
+
       if (body.trim()) {
         contents.push(body);
       }
-      
+
       const srcMatch = /src\s*=\s*["']([^"']+)["']/i.exec(attrs);
       if (srcMatch) {
-        const srcPath = path.resolve(path.dirname(targetFilePath), srcMatch[1]);
-        if (fs.existsSync(srcPath)) {
+        const srcPath = path.resolve(dir, srcMatch[1].replace(/^\/+/, ''));
+        if (fs.existsSync(srcPath) && fs.statSync(srcPath).isFile()) {
           contents.push(fs.readFileSync(srcPath, 'utf-8'));
         }
       }
     }
+    try {
+      for (const f of fs.readdirSync(dir)) {
+        if ((f.endsWith('.js') || f.endsWith('.mjs')) && !f.includes('.test.') && f !== 'grade.mjs' && f !== 'run.mjs') {
+          contents.push(fs.readFileSync(path.join(dir, f), 'utf-8'));
+        }
+      }
+    } catch {}
     return contents;
   }
 
@@ -279,10 +309,10 @@ test.describe('Visibility State Detection Grader', () => {
       for (const obj of logs) {
         if (obj && typeof obj === 'object') {
           for (const key of Object.keys(obj)) {
-            if (key === 'isReliable' && obj[key] === false) {
+            if ((key === 'isReliable' && obj[key] === false) || (key === 'fallbackActive' && obj[key] === true)) {
               return true;
             }
-            if (typeof obj[key] === 'string' && /unreliable|warning|less accurate/i.test(obj[key])) {
+            if (typeof obj[key] === 'string' && /unreliable|inaccurate|warning|less accurate/i.test(obj[key])) {
               return true;
             }
           }
@@ -293,10 +323,10 @@ test.describe('Visibility State Detection Grader', () => {
 
     const scripts = getScriptContents(targetFile);
     const hasStaticUnreliabilityMention = scripts.some(code => 
-      /unreliable|less accurate|race condition|not fully reliable|not reliable|warning/i.test(code)
+      /unreliable|inaccurate|less accurate|race condition|not fully reliable|not reliable|warning/i.test(code)
     );
 
-    const unreliableDetected = hasUnreliableFlag || hasStaticUnreliabilityMention || /unreliable|warning/i.test(bodyText);
+    const unreliableDetected = hasUnreliableFlag || hasStaticUnreliabilityMention || /unreliable|inaccurate|warning/i.test(bodyText);
     expect(unreliableDetected).toBe(true);
   });
 

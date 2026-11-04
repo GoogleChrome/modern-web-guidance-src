@@ -1,0 +1,65 @@
+diff --git a/index.html b/index.html
+index 66c9173..00f8228 100644
+--- a/index.html
++++ b/index.html
+@@ -142,6 +142,30 @@
+       margin-top: 40px;
+     }
+ 
++    /* Preferences */
++    .preferences {
++      margin-top: 40px;
++      text-align: center;
++    }
++
++    .preferences label {
++      display: inline-flex;
++      align-items: center;
++      gap: 12px;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch] {
++      accent-color: var(--primary);
++      margin: 0;
++      cursor: pointer;
++    }
++
++    input[type="checkbox"][switch]:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+@@ -195,6 +219,16 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="preferences">
++      <h2>Preferences</h2>
++      <form>
++        <label>
++          Email me seasonal offers
++          <input id="offers" name="offers" type="checkbox" switch>
++        </label>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +241,12 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Load the polyfill only when the native switch attribute is unsupported.
++    if (!('switch' in HTMLInputElement.prototype)) {
++      import('https://esm.sh/input-switch-polyfill');
++    }
++  </script>
+ </body>
+ 
+ </html>

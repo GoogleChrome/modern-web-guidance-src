@@ -190,7 +190,7 @@ Try to be one step ahead by starting the next most likely AI task as soon as you
 **Don't:** Unless necessary, don't wait for the user to click "Generate" to initialize the session. This leads to a cold start delay, because the model must first load into memory and prepare its execution pipeline.
 
 > [!CAUTION]
-> **Caution:** For the Prompt API, wait until you have the `initialPrompts` ready before calling `create()`, because these can only be set during session creation.
+> For the Prompt API, wait until you have the `initialPrompts` ready before calling `create()`, because these can only be set during session creation.
 
 #### Set initial prompts during creation
 

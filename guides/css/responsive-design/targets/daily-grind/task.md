@@ -1,0 +1,1 @@
+- Make the Daily Grind homepage responsive across both viewport and component container sizes, updating the "Wake Up Your Senses" hero banner, the "Seasonal Favorites" drink cards, and their media proportions so the layout and typography adapt smoothly on any screen.

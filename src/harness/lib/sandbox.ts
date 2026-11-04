@@ -31,6 +31,8 @@ export interface SandboxPolicy {
   writablePaths: string[];
   /** Additional directories outside hiddenDir that are hidden from the agent. */
   extraHiddenPaths?: string[];
+  /** Individual files inside writablePaths (such as grade.mjs/run.mjs) masked from the agent. */
+  hiddenFiles?: string[];
 }
 
 function realpathOrSelf(p: string): string {
@@ -49,10 +51,52 @@ function realpathOrSelf(p: string): string {
  * - On macOS (`sandbox-exec` cannot mount a writable tmpfs over `/tmp`), we deny
  *   Playwright's compile cache directory directly (creating it first so the deny
  *   rule applies even before grading populates it).
- * - The real user's `~/.gemini` directory (conversation logs and scratch files).
+ * - The real user's agent/eval dot-directories (`.gemini`, `.claude`, `.codex`,
+ *   `.jetski`, `.jetski-server`, `.pi`, `.guidance_logs`) and top-level non-dot
+ *   directories in the user's home directory (e.g. an additional checkout of `modern-web-guidance-src`).
  */
 export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.platform): string[] {
-  const dirs = [path.join(os.userInfo().homedir, '.gemini')];
+  const homedir = os.userInfo().homedir;
+  const resolvedRoot = realpathOrSelf(rootDir);
+  const resolvedExec = realpathOrSelf(process.execPath);
+  const resolvedPathEntries = (process.env.PATH ?? '')
+    .split(path.delimiter)
+    .filter(Boolean)
+    .map(realpathOrSelf);
+  const hiddenDotDirs = [
+    '.gemini',
+    '.claude',
+    '.codex',
+    '.jetski',
+    '.jetski-server',
+    '.pi',
+    '.guidance_logs',
+  ];
+  const dirs = hiddenDotDirs.map(name => path.join(homedir, name));
+  try {
+    for (const entry of fs.readdirSync(homedir, { withFileTypes: true })) {
+      if ((entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.')) {
+        if (platform === 'darwin' && entry.name === 'Library') {
+          continue;
+        }
+        const dirPath = path.join(homedir, entry.name);
+        const resolvedDir = realpathOrSelf(dirPath);
+        if (!fs.existsSync(resolvedDir) || !fs.statSync(resolvedDir).isDirectory()) {
+          continue;
+        }
+        const protectsRoot = resolvedDir === resolvedRoot || resolvedRoot.startsWith(resolvedDir + path.sep);
+        const protectsExec = resolvedDir === resolvedExec || resolvedExec.startsWith(resolvedDir + path.sep);
+        const protectsPath = resolvedPathEntries.some(
+          p => p === resolvedDir || p.startsWith(resolvedDir + path.sep)
+        );
+        if (!protectsRoot && !protectsExec && !protectsPath) {
+          dirs.push(dirPath);
+        }
+      }
+    }
+  } catch {
+    // Ignore if homedir cannot be enumerated
+  }
   if (platform === 'linux') {
     dirs.unshift('/tmp');
   } else {
@@ -69,13 +113,13 @@ export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.plat
 
 /**
  * Builds the sandbox policy for an agent run.
- * @param targetDir The per-run results directory (holds the npx shim and modern-web.log)
+ * @param workDir The agent's working directory or isolated home directory
  * @param runType The run type; the skills-cli dist is only exposed for guided runs
  * @param repoRoot Repository root to hide (defaults to this repo)
  * @param extraHidden Directories outside the repo to hide (defaults to {@link defaultExtraHiddenPaths})
  */
 export function buildSandboxPolicy(
-  targetDir: string,
+  homeOrWorkDir: string,
   runType: string,
   repoRoot: string = rootDir,
   extraHidden: string[] = defaultExtraHiddenPaths()
@@ -95,7 +139,7 @@ export function buildSandboxPolicy(
     // Agent CLI binaries (claude/codex/gemini) and their pnpm-linked dependencies.
     path.join(repoRoot, 'node_modules'),
   ];
-  const writablePaths = [targetDir];
+  const writablePaths: string[] = [];
   if (runType === 'guided') {
     // The npx shim redirects `npx modern-web-guidance@latest` to this local build.
     const skillsCliDir = path.join(repoRoot, 'dist', 'skills-cli');
@@ -104,9 +148,12 @@ export function buildSandboxPolicy(
 
   // When /tmp is mounted as a fresh tmpfs, re-bind the agent's isolated HOME inside /tmp.
   const tmpRoot = realpathOrSelf('/tmp');
-  const home = process.env.HOME && fs.existsSync(process.env.HOME) ? realpathOrSelf(process.env.HOME) : undefined;
-  if (home && extraHiddenPaths.includes(tmpRoot) && home.startsWith(tmpRoot + path.sep)) {
-    writablePaths.push(home);
+  const candidate = [homeOrWorkDir, process.env.HOME]
+    .filter((p): p is string => typeof p === 'string' && fs.existsSync(p))
+    .map(realpathOrSelf)
+    .find(p => p !== hiddenDir && !p.startsWith(hiddenDir + path.sep) && p.startsWith(tmpRoot + path.sep));
+  if (candidate && extraHiddenPaths.includes(tmpRoot)) {
+    writablePaths.push(candidate);
   }
 
   const isInside = (p: string) =>
@@ -200,10 +247,11 @@ function appendRunDirMounts(args: string[], runDir: string = '/run'): void {
 }
 
 export function buildBwrapArgs(command: string, commandArgs: string[], policy: SandboxPolicy, runDir: string = '/run'): string[] {
-  const args = ['--dev-bind', '/', '/', '--die-with-parent', '--tmpfs', policy.hiddenDir];
+  const args = ['--dev-bind', '/', '/', '--unshare-pid', '--proc', '/proc', '--die-with-parent', '--perms', '0555', '--tmpfs', policy.hiddenDir];
   for (const p of policy.extraHiddenPaths ?? []) args.push('--tmpfs', p);
   for (const p of policy.readOnlyPaths) args.push('--ro-bind', p, p);
   for (const p of policy.writablePaths) args.push('--bind', p, p);
+  for (const f of policy.hiddenFiles ?? []) args.push('--ro-bind', '/dev/null', f);
   appendRunDirMounts(args, runDir);
   args.push('--', command, ...commandArgs);
   return args;
@@ -253,6 +301,7 @@ export function buildSeatbeltArgs(command: string, commandArgs: string[], policy
   for (const a of ancestors) rules.push(`(allow file-read-metadata (literal ${addParam(a)}))`);
   for (const p of policy.readOnlyPaths) rules.push(`(allow file-read* (subpath ${addParam(p)}))`);
   for (const p of policy.writablePaths) rules.push(`(allow file-read* file-write* (subpath ${addParam(p)}))`);
+  for (const f of policy.hiddenFiles ?? []) rules.push(`(deny file-read* file-write* (literal ${addParam(f)}))`);
 
   return [...params, '-p', rules.join('\n'), command, ...commandArgs];
 }

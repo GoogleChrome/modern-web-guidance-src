@@ -1,0 +1,126 @@
+diff --git a/index.html b/index.html
+index 66c9173..7e9eb8a 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,43 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    cup-counter:not(:defined) {
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
++    }
++
++    @keyframes defined-fallback {
++      to { opacity: 1; }
++    }
++
++    cup-counter {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++    }
++
++    cup-counter button {
++      width: 32px;
++      height: 32px;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      border-radius: 50%;
++      font-size: 1rem;
++      cursor: pointer;
++    }
++
++    cup-counter button:disabled {
++      opacity: 0.4;
++      cursor: not-allowed;
++    }
++
++    cup-counter:state(maxed) .value {
++      color: var(--accent);
++      font-weight: bold;
++    }
+   </style>
+ </head>
+ 
+@@ -171,6 +208,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
++    <cup-counter label="Cups:" count="1"></cup-counter>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+@@ -207,6 +245,69 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    class CupCounter extends HTMLElement {
++      static observedAttributes = ['label', 'count', 'disabled'];
++      #internals;
++      #ready = false;
++      #valueEl;
++      #labelEl;
++      #dec;
++      #inc;
++
++      constructor() {
++        super();
++        this.#internals = this.attachInternals();
++      }
++
++      get label() { return this.getAttribute('label') ?? ''; }
++      set label(v) { v ? this.setAttribute('label', v) : this.removeAttribute('label'); }
++
++      get count() { return Number(this.getAttribute('count')) || 0; }
++      set count(v) { this.setAttribute('count', String(v)); }
++
++      get disabled() { return this.hasAttribute('disabled'); }
++      set disabled(on) { this.toggleAttribute('disabled', !!on); }
++
++      connectedCallback() {
++        if (!this.#ready) {
++          this.#labelEl = document.createElement('span');
++          this.#labelEl.className = 'label';
++          this.#dec = document.createElement('button');
++          this.#dec.type = 'button';
++          this.#dec.textContent = '\u2212';
++          this.#dec.setAttribute('aria-label', 'Decrease');
++          this.#valueEl = document.createElement('span');
++          this.#valueEl.className = 'value';
++          this.#valueEl.setAttribute('aria-live', 'polite');
++          this.#inc = document.createElement('button');
++          this.#inc.type = 'button';
++          this.#inc.textContent = '+';
++          this.#inc.setAttribute('aria-label', 'Increase');
++          this.#dec.addEventListener('click', () => { this.count = Math.max(0, this.count - 1); });
++          this.#inc.addEventListener('click', () => { this.count = Math.min(10, this.count + 1); });
++          this.replaceChildren(this.#labelEl, this.#dec, this.#valueEl, this.#inc);
++          this.#ready = true;
++        }
++        this.render();
++      }
++
++      attributeChangedCallback(name, oldVal, newVal) {
++        if (oldVal !== newVal) this.render();
++      }
++
++      render() {
++        if (!this.#ready) return;
++        this.#labelEl.textContent = this.label;
++        this.#valueEl.textContent = String(this.count);
++        this.#dec.disabled = this.disabled || this.count <= 0;
++        this.#inc.disabled = this.disabled || this.count >= 10;
++        if (this.count >= 10) this.#internals.states.add('maxed');
++        else this.#internals.states.delete('maxed');
++      }
++    }
++    customElements.define('cup-counter', CupCounter);
++  </script>
+ </body>
+ 
+ </html>

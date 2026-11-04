@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import { globSync } from 'glob';
 import { config } from '../core/skills-config.ts';
 import { isDisciplineGuide } from '../core/guide-validation.ts';

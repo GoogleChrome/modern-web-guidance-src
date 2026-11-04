@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Custom Elements: attribute/property reflection and custom states</title>
   <style>
-    /* Hide the elements until their definitions have upgraded them (no FOUC). */
+    /* Hide the elements until their definitions have upgraded them, failing open after 2s. */
     my-counter:not(:defined),
-    async-button:not(:defined) { visibility: hidden; }
+    async-button:not(:defined) {
+      opacity: 0;
+      animation: defined-fallback 0.2s 2s forwards;
+    }
+    @keyframes defined-fallback { to { opacity: 1; } }
 
     /* Consumer-facing styling hook: a custom state, not an attribute. */
     async-button:state(success) { outline: 2px solid seagreen; }
@@ -92,15 +96,12 @@
         this.#internals = this.attachInternals();
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.append(buttonTemplate.content.cloneNode(true));
+        this.shadowRoot.querySelector('button')
+          .addEventListener('click', () => this.run());
       }
 
       // The host supplies the work to perform.
       set action(fn) { this.#action = fn; }
-
-      connectedCallback() {
-        this.shadowRoot.querySelector('button')
-          .addEventListener('click', () => this.run());
-      }
 
       async run() {
         if (this.#internals.states.has('busy')) return; // guard re-entry

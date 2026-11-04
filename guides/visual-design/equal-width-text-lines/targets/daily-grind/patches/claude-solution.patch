@@ -1,0 +1,64 @@
+diff --git a/index.html b/index.html
+index 66c9173..d224213 100644
+--- a/index.html
++++ b/index.html
+@@ -93,6 +93,30 @@
+       margin-bottom: 1rem;
+     }
+ 
++    .lockup {
++      width: min(100%, 640px);
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
++      font-size: 1.5rem;
++      line-height: 1;
++      text-transform: uppercase;
++      text-fit: grow per-line-all 300%;
++    }
++
++    .lockup > span {
++      display: block;
++      white-space: nowrap;
++      text-box: trim-both cap alphabetic;
++    }
++
++    @supports not (text-fit: grow) {
++      .lockup > span {
++        width: fit-content;
++        font-size: min(var(--text-fit-scale, 1) * 1em, 300%);
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,7 +193,7 @@
+   </nav>
+ 
+   <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
++    <h1 class="lockup"><span>Wake Up</span> <span>Your</span> <span>Senses</span></h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+@@ -207,6 +231,19 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('text-fit', 'grow per-line-all')) {
++      const fit = lockup => {
++        const lines = [...lockup.querySelectorAll(':scope > span')];
++        for (const line of lines) line.style.removeProperty('--text-fit-scale');
++        const scales = lines.map(line => lockup.clientWidth / line.offsetWidth);
++        lines.forEach((line, i) => line.style.setProperty('--text-fit-scale', scales[i]));
++      };
++      for (const lockup of document.querySelectorAll('.lockup')) {
++        new ResizeObserver(() => fit(lockup)).observe(lockup);
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

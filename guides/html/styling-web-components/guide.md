@@ -94,7 +94,7 @@ When a custom element wraps a native control (`<my-button>` around a real `<butt
 
 ## `:state()`: style the component's own states
 
-A custom element can expose internal boolean states through `ElementInternals` (see {{ GUIDE_REF("custom-elements") }} for setting them), and those states become a styling channel across the boundary — like `::part` and custom properties, but for *state* rather than structure or values. Match them inside the shadow tree with `:host(:state(name))`, and from a consumer's stylesheet with `tag-name:state(name)`:
+A custom element can expose internal boolean states through `ElementInternals` via `this.#internals.states.add('busy')` and `.delete('busy')` (see {{ GUIDE_REF("custom-elements") }} for lifecycle usage), and those states become a styling channel across the boundary — like `::part` and custom properties, but for *state* rather than structure or values. Match them inside the shadow tree with `:host(:state(name))`, and from a consumer's stylesheet with `tag-name:state(name)`:
 
 ```css
 /* Inside the component's shadow tree. */
@@ -109,10 +109,13 @@ Unlike a reflected attribute, a custom state is **read-only to the outside**: co
 ## `@layer` and container queries inside components
 
 - **Cascade layers** (`@layer`) work inside a shadow root and are scoped to it; a layer name in the shadow tree is independent of a same-named layer in the page. Use them to order your own component styles (e.g. `@layer base, theme;`) so consumer overrides via custom properties and `::part` still win predictably.
-- **Container queries** are the right tool for responsive components: a component should respond to the space it's given, not the viewport. Declare the host or a wrapper as a container and query it, so the same component adapts in a sidebar or a full-width region.
+- **Container queries** are the right tool for responsive components: a component should respond to the space it's given, not the viewport. Declare the host or a wrapper as a container (giving `:host` a layout box such as `display: block`, since custom elements default to `display: inline` and size containment does not apply to `inline` or `contents` elements) and query it, so the same component adapts in a sidebar or a full-width region.
 
 ```css
-:host { container-type: inline-size; }
+:host {
+  display: block; /* Required: size containment does not apply to default display: inline */
+  container-type: inline-size;
+}
 
 @container (min-width: 30rem) {
   .card { grid-template-columns: 1fr 2fr; }

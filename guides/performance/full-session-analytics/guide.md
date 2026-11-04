@@ -1,6 +1,6 @@
 ---
 name: full-session-analytics
-description: Reliably track analytics, errors, and telemetry data across the user's entire page visit, and defer sending of the data until the user leaves the page.
+description: Reliably track analytics, Core Web Vitals, errors, and telemetry data across the user's entire page visit, and defer sending of the data until the user leaves the page.
 web-feature-ids:
   - fetchlater
   - aborting
@@ -8,7 +8,7 @@ web-feature-ids:
 
 # Reliably measure full-session analytics and telemetry
 
-To reliably analytics and telemetry data that covers the entirety of a user's visit to a web page (not just until page load) use the `fetchLater()` API.
+To reliably track analytics, Core Web Vitals, and telemetry data that covers the entirety of a user's visit to a web page (not just until page load), use the `fetchLater()` API.
 
 The `fetchLater()` API is the most reliably way to send data to a server in cases where a response is not required and delivery timing is not urgent, which applies to data such as user analytics, telemetry, error tracking, and performance metrics like Core Web Vitals.
 

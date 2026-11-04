@@ -28,10 +28,18 @@ This will automatically execute the 5-step pipeline:
 4. **Agent Evaluations**: Executes guided and unguided agent runs against the target apps to measure pass rates and guidance tool consumption.
 5. **Evaluation Report (`report.md`)**: Invokes an evaluator agent to analyze failed assertions, diagnose root causes, and output actionable recommendations into `results/guides/<category>/<slug>/report.md`.
 
+When run from `main`, `gd dev` first switches to a new `gd-dev/<guide-name>` branch and commits the generated artifacts and any post-report fixes as separate commits.
+
 To skip agent evaluations and report generation after calibration, add `--no-test`:
 
 ```bash
 gd dev <path/to/guide_dir> --no-test
+```
+
+To run against only specific base applications (comma-separated), pass `--targets`:
+
+```bash
+gd dev <path/to/guide_dir> --targets daily-grind
 ```
 
 ### Submitting a Pull Request: `gd pr`
@@ -50,32 +58,29 @@ This will automatically:
 3. Push your feature branch to `origin`.
 4. Analyze `report.md` to automatically detect and apply PR labels:
    - **`gd-dev-content`**: Attached if recommendations include modifications to `guide.md` or `expectations.md`.
-   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`. When the PR is marked ready for review, the ATL triage bot requests review from `EVAL_PR_REVIEWER` in `src/ci/atl-triage.ts`.
-5. Open a new draft Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
+   - **`gd-dev-eval`**: Attached if recommendations include modifications to `task.md` or `grader.ts`.
+5. Open a new Pull Request (or update the existing PR description and sync labels if an open PR already exists for the branch, removing the `needs-dev-rerun` label) with the full evaluation report (`report.md`) as the PR body description. It refuses to push a branch that still contains the commits of an already merged or closed PR; switch to a new branch off `main` instead.
 
-### Fixing Open Eval Gaps: `gd dev-gap`
+### Fixing Missing Evals: `gd dev-gap`
 
-`eval-gap-watch` files an "Evals missing for the \<guide-name\> guide" issue (label `eval-gap`) for each guide that needs evals. `gd dev-gap` works through those issues, running `gd dev` and `gd pr` for each guide in turn. It doesn't handle "Expectations changed" issues yet.
-
-```bash
-gd dev-gap --dry-run   # show which guides would run and why the rest are skipped
-gd dev-gap --limit 1   # process at most one guide
-gd dev-gap             # process all of them
-```
-
-Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens a PR from a fresh `gd-dev/<guide-name>` branch, then returns to `main` and deletes the local branch. If a guide fails, its changes are discarded and the batch moves on; it stops only if it can't get back to a clean `main`. The issue closes on its own once the PR merges.
-
-It skips guides that already have an open `grader updates: <guide-name>` PR and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` (delete the branch to retry).
-
-### Checking Status: `gd audit`
-
-You can use `gd audit` to see exactly where every guide sits in the Kanban board pipeline:
+`gd dev-gap` scans `guides/` on disk for non-draft guides that have populated `guide.md` and `expectations.md` but are missing evals (`grader.ts` or `task.md`, in legacy format or `targets/`), then runs `gd dev` (defaulting to `--targets daily-grind`) and `gd pr` for each guide in turn. It also reruns open `gd pr` PRs labeled `needs-dev-rerun`.
 
 ```bash
-gd audit
+gd dev-gap --dry-run                           # show which guides/PRs would run and why any are skipped
+gd dev-gap --limit 1                           # process at most one guide
+gd dev-gap --targets daily-grind,devtools-times # override target base apps (defaults to daily-grind)
+gd dev-gap                                     # process all of them
 ```
 
-This will output a categorized table sorted into the 6 maturity stages (`Stub`, `Incomplete`, `Needs expectations`, `Needs calibration`, `Needs test`, `Eval-ready`), along with recommended next steps.
+Run it from a clean, up-to-date `main`. For each guide it runs `gd dev`, opens or updates a PR on its `gd-dev/<guide-name>` branch, then returns to `main` and deletes the local branch. If a guide fails, its changes are discarded and the batch moves on; it stops only if it can't get back to a clean `main`.
+
+It skips guides that already have an open `grader updates: <guide-name>` PR (unless labeled `needs-dev-rerun`) and guides whose `gd-dev/<guide-name>` branch still exists locally or on `origin` without an open PR (delete the branch to retry).
+
+When an evaluation report in a PR is unhealthy, `gd dev` applies recommended fixes directly to the files in the PR (committed as a separate post-report commit from the initial target generation).
+Reviewers can inspect the file diffs in the PR, leave inline comments or push adjustments, and trigger the next automated pass:
+- Label the PR **`needs-dev-rerun`**. `gd dev` regenerates whatever changed since the solution patches were generated: a `guide.md` `description` change wipes `targets/<target>/` and regenerates everything; any other `guide.md` or `expectations.md` edit keeps `task.md` and regenerates the patches and `grader.ts`; `task.md` alone regenerates the solution patches and `grader.ts`; `grader.ts` alone re-runs calibration and agent evaluation. Local `gd dev` runs behave the same way once the target's patches are committed (`gd dev` only commits on `gd-dev/` branches); with uncommitted patches, any `guide.md` or `expectations.md` edit wipes the target.
+
+Separately, `src/ci/sync-pipeline-issue.ts` maintains the canonical [Content & Eval Pipeline issue (#1815)](https://github.com/GoogleChrome/modern-web-guidance-src/issues/1815), including flagging guides under **Stale evals** whenever `expectations.md` has substantive changes newer than `grader.ts` or `targets/`.
 
 ### Manual Piece-wise execution
 

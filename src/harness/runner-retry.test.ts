@@ -172,7 +172,7 @@ test('run.mjs: fails permanently after maximum attempts', () => {
     fs.writeFileSync(graderPath, '// mock grader');
 
     const agentScript = writeMockAgentScript(tempDir);
-    setMockAgentState(tempDir, 5, 42); // 5 failures (exceeds maxAttempts=3), exits with 42
+    setMockAgentState(tempDir, 5, 42); // 5 failures (exceeds maxAttempts=2), exits with 42
 
     generateTransientPackage(
       tempDir,
@@ -199,7 +199,7 @@ test('run.mjs: fails permanently after maximum attempts', () => {
     // Check state
     const state = getMockAgentState(tempDir);
     assert.ok(state, 'State file should exist');
-    assert.strictEqual(state.attempts, 3, 'Should have attempted exactly 3 times (1 initial + 2 retries)');
+    assert.strictEqual(state.attempts, 2, 'Should have attempted exactly 2 times (1 initial + 1 retry)');
 
     // Check generation_failed.json exists and has correct info
     const failureFile = path.join(tempDir, 'generation_failed.json');
@@ -225,6 +225,9 @@ test('run.mjs: removes each attempt\'s isolated HOME even when the agent is kill
     const graderPath = path.join(tempDir, 'grader.ts');
     fs.writeFileSync(graderPath, '// mock grader');
 
+    const homesFile = path.join(tempDir, 'homes.json');
+    fs.writeFileSync(homesFile, '[]', 'utf8');
+
     const agentScript = path.join(tempDir, 'mock-agent.js');
     fs.writeFileSync(agentScript, `
 import fs from 'fs';
@@ -247,7 +250,7 @@ if (homes.length === 1) process.kill(process.pid, 'SIGKILL');
     const runResult = spawnSync(process.execPath, ['run.mjs'], { cwd: tempDir, encoding: 'utf8' });
     assert.strictEqual(runResult.status, 0, 'Execution should succeed on the second attempt');
 
-    const homes: string[] = JSON.parse(fs.readFileSync(path.join(tempDir, 'homes.json'), 'utf8'));
+    const homes: string[] = JSON.parse(fs.readFileSync(homesFile, 'utf8'));
     assert.strictEqual(homes.length, 2, 'Should have attempted twice');
     assert.notStrictEqual(homes[0], homes[1], 'Each attempt should get a fresh HOME');
     for (const home of homes) {
@@ -259,33 +262,79 @@ if (homes.length === 1) process.kill(process.pid, 'SIGKILL');
   }
 });
 
-test('run.mjs: records TIMEOUT (10m) and exits non-zero when final attempt times out', () => {
+test('run.mjs: records TIMEOUT (15m) in generation_failed.json when all attempts time out without wrapper writing it', () => {
   const tempDir = createTempDir();
   try {
     const graderPath = path.join(tempDir, 'grader.ts');
     fs.writeFileSync(graderPath, '// mock grader');
 
-    // Pre-seed a stale generation_failed.json to verify run.mjs clears it on retry.
+    // Pre-seed a stale generation_failed.json to verify run.mjs clears it before attempt 1.
     fs.writeFileSync(
       path.join(tempDir, 'generation_failed.json'),
       JSON.stringify({ agentName: 'mock-agent.js', exitCode: 1, stderr: 'stale', stdout: '' })
     );
 
-    // Agent hangs on every attempt until killed by timeout.
+    // Agent hangs until killed by spawnSync timeout without writing generation_failed.json itself.
     const agentScript = path.join(tempDir, 'mock-agent.js');
     fs.writeFileSync(agentScript, 'setTimeout(() => {}, 60000);', 'utf8');
 
     generateTransientPackage(tempDir, agentScript, 'dummy prompt', 'guided', tempDir, 'test-task', 'test-guide', graderPath);
     patchRunnerDelay(tempDir);
     const runMjsPath = path.join(tempDir, 'run.mjs');
-    fs.writeFileSync(runMjsPath, fs.readFileSync(runMjsPath, 'utf8').replace('timeout: 600000', 'timeout: 200'));
+    fs.writeFileSync(runMjsPath, fs.readFileSync(runMjsPath, 'utf8').replace('timeout: 900000', 'timeout: 200'));
 
     const runResult = spawnSync(process.execPath, ['run.mjs'], { cwd: tempDir, encoding: 'utf8' });
-    assert.strictEqual(runResult.status, 1, 'Timed-out run.mjs should exit with 1, not 0');
+    assert.notStrictEqual(runResult.status, 0, 'Timed-out run.mjs should not exit 0');
 
     const failureData = JSON.parse(fs.readFileSync(path.join(tempDir, 'generation_failed.json'), 'utf8'));
-    assert.strictEqual(failureData.exitCode, 'TIMEOUT (10m)');
+    assert.strictEqual(failureData.exitCode, 'TIMEOUT (15m)');
     assert.match(failureData.stderr, /timed out/i);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+test('run.mjs: cleans up stale trajectory and SQLite files from failed attempt before retrying', () => {
+  const tempDir = createTempDir();
+  try {
+    const graderPath = path.join(tempDir, 'grader.ts');
+    fs.writeFileSync(graderPath, '// mock grader');
+    const countFile = path.join(tempDir, 'attempts.txt');
+    fs.writeFileSync(countFile, '0', 'utf8');
+
+    const agentScript = path.join(tempDir, 'mock-agent.js');
+    fs.writeFileSync(agentScript, `
+import fs from 'fs';
+import path from 'path';
+const targetDir = process.argv[4];
+const countFile = path.join(targetDir, 'attempts.txt');
+const count = Number(fs.readFileSync(countFile, 'utf8')) + 1;
+fs.writeFileSync(countFile, String(count));
+if (count === 1) {
+  fs.writeFileSync(path.join(targetDir, 'stale.db'), 'db1');
+  fs.writeFileSync(path.join(targetDir, 'stale.db-wal'), 'wal1');
+  fs.writeFileSync(path.join(targetDir, 'stale.db-shm'), 'shm1');
+  fs.writeFileSync(path.join(targetDir, 'session-111.html'), 'html1');
+  fs.writeFileSync(path.join(targetDir, 'session-111.json'), 'json1');
+  fs.writeFileSync(path.join(targetDir, 'trajectory_summary.json'), '{}');
+  fs.writeFileSync(path.join(targetDir, 'modern-web.log'), 'stale-guide-log');
+  process.exit(2);
+}
+fs.writeFileSync(path.join(targetDir, 'session-222.html'), 'html2');
+process.exit(0);
+`.trim(), 'utf8');
+
+    generateTransientPackage(tempDir, agentScript, 'dummy prompt', 'guided', tempDir, 'test-task', 'test-guide', graderPath);
+    patchRunnerDelay(tempDir);
+    fs.writeFileSync(path.join(tempDir, 'grade.mjs'), 'process.exit(0);', 'utf8');
+
+    const runResult = spawnSync(process.execPath, ['run.mjs'], { cwd: tempDir, encoding: 'utf8' });
+    assert.strictEqual(runResult.status, 0);
+
+    for (const stale of ['stale.db', 'stale.db-wal', 'stale.db-shm', 'session-111.html', 'session-111.json', 'trajectory_summary.json', 'modern-web.log']) {
+      assert.strictEqual(fs.existsSync(path.join(tempDir, stale)), false, `${stale} from failed attempt 1 should be removed before attempt 2`);
+    }
+    assert.strictEqual(fs.existsSync(path.join(tempDir, 'session-222.html')), true, 'Attempt 2 artifacts should be preserved');
   } finally {
     removeTempDir(tempDir);
   }

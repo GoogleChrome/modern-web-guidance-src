@@ -97,6 +97,12 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
     }
     fs.writeFileSync(codexMarketplacePath, JSON.stringify(codexMarketplaceData, null, 2) + '\n');
   }
+
+  // Agent Plugins
+  const agentPluginPath = path.join(publishCliDir, "plugin.json");
+  const agentPluginData = JSON.parse(fs.readFileSync(agentPluginPath, 'utf8'));
+  agentPluginData.version = newVersion;
+  fs.writeFileSync(agentPluginPath, JSON.stringify(agentPluginData, null, 2) + '\n');
 }
 
 export function processSkills(publishRoot: string) {
@@ -260,6 +266,35 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         JSON.stringify(resultSearch.metafile)
       );
 
+      console.log("Bundling analyze.mjs...");
+      const resultAnalyze = await esbuild.build({
+        entryPoints: [path.join(rootDir, "src/analyzing/cli.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/analyze.mjs"),
+        banner: {
+          js: `// @ts-nocheck
+import { createRequire } from 'module';
+import { fileURLToPath as __fileURLToPath } from 'url';
+import { dirname as __dirnameFunction } from 'path';
+const require = createRequire(import.meta.url);
+const __filename = __fileURLToPath(import.meta.url);
+const __dirname = __dirnameFunction(__filename);
+`,
+        },
+        sourcemap: false,
+        sourcesContent: false,
+        metafile: true,
+        minify: true,
+        legalComments: "none",
+      });
+
+      fs.writeFileSync(
+        path.join(ROOT_DIST_DIR, "analyze.meta.json"),
+        JSON.stringify(resultAnalyze.metafile)
+      );
+
       console.log("Bundling modern-web.mjs...");
       const resultModernWeb = await esbuild.build({
         entryPoints: [path.join(rootDir, "src/cli/modern-web.ts")],
@@ -268,11 +303,14 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         format: "esm",
         outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
         plugins: [{
-          name: 'rewrite-search',
+          name: 'external-cli-modules',
           setup(build) {
             build.onResolve({ filter: /search\.ts$/ }, _args => {
               return { path: './search.mjs', external: true }
-            })
+            });
+            build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
+              return { path: './analyze.mjs', external: true }
+            });
           },
         }],
         metafile: true,
@@ -294,7 +332,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
 
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
+        [resultSearch.metafile, resultAnalyze.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 
@@ -373,15 +411,16 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
 }
 
 function getLatestVersion() {
-  const getLatestGitTag = () => execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname | head -n 1 | grep .', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-  const tag = getLatestGitTag();
-  const version = tag.startsWith('v') ? tag.slice(1) : tag;
-  return version;
+  const output = execSync('git tag -l "v*.*.*" --merged HEAD --sort=-v:refname', {
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
+  const [tag = ''] = output.trim().split('\n');
+  return tag.startsWith('v') ? tag.slice(1) : tag;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let version;
-  // Not sure why but in CI this command sometimes fails. Even though we fetched tags. shrug.
   try {
     version = getLatestVersion();
   } catch (err) {

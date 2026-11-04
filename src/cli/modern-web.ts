@@ -3,13 +3,20 @@
 import { parseArgs } from "node:util";
 import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { retrieveUseCase } from "../rag/retrieve.ts";
+import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { retrieveUseCase, OriginTrialGateError } from "../rag/retrieve.ts";
+import { logToolResult } from "../rag/logger.ts";
+import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
+import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
 import { getSkillUpdateLevel } from "./skill-version.ts";
 import { USE_CASES } from "../rag/guides.ts";
+import { determineAgent } from "./telemetry/detect-agent.ts";
+
+const MAX_INLINE_STDOUT_BYTES = 9500;
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -23,6 +30,30 @@ const { values, positionals } = parseArgs({
   strict: false,
 });
 
+function isStdoutRedirectedToFile(): boolean {
+  try {
+    return fstatSync(1).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function saveRetrievedGuides(content: string): string | null {
+  const filename = `mwg-guide-${process.pid}-${Date.now()}.md`;
+  const candidateDirs = [...new Set([tmpdir(), "/tmp"])];
+  for (const dir of candidateDirs) {
+    try {
+      if (!existsSync(dir)) continue;
+      const filePath = join(dir, filename);
+      writeFileSync(filePath, content, "utf8");
+      return filePath;
+    } catch {
+      // Try next candidate directory
+    }
+  }
+  return null;
+}
+
 function printUsage() {
   console.log(`
 Usage: modern-web <command> [args]
@@ -31,6 +62,9 @@ Commands:
   search <query>            Search use cases by query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
+  analyze [path] [options]  Analyze codebase for legacy web platform patterns
+  set-baseline <target>     Set project Baseline target in .mwgrc (widely, newly, limited, or YYYY)
+  set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   install [options]         Install the modern-web-guidance skill
   uninstall                 Uninstall the modern-web-guidance skill
   update                    Update skills
@@ -49,17 +83,37 @@ async function main() {
     process.exit(0);
   }
 
+  const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
+
+  const command = positionals[0];
+
+  if (command === "analyze") {
+    maybeEmitUpdateMessage(skillVersion);
+    // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
+    const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
+    const args = process.argv.slice(2);
+    const cmdIdx = args.indexOf("analyze");
+    if (cmdIdx !== -1) args.splice(cmdIdx, 1);
+    const result = await runAnalyzeCli(args);
+    if (result.data) {
+      logToolResult(
+        "analyze",
+        result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
+      );
+    }
+    writeAnalyzeCliResult(result);
+    process.exit(result.exitCode);
+  }
+
   if (values.help || positionals.length === 0) {
     printUsage();
     process.exit(values.help ? 0 : 1);
   }
 
-  const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
   maybeEmitUpdateMessage(skillVersion);
 
   let loggerInstance: ClearcutLogger | undefined;
   const getLogger = () => loggerInstance ??= new ClearcutLogger({ skillVersion });
-  const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
 
   if (command === "search") {
@@ -81,14 +135,9 @@ async function main() {
       }));
       await getLogger().logSearchResult(arg, latencyMs, true, searchItems);
 
-      if (results.length === 0) {
-        console.log("[]");
-      } else {
-        // Do a ~compressed output so users can see some of the results in their coding agent.
-        // Also fewer tokens. :p
-        const jsonLines = results.map(r => JSON.stringify(r));
-        console.log("[" + jsonLines.join(",\n") + "]");
-      }
+      // Compact format: return only id and description to minimize token usage with top-10 results.
+      const jsonLines = results.map(({ id, description }) => JSON.stringify({ id, description }));
+      console.log("[" + jsonLines.join(",\n") + "]");
     } catch (error) {
       const latencyMs = Date.now() - startTime;
       await getLogger().logSearchResult(arg, latencyMs, false, []);
@@ -98,12 +147,9 @@ async function main() {
   } else if (command === "list") {
     const startTime = Date.now();
     try {
-      const catalog = USE_CASES.map(u => ({
-        id: u.id,
-        category: u.category,
-        description: u.description,
-      }));
-      console.log(JSON.stringify(catalog, null, 2));
+      // Compact format: return only id and description to minimize token usage, one per line.
+      const jsonLines = USE_CASES.map(({ id, description }) => JSON.stringify({ id, description }));
+      console.log("[" + jsonLines.join(",\n") + "]");
       await getLogger().logToolCommand(Date.now() - startTime, true, CommandType.LIST);
     } catch (error) {
       await getLogger().logToolCommand(Date.now() - startTime, false, CommandType.LIST);
@@ -111,7 +157,16 @@ async function main() {
       process.exit(1);
     }
   } else if (command === "retrieve") {
-    const ids = arg ? arg.split(",").map(id => id.trim()).filter(Boolean) : [];
+    const ids = arg
+      ? [
+          ...new Set(
+            arg
+              .split(/[\s,;]+/)
+              .map(id => id.replace(/^["'\\]+|["'\\;]+$/g, "").trim())
+              .filter(id => Boolean(id) && !id.startsWith("-"))
+          ),
+        ]
+      : [];
     if (ids.length === 0) {
       await getLogger().logRetrieveResult(0, false, "");
       console.error("No IDs provided for retrieve.");
@@ -119,18 +174,46 @@ async function main() {
     }
 
     let hasError = false;
+    const retrievedSections: string[] = [];
 
     for (const id of ids) {
       const startTime = Date.now();
       try {
         const guide = await retrieveUseCase(id);
-        console.log(`\n--- Guide for ${id} ---`);
-        console.log(guide);
+        retrievedSections.push(`\n--- Guide for ${id} ---\n${guide}`);
         await getLogger().logRetrieveResult(Date.now() - startTime, true, id);
       } catch (error) {
         hasError = true;
-        console.error(`Retrieve failed for ${id}:`, error);
+        if (error instanceof OriginTrialGateError) {
+          console.error(error.message);
+        } else {
+          console.error(`Retrieve failed for ${id}:`, error);
+        }
         await getLogger().logRetrieveResult(Date.now() - startTime, false, id);
+      }
+    }
+
+    if (retrievedSections.length > 0) {
+      const combinedStdout = retrievedSections.join("\n");
+      const totalBytes = Buffer.byteLength(combinedStdout, "utf8");
+      const shouldSaveToFile =
+        totalBytes > MAX_INLINE_STDOUT_BYTES && !isStdoutRedirectedToFile();
+
+      if (shouldSaveToFile) {
+        const fileContent = combinedStdout.replace(/^\n+/, "") + "\n";
+        const savedPath = saveRetrievedGuides(fileContent);
+        if (savedPath) {
+          const lineCount = fileContent.split("\n").length - 1;
+          const sizeKb = (totalBytes / 1024).toFixed(1);
+          console.log(
+            `Output (${sizeKb} KB, ${lineCount} lines) saved to ${savedPath} to prevent CLI stdout truncation.\n` +
+            `Read ${savedPath} in full using your file-reading tool (${lineCount} lines total)—do not use cat or head.`
+          );
+        } else {
+          console.log(combinedStdout);
+        }
+      } else {
+        console.log(combinedStdout);
       }
     }
 
@@ -146,7 +229,13 @@ async function main() {
       .filter(Boolean)
       .concat(extraArgs);
 
-    const result = spawnSync("npx", installArgs, { stdio: "inherit", shell: process.platform === "win32" });
+    const detectedAgent = determineAgent().agent?.name;
+    const env = detectedAgent ? { ...process.env, AI_AGENT: detectedAgent } : process.env;
+    const result = spawnSync("npx", installArgs, {
+      stdio: "inherit",
+      shell: process.platform === "win32",
+      env,
+    });
 
     const success = !result.error && result.status === 0;
     const commandType = values.choose ? CommandType.INSTALL_CHOOSE : CommandType.INSTALL;
@@ -169,6 +258,20 @@ async function main() {
     if (result.error) {
       console.error("Update failed:", result.error);
     }
+  } else if (command === "set-baseline") {
+    const normalized = normalizeBaselineTarget(arg);
+    if (!normalized) {
+      console.error(
+        `Invalid baseline target: ${JSON.stringify(arg)}. Expected one of: widely, newly, limited, or a 4-digit year (e.g., 2024).`
+      );
+      process.exit(1);
+    }
+    const targetPath = writeMwgrc({ baseline: normalized });
+    console.log(`Set Baseline target to "${normalized}" in ${targetPath}.`);
+    process.exit(0);
+  } else if (command === "set-allow-origin-trials") {
+    const code = await handleSetAllowOriginTrials();
+    process.exit(code);
   } else if (command === "uninstall") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();

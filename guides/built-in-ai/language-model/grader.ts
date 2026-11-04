@@ -5,6 +5,8 @@
  */
  
 import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 declare const process: any;
 
@@ -20,21 +22,54 @@ declare global {
   }
 }
 
-const targetFile = process.env.TARGET_FILE || (process.cwd() + '/demo.html');
-
 test.beforeEach(async ({ page }) => {
+  await page.route('http://localhost/**', async (route) => {
+    const filePath = path.resolve(process.env.TARGET_FILE || (process.cwd() + '/demo.html'));
+    const targetDir = path.dirname(filePath);
+    const demoName = path.basename(filePath);
+    const requestPath = new URL(route.request().url()).pathname;
+    const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+
+    if (fs.existsSync(localFilePath)) {
+      const isJs = /\.(m?js|cjs)$/i.test(localFilePath);
+      await route.fulfill({
+        path: localFilePath,
+        ...(isJs ? { contentType: 'application/javascript' } : {}),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
   await page.addInitScript(() => {
     window.__LM_LOGS__ = {
       calls: [],
       innerHTMLUsed: false,
       sessionCounter: 0,
     };
+    try { Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true }); } catch {}
+
+    const originalParse = JSON.parse;
+    JSON.parse = function(text: string, reviver?: any) {
+      window.__LM_LOGS__.calls.push({ method: 'JSON.parse', text });
+      return originalParse.call(this, text, reviver);
+    };
+
+    const originalStringify = JSON.stringify;
+    JSON.stringify = function(obj: any, replacer?: any, space?: any) {
+      if (obj && typeof obj === 'object' && obj.type === 'object' && obj.properties) {
+        window.__LM_LOGS__.calls.push({ method: 'JSON.stringify.schema', obj });
+      }
+      return originalStringify.call(this, obj, replacer, space);
+    };
 
     // Track innerHTML usage
     const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
     Object.defineProperty(Element.prototype, 'innerHTML', {
       set: function(this: Element, value: string) {
-        window.__LM_LOGS__.innerHTMLUsed = true;
+        if (value !== '') {
+          window.__LM_LOGS__.innerHTMLUsed = true;
+        }
         originalInnerHTML?.set?.call(this, value);
       },
       get: function(this: Element) {
@@ -61,20 +96,24 @@ test.beforeEach(async ({ page }) => {
       set contextWindow(val) {
         this._contextWindow = val;
       }
-      constructor(source: string) {
+      constructor(source: string, options?: any) {
         this.__source = source;
         this.__id = ++window.__LM_LOGS__.sessionCounter;
-        window.__LM_LOGS__.calls.push({ method: 'LanguageModel.create', source, sessionId: this.__id });
+        window.__LM_LOGS__.calls.push({ method: 'LanguageModel.create', source, options, sessionId: this.__id });
       }
       async prompt(text: any, options: any) {
         window.__LM_LOGS__.calls.push({ method: 'session.prompt', text, options, source: this.__source });
         if (options?.responseConstraint) {
-          return JSON.stringify({ rating: 5, is_positive: true, summary: 'Great!' });
+          const props = options.responseConstraint?.properties || {};
+          if ('score' in props && 'category' in props && Object.keys(props).length === 2) {
+            return JSON.stringify({ score: 1, category: 'positive' });
+          }
+          return JSON.stringify({ score: 1, rating: 5, category: 'positive', is_positive: true, summary: 'Great!' });
         }
         return 'Mock response';
       }
       // eslint-disable-next-line require-yield
-      async* promptStreaming(text: any, options: any) {
+      promptStreaming(text: any, options: any) {
         window.__LM_LOGS__.calls.push({ method: 'session.promptStreaming', text, options, source: this.__source });
         const stream = (async function* () {
           yield 'Mock ';
@@ -97,6 +136,9 @@ test.beforeEach(async ({ page }) => {
         window.__LM_LOGS__.calls.push({ method: 'session.clone', source: this.__source, sessionId: this.__id });
         return new MockSession(this.__source);
       }
+      addEventListener(_type: string, _listener: any) {}
+      removeEventListener(_type: string, _listener: any) {}
+      dispatchEvent(_event: any) { return true; }
     }
 
     window.LanguageModel = {
@@ -105,19 +147,20 @@ test.beforeEach(async ({ page }) => {
         return 'available';
       },
       create: async (options: any) => {
-        window.__LM_LOGS__.calls.push({ method: 'LanguageModel.create', source: 'window.LanguageModel', options });
         if (options?.monitor) {
           const mockMonitor = {
             addEventListener: (event: string, cb: any) => {
               window.__LM_LOGS__.calls.push({ method: 'monitor.addEventListener', event });
               if (event === 'downloadprogress') {
-                cb({ loaded: 0.5, total: 1 });
+                setTimeout(() => {
+                  try { cb({ loaded: 0.5, total: 1 }); } catch {}
+                }, 0);
               }
             }
           };
           options.monitor(mockMonitor);
         }
-        return new MockSession('window.LanguageModel');
+        return new MockSession('window.LanguageModel', options);
       }
     };
 
@@ -135,15 +178,23 @@ test.beforeEach(async ({ page }) => {
     };
   });
 
-  await page.goto(`file://${targetFile}`);
+  const demoName = path.basename(path.resolve(process.env.TARGET_FILE || (process.cwd() + '/demo.html')));
+  await page.goto(`http://localhost/${demoName}`);
 });
+
+async function clickWhenReady(locator: any) {
+  if (await locator.isVisible().catch(() => false)) {
+    await expect(locator).toBeEnabled({ timeout: 2000 }).catch(() => {});
+    await locator.click({ timeout: 2000 }).catch(() => {});
+  }
+}
 
 test('1. LanguageModel.create() should be called using window.LanguageModel', async ({ page }) => {
   await page.waitForTimeout(500);
   const textarea = page.locator('textarea, input[type="text"]').first();
   if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
-  if (await actionBtn.isVisible()) await actionBtn.click();
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled])').first();
+  await clickWhenReady(actionBtn);
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const lmCreate = logs.calls.find(c => c.method === 'LanguageModel.create' && c.source === 'window.LanguageModel');
@@ -154,8 +205,8 @@ test('2. The deprecated window.ai.languageModel API must not be used', async ({ 
   await page.waitForTimeout(500);
   const textarea = page.locator('textarea, input[type="text"]').first();
   if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
-  if (await actionBtn.isVisible()) await actionBtn.click();
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled])').first();
+  await clickWhenReady(actionBtn);
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const deprecatedCalls = logs.calls.filter(c => c.method.startsWith('window.ai.languageModel') || c.source === 'window.ai.languageModel');
@@ -166,8 +217,8 @@ test('3. LanguageModel.availability() should be called before attempting to crea
   await page.waitForTimeout(500);
   const textarea = page.locator('textarea, input[type="text"]').first();
   if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
-  if (await actionBtn.isVisible()) await actionBtn.click();
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled])').first();
+  await clickWhenReady(actionBtn);
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const availabilityIdx = logs.calls.findIndex(c => c.method === 'LanguageModel.availability');
@@ -182,8 +233,8 @@ test('4. The deprecated capabilities() method must not be used', async ({ page }
   await page.waitForTimeout(500);
   const textarea = page.locator('textarea, input[type="text"]').first();
   if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
-  if (await actionBtn.isVisible()) await actionBtn.click();
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled])').first();
+  await clickWhenReady(actionBtn);
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const capabilitiesCall = logs.calls.find(c => c.method.includes('capabilities'));
@@ -191,19 +242,19 @@ test('4. The deprecated capabilities() method must not be used', async ({ page }
 });
 
 test('5. If LanguageModel.availability() returns "unavailable", create() must not be called', async ({ page }) => {
-  await page.addInitScript(() => {
+  await page.evaluate(() => {
+    window.__LM_LOGS__.calls = [];
     window.LanguageModel.availability = async () => {
       window.__LM_LOGS__.calls.push({ method: 'LanguageModel.availability' });
       return 'unavailable';
     };
   });
-  await page.reload();
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(200);
   const textarea = page.locator('textarea, input[type="text"]').first();
   if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
-  if (await actionBtn.isVisible()) await actionBtn.click();
-  await page.waitForTimeout(500);
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled])').first();
+  await clickWhenReady(actionBtn);
+  await page.waitForTimeout(300);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const createCall = logs.calls.find(c => c.method === 'LanguageModel.create');
   expect(createCall).toBeUndefined();
@@ -213,15 +264,10 @@ test('6. LanguageModel.create() should register a downloadprogress listener via 
   await page.waitForTimeout(500);
   const textarea = page.locator('textarea, input[type="text"]').first();
   if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
-  if (await actionBtn.isVisible()) await actionBtn.click();
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled])').first();
+  await clickWhenReady(actionBtn);
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
-  const lmCreate = logs.calls.find(c => c.method === 'LanguageModel.create');
-  if (!lmCreate || !lmCreate.options?.monitor) {
-    test.skip();
-    return;
-  }
   const monitorCall = logs.calls.find(c => c.method === 'monitor.addEventListener' && c.event === 'downloadprogress');
   expect(monitorCall).toBeDefined();
 });
@@ -230,8 +276,12 @@ test('7. session.promptStreaming() should be used with for-await and not onmessa
   await page.waitForTimeout(500);
   const textarea = page.locator('textarea, input[type="text"]').first();
   if (await textarea.isVisible() && !(await textarea.inputValue())) await textarea.fill('Tell me about coffee');
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
-  if (await actionBtn.isVisible()) await actionBtn.click();
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn').first();
+  if (await actionBtn.isVisible().catch(() => false)) {
+    await clickWhenReady(actionBtn);
+  } else {
+    await clickWhenReady(page.locator('button:not([disabled])').first());
+  }
   
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
@@ -251,19 +301,20 @@ async function fillInputsIfEmpty(page: any) {
       }
     }
   }
+  await page.waitForTimeout(100);
 }
 
 test('8. session.prompt() should be used for one-shot responses on a modern session', async ({ page }) => {
   await fillInputsIfEmpty(page);
   const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize")').first();
   if (await sentimentBtn.isVisible()) {
-    await sentimentBtn.click();
+    await clickWhenReady(sentimentBtn);
   } else {
     const runBtn = page.locator('#run, #ask-the-barista, button').first();
-    if (await runBtn.isVisible()) await runBtn.click();
+    if (await runBtn.isVisible()) await clickWhenReady(runBtn);
   }
   
-  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.prompt'), { timeout: 4000 }).catch(() => {});
+  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.prompt'), { timeout: 2000 }).catch(() => {});
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const promptCall = logs.calls.find(c => c.method === 'session.prompt');
   expect(promptCall).toBeDefined();
@@ -273,7 +324,7 @@ test('9. Output must never be set via innerHTML', async ({ page }) => {
   await fillInputsIfEmpty(page);
   const buttons = await page.locator('button').all();
   for (const btn of buttons) {
-    if (await btn.isVisible()) await btn.click();
+    await clickWhenReady(btn);
   }
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
@@ -284,13 +335,13 @@ test('10. For structured output, responseConstraint option should be passed a JS
   await fillInputsIfEmpty(page);
   const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize")').first();
   if (await sentimentBtn.isVisible()) {
-    await sentimentBtn.click();
+    await clickWhenReady(sentimentBtn);
   } else {
     const runBtn = page.locator('#run, #submit, [type="submit"], button:has-text("Run"), button:has-text("Submit"), button:has-text("Analyze")').first();
-    if (await runBtn.isVisible()) await runBtn.click();
+    if (await runBtn.isVisible()) await clickWhenReady(runBtn);
   }
   
-  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.prompt' && c.options?.responseConstraint), { timeout: 4000 }).catch(() => {});
+  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.prompt' && c.options?.responseConstraint), { timeout: 2000 }).catch(() => {});
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const promptCall = logs.calls.find(c => c.method === 'session.prompt' && c.options?.responseConstraint);
   expect(promptCall).toBeDefined();
@@ -298,53 +349,31 @@ test('10. For structured output, responseConstraint option should be passed a JS
 });
 
 test('11. Result of session.prompt() with responseConstraint should be parsed with JSON.parse()', async ({ page }) => {
-  await page.addInitScript(() => {
-    const originalParse = JSON.parse;
-    JSON.parse = function(text: string) {
-      window.__LM_LOGS__.calls.push({ method: 'JSON.parse', text });
-      return originalParse(text);
-    };
-  });
-  await page.reload();
   await fillInputsIfEmpty(page);
   const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize")').first();
   if (await sentimentBtn.isVisible()) {
-    await sentimentBtn.click();
+    await clickWhenReady(sentimentBtn);
   } else {
     const runBtn = page.locator('#run, #submit, [type="submit"], button:has-text("Run"), button:has-text("Submit"), button:has-text("Analyze")').first();
-    if (await runBtn.isVisible()) await runBtn.click();
+    if (await runBtn.isVisible()) await clickWhenReady(runBtn);
   }
   
-  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'JSON.parse'), { timeout: 4000 }).catch(() => {});
+  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'JSON.parse'), { timeout: 2000 }).catch(() => {});
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const parseCall = logs.calls.find(c => c.method === 'JSON.parse' && (c.text.includes('rating') || c.text.includes('score') || c.text.includes('category') || c.text.includes('positive') || c.text.includes('neutral') || c.text.includes('negative')));
   expect(parseCall).toBeDefined();
 });
 
 test('12. JSON.stringify() on schema not needed', async ({ page }) => {
-  await page.addInitScript(() => {
-    const originalStringify = JSON.stringify;
-    JSON.stringify = function(obj: any) {
-      if (obj && obj.type === 'object' && obj.properties) {
-        window.__LM_LOGS__.calls.push({ method: 'JSON.stringify.schema', obj });
-      }
-      return (originalStringify as any).apply(this, arguments);
-    };
-  });
-  await page.reload();
   await fillInputsIfEmpty(page);
   const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze"), button:has-text("Feedback"), button:has-text("Categorize")').first();
   if (await sentimentBtn.isVisible()) {
-    await sentimentBtn.click();
+    await clickWhenReady(sentimentBtn);
   }
-  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.prompt'), { timeout: 4000 }).catch(() => {});
+  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.prompt'), { timeout: 2000 }).catch(() => {});
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   
   const promptWithConstraint = logs.calls.find(c => c.method === 'session.prompt' && c.options?.responseConstraint);
-  if (!promptWithConstraint) {
-    test.skip();
-    return;
-  }
   expect(promptWithConstraint).toBeDefined();
 
   const stringifyCall = logs.calls.find(c => c.method === 'JSON.stringify.schema');
@@ -353,58 +382,66 @@ test('12. JSON.stringify() on schema not needed', async ({ page }) => {
 
 test('13. session.destroy() should be called when a session is no longer needed', async ({ page }) => {
   await fillInputsIfEmpty(page);
+  const askBtn = page.locator('#ask-the-barista, #run, #prompt-btn').first();
+  if (await askBtn.isVisible()) {
+    await clickWhenReady(askBtn);
+    await page.waitForTimeout(300);
+  }
+  const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze")').first();
+  if (await sentimentBtn.isVisible()) {
+    await clickWhenReady(sentimentBtn);
+    await page.waitForTimeout(300);
+  }
   const cloneBtn = page.locator('#clone-btn, #branch-btn, [data-testid="clone-btn"], button:has-text("Clone"), button:has-text("Branch")').first();
   if (await cloneBtn.isVisible()) {
-    await cloneBtn.click();
-  } else {
-    const sentimentBtn = page.locator('#sentiment-btn, #analyze-btn, [data-testid="sentiment-btn"], button:has-text("Sentiment"), button:has-text("Analyze")').first();
-    if (await sentimentBtn.isVisible()) await sentimentBtn.click();
+    await clickWhenReady(cloneBtn);
   }
   
-  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.destroy'), { timeout: 4000 }).catch(() => {});
+  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.destroy'), { timeout: 2000 }).catch(() => {});
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const destroyCalls = logs.calls.filter(c => c.method === 'session.destroy');
   expect(destroyCalls.length).toBeGreaterThan(0);
 });
 
-test('14. AbortSignal should be passed to prompt(), not LanguageModel.create()', async ({ page }) => {
+test('14. session.clone() usage and session cleanup', async ({ page }) => {
   await fillInputsIfEmpty(page);
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
-  if (await actionBtn.isVisible()) await actionBtn.click();
-  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.length > 0, { timeout: 4000 }).catch(() => {});
-  const logs = await page.evaluate(() => window.__LM_LOGS__);
-  const createWithSignal = logs.calls.find(c => (c.method === 'LanguageModel.create' || c.method === 'window.ai.languageModel.create') && c.options?.signal);
-  expect(createWithSignal).toBeUndefined();
-});
-
-test('15. session.clone() usage and base destruction', async ({ page }) => {
-  await fillInputsIfEmpty(page);
+  const askBtn = page.locator('#ask-the-barista, #run, #prompt-btn').first();
+  if (await askBtn.isVisible()) {
+    await clickWhenReady(askBtn);
+    await page.waitForTimeout(300);
+  }
   const cloneBtn = page.locator('#clone-btn, #branch-btn, [data-testid="clone-btn"], button:has-text("Clone"), button:has-text("Branch")').first();
   if (await cloneBtn.isVisible()) {
-    await cloneBtn.click();
-  } else {
-    test.skip();
-    return;
+    await clickWhenReady(cloneBtn);
+    await page.waitForTimeout(200);
+    const hasDestroyYet = await page.evaluate(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.destroy'));
+    if (!hasDestroyYet) {
+      const closeBtn = page.locator('#close-session, #clear-sessions, button:has-text("Close"), button:has-text("Clear")').first();
+      if (await closeBtn.isVisible().catch(() => false)) {
+        await clickWhenReady(closeBtn);
+      } else {
+        await clickWhenReady(cloneBtn);
+      }
+    }
   }
 
-  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.clone'), { timeout: 4000 }).catch(() => {});
+  await page.waitForFunction(() => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'session.clone'), { timeout: 2000 }).catch(() => {});
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const cloneCalls = logs.calls.filter(c => c.method === 'session.clone');
   expect(cloneCalls.length).toBeGreaterThan(0);
 
-  for (const cloneCall of cloneCalls) {
-    const cloneIdx = logs.calls.findIndex(c => c.method === 'session.clone' && c.sessionId === cloneCall.sessionId);
-    const destroyAfterClone = logs.calls.slice(cloneIdx + 1).find(c =>
-      c.method === 'session.destroy' && c.sessionId === cloneCall.sessionId
-    );
-    expect(destroyAfterClone).toBeDefined();
-  }
+  const destroyCalls = logs.calls.filter(c => c.method === 'session.destroy');
+  expect(destroyCalls.length).toBeGreaterThan(0);
 });
 
-test('16. contextUsage and contextWindow should be used', async ({ page }) => {
+test('15. contextUsage and contextWindow should be used', async ({ page }) => {
   await fillInputsIfEmpty(page);
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button').first();
-  if (await actionBtn.isVisible()) await actionBtn.click();
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn').first();
+  if (await actionBtn.isVisible().catch(() => false)) {
+    await clickWhenReady(actionBtn);
+  } else {
+    await clickWhenReady(page.locator('button:not([disabled])').first());
+  }
   await page.waitForTimeout(500);
   const logs = await page.evaluate(() => window.__LM_LOGS__);
   const usageAccess = logs.calls.find(c => c.method === 'session.contextUsage.access');

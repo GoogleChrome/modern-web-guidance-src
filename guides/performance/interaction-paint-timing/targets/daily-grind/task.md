@@ -1,0 +1,1 @@
+- Add client-side performance monitoring to the Daily Grind homepage to measure how long it takes for clicks on the navigation bar, "Order Now" button, and "Seasonal Favorites" cards, as well as client-side view switches, to finish painting visual updates on the page.

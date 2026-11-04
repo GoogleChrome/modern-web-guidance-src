@@ -1,0 +1,201 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..6aec9d0 100644
+--- a/index.html
++++ b/index.html
+@@ -25,9 +25,18 @@
+       line-height: 1.6;
+       color: var(--text);
+       background-color: var(--light);
++      overflow-wrap: anywhere;
+     }
+ 
+     /* Navigation */
++    .navigation-shell {
++      container: navigation / inline-size;
++      background: var(--primary);
++      position: sticky;
++      top: 0;
++      z-index: 1000;
++    }
++
+     nav {
+       background: var(--primary);
+       color: white;
+@@ -35,9 +44,7 @@
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
++      gap: 1rem;
+     }
+ 
+     .logo {
+@@ -48,11 +55,15 @@
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: wrap;
++      justify-content: center;
++      gap: 0.75rem 1.25rem;
+       list-style: none;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      display: flex;
++      align-items: center;
+     }
+ 
+     nav a {
+@@ -73,8 +84,15 @@
+     }
+ 
+     /* Hero Section */
++    .hero-shell {
++      container: hero / inline-size;
++    }
++
+     .hero {
+-      height: 60vh;
++      width: 100%;
++      min-width: 0;
++      min-height: 60dvh;
++      aspect-ratio: 16 / 7;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,16 +103,17 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 2rem 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2rem, 5cqi, 3rem);
+       margin-bottom: 1rem;
+     }
+ 
+     /* Content Sections */
+     .container {
++      container: favorites / inline-size;
+       max-width: 1100px;
+       margin: 40px auto;
+       padding: 0 20px;
+@@ -102,12 +121,13 @@
+ 
+     .grid {
+       display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
++      grid-template-columns: minmax(0, 1fr);
+       gap: 20px;
+       margin-top: 20px;
+     }
+ 
+     .card {
++      min-width: 0;
+       background: white;
+       padding: 20px;
+       border-radius: 8px;
+@@ -136,6 +156,7 @@
+     }
+ 
+     footer {
++      container: footer / inline-size;
+       background: var(--secondary);
+       text-align: center;
+       padding: 40px 20px;
+@@ -147,16 +168,54 @@
+     }
+ 
+     .footer-links a {
++      display: inline-block;
+       margin: 0 10px;
+       color: var(--text);
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @container navigation (max-width: 48rem) {
++      nav {
++        flex-direction: column;
++        padding-inline: 20px;
++      }
++
++      .logo {
++        font-size: clamp(1rem, 5cqi, 1.5rem);
++        text-align: center;
++      }
++    }
++
++    @container hero (max-width: 36rem) {
++      .hero {
++        aspect-ratio: 4 / 3;
++      }
++    }
++
++    @container favorites (min-width: 33rem) {
++      .grid {
++        grid-template-columns: repeat(2, minmax(0, 1fr));
++      }
++    }
++
++    @container favorites (min-width: 50rem) {
++      .grid {
++        grid-template-columns: repeat(3, minmax(0, 1fr));
++      }
++    }
++
++    @container footer (max-width: 30rem) {
++      .footer-links a {
++        margin: 0.25rem 0.5rem;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
++  <div class="navigation-shell">
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -167,12 +226,15 @@
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
++  </div>
+ 
++  <div class="hero-shell">
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
++  </div>
+ 
+   <main class="container">
+     <section>
+diff --git a/package.json b/package.json
+index 2bd4d77..43e7284 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"const fs = require('node:fs'); fs.mkdirSync('dist', { recursive: true }); fs.copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

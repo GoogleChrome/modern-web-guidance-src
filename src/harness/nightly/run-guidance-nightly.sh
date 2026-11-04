@@ -28,7 +28,7 @@ EOF
 # Default values
 PREFIX="nightly"
 AGENTS_TO_RUN="antigravity_cli claude_code codex_cli"
-WORKERS="20"
+WORKERS=""
 RUN_LOCAL="false"
 
 # Parse flags

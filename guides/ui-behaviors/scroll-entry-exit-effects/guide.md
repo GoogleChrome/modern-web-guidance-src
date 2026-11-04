@@ -152,11 +152,13 @@ In browsers with built-in support for scroll-driven animations, ALWAYS use the n
 
 Note that not every effect can be recreated using the fallbacks approach.
 
-For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses an `IntersectionObserver` to track the visibility of the `.wrapper` element and updates the `transform` property of the layers based on the scroll position.
+For this use-case specifically, the following script applies the fallback for browsers that do not support scroll-driven animations. It uses an `IntersectionObserver` to track the visibility of the `.wrapper` element and updates the `transform` property of the layers based on the scroll position. The `prefers-reduced-motion` media query in the CSS doesn't affect the inline styles the script sets, so the script checks the preference with `matchMedia()` and only runs when the user has no reduced-motion preference.
 
 ```html
 <script>
-  if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)')) {
+  // Like the CSS, the fallback only runs when the user has no reduced-motion preference.
+  if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)') &&
+      matchMedia('(prefers-reduced-motion: no-preference)').matches) {
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
