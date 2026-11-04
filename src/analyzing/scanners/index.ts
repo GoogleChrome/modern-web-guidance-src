@@ -497,7 +497,6 @@ async function walkDirectory(currentDir: string, state: WalkDirState): Promise<v
     if (entry.isDirectory()) {
       const dirLower = entry.name.toLowerCase();
       if (
-        dirLower.startsWith('.') ||
         BUILD_OR_INSTALL_DIR_SEGMENTS.has(dirLower) ||
         state.fileFilterOptions?.customIgnoredDirs?.has(dirLower) ||
         (state.fileFilterOptions?.excludeCorpusNonAppDirs &&
@@ -537,6 +536,10 @@ async function tryEnumerateGitFiles(
   }
 
   const rawPaths = stdout.split('\0').filter(Boolean);
+  if (rawPaths.length === 0) {
+    return false;
+  }
+
   for (const rawPath of rawPaths) {
     if (state.fileMap.size >= state.maxFiles) {
       break;

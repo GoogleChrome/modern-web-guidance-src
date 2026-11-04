@@ -376,7 +376,7 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
     },
   };
 
-  it('excludes agent and tooling dot-directories (.agents, .claude, .gemini, .cursor, .codex, .antigravitycli)', async (t) => {
+  it('excludes agent and tooling dot-directories (.agents, .claude, .gemini, .cursor, .codex, .antigravitycli, etc.)', async (t) => {
     const requiredAgentDirs = [
       '.agents',
       '.claude',
@@ -384,6 +384,17 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
       '.cursor',
       '.codex',
       '.antigravitycli',
+      '.vscode',
+      '.idea',
+      '.github',
+      '.yarn',
+      '.pnpm-store',
+      '.svelte-kit',
+      '.astro',
+      '.vercel',
+      '.netlify',
+      '.turbo',
+      '.parcel-cache',
     ];
 
     for (const dir of requiredAgentDirs) {
@@ -401,6 +412,8 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
       '.cursor/rules/style.js',
       '.codex/skills/runner.js',
       '.antigravitycli/scripts/automation.mjs',
+      '.vscode/settings.json',
+      '.github/workflows/ci.js',
     ];
 
     for (const p of agentPaths) {
@@ -412,6 +425,9 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
     }
 
     assert.equal(shouldScanFile('src/components/button.tsx'), true);
+    // Legitimate dot-directories like .storybook and .vitepress are not blocked
+    assert.equal(shouldScanFile('.storybook/preview.js'), true);
+    assert.equal(shouldScanFile('.vitepress/theme/index.ts'), true);
   });
 
   it('ignores custom gitignored build directories via git ls-files while scanning untracked non-ignored files', async () => {
@@ -517,6 +533,36 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
       assert.equal(findings[0]?.file, 'src/app.js');
     } finally {
       await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to directory walker when target directory is inside a gitignored folder of enclosing git repo', async () => {
+    const enclosingRepo = await mkdtemp(join(tmpdir(), 'git-enclosing-repo-'));
+    try {
+      await execFileAsync('git', ['init', '-q'], { cwd: enclosingRepo });
+      await writeFile(join(enclosingRepo, '.gitignore'), 'tmp/\n');
+      await execFileAsync('git', ['add', '.gitignore'], { cwd: enclosingRepo });
+      await execFileAsync(
+        'git',
+        ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'init'],
+        { cwd: enclosingRepo },
+      );
+
+      // Create a sub-app inside the gitignored tmp/ directory
+      const subAppDir = join(enclosingRepo, 'tmp', 'sub-app');
+      await mkdir(subAppDir, { recursive: true });
+      await writeFile(
+        join(subAppDir, 'app.js'),
+        'function subApp() { scanMe(); }',
+      );
+
+      // Scanning the sub-app directly must discover and scan app.js via fallback to walker
+      const findings = await scanRepoFiles(subAppDir, [scanMeRule]);
+
+      assert.equal(findings.length, 1, 'Must find app.js in subAppDir');
+      assert.equal(findings[0]?.file, 'app.js');
+    } finally {
+      await rm(enclosingRepo, { recursive: true, force: true });
     }
   });
 });

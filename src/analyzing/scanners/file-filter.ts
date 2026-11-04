@@ -33,6 +33,17 @@ export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   '.cursor',
   '.codex',
   '.antigravitycli',
+  '.vscode',
+  '.idea',
+  '.github',
+  '.yarn',
+  '.pnpm-store',
+  '.svelte-kit',
+  '.astro',
+  '.vercel',
+  '.netlify',
+  '.turbo',
+  '.parcel-cache',
 ]);
 
 const CHECKED_IN_VENDOR_DIR_SEGMENTS: ReadonlySet<string> = new Set([
@@ -313,7 +324,7 @@ export function isVendoredOrGeneratedPath(
 
   return (
     isExcludedCorpusNonAppPath(normalized) ||
-    dirSegments.some((seg) => ignoredDirs.has(seg) || seg.startsWith('.')) ||
+    dirSegments.some((seg) => ignoredDirs.has(seg)) ||
     (options?.excludeCorpusNonAppDirs === true && isCorpusNonAppPath(normalized)) ||
     DEFAULT_IGNORED_EXTENSIONS.some((ext) => normalized.endsWith(ext))
   );
@@ -463,15 +474,7 @@ export function shouldScanFile(
  * (e.g. node_modules, dist, build, out, .cache) that should never be scanned.
  */
 export function isBuildOrInstallPath(relPath: string): boolean {
-  const normalized = normalizePath(relPath);
-  const segments = normalized
-    .split('/')
-    .filter((s) => s && s !== '.' && s !== '..');
-  const dirSegments = segments.slice(0, -1);
-  return (
-    hasPathSegment(normalized, BUILD_OR_INSTALL_DIR_SEGMENTS) ||
-    dirSegments.some((seg) => seg.startsWith('.'))
-  );
+  return hasPathSegment(normalizePath(relPath), BUILD_OR_INSTALL_DIR_SEGMENTS);
 }
 
 /**
