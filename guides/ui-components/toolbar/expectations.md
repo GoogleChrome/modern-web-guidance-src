@@ -9,6 +9,6 @@
 - Pressing `Home` on a toolbar item moves focus to the first item.
 - Clicking a toggle button that is not part of a mutually exclusive set flips its `aria-pressed` value between `true` and `false`.
 - Action buttons that have no on/off state do not have an `aria-pressed` attribute.
-- Each icon-only toolbar button has an `interestfor` attribute whose value is the id of an element with `popover="hint"`.
-- In a horizontal toolbar, each tooltip hint is positioned along the block axis with `position-area` (`block-end` or `block-start`), not the inline axis.
+- In a browser that supports interest invokers and anchor positioning, each icon-only toolbar button upgrades its `title` tooltip at runtime to an `interestfor` attribute referencing an element with `popover="hint"`, or retains its non-empty `title` where unsupported.
+- In a horizontal toolbar, when `popover="hint"` tooltips are present, each hint is positioned along the block axis with `position-area` (`block-end` or `block-start`), not the inline axis.
 - No tooltip element or its invoker button sets `role="tooltip"`, `aria-describedby`, or `aria-details` manually.
