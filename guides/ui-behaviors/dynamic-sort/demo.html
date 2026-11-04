@@ -179,11 +179,16 @@
 
     const currency = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' });
 
-    function reorder(container, nodesById, key) {
+    // Demo only: any source of order works. This one sorts the data and maps it to nodes.
+    function orderedNodes(nodesById, key) {
+      return items.toSorted(comparators[key]).map((item) => nodesById.get(item.id));
+    }
+
+    function reorder(container, nodes) {
       const move = 'moveBefore' in Element.prototype
         ? (node) => container.moveBefore(node, null)
         : (node) => container.append(node);
-      for (const item of items.toSorted(comparators[key])) move(nodesById.get(item.id));
+      for (const node of nodes) move(node);
     }
 
     // Scope element is the group being sorted, so the other group is unaffected.
@@ -213,7 +218,7 @@
     }
 
     sortSelect.addEventListener('change', () => {
-      sortWithTransition(list, () => reorder(list, cardsById, sortSelect.value));
+      sortWithTransition(list, () => reorder(list, orderedNodes(cardsById, sortSelect.value)));
       // One message per change, describing the result.
       gridStatus.textContent = `Sorted by ${sortSelect.selectedOptions[0].text}, ${items.length} items`;
     });
@@ -245,7 +250,7 @@
       directionButton.textContent = descending ? 'Descending' : 'Ascending';
 
       const value = `${sortKey}-${descending ? 'desc' : 'asc'}`;
-      sortWithTransition(table, () => reorder(tbody, rowsById, value));
+      sortWithTransition(table, () => reorder(tbody, orderedNodes(rowsById, value)));
       tableStatus.textContent =
         `Sorted by ${sortKey}, ${descending ? 'descending' : 'ascending'}, ${items.length} items`;
     }
@@ -262,8 +267,8 @@
       commitButtons();
     });
 
-    reorder(list, cardsById, sortSelect.value);
-    reorder(tbody, rowsById, 'name-asc');
+    reorder(list, orderedNodes(cardsById, sortSelect.value));
+    reorder(tbody, orderedNodes(rowsById, 'name-asc'));
   </script>
 </body>
 

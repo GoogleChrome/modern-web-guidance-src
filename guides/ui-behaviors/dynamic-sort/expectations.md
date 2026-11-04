@@ -1,12 +1,8 @@
-- A visible sort control (a `<select>`, radio group, or buttons) lets the user choose between at least two sort orders.
-- Choosing a sort order reorders the list items in the DOM so DOM order matches visual order.
-- Text values are sorted with an `Intl.Collator` instance using `numeric: true`.
-- Price values are sorted by numeric comparison, so `9` sorts before `10`.
-- Item elements captured before a sort are the same connected elements after the sort, rather than being recreated.
+- A user action reorders the list items in the DOM so DOM order matches visual order.
+- Item elements captured before a reorder are the same connected elements after the reorder, rather than being recreated.
 - Items are reordered with `moveBefore()` when `'moveBefore' in Element.prototype` is true.
 - The reorder runs inside a view transition started with `startViewTransition()`, guarded by feature detection.
 - Each list item has a unique `view-transition-name`, such as `match-element`.
-- The list element does not have `aria-live`, and one `role="status"` region has its text set once per sort change.
-- Focus remains on the activated sort control after the sort completes.
+- The list element does not have `aria-live`, and one `role="status"` region has its text set once per reorder.
+- Focus remains on the activated control after the reorder completes.
 - View transition animations are disabled when `prefers-reduced-motion: reduce` is active.
-- The sort control exposes its current state to assistive technology, through the selected option of a `<select>`, the checked radio, or `aria-pressed` on the active button.
