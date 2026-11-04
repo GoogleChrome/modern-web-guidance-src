@@ -9,7 +9,9 @@ import { isTokenShaped, MIN_TOKEN_LENGTH } from './scrub.ts';
  * `PUBLIC_EVALS_FORBIDDEN_TOKENS` environment variable (comma-separated, so
  * operator names are supplied at run time and never checked in), and, outside
  * CI, the current OS user. Every path that builds public output must call
- * this so each publisher scrubs with the same list.
+ * this so each publisher scrubs with the same list. Kept as its own module
+ * because both CLIs (`build.ts`, `publish-cli.ts`) import it and each runs its
+ * `main()` on import, so neither can host it.
  *
  * `requireList` (default: on in CI) refuses to proceed without the environment
  * list, so nothing that publishes can run with only the fixed patterns.

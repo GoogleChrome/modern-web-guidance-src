@@ -8,20 +8,19 @@ import type { SuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { EvalsReport, RunResult } from '../lib/metrics.ts';
 import { newestFirst, overrideFor, selectSuites, suiteCreatedAt, withinMaxAge, withinSuiteCaps } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
-import { OverrideError } from './overrides.ts';
 import { EXCLUDED_PATH_RE, MAX_PATCH_BYTES, patchFromFiles, preparePatch } from './patch.ts';
 import type { PreparedPatch } from './patch.ts';
 import {
   assertPublishable,
   NotPublishableError,
+  OverrideError,
   PUBLIC_AGENTS,
   PUBLIC_ASSERTION_FIELDS,
   PUBLIC_RUN_FIELDS,
   PUBLIC_SUITE_FIELDS,
-} from './public-fields.ts';
-import type { SkipCode } from './public-fields.ts';
-import { rebuildEvals } from './rebuild-evals.ts';
-import type { PublicEvals } from './rebuild-evals.ts';
+  rebuildEvals,
+} from './rebuild-evals.ts';
+import type { PublicEvals, SkipCode } from './rebuild-evals.ts';
 import { assertClean, harvestUserSegments, harvestUserSegmentsIn, LEAK_PATTERNS, LeakError, scrubString } from './scrub.ts';
 import type { SuiteRef, SuiteStore } from './suite-store.ts';
 
