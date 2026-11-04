@@ -435,6 +435,7 @@
     }
 
     // The single code path for state: controls only scroll; this reflects where scrolling ended.
+    let settled = null;
     function sync() {
       pending = null;
       const item = nearest();
@@ -443,15 +444,16 @@
         parkedFor = i;
         park(item);
       }
-      status.textContent = `Slide ${i + 1} of ${slides.length}`;
+      if (settled && item !== settled) {
+        status.textContent = `Slide ${i + 1} of ${slides.length}`;
+      }
+      settled = item;
       mark(item);
       prevBtn.disabled = !neighbor(item, -1);
       nextBtn.disabled = !neighbor(item, 1);
     }
 
     onSettled(sync);
-    // Start on the first slide: with the last slide parked before it, the track must not start on that one.
-    if (loops) show(slides[0], "instant");
     sync();
   </script>
 </body>
