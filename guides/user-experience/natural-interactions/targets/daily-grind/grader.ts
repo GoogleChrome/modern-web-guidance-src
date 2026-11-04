@@ -268,14 +268,11 @@ test.describe('natural-interactions Target Grader', () => {
     });
 
     test('Expectation 6: A popover or dropdown that scales open computes a transform-origin on its edge nearest its trigger', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 2400 });
+
       const btn = page.locator('button').filter({ hasText: /view details/i }).first();
       await expect(btn).toHaveCount(1);
 
-      await btn.evaluate((el) => {
-        const rect = el.getBoundingClientRect();
-        window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - 120), behavior: 'instant' });
-      });
-      await page.waitForTimeout(100);
       await btn.click();
 
       const originAnalysis = await page.evaluate(() => {
@@ -301,16 +298,12 @@ test.describe('natural-interactions Target Grader', () => {
         const pRect = popover.getBoundingClientRect();
         const tRect = trigger.getBoundingClientRect();
 
-        // Check if the popover was explicitly positioned above the trigger (unless it uses
-        // position-try-fallbacks, where @position-try cannot override transform-origin when flipping).
-        const posTry = cs.getPropertyValue('position-try-fallbacks').trim();
-        const hasPositionTry = Boolean(posTry && posTry !== 'none');
-        const explicitlyAbove = !hasPositionTry && pRect.bottom <= tRect.top + 20 && pRect.top > 0;
-        const isNearestYEdge = hasPositionTry
-          ? oy <= 5 || Math.abs(oy - pRect.height) <= 5
-          : explicitlyAbove
-            ? Math.abs(oy - pRect.height) <= 5
-            : oy <= 5;
+        // If the popover is positioned above the trigger, its nearest edge is bottom (oy ~ pRect.height);
+        // if positioned below the trigger, its nearest edge is top (oy ~ 0).
+        const explicitlyAbove = pRect.bottom <= tRect.top + 20 && pRect.top > 0;
+        const isNearestYEdge = explicitlyAbove
+          ? Math.abs(oy - pRect.height) <= 5
+          : oy <= 5;
 
         return {
           transformOrigin: cs.transformOrigin,
