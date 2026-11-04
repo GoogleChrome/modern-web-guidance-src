@@ -1,3 +1,5 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   test,
   expect,
@@ -14,6 +16,22 @@ import {
 
 // @ts-expect-error TS1470: Playwright executes grader.ts as an ES module where import.meta.url is available
 const targetFiles: string[] = getTargetFiles(import.meta.url);
+const indexFile =
+  targetFiles.find((f) => path.basename(f) === 'index.html') ?? targetFiles[0] ?? '';
+const targetDir = indexFile ? path.dirname(indexFile) : process.cwd();
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+};
 
 function collectAllCssRules(ruleList: Iterable<CSSRule>): CSSRule[] {
   const result: CSSRule[] = [];
@@ -134,8 +152,30 @@ test.describe('styling-web-components Target Grader', () => {
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
   test.describe('Browser tests', () => {
-    test.beforeEach(async ({ page, TARGET_URL }) => {
-      await page.goto(TARGET_URL);
+    test.beforeEach(async ({ page }) => {
+      await page.route('http://localhost/**', async (route) => {
+        const url = new URL(route.request().url());
+        const relPath =
+          url.pathname === '/' || url.pathname === '/index.html'
+            ? 'index.html'
+            : decodeURIComponent(url.pathname.replace(/^\/+/, ''));
+        const filePath = path.resolve(targetDir, relPath);
+        if (
+          filePath.startsWith(targetDir) &&
+          fs.existsSync(filePath) &&
+          fs.statSync(filePath).isFile()
+        ) {
+          const ext = path.extname(filePath).toLowerCase();
+          await route.fulfill({
+            status: 200,
+            contentType: MIME_TYPES[ext] ?? 'application/octet-stream',
+            body: fs.readFileSync(filePath),
+          });
+        } else {
+          await route.fulfill({ status: 404, body: 'Not found' });
+        }
+      });
+      await page.goto('http://localhost/index.html');
     });
 
     test('Setting a public theming custom property on a Light DOM ancestor changes an internal element computed style', async ({
@@ -190,9 +230,9 @@ test.describe('styling-web-components Target Grader', () => {
           'outlineColor',
         ] as const;
 
-        // Snapshot internal element styles before setting custom properties on the Light DOM ancestor
+        // Snapshot host and internal element styles before setting custom properties on the Light DOM ancestor
         const beforeSnapshots = customElementsWithShadow.map((host) => {
-          const internals = Array.from(host.shadowRoot!.querySelectorAll('*'));
+          const internals = [host, ...Array.from(host.shadowRoot!.querySelectorAll('*'))];
           return internals.map((el) => {
             const cs = window.getComputedStyle(el);
             return trackedProps.map((p) => cs[p]);
@@ -214,7 +254,7 @@ test.describe('styling-web-components Target Grader', () => {
 
         let internalStyleChanged = false;
         customElementsWithShadow.forEach((host, hostIdx) => {
-          const internals = Array.from(host.shadowRoot!.querySelectorAll('*'));
+          const internals = [host, ...Array.from(host.shadowRoot!.querySelectorAll('*'))];
           internals.forEach((el, elIdx) => {
             const cs = window.getComputedStyle(el);
             const before = beforeSnapshots[hostIdx][elIdx];
