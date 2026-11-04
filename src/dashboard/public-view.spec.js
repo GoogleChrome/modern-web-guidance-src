@@ -279,6 +279,33 @@ test.describe('Public view', () => {
     expect(googleRequests).toEqual([]);
   });
 
+  test('guide Prev / Next navigation keeps ?source=public', async ({ page }) => {
+    const { googleRequests } = await servePublicCopy(page);
+    await page.goto('/guide.html?guide=security&source=public');
+    await expect(page.locator('#guide-name-header')).toHaveText('security');
+
+    await page.locator('#next-guide-btn').click();
+    await page.waitForURL(url => url.pathname.endsWith('/guide.html') && url.searchParams.get('guide') !== 'security');
+    expect(new URL(page.url()).searchParams.get('source')).toBe('public');
+    await expect(page.locator('.timeline-point').first()).toBeVisible();
+    expect(googleRequests).toEqual([]);
+  });
+
+  test('a capped agent.patch placeholder is shown as text, not as an empty diff', async ({ page }) => {
+    await servePublicCopy(page);
+    const placeholder = '# diff omitted: 1.5 MB exceeds the 1 MB cap\n';
+    // Registered after servePublicCopy so it wins for this one artifact.
+    await page.context().route('**/public-evals/**/agent.patch', route => route.fulfill({ body: placeholder, contentType: 'text/plain' }));
+    await page.goto(`/dashboard.html?testId=${SUITE}&source=public`);
+
+    const security = page.locator('.task-accordion[data-guide="security"]').first();
+    await security.locator('.task-toggle').click();
+    await security.locator('.tfoot-action-btn', { hasText: 'Diff' }).first().click();
+    await expect(page.locator('#modal')).toContainText('# diff omitted: 1.5 MB exceeds the 1 MB cap');
+    await expect(page.locator('#modal .diff-file-details')).toHaveCount(0);
+    await expect(page.locator('#modal')).not.toContainText('diff --git');
+  });
+
   test('a missing public manifest is not an error', async ({ page }) => {
     const { googleRequests } = await servePublicCopy(page);
     // Registered after servePublicCopy so it takes precedence over the fixture for every public-evals file.
@@ -419,6 +446,27 @@ test.describe('Signed-in view', () => {
     await expect(page.locator('#auth-btn')).toHaveText('Sign out');
     expect(authHeaders).toContain('Bearer outsider-token');
     expect(await page.evaluate(() => localStorage.getItem('gcs_access_token'))).toBe('outsider-token');
+    expect(googleRequests).toEqual([]);
+  });
+
+  test('after a 403 fallback, breakdown guide links carry source=public so the guide page does not bounce', async ({ page }) => {
+    const { googleRequests } = await servePublicCopy(page, { token: 'outsider-token' });
+    await mockPrivateBucket(page, { status: 403 });
+    const origin = await serveAsGitHubPages(page);
+
+    await page.goto(`${origin}/`);
+    await expect(page.locator('.suite-table-row', { hasText: 'codex' }).first().locator('.source-cell')).toHaveText('public');
+
+    const drawer = page.locator('#breakdowns');
+    await drawer.locator('summary').click();
+    const guideLink = page.locator('a.pivot-link', { hasText: 'security' }).first();
+    await expect(guideLink).toHaveAttribute('href', /source=public/);
+
+    await guideLink.click();
+    await page.waitForURL(url => url.pathname === '/guide.html');
+    await expect(page.locator('#guide-name-header')).toHaveText('security');
+    await expect(page.locator('.timeline-point').first()).toBeVisible();
+    expect(new URL(page.url()).searchParams.get('source')).toBe('public');
     expect(googleRequests).toEqual([]);
   });
 

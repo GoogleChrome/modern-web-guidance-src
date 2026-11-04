@@ -2011,7 +2011,9 @@ async function viewContent(fileName, filePath) {
     try {
         const text = await api.getFileText(filePath);
 
-        if (fileName.endsWith('diff.txt') || fileName.endsWith('.patch')) {
+        // A capped patch is a one-line `# diff omitted: ...` placeholder with no `diff --git`
+        // header, so it is shown as plain text rather than as an empty per-file diff.
+        if ((fileName.endsWith('diff.txt') || fileName.endsWith('.patch')) && /^diff --git /m.test(text)) {
             body.innerHTML = '';
             body.appendChild(renderBackButton());
 

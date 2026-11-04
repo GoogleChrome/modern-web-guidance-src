@@ -432,16 +432,27 @@ async function fetchEvalsUncached(testId) {
     return res.json();
 }
 
+/**
+ * The data source this page actually loaded from, for the hero and for links to
+ * other pages. Usually `resolveDataSource()`, except after a 403 sent a signed-in
+ * visitor to the public copy: links must then say `source=public` or the suite
+ * page would try the bucket again and bounce back here.
+ * @returns {import('./api.js').DataSource}
+ */
+function activeDataSource() {
+    const resolved = resolveDataSource();
+    return resolved === 'remote' && loadedManifestSource ? loadedManifestSource : resolved;
+}
+
 function syncHero() {
     const suites = Object.values(allTestData);
-    const resolved = resolveDataSource();
-    const source = resolved === 'remote' && loadedManifestSource ? loadedManifestSource : resolved;
-    updateShowcaseFromSuites(suites);
+    const source = activeDataSource();
+    updateShowcaseFromSuites(suites, { source });
     updateHeroFromSuites(suites, {
         source,
         fetchEvals: fetchEvalsForHero,
         onHydrated: () => {
-            updateShowcaseFromSuites(suites, { hydrated: true });
+            updateShowcaseFromSuites(suites, { hydrated: true, source });
             refreshFilterOptions();
             renderSuites();
             const drawer = document.getElementById('breakdowns');
@@ -1396,7 +1407,8 @@ function renderPivotInsights() {
             let displayTitle = key;
             if (filterKey === 'guide') {
                 const modeQuery = onlyA11y ? '&mode=a11y' : '';
-                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
+                const sourceQuery = `&source=${encodeURIComponent(activeDataSource())}`;
+                nameHtml = `<a class="pivot-link" href="guide.html?guide=${encodeURIComponent(key)}${modeQuery}${sourceQuery}" interestfor="barbell-tooltip">${escapeHtml(key)}</a>`;
                 effSummary = `<span class="pivot-trials">${items.length} ${items.length === 1 ? 'run' : 'runs'}</span>`;
             } else if (filterKey === 'dimension') {
                 const subMeta = A11Y_SUBCATEGORIES.find(s => s.id === key);
