@@ -108,23 +108,6 @@ Update the region when the draggable element is moved:
 
 The message can be removed after a second, as it will be announced and no longer relevant.
 
-```html
-<div class="visually-hidden" aria-live="polite"></div>
-```
-
-CSS to visually hide the region so that it is still available for screen readers:
-
-```css
-.visually-hidden {
-  clip-path: inset(50%);
-  height: 1px;
-  overflow: hidden;
-  position: absolute;
-  white-space: nowrap;
-  width: 1px;
-}
-```
-
 As the keyboard interaction may not be obvious for some users, provide a help button in the draggable element that reveals the keystrokes to perform the operation.
 
 ## Fallback strategies
