@@ -36,7 +36,7 @@ A user expresses interest in the additional information by hovering or focusing 
 <a interestfor="tooltip" href="/docs/dom">Tooltip trigger</a>
 ```
 
-Non-button or inline text triggers should include a visual indicator, such as a dashed underline, so users know supplemental information is available.
+The trigger must have a visual indicator to indicate that there is additional information available by interacting with the trigger.
 
 ### Accessibility built in to `interestfor`
 
