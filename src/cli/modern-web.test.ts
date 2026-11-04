@@ -106,4 +106,47 @@ describe('modern-web CLI', () => {
       fs.rmSync(redirectedPath, { force: true });
     }
   });
+
+  it('handles analyze with leading and trailing --skill-version without shifting positional arguments', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
+    try {
+      // Leading --skill-version
+      const leadingRes = runCLI(['--skill-version', '2026_01_01-test', 'analyze', tempDir, '--json']);
+      assert.strictEqual(leadingRes.status, 0);
+      const leadingData = JSON.parse(leadingRes.stdout);
+      assert.strictEqual(leadingData.totalFindings, 0);
+      assert.strictEqual(leadingData.targetDir, tempDir);
+      assert.match(leadingData.note, /\d+ supported analyzer rules/);
+
+      // Trailing --skill-version
+      const trailingRes = runCLI(['analyze', tempDir, '--json', '--skill-version', '2026_01_01-test']);
+      assert.strictEqual(trailingRes.status, 0);
+      const trailingData = JSON.parse(trailingRes.stdout);
+      assert.strictEqual(trailingData.totalFindings, 0);
+      assert.strictEqual(trailingData.targetDir, tempDir);
+      assert.match(trailingData.note, /\d+ supported analyzer rules/);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('forwards --help to analyze when --help appears before analyze', () => {
+    const res = runCLI(['--help', 'analyze']);
+    assert.strictEqual(res.status, 0);
+    assert.ok(res.stdout.includes('Usage: modern-web-guidance analyze'));
+  });
+
+  it('emits skill update warning when running analyze with outdated --skill-version', () => {
+    const versionPath = path.resolve(import.meta.dirname, 'skill-version.txt');
+    fs.writeFileSync(versionPath, '2026_05_16-latest12\n');
+    try {
+      const res = runCLI(['--skill-version', '2025_01_01-oldsha', 'analyze', '--help']);
+      assert.strictEqual(res.status, 0);
+      assert.ok(res.stdout.includes('Usage: modern-web-guidance analyze'));
+      assert.ok(res.stderr.includes('Warning: a new SKILL.md is available'));
+      assert.ok(res.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
+    } finally {
+      fs.rmSync(versionPath, { force: true });
+    }
+  });
 });

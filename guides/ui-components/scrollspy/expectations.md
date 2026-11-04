@@ -5,3 +5,4 @@
 - The `aria-current` attribute is set to `"true"` on the navigation link corresponding to the visible section and `"false"` on all other links.
 - The `aria-current` state is synchronized with the visible section when scrolling stops (e.g., using a `scrollend` event listener).
 - An `IntersectionObserver` fallback applies the `target-current` class to the active navigation link in browsers that do not support the native CSS scrollspy features.
+- The section target element that has an ID, acting as the target for the related navigation link, has a `tabindex="-1"` attribute, so that it can receive focus.

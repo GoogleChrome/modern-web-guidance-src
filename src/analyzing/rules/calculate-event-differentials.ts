@@ -1,0 +1,261 @@
+import {
+  Node,
+  SyntaxKind,
+  type CallExpression,
+  type SourceFile,
+} from 'ts-morph';
+import type {
+  AnalyzerMatch,
+  AnalyzerRule,
+  JsMatcherContext,
+  JsRuleMatcher,
+} from '../schema.ts';
+import { isProtectedByFeatureGuard, unwrapExpression } from '../scanners/ast-helpers.ts';
+
+export const FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH = '77481d042afa';
+
+const DURATION_FEATURE_TOKENS = [
+  'Intl.DurationFormat',
+  'DurationFormat',
+  'Temporal.Duration',
+  'Temporal',
+] as const;
+
+const DURATION_FUNCTION_NAME_REGEX =
+  /^(?:format|pretty)Duration\b|^secondsTo(?:Hms|Time|Duration)|^msTo(?:Time|Duration)/i;
+
+const DURATION_UNIT_LABELS = new Set([
+  'h',
+  'hr',
+  'hrs',
+  'hour',
+  'hours',
+  'm',
+  'min',
+  'mins',
+  'minute',
+  'minutes',
+  's',
+  'sec',
+  'secs',
+  'second',
+  'seconds',
+  'd',
+  'day',
+  'days',
+]);
+
+/**
+ * Checks whether a call expression is humanizeDuration(...), prettyMs(...),
+ * or moment/dayjs .duration(...).humanize() / .format(...).
+ */
+function isKnownDurationCall(callExpr: CallExpression): string | null {
+  const expr = unwrapExpression(callExpr.getExpression());
+
+  if (Node.isIdentifier(expr)) {
+    const name = expr.getText();
+    if (name === 'humanizeDuration' || name === 'prettyMs') {
+      return `Call to ${name}(...) can be modernized with native Temporal.Duration and Intl.DurationFormat.`;
+    }
+  }
+
+  if (Node.isPropertyAccessExpression(expr)) {
+    const methodName = expr.getName();
+    if (methodName === 'humanize' || methodName === 'format') {
+      const caller = unwrapExpression(expr.getExpression());
+      const callerText = caller.getText();
+      // Must be explicitly chained from moment.duration or dayjs.duration
+      if (
+        callerText.includes('moment.duration') ||
+        callerText.includes('dayjs.duration')
+      ) {
+        return `Method call .${methodName}() on duration object can be modernized with native Temporal.Duration and Intl.DurationFormat.`;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Checks whether a function node is a custom duration formatting function
+ * computing multiple time units (hours, minutes, seconds) via division/modulo
+ * and returning a formatted string.
+ */
+function isCustomDurationFormatterFunction(fnNode: Node): boolean {
+  // Duration formatting functions are focused small helpers (< 60 lines)
+  const lineCount = fnNode.getEndLineNumber() - fnNode.getStartLineNumber();
+  if (lineCount > 60) {
+    return false;
+  }
+
+  let name = '';
+  if (
+    Node.isFunctionDeclaration(fnNode) ||
+    Node.isMethodDeclaration(fnNode)
+  ) {
+    name = fnNode.getName() ?? '';
+  } else {
+    const parent = fnNode.getParent();
+    if (parent && Node.isVariableDeclaration(parent)) {
+      name = parent.getName();
+    }
+  }
+
+  if (!DURATION_FUNCTION_NAME_REGEX.test(name) || fnNode.getText().includes('DurationFormat')) {
+    return false;
+  }
+
+  // Collect string literals and binary operations in this function body
+  let hasUnitLabel = false;
+  let hasDivisionOrModulo = false;
+  let hasTimeConstants = false;
+
+  fnNode.forEachDescendant((child, traversal) => {
+    if (
+      Node.isFunctionDeclaration(child) ||
+      Node.isFunctionExpression(child) ||
+      Node.isArrowFunction(child) ||
+      Node.isClassDeclaration(child) ||
+      Node.isMethodDeclaration(child)
+    ) {
+      traversal.skip();
+      return;
+    }
+
+    if (Node.isBinaryExpression(child)) {
+      const op = child.getOperatorToken().getKind();
+      if (op === SyntaxKind.SlashToken || op === SyntaxKind.PercentToken) {
+        hasDivisionOrModulo = true;
+      }
+    }
+
+    if (Node.isNumericLiteral(child)) {
+      const val = child.getLiteralValue();
+      if (
+        val === 60 ||
+        val === 1000 ||
+        val === 3600 ||
+        val === 86400 ||
+        val === 60000 ||
+        val === 3600000 ||
+        val === 86400000
+      ) {
+        hasTimeConstants = true;
+      }
+    }
+
+    if (Node.isStringLiteral(child) || Node.isNoSubstitutionTemplateLiteral(child)) {
+      const text = child.getLiteralText().trim().toLowerCase();
+      if (DURATION_UNIT_LABELS.has(text)) {
+        hasUnitLabel = true;
+      }
+    }
+  });
+
+  // Strictly require explicit duration function naming and division/modulo with unit labels
+  return hasDivisionOrModulo && hasTimeConstants && hasUnitLabel;
+}
+
+/**
+ * Checks whether a file is test, benchmark, or CLI script.
+ */
+function isTestBenchOrCliFile(ctx?: JsMatcherContext, text?: string): boolean {
+  if (ctx?.filePath) {
+    const filePathLower = ctx.filePath.toLowerCase();
+    if (
+      filePathLower.includes('.test.') ||
+      filePathLower.includes('.spec.') ||
+      filePathLower.includes('__tests__') ||
+      filePathLower.includes('/test/') ||
+      filePathLower.includes('/tests/') ||
+      filePathLower.includes('/bench/') ||
+      filePathLower.includes('/benchmark/')
+    ) {
+      return true;
+    }
+  }
+  if (text) {
+    if (text.startsWith('#!') || text.includes("from 'chalk'") || text.includes('require("chalk")')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export const durationJsMatcher: JsRuleMatcher = {
+  kind: 'js',
+  fastTokens: [
+    'humanizeDuration',
+    'prettyMs',
+    'moment.duration',
+    'dayjs.duration',
+    '.humanize(',
+    'formatDuration',
+    'prettyDuration',
+    'secondsToHms',
+    'secondsToTime',
+    'secondsToDuration',
+    'msToTime',
+    'msToDuration',
+    '86400',
+    '3600',
+  ],
+  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
+    const fullText = sourceFile.getFullText();
+    if (isTestBenchOrCliFile(ctx, fullText)) {
+      return [];
+    }
+
+    const matches: AnalyzerMatch[] = [];
+    const visitedLines = new Set<number>();
+
+    sourceFile.forEachDescendant((node) => {
+      const message = Node.isCallExpression(node)
+        ? isKnownDurationCall(node)
+        : (Node.isFunctionDeclaration(node) ||
+              Node.isFunctionExpression(node) ||
+              Node.isArrowFunction(node) ||
+              Node.isMethodDeclaration(node)) &&
+            isCustomDurationFormatterFunction(node)
+          ? 'Custom duration formatting function computing multi-unit breakdown can be replaced with native Temporal.Duration and Intl.DurationFormat.'
+          : null;
+
+      if (!message || isProtectedByFeatureGuard(node, DURATION_FEATURE_TOKENS)) {
+        return;
+      }
+      const line = node.getStartLineNumber();
+      if (!visitedLines.has(line)) {
+        visitedLines.add(line);
+        matches.push({ line, message });
+      }
+    });
+
+    return matches;
+  },
+};
+
+export const formatHumanReadableDurationsJsRule: AnalyzerRule = {
+  id: 'format-human-readable-durations/js-duration-formatter',
+  guideId: 'calculate-event-differentials',
+  guideHash: FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH,
+  summary:
+    'Custom duration formatting logic or libraries (humanizeDuration, prettyMs, moment.duration().humanize()) can be modernized with native Temporal.Duration and Intl.DurationFormat.',
+  matcher: durationJsMatcher,
+  verifierRubric: {
+    keepWhen: [
+      'Using third-party duration formatting packages (such as humanize-duration, pretty-ms, or moment-duration-format) to format time spans.',
+      'Calling duration methods like humanizeDuration(...), prettyMs(...), moment.duration(...).humanize(), or moment.duration(...).format(...).',
+      'Implementing custom time duration formatters that manually divide milliseconds or seconds into hours, minutes, and seconds with unit labels.',
+    ],
+    dropWhen: [
+      'Code already utilizing native Intl.DurationFormat or Temporal.Duration for formatted duration strings.',
+      'Guarded by runtime feature detection for Intl.DurationFormat or globalThis.Temporal.',
+      'Formatting fixed calendar dates or timestamps (such as Intl.DateTimeFormat or moment(date).format("YYYY-MM-DD")) rather than elapsed durations.',
+    ],
+  },
+};
+
+export default [
+  formatHumanReadableDurationsJsRule,
+] satisfies readonly AnalyzerRule[];

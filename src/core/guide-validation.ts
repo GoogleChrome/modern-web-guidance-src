@@ -4,7 +4,7 @@ import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from './macros.ts';
-import { validateFeature, resolveFeatureId } from './baseline.ts';
+import { validateFeature, resolveFeatureId, getBaselineTargetsForGrader, type BaselineTarget } from './baseline.ts';
 import { isKnownCategory, CATEGORIES } from './categories.ts';
 import { buildHeadingMap } from './headings.ts';
 import { features } from 'web-features';
@@ -40,11 +40,16 @@ export const DISCIPLINE_GUIDES = new Set([
   // Named orientation guides
   'browser-ui-theming',
   'color',
+  'content-first-noise-reduction',
   'cpp-on-the-web',
   'css-conditionals',
   'css-layout',
+  'form-factor-adaptation',
+  'guided-navigation',
   'motion',
+  'natural-interactions',
   'passkeys',
+  'preference-aware-ui',
   'responsive-design',
   'typography',
   'visual-effects',
@@ -607,6 +612,15 @@ export interface TaskInfo {
   baseApp: string;
   prompt: string;
   guideDir: string;
+  baselineTarget?: BaselineTarget;
+}
+
+export function resolveTaskGraderPath(taskInfo: Pick<TaskInfo, 'guideDir' | 'baseApp'>, taskName: string): string {
+  const targetGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskName, GRADER_FILE);
+  if (fs.existsSync(targetGraderPath)) return targetGraderPath;
+  const baseAppGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskInfo.baseApp, GRADER_FILE);
+  if (fs.existsSync(baseAppGraderPath)) return baseAppGraderPath;
+  return path.join(taskInfo.guideDir, GRADER_FILE);
 }
 
 /**
@@ -636,6 +650,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: data?.base_app || 'daily-grind',
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${taskName}`, info);
@@ -661,9 +676,20 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: baseAppName,
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${baseAppName}`, info);
+
+      const graderPath = path.join(targetsDir, baseAppName, GRADER_FILE);
+      for (const target of getBaselineTargetsForGrader(graderPath)) {
+        taskMap.set(`${guideName}/${baseAppName}-${target}`, {
+          baseApp: baseAppName,
+          prompt: prompt,
+          guideDir: guideDir,
+          baselineTarget: target,
+        });
+      }
     }
   }
 
