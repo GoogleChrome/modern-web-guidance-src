@@ -127,7 +127,7 @@ reducedMotionQuery.addEventListener('change', (event) => {
 
 ## Fallback strategy
 
-{{ FEATURE_FALLBACKS("loading-lazy-media") }}
+{{ BASELINE_STATUS("loading-lazy-media") }}
 
 If your Baseline target does not support `loading="lazy"` on `<video>` and `<audio>`, choose between progressive enhancement and an `IntersectionObserver` fallback based on how strictly bandwidth must be conserved:
 

@@ -1,7 +1,8 @@
 - On page load, all required fields must appear neutral.
-- Clicking into a required field and clicking out (blur) WITHOUT typing MUST trigger the error state (red border).
+- Interacting with a required field (such as typing and deleting a character) and clicking out (blur) MUST trigger the error state (red border).
 - Typing into the field MUST remove the error state immediately.
 - Clicking "Submit" with empty fields MUST trigger the error state on all of them.
 - "Force Fallback Mode" must replicate this exact behavior.
 - The implementation MUST dynamically synchronize the `aria-invalid="true"` attribute via JavaScript when an element enters an error state, and remove it when the field becomes valid.
+- Tabbing through a required field (focus, then blur) without changing its value MUST NOT set `aria-invalid`; the ARIA state must mirror `:user-invalid` / `:user-valid`, not raw validity.
 - Visual error feedback MUST incorporate multiple state indicators (e.g. an icon alongside the error text) to avoid communicating state through color alone.

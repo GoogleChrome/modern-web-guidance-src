@@ -53,6 +53,15 @@ Set `container-type: scroll-state` on the `position: sticky` element, not on its
 
 **Important:** The scroll state is queried by **descendants** of the scroll-state container. The styles in the `@container` query will not apply to the `.sticky-container` itself, but to its children (like `.sticky-header`). You cannot style the container element itself with its own scroll-state query.
 
+Add `scroll-padding-top` to the scrollport and set the value to be equal or greater than the sticky element's height. This approach should ensure that when controls receive focus, they'll be consistently visible below the sticky content, adhering to WCAG 2.4.11 Focus Not Obscured (Minimum), which requires that focused components are not fully obscured.
+
+```css
+html {
+  /* Accounts for the height of the header */
+  scroll-padding-top: var(--header-height); 
+}
+```
+
 
 ### 3. Target the Stuck State
 Use the `@container scroll-state(...)` query to apply styles when the header is stuck.

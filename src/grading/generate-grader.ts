@@ -8,6 +8,7 @@ import { buildTargetGraderPrompt } from '../authoring/dev-prompts.ts';
 import {
   GUIDE_FILE,
   EXPECTATIONS_FILE,
+  TASK_FILE,
   getDefaultSolutionAgent,
   getActiveSolutionAgents,
   SOLUTION_PATCH_FILES,
@@ -43,6 +44,7 @@ export async function generateTargetGrader(
     });
     fs.copyFileSync(path.join(guideDirAbs, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     fs.copyFileSync(path.join(guideDirAbs, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+    fs.copyFileSync(path.join(guideDirAbs, TARGETS_DIR, baseApp, TASK_FILE), path.join(workDir, TASK_FILE));
     
     // =========================================================================
     // 1. RUNTIME EXECUTION DEPENDENCIES (in tempHome)
@@ -53,6 +55,15 @@ export async function generateTargetGrader(
     fs.copyFileSync(
       path.resolve(repoRoot, 'src', 'core', 'patch-utils.ts'),
       path.join(tempHome, 'src', 'core', 'patch-utils.ts')
+    );
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'src', 'core', 'baseline.ts'),
+      path.join(tempHome, 'src', 'core', 'baseline.ts')
+    );
+    fs.mkdirSync(path.join(tempHome, 'features'), { recursive: true });
+    fs.copyFileSync(
+      path.resolve(repoRoot, 'features', 'pending-web-features.json'),
+      path.join(tempHome, 'features', 'pending-web-features.json')
     );
     fs.mkdirSync(path.join(tempHome, 'src', 'grading'), { recursive: true });
     fs.copyFileSync(
@@ -120,6 +131,7 @@ export async function generateTargetGrader(
     const prompt = buildTargetGraderPrompt({
       guideFile: GUIDE_FILE,
       expectationsFile: EXPECTATIONS_FILE,
+      taskFile: TASK_FILE,
       solutionPatchFiles,
       zeroPassratePatchFile: ZERO_PASSRATE_PATCH_FILE,
       graderFile: GRADER_FILE,
