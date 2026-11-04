@@ -17,7 +17,6 @@ import {
 import { parseHTML } from 'linkedom';
 import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
 
-// @ts-expect-error TS1470: Playwright executes grader.ts as an ES module where import.meta.url is available
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 const indexFile =
   targetFiles.find((f) => path.basename(f) === 'index.html') ?? targetFiles[0] ?? '';
