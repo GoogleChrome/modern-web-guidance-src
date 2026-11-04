@@ -29,8 +29,6 @@
 
 * Every view except the currently-active one carries the `inert` attribute; the currently-active view does NOT have `inert`.
 * When a view becomes active, focus is restored to either (a) the link the user originally activated to drill out of that view, (b) the back button of a freshly-pushed drill-down view, or (c) the active view's content container, when focus was in the stack and would otherwise be lost.
-* Loading the page does not move focus.
-* After Back is activated on a deep-linked drill-down view, focus is on an element inside the root view, not on `<body>`.
 * `document.title` changes to name the active view on every active-view change.
 * Calls to `.focus()` inside the stack pass `{preventScroll: true}` so focusing does not fight the snap container's scroll position.
 
