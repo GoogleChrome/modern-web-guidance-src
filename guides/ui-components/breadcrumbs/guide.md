@@ -72,7 +72,7 @@ Overlapping segments communicate hierarchy even without a separator. Pull each s
 
 #### Simple irregular shapes (`corner-shape`)
 
-Prefer `corner-shape: bevel` with an irregular `border-radius` for parallelograms and arrows. It has better browser support than `border-shape`, and borders, outlines and backgrounds follow the shape. Use logical corner properties so RTL mirrors automatically; no `:dir(rtl)` rule is needed.
+Prefer `corner-shape: bevel` with an irregular `border-radius` for parallelograms and arrows. It has better browser support than `border-shape` and keeps normal border flexibility (per-side widths, colors and styles), whereas `border-shape` needs explicit inner and outer shapes or is limited to a uniform stroke. Use logical corner properties so RTL mirrors automatically; no `:dir(rtl)` rule is needed.
 
 Slant (`/`): bevel the start-start and end-end corners with a horizontal radius of the slant and a vertical radius of 100%.
 
