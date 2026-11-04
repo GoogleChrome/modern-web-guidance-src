@@ -111,7 +111,7 @@ declare an `id`, also provide the target web app's computed manifest ID:
 ></install>
 ```
 
-The `manifestId` attribute can either be absolute or relative. Relative values
+The `manifestid` attribute can either be absolute or relative. Relative values
 are resolved against the document's base URL. The resulting URL must match the
 processed manifest ID.
 
@@ -208,7 +208,7 @@ To offer another app, pass its manifest URL:
 
 ```js
 await navigator.install({
-  manifest: "https://app.example/manifest.webmanifest"
+  manifest: "https://app.example/manifest.webmanifest",
 });
 ```
 
