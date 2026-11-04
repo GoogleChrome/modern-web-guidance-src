@@ -1,6 +1,9 @@
 * The carousel container has `scroll-snap-type: inline mandatory` (or `x mandatory`) applied.
 * Each carousel item has `container-type: scroll-state` applied.
 * The carousel container has `overflow-x: auto` or `overflow-inline: auto`.
+* The carousel container has an accessible name provided using `aria-label` or `aria-labelledby`.
+* The carousel container has an accessible role of `role="region"`.
+* The carousel container can receive focus with `tabindex="0"`.
 * The `.card` element inside a snapped `.carousel-item` has a blue background (`rgb(0, 123, 255)`).
 * The `.card` element inside a snapped `.carousel-item` is scaled up to `1.15`.
 * The `.card` element inside a snapped `.carousel-item` has a box shadow applied.
