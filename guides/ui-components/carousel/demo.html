@@ -397,12 +397,14 @@
     nextBtn.addEventListener("click", () => step(1));
     // WORKAROUND (Chrome bug, remove when fixed): reordering slides makes Chrome drop focus from native
     // scroll buttons, so keyboard users get the HTML buttons instead. Bug: https://issues.chromium.org/issues/581318163
-    if (hasButtons) {
-      document.addEventListener("keydown", (e) => {
+    if (hasButtons && loops) {
+      const useHtmlButtons = (e) => {
         if (e.key !== "Tab") return;
         controls.hidden = false;
         track.dataset.htmlButtons = "";
-      }, { once: true });
+        document.removeEventListener("keydown", useHtmlButtons);
+      };
+      document.addEventListener("keydown", useHtmlButtons);
     }
     markerNav.hidden = hasMarkers;
     if (!hasMarkers) {
