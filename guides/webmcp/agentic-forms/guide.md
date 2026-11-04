@@ -92,10 +92,10 @@ targetFor('toolcancel', ({ toolName }) => {
 
 ## Visual Feedback (CSS)
 
-Use pseudo-classes to highlight forms when an agent interacts with them:
+Use pseudo-classes to highlight forms and submit buttons when an agent interacts with them. Include both `:tool-form-active` and `:tool-submit-active` rules in your stylesheet (even when `toolautosubmit` is set, the browser or user preferences may still pause for manual review):
 
 *   `:tool-form-active`: Applied to the `<form>` element actively used by the agent.
-*   `:tool-submit-active`: Applied to the submit button when the browser pauses for user review (if `toolautosubmit` is omitted).
+*   `:tool-submit-active`: Applied to the submit button when the browser pauses for user review (such as when `toolautosubmit` is omitted).
 
 ```css
 form:tool-form-active {
