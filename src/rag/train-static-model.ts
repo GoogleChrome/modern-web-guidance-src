@@ -38,7 +38,7 @@ import {
 import { replaceMacros } from "../core/macros.ts";
 import { outDir, rootDir } from "../core/paths.ts";
 import { config } from "../core/skills-config.ts";
-import { chunkMarkdown } from "../build/build-guides.ts";
+import { chunkMarkdown, formatChunkHeader } from "../build/build-guides.ts";
 import { tokenize, tokenizeBm25 } from "./bm25.ts";
 import { dotProduct } from "./search.ts";
 import {
@@ -215,12 +215,15 @@ function scanCorpusAndSyntheticQueries(): CorpusScan {
     }
     const description = typeof data.description === "string" ? data.description.trim() : "";
     const processed = replaceMacros(markdownBody, guidePath, { target: "skills-cli" });
-    const title = extractH1Heading(processed) || inv.name.replace(/-/g, " ");
+    const h1Title = extractH1Heading(processed);
+    const title = ((typeof data.title === "string" && data.title.trim()) || h1Title || inv.name.replace(/-/g, " ")).trim();
+    const featureIds: string[] = data["web-feature-ids"] || [];
+    const header = formatChunkHeader(title, inv.name, inv.category, featureIds);
     const summaryChunk = `# ${title}\n\n${description}`;
     const chunks = [...chunkMarkdown(processed), summaryChunk];
 
     for (const chunk of chunks) {
-      chunkTexts.push(`${description}\n\n${chunk}`);
+      chunkTexts.push(`${header}\n\n${chunk}`);
     }
 
     syntheticQueries.push(inv.name.replace(/-/g, " "));
@@ -406,7 +409,7 @@ async function main(): Promise<void> {
     : [];
 
   const df = new Map<string, number>();
-  const vocabSet = new Set<string>(existingWords);
+  const vocabSet = new Set<string>(existingWords.filter((w) => tokenize(w).length > 0));
   for (const text of chunkTexts) {
     const toks = tokenize(text);
     for (const t of toks) vocabSet.add(t);

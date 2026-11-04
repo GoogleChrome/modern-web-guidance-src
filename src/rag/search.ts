@@ -35,9 +35,9 @@ export interface EmbedderLike {
 
 /**
  * Query-level cosine floor: if dense top-1 is below this similarity AND BM25 has no matches, `[]` is returned.
- * Across all 29,195 words in `words.json`, single-word top-1 cosine starts at 0.475 ("chips", "bento" 0.532),
+ * Across all non-stopword entries in `words.json`, single-word top-1 cosine starts at 0.475 ("chips", "bento" 0.532),
  * and in-domain `wild-v2-dev` queries span 0.636..0.899 (median 0.821).
- * Keeping 0.30 ensures 100% of known vocabulary words use their dense vector while zero-vector / unknown queries
+ * Keeping 0.30 acts as a non-zero dense floor so 100% of in-vocab queries use their dense vector while zero-vector / unknown queries
  * with no BM25 matches return `[]`.
  */
 export const DEFAULT_MIN_SIMILARITY = 0.3;

@@ -480,16 +480,10 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
     console.log(`Generated DevSite target with ${devsiteGuides.length} guides`);
   }
 
-  if (missingChunks.length === 0) {
-    fs.writeFileSync(
-      path.join(cachePaths.cacheDir, "pipeline.manifest.json"),
-      JSON.stringify({ hash: currentHash }, null, 2) + '\n'
-    );
-  } else {
-    console.warn(
-      `⚠️  Skipped writing build cache manifest due to ${missingChunks.length} missing teacher vector(s).`
-    );
-  }
+  fs.writeFileSync(
+    path.join(cachePaths.cacheDir, "pipeline.manifest.json"),
+    JSON.stringify({ hash: currentHash }, null, 2) + '\n'
+  );
 
   restoreFromCache(cachePaths, outputDir, TARGET);
   return false;
@@ -717,8 +711,8 @@ async function processSingleGuideFile(
         vector = Array.from(cached);
       } else {
         missingChunks?.push({ guideId: id, category, chunk });
-        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector: ${chunk.slice(0, 50).trim()}...`);
-        vector = [];
+        console.warn(`⚠️ [CACHE MISS] Guide "${id}" chunk lacks cached teacher vector (using StaticEmbedder fallback): ${chunk.slice(0, 50).trim()}...`);
+        vector = embedder ? await embedder.embed(embeddingText) : [];
       }
     }
 
