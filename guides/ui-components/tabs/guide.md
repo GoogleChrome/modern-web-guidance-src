@@ -1,6 +1,7 @@
 ---
 name: tabs
 description: "Build a responsive tabbed interface with good UX when not all tabs fit on screen."
+draft: wip
 web-feature-ids:
   - focusgroup
   - anchor-positioning
