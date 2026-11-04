@@ -7,9 +7,19 @@ import { fileURLToPath } from 'url';
 import { parseHTML } from 'linkedom';
 import { Project } from 'ts-morph';
 import { parse, CSSStyleSheet, CSSStyleDeclaration } from 'cssomnom';
+import { checkBaseline } from '../core/baseline.ts';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
 
 export { expect } from '@playwright/test';
+
+export function skipUnless(conditions: { unsupported: string }): void {
+  const current = (process.env.BASELINE_TARGET || 'widely').trim().toLowerCase();
+  if (conditions.unsupported) {
+    const tokens = conditions.unsupported.split(',').map(s => s.trim()).filter(Boolean);
+    const anyUnsupported = tokens.some(t => !checkBaseline(current, t));
+    base.skip(!anyUnsupported, `Requires unsupported: ${conditions.unsupported} (current target: ${current})`);
+  }
+}
 
 export type ServerWorkerFixtures = {
   TARGET_URL: string;

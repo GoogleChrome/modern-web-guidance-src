@@ -37,6 +37,14 @@ describe('getGraderScriptContent', () => {
       }
     }
   });
+
+  test('passes baselineTarget to runPlaywright in generated script', () => {
+    const scriptLimited = getGraderScriptContent('/path/to/cwd', '/path/to/grader.ts', 'dummy-guide', 'limited');
+    assert.ok(scriptLimited.includes('"limited"'));
+
+    const scriptDefault = getGraderScriptContent('/path/to/cwd', '/path/to/grader.ts', 'dummy-guide');
+    assert.ok(scriptDefault.includes('"widely"'));
+  });
 });
 
 describe('createWorkDir', () => {
@@ -111,6 +119,23 @@ describe('createWorkDir', () => {
     } finally {
       fs.rmSync(tempHome, { recursive: true, force: true });
       fs.rmSync(templateDir, { recursive: true, force: true });
+    }
+  });
+
+  test('provisions baseline target in .mwgrc when BASELINE_TARGET is set for guided run', () => {
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-baseline-'));
+    const prevBaseline = process.env.BASELINE_TARGET;
+    process.env.BASELINE_TARGET = 'newly';
+    try {
+      const workDir = createWorkDir('', tempHome, 'guided');
+      const config = JSON.parse(fs.readFileSync(path.join(workDir, '.mwgrc'), 'utf8'));
+      assert.deepStrictEqual(config, { allowOriginTrials: true, baseline: 'newly' });
+      const homeConfig = JSON.parse(fs.readFileSync(path.join(tempHome, '.mwgrc'), 'utf8'));
+      assert.deepStrictEqual(homeConfig, { allowOriginTrials: true, baseline: 'newly' });
+    } finally {
+      if (prevBaseline === undefined) delete process.env.BASELINE_TARGET;
+      else process.env.BASELINE_TARGET = prevBaseline;
+      fs.rmSync(tempHome, { recursive: true, force: true });
     }
   });
 });
