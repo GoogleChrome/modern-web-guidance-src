@@ -149,8 +149,9 @@ Place the marker group after the track, give each marker an accessible name from
 Write these to fit the design:
 
 - Style the markers as dots in a centered flex row with a gap, using the pointer cursor.
-- Show a clear `:focus-visible` outline on scroll buttons, markers, and buttons.
-- Known Chromium issue: when a native `::scroll-marker` is activated by keyboard (arrow keys or `Enter`), the carousel scrolls to that slide but keyboard focus leaves the marker. It reproduces with no script (confirmed in Chrome Canary 158; [Chromium issue 578562502](https://issues.chromium.org/issues/578562502)), so do not add key handling to work around it. Keep the native scroll buttons available as the reliable keyboard route.
+- Show a clear `:focus-visible` outline on scroll buttons, markers, and fallback buttons. Bare `:focus-visible` only matches elements, so style `::scroll-button(*):focus-visible` and `::scroll-marker:focus-visible` in separate rules rather than combining them in one selector list with `:focus-visible` (an unsupported pseudo-element invalidates the whole selector list).
+{# Known Chromium bug (confirmed in Chrome Canary 158): activating ::scroll-marker via keyboard scrolls to the slide but drops focus. Bug: https://issues.chromium.org/issues/578562502 . Consider a BCD key request. #}
+- Do not add custom key handling on native `::scroll-marker` controls to work around browser focus bugs; keep the previous and next controls available as the reliable keyboard route.
 - Set `touch-action: manipulation` on the track and the fallback buttons, so quick taps on them do not trigger double-tap zoom on touch devices.
 - Hide `.fallback-controls` and `.fallback-markers` while their `hidden` attribute is set, and keep the status region visually hidden without removing it from the accessibility tree.
 - Enable `scroll-behavior: smooth` on the track only inside `@media (prefers-reduced-motion: no-preference)`.
