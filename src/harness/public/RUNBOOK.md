@@ -37,8 +37,10 @@ request. After it merges, the next `pnpm public:publish` run applies it.
 ## Publishing
 
 Run from the repo root on a checkout of `main`, with gcloud credentials for
-the bucket and `PUBLIC_EVALS_FORBIDDEN_TOKENS` set to the comma-separated LDAPs
-of everyone who runs suites:
+the bucket, a git identity (`user.name` / `user.email`, as the `gh-pages`
+commit needs an author; a CI runner will have to set one), and
+`PUBLIC_EVALS_FORBIDDEN_TOKENS` set to the comma-separated LDAPs of everyone
+who runs suites:
 
 ```bash
 PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob pnpm public:publish            # build and push gh-pages
