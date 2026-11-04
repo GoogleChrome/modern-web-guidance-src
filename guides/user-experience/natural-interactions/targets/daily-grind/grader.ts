@@ -271,7 +271,10 @@ test.describe('natural-interactions Target Grader', () => {
       const btn = page.locator('button').filter({ hasText: /view details/i }).first();
       await expect(btn).toHaveCount(1);
 
-      await btn.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+      await btn.evaluate((el) => {
+        const rect = el.getBoundingClientRect();
+        window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - 120), behavior: 'instant' });
+      });
       await page.waitForTimeout(100);
       await btn.click();
 
@@ -298,10 +301,14 @@ test.describe('natural-interactions Target Grader', () => {
         const pRect = popover.getBoundingClientRect();
         const tRect = trigger.getBoundingClientRect();
 
-        // Check if the popover was explicitly positioned above the trigger (without CSS position-area flipping)
-        // or below the trigger (or using CSS position-area / position-try-fallbacks where transform-origin is top*).
-        const hasPositionArea = Boolean(cs.positionArea && cs.positionArea !== 'none');
-        const explicitlyAbove = !hasPositionArea && pRect.bottom <= tRect.top + 20 && pRect.top > 0;
+        // Check if the popover was explicitly positioned above the trigger (unless it flipped from a
+        // downward CSS position-area via position-try-fallbacks, where @position-try cannot override transform-origin).
+        const posArea = cs.getPropertyValue('position-area').trim();
+        const posTry = cs.getPropertyValue('position-try-fallbacks').trim();
+        const flippedFromBelow =
+          Boolean(posTry && posTry !== 'none') &&
+          Boolean(posArea && posArea !== 'none' && !/\b(top|block-start)\b/.test(posArea));
+        const explicitlyAbove = !flippedFromBelow && pRect.bottom <= tRect.top + 20 && pRect.top > 0;
         const isNearestYEdge = explicitlyAbove
           ? Math.abs(oy - pRect.height) <= 5
           : oy <= 5;
