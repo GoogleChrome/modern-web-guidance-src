@@ -20,18 +20,19 @@ web-feature-ids:
 
 # CSS Layouts and Responsive Design
 
-1. [1 Fundamentals](#1-fundamentals)
+1. [Fundamentals](#1-fundamentals)
    1. [Which layout mode to use?](#11-which-layout-mode-to-use)
    2. [Working principles](#12-working-principles)
-2. [2 Flexbox](#2-flexbox)
-3. [3 Grid and subgrid](#3-grid-and-subgrid)
+2. [Flexbox](#2-flexbox)
+3. [Grid and subgrid](#3-grid-and-subgrid)
    1. [Code example: grid and subgrid](#31-code-example-grid-and-subgrid)
-4. [4 Container queries](#4-container-queries)
+4. [Container queries](#4-container-queries)
    1. [Code example: fluid typography using container query units](#41-code-example-fluid-typography-using-container-query-units)
-5. [5 Native overlays, anchor positioning, and stacking contexts](#5-native-overlays-anchor-positioning-and-stacking-contexts)
-6. [6 Overflow tracking and layout stability](#6-overflow-tracking-and-layout-stability)
-7. [7 Viewport mechanics and track distribution](#7-viewport-mechanics-and-track-distribution)
-8. [8 Grid lanes (aka masonry)](#8-grid-lanes-aka-masonry)
+5. [Native overlays, anchor positioning, and stacking contexts](#5-native-overlays-anchor-positioning-and-stacking-contexts)
+6. [Overflow tracking and layout stability](#6-overflow-tracking-and-layout-stability)
+7. [Viewport mechanics and track distribution](#7-viewport-mechanics-and-track-distribution)
+8. [Grid lanes (aka masonry)](#8-grid-lanes-aka-masonry)
+9. [Accessibility considerations](#9-accessibility-considerations)
 
 ## 1 Fundamentals
 
@@ -323,3 +324,35 @@ The specification is in development under the name "grid lanes" (e.g., `display:
 ```
 
 {# Once guides/css/masonry-layout is authored, migrate §8 into it and replace this section with {{ GUIDE_REF("masonry-layout") }}. #}
+
+## 9 Accessibility considerations
+
+The layout mode you use and the CSS properties you apply will have a direct impact on the ability of people who use assistive technologies to access, understand, and operate the page's content.  
+
+**Do:**
+
+- Use a layout mode and CSS properties in ways that ensure the overall reading sequence of content is logical and meaningful (WCAG 2.2 SC 1.3.2 Meaningful Sequence (Level A)).
+- Use a layout mode and CSS properties in ways that support the zooming of content to 200% in the browser without causing content to overlap itself, be cut off or clipped, or to be completely removed (WCAG 2.2 SC 1.4.4 Resize Text (Level AA)).
+- Use a layout mode and CSS properties in ways that ensure all content is still operable when viewed at a viewport size of 320 by 256 CSS pixels (equivalent to a viewport size of 1280 by 1024 pixels zoomed in at 400%) (WCAG 2.2 SC 1.4.10 Reflow (Level AA)).
+- Use a layout mode and CSS properties in ways that require horizontal **or** vertical scrolling (not both) at a viewport size of 320 by 256 pixels (WCAG 2.2 SC 1.4.10 Reflow (Level AA)).
+- Use a layout mode and CSS properties in ways that allow users to adapt the following text style properties, where available, with no loss of content or functionality (WCAG 2.2 SC 1.4.12 Text Spacing (Level AA)):
+  - Line height (line spacing) to at least 1.5 times the content's font size.
+  - Spacing following paragraphs to at least 2 times the content's font size.
+  - Letter spacing (tracking) to at least 0.12 times the content's font size.
+  - Word spacing to at least 0.16 times the font size.
+- Use a layout mode and CSS properties in ways that ensure the overall keyboard focus order of interactive content is logical and meaningful (WCAG 2.2 SC 2.4.3 Focus Order (Level A)).
+- Use a layout mode and CSS properties in ways that ensure keyboard focusable elements positioned behind content that is fixed or floats above the page are made at least partially visible when they receive keyboard focus (WCAG 2.2 SC 2.1.4.11 Focus Not Obscured (Minimum) (Level AA)).
+
+**Don't:**
+
+- Don't change the structure of the DOM to fit a specific layout if doing so breaks the content's logical reading sequence — this can disorient blind people who use a screen reader to navigate content (WCAG 2.2 SC 1.3.2 Meaningful Sequence (Level A)).
+- Don't use a layout mode or CSS properties in ways that cause content to overlap itself, be cut off or clipped, or be completely removed at a browser zoom level of 200% or above (WCAG 2.2 SC 1.4.4 Resize Text (Level AA)).
+- Don't use a layout mode or CSS properties in ways that prevent content from being operable when viewed at a viewport size of 320 by 256 CSS pixels (equivalent to a viewport size of 1280 by 1024 pixels zoomed in at 400%) (WCAG 2.2 SC 1.4.10 Reflow (Level AA)).
+- Don't use a layout mode or CSS properties in ways that require two dimensional (both horizontal **and** vertical) scrolling at a viewport size of 320 by 256 CSS pixels (WCAG 2.2 SC 1.4.10 Reflow (Level AA)).
+- Don't use a layout mode or CSS properties in ways that prevent the following text style properties from being adapted (WCAG 2.2 SC 1.4.12 Text Spacing (Level AA)):
+  - Line height (line spacing) to at least 1.5 times the content's font size.
+  - Spacing following paragraphs to at least 2 times the content's font size.
+  - Letter spacing (tracking) to at least 0.12 times the content's font size.
+  - Word spacing to at least 0.16 times the font size.
+- Don't change the structure of the DOM to fit a specific layout if doing so breaks the content's logical focus order — this can disorient people who use the keyboard alone to navigate content (WCAG 2.2 SC 2.4.3 Focus Order (Level A)).
+- Avoid using a layout mode or CSS properties in ways that prevent keyboard focus indication being at least partially visible on focusable elements positioned behind content that is fixed or floats above the page (WCAG 2.2 SC 2.1.4.11 Focus Not Obscured (Minimum) (Level AA)).  
