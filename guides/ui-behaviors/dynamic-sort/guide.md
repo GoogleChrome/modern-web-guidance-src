@@ -86,7 +86,7 @@ function reorderWithTransition(list, orderedNodes) {
 ```
 
 * **Rapid changes:** starting a new view transition skips the one in flight, which is the desired behavior when the user flips through options quickly. Always apply the final state in the update callback so the DOM ends in the correct order even if the animation is skipped.
-* **Large lists:** every named element is captured as an image, so naming hundreds of items is expensive. Name only items that are in the viewport (for example with `IntersectionObserver`), or skip the transition when the list is larger than a few hundred items.
+* **Large lists:** every named element is captured as an image, so naming hundreds of items is expensive. `match-element` names every matching element too, so it is no cheaper than explicit names. Skip the transition when the list is larger than a few hundred items, or limit the transition to a bounded set of items (for example the first N) and set `view-transition-name: none` on the rest.
 * **Interactivity:** a document-level view transition blocks pointer events on the whole page while it runs, whereas `list.startViewTransition()` only affects the list's subtree. Prefer the scoped form, and keep the animation brief either way. Names only need to be unique within the scope. For table rows, scope the `<table>` (or a wrapper around it). See {{ GUIDE_REF("scoped-component-transitions") }} for scoped transition details.
 
 {{ BASELINE_STATUS("view-transitions-element-scoped") }}
