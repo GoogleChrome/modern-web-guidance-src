@@ -37,7 +37,7 @@
 
       button {
         padding: 0.7rem 1rem;
-        border: 0;
+        border: 1px solid transparent;
         border-radius: 0.4rem;
         background: #3157d5;
         color: white;
@@ -67,7 +67,9 @@
         <section>
           <h2>Browser-provided control</h2>
           <p>The browser controls the appearance and installation prompt.</p>
-          <install></install>
+          <install>
+            <span>Your browser does not support the <code>&lt;install&gt;</code> element.</span>
+          </install>
           <p id="browser-install-status" role="status"></p>
         </section>
 
@@ -98,7 +100,7 @@
             installStatus.textContent =
               "Installation was canceled or could not complete.";
             break;
-          case "invalid_data":
+          case "invalid-data":
             installStatus.textContent =
               "Installation could not start because the app data is invalid.";
             break;
@@ -131,14 +133,16 @@
             // Clear the single-use event before awaiting the user's choice.
             const promptEvent = deferredInstallPrompt;
             deferredInstallPrompt = undefined;
-            promptEvent.prompt();
+            await promptEvent.prompt();
             const { outcome } = await promptEvent.userChoice;
             customInstallStatus.textContent =
               outcome === "accepted"
                 ? "The app was installed."
                 : "Installation canceled.";
 
-            customInstallButton.hidden = true;
+            if (!deferredInstallPrompt) {
+              customInstallButton.hidden = true;
+            }
           }
         } catch (error) {
           if (error.name === "AbortError") {
@@ -156,7 +160,6 @@
       window.addEventListener("appinstalled", () => {
         deferredInstallPrompt = undefined;
         customInstallButton.hidden = true;
-        customInstallStatus.textContent = "The app was installed.";
       });
     </script>
   </body>

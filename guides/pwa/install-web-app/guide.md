@@ -23,18 +23,18 @@ Decide to use either the HTML `<install>` element or the JavaScript
 `navigator.install()` method based on the following considerations.
 
 * `<install>` element:
-
+  {# Dynamic "Launch" label for installed apps is not currently supported due to installed-state privacy constraints (crbug.com/485281836). #}
   * Pros:
     * The browser provides the install control, ensuring a consistent and
       trustworthy installation experience.
     * Installing another app does not trigger a separate permission prompt
       before the installation confirmation dialog.
-    * The label in the `<install>` element changes to "Launch" if the target
-      app is already installed.
     * No JavaScript is required to trigger the installation.
   * Cons:
     * Visual customization of the button is restricted.
-    * The number of `<install>` elements on a page is limited by the browser.
+    * The number of `<install>` elements on a page is capped by user-agent
+      anti-spam limits, making `navigator.install()` a better fit for large app
+      catalogs. {# Chromium currently caps install elements at 24 per page. #}
 
 * JavaScript `navigator.install()` method:
 
@@ -80,8 +80,11 @@ For installation of the current app, link the manifest from the document.
 }
 ```
 
-Keep the manifest URL stable. When offering a different app for installation,
-the manifest must be fetchable without credentials and must be served from the
+Keep the manifest URL stable. For current-document installation, the manifest
+must explicitly declare an `id` that is same-origin with the document. When
+offering a different app by manifest URL, the manifest must be reachable over
+HTTPS without credentials or redirects (CORS headers are not required), return a
+JSON MIME `Content-Type` (such as `application/manifest+json`), and share the
 same origin as that app's `start_url`.
 
 ## Use the HTML `<install>` element
@@ -95,14 +98,18 @@ browser-owned control gives users a trustworthy installation affordance.
 <install></install>
 ```
 
-To offer another web app, provide its manifest URL:
+To offer another web app (including a cross-origin app from an app catalog or
+suite launcher), provide its manifest URL. The target `manifest` URL and its
+`start_url` must share the same origin, and the manifest must be reachable
+without credentials or redirects and return a JSON MIME `Content-Type`:
 
 ```html
 <install manifest="https://app.example/manifest.webmanifest"></install>
 ```
 
-The target manifest must explicitly declare an `id`. If that manifest does not
-declare an `id`, also provide the target web app's computed manifest ID:
+Prefer declaring an explicit, stable `id` in the target manifest. If the target
+manifest does not declare an `id`, you must supply its computed manifest ID in
+the `manifestid` attribute so the browser can verify the expected app identity:
 
 ```html
 <install
@@ -111,9 +118,18 @@ declare an `id`, also provide the target web app's computed manifest ID:
 ></install>
 ```
 
+When a manifest omits `id`, the browser computes its fallback ID by resolving
+the manifest's `start_url` against the manifest URL (not the installing page)
+and stripping any URL fragment while keeping query parameters. For example, a
+manifest at `https://app.example/catalog/manifest.webmanifest` with no `id` and
+`"start_url": "../launch?source=catalog"` has a computed ID of
+`https://app.example/launch?source=catalog`. Supplying `manifestid` checks that
+computed identity; it does not override the manifest or keep the identity stable
+if `start_url` later changes.
+
 The `manifestid` attribute can either be absolute or relative. Relative values
-are resolved against the document's base URL. The resulting URL must match the
-processed manifest ID.
+are resolved against the installing document's base URL, and the resulting URL
+must match the target manifest's processed ID.
 
 Do not imitate, overlay, or transform the browser-controlled element. Its
 presentation and activation restrictions protect users from deceptive
@@ -124,10 +140,11 @@ installation prompts.
 Listen for the `installresult` event to handle installation success and errors
 and use the `event.result` property to determine the outcome:
 
-* `success`: the app was installed successfully.
-* `aborted`: the user canceled the installation or a browser condition
+* `"success"`: the app was installed successfully.
+* `"aborted"`: the user canceled the installation or a browser condition
   prevented the installation from completing.
-* `invalid_data`: the `manifest` or `manifestId` attribute values are invalid.
+* `"invalid-data"`: the `manifest` or `manifestid` attribute values, manifest
+  response, or required manifest fields are invalid.
 
 ```html
 <install></install>
@@ -146,7 +163,7 @@ and use the `event.result` property to determine the outcome:
         installStatus.textContent =
           "Installation was canceled or could not complete.";
         break;
-      case "invalid_data":
+      case "invalid-data":
         installStatus.textContent =
           "Installation could not start because the app data is invalid.";
         break;
@@ -157,10 +174,10 @@ and use the `event.result` property to determine the outcome:
 
 ## Use the JavaScript `navigator.install()` method
 
-Use `navigator.install()` when custom page UI is necessary. Keep the button
-hidden until a supported installation mechanism is available. Call
-`navigator.install()` directly from the click handler so the call retains the
-required transient user activation.
+Use `navigator.install()` in a secure context (HTTPS) when custom page UI is
+necessary. Keep the button hidden until a supported installation mechanism is
+available. Call `navigator.install()` directly from the click handler so the
+call retains the required transient user activation.
 
 ```html
 <button id="install-app" type="button" hidden>Install app</button>
@@ -204,7 +221,9 @@ required transient user activation.
 Calling `navigator.install()` with no arguments installs the current document's
 linked app and requires the manifest to declare an `id`.
 
-To offer another app, pass its manifest URL:
+To offer another app (including a cross-origin app, provided the target
+`manifest` URL and its `start_url` share the same origin and the manifest is
+served over HTTPS with a JSON MIME `Content-Type`), pass its manifest URL:
 
 ```js
 await navigator.install({
@@ -212,8 +231,10 @@ await navigator.install({
 });
 ```
 
-The target manifest must explicitly declare an `id`. If that manifest does not
-declare an `id`, also provide the target web app's computed manifest ID:
+Prefer declaring an explicit, stable `id` in the target manifest. If that
+manifest does not declare an `id`, also pass the target web app's computed
+manifest ID (`start_url` resolved against the manifest URL without fragments)
+so the browser can verify the expected identity:
 
 ```js
 await navigator.install({
@@ -223,8 +244,8 @@ await navigator.install({
 ```
 
 The `manifestId` option can either be absolute or relative. Relative values are
-resolved against the document's base URL. The resulting URL must match the
-processed manifest ID.
+resolved against the installing document's base URL, and the resulting URL must
+match the target manifest's processed ID.
 
 ### Handle installation success and errors
 
@@ -241,15 +262,17 @@ canceled:
   * Multiple concurrent installation attempts.
   * A page navigation occurred during the installation process.
 * `DataError`:
-  * Invalid manifest URL.
-  * Missing `manifestId` and no computed manifest ID provided.
-  * The `manifestId` does not match the computed manifest ID.
+  * Missing linked manifest, invalid or unreachable manifest URL, redirect, or non-JSON `Content-Type` header.
+  * Missing required manifest fields, or `start_url` is not same-origin with `manifest`.
+  * The manifest omits `id` and no `manifestId` was provided, or `manifestId` does not match the manifest's processed ID.
 * `NotAllowedError`:
-  * Missing user activation.
+  * Missing transient user activation.
 * `TypeError`:
-  * The provided arguments are invalid.
+  * An options argument omits `manifest`, or `manifest` or `manifestId` is empty or cannot be parsed as a URL.
 * `InvalidStateError`:
-  * The API was called outside of the main frame.
+  * The API was called from a detached document, subframe, or fenced frame.
+* `SecurityError`:
+  * The `web-app-installation` Permissions Policy is disabled or the document is sandboxed.
 
 ## Fallback strategies
 
@@ -294,17 +317,19 @@ browser-controlled install button inside the fallback content.
 
 {{ BASELINE_STATUS("navigator-install") }}
 
-{{ BASELINE_STATUS("beforeinstallprompt") }}
-
 When `navigator.install()` is unavailable, use the `beforeinstallprompt` event
 as a fallback for installing the current app. Unlike `navigator.install()`, this
 event cannot install a different app.
+
+### `beforeinstallprompt` fallback
+
+{{ BASELINE_STATUS("beforeinstallprompt") }}
 
 Capture the event, prevent its automatic prompt, and reveal the custom install
 button only after the browser confirms that prompting is possible. Use one click
 handler that selects `navigator.install()` when available and otherwise uses the
 captured event. The event is single-use, so discard it before awaiting the
-user's choice and hide the button after prompting.
+user's choice and hide the button unless a new `beforeinstallprompt` event fires.
 
 ```js
 const installButton = document.querySelector("#install-app");
@@ -340,14 +365,16 @@ installButton.addEventListener("click", async () => {
       // Save and clear the single-use event before awaiting the user's choice.
       const promptEvent = deferredInstallPrompt;
       deferredInstallPrompt = undefined;
-      promptEvent.prompt();
+      await promptEvent.prompt();
       const { outcome } = await promptEvent.userChoice;
 
       installStatus.textContent =
         outcome === "accepted"
           ? "The app was installed."
           : "Installation canceled.";
-      installButton.hidden = true;
+      if (!deferredInstallPrompt) {
+        installButton.hidden = true;
+      }
     }
   } catch (error) {
     if (error.name === "AbortError") {
