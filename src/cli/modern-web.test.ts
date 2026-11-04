@@ -146,7 +146,7 @@ describe('modern-web CLI', () => {
       assert.ok(res.stderr.includes('Warning: a new SKILL.md is available'));
       assert.ok(res.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
     } finally {
-      fs.unlinkSync(versionPath);
+      fs.rmSync(versionPath, { force: true });
     }
   });
 });
