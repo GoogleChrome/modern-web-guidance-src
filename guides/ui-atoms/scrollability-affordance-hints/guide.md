@@ -72,6 +72,10 @@ Use the `@container` rule with the `scroll-state` function. Check if the contain
 }
 ```
 
+## Accessibility considerations
+
+Scrollability affordance hints are intended to supplement existing browser behaviour and help people be aware of larger scrollable regions. As a result of these hints being supplemental, and secondary to the primary hint (which would be the default scrollbar, or a sufficiently contrasting custom scrollbar), these scrollability affordance hints do not have to meet a specific contrast threshold. If the author wants to remove the scrollbar (which is not recommended for many usability reasons), then the scrollability affordance hint must have a contrast ratio of 3:1 against any immediately adjacent colours (to meet WCAG success criterion 1.4.11 Non-text Contrast), so that people are able to easily determine that scrolling is possible.
+
 ## Fallback strategies
 
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
