@@ -385,7 +385,7 @@
         if (b.closest("[role=toolbar]").getAttribute("aria-orientation") === "vertical") tip.className = "tip-inline";
         b.setAttribute("interestfor", tip.id);
         b.removeAttribute("title"); // avoid a second, native tooltip
-        b.after(tip);
+        document.body.append(tip); // keep open hint nodes out of role="group" / role="toolbar"
       });
     }
 
