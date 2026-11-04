@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites section in index.html to include a toolbar component with id="favorites-actions" above the drink cards that groups together interactive controls for acting on the featured drinks.
