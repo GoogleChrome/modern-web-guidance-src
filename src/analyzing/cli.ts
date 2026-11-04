@@ -336,14 +336,6 @@ export async function runAnalyzeCli(
   const baseCwd = options?.cwd ?? process.cwd();
   const resolvedDir = resolve(baseCwd, targetDir);
 
-  const dirStat = await stat(resolvedDir).catch(() => null);
-  if (!dirStat) {
-    return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
-  }
-  if (!dirStat.isFile() && !dirStat.isDirectory()) {
-    return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
-  }
-
   const isDefaultQualifiedMode = !guideFilter && options?.rules === undefined;
   const baseRules = options?.rules ?? QUALIFIED_RULES;
   const activeRules = guideFilter ? baseRules.filter((r) => r.guideId === guideFilter) : baseRules;
@@ -352,6 +344,14 @@ export async function runAnalyzeCli(
   }
   const activeRuleCount = activeRules.length;
   const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
+
+  const dirStat = await stat(resolvedDir).catch(() => null);
+  if (!dirStat) {
+    return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
+  }
+  if (!dirStat.isFile() && !dirStat.isDirectory()) {
+    return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
+  }
 
   const scanStats: { skippedDocsAndTestsCount?: number } = {};
   let findings: AnalyzerFinding[] = [];

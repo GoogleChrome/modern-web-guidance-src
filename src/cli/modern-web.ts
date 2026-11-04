@@ -101,8 +101,7 @@ async function main() {
         result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
       );
     }
-    writeAnalyzeCliResult(result);
-    process.exit(result.exitCode);
+    process.exit(writeAnalyzeCliResult(result));
   }
 
   if (values.help || positionals.length === 0) {
