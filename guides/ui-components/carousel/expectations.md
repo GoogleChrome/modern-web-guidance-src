@@ -8,7 +8,7 @@
 - Native `::scroll-marker` controls navigate to their corresponding slides when activated.
 - The active slide's native scroll marker is visually distinguished using the `:target-current` pseudo-class.
 - The native marker group follows the slides in keyboard focus order using `scroll-marker-group: after`.
-- Native previous/next controls stay enabled at the first and last slides, because the carousel loops.
+- Previous and next controls stay enabled at the first and last slides, because the carousel loops.
 - Activating Next while the last slide is current brings the first slide into view, and activating Previous while the first slide is current brings the last slide into view.
 - Looping does not duplicate slides: the track contains exactly one slide element per slide, with no cloned or `aria-hidden` copies.
 - While the first slide is current, the last slide has a computed `order` of -1.
