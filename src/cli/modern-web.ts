@@ -81,12 +81,18 @@ async function main() {
     process.exit(0);
   }
 
+  const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
+
   const command = positionals[0];
 
   if (command === "analyze") {
+    maybeEmitUpdateMessage(skillVersion);
     // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
     const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
-    const result = await runAnalyzeCli(process.argv.slice(3));
+    const args = process.argv.slice(2);
+    const cmdIdx = args.indexOf("analyze");
+    if (cmdIdx !== -1) args.splice(cmdIdx, 1);
+    const result = await runAnalyzeCli(args);
     if (result.data) {
       logToolResult(
         "analyze",
@@ -102,7 +108,6 @@ async function main() {
     process.exit(values.help ? 0 : 1);
   }
 
-  const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
   maybeEmitUpdateMessage(skillVersion);
 
   let loggerInstance: ClearcutLogger | undefined;

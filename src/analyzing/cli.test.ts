@@ -116,6 +116,10 @@ describe('runAnalyzeCli', () => {
         resDefault.output,
         new RegExp(`0 findings from ${QUALIFIED_GUIDE_IDS.length} qualified guides\\.`),
       );
+      assert.match(
+        resDefault.output,
+        /Note: analyze covers legacy patterns for ~20% of the guidance corpus\. Use 'modern-web-guidance search <topic>' for general UI\/platform guidance\./,
+      );
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
       assert.equal(resDefaultJson.exitCode, 0);
@@ -125,6 +129,10 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.targetDir, emptyDir);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
+      assert.equal(
+        parsedDefault.note,
+        `No legacy patterns found from the ${QUALIFIED_RULES.length} supported analyzer rules (~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+      );
     });
   });
 
@@ -134,6 +142,29 @@ describe('runAnalyzeCli', () => {
       isDefaultQualifiedMode: true,
     });
     assert.match(reducedZeroOutput, /0 findings from 1 qualified guide\./);
+    assert.match(
+      reducedZeroOutput,
+      /Note: analyze covers legacy patterns for ~20% of the guidance corpus\. Use 'modern-web-guidance search <topic>' for general UI\/platform guidance\./,
+    );
+  });
+
+  it('accepts --skill-version without errors in both leading and trailing positions', async () => {
+    await withTempDir(async (testDir) => {
+      const resTrailing = await runAnalyzeCli([testDir, '--skill-version', '2026_01_01-test']);
+      assert.equal(resTrailing.exitCode, 0);
+
+      const resLeading = await runAnalyzeCli(['--skill-version', '2026_01_01-test', testDir]);
+      assert.equal(resLeading.exitCode, 0);
+
+      const resJson = await runAnalyzeCli([testDir, '--json', '--skill-version', '2026_01_01-test']);
+      assert.equal(resJson.exitCode, 0);
+      assert.ok(resJson.data);
+      assert.equal(resJson.data.totalFindings, 0);
+      assert.equal(
+        resJson.data.note,
+        `No legacy patterns found from the ${QUALIFIED_RULES.length} supported analyzer rules (~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+      );
+    });
   });
 
   it('outputs human-readable grouped summary with retrieveCommand and file:line', async () => {
@@ -269,6 +300,7 @@ describe('runAnalyzeCli', () => {
       const parsedNone = JSON.parse(resNone.output) as AnalyzeJsonOutput;
       assert.equal(parsedNone.totalFindings, 0);
       assert.deepEqual(parsedNone.guides, []);
+      assert.equal(parsedNone.note, undefined);
     });
   });
 
@@ -307,6 +339,45 @@ describe('runAnalyzeCli', () => {
       assert.equal(resTypo.data, undefined);
       assert.match(resTypo.output, /Error: Unknown option '--jsno'/);
     });
+  });
+
+  it('skips string option values when resolving targetDir on parse error', async () => {
+    const resSkillVer = await runAnalyzeCli([
+      '--skill-version',
+      '2026_01_01',
+      '--unknown-flag',
+      'some/dir',
+      '--json',
+    ]);
+    assert.equal(resSkillVer.exitCode, 1);
+    assert.ok(resSkillVer.data);
+    const parsedSkillVer = JSON.parse(resSkillVer.output) as AnalyzeJsonOutput;
+    assert.equal(parsedSkillVer.targetDir, 'some/dir');
+    assert.match(parsedSkillVer.error ?? '', /Unknown option '--unknown-flag'/);
+
+    const resGuide = await runAnalyzeCli([
+      '--guide',
+      'dialog-focus',
+      '--unknown-flag',
+      'other/dir',
+      '--json',
+    ]);
+    assert.equal(resGuide.exitCode, 1);
+    assert.ok(resGuide.data);
+    const parsedGuide = JSON.parse(resGuide.output) as AnalyzeJsonOutput;
+    assert.equal(parsedGuide.targetDir, 'other/dir');
+    assert.match(parsedGuide.error ?? '', /Unknown option '--unknown-flag'/);
+
+    const resNoDir = await runAnalyzeCli([
+      '--skill-version',
+      '2026_01_01',
+      '--unknown-flag',
+      '--json',
+    ]);
+    assert.equal(resNoDir.exitCode, 1);
+    assert.ok(resNoDir.data);
+    const parsedNoDir = JSON.parse(resNoDir.output) as AnalyzeJsonOutput;
+    assert.equal(parsedNoDir.targetDir, '.');
   });
 
   it('caps terminal findings at 5 per guide and renders overflow summary line', async () => {
