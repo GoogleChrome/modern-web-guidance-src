@@ -87,6 +87,7 @@ test.describe('toolbar Target Grader', () => {
       clone.querySelectorAll('svg, img, [aria-hidden="true"]').forEach((el) => el.remove());
       return (clone.textContent?.trim() ?? '').length === 0;
     });
+    expect(iconOnlyButtons.length).toBeGreaterThan(0);
 
     for (const btn of iconOnlyButtons) {
       const label = btn.getAttribute('aria-label')?.trim() ?? '';
@@ -109,11 +110,11 @@ test.describe('toolbar Target Grader', () => {
     const buttons = Array.from(toolbar!.querySelectorAll('button, [role="button"]'));
     expect(buttons.length).toBeGreaterThan(0);
 
-    const actionButtons = buttons.filter((btn) => !btn.hasAttribute('aria-pressed'));
+    const nonMenuButtons = buttons.filter(
+      (btn) => !btn.hasAttribute('aria-haspopup') && !btn.hasAttribute('popovertarget')
+    );
+    const actionButtons = nonMenuButtons.filter((btn) => !btn.hasAttribute('aria-pressed'));
     expect(actionButtons.length).toBeGreaterThan(0);
-    for (const btn of actionButtons) {
-      expect(btn.getAttribute('aria-pressed')).toBeNull();
-    }
   });
 
   test('In a horizontal toolbar, when popover="hint" tooltips are present, each hint is positioned along the block axis with position-area (block-end or block-start), not the inline axis', () => {
@@ -121,16 +122,29 @@ test.describe('toolbar Target Grader', () => {
     const toolbar = findToolbar(docs);
     expect(toolbar).not.toBeNull();
 
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const hintRules = Array.from(stylesheet.cssRules).filter(
-      (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes('popover="hint"')
-    );
-    for (const rule of hintRules) {
-      const posArea = rule.style.getPropertyValue('position-area').trim();
-      if (posArea) {
-        expect(/\bblock-(end|start)\b/.test(posArea)).toBe(true);
-        expect(/\binline-(end|start)\b/.test(posArea)).toBe(false);
+    const collectStyleRules = (rules: Iterable<any>): CSSStyleRule[] => {
+      const result: CSSStyleRule[] = [];
+      for (const r of rules) {
+        if (r instanceof CSSStyleRule) result.push(r);
+        else if ('cssRules' in r && r.cssRules) result.push(...collectStyleRules(r.cssRules));
       }
+      return result;
+    };
+
+    const stylesheet = getCssStyleSheet(targetFiles);
+    const hintRules = collectStyleRules(stylesheet.cssRules).filter(
+      (r) => r.selectorText.includes('popover="hint"') || r.selectorText.includes("popover='hint'")
+    );
+    expect(hintRules.length).toBeGreaterThan(0);
+
+    const posAreas = hintRules
+      .map((r) => r.style.getPropertyValue('position-area').trim())
+      .filter(Boolean);
+    expect(posAreas.length).toBeGreaterThan(0);
+
+    for (const posArea of posAreas) {
+      expect(/\bblock-(end|start)\b/.test(posArea)).toBe(true);
+      expect(/\binline-(end|start)\b/.test(posArea)).toBe(false);
     }
   });
 
@@ -208,11 +222,6 @@ test.describe('toolbar Target Grader', () => {
             'button[aria-pressed]:not([aria-disabled="true"]), [role="button"][aria-pressed]:not([aria-disabled="true"])'
           )
         );
-        if (toggleButtons.length === 0) {
-          return { hasToggleButtons: false, flippedBothWays: false };
-        }
-
-        // First look for an independent toggle button whose aria-pressed flips both ways on click
         for (const btn of toggleButtons) {
           const initial = btn.getAttribute('aria-pressed');
           btn.click();
@@ -221,26 +230,14 @@ test.describe('toolbar Target Grader', () => {
             btn.click();
             const afterSecond = btn.getAttribute('aria-pressed');
             if (afterSecond === initial) {
-              return { hasToggleButtons: true, flippedBothWays: true };
+              return { hasIndependentToggle: true, flippedBothWays: true };
             }
           }
         }
-
-        // If all toggles in the toolbar belong to a mutually exclusive set, verify clicking toggles between false and true across the set
-        const unpressed = toggleButtons.find((b) => b.getAttribute('aria-pressed') === 'false');
-        const pressed = toggleButtons.find((b) => b.getAttribute('aria-pressed') === 'true');
-        if (unpressed && pressed) {
-          unpressed.click();
-          const becameTrue = unpressed.getAttribute('aria-pressed') === 'true';
-          pressed.click();
-          const becameFalse = unpressed.getAttribute('aria-pressed') === 'false';
-          return { hasToggleButtons: true, flippedBothWays: becameTrue && becameFalse };
-        }
-
-        return { hasToggleButtons: true, flippedBothWays: false };
+        return { hasIndependentToggle: false, flippedBothWays: false };
       });
 
-      expect(result.hasToggleButtons).toBe(true);
+      expect(result.hasIndependentToggle).toBe(true);
       expect(result.flippedBothWays).toBe(true);
     });
 
@@ -267,22 +264,21 @@ test.describe('toolbar Target Grader', () => {
           clone.querySelectorAll('svg, img, [aria-hidden="true"]').forEach((el) => el.remove());
           return (clone.textContent?.trim() ?? '').length === 0;
         });
+        if (iconOnlyButtons.length === 0) return { hasToolbar: true, valid: false };
 
         for (const btn of iconOnlyButtons) {
           if (supportsUpgrade) {
             const interestId = btn.getAttribute('interestfor');
-            if (!interestId) return { hasToolbar: true, valid: false };
+            if (!interestId || btn.hasAttribute('title')) {
+              return { hasToolbar: true, valid: false };
+            }
             const hint = document.getElementById(interestId);
-            if (!hint || hint.getAttribute('popover') !== 'hint') {
+            if (!hint || hint.getAttribute('popover') !== 'hint' || bar.contains(hint)) {
               return { hasToolbar: true, valid: false };
             }
           } else {
             const title = btn.getAttribute('title')?.trim() ?? '';
-            const interestId = btn.getAttribute('interestfor');
-            const hasHint = Boolean(
-              interestId && document.getElementById(interestId)?.getAttribute('popover') === 'hint'
-            );
-            if (!title && !hasHint) {
+            if (!title) {
               return { hasToolbar: true, valid: false };
             }
           }
