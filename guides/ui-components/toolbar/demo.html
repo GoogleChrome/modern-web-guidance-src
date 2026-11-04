@@ -122,6 +122,14 @@
           flex-wrap: nowrap;
 
           & [role="group"] { flex-direction: column; }
+          & [role="separator"] {
+            block-size: 0;
+            inline-size: 1.5rem;
+            margin-inline: 0;
+            margin-block: 0.25rem;
+            border-inline-start: 0;
+            border-block-start: 1px solid var(--line);
+          }
         }
 
         /* A border, not a background: forced colors replaces backgrounds but keeps borders */
