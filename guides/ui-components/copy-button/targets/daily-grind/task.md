@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites cards in `index.html` by adding a copy button to each `.card` that copies the text of that drink's description paragraph to the user's clipboard.

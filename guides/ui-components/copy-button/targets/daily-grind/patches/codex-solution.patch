@@ -1,0 +1,266 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..2439741
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,11 @@
++import { mkdir, readFile, writeFile } from 'node:fs/promises';
++import { Script } from 'node:vm';
++
++const page = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++for (const [, source] of page.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
++  new Script(source, { filename: 'index.html' });
++}
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++await writeFile(new URL('index.html', output), page);
++console.log('Built dist/index.html; inline JavaScript syntax checked.');
+diff --git a/index.html b/index.html
+index 66c9173..d624c6c 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,114 @@
+       color: var(--primary);
+     }
+ 
++    .copy {
++      position: relative;
++      display: inline-flex;
++      margin-block-start: 12px;
++    }
++
++    .copy-button {
++      display: grid;
++      place-items: center;
++      min-inline-size: 32px;
++      min-block-size: 32px;
++      padding: 6px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      cursor: pointer;
++    }
++
++    .copy-button:hover {
++      background: #f3eeeb;
++    }
++
++    .copy-button:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    .copy-button svg {
++      grid-area: 1 / 1;
++      inline-size: 18px;
++      block-size: 18px;
++    }
++
++    .copy-check,
++    .copy-button[data-copied] .copy-icon {
++      opacity: 0;
++    }
++
++    .copy-button[data-copied] .copy-check {
++      opacity: 1;
++      animation: copy-feedback 180ms ease-out;
++    }
++
++    .copy-tip {
++      position: absolute;
++      inset-block-end: calc(100% + 8px);
++      inset-inline-end: 0;
++      padding: 4px 8px;
++      border-radius: 4px;
++      background: var(--primary);
++      color: white;
++      font-size: 0.8rem;
++      white-space: nowrap;
++      pointer-events: none;
++      opacity: 0;
++    }
++
++    .copy-button[data-copied] + .copy-tip,
++    .copy-button[data-failed] + .copy-tip {
++      opacity: 1;
++      animation: copy-feedback 180ms ease-out;
++    }
++
++    .card .btn {
++      display: table;
++      margin-inline: auto;
++    }
++
++    @keyframes copy-feedback {
++      from { opacity: 0; transform: translateY(3px); }
++      to { opacity: 1; transform: translateY(0); }
++    }
++
++    @media (hover: hover) {
++      .card {
++        position: relative;
++        padding-inline: 48px;
++      }
++
++      .card .copy {
++        position: absolute;
++        inset-block-start: 8px;
++        inset-inline-end: 8px;
++        margin-block-start: 0;
++      }
++
++      .card .copy-button {
++        opacity: 0;
++        transition: opacity 150ms;
++      }
++
++      .card:hover .copy-button,
++      .card:focus-within .copy-button,
++      .card .copy-button:focus-visible,
++      .card .copy-button[data-copied],
++      .card .copy-button[data-failed] {
++        opacity: 1;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      @keyframes copy-feedback {
++        from { opacity: 0; }
++        to { opacity: 1; }
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -180,17 +288,38 @@
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <p id="maple-oat-description">Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <span class="copy">
++            <button type="button" class="copy-button" command="--copy" commandfor="maple-oat-description" aria-label="Copy Maple Oat Latte description">
++              <svg class="copy-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
++              <svg class="copy-check" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>
++            </button>
++            <span class="copy-tip" role="status"></span>
++          </span>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <p id="espresso-description">Bold, smokey, and perfect for a morning boost.</p>
++          <span class="copy">
++            <button type="button" class="copy-button" command="--copy" commandfor="espresso-description" aria-label="Copy Dark Roast Espresso description">
++              <svg class="copy-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
++              <svg class="copy-check" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>
++            </button>
++            <span class="copy-tip" role="status"></span>
++          </span>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <p id="cold-brew-description">Steeped for 18 hours for maximum smoothness.</p>
++          <span class="copy">
++            <button type="button" class="copy-button" command="--copy" commandfor="cold-brew-description" aria-label="Copy Cold Brew description">
++              <svg class="copy-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
++              <svg class="copy-check" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/></svg>
++            </button>
++            <span class="copy-tip" role="status"></span>
++          </span>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+@@ -207,6 +336,68 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const feedback = new WeakMap();
++    let lastMessage = '';
++
++    function report(button, ok) {
++      const tip = button.nextElementSibling;
++      if (!(tip instanceof HTMLElement)) return;
++
++      const previous = feedback.get(button);
++      if (previous) {
++        clearTimeout(previous.timer);
++        cancelAnimationFrame(previous.frame);
++      }
++      button.removeAttribute('data-copied');
++      button.removeAttribute('data-failed');
++      tip.textContent = '';
++      let message = ok ? 'Copied' : 'Copy failed';
++      if (message === lastMessage) message += '\u00a0';
++      lastMessage = message;
++      void button.offsetWidth;
++      button.setAttribute(ok ? 'data-copied' : 'data-failed', '');
++      const frame = requestAnimationFrame(() => { tip.textContent = message; });
++      const timer = setTimeout(() => {
++        cancelAnimationFrame(frame);
++        button.removeAttribute('data-copied');
++        button.removeAttribute('data-failed');
++        tip.textContent = '';
++        feedback.delete(button);
++      }, 2000);
++      feedback.set(button, { timer, frame });
++    }
++
++    async function copy(button, target) {
++      const text = target.innerText.trim();
++      if (!text) return;
++      try {
++        await navigator.clipboard.writeText(text);
++        report(button, true);
++      } catch {
++        report(button, false);
++      }
++    }
++
++    if ('CommandEvent' in window) {
++      document.addEventListener('command', (event) => {
++        if (event.command === '--copy' &&
++            event.source instanceof HTMLButtonElement &&
++            event.source.matches('.copy-button') &&
++            event.target instanceof HTMLElement) {
++          void copy(event.source, event.target);
++        }
++      }, true);
++    } else {
++      document.addEventListener('click', (event) => {
++        if (!(event.target instanceof Element)) return;
++        const button = event.target.closest('button.copy-button[command="--copy"]');
++        if (!(button instanceof HTMLButtonElement)) return;
++        const target = document.getElementById(button.getAttribute('commandfor') || '');
++        if (target instanceof HTMLElement) void copy(button, target);
++      });
++    }
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
