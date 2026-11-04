@@ -592,8 +592,15 @@ dialog.showModal();</code></pre>
 
       selectedText = text;
 
-      const rect = range.getBoundingClientRect();
-      const x = Math.min(Math.max(rect.left + rect.width / 2, 32), innerWidth - 32);
+      // Anchor to the line where the selection ends (its focus), at the inline end of the selection
+      const rects = range.getClientRects();
+      const backward = sel.anchorNode === sel.focusNode
+        ? sel.focusOffset < sel.anchorOffset
+        : Boolean(sel.anchorNode.compareDocumentPosition(sel.focusNode) & Node.DOCUMENT_POSITION_PRECEDING);
+      const rect = (backward ? rects[0] : rects[rects.length - 1]) || range.getBoundingClientRect();
+      const rtl = getComputedStyle(selectable).direction === 'rtl';
+      const atLeft = backward !== rtl;
+      const x = Math.min(Math.max(atLeft ? rect.left : rect.right, 32), innerWidth - 32);
       popover.style.setProperty('--x', `${x}px`);
       // Below the selection on touch (clear of the OS menu and selection handles), above it otherwise
       const y = matchMedia('(pointer: coarse)').matches
