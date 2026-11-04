@@ -16,6 +16,8 @@ guides:
   - overflow-popup
 ---
 
+# Tabbed interfaces
+
 ## Choosing the correct semantics
 
 If the content and expected behaviour of the candidate UI is page navigation, the WAI ARIA tabs pattern should not be used even if the intent is to present the content as a tabbed interface.
