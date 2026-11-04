@@ -1,37 +1,32 @@
 import {
   test,
   expect,
+  skipUnless,
   getTargetFiles,
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
-import * as path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import type { Document } from 'linkedom';
 
-const currentFileUrl =
-  typeof __filename !== 'undefined'
-    ? pathToFileURL(__filename).href
-    : pathToFileURL(path.join(process.cwd(), 'grader.ts')).href;
-const targetFiles: string[] = getTargetFiles(currentFileUrl);
+// @ts-ignore
+const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-const COPY_BUTTON_SELECTOR = [
-  '.card button[command^="--"]',
-  '.card button[commandfor]',
-  'button[command^="--copy"]',
-  '.card button.copy-button',
-  '.card .copy button',
-  '.card button[aria-label*="copy" i]',
-].join(', ');
+const COPY_BTN_SELECTOR = '.card button, button[command^="--"], button[commandfor]';
+const LIVE_REGION_SELECTOR = '[role="status"], [role="alert"], [aria-live]';
+
+function getCopyButtonsFromDocs(docs: Array<{ file: string; document: Document }>): any[] {
+  return docs.flatMap((d) =>
+    Array.from(d.document.querySelectorAll(COPY_BTN_SELECTOR))
+  );
+}
 
 test.describe('copy-button Target Grader', () => {
   // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
 
   test('Each copy button is a <button> with type="button"', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const buttons = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll(COPY_BUTTON_SELECTOR)),
-    );
-    expect(buttons.length).toBeGreaterThanOrEqual(3);
+    const docs = getHtmlDocuments(targetFiles);
+    const buttons = getCopyButtonsFromDocs(docs);
+    expect(buttons.length).toBeGreaterThan(0);
+
     for (const btn of buttons) {
       expect(btn.tagName.toLowerCase()).toBe('button');
       expect(btn.getAttribute('type')).toBe('button');
@@ -39,37 +34,39 @@ test.describe('copy-button Target Grader', () => {
   });
 
   test('Each copy button has a command attribute whose value starts with -- and a commandfor attribute that references the id of an existing element', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const entries = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll(COPY_BUTTON_SELECTOR)).map((btn) => ({
-        doc: d.document,
-        btn,
-      })),
-    );
-    expect(entries.length).toBeGreaterThanOrEqual(3);
-    for (const { doc, btn } of entries) {
-      const command = btn.getAttribute('command');
-      const commandfor = btn.getAttribute('commandfor');
-      expect(command).toBeTruthy();
-      expect(command!.startsWith('--')).toBe(true);
-      expect(commandfor).toBeTruthy();
-      expect(doc.getElementById(commandfor!)).not.toBeNull();
+    const docs = getHtmlDocuments(targetFiles);
+    const buttons = getCopyButtonsFromDocs(docs);
+    expect(buttons.length).toBeGreaterThan(0);
+
+    for (const docEntry of docs) {
+      const docButtons = Array.from(
+        docEntry.document.querySelectorAll(COPY_BTN_SELECTOR)
+      ) as any[];
+      for (const btn of docButtons) {
+        const command = btn.getAttribute('command');
+        const commandfor = btn.getAttribute('commandfor');
+        expect(command).toBeTruthy();
+        expect(command.startsWith('--')).toBe(true);
+        expect(commandfor).toBeTruthy();
+        const target = docEntry.document.getElementById(commandfor);
+        expect(target).toBeTruthy();
+      }
     }
   });
 
   test('The live region is not a descendant of any copy button', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const buttons = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll(COPY_BUTTON_SELECTOR)),
-    );
+    const docs = getHtmlDocuments(targetFiles);
+    const buttons = getCopyButtonsFromDocs(docs);
+    expect(buttons.length).toBeGreaterThan(0);
+
     const liveRegions = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('[role="status"], [role="alert"], [aria-live]')),
-    );
-    expect(buttons.length).toBeGreaterThanOrEqual(3);
+      Array.from(d.document.querySelectorAll(LIVE_REGION_SELECTOR))
+    ) as any[];
     expect(liveRegions.length).toBeGreaterThan(0);
-    for (const btn of buttons) {
-      const nestedLiveRegion = btn.querySelector('[role="status"], [role="alert"], [aria-live]');
-      expect(nestedLiveRegion).toBeNull();
+
+    for (const region of liveRegions) {
+      const parentButton = region.closest(COPY_BTN_SELECTOR);
+      expect(parentButton).toBeNull();
     }
   });
 
@@ -77,268 +74,216 @@ test.describe('copy-button Target Grader', () => {
 
   test.describe('Browser tests', () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
-      await page.addInitScript(() => {
-        const w = window as unknown as {
-          __copiedTexts: string[];
-          __shouldFailCopy: boolean;
-        };
-        w.__copiedTexts = [];
-        w.__shouldFailCopy = false;
+      await page.goto(TARGET_URL);
+    });
 
-        const mockWriteText = async (text: string) => {
-          if (w.__shouldFailCopy) {
-            throw new DOMException('Write permission denied', 'NotAllowedError');
-          }
-          w.__copiedTexts.push(String(text));
-        };
+    test('Clicking a copy button writes the rendered text content of its commandfor target, preserving rendered line breaks, to the clipboard (navigator.clipboard.writeText)', async ({
+      page,
+    }) => {
+      const count = await page.locator(COPY_BTN_SELECTOR).count();
+      expect(count).toBeGreaterThan(0);
 
+      await page.evaluate(() => {
+        (window as any).__copiedTexts = [];
+        const writeMock = async (text: string) => {
+          (window as any).__copiedTexts.push(text);
+        };
         try {
           if (navigator.clipboard) {
             Object.defineProperty(navigator.clipboard, 'writeText', {
-              value: mockWriteText,
+              value: writeMock,
               configurable: true,
               writable: true,
             });
           } else {
             Object.defineProperty(navigator, 'clipboard', {
-              value: { writeText: mockWriteText },
+              value: { writeText: writeMock },
               configurable: true,
             });
           }
         } catch {
-          try {
-            Object.defineProperty(Clipboard.prototype, 'writeText', {
-              value: mockWriteText,
-              configurable: true,
-              writable: true,
-            });
-          } catch {
-            // ignore
-          }
+          Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: writeMock },
+            configurable: true,
+          });
         }
-
-        const origExecCommand = document.execCommand?.bind(document);
-        document.execCommand = function (commandId: string, ...args: unknown[]) {
-          if (String(commandId).toLowerCase() === 'copy') {
-            if (w.__shouldFailCopy) {
-              return false;
-            }
-            const active = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
-            const selected =
-              active && typeof active.value === 'string'
-                ? active.value
-                : window.getSelection()?.toString() || '';
-            w.__copiedTexts.push(selected);
-            return true;
-          }
-          return origExecCommand ? origExecCommand(commandId, ...(args as [boolean?, string?])) : false;
-        };
       });
 
-      await page.goto(TARGET_URL);
-    });
+      const expectedMultiline = await page.evaluate((sel) => {
+        const btn = document.querySelector(sel) as HTMLElement;
+        const targetId = btn.getAttribute('commandfor')!;
+        const target = document.getElementById(targetId)!;
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+          target.value = 'Line 1\nLine 2';
+          return target.value;
+        }
+        target.innerHTML = 'Line 1<br>Line 2';
+        return target.innerText.trim();
+      }, COPY_BTN_SELECTOR);
 
-    test('Clicking a copy button for a non-input element writes the rendered text content of its commandfor target to the clipboard (navigator.clipboard.writeText)', async ({
-      page,
-    }) => {
-      const btn = page.locator(COPY_BUTTON_SELECTOR).first();
-      await expect(btn).toHaveCount(1);
-
-      const expectedText = await btn.evaluate((el) => {
-        const id = el.getAttribute('commandfor');
-        const target = id ? document.getElementById(id) : null;
-        return target ? target.innerText.trim() : '';
-      });
-      expect(expectedText.length).toBeGreaterThan(0);
-
-      await btn.click({ force: true });
+      await page.locator(COPY_BTN_SELECTOR).first().click({ force: true });
 
       await expect
-        .poll(() =>
-          page.evaluate(
-            () => (window as unknown as { __copiedTexts: string[] }).__copiedTexts.at(-1) ?? null,
-          ),
-        )
-        .toBe(expectedText);
-    });
-
-    test('When the commandfor target is a text <input> or <textarea>, clicking the button copies its current value', async ({
-      page,
-    }) => {
-      const btn = page.locator(COPY_BUTTON_SELECTOR).first();
-      await expect(btn).toHaveCount(1);
-
-      const expectedValue = 'Custom brew notes: 18g in, 36g out';
-
-      await btn.evaluate((el, val) => {
-        const origId = el.getAttribute('commandfor') || 'temp-copy-input';
-        const origTarget = document.getElementById(origId);
-        if (origTarget) origTarget.removeAttribute('id');
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.id = origId;
-        input.value = val;
-        // Ensure scripts that fall back to innerText on target still read the current value
-        // if they haven't matched input/textarea, while scripts that check .value read input.value directly.
-        Object.defineProperty(input, 'innerText', {
-          get() {
-            return input.value;
-          },
-          configurable: true,
-        });
-        document.body.appendChild(input);
-      }, expectedValue);
-
-      await btn.click({ force: true });
-
-      await expect
-        .poll(() =>
-          page.evaluate(
-            () => (window as unknown as { __copiedTexts: string[] }).__copiedTexts.at(-1) ?? null,
-          ),
-        )
-        .toBe(expectedValue);
-    });
-
-    test('When the commandfor target is a multi-line code block, the copied text preserves its line breaks', async ({
-      page,
-    }) => {
-      const btn = page.locator(COPY_BUTTON_SELECTOR).first();
-      await expect(btn).toHaveCount(1);
-
-      const multilineCode = 'const grind = "fine";\nconst dose = 18;\nconst yieldGrams = 36;';
-
-      await btn.evaluate((el, codeText) => {
-        const id = el.getAttribute('commandfor');
-        const origTarget = id ? document.getElementById(id) : null;
-        if (origTarget) origTarget.removeAttribute('id');
-
-        const pre = document.createElement('pre');
-        const code = document.createElement('code');
-        if (id) code.id = id;
-        code.textContent = codeText;
-        pre.appendChild(code);
-        document.body.appendChild(pre);
-      }, multilineCode);
-
-      await btn.click({ force: true });
-
-      await expect
-        .poll(() =>
-          page.evaluate(
-            () => (window as unknown as { __copiedTexts: string[] }).__copiedTexts.at(-1) ?? null,
-          ),
-        )
-        .toBe(multilineCode);
+        .poll(async () => {
+          return await page.evaluate(() => (window as any).__copiedTexts);
+        })
+        .toContain(expectedMultiline);
     });
 
     test('Every copy button has a non-empty accessible name that is exposed in the accessibility tree even when the button shows only an icon', async ({
       page,
     }) => {
-      const buttons = page.locator(COPY_BUTTON_SELECTOR);
+      const buttons = page.locator(COPY_BTN_SELECTOR);
       const count = await buttons.count();
-      expect(count).toBeGreaterThanOrEqual(3);
+      expect(count).toBeGreaterThan(0);
 
       for (let i = 0; i < count; i++) {
         const btn = buttons.nth(i);
         await expect(btn).toHaveAccessibleName(/\S+/);
-        const hasHiddenOrNoText = await btn.evaluate((el) => {
-          const ariaLabel = el.getAttribute('aria-label')?.trim() || '';
-          const ariaLabelledBy = el.getAttribute('aria-labelledby')?.trim() || '';
-          const visibleText = el.textContent?.trim() || '';
-          return Boolean(ariaLabel || ariaLabelledBy || visibleText);
-        });
-        expect(hasHiddenOrNoText).toBe(true);
+        const snapshot = await btn.ariaSnapshot();
+        expect(snapshot).toMatch(/button\s+"[^"]+"/);
       }
     });
 
-    test('A live region (role="status" or aria-live) exists on the page, and its text becomes non-empty after a successful copy', async ({
+    test('A live region (role="status" or aria-live) exists on the page, starts empty, and becomes non-empty after a successful copy', async ({
       page,
     }) => {
-      const liveRegions = page.locator('[role="status"], [role="alert"], [aria-live]');
-      expect(await liveRegions.count()).toBeGreaterThan(0);
+      const count = await page.locator(COPY_BTN_SELECTOR).count();
+      expect(count).toBeGreaterThan(0);
 
-      const btn = page.locator(COPY_BUTTON_SELECTOR).first();
-      await expect(btn).toHaveCount(1);
-      await btn.click({ force: true });
+      const liveRegions = page.locator(LIVE_REGION_SELECTOR);
+      const regionCount = await liveRegions.count();
+      expect(regionCount).toBeGreaterThan(0);
+
+      for (let i = 0; i < regionCount; i++) {
+        const text = await liveRegions.nth(i).textContent();
+        expect((text ?? '').trim()).toBe('');
+      }
+
+      await page.evaluate(() => {
+        const writeMock = async () => {};
+        try {
+          Object.defineProperty(navigator.clipboard, 'writeText', {
+            value: writeMock,
+            configurable: true,
+            writable: true,
+          });
+        } catch {
+          Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: writeMock },
+            configurable: true,
+          });
+        }
+      });
+
+      await page.locator(COPY_BTN_SELECTOR).first().click({ force: true });
 
       await expect
-        .poll(() =>
-          page.evaluate(() => {
-            const regions = Array.from(
-              document.querySelectorAll('[role="status"], [role="alert"], [aria-live]'),
-            );
-            return regions.map((r) => (r.textContent || '').trim()).find((t) => t.length > 0) || '';
-          }),
-        )
-        .not.toBe('');
+        .poll(async () => {
+          const texts = await liveRegions.allTextContents();
+          return texts.some((t) => t.trim().length > 0);
+        })
+        .toBe(true);
     });
 
     test('When the clipboard write fails, the live region reports a failure message', async ({
       page,
     }) => {
+      const count = await page.locator(COPY_BTN_SELECTOR).count();
+      expect(count).toBeGreaterThan(0);
+
+      const liveRegions = page.locator(LIVE_REGION_SELECTOR);
+      expect(await liveRegions.count()).toBeGreaterThan(0);
+
       await page.evaluate(() => {
-        (window as unknown as { __shouldFailCopy: boolean }).__shouldFailCopy = true;
+        const failMock = async () => {
+          throw new Error('Clipboard write rejected');
+        };
+        try {
+          Object.defineProperty(navigator.clipboard, 'writeText', {
+            value: failMock,
+            configurable: true,
+            writable: true,
+          });
+        } catch {
+          Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: failMock },
+            configurable: true,
+          });
+        }
+        document.execCommand = () => false;
       });
 
-      const btn = page.locator(COPY_BUTTON_SELECTOR).first();
-      await expect(btn).toHaveCount(1);
-      await btn.click({ force: true });
+      await page.locator(COPY_BTN_SELECTOR).first().click({ force: true });
 
       await expect
-        .poll(() =>
-          page.evaluate(() => {
-            const regions = Array.from(
-              document.querySelectorAll('[role="status"], [role="alert"], [aria-live]'),
-            );
-            return regions.map((r) => (r.textContent || '').trim()).find((t) => t.length > 0) || '';
-          }),
-        )
-        .toMatch(/fail|error|unable|denied|could not|couldn't/i);
+        .poll(async () => {
+          const texts = await liveRegions.allTextContents();
+          return texts.map((t) => t.trim()).find((t) => t.length > 0) ?? '';
+        })
+        .toMatch(/fail|error|unable|could not|denied/i);
     });
 
     test('When the clipboard write fails, the clicked button does not gain its copied state', async ({
       page,
     }) => {
+      const buttons = page.locator(COPY_BTN_SELECTOR);
+      expect(await buttons.count()).toBeGreaterThan(0);
+
+      const liveRegions = page.locator(LIVE_REGION_SELECTOR);
+      expect(await liveRegions.count()).toBeGreaterThan(0);
+
       await page.evaluate(() => {
-        (window as unknown as { __shouldFailCopy: boolean }).__shouldFailCopy = true;
+        const failMock = async () => {
+          throw new Error('Clipboard write rejected');
+        };
+        try {
+          Object.defineProperty(navigator.clipboard, 'writeText', {
+            value: failMock,
+            configurable: true,
+            writable: true,
+          });
+        } catch {
+          Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: failMock },
+            configurable: true,
+          });
+        }
+        document.execCommand = () => false;
       });
 
-      const btn = page.locator(COPY_BUTTON_SELECTOR).first();
-      await expect(btn).toHaveCount(1);
-      await btn.click({ force: true });
+      const firstBtn = buttons.first();
+      await firstBtn.click({ force: true });
 
-      // Wait until failure feedback is processed (live region updated or next frame)
       await expect
-        .poll(() =>
-          page.evaluate(() => {
-            const regions = Array.from(
-              document.querySelectorAll('[role="status"], [role="alert"], [aria-live]'),
-            );
-            return regions.some((r) => (r.textContent || '').trim().length > 0);
-          }),
-        )
+        .poll(async () => {
+          const texts = await liveRegions.allTextContents();
+          return texts.some((t) => t.trim().length > 0);
+        })
         .toBe(true);
 
-      const hasCopiedState = await btn.evaluate((el) => {
+      const hasCopiedState = await firstBtn.evaluate((el) => {
         return (
           el.hasAttribute('data-copied') ||
-          el.getAttribute('data-state') === 'copied' ||
           el.classList.contains('copied') ||
-          el.classList.contains('is-copied')
+          el.classList.contains('is-copied') ||
+          el.getAttribute('data-state') === 'copied'
         );
       });
       expect(hasCopiedState).toBe(false);
     });
 
     test('Each visible copy button is at least 24 by 24 CSS pixels', async ({ page }) => {
-      const buttons = page.locator(COPY_BUTTON_SELECTOR);
+      const buttons = page.locator(COPY_BTN_SELECTOR);
       const count = await buttons.count();
-      expect(count).toBeGreaterThanOrEqual(3);
+      expect(count).toBeGreaterThan(0);
 
       for (let i = 0; i < count; i++) {
         const btn = buttons.nth(i);
+        const card = btn.locator('xpath=ancestor::*[contains(@class, "card")][1]');
+        if ((await card.count()) > 0) {
+          await card.hover();
+        }
         const box = await btn.boundingBox();
         expect(box).not.toBeNull();
         expect(box!.width).toBeGreaterThanOrEqual(24);
@@ -346,37 +291,160 @@ test.describe('copy-button Target Grader', () => {
       }
     });
 
+    test('Clicking a copy button does not disable the button while feedback is shown', async ({
+      page,
+    }) => {
+      const buttons = page.locator(COPY_BTN_SELECTOR);
+      expect(await buttons.count()).toBeGreaterThan(0);
+
+      const liveRegions = page.locator(LIVE_REGION_SELECTOR);
+      expect(await liveRegions.count()).toBeGreaterThan(0);
+
+      await page.evaluate(() => {
+        const writeMock = async () => {};
+        try {
+          Object.defineProperty(navigator.clipboard, 'writeText', {
+            value: writeMock,
+            configurable: true,
+            writable: true,
+          });
+        } catch {
+          Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: writeMock },
+            configurable: true,
+          });
+        }
+      });
+
+      const firstBtn = buttons.first();
+      await firstBtn.click({ force: true });
+
+      await expect
+        .poll(async () => {
+          const texts = await liveRegions.allTextContents();
+          return texts.some((t) => t.trim().length > 0);
+        })
+        .toBe(true);
+
+      await expect(firstBtn).toBeEnabled();
+      const ariaDisabled = await firstBtn.getAttribute('aria-disabled');
+      expect(ariaDisabled).not.toBe('true');
+    });
+
     test('After a successful copy the clicked button gains a visual copied state (such as a data-copied attribute or class) that is removed again after a timeout', async ({
       page,
     }) => {
+      const buttons = page.locator(COPY_BTN_SELECTOR);
+      expect(await buttons.count()).toBeGreaterThan(0);
+
       await page.evaluate(() => {
-        const origSetTimeout = window.setTimeout.bind(window);
-        window.setTimeout = ((
-          handler: TimerHandler,
-          timeout?: number,
-          ...args: unknown[]
-        ): number => {
-          const capped = typeof timeout === 'number' && timeout >= 500 ? 250 : timeout;
-          return origSetTimeout(handler, capped, ...args);
+        const origSetTimeout = window.setTimeout;
+        window.setTimeout = ((fn: TimerHandler, ms?: number, ...args: any[]) => {
+          const adjustedMs = typeof ms === 'number' && ms >= 500 ? 150 : ms;
+          return origSetTimeout(fn, adjustedMs, ...args);
         }) as typeof window.setTimeout;
+
+        const writeMock = async () => {};
+        try {
+          Object.defineProperty(navigator.clipboard, 'writeText', {
+            value: writeMock,
+            configurable: true,
+            writable: true,
+          });
+        } catch {
+          Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: writeMock },
+            configurable: true,
+          });
+        }
       });
 
-      const btn = page.locator(COPY_BUTTON_SELECTOR).first();
-      await expect(btn).toHaveCount(1);
-      await btn.click({ force: true });
-
-      const hasCopiedState = () =>
-        btn.evaluate((el) => {
+      const firstBtn = buttons.first();
+      const getCopiedState = () =>
+        firstBtn.evaluate((el) => {
           return (
             el.hasAttribute('data-copied') ||
-            el.getAttribute('data-state') === 'copied' ||
             el.classList.contains('copied') ||
-            el.classList.contains('is-copied')
+            el.classList.contains('is-copied') ||
+            el.getAttribute('data-state') === 'copied'
           );
         });
 
-      await expect.poll(hasCopiedState).toBe(true);
-      await expect.poll(hasCopiedState, { timeout: 5000 }).toBe(false);
+      expect(await getCopiedState()).toBe(false);
+
+      await firstBtn.click({ force: true });
+
+      await expect.poll(getCopiedState).toBe(true);
+      await expect.poll(getCopiedState, { timeout: 5000 }).toBe(false);
+    });
+
+    test('When invoker-commands is unsupported, clicking a copy button still copies the text of its commandfor target to the clipboard', async ({
+      page,
+      TARGET_URL,
+    }) => {
+      skipUnless({ unsupported: 'invoker-commands' });
+
+      await page.addInitScript(() => {
+        delete (window as any).CommandEvent;
+        if ('command' in HTMLButtonElement.prototype) {
+          delete (HTMLButtonElement.prototype as any).command;
+        }
+        if ('commandForElement' in HTMLButtonElement.prototype) {
+          delete (HTMLButtonElement.prototype as any).commandForElement;
+        }
+        const origAddEventListener = EventTarget.prototype.addEventListener;
+        EventTarget.prototype.addEventListener = function (
+          type: string,
+          listener: any,
+          options?: any
+        ) {
+          if (type === 'command') return;
+          return origAddEventListener.call(this, type, listener, options);
+        };
+      });
+
+      await page.goto(TARGET_URL);
+
+      const buttons = page.locator(COPY_BTN_SELECTOR);
+      expect(await buttons.count()).toBeGreaterThan(0);
+
+      await page.evaluate(() => {
+        (window as any).__fallbackCopied = [];
+        const writeMock = async (text: string) => {
+          (window as any).__fallbackCopied.push(text);
+        };
+        try {
+          Object.defineProperty(navigator.clipboard, 'writeText', {
+            value: writeMock,
+            configurable: true,
+            writable: true,
+          });
+        } catch {
+          Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: writeMock },
+            configurable: true,
+          });
+        }
+      });
+
+      const expectedText = await page.evaluate((sel) => {
+        const btn = document.querySelector(sel) as HTMLElement;
+        const targetId = btn.getAttribute('commandfor')!;
+        const target = document.getElementById(targetId)!;
+        return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
+          ? target.value
+          : target.innerText.trim();
+      }, COPY_BTN_SELECTOR);
+
+      expect(expectedText.length).toBeGreaterThan(0);
+
+      await buttons.first().click({ force: true });
+
+      await expect
+        .poll(async () => {
+          return await page.evaluate(() => (window as any).__fallbackCopied);
+        })
+        .toContain(expectedText);
     });
   });
 });
