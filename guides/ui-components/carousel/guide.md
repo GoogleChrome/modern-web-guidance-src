@@ -214,7 +214,7 @@ Wrap the parking rule in `@supports` for `sibling-index()`. Without support, lea
 
 {# WORKAROUND, remove when fixed: Chrome drops keyboard focus from native ::scroll-button() when looping reorders the slides, and Next/Previous stop early. Bug: https://issues.chromium.org/issues/581318163 . Consider a BCD key request. #}
 
-**Temporary workaround for keyboard focus (Chrome).** Reordering slides while looping makes Chrome drop focus from native `::scroll-button()` controls, so keyboard users cannot activate them repeatedly. Until this is fixed, on the first `Tab` keydown hide the native buttons (for example a `data-html-buttons` attribute on the track with `::scroll-button(*) { display: none; }`) and reveal the HTML Previous and Next buttons, which keep focus. Comment this code as a workaround so it can be removed once Chrome fixes the bug.
+**Temporary workaround for keyboard focus (Chrome).** Reordering slides while looping makes Chrome drop focus from native `::scroll-button()` controls, so keyboard users cannot activate them repeatedly. Until this is fixed, when both native scroll buttons and looping are supported, on the first `Tab` keydown hide the native buttons (for example via a `data-html-buttons` attribute on the track with `::scroll-button(*) { display: none; }`), reveal the HTML Previous and Next buttons, and then remove the listener (do not use `{ once: true }`, which removes the listener on the first non-`Tab` key such as `Shift` in `Shift+Tab`). Comment this code as a workaround so it can be removed once Chrome fixes the bug.
 
 ### Scroll-driven effects
 
