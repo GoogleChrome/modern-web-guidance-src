@@ -1,9 +1,8 @@
 # Expectations: `faster-spa-view-transitions`
 
-- Inactive view elements must have `content-visibility: hidden` applied in their computed styles.
-- The active view element must not have `content-visibility: hidden` applied (it should be `visible` or default).
-- The implementation must toggle the `content-visibility` state when switching between views.
-- The implementation must use `aria-hidden="true"` on inactive view elements to ensure they are removed from the accessibility tree.
-- The implementation must also use the `inert` attribute on inactive view elements to ensure they are hidden from keyboard users.
-- The implementation should maintain focus management by moving focus to the active view container upon transition.
-- If `content-visibility` is not supported, inactive view elements must have `display: none` applied in their computed styles.
+- Inactive view elements have `content-visibility: hidden` applied in their computed styles.
+- When a view element is active, it does not have `content-visibility: hidden` applied (its computed `content-visibility` is `visible`).
+- Switching between views toggles the `content-visibility` state between the active and inactive view elements.
+- Inactive view elements have the `inert` attribute applied (and removed when active) so hidden content is excluded from the keyboard tab order and accessibility tree.
+- Switching to a view moves keyboard focus to the newly active view container.
+- When `content-visibility: hidden` is not supported, a `@supports not (content-visibility: hidden)` fallback rule applies `display: none` to inactive view elements.
