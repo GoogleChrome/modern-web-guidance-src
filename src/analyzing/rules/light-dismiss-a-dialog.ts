@@ -16,7 +16,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const LIGHT_DISMISS_A_DIALOG_GUIDE_HASH = '81b6cf86f574';
+export const LIGHT_DISMISS_A_DIALOG_GUIDE_HASH = '3ae36ee091a1';
 
 const CLOSEDBY_FEATURE_TOKENS = ['closedBy', 'closedby'] as const;
 

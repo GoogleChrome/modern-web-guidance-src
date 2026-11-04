@@ -5,7 +5,7 @@ import type {
   DomRuleMatcher,
 } from '../schema.ts';
 
-export const AUTOFILL_ADDRESS_FORM_GUIDE_HASH = '31a1d6e904ab';
+export const AUTOFILL_ADDRESS_FORM_GUIDE_HASH = '7e7270bbb89f';
 
 const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 
@@ -62,7 +62,15 @@ const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
   'bind:autocomplete',
 ];
 
-const SUPPORTED_EXTENSIONS = ['.html', '.htm', '.jsx', '.tsx'];
+const SUPPORTED_EXTENSIONS = [
+  '.html',
+  '.htm',
+  '.jsx',
+  '.tsx',
+  '.vue',
+  '.svelte',
+  '.astro',
+];
 const TEST_PATH_SUBSTRINGS = ['/test/', '/tests/', '/fixtures/', '/fixture/', '__tests__'];
 
 const NON_ADDRESS_INPUT_TYPES = new Set([

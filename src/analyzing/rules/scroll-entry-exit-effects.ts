@@ -15,7 +15,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const SCROLL_ENTRY_EXIT_EFFECTS_GUIDE_HASH = '72311e501787';
+export const SCROLL_ENTRY_EXIT_EFFECTS_GUIDE_HASH = '8cb1e6c53a72';
 
 const SCROLL_REVEAL_PACKAGES = [
   'aos',

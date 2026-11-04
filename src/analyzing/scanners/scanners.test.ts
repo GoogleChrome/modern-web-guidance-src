@@ -15,6 +15,9 @@ import {
   scanCssRules,
 } from './css-scanner.ts';
 import { scanHtml, scanJsx, tokenizeHtmlTags } from './dom-scanner.ts';
+import { isProtectedByFeatureGuard } from './ast-helpers.ts';
+import { withVirtualSourceFile } from './js-scanner.ts';
+import { prepareHtmlForDomScan } from './sfc-extractor.ts';
 import {
   computeGuideHash,
   createInMemoryProject,
@@ -928,5 +931,164 @@ void test('scanFiles: per-file exception boundary', () => {
   const findings = scanFiles(files, []);
   assert.deepEqual(findings, []);
 });
+
+void test('ast-helpers: feature-guard AST blind spots and identifier resolution', async (t) => {
+  await t.test('resolves cached boolean feature variables in early returns and if statements', () => {
+    const code = `
+      const supportsFieldSizing = typeof CSS !== 'undefined' && CSS.supports('field-sizing', 'content');
+      function resizeInput(el) {
+        if (supportsFieldSizing) return;
+        legacyFallback();
+      }
+
+      const hasSetHTML = "setHTML" in Element.prototype;
+      function renderOutput(raw) {
+        if (!hasSetHTML) {
+          fallbackSanitize();
+        } else {
+          modernSanitize();
+        }
+      }
+
+      function renderOutputElse(raw) {
+        if (hasSetHTML) {
+          modernSanitize();
+        } else {
+          fallbackSanitizeElse();
+        }
+      }
+    `;
+
+    withVirtualSourceFile('guards.ts', code, (sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const findCall = (name: string) => {
+        const found = calls.find((c) => c.getExpression().getText() === name);
+        assert.ok(found, `call ${name} must exist`);
+        return found;
+      };
+
+      // Early return via cached supportsFieldSizing protects fallback
+      assert.equal(isProtectedByFeatureGuard(findCall('legacyFallback'), ['field-sizing']), true);
+
+      // Negative if (!hasSetHTML) then branch protects fallbackSanitize
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackSanitize'), ['sethtml']), true);
+      assert.equal(isProtectedByFeatureGuard(findCall('modernSanitize'), ['sethtml']), false);
+
+      // Positive if (hasSetHTML) else branch protects fallbackSanitizeElse
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackSanitizeElse'), ['sethtml']), true);
+    });
+  });
+
+  await t.test('handles self-referential / circular variable declarations without infinite loops', () => {
+    const code = `
+      let a = b;
+      let b = a;
+      function testCircle() {
+        if (a) return;
+        unprotectedFallback();
+      }
+
+      let selfRef = selfRef;
+      function testSelfRef() {
+        if (!selfRef) {
+          unprotectedSelfRef();
+        }
+      }
+    `;
+
+    withVirtualSourceFile('cycle.ts', code, (sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const findCall = (name: string) => {
+        const found = calls.find((c) => c.getExpression().getText() === name);
+        assert.ok(found, `call ${name} must exist`);
+        return found;
+      };
+
+      // Circular and self-referential variables must not loop and must not falsely guard
+      assert.equal(isProtectedByFeatureGuard(findCall('unprotectedFallback'), ['someToken']), false);
+      assert.equal(isProtectedByFeatureGuard(findCall('unprotectedSelfRef'), ['someToken']), false);
+    });
+  });
+
+  await t.test('recognizes Object.hasOwn and hasOwnProperty.call feature guards', () => {
+    const code = `
+      function testHasOwn() {
+        if (!Object.hasOwn(HTMLButtonElement.prototype, 'commandForElement')) {
+          fallbackHasOwn();
+        }
+      }
+
+      function testProtoHasOwnProperty() {
+        if (!Object.prototype.hasOwnProperty.call(HTMLButtonElement.prototype, 'commandForElement')) {
+          fallbackProtoHasOwnProperty();
+        }
+      }
+
+      function testBareHasOwnProperty() {
+        if (hasOwnProperty.call(HTMLButtonElement.prototype, 'commandForElement')) return;
+        fallbackBareHasOwnProperty();
+      }
+    `;
+
+    withVirtualSourceFile('hasown.ts', code, (sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const findCall = (name: string) => {
+        const found = calls.find((c) => c.getExpression().getText() === name);
+        assert.ok(found, `call ${name} must exist`);
+        return found;
+      };
+
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackHasOwn'), ['commandforelement']), true);
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackProtoHasOwnProperty'), ['commandforelement']), true);
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackBareHasOwnProperty'), ['commandforelement']), true);
+    });
+  });
+
+  await t.test('matches feature guard tokens case-insensitively', () => {
+    const code = `
+      function testCaseInsensitive() {
+        if (!('interestForElement' in HTMLButtonElement.prototype)) {
+          fallbackTooltip();
+        }
+      }
+    `;
+
+    withVirtualSourceFile('case.ts', code, (sf) => {
+      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
+      const findCall = (name: string) => {
+        const found = calls.find((c) => c.getExpression().getText() === name);
+        assert.ok(found, `call ${name} must exist`);
+        return found;
+      };
+
+      // Token 'interestfor' matches 'interestForElement' case-insensitively
+      assert.equal(isProtectedByFeatureGuard(findCall('fallbackTooltip'), ['interestfor']), true);
+    });
+  });
+});
+
+void test('sfc-extractor: prepareHtmlForDomScan unwraps all Vue template tags preserving offsets', async (t) => {
+  await t.test('blanks nested template v-if and template v-for tags so ancestor selectors match', () => {
+    const vue = `<template>
+  <form id="checkout">
+    <template v-if="showBilling">
+      <div class="field">
+        <template v-for="item in items">
+          <input type="text" name="street_address" />
+        </template>
+      </div>
+    </template>
+  </form>
+</template>`;
+
+    const prepared = prepareHtmlForDomScan('Test.vue', vue);
+    assert.equal(prepared.length, vue.length);
+    assert.equal(prepared.split('\n').length, vue.split('\n').length);
+    // All <template> and </template> occurrences should be replaced with spaces
+    assert.equal(/<\/?template\b/i.test(prepared), false);
+    assert.equal(prepared.includes('<input type="text" name="street_address" />'), true);
+  });
+});
+
 
 

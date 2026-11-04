@@ -5,7 +5,7 @@ import type {
   DomRuleMatcher,
 } from '../schema.ts';
 
-export const SCROLLSPY_GUIDE_HASH = 'd689593b76c5';
+export const SCROLLSPY_GUIDE_HASH = 'f7945559ec22';
 
 const scrollspyDomMatcher: DomRuleMatcher = {
   kind: 'dom',
@@ -14,7 +14,14 @@ const scrollspyDomMatcher: DomRuleMatcher = {
   fastTokens: ['data-spy', 'data-bs-spy', 'data-scrollspy', 'scrollspy', 'ScrollSpy', 'data-target', 'data-bs-target'],
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['data-spy', 'data-bs-spy'],
-  matchElement: (element: DomElementView, _ctx: DomMatcherContext) => {
+  matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
+    if (
+      ctx.documentText.includes('scroll-target-group') ||
+      ctx.documentText.includes(':target-current')
+    ) {
+      return null;
+    }
+
     const dataSpy = element.getAttribute('data-spy')?.toLowerCase().trim();
     const dataBsSpy = element.getAttribute('data-bs-spy')?.toLowerCase().trim();
 

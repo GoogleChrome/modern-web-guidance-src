@@ -248,6 +248,25 @@ void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
     assert.equal(matches.length, 0);
   });
 
+  await t.test('exempts service and infrastructure configuration fields (proxy, dbConfig, database, webhook, apikey, client_secret)', () => {
+    const html = `
+      <form>
+        <input type="password" v-model="proxy.password">
+        <input type="password" v-model="dbConfig.password">
+        <input type="password" name="proxy_password">
+        <input type="password" name="db_password">
+        <input type="password" name="database_password">
+        <input type="password" name="smtp_password">
+        <input type="password" name="webhook_secret">
+        <input type="password" name="api_key">
+        <input type="password" name="apikey">
+        <input type="password" name="client_secret">
+      </form>
+    `;
+    const matches = scanHtml('infra-config.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
   await t.test('exempts Vue and Angular dynamic template bindings', () => {
     const html = `
       <form>

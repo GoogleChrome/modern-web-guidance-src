@@ -161,7 +161,9 @@ function resolveLexicalBinding(
  */
 export function resolveLocalExpression(node: Node, maxHops: number = 1): Node {
   let current = unwrapExpression(node);
+  const seen = new Set<Node>();
   for (let hops = 0; hops < maxHops && Node.isIdentifier(current); hops++) {
+    seen.add(current);
     const name = current.getText();
     const binding = resolveLexicalBinding(current, name, current.getStart());
     const init =
@@ -171,7 +173,11 @@ export function resolveLocalExpression(node: Node, maxHops: number = 1): Node {
     if (!init || init === current) {
       break;
     }
-    current = unwrapExpression(init);
+    const unwrappedInit = unwrapExpression(init);
+    if (seen.has(unwrappedInit)) {
+      break;
+    }
+    current = unwrappedInit;
   }
   return current;
 }
@@ -267,32 +273,69 @@ const BROWSER_GLOBAL_ROOTS = new Set([
  * Validates that an AST expression represents an authentic browser feature detection check
  * rather than a bare variable null-check (e.g. `if (container)`).
  */
-function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): boolean {
+function isValidFeatureCondition(
+  expr: Node,
+  featureTokens: readonly string[],
+  seen: Set<Node> = new Set(),
+): boolean {
   const unwrapped = unwrapExpression(expr);
+  if (seen.has(unwrapped)) {
+    return false;
+  }
 
   if (Node.isIdentifier(unwrapped)) {
-    return (
-      featureTokens.includes(unwrapped.getText()) &&
+    const textLower = unwrapped.getText().toLowerCase();
+    if (
+      featureTokens.some((token) => token.toLowerCase() === textLower) &&
       isUnshadowedGlobal(unwrapped, unwrapped.getText())
-    );
+    ) {
+      return true;
+    }
+    seen.add(unwrapped);
+    const resolved = resolveLocalExpression(unwrapped, 5);
+    if (resolved !== unwrapped && !seen.has(resolved)) {
+      return isValidFeatureCondition(resolved, featureTokens, seen);
+    }
+    return false;
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
     return (
       unwrapped.getOperatorToken().getKind() === SyntaxKind.InKeyword ||
-      isValidFeatureCondition(unwrapped.getLeft(), featureTokens) ||
-      isValidFeatureCondition(unwrapped.getRight(), featureTokens)
+      isValidFeatureCondition(unwrapped.getLeft(), featureTokens, seen) ||
+      isValidFeatureCondition(unwrapped.getRight(), featureTokens, seen)
     );
   }
 
   if (Node.isTypeOfExpression(unwrapped)) {
-    return isValidFeatureCondition(unwrapped.getExpression(), featureTokens);
+    return isValidFeatureCondition(unwrapped.getExpression(), featureTokens, seen);
   }
 
   if (Node.isCallExpression(unwrapped)) {
     const callee = unwrapExpression(unwrapped.getExpression());
-    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'supports') {
-      return isGlobalReference(callee.getExpression(), 'CSS');
+    if (Node.isPropertyAccessExpression(callee)) {
+      const methodName = callee.getName();
+      if (methodName === 'supports') {
+        return isGlobalReference(callee.getExpression(), 'CSS');
+      }
+      if (methodName === 'hasOwn') {
+        return isGlobalReference(callee.getExpression(), 'Object');
+      }
+      if (methodName === 'hasOwnProperty') {
+        return true;
+      }
+      if (methodName === 'call') {
+        const callTarget = unwrapExpression(callee.getExpression());
+        if (Node.isIdentifier(callTarget) && callTarget.getText() === 'hasOwnProperty') {
+          return true;
+        }
+        if (
+          Node.isPropertyAccessExpression(callTarget) &&
+          callTarget.getName() === 'hasOwnProperty'
+        ) {
+          return true;
+        }
+      }
     }
     return false;
   }
@@ -304,9 +347,10 @@ function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): 
     }
     if (Node.isIdentifier(root)) {
       const rootText = root.getText();
+      const propNameLower = unwrapped.getName().toLowerCase();
       return (
         (BROWSER_GLOBAL_ROOTS.has(rootText) && isUnshadowedGlobal(root, rootText)) ||
-        featureTokens.includes(unwrapped.getName())
+        featureTokens.some((token) => token.toLowerCase() === propNameLower)
       );
     }
   }
@@ -320,22 +364,26 @@ function isValidFeatureCondition(expr: Node, featureTokens: readonly string[]): 
 function conditionCheckPolarity(
   conditionExpr: Node,
   featureTokens: readonly string[],
+  seen: Set<Node> = new Set(),
 ): 'positive' | 'negative' | null {
   const unwrapped = unwrapExpression(conditionExpr);
+  if (seen.has(unwrapped)) {
+    return null;
+  }
 
   if (
     Node.isPrefixUnaryExpression(unwrapped) &&
     unwrapped.getOperatorToken() === SyntaxKind.ExclamationToken
   ) {
-    const inner = conditionCheckPolarity(unwrapped.getOperand(), featureTokens);
+    const inner = conditionCheckPolarity(unwrapped.getOperand(), featureTokens, seen);
     return inner === 'positive' ? 'negative' : inner === 'negative' ? 'positive' : null;
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
     const op = unwrapped.getOperatorToken().getKind();
     if (op === SyntaxKind.AmpersandAmpersandToken || op === SyntaxKind.BarBarToken) {
-      const left = conditionCheckPolarity(unwrapped.getLeft(), featureTokens);
-      const right = conditionCheckPolarity(unwrapped.getRight(), featureTokens);
+      const left = conditionCheckPolarity(unwrapped.getLeft(), featureTokens, seen);
+      const right = conditionCheckPolarity(unwrapped.getRight(), featureTokens, seen);
       if (left && right) {
         return left === right ? left : null;
       }
@@ -343,10 +391,18 @@ function conditionCheckPolarity(
     }
   }
 
-  const condText = unwrapped.getText();
+  if (Node.isIdentifier(unwrapped)) {
+    seen.add(unwrapped);
+    const resolved = resolveLocalExpression(unwrapped, 5);
+    if (resolved !== unwrapped && !seen.has(resolved)) {
+      return conditionCheckPolarity(resolved, featureTokens, seen);
+    }
+  }
+
+  const condTextLower = unwrapped.getText().toLowerCase();
   if (
-    !featureTokens.some((token) => condText.includes(token)) ||
-    !isValidFeatureCondition(unwrapped, featureTokens)
+    !featureTokens.some((token) => condTextLower.includes(token.toLowerCase())) ||
+    !isValidFeatureCondition(unwrapped, featureTokens, seen)
   ) {
     return null;
   }
@@ -413,13 +469,14 @@ function sourceFileContainsAnyToken(
     sourceFileTokenCache.set(sf, cache);
   }
 
-  let sfText: string | undefined;
+  let sfTextLower: string | undefined;
   for (const token of tokens) {
-    let hasToken = cache.get(token);
+    const tokenLower = token.toLowerCase();
+    let hasToken = cache.get(tokenLower);
     if (hasToken === undefined) {
-      sfText ??= sf.getFullText();
-      hasToken = sfText.includes(token);
-      cache.set(token, hasToken);
+      sfTextLower ??= sf.getFullText().toLowerCase();
+      hasToken = sfTextLower.includes(tokenLower);
+      cache.set(tokenLower, hasToken);
     }
     if (hasToken) {
       return true;
