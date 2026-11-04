@@ -589,15 +589,9 @@ dialog.showModal();</code></pre>
 
       selectedText = text;
 
-      // Anchor to the line where the selection ends (its focus), at the inline end of the selection
-      const rects = range.getClientRects();
-      const backward = sel.anchorNode === sel.focusNode
-        ? sel.focusOffset < sel.anchorOffset
-        : Boolean(sel.anchorNode.compareDocumentPosition(sel.focusNode) & Node.DOCUMENT_POSITION_PRECEDING);
-      const rect = (backward ? rects[0] : rects[rects.length - 1]) || range.getBoundingClientRect();
-      const rtl = getComputedStyle(selectable).direction === 'rtl';
-      const atLeft = backward !== rtl;
-      const x = Math.min(Math.max(atLeft ? rect.left : rect.right, 32), innerWidth - 32);
+      // Centered on the inline axis and above the selection on the block axis, so it never covers selected text
+      const rect = range.getBoundingClientRect();
+      const x = Math.min(Math.max(rect.left + rect.width / 2, 32), innerWidth - 32);
       popover.style.setProperty('--x', `${x}px`);
       const y = Math.max(rect.top, 48);
       popover.style.setProperty('--y', `${y}px`);
