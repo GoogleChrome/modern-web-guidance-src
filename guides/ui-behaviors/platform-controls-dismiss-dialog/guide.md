@@ -13,9 +13,10 @@ When the `<dialog>` element was first introduced, it could be dismissed with the
 
 ```html
 <!-- MANDATORY: must be opened with either `showModal()` with JavaScript or the `show-modal` command using declarative command invokers in order respond to close requests including platform-specific controls. -->
-<dialog aria-labelledby="example">
+<dialog id="modal-default" aria-labelledby="example">
   <h1 id="example">Example</h1>
   <p>Modal that can be dismissed with close requests.</p>
+  <button command="close" commandfor="modal-default">Close</button>
 </dialog>
 ```
 
@@ -32,11 +33,18 @@ When opened in a modal state, a dialog without the `closedby` attribute responds
 If you also want “light dismiss” behavior, then you must set `closedby` to `any`:
 
 ```html
-<dialog closedby="any" aria-labelledby="example">
+<dialog id="modal-closedby-any" closedby="any" aria-labelledby="example">
   <h1 id="example">Example</h1>
   <p>Modal that can be dismissed with close requests and light dismiss.</p>
+  <button command="close" commandfor="modal-closedby-any">Close</button>
 </dialog>
 ```
+
+## Accessibility considerations
+
+Ensure that there is always a close button visible to provide people with a clear, alternative way to close the modal dialog.
+
+Ensure that there aren't components in the modal dialog that themselves use the `Esc` key for interaction, as this may lead to the dialog being inadvertently closed. If the modal dialog does include components that use the `Esc` key (e.g. a menu or a combobox), ensure that when these components are focused, they capture the `Esc` key press and use it accordingly, and that the dialog is not closed accidentally.
 
 ## Fallback strategies
 
