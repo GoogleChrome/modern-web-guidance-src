@@ -7,6 +7,7 @@ import type { PublicAllowlist } from './allowlist.ts';
 import {
   buildSelectedSuites,
   buildSuite,
+  cleanRelativePath,
   runRelativePath,
   writeManifest,
 } from './builder.ts';
@@ -55,6 +56,21 @@ describe('runRelativePath', () => {
   test('refuses segments that could escape the suite directory or are not plain names', () => {
     for (const key of ['.. - security - guided', 'task - ../../etc - guided', 'task - security - guided/x', 'task - sec urity - guided', 'task - . - guided', 'task - security']) {
       assert.throws(() => runRelativePath(key, 1), /Unsafe path segment/, key);
+    }
+  });
+});
+
+describe('cleanRelativePath', () => {
+  test('accepts plain relative paths and rejects anything that could leave the directory', () => {
+    assert.equal(cleanRelativePath('index.html'), 'index.html');
+    assert.equal(cleanRelativePath('src/app/main.ts'), 'src/app/main.ts');
+    assert.equal(cleanRelativePath('.env.local'), '.env.local');
+    // Unusual but legitimate file names stay; containment is enforced when the path is resolved.
+    assert.equal(cleanRelativePath('app/[id]/page.tsx'), 'app/[id]/page.tsx');
+    assert.equal(cleanRelativePath('src/routes/+page.svelte'), 'src/routes/+page.svelte');
+    assert.equal(cleanRelativePath('dir name/x'), 'dir name/x');
+    for (const bad of ['', '/etc/passwd', '../x', 'a/../b', './a', 'a//b', 'a\\b', '.', '..', 'a/', 'a\0b']) {
+      assert.equal(cleanRelativePath(bad), undefined, JSON.stringify(bad));
     }
   });
 });
@@ -123,6 +139,50 @@ describe('buildSuite', () => {
     assert.ok(patch.startsWith('diff --git a/index.html b/index.html\n'));
     assert.match(patch, /^-<p>base version<\/p>$/m);
     assert.match(patch, /^\+<p>agent version<\/p>$/m);
+  });
+
+  test('a legacy run whose targetFile or baseApp escapes its directory gets no patch', async () => {
+    const options = makeOptions();
+    // A file outside the base apps dir that a traversing targetFile would otherwise read.
+    const secret = path.join(path.dirname(options.baseAppsDir!), 'outside.txt');
+    fs.writeFileSync(secret, 'outside the base apps\n');
+    const evalsPath = path.join(options.storeRoot, SUITE, 'evals.json');
+    const raw = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+    const [run] = raw.results['task - passkey-authentication - guided'];
+    const outsideRel = `../${path.basename(secret)}`;
+    write(path.join(options.storeRoot, SUITE, PASSKEY_RUN, path.basename(secret)), 'agent copy\n');
+
+    for (const bad of [
+      { ...run, targetFile: outsideRel },
+      { ...run, targetFile: '/etc/hostname' },
+      { ...run, targetFile: 'dir\\index.html' },
+      { ...run, targetFile: '.' },
+      { ...run, baseApp: '../..' },
+    ]) {
+      raw.results['task - passkey-authentication - guided'] = [bad];
+      fs.writeFileSync(evalsPath, JSON.stringify(raw));
+      fs.rmSync(path.join(options.outDir, 'public-evals'), { recursive: true, force: true });
+      const result = await buildSuite(SUITE, options);
+      assert.equal(result.status, 'built', JSON.stringify(bad));
+      assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, PASSKEY_RUN, 'agent.patch')), JSON.stringify(bad));
+      const evals = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, 'evals.json'), 'utf8')) as PublicEvals;
+      assert.deepEqual(evals.results['task - passkey-authentication - guided'][0].files, ['modern-web.log'], JSON.stringify(bad));
+    }
+  });
+
+  test('a legacy run whose target is a directory in the base app is diffed as a new file, not a crash', async () => {
+    const options = makeOptions();
+    fs.mkdirSync(path.join(options.baseAppsDir!, 'daily-grind', 'index.html.d'));
+    const evalsPath = path.join(options.storeRoot, SUITE, 'evals.json');
+    const raw = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+    raw.results['task - passkey-authentication - guided'][0].targetFile = 'index.html.d';
+    fs.writeFileSync(evalsPath, JSON.stringify(raw));
+    write(path.join(options.storeRoot, SUITE, PASSKEY_RUN, 'index.html.d'), 'agent wrote a file here\n');
+
+    const result = await buildSuite(SUITE, options);
+    assert.equal(result.status, 'built', result.reason);
+    const patch = fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, PASSKEY_RUN, 'agent.patch'), 'utf8');
+    assert.ok(patch.includes('new file mode'));
   });
 
   test('records written artifacts on each public run and strips private fields', async () => {

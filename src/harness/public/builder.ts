@@ -126,8 +126,8 @@ interface BuildState {
 interface SuiteState {
   generation: string;
   excludeGuides: string[];
-  /** The list a suite was skipped as `unreleased-model` against; releasing a model is the cue to try again. */
-  releasedModels: string[];
+  /** Only for `unreleased-model` skips: the list the suite was judged against, so a change to it is the cue to try again. */
+  releasedModels?: string[];
   /**
    * For published and deferred suites only (both are already public through
    * their `evals.json`): `model`, so a release-list change rebuilds a suite only
@@ -455,7 +455,7 @@ function stale(recorded: SuiteState, state: BuildState, ref: SuiteRef, options: 
  */
 function releaseStatusChanged(recorded: SuiteState, releasedModels: readonly string[]): boolean {
   if (recorded.skipped) {
-    return recorded.skipped.code === 'unreleased-model' && !sameSet(recorded.releasedModels, releasedModels);
+    return recorded.skipped.code === 'unreleased-model' && !sameSet(recorded.releasedModels ?? [], releasedModels);
   }
   return recorded.model === undefined || !releasedModels.includes(recorded.model);
 }
@@ -505,7 +505,6 @@ function writeState(
   const entryFor = (suiteId: string, ref: SuiteRef): SuiteState => ({
     generation: ref.generation,
     excludeGuides: overrideFor(options.allowlist, suiteId)?.excludeGuides ?? [],
-    releasedModels: [...options.allowlist.releasedModels].sort(),
   });
   // Only publishable suites get an identity: a skipped suite's model may be unreleased.
   const withIdentity = (suiteId: string, entry: SuiteState): SuiteState => {
@@ -524,6 +523,9 @@ function writeState(
     const entry = entryFor(result.suiteId, ref);
     if (result.status === 'skipped' && result.code) {
       entry.skipped = { code: result.code };
+      if (result.code === 'unreleased-model') {
+        entry.releasedModels = [...options.allowlist.releasedModels].sort();
+      }
       next.suites[result.suiteId] = entry;
     } else {
       next.suites[result.suiteId] = withIdentity(result.suiteId, entry);
@@ -619,14 +621,48 @@ async function publicPatchFor(
   if (!rawRun.targetFile || !rawRun.baseApp) {
     return undefined;
   }
-  const agentFile = await options.store.readFile(`${suiteId}/${runPath}/${rawRun.targetFile}`);
+  // Both fields come from the raw evals.json, so they are checked before touching the store
+  // or the base-app checkout: a run naming a target outside its directory gets no patch.
+  const targetFile = cleanRelativePath(rawRun.targetFile);
+  if (targetFile === undefined || !PLAIN_SEGMENT_RE.test(rawRun.baseApp)) {
+    return undefined;
+  }
+  const agentFile = await options.store.readFile(`${suiteId}/${runPath}/${targetFile}`);
   if (agentFile === undefined) {
     return undefined;
   }
   harvestArtifact(agentFile.toString('utf8'));
-  const basePath = path.join(options.baseAppsDir ?? defaultBaseAppsDir, rawRun.baseApp, rawRun.targetFile);
-  const base = fs.existsSync(basePath) ? fs.readFileSync(basePath) : undefined;
-  return patchFromFiles(rawRun.targetFile, base, agentFile);
+  const base = readBaseAppFile(options.baseAppsDir ?? defaultBaseAppsDir, rawRun.baseApp, targetFile);
+  return patchFromFiles(targetFile, base, agentFile);
+}
+
+/** One directory or file name: not empty, not `.` or `..`, no separators. Anything else (spaces, `[id]`, `+page`) is a legitimate file name. */
+const PLAIN_SEGMENT_RE = /^(?!\.{1,2}$)[^/\\]+$/;
+
+/**
+ * `relPath` as a forward-slash relative path of plain segments, or undefined
+ * when it is absolute, uses backslashes or NUL, or contains `.`/`..`/empty segments.
+ */
+export function cleanRelativePath(relPath: string): string | undefined {
+  if (relPath === '' || relPath.startsWith('/') || relPath.includes('\\') || relPath.includes('\u0000')) {
+    return undefined;
+  }
+  const segments = relPath.split('/');
+  return segments.every(segment => PLAIN_SEGMENT_RE.test(segment)) ? segments.join('/') : undefined;
+}
+
+/**
+ * The base app's copy of `targetFile`, if it is a regular file inside
+ * `baseAppsDir`. The prefix check is the containment guard; the segment rules
+ * above only keep obviously malformed names out of store keys.
+ */
+function readBaseAppFile(baseAppsDir: string, baseApp: string, targetFile: string): Buffer | undefined {
+  const root = path.resolve(baseAppsDir);
+  const basePath = path.resolve(root, baseApp, targetFile);
+  if (!basePath.startsWith(root + path.sep)) {
+    return undefined;
+  }
+  return fs.statSync(basePath, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(basePath) : undefined;
 }
 
 /** Writes files under one suite's output directory, scrubbing text and counting totals. */
