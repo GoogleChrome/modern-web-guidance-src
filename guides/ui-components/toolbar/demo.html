@@ -500,6 +500,13 @@
       menu.style.top = `${below ? t.bottom : t.top - m.height}px`;
       menu.style.left = `${Math.max(0, Math.min(t.right - m.width, innerWidth - m.width))}px`;
     }
+    if (!("focusGroup" in HTMLElement.prototype)) {
+      menu.firstElementChild.setAttribute("role", "menu");
+      menuItems.forEach((b) => {
+        if (!b.hasAttribute("role")) b.setAttribute("role", "menuitem");
+        b.tabIndex = -1;
+      });
+    }
     menu.addEventListener("keydown", (e) => {
       // Tab leaves the menu: focus the trigger, close, and let Tab (or Shift+Tab) continue from the trigger
       if (e.key === "Tab") { more.focus(); return menu.hidePopover(); }
@@ -511,6 +518,7 @@
         say(`${e.target.textContent.trim()} ${on ? "on" : "off"}`); // The live region confirms the state; the aria-checked change alone is not reliably announced
         return;
       }
+      if ("focusGroup" in HTMLElement.prototype) return;
       const at = menuItems.indexOf(document.activeElement);
       const to = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: -1 }[e.key];
       if (to === undefined) return;
