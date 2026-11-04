@@ -18,8 +18,7 @@
 - Looping does not change the DOM order of the slides.
 - The polite live status reads "Slide N of M" with the correct slide after wrapping from the last slide to the first.
 - Interactive carousel controls, markers, and fallback buttons have a visible `:focus-visible` indicator.
-- A polite live region (`role="status"` or `aria-live="polite"`) announces the current slide position after scrolling settles.
-- The polite live status is announced on initial load to reflect the first visible slide.
+- A polite live region (`role="status"` or `aria-live="polite"`) starts empty on initial load and announces the current slide position after user-initiated scrolling settles.
 - Without JavaScript, the first slide is the one in view when the page loads.
 - The track and the fallback buttons set `touch-action: manipulation`.
 - The carousel track remains scrollable via touch, pointer, and native keyboard scrolling without requiring JavaScript.
