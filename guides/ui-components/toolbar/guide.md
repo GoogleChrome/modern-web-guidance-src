@@ -30,7 +30,7 @@ A toolbar groups related controls (formatting, alignment, view options) into one
 MANDATORY: Put `role="toolbar"` and an `aria-label` on the container. Wrap related controls in `role="group"` with their own `aria-label`, and divide groups with `role="separator"` and `aria-orientation="vertical"`. If a wrapped separator would sit alone at a row end, hide it visually with `opacity: 0`, not `display: none` or `visibility: hidden`, which also remove it from the accessibility tree. Optionally add `aria-controls` pointing at the element the toolbar acts on; it is only worth adding when the toolbar controls one specific element.
 
 * Use real `<button type="button">` elements.
-* Icon-only buttons need an `aria-label`; tooltips do not replace it. Render icons from CSS so they follow `currentColor` and forced-colors (see {{ GUIDE_REF("icons") }}).
+* Icon-only buttons need an `aria-label`; tooltips do not replace it. Render decorative icons with `<svg aria-hidden="true">` and `currentColor`, or with a CSS `mask`, `background-color: currentColor`, and `forced-color-adjust: none` so forced-colors mode does not strip the fill. For a reusable CSS icon token system, see {{ GUIDE_REF("icons") }}.
 * Toggle buttons (bold, italic) use `aria-pressed="true|false"`. Do not change their label when toggled.
 * A mutually exclusive set (left/center/right) uses `aria-pressed` on each button, with script keeping exactly one `true`.
 * Action buttons (copy, undo, save) run once and have no on/off state, so DO NOT add `aria-pressed` to them. Mark `aria-pressed` only on buttons that stay on or off.
