@@ -62,6 +62,23 @@ Owners:
 * Approve and merge changes to governance, infrastructure, and [`CODEOWNERS`](./CODEOWNERS)-protected paths.
 * Release packages and manage major version releases.
 
+
+#### Board Composition & Roster
+
+The Owners group comprises seats representing browser and developer ecosystem stakeholders alongside independent web platform experts, structured to ensure multi-stakeholder governance and cross-browser neutrality:
+
+* **Google Chrome** (2 seats):
+  * Kadir Topal ([`@atopal`](https://github.com/atopal))
+  * Rick Viscomi ([`@rviscomi`](https://github.com/rviscomi))
+* **Microsoft Edge** (1 seat):
+  * Patrick Brosset ([`@captainbrosset`](https://github.com/captainbrosset))
+* **Mozilla Firefox / MDN** (1 seat):
+  * *[Mozilla representative, TBD]*
+* **Independent Web Platform Experts** (2 seats):
+  * Dr. Lea Verou ([`@LeaVerou`](https://github.com/LeaVerou))
+  * *[Independent representative, TBD]* — to be nominated and appointed by the Owners
+
+
 To become an Owner, one must:
 * Demonstrate long-term commitment (directly or through their organization, such as serving in or staffing an active [Content ATL](./docs/ATLS.md) role), technical leadership, and deep familiarity with project architecture and standards.
 * Actively drive project direction, infrastructure, and community health.
