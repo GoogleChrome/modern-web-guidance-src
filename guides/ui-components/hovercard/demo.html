@@ -102,9 +102,10 @@
       }
       /* If any hovercards are already open, open subsequent hovercards
         immediately. For performance, apply this to the smallest wrapper of a
-        group of hovercard triggers. */
+        group of hovercard triggers, and target the direct chain to the trigger.
+        */
       .related-articles:has(
-          [interestfor]:is(:interest-source, .interest-source)
+          > li > a[interestfor]:is(:interest-source, .interest-source)
         )
         [interestfor] {
         --interest-delay-start: 0s;

@@ -21,10 +21,10 @@ By default, interest is shown and lost for keyboard and mouse users with a delay
 }
 ```
 
-If users are likely to move through multiple triggers in quick succession, set the initial delay to `0s` if an interest-triggered popover is already open. Only do this if the triggers share a nearby parent container to limit the performance impact of using `:has`.
+If users are likely to move through multiple triggers in quick succession, set the initial delay to `0s` if an interest-triggered popover is already open. To prevent performance issues with `:has()`, select a nearby container with a small number of child nodes, and target the triggers as directly as possible.
 
 ```css
-.container:has(:interest-source) [interestfor] {
+.container:has( > li > a:interest-source) [interestfor] {
   interest-delay-start: 0s;
 }
 ```
