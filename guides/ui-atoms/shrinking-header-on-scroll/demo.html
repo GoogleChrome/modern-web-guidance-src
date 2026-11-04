@@ -5,19 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scroll-Driven Animations: Shrinking Header on Scroll</title>
   <style>
+    :root {
+      --header-height-max: 200px;
+      --header-height-min: 50px;
+      --header-shrink-distance: calc(var(--header-height-max) - var(--header-height-min));
+
+      /* Matches the full-size header. Animated below. */
+      scroll-padding-top: var(--header-height-max);
+
+      /* The header shrinks in-flow, shifting the content up mid-scroll.
+         Stop scroll anchoring from "correcting" that and fighting the timeline. */
+      overflow-anchor: none;
+    }
+
     @layer reset, base, demo;
 
     @layer demo {
-      @keyframes shrink {
+      @keyframes shrink-header {
         to {
-          height: 50px;
+          height: var(--header-height-min);
+          font-size: 1.5rem;
+          box-shadow: 0 0.25rem 0.5rem rgb(0 0 0 / 0.25);
         }
       }
 
-      header {
-        animation: shrink auto linear both;
-        animation-timeline: scroll(block root);
-        animation-range: 0px 150px;
+      @keyframes shrink-scroll-padding {
+        to {
+          scroll-padding-top: var(--header-height-min);
+        }
+      }
+
+      @supports (animation-timeline: scroll()) {
+        header {
+          animation: shrink-header linear both;
+        }
+
+        :root {
+          animation: shrink-scroll-padding linear both;
+        }
+
+        /* Same timeline + same range = always in sync.
+          Declared after the `animation` shorthands, which reset these. */
+        header,
+        :root {
+          animation-timeline: scroll(root);
+          animation-range: 0 var(--header-shrink-distance);
+        }
       }
     }
 
@@ -28,7 +61,7 @@
 
       header {
         position: fixed;
-        height: 200px;
+        height: var(--header-height-max);
 
         top: 0;
         left: 0;
@@ -40,7 +73,7 @@
       }
 
       body {
-        padding-top: 200px;
+        padding-top: var(--header-height-max);
       }
     }
   </style>
