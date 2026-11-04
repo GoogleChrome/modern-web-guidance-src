@@ -21,8 +21,6 @@ This guide is agnostic about how the new order is computed (comparators, collati
 
 Use `moveBefore()` rather than `append()` so moved items keep state such as `<iframe>` content, playing animations, and focus inside them.
 
-{{ BASELINE_STATUS("move-before") }}
-
 ```javascript
 // `orderedNodes` is the container's existing child elements in their new order.
 function reorder(container, orderedNodes) {
@@ -131,5 +129,7 @@ status.textContent = `Sorted by price, low to high, ${orderedNodes.length} items
 {{ BASELINE_STATUS("view-transitions-element-scoped") }}
 
 If your Baseline target does not support `element.startViewTransition()`, use `document.startViewTransition()`. If it does not support that either, reorder without animation. The list still sorts correctly and the announcement is unchanged, so this is graceful degradation: the animation enhances the use case but is not core to it.
+
+{{ BASELINE_STATUS("move-before") }}
 
 If your Baseline target does not support `moveBefore()`, use `append()`. DOM order is identical; items may lose focus, iframe, or animation state inside them, which only matters when items contain such state.
