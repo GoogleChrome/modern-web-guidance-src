@@ -340,7 +340,7 @@ test.describe('copy-button Target Grader', () => {
       await page.evaluate(() => {
         const origSetTimeout = window.setTimeout;
         window.setTimeout = ((fn: TimerHandler, ms?: number, ...args: any[]) => {
-          const adjustedMs = typeof ms === 'number' && ms >= 500 ? 150 : ms;
+          const adjustedMs = typeof ms === 'number' && ms >= 500 ? 400 : ms;
           return origSetTimeout(fn, adjustedMs, ...args);
         }) as typeof window.setTimeout;
 
