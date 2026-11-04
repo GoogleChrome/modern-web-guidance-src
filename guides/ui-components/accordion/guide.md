@@ -121,7 +121,9 @@ summary:where(:not([aria-disabled="true"])) {
 For non-exclusive accordions, a single button that expands or collapses every item can improve user experience.
 Give it `aria-expanded` and keep it in sync with the items, so screen readers announce the change (VoiceOver does not reliably announce a label change on its own).
 Mark it expanded only once every item is open; in a mixed state it reads "Expand all" and pressing it opens everything.
-{# Maintainer note: pattern from https://tetralogical.com/resources/accessible-components-library/accordion/ . Verified 2026-11-04 with VoiceOver in Chrome and Safari on macOS: every press announces the new label and state, e.g. "Collapse all, expanded, button", and closing an item directly flips the button back to "Expand all, collapsed". #}
+{# Maintainer note:
+Pattern from https://tetralogical.com/resources/accessible-components-library/accordion/ .
+Verified 2026-11-04 with VoiceOver on both iOS and macOS: every press announces the new label and state, e.g. "Collapse all, expanded, button", and closing an item directly flips the button back to "Expand all, collapsed". #}
 
 ```html
 <section class="accordion" id="support-accordion" aria-labelledby="support">
