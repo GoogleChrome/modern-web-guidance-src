@@ -4,6 +4,7 @@ import os from 'os';
 import { fileURLToPath } from 'url';
 import {
   cleanupIsolatedHome,
+  ISOLATED_HOME_ENV,
   parseAgentArgs,
   runCliAgentCommand,
   setupIsolatedWorkDir,
@@ -31,6 +32,78 @@ import {
 import type { CodexRolloutLine, CodexOutputContentBlock } from './codex.d.ts';
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
+const REFRESH_EXPIRY_BUFFER_MS = 48 * 60 * 60 * 1000; // Refresh if <48h left on access_token
+const MAX_REFRESH_AGE_MS = 5 * 24 * 60 * 60 * 1000; // Refresh if last_refresh >5d old (Codex CLI refreshes at 8d)
+
+function getJwtExpMs(jwt?: string): number | null {
+  try {
+    const payload = JSON.parse(Buffer.from(jwt?.split('.')[1] ?? '', 'base64url').toString());
+    return typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+let inflightRefresh: Promise<boolean> | null = null;
+
+/**
+ * Refreshes ~/.codex/auth.json on the host before parallel workers copy it into
+ * ephemeral /tmp homes (preventing single-use refresh_token rotation races).
+ */
+export function ensureFreshHostCodexAuth(
+  authPath = path.join(os.homedir(), '.codex', 'auth.json'),
+  fetchFn: typeof fetch = fetch
+): Promise<boolean> {
+  return (inflightRefresh ??= (async () => {
+    let auth: any;
+    try {
+      auth = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+    } catch {
+      return false;
+    }
+    if (auth?.OPENAI_API_KEY || !auth?.tokens?.refresh_token) return false;
+
+    const now = Date.now();
+    const expMs = getJwtExpMs(auth.tokens.access_token);
+    if (expMs && expMs - now >= REFRESH_EXPIRY_BUFFER_MS && now - Date.parse(auth.last_refresh) <= MAX_REFRESH_AGE_MS) {
+      return false;
+    }
+
+    console.log('🔄 Refreshing host ~/.codex/auth.json before spawning parallel workers...');
+    const res = await fetchFn('https://auth.openai.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify({
+        client_id: 'app_EMoamEEZ73f0CkXaXp7hrann',
+        grant_type: 'refresh_token',
+        refresh_token: auth.tokens.refresh_token,
+        scope: 'openid profile email'
+      })
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to refresh ${authPath} (${res.status}): ${await res.text()}\nRun 'codex login' to re-authenticate.`);
+    }
+
+    const { access_token, refresh_token, id_token } = (await res.json()) as Record<string, string>;
+    if (!access_token) throw new Error(`Refresh response for ${authPath} missing access_token.`);
+
+    Object.assign(auth.tokens, {
+      access_token,
+      ...(refresh_token && { refresh_token }),
+      ...(id_token && { id_token })
+    });
+    auth.last_refresh = new Date(now).toISOString();
+
+    const tmpPath = `${authPath}.tmp.${process.pid}`;
+    fs.writeFileSync(tmpPath, JSON.stringify(auth, null, 2), { mode: 0o600 });
+    fs.renameSync(tmpPath, authPath);
+    console.log('✅ Host ~/.codex/auth.json refreshed and saved.');
+    return true;
+  })().finally(() => {
+    inflightRefresh = null;
+  }));
+}
 
 export function setupCodexCliCredentials(tempHome: string): void {
   const codexGlobalDir = path.join(os.homedir(), '.codex');
@@ -80,6 +153,7 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
+  if (!process.env[ISOLATED_HOME_ENV]) await ensureFreshHostCodexAuth();
   const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
@@ -223,6 +297,69 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
   return commands;
 }
 
+export function extractWebRunsFromText(raw: string): string[] {
+  if (typeof raw !== 'string' || !raw.includes('tools.web__run')) {
+    return [];
+  }
+
+  const results: string[] = [];
+  const prefix = 'tools.web__run(';
+  let searchFrom = 0;
+
+  while (searchFrom < raw.length) {
+    const start = raw.indexOf(prefix, searchFrom);
+    if (start === -1) break;
+
+    let depth = 0;
+    let quote: string | null = null;
+    let end = -1;
+
+    for (let i = start + prefix.length - 1; i < raw.length; i++) {
+      const ch = raw[i];
+      if (quote) {
+        if (ch === '\\') {
+          i++;
+        } else if (ch === quote) {
+          quote = null;
+        }
+      } else if (ch === '"' || ch === "'" || ch === '`') {
+        quote = ch;
+      } else if (ch === '(') {
+        depth++;
+      } else if (ch === ')') {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+
+    if (end !== -1) {
+      results.push(raw.slice(start, end));
+      searchFrom = end;
+    } else {
+      results.push(raw.slice(start));
+      break;
+    }
+  }
+
+  return results;
+}
+
+export function extractWebRunsFromCodexItem(obj: any): string[] {
+  const payload = obj?.payload || obj;
+  if (!payload) return [];
+
+  const itemType = payload.type || obj?.type;
+  if (itemType !== 'function_call' && itemType !== 'custom_tool_call') {
+    return [];
+  }
+
+  const raw = payload.input ?? payload.arguments ?? obj.input ?? obj.arguments;
+  return typeof raw === 'string' ? extractWebRunsFromText(raw) : [];
+}
+
 export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subagentsMap: Record<string, CodexRolloutLine[] | any[]> = {}): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   let currentThought = '';
@@ -268,6 +405,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         const callId = p.call_id;
         const cmdName = p.name || 'unknown';
         const commands = extractCommandsFromCodexItem(entry);
+        const webRuns = extractWebRunsFromCodexItem(entry);
 
         let actionType: NonNullable<StandardizedStep['action']>['type'] = mapToolType(cmdName);
         let actionName = cmdName;
@@ -279,18 +417,34 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         if (commands.length > 0 && !inputStr.includes('*** Begin Patch')) {
           actionType = 'run_command';
           actionName = commands[0];
-          params = { command: commands[0] };
+          params = {
+            command: commands[0],
+            ...(commands.length > 1 ? { commands } : {}),
+            ...(webRuns.length > 0 ? { webRuns } : {})
+          };
         } else if (inputStr.includes('*** Begin Patch') || inputStr.includes('Update File:') || inputStr.includes('Add File:')) {
           actionType = 'write_file';
           actionName = 'apply_patch';
           const fileMatch = inputStr.match(/\*\*\*\s*(?:Update|Add)\s*File:\s*([^\n\r\\"]+)/i);
           const patchPath = fileMatch ? fileMatch[1].trim() : '';
-          params = { path: patchPath, patch: inputStr };
+          params = {
+            path: patchPath,
+            patch: inputStr,
+            ...(webRuns.length > 0 ? { webRuns } : {})
+          };
         } else {
           try {
             params = typeof p.arguments === 'string' ? JSON.parse(p.arguments) : (p.arguments || p.input);
           } catch {
             params = p.arguments || p.input;
+          }
+          if (webRuns.length > 0) {
+            params =
+              params && typeof params === 'object' && !Array.isArray(params)
+                ? { ...params, webRuns }
+                : params !== undefined
+                  ? { value: params, webRuns }
+                  : { webRuns };
           }
         }
 
@@ -307,6 +461,23 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         }
         if (callId) {
           callMap.set(callId, step);
+        }
+        currentThought = '';
+      }
+
+      if (entry.type === 'response_item' && entry.payload?.type === 'web_search_call') {
+        const p = entry.payload;
+        const action = p.action && typeof p.action === 'object' ? p.action : {};
+        const step: StandardizedStep = {
+          stepNumber: 0,
+          timestamp,
+          subagentId,
+          thought: currentThought || 'Executing web_search',
+          action: standardizeAction('other', 'web_search', action)
+        };
+        steps.push(step);
+        if (subagentId) {
+          subagentStepCounts[subagentId] = (subagentStepCounts[subagentId] || 0) + 1;
         }
         currentThought = '';
       }

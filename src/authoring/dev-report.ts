@@ -43,8 +43,6 @@ export async function applyPrReviewFeedback(
   const agent = getDefaultSolutionAgent();
   const { workDir, tempHome } = setupGuideDevWorkDir('review-feedback');
 
-  const shouldTouchTargets = prContext.rerunMode !== 'needs-eval-gen';
-
   try {
     if (fs.existsSync(path.join(targetDir, GUIDE_FILE))) {
       fs.copyFileSync(path.join(targetDir, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
@@ -52,7 +50,7 @@ export async function applyPrReviewFeedback(
     if (fs.existsSync(path.join(targetDir, EXPECTATIONS_FILE))) {
       fs.copyFileSync(path.join(targetDir, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
     }
-    if (shouldTouchTargets && fs.existsSync(path.join(targetDir, TARGETS_DIR))) {
+    if (fs.existsSync(path.join(targetDir, TARGETS_DIR))) {
       fs.cpSync(path.join(targetDir, TARGETS_DIR), path.join(workDir, 'targets'), { recursive: true });
     }
 
@@ -77,11 +75,9 @@ export async function applyPrReviewFeedback(
     if (fs.existsSync(workExp)) {
       fs.copyFileSync(workExp, path.join(targetDir, EXPECTATIONS_FILE));
     }
-    if (shouldTouchTargets) {
-      const workTargets = path.join(workDir, 'targets');
-      if (fs.existsSync(workTargets)) {
-        fs.cpSync(workTargets, path.join(targetDir, TARGETS_DIR), { recursive: true });
-      }
+    const workTargets = path.join(workDir, 'targets');
+    if (fs.existsSync(workTargets)) {
+      fs.cpSync(workTargets, path.join(targetDir, TARGETS_DIR), { recursive: true });
     }
   } finally {
     fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
@@ -190,32 +186,56 @@ export function computeTargetSummary(
   const guideName = path.basename(targetDir);
   const json = JSON.parse(fs.readFileSync(evalsJsonPath, 'utf8'));
   const results = json.results || {};
-  const guidedKey = Object.keys(results).find(k => k.includes(baseApp) && k.endsWith('- guided'));
-  const guidedRun = guidedKey ? results[guidedKey]?.[0] : null;
+  const stats = json.stats || {};
+  const guidedKeys = Object.keys(results).filter(
+    k => (k.startsWith(`${baseApp} - `) || k.startsWith(`${baseApp}-`)) && k.endsWith(' - guided')
+  );
 
-  if (!guidedRun) {
+  if (guidedKeys.length === 0) {
     return null;
   }
 
-  const guidedPassRate = json.summary?.guidedPassRate ?? 0;
-  const unguidedPassRate = json.summary?.unguidedPassRate ?? null;
-  const { flag, flagDetails } = computeDevReportFlag({
-    guideName,
-    hasEarlyFailure: !!json.summary?.guidedEarlyFailures,
-    earlyFailureMessage: guidedRun.results?.find((c: any) => c.isEarlyFailure)?.message,
-    toolsUsed: guidedRun.guidanceToolsUsed || [],
-    guidesConsumed: guidedRun.guidesUsed || [],
-    guidedPassRate,
-    unguidedPassRate,
-  });
+  let fallbackSummary: TargetEvalSummary | null = null;
 
-  return {
-    baseApp,
-    flag,
-    flagDetails,
-    guidedPassRate,
-    unguidedPassRate,
-  };
+  for (const guidedKey of guidedKeys) {
+    const guidedRun = results[guidedKey]?.[0];
+    if (!guidedRun) continue;
+
+    const variantName = guidedKey.split(' - ')[0]!;
+    const unguidedKey = guidedKey.replace(/ - guided$/, ' - unguided');
+    const guidedPassRate = stats[guidedKey]?.medianPassRate ?? json.summary?.guidedPassRate ?? 0;
+    const unguidedPassRate = stats[unguidedKey]?.medianPassRate ?? json.summary?.unguidedPassRate ?? null;
+    const earlyFailureCheck = guidedRun.results?.find((c: any) => c.isEarlyFailure);
+
+    const { flag, flagDetails: rawFlagDetails } = computeDevReportFlag({
+      guideName,
+      hasEarlyFailure: Boolean(earlyFailureCheck || stats[guidedKey]?.earlyFailures || json.summary?.guidedEarlyFailures),
+      earlyFailureMessage: earlyFailureCheck?.message,
+      toolsUsed: guidedRun.guidanceToolsUsed || [],
+      guidesConsumed: guidedRun.guidesUsed || [],
+      guidedPassRate,
+      unguidedPassRate,
+    });
+    const flagDetails =
+      flag !== 'HEALTHY' && variantName !== baseApp
+        ? `[${variantName}] ${rawFlagDetails}`
+        : rawFlagDetails;
+
+    const summary: TargetEvalSummary = {
+      baseApp,
+      flag,
+      flagDetails,
+      guidedPassRate,
+      unguidedPassRate,
+    };
+
+    if (flag !== 'HEALTHY') {
+      return summary;
+    }
+    fallbackSummary ??= summary;
+  }
+
+  return fallbackSummary;
 }
 
 /**
@@ -230,8 +250,7 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
   if (anyUnhealthy) {
     content += `> [!NOTE]\n`;
     content += `> **Reviewer Next Steps**: If any targets are flagged or require adjustments, recommended fixes have already been applied directly to the files in this PR.\n`;
-    content += `> - For edits to \`guide.md\` or \`expectations.md\`: review the changes, then add the **\`needs-eval-gen\`** label to regenerate solutions, tasks, and graders on the next \`gd dev-gap\` run.\n`;
-    content += `> - For edits to \`targets/\` (\`task.md\` or \`grader.ts\`): review the changes, then add the **\`needs-eval-run\`** label to re-run calibration and agent evaluations.\n\n`;
+    content += `> - After reviewing, add the **\`needs-dev-rerun\`** label. The next \`gd dev-gap\` run regenerates whatever the changed files require: edits to the \`description\` in \`guide.md\` regenerate all target artifacts, other edits to \`guide.md\` or \`expectations.md\` keep \`task.md\` and regenerate the patches and \`grader.ts\`, edits to \`task.md\` regenerate the solution patches and \`grader.ts\`, and edits to \`grader.ts\` re-run calibration and agent evaluations.\n\n`;
   }
 
   content += `## Summary\n\n`;

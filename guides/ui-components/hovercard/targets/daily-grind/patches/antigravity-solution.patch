@@ -1,0 +1,122 @@
+diff --git a/index.html b/index.html
+index 66c9173..a91322d 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,72 @@
+       background: #3e2723;
+     }
+ 
++    /* Hovercards */
++    [popover].hovercard {
++      position-area: block-end span-inline-end;
++      position-try-fallbacks: flip-block, flip-inline;
++      opacity: 0;
++      transform-origin: top;
++      background: white;
++      color: var(--text);
++      padding: 16px;
++      border-radius: 8px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
++      border: 1px solid var(--secondary);
++      max-width: 320px;
++      text-align: left;
++      margin: 8px 0 0 0;
++    }
++
++    [popover].hovercard:popover-open {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    @starting-style {
++      [popover].hovercard:popover-open {
++        opacity: 0;
++        transform: translateY(-10px) scale(0.95);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      [popover].hovercard {
++        transition:
++          opacity,
++          transform,
++          display,
++          overlay;
++        transition-duration: 0.4s;
++        transition-behavior: allow-discrete;
++      }
++    }
++
++    .hovercard h2 {
++      font-size: 1.15rem;
++      color: var(--primary);
++      margin-bottom: 4px;
++    }
++
++    .hovercard .byline {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: #6d4c41;
++      margin-bottom: 10px;
++    }
++
++    .hovercard img {
++      width: 100%;
++      height: 140px;
++      object-fit: cover;
++      border-radius: 6px;
++      margin-bottom: 8px;
++    }
++
++    .hovercard p {
++      font-size: 0.9rem;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -181,17 +247,41 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="maple-oat-latte-preview">View Details</a>
++          <div id="maple-oat-latte-preview" popover="hint" class="hovercard">
++            <h2>Maple Oat Latte</h2>
++            <p class="byline">Seasonal Specialty &bull; $5.75</p>
++            <div>
++              <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80" alt="A warm cup of Maple Oat Latte with latte art">
++              <p>Rich double-shot espresso swirled with steamed barista oat milk, organic Grade-A Vermont maple syrup, and a dash of cinnamon.</p>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="dark-roast-espresso-preview">View Details</a>
++          <div id="dark-roast-espresso-preview" popover="hint" class="hovercard">
++            <h2>Dark Roast Espresso</h2>
++            <p class="byline">Signature Roast &bull; $3.50</p>
++            <div>
++              <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=600&q=80" alt="A freshly pulled shot of Dark Roast Espresso">
++              <p>Full-bodied single-origin beans roasted to perfection, featuring deep notes of dark chocolate, caramelized sugar, and toasted walnut.</p>
++            </div>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-preview">View Details</a>
++          <div id="cold-brew-preview" popover="hint" class="hovercard">
++            <h2>Cold Brew</h2>
++            <p class="byline">Slow-Steeped Classic &bull; $4.75</p>
++            <div>
++              <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="A chilled glass of Cold Brew coffee over ice">
++              <p>Coarse-ground Ethiopian and Colombian beans steeped in cold filtered water for 18 hours for an ultra-smooth, low-acidity finish.</p>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>

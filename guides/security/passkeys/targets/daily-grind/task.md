@@ -1,1 +1,1 @@
-- Implement passkeys in the application for registration, authentication, management, and reauthentication.
+- Implement passkeys in the Daily Grind homepage's "My Account" UI for customer registration, sign-in authentication, saved passkey management, profile updates, and reauthentication.

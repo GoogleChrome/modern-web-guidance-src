@@ -1,0 +1,109 @@
+diff --git a/index.html b/index.html
+index 66c9173..58d0490 100644
+--- a/index.html
++++ b/index.html
+@@ -207,6 +207,104 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Trusted reference origin and registrable domain (replace with your own)
++    const TRUSTED_URL = 'https://app.trusted-origin.example';
++    const TRUSTED_SITE_DOMAIN = 'trusted-origin.example';
++    const HAS_ORIGIN = 'Origin' in globalThis;
++
++    function extractOrigin(candidate) {
++      try {
++        return Origin.from(candidate);
++      } catch (err) {
++        // Synthetic MessageEvents lack an internal origin; parse event.origin instead
++        if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
++          return Origin.from(candidate.origin);
++        }
++        throw err;
++      }
++    }
++
++    function extractUrlString(candidate) {
++      if (typeof candidate === 'string') return candidate;
++      if (typeof MessageEvent !== 'undefined' && candidate instanceof MessageEvent) {
++        return candidate.origin;
++      }
++      if (candidate === globalThis) return globalThis.location?.href ?? '';
++      return candidate?.href ?? '';
++    }
++
++    function isTrustedSameOrigin(candidate) {
++      try {
++        if (HAS_ORIGIN) {
++          return extractOrigin(candidate).isSameOrigin(Origin.from(TRUSTED_URL));
++        }
++        const candidateUrl = new URL(extractUrlString(candidate));
++        const trustedUrl = new URL(TRUSTED_URL);
++        return candidateUrl.origin !== 'null' && candidateUrl.origin === trustedUrl.origin;
++      } catch {
++        return false;
++      }
++    }
++
++    function isAllowedSameSiteUrl(candidate) {
++      try {
++        if (HAS_ORIGIN) {
++          return extractOrigin(candidate).isSameSite(Origin.from(TRUSTED_URL));
++        }
++        const candidateUrl = new URL(extractUrlString(candidate));
++        const trustedUrl = new URL(TRUSTED_URL);
++        return (
++          candidateUrl.origin !== 'null' &&
++          candidateUrl.protocol === trustedUrl.protocol &&
++          (candidateUrl.hostname === TRUSTED_SITE_DOMAIN ||
++            candidateUrl.hostname.endsWith('.' + TRUSTED_SITE_DOMAIN))
++        );
++      } catch {
++        return false;
++      }
++    }
++
++    // Pin a sandboxed iframe's opaque origin (only possible where Origin exists)
++    let pinnedSandboxOrigin = HAS_ORIGIN ? new Origin() : null;
++    let isSandboxPinned = false;
++    let pinnedSandboxSource = null;
++
++    function handleSandboxedWidgetMessage(event, expectedWidgetWindow) {
++      try {
++        if (!HAS_ORIGIN) {
++          // No distinct opaque identities: rely on the source window instead
++          return event.source === expectedWidgetWindow && event.origin === 'null';
++        }
++        const senderOrigin = Origin.from(event);
++        if (!isSandboxPinned && event.source === expectedWidgetWindow && event.data?.type === 'init') {
++          pinnedSandboxOrigin = senderOrigin;
++          isSandboxPinned = true;
++        }
++        return senderOrigin.isSameOrigin(pinnedSandboxOrigin);
++      } catch {
++        return false;
++      }
++    }
++
++    window.addEventListener('message', (event) => {
++      if (!isTrustedSameOrigin(event)) return;
++      // Safe to process privileged commands from the verified origin
++    });
++
++    // Validate ?returnTo= redirect targets
++    function safeReturnTo(value) {
++      return value && isAllowedSameSiteUrl(value) ? value : null;
++    }
++
++    Object.assign(globalThis, {
++      isTrustedSameOrigin,
++      isAllowedSameSiteUrl,
++      handleSandboxedWidgetMessage,
++      safeReturnTo,
++    });
++  </script>
++
+ </body>
+ 
+ </html>

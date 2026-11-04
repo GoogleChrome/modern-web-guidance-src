@@ -1,0 +1,1 @@
+- Transfer the installed web app to a new origin while preserving user configuration and OS-level shortcuts.

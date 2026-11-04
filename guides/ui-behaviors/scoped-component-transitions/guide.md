@@ -30,7 +30,8 @@ The scope element automatically participates in its own view transition because 
 
 When the scope clips its overflow (`overflow: hidden`, `scroll`, or `clip`), `::view-transition-group-children(root)` automatically applies `overflow: clip`, preventing transitioning children from bleeding outside the component bounds.
 
-> **Note:** Automatic overflow clipping only applies to the scope element itself (`root`). If a captured element inside the scope clips its own overflow and contains other nested captured elements (for example, a scrollable or clipped `<ul>` inside a `.card`), use Nested View Transition Groups so those nested elements stay clipped to their outer captured container:
+> [!NOTE]
+> Automatic overflow clipping only applies to the scope element itself (`root`). If a captured element inside the scope clips its own overflow and contains other nested captured elements (for example, a scrollable or clipped `<ul>` inside a `.card`), use Nested View Transition Groups so those nested elements stay clipped to their outer captured container:
 >
 > ```css
 > .card ul {
