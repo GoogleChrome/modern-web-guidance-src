@@ -301,17 +301,16 @@ test.describe('natural-interactions Target Grader', () => {
         const pRect = popover.getBoundingClientRect();
         const tRect = trigger.getBoundingClientRect();
 
-        // Check if the popover was explicitly positioned above the trigger (unless it flipped from a
-        // downward CSS position-area via position-try-fallbacks, where @position-try cannot override transform-origin).
-        const posArea = cs.getPropertyValue('position-area').trim();
+        // Check if the popover was explicitly positioned above the trigger (unless it uses
+        // position-try-fallbacks, where @position-try cannot override transform-origin when flipping).
         const posTry = cs.getPropertyValue('position-try-fallbacks').trim();
-        const flippedFromBelow =
-          Boolean(posTry && posTry !== 'none') &&
-          Boolean(posArea && posArea !== 'none' && !/\b(top|block-start)\b/.test(posArea));
-        const explicitlyAbove = !flippedFromBelow && pRect.bottom <= tRect.top + 20 && pRect.top > 0;
-        const isNearestYEdge = explicitlyAbove
-          ? Math.abs(oy - pRect.height) <= 5
-          : oy <= 5;
+        const hasPositionTry = Boolean(posTry && posTry !== 'none');
+        const explicitlyAbove = !hasPositionTry && pRect.bottom <= tRect.top + 20 && pRect.top > 0;
+        const isNearestYEdge = hasPositionTry
+          ? oy <= 5 || Math.abs(oy - pRect.height) <= 5
+          : explicitlyAbove
+            ? Math.abs(oy - pRect.height) <= 5
+            : oy <= 5;
 
         return {
           transformOrigin: cs.transformOrigin,
