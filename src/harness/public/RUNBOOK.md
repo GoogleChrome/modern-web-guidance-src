@@ -32,7 +32,7 @@ request. After it merges, the next `pnpm public:publish` run applies it.
 | Hide a whole suite | Add its id to `exclude` |
 | Hide one guide inside a suite | Add `{ "id": "<suite-id>", "excludeGuides": ["<guide>"] }` to `overrides` (one entry per suite; list several guides in it) |
 | Restore a hidden suite or guide | Remove the `exclude` entry or the override |
-| Keep the site small | Set `retention.maxSuites` / `retention.maxAgeDays` |
+| Keep the site small | Set `retention.maxSuitesPerAgent` / `retention.maxSuites` / `retention.maxAgeDays` |
 
 ## Publishing
 

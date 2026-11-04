@@ -26,8 +26,11 @@ public-evals/
 - `suites.gen.json` is the only index. Do not list the directory.
 - `build-state.json` lets the next build skip suites whose inputs have not
   changed. It holds suite ids, bucket generations, excluded guide names,
-  machine-readable skip codes, and the released-model list; never error text,
-  which could quote what was rejected, because it is published too.
+  machine-readable skip codes, and, for published and deferred suites, their
+  agent and model (both already public in `evals.json`); a suite skipped for an
+  unreleased model records the released-model list it was judged against, never
+  its own model. No error text either: it is published too, and could quote what
+  was rejected.
 - Fetch with plain relative URLs: `fetch('public-evals/suites.gen.json')`. Add a
   10-minute bucketed cache-buster (`?t=<Math.floor(Date.now() / 600_000)>`) to
   every `public-evals/` fetch; GitHub Pages caches for ~10 min, and bucketing
@@ -128,16 +131,19 @@ So nothing needs UI for it:
   it checks out what is published, rebuilds from the checked-in allowlist, and
   pushes. Wiring it to a scheduled trigger after the nightly uploads is a
   follow-up; until then an operator runs it by hand after an allowlist PR merges.
-- Retention (`retention.maxAgeDays` / `retention.maxSuites` in the allowlist)
-  drops whole suites, oldest first by the run time in the suite id, to keep the
-  site under GitHub Pages' 1 GB cap. `maxSuites` counts suites that pass the
-  agent/model gate, so unreleased runs do not use up slots. A published suite
+- Retention (`retention.maxAgeDays`, `retention.maxSuitesPerAgent`, and
+  `retention.maxSuites` in the allowlist) drops whole suites, oldest first by
+  the run time in the suite id, to keep the site under GitHub Pages' 1 GB cap.
+  The caps count suites that pass the agent/model gate, so unreleased runs do
+  not use up slots; the per-agent cap is applied first so an agent whose
+  recent runs are unreleased is not aged out by the others. A published suite
   whose gate check fails transiently keeps its retention slot so an older suite
   is not churned in and out.
 - Builds are incremental: a suite is rebuilt only when its raw `evals.json`
-  changes, its override changes, the released-model list changes, the
+  changes, its override changes, its own model is released or un-released, the
   builder's field lists or scrub patterns change, or
-  `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` is bumped. `--force` rebuilds
+  `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` is bumped. Releasing an additional
+  model only builds the suites that were waiting on it. `--force` rebuilds
   everything. A suite whose build hit a transient error keeps its previously
   published copy and is retried next run.
 

@@ -18,10 +18,12 @@ export interface PublicAllowlist {
   releasedModels: string[];
   /**
    * Limits on how much history stays published. `maxAgeDays` is applied by
-   * `withinMaxAge`; `maxSuites` after the agent/model gate so unreleased runs
-   * do not consume slots.
+   * `withinMaxAge`; `maxSuitesPerAgent` and then `maxSuites` after the
+   * agent/model gate so unreleased runs do not consume slots. The per-agent
+   * cap keeps an agent whose recent runs are unreleased from being aged out
+   * entirely by the others.
    */
-  retention?: { maxAgeDays?: number; maxSuites?: number };
+  retention?: { maxAgeDays?: number; maxSuites?: number; maxSuitesPerAgent?: number };
 }
 
 export const DEFAULT_ALLOWLIST_PATH = path.join(import.meta.dirname, 'allowlist.json');
@@ -36,7 +38,7 @@ const GUIDE_NAME_RE = /^[\w.-]+$/;
 const TOP_LEVEL_KEYS = new Set(['$schema', 'include', 'exclude', 'overrides', 'releasedModels', 'retention']);
 const REQUIRED_KEYS = ['include', 'exclude', 'overrides', 'releasedModels'] as const;
 const OVERRIDE_KEYS = new Set(['id', 'excludeGuides']);
-const RETENTION_KEYS = new Set(['maxAgeDays', 'maxSuites']);
+const RETENTION_KEYS = new Set(['maxAgeDays', 'maxSuites', 'maxSuitesPerAgent']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -179,6 +181,31 @@ export function withinMaxAge<T extends { createdAt: Date }>(allowlist: PublicAll
   }
   const cutoff = now.getTime() - maxAgeDays * 24 * 60 * 60 * 1000;
   return suites.filter(suite => suite.createdAt.getTime() >= cutoff);
+}
+
+/**
+ * Applies `retention.maxSuitesPerAgent` and then `retention.maxSuites` to
+ * publishable suites in newest-first order, returning the ones that keep a
+ * slot. The per-agent cap runs first so a prolific agent cannot push another
+ * agent's older suites out of the global budget.
+ */
+export function withinSuiteCaps<T extends { agent?: string }>(allowlist: PublicAllowlist, newestFirstSuites: readonly T[]): T[] {
+  const { maxSuites, maxSuitesPerAgent } = allowlist.retention ?? {};
+  const perAgent = new Map<string, number>();
+  const kept: T[] = [];
+  for (const suite of newestFirstSuites) {
+    if (maxSuites !== undefined && kept.length >= maxSuites) {
+      break;
+    }
+    const agent = suite.agent ?? '';
+    const seen = perAgent.get(agent) ?? 0;
+    if (maxSuitesPerAgent !== undefined && seen >= maxSuitesPerAgent) {
+      continue;
+    }
+    perAgent.set(agent, seen + 1);
+    kept.push(suite);
+  }
+  return kept;
 }
 
 /** Returns a copy sorted newest-first by `createdAt`. */

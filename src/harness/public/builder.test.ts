@@ -359,6 +359,61 @@ describe('incremental builds', () => {
     assert.deepEqual(reads.filter(r => r.startsWith(SUITE)), [], 'deferred suite is not fetched to be classified again');
   });
 
+  test('maxSuitesPerAgent keeps every agent represented when one agent out-produces the others', async () => {
+    const options = makeOptions();
+    const fixture = JSON.parse(fs.readFileSync(path.join(options.storeRoot, SUITE, 'evals.json'), 'utf8'));
+    // Three newer codex nightlies and one older claude nightly, all on the released model.
+    const codex = ['nightly-2026-10-24_00-00-00-codex_cli', 'nightly-2026-10-23_00-00-00-codex_cli', 'nightly-2026-10-22_00-00-00-codex_cli'];
+    const claude = 'nightly-2026-10-19_00-00-00-claude_code';
+    for (const id of codex) write(path.join(options.storeRoot, id, 'evals.json'), JSON.stringify(fixture));
+    write(path.join(options.storeRoot, claude, 'evals.json'), JSON.stringify({ ...fixture, agent: 'claude_code' }));
+
+    // Global cap alone: the three newest codex suites take every slot and claude is aged out.
+    const globalOnly = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, retention: { maxSuites: 3 } } });
+    assert.deepEqual(globalOnly.filter(r => r.status === 'built').map(r => r.suiteId).sort(), [...codex].sort());
+    assert.equal(globalOnly.find(r => r.suiteId === claude), undefined, 'deferred suites produce no result');
+    assert.equal(stateFor(options.outDir).suites[claude].deferred, true);
+
+    // Per-agent cap first: two codex, then claude fits in the remaining global slot.
+    const perAgent = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, retention: { maxSuites: 3, maxSuitesPerAgent: 2 } } });
+    const built = new Set(perAgent.filter(r => r.status === 'built' || r.status === 'unchanged').map(r => r.suiteId));
+    assert.deepEqual([...built].sort(), [codex[0], codex[1], claude].sort());
+    assert.equal(perAgent.find(r => r.suiteId === codex[2])?.status, 'removed');
+    const state = stateFor(options.outDir);
+    assert.equal(state.suites[claude].agent, 'claude_code');
+    assert.equal(state.suites[claude].model, FIXTURE_MODEL);
+    assert.equal(state.suites[codex[2]].deferred, true);
+    assert.equal(state.suites[codex[2]].agent, 'codex_cli', 'deferred suites record their agent so later runs rank them without a download');
+
+    // The deferred agent is read from state, not evals.json, on the next run.
+    const reads: string[] = [];
+    const inner = options.store;
+    const spying = { ...options, store: { listSuites: () => inner.listSuites(), readFile: (rel: string) => { reads.push(rel); return inner.readFile(rel); } } };
+    await buildSelectedSuites({ ...spying, allowlist: { ...allowlist, retention: { maxSuites: 3, maxSuitesPerAgent: 2 } } });
+    assert.deepEqual(reads.filter(r => r.startsWith(codex[2])), []);
+  });
+
+  test('releasing an additional model does not rebuild suites whose own model was already released', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    assert.equal(stateFor(options.outDir).suites[SUITE].model, FIXTURE_MODEL);
+
+    const reads: string[] = [];
+    const inner = options.store;
+    options.store = { listSuites: () => inner.listSuites(), readFile: (rel: string) => { reads.push(rel); return inner.readFile(rel); } };
+
+    const widened = { ...options, allowlist: { ...allowlist, releasedModels: [FIXTURE_MODEL, 'secret-model'] } };
+    const second = await buildSelectedSuites(widened);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'unchanged', 'its own model is still released');
+    assert.deepEqual(reads.filter(r => r.startsWith(SUITE)), [], 'not re-downloaded');
+    assert.equal(second.find(r => r.suiteId === 'nightly-2026-10-21_00-00-00-claude_code')?.status, 'built', 'the newly released suite is');
+
+    // Dropping the suite's own model still takes it down.
+    const narrowed = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, releasedModels: ['secret-model'] } });
+    assert.equal(narrowed.find(r => r.suiteId === SUITE)?.code, 'unreleased-model');
+    assert.equal(stateFor(options.outDir).suites[SUITE].model, undefined, 'a skipped suite records no model');
+  });
+
   test('a published suite that fails transiently at the gate keeps its maxSuites slot without churning an older suite', async () => {
     const options = makeOptions({ allowlist: { ...allowlist, retention: { maxSuites: 1 } } });
     const newer = 'nightly-2026-10-22_00-00-00-codex_cli';

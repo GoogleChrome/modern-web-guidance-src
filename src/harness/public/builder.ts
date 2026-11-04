@@ -6,7 +6,7 @@ import { baseAppsDir as defaultBaseAppsDir } from '../../core/paths.ts';
 import { extractSuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { SuiteSummary } from '../../dashboard/summary-extractor.js';
 import type { EvalsReport, RunResult } from '../lib/metrics.ts';
-import { newestFirst, overrideFor, selectSuites, suiteCreatedAt, withinMaxAge } from './allowlist.ts';
+import { newestFirst, overrideFor, selectSuites, suiteCreatedAt, withinMaxAge, withinSuiteCaps } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
 import { OverrideError } from './overrides.ts';
 import { EXCLUDED_PATH_RE, MAX_PATCH_BYTES, patchFromFiles, preparePatch } from './patch.ts';
@@ -126,12 +126,27 @@ interface BuildState {
 interface SuiteState {
   generation: string;
   excludeGuides: string[];
-  /** Releasing a model lets a skipped suite publish; un-releasing one must take a published suite down. */
+  /** The list a suite was skipped as `unreleased-model` against; releasing a model is the cue to try again. */
   releasedModels: string[];
+  /**
+   * For published and deferred suites only (both are already public through
+   * their `evals.json`): `model`, so a release-list change rebuilds a suite only
+   * when its own model's status changed, and `agent`, so per-agent retention
+   * can be applied without re-reading `evals.json`. Never recorded for a
+   * skipped suite, whose model may be unreleased.
+   */
+  agent?: string;
+  model?: string;
   /** Present when the suite was skipped. */
   skipped?: { code: SkipCode };
-  /** Publishable, but outside `retention.maxSuites`; remembered so it is not re-fetched to find that out. */
+  /** Publishable, but outside retention; remembered so it is not re-fetched to find that out. */
   deferred?: true;
+}
+
+/** Agent and model of a publishable suite, from its raw report or from state. */
+interface SuiteIdentity {
+  agent?: string;
+  model?: string;
 }
 
 /**
@@ -150,32 +165,34 @@ export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteB
     .map(id => ({ id, createdAt: suiteCreatedAt(id, refById.get(id)!.createdAt) }));
   const candidates = newestFirst(withinMaxAge(allowlist, eligible, now)).map(suite => suite.id);
 
-  // `maxSuites` counts suites that can actually be published, so gate first (from state when
-  // nothing changed, otherwise by reading evals.json), then take the newest N. A suite that
-  // already has a published copy on disk and hit a transient gate error keeps its slot so an
-  // older suite is not built for one run only to be deleted on the next.
+  // Retention counts suites that can actually be published, so gate first (from state when
+  // nothing changed, otherwise by reading evals.json), then take the newest N per agent and
+  // overall. A suite that already has a published copy on disk and hit a transient gate error
+  // keeps its slot so an older suite is not built for one run only to be deleted on the next.
   const gated = await mapWithConcurrency(candidates, SUITE_CONCURRENCY, suiteId =>
     publishability(suiteId, refById.get(suiteId)!, state, options));
   const results: SuiteBuildResult[] = [];
-  const slotHolders: Array<{ suiteId: string; report: EvalsReport | undefined; failed: boolean }> = [];
+  const identities = new Map<string, SuiteIdentity>();
+  const slotHolders: Array<{ suiteId: string; agent?: string; report: EvalsReport | undefined; failed: boolean }> = [];
   for (let i = 0; i < candidates.length; i++) {
     const suiteId = candidates[i];
     const outcome = gated[i];
     if (outcome.publishable) {
-      slotHolders.push({ suiteId, report: outcome.report, failed: false });
+      identities.set(suiteId, outcome.identity);
+      slotHolders.push({ suiteId, agent: outcome.identity.agent, report: outcome.report, failed: false });
     } else {
       results.push(outcome.result);
       if (outcome.result.status === 'failed' && hasEvals(options.outDir, suiteId)) {
-        slotHolders.push({ suiteId, report: undefined, failed: true });
+        const recorded = state.suites[suiteId];
+        slotHolders.push({ suiteId, agent: recorded?.agent, report: undefined, failed: true });
       }
     }
   }
 
-  const maxSuites = allowlist.retention?.maxSuites;
-  const selected = maxSuites === undefined ? slotHolders : slotHolders.slice(0, maxSuites);
+  const selected = withinSuiteCaps(allowlist, slotHolders);
+  const keepIds = new Set(selected.map(slot => slot.suiteId));
   const deferred = slotHolders
-    .slice(selected.length)
-    .filter(slot => !slot.failed)
+    .filter(slot => !keepIds.has(slot.suiteId) && !slot.failed)
     .map(slot => slot.suiteId);
   const toBuild = selected.filter(slot => !slot.failed);
 
@@ -188,7 +205,7 @@ export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteB
   // Anything on disk outside `selected` goes; a selected suite whose build failed this run
   // keeps its previously published copy (and manifest entry) until a later run replaces it.
   const resultFor = new Map(results.map(result => [result.suiteId, result]));
-  const keep = new Set(selected.map(suite => suite.suiteId));
+  const keep = keepIds;
   for (const suiteId of presentSuiteDirs(options.outDir)) {
     const existing = resultFor.get(suiteId);
     if (keep.has(suiteId)) {
@@ -203,13 +220,13 @@ export async function buildSelectedSuites(options: BuildOptions): Promise<SuiteB
 
   // Manifest first: if it trips the leak check the state is not advanced, so the run is redone.
   writeManifest(options.outDir, results, options.forbiddenTokens);
-  writeState(options.outDir, results, deferred, refById, options);
+  writeState(options.outDir, results, deferred, refById, identities, options);
   fs.rmSync(path.join(options.outDir, STAGING_DIR), { recursive: true, force: true });
   return results;
 }
 
 type GateOutcome =
-  | { publishable: true; report: EvalsReport | undefined }
+  | { publishable: true; report: EvalsReport | undefined; identity: SuiteIdentity }
   | { publishable: false; result: SuiteBuildResult };
 
 function notBuiltResult(suiteId: string, status: 'skipped' | 'failed', reason: string, code?: SkipCode): SuiteBuildResult {
@@ -236,7 +253,7 @@ async function publishability(
   const recorded = state.suites[suiteId];
   if (recorded && !options.force && !stale(recorded, state, ref, options)) {
     if (!recorded.skipped) {
-      return { publishable: true, report: undefined };
+      return { publishable: true, report: undefined, identity: { agent: recorded.agent, model: recorded.model } };
     }
     return {
       publishable: false,
@@ -249,7 +266,7 @@ async function publishability(
       return { publishable: false, result: notBuiltResult(suiteId, 'skipped', 'no evals.json', 'no-evals') };
     }
     assertPublishable(report, options.allowlist.releasedModels);
-    return { publishable: true, report };
+    return { publishable: true, report, identity: { agent: report.agent, model: report.model } };
   } catch (err) {
     if (err instanceof NotPublishableError) {
       return { publishable: false, result: notBuiltResult(suiteId, 'skipped', err.message, err.code) };
@@ -425,8 +442,22 @@ function stale(recorded: SuiteState, state: BuildState, ref: SuiteRef, options: 
     state.forbiddenTokensVersion !== (options.forbiddenTokensVersion ?? 0) ||
     recorded.generation !== ref.generation ||
     !sameSet(recorded.excludeGuides, overrideFor(options.allowlist, ref.id)?.excludeGuides ?? []) ||
-    !sameSet(recorded.releasedModels, options.allowlist.releasedModels)
+    releaseStatusChanged(recorded, options.allowlist.releasedModels)
   );
+}
+
+/**
+ * Whether the released-model list changed in a way that affects this suite.
+ * A published or deferred suite cares only about its own model (so releasing
+ * a new model does not rebuild every suite); a suite skipped as
+ * `unreleased-model` is retried whenever the list changes, since its model is
+ * deliberately not recorded; other skips do not depend on the list at all.
+ */
+function releaseStatusChanged(recorded: SuiteState, releasedModels: readonly string[]): boolean {
+  if (recorded.skipped) {
+    return recorded.skipped.code === 'unreleased-model' && !sameSet(recorded.releasedModels, releasedModels);
+  }
+  return recorded.model === undefined || !releasedModels.includes(recorded.model);
 }
 
 function emptyState(): BuildState {
@@ -463,6 +494,7 @@ function writeState(
   results: readonly SuiteBuildResult[],
   deferred: readonly string[],
   refById: Map<string, SuiteRef>,
+  identities: ReadonlyMap<string, SuiteIdentity>,
   options: BuildOptions,
 ): void {
   const next: BuildState = {
@@ -475,6 +507,11 @@ function writeState(
     excludeGuides: overrideFor(options.allowlist, suiteId)?.excludeGuides ?? [],
     releasedModels: [...options.allowlist.releasedModels].sort(),
   });
+  // Only publishable suites get an identity: a skipped suite's model may be unreleased.
+  const withIdentity = (suiteId: string, entry: SuiteState): SuiteState => {
+    const identity = identities.get(suiteId);
+    return identity ? { ...entry, agent: identity.agent, model: identity.model } : entry;
+  };
   for (const result of results) {
     const ref = refById.get(result.suiteId);
     if (!ref || result.status === 'removed' || result.status === 'failed') {
@@ -487,11 +524,13 @@ function writeState(
     const entry = entryFor(result.suiteId, ref);
     if (result.status === 'skipped' && result.code) {
       entry.skipped = { code: result.code };
+      next.suites[result.suiteId] = entry;
+    } else {
+      next.suites[result.suiteId] = withIdentity(result.suiteId, entry);
     }
-    next.suites[result.suiteId] = entry;
   }
   for (const suiteId of deferred) {
-    next.suites[suiteId] = { ...entryFor(suiteId, refById.get(suiteId)!), deferred: true };
+    next.suites[suiteId] = { ...withIdentity(suiteId, entryFor(suiteId, refById.get(suiteId)!)), deferred: true };
   }
   writeStateFile(outDir, next);
 }

@@ -15,6 +15,7 @@ import {
   suiteCreatedAt,
   validateAllowlistPolicy,
   withinMaxAge,
+  withinSuiteCaps,
 } from './allowlist.ts';
 import type { PublicAllowlist } from './allowlist.ts';
 
@@ -117,10 +118,11 @@ describe('loadValidatedAllowlist', () => {
 
   test('accepts a $schema key and an optional retention block', () => {
     assert.deepEqual(loadValidatedAllowlist(writeTemp(JSON.stringify({ $schema: './x.json', ...allowlist }))), allowlist);
-    const withRetention = { ...allowlist, retention: { maxAgeDays: 90, maxSuites: 300 } };
+    const withRetention = { ...allowlist, retention: { maxAgeDays: 90, maxSuites: 300, maxSuitesPerAgent: 10 } };
     assert.deepEqual(loadValidatedAllowlist(writeTemp(JSON.stringify(withRetention))), withRetention);
     assert.throws(() => loadValidatedAllowlist(writeTemp(JSON.stringify({ ...allowlist, retention: { maxAgeDays: 0 } }))), /maxAgeDays must be >= 1/);
     assert.throws(() => loadValidatedAllowlist(writeTemp(JSON.stringify({ ...allowlist, retention: { maxSuites: 0 } }))), /maxSuites must be >= 1/);
+    assert.throws(() => loadValidatedAllowlist(writeTemp(JSON.stringify({ ...allowlist, retention: { maxSuitesPerAgent: 1.5 } }))), /maxSuitesPerAgent must be integer/);
   });
 
   test('loadValidatedAllowlist also applies policy', () => {
@@ -176,6 +178,25 @@ describe('retention helpers', () => {
     const input = [suites[1], suites[2], suites[0]];
     assert.deepEqual(newestFirst(input).map(s => s.id), ['c', 'a', 'b']);
     assert.deepEqual(input.map(s => s.id), ['a', 'b', 'c']);
+  });
+
+  test('withinSuiteCaps applies the per-agent cap before the global cap', () => {
+    // Newest first: four codex runs, then two claude, then one with no agent.
+    const ranked = [
+      { id: 'x1', agent: 'codex_cli' },
+      { id: 'x2', agent: 'codex_cli' },
+      { id: 'x3', agent: 'codex_cli' },
+      { id: 'x4', agent: 'codex_cli' },
+      { id: 'c1', agent: 'claude_code' },
+      { id: 'c2', agent: 'claude_code' },
+      { id: 'n1' },
+    ];
+    const ids = (retention: PublicAllowlist['retention']) => withinSuiteCaps({ ...allowlist, retention }, ranked).map(s => s.id);
+
+    assert.deepEqual(ids(undefined), ['x1', 'x2', 'x3', 'x4', 'c1', 'c2', 'n1'], 'no caps keeps everything');
+    assert.deepEqual(ids({ maxSuites: 3 }), ['x1', 'x2', 'x3'], 'a global cap alone lets one agent take every slot');
+    assert.deepEqual(ids({ maxSuitesPerAgent: 2 }), ['x1', 'x2', 'c1', 'c2', 'n1'], 'per-agent cap skips the surplus and keeps scanning');
+    assert.deepEqual(ids({ maxSuitesPerAgent: 2, maxSuites: 3 }), ['x1', 'x2', 'c1'], 'per-agent first, then the global cap');
   });
 });
 

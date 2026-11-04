@@ -23,6 +23,7 @@
     "gpt-6.1-sol"
   ],
   "retention": {
+    "maxSuitesPerAgent": 10,
     "maxSuites": 30
   }
 }
