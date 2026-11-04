@@ -13,7 +13,7 @@ const VALID_PASSWORD_AUTOCOMPLETE_TOKENS: ReadonlySet<string> = new Set([
 ]);
 
 const CONFIG_SECRET_INPUT_REGEX =
-  /(?:proxy|database|\bdb[-_.]?(?:config|pass|pwd)|db[A-Z]|\bdb\b|smtp|webhook|api[-_]?key|apikey|client[-_]?secret)/i;
+  /(?:proxy|database|\bdb[-_.]?(?:config|pass|pwd|password)|\bdb\b|smtp|webhook|api[-_]?key|apikey|client[-_]?secret)/i;
 
 function isConfigSecretElement(element: DomElementView): boolean {
   const name = element.getAttribute('name') ?? '';

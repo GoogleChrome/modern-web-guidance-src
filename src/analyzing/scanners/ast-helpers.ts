@@ -269,6 +269,57 @@ const BROWSER_GLOBAL_ROOTS = new Set([
   'self',
 ]);
 
+function getStaticStringValue(node: Node | undefined): string | null {
+  if (!node) {
+    return null;
+  }
+  const unwrapped = unwrapExpression(node);
+  return Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)
+    ? unwrapped.getLiteralText()
+    : null;
+}
+
+function isFeatureTargetNode(
+  node: Node,
+  featureTokens: readonly string[],
+  seen: Set<Node>,
+): boolean {
+  if (isValidFeatureCondition(node, featureTokens, seen)) {
+    return true;
+  }
+  const unwrapped = unwrapExpression(node);
+  let root: Node = unwrapped;
+  while (Node.isPropertyAccessExpression(root)) {
+    root = unwrapExpression(root.getExpression());
+  }
+  if (Node.isIdentifier(root)) {
+    const rootText = root.getText();
+    return (
+      (BROWSER_GLOBAL_ROOTS.has(rootText) || /^HTML[A-Z]/.test(rootText)) &&
+      isUnshadowedGlobal(root, rootText)
+    );
+  }
+  return false;
+}
+
+function isValidFeatureTargetOrProp(
+  target: Node | undefined,
+  prop: Node | undefined,
+  featureTokens: readonly string[],
+  seen: Set<Node>,
+): boolean {
+  if (prop) {
+    const propText = getStaticStringValue(prop)?.toLowerCase();
+    if (propText && featureTokens.some((token) => token.toLowerCase() === propText)) {
+      return true;
+    }
+  }
+  if (target && isFeatureTargetNode(target, featureTokens, seen)) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * Validates that an AST expression represents an authentic browser feature detection check
  * rather than a bare variable null-check (e.g. `if (container)`).
@@ -318,22 +369,24 @@ function isValidFeatureCondition(
       if (methodName === 'supports') {
         return isGlobalReference(callee.getExpression(), 'CSS');
       }
+
+      const args = unwrapped.getArguments();
       if (methodName === 'hasOwn') {
-        return isGlobalReference(callee.getExpression(), 'Object');
+        return (
+          isGlobalReference(callee.getExpression(), 'Object') &&
+          isValidFeatureTargetOrProp(args[0], args[1], featureTokens, seen)
+        );
       }
       if (methodName === 'hasOwnProperty') {
-        return true;
+        return isValidFeatureTargetOrProp(callee.getExpression(), args[0], featureTokens, seen);
       }
       if (methodName === 'call') {
         const callTarget = unwrapExpression(callee.getExpression());
-        if (Node.isIdentifier(callTarget) && callTarget.getText() === 'hasOwnProperty') {
-          return true;
-        }
-        if (
-          Node.isPropertyAccessExpression(callTarget) &&
-          callTarget.getName() === 'hasOwnProperty'
-        ) {
-          return true;
+        const isHasOwnProp =
+          (Node.isIdentifier(callTarget) && callTarget.getText() === 'hasOwnProperty') ||
+          (Node.isPropertyAccessExpression(callTarget) && callTarget.getName() === 'hasOwnProperty');
+        if (isHasOwnProp) {
+          return isValidFeatureTargetOrProp(args[0], args[1], featureTokens, seen);
         }
       }
     }
@@ -557,16 +610,6 @@ export interface MatchedEventListener {
   readonly eventName: string;
   readonly handlerNode: Node;
   readonly targetNode: Node | undefined;
-}
-
-function getStaticStringValue(node: Node | undefined): string | null {
-  if (!node) {
-    return null;
-  }
-  const unwrapped = unwrapExpression(node);
-  return Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)
-    ? unwrapped.getLiteralText()
-    : null;
 }
 
 /**

@@ -296,7 +296,7 @@ function findTagRanges(content: string, regex: RegExp): { start: number; end: nu
   return ranges;
 }
 
-const VUE_TEMPLATE_TAG_REGEX = /<\/?template\b[^>]*>/gi;
+const VUE_TEMPLATE_TAG_REGEX = /<\/?template\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi;
 
 /**
  * Prepares HTML content for DOM scanning by blanking out non-DOM blocks (scripts, styles)

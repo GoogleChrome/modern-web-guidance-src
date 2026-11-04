@@ -1028,6 +1028,15 @@ void test('ast-helpers: feature-guard AST blind spots and identifier resolution'
         if (hasOwnProperty.call(HTMLButtonElement.prototype, 'commandForElement')) return;
         fallbackBareHasOwnProperty();
       }
+
+      function testDictionaryCheck(dialogOptions: any) {
+        if (!Object.hasOwn(dialogOptions, 'modal')) {
+          dictionaryFallback();
+        }
+        if (!dialogOptions.hasOwnProperty('modal')) {
+          dictionaryFallback2();
+        }
+      }
     `;
 
     withVirtualSourceFile('hasown.ts', code, (sf) => {
@@ -1041,6 +1050,10 @@ void test('ast-helpers: feature-guard AST blind spots and identifier resolution'
       assert.equal(isProtectedByFeatureGuard(findCall('fallbackHasOwn'), ['commandforelement']), true);
       assert.equal(isProtectedByFeatureGuard(findCall('fallbackProtoHasOwnProperty'), ['commandforelement']), true);
       assert.equal(isProtectedByFeatureGuard(findCall('fallbackBareHasOwnProperty'), ['commandforelement']), true);
+      // Non-browser feature target dictionary checks must NOT be mistaken for feature guards
+      // even if the dictionary variable name contains a feature token like 'dialog'
+      assert.equal(isProtectedByFeatureGuard(findCall('dictionaryFallback'), ['dialog']), false);
+      assert.equal(isProtectedByFeatureGuard(findCall('dictionaryFallback2'), ['dialog']), false);
     });
   });
 
@@ -1087,6 +1100,34 @@ void test('sfc-extractor: prepareHtmlForDomScan unwraps all Vue template tags pr
     // All <template> and </template> occurrences should be replaced with spaces
     assert.equal(/<\/?template\b/i.test(prepared), false);
     assert.equal(prepared.includes('<input type="text" name="street_address" />'), true);
+  });
+
+  await t.test('handles > inside quoted attributes in template tags and preserves matching in linkedom', () => {
+    const vue = `<template>
+  <form id="orderForm">
+    <template v-if="items.length > 0">
+      <input type="password" name="password" id="pwd" />
+    </template>
+  </form>
+</template>`;
+
+    const rule: AnalyzerRule = {
+      id: 'test/form-pwd',
+      guideId: 'autofill-sign-in-form',
+      guideHash: '000000000000',
+      summary: 'test',
+      matcher: {
+        kind: 'dom',
+        selector: 'form input[type="password"]',
+        fastTokens: ['password'],
+        matchElement: () => ({ message: 'missing autocomplete' }),
+      },
+      verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+    };
+
+    const findings = scanFiles(new Map([['src/Order.vue', vue]]), [rule]);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0]?.line, 4);
   });
 });
 
