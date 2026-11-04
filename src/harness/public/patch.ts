@@ -1,4 +1,4 @@
-import { createTwoFilesPatch } from 'diff';
+import { createTwoFilesPatch, parsePatch } from 'diff';
 
 /**
  * Prepares the public `agent.patch` for one run. Two sources:
@@ -117,70 +117,38 @@ export function isBinary(buffer: Buffer): boolean {
   }
 }
 
-/** A header path: either C-quoted (`"a/p\tq"`, as git writes control/non-ASCII chars) or bare. */
-const QUOTED = String.raw`"((?:[^"\\]|\\.)*)"`;
-const HEADER_RE = new RegExp(String.raw`^diff --git (?:${QUOTED}|(.+?)) (?:${QUOTED}|(.+))$`);
-const EXTENDED_PATH_RES: readonly { re: RegExp; prefix?: string }[] = [
-  { re: new RegExp(String.raw`^rename from (?:${QUOTED}|(.+))$`, 'gm') },
-  { re: new RegExp(String.raw`^rename to (?:${QUOTED}|(.+))$`, 'gm') },
-  { re: new RegExp(String.raw`^copy from (?:${QUOTED}|(.+))$`, 'gm') },
-  { re: new RegExp(String.raw`^copy to (?:${QUOTED}|(.+))$`, 'gm') },
-  { re: new RegExp(String.raw`^--- (?:${QUOTED}|(a/.+))$`, 'gm'), prefix: 'a/' },
-  { re: new RegExp(String.raw`^\+\+\+ (?:${QUOTED}|(b/.+))$`, 'gm'), prefix: 'b/' },
-];
-
 /**
- * Every path a section names: both sides of the `diff --git` header plus any
- * `---`/`+++` or rename/copy header lines. Undefined when the header does not
- * have the shape git writes, or a path is not under `a/` / `b/` as expected.
+ * Every path a section names, read with jsdiff's parser, which understands
+ * git's C-quoted names, spaces, and rename/copy headers. Undefined when the
+ * header is not one git would write (no file names, or names not under
+ * `a/` / `b/`), or the section does not parse at all. Only the final old and
+ * new names are checked (a `rename to` or `+++` line wins over the `diff --git`
+ * line, as in git itself). Only the names are taken from the parse: the
+ * published text is the raw section, since `formatPatch` would rewrite hunk
+ * headers and drop binary and similarity lines.
  */
 function pathsOfSection(section: string): string[] | undefined {
-  const headerPaths = parseHeaderLine(headerLine(section));
-  if (!headerPaths) {
+  let parsed: ReturnType<typeof parsePatch>;
+  try {
+    parsed = parsePatch(section);
+  } catch {
     return undefined;
   }
-  const paths = [...headerPaths];
-  const extendedHeaders = section.split(/^@@ /m, 1)[0];
-  for (const { re, prefix } of EXTENDED_PATH_RES) {
-    for (const match of extendedHeaders.matchAll(re)) {
-      const decoded = match[1] !== undefined ? unquote(match[1]) : match[2];
-      if (decoded === undefined) {
-        return undefined;
-      }
-      const cleaned = prefix ? stripPrefix(decoded, prefix) : decoded;
-      if (cleaned === undefined) {
-        return undefined;
-      }
-      paths.push(cleaned);
-    }
-  }
-  return [...new Set(paths)];
-}
-
-/**
- * Reads `a/<path>` and `b/<path>` from `diff --git ...`. Git does not quote
- * plain ASCII spaces, so `diff --git a/dir b/.env b/dir b/.env` is checked for
- * an exact `a/<p> b/<p>` symmetry before falling back to `HEADER_RE`.
- */
-function parseHeaderLine(line: string): [string, string] | undefined {
-  if (line.startsWith('diff --git a/')) {
-    const rest = line.slice('diff --git '.length);
-    if ((rest.length - 5) % 2 === 0) {
-      const half = (rest.length - 5) / 2;
-      if (half > 0 && rest.slice(2 + half, 5 + half) === ' b/' && rest.slice(2, 2 + half) === rest.slice(5 + half)) {
-        const same = rest.slice(2, 2 + half);
-        return [same, same];
-      }
-    }
-  }
-  const header = HEADER_RE.exec(line);
-  if (!header) {
+  if (parsed.length !== 1) {
     return undefined;
   }
-  const [, quotedA, bareA, quotedB, bareB] = header;
-  const a = stripPrefix(quotedA !== undefined ? unquote(quotedA) : bareA, 'a/');
-  const b = stripPrefix(quotedB !== undefined ? unquote(quotedB) : bareB, 'b/');
-  return a !== undefined && b !== undefined ? [a, b] : undefined;
+  const paths: string[] = [];
+  for (const [name, prefix] of [[parsed[0].oldFileName, 'a/'], [parsed[0].newFileName, 'b/']] as const) {
+    if (name === '/dev/null') {
+      continue;
+    }
+    const stripped = stripPrefix(name, prefix);
+    if (stripped === undefined) {
+      return undefined;
+    }
+    paths.push(stripped);
+  }
+  return paths.length > 0 ? [...new Set(paths)] : undefined;
 }
 
 function headerLine(section: string): string {
@@ -190,32 +158,6 @@ function headerLine(section: string): string {
 
 function stripPrefix(text: string | undefined, prefix: string): string | undefined {
   return text !== undefined && text.startsWith(prefix) && text.length > prefix.length ? text.slice(prefix.length) : undefined;
-}
-
-const ESCAPES: Record<string, string> = { '"': '"', '\\': '\\', a: '\x07', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\v' };
-
-/** Decodes the body of a git C-quoted string. Undefined on an escape git would not write. */
-function unquote(body: string): string | undefined {
-  let out = '';
-  for (let i = 0; i < body.length; i++) {
-    if (body[i] !== '\\') {
-      out += body[i];
-      continue;
-    }
-    const octal = /^[0-7]{3}/.exec(body.slice(i + 1, i + 4));
-    if (octal) {
-      out += String.fromCharCode(parseInt(octal[0], 8));
-      i += 3;
-      continue;
-    }
-    const escaped = ESCAPES[body[i + 1] ?? ''];
-    if (escaped === undefined) {
-      return undefined;
-    }
-    out += escaped;
-    i++;
-  }
-  return out;
 }
 
 function capPatch(text: string, droppedFiles: string[]): PreparedPatch {

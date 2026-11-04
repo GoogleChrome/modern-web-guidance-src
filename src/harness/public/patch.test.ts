@@ -83,6 +83,24 @@ describe('preparePatch', () => {
     assert.equal(out.text, section('src/ok.ts'));
     assert.equal(out.droppedFiles.length, 3);
   });
+
+  test('kept sections are published byte-for-byte: binary, similarity, mode, and short hunk headers survive', () => {
+    const binary = 'diff --git a/x.png b/x.png\nBinary files a/x.png and b/x.png differ\n';
+    const renamed = 'diff --git a/src/a.ts b/src/b.ts\nsimilarity index 90%\nrename from src/a.ts\nrename to src/b.ts\n';
+    const modeOnly = 'diff --git a/run.sh b/run.sh\nold mode 100644\nnew mode 100755\n';
+    const shortHunk = 'diff --git a/x.txt b/x.txt\n--- a/x.txt\n+++ b/x.txt\n@@ -1 +1 @@\n-a\n+b\n';
+    const raw = binary + renamed + modeOnly + shortHunk + section('pnpm-lock.yaml');
+    const out = preparePatch(raw);
+    assert.equal(out.text, binary + renamed + modeOnly + shortHunk);
+    assert.deepEqual(out.droppedFiles, ['pnpm-lock.yaml']);
+  });
+
+  test('a section with a malformed hunk is dropped rather than published half-read', () => {
+    const malformed = 'diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-x\n+y\n+z\n';
+    const out = preparePatch(malformed + section('src/ok.ts'));
+    assert.equal(out.text, section('src/ok.ts'));
+    assert.equal(out.droppedFiles.length, 1);
+  });
 });
 
 describe('patchFromFiles', () => {
