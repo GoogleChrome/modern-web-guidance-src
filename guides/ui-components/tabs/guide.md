@@ -4,71 +4,262 @@ description: "Build a responsive tabbed interface with good UX when not all tabs
 draft: wip
 web-feature-ids:
   - focusgroup
-  - anchor-positioning
   - hidden-until-found
   - scroll-snap
-  - popover
-  - scroll-buttons
+  - scroll-driven-animations
+  - interpolate-size
 guides:
   - anchor-positioning-tab-underline
   - search-hidden-content
   - scrollability-affordance-hints
   - overflow-popup
+  - menu
+  - interest-triggered-tooltips
 ---
 
 # Tabbed interfaces
 
-## Choosing the correct semantics
+## Basic markup
 
-If the content and expected behaviour of the candidate UI is page navigation, the WAI ARIA tabs pattern should not be used even if the intent is to present the content as a tabbed interface.
-
-## Use focusgroup for managing the tablist focus
-
-{{ BASELINE_STATUS("focusgroup") }}
-
-Instead of manually implementing a roving tabindex or ARIA activedescendant pattern to meet the focus management requirement of the ARIA `tablist` role, we can use `focusgroup` which has a `tablist` behaviour.
+Instead of manually implementing a roving tabindex or ARIA activedescendant pattern to meet the focus management requirement of the ARIA `tablist` role, we can use `focusgroup` which has a `tablist` behavior and automatically assigns the right roles (`tablist` on the container and `tab` on its focusable children).
 
 ```html
-<div focusgroup="tablist">
-    <button type="button">HTML</button>
-    <button type="button">CSS</button>
-    <button type="button">JavaScript</button>
+<div class="tabs">
+  <div focusgroup="tablist" aria-label="Web platform technologies">
+      <button type="button" aria-selected="true" focusgroupstart>HTML</button>
+      <button type="button">CSS</button>
+      <button type="button">JavaScript</button>
+  </div>
+  <div role="tabpanel" tabindex="0"><!-- content for HTML tab --></div>
+  <div role="tabpanel" hidden="until-found"><!-- content for CSS tab --></div>
+  <div role="tabpanel" hidden="until-found"><!-- content for JavaScript tab --></div>
 </div>
 ```
 
-In the example above, the element bearing `focusgroup=tablist` will receive a minimum ARIA role of `tablist` and the buttons will receive a minimum role of `tab`.
+Do NOT use this pattern the WAI ARIA tabs pattern for page navigation, even if it is intended to be presented as a tabbed interface.
 
-Though `focusgroup` will apply the `tab` semantics to focusables within its scope, prefer `<button>` to avoid needing to reimplement button-like behaviour.
-Make sure to use `type=button` for any `<button>` elements to avoid unexpected submitter behaviour if nested within a form.
+Tablist:
+- Prefer `<button>` for the tabs to avoid needing to reimplement button-like behavior. Add `type=button` to avoid unexpected submitter behavior if nested within a form.
+- Use `aria-labelledby` or `aria-label` to give the tablist an accessible name.
+- Use `aria-selected` to indicate which tab is currently selected.
 
-### Fallback strategy for focusgroup
+Tab panels:
+- Set `role=tabpanel` on the tab panels and use `aria-labelledby` or `aria-label` to give the panel an accessible name (e.g. `aria-labelledby` can reference the associated tab).
+- Use `hidden="until-found"` to hide tab panels whose tab is not actively selected while still keeping them searchable by the browser’s find-in-page feature. Use `hidden` with no value to remove the content from the browser's search in-page feature as well.
+- When using `hidden="until-found"`, use the `beforematch` event to sync the tab & tab panel selection state when find-in-page makes a different tab active.
+- Set `tabindex=0` on the visible tab panel if it contains no focusable elements, and remove it from hidden panels.
+
+- MANDATORY: Render the initial state in the HTML: `hidden` on every panel except the selected one, and `aria-selected="true"` on the selected tab. Otherwise every panel shows until script runs, overlapping when they share a grid cell.
+
+## Keyboard interaction
+
+When it comes to how tabs become selected, one can either make _selection follow focus_ or allow the user to move focus between tabs and perform _selection by activation_.
+
+Default to _selection follows focus_.
+It saves a keypress per tab, is more discoverable, and matches native radio groups.
+Use selection by activation instead when showing a panel has a cost the user should opt into, since arrowing from the first tab to the fifth would pay it for every tab along the way:
+- Showing the panel is not instant: content is fetched on demand, or rendering it is noticeably slow.
+- Selecting a tab has side effects: it changes the URL or history, sends analytics, starts media, or saves state.
+- The panel shifts the layout significantly (e.g. panels of very different heights push the rest of the page around).
+
+If selection follows focus, focus entering the group must land on the selected item. By default it returns to the last focused item instead, which is wrong once selection can change without focus (find-in-page, script). Use `nomemory` and move `focusgroupstart` to the selected item:
+
+```js
+// <div focusgroup="tablist nomemory">
+for (const i of items) {
+  i.ariaSelected = i === item;
+  i.toggleAttribute('focusgroupstart', i === item);
+}
+```
+
+## Styling
+
+### Indicating the selected tab
+
+Style the selected tab from `aria-selected`, so the visual state can never disagree with the accessible one.
+Do not apply any styling that changes the dimensions of the tab (e.g., `padding`, `border`, `margin`, `font-size`, `font-weight`, etc).
+
+```css
+[aria-selected="true"] {
+  color: var(--accent);
+  /* Example: a 3px underline that takes no space */
+  box-shadow: inset 0 -3px var(--accent);
+}
+```
+
+To animate the underline between tabs, use `::before` + anchor-positioning, see {{ GUIDE_REF("anchor-positioning-tab-underline") }} for details.
+
+
+- DO NOT put padding, borders, margins, or backgrounds on the panel element itself. `hidden=until-found` does not use `display: none`: it only hides the panel's contents, so a hidden panel still renders its padding, border, margin, and background as an empty strip. Put these styles on a child wrapper inside the panel instead.
+- `hidden=until-found` panels still participate in grid and flex layout, so `gap` adds space for every hidden panel. Place all panels in the same grid cell, or avoid `gap` between panels.
+
+See {{ GUIDE_REF("search-hidden-content") }} for more details.
+
+## Handling tabs that don’t fit
+
+Keep tabs on a single row. DO NOT wrap them onto multiple rows: wrapped rows make the tab order and the selected tab hard to follow.
+When the tabs are wider than the available space, either scroll the tablist or move the tabs that don’t fit into a popup menu.
+
+- **Scrolling** keeps every tab in the tablist and in the keyboard order, and works with touch swiping. It needs no script beyond selection. Use it by default, and always on touch-first interfaces.
+- **An overflow menu** shows the names of all hidden tabs at once, in a list, without scrolling. Use it when there are a few primary tabs and a tail of less used ones, and users mostly use a pointer. It needs script to detect overflow.
+
+### Strategy 1: scrolling
+
+1. Make the tablist a horizontal scroll container: `display: flex`, `overflow-x: auto`, and `flex: none` on the tabs so they never shrink (unless combined with strategy 3).
+2. Optional: snap to tab edges with `scroll-snap-type: inline proximity` on the tablist and `scroll-snap-align: start` on the tabs. Use `proximity`, not `mandatory`, so the user can still stop between tabs.
+3. Hide the scrollbar and show scrollability hints instead: fade out each edge of the tablist that has more tabs beyond it. Drive the fade with a scroll-driven animation on the tablist itself (`animation-timeline: scroll(self inline)`) that animates the stops of a `mask-image` gradient. Unlike scroll-state container queries, this needs no hint elements inside the scroller, which a tablist cannot contain (it may only contain tabs). When the tabs fit, the scroll timeline is inactive, so there is no fade.
+4. Set `scroll-padding-inline` to the fade length, so focused and snapped tabs are never in a fade.
+5. On every selection change, scroll the selected tab into view with `scrollIntoView({ block: 'nearest', inline: 'nearest', container: 'nearest' })`. `container: 'nearest'` scrolls only the tablist, not the page. Clicking a partially visible tab then reveals it along with part of the next one, so mouse users without a horizontal scroll wheel can still reach every tab. It also covers selection without focus, such as find-in-page.
+
+See {{ GUIDE_REF("scrollability-affordance-hints") }} for more details on scrollability hints.
+
+### Strategy 2: overflow menu
+
+Hide the tabs that don’t fit and list them in a menu opened by a “More” button after the tablist.
+Build the button and its menu as a menu button; see {{ GUIDE_REF("menu") }} for structure, positioning, and keyboard behavior.
+The rest of this section covers only what is specific to tabs.
+
+- **Place the “More” button outside the tablist.** A tablist may only contain tabs.
+- **Make the “More” button look different from a tab.** Use an icon (such as a horizontal ellipsis) with an accessible name, not a text label: a text label looks like one more tab.
+- **Detect overflow with `IntersectionObserver`**, rooted at the tablist with `threshold: 1`, so partially visible tabs count as overflowed. It reports each tab as it starts or stops fitting, with no layout math.
+- **Hide overflowed tabs with `visibility: hidden`**, not `display: none` or `hidden`. They keep their layout box, so the observer still reports when they fit again, and they leave the focus order and the accessibility tree. Set `overflow: clip` on the tablist so they don’t overflow the page.
+- **Mirror each tab as a `menuitem`**. Show only the items whose tab is hidden. Activating an item selects its tab and focuses it.
+- **Hide the “More” button when no tab overflows.** This cannot loop: showing the button only narrows the tablist, so at least one tab still overflows.
+- **Keep the selected tab in the tablist.** DO NOT leave it in the menu or mark the “More” button as selected: it is a button, not a tab. When the selected tab overflows (selected from the menu, by find-in-page, or after a resize), move it in the DOM before the last tab that fits. The tab it displaces moves into the menu. Move the DOM node, not just its CSS `order`, so the visual order and the focus order stay the same. Keep overflowed tabs visible while they are selected, so they can be focused before the observer catches up.
+
+```html
+<div class="tabs">
+  <div class="tablist" focusgroup="tablist nomemory" aria-label="Product details">
+    <button type="button">Overview</button>
+    <button type="button">Specifications</button>
+    <!-- … -->
+  </div>
+  <!-- Outside the tablist: a tablist may only contain tabs.
+       Icon, not text, so it does not read as another tab. -->
+  <button type="button" class="more" hidden aria-label="More tabs">⋯</button>
+  <!-- Menu: see the menu guide. One menuitem per tab. -->
+  <!-- Tab panels -->
+</div>
+```
+
+```js
+const observer = new IntersectionObserver(entries => {
+  for (const { target: tab, intersectionRatio } of entries) {
+    const overflowed = intersectionRatio < 1;
+    // CSS: [data-overflow]:not([aria-selected="true"]) { visibility: hidden; }
+    tab.toggleAttribute('data-overflow', overflowed);
+    menuItemFor(tab).hidden = !overflowed;
+  }
+  more.hidden = !tabs.some(tab => tab.hasAttribute('data-overflow'));
+  reveal();
+}, { root: tablist, threshold: 1 });
+
+tabs.forEach(tab => observer.observe(tab));
+
+// Also call after every selection change.
+// Moving the tab makes the observer fire again, so this repeats until it fits.
+function reveal() {
+  const tab = tabs.find(tab => tab.ariaSelected === 'true');
+  const last = tabs.findLast(tab => !tab.hasAttribute('data-overflow'));
+  // Until the observer catches up, the tab can still be marked as overflowed after a move
+  if (tab.hasAttribute('data-overflow') && last && tabs.indexOf(tab) > tabs.indexOf(last)) {
+    last.before(tab);
+    tabs = [...tablist.children];
+  }
+}
+```
+
+{# NOTE: Unhandled edge cases: a focused inactive tab that starts overflowing (e.g. on resize) becomes visibility: hidden and loses focus. Reordering on resize permanently changes the tab order. #}
+
+See {{ GUIDE_REF("overflow-popup") }} for more details on moving overflowing controls into a popup.
+
+### Strategy 3: Making inactive tabs smaller
+
+This may be combined with the overflow handling strategies described above to allow more tabs to fit before scrolling or showing a menu.
+It is more well suited to user-driven tablists (e.g. a document editor) rather than hardcoded UI tablists.
+
+- Let inactive tabs shrink and keep the selected tab at its full width: `flex: 0 1 auto` on the tabs, and `min-inline-size: max-content` on the selected tab, which also overrides any `max-inline-size`, so its label is never truncated. DO NOT use `flex-shrink: 0` for this: it cannot transition smoothly (see below).
+- Set a `min-inline-size` on the tabs. Once every inactive tab is at its minimum, the remaining overflow is handled by scrolling or the overflow menu.
+- Truncate shrunk labels with `text-overflow: ellipsis`. Put the label in its own element, since `text-overflow` needs `overflow: hidden` and would otherwise clip the focus ring.
+- Keep the full label in the DOM, so the accessible name and find-in-page are unaffected. Show it to sighted users on hover and focus with a tooltip; see {{ GUIDE_REF("interest-triggered-tooltips") }}.
+- If tabs have icons, keep the icon visible and truncate only the label, so a minimum-width tab is still recognizable.
+- Transition `min-inline-size` so tabs resize smoothly when the selection changes, instead of jumping. Set `interpolate-size: allow-keywords` on the tablist so it interpolates to and from `max-content`; no view transition is needed. Only transition it when `prefers-reduced-motion` is `no-preference`. Transitioning `flex-shrink` does not work: any value above 0 shrinks a tab all the way to its minimum when the tabs overflow.
+
+{# NOTE: Unhandled edge case: selecting a tab widens it and shifts the tabs after it, which can move the next tab out from under the pointer. #}
+
+
+
+## Fallback strategies
 
 {{ FEATURE_FALLBACKS("focusgroup") }}
 
-## Implementing tab selection and tabpanel association
+### Fallbacks & browser support for `hidden=until-found`
 
-`focusgroup=tablist` does not sufficiently implement all of what’s necessary for an operational tabbed interface.
+{{ BASELINE_STATUS("hidden-until-found") }}
 
-- Use `aria-labelledby` or `aria-label` to give the tablist an accessible name.
-- Use `aria-selected` to indicate which tab is currently selected.
-- Set `role=tabpanel` on the tab panels and use `aria-labelledby` or `aria-label` to give the panel an accessible name (e.g. `aria-labelledby` can reference the associated tab).
-- Use `aria-controls` to associate the tab buttons with a tab panel.
-- Use `hidden` to hide tab panels whose tab is not actively selected.
+Treat `hidden=until-found` as an enhancement. Do not polyfill it: find-in-page cannot be reproduced across browsers.
+No feature detection is needed when setting it from script: in browsers without support, `panel.hidden = 'until-found'` sets the boolean `hidden`, so the panel is simply hidden and not searchable.
 
-### Selection behaviour
+### Fallbacks & browser support for `interpolate-size`
 
-A tabbed interface can either use mutually exclusive selection or multi-selection. This guide only covers the former.
+{{ BASELINE_STATUS("interpolate-size") }}
 
-When it comes to how tabs become selected, one can either make _selection follow focus_ or all the user to move focus between tabs and perform _selection by activation_.
-The latter _selection by activation_ works well in scenarios where a tab panel’s content will be lazy loaded.
+No fallback is needed: without `interpolate-size`, tabs resize instantly instead of transitioning.
 
-If selection should follow focus, make sure the `nomemory` behaviour has not been applied to the `focusgroup` since otherwise the selected tab and tabpanel might change when the focusgroup receives focus.
+### Fallbacks & browser support for scroll-driven animations
 
-## Allowing tab panel content to be searchable
+{{ BASELINE_STATUS("scroll-driven-animations") }}
 
-`hidden=until-found` can be used to make a tab panel’s contents searchable by a browser’s find-in-page feature.
-Since this feature would be used in the context of a more complex interface, we need to ensure that the interface’s state is kept in sync when content within a previously hidden tab panel has been matched.
-Use the `beforematch` event to sync the tab selection state and to restore `hidden=until-found` for tab panels whose tabs are no longer selected.
-It is important to restore `hidden=until-found` so that those tabs can continue to be searchable.
+Without scroll-driven animations, set the same fades from script: observe the first and last tab with an `IntersectionObserver` rooted at the tablist. When the first tab is not fully visible, there are more tabs before it; likewise for the last tab. Observing the tabs themselves works because a tab is never wider than the tablist, and a tablist cannot contain the empty sentinel elements used elsewhere.
 
-In browsers that do not support `hidden=until-found`, prefer to treat this feature as an enhancement rather than trying to polyfill it for unsupporting browsers as that is not completely possible across browsers.
+```js
+if (!CSS.supports('animation-timeline', 'scroll()')) {
+  const [first, last] = [tabs[0], tabs.at(-1)];
+  const observer = new IntersectionObserver(entries => {
+    for (const { target, intersectionRatio } of entries) {
+      const edge = target === first ? 'data-more-start' : 'data-more-end';
+      tablist.toggleAttribute(edge, intersectionRatio < 1);
+    }
+  }, { root: tablist, threshold: 1 });
+
+  observer.observe(first);
+  observer.observe(last);
+}
+```
+
+```css
+.tablist {
+  &[data-more-start] {
+    --fade-start: var(--fade-size);
+  }
+
+  &[data-more-end] {
+    --fade-end: var(--fade-size);
+  }
+
+  /* The fades switch on and off instead of following the scroll position: smooth that */
+  @media (prefers-reduced-motion: no-preference) {
+    transition: --fade-start .2s, --fade-end .2s;
+  }
+}
+```
+
+Alternatively, if the tablist has a solid background color and you would rather not run script, draw shadows with `background-attachment`.
+Each shadow is a `scroll` background, which stays at the edge of the tablist.
+Each shadow has a cover: a `local` background in the tablist's own color, which scrolls with the tabs.
+At either end of the tabs its cover hides its shadow; once the user scrolls away from that end, the shadow shows.
+
+```css
+@supports not (animation-timeline: scroll()) {
+  .tablist {
+    background:
+      /* Covers: scroll with the tabs. Must use the tablist's own background color. */
+      linear-gradient(to right, var(--surface) 30%, transparent) left / 2.5rem 100% no-repeat local,
+      linear-gradient(to left, var(--surface) 30%, transparent) right / 2.5rem 100% no-repeat local,
+      /* Shadows: stay at the edges of the tablist */
+      radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / .2), transparent) left / .75rem 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / .2), transparent) right / .75rem 100% no-repeat scroll,
+      var(--surface);
+  }
+}
+```
