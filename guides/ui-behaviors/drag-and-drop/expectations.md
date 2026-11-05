@@ -25,4 +25,4 @@
 - After a keyboard move, an `Escape` cancel, or a pointer drop, the moved item is scrolled into view within its scrollable container.
 - When keyboard focus enters an item in a scrollable container, the whole item, including its focus ring, is scrolled into view.
 - The collection renders its items in a readable and usable default DOM order before any reordering interaction occurs.
-- At a 320 px viewport width, the items and their movement controls fit without horizontal scrolling.
+- On a narrow mobile viewport, the items and their movement controls fit without horizontal scrolling.
