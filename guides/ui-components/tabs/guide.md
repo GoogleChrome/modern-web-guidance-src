@@ -36,7 +36,7 @@ Instead of manually implementing a roving tabindex or ARIA activedescendant patt
 </div>
 ```
 
-Do NOT use this pattern the WAI ARIA tabs pattern for page navigation, even if it is intended to be presented as a tabbed interface.
+DO NOT use the WAI-ARIA tabs pattern for page navigation, even if it is intended to be presented as a tabbed interface.
 
 Tablist:
 - Prefer `<button>` for the tabs to avoid needing to reimplement button-like behavior. Add `type=button` to avoid unexpected submitter behavior if nested within a form.
@@ -62,7 +62,7 @@ Use selection by activation instead when showing a panel has a cost the user sho
 - Selecting a tab has side effects: it changes the URL or history, sends analytics, starts media, or saves state.
 - The panel shifts the layout significantly (e.g. panels of very different heights push the rest of the page around).
 
-If selection follows focus, focus entering the group must land on the selected item. By default it returns to the last focused item instead, which is wrong once selection can change without focus (find-in-page, script). Use `nomemory` and move `focusgroupstart` to the selected item:
+With either pattern, focus entering the group must land on the selected item. By default it returns to the last focused item instead, which is wrong once selection can change without focus (find-in-page, script). Use `nomemory` and move `focusgroupstart` to the selected item:
 
 ```js
 // <div focusgroup="tablist nomemory">
