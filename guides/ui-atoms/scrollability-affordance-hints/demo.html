@@ -182,11 +182,11 @@
     /* Fallback without scroll-driven animations: script marks the edges with more content */
     transition: --fade-start .2s, --fade-end .2s;
 
-    &[data-more-start] {
+    &.more-start {
       --fade-start: var(--fade-size);
     }
 
-    &[data-more-end] {
+    &.more-end {
       --fade-end: var(--fade-size);
     }
 
@@ -260,7 +260,7 @@
       // rootMargin: without it, sub-pixel widths can leave an edge chip a fraction of a pixel short of fully visible
       const observer = new IntersectionObserver(entries => {
         for (const { target, intersectionRatio } of entries) {
-          scroller.toggleAttribute(target === first ? 'data-more-start' : 'data-more-end', intersectionRatio < 1);
+          scroller.classList.toggle(target === first ? 'more-start' : 'more-end', intersectionRatio < 1);
         }
       }, { root: scroller, threshold: 1, rootMargin: '1px' });
 

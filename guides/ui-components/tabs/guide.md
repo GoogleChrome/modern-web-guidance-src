@@ -147,25 +147,25 @@ The rest of this section covers only what is specific to tabs.
 const observer = new IntersectionObserver(entries => {
   for (const { target: tab, intersectionRatio } of entries) {
     const overflowed = intersectionRatio < 1;
-    // CSS: [data-overflow]:not([aria-selected="true"]) { visibility: hidden; }
-    tab.toggleAttribute('data-overflow', overflowed);
+    // CSS: .clipped:not([aria-selected="true"]) { visibility: hidden; }
+    tab.classList.toggle('clipped', overflowed);
     menuItemFor(tab).hidden = !overflowed;
   }
-  more.hidden = !tabs.some(tab => tab.hasAttribute('data-overflow'));
+  more.hidden = !tabs.some(tab => tab.classList.contains('clipped'));
   reveal();
 }, { root: tablist, threshold: 1 });
 
 tabs.forEach(tab => observer.observe(tab));
 
 // Also call after every selection change.
-// CSS: [data-displaced] { display: none; }
+// CSS: .displaced { display: none; }
 function reveal() {
   const tab = tabs.find(tab => tab.ariaSelected === 'true');
   const before = tabs.slice(0, tabs.indexOf(tab));
   const end = tablist.getBoundingClientRect().right;
-  tabs.forEach(tab => tab.removeAttribute('data-displaced'));
+  tabs.forEach(tab => tab.classList.remove('displaced'));
   while (before.length && tab.getBoundingClientRect().right > end) {
-    before.pop().setAttribute('data-displaced', '');
+    before.pop().classList.add('displaced');
   }
 }
 ```

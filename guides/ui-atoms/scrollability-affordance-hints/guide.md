@@ -225,7 +225,7 @@ if (!CSS.supports('animation-timeline', 'scroll()')) {
     // rootMargin: without it, sub-pixel widths can leave an edge child a fraction of a pixel short of fully visible
     const observer = new IntersectionObserver(entries => {
       for (const { target, intersectionRatio } of entries) {
-        scroller.toggleAttribute(target === first ? 'data-more-start' : 'data-more-end', intersectionRatio < 1);
+        scroller.classList.toggle(target === first ? 'more-start' : 'more-end', intersectionRatio < 1);
       }
     }, { root: scroller, threshold: 1, rootMargin: '1px' });
 
@@ -237,8 +237,8 @@ if (!CSS.supports('animation-timeline', 'scroll()')) {
 
 ```css
 /* Shadows */
-.scroller[data-more-start]::before,
-.scroller[data-more-end]::after {
+.scroller.more-start::before,
+.scroller.more-end::after {
   opacity: 1;
 }
 
@@ -246,11 +246,11 @@ if (!CSS.supports('animation-timeline', 'scroll()')) {
 .scroller {
   transition: --fade-start .2s, --fade-end .2s;
 
-  &[data-more-start] {
+  &.more-start {
     --fade-start: var(--fade-size);
   }
 
-  &[data-more-end] {
+  &.more-end {
     --fade-end: var(--fade-size);
   }
 }
