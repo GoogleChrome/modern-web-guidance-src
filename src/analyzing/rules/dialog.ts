@@ -16,7 +16,7 @@ import type {
   JsRuleMatcher,
 } from '../schema.ts';
 
-export const LIGHT_DISMISS_A_DIALOG_GUIDE_HASH = '3ae36ee091a1';
+export const DIALOG_GUIDE_HASH = '288ac95fa652';
 
 const CLOSEDBY_FEATURE_TOKENS = ['closedBy', 'closedby'] as const;
 
@@ -216,7 +216,7 @@ function matchClickRegistration(
   return null;
 }
 
-export const lightDismissADialogJsMatcher: JsRuleMatcher = {
+export const dialogJsMatcher: JsRuleMatcher = {
   kind: 'js',
   fastTokens: [
     ['click', 'onclick'],
@@ -257,13 +257,13 @@ export const lightDismissADialogJsMatcher: JsRuleMatcher = {
   },
 };
 
-export const lightDismissADialogRule: AnalyzerRule = {
-  id: 'light-dismiss-a-dialog',
-  guideId: 'light-dismiss-a-dialog',
-  guideHash: LIGHT_DISMISS_A_DIALOG_GUIDE_HASH,
+export const dialogRule: AnalyzerRule = {
+  id: 'dialog',
+  guideId: 'dialog',
+  guideHash: DIALOG_GUIDE_HASH,
   summary:
     'Manual backdrop click listeners dismissing <dialog> should be modernized with declarative <dialog closedby="any">.',
-  matcher: lightDismissADialogJsMatcher,
+  matcher: dialogJsMatcher,
   verifierRubric: {
     keepWhen: [
       'A click event listener attached to a <dialog> or modal checks event.target === dialog, event.target === event.currentTarget, or bounding box coordinates to dismiss the dialog via .close().',
@@ -279,5 +279,5 @@ export const lightDismissADialogRule: AnalyzerRule = {
 };
 
 export default [
-  lightDismissADialogRule,
+  dialogRule,
 ] satisfies readonly AnalyzerRule[];
