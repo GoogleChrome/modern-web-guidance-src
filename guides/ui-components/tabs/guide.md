@@ -107,9 +107,12 @@ When the tabs are wider than the available space, either scroll the tablist or m
 
 1. Make the tablist a horizontal scroll container: `display: flex`, `overflow-x: auto`, and `flex: none` on the tabs so they never shrink (unless combined with strategy 3).
 2. Optional: snap to tab edges with `scroll-snap-type: inline proximity` on the tablist and `scroll-snap-align: start` on the tabs. Use `proximity`, not `mandatory`, so the user can still stop between tabs.
-3. Hide the scrollbar and show scrollability hints instead: fade out each edge of the tablist that has more tabs beyond it. Drive the fade with a scroll-driven animation on the tablist itself (`animation-timeline: scroll(self inline)`) that animates the stops of a `mask-image` gradient. A fade suits a row of tabs better than a shadow, and works on any background. When the tabs fit, the scroll timeline is inactive, so there is no fade. See {{ GUIDE_REF("scrollability-affordance-hints") }} for more details on scrollability hints, and fallbacks for browsers that do not support scroll-driven animations.
-4. Set `scroll-padding-inline` to the fade length, so focused and snapped tabs are never in a fade.
-5. On every selection change, scroll the selected tab into view with `scrollIntoView({ block: 'nearest', inline: 'nearest', container: 'nearest' })`. `container: 'nearest'` scrolls only the tablist, not the page. Clicking a partially visible tab then reveals it along with part of the next one, so mouse users without a horizontal scroll wheel can still reach every tab. It also covers selection without focus, such as find-in-page.
+3. Hide the scrollbar and fade out each edge of the tablist that has more tabs beyond it, as described below. A fade suits a row of tabs better than a shadow, and works on any background. See {{ GUIDE_REF("scrollability-affordance-hints") }} for more details on scrollability hints.
+4. On every selection change, scroll the selected tab into view with `scrollIntoView({ block: 'nearest', inline: 'nearest', container: 'nearest' })`. `container: 'nearest'` scrolls only the tablist, not the page. Clicking a partially visible tab then reveals it along with part of the next one, so mouse users without a horizontal scroll wheel can still reach every tab. It also covers selection without focus, such as find-in-page.
+
+#### Fading the edges
+
+{{ INCLUDE("../../ui-atoms/scrollability-affordance-hints/guide.md#fades") }}
 
 ### Strategy 2: overflow menu
 
