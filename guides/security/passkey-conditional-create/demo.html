@@ -95,7 +95,7 @@
             console.error('Server verification failed:', verifyErr);
             if (PublicKeyCredential.signalUnknownCredential) {
               await PublicKeyCredential.signalUnknownCredential({
-                rpId: window.location.hostname,
+                rpId: publicKey.rp?.id ?? 'example.com',
                 credentialId: encodedResponse.id
               });
             }

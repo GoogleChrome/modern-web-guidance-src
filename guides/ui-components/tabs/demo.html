@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang=en>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width">
+<title>Tabs demo | Modern Web Guidance</title>
+<style>
+  mwg-tabpanel {
+    display: block;
+  }
+</style>
+
+<script type=module>
+  import { polyfill } from 'https://esm.sh/@microsoft/focusgroup-polyfill';
+  polyfill();
+
+  class TabsElement extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: 'open' });
+      this.shadowRoot.innerHTML = '<slot>';
+      this.shadowRoot.addEventListener('slotchange', this);
+      this.addEventListener('focusin', this, true);
+      this.addEventListener('click', this, true);
+      this.addEventListener('beforematch', this);
+    }
+
+    handleEvent(event) {
+      switch (event.type) {
+        case 'slotchange': {
+          this.tabList = this.querySelector('mwg-tablist');
+          this.tabList.setAttribute('focusgroup', 'tablist nomemory');
+          polyfill(this);
+          let i = 0;
+          for (const tab of this.querySelectorAll('button')) {
+            const isFirstTab = i === 0;
+            const tabPanel = this.querySelector(`mwg-tabpanel:nth-of-type(${i + 1})`);
+            tab.ariaSelected = isFirstTab;
+            tab.toggleAttribute('focusgroupstart', isFirstTab);
+            tab.ariaControlsElements = [tabPanel];
+            tabPanel.ariaLabelledByElements = [tab];
+            tabPanel.hidden = isFirstTab ? false : "until-found";
+            if (isFirstTab) tabPanel.tabIndex = 0;
+            i++;
+          }
+
+          break;
+        }
+        case 'click':
+        case 'focusin': {
+          const tab = event.target.closest('mwg-tablist button');
+          if (!tab) return;
+          this.select(tab);
+          break;
+        }
+        case 'beforematch': {
+          this.select(event.target.closest('mwg-tabpanel').ariaLabelledByElements.at(0));
+          break;
+        }
+      }
+    }
+
+    select(tab) {
+      const tabPanel = tab.ariaControlsElements.at(0);
+      const previousTab = this.querySelector('mwg-tablist [aria-selected=true]');
+      const previousTabPanel = previousTab.ariaControlsElements.at(0);
+
+      previousTab.ariaSelected = false;
+      previousTab.toggleAttribute('focusgroupstart', false);
+      previousTabPanel.hidden = 'until-found';
+      previousTabPanel.removeAttribute('tabindex');
+
+      tab.ariaSelected = true;
+      tab.toggleAttribute('focusgroupstart', true);
+      tabPanel.hidden = false;
+      tabPanel.tabIndex = 0;
+    }
+  }
+
+  customElements.define('mwg-tabs', TabsElement);
+</script>
+
+<main>
+  <mwg-tabs>
+    <mwg-tablist aria-label="Browsers">
+      <button>Blink</button>
+      <button>WebKit</button>
+      <button>Gecko</button>
+      <button>Servo</button>
+    </mwg-tablist>
+    <mwg-tabpanel>
+      Contents for Blink tab panel.
+    </mwg-tabpanel>
+    <mwg-tabpanel>
+      Contents for WebKit tab panel.
+    </mwg-tabpanel>
+    <mwg-tabpanel>
+      Contents for Gecko tab panel.
+    </mwg-tabpanel>
+    <mwg-tabpanel>
+      Contents for Servo tab panel.
+    </mwg-tabpanel>
+  </mwg-tabs>
+</main>

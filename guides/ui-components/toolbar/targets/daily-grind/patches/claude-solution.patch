@@ -1,0 +1,579 @@
+diff --git a/index.html b/index.html
+index 66c9173..bcd9c56 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,240 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Seasonal Favorites toolbar */
++    .favorites-header {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      gap: 0.75rem;
++    }
++
++    .toolbar {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.25rem;
++      padding-block: 0.25rem;
++      padding-inline: 0.375rem;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
++    }
++
++    .toolbar [role="group"] {
++      display: flex;
++      align-items: center;
++      gap: 0.125rem;
++    }
++
++    .toolbar [role="separator"] {
++      align-self: stretch;
++      inline-size: 0;
++      min-block-size: 1.5rem;
++      margin-block: 0.25rem;
++      margin-inline: 0.25rem;
++      border-inline-start: 1px solid var(--secondary);
++    }
++
++    /* Hidden visually (but kept in the accessibility tree) when it would sit alone at a row end */
++    .toolbar [role="separator"].is-orphan {
++      opacity: 0;
++    }
++
++    .toolbar button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.375rem;
++      min-inline-size: 2.5rem;
++      min-block-size: 2.5rem;
++      padding-block: 0.25rem;
++      padding-inline: 0.5rem;
++      font: inherit;
++      font-size: 0.875rem;
++      color: var(--text);
++      background: transparent;
++      border: 1px solid transparent;
++      border-radius: 6px;
++      cursor: pointer;
++    }
++
++    .toolbar button svg,
++    .favorites-menu button svg {
++      inline-size: 1.25rem;
++      block-size: 1.25rem;
++      flex: none;
++    }
++
++    .toolbar button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    .toolbar button[aria-disabled="true"] {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .toolbar button:focus-visible,
++    .favorites-menu button:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    @media (hover: hover) {
++      .toolbar button:not([aria-pressed="true"]):not([aria-disabled="true"]):hover,
++      .favorites-menu button:hover {
++        background: var(--secondary);
++      }
++    }
++
++    @media (pointer: coarse) {
++      .toolbar button {
++        min-inline-size: 3rem;
++        min-block-size: 3rem;
++      }
++
++      .favorites-menu button {
++        min-block-size: 3rem;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .toolbar button,
++      .favorites-menu button {
++        transition: background-color 0.2s, color 0.2s;
++      }
++    }
++
++    .favorites-status {
++      min-block-size: 1.5em;
++      font-size: 0.85rem;
++      text-align: center;
++    }
++
++    /* Overflow menu */
++    .favorites-menu {
++      inset: auto;
++      margin: 0;
++      position-area: block-end span-inline-start;
++      position-try-fallbacks: flip-block, flip-inline;
++      min-inline-size: 12rem;
++      padding: 0.25rem;
++      color: var(--text);
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++    }
++
++    .favorites-menu > div {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .favorites-menu button {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      min-block-size: 2.5rem;
++      padding-block: 0.25rem;
++      padding-inline: 0.75rem;
++      font: inherit;
++      font-size: 0.875rem;
++      text-align: start;
++      color: inherit;
++      background: transparent;
++      border: 1px solid transparent;
++      border-radius: 4px;
++      cursor: pointer;
++    }
++
++    .favorites-menu .check {
++      visibility: hidden;
++    }
++
++    .favorites-menu [aria-checked="true"] .check {
++      visibility: visible;
++    }
++
++    @supports not (position-area: block-end) {
++      #favorites-more-menu {
++        /* Viewport coordinates are set from script when the menu opens */
++        position: fixed;
++        inset: auto;
++        margin: 0;
++      }
++    }
++
++    /* Tooltips upgraded from title (horizontal toolbar: below the button) */
++    [popover="hint"].toolbar-tip {
++      inset: auto;
++      margin: 0.25rem;
++      position-area: block-end;
++      position-try-fallbacks: flip-block;
++      padding-block: 0.125rem;
++      padding-inline: 0.5rem;
++      font-size: 0.8rem;
++      color: white;
++      background: var(--text);
++      border: 1px solid transparent;
++      border-radius: 4px;
++    }
++
++    /* Favorites layout states driven by the toolbar */
++    .grid.is-list {
++      grid-template-columns: 1fr;
++    }
++
++    .grid.is-list .card {
++      text-align: start;
++    }
++
++    .grid.hide-descriptions .card p {
++      display: none;
++    }
++
++    @media print {
++      .toolbar,
++      .favorites-menu,
++      .favorites-status {
++        display: none;
++      }
++    }
++
++    @media (forced-colors: active) {
++      .toolbar,
++      .favorites-menu {
++        border-color: CanvasText;
++      }
++
++      .toolbar button,
++      .favorites-menu button {
++        color: ButtonText;
++      }
++
++      .toolbar button[aria-pressed="true"] {
++        background: Highlight;
++        color: HighlightText;
++        forced-color-adjust: none;
++      }
++
++      .toolbar [role="separator"] {
++        border-color: CanvasText;
++      }
++
++      .toolbar button:focus-visible,
++      .favorites-menu button:focus-visible {
++        outline-color: Highlight;
++      }
++
++      [popover="hint"].toolbar-tip {
++        border-color: CanvasText;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,8 +410,93 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="favorites-header">
++        <h2 id="favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
++
++        <div id="favorites-actions" class="toolbar" role="toolbar" focusgroup="toolbar wrap"
++          aria-label="Seasonal favorites actions" aria-controls="favorites-grid">
++          <div role="group" aria-label="Layout">
++            <button type="button" data-layout="grid" aria-pressed="true" aria-label="Grid view" title="Grid view">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                <rect x="3" y="3" width="8" height="8" rx="1" />
++                <rect x="13" y="3" width="8" height="8" rx="1" />
++                <rect x="3" y="13" width="8" height="8" rx="1" />
++                <rect x="13" y="13" width="8" height="8" rx="1" />
++              </svg>
++            </button>
++            <button type="button" data-layout="list" aria-pressed="false" aria-label="List view" title="List view">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++                <rect x="3" y="4" width="18" height="4" rx="1" />
++                <rect x="3" y="10" width="18" height="4" rx="1" />
++                <rect x="3" y="16" width="18" height="4" rx="1" />
++              </svg>
++            </button>
++          </div>
++          <span role="separator" aria-orientation="vertical"></span>
++          <div role="group" aria-label="Display">
++            <button type="button" id="favorites-descriptions" aria-pressed="true" aria-label="Show descriptions"
++              title="Show descriptions">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
++                stroke-linecap="round">
++                <path d="M4 6h16M4 12h16M4 18h10" />
++              </svg>
++            </button>
++          </div>
++          <span role="separator" aria-orientation="vertical"></span>
++          <div role="group" aria-label="Share">
++            <button type="button" id="favorites-copy" aria-label="Copy drink list" title="Copy drink list">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
++                stroke-linejoin="round">
++                <rect x="9" y="9" width="11" height="11" rx="2" />
++                <path d="M5 15V5a2 2 0 0 1 2-2h8" />
++              </svg>
++            </button>
++            <button type="button" id="favorites-print" aria-label="Print favorites" title="Print favorites">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
++                stroke-linejoin="round">
++                <path d="M6 9V3h12v6" />
++                <rect x="3" y="9" width="18" height="8" rx="2" />
++                <rect x="7" y="14" width="10" height="7" />
++              </svg>
++            </button>
++          </div>
++          <span role="separator" aria-orientation="vertical"></span>
++          <!-- Overflow trigger: the last item in the toolbar -->
++          <button type="button" id="favorites-more" aria-label="More actions" aria-haspopup="menu"
++            aria-expanded="false" popovertarget="favorites-more-menu" title="More actions">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++              <circle cx="12" cy="5" r="2" />
++              <circle cx="12" cy="12" r="2" />
++              <circle cx="12" cy="19" r="2" />
++            </svg>
++          </button>
++        </div>
++
++        <div id="favorites-more-menu" class="favorites-menu" popover>
++          <div focusgroup="menu nomemory" aria-label="More actions">
++            <button type="button" role="menuitemcheckbox" aria-checked="false" data-action="sort">
++              <svg class="check" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
++                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
++                <path d="M5 12l5 5 9-10" />
++              </svg>
++              Sort A–Z
++            </button>
++            <button type="button" data-action="reset">
++              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
++                stroke-linecap="round" stroke-linejoin="round">
++                <path d="M4 12a8 8 0 1 0 2.3-5.6L4 8.7" />
++                <path d="M4 4v4.7h4.7" />
++              </svg>
++              Reset view
++            </button>
++          </div>
++        </div>
++
++        <!-- Always present so announcements are reliable; kept outside the toolbar -->
++        <p id="favorites-status" class="favorites-status" role="status"></p>
++      </div>
++
++      <div class="grid" id="favorites-grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -207,6 +526,237 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const bar = document.getElementById("favorites-actions");
++      const grid = document.getElementById("favorites-grid");
++      const status = document.getElementById("favorites-status");
++      const more = document.getElementById("favorites-more");
++      const menu = document.getElementById("favorites-more-menu");
++      if (!bar || !grid || !status || !more || !menu) return;
++
++      const menuList = menu.querySelector("[focusgroup]");
++      const menuItems = Array.from(menu.querySelectorAll("button"));
++      const sortItem = menu.querySelector('[data-action="sort"]');
++      const layoutButtons = Array.from(bar.querySelectorAll("button[data-layout]"));
++      const descriptionsButton = document.getElementById("favorites-descriptions");
++      const copyButton = document.getElementById("favorites-copy");
++      const printButton = document.getElementById("favorites-print");
++      const originalOrder = Array.from(grid.children);
++      const hasFocusgroup = "focusGroup" in HTMLElement.prototype;
++      let announceTimer = 0;
++
++      const announce = (message, delay = 0) => {
++        clearTimeout(announceTimer);
++        status.textContent = "";
++        announceTimer = window.setTimeout(() => { status.textContent = message; }, delay || 50);
++      };
++
++      const isDisabled = (el) => el.getAttribute("aria-disabled") === "true";
++
++      /* ---------- Toolbar actions ---------- */
++
++      const setLayout = (layout) => {
++        layoutButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.layout === layout)));
++        grid.classList.toggle("is-list", layout === "list");
++      };
++
++      layoutButtons.forEach((b) => {
++        b.addEventListener("click", () => {
++          if (isDisabled(b)) return;
++          setLayout(b.dataset.layout || "grid");
++        });
++      });
++
++      const setDescriptions = (show) => {
++        descriptionsButton.setAttribute("aria-pressed", String(show));
++        grid.classList.toggle("hide-descriptions", !show);
++      };
++
++      descriptionsButton.addEventListener("click", () => {
++        if (isDisabled(descriptionsButton)) return;
++        setDescriptions(descriptionsButton.getAttribute("aria-pressed") !== "true");
++      });
++
++      copyButton.addEventListener("click", async () => {
++        if (isDisabled(copyButton)) return;
++        const text = Array.from(grid.querySelectorAll(".card"))
++          .map((card) => {
++            const name = card.querySelector("h3")?.textContent?.trim() ?? "";
++            const desc = card.querySelector("p")?.textContent?.trim() ?? "";
++            return desc ? `${name} – ${desc}` : name;
++          })
++          .join("\n");
++        try {
++          await navigator.clipboard.writeText(text);
++          announce("Drink list copied");
++        } catch {
++          announce("Copy failed");
++        }
++      });
++
++      printButton.addEventListener("click", () => {
++        if (isDisabled(printButton)) return;
++        window.print();
++      });
++
++      /* ---------- Overflow menu ---------- */
++
++      const setSorted = (sorted) => {
++        sortItem.setAttribute("aria-checked", String(sorted));
++        const cards = sorted
++          ? originalOrder.slice().sort((a, b) =>
++            (a.querySelector("h3")?.textContent ?? "").localeCompare(b.querySelector("h3")?.textContent ?? ""))
++          : originalOrder;
++        cards.forEach((card) => grid.append(card));
++      };
++
++      const toggleSort = () => {
++        const sorted = sortItem.getAttribute("aria-checked") !== "true";
++        setSorted(sorted);
++        announce(sorted ? "Sort A to Z on" : "Sort A to Z off");
++      };
++
++      const closeMenu = () => {
++        if (menu.matches(":popover-open")) menu.hidePopover();
++      };
++
++      menu.addEventListener("toggle", (event) => {
++        const open = event.newState === "open";
++        more.setAttribute("aria-expanded", String(open));
++        if (!open) return;
++        if (!CSS.supports("position-area", "block-end")) {
++          // Without anchor positioning, place the menu below its trigger, flipping above if needed
++          const t = more.getBoundingClientRect();
++          const m = menu.getBoundingClientRect();
++          const below = t.bottom + m.height <= innerHeight;
++          menu.style.top = `${below ? t.bottom : t.top - m.height}px`;
++          menu.style.left = `${Math.max(0, Math.min(t.right - m.width, innerWidth - m.width))}px`;
++        }
++        menuItems[0]?.focus();
++      });
++
++      sortItem.addEventListener("click", () => {
++        if (isDisabled(sortItem)) return;
++        toggleSort();
++      });
++
++      menu.querySelector('[data-action="reset"]').addEventListener("click", (event) => {
++        if (isDisabled(event.currentTarget)) return;
++        setLayout("grid");
++        setDescriptions(true);
++        setSorted(false);
++        closeMenu();
++        more.focus();
++        // Delay so the focus-change announcement does not preempt this message
++        announce("View reset", 500);
++      });
++
++      menu.addEventListener("keydown", (event) => {
++        if (event.key === "Tab") {
++          // Close without trapping focus; let Tab continue from the trigger
++          closeMenu();
++          more.focus();
++          return;
++        }
++        if (event.target === sortItem && (event.key === " " || event.key === "Enter")) {
++          event.preventDefault();
++          if (isDisabled(sortItem)) return;
++          toggleSort();
++          if (event.key === "Enter") {
++            closeMenu();
++            more.focus();
++          }
++          return;
++        }
++        if (hasFocusgroup) return;
++        // Fallback menu navigation when focusgroup is unsupported
++        const i = menuItems.indexOf(document.activeElement);
++        let next = -1;
++        if (event.key === "ArrowDown") next = (i + 1) % menuItems.length;
++        else if (event.key === "ArrowUp") next = (i - 1 + menuItems.length) % menuItems.length;
++        else if (event.key === "Home") next = 0;
++        else if (event.key === "End") next = menuItems.length - 1;
++        if (next < 0) return;
++        event.preventDefault();
++        menuItems[next].focus();
++      });
++
++      if (!hasFocusgroup) {
++        menuList.setAttribute("role", "menu");
++        menuItems.forEach((item) => {
++          if (!item.hasAttribute("role")) item.setAttribute("role", "menuitem");
++          item.tabIndex = -1;
++        });
++      }
++
++      /* ---------- Roving tab stop fallback for the toolbar ---------- */
++
++      if (!hasFocusgroup) {
++        const items = Array.from(bar.querySelectorAll("button"));
++        items.forEach((b, i) => (b.tabIndex = i ? -1 : 0));
++        bar.addEventListener("focusin", ({ target }) => {
++          if (items.includes(target)) items.forEach((b) => (b.tabIndex = b === target ? 0 : -1));
++        });
++        bar.addEventListener("keydown", (event) => {
++          const vertical = bar.getAttribute("aria-orientation") === "vertical";
++          const rtl = getComputedStyle(bar).direction === "rtl";
++          const steps = vertical
++            ? { ArrowDown: 1, ArrowUp: -1 }
++            : { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 };
++          const i = items.indexOf(document.activeElement);
++          if (i < 0) return;
++          let next;
++          if (event.key in steps) next = (i + steps[event.key] + items.length) % items.length;
++          else if (event.key === "Home") next = 0;
++          else if (event.key === "End") next = items.length - 1;
++          else return;
++          event.preventDefault();
++          items[next].focus();
++        });
++      }
++
++      /* ---------- Hide separators that would sit alone at a row end ---------- */
++
++      const separators = Array.from(bar.querySelectorAll('[role="separator"]'));
++      const updateSeparators = () => {
++        separators.forEach((sep) => {
++          const prev = sep.previousElementSibling;
++          const next = sep.nextElementSibling;
++          const top = sep.offsetTop;
++          const orphan = !prev || !next || prev.offsetTop + prev.offsetHeight <= top || next.offsetTop >= top + sep.offsetHeight;
++          sep.classList.toggle("is-orphan", orphan);
++        });
++      };
++      if ("ResizeObserver" in window) new ResizeObserver(updateSeparators).observe(bar);
++      updateSeparators();
++
++      /* ---------- Upgrade title tooltips to interest-invoked hints ---------- */
++
++      if ("interestForElement" in HTMLButtonElement.prototype && CSS.supports("position-area", "block-end")) {
++        bar.querySelectorAll("button[title]").forEach((b, i) => {
++          const tip = Object.assign(document.createElement("div"), {
++            id: `favorites-tip-${i}`,
++            className: "toolbar-tip",
++            textContent: b.title,
++          });
++          tip.popover = "hint";
++          b.setAttribute("interestfor", tip.id);
++          b.removeAttribute("title");
++          document.body.append(tip);
++        });
++      }
++
++      /* ---------- Popover polyfill where popover is unsupported ---------- */
++
++      if (!HTMLElement.prototype.hasOwnProperty("popover")) {
++        import("https://cdn.jsdelivr.net/npm/@oddbird/popover-polyfill@latest/dist/popover-fn.js")
++          .then(({ apply }) => apply())
++          .catch(() => { /* menu stays unavailable; toolbar controls still work */ });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

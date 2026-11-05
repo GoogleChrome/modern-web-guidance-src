@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 import { generateReleaseNotes } from './generate-release-notes.ts';
 import { rootDir } from '../core/paths.ts';
+import { embedGuideChunks } from '../rag/embed-chunks.ts';
 
 const ROOT_DIR = rootDir; // modern-web-guidance-src/
 
@@ -18,6 +19,7 @@ const GH_PUBLISH_PATTERNS = [
   '**/*',
   '!**/.cache/**',
   '!**/tfjs-model-minilm/**',
+  '!**/static-model/**',
   '!**/*.{js,mjs,ts,bin,map,gz}',
   '!**/guides.json',
   '!**/skill-version.txt',
@@ -136,21 +138,58 @@ const releaseNotes = await generateReleaseNotes({
 /**
  * Validate using the local build.
  */
-async function validate(newVersion: string) {
+export interface ValidateDeps {
+  dryRun?: boolean;
+  embedChunks?: typeof embedGuideChunks;
+  runBuildDist?: typeof buildDist;
+  runDistTests?: () => void;
+}
+
+export async function validate(newVersion: string, deps: ValidateDeps = {}) {
+  const {
+    dryRun = isDryRun,
+    embedChunks = embedGuideChunks,
+    runBuildDist = buildDist,
+    runDistTests = () =>
+      execSync('node --test src/build/dist.test.ts', {
+        cwd: ROOT_DIR,
+        stdio: 'inherit',
+        env: { ...process.env, TEST_REPORTER: 'spec' },
+      }),
+  } = deps;
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
+  if (dryRun) {
+    console.log(`\nChecking cached teacher vectors (dry run)...`);
+    const checkResult = await embedChunks({ check: true });
+    if (checkResult.missing.length > 0) {
+      const missingGuides = [...new Set(checkResult.missing.map((c) => c.guideId))];
+      console.warn(
+        `⚠️  [Dry Run] ${checkResult.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors ` +
+          `(using StaticEmbedder fallback; real publish will embed them):\n` +
+          missingGuides.map((g) => `  - ${g}`).join("\n")
+      );
+    }
+  } else {
+    console.log(`\nEnsuring all guide chunks have cached teacher vectors...`);
+    const embedResult = await embedChunks();
+    if (embedResult.newEmbeds > 0 || embedResult.prunedCount > 0) {
+      console.log(`✅ Updated static chunk vector cache (+${embedResult.newEmbeds} embedded, -${embedResult.prunedCount} pruned).`);
+    }
+  }
+
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const result = await buildDist({publishRoot: publishCliDir, version: newVersion});
+  const result = await runBuildDist({
+    publishRoot: publishCliDir,
+    version: newVersion,
+    failOnMissingVectors: !dryRun,
+  });
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
 
   console.log(`\nVerifying built distribution with dist.test.ts suite...`);
-  execSync('node --test src/build/dist.test.ts', {
-    cwd: ROOT_DIR,
-    stdio: 'inherit' ,
-    env: { ...process.env, TEST_REPORTER: 'spec' }
-  });
+  runDistTests();
 
   return result;
 }
@@ -220,11 +259,11 @@ async function main() {
 
     console.log('Committing automated documentation updates to source repo...');
     try {
-      execSync('git diff --quiet README.md src/build/eval-results-summary.json', { cwd: ROOT_DIR });
-      console.log("No changes in README.md or src/build/eval-results-summary.json to commit.");
+      execSync('git diff --quiet README.md src/build/eval-results-summary.json src/rag/static-model/chunks.json src/rag/static-model/chunks.i8 src/rag/static-model/chunks.scale.f32', { cwd: ROOT_DIR });
+      console.log("No changes in README.md, src/build/eval-results-summary.json, or static chunk cache to commit.");
     } catch (err) {
-      console.log("Changes found in README.md or eval-results-summary.json, committing...");
-      execSync('git add README.md src/build/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
+      console.log("Changes found in README.md, eval-results-summary.json, or static chunk cache, committing...");
+      execSync('git add README.md src/build/eval-results-summary.json src/rag/static-model/chunks.json src/rag/static-model/chunks.i8 src/rag/static-model/chunks.scale.f32', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git pull --rebase origin "${branch}"`, { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git push origin HEAD:"${ref}"`, { stdio: 'inherit', cwd: ROOT_DIR });

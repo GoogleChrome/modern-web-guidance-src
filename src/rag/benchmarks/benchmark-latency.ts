@@ -1,5 +1,5 @@
 import { pathToFileURL } from "node:url";
-import { TfjsEmbedder } from "../tfjs-embedder.ts";
+import { StaticEmbedder } from "../static-embedder.ts";
 import { loadPublicDataset } from "./dataset.ts";
 import { mean, median } from "./metrics.ts";
 
@@ -12,34 +12,32 @@ export async function runLatencyBenchmark(): Promise<void> {
 
   const WARM_RUNS = 10;
 
-  console.log("\n=== Benchmarking TensorFlow.js (Pure JS) ===");
-  TfjsEmbedder.clearInstance();
-
-  const tfjsColdStart = performance.now();
-  const tfjsEmbedder = TfjsEmbedder.getInstance();
-  await tfjsEmbedder.init();
-  await tfjsEmbedder.embed(queries[0]);
-  const tfjsColdDuration = performance.now() - tfjsColdStart;
-  console.log(`TFJS Cold Start Latency (init + first embed): ${tfjsColdDuration.toFixed(2)}ms`);
+  console.log("\n=== Benchmarking StaticEmbedder (256-d Int8) ===");
+  const coldStart = performance.now();
+  const embedder = StaticEmbedder.getInstance();
+  embedder.init();
+  await embedder.embed(queries[0]);
+  const coldDuration = performance.now() - coldStart;
+  console.log(`StaticEmbedder Cold Start Latency (init + first embed): ${coldDuration.toFixed(2)}ms`);
 
   console.log(`Running ${WARM_RUNS} warm runs across ${queries.length} queries...`);
-  const tfjsWarmDurations: number[] = [];
+  const warmDurations: number[] = [];
   for (let r = 0; r < WARM_RUNS; r++) {
     for (const q of queries) {
       const t0 = performance.now();
-      await tfjsEmbedder.embed(q);
-      tfjsWarmDurations.push(performance.now() - t0);
+      await embedder.embed(q);
+      warmDurations.push(performance.now() - t0);
     }
   }
-  const tfjsWarmMedian = median(tfjsWarmDurations);
-  const tfjsWarmMean = mean(tfjsWarmDurations);
+  const warmMedian = median(warmDurations);
+  const warmMean = mean(warmDurations);
   console.log(
-    `TFJS Warm Median Latency: ${tfjsWarmMedian.toFixed(2)}ms (mean: ${tfjsWarmMean.toFixed(2)}ms, samples: ${tfjsWarmDurations.length})`
+    `StaticEmbedder Warm Median Latency: ${warmMedian.toFixed(2)}ms (mean: ${warmMean.toFixed(2)}ms, samples: ${warmDurations.length})`
   );
 
   console.log("\n=== Latency Summary ===");
-  console.log(`TFJS Cold Start:  ${tfjsColdDuration.toFixed(2)}ms`);
-  console.log(`TFJS Warm Median: ${tfjsWarmMedian.toFixed(2)}ms`);
+  console.log(`Cold Start:  ${coldDuration.toFixed(2)}ms`);
+  console.log(`Warm Median: ${warmMedian.toFixed(2)}ms`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

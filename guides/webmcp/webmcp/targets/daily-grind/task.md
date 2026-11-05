@@ -1,1 +1,1 @@
-- Implement WebMCP on the Daily Grind homepage to expose client-side browser tools that let AI agents query the "Seasonal Favorites" coffee menu and trigger interactive drink orders or UI updates on the page.
+- Expose client-side browser tools on the Daily Grind homepage so AI agents in the browser can discover and invoke actions to query the "Seasonal Favorites" coffee menu and trigger interactive drink orders or UI updates on the page.
