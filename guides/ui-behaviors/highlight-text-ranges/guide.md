@@ -89,7 +89,7 @@ Highlights should not rely solely on color to convey meaning. If a highlight ind
 
 ### Fallback strategies
 
-{{ FEATURE_FALLBACKS("highlight") }}
+{{ BASELINE_STATUS("highlight") }}
 
 For browsers that do not support the CSS Custom Highlight API, you should provide a functional base experience where text is still legible, even without the visual highlight.
 

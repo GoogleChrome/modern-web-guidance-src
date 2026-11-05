@@ -64,7 +64,7 @@ In modern browsers supporting native anchor positioning, you do **not** need to 
 }
 ```
 
-### Fallback strategies
+## Fallback strategies
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
 
@@ -74,31 +74,4 @@ In modern browsers supporting native anchor positioning, you do **not** need to 
 
 The `popover-polyfill` does not polyfill the hint behavior in browsers that support `popover` but not `popover="hint"`. For those browsers, a tooltip opened via focus may stay open when a second tooltip opened via hover.
 
-{{ BASELINE_STATUS("anchor-positioning") }}
-
-To support browsers without anchor positioning, you can use the `@oddbird/css-anchor-positioning` polyfill. Alternatively, you can use `@supports` to specify a fallback position.
-
-When using the `@oddbird/css-anchor-positioning` polyfill for legacy browser support, be aware that the polyfill does not support implicit anchors or `position-area` on popovers. Explicitly set an `anchor-name` on the trigger, set `position-anchor` on the popover, and position using `anchor()` inset functions instead of `position-area`: 
-
-```html
-<!-- MANDATORY: Conditionally install the anchor positioning polyfill -->
-<script type="module">
-  if (!("anchorName" in document.documentElement.style)) {
-    await import("https://unpkg.com/@oddbird/css-anchor-positioning");
-  }
-</script>
-```
-
-```css
-button[interestfor="tooltip-attrs"] {
-  /* MANDATORY: Each trigger and popover pair must have a unique anchor name, referenced by `anchor-name` on the trigger and `position-anchor` on the popover. */
-  anchor-name: --tooltip-attrs;
-}
-#tooltip-attrs {
-  position-anchor: --tooltip-attrs;
-  /* If using the anchor positioning polyfill with a popover, DO use `anchor()` functions, and not `position-area. */
-  top: anchor(bottom);
-  left: anchor(right);
-  margin: unset;
-}
-```
+{{ FEATURE("anchor-positioning", "popover-fallbacks") }}

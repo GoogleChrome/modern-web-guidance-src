@@ -66,6 +66,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
+        list-style-type: none;
       }
 
       /* DEMO: Page states */
@@ -101,6 +102,10 @@
         cursor: pointer;
         margin-top: 20px;
       }
+      button span.title {
+        font-size: 1.5em;
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
@@ -110,29 +115,35 @@
         <h1 id="list-heading" tabindex="-1">Products</h1>
         <p>Click a product thumbnail to see details.</p>
 
-        <div class="grid">
-          <button
+        <ul class="grid">
+          <li>
+            <button
             class="thumbnail"
             data-name="Blue Jay"
             style="background: #0066cc"
-          >
-            <h2 class="title">Blue Jay</h2>
-          </button>
-          <button
-            class="thumbnail"
-            data-name="Cardinal"
-            style="background: #cc3333"
-          >
-            <h2 class="title">Cardinal</h2>
-          </button>
-          <button
-            class="thumbnail"
-            data-name="Parakeet"
-            style="background: #33cc33"
-          >
-            <h2 class="title">Parakeet</h2>
-          </button>
-        </div>
+            >
+              <span class="title">Blue Jay</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="thumbnail"
+              data-name="Cardinal"
+              style="background: #cc3333"
+            >
+              <span class="title">Cardinal</span>
+            </button>
+          </li>
+          <li>
+            <button
+              class="thumbnail"
+              data-name="Parakeet"
+              style="background: #33cc33; color: #000"
+            >
+              <span class="title">Parakeet</span>
+            </button>
+          </li>
+        </ul>
       </div>
     </div>
 

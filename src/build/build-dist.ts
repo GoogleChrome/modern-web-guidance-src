@@ -154,8 +154,8 @@ export function processSkills(publishRoot: string) {
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: { publishRoot: string, version?: string}): Promise<BuildResult | undefined> {
-  const { publishRoot, version} = opts;
+async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean }): Promise<BuildResult | undefined> {
+  const { publishRoot, version, failOnMissingVectors } = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
@@ -172,6 +172,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
   await processGuides({
     outputDir: DIST_DIR,
     target: 'skills-cli',
+    failOnMissingVectors,
   });
 
   // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
@@ -205,23 +206,13 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       updateVersionsInDir(publishRoot, version);
     }
 
-    const tfjsModelDir = path.join(rootDir, "src/rag/tfjs-model-minilm");
-    const destTfjsModelDir = path.join(DIST_DIR, "tfjs-model-minilm");
-    if (fs.existsSync(tfjsModelDir)) {
-      fs.cpSync(tfjsModelDir, destTfjsModelDir, {
-        recursive: true,
-        filter: (src) => {
-          const stat = fs.statSync(src);
-          if (stat.isDirectory()) return true;
-          const basename = path.basename(src);
-          return (
-            basename === "model.json" ||
-            basename.startsWith("group1-shard") ||
-            basename === "tokenizer.json.gz" ||
-            basename === "tokenizer_config.json"
-          );
-        }
-      });
+    const staticModelDir = path.join(rootDir, "src/rag/static-model");
+    const destStaticModelDir = path.join(DIST_DIR, "static-model");
+    if (fs.existsSync(staticModelDir)) {
+      fs.mkdirSync(destStaticModelDir, { recursive: true });
+      for (const file of ["words.json", "words.i8", "words.scale.f32"]) {
+        fs.copyFileSync(path.join(staticModelDir, file), path.join(destStaticModelDir, file));
+      }
     }
 
     try {
@@ -232,38 +223,46 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         platform: "node",
         format: "esm",
         mainFields: ["module", "main"],
-        alias: {
-          "node-fetch": path.resolve(rootDir, "src/rag/fetch-shim.ts"),
-        },
         outfile: path.join(publishRoot, "skills/modern-web-guidance/search.mjs"),
-        // Required because @tensorflow/tfjs-core's PlatformNode constructor executes this.util = require('util')
-        banner: {
-          js: `// @ts-nocheck\nimport { createRequire } from 'module';\nconst require = createRequire(import.meta.url);`,
-        },
         sourcemap: true,
         sourcesContent: false,
         metafile: true,
         minify: true,
         legalComments: "none",
-        plugins: [{
-          // TFJS deep imports fail in pure Node ESM because they lack extensions.
-          // In raw Node runs, tfjs-kernels.ts uses require() to load the CommonJS version (all kernels).
-          // For the production bundle, we use this plugin to swap it with tfjs-kernels-precise.ts
-          // which only registers the specific kernels we need, keeping the bundle small.
-          // Note: This plugin is also load-bearing for esbuild: without it, esbuild does not follow
-          // the dynamic/require call in tfjs-kernels.ts, resulting in 0 bundled kernels and runtime failures.
-          name: 'use-precise-kernels',
-          setup(build) {
-            build.onResolve({ filter: /tfjs-kernels\.ts$/ }, _args => {
-              return { path: path.resolve(rootDir, "src/rag/tfjs-kernels-precise.ts") }
-            })
-          },
-        }],
       });
 
       fs.writeFileSync(
         path.join(ROOT_DIST_DIR, "search.meta.json"),
         JSON.stringify(resultSearch.metafile)
+      );
+
+      console.log("Bundling analyze.mjs...");
+      const resultAnalyze = await esbuild.build({
+        entryPoints: [path.join(rootDir, "src/analyzing/cli.ts")],
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        outfile: path.join(publishRoot, "skills/modern-web-guidance/analyze.mjs"),
+        banner: {
+          js: `// @ts-nocheck
+import { createRequire } from 'module';
+import { fileURLToPath as __fileURLToPath } from 'url';
+import { dirname as __dirnameFunction } from 'path';
+const require = createRequire(import.meta.url);
+const __filename = __fileURLToPath(import.meta.url);
+const __dirname = __dirnameFunction(__filename);
+`,
+        },
+        sourcemap: false,
+        sourcesContent: false,
+        metafile: true,
+        minify: true,
+        legalComments: "none",
+      });
+
+      fs.writeFileSync(
+        path.join(ROOT_DIST_DIR, "analyze.meta.json"),
+        JSON.stringify(resultAnalyze.metafile)
       );
 
       console.log("Bundling modern-web.mjs...");
@@ -274,11 +273,14 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
         format: "esm",
         outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
         plugins: [{
-          name: 'rewrite-search',
+          name: 'external-cli-modules',
           setup(build) {
             build.onResolve({ filter: /search\.ts$/ }, _args => {
               return { path: './search.mjs', external: true }
-            })
+            });
+            build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
+              return { path: './analyze.mjs', external: true }
+            });
           },
         }],
         metafile: true,
@@ -300,7 +302,7 @@ async function main(opts: { publishRoot: string, version?: string}): Promise<Bui
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
 
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
+        [resultSearch.metafile, resultAnalyze.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 

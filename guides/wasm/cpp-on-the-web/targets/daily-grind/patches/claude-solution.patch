@@ -1,247 +1,486 @@
-diff --git a/.gitignore b/.gitignore
-new file mode 100644
-index 0000000..1eae0cf
---- /dev/null
-+++ b/.gitignore
-@@ -0,0 +1,2 @@
-+dist/
-+node_modules/
 diff --git a/index.html b/index.html
-index 66c9173..afc690f 100644
+index 66c9173..39256d9 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,43 @@
+@@ -152,6 +152,65 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
 +
-+    /* Latte Art Generator */
-+    .latte-art {
-+      text-align: center;
-+    }
-+
-+    .latte-art canvas {
-+      display: block;
-+      margin: 20px auto;
-+      max-width: 100%;
-+      height: auto;
++    /* smallpt WebAssembly demo */
++    .render-card {
++      background: white;
 +      border-radius: 8px;
-+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-+      background: var(--secondary);
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 20px;
++      margin-top: 20px;
 +    }
 +
-+    .latte-art .btn {
-+      border: none;
++    .render-card canvas {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 4 / 3;
++      background: #000;
++      border-radius: 4px;
++    }
++
++    .render-controls {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 12px;
++      align-items: center;
++      margin-top: 15px;
++    }
++
++    .render-controls .btn {
++      margin-top: 0;
++      border: 0;
 +      font: inherit;
 +      cursor: pointer;
 +    }
 +
-+    .latte-art .btn:disabled {
++    .render-controls .btn:disabled {
++      opacity: 0.6;
 +      cursor: progress;
-+      opacity: 0.7;
 +    }
 +
-+    .latte-art .btn:hover:not(:disabled) {
-+      background: #3e2723;
++    .render-controls select {
++      font: inherit;
++      padding: 8px 10px;
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      background: var(--light);
++      color: var(--text);
 +    }
 +
-+    .brew-status {
-+      margin-top: 10px;
-+      min-height: 1.2em;
++    .render-status {
++      margin-left: auto;
 +      font-size: 0.9rem;
-+      color: var(--primary);
++      font-variant-numeric: tabular-nums;
++    }
++
++    .render-note {
++      font-size: 0.85rem;
++      margin-top: 10px;
++      opacity: 0.8;
 +    }
    </style>
  </head>
  
-@@ -195,6 +232,14 @@
+@@ -195,6 +254,30 @@
          </div>
        </div>
      </section>
 +
-+    <section class="latte-art">
-+      <h2>Generative Latte Art</h2>
-+      <p>Every cup gets a one-of-a-kind rosette, poured fresh by WebAssembly.</p>
-+      <canvas id="brew-canvas" width="320" height="320" aria-label="Generated latte art pattern"></canvas>
-+      <button id="brew-button" class="btn" type="button">Brew New Pattern</button>
-+      <p id="brew-status" class="brew-status" role="status" aria-live="polite"></p>
++    <section id="raytracer" class="render-card">
++      <h2 style="text-align: center;">Light, Roasted</h2>
++      <p style="text-align: center;">
++        Kevin Beason's <a href="http://www.kevinbeason.com/smallpt/">smallpt</a> path tracer, compiled
++        from C++ to WebAssembly and rendered right here in your browser.
++      </p>
++      <canvas id="smallpt-canvas" width="512" height="384" role="img"
++        aria-label="smallpt Cornell box render: two spheres inside a lit box"></canvas>
++      <div class="render-controls">
++        <button type="button" class="btn" id="smallpt-rerender" disabled>Re-render with random colors</button>
++        <label>Quality
++          <select id="smallpt-quality">
++            <option value="16">Fast (16 spp)</option>
++            <option value="64" selected>Balanced (64 spp)</option>
++            <option value="256">High (256 spp)</option>
++          </select>
++        </label>
++        <output class="render-status" id="smallpt-status" aria-live="polite">Loading WebAssembly module…</output>
++      </div>
++      <p class="render-note">Rendering happens in Web Workers, one per CPU core, so the page stays responsive.
++        <noscript>JavaScript is required to run the path tracer.</noscript>
++      </p>
 +    </section>
    </main>
  
    <footer>
-@@ -207,6 +252,7 @@
+@@ -207,6 +290,114 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <script type="module" src="src/main.js"></script>
++  <script type="module">
++    // Drives the smallpt WebAssembly path tracer (see smallpt/) from a pool of
++    // Web Workers and paints finished row bands onto the canvas as they arrive.
++    const WIDTH = 512, HEIGHT = 384, BAND_ROWS = 8, SPHERES = 9;
++    const canvas = document.getElementById('smallpt-canvas');
++    const button = document.getElementById('smallpt-rerender');
++    const quality = document.getElementById('smallpt-quality');
++    const status = document.getElementById('smallpt-status');
++    const ctx = canvas.getContext('2d');
++
++    const setStatus = (text) => { status.value = text; };
++
++    if (typeof WebAssembly !== 'object' || typeof Worker !== 'function') {
++      setStatus('This browser does not support WebAssembly workers.');
++    } else {
++      main().catch((err) => {
++        console.error(err);
++        setStatus('Could not start the path tracer: ' + (err && err.message ? err.message : err));
++      });
++    }
++
++    async function main() {
++      const poolSize = Math.max(1, Math.min(navigator.hardwareConcurrency || 2, 8));
++      const workerUrl = new URL('smallpt/worker.js', document.baseURI);
++      const workers = await Promise.all(Array.from({ length: poolSize }, () => spawn(workerUrl)));
++
++      let job = 0, queue = [], pending = 0, startedAt = 0;
++
++      for (const w of workers) {
++        w.onmessage = (event) => {
++          const m = event.data;
++          if (m.type === 'error') { setStatus('Render failed: ' + m.message); return; }
++          if (m.type !== 'rows' || m.job !== job) return; // stale band from a previous render
++          ctx.putImageData(new ImageData(m.pixels, WIDTH, m.rows), 0, m.top);
++          pending--;
++          if (pending === 0) {
++            const secs = ((performance.now() - startedAt) / 1000).toFixed(1);
++            setStatus(`Done: ${quality.value} spp in ${secs}s on ${workers.length} worker${workers.length === 1 ? '' : 's'}`);
++            button.disabled = false;
++          } else {
++            setStatus(`Rendering… ${Math.round(100 * (1 - pending / Math.ceil(HEIGHT / BAND_ROWS)))}%`);
++            dispatch(w);
++          }
++        };
++      }
++
++      function dispatch(w) {
++        if (queue.length === 0) return;
++        w.postMessage({ type: 'chunk', job, top: queue.shift(), rows: BAND_ROWS });
++      }
++
++      function render(colors, seed) {
++        job++;
++        queue = [];
++        for (let top = 0; top < HEIGHT; top += BAND_ROWS) queue.push(top);
++        pending = queue.length;
++        startedAt = performance.now();
++        button.disabled = true;
++        ctx.fillStyle = '#000';
++        ctx.fillRect(0, 0, WIDTH, HEIGHT);
++        setStatus('Rendering… 0%');
++        const spp = Number(quality.value);
++        for (const w of workers) {
++          w.postMessage({ type: 'setup', job, width: WIDTH, height: HEIGHT, spp, seed, colors });
++          dispatch(w);
++        }
++      }
++
++      button.addEventListener('click', () => render(randomColors(), Math.floor(Math.random() * 65536)));
++
++      // First render uses the original smallpt scene colors and RNG seed.
++      render(null, 0);
++    }
++
++    function spawn(url) {
++      return new Promise((resolve, reject) => {
++        const w = new Worker(url, { type: 'module' });
++        w.onmessage = (event) => {
++          if (event.data.type === 'ready') resolve(w);
++          else if (event.data.type === 'error') reject(new Error(event.data.message));
++        };
++        w.onerror = (event) => reject(new Error(event.message || 'worker failed to load'));
++      });
++    }
++
++    // Random surface colors for the scene's spheres as a flat [r,g,b,...] array.
++    // Spheres 0-5 are the walls, 6 is the mirror ball, 7 the glass ball; the
++    // light (8) keeps a black surface so it stays a pure emitter.
++    function randomColors() {
++      const out = new Float64Array(SPHERES * 3);
++      for (let i = 0; i < SPHERES - 1; i++) {
++        const shiny = i >= 6;
++        const h = Math.random();
++        const s = shiny ? 0.3 + Math.random() * 0.6 : 0.4 + Math.random() * 0.5;
++        const l = shiny ? 0.82 + Math.random() * 0.15 : 0.35 + Math.random() * 0.3;
++        out.set(hslToRgb(h, s, l), i * 3);
++      }
++      return out;
++    }
++
++    function hslToRgb(h, s, l) {
++      const k = (n) => (n + h * 12) % 12;
++      const a = s * Math.min(l, 1 - l);
++      const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
++      return [f(0), f(8), f(4)];
++    }
++  </script>
++
  </body>
  
  </html>
-diff --git a/package.json b/package.json
-index 2bd4d77..750f051 100644
---- a/package.json
-+++ b/package.json
-@@ -2,6 +2,8 @@
-   "name": "daily-grind",
-   "version": "1.0.0",
-   "scripts": {
-+    "build": "mkdir -p dist && em++ src/generator.cpp -o dist/generator.mjs -sEXPORT_ES6=1 -sENVIRONMENT=worker -sSTRICT=1 -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_FUNCTIONS=_malloc,_free,_generate_image -sEXPORTED_RUNTIME_METHODS=HEAPU8 -Oz -flto -fno-exceptions",
-+    "prestart": "npm run build",
-     "start": "pnpm dlx statikk --port ${PORT:-11222}"
-   },
-   "pnpm": {
-diff --git a/src/generator.cpp b/src/generator.cpp
-new file mode 100644
-index 0000000..f90aaab
+diff --git a/smallpt/build.sh b/smallpt/build.sh
+new file mode 100755
+index 0000000..b2a56f3
 --- /dev/null
-+++ b/src/generator.cpp
-@@ -0,0 +1,69 @@
-+#include <cstdint>
-+#include <cmath>
++++ b/smallpt/build.sh
+@@ -0,0 +1,26 @@
++#!/bin/sh
++# Compiles smallpt.cpp to WebAssembly with Emscripten.
++# Output: smallpt.js (ES module glue) + smallpt.wasm, loaded by worker.js.
++#
++# Notes:
++#  - STACK_SIZE=8MB: radiance() recurses with unbounded depth (Russian
++#    roulette). Emscripten's default 64 KB stack overflows and traps with
++#    "memory access out of bounds"; native builds get 8 MB by default.
++#  - -nostdlib++: the source only needs libc, and linking libc++abi with the
++#    Debian emscripten package fails on __cxa_increment_exception_refcount.
++set -eu
++cd "$(dirname "$0")"
++em++ smallpt.cpp -o smallpt.js \
++  -O3 -flto \
++  -sEXPORT_ES6 \
++  -sENVIRONMENT=web,worker \
++  -sSTRICT \
++  -sALLOW_MEMORY_GROWTH \
++  -sSTACK_SIZE=8MB \
++  -sEXPORTED_FUNCTIONS=_init,_set_colors,_reset_colors,_render_rows,_sphere_count,_malloc,_free \
++  -sEXPORTED_RUNTIME_METHODS=HEAPU8,HEAPF64 \
++  -sFILESYSTEM=0 \
++  -fno-exceptions -fno-rtti -nostdlib++ \
++  -Wno-dangling-else \
++  --no-entry
++ls -la smallpt.js smallpt.wasm
+diff --git a/smallpt/smallpt.cpp b/smallpt/smallpt.cpp
+new file mode 100644
+index 0000000..b38f001
+--- /dev/null
++++ b/smallpt/smallpt.cpp
+@@ -0,0 +1,152 @@
++// smallpt, a Path Tracer by Kevin Beason, 2008  (http://www.kevinbeason.com/smallpt/)
++// Adapted for WebAssembly: main() replaced with a small exported C API so the
++// browser can supply sphere colors and pull rendered rows out of linear memory.
++// The rendering code (Vec, Sphere, intersect, radiance, the sampling loop) is
++// unchanged from the original 99-line smallpt.cpp.
++#include <math.h>
++#include <stdlib.h>
++#include <stdint.h>
++#include <string.h>
 +#include <emscripten/emscripten.h>
-+
-+namespace {
-+
-+// Small, fast xorshift32 PRNG so a seed from JS deterministically drives
-+// the pattern's shape without pulling in <random>.
-+uint32_t next_random(uint32_t &state) {
-+  state ^= state << 13;
-+  state ^= state >> 17;
-+  state ^= state << 5;
-+  return state;
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
 +}
 +
-+} // namespace
++// ---------------------------------------------------------------------------
++// WebAssembly API (replaces the original main()).
++// ---------------------------------------------------------------------------
++static int g_w = 0, g_h = 0;
++static uint8_t *g_rgba = 0;   // w*h*4 output pixels, row 0 = top of image
++static const int NUM_SPHERES = sizeof(spheres)/sizeof(Sphere);
 +
 +extern "C" {
 +
-+// Renders a swirled "latte art" style raster into a caller-owned RGBA
-+// buffer of size width * height * 4 bytes. Deliberately layers several
-+// trig passes per pixel so the call is heavy enough that it must run off
-+// the main thread (see guide.md, section 2).
-+EMSCRIPTEN_KEEPALIVE
-+void generate_image(uint8_t *out, int width, int height, uint32_t seed) {
-+  uint32_t state = seed ? seed : 0x9e3779b9u;
++// Number of spheres in the scene (so the JS side can size its color array).
++EMSCRIPTEN_KEEPALIVE int sphere_count(void) { return NUM_SPHERES; }
 +
-+  const float cx = width * 0.5f;
-+  const float cy = height * 0.5f;
-+  const float max_dist = sqrtf(cx * cx + cy * cy);
-+  const int arms = 4 + static_cast<int>(next_random(state) % 5);
-+  const float freq = 4.0f + static_cast<float>(next_random(state) % 100) / 20.0f;
-+  const float twist = 2.0f + static_cast<float>(next_random(state) % 100) / 40.0f;
-+  const float ripple = 1.5f + static_cast<float>(next_random(state) % 100) / 50.0f;
++// Allocate the output image. Returns a pointer to w*h*4 RGBA bytes.
++EMSCRIPTEN_KEEPALIVE uint8_t* init(int w, int h) {
++  free(g_rgba);
++  g_w = w; g_h = h;
++  g_rgba = (uint8_t*)calloc((size_t)w * h * 4, 1);
++  return g_rgba;
++}
 +
-+  for (int y = 0; y < height; ++y) {
-+    for (int x = 0; x < width; ++x) {
-+      const float dx = static_cast<float>(x) - cx;
-+      const float dy = static_cast<float>(y) - cy;
-+      const float dist = sqrtf(dx * dx + dy * dy) / max_dist;
-+      const float angle = atan2f(dy, dx);
++// Overwrite the surface color of every sphere from a flat [r,g,b,...] array
++// of NUM_SPHERES*3 doubles in [0,1]. Emission (the light) is left untouched.
++EMSCRIPTEN_KEEPALIVE void set_colors(const double *rgb) {
++  for (int i = 0; i < NUM_SPHERES; i++)
++    spheres[i].c = Vec(rgb[i*3], rgb[i*3+1], rgb[i*3+2]);
++}
 +
-+      const float swirl = angle * static_cast<float>(arms) + dist * twist * 6.2831853f;
-+      const float wave = sinf(swirl + freq * dist);
-+      const float fine = 0.35f * sinf(dist * ripple * 20.0f - angle * 3.0f);
++// Restore the original smallpt scene colors.
++EMSCRIPTEN_KEEPALIVE void reset_colors(void) {
++  static const double orig[] = {
++    .75,.25,.25,  .25,.25,.75,  .75,.75,.75,  0,0,0,  .75,.75,.75,
++    .75,.75,.75,  .999,.999,.999,  .999,.999,.999,  0,0,0 };
++  set_colors(orig);
++}
 +
-+      float mix = 0.5f + 0.5f * (wave + fine);
-+      if (mix < 0.0f) mix = 0.0f;
-+      if (mix > 1.0f) mix = 1.0f;
-+
-+      float fall = 1.0f - dist;
-+      if (fall < 0.0f) fall = 0.0f;
-+      mix *= fall;
-+
-+      // Blend between espresso (dark) and steamed milk (light) tones.
-+      const uint8_t r = static_cast<uint8_t>(61 + mix * (233 - 61));
-+      const uint8_t g = static_cast<uint8_t>(35 + mix * (198 - 35));
-+      const uint8_t b = static_cast<uint8_t>(23 + mix * (150 - 23));
-+
-+      const int idx = (y * width + x) * 4;
-+      out[idx + 0] = r;
-+      out[idx + 1] = g;
-+      out[idx + 2] = b;
-+      out[idx + 3] = 255;
++// Render rows [y0, y1) of the image (y measured in smallpt's bottom-up
++// convention) with `spp` samples per pixel (rounded down to a multiple of 4,
++// min 4, exactly like the original `argv[1]/4`). This is the body of the
++// original main() loop; rows are independent so callers can render in chunks
++// and keep a UI responsive. `seed` perturbs the per-row RNG state so repeated
++// renders are not bit-identical.
++EMSCRIPTEN_KEEPALIVE void render_rows(int y0, int y1, int spp, unsigned seed) {
++  int w = g_w, h = g_h, samps = spp / 4 > 0 ? spp / 4 : 1;   // # samples
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r;
++  for (int y=y0; y<y1 && y<h; y++){              // Loop over image rows
++    Vec *c = (Vec*)calloc(w, sizeof(Vec));   // zeroed, like new Vec[w]
++    unsigned short Xi[3]={0,(unsigned short)seed,(unsigned short)(y*y*y)};
++    for (unsigned short x=0; x<w; x++)                      // Loop cols
++      for (int sy=0, i=x; sy<2; sy++)               // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++    uint8_t *row = g_rgba + (size_t)(h-y-1) * w * 4;   // flip to top-down
++    for (int x=0; x<w; x++){
++      row[x*4+0] = toInt(c[x].x); row[x*4+1] = toInt(c[x].y);
++      row[x*4+2] = toInt(c[x].z); row[x*4+3] = 255;
 +    }
++    free(c);
 +  }
 +}
 +
 +} // extern "C"
-diff --git a/src/main.js b/src/main.js
+diff --git a/smallpt/smallpt.js b/smallpt/smallpt.js
 new file mode 100644
-index 0000000..3db811c
+index 0000000..6716811
 --- /dev/null
-+++ b/src/main.js
-@@ -0,0 +1,45 @@
-+const canvas = document.getElementById('brew-canvas');
-+const ctx = canvas.getContext('2d');
-+const button = document.getElementById('brew-button');
-+const status = document.getElementById('brew-status');
++++ b/smallpt/smallpt.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);Module["HEAPF64"]=HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}function preRun(){}function initRuntime(){runtimeInitialized=true;wasmExports["g"]()}function postRun(){}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={a:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;var __abort_js=()=>abort("");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>Math.ceil(size/alignment)*alignment;var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}return false};{}var _sphere_count,_init,_free,_set_colors,_reset_colors,_render_rows,__emscripten_timeout,_malloc,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_sphere_count=Module["_sphere_count"]=wasmExports["h"];_init=Module["_init"]=wasmExports["i"];_free=Module["_free"]=wasmExports["j"];_set_colors=Module["_set_colors"]=wasmExports["k"];_reset_colors=Module["_reset_colors"]=wasmExports["l"];_render_rows=Module["_render_rows"]=wasmExports["m"];__emscripten_timeout=wasmExports["n"];_malloc=Module["_malloc"]=wasmExports["o"];memory=wasmMemory=wasmExports["f"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={c:__abort_js,b:__emscripten_runtime_keepalive_clear,d:__setitimer_js,e:_emscripten_resize_heap,a:_proc_exit};async function run(){preRun();if(ABORT)return;initRuntime();postRun()}var wasmExports;wasmExports=await createWasm();await run();
++;return Module}export default Module;
+diff --git a/smallpt/smallpt.wasm b/smallpt/smallpt.wasm
+new file mode 100755
+index 0000000..e69de29
+diff --git a/smallpt/worker.js b/smallpt/worker.js
+new file mode 100644
+index 0000000..452b01a
+--- /dev/null
++++ b/smallpt/worker.js
+@@ -0,0 +1,63 @@
++// Web Worker that drives one instance of the smallpt WebAssembly module off
++// the main thread. index.html spawns a pool of these and hands each one row
++// bands to render; smallpt seeds its RNG per row, so the result is identical
++// no matter how the rows are split between workers.
++//
++// Messages main -> worker:
++//   { type: 'setup', job, width, height, spp, seed, colors: Float64Array|null }
++//   { type: 'chunk', job, top, rows }        // top-down pixel rows [top, top+rows)
++// Messages worker -> main:
++//   { type: 'ready' }
++//   { type: 'rows', job, top, rows, pixels: Uint8ClampedArray }  (buffer transferred)
++//   { type: 'error', message }
++import createModule from './smallpt.js';
 +
-+const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
++const modulePromise = createModule();
++modulePromise.then(
++  () => postMessage({ type: 'ready' }),
++  (err) => postMessage({ type: 'error', message: String(err) }),
++);
 +
-+function setBusy(isBusy) {
-+  button.disabled = isBusy;
-+  button.textContent = isBusy ? 'Brewing…' : 'Brew New Pattern';
-+  status.textContent = isBusy ? 'Generating your pattern…' : '';
-+}
++let cfg = null; // { job, width, height, spp, seed, base }
 +
-+worker.onmessage = (event) => {
-+  const { ok, width, height, pixels, message } = event.data;
-+
-+  if (!ok) {
-+    console.error('Latte art generation failed:', message);
-+    status.textContent = 'Something went wrong brewing that pattern. Please try again.';
-+    button.disabled = false;
-+    button.textContent = 'Brew New Pattern';
++self.onmessage = async (event) => {
++  const msg = event.data;
++  let M;
++  try {
++    M = await modulePromise;
++  } catch (err) {
++    postMessage({ type: 'error', message: String(err) });
 +    return;
 +  }
 +
-+  const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height);
-+  ctx.putImageData(imageData, 0, 0);
-+  setBusy(false);
-+};
-+
-+worker.onerror = (error) => {
-+  console.error('Latte art worker error:', error.message || error);
-+  status.textContent = 'Something went wrong brewing that pattern. Please try again.';
-+  button.disabled = false;
-+  button.textContent = 'Brew New Pattern';
-+};
-+
-+function requestPattern() {
-+  setBusy(true);
-+  const seed = Math.floor(Math.random() * 0xffffffff);
-+  worker.postMessage({ width: canvas.width, height: canvas.height, seed });
-+}
-+
-+button.addEventListener('click', requestPattern);
-+
-+requestPattern();
-diff --git a/src/worker.js b/src/worker.js
-new file mode 100644
-index 0000000..237f135
---- /dev/null
-+++ b/src/worker.js
-@@ -0,0 +1,23 @@
-+import createGeneratorModule from '../dist/generator.mjs';
-+
-+const modulePromise = createGeneratorModule();
-+
-+self.onmessage = async (event) => {
-+  const { width, height, seed } = event.data;
-+
-+  try {
-+    const Module = await modulePromise;
-+    const byteLength = width * height * 4;
-+    const ptr = Module._malloc(byteLength);
-+
-+    try {
-+      Module._generate_image(ptr, width, height, seed >>> 0);
-+      const pixels = Module.HEAPU8.slice(ptr, ptr + byteLength);
-+      self.postMessage({ ok: true, width, height, pixels }, [pixels.buffer]);
-+    } finally {
-+      Module._free(ptr);
++  if (msg.type === 'setup') {
++    const { job, width, height, spp, seed, colors } = msg;
++    const base = M._init(width, height);
++    if (colors) {
++      const n = M._sphere_count() * 3;
++      const ptr = M._malloc(n * 8);
++      M.HEAPF64.set(colors.subarray(0, n), ptr / 8);
++      M._set_colors(ptr);
++      M._free(ptr);
++    } else {
++      M._reset_colors();
 +    }
-+  } catch (error) {
-+    self.postMessage({ ok: false, message: error && error.message ? error.message : String(error) });
++    cfg = { job, width, height, spp, seed, base };
++    return;
++  }
++
++  if (msg.type === 'chunk') {
++    if (!cfg || cfg.job !== msg.job) return; // stale request from an old render
++    const { width, height, spp, seed, base } = cfg;
++    const top = msg.top;
++    const rows = Math.min(msg.rows, height - top);
++    // smallpt counts rows bottom-up; the module writes them top-down into the
++    // output buffer, so convert the requested band.
++    const y1 = height - top, y0 = y1 - rows;
++    M._render_rows(y0, y1, spp, seed);
++    // Re-read HEAPU8 after every call: it is replaced if memory grows.
++    const offset = base + top * width * 4;
++    const pixels = new Uint8ClampedArray(M.HEAPU8.slice(offset, offset + rows * width * 4).buffer);
++    postMessage({ type: 'rows', job: msg.job, top, rows, pixels }, [pixels.buffer]);
 +  }
 +};
