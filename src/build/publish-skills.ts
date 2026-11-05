@@ -1,8 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { parseArgs } from 'node:util';
 import ghpages from 'gh-pages';
-import { buildDist } from './build-dist.ts';
+import { buildDist, type DistTag } from './build-dist.ts';
 import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCases } from './build-readme.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
@@ -29,7 +30,7 @@ const GH_PUBLISH_PATTERNS = [
 
 const isDryRun = process.argv.includes('--dry-run');
 
-export type DistTag = 'latest' | 'next';
+export type { DistTag };
 
 export interface PublishOptions {
   distTag: DistTag;
@@ -40,20 +41,17 @@ export function parsePublishOptions(
   argv: string[] = process.argv.slice(2),
   env: NodeJS.ProcessEnv = process.env,
 ): PublishOptions {
-  let rawTag = env.NPM_DIST_TAG?.trim();
-  let rawVersion = env.RELEASE_VERSION?.trim();
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      tag: { type: 'string' },
+      version: { type: 'string' },
+    },
+    strict: false,
+  });
 
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--tag' && argv[i + 1]) {
-      rawTag = argv[++i].trim();
-    } else if (argv[i].startsWith('--tag=')) {
-      rawTag = argv[i].slice('--tag='.length).trim();
-    } else if (argv[i] === '--version' && argv[i + 1]) {
-      rawVersion = argv[++i].trim();
-    } else if (argv[i].startsWith('--version=')) {
-      rawVersion = argv[i].slice('--version='.length).trim();
-    }
-  }
+  const rawTag = (typeof values.tag === 'string' ? values.tag : (env.DIST_TAG ?? env.NPM_DIST_TAG))?.trim();
+  const rawVersion = (typeof values.version === 'string' ? values.version : env.RELEASE_VERSION)?.trim();
 
   const distTag = (rawTag || 'latest') as DistTag;
   if (distTag !== 'latest' && distTag !== 'next') {
@@ -164,10 +162,11 @@ function getLatestDistributionReleaseTag(fallbackTag: string): string {
       { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
     ).trim();
     if (ghLatestRelease) {
+      execSync(`git rev-parse -q --verify "refs/tags/${ghLatestRelease}"`, { stdio: 'ignore' });
       return ghLatestRelease;
     }
   } catch {
-    // Fall back to latest git tag when gh CLI is unavailable
+    // Fall back to latest git tag when gh CLI is unavailable or tag is absent locally
   }
   return fallbackTag;
 }

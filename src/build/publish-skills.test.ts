@@ -33,6 +33,14 @@ test('parsePublishOptions handles flags, env vars, and validation', () => {
   );
 
   assert.deepStrictEqual(
+    parsePublishOptions([], { DIST_TAG: 'next', RELEASE_VERSION: '1.0.0' }),
+    {
+      distTag: 'next',
+      explicitVersion: '1.0.0',
+    },
+  );
+
+  assert.deepStrictEqual(
     parsePublishOptions([], { NPM_DIST_TAG: 'next', RELEASE_VERSION: '1.0.0' }),
     {
       distTag: 'next',

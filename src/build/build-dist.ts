@@ -105,7 +105,9 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   fs.writeFileSync(agentPluginPath, JSON.stringify(agentPluginData, null, 2) + '\n');
 }
 
-export function processSkills(publishRoot: string, distTag: 'latest' | 'next' = 'latest') {
+export type DistTag = 'latest' | 'next';
+
+export function processSkills(publishRoot: string, distTag: DistTag = 'latest') {
   console.log("Processing standalone skills from configuration...");
   const skills = config.standaloneSkills;
 
@@ -146,18 +148,16 @@ export function processSkills(publishRoot: string, distTag: 'latest' | 'next' = 
     ).trim();
     fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
 
-    let content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
-      .replaceAll('SKILL_VERSION', skillVersion);
-    if (distTag === 'next') {
-      content = content.replaceAll('modern-web-guidance@latest', 'modern-web-guidance@next');
-    }
+    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
+      .replaceAll('SKILL_VERSION', skillVersion)
+      .replaceAll('modern-web-guidance@latest', `modern-web-guidance@${distTag}`);
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
   }
 
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, distTag?: 'latest' | 'next' }): Promise<BuildResult | undefined> {
+async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, distTag?: DistTag }): Promise<BuildResult | undefined> {
   const { publishRoot, version, failOnMissingVectors, distTag = 'latest' } = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
