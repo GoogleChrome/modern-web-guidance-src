@@ -332,8 +332,14 @@
   "display-ruby": [
     "css"
   ],
+  "display-state": [
+    "css"
+  ],
   "display-table": [
     "css"
+  ],
+  "document-isolation-policy": [
+    "security"
   ],
   "dominant-baseline": [
     "css"
@@ -848,6 +854,9 @@
     "css"
   ],
   "rem": [
+    "css"
+  ],
+  "resizable": [
     "css"
   ],
   "resize": [
