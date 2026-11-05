@@ -27,7 +27,8 @@ Toast notifications must be used to provide non-critical, supplemental informati
 * **DO** use `ariaNotify()` to announce the content present in toasts that are displayed. This ensures that people using screen readers, who cannot see the screen, are aware of the presence of toast messages
 {# For context, this approach is as recommended in Celebrating with the Perfect Toast by Ian Lloyd https://a11y-tools.com/blog/2025/05/celebrating-with-the-perfect-toast/ #}
 * **DO** use sibling-index() to add margin between toast notifications so that items lower in the stack are visible.
-* **DO** provide a toast's trigger button (it must be a button element, or an input of type button) with a `popovertarget` attribute, referencing the `id` attribute of the toast. This will programmatically convey that there’s a toast present, and manage keyboard focus between the toast and trigger control.
+{# Maintainer note: Are there real-world use cases where a button directly triggers a toast (and not via some intermediate async event)? If so, uncomment.
+* **DO** provide a toast's trigger button (it must be a button element, or an input of type button) with a `popovertarget` attribute, referencing the `id` attribute of the toast. This will programmatically convey that there’s a toast present, and manage keyboard focus between the toast and trigger control. #}
 * **DO** provide an explicit "Close" button within the toast using popovertargetaction="hide".
 * **DO** ensure that a toast's dismiss button is keyboard-focusable (without automatically stealing focus when the toast appears), so keyboard users can navigate to the toast region and dismiss notifications.
 * **DO** manage focus when a user manually dismisses a currently focused toast: move focus to the next remaining toast in the stack, or—if no toasts remain—return focus to the user's prior focus location (or the control that triggered the toast).
