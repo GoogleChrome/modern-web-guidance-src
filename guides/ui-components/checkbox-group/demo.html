@@ -66,7 +66,7 @@
       user-select: none;
     }
 
-    .options label + label {
+    .options label:not(:first-of-type) {
       border-block-start: 1px solid #ececee;
     }
 
@@ -78,6 +78,7 @@
 
     .hint {
       grid-column: 2;
+      margin-block-start: -0.5rem;
       padding-block-end: 0.5rem;
       color: var(--text-muted);
       font-size: 0.875em;
