@@ -19,8 +19,6 @@ import {
 
 const PORT = process.env.PORT || 8081;
 const STATIC = parseBooleanEnv(process.env.STATIC, false);
-/** @type {string | null} */
-let cachedGroupedTasksJson = null;
 
 if (STATIC) {
   console.log('🌐 Running in STATIC mode via statikk. Dynamic APIs will be unavailable.');
@@ -297,27 +295,23 @@ const server = http.createServer(async (req, res) => {
   // --- /api/grouped-tasks : lists tasks grouped per guide ---
   if (decodedPath === '/api/grouped-tasks') {
     try {
-      if (!cachedGroupedTasksJson) {
-        const { getTaskMap } = await import('../core/guide-validation.ts');
-        const taskMap = getTaskMap();
-        /** @type {Record<string, Record<string, string[]>>} */
-        const grouped = {}; // categoryName -> guideName -> [tasks]
+      const { getTaskMap } = await import('../core/guide-validation.ts');
+      const taskMap = getTaskMap();
+      /** @type {Record<string, Record<string, string[]>>} */
+      const grouped = {}; // categoryName -> guideName -> [tasks]
 
-        for (const [key, info] of taskMap.entries()) {
-          const [guide, task] = key.split('/');
-          const category = (info && info.guideDir)
-            ? path.basename(path.dirname(info.guideDir))
-            : 'Uncategorized';
-          if (!grouped[category]) grouped[category] = {};
-          if (!grouped[category][guide]) grouped[category][guide] = [];
-          grouped[category][guide].push(task);
-        }
-
-        cachedGroupedTasksJson = JSON.stringify({ guides: grouped });
+      for (const [key, info] of taskMap.entries()) {
+        const [guide, task] = key.split('/');
+        const category = (info && info.guideDir)
+          ? path.basename(path.dirname(info.guideDir))
+          : 'Uncategorized';
+        if (!grouped[category]) grouped[category] = {};
+        if (!grouped[category][guide]) grouped[category][guide] = [];
+        grouped[category][guide].push(task);
       }
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(cachedGroupedTasksJson);
+      res.end(JSON.stringify({ guides: grouped }));
     } catch (e) {
       console.error('Error fetching grouped tasks:', e);
       res.writeHead(500);

@@ -309,11 +309,7 @@ test.describe('Suite page MWG compliance', () => {
     const frame = page.frameLocator('#modal iframe.artifact-frame');
     await expect(frame.locator('#mode')).toHaveText('CSS1Compat');
     await page.evaluate(() => window.postMessage({ type: 'mwg-dashboard:close-modal' }, '*'));
-    await page.evaluate(() => new Promise((resolve) => {
-      const ch = new MessageChannel();
-      ch.port1.onmessage = () => requestAnimationFrame(resolve);
-      ch.port2.postMessage(null);
-    }));
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
     await expect(page.locator('#modal')).toBeVisible();
     await frame.locator('#inner').focus();
     await page.keyboard.press('Escape');
