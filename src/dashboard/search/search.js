@@ -271,9 +271,9 @@ function tip(html) {
   return `data-tip="${id}"`;
 }
 
-/** @param {HTMLElement} target */
+/** @param {Element} target */
 function showTip(target) {
-  const id = target.dataset.tip;
+  const id = target.getAttribute('data-tip');
   if (!id) return;
   tipEl.innerHTML = TIPS.get(id) ?? '';
   tipEl.hidden = false;
@@ -288,7 +288,7 @@ const hideTip = () => { tipEl.hidden = true; };
 document.addEventListener('pointerover', (e) => {
   if (!(e.target instanceof Element)) return;
   const target = e.target.closest('[data-tip]');
-  if (target instanceof HTMLElement) showTip(target);
+  if (target instanceof Element) showTip(target);
 });
 document.addEventListener('pointerout', (e) => {
   if (!(e.target instanceof Element)) return;

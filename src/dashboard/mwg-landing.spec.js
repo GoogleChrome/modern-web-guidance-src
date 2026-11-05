@@ -480,6 +480,9 @@ test.describe('Search quality page MWG compliance', () => {
     await page.locator('#a-x input[value="time"]').check({ force: true });
     await expect(svgA.locator('text.a-row-label', { hasText: '2026' })).toBeVisible();
 
+    await page.locator('#svg-a .a-pt').first().hover();
+    await expect(page.locator('#tip')).toBeVisible();
+
     // Section 2: milestones table
     await expect(page.locator('#m-table tbody tr')).toHaveCount(15);
 
