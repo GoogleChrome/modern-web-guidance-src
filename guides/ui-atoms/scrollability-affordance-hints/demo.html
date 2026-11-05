@@ -255,25 +255,17 @@
 <script type="module">
   if (!CSS.supports('animation-timeline', 'scroll()')) {
     for (const scroller of document.querySelectorAll('.chips')) {
-      // <li>, to be valid in the list; aria-hidden, so it isn't announced
-      const [start, end] = [0, 1].map(() => {
-        const sentinel = document.createElement('li');
-        sentinel.ariaHidden = 'true';
-        // A zero-size sentinel at the very edge never counts as intersecting
-        sentinel.style.cssText = 'min-inline-size: 1px; min-block-size: 1px';
-        return sentinel;
-      });
-      scroller.prepend(start);
-      scroller.append(end);
-
+      // No chip is wider than the row, so the first and last chips are fully visible at their ends
+      const [first, last] = [scroller.firstElementChild, scroller.lastElementChild];
+      // rootMargin: without it, sub-pixel widths can leave an edge chip a fraction of a pixel short of fully visible
       const observer = new IntersectionObserver(entries => {
-        for (const { target, isIntersecting } of entries) {
-          scroller.toggleAttribute(target === start ? 'data-more-start' : 'data-more-end', !isIntersecting);
+        for (const { target, intersectionRatio } of entries) {
+          scroller.toggleAttribute(target === first ? 'data-more-start' : 'data-more-end', intersectionRatio < 1);
         }
-      }, { root: scroller });
+      }, { root: scroller, threshold: 1, rootMargin: '1px' });
 
-      observer.observe(start);
-      observer.observe(end);
+      observer.observe(first);
+      observer.observe(last);
     }
   }
 </script>

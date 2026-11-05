@@ -272,12 +272,13 @@
     // Tabs are never wider than the tablist, so the first and last tab can serve as sentinels
     #initScrollHints() {
       const first = this.tabs[0];
+      // rootMargin: without it, sub-pixel widths can leave an edge tab a fraction of a pixel short of fully visible
       const observer = new IntersectionObserver(entries => {
         for (const { target, intersectionRatio } of entries) {
           const edge = target === first ? 'data-more-start' : 'data-more-end';
           this.tabList.toggleAttribute(edge, intersectionRatio < 1);
         }
-      }, { root: this.tabList, threshold: 1 });
+      }, { root: this.tabList, threshold: 1, rootMargin: '1px' });
 
       observer.observe(first);
       observer.observe(this.tabs.at(-1));

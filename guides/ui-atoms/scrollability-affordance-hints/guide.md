@@ -216,29 +216,21 @@ The shadows paint behind the content, so content with its own opaque background 
 
 #### Fades, or shadows on any background: `IntersectionObserver`
 
-Use an `IntersectionObserver` to mark which edges have more content, and show the hints from those attributes. Observe empty sentinel elements created by the script at each end of the scroller: the scroller is the observer's root, so a sentinel that is out of view means there is more content beyond it.
+Use an `IntersectionObserver` to mark which edges have more content, and show the hints from those attributes. Observe the scroller's first and last children, with the scroller as the root and `threshold: 1`: a child that is not fully visible means there is more content beyond it.
 
 ```js
 if (!CSS.supports('animation-timeline', 'scroll()')) {
   for (const scroller of document.querySelectorAll('.scroller')) {
-    // Must be valid children of the scroller (e.g. <li> in a list)
-    const start = document.createElement('div');
-    const end = document.createElement('div');
-    for (const sentinel of [start, end]) {
-      // A zero-size sentinel at the very edge never counts as intersecting
-      sentinel.style.cssText = 'min-inline-size: 1px; min-block-size: 1px';
-    }
-    scroller.prepend(start);
-    scroller.append(end);
-
+    const [first, last] = [scroller.firstElementChild, scroller.lastElementChild];
+    // rootMargin: without it, sub-pixel widths can leave an edge child a fraction of a pixel short of fully visible
     const observer = new IntersectionObserver(entries => {
-      for (const { target, isIntersecting } of entries) {
-        scroller.toggleAttribute(target === start ? 'data-more-start' : 'data-more-end', !isIntersecting);
+      for (const { target, intersectionRatio } of entries) {
+        scroller.toggleAttribute(target === first ? 'data-more-start' : 'data-more-end', intersectionRatio < 1);
       }
-    }, { root: scroller });
+    }, { root: scroller, threshold: 1, rootMargin: '1px' });
 
-    observer.observe(start);
-    observer.observe(end);
+    observer.observe(first);
+    observer.observe(last);
   }
 }
 ```
@@ -264,5 +256,16 @@ if (!CSS.supports('animation-timeline', 'scroll()')) {
 }
 ```
 
-- Give the sentinels `aria-hidden="true"` if they are elements that assistive technologies announce, such as `<li>`.
-- If no child can be larger than the scroller (e.g. a row of tabs), observe the first and last children with `threshold: 1` instead of adding sentinels: a child that is not fully visible means there is more content beyond it.
+If a single child can be larger than the scroller (e.g. one long article), it is never fully visible, so this would always show both hints. Observe sentinels instead: empty elements that the script adds at each end of the scroller. A sentinel that is out of view means there is more content beyond it.
+
+```js
+// Must be valid children of the scroller (e.g. <li aria-hidden="true"> in a list)
+const [start, end] = [document.createElement('div'), document.createElement('div')];
+for (const sentinel of [start, end]) {
+  // A zero-size sentinel at the very edge never counts as intersecting
+  sentinel.style.cssText = 'min-inline-size: 1px; min-block-size: 1px';
+}
+scroller.prepend(start);
+scroller.append(end);
+// Observe them as above, with the default threshold, using !isIntersecting instead of intersectionRatio < 1
+```
