@@ -42,6 +42,39 @@ function registerExitServerCleanup(): void {
 }
 
 /**
+ * Checks whether `pid` is currently running and non-zombie.
+ * On Linux, reads `/proc/<pid>/stat` and treats state 'Z' (zombie) or ENOENT as not running.
+ */
+export function isProcessRunning(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 1) return false;
+  if (process.platform === 'linux' && fs.existsSync('/proc')) {
+    try {
+      const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
+      const closeParen = stat.lastIndexOf(')');
+      if (closeParen === -1) return false;
+      const fields = stat.slice(closeParen + 2).split(' ');
+      const state = fields[0];
+      return state !== 'Z';
+    } catch {
+      return false; // ENOENT / ESRCH means exited
+    }
+  }
+  try {
+    process.kill(pid, 0);
+    if (process.platform !== 'win32') {
+      const ps = spawnSync('ps', ['-p', String(pid), '-o', 'state='], { encoding: 'utf8' });
+      if (ps.status === 0 && ps.stdout) {
+        const state = ps.stdout.trim();
+        if (state.startsWith('Z')) return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Returns `rootPid` plus every process in the same session (`SID === rootPid`), process group
  * (`PGID === rootPid`), or descendant `PPID` tree. Because `pnpm run start` spawns its child
  * server (`node ./dist/server/entry.mjs`) in a new process group (`PGID !== rootPid`) while keeping
@@ -52,11 +85,8 @@ export function getSessionAndTreePids(rootPid: number): number[] {
     return [];
   }
   const pids = new Set<number>();
-  try {
-    process.kill(rootPid, 0);
+  if (isProcessRunning(rootPid)) {
     pids.add(rootPid);
-  } catch {
-    // rootPid itself has already exited; still scan for any surviving session/group/child members below
   }
   const childrenByPpid = new Map<number, number[]>();
 
@@ -90,12 +120,18 @@ export function getSessionAndTreePids(rootPid: number): number[] {
     }
   } else if (process.platform !== 'win32') {
     try {
-      const ps = spawnSync('ps', ['-eo', 'pid=,ppid=,pgid=,sid='], { encoding: 'utf8' });
+      const ps = spawnSync('ps', ['-eo', 'pid=,ppid=,pgid=,sid=,state='], { encoding: 'utf8' });
       if (ps.status === 0 && ps.stdout) {
         for (const line of ps.stdout.split('\n')) {
-          const parts = line.trim().split(/\s+/).map(Number);
-          if (parts.length < 4 || parts.some(Number.isNaN)) continue;
-          const [pid, ppid, pgid, sid] = parts;
+          const parts = line.trim().split(/\s+/);
+          if (parts.length < 5) continue;
+          const [pidStr, ppidStr, pgidStr, sidStr, state] = parts;
+          if (state.startsWith('Z')) continue;
+          const pid = Number(pidStr);
+          const ppid = Number(ppidStr);
+          const pgid = Number(pgidStr);
+          const sid = Number(sidStr);
+          if ([pid, ppid, pgid, sid].some(Number.isNaN)) continue;
           if (pid === rootPid || sid === rootPid || pgid === rootPid) {
             pids.add(pid);
           }
@@ -152,39 +188,6 @@ export function killServerProcessTree(rootPid: number): void {
     } catch {
       // Process already exited
     }
-  }
-}
-
-/**
- * Checks whether `pid` is currently running and non-zombie.
- * On Linux, reads `/proc/<pid>/stat` and treats state 'Z' (zombie) or ENOENT as not running.
- */
-export function isProcessRunning(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 1) return false;
-  if (process.platform === 'linux' && fs.existsSync('/proc')) {
-    try {
-      const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
-      const closeParen = stat.lastIndexOf(')');
-      if (closeParen === -1) return false;
-      const fields = stat.slice(closeParen + 2).split(' ');
-      const state = fields[0];
-      return state !== 'Z';
-    } catch {
-      return false; // ENOENT / ESRCH means exited
-    }
-  }
-  try {
-    process.kill(pid, 0);
-    if (process.platform !== 'win32') {
-      const ps = spawnSync('ps', ['-p', String(pid), '-o', 'state='], { encoding: 'utf8' });
-      if (ps.status === 0 && ps.stdout) {
-        const state = ps.stdout.trim();
-        if (state.startsWith('Z')) return false;
-      }
-    }
-    return true;
-  } catch {
-    return false;
   }
 }
 
