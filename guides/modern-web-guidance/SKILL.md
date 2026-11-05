@@ -64,7 +64,7 @@ npx -y modern-web-guidance@latest analyze <path> --json
 
 1. Scan: Run `analyze <path> --json` to detect legacy web platform patterns across the project or directory.
 2. Verify: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, vendor code, lookalikes).
-3. Report: Summarize verified findings (and the modernization plan, if editing) for the user. If `analyze` returns 0 verified findings, report that no covered legacy patterns were found and stop (do not fall back to speculative `search` queries or unrequested edits).
+3. Report: Summarize verified findings (and the modernization plan, if editing) for the user.
 4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement, and re-run `analyze <path>` on the modified files to confirm resolution.
 
 ## Using npx / pnpx
