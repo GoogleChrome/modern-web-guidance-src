@@ -7,13 +7,21 @@ import { rootDir } from './paths.ts';
 
 const MAX_SNIPPET_LENGTH = 120;
 
-export type GraderRuleId =
-  | 'no-vacuous-boolean-expect'
-  | 'no-tautological-expect'
-  | 'no-test-skip'
-  | 'no-gen2-file-goto'
-  | 'no-unguarded-conditional-assertions'
-  | 'invalid-skip-unless';
+export const GRADER_RULES = {
+  'no-vacuous-boolean-expect': { invariant: 'presence-before-assertion', blocking: true, calibrationGate: true },
+  'no-tautological-expect': { invariant: 'presence-before-assertion', blocking: true, calibrationGate: true },
+  'no-test-skip': { invariant: 'every-expectation-tested', blocking: true, calibrationGate: true },
+  'no-gen2-file-goto': { invariant: 'no-file-goto', blocking: true, calibrationGate: true },
+  'no-unguarded-conditional-assertions': { invariant: 'presence-before-assertion', blocking: true, calibrationGate: true },
+  'no-early-return-before-assertion': { invariant: 'presence-before-assertion', blocking: true, calibrationGate: true },
+  'no-unguarded-every': { invariant: 'presence-before-assertion', blocking: true, calibrationGate: true },
+  'no-swallowed-assertion': { invariant: 'presence-before-assertion', blocking: true, calibrationGate: true },
+  'no-absent-or-correct': { invariant: 'presence-before-assertion', blocking: false, calibrationGate: false },
+  'no-fixed-timeout': { invariant: 'no-fixed-timeout', blocking: false, calibrationGate: true },
+  'invalid-skip-unless': { invariant: 'valid-baseline-target', blocking: true, calibrationGate: true },
+} as const satisfies Record<string, { invariant: string; blocking: boolean; calibrationGate: boolean }>;
+
+export type GraderRuleId = keyof typeof GRADER_RULES;
 
 export interface GraderLintViolation {
   filePath: string;
@@ -247,6 +255,30 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
           );
         }
       }
+    }
+
+    // Rule: no-fixed-timeout (page.waitForTimeout)
+    if (isGen2 && Node.isPropertyAccessExpression(callee) && callee.getName() === 'waitForTimeout') {
+      addViolation(call, 'no-fixed-timeout', `Fixed waitForTimeout() makes the verdict timing-dependent: wait on readiness; for a claim that something doesn't happen, use expectNever(page, predicate, { forMs }).`);
+    }
+  }
+
+  if (isGen2) {
+    // Rule: no-fixed-timeout (new Promise(r => setTimeout(r, n)))
+    for (const newExpr of sourceFile.getDescendantsOfKind(SyntaxKind.NewExpression)) {
+      if (newExpr.getExpression().getText() !== 'Promise') continue;
+      const executor = newExpr.getArguments()[0];
+      if (!executor || !(Node.isArrowFunction(executor) || Node.isFunctionExpression(executor))) continue;
+      const resolveName = executor.getParameters()[0]?.getName();
+      const timers = executor.getDescendantsOfKind(SyntaxKind.CallExpression).filter(c => c.getExpression().getText() === 'setTimeout');
+      const isSleep = resolveName !== undefined && timers.some(t => {
+        const cb = t.getArguments()[0];
+        return cb !== undefined && (cb.getText() === resolveName || (Node.isArrowFunction(cb) && cb.getBody().getText().replace(/[{};\s]/g, '') === `${resolveName}()`));
+      });
+      if (!isSleep) continue;
+      const raced = newExpr.getAncestors().some(a => Node.isCallExpression(a) && /^Promise\.(race|any)$/.test(a.getExpression().getText()));
+      if (raced) continue;
+      addViolation(newExpr, 'no-fixed-timeout', `A fixed setTimeout() sleep makes the verdict timing-dependent: wait on readiness; for a claim that something doesn't happen, use expectNever(page, predicate, { forMs }).`);
     }
   }
 

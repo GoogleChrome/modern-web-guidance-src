@@ -462,3 +462,64 @@ Diagnose each target according to its assigned flag:
 # INSTRUCTION
 When editing the report and applying recommendations to code or guidance files, you MUST use your built-in structured file editing tools (e.g., replace or write_file). Do not use shell commands (like cat, echo, or heredocs <<) to create or edit files in the terminal. Remember to apply all recommended file modifications directly to the files in your workspace in addition to updating \`${REPORT_FILE}\`.`;
 }
+
+export interface CalibrationJudgePromptOptions {
+  guideFile: string;
+  expectationsFile: string;
+  taskFile: string;
+  graderFile: string;
+  failuresFile: string;
+  verdictsFile: string;
+  patchFiles: string[];
+  baseApp: string;
+  isDisciplineGuide?: boolean;
+  validationErrors?: string[];
+}
+
+export function buildCalibrationJudgePrompt(opts: CalibrationJudgePromptOptions): string {
+  const retryBlock = opts.validationErrors?.length
+    ? `### ⚠️ YOUR PREVIOUS \`${opts.verdictsFile}\` FAILED VALIDATION\n${opts.validationErrors.map(e => `- ${e}`).join('\n')}\n\nWrite a corrected \`${opts.verdictsFile}\` that covers every failure.\n\n---\n`
+    : '';
+  const disciplineNote = opts.isDisciplineGuide
+    ? `${DISCIPLINE_RELEVANCE_RULE} If an expectation does not apply to the \`${opts.baseApp}\` app at all, the grader should have skipped it: use \`grader_bug\`.`
+    : '';
+
+  return `${retryBlock}# GOAL
+You are an independent reviewer of an eval's calibration. \`${opts.graderFile}\` is a Playwright grader written from \`${opts.expectationsFile}\`, which is distilled from \`${opts.guideFile}\`. Golden solution patches were written by coding agents that saw only \`${opts.taskFile}\` and \`${opts.guideFile}\`. Every golden must pass every test, and every test must fail on the untouched starting app unless the expectation governs the whole page and the untouched starting app already satisfies it (leaving nothing to anchor a presence assertion on). For every failure listed in \`${opts.failuresFile}\`, decide which file is wrong and write \`${opts.verdictsFile}\`. Do NOT modify any other file.${disciplineNote}
+
+# INPUTS
+1. **Standard Guidance (source of truth)**: \`${opts.guideFile}\`
+2. **Requirements**: \`${opts.expectationsFile}\`
+3. **Developer Task**: \`${opts.taskFile}\`
+4. **Grader**: \`${opts.graderFile}\`
+5. **Golden Solution Patches**: ${opts.patchFiles.map(f => `\`${f}\``).join(', ')}
+6. **Failures**: \`${opts.failuresFile}\`, a list of \`agent\`, \`patchFile\`, \`test\` (exact test title) and \`error\`. An entry whose \`agent\` is \`starting-app\` is a test that **passed** on the untouched starting app.
+7. **Starting App**: the \`${opts.baseApp}\` source in this directory, which every patch applies to
+
+# VERDICTS FOR A GOLDEN SOLUTION THAT FAILED
+Pick exactly one per failure. Read the failing test's code and the patch; don't decide from the error message alone.
+- \`grader_bug\`: the solution does what the expectation requires, in a way \`${opts.guideFile}\` allows, and the test measures it wrong: a selector, file lookup, geometry, timing or wrong instrument (for example a parser that can't see where the code lives), or the test rejects an alternative \`${opts.guideFile}\` allows.
+- \`golden_missed_requirement\`: \`${opts.guideFile}\` states the requirement as a required outcome of the implementation — skipping it causes a problem \`${opts.guideFile}\` names (such as broken behavior, an accessibility failure, a security or privacy risk, an interoperability gap or a performance cost; not optional, recommended, an illustration after "e.g." or "such as", an instruction without a named problem, or contradicted by another passage or snippet in \`${opts.guideFile}\`) — and the solution doesn't do it, or does it in a way \`${opts.guideFile}\` rules out.
+- \`expectation_not_in_guide\`: \`${opts.guideFile}\` doesn't require what the expectation (and its test) demands: it never says it, says it only as optional, recommended, or an illustration, states an instruction, structure, selector or technique without naming a problem skipping it causes (such as broken behavior, an accessibility failure, a security or privacy risk, an interoperability gap or a performance cost), violates the feature-vs-outcome rule (when \`${opts.guideFile}\` gives a reason for a feature, expectations require the feature, never one syntax of it, unless \`${opts.guideFile}\` names a problem with the other syntax; until \`${opts.guideFile}\` states a reason, expectations require only the outcome), includes a negative whose subject a valid solution can skip or any bullet that hinges on the agent's choice, drops a condition \`${opts.guideFile}\` states or narrows an OR such as "A, or B with B's required fallback", or contradicts itself across passages or snippets (judge a passage together with any other passage or snippet that contradicts it).
+
+Decide from \`${opts.guideFile}\`, not from what the other solutions did: solutions disagreeing is not evidence either way.
+
+# VERDICTS FOR A TEST THAT PASSED ON THE STARTING APP (\`agent\`: \`starting-app\`)
+- \`already_satisfied\`: the expectation governs the whole page and the untouched starting app's own source already satisfies it (leaving nothing to anchor a presence assertion on), so the test stays graded as a regression check, is exempt from failing on the starting app, and is calibrated against a separate negative fixture instead.
+- \`vacuous_test\`: the starting app does not meet the requirement (or the expectation does not govern the whole page as an already-satisfied state) and the test passes anyway (a guard that skips the assertion, a check that is true of any page, a negative with no presence assertion).
+
+# EVIDENCE
+A script checks every quote against its source file. Copy text exactly (whitespace differences are fine). Don't paraphrase, add ellipses, or join text that isn't adjacent.
+- \`expectation\` (all verdicts): the expectation bullet's text, copied from \`${opts.expectationsFile}\`.
+- \`guideQuote\` (required for \`grader_bug\` and \`golden_missed_requirement\`): the sentence(s) from \`${opts.guideFile}\` that state the requirement. For \`expectation_not_in_guide\`, optional: the sentence that marks it optional or broader.
+- \`patchEvidence\` (required for \`grader_bug\`): the added \`+\` lines from the solution patch that implement the requirement. For \`golden_missed_requirement\`, optional: added lines showing what the solution did instead.
+- \`graderEvidence\` (required for \`grader_bug\` and \`vacuous_test\`): the lines from \`${opts.graderFile}\` that measure it wrong.
+- \`appEvidence\` (required for \`already_satisfied\`): the lines from the starting app's source files that meet the requirement.
+- \`reason\` (all verdicts): one or two sentences.
+
+# OUTPUT
+Write \`${opts.verdictsFile}\` as JSON: \`{"verdicts": [{"agent": "...", "test": "...", "verdict": "...", "expectation": "...", "guideQuote": "...", "patchEvidence": "...", "graderEvidence": "...", "appEvidence": "...", "reason": "..."}]}\`, with exactly one entry per failure in \`${opts.failuresFile}\` and \`agent\` and \`test\` copied exactly. Omit optional fields you don't use.
+
+# INSTRUCTION
+When writing files, you MUST use your built-in structured file editing tools (e.g., write_file or replace). Do not use shell commands (like cat, echo, or heredocs <<) to create files in the terminal.`;
+}
