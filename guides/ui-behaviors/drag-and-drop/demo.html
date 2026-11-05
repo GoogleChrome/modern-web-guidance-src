@@ -425,7 +425,6 @@
   <script>
     const status = document.getElementById('reorderStatus');
     const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-    const EDGE_ZONE = 56;
     const MAX_SPEED = 700; // px per second at the edge, up to 2x beyond it
 
     // Delay so the announcement isn't swallowed when the move blurs and refocuses the handle (the before() fallback).
@@ -656,9 +655,11 @@
         const pointer = inline ? pointerX : pointerY;
         const start = inline ? bounds.left : bounds.top;
         const end = inline ? bounds.right : bounds.bottom;
-        const into = pointer < start + EDGE_ZONE ? start + EDGE_ZONE - pointer
-          : pointer > end - EDGE_ZONE ? end - EDGE_ZONE - pointer : 0;
-        const speed = Math.min(Math.abs(into) / EDGE_ZONE, 2) * MAX_SPEED * Math.sign(-into);
+        const itemSize = inline ? pointerItem.offsetWidth : pointerItem.offsetHeight;
+        const edgeZone = Math.min(itemSize, (end - start) / 3);
+        const into = pointer < start + edgeZone ? start + edgeZone - pointer
+          : pointer > end - edgeZone ? end - edgeZone - pointer : 0;
+        const speed = Math.min(Math.abs(into) / edgeZone, 2) * MAX_SPEED * Math.sign(-into);
         if (speed && lastFrame) {
           const property = inline ? 'scrollLeft' : 'scrollTop';
           const before = list[property];
