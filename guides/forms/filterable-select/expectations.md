@@ -9,7 +9,8 @@
 - Pressing Enter inside the filter input moves focus to the first visible `<option>`.
 - An element with `role="status"` (or `aria-live`) updates its text content with the number of matching options as the filter changes.
 - The `::picker(select)` rule declares an entry transition using `@starting-style` and a `transition` that includes `display` and `overlay` with `allow-discrete`.
-- The script gates the customizable-select enhancement on `CSS.supports('appearance', 'base-select')`; without it the control remains a plain `<select>`.
+- When `customizable-select` is unsupported, the filter `<input>` is not inserted into the `<select>`, leaving a standard `<select>` control.
+- When the picker closes, the filter input is cleared, all non-placeholder `<option>` elements are visible again, and the `role="status"` element's text is empty.
 - A multiple-selection control has a trigger `<button>` with `popovertarget` referencing an element with the `popover` attribute.
 - The popover contains a text filter input and `<input type="checkbox">` elements that share one `name`.
 - Typing into the popover's filter input hides checkbox labels whose text does not contain the typed string.
