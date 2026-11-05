@@ -91,6 +91,7 @@
       min-height: min-content;
       padding: 0.875rem 1rem;
       position: relative;
+      transition-behavior: allow-discrete;
       width: 100%;
     }
 
@@ -120,18 +121,14 @@
       width: 1px;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .toast {
-        transition: none;
-        transform: none;
-      }
+    @media (prefers-reduced-motion: no-preference) {
     }
 
   </style>
 </head>
 <body>
   <div class="controls">
-    <button id="toast-trigger" class="toast-trigger" type="button" onclick="showToast()">Trigger Toast</button>
+    <button id="toast-trigger" class="toast-trigger" type="button">Trigger Toast</button>
     <label class="toggle" for="auto-dismiss-toggle">
       <input id="auto-dismiss-toggle" type="checkbox">
       Auto-dismiss after 3 seconds
@@ -263,6 +260,12 @@
         currentToast.remove();
       });
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      trigger.addEventListener('click', () => {
+        showToast();
+      });
+    });
 
     autoDismissToggle.addEventListener('change', () => {
       syncAutoDismissForAllToasts();
