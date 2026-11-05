@@ -131,7 +131,13 @@ filter.addEventListener('click', focusFilter);
 // Opening via mouse or keyboard should land in the filter so the user can type immediately
 select.addEventListener('click', focusFilter);
 select.addEventListener('keydown', e => {
-  if (e.target === select && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) focusFilter();
+  if (e.target === select && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+    focusFilter();
+  } else if (e.key === 'ArrowUp' && e.target === options().find(o => !o.hidden)) {
+    // Native arrow handling only moves between options, so route back to the filter
+    e.preventDefault();
+    filter.focus();
+  }
 });
 ```
 
