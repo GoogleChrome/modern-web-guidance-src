@@ -119,13 +119,13 @@ Hide the tabs that don’t fit and list them in a menu opened by a “More” bu
 Build the button and its menu as a menu button; see {{ GUIDE_REF("menu") }} for structure, positioning, and keyboard behavior.
 The rest of this section covers only what is specific to tabs.
 
-- **Place the “More” button outside the tablist.** A tablist may only contain tabs.
+- **Place the “More” button outside the tablist.** A tablist may only contain tabs. This makes it a separate `Tab` stop that arrow keys do not reach. If arrow-key access matters more, move focus from the last visible tab to the “More” button on `ArrowRight`/`End`, and back on `ArrowLeft`. The tablist itself does nothing at its last tab, so this does not conflict with it, but it is custom key handling that users of the tab pattern may not expect.
 - **Make the “More” button look different from a tab.** Use an icon (such as a horizontal ellipsis) with an accessible name, not a text label: a text label looks like one more tab.
 - **Detect overflow with `IntersectionObserver`**, rooted at the tablist with `threshold: 1`, so partially visible tabs count as overflowed. It reports each tab as it starts or stops fitting, with no layout math.
 - **Hide overflowed tabs with `visibility: hidden`**, not `display: none` or `hidden`. They keep their layout box, so the observer still reports when they fit again, and they leave the focus order and the accessibility tree. Set `overflow: clip` on the tablist so they don’t overflow the page.
-- **Mirror each tab as a `menuitem`**. Show only the items whose tab is hidden. Activating an item selects its tab and focuses it.
+- **Mirror each tab as a `menuitem`**. Show only the items whose tab is hidden. Activating an item selects its tab and focuses it. Focus the tab before hiding the popover: otherwise the popover returns focus to the previously focused tab, which selects it again.
 - **Hide the “More” button when no tab overflows.** This cannot loop: showing the button only narrows the tablist, so at least one tab still overflows.
-- **Keep the selected tab in the tablist.** DO NOT leave it in the menu or mark the “More” button as selected: it is a button, not a tab. When the selected tab overflows (selected from the menu, by find-in-page, or after a resize), move it in the DOM before the last tab that fits. The tab it displaces moves into the menu. Move the DOM node, not just its CSS `order`, so the visual order and the focus order stay the same. Keep overflowed tabs visible while they are selected, so they can be focused before the observer catches up.
+- **Keep the selected tab in the tablist.** DO NOT leave it in the menu or mark the “More” button as selected: it is a button, not a tab. When the selected tab overflows (selected from the menu, by find-in-page, or after a resize), set `display: none` on the tabs before it, closest first, until it fits. The observer then reports them as overflowed, so they appear in the menu. DO NOT reorder tabs (in the DOM or with CSS `order`): the removed tabs are gone from both the visual and the focus order, so the two still match. Keep overflowed tabs visible while they are selected, so they can be focused before the observer catches up.
 
 ```html
 <div class="tabs">
@@ -157,21 +157,21 @@ const observer = new IntersectionObserver(entries => {
 tabs.forEach(tab => observer.observe(tab));
 
 // Also call after every selection change.
-// Moving the tab makes the observer fire again, so this repeats until it fits.
+// CSS: [data-displaced] { display: none; }
 function reveal() {
   const tab = tabs.find(tab => tab.ariaSelected === 'true');
-  const last = tabs.findLast(tab => !tab.hasAttribute('data-overflow'));
-  // Until the observer catches up, the tab can still be marked as overflowed after a move
-  if (tab.hasAttribute('data-overflow') && last && tabs.indexOf(tab) > tabs.indexOf(last)) {
-    last.before(tab);
-    tabs = [...tablist.children];
+  const before = tabs.slice(0, tabs.indexOf(tab));
+  const end = tablist.getBoundingClientRect().right;
+  tabs.forEach(tab => tab.removeAttribute('data-displaced'));
+  while (before.length && tab.getBoundingClientRect().right > end) {
+    before.pop().setAttribute('data-displaced', '');
   }
 }
 ```
 
-{# NOTE: Unhandled edge cases: a focused inactive tab that starts overflowing (e.g. on resize) becomes visibility: hidden and loses focus. Reordering on resize permanently changes the tab order. #}
+{# NOTE: Unhandled edge cases: a focused inactive tab that starts overflowing (e.g. on resize) becomes visibility: hidden and loses focus. reveal() measures with `right`, so it needs adapting for RTL. #}
 
-See {{ GUIDE_REF("overflow-popup") }} for more details on moving overflowing controls into a popup.
+{# PENDING_GUIDE_REF: See {{ GUIDE_REF("overflow-popup") }} for more details on moving overflowing controls into a popup. #}
 
 ### Strategy 3: Making inactive tabs smaller
 

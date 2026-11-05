@@ -165,9 +165,14 @@
   }
 
   /* Not display: none, so IntersectionObserver still reports when the tab fits again.
-     The selected tab stays visible while script moves it to where it fits. */
+     The selected tab stays visible, so it can be focused before the observer catches up. */
   .tablist [data-overflow]:not([aria-selected=true]) {
     visibility: hidden;
+  }
+
+  /* Tabs that make room for the selected tab */
+  .tablist [data-displaced] {
+    display: none;
   }
 
   .more {
@@ -291,8 +296,9 @@
         item.hidden = true;
         item.addEventListener('click', () => {
           this.select(tab);
-          this.menu.hidePopover();
+          // Before hiding: otherwise the popover returns focus to the previously focused tab, selecting it
           tab.focus();
+          this.menu.hidePopover();
         });
         tab.menuItem = item;
         list.append(item);
@@ -318,17 +324,17 @@
       });
     }
 
-    // The selected tab must stay in the tablist: move it before the last tab that fits.
-    // Moving it makes the observer fire again, so this repeats until it fits.
+    // The selected tab must stay in the tablist: remove the tabs before it from the layout,
+    // closest first, until it fits. They are hidden in both visual and focus order, so the two still match.
     #reveal() {
       const tab = this.tabs.find(tab => tab.ariaSelected === 'true');
-      const last = this.tabs.findLast(tab => !tab.hasAttribute('data-overflow'));
-      // Until the observer catches up, the tab can still be marked as overflowed after a move
-      if (tab.hasAttribute('data-overflow') && last && this.tabs.indexOf(tab) > this.tabs.indexOf(last)) {
-        last.before(tab);
-        this.tabs = [...this.tabList.children];
-        // Keep menu items in tab order
-        tab.menuItem.parentElement.append(...this.tabs.map(tab => tab.menuItem));
+      const before = this.tabs.slice(0, this.tabs.indexOf(tab));
+      const end = this.tabList.getBoundingClientRect().right;
+      for (const t of this.tabs) {
+        t.removeAttribute('data-displaced');
+      }
+      while (before.length && tab.getBoundingClientRect().right > end) {
+        before.pop().setAttribute('data-displaced', '');
       }
     }
   }
@@ -387,6 +393,7 @@
     <button type="button">Shipping</button>
     <button type="button">Returns</button>
     <button type="button">Warranty</button>
+    <button type="button">Frequently asked questions</button>
   </div>
   <!-- Outside the tablist: a tablist may only contain tabs. Icon, so it doesn't read as a tab. -->
   <button type="button" class="more" hidden aria-label="More tabs" aria-haspopup="menu" aria-expanded="false"
@@ -400,4 +407,5 @@
   <div role="tabpanel" hidden="until-found"><p>Free shipping on orders over $50.</p></div>
   <div role="tabpanel" hidden="until-found"><p>Return unworn items within 30 days.</p></div>
   <div role="tabpanel" hidden="until-found"><p>Two-year warranty against defects.</p></div>
+  <div role="tabpanel" hidden="until-found"><p>Yes, they’re machine washable.</p></div>
 </div>
