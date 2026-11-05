@@ -12,4 +12,4 @@
 - Checkboxes are styled with the CSS `accent-color` property (or custom `appearance: none` styling).
 - The options container uses a grid layout with each option row using `grid-template-columns: subgrid` when rows have a secondary column, or a flex label (`display: flex`) when rows only have a label.
 - Disabled checkboxes have `cursor: not-allowed` and reduced opacity.
-- When an option has hint text, the hint is inside the option's `<label>` with an `id` that the input references via `aria-describedby`, and it uses smaller, de-emphasized text.
+- When an option has hint text, the hint is outside the option's `<label>` with an `id` that the input references via `aria-describedby`, and it uses smaller, de-emphasized text.
