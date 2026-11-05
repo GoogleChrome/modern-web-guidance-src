@@ -29,6 +29,45 @@ const GH_PUBLISH_PATTERNS = [
 
 const isDryRun = process.argv.includes('--dry-run');
 
+export type DistTag = 'latest' | 'next';
+
+export interface PublishOptions {
+  distTag: DistTag;
+  explicitVersion?: string;
+}
+
+export function parsePublishOptions(
+  argv: string[] = process.argv.slice(2),
+  env: NodeJS.ProcessEnv = process.env,
+): PublishOptions {
+  let rawTag = env.NPM_DIST_TAG?.trim();
+  let rawVersion = env.RELEASE_VERSION?.trim();
+
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--tag' && argv[i + 1]) {
+      rawTag = argv[++i].trim();
+    } else if (argv[i].startsWith('--tag=')) {
+      rawTag = argv[i].slice('--tag='.length).trim();
+    } else if (argv[i] === '--version' && argv[i + 1]) {
+      rawVersion = argv[++i].trim();
+    } else if (argv[i].startsWith('--version=')) {
+      rawVersion = argv[i].slice('--version='.length).trim();
+    }
+  }
+
+  const distTag = (rawTag || 'latest') as DistTag;
+  if (distTag !== 'latest' && distTag !== 'next') {
+    throw new Error(`Invalid dist-tag "${distTag}". Expected "latest" or "next".`);
+  }
+
+  const explicitVersion = rawVersion ? rawVersion.replace(/^v/, '') : undefined;
+  if (explicitVersion !== undefined && !/^\d+\.\d+\.\d+$/.test(explicitVersion)) {
+    throw new Error(`Invalid explicit version "${rawVersion}". Expected X.Y.Z semver (e.g. 1.0.0).`);
+  }
+
+  return { distTag, explicitVersion };
+}
+
 function incrementVersion(version: string): string {
   const parts = version.split('.');
   const patch = parseInt(parts[2], 10) + 1;
@@ -87,18 +126,24 @@ export async function getNextVersion(getLatestTag = getLatestGitTag): Promise<st
   return newVersion;
 }
 
-async function publishToDistributionRepo(publishCliDir: string, newVersion: string, latestTag: string) {
-  console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
-
+async function publishBranchToDistributionRepo(
+  publishCliDir: string,
+  branch: 'main' | 'next',
+  message: string,
+  tag?: string,
+) {
+  // Use a branch-specific cache dir so gh-pages doesn't collide when pushing main + next in one run
+  const cacheBase = path.join(ROOT_DIR, 'node_modules/.cache/gh-pages', branch);
   await new Promise<void>((resolve, reject) => {
     ghpages.publish(
       publishCliDir,
       {
-        branch: 'main',
+        branch,
         repo: 'git@github.com:GoogleChrome/modern-web-guidance.git',
         dotfiles: true,
-        message: `Release v${newVersion}`,
-        tag: `v${newVersion}`,
+        message,
+        ...(tag ? { tag } : {}),
+        clone: cacheBase,
         src: GH_PUBLISH_PATTERNS,
       },
       (err) => {
@@ -110,12 +155,61 @@ async function publishToDistributionRepo(publishCliDir: string, newVersion: stri
       },
     );
   });
+}
 
-const releaseNotes = await generateReleaseNotes({
-  previousTag: latestTag,
-  newVersion,
-  publishCliDir,
-});
+function getLatestDistributionReleaseTag(fallbackTag: string): string {
+  try {
+    const ghLatestRelease = execSync(
+      'gh release view -R GoogleChrome/modern-web-guidance --json tagName -q .tagName',
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    if (ghLatestRelease) {
+      return ghLatestRelease;
+    }
+  } catch {
+    // Fall back to latest git tag when gh CLI is unavailable
+  }
+  return fallbackTag;
+}
+
+async function publishToDistributionRepo(
+  publishCliDir: string,
+  newVersion: string,
+  latestTag: string,
+  distTag: DistTag = 'latest',
+) {
+  if (distTag === 'next') {
+    console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (next branch)...`);
+    await publishBranchToDistributionRepo(
+      publishCliDir,
+      'next',
+      `Release v${newVersion} (next)`,
+    );
+    console.log(`\n✅ Successfully published v${newVersion} to GoogleChrome/modern-web-guidance (next branch)!`);
+    return;
+  }
+
+  const previousReleaseTag = getLatestDistributionReleaseTag(latestTag);
+  console.log(`\nPublishing new dist/skills-cli/ to GoogleChrome/modern-web-guidance (main branch)...`);
+  await publishBranchToDistributionRepo(
+    publishCliDir,
+    'main',
+    `Release v${newVersion}`,
+    `v${newVersion}`,
+  );
+
+  console.log(`Syncing GoogleChrome/modern-web-guidance (next branch) with v${newVersion}...`);
+  await publishBranchToDistributionRepo(
+    publishCliDir,
+    'next',
+    `Release v${newVersion}`,
+  );
+
+  const releaseNotes = await generateReleaseNotes({
+    previousTag: previousReleaseTag,
+    newVersion,
+    publishCliDir,
+  });
 
   // Attempt to create formal GitHub release on the distribution repo if gh CLI is authenticated
   try {
@@ -140,6 +234,7 @@ const releaseNotes = await generateReleaseNotes({
  */
 export interface ValidateDeps {
   dryRun?: boolean;
+  distTag?: DistTag;
   embedChunks?: typeof embedGuideChunks;
   runBuildDist?: typeof buildDist;
   runDistTests?: () => void;
@@ -148,6 +243,7 @@ export interface ValidateDeps {
 export async function validate(newVersion: string, deps: ValidateDeps = {}) {
   const {
     dryRun = isDryRun,
+    distTag = 'latest',
     embedChunks = embedGuideChunks,
     runBuildDist = buildDist,
     runDistTests = () =>
@@ -178,11 +274,12 @@ export async function validate(newVersion: string, deps: ValidateDeps = {}) {
     }
   }
 
-  console.log(`\nRebuilding distribution with version ${newVersion}...`);
+  console.log(`\nRebuilding distribution with version ${newVersion} (dist-tag: ${distTag})...`);
   const result = await runBuildDist({
     publishRoot: publishCliDir,
     version: newVersion,
     failOnMissingVectors: !dryRun,
+    distTag,
   });
   if (!result) {
     throw new Error("Build failed or was already in progress.");
@@ -195,16 +292,26 @@ export async function validate(newVersion: string, deps: ValidateDeps = {}) {
 }
 
 async function main() {
+  const { distTag, explicitVersion } = parsePublishOptions();
   const latestTag = getLatestGitTag();
-  let newVersion = await getNextVersion();
+  let newVersion: string;
 
-  // Self-healing loop: ensure the version tag doesn't exist locally or on remote repos
-  while (gitTagExists(newVersion)) {
-    console.log(`⚠️ Version v${newVersion} has already been tagged! Bumping version to next patch...`);
-    newVersion = incrementVersion(newVersion);
+  if (explicitVersion) {
+    if (gitTagExists(explicitVersion)) {
+      throw new Error(`Version v${explicitVersion} has already been tagged!`);
+    }
+    newVersion = explicitVersion;
+    console.log(`Using explicit version override: ${newVersion} (dist-tag: ${distTag})`);
+  } else {
+    newVersion = await getNextVersion();
+    // Self-healing loop: ensure the version tag doesn't exist locally or on remote repos
+    while (gitTagExists(newVersion)) {
+      console.log(`⚠️ Version v${newVersion} has already been tagged! Bumping version to next patch...`);
+      newVersion = incrementVersion(newVersion);
+    }
   }
 
-  const { skillsCount, skillNames } = await validate(newVersion);
+  const { skillsCount, skillNames } = await validate(newVersion, { distTag });
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
   if (isDryRun) {
@@ -255,7 +362,7 @@ async function main() {
     // Update both the distribution bundle README and the source repo README
     const { featuresCount, useCasesCount } = updateReadmeWithFeaturesAndUseCases([ROOT_DIR, publishCliDir]);
 
-    await publishToDistributionRepo(publishCliDir, newVersion, latestTag);
+    await publishToDistributionRepo(publishCliDir, newVersion, latestTag, distTag);
 
     console.log('Committing automated documentation updates to source repo...');
     try {

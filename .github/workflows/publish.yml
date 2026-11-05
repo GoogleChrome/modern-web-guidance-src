@@ -2,9 +2,23 @@ name: Publish Skills
 
 on:
   schedule:
-    # 14:50 UTC is 6:50 AM PST / 7:50 AM PDT
-    - cron: '50 14 * * 1'
-  workflow_dispatch: {}
+    # Every 12 hours: 14:50 UTC (6:50 AM PST) and 02:50 UTC (6:50 PM PST)
+    - cron: '50 2,14 * * *'
+  workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: 'npm dist-tag and GitHub branch target (next or latest)'
+        required: false
+        default: 'next'
+        type: choice
+        options:
+          - next
+          - latest
+      version:
+        description: 'Optional explicit version override (e.g. 1.0.0; leave blank to auto-increment)'
+        required: false
+        default: ''
+        type: string
 
 permissions: {}
 
@@ -41,16 +55,37 @@ jobs:
 
       - name: Check for changes since last release
         id: check-changes
+        env:
+          DIST_TAG: ${{ inputs.dist_tag || 'next' }}
+          RELEASE_VERSION: ${{ inputs.version || '' }}
         run: |
-          if git describe --exact-match --match "v*" HEAD >/dev/null 2>&1; then
-            echo "Error: The latest commit already has a version tag. No new changes to publish."
+          if [ -n "${RELEASE_VERSION}" ]; then
+            CLEAN_VER="${RELEASE_VERSION#v}"
+            if git rev-parse "v${CLEAN_VER}" >/dev/null 2>&1; then
+              echo "Error: Tag v${CLEAN_VER} already exists."
+              exit 1
+            fi
+            echo "Explicit version v${CLEAN_VER} requested (${DIST_TAG}). Proceeding."
+            exit 0
+          fi
+
+          if [ "${DIST_TAG}" = "next" ] && git describe --exact-match --match "v*" HEAD >/dev/null 2>&1; then
+            EXISTING_TAG=$(git describe --exact-match --match "v*" HEAD)
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "HEAD is already tagged (${EXISTING_TAG}). Skipping scheduled @next publish."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Error: The latest commit already has a version tag (${EXISTING_TAG}). No new changes to publish."
             exit 1
           fi
 
       - name: Setup pnpm
+        if: steps.check-changes.outputs.skip != 'true'
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
       - name: Setup Node
+        if: steps.check-changes.outputs.skip != 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
@@ -58,20 +93,23 @@ jobs:
           registry-url: 'https://registry.npmjs.org/'
 
       - name: Install dependencies
+        if: steps.check-changes.outputs.skip != 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Authenticate to Google Cloud
+        if: steps.check-changes.outputs.skip != 'true'
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           credentials_json: ${{ secrets.GCP_EVALS_COLLECTOR_SA_KEY }}
 
       - name: Collect latest evaluation results from GCS
+        if: steps.check-changes.outputs.skip != 'true'
         id: collect-evals
         continue-on-error: true
         run: pnpm run collect-evals
 
       - name: Handle eval collection fallback on failure
-        if: steps.collect-evals.outcome != 'success'
+        if: steps.check-changes.outputs.skip != 'true' && steps.collect-evals.outcome != 'success'
         run: |
           echo "::warning title=Eval Collection Skipped::Evaluation collection or regression test failed. Discarding uncommitted summary and proceeding with previous stable eval data."
           echo "### ⚠️ Evaluation Collection Skipped" >> $GITHUB_STEP_SUMMARY
@@ -79,9 +117,11 @@ jobs:
           git checkout -- src/build/eval-results-summary.json || true
 
       - name: Build distribution
+        if: steps.check-changes.outputs.skip != 'true'
         run: pnpm run build
 
       - name: Verify installation with install-skills test
+        if: steps.check-changes.outputs.skip != 'true'
         env:
           FULL: 1
           TEST_REPORTER: spec
@@ -91,6 +131,7 @@ jobs:
 
 
       - name: Configure Git for Auth and Commit
+        if: steps.check-changes.outputs.skip != 'true'
         env:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -100,15 +141,25 @@ jobs:
           git config --global url."https://x-access-token:${APP_TOKEN}@github.com/".insteadOf "git@github.com:"
 
       - name: Publish Skills to GitHub (modern-web-guidance)
+        if: steps.check-changes.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NPM_DIST_TAG: ${{ inputs.dist_tag || 'next' }}
+          RELEASE_VERSION: ${{ inputs.version || '' }}
         run: pnpm run publish-skills
 
       - name: Publish to npm via OIDC Provenance
+        if: steps.check-changes.outputs.skip != 'true'
+        env:
+          DIST_TAG: ${{ inputs.dist_tag || 'next' }}
         run: |
           cd dist/skills-cli
-          npm publish --provenance --access public --registry https://registry.npmjs.org/
+          npm publish --provenance --access public --tag "${DIST_TAG}" --registry https://registry.npmjs.org/
+          if [ "${DIST_TAG}" = "latest" ]; then
+            PUBLISHED_VERSION=$(node -p "require('./package.json').version")
+            npm dist-tag add "modern-web-guidance@${PUBLISHED_VERSION}" next --registry https://registry.npmjs.org/ || true
+          fi
 
       - name: Notify on failure
         if: failure() && steps.check-changes.outcome != 'failure'
