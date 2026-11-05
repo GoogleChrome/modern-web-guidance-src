@@ -40,7 +40,7 @@ function reorder(container, orderedNodes) {
 
 ### Reordering table rows
 
-For a `<table>`, move the `<tr>` elements within their `<tbody>` using the same function: `reorder(tbody, orderedRows)`. Never reorder `<th>` header rows or recreate the `<tbody>`. Optionally give rows `view-transition-name: match-element` to animate them, and keep the single status announcement.
+For a `<table>`, move the `<tr>` elements within their `<tbody>` using the same function: `reorder(tbody, orderedRows)`. Never reorder header rows in `<thead>` or recreate the `<tbody>`. 
 
 ## Optionally animate the reorder with view transitions
 
