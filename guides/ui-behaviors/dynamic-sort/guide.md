@@ -24,13 +24,8 @@ Use `moveBefore()` rather than `append()` so moved items keep state such as `<if
 ```javascript
 // `orderedNodes` is the container's existing child elements in their new order.
 function reorder(container, orderedNodes) {
-  // Falls back to append() where moveBefore() is unavailable.
-  const move = 'moveBefore' in Element.prototype
-    ? (node) => container.moveBefore(node, null)
-    : (node) => container.append(node);
-
   // Moving each node to the end in order is enough; no need to compute minimal moves.
-  for (const node of orderedNodes) move(node);
+  for (const node of orderedNodes) container.moveBefore(node, null);
 }
 ```
 
@@ -130,3 +125,13 @@ If your Baseline target does not support `element.startViewTransition()`, use `d
 {{ BASELINE_STATUS("move-before") }}
 
 If your Baseline target does not support `moveBefore()`, use `append()`. DOM order is identical; items may lose focus, iframe, or animation state inside them, which only matters when items contain such state.
+
+```javascript
+function reorder(container, orderedNodes) {
+  const move = Object.hasOwn(Element.prototype, 'moveBefore')
+    ? (node) => container.moveBefore(node, null)
+    : (node) => container.append(node);
+
+  for (const node of orderedNodes) move(node);
+}
+```
