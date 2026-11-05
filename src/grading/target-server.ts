@@ -1,12 +1,16 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
+import { baseAppsDir, ensureDiskNodeCompileCache } from '../core/paths.ts';
 
 export interface TargetServer {
   url: string;
   stop: () => Promise<void>;
+  error?: string;
 }
+
+export type StartedTargetServer = TargetServer;
 
 const STATIKK_PLAIN_RE = /^\s*pnpm\s+dlx\s+statikk\s+--port\s+\$\{PORT:-\d+\}(?:\s+\.)?\s*$/;
 
@@ -22,10 +26,195 @@ async function getFreePort(): Promise<number> {
   });
 }
 
-function runPnpm(args: string[], cwd: string): Promise<{ status: number | null; output: string }> {
+const activeServerPids = new Set<number>();
+let exitHandlersRegistered = false;
+
+function registerExitServerCleanup(): void {
+  if (exitHandlersRegistered) return;
+  exitHandlersRegistered = true;
+  const cleanupAll = () => {
+    for (const pid of activeServerPids) {
+      killServerProcessTree(pid);
+    }
+    activeServerPids.clear();
+  };
+  process.once('exit', cleanupAll);
+}
+
+/**
+ * Returns `rootPid` plus every process in the same session (`SID === rootPid`), process group
+ * (`PGID === rootPid`), or descendant `PPID` tree. Because `pnpm run start` spawns its child
+ * server (`node ./dist/server/entry.mjs`) in a new process group (`PGID !== rootPid`) while keeping
+ * the detached session ID (`SID === rootPid`), `process.kill(-rootPid)` alone can miss the child.
+ */
+export function getSessionAndTreePids(rootPid: number): number[] {
+  if (!Number.isInteger(rootPid) || rootPid <= 1) {
+    return [];
+  }
+  const pids = new Set<number>();
+  try {
+    process.kill(rootPid, 0);
+    pids.add(rootPid);
+  } catch {
+    // rootPid itself has already exited; still scan for any surviving session/group/child members below
+  }
+  const childrenByPpid = new Map<number, number[]>();
+
+  if (process.platform === 'linux' && fs.existsSync('/proc')) {
+    try {
+      for (const entry of fs.readdirSync('/proc')) {
+        if (!/^\d+$/.test(entry)) continue;
+        try {
+          const stat = fs.readFileSync(`/proc/${entry}/stat`, 'utf8');
+          const closeParen = stat.lastIndexOf(')');
+          if (closeParen === -1) continue;
+          const fields = stat.slice(closeParen + 2).split(' ');
+          const state = fields[0];
+          if (state === 'Z') continue; // Ignore zombie processes already being reaped
+          const pid = Number(entry);
+          const ppid = Number(fields[1]);
+          const pgid = Number(fields[2]);
+          const sid = Number(fields[3]);
+          if (pid === rootPid || sid === rootPid || pgid === rootPid) {
+            pids.add(pid);
+          }
+          const list = childrenByPpid.get(ppid);
+          if (list) list.push(pid);
+          else childrenByPpid.set(ppid, [pid]);
+        } catch {
+          // Process exited while scanning /proc
+        }
+      }
+    } catch {
+      // Fallback below if /proc cannot be read
+    }
+  } else if (process.platform !== 'win32') {
+    try {
+      const ps = spawnSync('ps', ['-eo', 'pid=,ppid=,pgid=,sid='], { encoding: 'utf8' });
+      if (ps.status === 0 && ps.stdout) {
+        for (const line of ps.stdout.split('\n')) {
+          const parts = line.trim().split(/\s+/).map(Number);
+          if (parts.length < 4 || parts.some(Number.isNaN)) continue;
+          const [pid, ppid, pgid, sid] = parts;
+          if (pid === rootPid || sid === rootPid || pgid === rootPid) {
+            pids.add(pid);
+          }
+          const list = childrenByPpid.get(ppid);
+          if (list) list.push(pid);
+          else childrenByPpid.set(ppid, [pid]);
+        }
+      }
+    } catch {
+      // Ignore ps failure
+    }
+  }
+
+  const queue = [rootPid, ...pids];
+  while (queue.length > 0) {
+    const cur = queue.pop()!;
+    for (const child of childrenByPpid.get(cur) ?? []) {
+      if (!pids.has(child)) {
+        pids.add(child);
+        queue.push(child);
+      }
+    }
+  }
+  return [...pids];
+}
+
+/**
+ * Terminates a detached target server (`rootPid`) and all of its session/descendant processes.
+ */
+export function killServerProcessTree(rootPid: number): void {
+  if (!Number.isInteger(rootPid) || rootPid <= 1) return;
+  const pids = getSessionAndTreePids(rootPid);
+  try {
+    process.kill(-rootPid, 'SIGTERM');
+  } catch {
+    // Process group already exited
+  }
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch {
+      // Process already exited
+    }
+  }
+  const survivors = getSessionAndTreePids(rootPid);
+  try {
+    process.kill(-rootPid, 'SIGKILL');
+  } catch {
+    // Process group already exited
+  }
+  for (const pid of survivors) {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch {
+      // Process already exited
+    }
+  }
+}
+
+/**
+ * Reads `pnpm.onlyBuiltDependencies` from the canonical untouched base app in `src/harness/base-apps/<baseAppName>/package.json`.
+ * Never trusts `targetDir/package.json` for build approvals so agent-added dependencies cannot execute install scripts on the host.
+ */
+export function getBaseAppAllowedBuilds(baseAppName?: string): string[] {
+  if (!baseAppName || !/^[a-z0-9-]+$/i.test(baseAppName)) {
+    return [];
+  }
+  const canonicalPkgPath = path.join(baseAppsDir, baseAppName, 'package.json');
+  if (!fs.existsSync(canonicalPkgPath)) {
+    return [];
+  }
+  try {
+    const raw = JSON.parse(fs.readFileSync(canonicalPkgPath, 'utf8')) as {
+      pnpm?: { onlyBuiltDependencies?: unknown };
+    };
+    const list = raw.pnpm?.onlyBuiltDependencies;
+    if (!Array.isArray(list)) return [];
+    return list.filter((item): item is string => typeof item === 'string' && /^[a-z0-9@/_.-]+$/i.test(item));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Writes a standalone `pnpm-workspace.yaml` in `targetDir` that:
+ * 1. Anchors `targetDir` as its own workspace root so pnpm does not walk up to the parent repository.
+ * 2. Approves build scripts only for `allowedPackages` (via both `onlyBuiltDependencies` for pnpm 10 and `allowBuilds` for pnpm 11+).
+ * 3. Sets `strictDepBuilds: false` so unapproved build scripts (e.g. `@parcel/watcher` or agent-added packages) are skipped without `ERR_PNPM_IGNORED_BUILDS`.
+ */
+export function writeScopedPnpmWorkspace(targetDir: string, allowedPackages: string[]): string {
+  const unique = [...new Set(allowedPackages)];
+  const lines: string[] = ['strictDepBuilds: false'];
+  if (unique.length === 0) {
+    lines.push('onlyBuiltDependencies: []');
+    lines.push('allowBuilds: {}');
+  } else {
+    lines.push('onlyBuiltDependencies:');
+    for (const pkg of unique) {
+      lines.push(`  - ${JSON.stringify(pkg)}`);
+    }
+    lines.push('allowBuilds:');
+    for (const pkg of unique) {
+      lines.push(`  ${JSON.stringify(pkg)}: true`);
+    }
+  }
+  const workspaceYamlPath = path.join(targetDir, 'pnpm-workspace.yaml');
+  fs.writeFileSync(workspaceYamlPath, lines.join('\n') + '\n', 'utf8');
+  return workspaceYamlPath;
+}
+
+function runPnpm(
+  args: string[],
+  cwd: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<{ status: number | null; output: string }> {
   return new Promise((resolve) => {
     const child = spawn('pnpm', args, {
       cwd,
+      env,
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: process.platform === 'win32',
     });
@@ -37,72 +226,51 @@ function runPnpm(args: string[], cwd: string): Promise<{ status: number | null; 
   });
 }
 
-export async function startTargetServer(
+export async function spawnPlainTargetServer(
   targetDir: string,
-  options?: { targetFile?: string; quiet?: boolean }
+  options?: { exportTargetUrlEnv?: boolean },
 ): Promise<TargetServer> {
-  const pkgJsonPath = path.join(targetDir, 'package.json');
-  if (!fs.existsSync(pkgJsonPath)) {
-    if (options?.targetFile) {
-      return {
-        url: `http://localhost/${path.basename(options.targetFile)}`,
-        stop: async () => {},
-      };
-    }
-    throw new Error(`package.json not found in target directory: ${targetDir}`);
-  }
-
-  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-
-  if (pkgJson.scripts?.build) {
-    if (!options?.quiet) {
-      console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
-    }
-    // --no-frozen-lockfile: pnpm defaults to frozen installs when CI=true, which would fail
-    // if a solution patch adds a dependency to package.json without updating pnpm-lock.yaml.
-    const installResult = await runPnpm(
-      ['--ignore-workspace', 'install', '--prefer-offline', '--no-frozen-lockfile'],
-      targetDir
-    );
-    if (installResult.status !== 0 && !options?.quiet) {
-      console.warn(
-        `[TEST-FIXTURE] pnpm install failed in ${targetDir}${installResult.output ? `:\n${installResult.output}` : ''}`
-      );
-    }
-
-    const buildResult = await runPnpm(['--ignore-workspace', 'run', 'build'], targetDir);
-    if (buildResult.status !== 0) {
-      throw new Error(
-        `Failed to build target app in ${targetDir}${buildResult.output ? `:\n${buildResult.output}` : ''}`
-      );
-    }
-  }
-
-  if (!pkgJson.scripts?.start) {
-    throw new Error(`package.json in ${targetDir} is missing a "start" script.`);
-  }
-
-  if (!pkgJson.scripts.build && STATIKK_PLAIN_RE.test(pkgJson.scripts.start)) {
-    const { default: statikk } = await import('statikk');
-    const { url, server } = await statikk({ root: targetDir, port: 0 });
-    return {
-      url: `${url}/`,
-      stop: () =>
-        new Promise<void>((resolve) => {
-          server.closeAllConnections?.();
-          server.close(() => resolve());
-        }),
-    };
-  }
-
   const port = await getFreePort();
+  const nodeCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
   const serverProcess = spawn('pnpm', ['--ignore-workspace', 'run', 'start'], {
     cwd: targetDir,
-    env: { ...process.env, PORT: port.toString() },
+    env: { ...process.env, PORT: port.toString(), NODE_COMPILE_CACHE: nodeCompileCache },
     detached: true,
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'],
     shell: process.platform === 'win32',
   });
+
+  const serverPid = serverProcess.pid;
+  if (serverPid) {
+    registerExitServerCleanup();
+    activeServerPids.add(serverPid);
+    if (process.env.SERVER_PIDS_FILE) {
+      try {
+        fs.appendFileSync(process.env.SERVER_PIDS_FILE, `${serverPid}\n`, 'utf8');
+      } catch {
+        // ignore if cannot write pid file
+      }
+    }
+  }
+
+  let serverStderr = '';
+  serverProcess.stderr?.on('data', (chunk: Buffer) => {
+    if (serverStderr.length < 4096) {
+      serverStderr += chunk.toString('utf8');
+    }
+  });
+  serverProcess.unref();
+
+  let stopped = false;
+  const stop = async () => {
+    if (stopped) return;
+    stopped = true;
+    serverProcess.stderr?.destroy();
+    if (serverPid) {
+      activeServerPids.delete(serverPid);
+      killServerProcessTree(serverPid);
+    }
+  };
 
   let exited = false;
   serverProcess.once('exit', () => {
@@ -138,26 +306,101 @@ export async function startTargetServer(
   }
 
   if (!isReady) {
-    if (serverProcess.pid) {
-      try {
-        process.kill(-serverProcess.pid);
-      } catch {
-        // ignore
-      }
-    }
-    throw new Error(`Server in ${targetDir} failed to start on port ${port}`);
+    await stop();
+    const detail = serverStderr.trim();
+    throw new Error(`Server in ${targetDir} failed to start on port ${port}${detail ? `:\n${detail}` : ''}`);
   }
 
-  return {
-    url,
-    stop: async () => {
-      if (serverProcess.pid) {
-        try {
-          process.kill(-serverProcess.pid);
-        } catch {
-          // ignore
-        }
+  if (options?.exportTargetUrlEnv) {
+    process.env.TARGET_URL = url;
+  }
+
+  return { url, stop };
+}
+
+export async function startTargetServer(
+  targetDir: string,
+  options?: { targetFile?: string; quiet?: boolean; exportTargetUrlEnv?: boolean }
+): Promise<TargetServer> {
+  const pkgJsonPath = path.join(targetDir, 'package.json');
+  if (!fs.existsSync(pkgJsonPath)) {
+    if (options?.targetFile) {
+      const url = `http://localhost/${path.basename(options.targetFile)}`;
+      if (options?.exportTargetUrlEnv !== false) {
+        process.env.TARGET_URL = url;
       }
-    },
-  };
+      return {
+        url,
+        stop: async () => {},
+      };
+    }
+    throw new Error(`package.json not found in target directory: ${targetDir}`);
+  }
+
+  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+
+  const hasDependencies =
+    Boolean(pkgJson.dependencies && Object.keys(pkgJson.dependencies).length > 0) ||
+    Boolean(pkgJson.devDependencies && Object.keys(pkgJson.devDependencies).length > 0);
+
+  const nodeCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
+  const childEnv = { ...process.env, NODE_COMPILE_CACHE: nodeCompileCache };
+
+  if (pkgJson.scripts?.build || hasDependencies) {
+    if (!options?.quiet) {
+      console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
+    }
+    // Write a standalone pnpm-workspace.yaml that approves only the canonical base app's
+    // onlyBuiltDependencies (never agent-added dependency build scripts) and anchors the
+    // workspace root at targetDir without needing --ignore-workspace.
+    const allowedBuilds = getBaseAppAllowedBuilds(pkgJson.name);
+    writeScopedPnpmWorkspace(targetDir, allowedBuilds);
+
+    const installResult = await runPnpm(
+      ['install', '--prefer-offline', '--no-frozen-lockfile'],
+      targetDir,
+      childEnv,
+    );
+    if (installResult.status !== 0 && !options?.quiet) {
+      console.warn(
+        `[TEST-FIXTURE] pnpm install failed in ${targetDir}${installResult.output ? `:\n${installResult.output}` : ''}`
+      );
+    }
+  }
+
+  if (pkgJson.scripts?.build) {
+    const buildResult = await runPnpm(['--ignore-workspace', 'run', 'build'], targetDir, childEnv);
+    if (buildResult.status !== 0) {
+      throw new Error(
+        `Failed to build target app in ${targetDir}${buildResult.output ? `:\n${buildResult.output}` : ''}`
+      );
+    }
+  }
+
+  if (!pkgJson.scripts?.start) {
+    throw new Error(`package.json in ${targetDir} is missing a "start" script.`);
+  }
+
+  if (!pkgJson.scripts.build && STATIKK_PLAIN_RE.test(pkgJson.scripts.start)) {
+    const { default: statikk } = await import('statikk');
+    const { url, server } = await statikk({ root: targetDir, port: 0 });
+    const fullUrl = `${url}/`;
+    if (options?.exportTargetUrlEnv !== false) {
+      process.env.TARGET_URL = fullUrl;
+    }
+    return {
+      url: fullUrl,
+      stop: () =>
+        new Promise<void>((resolve) => {
+          server.closeAllConnections?.();
+          server.close(() => resolve());
+        }),
+    };
+  }
+
+  const server = await spawnPlainTargetServer(targetDir, options);
+  if (options?.exportTargetUrlEnv !== false) {
+    process.env.TARGET_URL = server.url;
+  }
+  return server;
 }
