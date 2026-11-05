@@ -778,4 +778,34 @@ test('parseCodexTrajectory preserves tools.web__run calls when batched with exec
     type: 'open_page',
     url: 'https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access'
   });
+
+  // Failed open calls ("Failed to fetch <url>" or "URL <url> is not accessible") strip the failed URL from webRuns
+  const failedOpenCall = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call',
+      call_id: 'call_failed_open',
+      name: 'exec',
+      input: 'text(await tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems"}],response_length:"long"}));'
+    }
+  };
+  const failedOpenOutput = {
+    type: 'response_item',
+    payload: {
+      type: 'custom_tool_call_output',
+      call_id: 'call_failed_open',
+      output: [
+        {
+          type: 'input_text',
+          text: 'Internal Error ()\nSource: open({"ref_id":"https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems","lineno":null}); \nFailed to fetch https://developer.chrome.com/docs/modern-web-guidance/guides/js/support-global-calendar-systems: Cache miss'
+        }
+      ]
+    }
+  };
+  const failedOpenSummary = parseCodexTrajectory([failedOpenCall, failedOpenOutput]);
+  assert.strictEqual(failedOpenSummary.steps.length, 1);
+  assert.strictEqual(
+    JSON.stringify(failedOpenSummary.steps[0].action?.params).includes('support-global-calendar-systems'),
+    false
+  );
 });
