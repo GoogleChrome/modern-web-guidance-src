@@ -260,8 +260,9 @@
       empty.hidden = true;
       status.textContent = '';
     };
-    select.addEventListener('change', e => { if (e.target === select) reset(); });
-    select.addEventListener('focusout', e => { if (!select.contains(e.relatedTarget)) reset(); });
+    select.addEventListener('focusout', () => requestAnimationFrame(() => {
+      if (!select.matches(':open')) reset();
+    }));
   }
 
   // Multiple selection: checkboxes in a popover, filtered by a text input

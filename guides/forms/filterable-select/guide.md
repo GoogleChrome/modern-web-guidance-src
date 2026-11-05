@@ -165,7 +165,7 @@ filter.addEventListener('keydown', e => {
 
 ### 6. Reset the filter when the picker closes
 
-The `<select>` does not dispatch `toggle`, so reset the filter on the events that do fire on every close path: `change` and `focusout` leaving the control.
+The `<select>` does not dispatch `toggle`, so reset the filter on `focusout` whenever the picker is no longer `:open` on the next animation frame. This covers committing a new or unchanged option, pressing `Escape`, and light-dismissing outside the control.
 
 ```js
 const reset = () => {
@@ -174,8 +174,9 @@ const reset = () => {
   empty.hidden = true;
   status.textContent = '';                 // the list is closed, so announce nothing
 };
-select.addEventListener('change', e => { if (e.target === select) reset(); });
-select.addEventListener('focusout', e => { if (!select.contains(e.relatedTarget)) reset(); });
+select.addEventListener('focusout', () => requestAnimationFrame(() => {
+  if (!select.matches(':open')) reset();
+}));
 ```
 
 ### 7. Selecting more than one item
