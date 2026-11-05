@@ -1,4 +1,5 @@
 - **MANDATORY**: The spatial navigation container uses an accessible focus management pattern (such as roving tabindex or `aria-activedescendant`), exposing exactly one tab stop to sequential page navigation.
+- **MANDATORY**: There is an appropriate composite widget role for this pattern, and the expected child roles are present.
 - **MANDATORY**: Pressing the Right Arrow key moves focus to the visually closest focusable element located to the right of the currently focused element, using visual bounding client geometries.
 - **MANDATORY**: Pressing the Left Arrow key moves focus to the visually closest focusable element located to the left of the currently focused element.
 - **MANDATORY**: Pressing the Down Arrow key moves focus to the visually closest focusable element located below the currently focused element.

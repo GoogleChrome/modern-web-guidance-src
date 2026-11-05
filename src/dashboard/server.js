@@ -257,7 +257,7 @@ const server = http.createServer(async (req, res) => {
     try {
       if (fs.existsSync(localSuitesDir)) {
         const dirs = fs.readdirSync(localSuitesDir, { withFileTypes: true })
-          .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
+          .filter(dirent => (dirent.isDirectory() || dirent.isSymbolicLink()) && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
         
         dirs.forEach(d => {

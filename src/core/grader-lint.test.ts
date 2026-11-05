@@ -352,6 +352,33 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
     });
   });
 
+  describe('Rule: invalid-skip-unless', () => {
+    it('accepts valid web-features IDs and BCD keys in skipUnless({ unsupported })', () => {
+      const code = `
+        import { test, expect, skipUnless } from './test-fixture.ts';
+        test('fallback check', () => {
+          skipUnless({ unsupported: 'switch-control' });
+          expect(1).toBe(1);
+        });
+      `;
+      const violations = checkGraderSource('guides/category/slug/targets/daily-grind/grader.ts', code);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), []);
+    });
+
+    it('flags unknown feature IDs or non-unsupported keys in skipUnless()', () => {
+      const code = `
+        import { test, expect, skipUnless } from './test-fixture.ts';
+        test('bad feature check', () => {
+          skipUnless({ unsupported: 'not-a-valid-feature-xyz' });
+          skipUnless({ supported: 'switch-control' } as any);
+          expect(1).toBe(1);
+        });
+      `;
+      const violations = checkGraderSource('guides/category/slug/targets/daily-grind/grader.ts', code);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), ['invalid-skip-unless', 'invalid-skip-unless']);
+    });
+  });
+
   describe('formatViolations', () => {
     it('formats violations clearly', () => {
       const sampleMap = new Map<string, GraderLintViolation[]>([

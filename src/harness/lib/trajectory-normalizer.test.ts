@@ -68,6 +68,9 @@ test('categorizeAction avoids false-positives from code mutation content', () =>
   const cliSearchCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest search "accordion"' }, undefined, 'run_command');
   assert.strictEqual(cliSearchCat, 'skill_search');
 
+  const cliAnalyzeCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest analyze src/ --json' }, undefined, 'run_command');
+  assert.strictEqual(cliAnalyzeCat, 'skill_search');
+
   const cliRetrieveCat = categorizeAction('bash', { command: 'npx -y modern-web-guidance@latest retrieve "details-styling"' }, undefined, 'run_command');
   assert.strictEqual(cliRetrieveCat, 'guide_retrieval');
 
@@ -577,6 +580,90 @@ test('hasTrajectoryGuideLeak ignores host node_modules and passive search result
       steps: []
     });
     assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'local-network-access'), true);
+
+    // 11. write_file (apply_patch) citing a modern-web-guidance URL in README.md or index.html -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Adding reference link to README',
+          action: {
+            type: 'write_file',
+            name: 'apply_patch',
+            params: {
+              path: 'README.md',
+              patch: '*** Begin Patch\n*** Update File: README.md\n+See https://developer.chrome.com/docs/modern-web-guidance/guides/security/local-network-access\n'
+            }
+          },
+          outcome: { status: 'success', message: 'Script completed' }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'local-network-access'), false);
+
+    // 12. run_command writing a file via heredoc (cat <<'EOF' > INP.md) citing a modern-web-guidance URL -> false
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Writing INP.md documentation',
+          action: {
+            type: 'run_command',
+            name: "cat <<'EOF' > INP.md",
+            params: {
+              command: "cat <<'EOF' > INP.md\nSee [identifying INP causes](https://developer.chrome.com/docs/modern-web-guidance/guides/performance/identify-inp-causes).\nEOF"
+            }
+          },
+          outcome: { status: 'success', message: 'Script completed\nOutput:\n{"exit_code":0,"output":""}' }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'identify-inp-causes'), false);
+
+    // 13. Category directory collision (/guides/webmcp/agentic-javascript-tools when guideName is 'webmcp') -> false,
+    // while matching the actual leaf guide (/guides/webmcp/webmcp) -> true
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Opened a different guide under the webmcp category',
+          action: {
+            type: 'run_command',
+            name: 'exec',
+            params: {
+              command: 'exec',
+              webRuns: ['tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/webmcp/agentic-javascript-tools"}]})']
+            }
+          },
+          outcome: { status: 'success', message: 'Script completed' }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'webmcp'), false);
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'agentic-javascript-tools'), true);
+
+    writeTrajectorySummary(tempDir, {
+      agent: Agents.CODEX_CLI,
+      steps: [
+        {
+          stepNumber: 1,
+          thought: 'Opened the webmcp discipline guide itself',
+          action: {
+            type: 'run_command',
+            name: 'exec',
+            params: {
+              command: 'exec',
+              webRuns: ['tools.web__run({open:[{ref_id:"https://developer.chrome.com/docs/modern-web-guidance/guides/webmcp/webmcp"}]})']
+            }
+          },
+          outcome: { status: 'success', message: 'Script completed' }
+        }
+      ]
+    });
+    assert.strictEqual(hasTrajectoryGuideLeak(tempDir, 'webmcp'), true);
   } finally {
     removeTempDir(tempDir);
   }
@@ -854,5 +941,40 @@ test('extractSubagentIdFromFilename extracts clean subagent id across formats an
   assert.strictEqual(extractSubagentIdFromFilename('subagent-worker.jsonl'), 'worker');
   assert.strictEqual(extractSubagentIdFromFilename('/path/to/subagent-agent-worker.jsonl'), 'worker');
 });
+
+test('generateNormalizedTrajectory enriches summary with guides and tool usage from modern-web.log', async () => {
+  const tempDir = createTempDir();
+  try {
+    const rawEntry = {
+      role: 'assistant',
+      timestamp: '2026-08-10T10:00:00.000Z',
+      message: {
+        content: [
+          {
+            type: 'tool_use',
+            id: 'call_1',
+            name: 'Bash',
+            input: { command: 'ls -la' }
+          }
+        ]
+      }
+    };
+    fs.writeFileSync(path.join(tempDir, 'session-1.jsonl'), JSON.stringify(rawEntry));
+    fs.writeFileSync(
+      path.join(tempDir, 'modern-web.log'),
+      JSON.stringify({ tool: 'get_best_practices', result: [{ id: 'dialog-closedby' }, { id: 'popover-api' }] }) + '\n'
+    );
+
+    await generateNormalizedTrajectory(tempDir, Agents.CLAUDE_CODE, 'Enrich from log test');
+
+    const summary = readTrajectorySummary(tempDir);
+    assert.ok(summary);
+    assert.deepStrictEqual(summary.retrievedGuides, ['dialog-closedby', 'popover-api']);
+    assert.deepStrictEqual(summary.toolsUsed, ['modern-web-guidance']);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
 
 

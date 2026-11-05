@@ -7,7 +7,8 @@ import {
   getHtmlDocuments,
 } from '../../../../../src/grading/test-fixture.ts';
 
-// NOTE: Add imports from ts-morph, linkedom, or cssomnom as needed:
+// NOTE: Add imports from test-fixture.ts, ts-morph, linkedom, or cssomnom as needed:
+// e.g. import { skipUnless } from '../../../../../src/grading/test-fixture.ts';
 // e.g. import { SyntaxKind, type Project } from 'ts-morph';
 // e.g. import type { Document } from 'linkedom';
 // e.g. import { getCascadedStyle, CSSStyleRule, type CSSStyleSheet } from 'cssomnom';

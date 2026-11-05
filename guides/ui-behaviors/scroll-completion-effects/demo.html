@@ -42,24 +42,24 @@
 </head>
 <body>
   <nav>
-    <button class="nav-link" data-target="section-1">Go to Section 1</button>
-    <button class="nav-link" data-target="section-2">Go to Section 2</button>
-    <button class="nav-link" data-target="section-3">Go to Section 3</button>
+    <a class="nav-link" href="#section-1">Go to Section 1</a>
+    <a class="nav-link" href="#section-2">Go to Section 2</a>
+    <a class="nav-link" href="#section-3">Go to Section 3</a>
   </nav>
 
   <main>
-    <section id="section-1">
-      <h2>Section 1: The Basics</h2>
+    <section id="#section-1">
+      <h2 class="focus-target" tabindex="-1">Section 1: The Basics</h2>
       <p>This is the first section. When you click the button above, the page will smooth-scroll down here.</p>
     </section>
 
-    <section id="section-2">
-      <h2>Section 2: The Middle</h2>
+    <section id="#section-2">
+      <h2 class="focus-target" tabindex="-1">Section 2: The Middle</h2>
       <p>Notice how the highlight effect doesn't trigger until the scrolling has completely stopped. This guarantees the user actually sees the flash of color, rather than it happening off-screen.</p>
     </section>
 
-    <section id="section-3">
-      <h2>Section 3: The End</h2>
+    <section id="#section-3">
+      <h2 class="focus-target" tabindex="-1">Section 3: The End</h2>
       <p>With older APIs, you'd have to guess the scroll duration with a setTimeout, which often fired too early on slow devices or too late on fast ones.</p>
     </section>
   </main>
@@ -100,12 +100,13 @@
       });
     }
 
-    const buttons = document.querySelectorAll('.nav-link');
+    const scrollCompletionLinks = document.querySelectorAll('.nav-link');
     const sections = document.querySelectorAll('section');
 
-    buttons.forEach(button => {
-      button.addEventListener('click', async (e) => {
-        const targetId = button.getAttribute('data-target');
+    scrollCompletionLinks.forEach(scrollCompletionLink => {
+      scrollCompletionLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const targetId = scrollCompletionLink.getAttribute('href');
         const targetElement = document.getElementById(targetId);
 
         sections.forEach(sec => sec.classList.remove('highlight'));
@@ -116,6 +117,8 @@
         });
 
         targetElement.classList.add('highlight');
+        // Ensures that focus moves to a suitable place in the target element without affecting the scroll animation
+        targetElement.querySelector('.focus-target').focus({ preventScroll: true });
       });
     });
   </script>
