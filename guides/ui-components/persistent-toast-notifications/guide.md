@@ -15,7 +15,7 @@ Toast notifications are transient status messages. Unlike menus, they should not
 
 ## When to use
 
-Toast notifications must be used to provide non-critical, supplemental information about the results of an interaction. An example may include confirming that a form submission was successful. Notifications that include controls or require immediate attention should instead use an alternative component. Examples include inline banners, dialogs or modal dialogs. These examples surface information in a way that is easier to identify for everyone. Toasts should be used sparingly, as making them accessible to everyone means addressing complex considerations, and is the reason why some companies have opted to no longer use them, and instead, utilise the alternative aforementioned components.
+Toast notifications must be used to provide non-critical, supplemental information about the results of an interaction. An example may include confirming that a form submission was successful. Notifications that require immediate attention should instead use an alternative component. Examples include inline banners, dialogs or modal dialogs. These examples surface information in a way that is easier to identify for everyone. Toasts should be used sparingly, as making them accessible to everyone means addressing complex considerations, and is the reason why some companies have opted to no longer use them, and instead, utilise the alternative aforementioned components.
 
 ## Implementation guidelines
 
@@ -26,9 +26,7 @@ Toast notifications must be used to provide non-critical, supplemental informati
 * **DO** make the container a region, with an accessible name, so that it can be easily identified using a screen reader. For example: `<div role="region" aria-label="Notifications"></div>`.
 * **DO** use `ariaNotify()` to announce the content present in toasts that are displayed. This ensures that people using screen readers, who cannot see the screen, are aware of the presence of toast messages
 {# For context, this approach is as recommended in Celebrating with the Perfect Toast by Ian Lloyd https://a11y-tools.com/blog/2025/05/celebrating-with-the-perfect-toast/ #}
-* **DO** use sibling-index() to add margin between toast notifications so that items lower in the stack are visible.
-{# Maintainer note: Are there real-world use cases where a button directly triggers a toast (and not via some intermediate async event)? If so, uncomment.
-* **DO** provide a toast's trigger button (it must be a button element, or an input of type button) with a `popovertarget` attribute, referencing the `id` attribute of the toast. This will programmatically convey that there’s a toast present, and manage keyboard focus between the toast and trigger control. #}
+* **DO** ensure that only the toast's visible text is announced as part of the `ariaNotify()` and not the names of any controls. If actions are available in the toast (aside from a close control), append "Actions available" to the end of the announcement.
 * **DO** provide an explicit "Close" button within the toast using popovertargetaction="hide".
 * **DO** ensure that a toast's dismiss button is keyboard-focusable (without automatically stealing focus when the toast appears), so keyboard users can navigate to the toast region and dismiss notifications.
 * **DO** manage focus when a user manually dismisses a currently focused toast: move focus to the next remaining toast in the stack, or—if no toasts remain—return focus to the user's prior focus location (or the control that triggered the toast).
@@ -42,6 +40,7 @@ Toast notifications must be used to provide non-critical, supplemental informati
 * **DON'T** surface toasts in scenarios where focus redirection may be used at the same time. The focus redirection may cancel out the toast announcements, resulting in people missing information.
 * **DON'T** use toasts in modal dialogs. Content outside of the dialog will be inert and unavailable to assistive technologies. Placing the toast in a modal dialog, separate from the existing toast container makes it difficult to locate, and may lead to people not being able to locate it.
 * **DON'T** surface toast notifications in the background while a modal dialog is open. It's likely the notification will be missed. Instead, suppress the notification until the modal dialog is dismissed.
+* **DON'T** include controls in toast notifications that are not already permanently available outside the toast notifications. Controls in toasts should be used sparingly, and only provided as an alternative way of completing an action.
 
 ## Optional: Usability & accessibility improvements
 
