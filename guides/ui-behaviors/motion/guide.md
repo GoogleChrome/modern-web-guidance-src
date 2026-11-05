@@ -52,22 +52,17 @@ Use `prefers-reduced-motion` media queries to turn off non-essential motion for 
 **DO NOT** globally apply `animation-duration: 0.01ms;` as it can cause certain animations to become _more_ jarring.
 Instead, handle motion preferences on a case-by-case basis using one of two approaches, nesting the `@media` query inside the rule so both versions are kept together:
 
-- **Start with animations enabled by default, and turn them off using `@media (prefers-reduced-motion: reduce)`**:
+- If animations are only present for `prefers-reduced-motion: no-preference` users, then apply them in a nested `@media (prefers-reduced-motion: no-preference)` rule instead of applying them and then removing them in a `@media (prefers-reduced-motion: reduce)` rule:
 
 ```css
-/* Good: Animate by default, and stop the animations when the user prefers
-   reduced motion */
-.spinner {
-  animation: spin 1s linear infinite;
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
+/* Good: Only animate if the user hasn't set prefers reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  .spinner {
+    animation: spin 1s linear infinite;
   }
-}
 
-progress:not([value]) {
-  animation: slide 1s infinite linear;
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
+  progress:not([value]) {
+    animation: slide 1s infinite linear;
   }
 }
 ```
@@ -118,6 +113,6 @@ document.addEventListener('animationstart', (event) => {
 });
 ```
 
-You can feature-detect support using `'animation' in AnimationEvent.prototype` (or `'animation' in TransitionEvent.prototype`).
+You can feature-detect support using `Object.hasOwn(AnimationEvent.prototype, 'animation')` (or `Object.hasOwn(TransitionEvent.prototype, 'animation')`).
 
 Under `prefers-reduced-motion: reduce`, an animation set to `none`, or a transition that is removed or given a zero duration and no delay, never fires `animationend` or `transitionend`. If your code waits for these events to remove or hide an element, continue immediately when `element.getAnimations()` returns an empty array, or keep a short opacity transition instead of removing it.
