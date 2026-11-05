@@ -195,10 +195,11 @@ async function expectNextToBarbell(page, track) {
     expect(css.anchor).toBe('--barbell-anchor');
     expect(css.fallbacks).toBe('flip-block');
   });
-  test('filter menu chevron does not animate under reduced motion', async ({ page }) => {
+  test('expand chevron does not animate under reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
-    const duration = await page.locator('.filter-runs-chevron').evaluate(el => getComputedStyle(el).transitionDuration);
+    await openBreakdowns(page);
+    const duration = await page.locator('.insights-expand-chevron').first().evaluate(el => getComputedStyle(el).transitionDuration);
     expect(duration.split(',').every(d => parseFloat(d) === 0)).toBe(true);
   });
   test('barbell tooltip still works through the vendored interestfor polyfill', async ({ page }) => {
@@ -233,24 +234,45 @@ async function expectNextToBarbell(page, track) {
     });
     for (const image of bg) expect(image).toContain('repeating-linear-gradient');
   });
-  test('filter menu relies on native popover behavior and keeps aria-expanded in sync', async ({ page }) => {
+  test('inline run filter search and By Model breakdown surface non-scheduled Pi/Mistral/Qwen runs alongside nightly runs', async ({ page }) => {
+    const mixedFixture = {
+      suites: [
+        ...A11Y_SUITES_FIXTURE.suites,
+        {
+          testId: 'pi-mistral-medium-3-5-skills-fix-2026-10-01_12-39-52',
+          timestamp: '2026-10-01T12:39:52.000Z',
+          agent: 'pi',
+          serving: 'skills_cli',
+          model: 'openrouter/mistralai/mistral-medium-3.1',
+          taskCount: 10,
+          maxRuns: 1,
+          guidedStats: { passed: 8, total: 10 },
+          unguidedStats: { passed: 5, total: 10 },
+          showcase: {},
+          guides: {
+            'content-vis': { guidedPassed: 4, guidedTotal: 5, guidedRate: 80, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 40 }
+          }
+        }
+      ]
+    };
+    await page.route('**/api/suites*', route => route.fulfill({ json: mixedFixture }));
     await page.goto('/');
-    const btn = page.locator('#filter-btn');
-    const menu = page.locator('#filter-menu');
-    await btn.click();
-    await expect(menu).toBeVisible();
-    await expect(btn).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('#filter-search')).toBeFocused();
-    expect(await menu.evaluate(el => getComputedStyle(el).zIndex)).toBe('auto');
-    await page.keyboard.press('Escape');
-    await expect(menu).toBeHidden();
-    await expect(btn).toHaveAttribute('aria-expanded', 'false');
-    await expect(btn).toBeFocused();
-    await btn.click();
-    await expect(menu).toBeVisible();
-    await page.locator('.landing-title').click();
-    await expect(menu).toBeHidden();
-    await expect(btn).toHaveAttribute('aria-expanded', 'false');
+    const search = page.locator('#filter-search');
+    const scheduledCheck = page.locator('#scheduled-only-check');
+    await expect(scheduledCheck).toBeChecked();
+    await expect(search).toHaveAttribute('list', 'runs-filter-datalist');
+    await expect(page.locator('#runs-filter-datalist option[value="openrouter/mistralai/mistral-medium-3.1"]')).toHaveAttribute('label', '1 run');
+    await expect(page.locator('#runs-filter-datalist option[value="pi"]')).toHaveAttribute('label', 'Pi CLI · 1 run');
+    // Default table view shows the 2 scheduled nightly runs, hiding the ad-hoc pi run.
+    await expect(page.locator('.suite-table-row')).toHaveCount(2);
+    // Opening Breakdowns shows Mistral in By Model even while Scheduled runs only is checked.
+    await openBreakdowns(page);
+    await expect(page.locator('.insights-panel[data-panel="model"] .pivot-filter-btn', { hasText: 'openrouter/mistralai/mistral-medium-3.1' })).toBeVisible();
+    // Typing "mistral" in the inline search box surfaces the pi-mistral run immediately.
+    await search.fill('mistral');
+    await expect(page.locator('.suite-table-row')).toHaveCount(1);
+    await expect(page.locator('.suite-table-row').first()).toHaveAttribute('data-test-id', 'pi-mistral-medium-3-5-skills-fix-2026-10-01_12-39-52');
+    await expect(page.locator('.suite-table-row .agent-cell').first()).toContainText('Pi CLI');
   });
   test('breakdown explanations use interestfor hint popovers instead of title attributes', async ({ page }) => {
     await page.goto('/');

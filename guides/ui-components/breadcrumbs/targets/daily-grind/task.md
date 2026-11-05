@@ -1,0 +1,1 @@
+- Update `index.html` in the Daily Grind coffee shop page to add a breadcrumb trail above the main `.container` section (or when viewing seasonal favorites like Maple Oat Latte, Dark Roast Espresso, and Cold Brew under Menu) that displays the user's current position in the site hierarchy and lets them navigate back up to parent pages.

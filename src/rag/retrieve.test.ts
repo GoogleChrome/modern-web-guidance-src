@@ -83,4 +83,36 @@ describe('retrieveUseCase and Origin Trial gate', () => {
     const results = await searchUseCases(otGuide.description);
     assert.ok(results.map((r) => r.id).includes(otGuide.id));
   });
+
+  test('retrieveUseCase prepends Baseline target banner when .mwgrc specifies non-default baseline', async () => {
+    const defaultGuide = await retrieveUseCase(nonOtGuide.id, { cwd: tempDir });
+    assert.ok(!defaultGuide.includes('Project Baseline Target'));
+
+    fs.writeFileSync(path.join(tempDir, '.mwgrc'), JSON.stringify({ baseline: 'widely' }));
+    const widelyGuide = await retrieveUseCase(nonOtGuide.id, { cwd: tempDir });
+    assert.strictEqual(widelyGuide, defaultGuide);
+
+    fs.writeFileSync(path.join(tempDir, '.mwgrc'), JSON.stringify({ baseline: 'newly' }));
+    const newlyGuide = await retrieveUseCase(nonOtGuide.id, { cwd: tempDir });
+    assert.ok(newlyGuide.startsWith('> [!IMPORTANT]\n> **Project Baseline Target (`.mwgrc`):** `newly`'));
+
+    fs.writeFileSync(path.join(tempDir, '.mwgrc'), JSON.stringify({ baseline: 'limited' }));
+    const limitedGuide = await retrieveUseCase(nonOtGuide.id, { cwd: tempDir });
+    assert.ok(limitedGuide.startsWith('> [!IMPORTANT]\n> **Project Baseline Target (`.mwgrc`):** `limited`'));
+
+    fs.writeFileSync(path.join(tempDir, '.mwgrc'), JSON.stringify({ baseline: '2024' }));
+    const yearGuide = await retrieveUseCase(nonOtGuide.id, { cwd: tempDir });
+    assert.ok(yearGuide.startsWith('> [!IMPORTANT]\n> **Project Baseline Target (`.mwgrc`):** `Baseline 2024`'));
+  });
+
+  test('CLI set-baseline writes normalized baseline target to .mwgrc and rejects invalid values', () => {
+    const okRes = runCli(['set-baseline', 'newly'], { cwd: tempDir });
+    assert.strictEqual(okRes.status, 0);
+    const config = JSON.parse(fs.readFileSync(path.join(tempDir, '.mwgrc'), 'utf8'));
+    assert.deepStrictEqual(config, { baseline: 'newly' });
+
+    const badRes = runCli(['set-baseline', 'bogus'], { cwd: tempDir });
+    assert.strictEqual(badRes.status, 1);
+    assert.ok(badRes.stderr.includes('Invalid baseline target'));
+  });
 });

@@ -3,7 +3,7 @@
  * Add or rename agents here so the hero, A/B spotlight, and suite tables stay in sync.
  */
 
-/** @typedef {'gemini' | 'openai' | 'claude'} AgentBadgeKind */
+/** @typedef {'gemini' | 'openai' | 'claude' | 'pi'} AgentBadgeKind */
 /** @typedef {Object} AgentDef
  * @property {string} label
  * @property {AgentBadgeKind} [badge] */
@@ -22,6 +22,7 @@ export const AGENTS = {
     antigravity_cli: { label: 'Antigravity CLI', badge: 'gemini' },
     jetski_cli: { label: 'Jetski CLI', badge: 'gemini' },
     gemini_cli: { label: 'Gemini CLI', badge: 'gemini' },
+    pi: { label: 'Pi CLI', badge: 'pi' },
 };
 
 /**
@@ -46,7 +47,7 @@ export const AGENT_FAMILIES = [
 export const AGENT_DISPLAY_NAMES = Object.fromEntries(Object.entries(AGENTS).map(([id, def]) => [id, def.label]));
 
 /** @type {Record<AgentBadgeKind, string>} */
-const BADGE_GLYPHS = { gemini: '✦', openai: '❂', claude: '✱' };
+const BADGE_GLYPHS = { gemini: '✦', openai: '❂', claude: '✱', pi: 'π' };
 
 /**
  * Falls back to substring matching for agent ids that aren't registered (e.g. ad hoc

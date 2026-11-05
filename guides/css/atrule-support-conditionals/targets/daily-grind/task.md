@@ -1,1 +1,1 @@
-- Update the stylesheet in `index.html` for The Daily Grind so that styling rules and declarations for components like the seasonal favorite cards, hero section, or navigation bar can be conditionally applied only when the user's browser supports a given CSS at-rule.
+- Update the stylesheet in `index.html` for The Daily Grind so that progressive-enhancement styles for the seasonal favorite cards, hero section, and navigation bar only take effect in browsers that support newer CSS @-rules.
