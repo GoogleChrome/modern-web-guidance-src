@@ -603,7 +603,14 @@
           // pointer click on an open menu's trigger closes it natively.
           if (!fromPointer) enterOnOpen.add(menu);
         } else {
-          event.source?.focus({ preventScroll: true });
+          // Keyboard activation of a preview dismisses it; command invokers dispatch this
+          // event before their native toggle action, so cancel that action after closing.
+          if (!fromPointer && isPreviewed(menu)) {
+            event.preventDefault();
+            closeAndRestore(menu);
+          } else {
+            event.source?.focus({ preventScroll: true });
+          }
         }
       });
 
