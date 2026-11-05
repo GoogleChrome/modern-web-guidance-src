@@ -322,101 +322,65 @@
                   announceTimer = setTimeout(() => { announcer.textContent = label + spokenText(error); }, 500);
                 };
 
-                  document.addEventListener('blur', (e) => {
-                    if (!e.target.matches?.('input, textarea, select')) return;
-                    if (useNativeLogic && e.target.checkValidity) {
-                      const isInvalid = e.target.matches(':user-invalid');
-                      if (isInvalid) {
-                        // Announce a field that leaving it makes newly invalid
-                        if (!announced.has(e.target)) {
-                          announceError(e.target);
-                          announced.add(e.target);
-                        }
-                        e.target.setAttribute('aria-invalid', 'true');
-                      } else {
-                        e.target.setAttribute('aria-invalid', 'false');
-                        announced.delete(e.target);
-                        if (announcedField === e.target) {
-                          clearTimeout(announceTimer);
-                          announcer.textContent = '';
-                        }
-                      }
-                      linkError(e.target, isInvalid);
+                // Sync aria-invalid with the CSS :user-invalid state. Only form fields are synced, and
+                // an aria-invalid="true" that this script didn't set (for example from a server check)
+                // is left alone.
+                const flagged = new WeakSet();
+                // Fields whose current error has been announced, or read out by focus after a failed
+                // submit. A field can become invalid while the user types, so this is tracked separately.
+                const syncAria = (el, announce = false) => {
+                  if (!el.matches?.('input, select, textarea')) return;
+                  const invalid = el.matches(':user-invalid');
+                  if (invalid) {
+                    if (announce && !announced.has(el)) {
+                      announceError(el);
+                      announced.add(el);
                     }
-                    // Update debug info for the demo
-                    updateDebugInfo(e.target);
-                  }, true);
-
-                  document.addEventListener('focus', (e) => {
-                    if (!e.target.matches?.('input, textarea, select')) return;
-                  if (useNativeLogic && e.target.checkValidity) {
-                    const isInvalid = e.target.matches(':user-invalid');
-                    if (isInvalid) {
-                      e.target.setAttribute('aria-invalid', 'true');
-                    } else {
-                      e.target.setAttribute('aria-invalid', 'false');
+                    el.setAttribute('aria-invalid', 'true');
+                    flagged.add(el);
+                  } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
+                    el.setAttribute('aria-invalid', 'false');
+                    flagged.delete(el);
+                    announced.delete(el);
+                    // Clear a fixed field's announcement so it isn't found later when reading the page.
+                    if (announcedField === el) {
+                      clearTimeout(announceTimer);
+                      announcer.textContent = '';
                     }
-                    linkError(e.target, isInvalid);
                   }
-                  // Update debug info for the demo
-                  updateDebugInfo(e.target);
+                  linkError(el, invalid);
+                  updateDebugInfo(el);
+                };
+
+                // Update on blur (to show and announce an error) and input (to clear it)
+                document.addEventListener('blur', (e) => {
+                  if (useNativeLogic) syncAria(e.target, true);
                 }, true);
 
-                  document.addEventListener('input', (e) => {
-                    if (!e.target.matches?.('input, textarea, select')) return;
-                  if (useNativeLogic && e.target.checkValidity) {
-                    const isInvalid = e.target.matches(':user-invalid');
-                    if (isInvalid) {
-                      e.target.setAttribute('aria-invalid', 'true');
-                    } else {
-                      e.target.setAttribute('aria-invalid', 'false');
-                      announced.delete(e.target);
-                      // Clear a fixed field's announcement so it isn't found later when reading the page.
-                      if (announcedField === e.target) {
-                        clearTimeout(announceTimer);
-                        announcer.textContent = '';
-                      }
-                    }
-                    linkError(e.target, isInvalid);
+                document.addEventListener('input', (e) => {
+                  if (useNativeLogic && e.target.hasAttribute('aria-invalid')) syncAria(e.target);
+                });
+
+                // Checkboxes, radio buttons and other controls that commit on 'change' can become
+                // :user-invalid without losing focus, so update on change too.
+                document.addEventListener('change', (e) => {
+                  if (useNativeLogic) syncAria(e.target, true);
+                }, true);
+
+                // A failed submit fires 'invalid' on each failing field, including required fields the
+                // user never touched, so update those too. 'invalid' doesn't bubble. Focus moving to the
+                // first invalid field announces its error, so these aren't announced.
+                document.addEventListener('invalid', (e) => {
+                  if (useNativeLogic) {
+                    announced.add(e.target);
+                    syncAria(e.target);
                   }
-                  // Update debug info for the demo
-                  updateDebugInfo(e.target);
-                });
+                }, true);
 
-                  // invalid fires on each failing field on a submit attempt and doesn't bubble
-                  document.addEventListener('invalid', (e) => {
-                    if (!e.target.matches?.('input, textarea, select')) return;
-                    if (useNativeLogic) {
-                      const isInvalid = e.target.matches(':user-invalid');
-                      if (isInvalid) {
-                        // Focus moving to the first invalid field announces its error
-                        announced.add(e.target);
-                        e.target.setAttribute('aria-invalid', 'true');
-                      } else {
-                        e.target.setAttribute('aria-invalid', 'false');
-                      }
-                      linkError(e.target, isInvalid);
-                    }
-                    updateDebugInfo(e.target);
-                  }, true);
-
-                  document.addEventListener('reset', (e) => {
-                    if (!e.target.matches?.('form')) return;
-                  setTimeout(() => {
-                    Array.from(e.target.elements).forEach(el => {
-                      if (useNativeLogic && el.matches('input, select, textarea')) {
-                        el.setAttribute('aria-invalid', 'false');
-                        announced.delete(el);
-                        linkError(el, false);
-                        if (announcedField === el) {
-                          clearTimeout(announceTimer);
-                          announcer.textContent = '';
-                        }
-                      }
-                      updateDebugInfo(el);
-                    });
-                  }, 0);
-                });
+                // Reset clears :user-invalid after the 'reset' event, so update each field afterwards.
+                document.addEventListener('reset', (e) => {
+                  if (useNativeLogic) setTimeout(() => [...e.target.elements].forEach((el) => syncAria(el)));
+                }, true);
 
                 // Submit: the form uses novalidate for its custom error UI, so the browser doesn't block
                 // submission or move focus. Do both here so a failed submit is announced.
@@ -428,6 +392,7 @@
 
                 // Init
     updateFeatureState();
+    if (useNativeLogic) document.querySelectorAll('input, select, textarea').forEach((el) => syncAria(el));
   </script>
 </body>
 
