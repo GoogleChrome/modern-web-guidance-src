@@ -50,6 +50,8 @@ If you need to control opening and closing with separate buttons, you can use th
 </div>
 ```
 
+Hiding a popover, using a button inside the popover itself, will result in a loss of focus as the button will be hidden and won't retain focus. In this situation, provide additional scripting to return focus to the trigger/show control, so that people can continue to navigate from where they were previously.
+
 ## Implementing Declarative Modal Dialogs
 
 Unlike popovers, modal dialogs typically use separate buttons for opening and closing. Use the `show-modal` command specifically when you need to open a dialog as a modal.
