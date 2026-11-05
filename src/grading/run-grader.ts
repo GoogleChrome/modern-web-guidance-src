@@ -11,6 +11,7 @@ import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type Soluti
 import { copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
 import { createIsolatedHome, cleanupIsolatedHome } from '../harness/lib/agent-shared.ts';
 import { applyPatchSync } from '../core/patch-utils.ts';
+import { startTargetServer } from './target-server.ts';
 
 export interface PlaywrightOptions {
   targetPathAbs: string;
@@ -21,6 +22,7 @@ export interface PlaywrightOptions {
   patchFile?: string;
   stdio?: 'inherit' | 'ignore' | 'pipe';
   baselineTarget?: string;
+  prebuiltTargetUrl?: string;
 }
 
 async function stageGradingWorkspace(
@@ -71,6 +73,12 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PWTEST_CACHE_DIR = `${opts.jsonOutputName}-cache`;
   }
 
+  if (opts.prebuiltTargetUrl) {
+    env.GD_PREBUILT_TARGET_URL = opts.prebuiltTargetUrl;
+  } else {
+    delete env.GD_PREBUILT_TARGET_URL;
+  }
+
   const playwrightBin = path.join(rootDir, 'node_modules', '.bin', 'playwright');
 
   return spawn(playwrightBin, ['test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
@@ -86,6 +94,10 @@ export interface RunPlaywrightOptions {
   zeroPassrateFile?: string;
   testResultsDir?: string;
   baselineTarget?: string;
+}
+
+function graderUsesTargetServer(graderPath: string): boolean {
+  return fs.existsSync(graderPath) && /\bTARGET_URL\b/.test(fs.readFileSync(graderPath, 'utf8'));
 }
 
 export async function runPlaywright(
@@ -117,8 +129,19 @@ export async function runPlaywright(
   // across parallel runs, and Playwright wipes it at startup, so parallel runs clobber each other.
   const effectiveAppDir = isDir ? effectiveTargetPath : path.dirname(effectiveTargetPath);
   const resolvedTestResultsDir = testResultsDir || path.join(effectiveAppDir, 'test-results');
+  let stopTargetServer: (() => Promise<void>) | null = null;
 
   try {
+    let prebuiltTargetUrl: string | undefined;
+    if (graderUsesTargetServer(graderPath) && fs.existsSync(path.join(effectiveAppDir, 'package.json'))) {
+      const server = await startTargetServer(effectiveAppDir, {
+        targetFile: effectiveTargetPath,
+        quiet: stdio === 'ignore',
+      });
+      prebuiltTargetUrl = server.url;
+      stopTargetServer = server.stop;
+    }
+
     let stderrData = '';
     const child = executePlaywright({
       targetPathAbs: effectiveTargetPath,
@@ -128,7 +151,8 @@ export async function runPlaywright(
       jsonOutputName: tmpJson,
       patchFile: patchFile,
       stdio: stdio === 'ignore' ? 'pipe' : stdio,
-      baselineTarget
+      baselineTarget,
+      prebuiltTargetUrl
     });
 
     if (child.stderr) {
@@ -149,6 +173,9 @@ export async function runPlaywright(
     await fs.promises.unlink(tmpJson).catch(() => {});
     return JSON.parse(content);
   } finally {
+    if (stopTargetServer) {
+      await stopTargetServer().catch(() => {});
+    }
     await fs.promises.rm(`${tmpJson}-cache`, { recursive: true, force: true }).catch(() => {});
     if (cleanupGradingDir) {
       cleanupGradingDir();
@@ -456,20 +483,13 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
   if (fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory()) {
     const apps = fs.readdirSync(targetsDir).filter(name => !name.startsWith('.') && getSupportedBaseApps().includes(name));
     if (apps.length > 0) {
-      let lastResult: CalibrationResult | null = null;
-      for (const app of apps) {
-        console.log(cCyan(`\n--- Calibrating target base app: ${app} ---`));
-        const res = await testTargetGrader(targetDirAbs, app);
-        lastResult = res;
-        if (!res.success) {
-          break;
-        }
-      }
-      return lastResult || {
-        success: false,
-        solutions: {},
-        zeroPassrate: { passed: 0, failed: 0, passingTests: [] }
-      };
+      const results = await Promise.all(
+        apps.map((app) => {
+          console.log(cCyan(`\n--- Calibrating target base app: ${app} ---`));
+          return testTargetGrader(targetDirAbs, app);
+        })
+      );
+      return results.find((res) => !res.success) || results[results.length - 1];
     }
   }
 

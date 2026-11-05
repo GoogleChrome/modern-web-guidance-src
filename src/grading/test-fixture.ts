@@ -1,20 +1,21 @@
 import { test as base, type Page, type BrowserContext } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
-import { spawn, spawnSync } from 'child_process';
-import * as net from 'net';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'url';
-import { parseHTML } from 'linkedom';
-import { Project } from 'ts-morph';
-import { parse, CSSStyleSheet, CSSStyleDeclaration } from 'cssomnom';
-import { checkBaseline } from '../core/baseline.ts';
+import type { Project } from 'ts-morph';
+import type { CSSStyleSheet } from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
+import { startTargetServer } from './target-server.ts';
+
+const require = createRequire(import.meta.url);
 
 export { expect } from '@playwright/test';
 
 export function skipUnless(conditions: { unsupported: string }): void {
   const current = (process.env.BASELINE_TARGET || 'widely').trim().toLowerCase();
   if (conditions.unsupported) {
+    const { checkBaseline } = require('../core/baseline.ts') as typeof import('../core/baseline.ts');
     const tokens = conditions.unsupported.split(',').map(s => s.trim()).filter(Boolean);
     const anyUnsupported = tokens.some(t => !checkBaseline(current, t));
     base.skip(!anyUnsupported, `Requires unsupported: ${conditions.unsupported} (current target: ${current})`);
@@ -24,19 +25,6 @@ export function skipUnless(conditions: { unsupported: string }): void {
 export type ServerWorkerFixtures = {
   TARGET_URL: string;
 };
-
-async function getFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, () => {
-      const addr = srv.address() as net.AddressInfo;
-      const port = addr.port;
-      srv.close(() => resolve(port));
-    });
-  });
-}
 
 export const test = base.extend<{ page: Page; context: BrowserContext }, ServerWorkerFixtures>({
   // devtools-times loads a live analytics beacon (intentionally janky; it's a DevTools demo, and some
@@ -101,100 +89,20 @@ export const test = base.extend<{ page: Page; context: BrowserContext }, ServerW
   },
   // eslint-disable-next-line no-empty-pattern
   TARGET_URL: [async ({}, use) => {
-    const targetDir = process.cwd();
-
-    const pkgJsonPath = path.join(targetDir, 'package.json');
-    if (!fs.existsSync(pkgJsonPath)) {
-      if (process.env.TARGET_FILE) {
-        const fallbackUrl = `http://localhost/${path.basename(process.env.TARGET_FILE)}`;
-        process.env.TARGET_URL = fallbackUrl;
-        await use(fallbackUrl);
-        return;
-      }
-      throw new Error(`package.json not found in target directory: ${targetDir}`);
+    const prebuiltUrl = process.env.GD_PREBUILT_TARGET_URL;
+    if (prebuiltUrl) {
+      process.env.TARGET_URL = prebuiltUrl;
+      await use(prebuiltUrl);
+      return;
     }
 
-    const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-
-    if (pkgJson.scripts && pkgJson.scripts.build) {
-      // Running install on base app
-      console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
-      // --no-frozen-lockfile: pnpm defaults to frozen installs when CI=true, which would fail
-      // if a solution patch adds a dependency to package.json without updating pnpm-lock.yaml.
-      const installResult = spawnSync('pnpm', ['--ignore-workspace', 'install', '--force', '--no-frozen-lockfile'], {
-        cwd: targetDir,
-        stdio: 'pipe',
-        encoding: 'utf8',
-        shell: process.platform === 'win32'
-      });
-      if (installResult.status !== 0) {
-        const output = [installResult.stdout, installResult.stderr].filter(Boolean).join('\n').trim();
-        console.warn(`[TEST-FIXTURE] pnpm install failed in ${targetDir}${output ? `:\n${output}` : ''}`);
-      }
-
-      const buildResult = spawnSync('pnpm', ['--ignore-workspace', 'run', 'build'], {
-        cwd: targetDir,
-        stdio: 'pipe',
-        encoding: 'utf8',
-        shell: process.platform === 'win32'
-      });
-      if (buildResult.status !== 0) {
-        const output = [buildResult.stdout, buildResult.stderr].filter(Boolean).join('\n').trim();
-        throw new Error(`Failed to build target app in ${targetDir}${output ? `:\n${output}` : ''}`);
-      }
-    }
-
-    if (!pkgJson.scripts || !pkgJson.scripts.start) {
-      throw new Error(`package.json in ${targetDir} is missing a "start" script.`);
-    }
-
-    const port = await getFreePort();
-    const serverProcess = spawn('pnpm', ['--ignore-workspace', 'run', 'start'], {
-      cwd: targetDir,
-      env: { ...process.env, PORT: port.toString() },
-      detached: true,
-      stdio: 'ignore',
-      shell: process.platform === 'win32'
-    });
-
-    let isReady = false;
-    let baseUrlPath = '/';
-    const configPath = path.join(targetDir, 'astro.config.mjs');
-    if (fs.existsSync(configPath)) {
-      const configContent = fs.readFileSync(configPath, 'utf8');
-      const baseMatch = configContent.match(/base:\s*['"`](.*?)['"`]/);
-      if (baseMatch) {
-        baseUrlPath = '/' + baseMatch[1].replace(/^\/|\/$/g, '') + '/';
-      }
-    }
-
-    const url = `http://localhost:${port}${baseUrlPath}`;
-    for (let i = 0; i < 30; i++) {
-      try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(1000) });
-        if (res.ok) {
-          isReady = true;
-          break;
-        }
-      } catch (e) {
-        // ignore
-      }
-      await new Promise(r => setTimeout(r, 1000));
-    }
-
-    if (!isReady) {
-      if (serverProcess.pid) {
-        try { process.kill(-serverProcess.pid); } catch (e) {}
-      }
-      throw new Error(`Server in ${targetDir} failed to start on port ${port}`);
-    }
-
+    const { url, stop } = await startTargetServer(process.cwd(), { targetFile: process.env.TARGET_FILE });
     process.env.TARGET_URL = url; // Exporting so legacy tests might use it if they read from process.env
 
-    await use(url);
-
-    if (serverProcess.pid) {
-      try { process.kill(-serverProcess.pid); } catch (e) {}
+    try {
+      await use(url);
+    } finally {
+      await stop();
     }
   }, { scope: 'worker', timeout: 60000 }]
 });
@@ -255,6 +163,7 @@ function parseHtmlDocument(file: string, content: string): any {
           return `${attr}="${classes}"`;
         })
     : content;
+  const { parseHTML } = require('linkedom') as typeof import('linkedom');
   const { document } = parseHTML(processingInstructionsToComments(normalized));
   document.querySelectorAll('[class\\:list]').forEach((el: any) => {
     el.classList.add(...el.getAttribute('class:list').split(/\s+/).filter(Boolean));
@@ -291,6 +200,7 @@ function unwrapGlobalPseudo(css: string): string {
  * and inline styles into a CSSOMNom CSSStyleSheet object.
  */
 export function getCssStyleSheet(files: string[]): CSSStyleSheet {
+  const { parse, CSSStyleDeclaration } = require('cssomnom') as typeof import('cssomnom');
   const cssBlocks: string[] = [];
   for (const file of files) {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
@@ -383,6 +293,7 @@ export function populateJsProject(project: Project, files: string[]): void {
 }
 
 export function getJsProject(files: string[]): Project {
+  const { Project } = require('ts-morph') as typeof import('ts-morph');
   const project = new Project({ useInMemoryFileSystem: true });
   populateJsProject(project, files);
   return project;
