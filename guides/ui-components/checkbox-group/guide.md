@@ -184,18 +184,18 @@ When rows only have a label and no secondary column, skip subgrid and use a flex
 
 ### Hint text
 
-For a de-emphasized hint under the main label, put it inside the label as a `<small>` with an `id`, and reference it from the input with `aria-describedby`. Without the reference, screen readers merge the hint into the label name. Keep the hint's contrast at 4.5:1 or better.
+For a de-emphasized hint under the main label, place it outside `<label>` as a `<small>` with an `id`, and reference it from `<input>` with `aria-describedby` (putting a hint inside `<label>` includes it in the input's accessible name, causing `aria-describedby` to announce it twice). Keep the hint's contrast at 4.5:1 or better.
 
 ```html
 <label for="robot-1">
   <input type="checkbox" class="checkbox" id="robot-1" name="robot" value="clockwork"
          aria-describedby="robot-1-hint" />
   <span>Clockwork Courier</span>
-  <small class="hint" id="robot-1-hint">Delivers parcels across the workshop.</small>
 </label>
+<small class="hint" id="robot-1-hint">Delivers parcels across the workshop.</small>
 ```
 
-Place the hint in the name's column under the label (`grid-column: 2` with subgrid; a column-direction wrapper with flex), and style it smaller and muted with at least 4.5:1 contrast.
+Place the hint in the name's column under the label (`grid-column: 2` when `.options` is a grid), and style it smaller and muted with at least 4.5:1 contrast.
 
 ### Radio groups
 
