@@ -330,11 +330,9 @@ function toggleWidgetState() {
 
 ### Focus indicators
 
-- **Use `:focus-visible` when styling focus indicators:** When defining custom focus indicators, always style the `:focus-visible` state (not `:focus`) explicitly. (Best Practice)
-- **Prefer browser native focus indicators over custom focus indicators:** Leave focus indication to the browser unless custom focus styling is needed to meet contrast or design requirements. (Best Practice)
+- **Mandatory - Define custom keyboard focus indicators using `:focus-visible` paired with `outline` and `outline-offset`:** Always define custom keyboard focus styles using `:focus-visible` rather than `:focus`, pairing `outline` with `outline-offset` so the focus ring is clearly distinguishable, has sufficient contrast against adjacent content, and is visually separated from the element. (2.4.7 Focus Visible (Level AA), 1.4.11 Non-text Contrast (Level AA))
 - **Mandatory - Don't disable browser native focus indicators without providing a replacement custom focus indicator:** When using `outline: none;` to suppress the browser native focus indicator, provide an equivalent custom focus indicator that has a contrast ratio of at least `3:1` against adjacent content (2.4.7 Focus Visible (Level AA), 1.4.11 Non-text Contrast (Level AA)).
 - **Prefer `outline` over other properties for focus rings:** If `box-shadow` must be relied on for focus rings, provide an `outline`-based fallback for High Contrast Mode using the `forced-colors` media query. (Best Practice)
-- **Pair custom focus outlines with `outline-offset`:** This visually separates the ring from the element. (Best Practice)
 
 #### Code Example: Custom focus indication
 
