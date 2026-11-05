@@ -301,7 +301,11 @@ function setupInsightsControls() {
             renderPivotInsights();
         });
         limitInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') limitInput.blur();
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.isComposing || e.keyCode === 229) return;
+                limitInput.blur();
+            }
         });
     }
 
