@@ -513,13 +513,33 @@ export function copyResultsToTarget(workDir: string, targetDir: string, subPath:
     }
   } else {
     // For target-based guides, capture agent.patch for patch-only storage
+    const agentPatchPath = path.join(targetDir, 'agent.patch');
     try {
-      const agentPatchPath = path.join(targetDir, 'agent.patch');
       capturePatchFromGit(workDir, agentPatchPath);
-    } catch (err) {
-      console.warn(`Failed to capture agent patch: ${err}`);
+      console.log(`Saved agent patch in: ${targetDir}`);
+    } catch (err: any) {
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      if (!fs.existsSync(failureFile)) {
+        try {
+          fs.writeFileSync(
+            failureFile,
+            JSON.stringify(
+              {
+                agentName: 'harness',
+                exitCode: 1,
+                stderr: `Failed to capture agent patch: ${err?.message || err}`,
+                stdout: '',
+              },
+              null,
+              2
+            )
+          );
+        } catch (writeErr) {
+          console.error(`Failed to write generation_failed.json:`, writeErr);
+        }
+      }
+      throw err;
     }
-    console.log(`Saved agent patch in: ${targetDir}`);
   }
 }
 
@@ -721,18 +741,14 @@ export async function runCliAgentCommand(
       console.log(`Saved stderr to: ${stderrLogPath}`);
     }
 
-    try {
-      copyResultsToTarget(workDir, targetDir);
-    } catch (e) {
-      console.error(`Failed to copy results from ${workDir} to ${targetDir}:`, e);
-    }
+    copyResultsToTarget(workDir, targetDir);
 
     if (timedOut || exitCode !== 0) {
       throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (15m)' : exitCode}`);
     }
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
-    const finalExitCode = timedOut ? 'TIMEOUT (15m)' : recordedExit;
+    const finalExitCode = timedOut ? 'TIMEOUT (15m)' : (recordedExit || 1);
     
     // Save generation failure info so results collector registers early failure
     try {

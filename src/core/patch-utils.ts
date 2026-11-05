@@ -51,9 +51,36 @@ export interface PatchResult {
   error?: string;
 }
 
+function applyWithGit(absTargetDir: string, absPatchPath: string): void {
+  const realTargetDir = fs.realpathSync(absTargetDir);
+  const ceilingDirs = Array.from(
+    new Set([path.dirname(absTargetDir), path.dirname(realTargetDir)]),
+  ).join(path.delimiter);
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    GIT_CEILING_DIRECTORIES: ceilingDirs,
+  };
+  delete env.GIT_DIR;
+  delete env.GIT_WORK_TREE;
+  delete env.GIT_INDEX_FILE;
+
+  execSync(`git apply --check --binary --whitespace=nowarn --unsafe-paths "${absPatchPath}"`, {
+    cwd: absTargetDir,
+    env,
+    stdio: 'pipe',
+    maxBuffer: MAX_BUFFER,
+  });
+  execSync(`git apply --binary --whitespace=nowarn --unsafe-paths "${absPatchPath}"`, {
+    cwd: absTargetDir,
+    env,
+    stdio: 'pipe',
+    maxBuffer: MAX_BUFFER,
+  });
+}
+
 /**
  * Synchronously applies a unified diff patch file to a target directory.
- * Tries git apply first, falling back to standard patch -p1.
+ * Verifies with a dry-run first so rejected hunks never leave a silent partial apply.
  */
 export function applyPatchSync(targetDir: string, patchPath: string): PatchResult {
   const absPatchPath = path.resolve(patchPath);
@@ -65,15 +92,71 @@ export function applyPatchSync(targetDir: string, patchPath: string): PatchResul
     return { success: false, error: `Target directory not found: ${absTargetDir}` };
   }
 
-  try {
-    execSync(`patch -p1 --no-backup-if-mismatch -i "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe', maxBuffer: MAX_BUFFER });
-    return { success: true };
-  } catch (patchErr: any) {
+  const patchContent = fs.readFileSync(absPatchPath, 'utf8');
+  const binaryDifferMatch = patchContent.match(/^Binary files .+ and .+ differ$/m);
+  if (binaryDifferMatch) {
+    return {
+      success: false,
+      error: `Patch contains binary diff without content (${binaryDifferMatch[0]}); capture with git diff --binary`,
+    };
+  }
+
+  if (/^GIT binary patch$/m.test(patchContent)) {
     try {
-      execSync(`git apply --whitespace=nowarn --unsafe-paths "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe', maxBuffer: MAX_BUFFER });
+      applyWithGit(absTargetDir, absPatchPath);
       return { success: true };
     } catch (gitErr: any) {
-      const errorMsg = patchErr?.stderr?.toString() || gitErr?.stderr?.toString() || patchErr?.message || gitErr?.message || 'Unknown error applying patch';
+      const errorMsg =
+        [gitErr?.stderr?.toString()?.trim(), gitErr?.stdout?.toString()?.trim()]
+          .filter(Boolean)
+          .join('\n') ||
+        gitErr?.message ||
+        'Unknown error applying binary patch';
+      return { success: false, error: errorMsg.trim() };
+    }
+  }
+
+  let dryRunDiagnostic = '';
+  try {
+    const dryOut = execSync(`patch -p1 --dry-run --batch --forward -i "${absPatchPath}"`, {
+      cwd: absTargetDir,
+      stdio: 'pipe',
+      encoding: 'utf8',
+      maxBuffer: MAX_BUFFER,
+    });
+    if (/\bFAILED\b|\bignored\b/i.test(dryOut)) {
+      dryRunDiagnostic = dryOut.trim();
+      throw new Error(dryRunDiagnostic);
+    }
+    execSync(`patch -p1 --no-backup-if-mismatch --batch --forward -r - -i "${absPatchPath}"`, {
+      cwd: absTargetDir,
+      stdio: 'pipe',
+      maxBuffer: MAX_BUFFER,
+    });
+    return { success: true };
+  } catch (patchErr: any) {
+    if (!dryRunDiagnostic) {
+      dryRunDiagnostic = [
+        patchErr?.stdout?.toString()?.trim(),
+        patchErr?.stderr?.toString()?.trim(),
+      ]
+        .filter(Boolean)
+        .join('\n');
+    }
+    try {
+      applyWithGit(absTargetDir, absPatchPath);
+      return { success: true };
+    } catch (gitErr: any) {
+      const errorParts = [
+        dryRunDiagnostic,
+        gitErr?.stderr?.toString()?.trim(),
+        gitErr?.stdout?.toString()?.trim(),
+      ].filter(Boolean);
+      const errorMsg =
+        errorParts.join('\n') ||
+        patchErr?.message ||
+        gitErr?.message ||
+        'Unknown error applying patch';
       return { success: false, error: errorMsg.trim() };
     }
   }
@@ -82,34 +165,67 @@ export function applyPatchSync(targetDir: string, patchPath: string): PatchResul
 /**
  * Captures git modifications (both tracked changes and untracked new files) from a working directory
  * into a relative patch file, excluding package manager lockfiles.
+ *
+ * Streams the binary diff straight to destPatchPath using git's --output flag to avoid child_process
+ * buffer limits on large binary payloads.
+ *
+ * @throws {Error} If git fails to capture the patch (e.g. non-git directory or git error).
+ * @returns {{ success: boolean }} true if non-empty patch was captured; false if working tree was clean.
  */
 export function capturePatchFromGit(
   workDir: string,
   destPatchPath: string,
   relativeSubdir?: string
-): { success: boolean; diff: string } {
+): { success: boolean } {
+  const absDestPatch = path.resolve(destPatchPath);
   try {
     const relFlag = relativeSubdir ? ` --relative="${relativeSubdir}"` : '';
     const targetPath = relativeSubdir ? `"${relativeSubdir}"` : '.';
     const excludeSpecs = EXCLUDED_PATCH_PATHSPECS.map((spec) => `"${spec}"`).join(' ');
 
+    const env: NodeJS.ProcessEnv = { ...process.env };
+    delete env.GIT_DIR;
+    delete env.GIT_WORK_TREE;
+    delete env.GIT_INDEX_FILE;
+
+    fs.mkdirSync(path.dirname(absDestPatch), { recursive: true });
+
     // Stage untracked files with intent-to-add so git diff includes them
-    execSync(`git add -N --ignore-removal ${targetPath}`, { cwd: workDir, stdio: 'ignore' });
+    execSync(`git add -N --ignore-removal ${targetPath}`, { cwd: workDir, env, stdio: ['ignore', 'pipe', 'pipe'] });
 
     // Diff against the initial root commit to include any commits made by the agent
-    const rootCommit = execSync('git rev-list --max-parents=0 HEAD', { cwd: workDir, encoding: 'utf8', maxBuffer: MAX_BUFFER }).trim();
-    const diff = execSync(`git diff ${rootCommit}${relFlag} -- ${targetPath} ${excludeSpecs}`, { cwd: workDir, encoding: 'utf8', maxBuffer: MAX_BUFFER });
+    const rootCommit = execSync('git rev-list --max-parents=0 HEAD', {
+      cwd: workDir,
+      env,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
 
-    if (!diff.trim()) {
-      return { success: false, diff: '' };
+    if (!rootCommit) {
+      throw new Error(`Failed to determine root commit in ${workDir}`);
     }
 
-    fs.mkdirSync(path.dirname(destPatchPath), { recursive: true });
-    fs.writeFileSync(destPatchPath, diff);
-    return { success: true, diff };
+    execSync(
+      `git diff --binary --output="${absDestPatch}" ${rootCommit}${relFlag} -- ${targetPath} ${excludeSpecs}`,
+      { cwd: workDir, env, stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+
+    if (!fs.existsSync(absDestPatch) || fs.statSync(absDestPatch).size === 0) {
+      if (fs.existsSync(absDestPatch)) {
+        fs.unlinkSync(absDestPatch);
+      }
+      return { success: false };
+    }
+
+    return { success: true };
   } catch (err: any) {
-    console.warn(`Failed to capture patch from git in ${workDir}: ${err?.message || err}`);
-    return { success: false, diff: '' };
+    if (fs.existsSync(absDestPatch)) {
+      try {
+        fs.unlinkSync(absDestPatch);
+      } catch {}
+    }
+    const msg = err?.stderr?.toString()?.trim() || err?.stdout?.toString()?.trim() || err?.message || String(err);
+    throw new Error(`Failed to capture patch from git in ${workDir}: ${msg}`, { cause: err });
   }
 }
 

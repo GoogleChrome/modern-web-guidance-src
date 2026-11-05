@@ -4,7 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawn, spawnSync } from 'child_process';
-import { createWorkDir, getGraderScriptContent, runCliAgentCommand } from './agent-shared.ts';
+import { copyResultsToTarget, createWorkDir, getGraderScriptContent, runCliAgentCommand } from './agent-shared.ts';
 import { initGitRepo } from '../../core/patch-utils.ts';
 import { UNSAFE_NO_SANDBOX_ENV } from './sandbox.ts';
 
@@ -147,6 +147,7 @@ describe('runCliAgentCommand', () => {
     const targetDir = path.join(tempDir, 'target');
     fs.mkdirSync(workDir, { recursive: true });
     fs.mkdirSync(targetDir, { recursive: true });
+    initGitRepo(workDir);
     const pidFile = path.join(tempDir, 'orphan.pid');
 
     const prevNoSandbox = process.env[UNSAFE_NO_SANDBOX_ENV];
@@ -178,6 +179,7 @@ describe('runCliAgentCommand', () => {
     const targetDir = path.join(tempDir, 'target');
     fs.mkdirSync(workDir, { recursive: true });
     fs.mkdirSync(targetDir, { recursive: true });
+    initGitRepo(workDir);
     const pidFile = path.join(tempDir, 'child.pid');
     const finallyMarker = path.join(targetDir, 'finally-exported.txt');
     const wrapperScript = path.join(tempDir, 'wrapper.ts');
@@ -238,6 +240,7 @@ describe('runCliAgentCommand', () => {
     const targetDir = path.join(tempDir, 'target');
     const shimDir = path.join(tempDir, '.gd-bin');
     for (const d of [workDir, targetDir, shimDir]) fs.mkdirSync(d, { recursive: true });
+    initGitRepo(workDir);
     const envDumpFile = path.join(workDir, 'env.json');
 
     const prevNoSandbox = process.env[UNSAFE_NO_SANDBOX_ENV];
@@ -268,6 +271,79 @@ describe('runCliAgentCommand', () => {
       else process.env.GD_SUITE_CONFIG = prevSuiteCfg;
       if (prevPath === undefined) delete process.env.PATH;
       else process.env.PATH = prevPath;
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('records infra failure in generation_failed.json when result capture fails after agent exits cleanly', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-cmd-capture-fail-'));
+    const nonGitWorkDir = path.join(tempDir, 'work');
+    const targetDir = path.join(tempDir, 'target');
+    fs.mkdirSync(nonGitWorkDir, { recursive: true });
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    const prevNoSandbox = process.env[UNSAFE_NO_SANDBOX_ENV];
+    process.env[UNSAFE_NO_SANDBOX_ENV] = '1';
+    try {
+      // Agent command itself exits with 0, but workDir is not a git repo so copyResultsToTarget throws
+      await assert.rejects(
+        () => runCliAgentCommand(process.execPath, ['-e', 'process.exit(0)'], nonGitWorkDir, targetDir, 'TestAgent', 'guided'),
+        /Failed to capture patch from git/
+      );
+
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      assert.ok(fs.existsSync(failureFile), 'generation_failed.json must be written');
+      const failureData = JSON.parse(fs.readFileSync(failureFile, 'utf8'));
+      assert.strictEqual(failureData.agentName, 'TestAgent');
+      assert.strictEqual(failureData.exitCode, 1);
+      assert.match(failureData.stderr, /Failed to capture patch from git/);
+    } finally {
+      if (prevNoSandbox === undefined) delete process.env[UNSAFE_NO_SANDBOX_ENV];
+      else process.env[UNSAFE_NO_SANDBOX_ENV] = prevNoSandbox;
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('copyResultsToTarget', () => {
+  test('writes generation_failed.json and throws when patch capture fails on target-based run', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-capture-fail-'));
+    const nonGitWorkDir = path.join(tempDir, 'work');
+    const targetDir = path.join(tempDir, 'target');
+    fs.mkdirSync(nonGitWorkDir, { recursive: true });
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    try {
+      assert.throws(
+        () => copyResultsToTarget(nonGitWorkDir, targetDir),
+        /Failed to capture patch from git/
+      );
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      assert.ok(fs.existsSync(failureFile), 'generation_failed.json must be written on capture failure');
+      const failureData = JSON.parse(fs.readFileSync(failureFile, 'utf8'));
+      assert.strictEqual(failureData.exitCode, 1);
+      assert.match(failureData.stderr, /Failed to capture patch from git/);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('does not create generation_failed.json or agent.patch when workDir has no modifications', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-empty-diff-'));
+    const workDir = path.join(tempDir, 'work');
+    const targetDir = path.join(tempDir, 'target');
+    fs.mkdirSync(workDir, { recursive: true });
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    try {
+      initGitRepo(workDir);
+      // Clean git repository - no agent modifications
+      copyResultsToTarget(workDir, targetDir);
+      const failureFile = path.join(targetDir, 'generation_failed.json');
+      assert.strictEqual(fs.existsSync(failureFile), false, 'generation_failed.json must not exist for clean workDir');
+      const patchFile = path.join(targetDir, 'agent.patch');
+      assert.strictEqual(fs.existsSync(patchFile), false, 'agent.patch must not exist for clean workDir');
+    } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });

@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -131,6 +132,159 @@ describe('applyPatchSync', () => {
     assert.strictEqual(res1.success, false);
     assert.match(res1.error || '', /not found/i);
   });
+
+  test('fails loudly without silent partial apply or .rej files when any hunk is rejected', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-reject-test-'));
+    try {
+      fs.writeFileSync(path.join(tmpDir, 'package.json'), '{\n  "name": "app",\n  "version": "2.0.0"\n}\n');
+      const patchPath = path.join(tmpDir, 'partial.patch');
+      const patchContent = [
+        '--- /dev/null',
+        '+++ b/src/new-feature.ts',
+        '@@ -0,0 +1,1 @@',
+        '+export const ok = true;',
+        '--- a/package.json',
+        '+++ b/package.json',
+        '@@ -1,4 +1,5 @@',
+        ' {',
+        '   "name": "app",',
+        '-  "version": "1.0.0"',
+        '+  "version": "1.0.0",',
+        '+  "dependencies": { "foo": "1.0.0" }',
+        ' }',
+        '',
+      ].join('\n');
+      fs.writeFileSync(patchPath, patchContent);
+
+      const res = applyPatchSync(tmpDir, patchPath);
+      assert.strictEqual(res.success, false, 'Must fail when a hunk is rejected');
+      assert.ok(res.error && res.error.length > 0, 'Must report error details');
+      assert.strictEqual(
+        fs.existsSync(path.join(tmpDir, 'src', 'new-feature.ts')),
+        false,
+        'Must not leave partially applied files when another hunk fails',
+      );
+      assert.strictEqual(
+        fs.existsSync(path.join(tmpDir, 'package.json.rej')),
+        false,
+        'Must not leave .rej files behind',
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('fails loudly without partial apply when patch contains contentless Binary files differ hunk', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-binary-differ-test-'));
+    try {
+      const patchPath = path.join(tmpDir, 'contentless-binary.patch');
+      const patchContent = [
+        'diff --git a/src/loader.js b/src/loader.js',
+        'new file mode 100644',
+        'index 0000000..1111111',
+        '--- /dev/null',
+        '+++ b/src/loader.js',
+        '@@ -0,0 +1 @@',
+        '+export const wasmUrl = "/smallpt/smallpt.wasm";',
+        'diff --git a/smallpt/smallpt.wasm b/smallpt/smallpt.wasm',
+        'new file mode 100644',
+        'index 0000000..72e7bbc',
+        'Binary files /dev/null and b/smallpt/smallpt.wasm differ',
+        '',
+      ].join('\n');
+      fs.writeFileSync(patchPath, patchContent);
+
+      const res = applyPatchSync(tmpDir, patchPath);
+      assert.strictEqual(res.success, false, 'Must fail on contentless binary diff');
+      assert.match(res.error || '', /Binary files \/dev\/null and b\/smallpt\/smallpt\.wasm differ/);
+      assert.strictEqual(
+        fs.existsSync(path.join(tmpDir, 'src', 'loader.js')),
+        false,
+        'Must not partially apply text hunks when patch has contentless binary diff',
+      );
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('applies GIT binary patch hunks alongside text hunks via git apply', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-binary-apply-test-'));
+    const srcRepo = path.join(tmpDir, 'src-repo');
+    const outerGit = path.join(tmpDir, 'outer-git');
+    const targetDir = path.join(outerGit, 'nested', 'target');
+    const patchPath = path.join(tmpDir, 'binary.patch');
+    fs.mkdirSync(srcRepo, { recursive: true });
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    try {
+      execSync('git init && git config user.name "AI" && git config user.email "ai@example.com"', {
+        cwd: srcRepo,
+        stdio: 'ignore',
+      });
+      fs.writeFileSync(path.join(srcRepo, 'index.html'), '<html>old</html>\n');
+      fs.writeFileSync(path.join(targetDir, 'index.html'), '<html>old</html>\n');
+      execSync('git add . && git commit -m "init"', { cwd: srcRepo, stdio: 'ignore' });
+
+      // Initialize an enclosing git repo around targetDir to ensure git apply does not skip nested paths
+      execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git commit --allow-empty -m "init"', {
+        cwd: outerGit,
+        stdio: 'ignore',
+      });
+
+      const wasmBytes = Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x04, 0x01, 0x60, 0x00, 0x00]);
+      fs.mkdirSync(path.join(srcRepo, 'smallpt'), { recursive: true });
+      fs.writeFileSync(path.join(srcRepo, 'smallpt', 'smallpt.wasm'), wasmBytes);
+      fs.writeFileSync(path.join(srcRepo, 'index.html'), '<html>new</html>\n');
+
+      const captured = capturePatchFromGit(srcRepo, patchPath);
+      assert.strictEqual(captured.success, true);
+      const patchContent = fs.readFileSync(patchPath, 'utf8');
+      assert.match(patchContent, /^GIT binary patch$/m);
+      assert.doesNotMatch(patchContent, /^Binary files .+ differ$/m);
+
+      const applied = applyPatchSync(targetDir, patchPath);
+      assert.strictEqual(applied.success, true, `Expected binary patch to apply, got: ${applied.error}`);
+      assert.strictEqual(fs.readFileSync(path.join(targetDir, 'index.html'), 'utf8'), '<html>new</html>\n');
+      const appliedWasm = fs.readFileSync(path.join(targetDir, 'smallpt', 'smallpt.wasm'));
+      assert.strictEqual(appliedWasm.equals(wasmBytes), true, 'Restored binary bytes must match exactly');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('captures and applies a binary file larger than a few MB round-tripping byte-for-byte without buffer errors', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-large-binary-test-'));
+    const srcRepo = path.join(tmpDir, 'src-repo');
+    const targetDir = path.join(tmpDir, 'target-dir');
+    const patchPath = path.join(tmpDir, 'large-binary.patch');
+    fs.mkdirSync(srcRepo, { recursive: true });
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    try {
+      execSync('git init && git config user.name "AI" && git config user.email "ai@example.com"', {
+        cwd: srcRepo,
+        stdio: 'ignore',
+      });
+      fs.writeFileSync(path.join(srcRepo, 'placeholder.txt'), 'init');
+      execSync('git add . && git commit -m "init"', { cwd: srcRepo, stdio: 'ignore' });
+
+      // Generate a 3MB binary payload
+      const binaryBytes = crypto.randomBytes(3 * 1024 * 1024);
+      fs.writeFileSync(path.join(srcRepo, 'large-asset.bin'), binaryBytes);
+
+      const captured = capturePatchFromGit(srcRepo, patchPath);
+      assert.strictEqual(captured.success, true);
+      assert.ok(fs.existsSync(patchPath));
+      assert.ok(fs.statSync(patchPath).size > 3 * 1024 * 1024);
+
+      const applied = applyPatchSync(targetDir, patchPath);
+      assert.strictEqual(applied.success, true, `Expected binary patch to apply, got: ${applied.error}`);
+      const restoredBytes = fs.readFileSync(path.join(targetDir, 'large-asset.bin'));
+      assert.ok(restoredBytes.equals(binaryBytes), 'Restored binary bytes must match original byte-for-byte');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('capturePatchFromGit', () => {
@@ -242,7 +396,21 @@ describe('capturePatchFromGit', () => {
 
       const result = capturePatchFromGit(tmpDir, patchDest);
       assert.strictEqual(result.success, false);
-      assert.strictEqual(result.diff, '');
+      assert.strictEqual(fs.existsSync(patchDest), false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('throws loudly when capturing from a non-git directory', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-nongit-'));
+    const patchDest = path.join(tmpDir, 'out.patch');
+    try {
+      assert.throws(
+        () => capturePatchFromGit(tmpDir, patchDest),
+        /Failed to capture patch from git/
+      );
+      assert.strictEqual(fs.existsSync(patchDest), false);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
