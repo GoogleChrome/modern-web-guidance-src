@@ -36,7 +36,7 @@ Instead of manually implementing a roving tabindex or ARIA activedescendant patt
 </div>
 ```
 
-DO NOT use the WAI-ARIA tabs pattern for page navigation, even if it is intended to be presented as a tabbed interface.
+DO NOT use this or the WAI-ARIA tabs pattern for page navigation, even if it is intended to be presented as a tabbed interface.
 
 Tablist:
 - Prefer `<button>` for the tabs to avoid needing to reimplement button-like behavior. Add `type=button` to avoid unexpected submitter behavior if nested within a form.
