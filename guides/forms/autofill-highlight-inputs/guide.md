@@ -29,28 +29,28 @@ input:autofill {
 ### Overriding the background and text color
 
 Prefer to keep the browser's background and text color. Users have learned that the default highlight means "this was autofilled", and replacing it breaks that association.
-Chromium and WebKit also set `background-color`, `background-image`, and `color` on autofilled fields with `!important` in their user agent stylesheets, so overriding them relies on workarounds.
+All browsers also set `background-color`, `background-image`, and `color` on autofilled fields with `!important` in their user agent stylesheets, so overriding them relies on workarounds.
 
 If your design requires it:
 
 ```css
 input:autofill {
-  /* Fill: an inset box-shadow paints over the forced background */
+  /* Fill: an inset box-shadow paints over the UA's `!important` background */
   box-shadow:
     inset 0 0 0 2px var(--autofill-ring-color),
     inset 0 0 0 100vmax var(--autofill-background-color);
-  /* Text color: -webkit-text-fill-color is not forced by the UA */
+  /* Text color: -webkit-text-fill-color is not set by the UA */
   -webkit-text-fill-color: var(--autofill-text-color);
-  /* The caret still follows the forced color, so set it explicitly */
+  /* The caret still follows the UA's `color`, so set it explicitly */
   caret-color: var(--autofill-text-color);
 }
 ```
 
 Caveats:
-- The forced text color is `FieldText`: black in a light color scheme, white in a dark one. Keep the fill legible against it (e.g. via `light-dark()`), so the field stays readable even if the text color override does not apply.
+- The UA text color is `FieldText`: black in a light color scheme, white in a dark one. Keep the fill legible against it (e.g. via `light-dark()`), so the field stays readable even if the text color override does not apply.
 - The fill is painted over the browser's color, not your page background, so use an opaque `--autofill-background-color`.
 - The rule replaces any other `box-shadow` on the field (e.g. a focus ring done with `box-shadow`); repeat those shadows in the same declaration.
-- `-webkit-text-fill-color` changes painted text only. `color`, and therefore `currentColor`, still resolve to the forced value.
+- `-webkit-text-fill-color` changes painted text only. `color`, and therefore `currentColor`, still resolve to the UA's `FieldText`.
 
 ## Fallback strategies
 
