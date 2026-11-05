@@ -6,12 +6,13 @@ import * as path from 'node:path';
 import { startTargetServer } from './target-server.ts';
 
 describe('startTargetServer', () => {
-  test('serves plain statikk targets via esbuild with index, nested index, and 404 for missing/parent paths', async () => {
+  test('serves plain statikk targets via statikk JS API with index, nested index, and 404 for missing/parent/dotfiles', async () => {
     const outer = fs.mkdtempSync(path.join(os.tmpdir(), 'target-server-static-'));
     const dir = path.join(outer, 'app');
     fs.mkdirSync(dir);
     try {
       fs.writeFileSync(path.join(outer, 'secret.txt'), 'secret');
+      fs.writeFileSync(path.join(dir, '.env'), 'SECRET=1');
       fs.writeFileSync(
         path.join(dir, 'package.json'),
         JSON.stringify({ scripts: { start: 'pnpm dlx statikk --port ${PORT:-11222}' } })
@@ -46,6 +47,9 @@ describe('startTargetServer', () => {
 
         const traversal = await fetch(new URL('/..%2Fsecret.txt', server.url));
         assert.strictEqual(traversal.status, 404);
+
+        const dotfile = await fetch(new URL('/.env', server.url));
+        assert.strictEqual(dotfile.status, 404);
       } finally {
         await server.stop();
       }

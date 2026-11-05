@@ -83,14 +83,15 @@ export async function startTargetServer(
   }
 
   if (!pkgJson.scripts.build && STATIKK_PLAIN_RE.test(pkgJson.scripts.start)) {
-    const esbuild = await import('esbuild');
-    const ctx = await esbuild.context({ logLevel: 'silent' });
-    const { port } = await ctx.serve({ port: 0, host: 'localhost', servedir: targetDir });
+    const { default: statikk } = await import('statikk');
+    const { url, server } = await statikk({ root: targetDir, port: 0 });
     return {
-      url: `http://localhost:${port}/`,
-      stop: async () => {
-        await ctx.dispose();
-      },
+      url: `${url}/`,
+      stop: () =>
+        new Promise<void>((resolve) => {
+          server.closeAllConnections?.();
+          server.close(() => resolve());
+        }),
     };
   }
 
