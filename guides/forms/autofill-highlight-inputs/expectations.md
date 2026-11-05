@@ -6,6 +6,6 @@
 - JavaScript MUST NOT be used to apply inline styles to autofilled inputs (e.g. setting `element.style.*` in response to autofill).
 - The autofilled state MUST NOT change layout-affecting properties (e.g. `border-width`, `padding`, `font-size`).
 - At least one non-color indicator MUST be used to style the autofilled state (e.g. a thicker inset ring via `box-shadow`).
-- The autofilled fill MUST be applied via inset `box-shadow`, not `background-color`.
+- If a custom fill is applied to the autofilled state, it MUST use an inset `box-shadow`, not `background-color`.
 - `outline: none` MUST NOT be applied to autofilled elements.
 - If `outline` is used to style autofilled elements, the `:autofill:focus-visible` state MUST have an outline that differs in more than color (e.g. thickness, style, or offset).
