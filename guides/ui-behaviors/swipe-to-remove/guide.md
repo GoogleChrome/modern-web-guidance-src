@@ -547,7 +547,12 @@ With this setup, the spacers no longer need their own background-color (the trac
 - **DO** use a `MutationObserver` on the list when items are added dynamically (initial render after data loads, infinite scroll, server push). Without it, items appended after page load won't get wired up.
 - **DO NOT** rely on `pointerdown`/`pointermove`/`pointerup` to drive a manual transform. You'll lose the momentum, snap-back, and keyboard scrolling that native scrolling gives you for free.
 - **DO** confirm destructive actions when appropriate. For "remove", consider showing an undo toast after the swipe completes; the gesture is fast and easy to trigger by accident. Also announce the result (for example, "Item One removed") by writing it into a `role="status"` element that is already in the page, because screen readers only announce changes to live regions that existed before the change.
-- **DO** give every swipe action a visible button (or menu item) that performs the same action with a single click or the Enter key, as WCAG 2.5.1 Pointer Gestures requires for path-based gestures. Make each button at least 24×24 CSS pixels (WCAG 2.5.8 Target Size (Minimum)) and name it after the item it acts on. Once a row contains a button, don't add `tabindex` to the track: arrow keys on a focused track commit the action with no confirmation.
+
+## Accessibility considerations
+
+To adhere to WCAG 2.5.1 Pointer Gestures, functionality must not be available solely through swiping gestures. Visible button elements are an accessible alternative way to activate the same functionality. Buttons provide people with disabilities, particularly people using voice control software, with a usable way of activating the same functionality. Make each button at least 24×24 CSS pixels (WCAG 2.5.8 Target Size (Minimum)) and ensure that there's a way of moving focus to the button and operating it using a keyboard alone.
+
+Another way of adhering to the 2.5.1 Pointer Gestures success criterion is by ensuring that the functionality exists elsewhere. For example, in an email app's inbox, if the email can be swiped left to be favourited, but this can also be achieved via a "Favourite email" button after navigating to an email, this would be sufficient. If the intended use case may require many repeated actions, this approach will be less usable, as it would require people with disabilities to have to spend more time accessing the alternative control. Operating system or browser features (such as a long press on iOS) can also be a sufficient alternative, but are often not as discoverable as permanently visible buttons.
 
 ## Fallback strategies
 
