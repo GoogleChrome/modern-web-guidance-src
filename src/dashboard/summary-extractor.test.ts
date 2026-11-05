@@ -141,7 +141,10 @@ test('extractSuiteSummary excludes infra-errored task pairs from guide and suite
     assert.strictEqual(summary.unguidedStats.passed, 0);
 
     // 1 out of 4 total runs was an early failure -> 25% (1/2 guided = 50%, 0/2 unguided = 0%)
+    assert.strictEqual(summary.taskCount, 2);
+    assert.strictEqual(summary.pairedTaskCount, 1);
     assert.strictEqual(summary.earlyFailureRate, 25);
+    assert.strictEqual(summary.earlyFailureCount, 1);
     assert.strictEqual(summary.guidedErrorRate, 50);
     assert.strictEqual(summary.unguidedErrorRate, 0);
 
