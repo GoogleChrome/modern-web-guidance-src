@@ -14,7 +14,6 @@ guides:
 
 # Using and managing icons
 
-
 ## Choosing an Icon Technique
 
 Icon storage and rendering are separate choices. For example, an SVG sprite can supply an icon to the CSS icon system or be referenced with `<use>`.
