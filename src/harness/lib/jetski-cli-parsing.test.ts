@@ -270,3 +270,52 @@ test('parseJetskiCliSession accumulates cached tokens across turns instead of pe
   }
 });
 
+test('parseJetskiCliSession extracts Antigravity CLI ReadFile, FileEdit, WriteFile steps and UTF-8 strings', () => {
+  const tempDir = createTempDir();
+  try {
+    const dbPath = path.join(tempDir, 'session-agy-tools.db');
+    const db = new DatabaseSync(dbPath);
+    db.exec(`
+      CREATE TABLE steps (idx INTEGER, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);
+      CREATE TABLE gen_metadata (idx INTEGER, data BLOB);
+    `);
+
+    const readJson = JSON.stringify({ Path: '/tmp/base_app/src/index.ts', StartLine: 1, EndLine: 50 });
+    const editJson = JSON.stringify({
+      Path: '/tmp/base_app/src/index.ts',
+      Target: 'const oldVal = 1;',
+      Replacement: 'const newVal = 2; // — UTF-8 dash'
+    });
+    const writeJson = JSON.stringify({
+      Path: '/tmp/base_app/src/new-file.ts',
+      Content: 'export const x = "hello • world";',
+      Overwrite: true
+    });
+    const utf8Cmd = 'echo "— UTF-8 dash" && npx -y modern-web-guidance@latest retrieve "consistent-cross-document-transitions"';
+
+    const insertStep = db.prepare('INSERT INTO steps (idx, step_type, status, metadata, step_payload) VALUES (?, ?, ?, ?, ?)');
+    insertStep.run(1, 15, 1, null, encodeField(5, 2, Buffer.from(readJson)));
+    // Duplicate tool execution row (type 132) should be deduplicated
+    insertStep.run(2, 132, 1, null, encodeField(5, 2, Buffer.from(readJson)));
+    insertStep.run(3, 15, 1, null, encodeField(5, 2, Buffer.from(editJson)));
+    insertStep.run(4, 15, 1, null, encodeField(5, 2, Buffer.from(writeJson)));
+    insertStep.run(5, 21, 1, null, encodeField(5, 2, Buffer.from(utf8Cmd)));
+    db.close();
+
+    const parsed = parseJetskiCliSession(tempDir);
+    assert.strictEqual(parsed.steps.length, 3);
+    assert.strictEqual(parsed.steps[0]?.action?.type, 'read_file');
+    assert.strictEqual(parsed.steps[0]?.action?.params?.path, '/tmp/base_app/src/index.ts');
+    assert.strictEqual(parsed.steps[1]?.action?.type, 'write_file');
+    assert.strictEqual(parsed.steps[1]?.action?.name, 'replace_file_content');
+    assert.strictEqual(parsed.steps[1]?.action?.params?.path, '/tmp/base_app/src/index.ts');
+    assert.strictEqual(parsed.steps[2]?.action?.type, 'write_file');
+    assert.strictEqual(parsed.steps[2]?.action?.name, 'write_to_file');
+    assert.strictEqual(parsed.steps[2]?.action?.params?.path, '/tmp/base_app/src/new-file.ts');
+    assert.deepStrictEqual(parsed.retrievedGuides, ['consistent-cross-document-transitions']);
+  } finally {
+    removeTempDir(tempDir);
+  }
+});
+
+
