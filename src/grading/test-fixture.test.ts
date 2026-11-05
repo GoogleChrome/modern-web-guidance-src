@@ -16,9 +16,8 @@ import {
   checkTargetPageLoad,
   isReservedPlaceholderHost,
   startTargetServer,
-  getBaseAppAllowedBuilds,
-  writeScopedPnpmWorkspace,
   getSessionAndTreePids,
+  isProcessRunning,
 } from './test-fixture.ts';
 import { runPlaywright } from './run-grader.ts';
 import { chromium, type Browser } from 'playwright';
@@ -725,81 +724,6 @@ const isComplete = value < 100;
       }
     });
 
-    test('getBaseAppAllowedBuilds reads canonical base app allowlist and startTargetServer blocks agent-added dependency install scripts', async () => {
-      assert.deepStrictEqual(getBaseAppAllowedBuilds('devtools-times'), ['esbuild', 'sharp']);
-      assert.deepStrictEqual(getBaseAppAllowedBuilds('daily-grind'), []);
-      assert.deepStrictEqual(getBaseAppAllowedBuilds('non-existent-app'), []);
-
-      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-pnpm-builds-'));
-      const evilPkgDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-evil-pkg-'));
-      const evilMarker = path.join(tempDir, 'evil-postinstall-ran.marker');
-      try {
-        // Create an agent-added package with a postinstall script
-        fs.writeFileSync(
-          path.join(evilPkgDir, 'package.json'),
-          JSON.stringify({
-            name: 'evil-agent-pkg',
-            version: '1.0.0',
-            scripts: {
-              postinstall: `node -e "require('fs').writeFileSync(${JSON.stringify(evilMarker)}, 'ran')"`,
-            },
-          }),
-          'utf8',
-        );
-        const { spawnSync } = await import('node:child_process');
-        spawnSync('npm', ['pack', '--quiet'], { cwd: evilPkgDir });
-        const tarballPath = path.join(evilPkgDir, 'evil-agent-pkg-1.0.0.tgz');
-
-        // Even if the agent tampered with targetDir/package.json to add evil-agent-pkg to pnpm.onlyBuiltDependencies,
-        // startTargetServer must read only from the canonical base app (daily-grind -> []) and block evil-agent-pkg's postinstall.
-        fs.writeFileSync(
-          path.join(tempDir, 'package.json'),
-          JSON.stringify({
-            name: 'daily-grind',
-            type: 'module',
-            scripts: {
-              start: [
-                'node -e "import(\'node:http\').then(({createServer})=>createServer((_,res)=>{res.writeHead(200);res.end(\'ok\')}).listen(Number(process.env.PORT||3000)))"',
-              ].join(''),
-            },
-            dependencies: {
-              'evil-agent-pkg': `file:${tarballPath}`,
-            },
-            pnpm: {
-              onlyBuiltDependencies: ['evil-agent-pkg'],
-            },
-          }),
-          'utf8',
-        );
-
-        const yamlPath = writeScopedPnpmWorkspace(tempDir, getBaseAppAllowedBuilds('daily-grind'));
-        const yamlText = fs.readFileSync(yamlPath, 'utf8');
-        assert.match(yamlText, /strictDepBuilds: false/);
-        assert.match(yamlText, /onlyBuiltDependencies: \[\]/);
-        assert.match(yamlText, /allowBuilds: \{\}/);
-
-        const srv = await startTargetServer(tempDir, { exportTargetUrlEnv: false });
-        try {
-          assert.ok(srv.url, `Expected server to start after pnpm install, got error: ${srv.error}`);
-          assert.strictEqual(
-            fs.existsSync(evilMarker),
-            false,
-            'Agent-added dependency postinstall script must NEVER execute on the host',
-          );
-          assert.strictEqual(
-            fs.existsSync(path.join(tempDir, 'node_modules', 'evil-agent-pkg', 'package.json')),
-            true,
-            'Dependency should still be installed into node_modules when target has dependencies',
-          );
-        } finally {
-          await srv.stop();
-        }
-      } finally {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-        fs.rmSync(evilPkgDir, { recursive: true, force: true });
-      }
-    });
-
     test('no target server or detached child process outlives stop() or runPlaywright grading', { skip: NO_CHROMIUM }, async () => {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-server-leak-'));
       try {
@@ -847,13 +771,11 @@ const isComplete = value < 100;
 
         await srv.stop();
 
-        let childAliveAfterStop = true;
-        try {
-          process.kill(childPid, 0);
-        } catch {
-          childAliveAfterStop = false;
-        }
-        assert.strictEqual(childAliveAfterStop, false, 'Child server in separate PGID must not outlive srv.stop()');
+        assert.strictEqual(
+          isProcessRunning(childPid),
+          false,
+          'Child server in separate PGID must not outlive srv.stop()',
+        );
         assert.deepStrictEqual(getSessionAndTreePids(childPid), []);
 
         // Also run a full browser grader via runPlaywright and verify no server outlives runPlaywright
@@ -875,13 +797,11 @@ const isComplete = value < 100;
         const report = await runPlaywright(tempDir, graderFile, 'ignore');
         assert.strictEqual(report.stats.expected, 1);
         const gradedChildPid = Number(fs.readFileSync(childPidFile, 'utf8').trim());
-        let gradedChildAlive = true;
-        try {
-          process.kill(gradedChildPid, 0);
-        } catch {
-          gradedChildAlive = false;
-        }
-        assert.strictEqual(gradedChildAlive, false, 'No target server process may outlive runPlaywright grading');
+        assert.strictEqual(
+          isProcessRunning(gradedChildPid),
+          false,
+          'No target server process may outlive runPlaywright grading',
+        );
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }

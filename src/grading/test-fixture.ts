@@ -11,8 +11,7 @@ import {
   spawnPlainTargetServer,
   getSessionAndTreePids,
   killServerProcessTree,
-  getBaseAppAllowedBuilds,
-  writeScopedPnpmWorkspace,
+  isProcessRunning,
   type TargetServer,
   type StartedTargetServer,
 } from './target-server.ts';
@@ -28,8 +27,7 @@ export {
   spawnPlainTargetServer,
   getSessionAndTreePids,
   killServerProcessTree,
-  getBaseAppAllowedBuilds,
-  writeScopedPnpmWorkspace,
+  isProcessRunning,
   type TargetServer,
   type StartedTargetServer,
 };

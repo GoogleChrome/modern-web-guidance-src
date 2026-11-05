@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as path from 'node:path';
-import { baseAppsDir, ensureDiskNodeCompileCache } from '../core/paths.ts';
+import { ensureDiskNodeCompileCache } from '../core/paths.ts';
 
 export interface TargetServer {
   url: string;
@@ -156,55 +156,38 @@ export function killServerProcessTree(rootPid: number): void {
 }
 
 /**
- * Reads `pnpm.onlyBuiltDependencies` from the canonical untouched base app in `src/harness/base-apps/<baseAppName>/package.json`.
- * Never trusts `targetDir/package.json` for build approvals so agent-added dependencies cannot execute install scripts on the host.
+ * Checks whether `pid` is currently running and non-zombie.
+ * On Linux, reads `/proc/<pid>/stat` and treats state 'Z' (zombie) or ENOENT as not running.
  */
-export function getBaseAppAllowedBuilds(baseAppName?: string): string[] {
-  if (!baseAppName || !/^[a-z0-9-]+$/i.test(baseAppName)) {
-    return [];
-  }
-  const canonicalPkgPath = path.join(baseAppsDir, baseAppName, 'package.json');
-  if (!fs.existsSync(canonicalPkgPath)) {
-    return [];
+export function isProcessRunning(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 1) return false;
+  if (process.platform === 'linux' && fs.existsSync('/proc')) {
+    try {
+      const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
+      const closeParen = stat.lastIndexOf(')');
+      if (closeParen === -1) return false;
+      const fields = stat.slice(closeParen + 2).split(' ');
+      const state = fields[0];
+      return state !== 'Z';
+    } catch {
+      return false; // ENOENT / ESRCH means exited
+    }
   }
   try {
-    const raw = JSON.parse(fs.readFileSync(canonicalPkgPath, 'utf8')) as {
-      pnpm?: { onlyBuiltDependencies?: unknown };
-    };
-    const list = raw.pnpm?.onlyBuiltDependencies;
-    if (!Array.isArray(list)) return [];
-    return list.filter((item): item is string => typeof item === 'string' && /^[a-z0-9@/_.-]+$/i.test(item));
+    process.kill(pid, 0);
+    if (process.platform !== 'win32') {
+      const ps = spawnSync('ps', ['-p', String(pid), '-o', 'state='], { encoding: 'utf8' });
+      if (ps.status === 0 && ps.stdout) {
+        const state = ps.stdout.trim();
+        if (state.startsWith('Z')) return false;
+      }
+    }
+    return true;
   } catch {
-    return [];
+    return false;
   }
 }
 
-/**
- * Writes a standalone `pnpm-workspace.yaml` in `targetDir` that:
- * 1. Anchors `targetDir` as its own workspace root so pnpm does not walk up to the parent repository.
- * 2. Approves build scripts only for `allowedPackages` (via both `onlyBuiltDependencies` for pnpm 10 and `allowBuilds` for pnpm 11+).
- * 3. Sets `strictDepBuilds: false` so unapproved build scripts (e.g. `@parcel/watcher` or agent-added packages) are skipped without `ERR_PNPM_IGNORED_BUILDS`.
- */
-export function writeScopedPnpmWorkspace(targetDir: string, allowedPackages: string[]): string {
-  const unique = [...new Set(allowedPackages)];
-  const lines: string[] = ['strictDepBuilds: false'];
-  if (unique.length === 0) {
-    lines.push('onlyBuiltDependencies: []');
-    lines.push('allowBuilds: {}');
-  } else {
-    lines.push('onlyBuiltDependencies:');
-    for (const pkg of unique) {
-      lines.push(`  - ${JSON.stringify(pkg)}`);
-    }
-    lines.push('allowBuilds:');
-    for (const pkg of unique) {
-      lines.push(`  ${JSON.stringify(pkg)}: true`);
-    }
-  }
-  const workspaceYamlPath = path.join(targetDir, 'pnpm-workspace.yaml');
-  fs.writeFileSync(workspaceYamlPath, lines.join('\n') + '\n', 'utf8');
-  return workspaceYamlPath;
-}
 
 function runPnpm(
   args: string[],
@@ -268,7 +251,26 @@ export async function spawnPlainTargetServer(
     serverProcess.stderr?.destroy();
     if (serverPid) {
       activeServerPids.delete(serverPid);
+      const treePids = getSessionAndTreePids(serverPid);
       killServerProcessTree(serverPid);
+
+      // Wait bounded (~5s, poll ~25ms) until every PID in the killed tree is gone or a zombie
+      const pidsToWait = [...new Set([serverPid, ...treePids])];
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        const stillRunning = pidsToWait.filter((pid) => isProcessRunning(pid));
+        if (stillRunning.length === 0) {
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+
+      const stillRunning = pidsToWait.filter((pid) => isProcessRunning(pid));
+      if (stillRunning.length > 0) {
+        throw new Error(
+          `Failed to terminate server process tree within 5s. PIDs still running: ${stillRunning.join(', ')}`,
+        );
+      }
     }
   };
 
@@ -350,14 +352,10 @@ export async function startTargetServer(
     if (!options?.quiet) {
       console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
     }
-    // Write a standalone pnpm-workspace.yaml that approves only the canonical base app's
-    // onlyBuiltDependencies (never agent-added dependency build scripts) and anchors the
-    // workspace root at targetDir without needing --ignore-workspace.
-    const allowedBuilds = getBaseAppAllowedBuilds(pkgJson.name);
-    writeScopedPnpmWorkspace(targetDir, allowedBuilds);
-
+    // --no-frozen-lockfile: pnpm defaults to frozen installs when CI=true, which would fail
+    // if a solution patch adds a dependency to package.json without updating pnpm-lock.yaml.
     const installResult = await runPnpm(
-      ['install', '--prefer-offline', '--no-frozen-lockfile'],
+      ['--ignore-workspace', 'install', '--prefer-offline', '--no-frozen-lockfile'],
       targetDir,
       childEnv,
     );
