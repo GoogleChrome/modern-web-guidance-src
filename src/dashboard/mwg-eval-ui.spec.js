@@ -83,7 +83,7 @@ test.describe('Eval runner (MWG compliance)', () => {
       payload = route.request().postDataJSON();
       await route.fulfill({ json: { success: false, error: 'stubbed' } });
     });
-    page.on('dialog', (d) => { d.dismiss().catch(() => {}); });
+    const dialogDismissed = page.waitForEvent('dialog').then((d) => d.dismiss().catch(() => {}));
     await expect(page.getByRole('group', { name: 'Agent' })).toBeVisible();
     await expect(page.getByRole('radio', { name: 'Antigravity CLI' })).toBeChecked();
     await page.getByText('Claude Code').click();
@@ -94,6 +94,7 @@ test.describe('Eval runner (MWG compliance)', () => {
     await expect(mwg).toBeChecked();
     await page.getByText('other-skill').click();
     await page.locator('#launch-btn').click();
+    await dialogDismissed;
     await expect.poll(() => payload).not.toBeNull();
     expect(payload).toEqual({
       name: null,

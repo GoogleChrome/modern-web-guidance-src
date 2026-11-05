@@ -244,3 +244,81 @@ test('extractSuiteSummary emits Spotlight slices only for featured guides, align
         ['check c', false, false],
     ]);
 });
+
+test('extractSuiteSummary collects pageLoadStats and per-guide page-load failures without changing scores', () => {
+    const summary = extractSuiteSummary('run-page-load', {
+        results: {
+            'daily-grind - switch - unguided': [
+                {
+                    ...mockRun(4, 4),
+                    pageLoad: { ok: false, errors: ['[pageerror] TypeError: Failed to resolve module specifier'] },
+                },
+            ],
+            'daily-grind - switch - guided': [
+                {
+                    ...mockRun(4, 4),
+                    pageLoad: { ok: true, errors: [] },
+                },
+            ],
+            'daily-grind - trusted-types - unguided': [
+                {
+                    ...mockRun(2, 4),
+                    pageLoad: { ok: true, errors: [] },
+                },
+            ],
+            'daily-grind - trusted-types - guided': [
+                {
+                    ...mockRun(4, 4),
+                    pageLoad: { ok: false, errors: ['[pageerror] TypeError: Requires TrustedHTML assignment'] },
+                },
+            ],
+            'node-cli - script - guided': [
+                {
+                    ...mockRun(3, 3),
+                    pageLoad: { ok: true, errors: [], noPage: true },
+                },
+            ],
+            'node-cli - script - unguided': [
+                {
+                    ...mockRun(3, 3),
+                    pageLoad: { ok: true, errors: [], noPage: true },
+                },
+            ],
+        },
+    });
+
+    assert.ok(summary);
+    // Scores are completely unaffected by page-load failures (no score penalty for agent runs).
+    assert.deepStrictEqual(summary.unguidedStats, { passed: 9, total: 11 });
+    assert.deepStrictEqual(summary.guidedStats, { passed: 11, total: 11 });
+    assert.strictEqual(summary.guides.switch.unguidedRate, 100);
+    assert.strictEqual(summary.guides['trusted-types'].guidedRate, 100);
+
+    // Page-load stats record counts by arm and failing runs with firstError (excluding noPage targets).
+    assert.deepStrictEqual(summary.pageLoadStats, {
+        guidedFailed: 1,
+        guidedChecked: 2,
+        unguidedFailed: 1,
+        unguidedChecked: 2,
+        failures: [
+            {
+                guide: 'switch',
+                task: 'daily-grind',
+                runType: 'unguided',
+                runNumber: 1,
+                firstError: '[pageerror] TypeError: Failed to resolve module specifier',
+            },
+            {
+                guide: 'trusted-types',
+                task: 'daily-grind',
+                runType: 'guided',
+                runNumber: 1,
+                firstError: '[pageerror] TypeError: Requires TrustedHTML assignment',
+            },
+        ],
+    });
+    assert.strictEqual(summary.guides.switch.unguidedPageLoadFailures, 1);
+    assert.strictEqual(summary.guides.switch.guidedPageLoadFailures, undefined);
+    assert.strictEqual(summary.guides['trusted-types'].guidedPageLoadFailures, 1);
+    assert.strictEqual(summary.guides['trusted-types'].unguidedPageLoadFailures, undefined);
+});

@@ -466,4 +466,131 @@ test.describe('Suite page MWG compliance', () => {
     });
     expect(borders.select).toBe(borders.outline);
   });
+  test('suite page shows page-load failure counts by agent × arm, failing runs list, and per-guide/per-run indicators without score penalty', async ({ page }) => {
+    await page.route('**/evals.json*', async route => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          agent: 'antigravity_cli',
+          serving: 'skills',
+          model: 'gemini-3-pro',
+          timestamp: '2026-11-04T13:05:58.000Z',
+          summary: {
+            unguidedPassRate: 75,
+            guidedPassRate: 100,
+            unguidedPassed: 6,
+            unguidedTotal: 8,
+            guidedPassed: 8,
+            guidedTotal: 8,
+            runsPerTest: 1,
+            taskCount: 2,
+            runCountPerTask: 1,
+          },
+          stats: {},
+          results: {
+            'daily-grind - switch - unguided': [{
+              runNumber: 1,
+              baseApp: 'daily-grind',
+              guideName: 'switch',
+              taskName: 'daily-grind-switch',
+              results: [
+                { id: 'c1', passed: true, message: 'Renders switch input' },
+                { id: 'c2', passed: true, message: 'Updates state on change' },
+                { id: 'c3', passed: true, message: 'Supports keyboard toggle' },
+                { id: 'c4', passed: true, message: 'Maintains label association' },
+              ],
+              pageLoad: {
+                ok: false,
+                errors: ["[pageerror] TypeError: Failed to resolve module specifier 'input-switch-polyfill'"],
+              },
+            }],
+            'daily-grind - switch - guided': [{
+              runNumber: 1,
+              baseApp: 'daily-grind',
+              guideName: 'switch',
+              taskName: 'daily-grind-switch',
+              results: [
+                { id: 'c1', passed: true, message: 'Renders switch input' },
+                { id: 'c2', passed: true, message: 'Updates state on change' },
+                { id: 'c3', passed: true, message: 'Supports keyboard toggle' },
+                { id: 'c4', passed: true, message: 'Maintains label association' },
+              ],
+              pageLoad: {
+                ok: true,
+                errors: [],
+              },
+            }],
+            'daily-grind - trusted-types - unguided': [{
+              runNumber: 1,
+              baseApp: 'daily-grind',
+              guideName: 'trusted-types',
+              taskName: 'daily-grind-trusted-types',
+              results: [
+                { id: 't1', passed: true, message: 'Enforces Trusted Types CSP' },
+                { id: 't2', passed: true, message: 'Creates default policy' },
+                { id: 't3', passed: false, message: 'Sanitizes HTML input' },
+                { id: 't4', passed: false, message: 'Renders preview safely' },
+              ],
+              pageLoad: {
+                ok: true,
+                errors: [],
+              },
+            }],
+            'daily-grind - trusted-types - guided': [{
+              runNumber: 1,
+              baseApp: 'daily-grind',
+              guideName: 'trusted-types',
+              taskName: 'daily-grind-trusted-types',
+              results: [
+                { id: 't1', passed: true, message: 'Enforces Trusted Types CSP' },
+                { id: 't2', passed: true, message: 'Creates default policy' },
+                { id: 't3', passed: true, message: 'Sanitizes HTML input' },
+                { id: 't4', passed: true, message: 'Renders preview safely' },
+              ],
+              pageLoad: {
+                ok: false,
+                errors: ["[pageerror] TypeError: Failed to execute 'parseFromString' on 'DOMParser': This document requires 'TrustedHTML' assignment."],
+              },
+            }],
+          },
+        }),
+      });
+    });
+
+    await page.goto('/dashboard.html?testId=eval-qual-rev1-after-2026-11-04_13-05-58-antigravity_cli');
+    await expect(page.locator('.task-accordion').first()).toBeVisible();
+
+    // Verify 4 narrative cards invariant and record-only metric row
+    await expect(page.locator('#summary-side-panel article.narrative-card')).toHaveCount(4);
+    const metricRow = page.locator('[data-metric="page-load-failures"]');
+    await expect(metricRow).toContainText('1/2 unguided → 1/2 guided');
+
+    // Verify suite-level page-load failures panel (counts by agent × arm + failing runs list with firstError)
+    const panel = page.locator('#suite-page-load-failures');
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText('antigravity_cli');
+    await expect(panel).toContainText('1/2 unguided');
+    await expect(panel).toContainText('1/2 guided');
+    const items = panel.locator('.page-load-failure-item');
+    await expect(items).toHaveCount(2);
+    await expect(items.nth(0)).toContainText('switch');
+    await expect(items.nth(0)).toContainText('unguided #1');
+    await expect(items.nth(0)).toContainText("Failed to resolve module specifier 'input-switch-polyfill'");
+    await expect(items.nth(1)).toContainText('trusted-types');
+    await expect(items.nth(1)).toContainText('guided #1');
+    await expect(items.nth(1)).toContainText("This document requires 'TrustedHTML' assignment.");
+
+    // Verify per-guide badge and zero score penalty (switch is still 100% -> 100%, +0 pp)
+    const switchAccordion = page.locator('.task-accordion[data-guide="switch"]');
+    await expect(switchAccordion.locator('.page-load-failed-badge')).toHaveText('Page Load Failed');
+    await expect(switchAccordion.locator('.uplift-score')).toContainText('+0 pp');
+
+    // Clicking the failing run link opens the accordion and reveals the per-run indicator
+    await items.nth(0).locator('.page-load-failure-link').click();
+    await expect(switchAccordion).toHaveClass(/open/);
+    const runPageLoadChip = switchAccordion.locator('.tfoot-chip-page-load-failed');
+    await expect(runPageLoadChip).toHaveText('Page Load Failed');
+    await runPageLoadChip.click();
+    await expect(switchAccordion.locator('.page-load-chip-details .tfoot-chip-msg')).toContainText("Failed to resolve module specifier 'input-switch-polyfill'");
+  });
 });

@@ -875,8 +875,14 @@ function renderSuites() {
         const badges = [!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : '', isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''].join('');
         const adhocLabelHtml = !scheduled && label ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
 
+        const pageLoadStats = testInfo.pageLoadStats;
+        const pageLoadFailed = (pageLoadStats?.unguidedFailed || 0) + (pageLoadStats?.guidedFailed || 0);
+        const pageLoadPart = pageLoadFailed > 0
+            ? ` (${pageLoadFailed} page-load err: ${pageLoadStats?.unguidedFailed || 0}U/${pageLoadStats?.guidedFailed || 0}G)`
+            : '';
+
         const metaParts = [
-            taskCount > 0 ? `<span class="nowrap">${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}</span>` : '',
+            taskCount > 0 ? `<span class="nowrap">${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}${pageLoadPart}</span>` : '',
             `<span class="nowrap">${escapeHtml(timeAgo(date))}</span>`,
             ldap ? `<span class="nowrap">${escapeHtml(ldap)}</span>` : ''
         ].filter(Boolean).join(' · ');

@@ -1531,6 +1531,19 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
 .tfoot-chip-error { font-weight: bold; font-size: 0.75rem; color: var(--color-accent-warning); border: 1px solid var(--color-accent-warning); padding: 1px 5px; border-radius: 4px; }
 .tfoot-chip-rate { font-weight: bold; font-size: 0.85rem; color: var(--rate-color, var(--text-primary)); }
 .tfoot-chip-build-failed { font-size: 0.7rem; color: var(--color-accent-failure); }
+.tfoot-chip-page-load-failed { font-size: 0.7rem; color: var(--color-accent-warning); font-weight: 600; }
+.page-load-failed-badge { color: var(--color-accent-warning); border-color: var(--color-accent-warning); background: var(--color-accent-warning-bg); }
+.page-load-failures-panel { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; background: var(--color-surface-container-lowest); border: 1px solid var(--color-outline-variant); border-inline-start: 4px solid var(--color-accent-warning); border-radius: var(--radius-default); }
+.page-load-failures-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
+.page-load-agent-arm-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 0.82rem; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.page-load-arm-pill { font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--color-surface-container); }
+.page-load-failures-list { list-style: none; margin: 0; padding: 8px 0 0; border-top: 1px solid var(--color-outline-variant); display: flex; flex-direction: column; gap: 6px; font-size: 0.78rem; }
+.page-load-failure-item { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.page-load-failure-link { font-weight: 600; color: var(--color-primary); text-decoration: none; white-space: nowrap; }
+.page-load-failure-link:hover { text-decoration: underline; }
+.page-load-failure-task { font-weight: 400; color: var(--text-secondary); }
+.page-load-failure-arm { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; padding: 1px 5px; border-radius: 4px; background: var(--color-accent-warning-bg); color: var(--color-accent-warning); white-space: nowrap; }
+.page-load-failure-error { font-family: var(--font-mono); font-size: 0.74rem; color: var(--text-primary); background: var(--color-surface-container); padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; flex: 1 1 18rem; }
 .tfoot-chip-details { display: flex; flex-direction: column; align-items: center; max-inline-size: 16rem; }
 .tfoot-chip-details > summary { cursor: pointer; }
 .tfoot-chip-msg { margin: 4px 0 0; max-block-size: 8rem; overflow: auto; font-size: 0.7rem; text-align: start; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-primary); }

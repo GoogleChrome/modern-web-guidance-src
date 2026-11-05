@@ -661,7 +661,10 @@ function renderSummary(data) {
     const extracted = extractSuiteSummary(currentTestID || 'suite', data);
     currentSuiteSummary = extracted;
     if (!extracted) return null;
-    const { guidedStats, unguidedStats, a11yStats, efficiencyStats } = extracted;
+    const { guidedStats, unguidedStats, a11yStats, efficiencyStats, pageLoadStats } = extracted;
+    const pageLoadChecked = (pageLoadStats?.unguidedChecked || 0) + (pageLoadStats?.guidedChecked || 0);
+    const pageLoadFailed = (pageLoadStats?.unguidedFailed || 0) + (pageLoadStats?.guidedFailed || 0);
+    const pageLoadFailures = pageLoadStats?.failures || [];
     const rt = efficiencyStats.runtime;
     const tok = efficiencyStats.tokens;
     const results = data.results;
@@ -772,6 +775,7 @@ function renderSummary(data) {
                 ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected runs</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
                 ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</strong> </div>` : ''}
                 ${unguidedLeaksCount > 0 ? `<div class="narrative-metric-row"> <span>Unguided leaks</span> <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} run${unguidedLeaksCount === 1 ? '' : 's'})</strong> </div>` : ''}
+                ${pageLoadChecked > 0 ? `<div class="narrative-metric-row" data-metric="page-load-failures"> <span>Page-load failures (record-only)</span> <strong class="${pageLoadFailed > 0 ? 'text-warning' : 'text-success'}">${pageLoadStats.unguidedFailed}/${pageLoadStats.unguidedChecked} unguided → ${pageLoadStats.guidedFailed}/${pageLoadStats.guidedChecked} guided</strong> </div>` : ''}
             </div>
         </article>
 
@@ -843,6 +847,29 @@ function renderSummary(data) {
                 </div>
             </div>
         </article>
+        ${pageLoadFailures.length > 0 ? `
+        <section id="suite-page-load-failures" class="page-load-failures-panel" aria-label="Page-load failures">
+            <div class="page-load-failures-header">
+                <span class="meta-label">Page-load failures by agent × arm</span>
+                <span class="page-load-agent-arm-summary">
+                    <strong>${escapeHtml(data.agent || 'unknown')}</strong>:
+                    <span class="page-load-arm-pill unguided">${pageLoadStats.unguidedFailed}/${pageLoadStats.unguidedChecked} unguided</span>
+                    <span aria-hidden="true">·</span>
+                    <span class="page-load-arm-pill guided">${pageLoadStats.guidedFailed}/${pageLoadStats.guidedChecked} guided</span>
+                    <span class="narrative-subtext">(${pageLoadFailed} failing run${pageLoadFailed === 1 ? '' : 's'} · record-only, no score penalty)</span>
+                </span>
+            </div>
+            <ul class="page-load-failures-list">
+                ${pageLoadFailures.map(f => `
+                    <li class="page-load-failure-item" data-guide="${escapeHtml(f.guide)}" data-task="${escapeHtml(f.task)}" data-run-type="${escapeHtml(f.runType)}">
+                        <a href="#guide-${encodeURIComponent(f.guide)}" class="page-load-failure-link" data-jump-guide="${escapeHtml(f.guide)}" data-jump-task="${escapeHtml(f.task)}">${escapeHtml(f.guide)} <span class="page-load-failure-task">(${escapeHtml(f.task)})</span></a>
+                        <span class="page-load-failure-arm ${escapeHtml(f.runType)}">${escapeHtml(f.runType)} #${f.runNumber}</span>
+                        <code class="page-load-failure-error">${escapeHtml(f.firstError)}</code>
+                    </li>
+                `).join('')}
+            </ul>
+        </section>
+        ` : ''}
     `;
     const jumpLink = container.querySelector('a[data-filter-a11y-guides]');
     jumpLink?.addEventListener('click', (e) => {
@@ -858,9 +885,27 @@ function renderSummary(data) {
         const guideSection = document.getElementById('guide-section');
         guideSection?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
     });
+    container.querySelectorAll('a.page-load-failure-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            if (!(link instanceof HTMLAnchorElement)) return;
+            const targetGuide = link.dataset.jumpGuide;
+            const targetTask = link.dataset.jumpTask;
+            if (!targetGuide) return;
+            e.preventDefault();
+            const accordionEl = (targetTask && document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"][data-task="${CSS.escape(targetTask)}"]`))
+                || document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"]`);
+            if (accordionEl) {
+                accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
+                if (!accordionEl.classList.contains('open')) {
+                    const header = $('.task-accordion-header', accordionEl);
+                    if (header) header.click();
+                }
+            }
+        });
+    });
     return extracted;
 }
-/** @typedef {{ appName: string, guide: string, scenarioName: string, category: string, categoryLabel: string, featureIds: string[], unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
+/** @typedef {{ appName: string, guide: string, scenarioName: string, category: string, categoryLabel: string, featureIds: string[], unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, pageLoadFailureCount: number, hasPageLoadFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
 const YIELD_BUDGET_MS = 50;
 /** @returns {Promise<void>} */
 function yieldToMain() {
@@ -872,6 +917,7 @@ function yieldToMain() {
 const HINT_TEXT = {
     infra: 'Infrastructure or CLI errors stop a run before grading. Those runs are excluded from pass rates.',
     build: "The agent produced a broken app or build, so grading failed. Open the task to see each run's failure reason.",
+    pageload: "The page had runtime errors, failed script loads, or server errors during grading (record-only; no score penalty). Open the task to inspect each run's page-load error.",
     leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the run isn't a clean baseline.",
     invalid: 'Excluded from the rollup because one or both sides have 0 valid runs.',
 };
@@ -1043,6 +1089,13 @@ async function computeScenarios(data) {
             const infraErrorCount = countInfraErrors(unguidedRuns) + countInfraErrors(guidedRuns);
             const hasInfraError = infraErrorCount > 0;
             const hasBuildFailure = [...(unguidedRuns || []), ...(guidedRuns || [])].some(r => r.results?.some(c => c.failureReason));
+            /**
+             * @param {DashboardRunResult[] | undefined} runs
+             * @returns {number}
+             */
+            const countPageLoadFailures = (runs) => (runs || []).filter(r => !isEarlyFailureRun(r.results) && r.pageLoad && !r.pageLoad.noPage && r.pageLoad.ok === false).length;
+            const pageLoadFailureCount = countPageLoadFailures(unguidedRuns) + countPageLoadFailures(guidedRuns);
+            const hasPageLoadFailure = pageLoadFailureCount > 0;
             const leakCount = (unguidedRuns || []).filter(r => isUnguidedLeakRun(r, guide)).length;
             const hasLeak = leakCount > 0;
             const hasFailure = hasInfraError || hasBuildFailure;
@@ -1074,6 +1127,8 @@ async function computeScenarios(data) {
                 infraErrorCount,
                 hasInfraError,
                 hasBuildFailure,
+                pageLoadFailureCount,
+                hasPageLoadFailure,
                 leakCount,
                 hasLeak,
                 hasFailure
@@ -1338,7 +1393,7 @@ function buildAccordion(item, testId) {
         unguidedAvg, guidedAvg, uplift,
         a11yUnguidedAvg, a11yGuidedAvg, a11yUplift, a11yCheckCount,
         uRuntimeMs, gRuntimeMs, uUncachedTokens, gUncachedTokens,
-        infraErrorCount, hasInfraError, hasBuildFailure, leakCount, hasFailure
+        infraErrorCount, hasInfraError, hasBuildFailure, pageLoadFailureCount, hasPageLoadFailure, leakCount, hasFailure
     } = item;
     const displayU = currentMetricMode === 'a11y' ? a11yUnguidedAvg : unguidedAvg;
     const displayG = currentMetricMode === 'a11y' ? a11yGuidedAvg : guidedAvg;
@@ -1396,13 +1451,16 @@ function buildAccordion(item, testId) {
     const buildBadgeHtml = hasBuildFailure
         ? hintButton('build', 'generation-failed-badge', 'Build Failed', HINT_TEXT.build)
         : '';
+    const pageLoadBadgeHtml = hasPageLoadFailure
+        ? hintButton('pageload', 'generation-failed-badge page-load-failed-badge', pageLoadFailureCount > 1 ? `${pageLoadFailureCount} Page Load Failures` : 'Page Load Failed', HINT_TEXT.pageload)
+        : '';
     const leakBadgeHtml = leakCount > 0
         ? hintButton('leak', 'generation-failed-badge leak-badge', leakCount > 1 ? `${leakCount} Unguided Leaks` : 'Unguided Leak', HINT_TEXT.leak)
         : '';
     const invalidBadgeHtml = displayUplift === null
         ? hintButton('invalid', '', 'INVALID', HINT_TEXT.invalid)
         : '';
-    const badgesHtml = [featureChipHtml, rowCategoryHtml, infraBadgeHtml, buildBadgeHtml, leakBadgeHtml].filter(Boolean).join('');
+    const badgesHtml = [featureChipHtml, rowCategoryHtml, infraBadgeHtml, buildBadgeHtml, pageLoadBadgeHtml, leakBadgeHtml].filter(Boolean).join('');
     accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <div class="task-title-row"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="expand-icon" aria-hidden="true"></span>
                         <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(guide)}${appSuffixHtml}</span>
                     </button>
@@ -1671,6 +1729,10 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const isLeak = typeLabel === 'Unguided' && isUnguidedLeakRun(run, scenarioGuide);
                  const earlyFailureMsg = isEarlyFailure ? (run.results?.find(c => c.isEarlyFailure)?.message || 'Infrastructure Error') : '';
                  const buildFailureReason = !isEarlyFailure ? (run.results?.find(c => c.failureReason)?.failureReason || '') : '';
+                 const pageLoadFailed = !isEarlyFailure && Boolean(run.pageLoad && !run.pageLoad.noPage && run.pageLoad.ok === false);
+                 const pageLoadFailureMsg = pageLoadFailed
+                     ? ((Array.isArray(run.pageLoad?.errors) && run.pageLoad.errors.length > 0 ? run.pageLoad.errors.join('\n') : '') || run.pageLoad?.buildWarning || 'Page failed to load')
+                     : '';
                  const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
                  const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                  const appUrl = (api.source === 'remote' && !isLocalServer)
@@ -1688,6 +1750,7 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                          }
                          ${isLeak ? `<span class="run-chip-leak">Unguided Leak<span class="visually-hidden">: accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}</span></span>` : ''}
                          ${buildFailureReason ? `<details class="tfoot-chip-details"><summary class="tfoot-chip-build-failed">Build Failed</summary><p class="tfoot-chip-msg">${escapeHtml(buildFailureReason)}</p></details>` : ''}
+                         ${pageLoadFailed ? `<details class="tfoot-chip-details page-load-chip-details"><summary class="tfoot-chip-page-load-failed">Page Load Failed</summary><p class="tfoot-chip-msg">${escapeHtml(pageLoadFailureMsg)}</p></details>` : ''}
                          ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent duration: </span>${formatDuration(taskRuntime)}</span>` : ''}
                          ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)}<span class="visually-hidden"> uncached tokens, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
                          <div class="tfoot-chip-actions">

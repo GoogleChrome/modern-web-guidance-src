@@ -13,8 +13,26 @@ const TIMEOUT_MS = 900000;
  * @property {number} unguidedRate
  * @property {number | null} uplift null unless both sides ran checks
  * @property {SubCategoryA11yStats} [a11y]
+ * @property {number} [guidedPageLoadFailures]
+ * @property {number} [unguidedPageLoadFailures]
  * @property {Record<string, GuideSummary>} [tasks]
  * @property {string} [taskName]
+ */
+/**
+ * @typedef {Object} SuitePageLoadFailure
+ * @property {string} guide
+ * @property {string} task
+ * @property {'guided' | 'unguided'} runType
+ * @property {number} runNumber
+ * @property {string} firstError
+ */
+/**
+ * @typedef {Object} SuitePageLoadStats
+ * @property {number} guidedFailed
+ * @property {number} guidedChecked
+ * @property {number} unguidedFailed
+ * @property {number} unguidedChecked
+ * @property {SuitePageLoadFailure[]} failures
  */
 /** @typedef {Object} SubCategoryA11yStats
  * @property {number} guidedPassed
@@ -111,6 +129,7 @@ const TIMEOUT_MS = 900000;
  * @property {{ passed: number, total: number }} unguidedStats
  * @property {SuiteA11yStats} a11yStats
  * @property {SuiteEfficiencyStats} efficiencyStats
+ * @property {SuitePageLoadStats} pageLoadStats
  * @property {number} earlyFailureRate
  * @property {number} [guidedErrorRate]
  * @property {number} [unguidedErrorRate]
@@ -193,6 +212,16 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const suiteGuideA11y = {};
     /** @type {Record<string, Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>>} */
     const suiteGuideTaskA11y = {};
+    /** @type {Record<string, { guided: number, unguided: number }>} */
+    const suiteGuidePageLoad = {};
+    /** @type {Record<string, Record<string, { guided: number, unguided: number }>>} */
+    const suiteGuideTaskPageLoad = {};
+    let pageLoadGuidedFailed = 0;
+    let pageLoadGuidedChecked = 0;
+    let pageLoadUnguidedFailed = 0;
+    let pageLoadUnguidedChecked = 0;
+    /** @type {SuitePageLoadFailure[]} */
+    const pageLoadFailures = [];
     /**
      * Per-task totals, so multi-target guides stay distinguishable after summing to guide level.
      * @type {Record<string, Record<string, { guided: {passed: number, total: number}, unguided: {passed: number, total: number} }>>}
@@ -305,6 +334,29 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
                 const { guide, task } = parsedKey;
                 const runtimeMs = getAgentRuntimeMs(run);
                 const earlyFailed = isEarlyFailureRun(run.results);
+                if (!earlyFailed && run.pageLoad && !run.pageLoad.noPage) {
+                    if (runType === 'guided') pageLoadGuidedChecked += 1;
+                    else pageLoadUnguidedChecked += 1;
+                    if (run.pageLoad.ok === false) {
+                        if (runType === 'guided') pageLoadGuidedFailed += 1;
+                        else pageLoadUnguidedFailed += 1;
+                        if (!suiteGuidePageLoad[guide]) suiteGuidePageLoad[guide] = { guided: 0, unguided: 0 };
+                        suiteGuidePageLoad[guide][runType] += 1;
+                        if (task) {
+                            if (!suiteGuideTaskPageLoad[guide]) suiteGuideTaskPageLoad[guide] = {};
+                            if (!suiteGuideTaskPageLoad[guide][task]) suiteGuideTaskPageLoad[guide][task] = { guided: 0, unguided: 0 };
+                            suiteGuideTaskPageLoad[guide][task][runType] += 1;
+                        }
+                        const firstError = (Array.isArray(run.pageLoad.errors) && run.pageLoad.errors[0]) || run.pageLoad.buildWarning || 'Page failed to load';
+                        pageLoadFailures.push({
+                            guide,
+                            task,
+                            runType,
+                            runNumber: run.runNumber ?? 1,
+                            firstError
+                        });
+                    }
+                }
                 const timedOut = runtimeMs >= TIMEOUT_MS ||
                     (earlyFailed && (run.results || []).some(c => /timeout/i.test(c.message || '')));
                 if (timedOut) { if (runType === 'guided') guidedTimeouts += 1; else unguidedTimeouts += 1; }
@@ -357,12 +409,26 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         };
     };
 
+    /**
+     * @param {GuideSummary} summary
+     * @param {{ guided: number, unguided: number } | undefined} pageLoad
+     * @returns {GuideSummary}
+     */
+    const attachPageLoadFailures = (summary, pageLoad) => {
+        if (!pageLoad || (pageLoad.guided === 0 && pageLoad.unguided === 0)) return summary;
+        return {
+            ...summary,
+            ...(pageLoad.guided > 0 ? { guidedPageLoadFailures: pageLoad.guided } : {}),
+            ...(pageLoad.unguided > 0 ? { unguidedPageLoadFailures: pageLoad.unguided } : {}),
+        };
+    };
+
     /** @type {Record<string, GuideSummary>} */
     const guidesFormatted = {};
     Object.keys(suiteGuides).forEach(guide => {
         const stats = formatStats(suiteGuides[guide]);
         const a11y = suiteGuideA11y[guide] ? formatStats(suiteGuideA11y[guide]) : undefined;
-        const base = a11y ? { ...stats, a11y } : stats;
+        const base = attachPageLoadFailures(a11y ? { ...stats, a11y } : stats, suiteGuidePageLoad[guide]);
         const taskNames = Object.keys(suiteGuideTasks[guide] || {});
 
         // A guide with one task is fully described by its roll-up, so store just the name.
@@ -380,9 +446,10 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         taskNames.forEach(task => {
             const taskStats = formatStats(suiteGuideTasks[guide][task]);
             const taskA11y = suiteGuideTaskA11y[guide]?.[task];
-            tasks[task] = (taskA11y && (taskA11y.guided.total > 0 || taskA11y.unguided.total > 0))
+            const withA11y = (taskA11y && (taskA11y.guided.total > 0 || taskA11y.unguided.total > 0))
                 ? { ...taskStats, a11y: formatStats(taskA11y) }
                 : taskStats;
+            tasks[task] = attachPageLoadFailures(withA11y, suiteGuideTaskPageLoad[guide]?.[task]);
         });
         guidesFormatted[guide] = { ...base, tasks };
     });
@@ -472,6 +539,21 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
     const unguidedErrorRate = unguidedTotalRuns > 0 ? Math.round((uFailures / unguidedTotalRuns) * 100) : 0;
     const unguidedLeakRate = unguidedTotalRuns > 0 ? Math.round((unguidedLeaks / unguidedTotalRuns) * 100) : 0;
 
+    pageLoadFailures.sort((a, b) =>
+        a.guide.localeCompare(b.guide) ||
+        a.task.localeCompare(b.task) ||
+        a.runType.localeCompare(b.runType) ||
+        (a.runNumber - b.runNumber)
+    );
+    /** @type {SuitePageLoadStats} */
+    const pageLoadStats = {
+        guidedFailed: pageLoadGuidedFailed,
+        guidedChecked: pageLoadGuidedChecked,
+        unguidedFailed: pageLoadUnguidedFailed,
+        unguidedChecked: pageLoadUnguidedChecked,
+        failures: pageLoadFailures
+    };
+
     const chartData = calculateChartData(results, eligibleScenarios);
     const showcase = buildShowcaseSlices(showcaseRuns);
 
@@ -487,6 +569,7 @@ export function extractSuiteSummary(testId, evalsData, forcedTimestamp = null) {
         unguidedStats: { passed: unguidedPassed, total: unguidedTotal },
         a11yStats,
         efficiencyStats,
+        pageLoadStats,
         earlyFailureRate: earlyFailureRate,
         guidedErrorRate: guidedErrorRate,
         unguidedErrorRate: unguidedErrorRate,
