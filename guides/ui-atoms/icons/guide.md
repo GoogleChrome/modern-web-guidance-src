@@ -45,8 +45,8 @@ Whichever icon technique you choose, make sure that:
 * Standalone interactive icons have a valid accessible name:
   * For SVGs, give the container interactive element an accessible name with `aria-label`.
   * For icons inserted via pseudo-elements in CSS, either:
-    * Give the container interactive element an accessible name with `aria-label`.
-    * Let the icon itself provide one (see Icon-Only Controls below)
+    * Give the container interactive element an accessible name with `aria-label` **or**
+    * Let the icon itself provide one (see Icon-Only Controls below).
 
 ## Primary Approach: CSS-Driven Icon Engine
 
