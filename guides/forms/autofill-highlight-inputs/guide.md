@@ -23,8 +23,6 @@ input:autofill {
   /* Non-color indicator without layout shift: a thicker inset ring */
   box-shadow: inset 0 0 0 2px var(--autofill-ring-color);
   border-color: var(--autofill-ring-color);
-  /* Firefox tints autofilled fields with a filter instead of a background */
-  filter: none;
 }
 ```
 
