@@ -657,13 +657,6 @@
       submenu.showPopover({ source: trigger });
     });
 
-    // Focus preview: keyboard focus only, so a pointer click is not toggled twice
-    trigger.addEventListener("focus", () => {
-      if (!trigger.matches(":focus-visible")) return;
-      if (!submenu.matches("[popover]") || submenu.matches(":popover-open")) return;
-      submenu.showPopover({ source: trigger });
-    });
-
     // Close the wide submenu once focus moves to an element outside the list item
     dropdown.addEventListener("focusout", (event) => {
       if (!submenu.matches(":popover-open") || !event.relatedTarget || dropdown.contains(event.relatedTarget)) return;
