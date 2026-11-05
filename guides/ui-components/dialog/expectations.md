@@ -7,6 +7,7 @@
 - When a dialog guards unsaved form changes, it has `closedby="none"`.
 - When a dialog guards unsaved form changes, it stays open after a cancel request with unsaved edits until the user confirms.
 - A non-modal dialog panel leaves the page behind it interactive.
+- Temporarily move non-modal dialogs if elements behind the dialog have focus to ensure the focused element is not obscured
 - While a modal dialog is open, content outside it is not focusable.
 - No `<dialog>` has `role="dialog"` or `aria-modal`.
 - While a modal dialog is open, scrolling over its backdrop or inside it does not scroll the page behind it.
