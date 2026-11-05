@@ -47,7 +47,7 @@ Define sliding animations to and from each direction. For best performance, anim
 
 ### Set up shared animation settings
 
-Use the `::view-transition-group(root)` selector to apply animation settings that are shared across all transitions.
+Use the `::view-transition-group(root)` selector to apply animation settings that are shared across all transitions. The transition group must use a non-linear timing function (such as an `ease` keyword or `cubic-bezier()`) rather than `linear`, which makes directional slide transitions feel mechanical and abrupt.
 
 ```css
 ::view-transition-group(root){
