@@ -13,6 +13,7 @@ export interface SetAllowOriginTrialsOptions {
   isTTY?: boolean;
   askConfirmation?: (targetPath: string) => Promise<boolean>;
   cwd?: string;
+  env?: NodeJS.ProcessEnv;
 }
 
 async function defaultAskConfirmation(targetPath: string): Promise<boolean> {
@@ -29,13 +30,13 @@ async function defaultAskConfirmation(targetPath: string): Promise<boolean> {
 }
 
 export async function handleSetAllowOriginTrials(opts: SetAllowOriginTrialsOptions = {}): Promise<number> {
-  const detected = determineAgent();
-  const isAgent = opts.isAgent ?? detected.isAgent;
   const isTTY = opts.isTTY ?? Boolean(process.stdin.isTTY);
+  const detected = opts.isAgent === false ? undefined : determineAgent(opts.env, undefined, isTTY);
+  const isAgent = opts.isAgent ?? Boolean(detected?.isAgent);
 
   if (isAgent || !isTTY) {
     const reason = isAgent
-      ? `detected agent environment${detected.agent?.name ? `: ${detected.agent.name}` : ''}`
+      ? `detected agent environment${detected?.agent?.name ? `: ${detected.agent.name}` : ''}`
       : 'non-interactive stdin';
     console.error(
       `Error: \`set-allow-origin-trials\` must be run interactively by a human developer, not an AI agent (${reason}).\n` +

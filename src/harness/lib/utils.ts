@@ -8,6 +8,8 @@ import {
   spawnAsync,
   setupAgentCredentials,
   getAgentCommandAndArgs,
+  getAgentChildEnvOverrides,
+  sanitizeAgentChildEnv,
 } from './agent-shared.ts';
 import { Agents } from '../config.ts';
 import { getDefaultSolutionAgent } from '../../core/guide-validation.ts';
@@ -63,11 +65,11 @@ export async function runAgent(
   const { command, commandArgs } = options.homeDir
     ? wrapCommandInSandbox(raw.command, raw.commandArgs, buildSandboxPolicy(options.homeDir, 'unguided'))
     : raw;
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
+  const env = sanitizeAgentChildEnv(process.env, {
+    ...getAgentChildEnvOverrides(agent, options.homeDir),
     ...(options.homeDir ? { HOME: options.homeDir, ZDOTDIR: options.homeDir } : {}),
     ...(workDir ? { PWD: workDir } : {}),
-  };
+  });
 
   if (options.captureOutput) {
     return runCommand(command, commandArgs, workDir, env);

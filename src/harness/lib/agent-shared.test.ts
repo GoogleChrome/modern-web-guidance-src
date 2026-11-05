@@ -4,7 +4,15 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawn, spawnSync } from 'child_process';
-import { createWorkDir, getGraderScriptContent, runCliAgentCommand } from './agent-shared.ts';
+import {
+  createWorkDir,
+  getAgentChildEnvOverrides,
+  getGraderScriptContent,
+  runCliAgentCommand,
+  sanitizeAgentChildEnv,
+} from './agent-shared.ts';
+import { Agents } from '../config.ts';
+import { DETECTED_AGENT_ENV_VARS, determineAgent } from '../../cli/telemetry/detect-agent.ts';
 import { initGitRepo } from '../../core/patch-utils.ts';
 import { UNSAFE_NO_SANDBOX_ENV } from './sandbox.ts';
 
@@ -232,44 +240,164 @@ describe('runCliAgentCommand', () => {
     }
   });
 
-  test('strips harness and pnpm environment leaks and results/ PATH entries from child environment', async () => {
+  test('strips harness, pnpm, and host AI-agent environment leaks while preserving provider config and applying overrides', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-env-'));
     const workDir = path.join(tempDir, 'work');
     const targetDir = path.join(tempDir, 'target');
     const shimDir = path.join(tempDir, '.gd-bin');
+    const piAgentDir = path.join(tempDir, '.pi', 'agent');
     for (const d of [workDir, targetDir, shimDir]) fs.mkdirSync(d, { recursive: true });
     const envDumpFile = path.join(workDir, 'env.json');
 
-    const prevNoSandbox = process.env[UNSAFE_NO_SANDBOX_ENV];
-    const prevPkgName = process.env.PNPM_PACKAGE_NAME;
-    const prevSuiteCfg = process.env.GD_SUITE_CONFIG;
-    const prevPath = process.env.PATH;
-    const pnpmInjectedBin = path.join(process.cwd(), 'results', 'suites', 's', '1', 'secret-guide', 'demo', 'unguided', 'node_modules', '.bin');
-    process.env[UNSAFE_NO_SANDBOX_ENV] = '1';
-    process.env.PNPM_PACKAGE_NAME = 'modern-web-guidance-src';
-    process.env.GD_SUITE_CONFIG = '/repo/results/suites/s/suite_config.json';
-    process.env.PATH = `${pnpmInjectedBin}:${path.join(targetDir, 'node_modules', '.bin')}:${prevPath || ''}`;
+    const prevEnv: Record<string, string | undefined> = {};
+    const testEnv: Record<string, string> = {
+      [UNSAFE_NO_SANDBOX_ENV]: '1',
+      PNPM_PACKAGE_NAME: 'modern-web-guidance-src',
+      GD_SUITE_CONFIG: '/repo/results/suites/s/suite_config.json',
+      AI_AGENT: 'custom-agent',
+      AGENT: 'amp',
+      ANTIGRAVITY_AGENT: 'true',
+      ANTIGRAVITY_LS_ADDRESS: '127.0.0.1:42000',
+      INVOKER_INFO_CHAIN: 'host',
+      CLAUDECODE: '1',
+      CLAUDE_CODE_SESSION_ID: 'sess-123',
+      CODEX_THREAD_ID: 'thread-456',
+      CODEX_HOME: '/tmp/host-codex',
+      GEMINI_CLI: '1',
+      CURSOR_AGENT: '1',
+      CURSOR_TRACE_ID: 'trace-123',
+      PI_CODING_AGENT: 'true',
+      PI_CODING_AGENT_DIR: '/tmp/host/.pi/agent',
+      CLAUDE_CODE_USE_VERTEX: '1',
+      GEMINI_CLI_TRUST_WORKSPACE: 'true',
+      ANTIGRAVITY_GCP_PROJECT: 'eval-gcp-project',
+      GPG_AGENT_INFO: '/tmp/gpg-agent',
+      PATH: [
+        path.join(process.cwd(), 'results', 'suites', 's', '1', 'secret-guide', 'demo', 'unguided', 'node_modules', '.bin'),
+        path.join(targetDir, 'node_modules', '.bin'),
+        '/Users/dev/.pi/agent/bin',
+        process.env.PATH || '',
+      ].filter(Boolean).join(path.delimiter),
+    };
+    for (const [k, v] of Object.entries(testEnv)) {
+      prevEnv[k] = process.env[k];
+      process.env[k] = v;
+    }
 
     try {
       const script = `require('fs').writeFileSync(${JSON.stringify(envDumpFile)}, JSON.stringify(process.env));`;
       await runCliAgentCommand(process.execPath, ['-e', script], workDir, targetDir, 'TestAgent', 'unguided');
       const childEnv = JSON.parse(fs.readFileSync(envDumpFile, 'utf8'));
-      assert.strictEqual(childEnv.PNPM_PACKAGE_NAME, undefined);
-      assert.strictEqual(childEnv.GD_SUITE_CONFIG, undefined);
+      for (const stripped of [
+        'PNPM_PACKAGE_NAME',
+        'GD_SUITE_CONFIG',
+        'AI_AGENT',
+        'AGENT',
+        'ANTIGRAVITY_AGENT',
+        'ANTIGRAVITY_LS_ADDRESS',
+        'INVOKER_INFO_CHAIN',
+        'CLAUDECODE',
+        'CLAUDE_CODE_SESSION_ID',
+        'CODEX_THREAD_ID',
+        'CODEX_HOME',
+        'GEMINI_CLI',
+        'CURSOR_AGENT',
+        'CURSOR_TRACE_ID',
+        'PI_CODING_AGENT',
+        'PI_CODING_AGENT_DIR',
+      ]) {
+        assert.strictEqual(childEnv[stripped], undefined, `Expected ${stripped} to be stripped`);
+      }
+      assert.strictEqual(childEnv.CLAUDE_CODE_USE_VERTEX, '1');
+      assert.strictEqual(childEnv.GEMINI_CLI_TRUST_WORKSPACE, 'true');
+      assert.strictEqual(childEnv.ANTIGRAVITY_GCP_PROJECT, 'eval-gcp-project');
+      assert.strictEqual(childEnv.GPG_AGENT_INFO, '/tmp/gpg-agent');
+
       const pathEntries = (childEnv.PATH || '').split(path.delimiter);
       assert.strictEqual(pathEntries[0], shimDir);
-      assert.ok(!pathEntries.some((p: string) => p.includes('secret-guide') || p.startsWith(targetDir)));
+      assert.ok(!pathEntries.some((p: string) => p.includes('secret-guide') || p.startsWith(targetDir) || p.includes('/.pi/agent')));
+
+      assert.strictEqual(getAgentChildEnvOverrides(Agents.CLAUDE_CODE, tempDir), undefined);
+      assert.deepStrictEqual(getAgentChildEnvOverrides(Agents.PI), { PI_CODING_AGENT: 'true' });
+      const piOverrides = getAgentChildEnvOverrides(Agents.PI, tempDir);
+      assert.deepStrictEqual(piOverrides, { PI_CODING_AGENT: 'true', PI_CODING_AGENT_DIR: piAgentDir });
+
+      await runCliAgentCommand(
+        process.execPath,
+        ['-e', script],
+        workDir,
+        targetDir,
+        'Pi',
+        'unguided',
+        piOverrides,
+      );
+      const piEnv = JSON.parse(fs.readFileSync(envDumpFile, 'utf8'));
+      assert.strictEqual(piEnv.PI_CODING_AGENT, 'true');
+      assert.strictEqual(piEnv.PI_CODING_AGENT_DIR, piAgentDir);
     } finally {
-      if (prevNoSandbox === undefined) delete process.env[UNSAFE_NO_SANDBOX_ENV];
-      else process.env[UNSAFE_NO_SANDBOX_ENV] = prevNoSandbox;
-      if (prevPkgName === undefined) delete process.env.PNPM_PACKAGE_NAME;
-      else process.env.PNPM_PACKAGE_NAME = prevPkgName;
-      if (prevSuiteCfg === undefined) delete process.env.GD_SUITE_CONFIG;
-      else process.env.GD_SUITE_CONFIG = prevSuiteCfg;
-      if (prevPath === undefined) delete process.env.PATH;
-      else process.env.PATH = prevPath;
+      for (const [k, v] of Object.entries(prevEnv)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('sanitizeAgentChildEnv', () => {
+  test('strips all detect-agent markers including shared TTY-gated markers while keeping safe terminal vars', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      HOME: '/tmp/home',
+      TERM_PROGRAM: 'kiro',
+      REPL_ID: 'repl-1',
+      CURSOR_EXTENSION_HOST_ROLE: 'agent-exec',
+      KIMI_PLUGIN_ROOT: '/tmp/kimi',
+      GROK_PLUGIN_ROOT: '/tmp/grok',
+      AMP_CURRENT_THREAD_ID: 't-1',
+      GEMINI_CLI: '1',
+      GEMINI_CLI_TRUST_WORKSPACE: 'true',
+      CLINE_ACTIVE: 'true',
+      CODEX_SANDBOX_NETWORK_DISABLED: '1',
+      ANTIGRAVITY_CLI_ALIAS: 'agy',
+      ANTIGRAVITY_MODEL: 'gemini-3.8-flash-medium',
+      AUGMENT_AGENT: '1',
+      OPENCODE: '1',
+      GOOSE_TERMINAL: '1',
+      GOOSE_PROVIDER: 'anthropic',
+      JUNIE_DATA: '/tmp/junie',
+      AGENT_CONTEXT_OUT: '/tmp/ctx',
+      COPILOT_CLI: '1',
+      CLAUDE_CODE: '1',
+      CLAUDE_CODE_IS_COWORK: '1',
+      CLAUDE_CODE_USE_VERTEX: '1',
+      DISABLE_TELEMETRY: '1',
+      NODE_TEST_CONTEXT: 'child',
+      PATH: ['/Users/dev/.pi/agent/bin', '/Users/dev/not.pi/agentic', '/usr/bin'].join(path.delimiter),
+    });
+
+    assert.deepStrictEqual(determineAgent(sanitized, () => false, false), {
+      isAgent: false,
+      agent: undefined,
+    });
+    assert.strictEqual(sanitized.TERM_PROGRAM, undefined);
+    assert.strictEqual(sanitized.GEMINI_CLI_TRUST_WORKSPACE, 'true');
+    assert.strictEqual(sanitized.ANTIGRAVITY_MODEL, 'gemini-3.8-flash-medium');
+    assert.strictEqual(sanitized.CLAUDE_CODE_USE_VERTEX, '1');
+    assert.strictEqual(sanitized.DISABLE_TELEMETRY, '1');
+    assert.strictEqual(sanitized.NODE_TEST_CONTEXT, 'child');
+    assert.strictEqual(sanitized.PATH, ['/Users/dev/not.pi/agentic', '/usr/bin'].join(path.delimiter));
+
+    const withWindowsPath = sanitizeAgentChildEnv({
+      Path: ['/Users/dev/.pi/agent/bin', '/usr/bin'].join(path.delimiter),
+    });
+    assert.strictEqual(withWindowsPath.PATH, '/usr/bin');
+    assert.strictEqual(withWindowsPath.Path, undefined);
+
+    const withVscodeTerm = sanitizeAgentChildEnv({ TERM_PROGRAM: 'vscode' });
+    assert.strictEqual(withVscodeTerm.TERM_PROGRAM, 'vscode');
+
+    const allDetected = Object.fromEntries([...DETECTED_AGENT_ENV_VARS].map(key => [key, '1']));
+    assert.deepStrictEqual(sanitizeAgentChildEnv(allDetected), {});
   });
 });
 

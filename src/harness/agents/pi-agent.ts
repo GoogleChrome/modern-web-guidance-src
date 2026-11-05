@@ -8,6 +8,7 @@ import { parseBooleanEnv } from '../../core/env.ts';
 import {
   cleanupIsolatedHome,
   copyFileIfExists,
+  getAgentChildEnvOverrides,
   parseAgentArgs,
   runCliAgentCommand,
   parseJsonlFile,
@@ -51,8 +52,6 @@ export function setupPiCredentials(tempHome: string): void {
     const src = path.join(piSource, 'agent', file);
     copyFileIfExists(src, path.join(piDestAgent, file));
   }
-
-  process.env.PI_CODING_AGENT_DIR = piDestAgent;
 }
 
 export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
@@ -110,8 +109,6 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.PI_CODING_AGENT = 'true';
-
     try {
       await runCliAgentCommand(
         command,
@@ -119,7 +116,8 @@ async function run() {
         workDir,
         targetDir,
         'Pi',
-        runType
+        runType,
+        getAgentChildEnvOverrides(Agents.PI, path.dirname(workDir)),
       );
     } finally {
       exportPiTrajectories(workDir, targetDir);
