@@ -6,7 +6,9 @@ import { join, dirname, basename } from "node:path";
 import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { retrieveUseCase, OriginTrialGateError } from "../rag/retrieve.ts";
+import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
+import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
@@ -60,6 +62,8 @@ Commands:
   search <query>            Search use cases by query
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
+  analyze [path] [options]  Analyze codebase for legacy web platform patterns
+  set-baseline <target>     Set project Baseline target in .mwgrc (widely, newly, limited, or YYYY)
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   install [options]         Install the modern-web-guidance skill
   uninstall                 Uninstall the modern-web-guidance skill
@@ -79,17 +83,37 @@ async function main() {
     process.exit(0);
   }
 
+  const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
+
+  const command = positionals[0];
+
+  if (command === "analyze") {
+    maybeEmitUpdateMessage(skillVersion);
+    // Dynamic import to keep the CLI loading fast -- only load analyzer dependencies if needed.
+    const { runAnalyzeCli, writeAnalyzeCliResult } = await import("../analyzing/cli.ts");
+    const args = process.argv.slice(2);
+    const cmdIdx = args.indexOf("analyze");
+    if (cmdIdx !== -1) args.splice(cmdIdx, 1);
+    const result = await runAnalyzeCli(args);
+    if (result.data) {
+      logToolResult(
+        "analyze",
+        result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
+      );
+    }
+    writeAnalyzeCliResult(result);
+    process.exit(result.exitCode);
+  }
+
   if (values.help || positionals.length === 0) {
     printUsage();
     process.exit(values.help ? 0 : 1);
   }
 
-  const skillVersion = typeof values["skill-version"] === 'string' ? values["skill-version"] : null;
   maybeEmitUpdateMessage(skillVersion);
 
   let loggerInstance: ClearcutLogger | undefined;
   const getLogger = () => loggerInstance ??= new ClearcutLogger({ skillVersion });
-  const command = positionals[0];
   const arg = positionals.slice(1).join(" ");
 
   if (command === "search") {
@@ -234,6 +258,17 @@ async function main() {
     if (result.error) {
       console.error("Update failed:", result.error);
     }
+  } else if (command === "set-baseline") {
+    const normalized = normalizeBaselineTarget(arg);
+    if (!normalized) {
+      console.error(
+        `Invalid baseline target: ${JSON.stringify(arg)}. Expected one of: widely, newly, limited, or a 4-digit year (e.g., 2024).`
+      );
+      process.exit(1);
+    }
+    const targetPath = writeMwgrc({ baseline: normalized });
+    console.log(`Set Baseline target to "${normalized}" in ${targetPath}.`);
+    process.exit(0);
   } else if (command === "set-allow-origin-trials") {
     const code = await handleSetAllowOriginTrials();
     process.exit(code);

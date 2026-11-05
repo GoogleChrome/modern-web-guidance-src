@@ -1,7 +1,5 @@
 /// <reference path="./evals.d.ts" />
 import { classifyScenarioCheck } from './a11y-classifier.js';
-/** @type {Record<string, string>} */
-export const SERVING_DISPLAY_NAMES = { skills: 'Skills', skills_cli: 'Skills (CLI)', mcp: 'MCP', };
 export { AGENT_DISPLAY_NAMES, getAgentBadge } from './agents.js';
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -333,11 +331,11 @@ export function capitalize(s) {
  * @returns {string}
  */
 export function formatTokens(tokens) {
-    if (!tokens) return '0 tok';
+    if (!tokens) return '0';
     // undefined so it uses the user's locale.
     return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
         .format(tokens)
-        .toLowerCase() + ' tok';
+        .toLowerCase();
 }
 
 /**
@@ -542,26 +540,6 @@ export function calculateChartData(results, optionsOrEligible = {}) {
         guided_err_rate: labels.map(l => apps[l].guided_err_rate),
         unguided_err_rate: labels.map(l => apps[l].unguided_err_rate)
     };
-}
-
-
-/**
- * @param {string} name
- * @returns {string}
- */
-export function formatTestName(name) {
-    if (!name) return name;
-    const parsedKey = parseResultKey(name);
-    if (parsedKey) {
-        const { task: taskName, guide: guideName } = parsedKey;
-        
-        const featuresMap = (typeof window !== 'undefined' && window.__featuresMapping) || {};
-        const featureId = (featuresMap[guideName] && featuresMap[guideName][0]) || 'uncategorized';
-        const displayName = `${guideName} (${taskName})`;
-
-        return `${featureId}: ${displayName}`;
-    }
-    return name.split(' - ').join(' / ');
 }
 
 // Google Identity Services (OAuth) Integration

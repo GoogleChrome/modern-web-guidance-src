@@ -1,0 +1,1 @@
+- Update the Seasonal Favorites section in index.html to include an icon-only toolbar component with id="favorites-actions" above the drink cards that groups together controls for switching between grid and list views, toggling drink details or filters on and off, and copying the featured drinks list.
