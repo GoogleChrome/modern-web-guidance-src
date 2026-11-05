@@ -5,7 +5,7 @@ web-feature-ids:
   - autofill
 ---
 
-# Use the CSS :autofill pseudo-class to highlight form fields that have been autofilled by the browser and not edited by the user
+# Highlight browser-autofilled fields the user hasn't edited with CSS :autofill
 
 Use the CSS `:autofill` to highlight fields that have (or have not been) autofilled, to help guide the user to successful form completion.
 

@@ -132,7 +132,7 @@ When you only need simple geometric cutouts (such as a semi-circular top notch, 
 
 <style>
 .gradient-masked-card {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(135deg, #2563eb, #1e40af);
   color: white;
   padding: 40px 24px 24px 24px; /* Extra top padding ensures content clears the notch */
   border-radius: 16px;

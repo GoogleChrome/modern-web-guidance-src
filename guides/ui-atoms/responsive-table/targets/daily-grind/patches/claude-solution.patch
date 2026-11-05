@@ -1,0 +1,154 @@
+diff --git a/index.html b/index.html
+index 66c9173..e2d0321 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,104 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .table-wrapper {
++      margin-block-start: 30px;
++      overflow: auto;
++      max-inline-size: 100%;
++      max-block-size: min(500px, 80vh);
++      container-type: inline-size;
++      background: white;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .nutrition-table {
++      inline-size: 100%;
++      border-collapse: separate;
++      border-spacing: 0;
++    }
++
++    .nutrition-table caption {
++      padding: 15px;
++      font-weight: bold;
++      color: var(--primary);
++    }
++
++    .nutrition-table th,
++    .nutrition-table td {
++      padding: 10px 15px;
++      text-align: start;
++      border-block-end: 1px solid #ddd;
++    }
++
++    .nutrition-table thead {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1;
++    }
++
++    .nutrition-table thead th {
++      background: #eee;
++    }
++
++    .nutrition-table tbody th {
++      position: sticky;
++      inset-inline-start: 0;
++      background: white;
++    }
++
++    @container (width < 600px) {
++
++      .nutrition-table,
++      .nutrition-table thead,
++      .nutrition-table tbody,
++      .nutrition-table tr,
++      .nutrition-table th,
++      .nutrition-table td {
++        display: block;
++      }
++
++      .nutrition-table thead {
++        display: none;
++      }
++
++      .nutrition-table tr {
++        margin: 0 10px 1.5rem;
++        border: 1px solid #ccc;
++      }
++
++      .nutrition-table tbody th {
++        position: sticky;
++        inset-block-start: 0;
++        inset-inline-start: auto;
++        z-index: 2;
++        background: #eee;
++      }
++
++      .nutrition-table {
++        --label-2: "Calories";
++        --label-3: "Sugar";
++        --label-4: "Caffeine";
++        --label-5: "Price";
++      }
++
++      .nutrition-table td:nth-child(2)::before {
++        content: var(--label-2) ": ";
++      }
++
++      .nutrition-table td:nth-child(3)::before {
++        content: var(--label-3) ": ";
++      }
++
++      .nutrition-table td:nth-child(4)::before {
++        content: var(--label-4) ": ";
++      }
++
++      .nutrition-table td:nth-child(5)::before {
++        content: var(--label-5) ": ";
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -194,6 +292,44 @@
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++
++      <div tabindex="0" role="region" aria-labelledby="seasonal-table-caption" class="table-wrapper">
++        <table class="nutrition-table">
++          <caption id="seasonal-table-caption">Nutrition and pricing for Seasonal Favorites (16 oz)</caption>
++          <thead>
++            <tr>
++              <th scope="col">Drink</th>
++              <th scope="col">Calories</th>
++              <th scope="col">Sugar</th>
++              <th scope="col">Caffeine</th>
++              <th scope="col">Price</th>
++            </tr>
++          </thead>
++          <tbody>
++            <tr>
++              <th scope="row">Maple Oat Latte</th>
++              <td>240 kcal</td>
++              <td>28 g</td>
++              <td>150 mg</td>
++              <td>$5.75</td>
++            </tr>
++            <tr>
++              <th scope="row">Dark Roast Espresso</th>
++              <td>10 kcal</td>
++              <td>0 g</td>
++              <td>212 mg</td>
++              <td>$3.25</td>
++            </tr>
++            <tr>
++              <th scope="row">Cold Brew</th>
++              <td>5 kcal</td>
++              <td>0 g</td>
++              <td>200 mg</td>
++              <td>$4.50</td>
++            </tr>
++          </tbody>
++        </table>
++      </div>
+     </section>
+   </main>
+ 

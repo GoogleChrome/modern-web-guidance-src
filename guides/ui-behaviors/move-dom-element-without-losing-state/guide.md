@@ -11,7 +11,7 @@ When reparenting DOM elements using traditional methods like `appendChild()` or 
 
 To move an element while preserving its state, use the `moveBefore()` API. This method performs an atomic move, completely bypassing the removal and insertion steps.
 
-### Moving an element with state
+## Moving an element with state
 
 Use `moveBefore()` exactly as you would use `insertBefore()`. It requires two arguments: the node to move, and a reference node to insert before (or `null` to append to the end of the new parent).
 
@@ -24,7 +24,7 @@ const elementWithState = document.getElementById('iframe-or-focused-input');
 newParent.moveBefore(elementWithState, null);
 ```
 
-### Moving custom elements (Web Components)
+## Moving custom elements (Web Components)
 
 If you are moving custom elements using `moveBefore()`, their `connectedCallback` and `disconnectedCallback` lifecycle methods will **not** be fired.
 
@@ -43,11 +43,11 @@ class MyCustomElement extends HTMLElement {
 }
 ```
 
-### Fallback strategies
+## Fallback strategies
 
 {{ BASELINE_STATUS("move-before") }}
 
-Since `moveBefore()` is a progressive enhancement, you MUST use feature detection before calling it, falling back to traditional `insertBefore()` or `appendChild()` operations for older browsers. 
+Since `moveBefore()` is a progressive enhancement, you MUST use feature detection before calling it, falling back to traditional `insertBefore()` or `appendChild()` operations for older browsers.
 
 ```javascript
 const targetParent = document.getElementById('target-container');
@@ -62,3 +62,13 @@ if ('moveBefore' in Element.prototype) {
   targetParent.insertBefore(nodeToMove, null);
 }
 ```
+
+## Accessibility considerations
+
+Make sure that moving or reparenting an element does not cause any potentially disorienting changes of context, such as a loss of keyboard focus to the page's `<body>` element.
+
+Where possible, make sure that the change is triggered by the user, rather than an automatic change, to prevent unexpected changes of context.
+
+Make sure that moving or reparenting an element does not affect the meaning of the overall content. For example, if a page contains several panels of content that can be, or are intended to be, read independently and in any order, the meaning of the overall content is not affected through repositioning. However, if these panels of content must be presented in a certain sequence in order to be understood, repositioning the content in the DOM can break the reading sequence even if the visual order still makes sense. This can disorient people who cannot see the content and who use a screen reader.
+
+If moving or reparenting an element triggers a change that is important for people to know about, for example moving a video from one area of the page to a "Favorites" list in another area of the page, use a live region to confirm that the move was was successful.

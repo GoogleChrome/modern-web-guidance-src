@@ -1,0 +1,314 @@
+diff --git a/src/components/ArticleTeaser.astro b/src/components/ArticleTeaser.astro
+index af1fa02..cff9895 100644
+--- a/src/components/ArticleTeaser.astro
++++ b/src/components/ArticleTeaser.astro
+@@ -17,27 +17,35 @@ const isBookmarked = readingList.includes(article.id);
+ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1);
+ ---
+ {large ? (
+-    <div class="bg-white p-6 md:p-8 shadow-sm">
++    <div class="article-teaser article-teaser--large bg-white p-6 md:p-8 shadow-sm relative">
+         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+-            <div class="lg:col-span-1 flex flex-col">
+-                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
+-                <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex-grow">
+-                    <h1 class="mt-2 text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
+-                        {article.data.title}
+-                    </h1>
+-                    <p class="mt-4 text-lg text-gray-700">
+-                        {article.data.summary}
+-                    </p>
+-                </a>
++            <div class="lg:col-span-1 flex flex-col justify-between">
++                <div>
++                    <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</a>
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="block mt-2 flex-grow">
++                        <h1 class="text-3xl md:text-4xl font-brand text-gray-900 leading-tight hover:text-amber-400 transition-colors">
++                            {article.data.title}
++                        </h1>
++                        <p class="mt-4 text-lg text-gray-700">
++                            {article.data.summary}
++                        </p>
++                    </a>
++                </div>
+                 <div class="flex justify-between items-center mt-6 text-gray-500">
+                     <span class="text-xs font-medium flex items-center">
+                         <BookOpenIcon className="w-5 h-5 inline-block mr-1 -mt-px" />
+                         {article.data.readingTime} Min.
+                     </span>
+-                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    <div class="flex items-center gap-3">
++                        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="button">
++                            Read Article
++                        </a>
++                        <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                    </div>
+                 </div>
+             </div>
+-            <div class="lg:col-span-2">
++            <div class="lg:col-span-2 relative article-teaser-image-wrapper">
++                <span class="badge">Featured</span>
+                 <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+                     <Image 
+                         src={image} 
+@@ -52,17 +60,20 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+         </div>
+     </div>
+ ) : (
+-    <article class="flex flex-col h-full group">
+-        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
+-            <Image 
+-                src={image} 
+-                alt={article.data.title} 
+-                width={400}
+-                height={225}
+-                format="webp"
+-                class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
+-            />
+-        </a>
++    <article class="article-teaser flex flex-col h-full group relative">
++        <div class="relative article-teaser-image-wrapper">
++            <span class="badge">Featured</span>
++            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
++                <Image 
++                    src={image} 
++                    alt={article.data.title} 
++                    width={400}
++                    height={225}
++                    format="webp"
++                    class="w-full object-cover rounded-md flex-shrink-0 aspect-[16/9]"
++                />
++            </a>
++        </div>
+         <div class="flex flex-col flex-grow mt-3">
+             <div class="text-amber-800 text-sm font-brand tracking-widest">{capitalizedCategory}</div>
+             <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="flex flex-col">
+@@ -71,13 +82,102 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
+                 </h3>
+                 <p class="text-gray-600 mt-1">{article.data.summary}</p>
+             </a>
+-            <div class="flex justify-between text-gray-500 mt-2 pt-2 border-t-1 border-gray-100">
++            <div class="flex justify-between items-center text-gray-500 mt-2 pt-2 border-t border-gray-100">
+                 <span class="text-sm font-medium flex items-center">
+                     <BookOpenIcon className="w-4 h-4 inline-block mr-1 -mt-px" />
+                     {article.data.readingTime} Min.
+                 </span>
+-                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                <div class="flex items-center gap-2">
++                    <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="button">
++                        Read Article
++                    </a>
++                    <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
++                </div>
+             </div>
+         </div>
+     </article>
+-)}
+\ No newline at end of file
++)}
++
++<style is:global>
++:root {
++  --brand-accent: #d97706;
++}
++
++.article-teaser {
++  inline-size: 100%;
++  block-size: 100%;
++}
++
++/* Default styles — work everywhere */
++.button {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  inline-size: fit-content;
++  block-size: auto;
++  padding-block: 0.5rem;
++  padding-inline: 1rem;
++  border-radius: 0.375rem;
++  font-size: 0.875rem;
++  font-weight: 600;
++  text-decoration: none;
++  cursor: pointer;
++  transition: all 0.2s ease-in-out;
++  /* Default: Outlined informational style */
++  background: transparent;
++  color: currentColor;
++  border: 1px solid currentColor;
++}
++
++.button:hover {
++  opacity: 0.9;
++}
++
++.badge {
++  /* Default: Hidden — only revealed in featured surfaces */
++  display: none;
++  position: absolute;
++  inset-block-start: 1rem;
++  inset-inline-start: 1rem;
++  inline-size: fit-content;
++  block-size: auto;
++  padding-block: 0.25rem;
++  padding-inline: 0.75rem;
++  background: var(--brand-accent);
++  color: white;
++  font-size: 0.75rem;
++  font-weight: 700;
++  text-transform: uppercase;
++  letter-spacing: 0.05em;
++  border-radius: 9999px;
++  z-index: 10;
++}
++
++/* Selector-based contextual styles — broad browser support */
++:where(.featured) .button,
++:where([data-surface="featured"]) .button {
++  background: var(--brand-accent);
++  color: white;
++  border: none;
++}
++
++:where(.featured) .badge,
++:where([data-surface="featured"]) .badge {
++  display: block;
++}
++
++/* Progressive enhancement: style queries override when supported */
++@container style(--surface: featured) {
++  .button {
++    /* Automatic switch to Filled promotional style */
++    background: var(--brand-accent);
++    color: white;
++    border: none;
++  }
++
++  .badge {
++    /* Reveal decorative elements only in featured context */
++    display: block;
++  }
++}
++</style>
+\ No newline at end of file
+diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
+index 79bf126..bfed830 100644
+--- a/src/pages/category/[category].astro
++++ b/src/pages/category/[category].astro
+@@ -66,7 +66,7 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
+         <div class="px-4 md:px-6">
+             <!-- Featured Article -->
+             {featuredArticle && featuredArticleImage && (
+-                <section class="mb-8 pb-8 border-b border-gray-200">
++                <section class="mb-8 pb-8 border-b border-gray-200 featured">
+                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
+                         <Image 
+                             src={featuredArticleImage} 
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..fafdf7b 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -55,7 +55,7 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6 featured">
+         <ArticleTeaser article={topArticle} large={true} />
+     </main>
+ 
+diff --git a/src/styles/global.css b/src/styles/global.css
+index e9a9abb..fbff95f 100644
+--- a/src/styles/global.css
++++ b/src/styles/global.css
+@@ -4,4 +4,89 @@
+   font-family: "Grenze", serif;
+   font-weight: 500;
+   font-style: normal;
++}
++
++:root {
++  --brand-accent: #d97706;
++}
++
++/* 1. Set the context on a layout container */
++.featured,
++section.featured,
++main.featured,
++[data-surface="featured"] {
++  --surface: featured; /* Semantic context flag for children */
++}
++
++/* 2. Component default styles — work everywhere */
++.button {
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  inline-size: fit-content;
++  block-size: auto;
++  padding-block: 0.5rem;
++  padding-inline: 1rem;
++  border-radius: 0.375rem;
++  font-size: 0.875rem;
++  font-weight: 600;
++  text-decoration: none;
++  cursor: pointer;
++  transition: all 0.2s ease-in-out;
++  /* Default: Outlined informational style */
++  background: transparent;
++  color: currentColor;
++  border: 1px solid currentColor;
++}
++
++.button:hover {
++  opacity: 0.9;
++}
++
++.badge {
++  /* Default: Hidden — only revealed in featured surfaces */
++  display: none;
++  position: absolute;
++  inset-block-start: 1rem;
++  inset-inline-start: 1rem;
++  inline-size: fit-content;
++  block-size: auto;
++  padding-block: 0.25rem;
++  padding-inline: 0.75rem;
++  background: var(--brand-accent);
++  color: white;
++  font-size: 0.75rem;
++  font-weight: 700;
++  text-transform: uppercase;
++  letter-spacing: 0.05em;
++  border-radius: 9999px;
++  z-index: 10;
++}
++
++/* Selector-based contextual styles — broad browser support fallback */
++:where(.featured) .button,
++:where([data-surface="featured"]) .button {
++  background: var(--brand-accent);
++  color: white;
++  border: none;
++}
++
++:where(.featured) .badge,
++:where([data-surface="featured"]) .badge {
++  display: block;
++}
++
++/* Progressive enhancement: style queries override when supported */
++@container style(--surface: featured) {
++  .button {
++    /* Automatic switch to Filled promotional style */
++    background: var(--brand-accent);
++    color: white;
++    border: none;
++  }
++
++  .badge {
++    /* Reveal decorative elements only in featured context */
++    display: block;
++  }
+ }
+\ No newline at end of file

@@ -1,1 +1,4 @@
 - The implementation MUST provide high-contrast fallbacks using `@media (forced-colors: active)` for components that rely on `box-shadow` or `background-image` to convey boundaries or state.
+- The implementation MUST maintain a minimum color contrast ratio of 4.5:1 for normal body text and 3:1 for large text and UI component boundaries.
+- The implementation MUST NOT rely on color alone to communicate status or validation states (must pair color with icons or text labels).
+- The implementation MUST support light and dark color schemes using the `color-scheme` CSS property paired with `@media (prefers-color-scheme: dark)` or `light-dark()`.

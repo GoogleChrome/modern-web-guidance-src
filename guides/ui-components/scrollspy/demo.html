@@ -6,7 +6,7 @@
     <title>Scrollspy Demo</title>
     <style>
       :root {
-        --accent: #007bff;
+        --accent: #0060c7;
       }
 
       @media (prefers-reduced-motion: no-preference) {
@@ -49,7 +49,7 @@
       }
 
       /* Style for the active link */
-      nav a:is(:target-current, .\:target-current) {
+      nav a:is(:target-current, .target-current) {
         color: var(--accent);
         border-bottom-color: var(--accent);
       }
@@ -83,19 +83,19 @@
     </nav>
 
     <main>
-      <section id="section-1">
+      <section id="section-1" tabindex="-1">
         <h2>Section 1</h2>
         <p>Scroll down to see the navigation update.</p>
       </section>
-      <section id="section-2">
+      <section id="section-2" tabindex="-1">
         <h2>Section 2</h2>
         <p>Now Section 2 should be highlighted.</p>
       </section>
-      <section id="section-3">
+      <section id="section-3" tabindex="-1">
         <h2>Section 3</h2>
         <p>Almost there...</p>
       </section>
-      <section id="section-4">
+      <section id="section-4" tabindex="-1">
         <h2>Section 4</h2>
         <p>You reached the end!</p>
       </section>
@@ -135,7 +135,7 @@
                 const id = entry.target.getAttribute("id");
                 navLinks.forEach((link) => {
                   const isActive = link.getAttribute("href") === `#${id}`;
-                  link.classList.toggle("\:target-current", isActive);
+                  link.classList.toggle("target-current", isActive);
                   // In fallback mode, we update ARIA immediately since we're already observing
                   link.setAttribute("aria-current", isActive);
                 });

@@ -1,1 +1,1 @@
-- Update the page to respect the operating system's text scale preference so font sizes, layout, and rem-based measurements follow the user's accessibility settings.
+- Update the Daily Grind homepage so the navigation bar, "Wake Up Your Senses" hero banner, and "Seasonal Favorites" drink cards respect the operating system's text scale preference and scale their typography, spacing, and layout cleanly with the user's accessibility settings.

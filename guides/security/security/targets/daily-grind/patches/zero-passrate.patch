@@ -1,0 +1,52 @@
+diff --git a/package.json b/package.json
+index 2bd4d77..cffdc93 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,8 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "node server.js",
++    "build": "node --check server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..52c2fd5
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1,32 @@
++const http = require('node:http');
++const fs = require('node:fs');
++const path = require('node:path');
++
++const PORT = parseInt(process.env.PORT || '11222', 10);
++const WORK_DIR = __dirname;
++
++const server = http.createServer((req, res) => {
++  const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
++  const pathname = parsedUrl.pathname;
++
++  if (pathname === '/logout' || pathname === '/logout/') {
++    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.end('Logged out');
++    return;
++  }
++
++  const filePath = path.join(WORK_DIR, 'index.html');
++  fs.readFile(filePath, (err, data) => {
++    if (err) {
++      res.writeHead(500);
++      res.end('Server error');
++      return;
++    }
++    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
++    res.end(data);
++  });
++});
++
++server.listen(PORT, () => {
++  console.log(`Server running on port ${PORT}`);
++});

@@ -7,7 +7,7 @@ import { getTranscludedFeatureIds } from '../core/macro-parsing.ts';
 import { guidesDir, rootDir } from '../core/paths.ts';
 
 // Define content file name constants inline to avoid importing from 'src/core/guide-validation.ts'
-// which would transitively require external packages (like 'gray-matter' and 'marked')
+// which would transitively require external packages (like '@11ty/gray-matter' and 'marked')
 // in the GitHub Actions runner, slowing down the triage job.
 export const GUIDE_FILE = 'guide.md';
 export const SKILL_FILE = 'SKILL.md';
@@ -98,10 +98,16 @@ export function isSmeContentFile(file: string): boolean {
     normalized = path.relative(rootDir, normalized);
   }
   const parts = normalized.split(/[/\\]/);
+  if (parts.some(p => p === '..')) {
+    return false;
+  }
   if (parts[0] === 'features' && parts.length === 2 && (file.endsWith('.md') || file.endsWith('.json'))) {
     return true;
   }
-  if (parts[0] !== 'guides' || parts.length < 3 || parts.some(p => p === '..')) {
+  if (parts[0] === 'skills-src' && parts.length >= 3) {
+    return true;
+  }
+  if (parts[0] !== 'guides' || parts.length < 3) {
     return false;
   }
   const filename = parts[parts.length - 1];
@@ -148,7 +154,11 @@ export function normalizeLabel(label: string): string {
   if (clean.startsWith('guides:')) {
     clean = clean.slice('guides:'.length);
   }
-  return clean.trim();
+  clean = clean.trim();
+  if (clean === 'extensions') {
+    return 'chrome-extensions';
+  }
+  return clean;
 }
 
 export function isContentRelatedIssue(
@@ -170,8 +180,8 @@ export function isContentRelatedIssue(
     if (label.startsWith('category:') || label.startsWith('guide:') || label.startsWith('guides:')) return true;
   }
 
-  // Check description for use case subdir
-  if (/Use case subdir:\s*\[guides\/([^/\]]+)/i.test(issueDescription)) {
+  // Check description for use case subdir or template Category field
+  if (/Use case subdir:\s*\[guides\/([^/\]]+)/i.test(issueDescription) || /###\s+Category\s*\r?\n+([^\r\n#]+)/i.test(issueDescription)) {
     return true;
   }
 
@@ -314,41 +324,33 @@ export function getAtlsFromDescription(description: string, atlConfig: AtlConfig
   return Array.from(resolvedAtls);
 }
 
+const JQ_ACTOR_IS_BOT = '(.actor != null and (.actor.type == "Bot" or ((.actor.login // "") | endswith("[bot]"))))';
+
+function queryIssueEvents(issueOrPrNumber: number, jqFilter: string): string[] {
+  return child_process
+    .execFileSync(
+      'gh',
+      ['api', `repos/{owner}/{repo}/issues/${issueOrPrNumber}/events`, '--paginate', '--jq', jqFilter],
+      { encoding: 'utf8' }
+    )
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean);
+}
+
 export const githubApi = {
   getIssueUnassignedLogins(issueNumber: number): string[] {
-    const eventsOutput = child_process.execFileSync(
-      'gh',
-      [
-        'api',
-        `repos/{owner}/{repo}/issues/${issueNumber}/events`,
-        '--paginate',
-        '--jq',
-        '.[] | select(.event == "unassigned" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .assignee.login'
-      ],
-      { encoding: 'utf8' }
+    return queryIssueEvents(
+      issueNumber,
+      `.[] | select(.event == "unassigned" and (${JQ_ACTOR_IS_BOT} | not)) | .assignee.login`
     );
-    return eventsOutput
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
   },
 
   getIssueUnlabeledEvents(issueNumber: number): string[] {
-    const eventsOutput = child_process.execFileSync(
-      'gh',
-      [
-        'api',
-        `repos/{owner}/{repo}/issues/${issueNumber}/events`,
-        '--paginate',
-        '--jq',
-        '.[] | select(.event == "unlabeled" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .label.name'
-      ],
-      { encoding: 'utf8' }
+    return queryIssueEvents(
+      issueNumber,
+      `.[] | select(.event == "unlabeled" and (${JQ_ACTOR_IS_BOT} | not)) | .label.name`
     );
-    return eventsOutput
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
   },
 
   getIssueCurrentAssignees(issueNumber: number): string[] {
@@ -460,6 +462,29 @@ export const githubApi = {
     );
   },
 
+  removePrReviewers(prNumber: number, reviewers: string[]): void {
+    if (reviewers.length === 0) return;
+    child_process.execFileSync(
+      'gh',
+      ['pr', 'edit', String(prNumber), '--remove-reviewer', reviewers.join(',')],
+      { stdio: 'inherit' }
+    );
+  },
+
+  getPrBotRequestedReviewers(prNumber: number): string[] {
+    const botRequested = new Set<string>();
+    const lines = queryIssueEvents(
+      prNumber,
+      `.[] | select(.event == "review_requested" and .requested_reviewer.login != null) | [(.requested_reviewer.login | ascii_downcase), (${JQ_ACTOR_IS_BOT} | tostring)] | @tsv`
+    );
+    for (const line of lines) {
+      const [login, isBot] = line.split('\t');
+      if (isBot === 'true') botRequested.add(login);
+      else botRequested.delete(login);
+    }
+    return Array.from(botRequested);
+  },
+
   addPrLabels(prNumber: number, labels: string[]): void {
     if (labels.length === 0) return;
     child_process.execFileSync(
@@ -479,39 +504,17 @@ export const githubApi = {
   },
 
   getPrUnlabeledEvents(prNumber: number): string[] {
-    const eventsOutput = child_process.execFileSync(
-      'gh',
-      [
-        'api',
-        `repos/{owner}/{repo}/issues/${prNumber}/events`,
-        '--paginate',
-        '--jq',
-        '.[] | select(.event == "unlabeled" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .label.name'
-      ],
-      { encoding: 'utf8' }
+    return queryIssueEvents(
+      prNumber,
+      `.[] | select(.event == "unlabeled" and (${JQ_ACTOR_IS_BOT} | not)) | .label.name`
     );
-    return eventsOutput
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
   },
 
   getPrRemovedReviewers(prNumber: number): string[] {
-    const eventsOutput = child_process.execFileSync(
-      'gh',
-      [
-        'api',
-        `repos/{owner}/{repo}/issues/${prNumber}/events`,
-        '--paginate',
-        '--jq',
-        '.[] | select(.event == "review_request_removed" and (.actor and .actor.type != "Bot" and ((.actor.login // "") | endswith("[bot]") | not))) | .requested_reviewer.login'
-      ],
-      { encoding: 'utf8' }
+    return queryIssueEvents(
+      prNumber,
+      `.[] | select(.event == "review_request_removed" and (${JQ_ACTOR_IS_BOT} | not)) | .requested_reviewer.login`
     );
-    return eventsOutput
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean);
   },
 
   getPrFileContent(prNumber: number, filePath: string): string | null {
@@ -554,8 +557,36 @@ export const githubApi = {
       ['pr', 'view', String(prNumber), '--json', 'body', '--jq', '.body // ""'],
       { encoding: 'utf8' }
     ).trim();
+  },
+
+  updatePrBody(prNumber: number, body: string): void {
+    child_process.execFileSync(
+      'gh',
+      ['pr', 'edit', String(prNumber), '--body-file', '-'],
+      { input: body, stdio: ['pipe', 'ignore', 'inherit'] }
+    );
   }
 };
+
+const PREVIEW_START = '<!-- mwg-demo-preview:start -->';
+const PREVIEW_END = '<!-- mwg-demo-preview:end -->';
+const PREVIEW_BLOB_BASE = 'https://mwg-demos.web.app/GoogleChrome/modern-web-guidance-src/blob';
+
+export function upsertDemoPreviewInBody(headRef: string, currentBody: string, files: string[]): string {
+  const links = files
+    .filter(f => /^guides\/[^/.][^/]*\/[^/.][^/]*\/demo(?:-.+)?\.html$/.test(f))
+    .sort()
+    .map(f => `[\`${f.replace(/^guides\/|\/demo\.html$/g, '')}\`](${PREVIEW_BLOB_BASE}/${headRef}/${f})`);
+
+  if (!links.length && !currentBody.includes(PREVIEW_START)) {
+    return currentBody;
+  }
+
+  const list = links.length === 1 ? links[0] : links.map(l => `\n- ${l}`).join('');
+  const section = links.length ? `${PREVIEW_START}\n---\n🎨 **Demo preview:** ${list}\n${PREVIEW_END}` : '';
+  const stripped = currentBody.replace(/\s*<!-- mwg-demo-preview:start -->[\s\S]*?<!-- mwg-demo-preview:end -->/g, '').trimEnd();
+  return [stripped, section].filter(Boolean).join('\n\n');
+}
 
 export function hasNoAtlTriageDirective(body?: string | null): boolean {
   if (!body) return false;
@@ -615,13 +646,15 @@ export function handleIssue(
     descriptionAtls.forEach(a => assignedAtls.add(a));
   }
 
-  // 3. Check issue description for use case category
-  const categoryMatch = issueDescription.match(/Use case subdir:\s*\[guides\/([^/\]]+)/i);
+  // 3. Check issue description for use case category (subdir link or issue template Category field)
+  const categoryMatch =
+    issueDescription.match(/Use case subdir:\s*\[guides\/([^/\]]+)/i) ||
+    issueDescription.match(/###\s+Category\s*\r?\n+([^\r\n#]+)/i);
   if (categoryMatch) {
     const category = categoryMatch[1].trim().toLowerCase();
     if (atlConfig.default[category]) {
       const atls = Array.isArray(atlConfig.default[category]) ? atlConfig.default[category] : [atlConfig.default[category]];
-      console.log(`Found category "${category}" from use case subdir in description. ATL: ${atls.join(', ')}`);
+      console.log(`Found category "${category}" from description. ATL: ${atls.join(', ')}`);
       atls.forEach(a => assignedAtls.add(a));
     }
   }
@@ -815,6 +848,7 @@ export interface HandlePrOptions {
   dryRun?: boolean;
   isDraft?: boolean;
   prBody?: string;
+  headRef?: string;
 }
 
 export function handlePR(
@@ -878,8 +912,23 @@ export function handlePR(
   }
 
   console.log(`PR modified ${files.length} files.`);
+
+  if (!mockFiles && prBody !== undefined && options?.headRef) {
+    const nextBody = upsertDemoPreviewInBody(options.headRef, prBody, files);
+    if (nextBody !== prBody) {
+      if (isDryRun) {
+        console.log(`[DRY RUN] Would update demo preview links in PR #${prNumber} description.`);
+      } else {
+        try {
+          githubApi.updatePrBody(prNumber, nextBody);
+          console.log(`Updated demo preview links in PR #${prNumber} description.`);
+        } catch (err) {
+          console.error(`Failed to update description for PR #${prNumber}:`, err);
+        }
+      }
+    }
+  }
   
-  const isContentLabelled = labels.includes('content') || labels.includes('gd-dev-content');
   const matchedAtls = new Set<string>();
   const allResolvedAtls = new Set<string>();
   let hasEvaluatedContent = false;
@@ -901,7 +950,7 @@ export function handlePR(
       }
       const guideName = parts[2];
       const filename = parts[parts.length - 1];
-      if (SME_CONTENT_FILENAMES.has(filename) || isContentLabelled) {
+      if (SME_CONTENT_FILENAMES.has(filename)) {
         hasEvaluatedContent = true;
         const relativeGuidePath = `guides/${category}/${guideName}/${GUIDE_FILE}`;
         const guideDir = path.join(guidesRootDir, category, guideName);
@@ -936,7 +985,19 @@ export function handlePR(
       }
     }
 
-    // 2. Feature definition files (features/<feature-id>.md)
+    // 2. Standalone skill files under skills-src/<skill-name>/...
+    if (parts[0] === 'skills-src' && parts.length >= 3 && !parts.some(p => p === '..')) {
+      const skillName = parts[1].toLowerCase();
+      hasEvaluatedContent = true;
+      const skillAtls = resolveAtl(skillName, [], atlConfig);
+      for (const a of skillAtls) {
+        console.log(`File "${file}" is in standalone skill "${skillName}". ATL: @${a}`);
+        matchedAtls.add(a);
+        allResolvedAtls.add(a);
+      }
+    }
+
+    // 3. Feature definition files (features/<feature-id>.md)
     if (parts[0] === 'features' && file.endsWith('.md')) {
       hasEvaluatedContent = true;
       const featureId = path.basename(file, '.md');
@@ -1012,11 +1073,21 @@ export function handlePR(
 
   // Remove the PR author, already requested/reviewed users, and any reviewers whose review request was previously removed
   const excludeLogins = [prAuthor];
+  const reviewersToRemove: string[] = [];
 
   if (!mockFiles) {
     try {
       const prData = githubApi.getPrReviewState(prNumber);
       excludeLogins.push(...prData.reviewRequests, ...prData.reviews);
+
+      const resolvedLower = new Set(Array.from(allResolvedAtls, a => a.toLowerCase()));
+      const staleCandidates = prData.reviewRequests.filter(r => !resolvedLower.has(r.toLowerCase()));
+      if (staleCandidates.length > 0) {
+        const botRequested = new Set(
+          githubApi.getPrBotRequestedReviewers(prNumber).map(r => r.toLowerCase())
+        );
+        reviewersToRemove.push(...staleCandidates.filter(c => botRequested.has(c.toLowerCase())));
+      }
     } catch (err) {
       console.error(`Failed to fetch existing review state for PR #${prNumber}:`, err);
     }
@@ -1049,6 +1120,9 @@ export function handlePR(
     if (prLabelsToRemove.length > 0) {
       console.log(`[DRY RUN] Would remove label(s) from PR #${prNumber}: ${prLabelsToRemove.join(', ')}`);
     }
+    if (reviewersToRemove.length > 0) {
+      console.log(`[DRY RUN] Would remove stale ATL review request(s) from PR #${prNumber}: ${reviewersToRemove.join(',')}`);
+    }
     if (reviewers.length > 0) {
       console.log(`[DRY RUN] Would request review on PR #${prNumber} from: ${reviewers.join(',')}`);
     } else {
@@ -1073,6 +1147,15 @@ export function handlePR(
         console.log(`Successfully removed label(s) from PR #${prNumber}: ${prLabelsToRemove.join(', ')}`);
       } catch (err) {
         console.error(`Failed to remove labels from PR #${prNumber}:`, err);
+      }
+    }
+
+    if (reviewersToRemove.length > 0) {
+      try {
+        githubApi.removePrReviewers(prNumber, reviewersToRemove);
+        console.log(`Successfully removed stale ATL review request(s) from PR #${prNumber}: ${reviewersToRemove.join(',')}`);
+      } catch (err) {
+        console.error(`Failed to remove stale review requests from PR #${prNumber}:`, err);
       }
     }
   }
@@ -1117,7 +1200,9 @@ export function main() {
       const prLabels = (event.pull_request.labels || []).map((l: any) => l.name);
       const isDraft = Boolean(event.pull_request.draft);
       const prBody = event.pull_request.body || '';
-      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft, prBody });
+      const isSameRepo = event.pull_request.head?.repo?.full_name?.toLowerCase() === 'googlechrome/modern-web-guidance-src';
+      const headRef = (isSameRepo && event.pull_request.head?.ref) || event.pull_request.head?.sha || 'main';
+      handlePR(prNumber, prAuthor, atlConfig, undefined, undefined, prLabels, { dryRun: isDryRun, isDraft, prBody, headRef });
     } 
     else {
       console.log('Event is neither an issue nor a pull request event. Skipping.');

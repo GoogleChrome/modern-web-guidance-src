@@ -10,7 +10,7 @@ web-feature-ids:
 
 When building tooltips or popovers with CSS Anchor Positioning, the browser can automatically "flip" the element to a fallback position if it would otherwise overflow the viewport. When this happens, you may want to adjust the style of the positioned content, for instance to reposition an arrow that points from the positioned content to the anchor.
 
-**Anchored Container Queries** solve this by allowing you to query the active positioning state of an element and apply styles accordingly.
+**Anchored Container Queries** solve this by allowing you to query the active positioning state of an element and apply styles accordingly. For general anchored dropdown and flyout positioning with viewport collision flipping (without directional arrow restyling), see {{ GUIDE_REF("viewport-aware-dropdowns") }}.
 
 ## The problem
 
@@ -22,7 +22,7 @@ By setting `container-type: anchored` on your positioned element, you turn it in
 
 ### 1. Create the tooltip and trigger
 
-Use the Popover API to create a tooltip. This creates an implicit anchor connection that can be used for positioning.
+Use the Popover API to create a tooltip. Invoking the popover via `popovertarget` automatically establishes an **implicit anchor connection** with the trigger button, so no explicit `anchor-name` or `position-anchor` is required.
 
 ```html
 <button popovertarget="tooltip" id="anchor" aria-describedby="tooltip">anchor</button>

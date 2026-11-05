@@ -3,8 +3,8 @@ import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { getIssueStateChanges, getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, buildRequiredFilesChecklist } from './sync-use-cases.ts';
-import { ProjectStatus, validateGuide, getStatusName, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
+import { getDesiredLabels, buildIssueContent, buildFeatureToIssueMap, buildUseCaseMaps, getFeaturesNeedingSync, buildUseCaseChecklist, updateFeatureIssueBody, USE_CASES_START, USE_CASES_END, REQUIRED_FILES_START, buildRequiredFilesChecklist, preserveTemplateUseCases, reconcileNeedsUseCasesProjectStatus, NEEDS_INVESTIGATION_STATUS } from './sync-use-cases.ts';
+import { ProjectStatus, validateGuide, classifyGuide, processGuideInventory, type GuideInventory } from '../core/guide-validation.ts';
 import { pendingFeatures } from '../core/baseline.ts';
 
 function createTempDir(): string {
@@ -249,87 +249,24 @@ Body content.
   });
 });
 
-describe('getStatusName', () => {
-  test('returns "Needs guidance" when guide body is empty', () => {
-    assert.strictEqual(getStatusName('', true, true), ProjectStatus.NeedsGuidance);
+describe('classifyGuide', () => {
+  test('returns "incomplete" when guide body is empty', () => {
+    assert.strictEqual(classifyGuide({ hasGuide: false, hasGrader: true, hasTask: true, hasExpectations: true }), 'incomplete');
   });
 
-  test('returns "Needs guidance" when guide body is only whitespace', () => {
-    assert.strictEqual(getStatusName('   \n\t  ', true, true), ProjectStatus.NeedsGuidance);
+  test('returns "needs-calibration" or "needs-test" when grader or task is missing', () => {
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: true, hasExpectations: true }), 'needs-calibration');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: false, hasExpectations: true }), 'needs-test');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: false, hasTask: false, hasExpectations: true }), 'needs-calibration');
   });
 
-  test('returns "Needs evals" when grader is missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, true), ProjectStatus.NeedsEvals);
+  test('returns "complete" when guide is complete', () => {
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: true }), 'complete');
   });
 
-  test('returns "Needs evals" when prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', true, false), ProjectStatus.NeedsEvals);
-  });
-
-  test('returns "Needs evals" when both grader and prompts are missing', () => {
-    assert.strictEqual(getStatusName('Some content.', false, false), ProjectStatus.NeedsEvals);
-  });
-
-  test('returns null when guide is complete', () => {
-    assert.strictEqual(getStatusName('Some content.', true, true), null);
-  });
-
-  test('returns "Needs guidance" before "Needs evals" since guidance must come first', () => {
-    assert.strictEqual(getStatusName('', false, false), ProjectStatus.NeedsGuidance);
-  });
-
-  test('returns "Needs guidance" when isDraft is true even if body and evals are present', () => {
-    assert.strictEqual(getStatusName('Some content.', true, true, true), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Some content.', false, false, true), ProjectStatus.NeedsGuidance);
-  });
-
-  test('returns "Needs guidance" when hasExpectations is false even if body is present', () => {
-    assert.strictEqual(getStatusName('Some content.', false, false, false, false), ProjectStatus.NeedsGuidance);
-    assert.strictEqual(getStatusName('Some content.', true, true, false, false), ProjectStatus.NeedsGuidance);
-  });
-
-  test('accepts a precomputed has-guidance flag in place of the body', () => {
-    assert.strictEqual(getStatusName(true, true, true), null);
-    assert.strictEqual(getStatusName(true, false, true), ProjectStatus.NeedsEvals);
-    assert.strictEqual(getStatusName(false, true, true), ProjectStatus.NeedsGuidance);
-  });
-});
-
-describe('getIssueStateChanges', () => {
-  test('open issue stays open when incomplete', () => {
-    const result = getIssueStateChanges('open', ProjectStatus.NeedsGuidance);
-    assert.strictEqual(result.needsClose, false);
-    assert.strictEqual(result.needsReopen, false);
-  });
-
-  test('open issue is closed when complete', () => {
-    const result = getIssueStateChanges('open', null);
-    assert.strictEqual(result.needsClose, true);
-    assert.strictEqual(result.needsReopen, false);
-  });
-
-  test('closed issue is reopened when incomplete', () => {
-    const result = getIssueStateChanges('closed', ProjectStatus.NeedsEvals);
-    assert.strictEqual(result.needsClose, false);
-    assert.strictEqual(result.needsReopen, true);
-  });
-
-  test('closed issue stays closed when complete', () => {
-    const result = getIssueStateChanges('closed', null);
-    assert.strictEqual(result.needsClose, false);
-    assert.strictEqual(result.needsReopen, false);
-  });
-
-  test('open issue stays open when complete but status is Needs investigation', () => {
-    const result = getIssueStateChanges('open', null, ProjectStatus.NeedsInvestigation);
-    assert.strictEqual(result.needsClose, false);
-    assert.strictEqual(result.needsReopen, false);
-  });
-
-  test('closed issue reopens when complete but status is Needs investigation', () => {
-    const result = getIssueStateChanges('closed', null, ProjectStatus.NeedsInvestigation);
-    assert.strictEqual(result.needsClose, false);
-    assert.strictEqual(result.needsReopen, true);
+  test('returns "incomplete" or "needs-expectations" when draft is set or expectations are missing', () => {
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, draft: 'wip', hasExpectations: true }), 'incomplete');
+    assert.strictEqual(classifyGuide({ hasGuide: true, hasGrader: true, hasTask: true, hasExpectations: false }), 'needs-expectations');
   });
 });
 
@@ -454,6 +391,17 @@ describe('buildUseCaseMaps', () => {
     assert.strictEqual(nameToIssueMap.get('my-use-case'), issue);
   });
 
+  test('maps use case name from new-use-case template title and body', () => {
+    const issue = {
+      number: 2,
+      title: 'Create guide for the custom-scrollbars use case',
+      body: '### Use case slug\n\ncustom-scrollbars\n\n### Category\n\nvisual-design\n',
+    };
+    const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps([issue]);
+    assert.strictEqual(nameToIssueMap.get('custom-scrollbars'), issue);
+    assert.strictEqual(subdirToIssueMap.get('guides/visual-design/custom-scrollbars'), issue);
+  });
+
   test('maps subdirectory from issue body', () => {
     const issue = { number: 1, title: 'Some title', body: 'Use case subdir: [guides/html/my-use-case](https://github.com/...)' };
     const { subdirToIssueMap } = buildUseCaseMaps([issue]);
@@ -471,6 +419,66 @@ describe('buildUseCaseMaps', () => {
     const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps([issue]);
     assert.strictEqual(nameToIssueMap.get('my-use-case'), issue);
     assert.strictEqual(subdirToIssueMap.size, 0);
+  });
+
+  test('prefers canonical (lowest-numbered) issue over newer duplicates regardless of input order', () => {
+    const canonical = {
+      number: 1212,
+      title: 'Create guide for the css-animations use case',
+      body: 'Use case subdir: [guides/animations/css-animations](https://github.com/...)',
+      state: 'open',
+      state_reason: null,
+    };
+    const duplicate1 = {
+      number: 2468,
+      title: 'Create guide for the css-animations use case',
+      body: 'Use case subdir: [guides/animations/css-animations](https://github.com/...)',
+      state: 'open',
+      state_reason: null,
+    };
+    const duplicate2 = {
+      number: 2722,
+      title: 'Create guide for the css-animations use case',
+      body: 'Use case subdir: [guides/animations/css-animations](https://github.com/...)',
+      state: 'open',
+      state_reason: null,
+    };
+
+    const asc = buildUseCaseMaps([canonical, duplicate1, duplicate2]);
+    assert.strictEqual(asc.nameToIssueMap.get('css-animations')?.number, 1212);
+    assert.strictEqual(asc.subdirToIssueMap.get('guides/animations/css-animations')?.number, 1212);
+
+    const desc = buildUseCaseMaps([duplicate2, duplicate1, canonical]);
+    assert.strictEqual(desc.nameToIssueMap.get('css-animations')?.number, 1212);
+    assert.strictEqual(desc.subdirToIssueMap.get('guides/animations/css-animations')?.number, 1212);
+  });
+
+  test('prefers active or completed issue over older issue closed as not_planned or duplicate', () => {
+    const abandonedEarly = {
+      number: 167,
+      title: 'Create guide and evals for the deliver-optimized-decorative-images use case',
+      body: 'Use case subdir: [guides/images/deliver-optimized-decorative-images](https://github.com/...)',
+      state: 'closed',
+      state_reason: 'not_planned',
+    };
+    const canonicalCompleted = {
+      number: 642,
+      title: 'Create guide for the deliver-optimized-decorative-images use case',
+      body: 'Use case subdir: [guides/images/deliver-optimized-decorative-images](https://github.com/...)',
+      state: 'closed',
+      state_reason: 'completed',
+    };
+    const laterDuplicate = {
+      number: 2224,
+      title: 'Create guide for the deliver-optimized-decorative-images use case',
+      body: 'Use case subdir: [guides/images/deliver-optimized-decorative-images](https://github.com/...)',
+      state: 'closed',
+      state_reason: 'duplicate',
+    };
+
+    const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps([abandonedEarly, canonicalCompleted, laterDuplicate]);
+    assert.strictEqual(nameToIssueMap.get('deliver-optimized-decorative-images')?.number, 642);
+    assert.strictEqual(subdirToIssueMap.get('guides/images/deliver-optimized-decorative-images')?.number, 642);
   });
 });
 
@@ -490,43 +498,36 @@ describe('buildRequiredFilesChecklist', () => {
       hasTask: false,
       featureIds: [],
       isDisciplineGuide: false,
-      draft: false,
       isPublished: false,
       ...overrides,
     };
   }
 
-  test('generates unchecked checklist for empty inventory', () => {
+  test('generates unchecked checklist for empty inventory and excludes eval artifacts', () => {
     const inv = makeInventory();
     const result = buildRequiredFilesChecklist(inv);
     assert.ok(result.includes('- [ ] Use case metadata (guide.md frontmatter)'));
     assert.ok(result.includes('- [ ] Use case guidance (guide.md)'));
     assert.ok(result.includes('- [ ] demo.html'));
     assert.ok(result.includes('- [ ] expectations.md'));
-    assert.ok(result.includes('- [ ] tasks/task.md'));
-    assert.ok(result.includes('- [ ] negative-demo.html'));
-    assert.ok(result.includes('- [ ] grader.ts'));
+    assert.ok(!result.includes('tasks/task.md'));
+    assert.ok(!result.includes('negative-demo.html'));
+    assert.ok(!result.includes('grader.ts'));
   });
 
-  test('marks checked files accurately', () => {
+  test('marks checked content files accurately', () => {
     const inv = makeInventory({
       isStub: true,
       hasGuide: true,
       hasDemo: true,
       hasExpectations: true,
       expectationsEmpty: false,
-      hasTask: true,
-      hasNegativeDemo: true,
-      hasGrader: true,
     });
     const result = buildRequiredFilesChecklist(inv);
     assert.ok(result.includes('- [x] Use case metadata (guide.md frontmatter)'));
     assert.ok(result.includes('- [x] Use case guidance (guide.md)'));
     assert.ok(result.includes('- [x] demo.html'));
     assert.ok(result.includes('- [x] expectations.md'));
-    assert.ok(result.includes('- [x] tasks/task.md'));
-    assert.ok(result.includes('- [x] negative-demo.html'));
-    assert.ok(result.includes('- [x] grader.ts'));
   });
 
   test('handles stubs without full guidance', () => {
@@ -549,12 +550,11 @@ describe('buildRequiredFilesChecklist', () => {
   });
 
   test('does not check off guide.md and appends draft annotation when draft is truthy', () => {
-    const invBool = makeInventory({
+    const invWip = makeInventory({
       hasGuide: true,
-      draft: true,
+      draft: 'wip',
     });
-    const resultBool = buildRequiredFilesChecklist(invBool);
-    assert.ok(resultBool.includes('- [ ] Use case guidance (guide.md) *(draft: true)*'));
+    assert.ok(buildRequiredFilesChecklist(invWip).includes('- [ ] Use case guidance (guide.md) *(draft: wip)*'));
 
     const invBlocked = makeInventory({
       hasGuide: true,
@@ -591,14 +591,13 @@ describe('buildIssueContent', () => {
       hasTask: false,
       featureIds: [],
       isDisciplineGuide: false,
-      draft: false,
       isPublished: false,
     };
   }
 
   test('generates correct issue title', () => {
     const { issueTitle } = buildIssueContent('my-use-case', 'A description', [], 'guides/ux/my-use-case', emptyMap, makeInventory());
-    assert.strictEqual(issueTitle, 'Create guide and evals for the my-use-case use case');
+    assert.strictEqual(issueTitle, 'Create guide for the my-use-case use case');
   });
 
   test('includes description in issue body', () => {
@@ -639,7 +638,7 @@ describe('buildIssueContent', () => {
     assert.strictEqual(milestoneNumber, 3);
   });
 
-  test('uses priority label from first matched feature only', () => {
+  test('uses priority label from first matched feature only when milestones match', () => {
     const featureMap = new Map([
       ['feature-a', { number: 1, priorityLabel: 'P1', milestoneNumber: 1, state: 'open', body: '' }],
       ['feature-b', { number: 2, priorityLabel: 'P2', milestoneNumber: 2, state: 'open', body: '' }],
@@ -647,6 +646,25 @@ describe('buildIssueContent', () => {
     const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap, makeInventory());
     assert.strictEqual(priorityLabel, 'P1');
     assert.strictEqual(milestoneNumber, 1);
+  });
+
+  test('inherits priority from feature whose milestone matches existingMilestoneNumber', () => {
+    const featureMap = new Map([
+      ['feature-a', { number: 1, priorityLabel: 'P0', milestoneNumber: 1, state: 'open', body: '' }],
+      ['feature-b', { number: 2, priorityLabel: 'P2', milestoneNumber: 3, state: 'open', body: '' }],
+    ]);
+    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['feature-a', 'feature-b'], 'guides/ux/my-use-case', featureMap, makeInventory(), 3);
+    assert.strictEqual(milestoneNumber, 3);
+    assert.strictEqual(priorityLabel, 'P2');
+  });
+
+  test('inherits milestone and priority when existingMilestoneNumber is null (unassigned existing issue)', () => {
+    const featureMap = new Map([
+      ['feature-a', { number: 1, priorityLabel: 'P1', milestoneNumber: 3, state: 'open', body: '' }],
+    ]);
+    const { priorityLabel, milestoneNumber } = buildIssueContent('my-use-case', 'desc', ['feature-a'], 'guides/ux/my-use-case', featureMap, makeInventory(), null);
+    assert.strictEqual(milestoneNumber, 3);
+    assert.strictEqual(priorityLabel, 'P1');
   });
 
   test('omits related features section when no features have linked issues', () => {
@@ -682,27 +700,26 @@ describe('getFeaturesNeedingSync', () => {
     const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
     const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']));
     assert.strictEqual(result.length, 1);
-    assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: null, targetStatus: 'Needs evals' });
+    assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, closeReason: null, targetStatus: 'Needs use cases' });
   });
 
-  test('flags closed feature issue for reopening when it has active use cases', () => {
+  test('never reopens closed feature issue even when it has active use cases', () => {
     const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'closed' }]]);
     const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']));
-    assert.strictEqual(result.length, 1);
-    assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, needsReopen: true, closeReason: null, targetStatus: 'Needs evals' });
+    assert.deepStrictEqual(result, []);
   });
 
   test('closes open feature as completed when all use cases are implemented', () => {
     const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
     const result = getFeaturesNeedingSync(featureMap, new Set(), new Set(['autofill']));
     assert.strictEqual(result.length, 1);
-    assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: 'completed', targetStatus: null });
+    assert.deepStrictEqual(result[0], { featureId: 'autofill', issueNumber: 27, closeReason: 'completed', targetStatus: null });
   });
 
   test('sets "Needs use cases" for open feature with no use cases', () => {
     const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
     const result = getFeaturesNeedingSync(featureMap, new Set(), new Set());
-    assert.deepStrictEqual(result, [{ featureId: 'autofill', issueNumber: 27, needsReopen: false, closeReason: null, targetStatus: 'Needs use cases' }]);
+    assert.deepStrictEqual(result, [{ featureId: 'autofill', issueNumber: 27, closeReason: null, targetStatus: 'Needs use cases' }]);
   });
 
   test('skips already-closed feature with all use cases implemented', () => {
@@ -711,22 +728,23 @@ describe('getFeaturesNeedingSync', () => {
     assert.deepStrictEqual(result, []);
   });
 
-  test('handles use case with multiple features, only some with issues', () => {
-    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'closed' }]]);
+  test('handles use case with multiple features, only some with open issues', () => {
+    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
     // Use case maps to both 'autofill' and 'css-transitions', but only autofill has an issue
     const result = getFeaturesNeedingSync(featureMap, new Set(['autofill', 'css-transitions']), new Set(['autofill', 'css-transitions']));
     assert.strictEqual(result.length, 1);
     assert.strictEqual(result[0].featureId, 'autofill');
   });
 
-  test('includes multiple features when all have active use cases', () => {
+  test('includes only open features when multiple features have active use cases', () => {
     const featureMap = makeFeatureMap([
       ['autofill', { number: 27, state: 'closed' }],
       ['view-transitions', { number: 55, state: 'open' }],
     ]);
     const result = getFeaturesNeedingSync(featureMap, new Set(['autofill', 'view-transitions']), new Set(['autofill', 'view-transitions']));
-    assert.strictEqual(result.length, 2);
-    assert.ok(result.every(f => f.targetStatus === 'Needs evals'));
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].featureId, 'view-transitions');
+    assert.strictEqual(result[0].targetStatus, 'Needs use cases');
   });
 
   test('closes feature with completed use cases', () => {
@@ -749,32 +767,11 @@ describe('getFeaturesNeedingSync', () => {
     assert.strictEqual(result[0].targetStatus, 'Needs use cases');
   });
 
-  test('sets "Needs investigation" for feature with use cases needing investigation', () => {
-    const featureMap = makeFeatureMap([['autofill', { number: 27, state: 'open' }]]);
-    const result = getFeaturesNeedingSync(featureMap, new Set(['autofill']), new Set(['autofill']), new Set(['autofill']));
-    assert.strictEqual(result.length, 1);
-    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
-  });
-
-  test('keeps feature open and marked Needs investigation when project status explicitly requires it', () => {
-    const featureMap = makeFeatureMap([['text-wrap-pretty', { number: 83, state: 'open' }]]);
-    const projectDetails = {
-      projectId: 'P1',
-      statusFieldId: 'F1',
-      statusOptions: [],
-      issueStatusMap: new Map([[83, ProjectStatus.NeedsInvestigation]]),
-    };
-    const result = getFeaturesNeedingSync(featureMap, new Set(), new Set(['text-wrap-pretty']), new Set(), projectDetails);
-    assert.strictEqual(result.length, 1);
-    assert.strictEqual(result[0].closeReason, null);
-    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsInvestigation);
-  });
-
   test('matches feature sets symmetrically regardless of tmp- prefix on map key or set entry', () => {
     const featureMap = makeFeatureMap([['tmp-scroll-axis-lock', { number: 1265, state: 'open' }]]);
     const result = getFeaturesNeedingSync(featureMap, new Set(['scroll-axis-lock']), new Set(['scroll-axis-lock']));
     assert.strictEqual(result.length, 1);
-    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsEvals);
+    assert.strictEqual(result[0].targetStatus, ProjectStatus.NeedsUseCases);
   });
 });
 
@@ -870,7 +867,6 @@ describe('processGuideInventory', () => {
       hasTask: false,
       featureIds: [],
       isDisciplineGuide: false,
-      draft: false,
       isPublished: false,
       ...overrides,
     };
@@ -937,3 +933,83 @@ Body content.
     }
   });
 });
+
+describe('preserveTemplateUseCases', () => {
+  test('preserves open template-filed new-use-case issues lacking REQUIRED_FILES_START and registers linked features', () => {
+    const activeIssueNumbers = new Set<number>([10]);
+    const featureUseCaseMap = new Map();
+    const featuresWithActiveUseCases = new Set<string>();
+    const featuresWithAnyUseCases = new Set<string>();
+
+    const allUseCases = [
+      {
+        number: 10,
+        state: 'open',
+        title: 'Create guide and evals for the existing-on-disk use case',
+        body: '### web-feature-id\n\ndialog-closedby\n',
+      },
+      {
+        number: 25,
+        state: 'open',
+        title: 'Create guide for the Custom-Scrollbars use case',
+        body: '### Use case slug\n\nCustom-Scrollbars\n\n### Category\n\nvisual-design\n\n### web-feature-id\n\nscrollbar-color, tmp-scroll-axis-lock\n',
+      },
+      {
+        number: 26,
+        state: 'open',
+        title: 'Create guide and evals for the orphaned-bot-issue use case',
+        body: `Some desc\n\n${REQUIRED_FILES_START}\n**Required files:**\n`,
+      },
+      {
+        number: 27,
+        state: 'closed',
+        title: 'Create guide for the closed-template use case',
+        body: '### Use case slug\n\nclosed-template\n',
+      },
+    ];
+
+    preserveTemplateUseCases(
+      allUseCases,
+      activeIssueNumbers,
+      featureUseCaseMap,
+      featuresWithActiveUseCases,
+      featuresWithAnyUseCases
+    );
+
+    assert.ok(activeIssueNumbers.has(25), 'Should preserve open template issue #25');
+    assert.ok(!activeIssueNumbers.has(26), 'Should NOT preserve bot-synced issue #26 that has REQUIRED_FILES_START');
+    assert.ok(!activeIssueNumbers.has(27), 'Should NOT preserve closed issue #27');
+    assert.ok(featuresWithActiveUseCases.has('scrollbar-color'));
+    assert.ok(featuresWithActiveUseCases.has('scroll-axis-lock'));
+    assert.deepStrictEqual(featureUseCaseMap.get('scrollbar-color'), [
+      { name: 'custom-scrollbars', issueNumber: 25, complete: false },
+    ]);
+  });
+});
+
+describe('reconcileNeedsUseCasesProjectStatus', () => {
+  test('moves issues against existing guides out of "Needs use cases" to "Needs investigation" and open use cases to "Needs guidance"', () => {
+    const issueStatusMap = new Map<number, string>([
+      [1550, ProjectStatus.NeedsUseCases], // new-feature issue -> keep
+      [2100, ProjectStatus.NeedsUseCases], // bug/feedback issue against existing guide -> Needs investigation
+      [1742, ProjectStatus.NeedsUseCases], // open new-use-case issue -> Needs guidance
+      [1200, ProjectStatus.NeedsUseCases], // closed new-use-case issue -> ignore
+      [1300, ProjectStatus.NeedsGuidance], // already in Needs guidance -> ignore
+    ]);
+
+    const updates = reconcileNeedsUseCasesProjectStatus(
+      issueStatusMap,
+      [{ number: 1550 }],
+      [{ number: 1742, state: 'open' }, { number: 1200, state: 'closed' }],
+    );
+
+    assert.deepStrictEqual(
+      updates,
+      new Map([
+        [2100, NEEDS_INVESTIGATION_STATUS],
+        [1742, ProjectStatus.NeedsGuidance],
+      ])
+    );
+  });
+});
+

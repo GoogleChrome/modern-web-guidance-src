@@ -18,7 +18,6 @@ function makeGuide(name: string, overrides: Partial<GuideInventory> = {}): Guide
     expectationsEmpty: false,
     hasGrader: false,
     hasTask: false,
-    draft: false,
     ...overrides,
   } as GuideInventory;
 }
@@ -39,7 +38,7 @@ describe('planFixes', () => {
 
   it('ignores drafts, incomplete guides, and complete guides', () => {
     const guides = [
-      makeGuide('draft-bool', { draft: true }),
+      makeGuide('draft-wip', { draft: 'wip' }),
       makeGuide('draft-str', { draft: 'blocked' }),
       makeGuide('no-guide', { hasGuide: false }),
       makeGuide('no-expectations', { hasExpectations: false }),
@@ -60,10 +59,10 @@ describe('planFixes', () => {
     assert.deepStrictEqual(toFix.map(g => g.guidePath), ['guides/css/scrollspy']);
   });
 
-  it('queues an open PR with needs-eval-run or needs-eval-gen instead of skipping it', () => {
+  it('queues an open PR labeled needs-dev-rerun instead of skipping it', () => {
     const openPrs = [
-      pr(5, 'grader updates: spinner', ['needs-eval-run'], 'gd-dev/spinner'),
-      pr(6, 'grader updates: scrollspy', ['needs-eval-gen', 'needs-eval-run'], 'gd-dev/scrollspy'),
+      pr(5, 'grader updates: spinner', ['needs-dev-rerun'], 'gd-dev/spinner'),
+      pr(6, 'grader updates: scrollspy', ['needs-dev-rerun'], 'gd-dev/scrollspy'),
     ];
     const { toFix, skipped } = planFixes(
       [makeGuide('spinner'), makeGuide('scrollspy')],
@@ -74,20 +73,20 @@ describe('planFixes', () => {
     assert.deepStrictEqual(
       toFix.map(g => ({ guidePath: g.guidePath, prNumber: g.prNumber, branch: g.branch, rerunMode: g.rerunMode })),
       [
-        { guidePath: 'guides/css/spinner', prNumber: 5, branch: 'gd-dev/spinner', rerunMode: 'needs-eval-run' },
-        { guidePath: 'guides/css/scrollspy', prNumber: 6, branch: 'gd-dev/scrollspy', rerunMode: 'needs-eval-gen' },
+        { guidePath: 'guides/css/spinner', prNumber: 5, branch: 'gd-dev/spinner', rerunMode: 'needs-dev-rerun' },
+        { guidePath: 'guides/css/scrollspy', prNumber: 6, branch: 'gd-dev/scrollspy', rerunMode: 'needs-dev-rerun' },
       ]
     );
   });
 
   it('queues an open PR with a rerun label even when the guide already has evals on main', () => {
     const completeGuide = makeGuide('popover', { hasGrader: true, hasTask: true });
-    const openPrs = [pr(12, 'grader updates: popover', ['needs-eval-run'], 'gd-dev/popover')];
+    const openPrs = [pr(12, 'grader updates: popover', ['needs-dev-rerun'], 'gd-dev/popover')];
     const { toFix, skipped } = planFixes([completeGuide], openPrs, new Set(['gd-dev/popover']));
     assert.deepStrictEqual(skipped, []);
     assert.deepStrictEqual(
       toFix.map(g => ({ guidePath: g.guidePath, prNumber: g.prNumber, branch: g.branch, rerunMode: g.rerunMode })),
-      [{ guidePath: 'guides/css/popover', prNumber: 12, branch: 'gd-dev/popover', rerunMode: 'needs-eval-run' }]
+      [{ guidePath: 'guides/css/popover', prNumber: 12, branch: 'gd-dev/popover', rerunMode: 'needs-dev-rerun' }]
     );
   });
 
@@ -151,6 +150,11 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.deleteLocalBranch = b => { calls.push(`delete ${b}`); };
     evalGapFixCli.listDevBranches = () => new Set();
     evalGapFixCli.listOpenPrs = () => [];
+    evalGapFixCli.fetchPrReviewContext = () => ({});
+    evalGapFixCli.getHeadCommitSha = () => 'abc1234';
+    evalGapFixCli.replyToReviewThread = (threadId, message) => {
+      calls.push(`reply ${threadId}: ${message}`);
+    };
     evalGapFixCli.runDevPr = async dir => {
       const name = path.basename(dir);
       calls.push(`pr ${name}`);
@@ -174,12 +178,12 @@ describe('fixEvalGaps', () => {
     assert.deepStrictEqual(calls, ['pull', ...prCalls('scrollspy')]);
   });
 
-  it('checks out the PR branch and preserves existing evals when rerunning a PR with needs-eval-run', async () => {
+  it('checks out the PR branch and preserves existing evals when rerunning a PR with needs-dev-rerun', async () => {
     const guide = tempGuide('scrollspy');
     const targetDir = path.join(guide.dir, TARGETS_DIR, 'daily-grind');
     fs.mkdirSync(targetDir, { recursive: true });
     fs.writeFileSync(path.join(targetDir, 'grader.ts'), '// existing grader\n');
-    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-run'], 'gd-dev/scrollspy')];
+    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-dev-rerun'], 'gd-dev/scrollspy')];
     stubDev([guide]);
 
     assert.strictEqual(await run([guide]), true);
@@ -193,34 +197,50 @@ describe('fixEvalGaps', () => {
     ]);
   });
 
-  it('deletes target evals before running gd dev when rerunning a PR with needs-eval-gen', async () => {
+  it('fetches PR review context and passes it to runDevGuide on PR reruns', async () => {
     const guide = tempGuide('scrollspy');
-    const dailyGrindDir = path.join(guide.dir, TARGETS_DIR, 'daily-grind');
-    const devtoolsTimesDir = path.join(guide.dir, TARGETS_DIR, 'devtools-times');
-    fs.mkdirSync(dailyGrindDir, { recursive: true });
-    fs.mkdirSync(devtoolsTimesDir, { recursive: true });
-    fs.writeFileSync(path.join(dailyGrindDir, 'grader.ts'), '// old daily-grind grader\n');
-    fs.writeFileSync(path.join(devtoolsTimesDir, 'grader.ts'), '// devtools-times grader untouched\n');
-    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-eval-gen'], 'gd-dev/scrollspy')];
+    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-dev-rerun'], 'gd-dev/scrollspy')];
 
-    let dailyGrindExistedDuringDev = true;
-    evalGapFixCli.runDevGuide = async inv => {
-      dailyGrindExistedDuringDev = fs.existsSync(dailyGrindDir);
+    let passedPrContext: any = null;
+    evalGapFixCli.fetchPrReviewContext = (prNum, branch) => {
+      calls.push(`fetch-context #${prNum} ${branch}`);
+      return {
+        branchCommits: 'commit 123',
+        branchDiff: '+diff',
+        comments: '- **@reviewer**: fix this',
+      };
+    };
+    evalGapFixCli.runDevGuide = async (inv, opts) => {
+      passedPrContext = opts.prContext;
       fs.mkdirSync(resultsDir(inv), { recursive: true });
       fs.writeFileSync(path.join(resultsDir(inv), REPORT_FILE), '# Report\n');
       return true;
     };
 
     assert.strictEqual(await run([guide]), true);
-    assert.strictEqual(dailyGrindExistedDuringDev, false);
-    assert.strictEqual(fs.existsSync(path.join(devtoolsTimesDir, 'grader.ts')), true);
-    assert.deepStrictEqual(calls, [
-      'pull',
-      'checkout-pr gd-dev/scrollspy',
-      'pr scrollspy',
-      'reset scrollspy',
-      'delete gd-dev/scrollspy',
-    ]);
+    assert.deepStrictEqual(passedPrContext, {
+      branchCommits: 'commit 123',
+      branchDiff: '+diff',
+      comments: '- **@reviewer**: fix this',
+      rerunMode: 'needs-dev-rerun',
+    });
+    assert.ok(calls.includes('fetch-context #42 gd-dev/scrollspy'));
+  });
+
+  it('replies to unresolved review threads after updating a PR', async () => {
+    const guide = tempGuide('scrollspy');
+    evalGapFixCli.listOpenPrs = () => [pr(42, 'grader updates: scrollspy', ['needs-dev-rerun'], 'gd-dev/scrollspy')];
+    evalGapFixCli.fetchPrReviewContext = () => ({
+      comments: '- **@micahjo7**: please fix this',
+      threadIds: ['PRRT_1', 'PRRT_2'],
+    });
+    evalGapFixCli.getHeadCommitSha = () => 'fedcba9';
+
+    stubDev([guide]);
+
+    assert.strictEqual(await run([guide]), true);
+    assert.ok(calls.includes('reply PRRT_1: 🤖 *[gd dev]* Addressed in fedcba9'));
+    assert.ok(calls.includes('reply PRRT_2: 🤖 *[gd dev]* Addressed in fedcba9'));
   });
 
   it('defaults targets to daily-grind and respects custom targets', async () => {
@@ -244,7 +264,7 @@ describe('fixEvalGaps', () => {
     stubDev([passing]);
 
     assert.strictEqual(await run([failing, passing]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset spinner', ...prCalls('progress-ring')]);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/spinner', 'reset spinner', 'delete gd-dev/spinner', ...prCalls('progress-ring')]);
   });
 
   it('continues when gd dev throws', async () => {
@@ -258,7 +278,7 @@ describe('fixEvalGaps', () => {
     };
 
     assert.strictEqual(await run([throwing, passing]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset spinner', ...prCalls('progress-ring')]);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/spinner', 'reset spinner', 'delete gd-dev/spinner', ...prCalls('progress-ring')]);
   });
 
   it('clears results from an earlier run so they cannot reach the PR', async () => {
@@ -268,7 +288,19 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.runDevGuide = async () => true; // "succeeds" without writing a new report
 
     assert.strictEqual(await run([guide]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset scrollspy']);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/scrollspy', 'reset scrollspy', 'delete gd-dev/scrollspy']);
+  });
+
+  it('still opens a PR when gd dev fails but writes a report (e.g. CALIBRATION_FAILED)', async () => {
+    const guide = tempGuide('scrollspy');
+    evalGapFixCli.runDevGuide = async inv => {
+      fs.mkdirSync(resultsDir(inv), { recursive: true });
+      fs.writeFileSync(path.join(resultsDir(inv), REPORT_FILE), '# Calibration failed report\n');
+      return false;
+    };
+
+    assert.strictEqual(await run([guide]), true);
+    assert.deepStrictEqual(calls, ['pull', ...prCalls('scrollspy')]);
   });
 
   it('drops the branch and continues when gd pr fails', async () => {
@@ -323,7 +355,7 @@ describe('fixEvalGaps', () => {
     evalGapFixCli.resetToMain = dir => { calls.push(`reset ${path.basename(dir)}`); treeStatus = '?? stray.txt'; };
 
     assert.strictEqual(await run([first, second]), false);
-    assert.deepStrictEqual(calls, ['pull', 'reset spinner']);
+    assert.deepStrictEqual(calls, ['pull', 'branch gd-dev/spinner', 'reset spinner', 'delete gd-dev/spinner']);
   });
 
   it('processes at most --limit guides', async () => {

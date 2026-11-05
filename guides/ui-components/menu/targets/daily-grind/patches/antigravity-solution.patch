@@ -1,0 +1,1417 @@
+diff --git a/index.html b/index.html
+index 66c9173..18715c3 100644
+--- a/index.html
++++ b/index.html
+@@ -8,10 +8,16 @@
+   <style>
+     :root {
+       --primary: #4e342e;
++      --primary-dark: #3e2723;
++      --primary-light: #6d4c41;
+       --secondary: #d7ccc8;
+       --accent: #ffab40;
++      --accent-dark: #e65100;
+       --text: #3e2723;
++      --text-muted: #6d4c41;
+       --light: #fafafa;
++      --surface: #ffffff;
++      --border: #e0d6d2;
+     }
+ 
+     * {
+@@ -27,54 +33,314 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
++    /* Navigation & Menubar */
+     nav {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.85rem 5%;
+       display: flex;
++      flex-wrap: wrap;
+       justify-content: space-between;
+       align-items: center;
++      gap: 0.75rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: 1.4rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
+-      display: flex;
+-      list-style: none;
++    /* Continuous menubar with no gaps between triggers */
++    [role="menubar"] {
++      display: inline-flex;
++      align-items: stretch;
++      gap: 0;
++      background: rgba(0, 0, 0, 0.2);
++      border: 1px solid rgba(255, 255, 255, 0.22);
++      border-radius: 6px;
++      max-inline-size: 100%;
++    }
++
++    [role="menubar"] > .trigger {
++      appearance: none;
++      background: transparent;
++      color: white;
++      border: 0;
++      border-inline-end: 1px solid rgba(255, 255, 255, 0.16);
++      padding: 0.5rem 0.85rem;
++      font: inherit;
++      font-size: 0.9rem;
++      font-weight: 500;
++      cursor: pointer;
++      display: inline-flex;
++      align-items: center;
++      gap: 0.4rem;
++      white-space: nowrap;
++      transition: background-color 0.15s, color 0.15s;
++    }
++
++    [role="menubar"] > .trigger:first-of-type {
++      border-start-start-radius: 5px;
++      border-end-start-radius: 5px;
++    }
++
++    [role="menubar"] > .trigger:last-of-type {
++      border-inline-end: 0;
++      border-start-end-radius: 5px;
++      border-end-end-radius: 5px;
++    }
++
++    [role="menubar"] > .trigger:hover {
++      background: rgba(255, 255, 255, 0.12);
++    }
++
++    /* Closed trigger styled as active only on :focus-visible; open/previewed uses aria-expanded="true" */
++    [role="menubar"] > .trigger[aria-expanded="true"] {
++      background: var(--accent);
++      color: var(--primary-dark);
++      font-weight: 600;
+     }
+ 
+-    nav ul li {
+-      margin-left: 20px;
++    .trigger:focus {
++      outline: none;
+     }
+ 
+-    nav a {
++    .trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    [role="menubar"] > .trigger:focus-visible {
++      background: rgba(255, 171, 64, 0.25);
++      outline-offset: -2px;
++    }
++
++    [role="menubar"] > .trigger[aria-expanded="true"]:focus-visible {
++      background: var(--accent);
++      outline: 2px solid white;
++      outline-offset: -3px;
++    }
++
++    /* Standalone menu triggers on cards */
++    .card-trigger {
++      appearance: none;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 0.5rem;
++      background: var(--primary);
+       color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
++      border: 1px solid transparent;
++      padding: 0.6rem 1.15rem;
++      border-radius: 5px;
++      margin-top: 15px;
++      font: inherit;
++      font-size: 0.92rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+     }
+ 
+-    nav a:hover {
+-      color: var(--accent);
++    .card-trigger:hover {
++      background: var(--primary-dark);
+     }
+ 
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
++    .card-trigger[aria-expanded="true"] {
++      background: var(--accent);
++      color: var(--primary-dark);
++      border-color: var(--primary-dark);
++    }
++
++    .card-trigger:focus-visible {
++      background: var(--primary-dark);
++      outline: 2px solid var(--accent-dark);
++      outline-offset: 2px;
++    }
++
++    /* Popover Menu Styling */
++    [popover] {
++      background: var(--surface);
++      color: var(--text);
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: 0.35rem;
++      box-shadow: 0 10px 25px rgba(62, 39, 35, 0.18), 0 2px 6px rgba(62, 39, 35, 0.08);
++      min-inline-size: 13rem;
++      max-inline-size: min(18rem, 92vw);
++    }
++
++    /* CSS Anchor Positioning */
++    @supports (position-area: block-end) {
++      /* Top-level menus sit below their trigger. The implicit anchor comes from the invoker or source. */
++      [popover] {
++        position-area: block-end span-inline-end;
++        position-try-fallbacks: flip-inline, flip-block;
++        inset: auto;
++      }
++
++      /* A popover nested in another popover is a submenu: beside its parent item, flipping when it would overflow. */
++      [popover] [popover] {
++        position-area: inline-end span-block-end;
++        position-try-fallbacks: flip-inline, flip-block, --below;
++      }
++
++      /* Last resort for narrow viewports: directly below the trigger, indented, so the submenu never
++         covers its trigger. */
++      @position-try --below {
++        position-area: block-end span-inline-end;
++        margin-inline-start: 1rem;
++        /* Fit the area: the submenu's minimum width must not stop this fallback from fitting. */
++        min-inline-size: 0;
++        max-inline-size: calc(100% - 1rem);
++      }
++    }
++
++    @supports not (position-area: block-end) {
++      [popover] {
++        position: fixed;
++        inset: auto;
++        margin: 0;
++      }
++    }
++
++    /* Safe triangle for submenus */
++    [popover] [popover] {
++      overflow: visible;
++
++      &[data-bridge]::before {
++        content: "";
++        position: absolute;
++        inset: -100vh -100vw; /* Room for the triangle, which can extend far outside the submenu. */
++        clip-path: polygon(
++          calc(100vw + var(--bridge-x)) calc(100vh + var(--bridge-y)),
++          calc(100vw + var(--bridge-edge)) 100vh,
++          calc(100vw + var(--bridge-edge)) calc(100vh + var(--bridge-height))
++        );
++        clip-path: shape(
++          from calc(100vw + var(--bridge-x)) calc(100vh + var(--bridge-y)),
++          line to calc(100vw + var(--bridge-edge)) 100vh,
++          line to calc(100vw + var(--bridge-edge)) calc(100vh + var(--bridge-height)),
++          close
++        );
++      }
++    }
++
++    /* Animate open and close */
++    @media (prefers-reduced-motion: no-preference) {
++      /* Closing: this rule is in effect once :popover-open is removed. */
++      [popover] {
++        opacity: 0;
++        translate: 0 -.25rem;
++        transition: opacity .15s, translate .15s, display .15s allow-discrete, overlay .15s allow-discrete;
++      }
++      /* Opening: faster. */
++      [popover]:popover-open {
++        opacity: 1;
++        translate: 0 0;
++        transition-duration: .1s;
++        @starting-style { opacity: 0; translate: 0 -.25rem; }
++      }
++      /* Switching between open menubar menus is instant, as in native menubars. */
++      [role="menubar"]:has(> [popover]:popover-open) > [popover] {
++        transition: none;
++      }
++    }
++
++    /* Align menu item content */
++    [focusgroup~="menu"] {
++      --menu-icon-size: 1.25rem;
++      position: relative;
++      z-index: 1;
++      display: flex;
++      flex-direction: column;
++      min-inline-size: 0;
++    }
++
++    [focusgroup~="menu"] > [role="group"] {
++      display: flex;
++      flex-direction: column;
++      min-inline-size: 0;
++    }
++
++    /* Target items only. A closed submenu popover inside the focusgroup must keep display: none. */
++    [focusgroup~="menu"] > button,
++    [focusgroup~="menu"] > [role="group"] > button {
++      display: flex;
++      align-items: center;
++      gap: .5rem;
++      inline-size: 100%;
++      min-inline-size: 0;
++      appearance: none;
++      background: transparent;
++      border: 0;
++      border-radius: 5px;
++      padding: 0.42rem 0.6rem;
++      color: var(--text);
++      font: inherit;
++      font-size: 0.88rem;
++      text-align: start;
++      cursor: pointer;
++      overflow-wrap: anywhere;
++    }
++
++    /* The leading slot holds the icon or check mark. */
++    [focusgroup~="menu"] button::before {
++      content: "";
++      flex: none;
++      inline-size: var(--menu-icon-size);
++      text-align: center;
++      font-weight: 700;
++      color: var(--primary);
++    }
++
++    /* Check mark for checked items. This selector must be at least as specific as the base
++       ::before rule above, or the empty content wins and the check mark never shows. */
++    [focusgroup~="menu"] button[aria-checked="true"]::before {
++      content: "✓";
++    }
++
++    /* Shortcut or submenu indicator at the inline end. */
++    [focusgroup~="menu"] .hint {
++      margin-inline-start: auto;
++      padding-inline-start: 0.5rem;
++      color: var(--text-muted);
++      font-size: 0.82rem;
++      flex: none;
++    }
++
++    /* Hover and focus styling for menu items */
++    [focusgroup~="menu"] button:hover,
++    [focusgroup~="menu"] button:focus {
++      background: var(--secondary);
++      color: var(--primary-dark);
++      outline: none;
++    }
++
++    [focusgroup~="menu"] button:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: -2px;
++    }
++
++    [focusgroup~="menu"] button[aria-expanded="true"] {
++      background: rgba(255, 171, 64, 0.25);
++      color: var(--primary-dark);
++      font-weight: 600;
++    }
++
++    [focusgroup~="menu"] hr {
++      border: 0;
++      border-block-start: 1px solid var(--border);
++      margin: 0.3rem 0.25rem;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      height: 52vh;
++      min-height: 280px;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -89,17 +355,35 @@
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: clamp(2rem, 5vw, 3rem);
++      margin-bottom: 0.75rem;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 36px auto;
+       padding: 0 20px;
+     }
+ 
++    .status-bar {
++      background: #fff8e1;
++      border: 1px solid var(--accent);
++      color: var(--primary-dark);
++      padding: 0.65rem 1rem;
++      border-radius: 6px;
++      margin-bottom: 1.5rem;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++      gap: 0.75rem;
++      font-size: 0.92rem;
++    }
++
++    .status-bar strong {
++      color: var(--primary);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -109,10 +393,13 @@
+ 
+     .card {
+       background: white;
+-      padding: 20px;
++      padding: 24px 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .card h3 {
+@@ -120,6 +407,16 @@
+       color: var(--primary);
+     }
+ 
++    .card p {
++      flex: 1;
++    }
++
++    .card-meta {
++      margin-top: 0.65rem;
++      font-size: 0.82rem;
++      color: var(--text-muted);
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -132,7 +429,7 @@
+     }
+ 
+     .btn:hover {
+-      background: #3e2723;
++      background: var(--primary-dark);
+     }
+ 
+     footer {
+@@ -152,20 +449,209 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    @media (max-width: 480px) {
++      nav {
++        padding: 0.65rem 3%;
++      }
++      [role="menubar"] > .trigger {
++        padding: 0.45rem 0.5rem;
++        font-size: 0.8rem;
++      }
++    }
+   </style>
+ </head>
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
++
++    <div role="menubar" aria-label="Coffee Shop Menu">
++      <!-- 1. Drinks Menu with multi-level nested submenus for drink categories -->
++      <button id="nav-drinks-trigger" class="trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++        commandfor="nav-drinks-menu" command="toggle-popover">
++        Menu <span class="hint" aria-hidden="true">▾</span>
++      </button>
++      <div id="nav-drinks-menu" popover="auto">
++        <div focusgroup="menu nomemory" aria-labelledby="nav-drinks-trigger">
++          <button type="button">Browse All Seasonal Drinks</button>
++          <hr>
++          <button id="nav-hot-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++            commandfor="nav-hot-menu" command="toggle-popover">
++            Hot Coffees <span class="hint" aria-hidden="true">›</span>
++          </button>
++          <div id="nav-hot-menu" popover="auto">
++            <div focusgroup="menu nomemory" aria-labelledby="nav-hot-trigger">
++              <button type="button">House Morning Drip <span class="hint" aria-hidden="true">$3.25</span></button>
++              <button id="nav-espresso-bar-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                commandfor="nav-espresso-bar-menu" command="toggle-popover">
++                Espresso Classics <span class="hint" aria-hidden="true">›</span>
++              </button>
++              <div id="nav-espresso-bar-menu" popover="auto">
++                <div focusgroup="menu nomemory" aria-labelledby="nav-espresso-bar-trigger">
++                  <button type="button">Maple Oat Latte <span class="hint" aria-hidden="true">$5.50</span></button>
++                  <button type="button">Dark Roast Espresso <span class="hint" aria-hidden="true">$3.75</span></button>
++                  <button type="button">Velvet Cappuccino <span class="hint" aria-hidden="true">$4.75</span></button>
++                  <button type="button">Cortado <span class="hint" aria-hidden="true">$4.25</span></button>
++                </div>
++              </div>
++
++              <button id="nav-brewed-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                commandfor="nav-brewed-menu" command="toggle-popover">
++                Filter &amp; Pour Over <span class="hint" aria-hidden="true">›</span>
++              </button>
++              <div id="nav-brewed-menu" popover="auto">
++                <div focusgroup="menu nomemory" aria-labelledby="nav-brewed-trigger">
++                  <button type="button">Single-Origin Ethiopian</button>
++                  <button type="button">House Morning Blend</button>
++                  <button type="button">Chemex Carafe</button>
++                </div>
++              </div>
++
++              <hr>
++              <button type="button">Cafe Au Lait</button>
++            </div>
++          </div>
++
++          <button id="nav-cold-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++            commandfor="nav-cold-menu" command="toggle-popover">
++            Cold &amp; Iced <span class="hint" aria-hidden="true">›</span>
++          </button>
++          <div id="nav-cold-menu" popover="auto">
++            <div focusgroup="menu nomemory" aria-labelledby="nav-cold-trigger">
++              <button type="button">Iced Brown Sugar Oat Shaken</button>
++              <button id="nav-coldbrew-sub-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                commandfor="nav-coldbrew-sub-menu" command="toggle-popover">
++                Slow-Steeped Cold Brew <span class="hint" aria-hidden="true">›</span>
++              </button>
++              <div id="nav-coldbrew-sub-menu" popover="auto">
++                <div focusgroup="menu nomemory" aria-labelledby="nav-coldbrew-sub-trigger">
++                  <button type="button">18-Hour Classic Cold Brew</button>
++                  <button type="button">Nitro Draft Cold Brew</button>
++                  <button type="button">Maple Sweet Cream Cold Brew</button>
++                </div>
++              </div>
++
++              <button type="button">Iced Americano</button>
++            </div>
++          </div>
++
++          <button id="nav-tea-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++            commandfor="nav-tea-menu" command="toggle-popover">
++            Tea &amp; Botanicals <span class="hint" aria-hidden="true">›</span>
++          </button>
++          <div id="nav-tea-menu" popover="auto">
++            <div focusgroup="menu nomemory" aria-labelledby="nav-tea-trigger">
++              <button type="button">Ceremonial Matcha Latte</button>
++              <button type="button">House Masala Chai</button>
++              <button type="button">London Fog</button>
++            </div>
++          </div>
++
++          <hr>
++          <button type="button" role="menuitemcheckbox" aria-checked="true">Show Seasonal Specials</button>
++          <button type="button" role="menuitemcheckbox" aria-checked="false">Plant-Based Only</button>
++        </div>
++      </div>
++
++      <!-- 2. Order Customizations Menu with multi-level nested submenus -->
++      <button id="nav-customize-trigger" class="trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++        commandfor="nav-customize-menu" command="toggle-popover">
++        Customize <span class="hint" aria-hidden="true">▾</span>
++      </button>
++      <div id="nav-customize-menu" popover="auto">
++        <div focusgroup="menu nomemory" aria-labelledby="nav-customize-trigger">
++          <div role="group" aria-label="Default Cup Size">
++            <button type="button" role="menuitemradio" aria-checked="false">Small (8 oz)</button>
++            <button type="button" role="menuitemradio" aria-checked="true">Medium (12 oz)</button>
++            <button type="button" role="menuitemradio" aria-checked="false">Large (16 oz)</button>
++          </div>
++          <hr>
++          <button id="nav-milk-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++            commandfor="nav-milk-menu" command="toggle-popover">
++            Milk &amp; Dairy <span class="hint" aria-hidden="true">›</span>
++          </button>
++          <div id="nav-milk-menu" popover="auto">
++            <div focusgroup="menu nomemory" aria-labelledby="nav-milk-trigger">
++              <button type="button">Organic Whole Milk</button>
++              <button type="button">Skim Milk</button>
++              <button id="nav-plant-milk-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                commandfor="nav-plant-milk-menu" command="toggle-popover">
++                Plant-Based Milks <span class="hint" aria-hidden="true">›</span>
++              </button>
++              <div id="nav-plant-milk-menu" popover="auto">
++                <div focusgroup="menu nomemory" aria-labelledby="nav-plant-milk-trigger">
++                  <button type="button">Barista Oat Milk</button>
++                  <button type="button">Roasted Almond Milk</button>
++                  <button type="button">Coconut Cream Blend</button>
++                </div>
++              </div>
++            </div>
++          </div>
++
++          <button id="nav-sweeteners-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++            commandfor="nav-sweeteners-menu" command="toggle-popover">
++            Syrups &amp; Shots <span class="hint" aria-hidden="true">›</span>
++          </button>
++          <div id="nav-sweeteners-menu" popover="auto">
++            <div focusgroup="menu nomemory" aria-labelledby="nav-sweeteners-trigger">
++              <button type="button">Add Extra Espresso Shot</button>
++              <button type="button">Vermont Maple Syrup</button>
++              <button type="button">Madagascar Vanilla</button>
++            </div>
++          </div>
++
++          <hr>
++          <button type="button" role="menuitemcheckbox" aria-checked="true">Bring Personal Cup (-$0.25)</button>
++          <button type="button" role="menuitemcheckbox" aria-checked="false">Extra Hot (165°F)</button>
++        </div>
++      </div>
++
++      <!-- 3. Locations & Pickup Menu -->
++      <button id="nav-locations-trigger" class="trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++        commandfor="nav-locations-menu" command="toggle-popover">
++        Locations <span class="hint" aria-hidden="true">▾</span>
++      </button>
++      <div id="nav-locations-menu" popover="auto">
++        <div focusgroup="menu nomemory" aria-labelledby="nav-locations-trigger">
++          <div role="group" aria-label="Pickup Method">
++            <button type="button" role="menuitemradio" aria-checked="true">In-Store Counter Pickup</button>
++            <button type="button" role="menuitemradio" aria-checked="false">Curbside Express</button>
++          </div>
++          <hr>
++          <button id="nav-cafes-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++            commandfor="nav-cafes-menu" command="toggle-popover">
++            Select Roastery <span class="hint" aria-hidden="true">›</span>
++          </button>
++          <div id="nav-cafes-menu" popover="auto">
++            <div focusgroup="menu nomemory" aria-labelledby="nav-cafes-trigger">
++              <button type="button">Downtown Roastery</button>
++              <button type="button">Arts District Cafe</button>
++              <button type="button">Harborfront Kiosk</button>
++            </div>
++          </div>
++          <hr>
++          <button type="button">View Store Hours</button>
++        </div>
++      </div>
++
++      <!-- 4. Account & Rewards Menu -->
++      <button id="nav-account-trigger" class="trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++        commandfor="nav-account-menu" command="toggle-popover">
++        Account <span class="hint" aria-hidden="true">▾</span>
++      </button>
++      <div id="nav-account-menu" popover="auto">
++        <div focusgroup="menu nomemory" aria-labelledby="nav-account-trigger">
++          <button type="button">Redeem Rewards <span class="hint" aria-hidden="true">240 ★</span></button>
++          <button type="button">Repeat Last Order</button>
++          <hr>
++          <button type="button" role="menuitemcheckbox" aria-checked="true">Order Ready Alerts</button>
++          <hr>
++          <button type="button">Logout</button>
++        </div>
++      </div>
++    </div>
+   </nav>
+ 
+   <header class="hero">
+@@ -175,23 +661,170 @@
+   </header>
+ 
+   <main class="container">
++    <div class="status-bar" role="status" aria-live="polite" id="menu-status">
++      <span><strong>Barista Bar Ready:</strong> <span id="status-message">Use the navigation bar or card menus to browse drink categories and customize your order.</span></span>
++    </div>
++
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
++        <!-- Card 1: Maple Oat Latte -->
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <p class="card-meta" id="latte-summary">Medium (12 oz) • Barista Oat Milk</p>
++
++          <button id="latte-card-trigger" class="trigger card-trigger" type="button" aria-haspopup="menu"
++            aria-expanded="false" commandfor="latte-card-menu" command="toggle-popover" data-drink="Maple Oat Latte">
++            Customize &amp; Order <span class="hint" aria-hidden="true">▾</span>
++          </button>
++          <div id="latte-card-menu" popover="auto">
++            <div focusgroup="menu nomemory" aria-labelledby="latte-card-trigger">
++              <button type="button">Add Maple Oat Latte to Order <span class="hint" aria-hidden="true">$5.50</span></button>
++              <hr>
++              <div role="group" aria-label="Maple Oat Latte Size">
++                <button type="button" role="menuitemradio" aria-checked="false">Small (8 oz)</button>
++                <button type="button" role="menuitemradio" aria-checked="true">Medium (12 oz)</button>
++                <button type="button" role="menuitemradio" aria-checked="false">Large (16 oz)</button>
++              </div>
++              <hr>
++              <button id="latte-milk-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                commandfor="latte-milk-menu" command="toggle-popover">
++                Milk &amp; Foam <span class="hint" aria-hidden="true">›</span>
++              </button>
++              <div id="latte-milk-menu" popover="auto">
++                <div focusgroup="menu nomemory" aria-labelledby="latte-milk-trigger">
++                  <button type="button">Barista Oat Milk</button>
++                  <button type="button">Roasted Almond Milk</button>
++                  <button type="button">Organic Whole Milk</button>
++                  <button id="latte-foam-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                    commandfor="latte-foam-menu" command="toggle-popover">
++                    Foam Style <span class="hint" aria-hidden="true">›</span>
++                  </button>
++                  <div id="latte-foam-menu" popover="auto">
++                    <div focusgroup="menu nomemory" aria-labelledby="latte-foam-trigger">
++                      <button type="button">Velvet Microfoam</button>
++                      <button type="button">Extra Dry Foam</button>
++                      <button type="button">Maple Cold Foam</button>
++                    </div>
++                  </div>
++                </div>
++              </div>
++
++              <button id="latte-syrup-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                commandfor="latte-syrup-menu" command="toggle-popover">
++                Sweeteners &amp; Spice <span class="hint" aria-hidden="true">›</span>
++              </button>
++              <div id="latte-syrup-menu" popover="auto">
++                <div focusgroup="menu nomemory" aria-labelledby="latte-syrup-trigger">
++                  <button type="button" role="menuitemcheckbox" aria-checked="true">Vermont Maple Drizzle</button>
++                  <button type="button" role="menuitemcheckbox" aria-checked="false">Cinnamon Nutmeg Dust</button>
++                  <button type="button" role="menuitemcheckbox" aria-checked="false">Extra Espresso Shot</button>
++                </div>
++              </div>
++
++              <hr>
++              <button type="button" role="menuitemcheckbox" aria-checked="false">Prepared Iced</button>
++            </div>
++          </div>
+         </div>
++
++        <!-- Card 2: Dark Roast Espresso -->
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <p class="card-meta" id="espresso-summary">Double Shot • Signature Dark Roast</p>
++
++          <button id="espresso-card-trigger" class="trigger card-trigger" type="button" aria-haspopup="menu"
++            aria-expanded="false" commandfor="espresso-card-menu" command="toggle-popover" data-drink="Dark Roast Espresso">
++            Customize &amp; Order <span class="hint" aria-hidden="true">▾</span>
++          </button>
++          <div id="espresso-card-menu" popover="auto">
++            <div focusgroup="menu nomemory" aria-labelledby="espresso-card-trigger">
++              <button type="button">Add Dark Roast Espresso to Order <span class="hint" aria-hidden="true">$3.75</span></button>
++              <hr>
++              <div role="group" aria-label="Espresso Pull">
++                <button type="button" role="menuitemradio" aria-checked="false">Single Shot</button>
++                <button type="button" role="menuitemradio" aria-checked="true">Double Shot</button>
++                <button type="button" role="menuitemradio" aria-checked="false">Triple Ristretto</button>
++              </div>
++              <hr>
++              <button id="espresso-roast-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                commandfor="espresso-roast-menu" command="toggle-popover">
++                Bean &amp; Extraction <span class="hint" aria-hidden="true">›</span>
++              </button>
++              <div id="espresso-roast-menu" popover="auto">
++                <div focusgroup="menu nomemory" aria-labelledby="espresso-roast-trigger">
++                  <button type="button">Signature Smokey Dark</button>
++                  <button type="button">Swiss Water Decaf</button>
++                  <button id="espresso-origin-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                    commandfor="espresso-origin-menu" command="toggle-popover">
++                    Single-Origin Beans <span class="hint" aria-hidden="true">›</span>
++                  </button>
++                  <div id="espresso-origin-menu" popover="auto">
++                    <div focusgroup="menu nomemory" aria-labelledby="espresso-origin-trigger">
++                      <button type="button">Sumatra Mandheling</button>
++                      <button type="button">Colombia Huila Reserve</button>
++                      <button type="button">Ethiopia Yirgacheffe</button>
++                    </div>
++                  </div>
++                </div>
++              </div>
++
++              <hr>
++              <button type="button" role="menuitemcheckbox" aria-checked="true">Sparkling Water Side</button>
++              <button type="button" role="menuitemcheckbox" aria-checked="false">Lemon Twist Garnish</button>
++            </div>
++          </div>
+         </div>
++
++        <!-- Card 3: Cold Brew -->
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <p class="card-meta" id="coldbrew-summary">Large (16 oz) • Light Ice</p>
++
++          <button id="coldbrew-card-trigger" class="trigger card-trigger" type="button" aria-haspopup="menu"
++            aria-expanded="false" commandfor="coldbrew-card-menu" command="toggle-popover" data-drink="Cold Brew">
++            Customize &amp; Order <span class="hint" aria-hidden="true">▾</span>
++          </button>
++          <div id="coldbrew-card-menu" popover="auto">
++            <div focusgroup="menu nomemory" aria-labelledby="coldbrew-card-trigger">
++              <button type="button">Add Cold Brew to Order <span class="hint" aria-hidden="true">$4.95</span></button>
++              <hr>
++              <div role="group" aria-label="Cold Brew Size">
++                <button type="button" role="menuitemradio" aria-checked="false">Medium (12 oz)</button>
++                <button type="button" role="menuitemradio" aria-checked="true">Large (16 oz)</button>
++                <button type="button" role="menuitemradio" aria-checked="false">Traveler Growler (32 oz)</button>
++              </div>
++              <hr>
++              <button id="coldbrew-toppings-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                commandfor="coldbrew-toppings-menu" command="toggle-popover">
++                Cold Foam &amp; Cream <span class="hint" aria-hidden="true">›</span>
++              </button>
++              <div id="coldbrew-toppings-menu" popover="auto">
++                <div focusgroup="menu nomemory" aria-labelledby="coldbrew-toppings-trigger">
++                  <button type="button">Splash of Oat Milk</button>
++                  <button type="button">Serve Black (No Dairy)</button>
++                  <button id="coldbrew-foam-flavor-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
++                    commandfor="coldbrew-foam-flavor-menu" command="toggle-popover">
++                    Flavored Cold Foams <span class="hint" aria-hidden="true">›</span>
++                  </button>
++                  <div id="coldbrew-foam-flavor-menu" popover="auto">
++                    <div focusgroup="menu nomemory" aria-labelledby="coldbrew-foam-flavor-trigger">
++                      <button type="button">Salted Caramel Cold Foam</button>
++                      <button type="button">Vanilla Bean Sweet Cream</button>
++                      <button type="button">Dark Cocoa Oat Foam</button>
++                    </div>
++                  </div>
++                </div>
++              </div>
++
++              <hr>
++              <button type="button" role="menuitemcheckbox" aria-checked="true">Light Ice</button>
++              <button type="button" role="menuitemcheckbox" aria-checked="false">Nitro Infused Pour</button>
++            </div>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +840,589 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const triggers = [...document.querySelectorAll('button[commandfor]')];
++      const statusMessage = document.getElementById('status-message');
++      const enterOnOpen = new WeakSet();
++      const enterDirection = new WeakMap();
++      let pointerTrigger = null;
++      let suppressPreview = false;
++      let windowBlurred = false;
++
++      function menuFor(trigger) {
++        return trigger ? document.getElementById(trigger.getAttribute('commandfor')) : null;
++      }
++
++      function triggerFor(menu) {
++        return menu?.id ? document.querySelector(`button[commandfor="${menu.id}"]`) : null;
++      }
++
++      function isOpen(menu) {
++        return Boolean(menu && menu.matches(':popover-open'));
++      }
++
++      function isTopLevel(trigger) {
++        return Boolean(trigger && !trigger.closest('[popover]'));
++      }
++
++      function menubarFor(trigger) {
++        return trigger?.closest('[role="menubar"]') || null;
++      }
++
++      function rootMenuFor(node) {
++        let current = node?.closest('[popover]');
++        while (current) {
++          const parent = current.parentElement?.closest('[popover]');
++          if (!parent) return current;
++          current = parent;
++        }
++        return null;
++      }
++
++      function ownItems(menu) {
++        const group = menu?.querySelector('[focusgroup~="menu"]');
++        if (!group) return [];
++        return [...group.querySelectorAll('button')]
++          .filter(item => item.closest('[focusgroup]') === group)
++          .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
++      }
++
++      function announce(text) {
++        if (statusMessage) {
++          statusMessage.textContent = text;
++        }
++      }
++
++      function closeAndRestore(menu, { fromPointer = false } = {}) {
++        if (!menu) return;
++        const trigger = triggerFor(menu);
++        suppressPreview = true;
++        try {
++          if (trigger) {
++            trigger.focus({ focusVisible: !fromPointer });
++          }
++          if (isOpen(menu)) {
++            menu.hidePopover();
++          }
++        } finally {
++          suppressPreview = false;
++        }
++      }
++
++      // Initialize one tab stop per [role="menubar"]
++      const menubars = [...document.querySelectorAll('[role="menubar"]')];
++      function setMenubarTabStop(menubar, activeTrigger) {
++        const barTriggers = triggers.filter(t => menubarFor(t) === menubar && isTopLevel(t));
++        const target = activeTrigger && barTriggers.includes(activeTrigger) ? activeTrigger : barTriggers[0];
++        barTriggers.forEach(t => {
++          t.tabIndex = t === target ? 0 : -1;
++        });
++      }
++      menubars.forEach(bar => setMenubarTabStop(bar, null));
++
++      // Fallback for focusgroup in browsers without native HTMLElement.prototype.focusGroup
++      if (!('focusGroup' in HTMLElement.prototype)) {
++        document.querySelectorAll('[focusgroup~="menu"]').forEach(group => {
++          group.setAttribute('role', 'menu');
++          group.querySelectorAll('button:not([role])').forEach(item => {
++            item.setAttribute('role', 'menuitem');
++          });
++          group.addEventListener('keydown', event => {
++            if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
++            // Own items only: a nested submenu has its own focusgroup, a role="group" wrapper does not.
++            const items = [...group.querySelectorAll('button')]
++              .filter(item => item.closest('[focusgroup]') === group)
++              .filter(item => !item.disabled && item.getAttribute('aria-disabled') !== 'true');
++            const current = items.indexOf(document.activeElement);
++            if (current < 0) return;
++            const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 :
++              (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
++            event.preventDefault();
++            event.stopImmediatePropagation();
++            items[next].focus({ preventScroll: true });
++          }, true);
++        });
++      }
++
++      // Fallback for implicit anchor reference when showPopover({ source }) does not establish one
++      if (!('source' in ToggleEvent.prototype)) {
++        triggers.forEach((trigger, i) => {
++          const menu = menuFor(trigger);
++          if (!menu) return;
++          const name = `--menu-anchor-${i}`;
++          trigger.style.anchorName = name;
++          menu.style.positionAnchor = name;
++        });
++      }
++
++      // Fallback positioning when CSS Anchor Positioning is unsupported
++      function positionMenuFallback(menu, trigger) {
++        if (!menu || !trigger || CSS.supports('position-area', 'block-end')) return;
++        const tRect = trigger.getBoundingClientRect();
++        const mRect = menu.getBoundingClientRect();
++        const vw = document.documentElement.clientWidth;
++        const vh = document.documentElement.clientHeight;
++        const isSub = !isTopLevel(trigger);
++        let left, top;
++        if (!isSub) {
++          left = tRect.left;
++          top = tRect.bottom;
++          if (left + mRect.width > vw) left = tRect.right - mRect.width;
++          if (top + mRect.height > vh) top = tRect.top - mRect.height;
++        } else {
++          left = tRect.right;
++          top = tRect.top;
++          if (left + mRect.width > vw) left = tRect.left - mRect.width;
++          if (left < 0) {
++            left = tRect.left + 16;
++            top = tRect.bottom;
++          }
++          if (top + mRect.height > vh) top = tRect.bottom - mRect.height;
++        }
++        left = Math.max(4, Math.min(left, vw - mRect.width - 4));
++        top = Math.max(4, Math.min(top, vh - mRect.height - 4));
++        menu.style.left = `${left}px`;
++        menu.style.top = `${top}px`;
++      }
++
++      // Safe triangle for submenus
++      const canHover = matchMedia('(hover: hover)');
++
++      // Call on pointerleave of a submenu trigger, with that trigger's submenu.
++      function startBridge(submenu, event) {
++        if (!canHover.matches || !submenu.matches(':popover-open')) return;
++        const rect = submenu.getBoundingClientRect();
++        if (event.clientX >= rect.left && event.clientX <= rect.right) return; // --below: no side edge.
++        const style = submenu.style;
++        style.setProperty('--bridge-edge', `${event.clientX < rect.left ? 0 : rect.width}px`);
++        style.setProperty('--bridge-height', `${rect.height}px`);
++        const update = ({ clientX, clientY, target }) => {
++          if (target !== submenu && submenu.contains(target)) return stop(); // Reached an item.
++          style.setProperty('--bridge-x', `${clientX - rect.left}px`);
++          style.setProperty('--bridge-y', `${clientY - rect.top}px`);
++        };
++        const timer = setTimeout(() => stop(), 300);
++        const stop = () => {
++          clearTimeout(timer);
++          document.removeEventListener('pointermove', update);
++          submenu.removeEventListener('toggle', stop);
++          submenu.removeAttribute('data-bridge');
++        };
++        update(event);
++        submenu.dataset.bridge = '';
++        document.addEventListener('pointermove', update);
++        submenu.addEventListener('toggle', stop, { once: true });
++      }
++
++      // Track window blur/focus so app-switching does not reopen a preview
++      window.addEventListener('blur', () => {
++        windowBlurred = true;
++      });
++      window.addEventListener('focus', () => {
++        setTimeout(() => {
++          windowBlurred = false;
++        }, 0);
++      });
++
++      const hasNativeInvokers = 'commandForElement' in HTMLButtonElement.prototype;
++
++      // Setup each trigger and its menu
++      triggers.forEach(trigger => {
++        const menu = menuFor(trigger);
++        if (!menu) return;
++
++        // 1. Pointerdown: prevent focus mid-click and remember pressed trigger
++        trigger.addEventListener('pointerdown', event => {
++          event.preventDefault();
++          pointerTrigger = trigger;
++        });
++
++        // 2. Click handling & Invoker fallback
++        trigger.addEventListener('click', event => {
++          const fromPointer = pointerTrigger === trigger || event.detail > 0;
++          if (!hasNativeInvokers) {
++            event.preventDefault();
++            if (isOpen(menu)) {
++              pointerTrigger = null;
++              closeAndRestore(menu, { fromPointer });
++            } else {
++              if (!fromPointer) enterOnOpen.add(menu);
++              menu.showPopover({ source: trigger });
++            }
++            return;
++          }
++          if (!fromPointer && !isOpen(menu)) {
++            enterOnOpen.add(menu);
++          }
++        });
++
++        // 3. Preview on focus (for menubar triggers and submenu triggers)
++        trigger.addEventListener('focus', event => {
++          const bar = menubarFor(trigger);
++          if (bar) {
++            setMenubarTabStop(bar, trigger);
++          }
++          if (suppressPreview || windowBlurred || pointerTrigger === trigger) return;
++          if (menu.contains(event.relatedTarget)) return;
++          // Preview on focus applies to menubar triggers and submenu triggers
++          if (bar || !isTopLevel(trigger)) {
++            if (!isOpen(menu)) {
++              menu.showPopover({ source: trigger });
++            }
++          }
++        });
++
++        // 4. Hide a previewed menu on blur unless focus moved into it
++        trigger.addEventListener('blur', event => {
++          if (!isOpen(menu)) return;
++          if (event.relatedTarget && (menu.contains(event.relatedTarget) || event.relatedTarget === trigger)) {
++            return;
++          }
++          menu.hidePopover();
++        });
++
++        // 5. Hover switches open menus on top-level menubar triggers
++        if (isTopLevel(trigger) && menubarFor(trigger)) {
++          trigger.addEventListener('pointerenter', () => {
++            const bar = menubarFor(trigger);
++            const openTrigger = triggers.find(
++              t => menubarFor(t) === bar && isTopLevel(t) && isOpen(menuFor(t))
++            );
++            if (!openTrigger) return;
++            if (openTrigger !== trigger) {
++              menuFor(openTrigger).hidePopover();
++            }
++            setMenubarTabStop(bar, trigger);
++            trigger.focus({ focusVisible: false });
++          });
++        }
++
++        // 6. Start safe triangle bridge when pointer leaves a submenu trigger
++        if (!isTopLevel(trigger)) {
++          trigger.addEventListener('pointerleave', event => {
++            startBridge(menu, event);
++          });
++        }
++
++        // 7. Prevent clicks on non-interactive menu padding/<hr> from blurring out
++        menu.addEventListener('pointerdown', event => {
++          if (!event.target.closest('button, a')) {
++            event.preventDefault();
++          }
++        });
++
++        // 8. Toggle event: manage aria-expanded and move focus on open
++        menu.addEventListener('toggle', () => {
++          const open = isOpen(menu);
++          trigger.setAttribute('aria-expanded', String(open));
++          if (open) {
++            positionMenuFallback(menu, trigger);
++            if (enterOnOpen.has(menu)) {
++              enterOnOpen.delete(menu);
++              const dir = enterDirection.get(menu) || 'first';
++              enterDirection.delete(menu);
++              const items = ownItems(menu);
++              const targetItem = dir === 'last' ? items[items.length - 1] : items[0];
++              targetItem?.focus();
++            } else if (pointerTrigger === trigger) {
++              pointerTrigger = null;
++              suppressPreview = true;
++              try {
++                trigger.focus({ focusVisible: false });
++              } finally {
++                suppressPreview = false;
++              }
++            }
++          } else {
++            enterOnOpen.delete(menu);
++            enterDirection.delete(menu);
++            if (pointerTrigger === trigger) {
++              pointerTrigger = null;
++              suppressPreview = true;
++              try {
++                trigger.focus({ focusVisible: false });
++              } finally {
++                suppressPreview = false;
++              }
++            }
++          }
++        });
++      });
++
++      // Hover follows focus inside menus
++      document.addEventListener('pointermove', event => {
++        const item = event.target.closest('[focusgroup~="menu"] button');
++        if (!item || item.disabled || item.getAttribute('aria-disabled') === 'true') return;
++        const menu = item.closest('[popover]');
++        if (!isOpen(menu)) return;
++        if (document.activeElement !== item) {
++          item.focus({ focusVisible: false });
++        }
++      });
++
++      // Close menus when focus lands outside their hierarchy, and reset menubar tab stop on exit
++      document.addEventListener('focusin', event => {
++        const target = event.target;
++        document.querySelectorAll('[popover]:popover-open').forEach(openMenu => {
++          const openTrigger = triggerFor(openMenu);
++          if (!openMenu.contains(target) && openTrigger !== target) {
++            openMenu.hidePopover();
++          }
++        });
++        menubars.forEach(bar => {
++          const inBar = bar.contains(target);
++          if (!inBar) {
++            setMenubarTabStop(bar, null);
++          }
++        });
++      });
++
++      // Command, checkbox, and radio activation inside menus
++      document.addEventListener('click', event => {
++        const item = event.target.closest('[focusgroup~="menu"] button');
++        if (!item || item.hasAttribute('commandfor')) return;
++        const rootMenu = rootMenuFor(item);
++        if (!rootMenu) return;
++        const fromPointer = event.detail > 0;
++        const role = item.getAttribute('role');
++        const label = item.childNodes[0]?.textContent?.trim() || item.textContent.trim();
++
++        if (role === 'menuitemcheckbox') {
++          const checked = item.getAttribute('aria-checked') !== 'true';
++          item.setAttribute('aria-checked', String(checked));
++          announce(`${label}: ${checked ? 'Enabled' : 'Disabled'}`);
++          setTimeout(() => {
++            if (isOpen(rootMenu)) {
++              closeAndRestore(rootMenu, { fromPointer });
++            }
++          }, 300);
++          return;
++        }
++
++        if (role === 'menuitemradio') {
++          const group = item.closest('[role="group"]');
++          if (group) {
++            group.querySelectorAll('[role="menuitemradio"]').forEach(radio => {
++              radio.setAttribute('aria-checked', String(radio === item));
++            });
++          } else {
++            item.setAttribute('aria-checked', 'true');
++          }
++          const card = rootMenu.closest('.card');
++          if (card) {
++            const summary = card.querySelector('.card-meta');
++            if (summary) {
++              const parts = summary.textContent.split('•');
++              summary.textContent = `${label} • ${(parts[1] || 'Custom').trim()}`;
++            }
++          }
++          announce(`Selected option: ${label}`);
++          setTimeout(() => {
++            if (isOpen(rootMenu)) {
++              closeAndRestore(rootMenu, { fromPointer });
++            }
++          }, 300);
++          return;
++        }
++
++        // Standard command activation
++        const card = rootMenu.closest('.card');
++        if (card) {
++          const summary = card.querySelector('.card-meta');
++          if (summary && !label.startsWith('Add ')) {
++            const parts = summary.textContent.split('•');
++            summary.textContent = `${(parts[0] || 'Medium').trim()} • ${label}`;
++          }
++        }
++        announce(`Action selected: ${label}`);
++        closeAndRestore(rootMenu, { fromPointer });
++      });
++
++      // Keyboard navigation across triggers, menus, and submenus
++      document.addEventListener('keydown', event => {
++        const active = document.activeElement;
++        if (!active) return;
++
++        // Tab leaves the menu system and closes every open menu
++        if (event.key === 'Tab') {
++          const openMenus = [...document.querySelectorAll('[popover]:popover-open')];
++          if (openMenus.length > 0) {
++            const rootMenu = rootMenuFor(active) || openMenus.find(m => !m.parentElement?.closest('[popover]')) || openMenus[0];
++            const rootTrigger = triggerFor(rootMenu);
++            suppressPreview = true;
++            try {
++              if (rootTrigger && active !== rootTrigger && rootMenu.contains(active)) {
++                rootTrigger.focus({ focusVisible: false });
++              }
++              openMenus.forEach(m => {
++                if (isOpen(m)) m.hidePopover();
++              });
++            } finally {
++              suppressPreview = false;
++            }
++          }
++          return;
++        }
++
++        // Space on menuitemcheckbox toggles and stays open (APG)
++        if (
++          event.key === ' ' &&
++          active.matches('[focusgroup~="menu"] button[role="menuitemcheckbox"]')
++        ) {
++          event.preventDefault();
++          const checked = active.getAttribute('aria-checked') !== 'true';
++          active.setAttribute('aria-checked', String(checked));
++          const label = active.childNodes[0]?.textContent?.trim() || active.textContent.trim();
++          announce(`${label}: ${checked ? 'Enabled' : 'Disabled'}`);
++          return;
++        }
++
++        // 1. Keydown on a Top-Level Trigger
++        if (active.matches('button[commandfor]') && isTopLevel(active)) {
++          const menu = menuFor(active);
++          const bar = menubarFor(active);
++
++          if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && bar) {
++            event.preventDefault();
++            const barTriggers = triggers.filter(t => menubarFor(t) === bar && isTopLevel(t));
++            const idx = barTriggers.indexOf(active);
++            if (idx < 0) return;
++            const nextIdx = (idx + (event.key === 'ArrowLeft' ? -1 : 1) + barTriggers.length) % barTriggers.length;
++            const nextTrigger = barTriggers[nextIdx];
++            if (isOpen(menu)) menu.hidePopover();
++            setMenubarTabStop(bar, nextTrigger);
++            nextTrigger.focus();
++            return;
++          }
++
++          if (event.key === 'ArrowDown' || event.key === 'Home') {
++            event.preventDefault();
++            if (isOpen(menu)) {
++              ownItems(menu)[0]?.focus();
++            } else if (menu) {
++              enterDirection.set(menu, 'first');
++              enterOnOpen.add(menu);
++              active.click();
++            }
++            return;
++          }
++
++          if (event.key === 'ArrowUp' || event.key === 'End') {
++            event.preventDefault();
++            if (isOpen(menu)) {
++              const items = ownItems(menu);
++              items[items.length - 1]?.focus();
++            } else if (menu) {
++              enterDirection.set(menu, 'last');
++              enterOnOpen.add(menu);
++              active.click();
++            }
++            return;
++          }
++
++          if (event.key === 'Escape' && isOpen(menu)) {
++            event.preventDefault();
++            event.stopPropagation();
++            closeAndRestore(menu);
++            return;
++          }
++          return;
++        }
++
++        // 2. Keydown inside a Menu ([focusgroup~="menu"])
++        const currentMenu = active.closest('[popover]');
++        if (!currentMenu) return;
++
++        const isSubmenu = Boolean(currentMenu.parentElement?.closest('[popover]'));
++
++        if (event.key === 'Escape') {
++          event.preventDefault();
++          event.stopPropagation();
++          closeAndRestore(currentMenu);
++          return;
++        }
++
++        if (event.key === 'Home' || event.key === 'End') {
++          event.preventDefault();
++          const items = ownItems(currentMenu);
++          if (items.length) {
++            items[event.key === 'Home' ? 0 : items.length - 1].focus();
++          }
++          return;
++        }
++
++        if (event.key === 'ArrowRight') {
++          event.preventDefault();
++          event.stopPropagation();
++          // On a submenu trigger: open the submenu and focus its first item
++          if (active.hasAttribute('commandfor')) {
++            const subMenu = menuFor(active);
++            if (isOpen(subMenu)) {
++              ownItems(subMenu)[0]?.focus();
++            } else if (subMenu) {
++              enterDirection.set(subMenu, 'first');
++              enterOnOpen.add(subMenu);
++              active.click();
++            }
++            return;
++          }
++          // On an item without a child submenu: close hierarchy and preview next top-level menu in menubar
++          const rootMenu = rootMenuFor(currentMenu);
++          const rootTrigger = triggerFor(rootMenu);
++          const bar = menubarFor(rootTrigger);
++          if (bar && rootTrigger) {
++            const barTriggers = triggers.filter(t => menubarFor(t) === bar && isTopLevel(t));
++            const idx = barTriggers.indexOf(rootTrigger);
++            if (idx >= 0) {
++              const nextTrigger = barTriggers[(idx + 1) % barTriggers.length];
++              rootMenu.hidePopover();
++              setMenubarTabStop(bar, nextTrigger);
++              nextTrigger.focus();
++            }
++          }
++          return;
++        }
++
++        if (event.key === 'ArrowLeft') {
++          event.preventDefault();
++          event.stopPropagation();
++          if (isSubmenu) {
++            closeAndRestore(currentMenu);
++            return;
++          }
++          const rootTrigger = triggerFor(currentMenu);
++          const bar = menubarFor(rootTrigger);
++          if (bar && rootTrigger) {
++            const barTriggers = triggers.filter(t => menubarFor(t) === bar && isTopLevel(t));
++            const idx = barTriggers.indexOf(rootTrigger);
++            if (idx >= 0) {
++              const prevTrigger = barTriggers[(idx - 1 + barTriggers.length) % barTriggers.length];
++              currentMenu.hidePopover();
++              setMenubarTabStop(bar, prevTrigger);
++              prevTrigger.focus();
++            }
++          }
++          return;
++        }
++
++        // Typeahead on printable characters (excluding Space)
++        if (event.key.length === 1 && event.key !== ' ' && !event.ctrlKey && !event.metaKey && !event.altKey) {
++          const items = ownItems(currentMenu);
++          const currentIdx = items.indexOf(active);
++          const char = event.key.toLowerCase();
++          const ordered = currentIdx >= 0
++            ? [...items.slice(currentIdx + 1), ...items.slice(0, currentIdx + 1)]
++            : items;
++          const match = ordered.find(item => item.textContent.trim().toLowerCase().startsWith(char));
++          if (match) {
++            event.preventDefault();
++            match.focus();
++          }
++        }
++      }, true);
++    })();
++  </script>
+ </body>
+ 
+ </html>

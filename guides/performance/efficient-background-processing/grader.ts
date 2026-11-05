@@ -159,6 +159,7 @@ test.describe('Efficient Background Processing Grader', () => {
         return style.contentVisibility === 'auto';
       });
       if (target) {
+        target.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
         const event = new Event('contentvisibilityautostatechange');
         Object.defineProperty(event, 'skipped', { value: false, enumerable: true });
         target.dispatchEvent(event);
@@ -262,9 +263,10 @@ test.describe('Efficient Background Processing Grader', () => {
       if (inst && inst.callback) {
         const entry = {
           isIntersecting: false,
+          intersectionRatio: 0,
           target: inst.observedElements[0]
         };
-        inst.callback([entry]);
+        inst.callback([entry], inst);
       }
     });
 
@@ -283,9 +285,10 @@ test.describe('Efficient Background Processing Grader', () => {
       if (inst && inst.callback) {
         const entry = {
           isIntersecting: true,
+          intersectionRatio: 1,
           target: inst.observedElements[0]
         };
-        inst.callback([entry]);
+        inst.callback([entry], inst);
       }
     });
 

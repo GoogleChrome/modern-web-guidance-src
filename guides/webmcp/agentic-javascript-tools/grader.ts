@@ -286,11 +286,8 @@ test.describe('With mocked WebMCP API', () => {
 
     // "The execute function is asynchronous if it performs any async operations."
     // This means: performsAsyncOperations => isAsyncFunction.
-    if (executeCheck.performsAsyncOperations) {
-      expect(executeCheck.isAsyncFunction).toBe(true);
-    } else {
-      // If it doesn't perform async operations, it can be synchronous, which is correct (e.g., demo.html).
-      expect(true).toBe(true);
-    }
+    expect(
+      !executeCheck.performsAsyncOperations || executeCheck.isAsyncFunction
+    ).toBe(true);
   });
 });

@@ -326,7 +326,13 @@ function extractJsxOtpInputs(project: Project): OtpInputInfo[] {
       ).trim();
       let isHintAboveInput = true;
       if (ariaDescribedBy) {
-        const hintIds = ariaDescribedBy.split(/\s+/).filter(Boolean);
+        const quotedLiterals = Array.from(
+          ariaDescribedBy.matchAll(/['"`]([^'"`]+)['"`]/g),
+          (m) => m[1]
+        );
+        const tokenSource =
+          quotedLiterals.length > 0 ? quotedLiterals.join(' ') : ariaDescribedBy;
+        const hintIds = Array.from(new Set(tokenSource.split(/\s+/).filter(Boolean)));
         const hintNodes = jsxTagNodes.filter((n) => {
           const nodeId = (getJsxAttrValue(n, ['id']) || '').trim();
           return hintIds.includes(nodeId);
@@ -451,10 +457,20 @@ test.describe('sms-otp-form Target Grader', () => {
           return false;
         }
         const firstArg = call.getArguments()[0];
-        if (!firstArg || !Node.isObjectLiteralExpression(firstArg)) {
+        if (!firstArg) {
           return false;
         }
-        const argText = firstArg.getText();
+        let resolvedArg: Node = firstArg;
+        if (Node.isIdentifier(firstArg)) {
+          const varDecl = sf
+            .getDescendantsOfKind(SyntaxKind.VariableDeclaration)
+            .find((vd) => vd.getName() === firstArg.getText());
+          const init = varDecl?.getInitializer();
+          if (init) {
+            resolvedArg = init;
+          }
+        }
+        const argText = resolvedArg.getText();
         const hasOtpSms =
           /otp\s*:/.test(argText) &&
           /transport\s*:/.test(argText) &&
@@ -497,7 +513,7 @@ test.describe('sms-otp-form Target Grader', () => {
 
     const hasCodeAssignmentAndSubmit = sourceFiles.some((sf) => {
       const text = sf.getText();
-      if (!text.includes('credentials.get')) return false;
+      if (!/credentials[\s\S]*?\.get\s*\(/.test(text)) return false;
       const accessesCode =
         /\.code\b/.test(text) || /\{\s*code\s*\}/.test(text);
       const populatesInput =

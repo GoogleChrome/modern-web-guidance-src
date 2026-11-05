@@ -1,14 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { rootDir, baseAppsDir, suitesDir } from '../core/paths.ts';
-import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
+import { baseAppsDir, suitesDir } from '../core/paths.ts';
+import { getTaskMap, resolveTaskGraderPath, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
+import { ensureFreshHostCodexAuth } from './agents/codex-cli-agent.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
+import { determineAgent } from '../cli/telemetry/detect-agent.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
 
@@ -16,7 +18,7 @@ const RUN_TYPES = ['guided', 'unguided'];
 let logStream: fs.WriteStream | null = null;
 
 
-const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, do NOT ask clarifying questions (make reasonable assumptions and proceed non-interactively), and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
@@ -113,6 +115,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     console.log(`\nStarting execution for ${numRuns} runs`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
+      if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
       console.log(`\n${'='.repeat(60)}`);
       console.log(`>>> STARTING RUN ${runNumber} <<<`);
       console.log(`${'='.repeat(60)}\n`);
@@ -133,11 +136,20 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           ? suiteConfig.tasks
           : Array.from(taskMap.keys()));
 
-      for (const task of tasksToRun) {
-        const resolvedTask = resolveTaskName(task);
+      const resolvedTasks = tasksToRun.map(resolveTaskName);
+      const resolvedTaskSet = new Set(resolvedTasks);
+      const variantUnguidedReuses: Array<{
+        baseUnguidedDir: string;
+        variantUnguidedDir: string;
+        graderPath: string;
+        guideName: string;
+        baselineTarget: string;
+      }> = [];
+
+      for (const resolvedTask of resolvedTasks) {
         const taskInfo = taskMap.get(resolvedTask);
         if (!taskInfo) {
-          console.warn(`Skipping task ${task}: Not found in task map`);
+          console.warn(`Skipping task ${resolvedTask}: Not found in task map`);
           continue;
         }
 
@@ -147,22 +159,32 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           continue;
         }
 
-        let promptContent = taskInfo.prompt;
-        promptContent += COMMON_APPEND_PROMPT;
+        const promptContent = taskInfo.prompt + COMMON_APPEND_PROMPT;
         const agentScript = getAgentScript(agent);
 
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
-        let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-        const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
-        if (fs.existsSync(targetGraderPath)) {
-          graderPath = targetGraderPath;
-        }
+        const graderPath = resolveTaskGraderPath(taskInfo, taskName);
+        const baseTaskKey = `${guideName}/${taskInfo.baseApp}`;
+        const canReuseBaseUnguided =
+          Boolean(taskInfo.baselineTarget) &&
+          taskName !== taskInfo.baseApp &&
+          resolvedTaskSet.has(baseTaskKey);
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp);
+          if (runType === 'unguided' && canReuseBaseUnguided) {
+            variantUnguidedReuses.push({
+              baseUnguidedDir: path.join(guideFolder, taskInfo.baseApp, 'unguided'),
+              variantUnguidedDir: targetDir,
+              graderPath,
+              guideName,
+              baselineTarget: taskInfo.baselineTarget!,
+            });
+            continue;
+          }
+          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp, taskInfo.baselineTarget);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -180,7 +202,11 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         fs.writeFileSync(pnpmWorkspacePath, yamlContent);
 
         try {
+          const isAgentOrNonInteractive = Boolean(process.env.CI) || !process.stdout.isTTY || determineAgent().isAgent;
           const pnpmArgs = ['-r', '--no-bail'];
+          if (isAgentOrNonInteractive) {
+            pnpmArgs.push('--reporter=append-only');
+          }
           if (suiteConfig.workerCount) {
             pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
           }
@@ -194,6 +220,13 @@ export async function runSuite(options: RunSuiteOptions = {}) {
         } finally {
           if (fs.existsSync(pnpmWorkspacePath)) {
             fs.unlinkSync(pnpmWorkspacePath);
+          }
+          for (const reuse of variantUnguidedReuses) {
+            try {
+              reuseUnguidedRunForBaselineVariant(reuse);
+            } catch (reuseErr) {
+              console.warn(`Failed to reuse unguided run for ${reuse.variantUnguidedDir}: ${reuseErr}`);
+            }
           }
           // Clean up task workspace base_apps after all workers in run finish
           for (const task of tasksToRun) {
@@ -386,32 +419,16 @@ export function generateTransientPackage(
   taskName: string,
   guideName: string,
   graderPath: string,
-  _baseApp: string = 'daily-grind'
+  _baseApp: string = 'daily-grind',
+  baselineTarget?: string
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
   // Generate grade.mjs using shared function
-  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
+  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName, baselineTarget);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
-
-  // Create npx wrapper to intercept modern-web-guidance calls during evals
-  const templatePath = path.join(import.meta.dirname, 'npx-intercept.template.ts');
-  const localCliPath = path.join(rootDir, 'dist', 'skills-cli', 'skills/modern-web-guidance/modern-web.mjs');
-
-  if (fs.existsSync(templatePath)) {
-    let templateContent = fs.readFileSync(templatePath, 'utf8');
-    templateContent = templateContent.replace('__LOCAL_CLI_PATH__', localCliPath);
-
-    for (const binName of ['npx', 'pnpx', 'pnpm']) {
-      const wrapperPath = path.join(targetDir, binName);
-      fs.writeFileSync(wrapperPath, templateContent);
-      fs.chmodSync(wrapperPath, 0o755); // Make executable
-    }
-  } else {
-    console.warn(`Warning: npx-intercept.template.ts not found at ${templatePath}`);
-  }
 
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
@@ -433,14 +450,12 @@ const args = [
 ])}
 ];
 
-// Intercept npx by prepending targetDir to PATH
-const env = { ...process.env };
-env.PATH = \`${targetDir}:\${env.PATH}\`;
+const env = { ...process.env${baselineTarget ? `, BASELINE_TARGET: ${JSON.stringify(baselineTarget)}` : ''} };
 
 const start = Date.now();
 let result;
 let attempts = 0;
-const maxAttempts = 3; // 1 initial attempt + 2 retries with exponential backoff
+const maxAttempts = 2; // 1 initial attempt + 1 retry with exponential backoff
 const baseDelay = 15000; // 15 seconds base delay
 const targetDirPath = ${JSON.stringify(targetDir)};
 const failureFile = path.join(targetDirPath, 'generation_failed.json');
@@ -456,7 +471,7 @@ while (attempts < maxAttempts) {
   // Assign the isolated HOME here so it is removed even if the timeout kills the agent
   // wrapper before its own cleanup runs.
   const isolatedHome = '/tmp/ghh-' + ${JSON.stringify(path.basename(agentScript).replace(/-agent\.ts$/, ''))} + '-' + randomUUID().slice(0, 8);
-  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 600000, env: { ...env, ${ISOLATED_HOME_ENV}: isolatedHome } });
+  result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 900000, env: { ...env, ${ISOLATED_HOME_ENV}: isolatedHome } });
   try {
     fs.rmSync(isolatedHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   } catch (cleanupErr) {
@@ -497,9 +512,9 @@ if (result.status === 0) {
   const timedOut = result.error?.code === 'ETIMEDOUT';
   fs.writeFileSync(failureFile, JSON.stringify({
     agentName: path.basename(${JSON.stringify(agentScript)}),
-    exitCode: timedOut ? 'TIMEOUT (10m)' : result.status,
+    exitCode: timedOut ? 'TIMEOUT (15m)' : result.status,
     stderr: timedOut
-      ? 'Agent timed out after 10 minutes'
+      ? 'Agent timed out after 15 minutes'
       : 'Agent execution failed unexpectedly during setup or wrapper invocation',
     stdout: ''
   }, null, 2));
@@ -525,6 +540,57 @@ process.exit(graderStatus !== null ? graderStatus : (result.status ?? 1));
     type: "module",
     scripts: { "run-agent": "node run.mjs" }
   }, null, 2));
+}
+
+function reuseUnguidedRunForBaselineVariant(opts: {
+  baseUnguidedDir: string;
+  variantUnguidedDir: string;
+  graderPath: string;
+  guideName: string;
+  baselineTarget: string;
+}) {
+  const { baseUnguidedDir, variantUnguidedDir, graderPath, guideName, baselineTarget } = opts;
+  if (!fs.existsSync(baseUnguidedDir)) return;
+  fs.rmSync(variantUnguidedDir, { recursive: true, force: true });
+  fs.mkdirSync(variantUnguidedDir, { recursive: true });
+
+  const resultsFileName = `${guideName}_results.json`;
+  for (const entry of fs.readdirSync(baseUnguidedDir)) {
+    if (
+      entry === 'grade.mjs' ||
+      entry === 'run.mjs' ||
+      entry === 'package.json' ||
+      entry === 'playwright-report.json' ||
+      entry === resultsFileName
+    ) {
+      continue;
+    }
+    fs.cpSync(path.join(baseUnguidedDir, entry), path.join(variantUnguidedDir, entry), { recursive: true });
+  }
+
+  const gradeScript = getGraderScriptContent(variantUnguidedDir, graderPath, guideName, baselineTarget);
+  fs.writeFileSync(path.join(variantUnguidedDir, 'grade.mjs'), gradeScript);
+
+  if (!fs.existsSync(path.join(variantUnguidedDir, 'generation_failed.json'))) {
+    const gradeStart = Date.now();
+    const gradeEnv = { ...process.env, PATCH_FILE: path.join(variantUnguidedDir, 'agent.patch') };
+    const gradeResult = spawnSync(process.execPath, ['grade.mjs'], {
+      stdio: 'inherit',
+      cwd: variantUnguidedDir,
+      env: gradeEnv,
+    });
+    const runtimePath = path.join(variantUnguidedDir, 'runtime.json');
+    if (fs.existsSync(runtimePath)) {
+      try {
+        const runtimeObj = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
+        runtimeObj.graderRuntime = Date.now() - gradeStart;
+        runtimeObj.graderStatus = gradeResult.status ?? 1;
+        fs.writeFileSync(runtimePath, JSON.stringify(runtimeObj, null, 2));
+      } catch {
+        // Ignore runtime.json update error
+      }
+    }
+  }
 }
 
 const AGENT_SCRIPTS: Record<string, string> = {

@@ -17,18 +17,18 @@ function makeFakeRepo() {
   return { repo, guideDir, targetDir, distDir };
 }
 
-test('buildSandboxPolicy exposes dist only for guided runs and the target dir as writable', () => {
+test('buildSandboxPolicy exposes dist only for guided runs and never exposes repo subdirectories as writable', () => {
   const { repo, targetDir, distDir } = makeFakeRepo();
   try {
     const guided = buildSandboxPolicy(targetDir, 'guided', repo, []);
     assert.strictEqual(guided.hiddenDir, repo);
     assert.ok(guided.readOnlyPaths.includes(distDir));
     assert.ok(guided.readOnlyPaths.includes(path.join(repo, 'node_modules')));
-    assert.deepStrictEqual(guided.writablePaths, [targetDir]);
+    assert.deepStrictEqual(guided.writablePaths, []);
 
     const unguided = buildSandboxPolicy(targetDir, 'unguided', repo, []);
     assert.ok(!unguided.readOnlyPaths.includes(distDir));
-    assert.deepStrictEqual(unguided.writablePaths, [targetDir]);
+    assert.deepStrictEqual(unguided.writablePaths, []);
   } finally {
     fs.rmSync(repo, { recursive: true, force: true });
   }
@@ -170,9 +170,10 @@ test('wrapCommandInSandbox throws on unsupported platforms', () => {
 const canSandbox = (process.platform === 'darwin' && spawnSync('which', ['sandbox-exec']).status === 0)
   || (process.platform === 'linux' && spawnSync('which', ['bwrap']).status === 0);
 
-test('sandboxed process cannot read guides, grade.mjs in targetDir, or extra hidden dirs', { skip: !canSandbox || process.env[UNSAFE_NO_SANDBOX_ENV] === '1' }, () => {
+test('sandboxed process cannot read guides, targetDir inside repo, or extra hidden dirs, while isolated HOME remains writable', { skip: !canSandbox || process.env[UNSAFE_NO_SANDBOX_ENV] === '1' }, () => {
   const { repo, guideDir, targetDir, distDir } = makeFakeRepo();
   const graderCache = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'sandbox-grader-cache-')));
+  const isolatedHome = fs.realpathSync(fs.mkdtempSync('/tmp/ghh-sandbox-test-'));
   fs.writeFileSync(path.join(graderCache, 'grader.js'), 'SECRET GRADER');
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), 'SECRET TARGET GRADE MJS');
   fs.writeFileSync(path.join(targetDir, 'run.mjs'), 'SECRET TARGET RUN MJS');
@@ -180,31 +181,34 @@ test('sandboxed process cannot read guides, grade.mjs in targetDir, or extra hid
     const script = [
       `cat "${path.join(guideDir, 'guide.md')}" 2>/dev/null || echo NO_GUIDE`,
       `ls "${repo}/guides" 2>/dev/null || echo NO_LIST`,
+      `ls "${repo}/results" 2>/dev/null || echo NO_RESULTS`,
       `cat "${path.join(graderCache, 'grader.js')}" 2>/dev/null || echo NO_GRADER`,
       `cat "${path.join(targetDir, 'grade.mjs')}" 2>/dev/null || true`,
       `cat "${path.join(targetDir, 'run.mjs')}" 2>/dev/null || true`,
       `cat "${path.join(distDir, 'cli.txt')}"`,
-      `echo WROTE > "${path.join(targetDir, 'out.txt')}" && cat "${path.join(targetDir, 'out.txt')}"`,
+      `echo WROTE > "${path.join(isolatedHome, 'out.txt')}" && cat "${path.join(isolatedHome, 'out.txt')}"`,
     ].join('\n');
     const policy = buildSandboxPolicy(
-      targetDir,
+      isolatedHome,
       'guided',
       repo,
       process.platform === 'linux' ? ['/tmp'] : [graderCache]
     );
     const { command, commandArgs } = wrapCommandInSandbox('/bin/sh', ['-c', script], policy);
-    const result = spawnSync(command, commandArgs, { cwd: os.tmpdir(), encoding: 'utf8' });
+    const result = spawnSync(command, commandArgs, { cwd: isolatedHome, encoding: 'utf8' });
     assert.ok(!result.stdout.includes('SECRET GUIDE'), `guide leaked: ${result.stdout}`);
     assert.ok(!result.stdout.includes('SECRET GRADER'), `grader cache leaked: ${result.stdout}`);
     assert.ok(!result.stdout.includes('SECRET TARGET GRADE MJS'), `targetDir/grade.mjs leaked: ${result.stdout}`);
     assert.ok(!result.stdout.includes('SECRET TARGET RUN MJS'), `targetDir/run.mjs leaked: ${result.stdout}`);
     assert.match(result.stdout, /NO_GUIDE/);
     assert.match(result.stdout, /NO_LIST/);
+    assert.match(result.stdout, /NO_RESULTS/);
     assert.match(result.stdout, /NO_GRADER/);
     assert.match(result.stdout, /CLI/);
     assert.match(result.stdout, /WROTE/);
   } finally {
     fs.rmSync(repo, { recursive: true, force: true });
     fs.rmSync(graderCache, { recursive: true, force: true });
+    fs.rmSync(isolatedHome, { recursive: true, force: true });
   }
 });

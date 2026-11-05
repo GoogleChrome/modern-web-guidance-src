@@ -16,6 +16,9 @@ export type Entry =
   | PRLinkMessage
   | FileHistorySnapshotMessage
   | AttributionSnapshotMessage
+  | AtisLatchEntry
+  | AttachmentEntry
+  | CostStateEntry
   | ModeEntry
   | PermissionModeEntry
   | WorktreeStateEntry
@@ -56,6 +59,14 @@ export type TranscriptMessage = SerializedMessage & {
   agentName?: string;
   agentColor?: string;
   promptId?: string;
+  apiBlockIndex?: number;
+  effort?: string;
+  perTurnEffort?: string;
+  thinkingDurationMs?: number;
+  promptSource?: string;
+  turnCompanion?: unknown;
+  turnOrigin?: unknown;
+  turnPosition?: number;
   message?: ClaudeMessage;
   toolUseResult?: ToolUseResult;
   snapshot?: ClaudeSnapshot;
@@ -77,14 +88,20 @@ export interface ClaudeMessage {
   stop_details?: any;
   container?: any;
   context_management?: any;
+  input_transformations?: unknown;
 }
 
-export type ContentBlock = ThinkingBlock | TextBlock | ToolUseBlock | ToolResultBlock;
+export type ContentBlock = ThinkingBlock | RedactedThinkingBlock | TextBlock | ToolUseBlock | ToolResultBlock;
 
 export interface ThinkingBlock {
   type: 'thinking';
   thinking: string;
   signature?: string;
+}
+
+export interface RedactedThinkingBlock {
+  type: 'redacted_thinking';
+  data?: string;
 }
 
 export interface TextBlock {
@@ -102,7 +119,7 @@ export interface ToolUseBlock {
 export interface ToolResultBlock {
   type: 'tool_result';
   tool_use_id: string;
-  content: string | Array<{ type: string; text?: string; tool_name?: string }>;
+  content?: string | Array<{ type: string; text?: string; tool_name?: string }>;
   is_error?: boolean;
 }
 
@@ -197,6 +214,52 @@ export interface AttributionSnapshotMessage {
   escapeCount?: number;
 }
 
+export interface AtisLatchEntry {
+  type: 'atis-latch';
+  sessionId: string;
+  atis: string | boolean;
+}
+
+export type AttachmentEntry = SerializedMessage & {
+  type: 'attachment';
+  uuid: string;
+  parentUuid: string | null;
+  isSidechain: boolean;
+  attachment: {
+    type: string;
+    snapshot?: Record<string, any>;
+    [key: string]: any;
+  };
+  rendered?: Array<{ content: string; [key: string]: any }> | string;
+  renderedBesideToolResult?: boolean;
+  renderedRole?: string;
+};
+
+export interface ClaudeModelUsage {
+  inputTokens: number;
+  outputTokens: number;
+  thinkingTokens?: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  webSearchRequests?: number;
+  costUSD?: number;
+}
+
+export interface CostStateEntry {
+  type: 'cost-state';
+  sessionId: string;
+  startTime: number;
+  totalCostUSD: number;
+  totalAPIDuration: number;
+  totalAPIDurationWithoutRetries: number;
+  totalToolDuration: number;
+  totalDuration: number;
+  totalLinesAdded: number;
+  totalLinesRemoved: number;
+  modelUsage: Record<string, ClaudeModelUsage>;
+  hasUnknownModelCost: boolean;
+}
+
 export interface ModeEntry {
   type: 'mode';
   sessionId: string;
@@ -244,17 +307,25 @@ export interface ContextCollapseSnapshotEntry {
 export interface UsageMetrics {
   input_tokens: number;
   output_tokens: number;
+  output_tokens_details?: {
+    thinking_tokens?: number;
+  } | null;
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
   cache_creation?: {
     ephemeral_5m_input_tokens?: number;
     ephemeral_1h_input_tokens?: number;
   } | null;
-  server_tool_use?: any;
+  server_tool_use?: {
+    web_fetch_requests?: number;
+    web_search_requests?: number;
+    [key: string]: unknown;
+  } | null;
   service_tier?: string | null;
   inference_geo?: string | null;
   iterations?: any[] | null;
   speed?: string | null;
+  fallback_credit?: unknown | null;
 }
 
 export interface ClaudeSnapshot {

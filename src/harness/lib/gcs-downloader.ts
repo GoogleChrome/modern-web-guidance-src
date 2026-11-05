@@ -172,13 +172,13 @@ function normalizePath(p: string): string {
 }
 
 export function resolveRunPath(runDir: string): { absoluteRunDir: string; relativeRunPath: string } | null {
-  const normalizedRunDir = runDir.replace(/\\/g, '/');
+  const normalizedRunDir = runDir.replaceAll('\\', '/');
   let absoluteRunDir = normalizePath(runDir);
   const absoluteResultsDir = normalizePath(baseResultsDir);
   let relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
 
   if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {
-    const hasSuites = /(^|[/\\])suites([/\\]|$)/.test(normalizedRunDir);
+    const hasSuites = /(^|\/)suites(\/|$)/.test(normalizedRunDir);
     const stripped = normalizedRunDir.replace(/^(\.\/)?(harness\/)?results\/(suites\/)?/, '');
     const candidate = path.resolve(hasSuites ? path.join(baseResultsDir, 'suites') : baseResultsDir, stripped);
     const candidateRel = path.relative(absoluteResultsDir, normalizePath(candidate));
@@ -191,7 +191,7 @@ export function resolveRunPath(runDir: string): { absoluteRunDir: string; relati
     }
   }
 
-  relativeRunPath = relativeRunPath.replace(/^suites[/\\]/, '');
+  relativeRunPath = relativeRunPath.replaceAll(path.sep, path.posix.sep).replace(/^suites\//, '');
 
   return { absoluteRunDir, relativeRunPath };
 }
@@ -213,7 +213,7 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
 
   console.log(cCyan(`[GCS Downloader] Run directory not found or incomplete locally: ${relativeRunPath}`));
 
-  const gcsPrefix = relativeRunPath.replace(/\\/g, '/') + '/';
+  const gcsPrefix = `${relativeRunPath}/`;
 
   if (token && token.startsWith('Bearer ')) {
     console.log(cYellow(`[GCS Downloader] Using Bearer token authentication forwarded from browser...`));

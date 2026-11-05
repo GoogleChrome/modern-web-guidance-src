@@ -1,0 +1,1533 @@
+diff --git a/index.html b/index.html
+index 66c9173..9b06137 100644
+--- a/index.html
++++ b/index.html
+@@ -195,6 +195,33 @@
+         </div>
+       </div>
+     </section>
++
++    <!-- Email Verification Section -->
++    <section class="card" style="max-width: 500px; margin: 40px auto; text-align: left;">
++      <h2 style="text-align: center; margin-bottom: 1.5rem; color: var(--primary);">Join Rewards / Sign In</h2>
++      <form method="POST" action="/api/verify-email">
++        <label for="email" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email address:</label>
++        <input
++          type="email"
++          id="email"
++          name="email"
++          autocomplete="email"
++          required
++          style="width: 100%; padding: 10px; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;"
++        />
++
++        <!-- MANDATORY: Sibling hidden input with autocomplete="email-verification-token" and non-empty nonce -->
++        <input
++          type="hidden"
++          id="token"
++          name="token"
++          nonce="SERVER_GENERATED_PER_FORM_NONCE"
++          autocomplete="email-verification-token"
++        />
++
++        <button type="submit" class="btn" style="width: 100%; border: none; cursor: pointer;">Continue</button>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/index.js b/index.js
+new file mode 100644
+index 0000000..2b8395c
+--- /dev/null
++++ b/index.js
+@@ -0,0 +1 @@
++export * from './dist/index.js';
+diff --git a/package.json b/package.json
+index 2bd4d77..652169f 100644
+--- a/package.json
++++ b/package.json
+@@ -1,10 +1,49 @@
+ {
+   "name": "daily-grind",
+   "version": "1.0.0",
++  "type": "module",
++  "main": "./dist/index.js",
++  "types": "./dist/index.d.ts",
++  "exports": {
++    ".": {
++      "types": "./dist/index.d.ts",
++      "import": "./dist/index.js",
++      "default": "./dist/index.js"
++    },
++    "./verifier": {
++      "types": "./dist/verifier.d.ts",
++      "import": "./dist/verifier.js",
++      "default": "./dist/verifier.js"
++    },
++    "./server": {
++      "types": "./dist/server.d.ts",
++      "import": "./dist/server.js",
++      "default": "./dist/server.js"
++    },
++    "./session": {
++      "types": "./dist/session.d.ts",
++      "import": "./dist/session.js",
++      "default": "./dist/session.js"
++    },
++    "./submission": {
++      "types": "./dist/submission.d.ts",
++      "import": "./dist/submission.js",
++      "default": "./dist/submission.js"
++    }
++  },
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "build": "tsc",
++    "start": "node dist/server.js"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
++  },
++  "dependencies": {
++    "@sd-jwt/core": "0.22.0",
++    "jose": "6.2.12"
++  },
++  "devDependencies": {
++    "@types/node": "26.6.5",
++    "typescript": "7.0.2"
+   }
+ }
+diff --git a/server.js b/server.js
+new file mode 100644
+index 0000000..214d5de
+--- /dev/null
++++ b/server.js
+@@ -0,0 +1 @@
++export * from './dist/server.js';
+diff --git a/session.js b/session.js
+new file mode 100644
+index 0000000..7be4e12
+--- /dev/null
++++ b/session.js
+@@ -0,0 +1 @@
++export * from './dist/session.js';
+diff --git a/src/index.ts b/src/index.ts
+new file mode 100644
+index 0000000..be54733
+--- /dev/null
++++ b/src/index.ts
+@@ -0,0 +1,4 @@
++export * from './verifier.js';
++export * from './session.js';
++export * from './submission.js';
++export * from './server.js';
+diff --git a/src/server.ts b/src/server.ts
+new file mode 100644
+index 0000000..4a5a89e
+--- /dev/null
++++ b/src/server.ts
+@@ -0,0 +1,248 @@
++import http from 'node:http';
++import fs from 'node:fs';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { randomUUID } from 'node:crypto';
++import { sessionStore } from './session.js';
++import { handleSignupSubmission, type SubmissionResult } from './submission.js';
++
++export const PORT = Number(process.env.PORT || 11222);
++
++const __filename = fileURLToPath(import.meta.url);
++const __dirname = path.dirname(__filename);
++
++function getIndexHtmlPath(): string {
++  const possiblePaths = [
++    path.resolve(process.cwd(), 'index.html'),
++    path.resolve(__dirname, '../index.html'),
++    path.resolve(__dirname, 'index.html'),
++  ];
++  for (const p of possiblePaths) {
++    if (fs.existsSync(p)) return p;
++  }
++  return path.resolve(process.cwd(), 'index.html');
++}
++
++function parseCookies(header?: string | string[]): Record<string, string> {
++  const cookies: Record<string, string> = {};
++  if (!header) return cookies;
++  const cookieStr = Array.isArray(header) ? header.join('; ') : header;
++  const pairs = cookieStr.split(';');
++  for (const pair of pairs) {
++    const idx = pair.indexOf('=');
++    if (idx !== -1) {
++      const key = pair.slice(0, idx).trim();
++      const val = pair.slice(idx + 1).trim();
++      cookies[key] = decodeURIComponent(val);
++    }
++  }
++  return cookies;
++}
++
++export async function parseBody(req: http.IncomingMessage): Promise<Record<string, string>> {
++  return new Promise((resolve, reject) => {
++    let body = '';
++    req.on('data', (chunk: Buffer | string) => {
++      body += chunk.toString();
++      // 1MB max body limit
++      if (body.length > 1e6) {
++        req.destroy();
++        reject(new Error('Payload too large'));
++      }
++    });
++    req.on('end', () => {
++      const contentType = req.headers['content-type'] || '';
++      if (contentType.includes('application/json')) {
++        try {
++          resolve(JSON.parse(body || '{}'));
++        } catch {
++          resolve({});
++        }
++      } else {
++        // Form urlencoded or plain text
++        const params = new URLSearchParams(body);
++        const result: Record<string, string> = {};
++        for (const [key, val] of params.entries()) {
++          result[key] = val;
++        }
++        resolve(result);
++      }
++    });
++    req.on('error', reject);
++  });
++}
++
++/**
++ * Handles incoming HTTP requests.
++ */
++export async function requestListener(
++  req: http.IncomingMessage,
++  res: http.ServerResponse
++): Promise<void> {
++  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
++  const pathname = url.pathname;
++
++  // Session handling
++  const cookies = parseCookies(req.headers['cookie']);
++  let sessionId = cookies['sid'];
++  let isNewSession = false;
++
++  if (!sessionId) {
++    sessionId = randomUUID();
++    isNewSession = true;
++  }
++
++  const setCookieHeader = `sid=${encodeURIComponent(sessionId)}; Path=/; HttpOnly; SameSite=Lax`;
++
++  // POST routes: Verify email form submission
++  if (
++    req.method === 'POST' &&
++    (pathname === '/api/verify-email' ||
++      pathname === '/verify-email' ||
++      pathname === '/account' ||
++      pathname === '/signup')
++  ) {
++    try {
++      const body = await parseBody(req);
++      const email = String(body.email || '').trim();
++      const token = String(body.token || '').trim();
++
++      // Read origin
++      const host = req.headers.host || 'localhost';
++      const origin = req.headers.origin || `http://${host}`;
++
++      const result: SubmissionResult = await handleSignupSubmission(
++        { email, token, sessionId, headers: req.headers },
++        { expectedAudience: process.env.RP_ORIGIN || origin }
++      );
++
++      const acceptsJson = (req.headers['accept'] || '').includes('application/json');
++      const contentType = (req.headers['content-type'] || '');
++
++      if (acceptsJson || contentType.includes('application/json')) {
++        res.writeHead(200, {
++          'Content-Type': 'application/json',
++          'Cache-Control': 'no-store',
++        });
++        res.end(JSON.stringify(result));
++        return;
++      }
++
++      // Browser form submission response
++      res.writeHead(200, {
++        'Content-Type': 'text/html; charset=utf-8',
++        'Cache-Control': 'no-store',
++      });
++      res.end(`<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <title>Verification Result | The Daily Grind</title>
++  <style>
++    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #fafafa; color: #3e2723; padding: 40px; text-align: center; }
++    .card { background: white; max-width: 500px; margin: 40px auto; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
++    h1 { color: #4e342e; }
++    .btn { display: inline-block; background: #4e342e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
++  </style>
++</head>
++<body>
++  <div class="card">
++    <h1>${result.verified ? 'Email Verified!' : 'Check Your Inbox'}</h1>
++    <p>${result.message}</p>
++    <p><strong>Email:</strong> ${result.email}</p>
++    <p><strong>Method:</strong> ${result.method === 'evt' ? 'Email Verification Token (Instant)' : 'OTP / Magic Link (Fallback)'}</p>
++    <a href="/" class="btn">Back to Home</a>
++  </div>
++</body>
++</html>`);
++      return;
++    } catch (err: any) {
++      res.writeHead(500, {
++        'Content-Type': 'application/json',
++        'Cache-Control': 'no-store',
++      });
++      res.end(JSON.stringify({ error: err.message }));
++      return;
++    }
++  }
++
++  // GET routes rendering the verification form
++  if (
++    req.method === 'GET' &&
++    (pathname === '/' ||
++      pathname === '/index.html' ||
++      pathname === '/account' ||
++      pathname === '/signup' ||
++      pathname === '/verify-email')
++  ) {
++    // Generate fresh cryptographic nonce (256 bits of entropy) stored in server session
++    const nonce = sessionStore.createNonce(sessionId);
++
++    let html = '';
++    const indexPath = getIndexHtmlPath();
++    if (fs.existsSync(indexPath)) {
++      html = fs.readFileSync(indexPath, 'utf-8');
++    }
++
++    // Replace the nonce attribute in the hidden verification token input
++    // Matching autocomplete="email-verification-token" or name="token"
++    html = html.replace(
++      /(<input[^>]*autocomplete=["']email-verification-token["'][^>]*nonce=["'])[^"']*(")/i,
++      `$1${nonce}$2`
++    );
++    html = html.replace(
++      /(<input[^>]*nonce=["'])[^"']*("[^>]*autocomplete=["']email-verification-token["'])/i,
++      `$1${nonce}$2`
++    );
++
++    const headers: Record<string, string> = {
++      'Content-Type': 'text/html; charset=utf-8',
++      'Cache-Control': 'no-store', // MANDATORY: Cache-Control: no-store
++    };
++    if (isNewSession) {
++      headers['Set-Cookie'] = setCookieHeader;
++    }
++
++    res.writeHead(200, headers);
++    res.end(html);
++    return;
++  }
++
++  // Static file serving fallback
++  const filePath = path.resolve(process.cwd(), pathname.replace(/^\//, ''));
++  if (req.method === 'GET' && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
++    const ext = path.extname(filePath).toLowerCase();
++    const mimeTypes: Record<string, string> = {
++      '.html': 'text/html',
++      '.js': 'application/javascript',
++      '.css': 'text/css',
++      '.json': 'application/json',
++      '.png': 'image/png',
++      '.jpg': 'image/jpeg',
++      '.svg': 'image/svg+xml',
++    };
++    res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
++    fs.createReadStream(filePath).pipe(res);
++    return;
++  }
++
++  res.writeHead(404, { 'Content-Type': 'text/plain' });
++  res.end('Not Found');
++}
++
++export function createServer(): http.Server {
++  return http.createServer(requestListener);
++}
++
++export function startServer(port = PORT): http.Server {
++  const server = createServer();
++  server.listen(port, () => {
++    console.log(`Server listening on port ${port}`);
++  });
++  return server;
++}
++
++// Auto-run if executed as main module
++if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename)) {
++  startServer();
++}
+diff --git a/src/session.ts b/src/session.ts
+new file mode 100644
+index 0000000..b89aa67
+--- /dev/null
++++ b/src/session.ts
+@@ -0,0 +1,134 @@
++import { randomBytes } from 'node:crypto';
++import type * as http from 'node:http';
++
++export interface SessionData {
++  nonce?: string;
++  createdAt: number;
++  [key: string]: unknown;
++}
++
++export class SessionStore {
++  private sessions = new Map<string, SessionData>();
++  private readonly maxAgeMs: number;
++
++  constructor(maxAgeMs = 15 * 60 * 1000) {
++    this.maxAgeMs = maxAgeMs;
++  }
++
++  /**
++   * Generates a fresh, single-use cryptographic nonce with at least 128 bits of entropy
++   * (32 bytes = 256 bits) and stores it in server-side session state for the given sessionId.
++   */
++  createNonce(sessionId: string): string {
++    this.cleanExpired();
++    // 32 bytes provides 256 bits of cryptographic entropy (>= 128 bits required)
++    const nonce = randomBytes(32).toString('base64url');
++    const existing = this.sessions.get(sessionId) || { createdAt: Date.now() };
++    existing.nonce = nonce;
++    existing.createdAt = Date.now();
++    this.sessions.set(sessionId, existing);
++    return nonce;
++  }
++
++  /**
++   * Atomically reads and deletes the expected nonce from server-side session storage
++   * immediately upon receipt to prevent replay attacks.
++   */
++  consumeNonce(sessionId: string): string | null {
++    this.cleanExpired();
++    const session = this.sessions.get(sessionId);
++    if (!session || !session.nonce) {
++      return null;
++    }
++    const nonce = session.nonce;
++    delete session.nonce;
++    return nonce;
++  }
++
++  getSession(sessionId: string): SessionData | undefined {
++    return this.sessions.get(sessionId);
++  }
++
++  setSession(sessionId: string, data: SessionData): void {
++    this.sessions.set(sessionId, data);
++  }
++
++  deleteSession(sessionId: string): void {
++    this.sessions.delete(sessionId);
++  }
++
++  clear(): void {
++    this.sessions.clear();
++  }
++
++  private cleanExpired(): void {
++    const now = Date.now();
++    for (const [id, session] of this.sessions.entries()) {
++      if (now - session.createdAt > this.maxAgeMs) {
++        this.sessions.delete(id);
++      }
++    }
++  }
++}
++
++export const sessionStore = new SessionStore();
++
++/**
++ * Extracts session ID from standard Request, IncomingMessage, cookie string, or headers object.
++ */
++export function getSessionIdFromRequest(
++  request: Request | http.IncomingMessage | { headers?: Record<string, string | string[] | undefined>; sessionId?: string } | string | null | undefined
++): string | null {
++  if (!request) return null;
++  if (typeof request === 'string') {
++    // If it looks like a cookie string or a session ID
++    if (request.includes('sid=')) {
++      const match = request.match(/(?:^|;\s*)sid=([^;]+)/);
++      return match ? decodeURIComponent(match[1]) : null;
++    }
++    return request;
++  }
++
++  if (typeof request === 'object' && 'sessionId' in request && typeof (request as any).sessionId === 'string') {
++    return (request as any).sessionId;
++  }
++
++  let cookieHeader: string | null = null;
++
++  if ('headers' in request && request.headers) {
++    if (typeof (request.headers as Headers).get === 'function') {
++      cookieHeader = (request.headers as Headers).get('cookie');
++    } else if (typeof request.headers === 'object') {
++      const raw = (request.headers as Record<string, string | string[] | undefined>)['cookie'];
++      cookieHeader = Array.isArray(raw) ? raw.join('; ') : raw || null;
++    }
++  }
++
++  if (!cookieHeader) return null;
++  const match = cookieHeader.match(/(?:^|;\s*)sid=([^;]+)/);
++  return match ? decodeURIComponent(match[1]) : null;
++}
++
++/**
++ * Generates and stores a new nonce for the given session.
++ */
++export function createSessionNonce(sessionId: string): string {
++  return sessionStore.createNonce(sessionId);
++}
++
++/**
++ * Atomically reads and deletes the single-use nonce from server-side session state.
++ * Accepts a web standard Request, Node IncomingMessage, or a sessionId string.
++ */
++export async function consumeSessionNonce(
++  requestOrSessionId: Request | http.IncomingMessage | { headers?: Record<string, string | string[] | undefined> } | string
++): Promise<string | null> {
++  const sessionId = typeof requestOrSessionId === 'string' && !requestOrSessionId.includes('sid=')
++    ? requestOrSessionId
++    : getSessionIdFromRequest(requestOrSessionId);
++
++  if (!sessionId) {
++    return null;
++  }
++  return sessionStore.consumeNonce(sessionId);
++}
+diff --git a/src/submission.ts b/src/submission.ts
+new file mode 100644
+index 0000000..da8a4d5
+--- /dev/null
++++ b/src/submission.ts
+@@ -0,0 +1,135 @@
++import type * as http from 'node:http';
++import { consumeSessionNonce } from './session.js';
++import {
++  verifyEmailVerificationToken,
++  type VerifyEmailVerificationTokenParams,
++} from './verifier.js';
++
++export const RP_ORIGIN = process.env.RP_ORIGIN || 'https://rp.example.com';
++
++export interface SubmissionResult {
++  status: number;
++  success: boolean;
++  verified: boolean;
++  email: string;
++  method: 'evt' | 'fallback_otp';
++  message: string;
++  json: () => Promise<SubmissionResult>;
++  text: () => Promise<string>;
++}
++
++export function createSubmissionResult(data: {
++  status?: number;
++  success: boolean;
++  verified: boolean;
++  email: string;
++  method: 'evt' | 'fallback_otp';
++  message: string;
++}): SubmissionResult {
++  const result: SubmissionResult = {
++    status: data.status ?? 200,
++    success: data.success,
++    verified: data.verified,
++    email: data.email,
++    method: data.method,
++    message: data.message,
++    json: async () => result,
++    text: async () => JSON.stringify(result),
++  };
++  return result;
++}
++
++/**
++ * Fast path: email ownership is cryptographically verified; skip OTP email.
++ */
++export async function completeAccountCreation(submittedEmail: string): Promise<SubmissionResult> {
++  return createSubmissionResult({
++    status: 200,
++    success: true,
++    verified: true,
++    email: submittedEmail,
++    method: 'evt',
++    message: 'Email ownership verified via Email Verification Token. Account creation complete.',
++  });
++}
++
++/**
++ * Fallback path: send standard OTP code or magic link email to submittedEmail.
++ */
++export async function sendTraditionalVerificationEmail(
++  submittedEmail: string
++): Promise<SubmissionResult> {
++  return createSubmissionResult({
++    status: 200,
++    success: true,
++    verified: false,
++    email: submittedEmail,
++    method: 'fallback_otp',
++    message: 'Verification email with OTP / magic link sent. Please check your inbox.',
++  });
++}
++
++export interface HandleSignupSubmissionOptions
++  extends Partial<Omit<VerifyEmailVerificationTokenParams, 'rawToken' | 'submittedEmail' | 'expectedNonce'>> {
++  expectedAudience?: string;
++  expectedNonce?: string;
++}
++
++/**
++ * Handles form submission for email verification.
++ * Follows progressive enhancement: if token verification succeeds, fast-paths to completeAccountCreation;
++ * if no token is provided or verification fails, falls back gracefully to sendTraditionalVerificationEmail.
++ */
++export async function handleSignupSubmission(
++  request: Request | http.IncomingMessage | Record<string, any>,
++  options: HandleSignupSubmissionOptions = {}
++): Promise<SubmissionResult> {
++  let submittedEmail = '';
++  let rawToken = '';
++
++  if (typeof (request as Request).formData === 'function') {
++    // Web standard Request
++    const formData = await (request as Request).formData();
++    submittedEmail = String(formData.get('email') || '').trim();
++    rawToken = String(formData.get('token') || '').trim();
++  } else if (typeof (request as Request).json === 'function' && !(request as http.IncomingMessage).headers) {
++    try {
++      const body = (await (request as Request).json()) as Record<string, any>;
++      submittedEmail = String(body.email || '').trim();
++      rawToken = String(body.token || '').trim();
++    } catch {
++      // Ignored
++    }
++  } else if ('body' in request && (request as any).body) {
++    const b = (request as any).body;
++    submittedEmail = String(b.email || '').trim();
++    rawToken = String(b.token || '').trim();
++  } else if ('email' in request) {
++    submittedEmail = String((request as any).email || '').trim();
++    rawToken = String((request as any).token || '').trim();
++  }
++
++  // Atomically read and delete the single-use nonce from server-side session state
++  const expectedNonce = options.expectedNonce || (await consumeSessionNonce(request as any));
++  const expectedAudience = options.expectedAudience || RP_ORIGIN;
++
++  if (rawToken && expectedNonce) {
++    try {
++      await verifyEmailVerificationToken({
++        rawToken,
++        submittedEmail,
++        expectedNonce,
++        expectedAudience,
++        ...options,
++      });
++      // Fast path: email ownership is cryptographically verified; skip OTP email.
++      return completeAccountCreation(submittedEmail);
++    } catch (err) {
++      // Log token verification failures before falling back to standard email verification.
++      console.error('Email verification token check failed:', err);
++    }
++  }
++
++  // Fallback path: send standard OTP code or magic link email to submittedEmail.
++  return sendTraditionalVerificationEmail(submittedEmail);
++}
+diff --git a/src/verifier.ts b/src/verifier.ts
+new file mode 100644
+index 0000000..761bbde
+--- /dev/null
++++ b/src/verifier.ts
+@@ -0,0 +1,311 @@
++import { createHash } from 'node:crypto';
++import dns from 'node:dns/promises';
++import { decodeSdJwtSync, SDJwtInstance, type Hasher } from '@sd-jwt/core';
++import {
++  createLocalJWKSet,
++  createRemoteJWKSet,
++  importJWK,
++  jwtVerify,
++  type JWK,
++  type JWTVerifyOptions,
++} from 'jose';
++
++// IETF draft-hardt-email-verification-02 (§3.3, §5.1.1) specifies RFC 9864 'Ed25519' and 'ES256'.
++// 'EdDSA' is included for compatibility with live issuers and Chrome Origin Trial builds.
++export const ALLOWED_ALGS = ['Ed25519', 'EdDSA', 'ES256'];
++export const normalizeAlg = (alg: string): string => (alg === 'Ed25519' ? 'EdDSA' : alg);
++
++export interface VerifyEmailVerificationTokenParams {
++  rawToken: string;
++  submittedEmail: string;
++  expectedNonce: string;
++  expectedAudience: string;
++  dnsResolver?: (domain: string) => Promise<string[][]>;
++  fetchFn?: typeof fetch;
++  allowedAlgs?: string[];
++  maxTokenAge?: string;
++  clockTolerance?: string;
++  keyBindingMaxAgeSeconds?: number;
++  skewSeconds?: number;
++}
++
++export interface VerifiedEmailResult {
++  email: string;
++  email_verified: boolean;
++  issuer: string;
++  payload: Record<string, unknown>;
++  [key: string]: unknown;
++}
++
++/**
++ * Validates an Email Verification Token (SD-JWT with Key Binding JWT) on the server.
++ */
++export async function verifyEmailVerificationToken(
++  params: VerifyEmailVerificationTokenParams
++): Promise<VerifiedEmailResult> {
++  const {
++    rawToken,
++    submittedEmail,
++    expectedNonce,
++    expectedAudience,
++    dnsResolver,
++    fetchFn = fetch,
++    allowedAlgs = ALLOWED_ALGS,
++    maxTokenAge = '5m',
++    clockTolerance = '1m',
++    keyBindingMaxAgeSeconds = 300,
++    skewSeconds = 60,
++  } = params;
++
++  if (!submittedEmail || typeof submittedEmail !== 'string') {
++    throw new Error('Submitted email is required.');
++  }
++  if (!expectedNonce || typeof expectedNonce !== 'string') {
++    throw new Error('Expected nonce is required.');
++  }
++  if (!expectedAudience || typeof expectedAudience !== 'string') {
++    throw new Error('Expected audience is required.');
++  }
++  if (!rawToken || typeof rawToken !== 'string') {
++    throw new Error('Verification token is required.');
++  }
++
++  const hasher = (data: string | ArrayBuffer, alg: string): Uint8Array => {
++    const buf = typeof data === 'string' ? Buffer.from(data, 'utf-8') : Buffer.from(data);
++    return createHash(alg === 'sha-256' ? 'sha256' : alg).update(buf).digest();
++  };
++
++  // Step 1: Parse the SD-JWT claims and validate the email address
++  let decoded: ReturnType<typeof decodeSdJwtSync>;
++  try {
++    decoded = decodeSdJwtSync(rawToken, hasher);
++  } catch (err: any) {
++    throw new Error(`Failed to decode SD-JWT: ${err.message}`);
++  }
++
++  if (!decoded || !decoded.jwt) {
++    throw new Error('Invalid SD-JWT: missing issuer JWT.');
++  }
++
++  const evtPayload = decoded.jwt.payload as Record<string, any>;
++  const iss = evtPayload?.iss;
++
++  // Expectation 8: Reject presentations where KB-JWT is missing
++  if (!decoded.kbJwt) {
++    throw new Error('Missing Key Binding JWT (KB-JWT).');
++  }
++
++  if (!iss || typeof iss !== 'string') {
++    throw new Error('Missing issuer (iss) in EVT payload.');
++  }
++
++  if (evtPayload.email_verified !== true) {
++    throw new Error('EVT payload email_verified claim must be true.');
++  }
++
++  // Expectation 5: Case-insensitive email comparison
++  const evtEmail = evtPayload.email;
++  if (!evtEmail || typeof evtEmail !== 'string') {
++    throw new Error('Missing email claim in EVT payload.');
++  }
++  if (evtEmail.toLowerCase() !== submittedEmail.toLowerCase()) {
++    throw new Error('Submitted email does not match the EVT email claim.');
++  }
++
++  // Step 2: Validate DNS TXT delegation and load the issuer JWKS
++  const domain = submittedEmail.split('@')[1];
++  if (!domain) {
++    throw new Error(`Invalid email address "${submittedEmail}": missing domain.`);
++  }
++
++  const resolveTxtFn = dnsResolver ?? dns.resolveTxt;
++  let txtRecordsRaw: string[][];
++  try {
++    txtRecordsRaw = await resolveTxtFn(`_email-verification.${domain.toLowerCase()}`);
++  } catch (err: any) {
++    throw new Error(`DNS resolution failed for _email-verification.${domain}: ${err.message}`);
++  }
++
++  const txtRecords = txtRecordsRaw.map((r) => r.join(''));
++  // Expectation 6: Confirm derived https://<issuer-host> origin matches iss byte-for-byte
++  const matchesTxt = txtRecords.some(
++    (txt) => txt.startsWith('iss=') && `https://${txt.slice(4).trim()}` === iss
++  );
++  if (!matchesTxt) {
++    throw new Error(`Issuer "${iss}" is not delegated via DNS for "${domain}".`);
++  }
++
++  const discoveryUrl = new URL('/.well-known/email-verification', iss);
++  if (discoveryUrl.protocol !== 'https:') {
++    throw new Error('Issuer must use HTTPS.');
++  }
++
++  const discoResponse = await fetchFn(discoveryUrl);
++  if (!discoResponse.ok) {
++    throw new Error(`Failed to fetch issuer metadata from ${discoveryUrl}: ${discoResponse.status}`);
++  }
++  const metadata = (await discoResponse.json()) as {
++    issuer?: string;
++    jwks_uri?: string;
++    jwks?: { keys: JWK[] };
++  };
++
++  // Expectation 6: Confirm metadata.issuer === iss byte-for-byte
++  if (metadata.issuer !== iss) {
++    throw new Error(`Metadata issuer "${metadata.issuer}" does not match token issuer "${iss}".`);
++  }
++  if (!metadata.jwks_uri || typeof metadata.jwks_uri !== 'string' || !metadata.jwks_uri.startsWith('https://')) {
++    throw new Error('Invalid issuer metadata: jwks_uri must start with https://');
++  }
++
++  // Load the issuer JWKS
++  let issuerJwks: any;
++  let rawJwksKeys: JWK[] = [];
++
++  if (metadata.jwks?.keys) {
++    rawJwksKeys = metadata.jwks.keys;
++    issuerJwks = createLocalJWKSet(metadata.jwks);
++  } else {
++    // Attempt fetching jwks_uri directly with fetchFn to obtain raw keys if needed for fallback iteration
++    try {
++      const jwksRes = await fetchFn(new URL(metadata.jwks_uri));
++      if (jwksRes.ok) {
++        const jwksData = (await jwksRes.json()) as { keys?: JWK[] };
++        if (jwksData?.keys) {
++          rawJwksKeys = jwksData.keys;
++          issuerJwks = createLocalJWKSet({ keys: rawJwksKeys });
++        }
++      }
++    } catch {
++      // If fetching fails or in specialized mock environment, fall back to createRemoteJWKSet
++    }
++    if (!issuerJwks) {
++      issuerJwks = createRemoteJWKSet(new URL(metadata.jwks_uri));
++    }
++  }
++
++  // Step 3: Verify the EVT signature and Key Binding JWT (KB-JWT)
++  const evtOptions: JWTVerifyOptions = {
++    typ: 'ev+sd-jwt',
++    issuer: iss,
++    algorithms: allowedAlgs,
++    maxTokenAge,
++    clockTolerance,
++  };
++
++  // Pre-validate KB-JWT structure and claims
++  const kbPayload = decoded.kbJwt.payload as Record<string, any>;
++  const kbHeader = decoded.kbJwt.header as Record<string, any>;
++
++  // Expectation 8: Reject mismatched nonce, audience, or alg
++  if (kbPayload.nonce !== expectedNonce) {
++    throw new Error(`Mismatched KB-JWT nonce. Expected "${expectedNonce}", got "${kbPayload.nonce}".`);
++  }
++  if (kbPayload.aud !== expectedAudience) {
++    throw new Error(`Mismatched KB-JWT audience. Expected "${expectedAudience}", got "${kbPayload.aud}".`);
++  }
++
++  const holderJwk = evtPayload.cnf?.jwk as (JWK & { alg?: string }) | undefined;
++  if (!holderJwk) {
++    throw new Error('Missing cnf.jwk holder key in EVT payload.');
++  }
++
++  const holderAlg = holderJwk.alg ? String(holderJwk.alg) : '';
++  const kbAlg = kbHeader?.alg ? String(kbHeader.alg) : '';
++
++  if (
++    !holderAlg ||
++    !kbAlg ||
++    !allowedAlgs.includes(holderAlg) ||
++    !allowedAlgs.includes(kbAlg) ||
++    normalizeAlg(kbAlg) !== normalizeAlg(holderAlg)
++  ) {
++    throw new Error(
++      `Missing, disallowed, or mismatched KB-JWT algorithm. holderAlg="${holderAlg}", kbAlg="${kbAlg}".`
++    );
++  }
++
++  const headerKid = decoded.jwt.header?.kid;
++
++  const sdJwt = new SDJwtInstance({
++    hasher,
++    verifier: async (data, sig) => {
++      const compactEvt = `${data}.${sig}`;
++      try {
++        await jwtVerify(compactEvt, issuerJwks, evtOptions);
++      } catch (err: any) {
++        // Expectation 7: When kid is omitted and multiple keys match in the JWKS,
++        // jose throws ERR_JWKS_MULTIPLE_MATCHING_KEYS (an AsyncIterable of candidate CryptoKeys).
++        if (err?.code === 'ERR_JWKS_MULTIPLE_MATCHING_KEYS') {
++          let matched = false;
++          for await (const publicKey of err) {
++            try {
++              await jwtVerify(compactEvt, publicKey, evtOptions);
++              matched = true;
++              break;
++            } catch {}
++          }
++          if (!matched) throw err;
++        } else if (!headerKid && rawJwksKeys.length > 0) {
++          // If kid was omitted and multiple keys exist in raw JWKS, iterate through them
++          let matched = false;
++          for (const rawKey of rawJwksKeys) {
++            try {
++              const importedKey = await importJWK(rawKey, String(rawKey.alg || decoded.jwt.header?.alg));
++              await jwtVerify(compactEvt, importedKey, evtOptions);
++              matched = true;
++              break;
++            } catch {}
++          }
++          if (!matched) throw err;
++        } else {
++          throw err;
++        }
++      }
++      return true;
++    },
++    kbVerifier: async (data, sig) => {
++      const currentHolderJwk = evtPayload.cnf?.jwk;
++      const currentHolderAlg = currentHolderJwk?.alg ? String(currentHolderJwk.alg) : '';
++      const currentKbAlg = decoded.kbJwt?.header?.alg ? String(decoded.kbJwt.header.alg) : '';
++
++      if (
++        !currentHolderAlg ||
++        !currentKbAlg ||
++        !allowedAlgs.includes(currentHolderAlg) ||
++        !allowedAlgs.includes(currentKbAlg) ||
++        normalizeAlg(currentKbAlg) !== normalizeAlg(currentHolderAlg)
++      ) {
++        throw new Error('Missing, disallowed, or mismatched KB-JWT algorithm.');
++      }
++
++      const holderKey = await importJWK(currentHolderJwk, currentKbAlg);
++      await jwtVerify(`${data}.${sig}`, holderKey, {
++        typ: 'kb+jwt',
++        audience: expectedAudience,
++        algorithms: [currentKbAlg],
++        maxTokenAge,
++        clockTolerance,
++      });
++      return true;
++    },
++  });
++
++  // sdJwt.verify validates disclosures, EVT signature, KB-JWT signature,
++  // and confirms nonce, aud, iat, and sd_hash in the Key Binding JWT.
++  const verified = await sdJwt.verify(rawToken, {
++    requiredClaimKeys: ['email', 'email_verified'],
++    keyBindingNonce: expectedNonce,
++    expectedKeyBindingAudience: expectedAudience,
++    allowedKeyBindingAlgorithms: allowedAlgs,
++    keyBindingMaxAgeSeconds,
++    skewSeconds,
++  });
++
++  return {
++    email: evtPayload.email,
++    email_verified: evtPayload.email_verified,
++    issuer: iss,
++    payload: (verified.payload as Record<string, unknown>) || evtPayload,
++  };
++}
+diff --git a/submission.js b/submission.js
+new file mode 100644
+index 0000000..dd1ebfc
+--- /dev/null
++++ b/submission.js
+@@ -0,0 +1 @@
++export * from './dist/submission.js';
+diff --git a/tests/expectations.test.ts b/tests/expectations.test.ts
+new file mode 100644
+index 0000000..799a316
+--- /dev/null
++++ b/tests/expectations.test.ts
+@@ -0,0 +1,512 @@
++import assert from 'node:assert';
++import test from 'node:test';
++import fs from 'node:fs';
++import { createHash } from 'node:crypto';
++import http from 'node:http';
++import {
++  generateKeyPair,
++  exportJWK,
++  SignJWT,
++  type JWK,
++} from 'jose';
++
++import {
++  verifyEmailVerificationToken,
++  ALLOWED_ALGS,
++  sessionStore,
++  consumeSessionNonce,
++  createSessionNonce,
++  handleSignupSubmission,
++  completeAccountCreation,
++  sendTraditionalVerificationEmail,
++  requestListener,
++} from '../dist/index.js';
++
++// Helper to generate a test token presentation
++async function createTestEVTPresentation(options: {
++  issuer?: string;
++  email?: string;
++  emailVerified?: boolean;
++  expectedAudience?: string;
++  expectedNonce?: string;
++  omitKid?: boolean;
++  tamperSdHash?: boolean;
++  tamperNonce?: boolean;
++  tamperAudience?: boolean;
++  mismatchedAlg?: boolean;
++  omitKbJwt?: boolean;
++  issuerKey?: any;
++  issuerKid?: string;
++}) {
++  const iss = options.issuer || 'https://issuer.example.com';
++  const email = options.email || 'user@example.com';
++  const emailVerified = options.emailVerified ?? true;
++  const aud = options.expectedAudience || 'https://rp.example.com';
++  const nonce = options.expectedNonce || 'test-session-nonce-128bits';
++
++  const issuerKeyPair = options.issuerKey || (await generateKeyPair('ES256'));
++  const holderKeyPair = await generateKeyPair('ES256');
++
++  const holderJwk = (await exportJWK(holderKeyPair.publicKey)) as JWK & { alg?: string };
++  holderJwk.alg = options.mismatchedAlg ? 'EdDSA' : 'ES256';
++
++  const evtPayload = {
++    iss,
++    email,
++    email_verified: emailVerified,
++    cnf: { jwk: holderJwk },
++  };
++
++  const header: Record<string, any> = { alg: 'ES256', typ: 'ev+sd-jwt' };
++  if (!options.omitKid) {
++    header.kid = options.issuerKid || 'k1';
++  }
++
++  const issuerJwt = await new SignJWT(evtPayload)
++    .setProtectedHeader(header)
++    .setIssuedAt()
++    .setExpirationTime('5m')
++    .sign(issuerKeyPair.privateKey);
++
++  if (options.omitKbJwt) {
++    return {
++      presentation: `${issuerJwt}~`,
++      issuerKeyPair,
++      holderKeyPair,
++    };
++  }
++
++  const sdHash = options.tamperSdHash
++    ? 'invalid-tampered-sd-hash'
++    : createHash('sha256').update(issuerJwt + '~').digest('base64url');
++
++  const kbNonce = options.tamperNonce ? 'wrong-tampered-nonce' : nonce;
++  const kbAud = options.tamperAudience ? 'https://wrong-rp.example.com' : aud;
++
++  const kbHeader: Record<string, any> = {
++    alg: 'ES256',
++    typ: 'kb+jwt',
++  };
++
++  const kbJwt = await new SignJWT({
++    nonce: kbNonce,
++    aud: kbAud,
++    iat: Math.floor(Date.now() / 1000),
++    sd_hash: sdHash,
++  })
++    .setProtectedHeader(kbHeader)
++    .sign(holderKeyPair.privateKey);
++
++  return {
++    presentation: `${issuerJwt}~${kbJwt}`,
++    issuerKeyPair,
++    holderKeyPair,
++  };
++}
++
++test('Expectation 1: Verification form HTML structure in index.html', () => {
++  const html = fs.readFileSync('./index.html', 'utf-8');
++
++  // Verify form element exists
++  assert.match(html, /<form[^>]*action=["']\/api\/verify-email["'][^>]*>/i);
++
++  // Verify input email with autocomplete="email"
++  assert.match(html, /<input[^>]*type=["']email["'][^>]*autocomplete=["']email["'][^>]*>/i);
++
++  // Verify sibling input hidden with autocomplete="email-verification-token" and non-empty nonce
++  assert.match(
++    html,
++    /<input[^>]*type=["']hidden["'][^>]*nonce=["'][^"']+["'][^>]*autocomplete=["']email-verification-token["'][^>]*>/i
++  );
++});
++
++test('Expectation 2: Server generates fresh nonce per render, stores in session, serves Cache-Control: no-store', async () => {
++  const server = http.createServer(requestListener);
++  await new Promise<void>((resolve) => server.listen(0, resolve));
++  const address = server.address() as any;
++  const port = address.port;
++
++  try {
++    const res1 = await fetch(`http://localhost:${port}/`);
++    assert.strictEqual(res1.status, 200);
++    assert.strictEqual(res1.headers.get('cache-control'), 'no-store');
++
++    const setCookie = res1.headers.get('set-cookie');
++    assert.ok(setCookie, 'Set-Cookie header should be present');
++    assert.match(setCookie, /sid=[^;]+/, 'Session cookie should store sid');
++
++    const html1 = await res1.text();
++    const nonceMatch1 = html1.match(/nonce=["']([^"']+)["'][^>]*autocomplete=["']email-verification-token["']/i);
++    assert.ok(nonceMatch1, 'Nonce should be rendered in form');
++    const nonce1 = nonceMatch1[1];
++    assert.ok(nonce1.length >= 22, 'Nonce should have >= 128 bits entropy');
++
++    // Ensure client cookie does NOT contain the raw nonce
++    assert.ok(!setCookie.includes(nonce1), 'Client cookie must not store raw nonce directly');
++
++    // Second render gets a fresh nonce
++    const res2 = await fetch(`http://localhost:${port}/`, {
++      headers: { cookie: setCookie },
++    });
++    const html2 = await res2.text();
++    const nonceMatch2 = html2.match(/nonce=["']([^"']+)["'][^>]*autocomplete=["']email-verification-token["']/i);
++    assert.ok(nonceMatch2);
++    const nonce2 = nonceMatch2[1];
++    assert.notStrictEqual(nonce1, nonce2, 'Subsequent form render must generate a fresh single-use nonce');
++  } finally {
++    server.close();
++  }
++});
++
++test('Expectation 3: All cryptographic token validation is executed strictly on the server', () => {
++  const html = fs.readFileSync('./index.html', 'utf-8');
++  assert.ok(!html.includes('jose'), 'No jose library in client HTML');
++  assert.ok(!html.includes('@sd-jwt'), 'No sd-jwt library in client HTML');
++  assert.ok(!html.includes('verifyEmailVerificationToken'), 'No verification logic in client script');
++});
++
++test('Expectation 4: Uses established platform SD-JWT and JOSE/JWT libraries (@sd-jwt/core and jose)', () => {
++  const verifierSource = fs.readFileSync('./src/verifier.ts', 'utf-8');
++  const pkgJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
++
++  assert.ok(pkgJson.dependencies['@sd-jwt/core'], 'Must have @sd-jwt/core dependency');
++  assert.ok(pkgJson.dependencies['jose'], 'Must have jose dependency');
++  assert.ok(verifierSource.includes("from '@sd-jwt/core'"), 'Verifier imports from @sd-jwt/core');
++  assert.ok(verifierSource.includes("from 'jose'"), 'Verifier imports from jose');
++  assert.ok(verifierSource.includes('decodeSdJwt'), 'Verifier uses decodeSdJwt from @sd-jwt/core');
++  assert.ok(verifierSource.includes('jwtVerify'), 'Verifier uses jwtVerify from jose');
++});
++
++test('Expectation 5: Server atomically consumes nonce and compares email case-insensitively', async () => {
++  const sessionId = 'test-atomic-session-1';
++  const nonce = sessionStore.createNonce(sessionId);
++  assert.ok(nonce);
++
++  // First consume succeeds
++  const consumed = sessionStore.consumeNonce(sessionId);
++  assert.strictEqual(consumed, nonce);
++
++  // Second consume immediately returns null (replay attack prevented)
++  const replayed = sessionStore.consumeNonce(sessionId);
++  assert.strictEqual(replayed, null);
++
++  // Email comparison case-insensitivity
++  const mockIssuerKp = await generateKeyPair('ES256');
++  const mockJwk = (await exportJWK(mockIssuerKp.publicKey)) as JWK;
++  mockJwk.kid = 'k1'; mockJwk.alg = 'ES256';
++
++  const mockDnsResolver = async (_d: string) => [['iss=issuer.example.com']];
++  const mockFetch = async (url: string | URL | Request) => {
++    const urlStr = url.toString();
++    if (urlStr.includes('/.well-known/email-verification')) {
++      return new Response(JSON.stringify({
++        issuer: 'https://issuer.example.com',
++        jwks_uri: 'https://issuer.example.com/jwks.json',
++      }));
++    }
++    if (urlStr.includes('/jwks.json')) {
++      return new Response(JSON.stringify({ keys: [mockJwk] }));
++    }
++    return new Response('Not found', { status: 404 });
++  };
++
++  const { presentation } = await createTestEVTPresentation({
++    issuer: 'https://issuer.example.com',
++    email: 'TestUser@Example.COM',
++    expectedAudience: 'https://rp.example.com',
++    expectedNonce: 'fresh-nonce-123',
++    issuerKey: mockIssuerKp,
++  });
++
++  // Submitted with lowercase
++  const result = await verifyEmailVerificationToken({
++    rawToken: presentation,
++    submittedEmail: 'testuser@example.com',
++    expectedNonce: 'fresh-nonce-123',
++    expectedAudience: 'https://rp.example.com',
++    dnsResolver: mockDnsResolver,
++    fetchFn: mockFetch as any,
++  });
++  assert.strictEqual(result.email, 'TestUser@Example.COM');
++
++  // Mismatched email must fail
++  await assert.rejects(
++    () =>
++      verifyEmailVerificationToken({
++        rawToken: presentation,
++        submittedEmail: 'different@example.com',
++        expectedNonce: 'fresh-nonce-123',
++        expectedAudience: 'https://rp.example.com',
++        dnsResolver: mockDnsResolver,
++        fetchFn: mockFetch as any,
++      }),
++    /Submitted email does not match the EVT email claim/
++  );
++});
++
++test('Expectation 6: Server validates DNS TXT delegation, derived origin, and discovery issuer', async () => {
++  const mockIssuerKp = await generateKeyPair('ES256');
++  const mockJwk = (await exportJWK(mockIssuerKp.publicKey)) as JWK;
++  mockJwk.kid = 'k1'; mockJwk.alg = 'ES256';
++
++  const { presentation } = await createTestEVTPresentation({
++    issuer: 'https://issuer.example.com',
++    email: 'user@example.com',
++    expectedAudience: 'https://rp.example.com',
++    expectedNonce: 'nonce-txt',
++    issuerKey: mockIssuerKp,
++  });
++
++  // Case A: DNS TXT missing delegation
++  const badDnsResolver = async (_d: string) => [['iss=wrong.com']];
++  const mockFetch = async () =>
++    new Response(JSON.stringify({ issuer: 'https://issuer.example.com', jwks_uri: 'https://issuer.example.com/jwks' }));
++
++  await assert.rejects(
++    () =>
++      verifyEmailVerificationToken({
++        rawToken: presentation,
++        submittedEmail: 'user@example.com',
++        expectedNonce: 'nonce-txt',
++        expectedAudience: 'https://rp.example.com',
++        dnsResolver: badDnsResolver,
++        fetchFn: mockFetch as any,
++      }),
++    /is not delegated via DNS/
++  );
++
++  // Case B: Discovery issuer mismatch
++  const goodDnsResolver = async (_d: string) => [['iss=issuer.example.com']];
++  const badDiscoveryFetch = async () =>
++    new Response(JSON.stringify({ issuer: 'https://attacker.example.com', jwks_uri: 'https://attacker.example.com/jwks' }));
++
++  await assert.rejects(
++    () =>
++      verifyEmailVerificationToken({
++        rawToken: presentation,
++        submittedEmail: 'user@example.com',
++        expectedNonce: 'nonce-txt',
++        expectedAudience: 'https://rp.example.com',
++        dnsResolver: goodDnsResolver,
++        fetchFn: badDiscoveryFetch as any,
++      }),
++    /Metadata issuer .* does not match token issuer/
++  );
++});
++
++test('Expectation 7: Iterates through JWKS when kid is omitted in EVT header', async () => {
++  const kp1 = await generateKeyPair('ES256');
++  const kp2 = await generateKeyPair('ES256');
++  const jwk1 = (await exportJWK(kp1.publicKey)) as JWK; jwk1.kid = 'key-1'; jwk1.alg = 'ES256';
++  const jwk2 = (await exportJWK(kp2.publicKey)) as JWK; jwk2.kid = 'key-2'; jwk2.alg = 'ES256';
++
++  // Token is signed with kp2, but header omits kid
++  const { presentation } = await createTestEVTPresentation({
++    issuer: 'https://issuer.example.com',
++    email: 'user@example.com',
++    expectedAudience: 'https://rp.example.com',
++    expectedNonce: 'nonce-nokid',
++    issuerKey: kp2,
++    omitKid: true,
++  });
++
++  const mockDnsResolver = async (_d: string) => [['iss=issuer.example.com']];
++  const mockFetch = async (url: string | URL | Request) => {
++    const urlStr = url.toString();
++    if (urlStr.includes('/.well-known/email-verification')) {
++      return new Response(JSON.stringify({
++        issuer: 'https://issuer.example.com',
++        jwks_uri: 'https://issuer.example.com/jwks.json',
++      }));
++    }
++    if (urlStr.includes('/jwks.json')) {
++      return new Response(JSON.stringify({ keys: [jwk1, jwk2] }));
++    }
++    return new Response('Not found', { status: 404 });
++  };
++
++  const result = await verifyEmailVerificationToken({
++    rawToken: presentation,
++    submittedEmail: 'user@example.com',
++    expectedNonce: 'nonce-nokid',
++    expectedAudience: 'https://rp.example.com',
++    dnsResolver: mockDnsResolver,
++    fetchFn: mockFetch as any,
++  });
++
++  assert.strictEqual(result.email, 'user@example.com');
++  assert.strictEqual(result.email_verified, true);
++});
++
++test('Expectation 8: Rejects missing KB-JWT or mismatched aud, nonce, sd_hash, or alg', async () => {
++  const mockIssuerKp = await generateKeyPair('ES256');
++  const mockJwk = (await exportJWK(mockIssuerKp.publicKey)) as JWK;
++  mockJwk.kid = 'k1'; mockJwk.alg = 'ES256';
++
++  const mockDnsResolver = async (_d: string) => [['iss=issuer.example.com']];
++  const mockFetch = async (url: string | URL | Request) => {
++    const urlStr = url.toString();
++    if (urlStr.includes('/.well-known/email-verification')) {
++      return new Response(JSON.stringify({
++        issuer: 'https://issuer.example.com',
++        jwks_uri: 'https://issuer.example.com/jwks.json',
++      }));
++    }
++    return new Response(JSON.stringify({ keys: [mockJwk] }));
++  };
++
++  // Subcase A: Missing KB-JWT
++  const missingKb = await createTestEVTPresentation({
++    issuerKey: mockIssuerKp,
++    omitKbJwt: true,
++  });
++  await assert.rejects(
++    () =>
++      verifyEmailVerificationToken({
++        rawToken: missingKb.presentation,
++        submittedEmail: 'user@example.com',
++        expectedNonce: 'nonce-test',
++        expectedAudience: 'https://rp.example.com',
++        dnsResolver: mockDnsResolver,
++        fetchFn: mockFetch as any,
++      }),
++    /Missing Key Binding JWT/
++  );
++
++  // Subcase B: Mismatched nonce
++  const tamperedNonce = await createTestEVTPresentation({
++    issuerKey: mockIssuerKp,
++    tamperNonce: true,
++  });
++  await assert.rejects(
++    () =>
++      verifyEmailVerificationToken({
++        rawToken: tamperedNonce.presentation,
++        submittedEmail: 'user@example.com',
++        expectedNonce: 'expected-nonce',
++        expectedAudience: 'https://rp.example.com',
++        dnsResolver: mockDnsResolver,
++        fetchFn: mockFetch as any,
++      }),
++    /Mismatched KB-JWT nonce/
++  );
++
++  // Subcase C: Mismatched audience
++  const tamperedAud = await createTestEVTPresentation({
++    issuerKey: mockIssuerKp,
++    tamperAudience: true,
++  });
++  await assert.rejects(
++    () =>
++      verifyEmailVerificationToken({
++        rawToken: tamperedAud.presentation,
++        submittedEmail: 'user@example.com',
++        expectedNonce: 'test-session-nonce-128bits',
++        expectedAudience: 'https://rp.example.com',
++        dnsResolver: mockDnsResolver,
++        fetchFn: mockFetch as any,
++      }),
++    /Mismatched KB-JWT audience/
++  );
++
++  // Subcase D: Mismatched sd_hash
++  const tamperedSdHash = await createTestEVTPresentation({
++    issuerKey: mockIssuerKp,
++    tamperSdHash: true,
++  });
++  await assert.rejects(
++    () =>
++      verifyEmailVerificationToken({
++        rawToken: tamperedSdHash.presentation,
++        submittedEmail: 'user@example.com',
++        expectedNonce: 'test-session-nonce-128bits',
++        expectedAudience: 'https://rp.example.com',
++        dnsResolver: mockDnsResolver,
++        fetchFn: mockFetch as any,
++      }),
++    /sd_hash/i
++  );
++
++  // Subcase E: Mismatched alg
++  const mismatchedAlg = await createTestEVTPresentation({
++    issuerKey: mockIssuerKp,
++    mismatchedAlg: true,
++  });
++  await assert.rejects(
++    () =>
++      verifyEmailVerificationToken({
++        rawToken: mismatchedAlg.presentation,
++        submittedEmail: 'user@example.com',
++        expectedNonce: 'test-session-nonce-128bits',
++        expectedAudience: 'https://rp.example.com',
++        dnsResolver: mockDnsResolver,
++        fetchFn: mockFetch as any,
++      }),
++    /mismatched KB-JWT algorithm/i
++  );
++});
++
++test('Expectation 9: Fallback flow when no token is submitted or verification fails', async () => {
++  // Case A: No token submitted -> falls back gracefully
++  const resNoToken = await handleSignupSubmission({
++    email: 'user@example.com',
++    token: '',
++    sessionId: 'session-no-token',
++  });
++  assert.strictEqual(resNoToken.status, 200);
++  assert.strictEqual(resNoToken.verified, false);
++  assert.strictEqual(resNoToken.method, 'fallback_otp');
++
++  // Case B: Token verification fails -> falls back gracefully without throwing
++  const resInvalidToken = await handleSignupSubmission({
++    email: 'user@example.com',
++    token: 'invalid-malformed-token',
++    sessionId: 'session-invalid-token',
++  });
++  assert.strictEqual(resInvalidToken.status, 200);
++  assert.strictEqual(resInvalidToken.verified, false);
++  assert.strictEqual(resInvalidToken.method, 'fallback_otp');
++
++  // Case C: Valid token -> completes account creation fast path
++  const mockIssuerKp = await generateKeyPair('ES256');
++  const mockJwk = (await exportJWK(mockIssuerKp.publicKey)) as JWK;
++  mockJwk.kid = 'k1'; mockJwk.alg = 'ES256';
++
++  const mockDnsResolver = async (_d: string) => [['iss=issuer.example.com']];
++  const mockFetch = async (url: string | URL | Request) => {
++    const urlStr = url.toString();
++    if (urlStr.includes('/.well-known/email-verification')) {
++      return new Response(JSON.stringify({
++        issuer: 'https://issuer.example.com',
++        jwks_uri: 'https://issuer.example.com/jwks.json',
++      }));
++    }
++    return new Response(JSON.stringify({ keys: [mockJwk] }));
++  };
++
++  const sessionId = 'session-valid';
++  const expectedNonce = sessionStore.createNonce(sessionId);
++  const { presentation } = await createTestEVTPresentation({
++    issuerKey: mockIssuerKp,
++    expectedNonce,
++    expectedAudience: 'https://rp.example.com',
++    email: 'user@example.com',
++  });
++
++  const resValid = await handleSignupSubmission(
++    {
++      email: 'user@example.com',
++      token: presentation,
++      sessionId,
++    },
++    {
++      expectedAudience: 'https://rp.example.com',
++      dnsResolver: mockDnsResolver,
++      fetchFn: mockFetch as any,
++    }
++  );
++
++  assert.strictEqual(resValid.status, 200);
++  assert.strictEqual(resValid.verified, true);
++  assert.strictEqual(resValid.method, 'evt');
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..ddf192e
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,19 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "NodeNext",
++    "moduleResolution": "NodeNext",
++    "lib": ["ES2022", "DOM"],
++    "types": ["node"],
++    "declaration": true,
++    "declarationMap": true,
++    "sourceMap": true,
++    "outDir": "./dist",
++    "rootDir": "./src",
++    "strict": true,
++    "esModuleInterop": true,
++    "skipLibCheck": true,
++    "forceConsistentCasingInFileNames": true
++  },
++  "include": ["src/**/*"]
++}
+diff --git a/verifier.js b/verifier.js
+new file mode 100644
+index 0000000..4274aef
+--- /dev/null
++++ b/verifier.js
+@@ -0,0 +1 @@
++export * from './dist/verifier.js';

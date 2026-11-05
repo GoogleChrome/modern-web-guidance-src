@@ -125,7 +125,7 @@ When using the `view-timeline` property to create a scroll-driven animation:
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("scroll-driven-animations") }}
+{{ BASELINE_STATUS("scroll-driven-animations") }}
 
 For browsers that do not support scroll-driven animations, you can use a fallback to recreate the visual effects. The fallbacks are typically built with either a scroll listener (for ScrollTimeline effects) or the IntersectionObserver API (for ViewTimeline effects).
 
@@ -137,13 +137,16 @@ For this use-case specifically, the following script applies the fallback for br
 
 ```js
 const animatedSections = document.querySelectorAll('#animated section');
+// The CSS only hides the sections once this class is set, so they stay visible if the script doesn't run
+document.querySelector('#animated').classList.add('scroll-fallback');
 
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     const sectionIndex = Array.from(document.querySelectorAll('#tracked section')).indexOf(entry.target);
     if (sectionIndex !== -1) {
       const animatedSection = animatedSections[sectionIndex];
-      const ratio = entry.intersectionRatio;
+      // Reaches 1 once the section fills the viewport, even when it's taller than the viewport
+      const ratio = Math.min(1, entry.intersectionRect.height / Math.min(entry.boundingClientRect.height, innerHeight));
 
       // Animate-in
       animatedSection.style.opacity = ratio;
@@ -167,7 +170,7 @@ document.querySelectorAll('#tracked section').forEach(section => {
 And the accompanying CSS:
 
 ```css
-#animated section {
+#animated.scroll-fallback section {
   opacity: 0;
   transform: scale(0.5)  rotateY(-180deg);
   backface-visibility: hidden;

@@ -8,3 +8,4 @@
 - The implementation MUST use the `.withTimeZone()` method to convert a `Temporal.ZonedDateTime` instance to another time zone.
 - The implementation MUST NOT use `Temporal.PlainDateTime` for scheduling global events that require time zone awareness and DST safety.
 - The implementation MUST NOT attempt to modify `Temporal` instances directly, as they are immutable.
+- The implementation MUST NOT perform manual string formatting (such as custom arithmetic, padding, or manual AM/PM suffix checks) to format `Temporal.ZonedDateTime` values for user-facing display; instead, it MUST format them natively with `.toLocaleString()` (or equivalent standard Intl formatting).
