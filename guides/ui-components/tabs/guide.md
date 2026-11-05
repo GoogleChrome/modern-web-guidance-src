@@ -107,11 +107,9 @@ When the tabs are wider than the available space, either scroll the tablist or m
 
 1. Make the tablist a horizontal scroll container: `display: flex`, `overflow-x: auto`, and `flex: none` on the tabs so they never shrink (unless combined with strategy 3).
 2. Optional: snap to tab edges with `scroll-snap-type: inline proximity` on the tablist and `scroll-snap-align: start` on the tabs. Use `proximity`, not `mandatory`, so the user can still stop between tabs.
-3. Hide the scrollbar and show scrollability hints instead: fade out each edge of the tablist that has more tabs beyond it. Drive the fade with a scroll-driven animation on the tablist itself (`animation-timeline: scroll(self inline)`) that animates the stops of a `mask-image` gradient. A fade suits a row of tabs better than a shadow, and works on any background. When the tabs fit, the scroll timeline is inactive, so there is no fade.
+3. Hide the scrollbar and show scrollability hints instead: fade out each edge of the tablist that has more tabs beyond it. Drive the fade with a scroll-driven animation on the tablist itself (`animation-timeline: scroll(self inline)`) that animates the stops of a `mask-image` gradient. A fade suits a row of tabs better than a shadow, and works on any background. When the tabs fit, the scroll timeline is inactive, so there is no fade. See {{ GUIDE_REF("scrollability-affordance-hints") }} for more details on scrollability hints, and fallbacks for browsers that do not support scroll-driven animations.
 4. Set `scroll-padding-inline` to the fade length, so focused and snapped tabs are never in a fade.
 5. On every selection change, scroll the selected tab into view with `scrollIntoView({ block: 'nearest', inline: 'nearest', container: 'nearest' })`. `container: 'nearest'` scrolls only the tablist, not the page. Clicking a partially visible tab then reveals it along with part of the next one, so mouse users without a horizontal scroll wheel can still reach every tab. It also covers selection without focus, such as find-in-page.
-
-See {{ GUIDE_REF("scrollability-affordance-hints") }} for more details on scrollability hints.
 
 ### Strategy 2: overflow menu
 
@@ -208,58 +206,4 @@ No fallback is needed: without `interpolate-size`, tabs resize instantly instead
 
 ### Fallbacks & browser support for scroll-driven animations
 
-{{ BASELINE_STATUS("scroll-driven-animations") }}
-
-Without scroll-driven animations, set the same fades from script: observe the first and last tab with an `IntersectionObserver` rooted at the tablist. When the first tab is not fully visible, there are more tabs before it; likewise for the last tab. Observing the tabs themselves works because a tab is never wider than the tablist, and a tablist cannot contain the empty sentinel elements used elsewhere.
-
-```js
-if (!CSS.supports('animation-timeline', 'scroll()')) {
-  const [first, last] = [tabs[0], tabs.at(-1)];
-  const observer = new IntersectionObserver(entries => {
-    for (const { target, intersectionRatio } of entries) {
-      const edge = target === first ? 'data-more-start' : 'data-more-end';
-      tablist.toggleAttribute(edge, intersectionRatio < 1);
-    }
-  }, { root: tablist, threshold: 1 });
-
-  observer.observe(first);
-  observer.observe(last);
-}
-```
-
-```css
-.tablist {
-  &[data-more-start] {
-    --fade-start: var(--fade-size);
-  }
-
-  &[data-more-end] {
-    --fade-end: var(--fade-size);
-  }
-
-  /* The fades switch on and off instead of following the scroll position: smooth that */
-  @media (prefers-reduced-motion: no-preference) {
-    transition: --fade-start .2s, --fade-end .2s;
-  }
-}
-```
-
-Alternatively, if the tablist has a solid background color and you would rather not run script, draw shadows with `background-attachment`.
-Each shadow is a `scroll` background, which stays at the edge of the tablist.
-Each shadow has a cover: a `local` background in the tablist's own color, which scrolls with the tabs.
-At either end of the tabs its cover hides its shadow; once the user scrolls away from that end, the shadow shows.
-
-```css
-@supports not (animation-timeline: scroll()) {
-  .tablist {
-    background:
-      /* Covers: scroll with the tabs. Must use the tablist's own background color. */
-      linear-gradient(to right, var(--surface) 30%, transparent) left / 2.5rem 100% no-repeat local,
-      linear-gradient(to left, var(--surface) 30%, transparent) right / 2.5rem 100% no-repeat local,
-      /* Shadows: stay at the edges of the tablist */
-      radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / .2), transparent) left / .75rem 100% no-repeat scroll,
-      radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / .2), transparent) right / .75rem 100% no-repeat scroll,
-      var(--surface);
-  }
-}
-```
+{{ INCLUDE("../../ui-atoms/scrollability-affordance-hints/guide.md#fallbacks-browser-support-for-scroll-driven-animations") }}
