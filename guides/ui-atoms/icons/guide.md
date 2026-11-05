@@ -31,6 +31,23 @@ Both the CSS icon system and `<use>` can take icons from a data URI, an individu
 
 If a page renders thousands of icons at once, benchmark the actual page and assets. In a stress test, inline SVG had a small performance advantage at that scale, but results depend on the browser and implementation. [Cloud Four's SVG icon stress test](https://cloudfour.com/thinks/svg-icon-stress-test/)
 
+### Accessibility considerations
+
+Whichever icon technique you choose, make sure that:
+
+* All icons have a contrast of at least 3:1 against their backgrounds in light and dark color schemes.
+* Decorative icons, including those inside controls that already have an accessible name, are hidden from assistive technologies:
+  * Apply `aria-hidden="true"` to decorative SVGs.
+  * Icons inserted via pseudo-elements in CSS are already hidden from assistive technology by default.
+* Standalone non-interactive informative icons have a valid text alternative:
+  * For SVGs, apply `role="img"` and `aria-label` to the `<svg>` element, and use the `aria-label` attribute to provide a valid text alternative.
+  * For icons inserted via pseudo-elements in CSS, apply `role="img"` and `aria-label` to the HTML element that displays the icon.
+* Standalone interactive icons have a valid accessible name:
+  * For SVGs, give the container interactive element an accessible name with `aria-label`.
+  * For icons inserted via pseudo-elements in CSS, either:
+    * Give the container interactive element an accessible name with `aria-label`.
+    * Let the icon itself provide one (see Icon-Only Controls below)
+
 ## Primary Approach: CSS-Driven Icon Engine
 
 Icons are design tokens: each icon is a custom property holding an image, and any element can display one by setting `--icon-start` or `--icon-end`. The engine combines three CSS capabilities:
