@@ -4,4 +4,10 @@
 - Imperative updates stream the fetch response into a streaming HTML method with `pipeTo()`, decoding it with `Response.textStream()` or `pipeThrough(new TextDecoderStream())`.
 - HTML from users or other untrusted sources is written with a safe method (such as `setHTML()` or `streamHTML()`), not with an `...Unsafe()` method.
 - The `runScripts: true` option must only be passed to an unsafe method when writing content that contains trusted `<script>` elements.
-- Containers receiving out-of-order updates should have appropriate `aria-live` attributes, where needed, to notify screen reader users of the changes.
+- Placeholder containers receiving out-of-order updates must include an empty live region to convey text updates on page load.
+- When content is being fetched, the live region should be populated with a text update to inform users what is happening.
+- If there are multiple containers receiving out-of-order updates on the page, each text update must be distinguishable.
+- Placeholder containers receiving out-of-order updates should include the `aria-busy` attribute, whose value should be set to `true` during streaming and set to `false` when streaming is complete.
+- The text update should be updated to inform users when streaming is complete.
+- `role="alert"` must not be applied to text updates.
+- Live region markup must be applied to the text update only, not the entire placeholder container.
