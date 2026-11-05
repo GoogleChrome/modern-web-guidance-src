@@ -197,6 +197,8 @@ async function expectNextToBarbell(page, track) {
   });
   test('expand chevron does not animate under reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    const manyGuides = Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`guide-${i}`, { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60 }]));
+    await page.route('**/api/suites*', route => route.fulfill({ json: { suites: A11Y_SUITES_FIXTURE.suites.map(s => ({ ...s, guides: manyGuides })) } }));
     await page.goto('/');
     await openBreakdowns(page);
     const duration = await page.locator('.insights-expand-chevron').first().evaluate(el => getComputedStyle(el).transitionDuration);

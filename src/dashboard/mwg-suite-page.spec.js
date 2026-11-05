@@ -137,6 +137,18 @@ test.describe('Suite page MWG compliance', () => {
     await expect(page.locator('#guide-grid')).not.toHaveAttribute('aria-busy', /./);
     expect(errors).toEqual([]);
   });
+  test('sorting between grouped and flat views preserves open accordions and toggles row category tags', async ({ page }) => {
+    await page.goto('/dashboard.html?testId=example-result&task=task#guide-preload-prerender');
+    const target = page.locator('.task-accordion[data-guide="preload-prerender"]');
+    await expect(target).toHaveClass(/open/);
+    await expect(target.locator('.row-category-tag')).toBeHidden();
+    await page.locator('#guide-grid .eval-col-sort-btn[data-sort="uplift"]').click();
+    await expect(target).toHaveClass(/open/);
+    await expect(target.locator('.row-category-tag')).toBeVisible();
+    await page.locator('#eval-sort-reset').click();
+    await expect(target).toHaveClass(/open/);
+    await expect(target.locator('.row-category-tag')).toBeHidden();
+  });
   test('collapsed task panels are findable, render assertions eagerly, and paint no empty band', async ({ page }) => {
     await page.goto('/dashboard.html?testId=example-result');
     const accordion = page.locator('.task-accordion').first();

@@ -1,0 +1,12 @@
+- The accordion items are sibling `<details>` elements inside a common container element.
+- Each accordion item is a `<details>` element whose first element child is a `<summary>`.
+- If `<details>` elements have a `name` attribute, it is the same for all accordion items.
+- Clicking the `<summary>` of a closed item opens it, and clicking the `<summary>` of an open item closes it.
+- Every accordion `<summary>` is reachable by pressing `Tab`, in DOM order.
+- No accordion `<summary>` or `<details>` has a `tabindex` attribute.
+- The disclosure marker is styled via `::marker` or hidden (via `list-style-type: none` or a `display` other than `list-item`) and replaced via a `::before` or `::after`.
+- If the closed-state indicator has a computed rotation or transform, that value differs between right-to-left and left-to-right contexts.
+- With `prefers-reduced-motion: no-preference`, the `block-size` of an item's `::details-content` passes through an intermediate value between `0` and its final size while the item opens.
+- With `prefers-reduced-motion: no-preference`, an item's `::details-content` still computes `content-visibility: visible` and a non-zero `block-size` partway through closing.
+- With `prefers-reduced-motion: reduce`, an item's `::details-content` reaches its final `block-size` without passing through an intermediate value when the item opens.
+- The `::details-content` of a closed item does not compute `display: none`, so find-in-page can reveal its contents.
