@@ -32,6 +32,8 @@ Popovers can be toggled open and closed using a single button.
 
 If you need to control opening and closing with separate buttons, you can use the `show-popover` and `hide-popover` commands.
 
+**Note:** It is not recommended to combine `popovertarget` and `commandfor` on the same `<button>`. This can introduce unwanted behavior like double-toggling the popover.
+
 ```html
 <!-- MANDATORY: Use 'show-popover' to explicitly open the popover. It will not close the popover if clicked again. -->
 <button commandfor="my-explicit-popover" command="show-popover">
