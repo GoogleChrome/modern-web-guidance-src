@@ -11,7 +11,7 @@
       --toast-bg: #ecfdf5;
       --toast-border: #15803d;
       --toast-text: #14532d;
-      --toast-width: min(15rem, 100%);
+      --toast-width: min(16rem, 100%);
     }
 
     * {
@@ -77,16 +77,17 @@
     }
 
     .toast {
-      align-items: flex-start;
+      align-items: center;
       background: var(--toast-bg);
       border: 1px solid var(--toast-border);
       border-radius: 12px;
       box-shadow: var(--shadow);
       color: var(--toast-text);
       display: flex;
+      gap: 0.5rem;
       justify-content: space-between;
       margin: 0;
-      max-width: 15rem;
+      max-width: 16rem;
       min-height: min-content;
       padding: 0.875rem 1rem;
       position: relative;
@@ -103,6 +104,10 @@
       flex-shrink: 0;
       font: inherit;
       padding: 0.35rem 0.7rem;
+    }
+
+    .toast-message {
+      margin: 0;
     }
 
     .visually-hidden:not(:focus):not(:active) {
@@ -140,7 +145,49 @@
     const toastRegion = document.getElementById('toast-region');
     const toastAnnouncer = document.getElementById('toast-announcer');
     const trigger = document.getElementById('toast-trigger');
+    const autoDismissToggle = document.getElementById('auto-dismiss-toggle');
+    const autoDismissTimers = new Map();
     let toastId = 1;
+
+    function stopAutoDismiss(toast) {
+      const timeoutId = autoDismissTimers.get(toast);
+
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+        autoDismissTimers.delete(toast);
+      }
+    }
+
+    function startAutoDismiss(toast) {
+      stopAutoDismiss(toast);
+
+      if (!autoDismissToggle.checked) {
+        return;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        if (toast.matches(':popover-open')) {
+          toast.hidePopover();
+        }
+
+        stopAutoDismiss(toast);
+        toast.remove();
+      }, 3000);
+
+      autoDismissTimers.set(toast, timeoutId);
+    }
+
+    function syncAutoDismissForAllToasts() {
+      const allToasts = [...toastRegion.querySelectorAll('.toast')];
+
+      for (const toast of allToasts) {
+        if (autoDismissToggle.checked) {
+          startAutoDismiss(toast);
+        } else {
+          stopAutoDismiss(toast);
+        }
+      }
+    }
 
     function announceToast(message) {
       const text = (message || '').trim();
@@ -184,14 +231,13 @@
     function showToast(message = 'Saved successfully.') {
       const toast = document.createElement('div');
       const previousFocus = document.activeElement && document.activeElement !== document.body ? document.activeElement : trigger;
-      const autoDismiss = document.getElementById('auto-dismiss-toggle').checked;
 
       toast.className = 'toast';
       toast.id = `toast-${toastId++}`;
       toast.dataset.previousFocus = previousFocus.id || 'toast-trigger';
       toast.setAttribute('popover', 'manual');
       toast.innerHTML = `
-        <span class="toast-message">${message}</span>
+        <p class="toast-message">${message}</p>
         <button type="button" class="toast-close" popovertarget="${toast.id}" popovertargetaction="hide" aria-label="Close notification">Close</button>
       `;
 
@@ -201,17 +247,26 @@
       toast.showPopover();
       announceToast(message);
 
+      if (autoDismissToggle.checked) {
+        startAutoDismiss(toast);
+      }
+
       const closeButton = toast.querySelector('.toast-close');
       closeButton.addEventListener('click', (event) => {
         event.preventDefault();
         const currentToast = event.currentTarget.closest('.toast');
 
+        stopAutoDismiss(currentToast);
         currentToast.hidePopover();
         focusNextToast(currentToast);
 
         currentToast.remove();
       });
     }
+
+    autoDismissToggle.addEventListener('change', () => {
+      syncAutoDismissForAllToasts();
+    });
   </script>
 </body>
 </html>
