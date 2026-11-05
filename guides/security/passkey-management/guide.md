@@ -250,11 +250,31 @@ if (aaguid === '00000000-0000-0000-0000-000000000000') {
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Always install 'webauthn-polyfills' and import it in the context.
-Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.getClientCapabilities` is also supported. 
+Always install `'webauthn-polyfills'` and import it in your client bundle so `PublicKeyCredential.getClientCapabilities()` is available whenever `PublicKeyCredential` is supported:
 
-```js 
+```javascript
 import 'webauthn-polyfills';
+```
+
+Before rendering the "Create passkey" button, call `PublicKeyCredential.getClientCapabilities()` to verify platform authenticator support, and hide the button when unsupported:
+
+```javascript
+async function isPasskeySupported() {
+  if (!window.PublicKeyCredential || !PublicKeyCredential.getClientCapabilities) {
+    return false;
+  }
+  try {
+    const capabilities = await PublicKeyCredential.getClientCapabilities();
+    return Boolean(capabilities.passkeyPlatformAuthenticator);
+  } catch {
+    return false;
+  }
+}
+
+const createButton = document.getElementById('create-passkey');
+if (!(await isPasskeySupported())) {
+  createButton.hidden = true;
+}
 ``` 
 
 ### Signal API Synchronization Fallback
