@@ -1,4 +1,3 @@
-import { parseHTML } from 'linkedom';
 import { SyntaxKind, Node, type Project } from 'ts-morph';
 import {
   test,

@@ -13,7 +13,6 @@ import {
   CSSContainerRule,
   CSSPropertyRule,
   CSSNestedDeclarations,
-  CSSAtRule,
 } from 'cssomnom';
 import { SyntaxKind, type Project } from 'ts-morph';
 

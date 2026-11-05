@@ -13,7 +13,6 @@ import {
 import {
   CSSMediaRule,
   CSSStyleRule,
-  type CSSRule,
   type RuleRoot,
 } from 'cssomnom';
 import type { Document } from 'linkedom';

@@ -10,7 +10,6 @@ import {
   CSSStyleRule,
   CSSMediaRule,
   CSSSupportsRule,
-  type CSSRule,
   type CSSStyleSheet,
 } from 'cssomnom';
 

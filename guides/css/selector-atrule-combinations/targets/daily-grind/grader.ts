@@ -18,7 +18,6 @@ import {
   CSSMediaRule,
   CSSContainerRule,
   CSSNestedDeclarations,
-  type CSSRule,
   type RuleRoot,
 } from 'cssomnom';
 
