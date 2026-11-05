@@ -23,8 +23,7 @@
 - When the `scroll-initial-target` fallback is in use, the implementation MUST also handle Safari resetting snap-container scroll position whenever the track resizes (URL-bar show/hide, viewport resize, container queries, etc.): gated on the same `CSS.supports('scroll-initial-target', 'nearest')` check being false, the implementation MUST attach a `ResizeObserver` to each track that re-scrolls it to its content column (e.g., `track.scrollLeft = track.clientWidth`) whenever its size changes. The implementation MUST unobserve the track in the commit handler before `removeItem` runs, otherwise the row's height-collapse animation will retrigger the resize callback during removal. When `scroll-initial-target` is supported, no such workaround is needed — the browser handles it.
 - Each list item contains a `<button>` for every swipe action.
 - Activating a list item's button performs the same action as the swipe it stands in for.
-- Activating a list item's button with the Enter key removes that item.
 - Each list item's button has an accessible name that includes the item's text.
 - After the item containing focus is removed, focus is on an element inside the list or on the list's heading, not on `<body>`.
 - After an item is removed, an element with `role="status"` contains text naming the removed item.
-- The `<ul>` has `role="list"`.
+- The `<ul>` either has a `list-style` property value other than `none` or has the `role="list"` attribute.
