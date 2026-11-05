@@ -2,21 +2,8 @@
 name: typography
 description: Typography best practices for the web, including font sizing units, line height, text wrapping and balancing, and fluid type that scales with the viewport.
 web-feature-ids:
-  - font-size
-  - rem
-  - em-unit
-  - line-height
-  - overflow-wrap
-  - text-wrap
-  - text-wrap-balance
-  - text-wrap-pretty
-  - min-max-clamp
-  - viewport-units
-  - width-height
   - logical-properties
   - hyphens
-  - lang-attr
-  - white-space
   - ch
 todo-web-feature-ids:
   - text-fit
