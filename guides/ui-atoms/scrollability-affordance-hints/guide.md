@@ -81,10 +81,37 @@ Scrollability affordance hints are intended to supplement existing browser behav
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
 
 ### Basic Fallback
-If the feature is not supported, the indicators will remain invisible. Since these are hints and not critical for functionality, it is acceptable to omit them in unsupported browsers.
+If the feature is not supported, the indicators will remain invisible.
+When these are hints and not critical for functionality, it can be acceptable to omit them in unsupported browsers.
+
+### CSS-only fallback (background attachment)
+If the scroller has a solid background color, draw the hints with backgrounds instead. This works in every browser and needs no JavaScript or extra elements.
+Each shadow is a `scroll` background, which stays at the edge of the scrollport.
+Each shadow has a cover: a `local` background in the scroller's own color, which scrolls with the content.
+At either end of the content its cover sits on top of its shadow and hides it; once the user scrolls away from that end, the cover moves away and the shadow shows.
+
+```css
+@supports not (container-type: scroll-state) {
+  .scroller {
+    background:
+      /* Covers: scroll with the content. Must use the scroller's own background color. */
+      linear-gradient(var(--surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
+      linear-gradient(transparent, var(--surface) 70%) bottom / 100% 2.5rem no-repeat local,
+      /* Shadows: stay at the edges of the scrollport */
+      radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / .2), transparent) top / 100% .75rem no-repeat,
+      radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / .2), transparent) bottom / 100% .75rem no-repeat,
+      var(--surface);
+  }
+}
+```
+
+The hints paint behind the content, so content with its own opaque background hides them. Prefer this fallback over the Intersection Observer one whenever the scroller has a solid background.
 
 ### Advanced Fallback (Intersection Observer)
+
 If the hints are required, use an `IntersectionObserver` to toggle classes when sentinel elements at the top and bottom of the scroller move in and out of the scrollport.
+
+Use empty sentinels rather than the first and last children: a child larger than the scroller is never fully visible, and sticky indicators inside the scroller are always visible. Observe the first and last children (with `threshold: 1`) instead only when no child can be larger than the scroller and the indicators are not children of the scroller, e.g. a row of tabs whose hint is a mask on the scroller itself.
 
 ```html
 <!-- Sentinel elements placed at the ends of the scroller -->
