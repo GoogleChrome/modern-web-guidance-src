@@ -1,11 +1,12 @@
 import { execFileSync, type ExecFileSyncOptionsWithStringEncoding } from 'node:child_process';
 
 const DEFAULT_GIT_MAX_BUFFER = 64 * 1024 * 1024;
-const FAST_GIT_FLAGS = ['-c', 'core.fsmonitor=false', '-c', 'commit.gpgSign=false', '-c', 'core.quotePath=false'] as const;
+const FAST_GIT_FLAGS = ['--no-optional-locks', '-c', 'core.fsmonitor=false', '-c', 'core.quotePath=false'] as const;
+const ISOLATED_GIT_FLAGS = ['-c', 'commit.gpgSign=false'] as const;
 const NULL_DEVICE = process.platform === 'win32' ? 'NUL' : '/dev/null';
 
 export interface GitExecOptions extends Omit<ExecFileSyncOptionsWithStringEncoding, 'encoding'> {
-  /** Skip user ~/.gitconfig as well as system /etc/gitconfig (for temporary/sandbox repos). */
+  /** Skip system/global gitconfig and commit signing (for temporary/sandbox repos). */
   isolated?: boolean;
 }
 
@@ -15,18 +16,19 @@ export interface GitBatchObject {
 }
 
 /**
- * Runs a local git command with system config hooks/telemetry disabled and fsmonitor off.
+ * Runs a local git command with fsmonitor/path-quoting disabled; when `isolated` is set, also
+ * bypasses system/global gitconfig and commit signing for temporary repos.
  */
 export function gitExec(args: readonly string[], options?: GitExecOptions): string {
   const { isolated = false, env, maxBuffer = DEFAULT_GIT_MAX_BUFFER, ...rest } = options ?? {};
-  return execFileSync('git', [...FAST_GIT_FLAGS, ...args], {
+  const flags = isolated ? [...FAST_GIT_FLAGS, ...ISOLATED_GIT_FLAGS] : FAST_GIT_FLAGS;
+  return execFileSync('git', [...flags, ...args], {
     ...rest,
     encoding: 'utf8',
     maxBuffer,
     env: {
       ...process.env,
-      GIT_CONFIG_NOSYSTEM: '1',
-      ...(isolated ? { GIT_CONFIG_GLOBAL: NULL_DEVICE } : {}),
+      ...(isolated ? { GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: NULL_DEVICE } : {}),
       ...env,
     },
   });
@@ -43,7 +45,6 @@ export function readGitObjectsBatch(cwd: string, specs: readonly string[]): Map<
     cwd,
     input: `${specs.join('\n')}\n`,
     maxBuffer: DEFAULT_GIT_MAX_BUFFER,
-    env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
   });
 
   let pos = 0;

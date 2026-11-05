@@ -249,11 +249,27 @@ test('exciseOldEvalArtifacts handles directory when old artifacts do not exist',
   assert.strictEqual(fs.existsSync(path.join(tmpDir, 'guide.md')), true);
 });
 
+const NULL_GIT_CONFIG = process.platform === 'win32' ? 'NUL' : '/dev/null';
+
+function isolateGitEnv(t: import('node:test').TestContext): void {
+  const prevNoSystem = process.env.GIT_CONFIG_NOSYSTEM;
+  const prevGlobal = process.env.GIT_CONFIG_GLOBAL;
+  process.env.GIT_CONFIG_NOSYSTEM = '1';
+  process.env.GIT_CONFIG_GLOBAL = NULL_GIT_CONFIG;
+  t.after(() => {
+    if (prevNoSystem === undefined) delete process.env.GIT_CONFIG_NOSYSTEM;
+    else process.env.GIT_CONFIG_NOSYSTEM = prevNoSystem;
+    if (prevGlobal === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+    else process.env.GIT_CONFIG_GLOBAL = prevGlobal;
+  });
+}
+
 test('devCli.commitStepArtifacts commits modified guide files when on a feature branch', async (t) => {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
   const { devCli } = await import('./dev.ts');
+  isolateGitEnv(t);
 
   const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-step-repo-'));
   const origCwd = process.cwd();
@@ -296,6 +312,7 @@ test('devCli.commitStepArtifacts returns false when not on a gd-dev/ branch', as
   const path = await import('node:path');
   const os = await import('node:os');
   const { devCli } = await import('./dev.ts');
+  isolateGitEnv(t);
 
   const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'commit-step-non-dev-repo-'));
   const origCwd = process.cwd();
@@ -357,6 +374,7 @@ async function setupRerunRepo(t: import('node:test').TestContext) {
   const fs = await import('node:fs');
   const path = await import('node:path');
   const os = await import('node:os');
+  isolateGitEnv(t);
 
   const tmpRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-rerun-repo-'));
   t.after(() => fs.rmSync(tmpRepo, { recursive: true, force: true }));
