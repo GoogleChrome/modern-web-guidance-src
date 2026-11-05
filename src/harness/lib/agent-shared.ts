@@ -5,7 +5,7 @@ import { Agents, type SuiteConfig } from '../config.ts';
 import { ZERO_PASSRATE_PATCH_FILE } from '../../core/guide-validation.ts';
 import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { normalizeBaselineTarget, type MwgConfig } from '../../core/mwgrc.ts';
-import { rootDir, guidesDir } from '../../core/paths.ts';
+import { rootDir, guidesDir, ensureDiskNodeCompileCache } from '../../core/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../core/patch-utils.ts';
 import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
@@ -91,7 +91,21 @@ export function setupIsolatedWorkDir(
 
   if (runType === 'guided') {
     const suiteConfig = getSuiteConfig();
-    copySkills(tempHome, agent, suiteConfig.skillsToEnable);
+    if (!copySkills(tempHome, agent, suiteConfig.skillsToEnable)) {
+      const errMsg = 'Failed to copy standalone skills-cli for guided run';
+      const candidateTargetDir = process.argv[4];
+      if (candidateTargetDir && fs.existsSync(candidateTargetDir)) {
+        try {
+          fs.writeFileSync(
+            path.join(candidateTargetDir, 'generation_failed.json'),
+            JSON.stringify({ agentName: agent, exitCode: 1, stderr: errMsg, stdout: '' }, null, 2),
+          );
+        } catch {
+          // Ignore write failure
+        }
+      }
+      throw new Error(errMsg);
+    }
   }
 
   return workDir;
@@ -619,6 +633,36 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
   }
 }
 
+function sampleTmpUsageSafe(tmpPath = '/tmp'): {
+  byteRatio: number;
+  inodeRatio: number;
+  bytesUsed: number;
+  bytesTotal: number;
+  inodesUsed: number;
+  inodesTotal: number;
+} | null {
+  try {
+    const stats = fs.statfsSync(tmpPath);
+    const bsize = Number(stats.bsize || 4096);
+    const blocks = Number(stats.blocks || 0);
+    const bavail = Number(stats.bavail ?? stats.bfree ?? 0);
+    const files = Number(stats.files || 0);
+    const ffree = Number(stats.ffree || 0);
+    const blocksUsed = Math.max(0, blocks - bavail);
+    const inodesUsed = Math.max(0, files - ffree);
+    return {
+      byteRatio: blocks > 0 ? blocksUsed / blocks : 0,
+      inodeRatio: files > 0 ? inodesUsed / files : 0,
+      bytesUsed: blocksUsed * bsize,
+      bytesTotal: blocks * bsize,
+      inodesUsed,
+      inodesTotal: files,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Runs a CLI agent command, capturing output to the terminal and to log files.
  * @param command The binary to run
@@ -652,6 +696,7 @@ export async function runCliAgentCommand(
       .filter(p => p && p !== targetDir && !p.startsWith(targetDir + path.sep) && !p.startsWith(resultsRoot + path.sep)),
   ].join(path.delimiter);
   sanitizedEnv.PWTEST_CACHE_DIR = path.join(process.env.HOME || workDir, '.cache', 'playwright-transform');
+  ensureDiskNodeCompileCache(sanitizedEnv, 'agents');
 
   const isolatedLogPath = path.join(tempHome, MODERN_WEB_LOG_FILE);
   let stopWatchingMcpLog = () => {};
@@ -662,6 +707,7 @@ export async function runCliAgentCommand(
   }
 
   // Hide the repo from the agent so it can't read guides/expectations/graders.
+  const tmpUsageStart = sampleTmpUsageSafe();
   const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(tempHome, runType));
   const child = spawn(sandboxed.command, sandboxed.commandArgs, {
     cwd: workDir,
@@ -777,6 +823,32 @@ export async function runCliAgentCommand(
     
     throw err; // Re-throw to propagate failure
   } finally {
+    const tmpUsageEnd = sampleTmpUsageSafe();
+    if (tmpUsageStart || tmpUsageEnd) {
+      try {
+        const runtimePath = path.join(targetDir, 'runtime.json');
+        let existing: Record<string, unknown> = {};
+        if (fs.existsSync(runtimePath)) {
+          try {
+            existing = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
+          } catch {}
+        }
+        fs.writeFileSync(
+          runtimePath,
+          JSON.stringify(
+            {
+              ...existing,
+              ...(tmpUsageStart ? { tmpUsageStart } : {}),
+              ...(tmpUsageEnd ? { tmpUsageEnd } : {}),
+            },
+            null,
+            2,
+          ),
+        );
+      } catch {
+        // Ignore if targetDir does not exist
+      }
+    }
     stopWatchingMcpLog();
     if (runType === 'guided' && fs.existsSync(isolatedLogPath)) {
       copyFileIfExists(isolatedLogPath, path.join(targetDir, MODERN_WEB_LOG_FILE));
@@ -880,14 +952,20 @@ export function getGraderScriptContent(
   const agentPatch = path.join(targetDir, 'agent.patch');
   const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
   const resolvedBaselineTarget = baselineTarget || 'widely';
+  const isLegacyTask = path.basename(path.dirname(targetDir)) === 'task';
+  const diskCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
 
   return `import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
 
+process.env.NODE_COMPILE_CACHE = ${JSON.stringify(diskCompileCache)};
+
 async function run() {
   try {
-    const patchFile = fs.existsSync(${JSON.stringify(agentPatch)}) ? ${JSON.stringify(agentPatch)} : undefined;
+    const hasPatch = fs.existsSync(${JSON.stringify(agentPatch)}) && fs.readFileSync(${JSON.stringify(agentPatch)}, 'utf8').trim().length > 0;
+    const patchFile = hasPatch ? ${JSON.stringify(agentPatch)} : undefined;
     const zeroPassrateFile = fs.existsSync(${JSON.stringify(zeroPassratePatch)}) ? ${JSON.stringify(zeroPassratePatch)} : undefined;
+    const stage = hasPatch || ${JSON.stringify(isLegacyTask)} ? 'patch' : 'starting-app';
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
@@ -895,11 +973,16 @@ async function run() {
         stdio: 'inherit',
         patchFile,
         zeroPassrateFile,
+        stage,
         baselineTarget: ${JSON.stringify(resolvedBaselineTarget)},
       }
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/Failed to apply patch/i.test(message)) {
+      fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify({ infraError: message, suites: [] }, null, 2));
+    }
     console.error("Playwright test execution failed:", err);
     process.exit(1); 
   }

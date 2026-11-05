@@ -6,8 +6,9 @@ import { stripVTControlCharacters } from 'util';
 import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
 import { type SuiteConfig } from '../config.ts';
 import { getTaskMap, resolveTaskGraderPath } from '../../core/guide-validation.ts';
-import { getGraderScriptContent, isEnoent } from './agent-shared.ts';
-import { rootDir } from '../../core/paths.ts';
+import { createIsolatedHome, cleanupIsolatedHome, getGraderScriptContent, isEnoent } from './agent-shared.ts';
+import { baseAppsDir, ensureDiskNodeCompileCache, rootDir } from '../../core/paths.ts';
+import { applyPatchSync } from '../../core/patch-utils.ts';
 import { extractTestTitles } from '../../core/grader-coverage.ts';
 import { isSpecSkipped } from '../../grading/run-grader.ts';
 import { type PageLoadResult, type ScenarioCheck } from './metrics.ts';
@@ -285,11 +286,12 @@ async function executeParallelGrading(resultsDir: string, pnpmWorkspacePackages:
   fs.writeFileSync(pnpmWorkspacePath, ['packages:', ...pnpmWorkspacePackages.map(pkg => `  - '${pkg}'`)].join('\n') + '\n');
 
   try {
+    const childEnv = { ...process.env, NODE_COMPILE_CACHE: ensureDiskNodeCompileCache(process.env, 'harness') };
     console.log(`\n>>> Bootstrapping dependencies inside results workspace with pnpm install...`);
-    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+    spawnSync('pnpm', ['install', '--no-frozen-lockfile'], { cwd: resultsDir, env: childEnv, stdio: 'inherit', shell: process.platform === 'win32' });
 
     console.log(`\n>>> Discovered ${pnpmWorkspacePackages.length} un-graded tasks. Running parallel grading with pnpm -r run-grader...`);
-    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, stdio: 'inherit', shell: process.platform === 'win32' });
+    spawnSync('pnpm', ['-r', 'run-grader'], { cwd: resultsDir, env: childEnv, stdio: 'inherit', shell: process.platform === 'win32' });
   } finally {
     if (fs.existsSync(pnpmWorkspacePath)) {
       fs.unlinkSync(pnpmWorkspacePath);
@@ -323,6 +325,399 @@ async function collectGuideUsage(dir: string, runType: string, guideName: string
   }
 
   return { guidesUsedResult, retrievedGuides, fileReadGuides, guidanceToolsUsedResult };
+}
+
+const SETUP_TIMEOUT_RE = /Fixture\b[^\n]*exceeded during setup\.?/i;
+const NODE_ENOSPC_RE = /\bENOSPC:\s*no space left on device(?:,\s*[a-z0-9_]+)?\b|\[Errno 28\]\s*No space left on device/i;
+const SHELL_ENOSPC_LINE_RE =
+  /^[ \t]*(?:(?:mkdir|cp|mv|rm|tar|git|pnpm|npm|node|sh|bash|zsh|dd|tee|cat|touch|mktemp|install|ld|cc|gcc|clang|rustc|cargo|python3?|pip|sqlite3|bwrap|fatal|error)\b[^\n]*:\s*No space left on device\b|[a-zA-Z0-9_./-]+:\s+(?:[^\n]*:\s+)?(?:cannot|failed|unable|error|write error|close error|copy_file_range|fwrite)\b[^\n]*:\s*No space left on device\b)/im;
+const LOST_SKILL_LOG_RE = /Failed to copy standalone skills-cli/i;
+const PATCH_CAPTURE_FAIL_LOG_RE = /Failed to capture (?:agent )?patch/i;
+const TMP_CRITICAL_USAGE_RATIO = 0.98;
+
+export function isEnospcErrorText(text: string): boolean {
+  if (!text) return false;
+  return NODE_ENOSPC_RE.test(text) || SHELL_ENOSPC_LINE_RE.test(text);
+}
+
+function checkHarnessLogText(content: string, fileName: string): string | null {
+  if (isEnospcErrorText(content)) {
+    return `Infra error in ${fileName}: ENOSPC (No space left on device)`;
+  }
+  if (LOST_SKILL_LOG_RE.test(content)) {
+    return `Infra error in ${fileName}: Failed to copy standalone skills-cli`;
+  }
+  if (PATCH_CAPTURE_FAIL_LOG_RE.test(content)) {
+    return `Infra error in ${fileName}: Failed to capture patch`;
+  }
+  return null;
+}
+
+function isGuideOrFileReadCommand(cmd: string): boolean {
+  if (!cmd) return false;
+  if (/\bmodern-web-guidance\b|\bSKILL\.md\b|\bguide\.md\b/.test(cmd)) return true;
+  const trimmed = cmd.trim();
+  return /^(?:cat|head|tail|sed|awk|less|more|bat|rg|grep)\s+/.test(trimmed) && !/[|>;]|&&|\b(?:mkdir|cp|mv|rm|npm|pnpm|node|git\s+(?:add|commit|apply|checkout))\b/.test(trimmed);
+}
+
+function extractTextFromToolContent(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object' && typeof (item as { text?: unknown }).text === 'string') {
+          return (item as { text: string }).text;
+        }
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+  return '';
+}
+
+function scanAgentJsonlForEnospc(content: string, fileName: string): string | null {
+  const ignoredToolUseIds = new Set<string>();
+  const lines = content.split('\n');
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line.startsWith('{')) continue;
+    let obj: any;
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      continue;
+    }
+
+    // Track tool calls that read files or retrieve skills/guides so their tool_result is never scanned.
+    if (obj?.type === 'assistant' && Array.isArray(obj.message?.content)) {
+      for (const block of obj.message.content) {
+        if (block?.type === 'tool_use' && typeof block.id === 'string') {
+          const name = String(block.name ?? '');
+          const cmd = String(block.input?.command ?? block.input?.cmd ?? '');
+          if (
+            name === 'Read' ||
+            name === 'Skill' ||
+            name === 'Glob' ||
+            name === 'Grep' ||
+            name === 'read_file' ||
+            name === 'view_file' ||
+            isGuideOrFileReadCommand(cmd)
+          ) {
+            ignoredToolUseIds.add(block.id);
+          }
+        }
+      }
+      continue;
+    }
+
+    if (obj?.type === 'response_item' && (obj.payload?.type === 'custom_tool_call' || obj.payload?.type === 'function_call')) {
+      const callId = obj.payload?.call_id ?? obj.payload?.id;
+      const name = String(obj.payload?.name ?? '');
+      const argsStr = typeof obj.payload?.arguments === 'string' ? obj.payload.arguments : JSON.stringify(obj.payload?.input ?? '');
+      if (
+        typeof callId === 'string' &&
+        (name === 'read_file' || name === 'view_file' || isGuideOrFileReadCommand(argsStr))
+      ) {
+        ignoredToolUseIds.add(callId);
+      }
+      continue;
+    }
+
+    // Claude Code tool_result records
+    if (obj?.type === 'user' && Array.isArray(obj.message?.content)) {
+      for (const block of obj.message.content) {
+        if (block?.type === 'tool_result') {
+          if (typeof block.tool_use_id === 'string' && ignoredToolUseIds.has(block.tool_use_id)) {
+            continue;
+          }
+          const text = extractTextFromToolContent(block.content);
+          if (isEnospcErrorText(text)) {
+            return `Infra error in ${fileName}: ENOSPC (No space left on device)`;
+          }
+        }
+      }
+      continue;
+    }
+
+    // Claude Code top-level error result
+    if (obj?.type === 'result' && obj?.is_error === true) {
+      const text = String(obj.result ?? obj.error ?? '');
+      if (isEnospcErrorText(text)) {
+        return `Infra error in ${fileName}: ENOSPC (No space left on device)`;
+      }
+      continue;
+    }
+
+    // Codex CLI tool output records
+    if (
+      obj?.type === 'response_item' &&
+      (obj.payload?.type === 'custom_tool_call_output' || obj.payload?.type === 'function_call_output')
+    ) {
+      const callId = obj.payload?.call_id ?? obj.payload?.id;
+      if (typeof callId === 'string' && ignoredToolUseIds.has(callId)) {
+        continue;
+      }
+      const text = extractTextFromToolContent(obj.payload?.output);
+      if (isEnospcErrorText(text)) {
+        return `Infra error in ${fileName}: ENOSPC (No space left on device)`;
+      }
+      continue;
+    }
+
+    // Generic error / tool_result JSONL line
+    if (obj?.type === 'error' || obj?.type === 'tool_result') {
+      const text = extractTextFromToolContent(obj.content ?? obj.error ?? obj.stderr ?? obj.message);
+      if (isEnospcErrorText(text)) {
+        return `Infra error in ${fileName}: ENOSPC (No space left on device)`;
+      }
+    }
+  }
+  return null;
+}
+
+function detectRunLogInfraError(dir: string): string | null {
+  if (!fs.existsSync(dir)) return null;
+
+  // 1. Check /tmp usage samples in runtime.json (>= 98% byte or inode usage is an infra error).
+  const runtimePath = path.join(dir, 'runtime.json');
+  if (fs.existsSync(runtimePath)) {
+    try {
+      const runtime = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
+      const samples = [
+        runtime?.tmpUsageStart,
+        runtime?.tmpUsageEnd,
+        runtime?.tmpUsagePeak,
+        ...(Array.isArray(runtime?.tmpUsageSamples) ? runtime.tmpUsageSamples : []),
+      ].filter((s) => s && typeof s === 'object');
+      for (const sample of samples) {
+        const byteRatio = Number(sample.byteRatio ?? 0);
+        const inodeRatio = Number(sample.inodeRatio ?? 0);
+        if (byteRatio >= TMP_CRITICAL_USAGE_RATIO || inodeRatio >= TMP_CRITICAL_USAGE_RATIO) {
+          return `Infra error in runtime.json: /tmp usage reached critical level (bytes: ${(byteRatio * 100).toFixed(1)}%, inodes: ${(inodeRatio * 100).toFixed(1)}%)`;
+        }
+      }
+    } catch {
+      // Ignore malformed runtime.json
+    }
+  }
+
+  // 2. Check generation_failed.json stderr/stdout.
+  const failurePath = path.join(dir, 'generation_failed.json');
+  if (fs.existsSync(failurePath)) {
+    try {
+      const raw = fs.readFileSync(failurePath, 'utf8');
+      let combined = raw;
+      try {
+        const parsed = JSON.parse(raw);
+        combined = `${parsed?.stderr ?? ''}\n${parsed?.stdout ?? ''}`;
+      } catch {}
+      const hit = checkHarnessLogText(combined, 'generation_failed.json');
+      if (hit) return hit;
+    } catch {}
+  }
+
+  // 3. Check explicit harness-written log files (never arbitrary app files).
+  for (const logName of ['agent_stderr.log', 'grader_error.log', 'modern-web.log']) {
+    const logPath = path.join(dir, logName);
+    if (!fs.existsSync(logPath)) continue;
+    try {
+      const content = fs.readFileSync(logPath, 'utf8');
+      const hit = checkHarnessLogText(content, logName);
+      if (hit) return hit;
+    } catch {}
+  }
+
+  // 4. Check chat_log.txt: if JSONL, scan only tool_result/error records; for non-JSON lines, strip markdown code fences/blockquotes and check harness/error patterns.
+  const chatLogPath = path.join(dir, 'chat_log.txt');
+  if (fs.existsSync(chatLogPath)) {
+    try {
+      const content = fs.readFileSync(chatLogPath, 'utf8');
+      const jsonlHit = scanAgentJsonlForEnospc(content, 'chat_log.txt');
+      if (jsonlHit) return jsonlHit;
+
+      const withoutCodeFences = content.replace(/```[\s\S]*?```/g, '');
+      const nonJsonLines = withoutCodeFences
+        .split('\n')
+        .filter((l) => {
+          const t = l.trim();
+          return t.length > 0 && !t.startsWith('{') && !t.startsWith('>');
+        })
+        .join('\n');
+      const plainHit = checkHarnessLogText(nonJsonLines, 'chat_log.txt');
+      if (plainHit) return plainHit;
+    } catch {}
+  }
+
+  // 5. Check trajectory_summary.json: inspect only command/error step outcomes, never thoughts or guide/file reads.
+  const trajSummaryPath = path.join(dir, 'trajectory_summary.json');
+  if (fs.existsSync(trajSummaryPath)) {
+    try {
+      const traj = JSON.parse(fs.readFileSync(trajSummaryPath, 'utf8'));
+      if (Array.isArray(traj?.steps)) {
+        for (const step of traj.steps) {
+          const actionType = String(step?.action?.type ?? '');
+          const category = String(step?.action?.canonicalCategory ?? '');
+          const actionName = String(step?.action?.name ?? '');
+          const cmd = String(step?.action?.params?.command ?? '');
+          if (
+            actionType === 'read_file' ||
+            category === 'guide_read' ||
+            category === 'skill_activation' ||
+            category === 'skill_search' ||
+            actionName === 'Read' ||
+            actionName === 'Skill' ||
+            isGuideOrFileReadCommand(cmd)
+          ) {
+            continue;
+          }
+          const status = String(step?.outcome?.status ?? '');
+          if (actionType === 'run_command' || status === 'error' || status === 'failure') {
+            const msg = String(step?.outcome?.message ?? '');
+            if (isEnospcErrorText(msg)) {
+              return 'Infra error in trajectory_summary.json: ENOSPC (No space left on device)';
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 6. Check session-*.jsonl files: inspect only non-read tool_result/error records.
+  try {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isFile() || !/^session-.*\.jsonl$/i.test(entry.name)) continue;
+      try {
+        const content = fs.readFileSync(path.join(dir, entry.name), 'utf8');
+        const hit = scanAgentJsonlForEnospc(content, entry.name);
+        if (hit) return hit;
+      } catch {}
+    }
+  } catch {}
+
+  return null;
+}
+
+function findSetupTimeoutError(json: any): string | null {
+  const candidates: string[] = [];
+  if (Array.isArray(json?.errors)) {
+    for (const err of json.errors) {
+      if (typeof err?.message === 'string') candidates.push(err.message);
+      if (typeof err?.stack === 'string') candidates.push(err.stack);
+    }
+  }
+  const visitSuite = (suite: any) => {
+    if (Array.isArray(suite?.specs)) {
+      for (const spec of suite.specs) {
+        for (const testObj of spec?.tests ?? []) {
+          for (const res of testObj?.results ?? []) {
+            if (typeof res?.error?.message === 'string') candidates.push(res.error.message);
+            if (typeof res?.error?.stack === 'string') candidates.push(res.error.stack);
+            for (const err of res?.errors ?? []) {
+              if (typeof err?.message === 'string') candidates.push(err.message);
+              if (typeof err?.stack === 'string') candidates.push(err.stack);
+            }
+          }
+        }
+      }
+    }
+    if (Array.isArray(suite?.suites)) {
+      for (const child of suite.suites) visitSuite(child);
+    }
+  };
+  if (Array.isArray(json?.suites)) {
+    for (const suite of json.suites) visitSuite(suite);
+  }
+  for (const raw of candidates) {
+    const cleaned = sanitizeDiagnosticText(raw);
+    const match = cleaned.match(SETUP_TIMEOUT_RE);
+    if (match) {
+      return match[0];
+    }
+  }
+  return null;
+}
+
+function resolveBaseAppForGrading(dir: string, guide: string, graderPath: string): string | null {
+  const parentDirName = path.basename(path.dirname(path.dirname(graderPath)));
+  if (parentDirName === 'targets') {
+    return path.basename(path.dirname(graderPath));
+  }
+  const taskName = path.basename(path.dirname(dir)) || 'task';
+  const guideDir = path.dirname(graderPath);
+  const candidateTaskPaths = [
+    path.join(guideDir, 'tasks', `${taskName}.md`),
+    path.join(guideDir, `${taskName}.md`),
+    path.join(guideDir, 'task.md'),
+  ];
+  for (const taskPath of candidateTaskPaths) {
+    if (!fs.existsSync(taskPath)) continue;
+    try {
+      const raw = fs.readFileSync(taskPath, 'utf8');
+      const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      if (fmMatch) {
+        const baseAppMatch = fmMatch[1].match(/^\s*base_app:\s*['"]?([a-zA-Z0-9_-]+)['"]?/m);
+        if (baseAppMatch?.[1]) {
+          return baseAppMatch[1];
+        }
+      }
+    } catch {}
+  }
+  const taskMap = getTaskMap();
+  const fromMap = taskMap.get(`${guide}/${taskName}`)?.baseApp ?? taskMap.get(`${guide}/task`)?.baseApp;
+  if (fromMap) {
+    return fromMap;
+  }
+  if (fs.existsSync(path.join(baseAppsDir, taskName))) {
+    return taskName;
+  }
+  return null;
+}
+
+function checkPatchApplyFailureOnMissingResults(dir: string, guide: string, graderPath: string): string | null {
+  const patchPath = path.join(dir, 'agent.patch');
+  if (!fs.existsSync(patchPath)) return null;
+  let patchContent: string;
+  try {
+    patchContent = fs.readFileSync(patchPath, 'utf8');
+  } catch {
+    return null;
+  }
+  if (!patchContent.trim()) return null;
+  if (/^Binary files .+ and .+ differ$/m.test(patchContent)) {
+    return `Failed to apply patch ${patchPath}: patch contains a binary diff ("Binary files ... differ") without binary content`;
+  }
+  const baseApp = resolveBaseAppForGrading(dir, guide, graderPath);
+  if (!baseApp) return null;
+  const refBaseAppDir = path.join(baseAppsDir, baseApp);
+  if (!fs.existsSync(refBaseAppDir)) return null;
+
+  const tempHome = createIsolatedHome('patch-check');
+  const workDir = path.join(tempHome, baseApp);
+  try {
+    fs.cpSync(refBaseAppDir, workDir, {
+      recursive: true,
+      filter: (src) => {
+        const b = path.basename(src);
+        return b !== 'node_modules' && b !== 'dist' && b !== '.git';
+      },
+    });
+    const res = applyPatchSync(workDir, patchPath);
+    if (!res.success) {
+      return sanitizeDiagnosticText(`Failed to apply patch ${patchPath} to ${baseApp}: ${res.error}`);
+    }
+  } catch {
+    // Ignore unexpected fs errors during fallback check
+  } finally {
+    try {
+      cleanupIsolatedHome(tempHome);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+  return null;
 }
 
 export function evaluateScenarioResults(
@@ -362,6 +757,10 @@ export function evaluateScenarioResults(
     console.warn(`Grader not found for ${guide} at ${graderPath}`);
     return makeInfraError('Grader not found');
   }
+  const logInfraError = detectRunLogInfraError(dir);
+  if (logInfraError) {
+    return makeInfraError(logInfraError);
+  }
   const failureFile = path.join(dir, 'generation_failed.json');
   try {
     const failureInfo = JSON.parse(fs.readFileSync(failureFile, 'utf-8'));
@@ -377,6 +776,15 @@ export function evaluateScenarioResults(
 
   try {
     const json = JSON.parse(fs.readFileSync(graderResults, 'utf-8'));
+
+    if (typeof json?.infraError === 'string' && json.infraError.trim()) {
+      return makeInfraError(sanitizeDiagnosticText(json.infraError));
+    }
+
+    const setupTimeout = findSetupTimeoutError(json);
+    if (setupTimeout) {
+      return makeInfraError(`Grading setup timed out: ${setupTimeout}`);
+    }
 
     if (Array.isArray(json?.suites) && json.suites.length > 0) {
       const specs: any[] = [];
@@ -431,6 +839,10 @@ export function evaluateScenarioResults(
     return makeAgentFailures('Playwright test runner failed or produced no test results');
   } catch (err: any) {
     if (isEnoent(err)) {
+      const patchApplyError = checkPatchApplyFailureOnMissingResults(dir, guide, graderPath);
+      if (patchApplyError) {
+        return makeInfraError(patchApplyError);
+      }
       return makeAgentFailures('Playwright test runner failed to produce a results file');
     }
     console.error(`Error processing results for ${dir}:`, err);

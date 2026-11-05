@@ -1,11 +1,12 @@
 import path from 'path';
 import os from 'os';
 import { pathToFileURL } from 'url';
-import { rootDir } from '../core/paths.ts';
+import { rootDir, ensureDiskNodeCompileCache } from '../core/paths.ts';
 
 // Disable telemetry for eval harness runs (`node --test` runs are covered
 // automatically via NODE_TEST_CONTEXT in ClearcutLogger).
 process.env.DISABLE_TELEMETRY = '1';
+ensureDiskNodeCompileCache(process.env, 'harness');
 
 try {
   process.loadEnvFile(path.join(rootDir, '.env'));

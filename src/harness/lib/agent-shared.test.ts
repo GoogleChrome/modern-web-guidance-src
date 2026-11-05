@@ -349,6 +349,32 @@ describe('copyResultsToTarget', () => {
   });
 });
 
+describe('getGraderScriptContent and NODE_COMPILE_CACHE', () => {
+  test('stages starting-app when agent.patch is missing or empty on target tasks, and records infraError on patch apply failure', async () => {
+    const { getGraderScriptContent } = await import('./agent-shared.ts');
+    const targetDir = '/repo/results/suites/s/1/some-guide/daily-grind/unguided';
+    const legacyDir = '/repo/results/suites/s/1/some-guide/task/unguided';
+    const graderPath = '/repo/guides/cat/some-guide/targets/daily-grind/grader.ts';
+
+    const targetScript = getGraderScriptContent(targetDir, graderPath, 'some-guide');
+    assert.match(targetScript, /const stage = hasPatch \|\| false \? 'patch' : 'starting-app'/);
+    assert.match(targetScript, /if \(\/Failed to apply patch\/i\.test\(message\)\)/);
+    assert.match(targetScript, /infraError: message/);
+    assert.ok(!targetScript.includes('"/tmp/'), 'NODE_COMPILE_CACHE in grade.mjs must not point to /tmp');
+
+    const legacyScript = getGraderScriptContent(legacyDir, graderPath, 'some-guide');
+    assert.match(legacyScript, /const stage = hasPatch \|\| true \? 'patch' : 'starting-app'/);
+  });
+
+  test('ensureDiskNodeCompileCache replaces /tmp paths with a persistent disk directory and runCliAgentCommand sets it for agents', async () => {
+    const { ensureDiskNodeCompileCache } = await import('../../core/paths.ts');
+    const envWithTmp: NodeJS.ProcessEnv = { NODE_COMPILE_CACHE: '/tmp/v8-compile-cache' };
+    const resolved = ensureDiskNodeCompileCache(envWithTmp, 'agents');
+    assert.ok(!resolved.startsWith('/tmp/'), `Expected disk path outside /tmp, got ${resolved}`);
+    assert.strictEqual(envWithTmp.NODE_COMPILE_CACHE, resolved);
+  });
+});
+
 
 
 

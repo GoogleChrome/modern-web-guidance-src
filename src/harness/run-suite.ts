@@ -4,15 +4,106 @@ import { fileURLToPath } from 'url';
 import { spawn, spawnSync } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { baseAppsDir, suitesDir } from '../core/paths.ts';
-import { getTaskMap, resolveTaskGraderPath, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
-import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
+import { baseAppsDir, suitesDir, ensureDiskNodeCompileCache } from '../core/paths.ts';
+import { getTaskMap, resolveTaskGraderPath, type TaskInfo } from '../core/guide-validation.ts';
+import { initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
 import { ensureFreshHostCodexAuth } from './agents/codex-cli-agent.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
 import { determineAgent } from '../cli/telemetry/detect-agent.ts';
 
 const RUN_TYPES = ['guided', 'unguided'];
+
+export const TMP_USAGE_HIGH_WATERMARK = 0.85;
+export const TMP_USAGE_CRITICAL_WATERMARK = 0.98;
+
+export interface TmpUsage {
+  byteRatio: number;
+  inodeRatio: number;
+  bytesUsed: number;
+  bytesTotal: number;
+  inodesUsed: number;
+  inodesTotal: number;
+}
+
+export function getTmpUsage(
+  tmpPath: string = '/tmp',
+  statfsFn: (p: string) => fs.StatsFs = fs.statfsSync,
+): TmpUsage {
+  const stats = statfsFn(tmpPath);
+  const bsize = Number(stats.bsize || 4096);
+  const blocks = Number(stats.blocks || 0);
+  const bavail = Number(stats.bavail ?? stats.bfree ?? 0);
+  const files = Number(stats.files || 0);
+  const ffree = Number(stats.ffree || 0);
+
+  const blocksUsed = Math.max(0, blocks - bavail);
+  const inodesUsed = Math.max(0, files - ffree);
+
+  return {
+    byteRatio: blocks > 0 ? blocksUsed / blocks : 0,
+    inodeRatio: files > 0 ? inodesUsed / files : 0,
+    bytesUsed: blocksUsed * bsize,
+    bytesTotal: blocks * bsize,
+    inodesUsed,
+    inodesTotal: files,
+  };
+}
+
+export interface WaitForTmpCapacityOptions {
+  tmpPath?: string;
+  threshold?: number;
+  pollIntervalMs?: number;
+  maxWaitMs?: number;
+  statfsFn?: (p: string) => fs.StatsFs;
+  onPause?: (usage: TmpUsage) => void;
+}
+
+/**
+ * Checks `/tmp` byte and inode utilization and pauses launching while either exceeds `threshold` (default 85%).
+ */
+export async function waitForTmpCapacity(options: WaitForTmpCapacityOptions = {}): Promise<TmpUsage> {
+  const tmpPath = options.tmpPath ?? '/tmp';
+  const threshold = options.threshold ?? TMP_USAGE_HIGH_WATERMARK;
+  const pollIntervalMs = options.pollIntervalMs ?? 5000;
+  const maxWaitMs = options.maxWaitMs ?? 10 * 60 * 1000;
+  const statfsFn = options.statfsFn ?? fs.statfsSync;
+
+  const start = Date.now();
+  let notified = false;
+  while (true) {
+    let usage: TmpUsage;
+    try {
+      usage = getTmpUsage(tmpPath, statfsFn);
+    } catch {
+      return { byteRatio: 0, inodeRatio: 0, bytesUsed: 0, bytesTotal: 0, inodesUsed: 0, inodesTotal: 0 };
+    }
+    if (usage.byteRatio <= threshold && usage.inodeRatio <= threshold) {
+      return usage;
+    }
+    if (!notified) {
+      notified = true;
+      if (options.onPause) {
+        options.onPause(usage);
+      } else {
+        const bytePct = (usage.byteRatio * 100).toFixed(1);
+        const inodePct = (usage.inodeRatio * 100).toFixed(1);
+        console.warn(
+          `⚠️  ${tmpPath} usage above ${(threshold * 100).toFixed(0)}% (bytes: ${bytePct}%, inodes: ${inodePct}%). Pausing launch until capacity frees up...`,
+        );
+      }
+    }
+    if (Date.now() - start >= maxWaitMs) {
+      const bytePct = (usage.byteRatio * 100).toFixed(1);
+      const inodePct = (usage.inodeRatio * 100).toFixed(1);
+      console.warn(
+        `⚠️  ${tmpPath} still above ${(threshold * 100).toFixed(0)}% after waiting ${Math.round(maxWaitMs / 1000)}s (bytes: ${bytePct}%, inodes: ${inodePct}%). Proceeding anyway.`,
+      );
+      return usage;
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+}
 
 // Global log file stream
 let logStream: fs.WriteStream | null = null;
@@ -52,14 +143,16 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
   try {
     const agentScript = getAgentScript(agent);
 
+    await waitForTmpCapacity();
     const suiteConfigPath = path.resolve(targetDir, 'suite_config.json');
+    const diskCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
     await runCommand('node', [
       agentScript,
       JSON.stringify(promptContent),
       'guided', // Default to guided for ad-hoc tool execution
       targetDir,
       templateDir
-    ], { GD_SUITE_CONFIG: suiteConfigPath, ENABLE_FILE_LOGGING: 'true' });
+    ], { GD_SUITE_CONFIG: suiteConfigPath, ENABLE_FILE_LOGGING: 'true', NODE_COMPILE_CACHE: diskCompileCache });
     console.log(`\n✅ ${taskNameLabel} complete! Results in ${targetDir}`);
   } catch (error) {
     console.error(`❌ ${taskNameLabel} failed:`, error);
@@ -211,8 +304,10 @@ export async function runSuite(options: RunSuiteOptions = {}) {
             pnpmArgs.push('--workspace-concurrency', suiteConfig.workerCount.toString());
           }
           pnpmArgs.push('run-agent');
+          await waitForTmpCapacity();
           const suiteConfigPath = path.resolve(testDir, 'suite_config.json');
-          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: suiteConfigPath, ENABLE_FILE_LOGGING: 'true' }, runDir);
+          const diskCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
+          await runCommand('pnpm', pnpmArgs, { GD_SUITE_CONFIG: suiteConfigPath, ENABLE_FILE_LOGGING: 'true', NODE_COMPILE_CACHE: diskCompileCache }, runDir);
           console.log(`✅ Completed Run ${runNumber} test executions`);
         } catch (error) {
           console.error(`❌ Failed during Run ${runNumber} test execution`, error);
@@ -387,22 +482,7 @@ export async function setupWorkspaceBaseApp(taskInfo: TaskInfo, runDir: string, 
     }
   }
 
-  // If this is a target-based task and zero-passrate.patch exists, apply it before git init & agent execution
-  const targetZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskName, ZERO_PASSRATE_PATCH_FILE);
-  const baseAppZeroPassrate = path.join(taskInfo.guideDir, 'targets', taskInfo.baseApp, ZERO_PASSRATE_PATCH_FILE);
-  const zeroPassratePath = fs.existsSync(targetZeroPassrate)
-    ? targetZeroPassrate
-    : (fs.existsSync(baseAppZeroPassrate) ? baseAppZeroPassrate : null);
-
-  if (zeroPassratePath) {
-    const applyRes = applyPatchSync(workspaceBaseAppDir, zeroPassratePath);
-    if (!applyRes.success) {
-      console.warn(`Failed to apply zero-passrate.patch to ${workspaceBaseAppDir}: ${applyRes.error}`);
-    } else {
-      console.log(`Applied zero-passrate.patch to ${workspaceBaseAppDir}`);
-    }
-  }
-
+  // Guided and unguided runs both start from this untouched copy of the base app: nothing is patched in.
   if (!fs.existsSync(path.join(workspaceBaseAppDir, '.git'))) {
     initGitRepo(workspaceBaseAppDir);
   }
@@ -430,6 +510,9 @@ export function generateTransientPackage(
   const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName, baselineTarget);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
+  const diskCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
+  const runSuiteModulePath = fileURLToPath(import.meta.url);
+
   // Generate runner script
   // HACK: To get nice aggregated, prefix-multiplexed output for parallel runs,
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
@@ -439,6 +522,9 @@ export function generateTransientPackage(
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { waitForTmpCapacity, getTmpUsage } from ${JSON.stringify(runSuiteModulePath)};
+
+process.env.NODE_COMPILE_CACHE = ${JSON.stringify(diskCompileCache)};
 
 const args = [
 ...${JSON.stringify([
@@ -450,11 +536,13 @@ const args = [
 ])}
 ];
 
-const env = { ...process.env${baselineTarget ? `, BASELINE_TARGET: ${JSON.stringify(baselineTarget)}` : ''} };
+const env = { ...process.env, NODE_COMPILE_CACHE: ${JSON.stringify(diskCompileCache)}${baselineTarget ? `, BASELINE_TARGET: ${JSON.stringify(baselineTarget)}` : ''} };
 
 const start = Date.now();
 let result;
 let attempts = 0;
+let tmpUsageStart = null;
+let tmpUsageEnd = null;
 const maxAttempts = 2; // 1 initial attempt + 1 retry with exponential backoff
 const baseDelay = 15000; // 15 seconds base delay
 const targetDirPath = ${JSON.stringify(targetDir)};
@@ -468,10 +556,14 @@ while (attempts < maxAttempts) {
       fs.rmSync(path.join(targetDirPath, entry), { recursive: true, force: true });
     }
   }
+  tmpUsageStart = await waitForTmpCapacity();
   // Assign the isolated HOME here so it is removed even if the timeout kills the agent
   // wrapper before its own cleanup runs.
   const isolatedHome = '/tmp/ghh-' + ${JSON.stringify(path.basename(agentScript).replace(/-agent\.ts$/, ''))} + '-' + randomUUID().slice(0, 8);
   result = spawnSync(process.execPath, args, { stdio: 'inherit', cwd: ${JSON.stringify(process.cwd())}, timeout: 900000, env: { ...env, ${ISOLATED_HOME_ENV}: isolatedHome } });
+  try {
+    tmpUsageEnd = getTmpUsage();
+  } catch {}
   try {
     fs.rmSync(isolatedHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   } catch (cleanupErr) {
@@ -503,11 +595,25 @@ let graderRuntime = null;
 let graderStatus = null;
 
 if (result.status === 0) {
+  await waitForTmpCapacity();
   const gradeStart = Date.now();
-  const gradeEnv = { ...process.env, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
+  const gradeEnv = { ...process.env, NODE_COMPILE_CACHE: ${JSON.stringify(diskCompileCache)}, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
   const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status ?? 1;
+  try {
+    const postGradeUsage = getTmpUsage();
+    if (!tmpUsageEnd || postGradeUsage.byteRatio > tmpUsageEnd.byteRatio || postGradeUsage.inodeRatio > tmpUsageEnd.inodeRatio) {
+      tmpUsageEnd = {
+        byteRatio: Math.max(tmpUsageEnd?.byteRatio ?? 0, postGradeUsage.byteRatio),
+        inodeRatio: Math.max(tmpUsageEnd?.inodeRatio ?? 0, postGradeUsage.inodeRatio),
+        bytesUsed: Math.max(tmpUsageEnd?.bytesUsed ?? 0, postGradeUsage.bytesUsed),
+        bytesTotal: postGradeUsage.bytesTotal,
+        inodesUsed: Math.max(tmpUsageEnd?.inodesUsed ?? 0, postGradeUsage.inodesUsed),
+        inodesTotal: postGradeUsage.inodesTotal,
+      };
+    }
+  } catch {}
 } else if (!fs.existsSync(failureFile)) {
   const timedOut = result.error?.code === 'ETIMEDOUT';
   fs.writeFileSync(failureFile, JSON.stringify({
@@ -520,11 +626,28 @@ if (result.status === 0) {
   }, null, 2));
 }
 
-fs.writeFileSync(path.join(${JSON.stringify(targetDir)}, 'runtime.json'), JSON.stringify({
+const runtimePath = path.join(${JSON.stringify(targetDir)}, 'runtime.json');
+let existingRuntime = {};
+if (fs.existsSync(runtimePath)) {
+  try { existingRuntime = JSON.parse(fs.readFileSync(runtimePath, 'utf8')); } catch {}
+}
+if (existingRuntime.tmpUsageEnd && tmpUsageEnd) {
+  tmpUsageEnd = {
+    ...tmpUsageEnd,
+    byteRatio: Math.max(existingRuntime.tmpUsageEnd.byteRatio ?? 0, tmpUsageEnd.byteRatio ?? 0),
+    inodeRatio: Math.max(existingRuntime.tmpUsageEnd.inodeRatio ?? 0, tmpUsageEnd.inodeRatio ?? 0),
+    bytesUsed: Math.max(existingRuntime.tmpUsageEnd.bytesUsed ?? 0, tmpUsageEnd.bytesUsed ?? 0),
+    inodesUsed: Math.max(existingRuntime.tmpUsageEnd.inodesUsed ?? 0, tmpUsageEnd.inodesUsed ?? 0),
+  };
+}
+fs.writeFileSync(runtimePath, JSON.stringify({
+  ...existingRuntime,
   agentRuntime: runtime,
   graderRuntime: graderRuntime,
   agentStatus: result.status,
-  graderStatus: graderStatus
+  graderStatus: graderStatus,
+  ...(tmpUsageStart || existingRuntime.tmpUsageStart ? { tmpUsageStart: existingRuntime.tmpUsageStart ?? tmpUsageStart } : {}),
+  ...(tmpUsageEnd || existingRuntime.tmpUsageEnd ? { tmpUsageEnd: tmpUsageEnd ?? existingRuntime.tmpUsageEnd } : {}),
 }, null, 2));
 
 process.exit(graderStatus !== null ? graderStatus : (result.status ?? 1));

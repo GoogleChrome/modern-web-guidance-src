@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { spawnSync } from 'child_process';
-import { generateTransientPackage } from './run-suite.ts';
+import { generateTransientPackage, getTmpUsage, waitForTmpCapacity, type TmpUsage } from './run-suite.ts';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'runner-retry-test-'));
@@ -110,6 +110,8 @@ test('run.mjs: succeeds on first try without retries', () => {
     assert.ok(fs.existsSync(runtimeFile), 'runtime.json should exist');
     const runtimeData = JSON.parse(fs.readFileSync(runtimeFile, 'utf8'));
     assert.strictEqual(runtimeData.agentStatus, 0, 'agentStatus in runtime.json should be 0');
+    assert.ok(runtimeData.tmpUsageStart && typeof runtimeData.tmpUsageStart.byteRatio === 'number');
+    assert.ok(runtimeData.tmpUsageEnd && typeof runtimeData.tmpUsageEnd.byteRatio === 'number');
   } finally {
     removeTempDir(tempDir);
   }
@@ -160,6 +162,8 @@ test('run.mjs: retries on failure and succeeds on subsequent try', () => {
     assert.ok(fs.existsSync(runtimeFile), 'runtime.json should exist');
     const runtimeData = JSON.parse(fs.readFileSync(runtimeFile, 'utf8'));
     assert.strictEqual(runtimeData.agentStatus, 0, 'agentStatus in runtime.json should be 0');
+    assert.ok(runtimeData.tmpUsageStart && typeof runtimeData.tmpUsageStart.byteRatio === 'number');
+    assert.ok(runtimeData.tmpUsageEnd && typeof runtimeData.tmpUsageEnd.byteRatio === 'number');
   } finally {
     removeTempDir(tempDir);
   }
@@ -338,4 +342,60 @@ process.exit(0);
   } finally {
     removeTempDir(tempDir);
   }
+});
+
+test('waitForTmpCapacity pauses when /tmp byte or inode usage exceeds 85% and resumes once below threshold', async () => {
+  let calls = 0;
+  const pausedUsages: TmpUsage[] = [];
+  const fakeStatfs = (): fs.StatsFs => {
+    calls++;
+    if (calls === 1) {
+      // 90% inode usage, 50% byte usage -> must pause
+      return { bsize: 4096, blocks: 1000, bfree: 500, bavail: 500, files: 1000, ffree: 100 } as unknown as fs.StatsFs;
+    }
+    if (calls === 2) {
+      // 50% inode usage, 92% byte usage -> must stay paused
+      return { bsize: 4096, blocks: 1000, bfree: 80, bavail: 80, files: 1000, ffree: 500 } as unknown as fs.StatsFs;
+    }
+    // 60% byte usage, 40% inode usage -> below 85%, should resume
+    return { bsize: 4096, blocks: 1000, bfree: 400, bavail: 400, files: 1000, ffree: 600 } as unknown as fs.StatsFs;
+  };
+
+  const finalUsage = await waitForTmpCapacity({
+    tmpPath: '/tmp',
+    threshold: 0.85,
+    pollIntervalMs: 5,
+    maxWaitMs: 500,
+    statfsFn: fakeStatfs,
+    onPause: (u) => pausedUsages.push(u),
+  });
+
+  assert.strictEqual(calls, 3, 'Should poll until both byte and inode usage drop to <= 85%');
+  assert.strictEqual(pausedUsages.length, 1, 'Should invoke onPause once when threshold is exceeded');
+  assert.strictEqual(pausedUsages[0].inodeRatio, 0.9);
+  assert.strictEqual(finalUsage.byteRatio, 0.6);
+  assert.strictEqual(finalUsage.inodeRatio, 0.4);
+
+  const realTmp = getTmpUsage('/tmp');
+  assert.ok(realTmp.bytesTotal > 0);
+
+  // Verify waitForTmpCapacity logs a clear warning when maxWaitMs expires
+  const warnings: string[] = [];
+  const origWarn = console.warn;
+  console.warn = (...args: unknown[]) => warnings.push(args.map(String).join(' '));
+  try {
+    await waitForTmpCapacity({
+      tmpPath: '/tmp',
+      threshold: 0.85,
+      pollIntervalMs: 5,
+      maxWaitMs: 1,
+      statfsFn: () => ({ bsize: 4096, blocks: 1000, bfree: 50, bavail: 50, files: 1000, ffree: 50 }) as unknown as fs.StatsFs,
+    });
+  } finally {
+    console.warn = origWarn;
+  }
+  assert.ok(
+    warnings.some((w) => /still above 85% after waiting .* Proceeding anyway/i.test(w)),
+    `Expected maxWaitMs timeout warning, got: ${JSON.stringify(warnings)}`,
+  );
 });
