@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { Agents } from '../config.ts';
+import { parseJsonlFile } from './agent-shared.ts';
+import { guideIdsFromLog } from './guide-usage.ts';
 
 // Colocated agent parsers
 import { parseClaudeTrajectory, loadClaudeLogs } from '../agents/claude-code-agent.ts';
@@ -62,7 +65,7 @@ export {
 
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
-export const NORMALIZER_VERSION = 2;
+export const NORMALIZER_VERSION = 3;
 
 const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
 
@@ -249,20 +252,42 @@ export function extractTimestamp(entry: any): string | undefined {
 
 /**
  * Extracts retrieved guide IDs from a shell command string invoking `modern-web-guidance retrieve`.
- * Strips trailing shell delimiters (such as `;` in chained commands) and supports comma-separated lists.
+ * Strips trailing shell delimiters (such as `;` in chained commands) and supports comma- or space-separated lists.
  */
 export function extractRetrievedGuidesFromCommand(command: string): string[] {
   if (!command.includes('modern-web-guidance') || !command.includes('retrieve')) {
     return [];
   }
+  const normalized = command
+    .replace(/\\+u003e/gi, '>')
+    .replace(/\\+u003c/gi, '<')
+    .replace(/\\+u0026/gi, '&');
   const guides: string[] = [];
-  const regex = /(?:--)?retrieve\s+(?:\\*"([^"\\]+)\\*"|'([^']+)'|([^\s"';|&><)`\\]+))/gi;
+  const invocationRegex =
+    /(?:\b(?:npx|pnpx|pnpm|node)(?:\.cmd)?\s+(?:-[a-z]+\s+)*)?[^\s"';|&><)`\\]*modern-web-guidance(?:@[^\s"';|&><)`\\]+|\/[^\s"';|&><)`\\]*modern-web\.[cm]?[jt]s)?(?:\s+(?:--skill-version(?:=\S+|\s+\S+)|--[a-z-]+(?:=\S+)?))*\s+(?:--)?retrieve\s+([^;|&><`\n\r)]+)/gi;
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(command)) !== null) {
-    const rawArg = match[1] ?? match[2] ?? match[3] ?? '';
-    for (const part of rawArg.split(',')) {
-      const cleaned = part.trim().replace(/^["'\\]+|["'\\;]+$/g, '');
-      if (cleaned && /^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned.toLowerCase() !== 'id') {
+  while ((match = invocationRegex.exec(normalized)) !== null) {
+    // Ignore inline markdown code references inside guide text, e.g. `(via \`npx -y modern-web-guidance@latest retrieve "css"\`)`
+    const lineStart = normalized.lastIndexOf('\n', match.index) + 1;
+    const linePrefix = normalized.slice(lineStart, match.index);
+    if ((linePrefix.split('`').length - 1) % 2 === 1) {
+      continue;
+    }
+    const argSegment = match[1]
+      .split(/","|"\}/)[0]
+      .replace(/\s+\d+$/, '')
+      .trim();
+    const tokens = argSegment.split(/[\s,]+/);
+    for (let i = 0; i < tokens.length; i++) {
+      const cleaned = tokens[i].trim().replace(/^["'\\]+|["'\\;]+$/g, '');
+      if (!cleaned) continue;
+      if (cleaned.startsWith('-')) {
+        if (cleaned === '--skill-version') {
+          i++;
+        }
+        continue;
+      }
+      if (/^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned.toLowerCase() !== 'id') {
         guides.push(cleaned);
       }
     }
@@ -307,7 +332,7 @@ export function categorizeAction(
     if (cmdLower.includes('retrieve')) {
       return 'guide_retrieval';
     }
-    if (cmdLower.includes('search')) {
+    if (cmdLower.includes('search') || cmdLower.includes('analyze')) {
       return 'skill_search';
     }
   }
@@ -480,6 +505,11 @@ export function generateNormalizedTrajectorySync(
     if (summary) {
       if (initialPrompt !== undefined) {
         summary.initialPrompt = initialPrompt;
+      }
+      const logEntries = parseJsonlFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
+      if (logEntries.length > 0) {
+        summary.retrievedGuides = [...new Set([...(summary.retrievedGuides ?? []), ...guideIdsFromLog(logEntries)])];
+        summary.toolsUsed = [...new Set([...(summary.toolsUsed ?? []), 'modern-web-guidance'])];
       }
       finalizeTrajectorySummary(summary);
       writeTrajectorySummary(targetDir, summary);

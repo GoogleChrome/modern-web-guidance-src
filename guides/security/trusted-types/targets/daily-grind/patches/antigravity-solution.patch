@@ -1,0 +1,108 @@
+diff --git a/index.html b/index.html
+index 66c9173..b8e77c9 100644
+--- a/index.html
++++ b/index.html
+@@ -2,6 +2,10 @@
+ <html lang="en">
+ 
+ <head>
++  <meta
++    http-equiv="Content-Security-Policy"
++    content="require-trusted-types-for 'script'; trusted-types sanitize-html escape-html dompurify;"
++  />
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+@@ -177,23 +181,7 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++      <div class="grid" id="seasonal-favorites"></div>
+     </section>
+   </main>
+ 
+@@ -207,6 +195,67 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!window.trustedTypes) {
++      window.trustedTypes = {
++        createPolicy: (name, rules) => rules,
++      };
++    }
++
++    const escapePolicy = trustedTypes.createPolicy('escape-html', {
++      createHTML: (input) =>
++        String(input)
++          .replaceAll('&', '&amp;')
++          .replaceAll('<', '&lt;')
++          .replaceAll('>', '&gt;')
++          .replaceAll('"', '&quot;')
++          .replaceAll("'", '&#39;'),
++    });
++
++    const myPolicy = trustedTypes.createPolicy('sanitize-html', {
++      createHTML: (input) => {
++        if (window.DOMPurify) {
++          return window.DOMPurify.sanitize(input, { RETURN_TRUSTED_TYPE: false });
++        }
++        const doc = new DOMParser().parseFromString(String(input), 'text/html');
++        doc.querySelectorAll('script, iframe, object, embed, link, meta, style, base, form').forEach((el) => el.remove());
++        doc.body.querySelectorAll('*').forEach((el) => {
++          for (const attr of Array.from(el.attributes)) {
++            const name = attr.name.toLowerCase();
++            const value = attr.value.trim().toLowerCase();
++            if (name.startsWith('on') || ((name === 'href' || name === 'src' || name === 'action') && value.startsWith('javascript:'))) {
++              el.removeAttribute(attr.name);
++            }
++          }
++        });
++        return doc.body.innerHTML;
++      },
++    });
++
++    const seasonalFavoritesHTML = [
++      `<div class="card">
++        <h3>Maple Oat Latte</h3>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <a href="/menu/seasonal" class="btn">View Details</a>
++      </div>`,
++      `<div class="card">
++        <h3>Dark Roast Espresso</h3>
++        <p>Bold, smokey, and perfect for a morning boost.</p>
++        <a href="/menu/espresso" class="btn">View Details</a>
++      </div>`,
++      `<div class="card">
++        <h3>Cold Brew</h3>
++        <p>Steeped for 18 hours for maximum smoothness.</p>
++        <a href="/menu/cold-brew" class="btn">View Details</a>
++      </div>`,
++    ];
++
++    const gridContainer = document.querySelector('#seasonal-favorites') || document.querySelector('.grid');
++    if (gridContainer) {
++      const cleanHTML = myPolicy.createHTML(seasonalFavoritesHTML.join('\n'));
++      gridContainer.innerHTML = cleanHTML;
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -324,11 +324,11 @@
         border-radius: 50%;
         border: 3px solid var(--border);
         border-top-color: var(--primary);
-        animation: spin 1s linear infinite;
+        opacity: 0.5;
         flex-shrink: 0;
-        @media (prefers-reduced-motion: reduce) {
-          animation: none;
-          opacity: 0.5;
+        @media (prefers-reduced-motion: no-preference) {
+          opacity: 1;
+          animation: spin 1s linear infinite;
         }
       }
 
@@ -359,7 +359,11 @@
 
       /* Respect reduced-motion preferences without a jarring 0.01ms blanket reset */
       @media (prefers-reduced-motion: reduce) {
-        button,
+        button {
+          translate: none;
+          scale: none;
+        }
+
         .motion-card {
           transition: none;
         }

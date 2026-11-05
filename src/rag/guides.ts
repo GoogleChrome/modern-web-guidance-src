@@ -2,12 +2,15 @@ import { promises as fs, readFileSync, existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import type { OriginTrialMetadata } from "../core/guide-validation.ts";
+
 export interface UseCase {
   id: string;
   description: string;
   category: string;
   featuresUsed: string[];
   tokenCount: number;
+  originTrials?: OriginTrialMetadata[];
 }
 
 const BUNDLE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -39,13 +42,17 @@ function loadUseCases(): UseCase[] {
 
 export const USE_CASES: UseCase[] = loadUseCases();
 
+export function getUseCase(useCaseId: string): UseCase | undefined {
+  return USE_CASES.find((u) => u.id === useCaseId);
+}
+
 export function getUseCasesByCategory(category?: string): UseCase[] {
   if (!category) return USE_CASES;
   return USE_CASES.filter((u) => u.category === category);
 }
 
 export async function getGuide(useCaseId: string): Promise<string | null> {
-  const useCase = USE_CASES.find((u) => u.id === useCaseId);
+  const useCase = getUseCase(useCaseId);
   if (!useCase) return null;
   const dataDir = resolveSkillsCliDataDir();
   const filePath = path.join(dataDir, "guides", useCase.category, `${useCaseId}.md`);

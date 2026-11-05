@@ -78,7 +78,7 @@ It skips guides that already have an open `grader updates: <guide-name>` PR (unl
 
 When an evaluation report in a PR is unhealthy, `gd dev` applies recommended fixes directly to the files in the PR (committed as a separate post-report commit from the initial target generation).
 Reviewers can inspect the file diffs in the PR, leave inline comments or push adjustments, and trigger the next automated pass:
-- Label the PR **`needs-dev-rerun`**. `gd dev` regenerates whatever changed since the solution patches were generated: `guide.md` or `expectations.md` wipes `targets/<target>/` and regenerates everything; `task.md` regenerates the solution patches and `grader.ts`; `grader.ts` alone re-runs calibration and agent evaluation. Local `gd dev` runs behave the same way.
+- Label the PR **`needs-dev-rerun`**. `gd dev` regenerates whatever changed since the solution patches were generated: a `guide.md` `description` change wipes `targets/<target>/` and regenerates everything; any other `guide.md` or `expectations.md` edit keeps `task.md` and regenerates the patches and `grader.ts`; `task.md` alone regenerates the solution patches and `grader.ts`; `grader.ts` alone re-runs calibration and agent evaluation. Local `gd dev` runs behave the same way once the target's patches are committed (`gd dev` only commits on `gd-dev/` branches); with uncommitted patches, any `guide.md` or `expectations.md` edit wipes the target.
 
 Separately, `src/ci/sync-pipeline-issue.ts` maintains the canonical [Content & Eval Pipeline issue (#1815)](https://github.com/GoogleChrome/modern-web-guidance-src/issues/1815), including flagging guides under **Stale evals** whenever `expectations.md` has substantive changes newer than `grader.ts` or `targets/`.
 

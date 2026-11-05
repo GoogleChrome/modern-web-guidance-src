@@ -1,1627 +1,759 @@
 diff --git a/.gitignore b/.gitignore
 new file mode 100644
-index 0000000..a5bdb3e
+index 0000000..1eae0cf
 --- /dev/null
 +++ b/.gitignore
-@@ -0,0 +1,5 @@
-+node_modules/
+@@ -0,0 +1,2 @@
 +dist/
-+src/wasm/renderer.js
-+src/wasm/renderer.wasm
-+test-results/
++node_modules/
 diff --git a/README.md b/README.md
 new file mode 100644
-index 0000000..5d0a5ff
+index 0000000..82399ba
 --- /dev/null
 +++ b/README.md
-@@ -0,0 +1,39 @@
-+# The Daily Grind
+@@ -0,0 +1,30 @@
++# smallpt browser studio
 +
-+The coffee-art canvas is rendered by C compiled to WebAssembly. A dedicated
-+module worker loads Emscripten and computes every pixel; the page only copies
-+the finished RGBA buffer to a canvas. Initial rendering is automatic, and the
-+button requests a fresh seed. Status announcements, failure recovery, and a
-+timeout keep the interaction usable.
++Kevin Beason’s original C++ smallpt integrator, compiled to WebAssembly using Emscripten. Open `index.html` through an existing static host. All path tracing runs locally in a dedicated module Web Worker; no backend, GPU API, shared memory, or cross-origin isolation headers are required.
 +
-+## Build and run
++The page starts a render automatically. Use **Randomize & render** for new sphere colors, or choose colors, resolution, and sample count and press **Render scene**. Rendering can be stopped; the download control saves the current canvas as PNG.
 +
-+Requires Node.js 22+ and Emscripten (`emcc` on PATH; verified with 6.0.1).
++## Build
++
++Requires Node.js and Emscripten (`em++` on PATH).
 +
 +```sh
-+npm install
 +npm run build
-+npm run preview
 +```
 +
-+Deploy the complete `dist` directory, including its generated worker and Wasm
-+assets. `npm start` starts development mode. No cross-origin isolation headers
-+or SharedArrayBuffer are needed.
++This compiles `src/renderer.cpp` into `assets/smallpt.js` and `assets/smallpt.wasm`, then packages the static page in `dist/`. Compiled assets are included so the page also works without rebuilding. Serve `.wasm` with the `application/wasm` content type where possible (the Emscripten loader supports an ArrayBuffer fallback).
 +
-+The build uses `-Oz -flto -g0`, ES modules, strict mode, memory growth, and no
-+dynamic linking. The browser environment includes `worker` because execution
-+occurs in a dedicated worker, alongside `web`; Node and shell are excluded.
-+
-+## Verification
++To validate the actual Wasm module and regenerate the initial 256-sample preview without a browser or server:
 +
 +```sh
-+npm run build:assertions
-+npx playwright test
++node scripts/render-preview.mjs
 +npm run build
-+npx playwright test
 +```
 +
-+Tests exercise actual Wasm loading, initial and repeated rendering, main-thread
-+responsiveness under CPU throttling, clean browser console output, and recovery
-+from a failed Wasm fetch. Set `CHROME_PATH` to your Chrome executable when it is
-+not located at `/opt/google/chrome/chrome`.
++The check exercises the generated ES module and Wasm, checks deterministic rendering and sphere color changes, and writes `assets/preview.png` using output from that same module. The preview provides an initial image while the live render starts. No stock or AI-generated imagery is used.
++
++## Source and license
++
++Original source: https://www.kevinbeason.com/smallpt/
++
++`vendor/smallpt/smallpt.cpp` is the upstream 99-line source, retained unchanged, along with Kevin Beason’s MIT license. `src/renderer.cpp` replaces only the command-line render loop with a scanline API and adds sphere color controls. The original recursive radiance integrator, scene geometry, materials, antialiasing, gamma correction, and ray intersections are retained. OpenMP is omitted: the browser uses a Web Worker instead. The build disables C++ exceptions and accepts the original 2008 source’s implicit integer narrowing.
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..e4971e3
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,109 @@
++const $ = (id) => document.getElementById(id);
++const canvas = $('canvas');
++const context = canvas.getContext('2d');
++const colors = [$('mirror-color'), $('glass-color')];
++let worker, running = false, runId = 0, hasPixels = false;
++let currentSamples = 64;
++const initialColors = ['#f6e4ce', '#d8e1fa'];
++const preview = new Image();
++preview.onload = () => { if (!hasPixels) context.drawImage(preview, 0, 0, canvas.width, canvas.height); };
++preview.src = './assets/preview.png';
++
++function setSamples(value) {
++  $('samples').value = value;
++  document.querySelectorAll('[data-samples]').forEach((button) => {
++    const selected = Number(button.dataset.samples) === Number(value);
++    button.classList.toggle('selected', selected);
++    button.setAttribute('aria-pressed', String(selected));
++  });
++}
++document.querySelectorAll('[data-samples]').forEach((button) => button.addEventListener('click', () => setSamples(button.dataset.samples)));
++function setRunning(value) {
++  running = value;
++  $('render-label').textContent = value ? 'Stop rendering' : 'Render scene';
++  document.querySelector('.play-icon').textContent = value ? '■' : '▶';
++  $('render-dot').style.background = value ? '#c5bbf2' : '#a8c4a2';
++}
++function stop() {
++  runId++;
++  worker?.terminate();
++  worker = null;
++  setRunning(false);
++}
++function fail(message) {
++  stop();
++  $('render-status').textContent = message;
++  $('render-dot').style.background = '#e3a291';
++}
++function render() {
++  stop();
++  const id = runId;
++  const width = Number($('resolution').value), height = width * 3 / 4;
++  currentSamples = Number($('samples').value);
++  // Keep the previous image visible while the next render progressively replaces it.
++  const previous = document.createElement('canvas');
++  previous.width = canvas.width; previous.height = canvas.height;
++  previous.getContext('2d').drawImage(canvas, 0, 0);
++  canvas.width = width; canvas.height = height;
++  context.drawImage(previous, 0, 0, width, height);
++  $('canvas-size').textContent = $('stat-resolution').textContent = `${width} × ${height}`;
++  $('stat-samples').innerHTML = `${currentSamples} <small>spp</small>`;
++  $('stat-time').innerHTML = '0.0 <small>s</small>';
++  $('progress-fill').style.width = '0%';
++  $('progress').setAttribute('aria-valuenow', '0');
++  $('render-status').textContent = 'Loading WebAssembly…';
++  setRunning(true);
++  try {
++    worker = new Worker(new URL('./render-worker.js', import.meta.url), { type: 'module' });
++    worker.onerror = () => { if (id === runId) fail('Renderer failed. Click Render scene to retry.'); };
++    worker.onmessage = ({ data }) => {
++      if (id !== runId) return;
++      if (data.error) { fail(data.error); return; }
++      context.putImageData(new ImageData(new Uint8ClampedArray(data.pixels.buffer), width, data.count), 0, data.row);
++      hasPixels = true;
++      $('download').disabled = false;
++      $('stat-time').innerHTML = `${(data.elapsed / 1000).toFixed(1)} <small>s</small>`;
++      $('progress-fill').style.width = `${data.progress * 100}%`;
++      $('progress').setAttribute('aria-valuenow', String(Math.round(data.progress * 100)));
++      $('render-status').textContent = `Rendering · ${Math.round(data.progress * 100)}%`;
++      if (data.progress === 1) {
++        stop();
++        $('render-status').textContent = 'Render complete';
++      }
++    };
++    worker.postMessage({ width, height, samples: currentSamples,
++      seed: crypto.getRandomValues(new Uint32Array(1))[0],
++      colors: colors.map((input) => [1, 3, 5].map((offset) => parseInt(input.value.slice(offset, offset + 2), 16) / 255)) });
++  } catch (error) { fail(`Unable to start: ${error.message}`); }
++}
++$('render').addEventListener('click', () => {
++  if (running) { stop(); $('render-status').textContent = 'Render paused'; }
++  else render();
++});
++$('randomize').addEventListener('click', () => {
++  const random = crypto.getRandomValues(new Uint8Array(6));
++  colors.forEach((input, i) => {
++    // Keep bright, tinted materials so that indirect light and refraction remain visible.
++    const components = Array.from(random.slice(i * 3, i * 3 + 3), (n) => Math.round(105 + n / 255 * 145));
++    components[i % 3] = 250;
++    input.value = '#' + components.map((n) => n.toString(16).padStart(2, '0')).join('');
++  });
++  render();
++});
++$('reset').addEventListener('click', () => {
++  setSamples(64); $('resolution').value = '640';
++  colors.forEach((input, i) => { input.value = initialColors[i]; });
++  render();
++});
++$('download').addEventListener('click', () => canvas.toBlob((blob) => {
++  if (!blob) return;
++  const url = URL.createObjectURL(blob), anchor = document.createElement('a');
++  anchor.href = url; anchor.download = `smallpt-${canvas.width}x${canvas.height}-${currentSamples}spp.png`;
++  anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
++}, 'image/png'));
++document.addEventListener('keydown', (event) => {
++  if (event.key === 'Enter' && event.target === document.body) $('render').click();
++});
++window.addEventListener('pagehide', stop);
++if (typeof WebAssembly === 'undefined' || typeof Worker === 'undefined') fail('This browser needs WebAssembly and Web Worker support.');
++else render();
+diff --git a/assets/preview.png b/assets/preview.png
+new file mode 100644
+index 0000000..e69de29
+diff --git a/assets/smallpt.js b/assets/smallpt.js
+new file mode 100644
+index 0000000..353266c
+--- /dev/null
++++ b/assets/smallpt.js
+@@ -0,0 +1,2 @@
++async function Module(moduleArg={}){var Module=moduleArg;(function(){function humanReadableVersionToPacked(str){str=str.split("-")[0];var vers=str.split(".").slice(0,3);while(vers.length<3)vers.push("00");vers=vers.map((n,i,arr)=>n.padStart(2,"0"));return vers.join("")}var packedVersionToHumanReadable=n=>[n/1e4|0,(n/100|0)%100,n%100].join(".");var TARGET_NOT_SUPPORTED=2147483647;var currentNodeVersion=typeof process!=="undefined"&&process.versions?.node?humanReadableVersionToPacked(process.versions.node):TARGET_NOT_SUPPORTED;if(currentNodeVersion<TARGET_NOT_SUPPORTED){throw new Error("not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)")}if(currentNodeVersion<2147483647){throw new Error(`This emscripten-generated code requires node v${packedVersionToHumanReadable(2147483647)} (detected v${packedVersionToHumanReadable(currentNodeVersion)})`)}var userAgent=typeof navigator!=="undefined"&&navigator.userAgent;if(!userAgent){return}var currentSafariVersion=userAgent.includes("Safari/")&&!userAgent.includes("Chrome/")&&userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)?humanReadableVersionToPacked(userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]):TARGET_NOT_SUPPORTED;if(currentSafariVersion<15e4){throw new Error(`This emscripten-generated code requires Safari v${packedVersionToHumanReadable(15e4)} (detected v${currentSafariVersion})`)}var currentFirefoxVersion=userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)?parseFloat(userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]):TARGET_NOT_SUPPORTED;if(currentFirefoxVersion<79){throw new Error(`This emscripten-generated code requires Firefox v79 (detected v${currentFirefoxVersion})`)}var currentChromeVersion=userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)?parseFloat(userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]):TARGET_NOT_SUPPORTED;if(currentChromeVersion<85){throw new Error(`This emscripten-generated code requires Chrome v85 (detected v${currentChromeVersion})`)}})();var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var ENVIRONMENT_IS_SHELL=!ENVIRONMENT_IS_WEB&&!ENVIRONMENT_IS_NODE&&!ENVIRONMENT_IS_WORKER;var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=import.meta.url;var scriptDirectory="";function locateFile(path){return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_SHELL){}else if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}if(!(globalThis.window||globalThis.WorkerGlobalScope))throw new Error("not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)");{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{assert(!isFileURI(url),"readAsync does not work with file:// URLs");var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{throw new Error("environment detection error")}var out=console.log.bind(console);var err=console.error.bind(console);assert(!ENVIRONMENT_IS_NODE,"node environment detected but not enabled at build time (add `node` to `-sENVIRONMENT` to enable)");assert(!ENVIRONMENT_IS_SHELL,"shell environment detected but not enabled at build time (add `shell` to `-sENVIRONMENT` to enable)");var wasmBinary;if(!globalThis.WebAssembly){err("no native wasm support detected")}var ABORT=false;var EXITSTATUS;function assert(condition,text){if(!condition){abort("Assertion failed"+(text?": "+text:""))}}var isFileURI=filename=>filename.startsWith("file://");function writeStackCookie(){var max=_emscripten_stack_get_end();assert((max&3)==0);if(max==0){max+=4}HEAPU32[max>>2]=34821223;HEAPU32[max+4>>2]=2310721022;HEAPU32[0>>2]=1668509029}function checkStackCookie(){if(ABORT)return;var max=_emscripten_stack_get_end();if(max==0){max+=4}var cookie1=HEAPU32[max>>2];var cookie2=HEAPU32[max+4>>2];if(cookie1!=34821223||cookie2!=2310721022){abort(`Stack overflow! Stack cookie has been overwritten at ${ptrToString(max)}, expected hex dwords 0x89BACDFE and 0x2135467, but received ${ptrToString(cookie2)} ${ptrToString(cookie1)}`)}if(HEAPU32[0>>2]!=1668509029){abort("Runtime error: The application has corrupted its heap memory area (address zero)!")}}class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeDebug=true;(()=>{var h16=new Int16Array(1);var h8=new Int8Array(h16.buffer);h16[0]=25459;if(h8[0]!==115||h8[1]!==99)abort("Runtime error: expected the system to be little-endian! (Run with -sSUPPORT_BIG_ENDIAN to bypass)")})();function makeInvalidEarlyAccess(name){return()=>assert(false,`call to '${name}' via reference taken before Wasm module initialization`)}function ignoredModuleProp(prop){if(Object.getOwnPropertyDescriptor(Module,prop)){abort(`\`Module.${prop}\` was supplied but \`${prop}\` not included in INCOMING_MODULE_JS_API`)}}function isExportedByForceFilesystem(name){return name==="FS_createPath"||name==="FS_createDataFile"||name==="FS_createPreloadedFile"||name==="FS_preloadFile"||name==="FS_unlink"||name==="addRunDependency"||name==="FS_createLazyFile"||name==="FS_createDevice"||name==="removeRunDependency"}function missingLibrarySymbol(sym){unexportedRuntimeSymbol(sym)}function unexportedRuntimeSymbol(sym){if(!Object.getOwnPropertyDescriptor(Module,sym)){Object.defineProperty(Module,sym,{configurable:true,get(){var msg=`'${sym}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)`;if(isExportedByForceFilesystem(sym)){msg+=". Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you"}abort(msg)}})}}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAP16=new Int16Array(b);Module["HEAPU8"]=HEAPU8=new Uint8Array(b);HEAPU16=new Uint16Array(b);HEAP32=new Int32Array(b);HEAPU32=new Uint32Array(b);HEAPF32=new Float32Array(b);HEAPF64=new Float64Array(b);HEAP64=new BigInt64Array(b);HEAPU64=new BigUint64Array(b)}assert(globalThis.Int32Array&&globalThis.Float64Array&&Int32Array.prototype.subarray&&Int32Array.prototype.set,"JS engine does not provide full typed array support");function preRun(){}function initRuntime(){assert(!runtimeInitialized);runtimeInitialized=true;checkStackCookie();wasmExports["__wasm_call_ctors"]()}function postRun(){checkStackCookie()}function abort(what){what=`Aborted(${what})`;err(what);ABORT=true;var e=new WebAssembly.RuntimeError(what);throw e}function fsMissing(){abort("Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM")}var FS={init:fsMissing,createDataFile:fsMissing,createPreloadedFile:fsMissing,createLazyFile:fsMissing,open:fsMissing,mkdev:fsMissing,registerDevice:fsMissing,analyzePath:fsMissing,ErrnoError:fsMissing};function createExportWrapper(name,nargs){return(...args)=>{assert(runtimeInitialized,`native function \`${name}\` called before runtime initialization`);var f=wasmExports[name];assert(f,`exported native function \`${name}\` not found`);assert(args.length<=nargs,`native function \`${name}\` called with ${args.length} args but expects ${nargs}`);return f(...args)}}var wasmBinaryFile;function findWasmBinary(){if(Module["locateFile"]){return locateFile("smallpt.wasm")}return new URL("smallpt.wasm",import.meta.url).href}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);if(isFileURI(binaryFile)){err(`warning: Loading from a file URI (${binaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`)}abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={env:wasmImports,wasi_snapshot_preview1:wasmImports};return imports}async function createWasm(){function receiveInstance(instance,module){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}var trueModule=Module;function receiveInstantiationResult(result){assert(Module===trueModule,"the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?");trueModule=null;return receiveInstance(result["instance"])}var info=getWasmImports();wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var HEAP16;var HEAP32;var HEAP64;var HEAP8;var HEAPF32;var HEAPF64;var HEAPU16;var HEAPU32;var HEAPU64;var HEAPU8;function ptrToString(ptr){assert(typeof ptr==="number",`ptrToString expects a number, got ${typeof ptr}`);ptr>>>=0;return"0x"+ptr.toString(16).padStart(8,"0")}var warnOnce=text=>{warnOnce.shown||={};if(!warnOnce.shown[text]){warnOnce.shown[text]=1;err(text)}};var __abort_js=()=>abort("native code called abort()");var runtimeKeepaliveCounter=0;var __emscripten_runtime_keepalive_clear=()=>{runtimeKeepaliveCounter=0};var timers={};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}checkStackCookie();if(e instanceof WebAssembly.RuntimeError){if(_emscripten_stack_get_current()<=0){err("Stack overflow detected.  You can try increasing -sSTACK_SIZE (currently set to 1048576)")}}quit_(1,e)};var keepRuntimeAlive=()=>true;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;checkUnflushedContent();if(keepRuntimeAlive()&&!implicit){var msg=`program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;err(msg)}_proc_exit(status)};var _exit=exitJS;var maybeExit=()=>{if(!keepRuntimeAlive()){try{_exit(EXITSTATUS)}catch(e){handleException(e)}}};var callUserCallback=func=>{if(ABORT){err("user callback triggered after runtime exited or application aborted.  Ignoring.");return}try{return func()}catch(e){handleException(e)}finally{maybeExit()}};var _emscripten_get_now=()=>performance.now();var __setitimer_js=(which,timeout_ms)=>{if(timers[which]){clearTimeout(timers[which].id);delete timers[which]}if(!timeout_ms)return 0;var id=setTimeout(()=>{assert(which in timers);delete timers[which];callUserCallback(()=>__emscripten_timeout(which,_emscripten_get_now()))},timeout_ms);timers[which]={id,timeout_ms};return 0};var getHeapMax=()=>2147483648;var alignMemory=(size,alignment)=>{assert(alignment,"alignment argument is required");return Math.ceil(size/alignment)*alignment};var growMemory=size=>{var oldHeapSize=wasmMemory.buffer.byteLength;var pages=(size-oldHeapSize+65535)/65536|0;try{wasmMemory.grow(pages);updateMemoryViews();return 1}catch(e){err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`)}};var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;assert(requestedSize>oldSize);var maxHeapSize=getHeapMax();if(requestedSize>maxHeapSize){err(`Cannot enlarge memory, requested ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);return false}for(var cutDown=1;cutDown<=4;cutDown*=2){var overGrownHeapSize=oldSize*(1+.2/cutDown);overGrownHeapSize=Math.min(overGrownHeapSize,requestedSize+100663296);var newSize=Math.min(maxHeapSize,alignMemory(Math.max(requestedSize,overGrownHeapSize),65536));var replacement=growMemory(newSize);if(replacement){return true}}err(`Failed to grow the heap from ${oldSize} bytes to ${newSize} bytes, not enough memory!`);return false};var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{if((u0&248)!=240)warnOnce(`Invalid UTF-8 leading byte ${ptrToString(u0)} encountered when deserializing a UTF-8 string in wasm memory to a JS string!`);u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>{assert(typeof ptr=="number",`UTF8ToString expects a number (got ${typeof ptr})`);return ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):""};var _fd_close=fd=>{abort("fd_close called without SYSCALLS_REQUIRE_FILESYSTEM")};var INT53_MAX=9007199254740992;var INT53_MIN=-9007199254740992;var bigintToI53Checked=num=>num<INT53_MIN||num>INT53_MAX?NaN:Number(num);function _fd_seek(fd,offset,whence,newOffset){offset=bigintToI53Checked(offset);return 70}var printCharBuffers=[null,[],[]];var printChar=(stream,curr)=>{var buffer=printCharBuffers[stream];assert(buffer);if(curr===0||curr===10){(stream===1?out:err)(UTF8ArrayToString(buffer));buffer.length=0}else{buffer.push(curr)}};var flush_NO_FILESYSTEM=()=>{_fflush(0);if(printCharBuffers[1].length)printChar(1,10);if(printCharBuffers[2].length)printChar(2,10)};var _fd_write=(fd,iov,iovcnt,pnum)=>{var num=0;for(var i=0;i<iovcnt;i++){var ptr=HEAPU32[iov>>2];var len=HEAPU32[iov+4>>2];iov+=8;for(var j=0;j<len;j++){printChar(fd,HEAPU8[ptr+j])}num+=len}HEAPU32[pnum>>2]=num;return 0};{Module["FS_createDataFile"]=FS.createDataFile;Module["FS_createPreloadedFile"]=FS.createPreloadedFile;checkIncomingModuleAPI();assert(typeof Module["memoryInitializerPrefixURL"]=="undefined","Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["pthreadMainPrefixURL"]=="undefined","Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["cdInitializerPrefixURL"]=="undefined","Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["filePackagePrefixURL"]=="undefined","Module.filePackagePrefixURL option was removed, use Module.locateFile instead");assert(typeof Module["read"]=="undefined","Module.read option was removed");assert(typeof Module["readAsync"]=="undefined","Module.readAsync option was removed (modify readAsync in JS)");assert(typeof Module["readBinary"]=="undefined","Module.readBinary option was removed (modify readBinary in JS)");assert(typeof Module["setWindowTitle"]=="undefined","Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)");assert(typeof Module["TOTAL_MEMORY"]=="undefined","Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY");assert(typeof Module["ENVIRONMENT"]=="undefined","Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)");assert(typeof Module["STACK_SIZE"]=="undefined","STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time");assert(typeof Module["wasmMemory"]=="undefined","Use of `wasmMemory` detected.  Use -sIMPORTED_MEMORY to define wasmMemory externally");assert(typeof Module["INITIAL_MEMORY"]=="undefined","Detected runtime INITIAL_MEMORY setting.  Use -sIMPORTED_MEMORY to define wasmMemory dynamically")}var missingLibrarySymbols=["writeI53ToI64","writeI53ToI64Clamped","writeI53ToI64Signaling","writeI53ToU64Clamped","writeI53ToU64Signaling","readI53FromI64","readI53FromU64","convertI32PairToI53","convertI32PairToI53Checked","convertU32PairToI53","stackAlloc","getTempRet0","setTempRet0","createNamedFunction","zeroMemory","withStackSave","strError","inetPton4","inetNtop4","inetPton6","inetNtop6","readSockaddr","writeSockaddr","readEmAsmArgs","jstoi_q","getExecutableName","autoResumeAudioContext","getDynCaller","dynCall","runtimeKeepalivePush","runtimeKeepalivePop","asyncLoad","asmjsMangle","mmapAlloc","HandleAllocator","getUniqueRunDependency","addRunDependency","removeRunDependency","addOnPreRun","addOnInit","addOnPostCtor","addOnPreMain","addOnExit","addOnPostRun","STACK_SIZE","STACK_ALIGN","POINTER_SIZE","ASSERTIONS","ccall","cwrap","convertJsFunctionToWasm","getEmptyTableSlot","updateTableMap","getFunctionAddress","addFunction","removeFunction","stringToUTF8Array","stringToUTF8","lengthBytesUTF8","intArrayFromString","intArrayToString","AsciiToString","stringToAscii","UTF16ToString","stringToUTF16","lengthBytesUTF16","UTF32ToString","stringToUTF32","lengthBytesUTF32","stringToNewUTF8","stringToUTF8OnStack","writeArrayToMemory","registerKeyEventCallback","maybeCStringToJsString","findEventTarget","getBoundingClientRect","fillMouseEventData","registerMouseEventCallback","registerWheelEventCallback","registerUiEventCallback","registerFocusEventCallback","fillDeviceOrientationEventData","registerDeviceOrientationEventCallback","fillDeviceMotionEventData","registerDeviceMotionEventCallback","screenOrientation","fillOrientationChangeEventData","registerOrientationChangeEventCallback","fillFullscreenChangeEventData","registerFullscreenChangeEventCallback","JSEvents_requestFullscreen","JSEvents_resizeCanvasForFullscreen","registerRestoreOldStyle","hideEverythingExceptGivenElement","restoreHiddenElements","setLetterbox","softFullscreenResizeWebGLRenderTarget","doRequestFullscreen","fillPointerlockChangeEventData","registerPointerlockChangeEventCallback","registerPointerlockErrorEventCallback","requestPointerLock","fillVisibilityChangeEventData","registerVisibilityChangeEventCallback","registerTouchEventCallback","fillGamepadEventData","registerGamepadEventCallback","registerBeforeUnloadEventCallback","fillBatteryEventData","registerBatteryEventCallback","setCanvasElementSize","getCanvasElementSize","jsStackTrace","getCallstack","convertPCtoSourceLocation","getEnvStrings","checkWasiClock","wasiRightsToMuslOFlags","wasiOFlagsToMuslOFlags","initRandomFill","randomFill","safeSetTimeout","setImmediateWrapped","safeRequestAnimationFrame","clearImmediateWrapped","registerPostMainLoop","registerPreMainLoop","getPromise","makePromise","addPromise","idsToPromises","makePromiseCallback","Browser_asyncPrepareDataCounter","isLeapYear","ydayFromDate","arraySum","addDays","getSocketFromFD","getSocketAddress"];missingLibrarySymbols.forEach(missingLibrarySymbol);var unexportedSymbols=["run","out","err","callMain","abort","wasmExports","writeStackCookie","checkStackCookie","INT53_MAX","INT53_MIN","bigintToI53Checked","HEAP8","HEAP16","HEAPU16","HEAP32","HEAPU32","HEAPF32","HEAPF64","HEAP64","HEAPU64","stackSave","stackRestore","ptrToString","exitJS","getHeapMax","growMemory","ENV","ERRNO_CODES","DNS","Protocols","Sockets","timers","warnOnce","readEmAsmArgsArray","handleException","keepRuntimeAlive","callUserCallback","maybeExit","alignMemory","wasmTable","wasmMemory","noExitRuntime","freeTableIndexes","functionsInTableMap","setValue","getValue","PATH","PATH_FS","UTF8Decoder","UTF8ArrayToString","UTF8ToString","UTF16Decoder","JSEvents","specialHTMLTargets","findCanvasEventTarget","currentFullscreenStrategy","restoreOldWindowedStyle","UNWIND_CACHE","ExitStatus","flush_NO_FILESYSTEM","emSetImmediate","emClearImmediate_deps","emClearImmediate","promiseMap","Browser","requestFullscreen","requestFullScreen","setCanvasSize","getUserMedia","createContext","getPreloadedImageData__data","wget","MONTH_DAYS_REGULAR","MONTH_DAYS_LEAP","MONTH_DAYS_REGULAR_CUMULATIVE","MONTH_DAYS_LEAP_CUMULATIVE","SYSCALLS"];unexportedSymbols.forEach(unexportedRuntimeSymbol);function checkIncomingModuleAPI(){ignoredModuleProp("ENVIRONMENT");ignoredModuleProp("GL_MAX_TEXTURE_IMAGE_UNITS");ignoredModuleProp("SDL_canPlayWithWebAudio");ignoredModuleProp("SDL_numSimultaneouslyQueuedBuffers");ignoredModuleProp("INITIAL_MEMORY");ignoredModuleProp("wasmMemory");ignoredModuleProp("arguments");ignoredModuleProp("buffer");ignoredModuleProp("canvas");ignoredModuleProp("doNotCaptureKeyboard");ignoredModuleProp("dynamicLibraries");ignoredModuleProp("elementPointerLock");ignoredModuleProp("extraStackTrace");ignoredModuleProp("forcedAspectRatio");ignoredModuleProp("instantiateWasm");ignoredModuleProp("keyboardListeningElement");ignoredModuleProp("freePreloadedMediaOnUse");ignoredModuleProp("locateFile");ignoredModuleProp("mainScriptUrlOrBlob");ignoredModuleProp("mem");ignoredModuleProp("monitorRunDependencies");ignoredModuleProp("noExitRuntime");ignoredModuleProp("noInitialRun");ignoredModuleProp("onAbort");ignoredModuleProp("onExit");ignoredModuleProp("onFullScreen");ignoredModuleProp("onRuntimeInitialized");ignoredModuleProp("postMainLoop");ignoredModuleProp("postRun");ignoredModuleProp("preInit");ignoredModuleProp("preMainLoop");ignoredModuleProp("preRun");ignoredModuleProp("preinitializedWebGLContext");ignoredModuleProp("preloadPlugins");ignoredModuleProp("print");ignoredModuleProp("printErr");ignoredModuleProp("setStatus");ignoredModuleProp("statusMessage");ignoredModuleProp("stderr");ignoredModuleProp("stdin");ignoredModuleProp("stdout");ignoredModuleProp("thisProgram");ignoredModuleProp("wasm");ignoredModuleProp("wasmBinary");ignoredModuleProp("websocket");ignoredModuleProp("fetchSettings");ignoredModuleProp("logReadFiles");ignoredModuleProp("loadSplitModule");ignoredModuleProp("onMalloc");ignoredModuleProp("onRealloc");ignoredModuleProp("onFree");ignoredModuleProp("onSbrkGrow");ignoredModuleProp("onCOSCacheHit");ignoredModuleProp("onCOSCacheMiss");ignoredModuleProp("onCOSStore")}var _init_render=Module["_init_render"]=makeInvalidEarlyAccess("_init_render");var _set_color=Module["_set_color"]=makeInvalidEarlyAccess("_set_color");var _get_pixels=Module["_get_pixels"]=makeInvalidEarlyAccess("_get_pixels");var _render_rows=Module["_render_rows"]=makeInvalidEarlyAccess("_render_rows");var _fflush=makeInvalidEarlyAccess("_fflush");var __emscripten_timeout=makeInvalidEarlyAccess("__emscripten_timeout");var _emscripten_stack_init=makeInvalidEarlyAccess("_emscripten_stack_init");var _emscripten_stack_get_free=makeInvalidEarlyAccess("_emscripten_stack_get_free");var _emscripten_stack_get_base=makeInvalidEarlyAccess("_emscripten_stack_get_base");var _emscripten_stack_get_end=makeInvalidEarlyAccess("_emscripten_stack_get_end");var __emscripten_stack_restore=makeInvalidEarlyAccess("__emscripten_stack_restore");var __emscripten_stack_alloc=makeInvalidEarlyAccess("__emscripten_stack_alloc");var _emscripten_stack_get_current=makeInvalidEarlyAccess("_emscripten_stack_get_current");var memory=makeInvalidEarlyAccess("memory");var __indirect_function_table=makeInvalidEarlyAccess("__indirect_function_table");var wasmMemory=makeInvalidEarlyAccess("wasmMemory");function assignWasmExports(wasmExports){assert(typeof wasmExports["init_render"]!="undefined","missing Wasm export: init_render");assert(typeof wasmExports["set_color"]!="undefined","missing Wasm export: set_color");assert(typeof wasmExports["get_pixels"]!="undefined","missing Wasm export: get_pixels");assert(typeof wasmExports["render_rows"]!="undefined","missing Wasm export: render_rows");assert(typeof wasmExports["fflush"]!="undefined","missing Wasm export: fflush");assert(typeof wasmExports["_emscripten_timeout"]!="undefined","missing Wasm export: _emscripten_timeout");assert(typeof wasmExports["emscripten_stack_init"]!="undefined","missing Wasm export: emscripten_stack_init");assert(typeof wasmExports["emscripten_stack_get_free"]!="undefined","missing Wasm export: emscripten_stack_get_free");assert(typeof wasmExports["emscripten_stack_get_base"]!="undefined","missing Wasm export: emscripten_stack_get_base");assert(typeof wasmExports["emscripten_stack_get_end"]!="undefined","missing Wasm export: emscripten_stack_get_end");assert(typeof wasmExports["_emscripten_stack_restore"]!="undefined","missing Wasm export: _emscripten_stack_restore");assert(typeof wasmExports["_emscripten_stack_alloc"]!="undefined","missing Wasm export: _emscripten_stack_alloc");assert(typeof wasmExports["emscripten_stack_get_current"]!="undefined","missing Wasm export: emscripten_stack_get_current");assert(typeof wasmExports["memory"]!="undefined","missing Wasm export: memory");assert(typeof wasmExports["__indirect_function_table"]!="undefined","missing Wasm export: __indirect_function_table");_init_render=Module["_init_render"]=createExportWrapper("init_render",4);_set_color=Module["_set_color"]=createExportWrapper("set_color",4);_get_pixels=Module["_get_pixels"]=createExportWrapper("get_pixels",0);_render_rows=Module["_render_rows"]=createExportWrapper("render_rows",2);_fflush=createExportWrapper("fflush",1);__emscripten_timeout=createExportWrapper("_emscripten_timeout",2);_emscripten_stack_init=wasmExports["emscripten_stack_init"];_emscripten_stack_get_free=wasmExports["emscripten_stack_get_free"];_emscripten_stack_get_base=wasmExports["emscripten_stack_get_base"];_emscripten_stack_get_end=wasmExports["emscripten_stack_get_end"];__emscripten_stack_restore=wasmExports["_emscripten_stack_restore"];__emscripten_stack_alloc=wasmExports["_emscripten_stack_alloc"];_emscripten_stack_get_current=wasmExports["emscripten_stack_get_current"];memory=wasmMemory=wasmExports["memory"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={_abort_js:__abort_js,_emscripten_runtime_keepalive_clear:__emscripten_runtime_keepalive_clear,_setitimer_js:__setitimer_js,emscripten_resize_heap:_emscripten_resize_heap,fd_close:_fd_close,fd_seek:_fd_seek,fd_write:_fd_write,proc_exit:_proc_exit};var calledRun;function stackCheckInit(){_emscripten_stack_init();writeStackCookie()}async function run(){assert(!calledRun);calledRun=true;stackCheckInit();preRun();if(ABORT)return;initRuntime();assert(!Module["_main"],'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');postRun();checkStackCookie()}function checkUnflushedContent(){var oldOut=out;var oldErr=err;var has=false;out=err=x=>{has=true};try{flush_NO_FILESYSTEM()}catch(e){}out=oldOut;err=oldErr;if(has){warnOnce("stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the Emscripten FAQ), or make sure to emit a newline when you printf etc.");warnOnce("(this may also be due to not including full filesystem support - try building with -sFORCE_FILESYSTEM)")}}var wasmExports;wasmExports=await createWasm();await run();for(const prop of Object.keys(Module)){if(!(prop in moduleArg)){Object.defineProperty(moduleArg,prop,{configurable:true,get(){abort(`Access to module property ('${prop}') is no longer possible via the module constructor argument; Instead, use the result of the module constructor.`)}})}}
++;return Module}export default Module;
+diff --git a/assets/smallpt.wasm b/assets/smallpt.wasm
+new file mode 100755
+index 0000000..e69de29
 diff --git a/index.html b/index.html
-index 66c9173..412e88a 100644
+index 66c9173..e3b2462 100644
 --- a/index.html
 +++ b/index.html
-@@ -5,6 +5,7 @@
+@@ -1,212 +1,58 @@
+-<!DOCTYPE html>
++<!doctype html>
+ <html lang="en">
+-
+ <head>
    <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>The Daily Grind | Artisanal Coffee</title>
-+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E☕%3C/text%3E%3C/svg%3E">
-   <style>
-     :root {
-       --primary: #4e342e;
-@@ -135,6 +136,20 @@
-       background: #3e2723;
-     }
- 
-+    button.btn { border: 0; font: inherit; cursor: pointer; }
-+    .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
-+    button:disabled { opacity: 0.7; cursor: progress; }
-+    .art-studio { text-align: center; margin-bottom: 45px; }
-+    .art-studio canvas { display: block; width: 100%; height: auto; max-width: 800px; margin: 20px auto 0; border-radius: 8px; }
-+    .art-studio canvas[hidden] { display: none; }
-+    #render-status { min-height: 1.6em; margin-top: 12px; }
-+    @media (max-width: 640px) {
-+      nav { flex-wrap: wrap; gap: 12px; }
-+      nav ul { flex-wrap: wrap; gap: 12px; }
-+      nav ul li { margin-left: 0; }
-+      .hero h1 { font-size: 2.2rem; }
-+    }
-+
-     footer {
-       background: var(--secondary);
-       text-align: center;
-@@ -175,6 +190,13 @@
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>The Daily Grind | Artisanal Coffee</title>
+-  <style>
+-    :root {
+-      --primary: #4e342e;
+-      --secondary: #d7ccc8;
+-      --accent: #ffab40;
+-      --text: #3e2723;
+-      --light: #fafafa;
+-    }
+-
+-    * {
+-      box-sizing: border-box;
+-      margin: 0;
+-      padding: 0;
+-    }
+-
+-    body {
+-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+-      line-height: 1.6;
+-      color: var(--text);
+-      background-color: var(--light);
+-    }
+-
+-    /* Navigation */
+-    nav {
+-      background: var(--primary);
+-      color: white;
+-      padding: 1rem 5%;
+-      display: flex;
+-      justify-content: space-between;
+-      align-items: center;
+-      position: sticky;
+-      top: 0;
+-      z-index: 1000;
+-    }
+-
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
+-    }
+-  </style>
++  <meta name="viewport" content="width=device-width, initial-scale=1">
++  <meta name="theme-color" content="#111315">
++  <meta name="description" content="A little experiment in light. Render Kevin Beason’s smallpt path tracer in your browser with WebAssembly.">
++  <title>smallpt — A little experiment in light</title>
++  <link rel="stylesheet" href="styles.css">
++  <script type="module" src="app.js"></script>
+ </head>
+-
+ <body>
+-
+-  <nav>
+-    <div class="logo">THE DAILY GRIND</div>
+-    <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
+-    </ul>
+-  </nav>
+-
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++  <svg class="icon-defs" xmlns="http://www.w3.org/2000/svg"><defs>
++    <symbol id="shuffle" viewBox="0 0 24 24"><path d="M3 6h3c5 0 7 12 12 12h3m-4-4 4 4-4 4M3 18h3c1.5 0 2.7-1.2 3.8-3M14 9c1.2-1.8 2.4-3 4-3h3m-4-4 4 4-4 4"/></symbol>
++    <symbol id="arrow" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6h12v12"/></symbol>
++    <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
++    <symbol id="reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></symbol>
++  </defs></svg>
++  <header class="site-header">
++    <a class="brand" href="./" aria-label="smallpt home"><span class="brand-mark">s<span>◦</span></span>smallpt<span class="brand-separator">/</span><span class="brand-sub">a browser experiment</span></a>
++    <div class="header-right"><span class="runtime-badge"><span class="status-dot"></span> Powered by WebAssembly</span><a class="source-link" href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">View source <svg><use href="#arrow"/></svg></a></div>
    </header>
- 
-   <main class="container">
-+    <section class="art-studio" aria-labelledby="art-title">
-+      <h2 id="art-title">A Little Art in Every Cup</h2>
-+      <p>A fresh pour, made just for you. Generate your own golden rosetta.</p>
-+      <canvas id="coffee-art" width="960" height="600" role="img" aria-label="Freshly generated latte art in a ceramic coffee cup on a wooden table" hidden></canvas>
-+      <button id="render-image" class="btn" type="button" aria-controls="coffee-art">Render a new image</button>
-+      <p id="render-status" role="status" aria-live="polite">Preparing your coffee art…</p>
-+    </section>
-     <section>
-       <h2 style="text-align: center;">Seasonal Favorites</h2>
-       <div class="grid">
-@@ -207,6 +229,7 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
- 
-+  <script type="module" src="/src/main.ts"></script>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
+-      </div>
++  <main>
++    <section class="intro">
++      <div><div class="eyebrow"><span></span> SMALL CODE. INFINITE PATHS.</div><h1>A little experiment in light<span>.</span></h1><p>99 lines of C++. A whole world of light. Now in your browser.</p></div>
++      <span class="experiment-number">EXPERIMENT <span>001</span></span>
+     </section>
+-  </main>
+-
+-  <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
++    <div class="workspace">
++      <aside class="settings">
++        <div class="panel-heading"><h2>Scene settings</h2><button id="reset" class="icon-button" title="Reset scene settings" aria-label="Reset scene settings"><svg><use href="#reset"/></svg></button></div>
++        <section class="setting-section"><div class="section-label">01 <h3>Render quality</h3></div>
++          <label for="samples">Samples per pixel <span class="field-tag">SPP</span></label>
++          <div class="segmented" id="sample-options" role="group" aria-label="Samples per pixel"><button data-samples="16">16</button><button data-samples="64" class="selected" aria-pressed="true">64</button><button data-samples="128">128</button><button data-samples="256">256</button></div>
++          <input type="hidden" id="samples" value="64">
++          <p class="field-help">More samples, less noise. A little more patience.</p>
++          <label for="resolution" class="resolution-label">Resolution</label><div class="select-wrap"><select id="resolution"><option value="480">480 × 360 · Quick</option><option value="640" selected>640 × 480 · Standard</option><option value="960">960 × 720 · High</option></select><span>⌄</span></div>
++        </section>
++        <section class="setting-section"><div class="section-label">02 <h3>Sphere colors</h3></div>
++          <div class="sphere-row"><span class="material-orb mirror"></span><div><label for="mirror-color">Mirror sphere</label><span>Specular reflection</span></div><input id="mirror-color" type="color" value="#f6e4ce" aria-label="Mirror sphere color"></div>
++          <div class="sphere-row"><span class="material-orb glass"></span><div><label for="glass-color">Glass sphere</label><span>Dielectric refraction</span></div><input id="glass-color" type="color" value="#d8e1fa" aria-label="Glass sphere color"></div>
++          <button class="randomize-button" id="randomize"><svg><use href="#shuffle"/></svg>Randomize & render <span>↗</span></button>
++          <p class="field-help">New colors. Same laws of physics.</p>
++        </section>
++        <section class="setting-section scene-info"><div class="section-label">03 <h3>The scene</h3></div><div><span>Environment</span><span>Cornell box</span></div><div><span>Objects</span><span>9 spheres</span></div><div><span>Integrator</span><span>Path tracing</span></div><div><span>Light source</span><span>Area emitter</span></div></section>
++        <div class="render-actions"><button id="render" class="primary-button"><span class="play-icon">▶</span><span id="render-label">Render scene</span><span class="key-hint">↵</span></button><p><span class="status-dot"></span> Runs entirely on your device</p></div>
++      </aside>
++      <section class="render-panel" aria-label="Path tracer output">
++        <div class="render-toolbar"><div class="render-title"><span class="status-dot" id="render-dot"></span><span id="render-status" role="status">Initializing renderer</span><span class="toolbar-divider"></span><span class="scene-name">Cornell box</span></div><button id="download" class="icon-button" title="Download render as PNG" aria-label="Download render as PNG" disabled><svg><use href="#download"/></svg></button></div>
++        <div class="canvas-stage"><div class="canvas-frame"><canvas id="canvas" width="640" height="480" aria-label="Rendered Cornell box with a mirror sphere and a glass sphere"></canvas><div class="canvas-caption"><span>SMALLPT / LIVE RENDER</span><span id="canvas-size">640 × 480</span></div></div></div>
++        <div class="render-bottom"><div><span class="stat-label">SAMPLES</span><span id="stat-samples">64 <small>spp</small></span></div><div><span class="stat-label">RESOLUTION</span><span id="stat-resolution">640 × 480</span></div><div><span class="stat-label">RENDER TIME</span><span id="stat-time">0.0 <small>s</small></span></div><div class="engine-stat"><span class="stat-label">ENGINE</span><span><i class="tiny-square"></i>C++ → WASM</span></div></div>
++        <div class="progress-track" id="progress" role="progressbar" aria-label="Render progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progress-fill"></div></div>
++      </section>
+     </div>
+-    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+-  </footer>
+-
++    <section class="below-workspace"><div><span class="note-icon">↳</span><p>Every pixel tells a story of bouncing light.<br><span>No GPU tricks. Just a tiny path tracer, doing its thing.</span></p></div><span class="local-note"><span class="status-dot"></span> Local compute. Zero uploads.</span></section>
++    <footer><p>Built on <a href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">smallpt</a> by Kevin Beason <span>·</span> Open source, endlessly curious.</p><a href="vendor/smallpt/smallpt.cpp" download>Explore the 99 lines <svg><use href="#arrow"/></svg></a></footer>
++  </main>
  </body>
- 
+-
  </html>
-diff --git a/native/renderer.c b/native/renderer.c
-new file mode 100644
-index 0000000..b379fdb
---- /dev/null
-+++ b/native/renderer.c
-@@ -0,0 +1,54 @@
-+#include <math.h>
-+#include <stdint.h>
-+
-+#define WIDTH 960
-+#define HEIGHT 600
-+static uint8_t pixels[WIDTH * HEIGHT * 4];
-+
-+static double clamp(double x) { return fmax(0.0, fmin(1.0, x)); }
-+
-+// A supersampled, procedural cup of coffee. All pixel computation runs in Wasm.
-+uint8_t *render(unsigned int seed) {
-+  double phase = (seed % 10000) * 0.001;
-+  for (int y = 0; y < HEIGHT; y++) {
-+    for (int x = 0; x < WIDTH; x++) {
-+      double rgb[3] = {0, 0, 0};
-+      for (int sample = 0; sample < 4; sample++) {
-+        double u = (x + (sample & 1) * 0.5 - WIDTH * 0.5) / 225.0;
-+        double v = (y + (sample >> 1) * 0.5 - HEIGHT * 0.5) / 225.0;
-+        double radius = sqrt(u*u + v*v);
-+        double grain = sin(u * 85 + sin(v * 3 + phase) * 2) * 0.018;
-+        double r = 0.24 + grain, g = 0.13 + grain, b = 0.085 + grain;
-+        double handle = sqrt(pow((u - 1.03) / 0.40, 2) + pow(v / 0.28, 2));
-+        if (handle < 1 && handle > 0.55) { r = 0.86; g = 0.82; b = 0.73; }
-+        if (radius < 1.18) {
-+          double shade = 0.87 + 0.05 * (u - v);
-+          r = shade; g = shade * 0.96; b = shade * 0.87;
-+        }
-+        if (radius < 1.04) { r = 0.98; g = 0.95; b = 0.87; }
-+        if (radius < 0.96) {
-+          double swirl = sin(19 * radius + 2 * sin(atan2(v,u) * 3 + phase));
-+          double crema = 0.08 * swirl + 0.09 * radius;
-+          r = 0.43 + crema; g = 0.20 + crema * 0.8; b = 0.075 + crema * 0.4;
-+          double vv = v + 0.09;
-+          double bend = u + 0.045 * sin(v * 5 + phase);
-+          double leaf = sin((vv + 0.72) * 2.1);
-+          double width = fmax(0.0, leaf) * (0.43 + 0.06 * sin(phase));
-+          double ripple = sin(vv * (45 + 4 * sin(phase)) + fabs(bend) * 16);
-+          double foam = clamp((width - fabs(bend)) * 80) *
-+            clamp((0.68 - vv) * 60) * clamp((vv + 0.72) * 60) *
-+            clamp((ripple + 0.35) * 5);
-+          double stem = clamp((0.018 - fabs(bend)) * 160) *
-+            clamp((0.78 - vv) * 30) * clamp((vv + 0.65) * 30);
-+          foam = fmax(foam, stem);
-+          r += (0.99 - r) * foam; g += (0.91 - g) * foam; b += (0.72 - b) * foam;
-+        }
-+        rgb[0] += clamp(r); rgb[1] += clamp(g); rgb[2] += clamp(b);
-+      }
-+      int i = (y * WIDTH + x) * 4;
-+      for (int c = 0; c < 3; c++) pixels[i+c] = (uint8_t)(rgb[c] * 255 / 4);
-+      pixels[i+3] = 255;
-+    }
-+  }
-+  return pixels;
-+}
-diff --git a/package-lock.json b/package-lock.json
-new file mode 100644
-index 0000000..f6d254d
---- /dev/null
-+++ b/package-lock.json
-@@ -0,0 +1,1183 @@
-+{
-+  "name": "daily-grind",
-+  "version": "1.0.0",
-+  "lockfileVersion": 3,
-+  "requires": true,
-+  "packages": {
-+    "": {
-+      "name": "daily-grind",
-+      "version": "1.0.0",
-+      "devDependencies": {
-+        "@playwright/test": "^1.56.1",
-+        "typescript": "^5.9.3",
-+        "vite": "^6.4.1"
-+      }
-+    },
-+    "node_modules/@esbuild/aix-ppc64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.12.tgz",
-+      "integrity": "sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==",
-+      "cpu": [
-+        "ppc64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "aix"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/android-arm": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.25.12.tgz",
-+      "integrity": "sha512-VJ+sKvNA/GE7Ccacc9Cha7bpS8nyzVv0jdVgwNDaR4gDMC/2TTRc33Ip8qrNYUcpkOHUT5OZ0bUcNNVZQ9RLlg==",
-+      "cpu": [
-+        "arm"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "android"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/android-arm64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.25.12.tgz",
-+      "integrity": "sha512-6AAmLG7zwD1Z159jCKPvAxZd4y/VTO0VkprYy+3N2FtJ8+BQWFXU+OxARIwA46c5tdD9SsKGZ/1ocqBS/gAKHg==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "android"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/android-x64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.25.12.tgz",
-+      "integrity": "sha512-5jbb+2hhDHx5phYR2By8GTWEzn6I9UqR11Kwf22iKbNpYrsmRB18aX/9ivc5cabcUiAT/wM+YIZ6SG9QO6a8kg==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "android"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/darwin-arm64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.12.tgz",
-+      "integrity": "sha512-N3zl+lxHCifgIlcMUP5016ESkeQjLj/959RxxNYIthIg+CQHInujFuXeWbWMgnTo4cp5XVHqFPmpyu9J65C1Yg==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "darwin"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/darwin-x64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.25.12.tgz",
-+      "integrity": "sha512-HQ9ka4Kx21qHXwtlTUVbKJOAnmG1ipXhdWTmNXiPzPfWKpXqASVcWdnf2bnL73wgjNrFXAa3yYvBSd9pzfEIpA==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "darwin"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/freebsd-arm64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.25.12.tgz",
-+      "integrity": "sha512-gA0Bx759+7Jve03K1S0vkOu5Lg/85dou3EseOGUes8flVOGxbhDDh/iZaoek11Y8mtyKPGF3vP8XhnkDEAmzeg==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "freebsd"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/freebsd-x64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.25.12.tgz",
-+      "integrity": "sha512-TGbO26Yw2xsHzxtbVFGEXBFH0FRAP7gtcPE7P5yP7wGy7cXK2oO7RyOhL5NLiqTlBh47XhmIUXuGciXEqYFfBQ==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "freebsd"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/linux-arm": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.25.12.tgz",
-+      "integrity": "sha512-lPDGyC1JPDou8kGcywY0YILzWlhhnRjdof3UlcoqYmS9El818LLfJJc3PXXgZHrHCAKs/Z2SeZtDJr5MrkxtOw==",
-+      "cpu": [
-+        "arm"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/linux-arm64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.25.12.tgz",
-+      "integrity": "sha512-8bwX7a8FghIgrupcxb4aUmYDLp8pX06rGh5HqDT7bB+8Rdells6mHvrFHHW2JAOPZUbnjUpKTLg6ECyzvas2AQ==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/linux-ia32": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.25.12.tgz",
-+      "integrity": "sha512-0y9KrdVnbMM2/vG8KfU0byhUN+EFCny9+8g202gYqSSVMonbsCfLjUO+rCci7pM0WBEtz+oK/PIwHkzxkyharA==",
-+      "cpu": [
-+        "ia32"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/linux-loong64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.25.12.tgz",
-+      "integrity": "sha512-h///Lr5a9rib/v1GGqXVGzjL4TMvVTv+s1DPoxQdz7l/AYv6LDSxdIwzxkrPW438oUXiDtwM10o9PmwS/6Z0Ng==",
-+      "cpu": [
-+        "loong64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/linux-mips64el": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.25.12.tgz",
-+      "integrity": "sha512-iyRrM1Pzy9GFMDLsXn1iHUm18nhKnNMWscjmp4+hpafcZjrr2WbT//d20xaGljXDBYHqRcl8HnxbX6uaA/eGVw==",
-+      "cpu": [
-+        "mips64el"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/linux-ppc64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.25.12.tgz",
-+      "integrity": "sha512-9meM/lRXxMi5PSUqEXRCtVjEZBGwB7P/D4yT8UG/mwIdze2aV4Vo6U5gD3+RsoHXKkHCfSxZKzmDssVlRj1QQA==",
-+      "cpu": [
-+        "ppc64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/linux-riscv64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.25.12.tgz",
-+      "integrity": "sha512-Zr7KR4hgKUpWAwb1f3o5ygT04MzqVrGEGXGLnj15YQDJErYu/BGg+wmFlIDOdJp0PmB0lLvxFIOXZgFRrdjR0w==",
-+      "cpu": [
-+        "riscv64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/linux-s390x": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.25.12.tgz",
-+      "integrity": "sha512-MsKncOcgTNvdtiISc/jZs/Zf8d0cl/t3gYWX8J9ubBnVOwlk65UIEEvgBORTiljloIWnBzLs4qhzPkJcitIzIg==",
-+      "cpu": [
-+        "s390x"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/linux-x64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.12.tgz",
-+      "integrity": "sha512-uqZMTLr/zR/ed4jIGnwSLkaHmPjOjJvnm6TVVitAa08SLS9Z0VM8wIRx7gWbJB5/J54YuIMInDquWyYvQLZkgw==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/netbsd-arm64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-arm64/-/netbsd-arm64-0.25.12.tgz",
-+      "integrity": "sha512-xXwcTq4GhRM7J9A8Gv5boanHhRa/Q9KLVmcyXHCTaM4wKfIpWkdXiMog/KsnxzJ0A1+nD+zoecuzqPmCRyBGjg==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "netbsd"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/netbsd-x64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.25.12.tgz",
-+      "integrity": "sha512-Ld5pTlzPy3YwGec4OuHh1aCVCRvOXdH8DgRjfDy/oumVovmuSzWfnSJg+VtakB9Cm0gxNO9BzWkj6mtO1FMXkQ==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "netbsd"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/openbsd-arm64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.25.12.tgz",
-+      "integrity": "sha512-fF96T6KsBo/pkQI950FARU9apGNTSlZGsv1jZBAlcLL1MLjLNIWPBkj5NlSz8aAzYKg+eNqknrUJ24QBybeR5A==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "openbsd"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/openbsd-x64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.25.12.tgz",
-+      "integrity": "sha512-MZyXUkZHjQxUvzK7rN8DJ3SRmrVrke8ZyRusHlP+kuwqTcfWLyqMOE3sScPPyeIXN/mDJIfGXvcMqCgYKekoQw==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "openbsd"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/openharmony-arm64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/openharmony-arm64/-/openharmony-arm64-0.25.12.tgz",
-+      "integrity": "sha512-rm0YWsqUSRrjncSXGA7Zv78Nbnw4XL6/dzr20cyrQf7ZmRcsovpcRBdhD43Nuk3y7XIoW2OxMVvwuRvk9XdASg==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "openharmony"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/sunos-x64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.25.12.tgz",
-+      "integrity": "sha512-3wGSCDyuTHQUzt0nV7bocDy72r2lI33QL3gkDNGkod22EsYl04sMf0qLb8luNKTOmgF/eDEDP5BFNwoBKH441w==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "sunos"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/win32-arm64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.25.12.tgz",
-+      "integrity": "sha512-rMmLrur64A7+DKlnSuwqUdRKyd3UE7oPJZmnljqEptesKM8wx9J8gx5u0+9Pq0fQQW8vqeKebwNXdfOyP+8Bsg==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "win32"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/win32-ia32": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.25.12.tgz",
-+      "integrity": "sha512-HkqnmmBoCbCwxUKKNPBixiWDGCpQGVsrQfJoVGYLPT41XWF8lHuE5N6WhVia2n4o5QK5M4tYr21827fNhi4byQ==",
-+      "cpu": [
-+        "ia32"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "win32"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@esbuild/win32-x64": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.25.12.tgz",
-+      "integrity": "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "win32"
-+      ],
-+      "engines": {
-+        "node": ">=18"
-+      }
-+    },
-+    "node_modules/@napi-rs/lzma-linux-x64-gnu": {
-+      "version": "1.5.1",
-+      "resolved": "https://registry.npmjs.org/@napi-rs/lzma-linux-x64-gnu/-/lzma-linux-x64-gnu-1.5.1.tgz",
-+      "integrity": "sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ],
-+      "engines": {
-+        "node": "^22.20 || ^24.12 || >=25"
-+      }
-+    },
-+    "node_modules/@playwright/test": {
-+      "version": "1.63.0",
-+      "resolved": "https://registry.npmjs.org/@playwright/test/-/test-1.63.0.tgz",
-+      "integrity": "sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==",
-+      "dev": true,
-+      "license": "Apache-2.0",
-+      "dependencies": {
-+        "playwright": "1.63.0"
-+      },
-+      "bin": {
-+        "playwright": "cli.js"
-+      },
-+      "engines": {
-+        "node": ">=20"
-+      }
-+    },
-+    "node_modules/@rollup/rollup-android-arm-eabi": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-android-arm-eabi/-/rollup-android-arm-eabi-4.63.5.tgz",
-+      "integrity": "sha512-J25QJU+B78T4FhhBsNpLJyVWOi31mwtpcMwywHmOKH65Q9IWGA81gPj+dnwlhU8wktVriYE+tFAaQgrnJRzAZg==",
-+      "cpu": [
-+        "arm"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "android"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-android-arm64": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-android-arm64/-/rollup-android-arm64-4.63.5.tgz",
-+      "integrity": "sha512-LDopB3zuZM5Ux9TT2luNEBJW/tYbGU2g1d+VpKk6I+gSKDb+/7sYE6M225gRQt4RbMX6MSwMsVR/phdjVUgRLg==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "android"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-darwin-arm64": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-darwin-arm64/-/rollup-darwin-arm64-4.63.5.tgz",
-+      "integrity": "sha512-wlJEERGfeuHeBavCL2qVnNacOK43NDoZM4sjkeRPymd04OAE9T1zBqDJgmZ+CIsPTYKwdzpUC8vmOw84dwY4Tg==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "darwin"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-darwin-x64": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-darwin-x64/-/rollup-darwin-x64-4.63.5.tgz",
-+      "integrity": "sha512-4nJJGg5jbo2wwPP4JP+LfEBA3bvP8rU9CLuhp7jWvq9sxEyhjQFTFdrqi+/dHEin/pd8jpT0vcehIpnZtmEdcQ==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "darwin"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-freebsd-arm64": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-freebsd-arm64/-/rollup-freebsd-arm64-4.63.5.tgz",
-+      "integrity": "sha512-DrZbyCDF1hneuO6jRbvZ2D7+PIBM6yIwYnJpg2vIk58T+wuFpiaGZrfUr59lDWw45bg+IrpTGLPiNi/Fk4w3Cg==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "freebsd"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-freebsd-x64": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-freebsd-x64/-/rollup-freebsd-x64-4.63.5.tgz",
-+      "integrity": "sha512-gqfUVMJMB3mehqywxp6hTBFfgtMQykZY19+cfiaYP0toIJLb/1DZRJHVkQQGP13W4TAwfZDWeg1qBcheTRioXQ==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "freebsd"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-arm-gnueabihf": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-arm-gnueabihf/-/rollup-linux-arm-gnueabihf-4.63.5.tgz",
-+      "integrity": "sha512-CFmhpvAwzSaWMlN3VN7UtmoTihlZNzoP0juQib5TQRnYUyDV8dXeWOp29sobWAT6gXl/hQgAClLlEiYozQG3OQ==",
-+      "cpu": [
-+        "arm"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-arm-musleabihf": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-arm-musleabihf/-/rollup-linux-arm-musleabihf-4.63.5.tgz",
-+      "integrity": "sha512-Uc9H8eXCOayV6JLTH5bXKMId6qbhNHa818/BgYjm4jrlq3vZquC9cqyvHBw17xy5Mnj5f+I3gFK5JcEf3hSqrw==",
-+      "cpu": [
-+        "arm"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-arm64-gnu": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-arm64-gnu/-/rollup-linux-arm64-gnu-4.63.5.tgz",
-+      "integrity": "sha512-VcPr/szv/1BFw112Kt//fxulXt/JPqzzidU84iW68L2DdjnOO8QFUv2zTSYBEPHD6movBD4z+bbr5y60GYM7Jw==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-arm64-musl": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-arm64-musl/-/rollup-linux-arm64-musl-4.63.5.tgz",
-+      "integrity": "sha512-BnxtJ5/91BrIHYIkGrmjz/lbMhqEHt1dPFqIxIFR+jPn0xVc/oUSCtIT089zfp5ufwGDlYz2UC+Fe1SRBpYFbQ==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-loong64-gnu": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-loong64-gnu/-/rollup-linux-loong64-gnu-4.63.5.tgz",
-+      "integrity": "sha512-LrYcHZwF+fAMNKHYTOQ5osWM4AZF7YF6D+XtsjDyEvljtt11twc+zHVXBLNEjxVSUnKYsOhvVz4Z213eW02COQ==",
-+      "cpu": [
-+        "loong64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-loong64-musl": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-loong64-musl/-/rollup-linux-loong64-musl-4.63.5.tgz",
-+      "integrity": "sha512-nj7QKQePAAUpCpJHtg0pR0W/b92A9NO17JS3BAQmHDn/yhmkir2p8llrKY9TOhleKIaSzy1JhxS3T9FVld6coA==",
-+      "cpu": [
-+        "loong64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-ppc64-gnu": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-ppc64-gnu/-/rollup-linux-ppc64-gnu-4.63.5.tgz",
-+      "integrity": "sha512-5ylkX6dWMeBKge9nTU+Rxfb+ZfaCIJ9lRqIFaK0eAMcWp7OJbYnLveLgXmm0VrvuLKb8qIK+mHyH0qu88RM+iA==",
-+      "cpu": [
-+        "ppc64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-ppc64-musl": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-ppc64-musl/-/rollup-linux-ppc64-musl-4.63.5.tgz",
-+      "integrity": "sha512-oHK4ZHYFDKjZviK34I+NwgfbGxgI7ztrNxj2hPTSSNFgeq1a/lEd7dHV2fdGAuTH4Iym3RHJg+vAbWaWG4B7Zg==",
-+      "cpu": [
-+        "ppc64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-riscv64-gnu": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-riscv64-gnu/-/rollup-linux-riscv64-gnu-4.63.5.tgz",
-+      "integrity": "sha512-UcetmHZ6XOXuUByiKZyQmb55ZPr0LABr3Ec/HB9wKZn6CEAFWZkE+hsJErJ9hbPBC7nI0dKuELx7CoV6IM7TMg==",
-+      "cpu": [
-+        "riscv64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-riscv64-musl": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-riscv64-musl/-/rollup-linux-riscv64-musl-4.63.5.tgz",
-+      "integrity": "sha512-C5CmDPQBtvjVo8cgQsBs+w6WB0JLkiixhgi6hVLV11hERWdn/p0XcPU2OUcZzac9BPOFq7SbaHFa8r3SWEysCQ==",
-+      "cpu": [
-+        "riscv64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-s390x-gnu": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-s390x-gnu/-/rollup-linux-s390x-gnu-4.63.5.tgz",
-+      "integrity": "sha512-lHVQHJFKsuuxLMi3MQO9XVL8Tje3JR82CzB+QDKC5NWBcsIWuwsn9uIM5e3lBhI+fF1/s63qnyYqsg65+8rV/w==",
-+      "cpu": [
-+        "s390x"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-x64-gnu": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-x64-gnu/-/rollup-linux-x64-gnu-4.63.5.tgz",
-+      "integrity": "sha512-3W9bTFcQNJn71cSJVM9RKIiZOy8DO/XLDii8Uv/Pm6WKqDRj7JV3ZfuXIEfyuy5LXpIzAbB/1M4Ukp9GKNa7nA==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-linux-x64-musl": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-linux-x64-musl/-/rollup-linux-x64-musl-4.63.5.tgz",
-+      "integrity": "sha512-VDC7rRJlee/scpki96GZ27Omf6yU87s1YXwVTpjE5841faVlDYYT565rgfmoR1U0sqL7z5ivQSDjcsF6VRXyBA==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "linux"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-openbsd-x64": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-openbsd-x64/-/rollup-openbsd-x64-4.63.5.tgz",
-+      "integrity": "sha512-z86Ok2p4pTdv5xqCKZsTooO7yBEiaJR/HzU3Wx8RmWsPoLppnMKROhJusQob8B3IE1ghC343kUW9rC2r+Wf3ig==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "openbsd"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-openharmony-arm64": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-openharmony-arm64/-/rollup-openharmony-arm64-4.63.5.tgz",
-+      "integrity": "sha512-IzQmj+xXwQFGhMAMKMQVXkMwMZN3TqkJgAE0nSsqvVwWWciP4AIPMmWRqOQ2GfX7TUDZr+xqGFcBS36CRPGw0g==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "openharmony"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-win32-arm64-msvc": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-win32-arm64-msvc/-/rollup-win32-arm64-msvc-4.63.5.tgz",
-+      "integrity": "sha512-F6qpTaPc9bwBH85kjy0/BLmLSW1uv7AoOXCoRIkg2arlgCYlWYcAbiMkvZuAcaWk9TpCRG//okznLAqLGshkMw==",
-+      "cpu": [
-+        "arm64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "win32"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-win32-ia32-msvc": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-win32-ia32-msvc/-/rollup-win32-ia32-msvc-4.63.5.tgz",
-+      "integrity": "sha512-igoDsTFhhwECBeGbUuLeIk7t8Y1apa+cs6mDWpx2EZ0ch7oEQgzHbFUXN9euoHekCAQzXdXApAGkV6jznS7tWw==",
-+      "cpu": [
-+        "ia32"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "win32"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-win32-x64-gnu": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-win32-x64-gnu/-/rollup-win32-x64-gnu-4.63.5.tgz",
-+      "integrity": "sha512-U3teMeMbXFmaM5D+OTJpsOXd+wV/qftIeYF9kBKL4v73641qyJmoXFtA28DQLsnmlyayEsTe72xpLHrArq6vHw==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "win32"
-+      ]
-+    },
-+    "node_modules/@rollup/rollup-win32-x64-msvc": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.63.5.tgz",
-+      "integrity": "sha512-ypfC34F3RKXvCXBglGqGMsUSMKlgwd1HX9AOAlx9RoZZ6GaI42YHVeKpzg3JG+wpBUJYTG+NNZhqbDWL8tBZkw==",
-+      "cpu": [
-+        "x64"
-+      ],
-+      "dev": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "win32"
-+      ]
-+    },
-+    "node_modules/@types/estree": {
-+      "version": "1.0.9",
-+      "resolved": "https://registry.npmjs.org/@types/estree/-/estree-1.0.9.tgz",
-+      "integrity": "sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==",
-+      "dev": true,
-+      "license": "MIT"
-+    },
-+    "node_modules/esbuild": {
-+      "version": "0.25.12",
-+      "resolved": "https://registry.npmjs.org/esbuild/-/esbuild-0.25.12.tgz",
-+      "integrity": "sha512-bbPBYYrtZbkt6Os6FiTLCTFxvq4tt3JKall1vRwshA3fdVztsLAatFaZobhkBC8/BrPetoa0oksYoKXoG4ryJg==",
-+      "dev": true,
-+      "hasInstallScript": true,
-+      "license": "MIT",
-+      "bin": {
-+        "esbuild": "bin/esbuild"
-+      },
-+      "engines": {
-+        "node": ">=18"
-+      },
-+      "optionalDependencies": {
-+        "@esbuild/aix-ppc64": "0.25.12",
-+        "@esbuild/android-arm": "0.25.12",
-+        "@esbuild/android-arm64": "0.25.12",
-+        "@esbuild/android-x64": "0.25.12",
-+        "@esbuild/darwin-arm64": "0.25.12",
-+        "@esbuild/darwin-x64": "0.25.12",
-+        "@esbuild/freebsd-arm64": "0.25.12",
-+        "@esbuild/freebsd-x64": "0.25.12",
-+        "@esbuild/linux-arm": "0.25.12",
-+        "@esbuild/linux-arm64": "0.25.12",
-+        "@esbuild/linux-ia32": "0.25.12",
-+        "@esbuild/linux-loong64": "0.25.12",
-+        "@esbuild/linux-mips64el": "0.25.12",
-+        "@esbuild/linux-ppc64": "0.25.12",
-+        "@esbuild/linux-riscv64": "0.25.12",
-+        "@esbuild/linux-s390x": "0.25.12",
-+        "@esbuild/linux-x64": "0.25.12",
-+        "@esbuild/netbsd-arm64": "0.25.12",
-+        "@esbuild/netbsd-x64": "0.25.12",
-+        "@esbuild/openbsd-arm64": "0.25.12",
-+        "@esbuild/openbsd-x64": "0.25.12",
-+        "@esbuild/openharmony-arm64": "0.25.12",
-+        "@esbuild/sunos-x64": "0.25.12",
-+        "@esbuild/win32-arm64": "0.25.12",
-+        "@esbuild/win32-ia32": "0.25.12",
-+        "@esbuild/win32-x64": "0.25.12"
-+      }
-+    },
-+    "node_modules/fdir": {
-+      "version": "6.5.0",
-+      "resolved": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
-+      "integrity": "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==",
-+      "dev": true,
-+      "license": "MIT",
-+      "engines": {
-+        "node": ">=12.0.0"
-+      },
-+      "peerDependencies": {
-+        "picomatch": "^3 || ^4"
-+      },
-+      "peerDependenciesMeta": {
-+        "picomatch": {
-+          "optional": true
-+        }
-+      }
-+    },
-+    "node_modules/fsevents": {
-+      "version": "2.3.3",
-+      "resolved": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz",
-+      "integrity": "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==",
-+      "dev": true,
-+      "hasInstallScript": true,
-+      "license": "MIT",
-+      "optional": true,
-+      "os": [
-+        "darwin"
-+      ],
-+      "engines": {
-+        "node": "^8.16.0 || ^10.6.0 || >=11.0.0"
-+      }
-+    },
-+    "node_modules/nanoid": {
-+      "version": "3.3.19",
-+      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.19.tgz",
-+      "integrity": "sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==",
-+      "dev": true,
-+      "funding": [
-+        {
-+          "type": "github",
-+          "url": "https://github.com/sponsors/ai"
-+        }
-+      ],
-+      "license": "MIT",
-+      "bin": {
-+        "nanoid": "bin/nanoid.cjs"
-+      },
-+      "engines": {
-+        "node": "^10 || ^12 || ^13.7 || ^14 || >=15.0.1"
-+      }
-+    },
-+    "node_modules/picocolors": {
-+      "version": "1.1.1",
-+      "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
-+      "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
-+      "dev": true,
-+      "license": "ISC"
-+    },
-+    "node_modules/picomatch": {
-+      "version": "4.0.7",
-+      "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-4.0.7.tgz",
-+      "integrity": "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==",
-+      "dev": true,
-+      "license": "MIT",
-+      "engines": {
-+        "node": ">=12"
-+      },
-+      "funding": {
-+        "url": "https://github.com/sponsors/jonschlinkert"
-+      }
-+    },
-+    "node_modules/playwright": {
-+      "version": "1.63.0",
-+      "resolved": "https://registry.npmjs.org/playwright/-/playwright-1.63.0.tgz",
-+      "integrity": "sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==",
-+      "dev": true,
-+      "license": "Apache-2.0",
-+      "dependencies": {
-+        "playwright-core": "1.63.0"
-+      },
-+      "bin": {
-+        "playwright": "cli.js"
-+      },
-+      "engines": {
-+        "node": ">=20"
-+      }
-+    },
-+    "node_modules/playwright-core": {
-+      "version": "1.63.0",
-+      "resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.63.0.tgz",
-+      "integrity": "sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==",
-+      "dev": true,
-+      "license": "Apache-2.0",
-+      "bin": {
-+        "playwright-core": "cli.js"
-+      },
-+      "engines": {
-+        "node": ">=20"
-+      }
-+    },
-+    "node_modules/postcss": {
-+      "version": "8.5.28",
-+      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.28.tgz",
-+      "integrity": "sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==",
-+      "dev": true,
-+      "funding": [
-+        {
-+          "type": "opencollective",
-+          "url": "https://opencollective.com/postcss/"
-+        },
-+        {
-+          "type": "tidelift",
-+          "url": "https://tidelift.com/funding/github/npm/postcss"
-+        },
-+        {
-+          "type": "github",
-+          "url": "https://github.com/sponsors/ai"
-+        }
-+      ],
-+      "license": "MIT",
-+      "dependencies": {
-+        "nanoid": "^3.3.18",
-+        "picocolors": "^1.1.1",
-+        "source-map-js": "^1.2.1"
-+      },
-+      "engines": {
-+        "node": "^10 || ^12 || >=14"
-+      }
-+    },
-+    "node_modules/rollup": {
-+      "version": "4.63.5",
-+      "resolved": "https://registry.npmjs.org/rollup/-/rollup-4.63.5.tgz",
-+      "integrity": "sha512-KRWwmNLlPw5M7HcdYfm15oBv9n9LPtjzpzCIxS/phwqvPyxHSoKX6Y2YU3pxSPfy0CLquVgsx/j/hBi6OvH1Nw==",
-+      "dev": true,
-+      "license": "MIT",
-+      "dependencies": {
-+        "@types/estree": "1.0.9"
-+      },
-+      "bin": {
-+        "rollup": "dist/bin/rollup"
-+      },
-+      "engines": {
-+        "node": ">=18.0.0",
-+        "npm": ">=8.0.0"
-+      },
-+      "optionalDependencies": {
-+        "@napi-rs/lzma-linux-x64-gnu": "1.5.1",
-+        "@rollup/rollup-android-arm-eabi": "4.63.5",
-+        "@rollup/rollup-android-arm64": "4.63.5",
-+        "@rollup/rollup-darwin-arm64": "4.63.5",
-+        "@rollup/rollup-darwin-x64": "4.63.5",
-+        "@rollup/rollup-freebsd-arm64": "4.63.5",
-+        "@rollup/rollup-freebsd-x64": "4.63.5",
-+        "@rollup/rollup-linux-arm-gnueabihf": "4.63.5",
-+        "@rollup/rollup-linux-arm-musleabihf": "4.63.5",
-+        "@rollup/rollup-linux-arm64-gnu": "4.63.5",
-+        "@rollup/rollup-linux-arm64-musl": "4.63.5",
-+        "@rollup/rollup-linux-loong64-gnu": "4.63.5",
-+        "@rollup/rollup-linux-loong64-musl": "4.63.5",
-+        "@rollup/rollup-linux-ppc64-gnu": "4.63.5",
-+        "@rollup/rollup-linux-ppc64-musl": "4.63.5",
-+        "@rollup/rollup-linux-riscv64-gnu": "4.63.5",
-+        "@rollup/rollup-linux-riscv64-musl": "4.63.5",
-+        "@rollup/rollup-linux-s390x-gnu": "4.63.5",
-+        "@rollup/rollup-linux-x64-gnu": "4.63.5",
-+        "@rollup/rollup-linux-x64-musl": "4.63.5",
-+        "@rollup/rollup-openbsd-x64": "4.63.5",
-+        "@rollup/rollup-openharmony-arm64": "4.63.5",
-+        "@rollup/rollup-win32-arm64-msvc": "4.63.5",
-+        "@rollup/rollup-win32-ia32-msvc": "4.63.5",
-+        "@rollup/rollup-win32-x64-gnu": "4.63.5",
-+        "@rollup/rollup-win32-x64-msvc": "4.63.5",
-+        "fsevents": "~2.3.2"
-+      }
-+    },
-+    "node_modules/source-map-js": {
-+      "version": "1.2.1",
-+      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
-+      "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
-+      "dev": true,
-+      "license": "BSD-3-Clause",
-+      "engines": {
-+        "node": ">=0.10.0"
-+      }
-+    },
-+    "node_modules/tinyglobby": {
-+      "version": "0.2.17",
-+      "resolved": "https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.17.tgz",
-+      "integrity": "sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==",
-+      "dev": true,
-+      "license": "MIT",
-+      "dependencies": {
-+        "fdir": "^6.5.0",
-+        "picomatch": "^4.0.4"
-+      },
-+      "engines": {
-+        "node": ">=12.0.0"
-+      },
-+      "funding": {
-+        "url": "https://github.com/sponsors/SuperchupuDev"
-+      }
-+    },
-+    "node_modules/typescript": {
-+      "version": "5.9.3",
-+      "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz",
-+      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
-+      "dev": true,
-+      "license": "Apache-2.0",
-+      "bin": {
-+        "tsc": "bin/tsc",
-+        "tsserver": "bin/tsserver"
-+      },
-+      "engines": {
-+        "node": ">=14.17"
-+      }
-+    },
-+    "node_modules/vite": {
-+      "version": "6.4.3",
-+      "resolved": "https://registry.npmjs.org/vite/-/vite-6.4.3.tgz",
-+      "integrity": "sha512-NTKlcQjlAK7MlQoyb6LgaqHc8sso/pVyUJYWMws3jg21uTJw/LddqIFPcPqP6PzpgbIcZyKI85sFE4HBrQDA8A==",
-+      "dev": true,
-+      "license": "MIT",
-+      "dependencies": {
-+        "esbuild": "^0.25.0",
-+        "fdir": "^6.4.4",
-+        "picomatch": "^4.0.2",
-+        "postcss": "^8.5.3",
-+        "rollup": "^4.34.9",
-+        "tinyglobby": "^0.2.13"
-+      },
-+      "bin": {
-+        "vite": "bin/vite.js"
-+      },
-+      "engines": {
-+        "node": "^18.0.0 || ^20.0.0 || >=22.0.0"
-+      },
-+      "funding": {
-+        "url": "https://github.com/vitejs/vite?sponsor=1"
-+      },
-+      "optionalDependencies": {
-+        "fsevents": "~2.3.3"
-+      },
-+      "peerDependencies": {
-+        "@types/node": "^18.0.0 || ^20.0.0 || >=22.0.0",
-+        "jiti": ">=1.21.0",
-+        "less": "*",
-+        "lightningcss": "^1.21.0",
-+        "sass": "*",
-+        "sass-embedded": "*",
-+        "stylus": "*",
-+        "sugarss": "*",
-+        "terser": "^5.16.0",
-+        "tsx": "^4.8.1",
-+        "yaml": "^2.4.2"
-+      },
-+      "peerDependenciesMeta": {
-+        "@types/node": {
-+          "optional": true
-+        },
-+        "jiti": {
-+          "optional": true
-+        },
-+        "less": {
-+          "optional": true
-+        },
-+        "lightningcss": {
-+          "optional": true
-+        },
-+        "sass": {
-+          "optional": true
-+        },
-+        "sass-embedded": {
-+          "optional": true
-+        },
-+        "stylus": {
-+          "optional": true
-+        },
-+        "sugarss": {
-+          "optional": true
-+        },
-+        "terser": {
-+          "optional": true
-+        },
-+        "tsx": {
-+          "optional": true
-+        },
-+        "yaml": {
-+          "optional": true
-+        }
-+      }
-+    }
-+  }
-+}
 diff --git a/package.json b/package.json
-index 2bd4d77..88e8fd0 100644
+index 2bd4d77..b01fc6b 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,7 +2,17 @@
-   "name": "daily-grind",
+@@ -1,10 +1,10 @@
+ {
+-  "name": "daily-grind",
++  "name": "smallpt-studio",
    "version": "1.0.0",
++  "private": true,
++  "type": "module",
    "scripts": {
 -    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "build:wasm": "node scripts/build-wasm.mjs",
-+    "build": "npm run build:wasm && tsc --noEmit && vite build",
-+    "build:assertions": "npm run build:wasm -- --assertions && tsc --noEmit && vite build",
-+    "start": "npm run build:wasm && vite --host 0.0.0.0 --port ${PORT:-11222}",
-+    "preview": "vite preview --host 0.0.0.0 --port ${PORT:-11222}"
-+  },
-+  "type": "module",
-+  "devDependencies": {
-+    "typescript": "^5.9.3",
-+    "vite": "^6.4.1",
-+    "@playwright/test": "^1.56.1"
-   },
-   "pnpm": {
-     "onlyBuiltDependencies": []
-diff --git a/playwright.config.ts b/playwright.config.ts
+-  },
+-  "pnpm": {
+-    "onlyBuiltDependencies": []
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "node scripts/build.mjs"
+   }
+ }
+diff --git a/render-worker.js b/render-worker.js
 new file mode 100644
-index 0000000..4e43f05
+index 0000000..9d7e05a
 --- /dev/null
-+++ b/playwright.config.ts
-@@ -0,0 +1,10 @@
-+import { defineConfig } from '@playwright/test';
-+
-+export default defineConfig({
-+  testDir: './tests',
-+  use: { baseURL: 'http://127.0.0.1:11222', launchOptions: {
-+    executablePath: process.env.CHROME_PATH || '/opt/google/chrome/chrome',
-+    args: ['--no-sandbox'],
-+  } },
-+  webServer: { command: 'npm run preview', url: 'http://127.0.0.1:11222', reuseExistingServer: false },
-+});
-diff --git a/scripts/build-wasm.mjs b/scripts/build-wasm.mjs
-new file mode 100644
-index 0000000..dfbf4d1
---- /dev/null
-+++ b/scripts/build-wasm.mjs
-@@ -0,0 +1,18 @@
-+import { mkdirSync } from 'node:fs';
-+import { spawnSync } from 'node:child_process';
-+
-+mkdirSync('src/wasm', { recursive: true });
-+const assertions = process.argv.includes('--assertions');
-+const result = spawnSync('emcc', [
-+  'native/renderer.c', '-o', 'src/wasm/renderer.js',
-+  '-Oz', '-flto', '-g0', '--no-entry',
-+  '-sEXPORT_ES6=1', '-sMODULARIZE=1', '-sSTRICT=1',
-+  // The module runs in a dedicated browser worker, without Node/shell support.
-+  '-sENVIRONMENT=web,worker', '-sALLOW_MEMORY_GROWTH=1',
-+  `-sASSERTIONS=${assertions ? 1 : 0}`,
-+  '-sEXPORTED_FUNCTIONS=["_render"]',
-+  '-sEXPORTED_RUNTIME_METHODS=["HEAPU8"]',
-+  '-sINCOMING_MODULE_JS_API=["locateFile"]',
-+], { stdio: 'inherit' });
-+if (result.error) console.error('Emscripten (emcc) is required:', result.error.message);
-+process.exit(result.status ?? 1);
-diff --git a/src/main.ts b/src/main.ts
-new file mode 100644
-index 0000000..55335b8
---- /dev/null
-+++ b/src/main.ts
-@@ -0,0 +1,62 @@
-+import { WIDTH, HEIGHT, type RenderRequest, type RenderResponse } from './protocol';
-+
-+function element<T extends HTMLElement>(id: string, type: new () => T): T {
-+  const value = document.getElementById(id);
-+  if (!(value instanceof type)) throw new Error(`Missing element: ${id}`);
-+  return value;
-+}
-+const canvas = element('coffee-art', HTMLCanvasElement);
-+const button = element('render-image', HTMLButtonElement);
-+const status = element('render-status', HTMLParagraphElement);
-+const context = canvas.getContext('2d');
-+let worker: Worker | undefined;
-+let busy = false;
-+let timeout: ReturnType<typeof setTimeout> | undefined;
-+
-+function fail() {
-+  clearTimeout(timeout);
-+  worker?.terminate();
-+  worker = undefined;
-+  busy = false;
-+  button.disabled = false;
-+  canvas.setAttribute('aria-busy', 'false');
-+  button.textContent = 'Try again';
-+  status.textContent = 'The image could not be generated. Please try again.';
-+}
-+
-+function render() {
-+  if (busy) return;
-+  busy = true;
-+  button.disabled = true;
-+  button.textContent = 'Brewing your image…';
-+  canvas.setAttribute('aria-busy', 'true');
-+  status.textContent = 'Creating your coffee art. Feel free to explore while it brews.';
++++ b/render-worker.js
+@@ -0,0 +1,21 @@
++import createRenderer from './assets/smallpt.js';
++let renderer;
++self.onmessage = async ({ data }) => {
 +  try {
-+    if (!context) { fail(); return; }
-+    if (!worker) {
-+      worker = new Worker(new URL('./renderer.worker.ts', import.meta.url), { type: 'module' });
-+      worker.onerror = (event) => { event.preventDefault(); fail(); };
-+      worker.onmessageerror = fail;
-+      worker.onmessage = ({ data }: MessageEvent<RenderResponse>) => {
-+        if (data.type === 'error') { fail(); return; }
-+        try {
-+          context.putImageData(new ImageData(new Uint8ClampedArray(data.pixels), WIDTH, HEIGHT), 0, 0);
-+          canvas.hidden = false;
-+          clearTimeout(timeout);
-+          busy = false;
-+          button.disabled = false;
-+          button.textContent = 'Render a new image';
-+          canvas.setAttribute('aria-busy', 'false');
-+          status.textContent = `Freshly rendered in ${(data.duration / 1000).toFixed(2)} seconds. Every cup is unique.`;
-+        } catch { fail(); }
-+      };
++    renderer ??= await createRenderer();
++    const { width, height, samples, seed, colors } = data;
++    if (!renderer._init_render(width, height, samples, seed)) throw new Error('Invalid render settings.');
++    for (let i = 0; i < 2; i++) renderer._set_color(i + 6, ...colors[i]);
++    const started = performance.now();
++    for (let row = 0; row < height; row += 4) {
++      const count = Math.min(4, height - row);
++      renderer._render_rows(row, count);
++      const offset = renderer._get_pixels() + row * width * 4;
++      const pixels = renderer.HEAPU8.slice(offset, offset + count * width * 4);
++      self.postMessage({ row, count, pixels, progress: (row + count) / height,
++        elapsed: performance.now() - started }, [pixels.buffer]);
 +    }
-+    const request: RenderRequest = { type: 'render', seed: crypto.getRandomValues(new Uint32Array(1))[0] };
-+    worker.postMessage(request);
-+    timeout = setTimeout(fail, 60000);
-+  } catch { fail(); }
-+}
-+button.addEventListener('click', render);
-+window.addEventListener('pagehide', () => { worker?.terminate(); worker = undefined; clearTimeout(timeout); busy = false; });
-+window.addEventListener('pageshow', (event) => { if (event.persisted) render(); });
-+render();
-diff --git a/src/protocol.ts b/src/protocol.ts
-new file mode 100644
-index 0000000..2eb15d0
---- /dev/null
-+++ b/src/protocol.ts
-@@ -0,0 +1,6 @@
-+export const WIDTH = 960;
-+export const HEIGHT = 600;
-+export type RenderRequest = { type: 'render'; seed: number };
-+export type RenderResponse =
-+  | { type: 'image'; pixels: ArrayBuffer; duration: number }
-+  | { type: 'error'; message: string };
-diff --git a/src/renderer.worker.ts b/src/renderer.worker.ts
-new file mode 100644
-index 0000000..aeda784
---- /dev/null
-+++ b/src/renderer.worker.ts
-@@ -0,0 +1,27 @@
-+/// <reference lib="webworker" />
-+import createRenderer, { type RendererModule } from './wasm/renderer.js';
-+import { WIDTH, HEIGHT, type RenderRequest, type RenderResponse } from './protocol';
-+
-+const worker = self as unknown as DedicatedWorkerGlobalScope;
-+let modulePromise: Promise<RendererModule> | undefined;
-+worker.onmessage = async ({ data }: MessageEvent<RenderRequest>) => {
-+  if (data.type !== 'render' || !Number.isFinite(data.seed)) return;
-+  try {
-+    modulePromise ??= createRenderer({
-+      locateFile: () => new URL('./wasm/renderer.wasm', import.meta.url).href,
-+    });
-+    const module = await modulePromise;
-+    const start = performance.now();
-+    const pointer = module._render(data.seed >>> 0);
-+    // Copy out of Wasm memory before transferring ownership to the page.
-+    const pixels = module.HEAPU8.slice(pointer, pointer + WIDTH * HEIGHT * 4).buffer;
-+    const response: RenderResponse = { type: 'image', pixels, duration: performance.now() - start };
-+    worker.postMessage(response, [pixels]);
 +  } catch (error) {
-+    modulePromise = undefined;
-+    const response: RenderResponse = {
-+      type: 'error', message: error instanceof Error ? error.message : 'Could not render the image.',
-+    };
-+    worker.postMessage(response);
++    self.postMessage({ error: error.message || 'The renderer could not start.' });
 +  }
 +};
-diff --git a/src/wasm/renderer.d.ts b/src/wasm/renderer.d.ts
+diff --git a/scripts/build.mjs b/scripts/build.mjs
 new file mode 100644
-index 0000000..7fe6c30
+index 0000000..447f5e1
 --- /dev/null
-+++ b/src/wasm/renderer.d.ts
-@@ -0,0 +1,7 @@
-+export interface RendererModule {
-+  _render(seed: number): number;
-+  HEAPU8: Uint8Array;
++++ b/scripts/build.mjs
+@@ -0,0 +1,13 @@
++import { execFileSync } from 'node:child_process';
++import { mkdirSync, cpSync, rmSync } from 'node:fs';
++mkdirSync('assets', { recursive: true });
++execFileSync('em++', ['src/renderer.cpp', '-O3', '-flto', '-fno-exceptions', '--no-entry', '-Wno-return-type', '-Wno-c++11-narrowing', '-Wno-dangling-else',
++  '-sEXPORT_ES6', '-sENVIRONMENT=web,worker', '-sSTRICT',
++  '-sALLOW_MEMORY_GROWTH', '-sEXPORTED_RUNTIME_METHODS=HEAPU8', '-sFILESYSTEM=0', '-sSTACK_SIZE=1048576',
++  '-sEXPORTED_FUNCTIONS=_init_render,_set_color,_get_pixels,_render_rows',
++  '-o', 'assets/smallpt.js'], { stdio: 'inherit' });
++rmSync('dist', { recursive: true, force: true });
++mkdirSync('dist');
++for (const path of ['index.html', 'styles.css', 'app.js', 'render-worker.js', 'assets', 'vendor'])
++  cpSync(path, `dist/${path}`, { recursive: true });
++console.log('Built smallpt WebAssembly and static site in dist/');
+diff --git a/scripts/render-preview.mjs b/scripts/render-preview.mjs
+new file mode 100644
+index 0000000..cd9713e
+--- /dev/null
++++ b/scripts/render-preview.mjs
+@@ -0,0 +1,56 @@
++// Execute the browser-targeted Wasm module in Node, without a browser or server.
++import assert from 'node:assert/strict';
++import { readFileSync, writeFileSync } from 'node:fs';
++import { deflateSync } from 'node:zlib';
++import createRenderer from '../assets/smallpt.js';
++const wasm = readFileSync(new URL('../assets/smallpt.wasm', import.meta.url));
++assert(WebAssembly.validate(wasm));
++const savedProcess = globalThis.process;
++const savedFetch = globalThis.fetch;
++globalThis.process = undefined;
++globalThis.window = {};
++globalThis.fetch = async () => new Response(wasm, { headers: { 'Content-Type': 'application/wasm' } });
++let m;
++try { m = await createRenderer(); }
++finally { globalThis.process = savedProcess; globalThis.fetch = savedFetch; delete globalThis.window; }
++function image(seed, color) {
++  assert.equal(m._init_render(48, 36, 16, seed), 1);
++  m._set_color(6, ...color);
++  m._render_rows(0, 36);
++  return Buffer.from(m.HEAPU8.slice(m._get_pixels(), m._get_pixels() + 48 * 36 * 4));
 +}
-+export default function createRenderer(options: {
-+  locateFile: (path: string) => string;
-+}): Promise<RendererModule>;
-diff --git a/tests/renderer.spec.ts b/tests/renderer.spec.ts
++assert.equal(m._init_render(0, 24, 4, 1), 0);
++const first = image(42, [1, 1, 1]);
++assert.deepEqual(image(42, [1, 1, 1]), first, 'A fixed seed must reproduce the output');
++assert.notDeepEqual(image(42, [0.9, 0.3, 0.2]), first, 'Sphere color must change rendered pixels');
++assert(first.some((value, i) => i % 4 !== 3 && value > 0), 'Image must contain light');
++assert(first.every((value, i) => i % 4 !== 3 || value === 255), 'Pixels must be opaque');
++console.log('Wasm checks passed: initialization, rendering, deterministic seed, sphere recoloring, RGBA output.');
++const width = 640, height = 480;
++m._init_render(width, height, 256, 2026);
++m._set_color(6, 246/255, 228/255, 206/255);
++m._set_color(7, 216/255, 225/255, 250/255);
++const started = performance.now();
++for (let row = 0; row < height; row += 24) {
++  m._render_rows(row, Math.min(24, height - row));
++  if (row % 120 === 0) console.log(`Building rendered preview: ${Math.round(row / height * 100)}%`);
++}
++const rgba = m.HEAPU8.slice(m._get_pixels(), m._get_pixels() + width * height * 4);
++const scanlines = Buffer.alloc(height * (width * 4 + 1));
++for (let y = 0; y < height; y++) scanlines.set(rgba.subarray(y * width * 4, (y + 1) * width * 4), y * (width * 4 + 1) + 1);
++function crc32(bytes) {
++  let crc = 0xffffffff;
++  for (const byte of bytes) { crc ^= byte; for (let k = 0; k < 8; k++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1)); }
++  return (crc ^ 0xffffffff) >>> 0;
++}
++function chunk(type, data) {
++  const payload = Buffer.concat([Buffer.from(type), data]);
++  const size = Buffer.alloc(4), crc = Buffer.alloc(4);
++  size.writeUInt32BE(data.length); crc.writeUInt32BE(crc32(payload));
++  return Buffer.concat([size, payload, crc]);
++}
++const header = Buffer.alloc(13); header.writeUInt32BE(width); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 6;
++writeFileSync(new URL('../assets/preview.png', import.meta.url), Buffer.concat([
++  Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR', header), chunk('IDAT', deflateSync(scanlines)), chunk('IEND', Buffer.alloc(0))
++]));
++console.log(`Preview built by WebAssembly in ${((performance.now() - started) / 1000).toFixed(1)} seconds.`);
+diff --git a/src/renderer.cpp b/src/renderer.cpp
 new file mode 100644
-index 0000000..3c53f40
+index 0000000..88aabd4
 --- /dev/null
-+++ b/tests/renderer.spec.ts
-@@ -0,0 +1,54 @@
-+import { test, expect } from '@playwright/test';
++++ b/src/renderer.cpp
+@@ -0,0 +1,46 @@
++// Browser adapter for Kevin Beason's smallpt. Original integrator is unchanged.
++#define main smallpt_original_main
++#include "../vendor/smallpt/smallpt.cpp"
++#undef main
++#include <stdint.h>
 +
-+test('Wasm renders distinct images while the page remains interactive', async ({ page }) => {
-+  const errors: string[] = [];
-+  page.on('pageerror', error => errors.push(error.message));
-+  page.on('console', message => {
-+    if (['error', 'warning'].includes(message.type())) errors.push(message.text());
-+  });
-+  const wasm = page.waitForResponse(response => response.url().endsWith('.wasm'));
-+  await page.goto('/');
-+  expect((await wasm).ok()).toBeTruthy();
-+  const canvas = page.locator('#coffee-art');
-+  await expect(canvas).toBeVisible();
-+  const before = await canvas.evaluate((node: HTMLCanvasElement) => node.toDataURL());
-+  const button = page.getByRole('button', { name: 'Render a new image' });
-+  // CPU throttling makes the in-flight responsiveness check meaningful on fast hosts.
-+  const cdp = await page.context().newCDPSession(page);
-+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
-+  await button.click();
-+  await expect(canvas).toHaveAttribute('aria-busy', 'true');
-+  const interaction = await page.evaluate(async () => {
-+    let clicked = false;
-+    const probe = document.createElement('button');
-+    probe.textContent = 'Responsiveness probe';
-+    probe.onclick = () => { clicked = true; };
-+    document.body.append(probe);
-+    const start = performance.now();
-+    await new Promise<void>(resolve => requestAnimationFrame(() => {
-+      probe.click(); resolve();
-+    }));
-+    const elapsed = performance.now() - start;
-+    probe.remove();
-+    return { clicked, elapsed, busy: document.querySelector('canvas')?.getAttribute('aria-busy') };
-+  });
-+  expect(interaction.clicked).toBe(true);
-+  expect(interaction.elapsed).toBeLessThan(250);
-+  expect(interaction.busy).toBe('true');
-+  await expect(button).toBeEnabled({ timeout: 30000 });
-+  const after = await canvas.evaluate((node: HTMLCanvasElement) => node.toDataURL());
-+  expect(after).not.toBe(before);
-+  expect(errors).toEqual([]);
-+});
-+
-+test('initialization failures display a retry and can recover', async ({ page }) => {
-+  const errors: string[] = [];
-+  page.on('pageerror', error => errors.push(error.message));
-+  await page.route('**/*.wasm', route => route.abort());
-+  await page.goto('/');
-+  await expect(page.getByRole('button', { name: 'Try again' })).toBeEnabled();
-+  await page.unroute('**/*.wasm');
-+  await page.getByRole('button', { name: 'Try again' }).click();
-+  await expect(page.locator('#coffee-art')).toBeVisible();
-+  expect(errors).toEqual([]);
-+});
-diff --git a/tsconfig.json b/tsconfig.json
++static unsigned char* pixels = nullptr;
++static int width, height, samples;
++static uint32_t renderSeed;
++extern "C" {
++int init_render(int w, int h, int spp, unsigned int seed) {
++  if (w < 1 || w > 1920 || h < 1 || h > 1080 || spp < 4 || spp > 1024) return 0;
++  width=w; height=h; samples=spp/4; renderSeed=seed;
++  free(pixels);
++  pixels = (unsigned char*)calloc(w*h*4, 1);
++  if (!pixels) return 0;
++  return 1;
++}
++void set_color(int id, double r, double g, double b) {
++  if (id == 6 || id == 7) spheres[id].c=Vec(clamp(r),clamp(g),clamp(b));
++}
++unsigned char* get_pixels() { return pixels; }
++void render_rows(int start, int count) {
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm());
++  Vec cx=Vec(width*.5135/height), cy=(cx%cam.d).norm()*.5135;
++  for (int row=start; row<start+count && row<height; row++) {
++    int y=height-row-1;
++    unsigned short Xi[3]={(unsigned short)renderSeed,(unsigned short)(renderSeed>>16),(unsigned short)(y*y*y)};
++    for (int x=0; x<width; x++) {
++      Vec c;
++      for(int sy=0;sy<2;sy++) for(int sx=0;sx<2;sx++) {
++        Vec r;
++        for(int s=0;s<samples;s++) {
++          double r1=2*erand48(Xi), dx=r1<1?sqrt(r1)-1:1-sqrt(2-r1);
++          double r2=2*erand48(Xi), dy=r2<1?sqrt(r2)-1:1-sqrt(2-r2);
++          Vec d=cx*(((sx+.5+dx)/2+x)/width-.5)+cy*(((sy+.5+dy)/2+y)/height-.5)+cam.d;
++          r=r+radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samples);
++        }
++        c=c+Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++      }
++      int i=(row*width+x)*4;
++      pixels[i]=toInt(c.x);pixels[i+1]=toInt(c.y);pixels[i+2]=toInt(c.z);pixels[i+3]=255;
++    }
++  }
++}
++}
+diff --git a/styles.css b/styles.css
 new file mode 100644
-index 0000000..ac94e85
+index 0000000..96335fc
 --- /dev/null
-+++ b/tsconfig.json
-@@ -0,0 +1,12 @@
-+{
-+  "compilerOptions": {
-+    "target": "ES2022",
-+    "module": "ESNext",
-+    "moduleResolution": "Bundler",
-+    "lib": ["ES2022", "DOM"],
-+    "strict": true,
-+    "noEmit": true,
-+    "skipLibCheck": true
-+  },
-+  "include": ["src"]
++++ b/styles.css
+@@ -0,0 +1,2 @@
++@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
++:root{color-scheme:dark;--bg:#111315;--panel:#191b1e;--border:#2b2d30;--muted:#8c8e95;--text:#e9e9ec;--accent:#c5bbf2;--mono:'IBM Plex Mono',monospace;font-family:'DM Sans',sans-serif;font-synthesis:none}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-size:13px}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{cursor:default;opacity:.4}a{color:inherit;text-decoration:none}button,select{color:inherit}svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}.icon-defs{position:absolute;width:0;height:0;overflow:hidden}.site-header{height:82px;border-bottom:1px solid var(--border);padding:0 4.2%;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:11px;font-size:23px;font-weight:650;letter-spacing:-1px}.brand-mark{width:28px;height:29px;display:flex;align-items:center;justify-content:center;position:relative;border-radius:7px;background:#d8b99e;color:#212025;font-family:Georgia,serif;font-weight:700;font-style:italic;font-size:29px;line-height:1}.brand-mark span{position:absolute;font-size:25px;right:2px;top:-5px}.brand-separator{color:#4d4f53;font-size:20px;font-weight:400;margin:0 5px}.brand-sub{font-size:12px;letter-spacing:0;font-weight:400;color:var(--muted)}.header-right{display:flex;align-items:center;gap:28px}.runtime-badge{font-size:11px;color:#c0c0c6;padding:7px 10px;border:1px solid var(--border);border-radius:5px;display:flex;align-items:center;gap:7px}.status-dot{display:inline-block;width:6px;height:6px;flex-shrink:0;border-radius:50%;background:#a8c4a2}.source-link{font-size:12px;color:#b5b5bd}.source-link svg{width:14px;margin-left:5px}main{max-width:1440px;margin:auto;padding:0 4.2%}.intro{padding:48px 0 33px;display:flex;align-items:flex-end;justify-content:space-between}.eyebrow{font:10px var(--mono);letter-spacing:1.5px;color:#b5a98f;display:flex;align-items:center;gap:8px}.eyebrow>span{width:5px;height:5px;background:#cdb39a;transform:rotate(45deg)}h1{font-weight:500;font-size:clamp(27px,3.15vw,43px);letter-spacing:-1.65px;margin:15px 0 11px;line-height:1.18}h1>span{color:var(--accent)}.intro p{color:var(--muted);margin:0;font-size:13px;letter-spacing:.05px}.experiment-number{font:9px var(--mono);letter-spacing:1px;color:#66696f;white-space:nowrap;padding-bottom:2px}.experiment-number span{color:#a6a6b1;margin-left:9px}.workspace{display:grid;grid-template-columns:278px minmax(0,1fr);border:1px solid #303236;border-radius:9px;overflow:hidden;background:var(--panel)}.settings{border-right:1px solid var(--border);display:flex;flex-direction:column}.panel-heading{padding:18px 21px;display:flex;align-items:center;justify-content:space-between;height:60px;border-bottom:1px solid var(--border)}h2{font-size:13px;font-weight:550;margin:0}.icon-button{border:0;background:transparent;padding:4px;color:#92949d;border-radius:4px}.icon-button:hover{background:#303136;color:#fff}.icon-button svg{width:16px;height:16px}.setting-section{padding:23px 21px 22px;border-bottom:1px solid var(--border)}.section-label{display:flex;align-items:center;gap:9px;font:10px var(--mono);color:#666973;margin-bottom:20px}.section-label h3{font:500 11px 'DM Sans',sans-serif;color:#c6c6cd;margin:0}label{font-size:11px;color:#b3b3bc;display:block}.field-tag{float:right;font:9px var(--mono);color:#686b75}.segmented{margin-top:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:3px;background:#131517;border:1px solid #2c2e33;padding:3px;border-radius:5px}.segmented button{border:0;border-radius:3px;background:transparent;color:#8e8f99;padding:7px 2px;font:11px var(--mono)}.segmented button.selected{background:#3b354e;color:#d9cef9;box-shadow:inset 0 0 0 1px #625373}.segmented button:hover:not(.selected){background:#27292e}.field-help{font-size:10px;color:#757881;line-height:1.6;margin:9px 0 0}.resolution-label{margin-top:19px}.select-wrap{position:relative;margin-top:9px}.select-wrap select{width:100%;appearance:none;background:#202226;border:1px solid #34363d;border-radius:5px;padding:10px 12px;font:10px var(--mono);outline-offset:3px}.select-wrap>span{position:absolute;right:12px;top:6px;font-size:17px;pointer-events:none;color:#8d8f98}.sphere-row{display:flex;align-items:center;gap:11px;margin-top:17px}.sphere-row>div{flex:1}.sphere-row label{font-size:11px;color:#c6c5ce;margin-bottom:4px}.sphere-row>div>span{font-size:9px;color:#797c85}.material-orb{width:28px;height:28px;border-radius:50%;box-shadow:inset -3px -3px 7px #0008,0 1px 5px #0004}.mirror{background:radial-gradient(circle at 32% 24%,#fff7de 0%,#b6aa9c 23%,#484741 55%,#b8ad9d 85%,#333 100%)}.glass{background:radial-gradient(ellipse at 28% 25%,#e1e4f9 0%,#828797 13%,#363c48 30%,#151b24 50%,#a5adca 85%,#373a43 100%);border:1px solid #777983}input[type=color]{width:25px;height:25px;border:1px solid #62616b;padding:3px;background:#24262b;border-radius:5px;cursor:pointer}input[type=color]::-webkit-color-swatch-wrapper{padding:0}input[type=color]::-webkit-color-swatch{border:0;border-radius:2px}input[type=color]::-moz-color-swatch{border:0;border-radius:2px}.randomize-button{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:1px solid #3e3b49;background:#24222c;color:#d1c8e5;border-radius:5px;padding:10px 6px;margin-top:21px;font-size:11px}.randomize-button svg{width:14px;height:14px}.randomize-button>span{margin-left:auto;margin-right:4px;color:#8d859f}.randomize-button:hover{background:#302b3c;border-color:#72628d}.scene-info{padding-top:22px;padding-bottom:20px}.scene-info .section-label{margin-bottom:16px}.scene-info>div:not(.section-label){display:flex;justify-content:space-between;font-size:10px;margin-top:11px;color:#8b8d98}.scene-info>div>span+span{color:#b4b5be;font:10px var(--mono)}.render-actions{margin-top:auto;padding:21px}.primary-button{display:flex;align-items:center;gap:10px;border:0;border-radius:5px;width:100%;background:var(--accent);color:#252031;padding:12px 13px;font-weight:600;font-size:12px}.primary-button:hover{background:#d7ccff}.play-icon{font-size:10px}.key-hint{margin-left:auto;color:#716489;font-size:16px;font-weight:400}.render-actions>p{font-size:9px;color:#787b83;text-align:center;margin:11px 0 0;display:flex;justify-content:center;align-items:center;gap:6px}.render-actions .status-dot{width:4px;height:4px;background:#858990}.render-panel{min-width:0;display:flex;flex-direction:column;background:#151719;position:relative}.render-toolbar{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid var(--border);background:#1b1d20}.render-title{display:flex;align-items:center;gap:8px;font-size:10px;color:#c4c5cd}.toolbar-divider{height:11px;width:1px;background:#42434b;margin:0 5px}.scene-name{color:#838690}.canvas-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:35px 40px 31px;min-height:460px;background-color:#131517;background-image:radial-gradient(#ffffff0c .6px,transparent .6px);background-size:8px 8px}.canvas-frame{position:relative;width:min(100%,720px);align-self:center}canvas{display:block;width:100%;height:auto;aspect-ratio:4/3;background:#161718;box-shadow:0 12px 40px #0004;border:1px solid #343439}.canvas-caption{display:flex;justify-content:space-between;margin-top:13px;font:8px var(--mono);letter-spacing:1px;color:#646770}.render-bottom{display:grid;grid-template-columns:1fr 1.15fr 1fr 1fr;padding:22px 25px;background:#1b1d20;border-top:1px solid var(--border);gap:13px;min-height:86px}.render-bottom>div{display:flex;flex-direction:column;gap:9px}.stat-label{font:8px var(--mono);letter-spacing:1px;color:#787b84}.render-bottom>div>span+span{font:11px var(--mono);color:#c9c9d1}.render-bottom small{font-size:9px;color:#797b86}.engine-stat{border-left:1px solid #34363d;padding-left:22px}.tiny-square{display:inline-block;width:7px;height:7px;border-radius:1px;background:#b7a9dd;margin-right:8px}.progress-track{height:2px;background:#2c2c35}.progress-track>div{background:var(--accent);width:0;height:100%;transition:width .2s}.below-workspace{display:flex;justify-content:space-between;align-items:center;padding:23px 0 30px}.below-workspace>div{display:flex;gap:12px;align-items:flex-start}.note-icon{font-size:21px;color:#7d728d;line-height:1.4}.below-workspace p{font-size:11px;margin:0;color:#aaabb4;line-height:1.8}.below-workspace p>span{color:#686c76;font-size:10px}.local-note{font-size:10px;color:#777c83;display:flex;gap:7px;align-items:center}.local-note>.status-dot{width:4px;height:4px;background:#7f9a82}footer{border-top:1px solid var(--border);padding:23px 0 27px;display:flex;justify-content:space-between;color:#73767e;font-size:10px}footer p{margin:0}footer p a{color:#b3b0bd}footer p>span{padding:0 9px}footer>a{color:#a9a4b5}footer svg{width:12px;height:12px;margin-left:5px}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #d4c2ff;outline-offset:4px}@media(min-width:1450px){.intro{padding-top:60px}.canvas-stage{padding:40px 55px}.setting-section{padding-top:26px;padding-bottom:26px}}@media(max-width:1000px){.workspace{grid-template-columns:250px minmax(0,1fr)}.canvas-stage{padding:25px 22px;min-height:400px}.render-bottom{grid-template-columns:1fr 1fr;padding:20px}.engine-stat{padding-left:0;border:0}.header-right{gap:15px}.brand-sub,.brand-separator{display:none}.intro{padding-top:35px}h1{letter-spacing:-1px}}@media(max-width:700px){.site-header{height:65px;padding:0 5%}.runtime-badge{font-size:9px}.source-link{display:none}main{padding:0 5%}.intro{padding:32px 0 26px}.eyebrow{font-size:8px}.intro p{font-size:11px}.experiment-number{display:none}.workspace{display:flex;flex-direction:column}.render-panel{order:-1}.canvas-stage{padding:22px;min-height:0}.render-toolbar{height:48px;padding:0 18px}.render-bottom{grid-template-columns:repeat(4,1fr);gap:10px;padding:16px}.stat-label{font-size:7px;letter-spacing:.5px}.render-bottom>div>span+span{font-size:9px}.tiny-square{display:none}.settings{border-right:0;border-top:1px solid var(--border)}.panel-heading{height:53px}.setting-section{padding:22px}.scene-info{display:none}.render-actions{padding:22px}.sphere-row{max-width:100%}.below-workspace{align-items:flex-start;gap:15px}.local-note{font-size:8px;max-width:100px;line-height:1.7}.below-workspace p{font-size:10px}.below-workspace p>span{font-size:9px}footer{gap:20px;line-height:1.8;font-size:9px}footer>a{white-space:nowrap}.key-hint{display:none}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+diff --git a/vendor/smallpt/LICENSE.txt b/vendor/smallpt/LICENSE.txt
+new file mode 100644
+index 0000000..08255c8
+--- /dev/null
++++ b/vendor/smallpt/LICENSE.txt
+@@ -0,0 +1,22 @@
++LICENSE
++
++Copyright (c) 2006-2008 Kevin Beason (kevin.beason@gmail.com)
++
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of this software and associated documentation files (the
++"Software"), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish,
++distribute, sublicense, and/or sell copies of the Software, and to
++permit persons to whom the Software is furnished to do so, subject to
++the following conditions:
++
++The above copyright notice and this permission notice shall be included
++in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/vendor/smallpt/smallpt.cpp b/vendor/smallpt/smallpt.cpp
+new file mode 100644
+index 0000000..61e2eda
+--- /dev/null
++++ b/vendor/smallpt/smallpt.cpp
+@@ -0,0 +1,99 @@
++#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
++#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
++#include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
++struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
++  double x, y, z;                  // position, also color (r,g,b)
++  Vec(double x_=0, double y_=0, double z_=0){ x=x_; y=y_; z=z_; }
++  Vec operator+(const Vec &b) const { return Vec(x+b.x,y+b.y,z+b.z); }
++  Vec operator-(const Vec &b) const { return Vec(x-b.x,y-b.y,z-b.z); }
++  Vec operator*(double b) const { return Vec(x*b,y*b,z*b); }
++  Vec mult(const Vec &b) const { return Vec(x*b.x,y*b.y,z*b.z); }
++  Vec& norm(){ return *this = *this * (1/sqrt(x*x+y*y+z*z)); }
++  double dot(const Vec &b) const { return x*b.x+y*b.y+z*b.z; } // cross:
++  Vec operator%(Vec&b){return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);}
++};
++struct Ray { Vec o, d; Ray(Vec o_, Vec d_) : o(o_), d(d_) {} };
++enum Refl_t { DIFF, SPEC, REFR };  // material types, used in radiance()
++struct Sphere {
++  double rad;       // radius
++  Vec p, e, c;      // position, emission, color
++  Refl_t refl;      // reflection type (DIFFuse, SPECular, REFRactive)
++  Sphere(double rad_, Vec p_, Vec e_, Vec c_, Refl_t refl_):
++    rad(rad_), p(p_), e(e_), c(c_), refl(refl_) {}
++  double intersect(const Ray &r) const { // returns distance, 0 if nohit
++    Vec op = p-r.o; // Solve t^2*d.d + 2*t*(o-p).d + (o-p).(o-p)-R^2 = 0
++    double t, eps=1e-4, b=op.dot(r.d), det=b*b-op.dot(op)+rad*rad;
++    if (det<0) return 0; else det=sqrt(det);
++    return (t=b-det)>eps ? t : ((t=b+det)>eps ? t : 0);
++  }
++};
++Sphere spheres[] = {//Scene: radius, position, emission, color, material
++  Sphere(1e5, Vec( 1e5+1,40.8,81.6), Vec(),Vec(.75,.25,.25),DIFF),//Left
++  Sphere(1e5, Vec(-1e5+99,40.8,81.6),Vec(),Vec(.25,.25,.75),DIFF),//Rght
++  Sphere(1e5, Vec(50,40.8, 1e5),     Vec(),Vec(.75,.75,.75),DIFF),//Back
++  Sphere(1e5, Vec(50,40.8,-1e5+170), Vec(),Vec(),           DIFF),//Frnt
++  Sphere(1e5, Vec(50, 1e5, 81.6),    Vec(),Vec(.75,.75,.75),DIFF),//Botm
++  Sphere(1e5, Vec(50,-1e5+81.6,81.6),Vec(),Vec(.75,.75,.75),DIFF),//Top
++  Sphere(16.5,Vec(27,16.5,47),       Vec(),Vec(1,1,1)*.999, SPEC),//Mirr
++  Sphere(16.5,Vec(73,16.5,78),       Vec(),Vec(1,1,1)*.999, REFR),//Glas
++  Sphere(600, Vec(50,681.6-.27,81.6),Vec(12,12,12),  Vec(), DIFF) //Lite
++};
++inline double clamp(double x){ return x<0 ? 0 : x>1 ? 1 : x; }
++inline int toInt(double x){ return int(pow(clamp(x),1/2.2)*255+.5); }
++inline bool intersect(const Ray &r, double &t, int &id){
++  double n=sizeof(spheres)/sizeof(Sphere), d, inf=t=1e20;
++  for(int i=int(n);i--;) if((d=spheres[i].intersect(r))&&d<t){t=d;id=i;}
++  return t<inf;
++}
++Vec radiance(const Ray &r, int depth, unsigned short *Xi){
++  double t;                               // distance to intersection
++  int id=0;                               // id of intersected object
++  if (!intersect(r, t, id)) return Vec(); // if miss, return black
++  const Sphere &obj = spheres[id];        // the hit object
++  Vec x=r.o+r.d*t, n=(x-obj.p).norm(), nl=n.dot(r.d)<0?n:n*-1, f=obj.c;
++  double p = f.x>f.y && f.x>f.z ? f.x : f.y>f.z ? f.y : f.z; // max refl
++  if (++depth>5) if (erand48(Xi)<p) f=f*(1/p); else return obj.e; //R.R.
++  if (obj.refl == DIFF){                  // Ideal DIFFUSE reflection
++    double r1=2*M_PI*erand48(Xi), r2=erand48(Xi), r2s=sqrt(r2);
++    Vec w=nl, u=((fabs(w.x)>.1?Vec(0,1):Vec(1))%w).norm(), v=w%u;
++    Vec d = (u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2)).norm();
++    return obj.e + f.mult(radiance(Ray(x,d),depth,Xi));
++  } else if (obj.refl == SPEC)            // Ideal SPECULAR reflection
++    return obj.e + f.mult(radiance(Ray(x,r.d-n*2*n.dot(r.d)),depth,Xi));
++  Ray reflRay(x, r.d-n*2*n.dot(r.d));     // Ideal dielectric REFRACTION
++  bool into = n.dot(nl)>0;                // Ray from outside going in?
++  double nc=1, nt=1.5, nnt=into?nc/nt:nt/nc, ddn=r.d.dot(nl), cos2t;
++  if ((cos2t=1-nnt*nnt*(1-ddn*ddn))<0)    // Total internal reflection
++    return obj.e + f.mult(radiance(reflRay,depth,Xi));
++  Vec tdir = (r.d*nnt - n*((into?1:-1)*(ddn*nnt+sqrt(cos2t)))).norm();
++  double a=nt-nc, b=nt+nc, R0=a*a/(b*b), c = 1-(into?-ddn:tdir.dot(n));
++  double Re=R0+(1-R0)*c*c*c*c*c,Tr=1-Re,P=.25+.5*Re,RP=Re/P,TP=Tr/(1-P);
++  return obj.e + f.mult(depth>2 ? (erand48(Xi)<P ?   // Russian roulette
++    radiance(reflRay,depth,Xi)*RP:radiance(Ray(x,tdir),depth,Xi)*TP) :
++    radiance(reflRay,depth,Xi)*Re+radiance(Ray(x,tdir),depth,Xi)*Tr);
++}
++int main(int argc, char *argv[]){
++  int w=1024, h=768, samps = argc==2 ? atoi(argv[1])/4 : 1; // # samples
++  Ray cam(Vec(50,52,295.6), Vec(0,-0.042612,-1).norm()); // cam pos, dir
++  Vec cx=Vec(w*.5135/h), cy=(cx%cam.d).norm()*.5135, r, *c=new Vec[w*h];
++#pragma omp parallel for schedule(dynamic, 1) private(r)       // OpenMP
++  for (int y=0; y<h; y++){                       // Loop over image rows
++    fprintf(stderr,"\rRendering (%d spp) %5.2f%%",samps*4,100.*y/(h-1));
++    for (unsigned short x=0, Xi[3]={0,0,y*y*y}; x<w; x++)   // Loop cols
++      for (int sy=0, i=(h-y-1)*w+x; sy<2; sy++)     // 2x2 subpixel rows
++        for (int sx=0; sx<2; sx++, r=Vec()){        // 2x2 subpixel cols
++          for (int s=0; s<samps; s++){
++            double r1=2*erand48(Xi), dx=r1<1 ? sqrt(r1)-1: 1-sqrt(2-r1);
++            double r2=2*erand48(Xi), dy=r2<1 ? sqrt(r2)-1: 1-sqrt(2-r2);
++            Vec d = cx*( ( (sx+.5 + dx)/2 + x)/w - .5) +
++                    cy*( ( (sy+.5 + dy)/2 + y)/h - .5) + cam.d;
++            r = r + radiance(Ray(cam.o+d*140,d.norm()),0,Xi)*(1./samps);
++          } // Camera rays are pushed ^^^^^ forward to start in interior
++          c[i] = c[i] + Vec(clamp(r.x),clamp(r.y),clamp(r.z))*.25;
++        }
++  }
++  FILE *f = fopen("image.ppm", "w");         // Write image to PPM file.
++  fprintf(f, "P3\n%d %d\n%d\n", w, h, 255);
++  for (int i=0; i<w*h; i++)
++    fprintf(f,"%d %d %d ", toInt(c[i].x), toInt(c[i].y), toInt(c[i].z));
 +}

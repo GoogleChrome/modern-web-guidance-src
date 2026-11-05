@@ -1,0 +1,316 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..9383795
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,10 @@
++import { mkdir, readFile, copyFile } from 'node:fs/promises';
++import { Script } from 'node:vm';
++
++const page = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++for (const [index, match] of Array.from(page.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)).entries()) {
++  new Script(match[1], { filename: `index.html:script-${index + 1}` });
++}
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
++console.log('Built dist/index.html; inline JavaScript syntax checks passed.');
+diff --git a/index.html b/index.html
+index 66c9173..1078661 100644
+--- a/index.html
++++ b/index.html
+@@ -120,6 +120,136 @@
+       color: var(--primary);
+     }
+ 
++    #favorites-actions {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++      overflow-x: auto;
++      margin-block-start: 1.25rem;
++      padding: 0.5rem;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++    }
++
++    #favorites-actions [role="group"] {
++      display: flex;
++      flex-shrink: 0;
++      gap: 0.25rem;
++    }
++
++    #favorites-actions button {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-inline-size: 2.5rem;
++      min-block-size: 2.5rem;
++      padding-inline: 0.5rem;
++      border: 1px solid var(--primary);
++      border-radius: 5px;
++      background: white;
++      color: var(--primary);
++      font: inherit;
++      cursor: pointer;
++    }
++
++    #favorites-actions button svg {
++      inline-size: 1.25rem;
++      block-size: 1.25rem;
++    }
++
++    #favorites-actions button[aria-pressed="true"] {
++      background: var(--primary);
++      color: white;
++    }
++
++    #favorites-actions button[aria-disabled="true"] {
++      opacity: 0.6;
++      cursor: default;
++    }
++
++    #favorites-actions button:focus-visible {
++      outline: 3px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    #favorites-actions [role="separator"] {
++      flex: 0 0 auto;
++      block-size: 1.75rem;
++      border-inline-start: 1px solid var(--primary);
++    }
++
++    [popover="hint"] {
++      inset: auto;
++      position-area: block-end;
++      position-try-fallbacks: flip-block;
++      margin-block: 0.25rem;
++      padding-block: 0.2rem;
++      padding-inline: 0.5rem;
++      background: var(--text);
++      color: white;
++      border: 1px solid transparent;
++      border-radius: 4px;
++      font-size: 0.8rem;
++    }
++
++    #favorites-cards[data-view="list"] {
++      grid-template-columns: minmax(0, 1fr);
++    }
++
++    #favorites-cards[data-view="list"] .card {
++      text-align: start;
++    }
++
++    #favorites-cards[data-details="false"] .card p {
++      display: none;
++    }
++
++    #favorites-status {
++      min-block-size: 1.6em;
++      margin-block-start: 0.5rem;
++    }
++
++    @media (hover: hover) {
++      #favorites-actions button:not([aria-pressed="true"]):not([aria-disabled="true"]):hover {
++        background: var(--secondary);
++      }
++    }
++
++    @media (pointer: coarse) {
++      #favorites-actions button {
++        min-inline-size: 3rem;
++        min-block-size: 3rem;
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      #favorites-actions button {
++        transition: background-color 0.15s, color 0.15s;
++      }
++    }
++
++    @media (forced-colors: active) {
++      #favorites-actions button {
++        border-color: ButtonText;
++        color: ButtonText;
++      }
++
++      #favorites-actions button[aria-pressed="true"] {
++        background: Highlight;
++        color: HighlightText;
++        forced-color-adjust: none;
++      }
++
++      #favorites-actions button:focus-visible {
++        outline-color: Highlight;
++      }
++
++      #favorites-actions [role="separator"],
++      [popover="hint"] {
++        border-color: ButtonText;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -177,7 +307,45 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div id="favorites-actions" role="toolbar" aria-label="Seasonal favorites actions"
++        aria-controls="favorites-cards" focusgroup="toolbar wrap">
++        <div role="group" aria-label="Drink layout">
++          <button type="button" data-view="grid" aria-pressed="true" aria-label="Grid view" title="Grid view">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++              <rect x="3" y="3" width="8" height="8" rx="1"></rect>
++              <rect x="13" y="3" width="8" height="8" rx="1"></rect>
++              <rect x="3" y="13" width="8" height="8" rx="1"></rect>
++              <rect x="13" y="13" width="8" height="8" rx="1"></rect>
++            </svg>
++          </button>
++          <button type="button" data-view="list" aria-pressed="false" aria-label="List view" title="List view">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
++              <rect x="3" y="4" width="18" height="4" rx="1"></rect>
++              <rect x="3" y="10" width="18" height="4" rx="1"></rect>
++              <rect x="3" y="16" width="18" height="4" rx="1"></rect>
++            </svg>
++          </button>
++        </div>
++        <span role="separator" aria-orientation="vertical"></span>
++        <div role="group" aria-label="Display options">
++          <button type="button" id="toggle-details" aria-pressed="true" aria-label="Show descriptions" title="Show descriptions">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
++              <path d="M4 6h16M4 12h16M4 18h10"></path>
++            </svg>
++          </button>
++        </div>
++        <span role="separator" aria-orientation="vertical"></span>
++        <div role="group" aria-label="Share drinks">
++          <button type="button" id="copy-favorites" aria-label="Copy drinks" title="Copy drinks">
++            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
++              <rect x="9" y="9" width="11" height="11" rx="2"></rect>
++              <path d="M5 15V5a2 2 0 0 1 2-2h8"></path>
++            </svg>
++          </button>
++        </div>
++      </div>
++      <p id="favorites-status" role="status" aria-atomic="true"></p>
++      <div class="grid" id="favorites-cards" data-view="grid" data-details="true">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+@@ -207,6 +375,92 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const favoritesToolbar = document.getElementById('favorites-actions');
++    const favoritesCards = document.getElementById('favorites-cards');
++    const favoritesStatus = document.getElementById('favorites-status');
++    const toggleDetails = document.getElementById('toggle-details');
++    const copyFavorites = document.getElementById('copy-favorites');
++
++    if (favoritesToolbar && favoritesCards && favoritesStatus && toggleDetails && copyFavorites) {
++      if ('interestForElement' in HTMLButtonElement.prototype && CSS.supports('position-area', 'block-end')) {
++        favoritesToolbar.querySelectorAll('button[title]').forEach((b, i) => {
++          const tip = Object.assign(document.createElement('div'), { id: `codex-tip-${i}`, textContent: b.title });
++          tip.popover = 'hint';
++          b.setAttribute('interestfor', tip.id);
++          b.removeAttribute('title');
++          document.body.append(tip);
++        });
++      }
++
++      const buttons = Array.from(favoritesToolbar.querySelectorAll('button'));
++      const viewButtons = buttons.filter((button) => button.dataset.view);
++
++      for (const button of viewButtons) {
++        button.addEventListener('click', () => {
++          if (button.getAttribute('aria-disabled') === 'true') return;
++          favoritesCards.dataset.view = button.dataset.view;
++          for (const viewButton of viewButtons) {
++            viewButton.setAttribute('aria-pressed', String(viewButton === button));
++          }
++        });
++      }
++
++      toggleDetails.addEventListener('click', () => {
++        if (toggleDetails.getAttribute('aria-disabled') === 'true') return;
++        const next = toggleDetails.getAttribute('aria-pressed') !== 'true';
++        toggleDetails.setAttribute('aria-pressed', String(next));
++        favoritesCards.dataset.details = String(next);
++      });
++
++      copyFavorites.addEventListener('click', async () => {
++        if (copyFavorites.getAttribute('aria-disabled') === 'true') return;
++        copyFavorites.setAttribute('aria-disabled', 'true');
++        favoritesStatus.textContent = '';
++        const drinks = Array.from(favoritesCards.querySelectorAll('.card')).map((card) => {
++          const name = card.querySelector('h3')?.textContent?.trim() ?? '';
++          const description = card.querySelector('p')?.textContent?.trim() ?? '';
++          return `${name}: ${description}`;
++        });
++        try {
++          await navigator.clipboard.writeText(drinks.join('\n'));
++          favoritesStatus.textContent = 'Featured drinks copied.';
++        } catch {
++          favoritesStatus.textContent = 'Could not copy drinks. Please try again or copy the drink text directly.';
++        } finally {
++          copyFavorites.removeAttribute('aria-disabled');
++        }
++      });
++
++      if (!('focusGroup' in HTMLElement.prototype)) {
++        buttons.forEach((button, index) => { button.tabIndex = index === 0 ? 0 : -1; });
++        favoritesToolbar.addEventListener('focusin', (event) => {
++          const btn = event.target.closest('button');
++          if (!btn || !buttons.includes(btn)) return;
++          buttons.forEach((button) => { button.tabIndex = button === btn ? 0 : -1; });
++        });
++        favoritesToolbar.addEventListener('keydown', (event) => {
++          const btn = event.target.closest('button');
++          const index = buttons.indexOf(btn);
++          if (index < 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
++          const vertical = favoritesToolbar.getAttribute('aria-orientation') === 'vertical';
++          const rtl = getComputedStyle(favoritesToolbar).direction === 'rtl';
++          let nextIndex;
++          if (event.key === 'Home') nextIndex = 0;
++          else if (event.key === 'End') nextIndex = buttons.length - 1;
++          else {
++            const forward = vertical ? 'ArrowDown' : rtl ? 'ArrowLeft' : 'ArrowRight';
++            const backward = vertical ? 'ArrowUp' : rtl ? 'ArrowRight' : 'ArrowLeft';
++            if (event.key === forward) nextIndex = (index + 1) % buttons.length;
++            else if (event.key === backward) nextIndex = (index - 1 + buttons.length) % buttons.length;
++            else return;
++          }
++          event.preventDefault();
++          buttons[nextIndex].focus();
++        });
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

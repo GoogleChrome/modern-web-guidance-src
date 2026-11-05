@@ -21,17 +21,15 @@ Toast notifications are transient status messages. Unlike menus, they should not
 * **DO** use JavaScript for auto-dismissal timers (e.g., calling hidePopover() after 3000ms).
 * **DO** utilize transition-behavior: allow-discrete to animate the entry and exit from the Top Layer.
 
-### Fallback Strategies
+## Fallback strategies
 
 {{ FEATURE_FALLBACKS("popover") }}
+
+{{ FEATURE("anchor-positioning", "popover-fallbacks") }}
 
 #### sibling-index()
 
 * **Guidance:** If sibling-index() is not supported, use the `+` operator to add margin manually. I.e. `popover + popover { margin-top: 1rem }`
-
-#### anchor-positioning
-
-* **Guidance:** Use the [CSS Anchor Positioning Polyfill](https://github.com/oddbird/css-anchor-positioning). For a non-polyfill fallback, default the tooltip to a fixed position at the bottom of the viewport using `@supports not (anchor-name: --foo)`.
 
 #### transition-behavior
 

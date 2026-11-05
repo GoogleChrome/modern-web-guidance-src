@@ -13,8 +13,6 @@
   </div>
 
   <script type="module">
-      const rpId = 'example.com';
-
     async function init() {
       if (window.PublicKeyCredential) {
         const capabilities = await PublicKeyCredential.getClientCapabilities();
@@ -69,7 +67,7 @@
             console.error('Verification endpoint failed:', verifyErr);
             if (PublicKeyCredential.signalUnknownCredential) {
               await PublicKeyCredential.signalUnknownCredential({
-                rpId,
+                rpId: publicKey.rp?.id ?? 'example.com',
                 credentialId: encodedResponse.id
               });
             }

@@ -1,0 +1,302 @@
+diff --git a/index.html b/index.html
+index 66c9173..cda3c67 100644
+--- a/index.html
++++ b/index.html
+@@ -28,7 +28,7 @@
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -46,26 +46,137 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .site-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
++    /* Breadcrumbs */
++    .breadcrumb {
++      container-type: inline-size;
++      max-width: 1100px;
++      margin: 24px auto 0;
++      padding: 0 20px;
++      --slant: clamp(0.4rem, 2cqi, 0.75rem);
++    }
++
++    .breadcrumb > ol {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.5rem;
++      list-style: none;
++      margin: 0;
++      padding: 0;
++    }
++
++    .breadcrumb > ol > li {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    /* Base fallback: plain bordered rectangular segments with a decorative separator */
++    .breadcrumb > ol > li + li::before {
++      content: "/" / "";
++      color: var(--primary);
++      font-weight: 600;
++      user-select: none;
++    }
++
++    .breadcrumb > ol > li > a {
++      display: block;
++      padding: 0.45rem 0.85rem;
++      background-color: var(--secondary);
++      color: var(--text);
++      border: 1px solid var(--primary);
++      font-size: 0.9rem;
++      text-decoration: underline;
++      text-underline-offset: 0.18em;
++      transition: background-color 0.2s, color 0.2s;
++    }
++
++    .breadcrumb > ol > li > a:hover {
++      background-color: #bcaaa4;
++      color: #1b0f0d;
++      text-decoration-thickness: 2px;
++    }
++
++    .breadcrumb > ol > li > a[aria-current="page"] {
++      background-color: var(--primary);
++      color: var(--light);
++      font-weight: 700;
++      text-decoration: none;
++    }
++
++    .breadcrumb > ol > li > a:focus-visible {
++      position: relative;
++      z-index: 1;
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++      background-color: #271815;
++      color: #ffffff;
++    }
++
++    @supports (z-index: sibling-index()) {
++      .breadcrumb > ol > li {
++        position: relative;
++        z-index: calc(sibling-count() - sibling-index());
++      }
++
++      .breadcrumb > ol > li:has(> a:focus-visible) {
++        z-index: calc(sibling-count() + 1);
++      }
++    }
++
++    @supports (corner-shape: bevel) {
++      .breadcrumb > ol,
++      .breadcrumb > ol > li {
++        gap: 0;
++      }
++
++      .breadcrumb > ol > li > a {
++        corner-shape: bevel;
++        padding: 0.55rem calc(var(--slant) + 0.8rem);
++        border-start-start-radius: var(--slant) 100%;
++        border-end-end-radius: var(--slant) 100%;
++      }
++
++      .breadcrumb > ol > li + li::before {
++        content: none;
++      }
++
++      .breadcrumb > ol > li + li {
++        margin-inline-start: calc(0.25rem - var(--slant));
++      }
++    }
++
++    @media (forced-colors: active) {
++      .breadcrumb > ol > li > a {
++        border: 1px solid LinkText;
++      }
++
++      .breadcrumb > ol > li > a[aria-current="page"] {
++        border: 2px solid CanvasText;
++        text-decoration: underline;
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -157,10 +268,10 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li><a href="/menu" data-breadcrumb-item="menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -174,24 +285,32 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++  <nav class="breadcrumb" aria-label="Breadcrumbs">
++    <ol id="breadcrumb-list">
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="/menu/seasonal" aria-current="page">Seasonal Favorites</a></li>
++    </ol>
++  </nav>
++
++  <main class="container" id="seasonal-favorites">
++    <section id="menu">
++      <h2 id="section-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" data-item-title="Maple Oat Latte" data-item-href="/menu/seasonal">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-trail-item="Maple Oat Latte">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-item-title="Dark Roast Espresso" data-item-href="/menu/espresso">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-trail-item="Dark Roast Espresso">View Details</a>
+         </div>
+-        <div class="card">
++        <div class="card" data-item-title="Cold Brew" data-item-href="/menu/cold-brew">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-trail-item="Cold Brew">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +326,91 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (function () {
++      const breadcrumbList = document.getElementById('breadcrumb-list');
++      const cards = document.querySelectorAll('.card[data-item-title]');
++      const sectionHeading = document.getElementById('section-heading');
++
++      const baseTrail = [
++        { label: 'Home', href: '/' },
++        { label: 'Menu', href: '/menu' },
++        { label: 'Seasonal Favorites', href: '/menu/seasonal' }
++      ];
++
++      function renderBreadcrumbs(activeItem) {
++        const items = activeItem
++          ? [...baseTrail, { label: activeItem.title, href: activeItem.href }]
++          : baseTrail;
++
++        breadcrumbList.innerHTML = '';
++        items.forEach((item, index) => {
++          const li = document.createElement('li');
++          const a = document.createElement('a');
++          a.href = item.href;
++          a.textContent = item.label;
++          if (index === items.length - 1) {
++            a.setAttribute('aria-current', 'page');
++          }
++          a.addEventListener('click', (e) => {
++            e.preventDefault();
++            if (index < baseTrail.length) {
++              showOverview();
++            }
++          });
++          li.appendChild(a);
++          breadcrumbList.appendChild(li);
++        });
++      }
++
++      function showOverview() {
++        cards.forEach((card) => {
++          card.hidden = false;
++        });
++        if (sectionHeading) {
++          sectionHeading.textContent = 'Seasonal Favorites';
++        }
++        renderBreadcrumbs(null);
++      }
++
++      function showItemDetail(title, href) {
++        cards.forEach((card) => {
++          card.hidden = card.dataset.itemTitle !== title;
++        });
++        if (sectionHeading) {
++          sectionHeading.textContent = title;
++        }
++        renderBreadcrumbs({ title, href });
++      }
++
++      document.querySelectorAll('.breadcrumb > ol > li > a').forEach((a, index) => {
++        a.addEventListener('click', (e) => {
++          e.preventDefault();
++          if (index < baseTrail.length) {
++            showOverview();
++          }
++        });
++      });
++
++      document.querySelectorAll('[data-trail-item]').forEach((btn) => {
++        btn.addEventListener('click', (e) => {
++          e.preventDefault();
++          const title = btn.getAttribute('data-trail-item');
++          const href = btn.getAttribute('href') || '#';
++          showItemDetail(title, href);
++        });
++      });
++
++      const menuNav = document.querySelector('[data-breadcrumb-item="menu"]');
++      if (menuNav) {
++        menuNav.addEventListener('click', (e) => {
++          e.preventDefault();
++          showOverview();
++        });
++      }
++    })();
++  </script>
++
+ </body>
+ 
+ </html>
