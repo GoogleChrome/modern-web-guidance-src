@@ -5,12 +5,15 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { rootDir, outDir } from '../core/paths.ts';
+import { rootDir, outDir, guidesDir, ensureDiskNodeCompileCache } from '../core/paths.ts';
 import { cRed, cYellow, cCyan } from '../core/colors.ts';
-import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type SolutionAgent, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../core/guide-validation.ts';
+import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type SolutionAgent, GRADER_FILE, getSupportedBaseApps } from '../core/guide-validation.ts';
 import { copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
 import { createIsolatedHome, cleanupIsolatedHome } from '../harness/lib/agent-shared.ts';
 import { applyPatchSync } from '../core/patch-utils.ts';
+import { checkTargetPageLoad, killServerProcessTree, type PageLoadResult } from './test-fixture.ts';
+
+export type { PageLoadResult } from './test-fixture.ts';
 
 export interface PlaywrightOptions {
   targetPathAbs: string;
@@ -18,24 +21,28 @@ export interface PlaywrightOptions {
   reporters: string[];
   testResultsDir?: string;
   jsonOutputName?: string;
+  pageLoadOutputName?: string;
+  serverPidsOutputName?: string;
   patchFile?: string;
   stdio?: 'inherit' | 'ignore' | 'pipe';
   baselineTarget?: string;
 }
 
+/** Copies the untouched base app to a temp dir and applies `patchFile` (when given and non-empty). */
 async function stageGradingWorkspace(
   baseApp: string,
-  patchFile: string,
-  zeroPassrateFile?: string
+  patchFile?: string
 ): Promise<{ workDir: string; cleanup: () => void }> {
   const tempHome = createIsolatedHome('grade-run');
   const workDir = path.join(tempHome, baseApp);
 
   await copyBaseAppToWorkspace(baseApp, workDir);
 
-  for (const file of [zeroPassrateFile, patchFile]) {
-    if (file && fs.existsSync(file) && fs.readFileSync(file, 'utf8').trim()) {
-      applyPatchSync(workDir, file);
+  if (patchFile && fs.existsSync(patchFile) && fs.readFileSync(patchFile, 'utf8').trim()) {
+    const patchResult = applyPatchSync(workDir, patchFile);
+    if (!patchResult.success) {
+      try { cleanupIsolatedHome(tempHome); } catch {}
+      throw new Error(`Failed to apply patch ${patchFile} to ${baseApp}: ${patchResult.error}`);
     }
   }
 
@@ -57,9 +64,13 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     TARGET_FILE: opts.targetPathAbs,
     BASELINE_TARGET: opts.baselineTarget || process.env.BASELINE_TARGET || 'widely',
   };
+  ensureDiskNodeCompileCache(env, 'harness');
+  delete env.TARGET_URL;
 
   if (opts.patchFile) {
     env.PATCH_FILE = path.resolve(opts.patchFile);
+  } else {
+    delete env.PATCH_FILE;
   }
 
   if (opts.testResultsDir) {
@@ -71,12 +82,29 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PWTEST_CACHE_DIR = `${opts.jsonOutputName}-cache`;
   }
 
+  if (opts.pageLoadOutputName) {
+    env.PAGE_LOAD_OUTPUT = opts.pageLoadOutputName;
+  } else {
+    delete env.PAGE_LOAD_OUTPUT;
+  }
+
+  if (opts.serverPidsOutputName) {
+    env.SERVER_PIDS_FILE = opts.serverPidsOutputName;
+  } else {
+    delete env.SERVER_PIDS_FILE;
+  }
+
+  const resolvedGraderPath = path.resolve(opts.graderPath);
+  if (!resolvedGraderPath.startsWith(guidesDir + path.sep)) {
+    env.PLAYWRIGHT_TEST_DIR = path.dirname(resolvedGraderPath);
+  }
+
   const playwrightBin = path.join(rootDir, 'node_modules', '.bin', 'playwright');
 
   return spawn(playwrightBin, ['test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
     cwd: appDir,
-    stdio: opts.stdio || 'inherit',
-    env
+    env,
+    stdio: opts.stdio || 'inherit'
   });
 }
 
@@ -86,29 +114,48 @@ export interface RunPlaywrightOptions {
   zeroPassrateFile?: string;
   testResultsDir?: string;
   baselineTarget?: string;
+  stage?: 'patch' | 'starting-app';
 }
 
+/**
+ * Runs a grader. With `patchFile`, grades that patch applied to a fresh copy of the base app; with
+ * `stage: 'starting-app'`, grades a fresh untouched copy of the base app (starting-app calibration);
+ * otherwise grades `targetPathAbs` in place.
+ */
 export async function runPlaywright(
   targetPathAbs: string,
   graderPath: string,
-  options: RunPlaywrightOptions = {}
+  optionsOrStdio: RunPlaywrightOptions | 'inherit' | 'ignore' | 'pipe' = 'inherit',
+  maybePatchFile?: string,
+  maybeTestResultsDir?: string,
+  maybeStage: 'patch' | 'starting-app' = 'patch'
 ): Promise<any> {
-  const {
-    stdio = 'inherit',
-    patchFile,
-    zeroPassrateFile,
-    testResultsDir,
-    baselineTarget,
-  } = options;
+  const options: RunPlaywrightOptions = typeof optionsOrStdio === 'object' && optionsOrStdio !== null
+    ? optionsOrStdio
+    : {
+        stdio: optionsOrStdio,
+        patchFile: maybePatchFile,
+        testResultsDir: maybeTestResultsDir,
+        stage: maybeStage,
+      };
+
+  const stdio = options.stdio ?? 'inherit';
+  const patchFile = options.patchFile;
+  const testResultsDir = options.testResultsDir;
+  const stage = options.stage ?? (patchFile ? 'patch' : 'starting-app');
+  const baselineTarget = options.baselineTarget;
+
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
+  const tmpPageLoadJson = `${tmpJson}-pageload.json`;
+  const tmpServerPidsFile = `${tmpJson}-servers.pids`;
 
   const isDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory();
   let effectiveTargetPath = targetPathAbs;
   let cleanupGradingDir: (() => void) | null = null;
 
-  if (patchFile) {
+  if (patchFile || stage === 'starting-app') {
     const baseApp = path.basename(path.dirname(graderPath));
-    const { workDir: tempGradingDir, cleanup } = await stageGradingWorkspace(baseApp, patchFile, zeroPassrateFile);
+    const { workDir: tempGradingDir, cleanup } = await stageGradingWorkspace(baseApp, patchFile);
     cleanupGradingDir = cleanup;
     effectiveTargetPath = isDir ? tempGradingDir : path.join(tempGradingDir, path.basename(targetPathAbs));
   }
@@ -126,9 +173,11 @@ export async function runPlaywright(
       reporters: ['json'],
       testResultsDir: resolvedTestResultsDir,
       jsonOutputName: tmpJson,
+      pageLoadOutputName: tmpPageLoadJson,
+      serverPidsOutputName: tmpServerPidsFile,
       patchFile: patchFile,
       stdio: stdio === 'ignore' ? 'pipe' : stdio,
-      baselineTarget
+      baselineTarget,
     });
 
     if (child.stderr) {
@@ -147,8 +196,44 @@ export async function runPlaywright(
     }
 
     await fs.promises.unlink(tmpJson).catch(() => {});
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+
+    let pageLoad: PageLoadResult | undefined;
+    try {
+      pageLoad = await checkTargetPageLoad(effectiveAppDir);
+    } catch (err) {
+      pageLoad = {
+        ok: false,
+        errors: [`[browser] ${err instanceof Error ? err.message : String(err)}`],
+      };
+    }
+
+    const pageLoadOutputPayload: PageLoadResult = pageLoad ?? { ok: true, errors: [], noPage: true };
+    await fs.promises.writeFile(tmpPageLoadJson, JSON.stringify(pageLoadOutputPayload)).catch(() => {});
+    if (process.env.PAGE_LOAD_OUTPUT) {
+      await fs.promises.writeFile(process.env.PAGE_LOAD_OUTPUT, JSON.stringify(pageLoadOutputPayload)).catch(() => {});
+    }
+
+    if (pageLoad && !pageLoad.noPage) {
+      parsed.pageLoad = pageLoad;
+    }
+    return parsed;
   } finally {
+    try {
+      if (fs.existsSync(tmpServerPidsFile)) {
+        const pidLines = fs.readFileSync(tmpServerPidsFile, 'utf8').split('\n');
+        for (const line of pidLines) {
+          const pid = Number(line.trim());
+          if (Number.isInteger(pid) && pid > 1) {
+            killServerProcessTree(pid);
+          }
+        }
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+    await fs.promises.unlink(tmpServerPidsFile).catch(() => {});
+    await fs.promises.unlink(tmpPageLoadJson).catch(() => {});
     await fs.promises.rm(`${tmpJson}-cache`, { recursive: true, force: true }).catch(() => {});
     if (cleanupGradingDir) {
       cleanupGradingDir();
@@ -159,20 +244,13 @@ export async function runPlaywright(
 async function runPlaywrightCalibration(
   targetPathAbs: string,
   graderPath: string,
-  patchFile: string,
+  patchFile: string | undefined,
   result: CalibrationResult,
-  zeroPassrateFile?: string,
   testResultsDir?: string
 ): Promise<any> {
-  const results = await runPlaywright(targetPathAbs, graderPath, {
-    stdio: 'ignore',
-    patchFile,
-    zeroPassrateFile,
-    testResultsDir,
-    baselineTarget: 'widely',
-  })
+  const results = await runPlaywright(targetPathAbs, graderPath, 'ignore', patchFile, testResultsDir, patchFile ? 'patch' : 'starting-app')
     .catch(err => {
-      result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
+      result.errorDetails = `Dev server crashed or failed to run against ${patchFile ? path.basename(patchFile) : 'the untouched starting app'}: ${err.message}`;
       return null;
     });
 
@@ -189,13 +267,15 @@ async function runPlaywrightCalibration(
   return results;
 }
 
+interface PlaywrightSpec {
+  title: string;
+  ok: boolean;
+  tests?: Array<{ status?: string; results?: Array<{ status?: string; error?: { message?: string }; errors?: Array<{ message?: string }> }> }>;
+}
+
 export interface PlaywrightSuite {
   title: string;
-  specs?: Array<{
-    title: string;
-    ok: boolean;
-    tests?: Array<{ status?: string; results?: Array<{ status?: string }> }>;
-  }>;
+  specs?: PlaywrightSpec[];
   suites?: PlaywrightSuite[];
 }
 
@@ -218,6 +298,23 @@ export function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): 
     results.push(...collectSpecs(child, ok, `${prefix}${child.title} > `));
   }
   return results;
+}
+
+/**
+ * Maps each failing test title (formatted like `collectSpecs`) to its error messages, so callers can
+ * reason about one (solution, test) failure at a time instead of the combined `errorDetails` log.
+ */
+export function collectFailureMessages(suite: PlaywrightSuite, prefix = ''): Record<string, string> {
+  const messages: Record<string, string> = {};
+  for (const spec of suite.specs || []) {
+    if (isSpecSkipped(spec) || spec.ok) continue;
+    const errors = (spec.tests || []).flatMap(t => (t.results || []).flatMap(r => r.errors?.length ? r.errors : (r.error ? [r.error] : [])));
+    messages[`${prefix}${spec.title}`] = [...new Set(errors.map(e => e.message).filter((m): m is string => Boolean(m)))].join('\n');
+  }
+  for (const child of suite.suites || []) {
+    Object.assign(messages, collectFailureMessages(child, `${prefix}${child.title} > `));
+  }
+  return messages;
 }
 
 export function printFailingSpecs(suite: PlaywrightSuite, prefix = ''): void {
@@ -258,7 +355,7 @@ export function collectPlaywrightErrors(resultsJson: any): string {
     const title = prefix ? `${prefix} > ${suite.title}` : suite?.title || '';
 
     for (const spec of suite?.specs || []) {
-      if (spec.ok) continue;
+      if (isSpecSkipped(spec) || spec.ok) continue;
 
       for (const test of spec?.tests || []) {
         for (const res of test?.results || []) {
@@ -292,13 +389,18 @@ export interface SolutionTestResult {
   passed: number;
   failed: number;
   failingTests: string[];
+  /** Error message per failing test title (same keys as `failingTests`). */
+  failureMessages?: Record<string, string>;
+  pageLoad?: PageLoadResult;
 }
 
 export interface CalibrationResult {
   success: boolean;
   errorDetails?: string;
   solutions: Partial<Record<SolutionAgent, SolutionTestResult>>;
-  zeroPassrate: { passed: number; failed: number; passingTests: string[] };
+  /** The grader run against the untouched base app: every test must fail, except exempt regression checks. */
+  startingApp?: { passed: number; failed: number; passingTests: string[]; pageLoad?: PageLoadResult };
+  zeroPassrate?: { passed: number; failed: number; passingTests: string[]; pageLoad?: PageLoadResult };
   sharedFailingTests?: string[];
 }
 
@@ -313,9 +415,12 @@ export function findSharedFailingTests(
   return first.filter(testTitle => rest.every(l => l.includes(testTitle)));
 }
 
-export async function testTargetGrader(guideDirAbs: string, baseApp: string): Promise<CalibrationResult> {
+/**
+ * Calibrates a target grader: every golden solution must pass 100%, and every test must fail on the
+ * untouched starting app except `exemptTests` (regression checks the base app already satisfies).
+ */
+export async function testTargetGrader(guideDirAbs: string, baseApp: string, exemptTests: readonly string[] = []): Promise<CalibrationResult> {
   const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
-  const zeroPassratePatch = path.join(targetDir, ZERO_PASSRATE_PATCH_FILE);
   const graderPath = path.join(targetDir, GRADER_FILE);
 
   const activeAgents = getActiveSolutionAgents(targetDir);
@@ -327,11 +432,12 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const result: CalibrationResult = {
     success: false,
     solutions,
-    zeroPassrate: { passed: 0, failed: 0, passingTests: [] }
+    startingApp: { passed: 0, failed: 0, passingTests: [] },
+    zeroPassrate: { passed: 0, failed: 0, passingTests: [] },
   };
 
   const missingSolutions = activeAgents.filter(agent => !fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[agent])));
-  if (missingSolutions.length > 0 || !fs.existsSync(zeroPassratePatch) || !fs.existsSync(graderPath)) {
+  if (missingSolutions.length > 0 || !fs.existsSync(graderPath)) {
     result.errorDetails = `Missing patch or grader files in ${targetDir}`;
     return result;
   }
@@ -342,7 +448,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const category = parentDir === 'guides' ? slug : parentDir;
   const testResultsBaseDir = path.join(outDir, 'guides', category, slug, baseApp, 'test-results');
 
-  // Golden calibration across active AI solution diffs + zero-passrate calibration in parallel
+  // Golden calibration across active AI solution diffs + the untouched starting app, in parallel
   const solutionStatus: Record<string, string> = {};
   const solutionErrors: string[] = [];
   let allSolutionsPassed = true;
@@ -353,7 +459,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     const solutionTestResultsDir = path.join(testResultsBaseDir, `solution-${agent}`);
     let unexpected = 0;
     console.log(cYellow(`\nRunning against ${baseApp} with ${solPatchFile} (${agent})... (Expecting 100% pass)`));
-    const solutionResults = await runPlaywrightCalibration(targetDir, graderPath, solutionPatch, result, undefined, solutionTestResultsDir);
+    const solutionResults = await runPlaywrightCalibration(targetDir, graderPath, solutionPatch, result, solutionTestResultsDir);
 
     if (!solutionResults) {
       allSolutionsPassed = false;
@@ -369,6 +475,9 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
     result.solutions[agent]!.passed = expected;
     result.solutions[agent]!.failed = unexpected;
+    if (solutionResults.pageLoad) {
+      result.solutions[agent]!.pageLoad = solutionResults.pageLoad;
+    }
 
     if (expected === 0 && unexpected === 0) {
       allSolutionsPassed = false;
@@ -378,6 +487,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
       allSolutionsPassed = false;
       solutionStatus[agent] = `❌ FAILED (${expected} passed, ${unexpected} failed)`;
       result.solutions[agent]!.failingTests = solutionResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
+      result.solutions[agent]!.failureMessages = Object.assign({}, ...(solutionResults.suites || []).map((s: PlaywrightSuite) => collectFailureMessages(s)));
       const pwErrors = collectPlaywrightErrors(solutionResults);
       solutionErrors.push(`[${solPatchFile}] failed ${unexpected} tests:\n\n${pwErrors}`);
       solutionResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
@@ -386,41 +496,44 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     }
   });
 
-  let zeroPassrateStatus = '';
-  let zeroPassrateFailed = false;
-  const zeroPassrateTask = (async () => {
-    let passed = 0;
-    const zeroPassrateTestResultsDir = path.join(testResultsBaseDir, 'zero-passrate');
-    console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
-    const zeroPassrateResults = await runPlaywrightCalibration(targetDir, graderPath, zeroPassratePatch, result, undefined, zeroPassrateTestResultsDir);
+  let startingAppStatus = '';
+  let startingAppFailed = false;
+  const startingAppTask = (async () => {
+    console.log(cYellow(`Running against the untouched ${baseApp} starting app... (Expecting every test to fail, except ${exemptTests.length} exempt regression check(s))`));
+    const startingResults = await runPlaywrightCalibration(targetDir, graderPath, undefined, result, path.join(testResultsBaseDir, 'starting-app'));
 
-    if (!zeroPassrateResults) {
-      zeroPassrateFailed = true;
-      zeroPassrateStatus = `❌ FAILED (Dev server crashed or compile error)`;
+    if (!startingResults) {
+      startingAppFailed = true;
+      startingAppStatus = `❌ FAILED (Dev server crashed or compile error)`;
       return;
     }
 
-    passed = zeroPassrateResults.stats?.expected || 0;
-    const failed = zeroPassrateResults.stats?.unexpected || 0;
-    result.zeroPassrate.passed = passed;
-    result.zeroPassrate.failed = failed;
+    const passed = startingResults.stats?.expected || 0;
+    const failed = startingResults.stats?.unexpected || 0;
+    const startingApp = result.startingApp ?? (result.startingApp = { passed: 0, failed: 0, passingTests: [] });
+    startingApp.passed = passed;
+    startingApp.failed = failed;
+    startingApp.passingTests = startingResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
+    if (startingResults.pageLoad) {
+      startingApp.pageLoad = startingResults.pageLoad;
+    }
+    const unexpectedPasses = startingApp.passingTests.filter(t => !exemptTests.includes(t));
 
     if (passed === 0 && failed === 0) {
-      zeroPassrateFailed = true;
-      zeroPassrateStatus = `❌ FAILED (No tests were run for ${ZERO_PASSRATE_PATCH_FILE})`;
-    } else if (passed > 0) {
-      zeroPassrateFailed = true;
-      result.zeroPassrate.passingTests = zeroPassrateResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
-      zeroPassrateStatus = `❌ FAILED ([${ZERO_PASSRATE_PATCH_FILE}] incorrectly passed ${passed} tests:\n\n${collectPlaywrightErrors(zeroPassrateResults)})`;
-      zeroPassrateResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
+      startingAppFailed = true;
+      startingAppStatus = `❌ FAILED (No tests were run on the starting app)`;
+    } else if (unexpectedPasses.length > 0) {
+      startingAppFailed = true;
+      startingAppStatus = `❌ FAILED (the untouched starting app passed ${unexpectedPasses.length} test(s) not exempt as regression checks:\n${unexpectedPasses.map(t => `   - ${t}`).join('\n')})`;
+      startingResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
     } else {
-      zeroPassrateStatus = `✅ PASSED (0 tests passed, as expected for anti-pattern)`;
+      startingAppStatus = `✅ PASSED (${passed - unexpectedPasses.length} exempt regression check(s) passed; every other test failed, as expected)`;
     }
   })();
 
-  await Promise.all([...solutionCalibrationTasks, zeroPassrateTask]);
+  await Promise.all([...solutionCalibrationTasks, startingAppTask]);
 
-  if (!allSolutionsPassed || zeroPassrateFailed) {
+  if (!allSolutionsPassed || startingAppFailed) {
     const sharedFailingTests = findSharedFailingTests(result.solutions, activeAgents);
     if (sharedFailingTests.length > 0) {
       result.sharedFailingTests = sharedFailingTests;
@@ -430,11 +543,11 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
         sharedFailingTests.map(t => `   - ${t}`).join('\n')
       : '';
     const statusSummary = activeAgents.map(a => `   - ${a}: ${solutionStatus[a] || 'Unknown'}`).join('\n') +
-      `\n   - zero-passrate: ${zeroPassrateStatus}`;
+      `\n   - starting app: ${startingAppStatus}`;
     result.errorDetails = `Calibration results summary:\n${statusSummary}\n\n` +
       sharedBanner +
       (solutionErrors.length > 0 ? `\n\nSolution failure details:\n\n` + solutionErrors.join('\n\n---\n\n') : '') +
-      (zeroPassrateFailed && result.zeroPassrate.passed > 0 ? `\n\nZero-passrate details:\n${zeroPassrateStatus}` : '');
+      (startingAppFailed && (result.startingApp?.passed ?? 0) > 0 ? `\n\nStarting app details:\n${startingAppStatus}` : '');
     return result;
   }
 
@@ -442,14 +555,14 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   return result;
 }
 
-export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
+export async function testGrader(targetDirRaw: string, exemptTests: readonly string[] = []): Promise<CalibrationResult> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
 
   // Direct target base app path (e.g. guides/css/size-aware-styling/targets/daily-grind)
   if (path.basename(path.dirname(targetDirAbs)) === TARGETS_DIR) {
     const guideDir = path.dirname(path.dirname(targetDirAbs));
     const appName = path.basename(targetDirAbs);
-    return testTargetGrader(guideDir, appName);
+    return testTargetGrader(guideDir, appName, exemptTests);
   }
 
   const targetsDir = path.join(targetDirAbs, TARGETS_DIR);
@@ -459,7 +572,7 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
       let lastResult: CalibrationResult | null = null;
       for (const app of apps) {
         console.log(cCyan(`\n--- Calibrating target base app: ${app} ---`));
-        const res = await testTargetGrader(targetDirAbs, app);
+        const res = await testTargetGrader(targetDirAbs, app, exemptTests);
         lastResult = res;
         if (!res.success) {
           break;
@@ -468,7 +581,8 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
       return lastResult || {
         success: false,
         solutions: {},
-        zeroPassrate: { passed: 0, failed: 0, passingTests: [] }
+        startingApp: { passed: 0, failed: 0, passingTests: [] },
+    zeroPassrate: { passed: 0, failed: 0, passingTests: [] },
       };
     }
   }
@@ -477,30 +591,28 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
 }
 
 async function run(): Promise<void> {
-  const args = process.argv.slice(2);
-  if (args.length === 0) {
-    console.error('Usage: pnpm grade <path-to-target-directory>');
+  const targetDirRaw = process.argv[2];
+  if (!targetDirRaw) {
+    console.error('Usage: tsx run-grader.ts <path-to-target-or-guide-directory>');
     process.exit(1);
   }
 
-  const targetPathRel = args[0];
-  const targetPathAbs = path.resolve(process.cwd(), targetPathRel);
-
-  if (!fs.existsSync(targetPathAbs)) {
-    console.error(`Error: Path not found: ${targetPathAbs}`);
+  try {
+    const res = await testGrader(targetDirRaw);
+    if (!res.success) {
+      if (res.errorDetails) {
+        console.error(cRed(`\n${res.errorDetails}`));
+      }
+      process.exit(1);
+    }
+    console.log(cCyan('\nAll target calibrations passed!'));
+    process.exit(0);
+  } catch (err: any) {
+    console.error(cRed(`\nError: ${err.message}`));
     process.exit(1);
   }
-
-  const res = await testGrader(targetPathAbs);
-  if (!res.success && res.errorDetails) {
-    console.error(cRed(`\nCalibration Error:\n${res.errorDetails}`));
-  }
-  process.exit(res.success ? 0 : 1);
 }
 
-if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
-  run().catch(err => {
-    console.error(err);
-    process.exit(1);
-  });
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  run();
 }
