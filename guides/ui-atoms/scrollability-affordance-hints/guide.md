@@ -148,13 +148,49 @@ Scrollability affordance hints are intended to supplement existing browser behav
 
 ## Fallback strategies
 
-Hints are an enhancement: without them, the scroller still works. If your Baseline target does not support the features below, omitting the hints is acceptable when the scrollbar is visible. If the scrollbar is hidden, the hints are the only cue that the region scrolls, so you MUST a fallback.
+Hints are an enhancement: without them, the scroller still works. If your Baseline target does not support the features below, omitting the hints is acceptable when the scrollbar is visible. If the scrollbar is hidden, the hints are the only cue that the region scrolls, so you MUST use a fallback.
 
 ### Fallbacks & browser support for scroll-state container queries
 
 {{ BASELINE_STATUS("container-scroll-state-queries") }}
 
-Without scroll-state queries, the shadows stay hidden.
+Without scroll-state queries, the shadows stay hidden. Show them with a scroll-driven animation instead, which has broader support. The pseudo-elements are inside the scroller, so `scroll()` uses it as their timeline. Each shadow fades in over the first few pixels of scrolling away from its edge, instead of toggling.
+
+```css
+@supports not (container-type: scroll-state) {
+  .scroller::before,
+  .scroller::after {
+    animation: show-shadow linear both;
+    animation-timeline: scroll();
+  }
+
+  .scroller::before {
+    /* Example value: how much scrolling it takes to fully show the shadow */
+    animation-range: 0 2rem;
+  }
+
+  .scroller::after {
+    animation-direction: reverse;
+    animation-range: calc(100% - 2rem) 100%;
+  }
+}
+
+@keyframes show-shadow {
+  to {
+    opacity: 1;
+  }
+}
+```
+
+When the content fits, the scroll timeline is inactive, so neither shadow shows. If your Baseline target does not support scroll-driven animations either, use one of the last-resort fallbacks below.
+
+### Fallbacks & browser support for scroll-driven animations
+
+{{ BASELINE_STATUS("scroll-driven-animations") }}
+
+Without scroll-driven animations, the fades are never shown, and neither are the shadows if scroll-state queries are also unsupported. Use one of these last-resort fallbacks.
+
+#### Shadows on a solid background: background attachment
 
 If the scroller has a solid background color, draw the shadows with backgrounds instead. This works in every browser and needs no JavaScript.
 Each shadow is a `scroll` background, which stays at the edge of the scrollport.
@@ -162,7 +198,7 @@ Each shadow has a cover: a `local` background in the scroller's own color, which
 At either end of the content its cover sits on top of its shadow and hides it; once the user scrolls away from that end, the cover moves away and the shadow shows.
 
 ```css
-@supports not (container-type: scroll-state) {
+@supports not ((container-type: scroll-state) or (animation-timeline: scroll())) {
   .scroller {
     background:
       /* Covers: scroll with the content. Must use the scroller's own background color. */
@@ -176,15 +212,11 @@ At either end of the content its cover sits on top of its shadow and hides it; o
 }
 ```
 
-The shadows paint behind the content, so content with its own opaque background hides them. Otherwise, use the `IntersectionObserver` fallback below and show the shadows when the scroller has `data-more-start` or `data-more-end`.
+The shadows paint behind the content, so content with its own opaque background hides them. In that case, use the `IntersectionObserver` fallback below.
 
-### Fallbacks & browser support for scroll-driven animations
+#### Fades, or shadows on any background: `IntersectionObserver`
 
-{{ BASELINE_STATUS("scroll-driven-animations") }}
-
-Without scroll-driven animations, the fades are never shown.
-
-Use an `IntersectionObserver` to mark which edges have more content, and set the fades from those attributes. Observe empty sentinel elements created by the script at each end of the scroller: the scroller is the observer's root, so a sentinel that is out of view means there is more content beyond it.
+Use an `IntersectionObserver` to mark which edges have more content, and show the hints from those attributes. Observe empty sentinel elements created by the script at each end of the scroller: the scroller is the observer's root, so a sentinel that is out of view means there is more content beyond it.
 
 ```js
 if (!CSS.supports('animation-timeline', 'scroll()')) {
@@ -212,6 +244,13 @@ if (!CSS.supports('animation-timeline', 'scroll()')) {
 ```
 
 ```css
+/* Shadows */
+.scroller[data-more-start]::before,
+.scroller[data-more-end]::after {
+  opacity: 1;
+}
+
+/* Fades */
 .scroller {
   transition: --fade-start .2s, --fade-end .2s;
 

@@ -96,8 +96,26 @@
       font-size: .875rem;
     }
 
-    /* Fallback without scroll-state queries: the list has a solid background */
+    /* Fallback without scroll-state queries: fade the shadows in with the scroll position */
     @supports not (container-type: scroll-state) {
+      &::before,
+      &::after {
+        animation: show-shadow linear both;
+        animation-timeline: scroll();
+      }
+
+      &::before {
+        animation-range: 0 2rem;
+      }
+
+      &::after {
+        animation-direction: reverse;
+        animation-range: calc(100% - 2rem) 100%;
+      }
+    }
+
+    /* Last resort, without scroll-driven animations either: the list has a solid background */
+    @supports not ((container-type: scroll-state) or (animation-timeline: scroll())) {
       background:
         linear-gradient(var(--surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
         linear-gradient(transparent, var(--surface) 70%) bottom / 100% 2.5rem no-repeat local,
@@ -115,6 +133,12 @@
 
   @container scroll-state(scrollable: block-end) {
     .messages::after {
+      opacity: 1;
+    }
+  }
+
+  @keyframes show-shadow {
+    to {
       opacity: 1;
     }
   }
