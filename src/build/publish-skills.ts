@@ -3,7 +3,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import ghpages from 'gh-pages';
-import { buildDist, type DistTag } from './build-dist.ts';
+import { buildDist, processSkills, type DistTag } from './build-dist.ts';
 import { updateReadmeWithFeaturesAndUseCases, getFeaturesAndUseCases } from './build-readme.ts';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
@@ -166,7 +166,21 @@ function getLatestDistributionReleaseTag(fallbackTag: string): string {
       return ghLatestRelease;
     }
   } catch {
-    // Fall back to latest git tag when gh CLI is unavailable or tag is absent locally
+    // Fall back to git ls-remote when gh CLI is unavailable or unauthenticated
+  }
+  try {
+    const remoteTags = execSync(
+      `git ls-remote --tags --refs --sort=-v:refname ${DIST_REPO_URL} "v*.*.*"`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] },
+    ).trim();
+    const firstLine = remoteTags.split('\n')[0];
+    const match = firstLine?.match(/refs\/tags\/(v\S+)$/);
+    if (match) {
+      execSync(`git rev-parse -q --verify "refs/tags/${match[1]}"`, { stdio: 'ignore' });
+      return match[1];
+    }
+  } catch {
+    // Fall back to local git tag if offline
   }
   return fallbackTag;
 }
@@ -198,11 +212,16 @@ async function publishToDistributionRepo(
   );
 
   console.log(`Syncing GoogleChrome/modern-web-guidance (next branch) with v${newVersion}...`);
-  await publishBranchToDistributionRepo(
-    publishCliDir,
-    'next',
-    `Release v${newVersion}`,
-  );
+  processSkills(publishCliDir, 'next');
+  try {
+    await publishBranchToDistributionRepo(
+      publishCliDir,
+      'next',
+      `Release v${newVersion}`,
+    );
+  } finally {
+    processSkills(publishCliDir, 'latest');
+  }
 
   const releaseNotes = await generateReleaseNotes({
     previousTag: previousReleaseTag,
@@ -337,9 +356,10 @@ async function main() {
     console.log(`\n[Dry Run] Skills: ${skillsCount} (${skillNames.join(', ')})`);
     console.log(`\n[Dry Run] Features: ${featuresCount}, Use cases: ${useCasesCount}`);
 
-    console.log(`\n[Dry Run] Generating release notes using Gemini for v${newVersion} (diff against ${latestTag})...`);
+    const previousReleaseTag = getLatestDistributionReleaseTag(latestTag);
+    console.log(`\n[Dry Run] Generating release notes using Gemini for v${newVersion} (diff against ${previousReleaseTag})...`);
     const releaseNotes = await generateReleaseNotes({
-      previousTag: latestTag,
+      previousTag: previousReleaseTag,
       newVersion,
       publishCliDir,
     });

@@ -64,9 +64,7 @@ jobs:
 
           ALREADY_RELEASED=""
           if [ "${DIST_TAG}" = "next" ]; then
-            if git describe --exact-match --match "v*" HEAD >/dev/null 2>&1; then
-              ALREADY_RELEASED=$(git describe --exact-match --match "v*" HEAD)
-            fi
+            ALREADY_RELEASED=$(git tag --points-at HEAD "v*.*.*" --sort=-v:refname | head -n 1)
           else
             LATEST_DIST_TAG=$(gh release view -R GoogleChrome/modern-web-guidance --json tagName -q .tagName 2>/dev/null || true)
             if [ -n "${LATEST_DIST_TAG}" ] && [ "$(git rev-parse -q --verify "refs/tags/${LATEST_DIST_TAG}^{commit}" 2>/dev/null)" = "$(git rev-parse HEAD)" ]; then
