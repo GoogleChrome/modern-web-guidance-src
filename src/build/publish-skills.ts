@@ -138,40 +138,58 @@ const releaseNotes = await generateReleaseNotes({
 /**
  * Validate using the local build.
  */
-async function validate(newVersion: string) {
+export interface ValidateDeps {
+  dryRun?: boolean;
+  embedChunks?: typeof embedGuideChunks;
+  runBuildDist?: typeof buildDist;
+  runDistTests?: () => void;
+}
+
+export async function validate(newVersion: string, deps: ValidateDeps = {}) {
+  const {
+    dryRun = isDryRun,
+    embedChunks = embedGuideChunks,
+    runBuildDist = buildDist,
+    runDistTests = () =>
+      execSync('node --test src/build/dist.test.ts', {
+        cwd: ROOT_DIR,
+        stdio: 'inherit',
+        env: { ...process.env, TEST_REPORTER: 'spec' },
+      }),
+  } = deps;
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
-  if (isDryRun) {
-    console.log(`\nVerifying that all guide chunks have cached teacher vectors...`);
-    const checkResult = await embedGuideChunks({ check: true });
+  if (dryRun) {
+    console.log(`\nChecking cached teacher vectors (dry run)...`);
+    const checkResult = await embedChunks({ check: true });
     if (checkResult.missing.length > 0) {
       const missingGuides = [...new Set(checkResult.missing.map((c) => c.guideId))];
-      throw new Error(
-        `Publish aborted: ${checkResult.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:\n` +
-          missingGuides.map((g) => `  - ${g}`).join("\n") +
-          `\nRun 'node src/rag/embed-chunks.ts' before publishing.`
+      console.warn(
+        `⚠️  [Dry Run] ${checkResult.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors ` +
+          `(using StaticEmbedder fallback; real publish will embed them):\n` +
+          missingGuides.map((g) => `  - ${g}`).join("\n")
       );
     }
   } else {
     console.log(`\nEnsuring all guide chunks have cached teacher vectors...`);
-    const embedResult = await embedGuideChunks();
+    const embedResult = await embedChunks();
     if (embedResult.newEmbeds > 0 || embedResult.prunedCount > 0) {
       console.log(`✅ Updated static chunk vector cache (+${embedResult.newEmbeds} embedded, -${embedResult.prunedCount} pruned).`);
     }
   }
 
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const result = await buildDist({ publishRoot: publishCliDir, version: newVersion, failOnMissingVectors: true });
+  const result = await runBuildDist({
+    publishRoot: publishCliDir,
+    version: newVersion,
+    failOnMissingVectors: !dryRun,
+  });
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
 
   console.log(`\nVerifying built distribution with dist.test.ts suite...`);
-  execSync('node --test src/build/dist.test.ts', {
-    cwd: ROOT_DIR,
-    stdio: 'inherit' ,
-    env: { ...process.env, TEST_REPORTER: 'spec' }
-  });
+  runDistTests();
 
   return result;
 }
