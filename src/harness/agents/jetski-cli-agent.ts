@@ -178,60 +178,95 @@ export function findJsonObjectsInString(str: string): any[] {
   return results;
 }
 
-export function parseProtobuf(buffer: Buffer): Record<number, any[]> {
+function isCleanUtf8Text(str: string): boolean {
+  if (str.length === 0 || str.includes('\uFFFD')) return false;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if ((code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || (code >= 0x7f && code <= 0x9f)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function parseProtobuf(buffer: Buffer, exact: boolean = false): Record<number, any[]> {
   let pos = 0;
   const fields: Record<number, any[]> = {};
 
   while (pos < buffer.length) {
     let tagHeader = 0;
     let shift = 0;
+    let tagTerminated = false;
     while (pos < buffer.length) {
       const b = buffer[pos++];
       tagHeader |= (b & 0x7f) << shift;
       shift += 7;
-      if ((b & 0x80) === 0) break;
+      if ((b & 0x80) === 0) {
+        tagTerminated = true;
+        break;
+      }
+      if (exact && shift > 28) return {};
     }
+    if (exact && !tagTerminated) return {};
     const wireType = tagHeader & 0x07;
-    const fieldNum = tagHeader >> 3;
-    if (fieldNum === 0) break;
+    const fieldNum = tagHeader >>> 3;
+    if (fieldNum === 0 || (exact && fieldNum > 100)) {
+      if (exact) return {};
+      break;
+    }
 
     let value: any;
     if (wireType === PROTO_WIRE_TYPE.VARINT) {
       let val = 0;
       let valShift = 0;
+      let terminated = false;
       while (pos < buffer.length) {
         const b = buffer[pos++];
         val += (b & 0x7f) * Math.pow(2, valShift);
         valShift += 7;
-        if ((b & 0x80) === 0) break;
+        if ((b & 0x80) === 0) {
+          terminated = true;
+          break;
+        }
+        if (exact && valShift > 63) return {};
       }
+      if (exact && !terminated) return {};
       value = val;
     } else if (wireType === PROTO_WIRE_TYPE.LENGTH_DELIMITED) {
       let len = 0;
       let lenShift = 0;
+      let terminated = false;
       while (pos < buffer.length) {
         const b = buffer[pos++];
         len += (b & 0x7f) * Math.pow(2, lenShift);
         lenShift += 7;
-        if ((b & 0x80) === 0) break;
+        if ((b & 0x80) === 0) {
+          terminated = true;
+          break;
+        }
+        if (exact && lenShift > 28) return {};
       }
+      if (exact && (!terminated || len < 0 || pos + len > buffer.length)) return {};
       const data = buffer.subarray(pos, pos + len);
       pos += len;
 
-      let nested: Record<number, any[]> | null = null;
-      try {
-        nested = parseProtobuf(data);
-        if (Object.keys(nested).length === 0) nested = null;
-      } catch {}
-
       const str = data.toString('utf8');
-      const isClean = /^[\x20-\x7E\t\r\n]+$/.test(str) && str.length > 0;
+      const isClean = isCleanUtf8Text(str);
+      let nested: Record<number, any[]> | null = null;
+      if (data.length > 0) {
+        try {
+          nested = parseProtobuf(data, true);
+          if (Object.keys(nested).length === 0) nested = null;
+        } catch {}
+      }
+
       value = nested || (isClean ? str : data);
-    } else if (wireType === PROTO_WIRE_TYPE.FIXED64) {
+    } else if (!exact && wireType === PROTO_WIRE_TYPE.FIXED64) {
       pos += 8;
-    } else if (wireType === PROTO_WIRE_TYPE.FIXED32) {
+    } else if (!exact && wireType === PROTO_WIRE_TYPE.FIXED32) {
       pos += 4;
     } else {
+      if (exact) return {};
       break;
     }
 
@@ -358,17 +393,35 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
           const objs = findJsonObjectsInString(payloadStr);
           const isErr = row.status !== undefined && JETSKI_ERROR_STATUS_CODES.has(row.status);
           for (const obj of objs) {
-            if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !obj.AbsolutePath && !obj.DirectoryPath && !obj.TargetFile) continue;
-            const key = JSON.stringify({ cmd: obj.CommandLine, file: obj.AbsolutePath || obj.TargetFile || obj.DirectoryPath, act: obj.toolAction || obj.toolSummary });
+            const isFileWrite = Boolean(
+              obj.TargetFile ||
+              (obj.Path && (obj.Content !== undefined || obj.Target !== undefined || obj.Replacement !== undefined)) ||
+              (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))
+            );
+            const isFileRead = Boolean(
+              !isFileWrite &&
+              (obj.AbsolutePath || obj.Path || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading'))))
+            );
+            if (!obj.toolAction && !obj.toolSummary && !obj.CommandLine && !isFileWrite && !isFileRead && !obj.DirectoryPath && !obj.SearchDirectory) continue;
+            const key = JSON.stringify({
+              cmd: obj.CommandLine,
+              file: obj.AbsolutePath || obj.TargetFile || obj.Path || obj.DirectoryPath || obj.SearchDirectory,
+              act: obj.toolAction || obj.toolSummary || (isFileWrite ? 'write' : isFileRead ? 'read' : ''),
+              start: obj.StartLine,
+              end: obj.EndLine,
+              target: typeof obj.Target === 'string' ? obj.Target.slice(0, 64) : undefined,
+            });
             if (seenJsonHashes.has(key)) continue;
             seenJsonHashes.add(key);
 
             const timestamp = extractTimestamp(obj) || rowTimestamp;
             const subagentId = obj.Recipient || obj.recipient_id || obj.conversationId || undefined;
 
-            if (obj.TargetFile || (obj.toolAction && (obj.toolAction.includes('Modifying') || obj.toolAction.includes('Updating') || obj.toolAction.includes('Writing')))) {
-              const targetFile = obj.TargetFile || 'target_file';
-              const toolName = obj.ReplacementChunks ? 'multi_replace_file_content' : (obj.CodeContent ? 'write_to_file' : 'replace_file_content');
+            if (isFileWrite) {
+              const targetFile = obj.TargetFile || obj.Path || 'target_file';
+              const toolName = obj.ReplacementChunks
+                ? 'multi_replace_file_content'
+                : (obj.CodeContent !== undefined || obj.Content !== undefined ? 'write_to_file' : 'replace_file_content');
               steps.push({
                 stepNumber: 0,
                 timestamp,
@@ -377,7 +430,7 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 action: standardizeAction('write_file', toolName, {
                   path: targetFile,
                   targetFile,
-                  content: truncateMessage(obj.CodeContent || obj.ReplacementChunks || '', MAX_PAYLOAD_PREVIEW_LENGTH)
+                  content: truncateMessage(obj.CodeContent ?? obj.Content ?? obj.Replacement ?? obj.ReplacementChunks ?? '', MAX_PAYLOAD_PREVIEW_LENGTH)
                 }),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
@@ -394,8 +447,8 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
                 action: standardizeAction(actType, actName, params),
                 outcome: { status: isErr ? 'error' : 'success' }
               });
-            } else if (obj.AbsolutePath || (obj.toolAction && (obj.toolAction.includes('Viewing') || obj.toolAction.includes('Reading')))) {
-              const filePath = obj.AbsolutePath || obj.path || obj.file_path || '';
+            } else if (isFileRead) {
+              const filePath = obj.AbsolutePath || obj.Path || obj.path || obj.file_path || '';
               steps.push({
                 stepNumber: 0,
                 timestamp,

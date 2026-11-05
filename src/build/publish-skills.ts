@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
 import { generateReleaseNotes } from './generate-release-notes.ts';
 import { rootDir } from '../core/paths.ts';
+import { embedGuideChunks } from '../rag/embed-chunks.ts';
 
 const ROOT_DIR = rootDir; // modern-web-guidance-src/
 
@@ -18,6 +19,7 @@ const GH_PUBLISH_PATTERNS = [
   '**/*',
   '!**/.cache/**',
   '!**/tfjs-model-minilm/**',
+  '!**/static-model/**',
   '!**/*.{js,mjs,ts,bin,map,gz}',
   '!**/guides.json',
   '!**/skill-version.txt',
@@ -139,8 +141,27 @@ const releaseNotes = await generateReleaseNotes({
 async function validate(newVersion: string) {
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
 
+  if (isDryRun) {
+    console.log(`\nVerifying that all guide chunks have cached teacher vectors...`);
+    const checkResult = await embedGuideChunks({ check: true });
+    if (checkResult.missing.length > 0) {
+      const missingGuides = [...new Set(checkResult.missing.map((c) => c.guideId))];
+      throw new Error(
+        `Publish aborted: ${checkResult.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:\n` +
+          missingGuides.map((g) => `  - ${g}`).join("\n") +
+          `\nRun 'node src/rag/embed-chunks.ts' before publishing.`
+      );
+    }
+  } else {
+    console.log(`\nEnsuring all guide chunks have cached teacher vectors...`);
+    const embedResult = await embedGuideChunks();
+    if (embedResult.newEmbeds > 0 || embedResult.prunedCount > 0) {
+      console.log(`✅ Updated static chunk vector cache (+${embedResult.newEmbeds} embedded, -${embedResult.prunedCount} pruned).`);
+    }
+  }
+
   console.log(`\nRebuilding distribution with version ${newVersion}...`);
-  const result = await buildDist({publishRoot: publishCliDir, version: newVersion});
+  const result = await buildDist({ publishRoot: publishCliDir, version: newVersion, failOnMissingVectors: true });
   if (!result) {
     throw new Error("Build failed or was already in progress.");
   }
@@ -220,11 +241,11 @@ async function main() {
 
     console.log('Committing automated documentation updates to source repo...');
     try {
-      execSync('git diff --quiet README.md src/build/eval-results-summary.json', { cwd: ROOT_DIR });
-      console.log("No changes in README.md or src/build/eval-results-summary.json to commit.");
+      execSync('git diff --quiet README.md src/build/eval-results-summary.json src/rag/static-model/chunks.json src/rag/static-model/chunks.i8 src/rag/static-model/chunks.scale.f32', { cwd: ROOT_DIR });
+      console.log("No changes in README.md, src/build/eval-results-summary.json, or static chunk cache to commit.");
     } catch (err) {
-      console.log("Changes found in README.md or eval-results-summary.json, committing...");
-      execSync('git add README.md src/build/eval-results-summary.json', { stdio: 'inherit', cwd: ROOT_DIR });
+      console.log("Changes found in README.md, eval-results-summary.json, or static chunk cache, committing...");
+      execSync('git add README.md src/build/eval-results-summary.json src/rag/static-model/chunks.json src/rag/static-model/chunks.i8 src/rag/static-model/chunks.scale.f32', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync('git commit -m "docs: auto-update recent evals and skill coverage in README.md [skip ci]"', { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git pull --rebase origin "${branch}"`, { stdio: 'inherit', cwd: ROOT_DIR });
       execSync(`git push origin HEAD:"${ref}"`, { stdio: 'inherit', cwd: ROOT_DIR });
