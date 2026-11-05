@@ -1,68 +1,216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Persistent Toast Notifications</title>
   <style>
-    .toast-container {
-      anchor-name: --toast-container;
-      position: fixed;
-      width: 100cqi;
-      height: 4rem;
-      bottom: 1rem;
+    :root {
+      --page-bg: #f3f4f6;
+      --text: #0f172a;
+      --toast-bg: #ecfdf5;
+      --toast-border: #15803d;
+      --toast-text: #14532d;
+      --toast-width: min(15rem, 100%);
     }
 
-    [popover="manual"] {
-      position-anchor: --toast-container;
-      position-area: bottom;
-      margin-bottom: calc(sibling-index() * 1rem);
-      padding: 0.5rem 1rem;
-      background: lightgreen;
-      border: 1px solid green;
-      border-radius: 8px;
-      transition: opacity 0.3s, transform 0.3s, display 0.3s, overlay 0.3s;
-      transition-behavior: allow-discrete;
-      opacity: 0;
-      transform: translateY(20px);
-    }
-
-    [popover="manual"]:popover-open {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    @starting-style {
-      [popover="manual"]:popover-open { 
-        opacity: 0; 
-        transform: translateY(20px);
-      }
-    }
-
-    button[popovertargetaction="hide"] {
-      background:none;
-      border:none;
-      cursor:pointer;
+    * {
+      box-sizing: border-box;
     }
 
     body {
+      background: var(--page-bg);
+      color: var(--text);
+      display: grid;
+      grid-template-columns: 1fr var(--toast-width);
+      margin: 0;
       min-height: 100dvh;
       min-width: 100dvw;
-      padding: 0;
-      margin: 0;
+      padding: 2rem 1rem;
     }
+
+    .controls {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .toggle {
+      align-items: center;
+      color: var(--text);
+      display: inline-flex;
+      font: inherit;
+      gap: 0.5rem;
+    }
+
+    .toast-trigger {
+      appearance: none;
+      background: #fff;
+      border: 1px solid #334155;
+      border-radius: 999px;
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      padding: 0.7rem 1.1rem;
+    }
+
+    .toast-trigger:focus-visible,
+    .toast-close:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+
+    .toast-region {
+      align-items: flex-end;
+      bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: calc(100dvh - 2rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 0.5rem;
+      position: fixed;
+      right: 1rem;
+      width: var(--toast-width);
+    }
+
+    .toast {
+      align-items: flex-start;
+      background: var(--toast-bg);
+      border: 1px solid var(--toast-border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      color: var(--toast-text);
+      display: flex;
+      justify-content: space-between;
+      margin: 0;
+      max-width: 15rem;
+      min-height: min-content;
+      padding: 0.875rem 1rem;
+      position: relative;
+      width: 100%;
+    }
+
+    .toast-close {
+      align-self: flex-start;
+      background: transparent;
+      border: 1px solid var(--toast-border);
+      border-radius: 8px;
+      color: var(--toast-text);
+      cursor: pointer;
+      flex-shrink: 0;
+      font: inherit;
+      padding: 0.35rem 0.7rem;
+    }
+
+    .visually-hidden:not(:focus):not(:active) {
+      clip: rect(0 0 0 0); 
+      clip-path: inset(50%);
+      height: 1px;
+      overflow: hidden;
+      position: absolute;
+      white-space: nowrap; 
+      width: 1px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .toast {
+        transition: none;
+        transform: none;
+      }
+    }
+
   </style>
 </head>
 <body>
-  <button id="toast-trigger" onclick="showToast()">Trigger Toast</button>
-  <div class="toast-container">
-    <div id="toast" popover="manual">
-      Success!
-      <button popovertarget="toast" popovertargetaction="hide" aria-label="close">x</button>
-    </div>
+  <div class="controls">
+    <button id="toast-trigger" class="toast-trigger" type="button" onclick="showToast()">Trigger Toast</button>
+    <label class="toggle" for="auto-dismiss-toggle">
+      <input id="auto-dismiss-toggle" type="checkbox">
+      Auto-dismiss after 3 seconds
+    </label>
   </div>
+
+  <div id="toast-region" class="toast-region" role="region" aria-label="Notifications"></div>
+  <div id="toast-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
   <script>
-    function showToast() {
-      const t = document.getElementById('toast');
-      t.showPopover();
-      setTimeout(() => { if (t.matches(':popover-open')) t.hidePopover(); }, 3000);
+    const toastRegion = document.getElementById('toast-region');
+    const toastAnnouncer = document.getElementById('toast-announcer');
+    const trigger = document.getElementById('toast-trigger');
+    let toastId = 1;
+
+    function announceToast(message) {
+      const text = (message || '').trim();
+
+      if (!text) {
+        return;
+      }
+
+      if (typeof window.ariaNotify === 'function') {
+        window.ariaNotify(text);
+        return;
+      }
+
+      toastAnnouncer.textContent = '';
+      toastAnnouncer.textContent = text;
+    }
+
+    function focusNextToast(closedToast) {
+      const allToasts = [...toastRegion.querySelectorAll('.toast')];
+      const remaining = allToasts.filter((toast) => toast !== closedToast).length;
+
+      if (remaining > 0) {
+        let closedIndex = allToasts.indexOf(closedToast);
+        // focus the next toast in the list, or the previous one if the closed toast was the last one
+        let nextIndex = closedIndex - 1;
+        if (closedIndex === 0) {
+          if (remaining >= 1) {
+            nextIndex = closedIndex + 1;
+          } else {
+            nextIndex = 0;
+          }
+        }
+        const nextToast = allToasts[nextIndex];
+        nextToast.querySelector('.toast-close').focus();
+        return;
+      } else {
+        trigger.focus();
+      }
+    }
+
+    function showToast(message = 'Saved successfully.') {
+      const toast = document.createElement('div');
+      const previousFocus = document.activeElement && document.activeElement !== document.body ? document.activeElement : trigger;
+      const autoDismiss = document.getElementById('auto-dismiss-toggle').checked;
+
+      toast.className = 'toast';
+      toast.id = `toast-${toastId++}`;
+      toast.dataset.previousFocus = previousFocus.id || 'toast-trigger';
+      toast.setAttribute('popover', 'manual');
+      toast.innerHTML = `
+        <span class="toast-message">${message}</span>
+        <button type="button" class="toast-close" popovertarget="${toast.id}" popovertargetaction="hide" aria-label="Close notification">Close</button>
+      `;
+
+      trigger.setAttribute('popovertarget', toast.id);
+      toastRegion.appendChild(toast);
+
+      toast.showPopover();
+      announceToast(message);
+
+      const closeButton = toast.querySelector('.toast-close');
+      closeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        const currentToast = event.currentTarget.closest('.toast');
+
+        currentToast.hidePopover();
+        focusNextToast(currentToast);
+
+        currentToast.remove();
+      });
     }
   </script>
 </body>
