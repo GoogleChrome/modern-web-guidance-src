@@ -441,7 +441,7 @@ export async function processGuides(opts: BuildOptions): Promise<boolean> {
       console.warn(`   - ${g}`);
     }
     console.warn(
-      `   These chunks are indexed for BM25 search only. Run 'node src/rag/embed-chunks.ts' to embed them.\n`
+      `   These chunks use StaticEmbedder fallback vectors. Run 'node src/rag/embed-chunks.ts' to embed them with the teacher model.\n`
     );
 
     if (failOnMissingVectors) {
