@@ -48,6 +48,12 @@
             line-height: 1.6;
         }
 
+        /* Draws the focus ring inside the scroller, because .container's
+           overflow: hidden clips anything drawn outside it */
+        .scroller:focus-visible {
+            outline-offset: -2px;
+        }
+
         /* 1. Modern standards-compliant styling */
         .scroller.custom-scrollbar {
             /* DO: Use standard properties natively */
