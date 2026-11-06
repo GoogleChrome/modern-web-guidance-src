@@ -42,6 +42,13 @@ describe('mwgrc configuration utility', () => {
       existingProp: 'hello',
       allowOriginTrials: true,
     });
+
+    writeMwgrc({ allowVolatileFeatures: true }, subDir);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(writtenPath, 'utf8')), {
+      existingProp: 'hello',
+      allowOriginTrials: true,
+      allowVolatileFeatures: true,
+    });
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(ancestorMwgrc, 'utf8')), {
       allowOriginTrials: false,
       ancestor: true,

@@ -5,13 +5,16 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { rootDir, outDir } from '../core/paths.ts';
+import { rootDir, outDir, guidesDir, ensureDiskNodeCompileCache } from '../core/paths.ts';
 import { cRed, cYellow, cCyan } from '../core/colors.ts';
 import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type SolutionAgent, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../core/guide-validation.ts';
 import { copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
 import { createIsolatedHome, cleanupIsolatedHome } from '../harness/lib/agent-shared.ts';
 import { applyPatchSync } from '../core/patch-utils.ts';
-import { startTargetServer } from './target-server.ts';
+import { startTargetServer, killServerProcessTree } from './target-server.ts';
+import { checkTargetPageLoad, type PageLoadResult } from './test-fixture.ts';
+
+export type { PageLoadResult } from './test-fixture.ts';
 
 export interface PlaywrightOptions {
   targetPathAbs: string;
@@ -19,10 +22,13 @@ export interface PlaywrightOptions {
   reporters: string[];
   testResultsDir?: string;
   jsonOutputName?: string;
+  pageLoadOutputName?: string;
+  serverPidsOutputName?: string;
   patchFile?: string;
   stdio?: 'inherit' | 'ignore' | 'pipe';
   baselineTarget?: string;
   prebuiltTargetUrl?: string;
+  prebuiltTargetError?: string;
 }
 
 async function stageGradingWorkspace(
@@ -59,9 +65,25 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     TARGET_FILE: opts.targetPathAbs,
     BASELINE_TARGET: opts.baselineTarget || process.env.BASELINE_TARGET || 'widely',
   };
+  ensureDiskNodeCompileCache(env, 'harness');
+  delete env.TARGET_URL;
+
+  if (opts.prebuiltTargetUrl) {
+    env.GD_PREBUILT_TARGET_URL = opts.prebuiltTargetUrl;
+  } else {
+    delete env.GD_PREBUILT_TARGET_URL;
+  }
+
+  if (opts.prebuiltTargetError) {
+    env.GD_PREBUILT_TARGET_ERROR = opts.prebuiltTargetError;
+  } else {
+    delete env.GD_PREBUILT_TARGET_ERROR;
+  }
 
   if (opts.patchFile) {
     env.PATCH_FILE = path.resolve(opts.patchFile);
+  } else {
+    delete env.PATCH_FILE;
   }
 
   if (opts.testResultsDir) {
@@ -73,10 +95,21 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PWTEST_CACHE_DIR = `${opts.jsonOutputName}-cache`;
   }
 
-  if (opts.prebuiltTargetUrl) {
-    env.GD_PREBUILT_TARGET_URL = opts.prebuiltTargetUrl;
+  if (opts.pageLoadOutputName) {
+    env.PAGE_LOAD_OUTPUT = opts.pageLoadOutputName;
   } else {
-    delete env.GD_PREBUILT_TARGET_URL;
+    delete env.PAGE_LOAD_OUTPUT;
+  }
+
+  if (opts.serverPidsOutputName) {
+    env.SERVER_PIDS_FILE = opts.serverPidsOutputName;
+  } else {
+    delete env.SERVER_PIDS_FILE;
+  }
+
+  const resolvedGraderPath = path.resolve(opts.graderPath);
+  if (!resolvedGraderPath.startsWith(guidesDir + path.sep)) {
+    env.PLAYWRIGHT_TEST_DIR = path.dirname(resolvedGraderPath);
   }
 
   const playwrightBin = path.join(rootDir, 'node_modules', '.bin', 'playwright');
@@ -97,22 +130,35 @@ export interface RunPlaywrightOptions {
 }
 
 function graderUsesTargetServer(graderPath: string): boolean {
-  return fs.existsSync(graderPath) && /\bTARGET_URL\b/.test(fs.readFileSync(graderPath, 'utf8'));
+  if (!fs.existsSync(graderPath)) return false;
+  const content = fs.readFileSync(graderPath, 'utf8').replace(/\bprocess\.env\.TARGET_URL\b/g, '');
+  return /\bTARGET_URL\b/.test(content);
 }
 
 export async function runPlaywright(
   targetPathAbs: string,
   graderPath: string,
-  options: RunPlaywrightOptions = {}
+  optionsOrStdio: RunPlaywrightOptions | 'inherit' | 'ignore' | 'pipe' = 'inherit',
+  maybePatchFile?: string,
+  maybeTestResultsDir?: string,
 ): Promise<any> {
-  const {
-    stdio = 'inherit',
-    patchFile,
-    zeroPassrateFile,
-    testResultsDir,
-    baselineTarget,
-  } = options;
+  const options: RunPlaywrightOptions = typeof optionsOrStdio === 'object' && optionsOrStdio !== null
+    ? optionsOrStdio
+    : {
+        stdio: optionsOrStdio,
+        patchFile: maybePatchFile,
+        testResultsDir: maybeTestResultsDir,
+      };
+
+  const stdio = options.stdio ?? 'inherit';
+  const patchFile = options.patchFile;
+  const zeroPassrateFile = options.zeroPassrateFile;
+  const testResultsDir = options.testResultsDir;
+  const baselineTarget = options.baselineTarget;
+
   const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
+  const tmpPageLoadJson = `${tmpJson}-pageload.json`;
+  const tmpServerPidsFile = `${tmpJson}-servers.pids`;
 
   const isDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory();
   let effectiveTargetPath = targetPathAbs;
@@ -133,13 +179,23 @@ export async function runPlaywright(
 
   try {
     let prebuiltTargetUrl: string | undefined;
+    let prebuiltTargetError: string | undefined;
+    let prebuiltBuildWarning: string | undefined;
+
     if (graderUsesTargetServer(graderPath) && fs.existsSync(path.join(effectiveAppDir, 'package.json'))) {
-      const server = await startTargetServer(effectiveAppDir, {
-        targetFile: effectiveTargetPath,
-        quiet: stdio === 'ignore',
-      });
-      prebuiltTargetUrl = server.url;
-      stopTargetServer = server.stop;
+      try {
+        const server = await startTargetServer(effectiveAppDir, {
+          targetFile: effectiveTargetPath,
+          quiet: stdio === 'ignore',
+        });
+        prebuiltTargetUrl = server.url;
+        stopTargetServer = server.stop;
+      } catch (err: any) {
+        prebuiltTargetError = err.message || String(err);
+        if (prebuiltTargetError?.includes('Failed to build target app')) {
+          prebuiltBuildWarning = prebuiltTargetError;
+        }
+      }
     }
 
     let stderrData = '';
@@ -149,10 +205,13 @@ export async function runPlaywright(
       reporters: ['json'],
       testResultsDir: resolvedTestResultsDir,
       jsonOutputName: tmpJson,
+      pageLoadOutputName: tmpPageLoadJson,
+      serverPidsOutputName: tmpServerPidsFile,
       patchFile: patchFile,
       stdio: stdio === 'ignore' ? 'pipe' : stdio,
       baselineTarget,
-      prebuiltTargetUrl
+      prebuiltTargetUrl,
+      prebuiltTargetError,
     });
 
     if (child.stderr) {
@@ -171,11 +230,51 @@ export async function runPlaywright(
     }
 
     await fs.promises.unlink(tmpJson).catch(() => {});
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+
+    let pageLoad: PageLoadResult | undefined;
+    try {
+      if (stopTargetServer && prebuiltTargetUrl) {
+        pageLoad = await checkTargetPageLoad(effectiveAppDir, undefined, { serverUrl: prebuiltTargetUrl });
+      } else {
+        pageLoad = await checkTargetPageLoad(effectiveAppDir, undefined, { buildWarning: prebuiltBuildWarning });
+      }
+    } catch (err) {
+      pageLoad = {
+        ok: false,
+        errors: [`[browser] ${err instanceof Error ? err.message : String(err)}`],
+      };
+    }
+
+    const pageLoadOutputPayload: PageLoadResult = pageLoad ?? { ok: true, errors: [], noPage: true };
+    await fs.promises.writeFile(tmpPageLoadJson, JSON.stringify(pageLoadOutputPayload)).catch(() => {});
+    if (process.env.PAGE_LOAD_OUTPUT) {
+      await fs.promises.writeFile(process.env.PAGE_LOAD_OUTPUT, JSON.stringify(pageLoadOutputPayload)).catch(() => {});
+    }
+
+    if (pageLoad && !pageLoad.noPage) {
+      parsed.pageLoad = pageLoad;
+    }
+    return parsed;
   } finally {
     if (stopTargetServer) {
       await stopTargetServer().catch(() => {});
     }
+    try {
+      if (fs.existsSync(tmpServerPidsFile)) {
+        const pidLines = fs.readFileSync(tmpServerPidsFile, 'utf8').split('\n');
+        for (const line of pidLines) {
+          const pid = Number(line.trim());
+          if (Number.isInteger(pid) && pid > 1) {
+            killServerProcessTree(pid);
+          }
+        }
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+    await fs.promises.unlink(tmpServerPidsFile).catch(() => {});
+    await fs.promises.unlink(tmpPageLoadJson).catch(() => {});
     await fs.promises.rm(`${tmpJson}-cache`, { recursive: true, force: true }).catch(() => {});
     if (cleanupGradingDir) {
       cleanupGradingDir();
