@@ -268,7 +268,7 @@ MANDATORY: Apply the shimmer (gradient and animation) only under `@media (prefer
 
 ### shape()
 
-{{ BASELINE_STATUS("shape") }}
+{{ BASELINE_STATUS("shape-function") }}
 
 If your Baseline target does not support `shape()` in `clip-path`, let other browsers show a solid `--skeleton-tone` fill with `border-radius` on the same elements, sized by `min-block-size` in `lh` units. Multi-line bars and variable lengths are the progressive enhancement. The layout reservation still prevents shift.
 
