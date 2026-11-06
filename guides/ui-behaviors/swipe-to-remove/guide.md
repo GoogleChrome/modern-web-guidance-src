@@ -561,8 +561,6 @@ With this setup, the spacers no longer need their own background-color (the trac
 
 {{ BASELINE_STATUS("web-animations") }}
 
-{{ BASELINE_STATUS("masks") }}
-
 All newer features that are used are either not core to the experience or have robust fallbacks that can be reliably used now.
 
 ### Fallback for `overscroll-behavior`
