@@ -194,7 +194,7 @@ call retains the required transient user activation.
   }
 
   installButton.addEventListener("click", async () => {
-    installButton.disabled = true;
+    installButton.setAttribute("aria-disabled", "true");
 
     try {
       // MANDATORY: Call during the click handler; delayed calls lose user activation.
@@ -203,7 +203,7 @@ call retains the required transient user activation.
       installButton.hidden = true;
     } catch (error) {
       if (error.name === "AbortError") {
-        // Cancellation is an expected user choice, not an application error.
+        // Cancelation is an expected user choice, not an application error.
         installStatus.textContent = "Installation was canceled or could not complete.";
         installButton.hidden = true;
       } else {
@@ -212,7 +212,7 @@ call retains the required transient user activation.
         console.error(error);
       }
     } finally {
-      installButton.disabled = false;
+      installButton.setAttribute("aria-disabled", "false");
     }
   });
 </script>
@@ -353,7 +353,7 @@ window.addEventListener("beforeinstallprompt", (event) => {
 });
 
 installButton.addEventListener("click", async () => {
-  installButton.disabled = true;
+  installButton.setAttribute("aria-disabled", "true");
 
   try {
     if (supportsWebInstall) {
@@ -378,7 +378,7 @@ installButton.addEventListener("click", async () => {
     }
   } catch (error) {
     if (error.name === "AbortError") {
-      // Cancellation is an expected user choice, not an application error.
+      // Cancelation is an expected user choice, not an application error.
       installStatus.textContent = "Installation was canceled or could not complete.";
       installButton.hidden = true;
     } else {
@@ -386,7 +386,7 @@ installButton.addEventListener("click", async () => {
       console.error(error);
     }
   } finally {
-    installButton.disabled = false;
+    installButton.setAttribute("aria-disabled", "false");
   }
 });
 ```
