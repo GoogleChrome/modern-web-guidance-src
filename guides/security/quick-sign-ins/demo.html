@@ -33,6 +33,13 @@
           data-testid="header-signin-link">
           Sign in
         </a>
+        <button
+          type="button"
+          id="header-signout-btn"
+          data-testid="header-signout-button"
+          hidden>
+          Sign out
+        </button>
       </div>
     </nav>
   </header>
@@ -118,6 +125,7 @@
     const statusEl = document.getElementById('auth-status');
     const badgeEl = document.getElementById('session-badge');
     const headerSignInLink = document.getElementById('header-signin-link');
+    const headerSignOutBtn = document.getElementById('header-signout-btn');
     const fallbackSection = document.getElementById('fallback-signin');
     const fallbackForm = document.getElementById('fallback-signin-form');
 
@@ -140,14 +148,17 @@
       document.body.dataset.signedIn = 'true';
       badgeEl.textContent = `Signed in as ${username}`;
       badgeEl.classList.add('authenticated');
+      headerSignOutBtn.hidden = false;
       headerSignInLink.hidden = true;
       fallbackSection.hidden = true;
 
       if (triggerButton) {
         triggerButton.setAttribute('aria-pressed', 'true');
         statusEl.textContent = `Signed in as ${username} and saved item to favorites.`;
+        triggerButton.focus();
       } else {
         statusEl.textContent = `Signed in as ${username} in place.`;
+        headerSignOutBtn.focus();
       }
     }
 
@@ -250,6 +261,16 @@
       event.preventDefault();
       if (document.body.dataset.signedIn === 'true') return;
       handleContextualSignIn(null);
+    });
+
+    headerSignOutBtn.addEventListener('click', () => {
+      document.body.dataset.signedIn = 'false';
+      badgeEl.textContent = 'Signed out';
+      badgeEl.classList.remove('authenticated');
+      headerSignInLink.hidden = false;
+      headerSignOutBtn.hidden = true;
+      statusEl.textContent = 'Signed out.';
+      headerSignInLink.focus();
     });
 
     document.getElementById('product-grid').addEventListener('click', (event) => {
