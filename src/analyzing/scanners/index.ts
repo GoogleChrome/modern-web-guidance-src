@@ -491,6 +491,7 @@ async function walkDirectory(currentDir: string, state: ScanRepoState): Promise<
     if (entry.isDirectory()) {
       const dirLower = entry.name.toLowerCase();
       if (
+        (dirLower !== '.' && dirLower !== '..' && dirLower.startsWith('.')) ||
         BUILD_OR_INSTALL_DIR_SEGMENTS.has(dirLower) ||
         state.fileFilterOptions?.customIgnoredDirs?.has(dirLower) ||
         (state.fileFilterOptions?.excludeCorpusNonAppDirs &&

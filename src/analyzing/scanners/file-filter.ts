@@ -6,44 +6,16 @@ export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
   'build',
   'out',
   '_generated',
-  '.git',
-  '.cache',
-  '.next',
-  '.nuxt',
-  '.output',
   'coverage',
-  '.worktrees',
-  '.worktree',
-  '.venv',
   'venv',
-  '.nyc_output',
   'test-results',
   'playwright-report',
   'tmp',
   'temp',
-  '.tmp',
-  '.temp',
   'gen',
   'generated',
   'snapshots',
   'extracted_snapshots',
-  '.agents',
-  '.claude',
-  '.gemini',
-  '.cursor',
-  '.codex',
-  '.antigravitycli',
-  '.vscode',
-  '.idea',
-  '.github',
-  '.yarn',
-  '.pnpm-store',
-  '.svelte-kit',
-  '.astro',
-  '.vercel',
-  '.netlify',
-  '.turbo',
-  '.parcel-cache',
 ]);
 
 const CHECKED_IN_VENDOR_DIR_SEGMENTS: ReadonlySet<string> = new Set([
@@ -110,6 +82,13 @@ function hasMatchingDirSegment(
     segments.slice(0, -1).some((seg) => segmentsSet.has(seg)) ||
     (segments.length === 1 && segmentsSet.has(segments[0] ?? ''))
   );
+}
+
+function hasDotDirSegment(relPath: string): boolean {
+  const segments = relPath.replace(/\\/g, '/').split('/');
+  return segments
+    .slice(0, -1)
+    .some((seg) => seg !== '.' && seg !== '..' && seg.startsWith('.'));
 }
 
 /**
@@ -322,6 +301,7 @@ export function isVendoredOrGeneratedPath(
 
   return (
     isExcludedCorpusNonAppPath(normalized) ||
+    hasDotDirSegment(normalized) ||
     hasMatchingDirSegment(normalized, ignoredDirs) ||
     (options?.excludeCorpusNonAppDirs === true && isCorpusNonAppPath(normalized)) ||
     DEFAULT_IGNORED_EXTENSIONS.some((ext) => normalized.endsWith(ext))
@@ -468,11 +448,14 @@ export function shouldScanFile(
 }
 
 /**
- * Returns true if the path is inside a build or package manager install directory
- * (e.g. node_modules, dist, build, out, .cache) that should never be scanned.
+ * Returns true if the path is inside a build, package manager install, or dot directory
+ * (e.g. node_modules, dist, build, out, .git, .cache) that should never be scanned.
  */
 export function isBuildOrInstallPath(relPath: string): boolean {
-  return hasMatchingDirSegment(relPath, BUILD_OR_INSTALL_DIR_SEGMENTS);
+  return (
+    hasDotDirSegment(relPath) ||
+    hasMatchingDirSegment(relPath, BUILD_OR_INSTALL_DIR_SEGMENTS)
+  );
 }
 
 /**

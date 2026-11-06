@@ -12,6 +12,7 @@ import {
   DOCS_AND_TESTS_DIR_SEGMENTS,
   hasVendoredLicenseHeader,
   isBuildOrInstallPath,
+  isCorpusNonAppPath,
   isDocsOrTestsPath,
   isExcludedCorpusNonAppPath,
   isMinifiedContent,
@@ -400,36 +401,16 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
     );
   }
 
-  it('excludes agent and tooling dot-directories (.agents, .claude, .gemini, .cursor, .codex, .antigravitycli, etc.)', async (t) => {
-    const requiredAgentDirs = [
-      '.agents',
-      '.claude',
-      '.gemini',
-      '.cursor',
-      '.codex',
-      '.antigravitycli',
-      '.vscode',
-      '.idea',
-      '.github',
-      '.yarn',
-      '.pnpm-store',
-      '.svelte-kit',
-      '.astro',
-      '.vercel',
-      '.netlify',
-      '.turbo',
-      '.parcel-cache',
-    ];
-
-    for (const dir of requiredAgentDirs) {
+  it('excludes all dot-directories without hardcoding them in BUILD_OR_INSTALL_DIR_SEGMENTS', async (t) => {
+    for (const dir of BUILD_OR_INSTALL_DIR_SEGMENTS) {
       assert.equal(
-        BUILD_OR_INSTALL_DIR_SEGMENTS.has(dir),
-        true,
-        `BUILD_OR_INSTALL_DIR_SEGMENTS must contain ${dir}`,
+        dir.startsWith('.'),
+        false,
+        `BUILD_OR_INSTALL_DIR_SEGMENTS should not hardcode dot-directory ${dir}`,
       );
     }
 
-    const agentPaths = [
+    const dotDirPaths = [
       '.agents/skills/impeccable/scripts/live-browser.js',
       '.claude/skills/foo.js',
       '.gemini/skills/helper.ts',
@@ -438,9 +419,13 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
       '.antigravitycli/scripts/automation.mjs',
       '.vscode/settings.json',
       '.github/workflows/ci.js',
+      '.storybook/preview.js',
+      '.vitepress/theme/index.ts',
+      'src/.cache/chunk.js',
+      './.hidden/secret.js',
     ];
 
-    for (const p of agentPaths) {
+    for (const p of dotDirPaths) {
       await t.test(`excludes ${p}`, () => {
         assert.equal(isVendoredOrGeneratedPath(p), true);
         assert.equal(isBuildOrInstallPath(p), true);
@@ -449,9 +434,14 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
     }
 
     assert.equal(shouldScanFile('src/components/button.tsx'), true);
-    // Legitimate dot-directories like .storybook and .vitepress are not blocked
-    assert.equal(shouldScanFile('.storybook/preview.js'), true);
-    assert.equal(shouldScanFile('.vitepress/theme/index.ts'), true);
+    // Relative '.' and '..' segments and root dotfiles are not dot-directories
+    assert.equal(isBuildOrInstallPath('./src/components/button.tsx'), false);
+    assert.equal(shouldScanFile('./src/components/button.tsx'), true);
+    assert.equal(isBuildOrInstallPath('../src/components/button.tsx'), false);
+    assert.equal(shouldScanFile('../src/components/button.tsx'), true);
+    assert.equal(isBuildOrInstallPath('.eslintrc.js'), false);
+    assert.equal(shouldScanFile('.eslintrc.js'), true);
+    assert.equal(isCorpusNonAppPath('.agents/skills/foo.js'), false);
   });
 
   it('ignores custom gitignored build directories via git ls-files while scanning untracked non-ignored files', async () => {
@@ -518,6 +508,7 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
       await mkdir(join(tempDir, 'src'), { recursive: true });
       await mkdir(join(tempDir, 'dist'), { recursive: true });
       await mkdir(join(tempDir, '.agents', 'skills'), { recursive: true });
+      await mkdir(join(tempDir, '.custom-cache'), { recursive: true });
 
       await writeFile(
         join(tempDir, 'src', 'app.js'),
@@ -530,6 +521,10 @@ describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and w
       await writeFile(
         join(tempDir, '.agents', 'skills', 'tool.js'),
         'function tool() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, '.custom-cache', 'cached.js'),
+        'function cached() { scanMe(); }',
       );
 
       const findings = await scanRepoFiles(tempDir, [scanMeRule]);
