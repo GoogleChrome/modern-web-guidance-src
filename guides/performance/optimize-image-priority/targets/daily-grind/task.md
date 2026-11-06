@@ -1,1 +1,1 @@
-- Update the Daily Grind homepage by refactoring the "Wake Up Your Senses" hero banner and adding product images to the below-the-fold "Seasonal Favorites" cards to optimize image loading priorities and Largest Contentful Paint (LCP) performance.
+- Update the Daily Grind homepage by refactoring the "Wake Up Your Senses" hero banner, adding a collapsed promo image in the top navigation, and adding product images to the below-the-fold "Seasonal Favorites" cards to optimize image loading priorities and Largest Contentful Paint (LCP) performance.
