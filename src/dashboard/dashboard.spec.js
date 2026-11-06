@@ -260,9 +260,12 @@ const NIGHTLY_FIXTURE = {
     },
     // Present (even when empty) on summaries from the current extractor, so the hero doesn't re-hydrate from evals.json.
     showcase: {},
-    guides: {
-      'content-vis': { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60, a11y: { guidedPassed: 2, guidedTotal: 2, guidedRate: 100, unguidedPassed: 1, unguidedTotal: 2, unguidedRate: 50, uplift: 50 } }
-    }
+    guides: Object.fromEntries(
+      ['content-vis', 'dialog', 'combobox', 'scrollspy', 'popover', 'carousel', 'tabs'].map(slug => [
+        slug,
+        { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60, a11y: { guidedPassed: 2, guidedTotal: 2, guidedRate: 100, unguidedPassed: 1, unguidedTotal: 2, unguidedRate: 50, uplift: 50 } }
+      ])
+    )
   }))
 };
 test.describe('Hero, Spotlight, and Browse all runs', () => {
@@ -283,10 +286,12 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     const hero = page.locator('#hero');
     await expect(hero).toHaveAttribute('aria-busy', 'false');
     await expect(hero.locator('#hero-heading')).toHaveText('Measurably better web code with Modern Web Guidance');
-    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-label')).toContainText('across 153 tasks over 3 runs and 3 agents');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-label')).toHaveText('Best-practice pass rate');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-statement')).toHaveText('lift across 153 tasks');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-qualifier-short')).toContainText('3 agents');
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('.takeaway-secondary[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
-    await expect(hero.locator('#hero-eyebrow')).toContainText(/3 recent runs across 3 agent families/);
+    await expect(hero.locator('#hero-eyebrow')).toContainText('Latest nightly run per agent');
     const details = page.locator('#hero-method');
     await details.locator('summary').focus();
     await page.keyboard.press('Enter');
@@ -332,7 +337,9 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     const modelSortBtn = page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]');
     await modelSortBtn.click();
     await expect(modelSortBtn).toHaveClass(/is-sorted/);
-    const expandBtn = page.locator('.insights-expand-btn[data-expand-panel="model"]');
+    await expect(page.locator('.insights-expand-btn[data-expand-panel="model"]')).toHaveCount(0);
+    const expandBtn = page.locator('.insights-expand-btn[data-expand-panel="guide"]');
+    await expect(expandBtn).toContainText('Show all 7');
     await expandBtn.click();
     await expect(expandBtn).toHaveAttribute('aria-expanded', 'true');
   });

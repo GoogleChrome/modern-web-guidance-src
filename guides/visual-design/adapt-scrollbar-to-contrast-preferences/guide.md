@@ -14,14 +14,14 @@ This guide provides optional instructions on how to use the `@media (prefers-con
 
 ## Enhance Legibility
 
-When customizing scrollbars with `scrollbar-color` or custom variables, you can provide an explicit override for high-contrast modes. This is especially helpful if your primary application theme uses low-contrast scrollbars for aesthetic reasons.
+When customizing scrollbars with `scrollbar-color` or custom variables, you can provide an explicit override for high-contrast modes. This is especially helpful if your primary application theme uses lower-contrast scrollbars for aesthetic reasons, although the default thumb still needs at least 3:1 contrast against the track (WCAG 1.4.11 Non-text Contrast).
 
 OPTIONAL: Use a `@media (prefers-contrast: more)` block to define dark, distinct colors for the thumb and track.
 
 ```css
 /* Define default standard colors as variables */
 .scroller {
-  --scrollbar-thumb: #bbb;
+  --scrollbar-thumb: #707070;
   --scrollbar-track: #f1f1f1;
 
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);

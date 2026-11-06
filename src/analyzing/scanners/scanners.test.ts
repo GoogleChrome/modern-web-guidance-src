@@ -391,6 +391,33 @@ void test('css-scanner: cssomnom selector, declarations, and nested at-rules', a
     ]);
   });
 
+  await t.test('preserves duplicate fallback declarations in view.declarations', () => {
+    const fallbackCss = `
+    .hero {
+      background-image: -webkit-image-set(url('a.avif') 1x);
+      background-image: image-set(url('a.avif') 1x);
+    }
+    `;
+
+    let capturedDecls: ReadonlyArray<{ property: string; value: string }> = [];
+
+    const rule: CssRuleMatcher = {
+      kind: 'css',
+      fastTokens: ['background-image'],
+      matchRule: (view) => {
+        capturedDecls = view.declarations;
+        return { message: 'found' };
+      },
+    };
+
+    const matches = scanCss('hero.css', fallbackCss, [rule]);
+    assert.equal(matches.length, 1);
+    assert.deepEqual(capturedDecls, [
+      { property: 'background-image', value: `-webkit-image-set(url("a.avif") 1x)` },
+      { property: 'background-image', value: `image-set(url("a.avif") 1x)` },
+    ]);
+  });
+
   await t.test('scanCssRules executes active rules in single-parse pass', () => {
     const multiRuleCss = `
     .btn {
