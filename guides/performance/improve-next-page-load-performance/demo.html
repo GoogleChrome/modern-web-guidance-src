@@ -3,24 +3,59 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Prerendering demo</title>
-  <link id="favicon" rel="icon" href="./favicon.ico" type="image/x-icon" />
+  <title>Speculative loading demo (Prefetch &amp; Prerender)</title>
+  <link id="favicon" rel="icon" href="data:," />
 </head>
 <body>
+  <header>
+    <h1>Speculative loading demo</h1>
+  </header>
 
-  <h1>Start page</h1>
+  <main>
+    <section aria-labelledby="prefetch-heading">
+      <h2 id="prefetch-heading">1. Recommended default: Prefetch (<code>eagerness: "moderate"</code>)</h2>
+      <p>General site links use <code>prefetch</code> with <code>"eagerness": "moderate"</code> to fetch the next HTML document on hover without executing JavaScript or triggering analytics early:</p>
+      <ul>
+        <li><a href="./?page=article-1">Article 1: Getting started with web performance</a></li>
+        <li><a href="./?page=article-2">Article 2: Optimizing resource delivery</a></li>
+        <li><a href="/logout" rel="nofollow" class="no-prefetch">Sign out (excluded from speculation)</a></li>
+      </ul>
+    </section>
 
-  <p><a href="./?page=next">This link should be prerendered.</a></p>
-  <p><a href="./?page=next2">This link should also be prerendered</a></p>
-
-  <p>The link above is the same as this page, just with a different query parameter to simulate different pages.</p>
+    <section aria-labelledby="prerender-heading">
+      <h2 id="prerender-heading">2. Advanced opt-in: Prerender (<code>eagerness: "moderate"</code>)</h2>
+      <p>High-confidence navigation links can opt into <code>prerender</code> with <code>"eagerness": "moderate"</code> once analytics and side effects are gated on page activation:</p>
+      <ul>
+        <li><a href="./?page=next-step" class="prerender-link">Continue to next step (prerendered on hover)</a></li>
+        <li><a href="./?page=featured" class="prerender-link">Featured guide (prerendered on hover)</a></li>
+      </ul>
+    </section>
+  </main>
 
   <script type="speculationrules">
     {
+      "prefetch": [
+        {
+          "tag": "default-page-prefetch",
+          "where": {
+            "and": [
+              { "href_matches": "/*" },
+              { "not": { "href_matches": "/logout" } },
+              { "not": { "selector_matches": ".no-prefetch" } },
+              { "not": { "selector_matches": ".prerender-link" } },
+              { "not": { "selector_matches": "[rel~=nofollow]" } }
+            ]
+          },
+          "eagerness": "moderate"
+        }
+      ],
       "prerender": [
         {
-          "tag": "prerender-spec-rules",
-          "urls": ["./?page=next", "./?page=next2"]
+          "tag": "opt-in-prerender",
+          "where": {
+            "selector_matches": ".prerender-link"
+          },
+          "eagerness": "moderate"
         }
       ]
     }
