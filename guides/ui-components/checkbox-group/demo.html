@@ -315,15 +315,17 @@
       const options = [...group.querySelectorAll('.options input[type="checkbox"]')];
 
       function sync() {
+        const enabled = options.filter((item) => !item.disabled);
+        const total = enabled.length;
+        // With no enabled options, mirror the disabled options' state.
         const { on = [], off = [] } = Object.groupBy(
-          options.filter((item) => !item.disabled),
+          total ? enabled : options,
           (item) => (item.checked ? 'on' : 'off'),
         );
-        const total = on.length + off.length;
         master.disabled = total === 0;
-        master.checked = total > 0 && off.length === 0;
+        master.checked = on.length > 0 && off.length === 0;
         master.indeterminate = on.length > 0 && off.length > 0;
-        summary.textContent = `${on.length} of ${total} available ${noun}`;
+        summary.textContent = `${total ? on.length : 0} of ${total} available ${noun}`;
       }
 
       master.addEventListener('change', () => {

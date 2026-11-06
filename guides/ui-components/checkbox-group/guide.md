@@ -75,17 +75,19 @@ const options = [...group.querySelectorAll('input[name="robot"]')];
 
 function sync() {
   // Filter dynamically so options disabled or enabled at runtime stay in sync.
+  const enabled = options.filter((item) => !item.disabled);
+  const total = enabled.length;
+  // With no enabled options, mirror the disabled options' state.
   const { on = [], off = [] } = Object.groupBy(
-    options.filter((item) => !item.disabled),
+    total ? enabled : options,
     (item) => (item.checked ? 'on' : 'off'),
   );
-  const total = on.length + off.length;
   master.disabled = total === 0;
-  master.checked = total > 0 && off.length === 0;
-  // Mixed only when some, but not all, enabled options are checked.
+  master.checked = on.length > 0 && off.length === 0;
+  // Mixed only when some, but not all, options in scope are checked.
   master.indeterminate = on.length > 0 && off.length > 0;
   // Announce the running count so bulk changes are not silent.
-  summary.textContent = `${on.length} of ${total} available units active`;
+  summary.textContent = `${total ? on.length : 0} of ${total} available units active`;
 }
 
 master.addEventListener('change', () => {
@@ -108,7 +110,7 @@ The master is a convenience control. The options remain the source of truth, and
 * Place the master first inside the `<fieldset>`, before the options, and separate it visually (for example a divider or heavier font weight) so it reads as a control over the group, not as another option.
 * Keep the label static ("Select all ..."). A label that flips between "Select all" and "Deselect all" is announced as a change in meaning to screen reader users, while the checked and mixed states already convey the current status.
 * Give the master no `name` attribute so it is not submitted with the form. Only the options carry `name` and `value`.
-* If there are no enabled options (including an empty list), set `disabled` on the master and leave it unchecked and not indeterminate.
+* If there are no enabled options (including an empty list), set `disabled` on the master and give it the checked or mixed state the disabled options would produce (unchecked for an empty list).
 * For filtered or paginated lists, filter `options` to the visible, enabled items only, name that scope in the label (for example "Select all 12 shown"), and re-run `sync()` whenever the visible or enabled set changes.
 
 ## 3. Styling
