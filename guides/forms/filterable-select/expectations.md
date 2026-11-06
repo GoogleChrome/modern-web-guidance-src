@@ -8,7 +8,6 @@
 - Pressing Enter inside the filter input does not submit the form.
 - Pressing Enter inside the filter input moves focus to the first visible `<option>`.
 - An element with `role="status"` (or `aria-live`) updates its text content with the number of matching options as the filter changes.
-- The `::picker(select)` rule declares an entry transition using `@starting-style` and a `transition` that includes `display` and `overlay` with `allow-discrete`.
 - When `customizable-select` is unsupported, the filter `<input>` is not inserted into the `<select>`, leaving a standard `<select>` control.
 - When the picker closes, the filter input is cleared, all non-placeholder `<option>` elements are visible again, and the `role="status"` element's text is empty.
 - A multiple-selection control has a trigger `<button>` with `popovertarget` referencing an element with the `popover` attribute.
@@ -16,7 +15,6 @@
 - Typing into the popover's filter input hides checkbox labels whose text does not contain the typed string.
 - Checkboxes that are checked before filtering remain checked after being hidden and are included in `new FormData(form).getAll(name)`.
 - A text element associated with the trigger lists the labels of the checked checkboxes and updates as they change.
-- Under `prefers-reduced-motion: reduce`, the `::picker(select)` transition duration is effectively zero or its transition is removed.
 - Pressing ArrowDown in the popover's filter input moves focus to the first visible checkbox.
 - Checkboxes in the multiple-selection popover use `appearance: none` with a `mask` for the check icon.
 - Checkboxes in the multiple-selection popover have a visible `:focus-visible` style.

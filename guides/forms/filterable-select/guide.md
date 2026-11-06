@@ -3,8 +3,6 @@ name: filterable-select
 description: Build a filterable select control that allows users to type to narrow down a list of predefined options and select one or more items.
 web-feature-ids:
   - customizable-select
-  - transition-behavior
-  - starting-style
   - popover
   - anchor-positioning
   - masks
@@ -14,7 +12,7 @@ guides:
 
 # Filterable select
 
-A filterable select lets the user type to narrow a list of predefined options and choose one or more of them. Build it on a customizable `<select>` (`appearance: base-select`) so the popup, keyboard handling, light dismiss, `Escape`, focus management, and form submission all come from the platform; only the filtering is written in JavaScript. Animate the popup with `@starting-style` and `transition-behavior: allow-discrete`. For choosing several options, use the checkbox popover in step 7.
+A filterable select lets the user type to narrow a list of predefined options and choose one or more of them. Build it on a customizable `<select>` (`appearance: base-select`) so the popup, keyboard handling, light dismiss, `Escape`, focus management, and form submission all come from the platform; only the filtering is written in JavaScript. This guide layers filtering over an already-styled customizable select; it does not cover styling or animating the popup. For choosing several options, use the checkbox popover in step 6.
 
 {# Verified in Chrome 150 (Oct 2026). Design constraints that drove this guide: the HTML parser closes `<select>` on `<input>`/`<button>`; HTMLSelectElement has showPicker() but no hidePicker(); Chrome does not dispatch toggle on `<select>`; input type=search consumes Escape to clear itself. #}
 
@@ -56,27 +54,7 @@ A native `<select>` with a `<label>` and a `name` is the fallback. Add a hidden 
 
 DO NOT set `inset-block-start: anchor(bottom)` (or other `inset`/`top` anchoring) on `::picker(select)`. It disables the browser's built-in flip-when-out-of-space positioning, so near the bottom of a short viewport the picker is clipped instead of moving above the control. Use `margin` for spacing.
 
-### 2. Animate the popup entry and exit
-
-Use `@starting-style` for entry and `transition-behavior: allow-discrete` (via the `allow-discrete` keyword) on `display` and `overlay` so the exit also animates.
-
-```css
-.filterable-select::picker(select) {
-  opacity: 0;
-  translate: 0 -0.25rem;
-  transition: opacity 0.15s, translate 0.15s,
-    display 0.15s allow-discrete, overlay 0.15s allow-discrete;
-}
-.filterable-select:open::picker(select) { opacity: 1; translate: 0 0; }
-@starting-style {
-  .filterable-select:open::picker(select) { opacity: 0; translate: 0 -0.25rem; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .filterable-select::picker(select) { transition-duration: 0.01ms; translate: none; }
-}
-```
-
-### 3. Insert the filter input with the DOM, not HTML
+### 2. Insert the filter input with the DOM, not HTML
 
 **MANDATORY:** Create the filter `<input>` and the empty-state element in JavaScript and insert them into the `<select>`. DO NOT write them in the HTML source: the HTML parser treats `<input>` as the end of the `<select>`, so it would land outside the control and the picker would not contain it.
 
@@ -97,11 +75,11 @@ if (CSS.supports('appearance', 'base-select')) {
 }
 ```
 
-### 4. Filter options
+### 3. Filter options
 
 On `input`, hide options that do not match and update the live region.
 
-Steps 4–6 run inside the same `CSS.supports` block as step 3.
+Steps 3–5 run inside the same `CSS.supports` block as step 2.
 
 ```js
 const status = document.querySelector('[role="status"]');
@@ -141,7 +119,7 @@ select.addEventListener('keydown', e => {
 });
 ```
 
-### 5. Let the platform commit and close the picker
+### 4. Let the platform commit and close the picker
 
 There is no `hidePicker()` on `<select>`; the picker closes only through user gestures (activating an option, `Escape`, or clicking outside). DO NOT try to close it from script. Move focus onto the option you want chosen and let the user's next `Enter` or click commit it natively.
 
@@ -163,7 +141,7 @@ filter.addEventListener('keydown', e => {
 });
 ```
 
-### 6. Reset the filter when the picker closes
+### 5. Reset the filter when the picker closes
 
 The `<select>` does not dispatch `toggle`, so reset the filter on `focusout` whenever the picker is no longer `:open` on the next animation frame. This covers committing a new or unchanged option, pressing `Escape`, and light-dismissing outside the control.
 
@@ -179,7 +157,7 @@ select.addEventListener('focusout', () => requestAnimationFrame(() => {
 }));
 ```
 
-### 7. Selecting more than one item
+### 6. Selecting more than one item
 
 `<select multiple>` is an always-open listbox in customizable select (it has no popup, so `showPicker()` does nothing), so DO NOT use it for a dropdown that stays open while the user clicks several options. Build the multi-select as a trigger button that opens a `popover` containing the filter input and a `<fieldset>` of checkboxes. Checkboxes submit under the shared `name` natively. Popover provides light dismiss, `Escape`, and focus return; `autofocus` on the input moves focus to it when the popover opens.
 
@@ -231,7 +209,7 @@ Style the checkboxes with `appearance: none` and a CSS mask for the check icon, 
 }
 ```
 
-Filter the checkbox labels the same way as step 4 (hide non-matching labels with `hidden`; checked boxes stay checked and keep submitting while hidden), prevent `Enter` in the filter from submitting the form, and update the `role="status"` count. Add ArrowDown/ArrowUp to move focus between the filter and the visible checkboxes so the list behaves like the single select; Tab and Space keep working natively. List the checked labels in the muted `<p>` after every `change` (it is read through `aria-describedby`, not a live region, because the filter's `role="status"` already announces). Clear the filter and unhide all labels on the popover's `toggle` event when `newState` is `closed`.
+Filter the checkbox labels the same way as step 3 (hide non-matching labels with `hidden`; checked boxes stay checked and keep submitting while hidden), prevent `Enter` in the filter from submitting the form, and update the `role="status"` count. Add ArrowDown/ArrowUp to move focus between the filter and the visible checkboxes so the list behaves like the single select; Tab and Space keep working natively. List the checked labels in the muted `<p>` after every `change` (it is read through `aria-describedby`, not a live region, because the filter's `role="status"` already announces). Clear the filter and unhide all labels on the popover's `toggle` event when `newState` is `closed`.
 
 ```js
 const visible = () => items.filter(l => !l.hidden).map(l => l.querySelector('input'));
@@ -259,13 +237,9 @@ panel.addEventListener('change', () => {
 
 ## Fallback strategies
 
-Treat the customizable select as a progressive enhancement over a plain `<select>`. Gate the enhancement on `CSS.supports('appearance', 'base-select')`. Users of non-supporting browsers keep a native `<select>` with built-in type-ahead; what they lose is the styled picker, the filter input, and the option count announcement. The popup and filter animations are decorative and are simply skipped when `@starting-style` is unsupported.
+Treat the customizable select as a progressive enhancement over a plain `<select>`. Gate the enhancement on `CSS.supports('appearance', 'base-select')`. Users of non-supporting browsers keep a native `<select>` with built-in type-ahead; what they lose is the styled picker, the filter input, and the option count announcement.
 
 {{ FEATURE_FALLBACKS("customizable-select") }}
-
-### Browser support for starting-style
-
-{{ BASELINE_STATUS("starting-style") }}
 
 ### Browser support for popover
 
@@ -278,7 +252,3 @@ Treat the customizable select as a progressive enhancement over a plain `<select
 ### Browser support for CSS masks
 
 {{ BASELINE_STATUS("masks") }}
-
-### Browser support for transition-behavior
-
-{{ BASELINE_STATUS("transition-behavior") }}
