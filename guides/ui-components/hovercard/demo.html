@@ -191,14 +191,26 @@
       </div>
     </main>
     <script type="module">
-      if (!("interestForElement" in HTMLAnchorElement.prototype)) {
+      // Native interestfor does not yet expose hint semantics to assistive tech, while the polyfill adds this
+      // ARIA itself, so the wiring below runs only with native support.
+      const native = "interestForElement" in HTMLAnchorElement.prototype;
+      if (!native) {
         await import("https://unpkg.com/interestfor@latest");
       }
 
-      // Explicit ARIA for screen readers until browsers expose interestfor semantics consistently.
-      // Anything beyond text and images makes a hint "rich" (same split the browser uses).
-      const RICH = ":is(a[href], button, input, select, textarea, [tabindex], h1, h2, h3, h4, h5, h6)";
+      // Same split the browser and polyfill use: anything beyond text, images, and inline formatting is rich.
+      const FOCUSABLE = "a[href], area[href], button, input, select, textarea, iframe, [contenteditable], [tabindex]:not([tabindex='-1'])";
+      const STRUCTURE = "h1, h2, h3, h4, h5, h6, ul, ol, dl, table, details, blockquote, form, nav, section, article, aside, header, footer, main";
+      const RICH = `:is(${FOCUSABLE}, ${STRUCTURE}, [role]:not([role=presentation], [role=none], [role=generic], [role=image]))`;
       const managed = new WeakSet();
+      const text = (s) => (s ?? "").replace(/\s+/g, " ").trim();
+
+      // Approximates the accessible name: aria-labelledby, then aria-label, then content including image alt, then title.
+      function accessibleName(el) {
+        const labels = (el.getAttribute("aria-labelledby") ?? "").split(/\s+/).map((id) => document.getElementById(id)?.textContent);
+        const alts = [...el.querySelectorAll("img[alt]")].map((img) => img.alt);
+        return text(labels.join(" ")) || text(el.getAttribute("aria-label")) || text(el.textContent + " " + alts.join(" ")) || text(el.title);
+      }
 
       function wireInterestHints(root = document) {
         for (const trigger of root.querySelectorAll("[interestfor]")) {
@@ -215,28 +227,30 @@
           } else {
             // Plain hint: nothing to add when it just repeats the trigger's name. Otherwise it labels
             // an unnamed trigger (icon-only button) or describes a named one, unless author ARIA already does.
-            const name = (trigger.getAttribute("aria-label") ?? trigger.textContent).trim();
-            if (hint.textContent.trim() === name) {
+            const name = accessibleName(trigger);
+            if (text(hint.textContent) === name) {
               continue;
             }
             hint.role ??= "tooltip";
-            if (!trigger.hasAttribute("aria-describedby") && !trigger.hasAttribute("aria-labelledby")) {
-              trigger.setAttribute(name ? "aria-describedby" : "aria-labelledby", hint.id);
+            const relation = name ? "aria-describedby" : "aria-labelledby";
+            if (!trigger.hasAttribute(relation)) {
+              trigger.setAttribute(relation, hint.id);
             }
           }
         }
       }
 
-      // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
-      document.addEventListener("toggle", ({ target, newState }) => {
-        for (const trigger of document.querySelectorAll(`[interestfor="${CSS.escape(target.id)}"]`)) {
-          if (managed.has(trigger)) {
-            trigger.ariaExpanded = newState === "open";
+      if (native) {
+        // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
+        document.addEventListener("toggle", ({ target, newState }) => {
+          for (const trigger of document.querySelectorAll(`[interestfor="${CSS.escape(target.id)}"]`)) {
+            if (managed.has(trigger)) {
+              trigger.ariaExpanded = newState === "open";
+            }
           }
-        }
-      }, true);
-
-      wireInterestHints();
+        }, true);
+        wireInterestHints();
+      }
     </script>
   </body>
 </html>

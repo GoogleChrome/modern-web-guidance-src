@@ -17,9 +17,9 @@ Browsers and screen readers do not yet expose this consistently, so add the equi
 
 Wire this with a short script instead of hand-authoring the attributes, so the markup stays declarative and the same rules apply to every hint. The script should:
 
-1. Run once the DOM is parsed and the polyfill (if any) has loaded, and expose a function that can be called again for content inserted later. Scanning is required: a browse-mode screen reader user needs the attributes in place before any interaction, so wiring them lazily on `focus` or `interest` is too late.
-2. For every `[interestfor]` trigger whose target has `popover="hint"`, classify the target: **rich** if it contains headings or focusable elements (links, buttons, form controls, anything with `tabindex`), **plain** otherwise.
-3. **Plain:** compare the hint text with the trigger's name (`aria-label`, else its text content). Equal: do nothing. Otherwise set `role="tooltip"` on the hint if it has no role, and, unless the trigger already has `aria-describedby` or `aria-labelledby`, point `aria-labelledby` at the hint when the trigger has no name, or `aria-describedby` when it does.
+1. Run only where `interestfor` is supported natively (check `"interestForElement" in HTMLButtonElement.prototype` before loading the polyfill, which adds this ARIA itself). Run once the DOM is parsed, and expose a function that can be called again for content inserted later. Scanning is required: a browse-mode screen reader user needs the attributes in place before any interaction, so wiring them lazily on `focus` or `interest` is too late.
+2. For every `[interestfor]` trigger whose target has `popover="hint"`, classify the target the way the browser and polyfill do: **rich** if it contains headings, lists, tables, sectioning elements, `<details>`, focusable elements (links, buttons, form controls, `contenteditable`, `tabindex` other than `-1`), or any element with a `role` other than `presentation`, `none`, `generic`, or `image`; **plain** otherwise.
+3. **Plain:** normalize whitespace and compare the hint text with the trigger's accessible name (`aria-labelledby` targets, else `aria-label`, else text content including image `alt`, else `title`). Equal: do nothing. Otherwise set `role="tooltip"` on the hint if it has no role, then point `aria-describedby` at the hint when the trigger has a name, or `aria-labelledby` when it has none, unless the trigger already has that attribute.
 4. **Rich:** set `aria-expanded` on the trigger to the popover's current state (`:popover-open`), unless the trigger already has `aria-expanded`. Remember which triggers the script owns.
 5. Keep `aria-expanded` in sync from the popover's `toggle` event with a single capturing listener on `document`, updating every trigger with a matching `interestfor` that the script owns.
 
@@ -28,7 +28,7 @@ Things that are easy to get wrong:
 - `toggle` does not bubble. A bubbling listener on `document` never fires; use the capture phase (or a listener per popover).
 - Sync `aria-expanded` from `toggle`, not from `interest`/`loseinterest`. The popover is the source of truth: it can be closed by `Escape`, light dismiss, or another invoker, and several triggers can share one hint.
 - A hidden popover is a valid `aria-describedby` or `aria-labelledby` target. Do not force the hint open or duplicate its text to make it "visible".
-- Do not add `role="tooltip"` to rich hints, and do not add `aria-haspopup` or a live region to either kind.
+- Do not add `aria-haspopup` or a live region to either kind of hint.
 - Do not override author ARIA: an existing `aria-describedby`, `aria-labelledby`, or `aria-expanded` on the trigger wins.
 
 ## Timing

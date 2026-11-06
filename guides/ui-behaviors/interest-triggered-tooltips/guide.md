@@ -6,7 +6,6 @@ web-feature-ids:
   - popover
   - popover-hint
   - anchor-positioning
-  - invoker-commands
 ---
 
 # Tooltips
@@ -77,23 +76,21 @@ In modern browsers supporting native anchor positioning, you do **not** need to 
 
 ## Toggletips: an "i" or "?" button
 
-Give a toggletip both invokers: `interestfor` opens it on hover, focus, and long-press; `commandfor` opens it on click, tap, and `Enter`.
+Give a toggletip both triggers: `interestfor` opens it on hover, focus, and long-press; `popovertarget` opens it on click, tap, and `Enter`.
 
 ```html
 <label>Shipping <input name="shipping"></label>
 <!-- The name says what the button reveals; the "?" alone is not a name. -->
-<button type="button" interestfor="shipping-help" commandfor="shipping-help" command="show-popover" aria-label="More about shipping">?</button>
+<button type="button" interestfor="shipping-help" popovertarget="shipping-help" popovertargetaction="show" aria-label="More about shipping">?</button>
 <!-- Right after the trigger, so it reads in sequence. -->
 <div id="shipping-help" popover="hint">Free shipping applies to orders over $50. Orders placed before 2pm ship the same day.</div>
 ```
 
-- Use `command="show-popover"`, not `toggle-popover`: hover has usually opened the popover already, and a toggle would close it on the click that follows. `Escape`, light dismiss, and losing interest close it.
+- Use `popovertargetaction="show"`, not the default `toggle`: hover has usually opened the popover already, and a toggle would close it on the click that follows. `Escape`, light dismiss, and losing interest close it.
 - Keep `popover="hint"`: hovering across a toggletip must not close an open menu, which an `auto` popover would.
-- Position it like any tooltip. The button is the popover's implicit anchor through either invoker.
+- Position it like any tooltip. The button is the popover's implicit anchor through either attribute.
 
 ## Fallback strategies
-
-{{ FEATURE_FALLBACKS("command-invokers") }}
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
 
@@ -104,5 +101,22 @@ Give a toggletip both invokers: `interestfor` opens it on hover, focus, and long
 {{ BASELINE_STATUS("popover-hint") }}
 
 The `@oddbird/popover-polyfill` package does not polyfill `popover="hint"` in browsers that already support native `popover` (`auto` and `manual`). In those browsers, the unrecognized `"hint"` value defaults to `popover="manual"` (the HTML invalid value default), so a tooltip opened via keyboard focus may remain open if a second tooltip is opened via pointer hover unless explicitly dismissed on loss of interest by the invoker.
+
+A toggletip can also be opened by click, with no interest to lose, so a `manual` fallback would never close. Where `hint` is unsupported, switch toggletips to `popover="auto"` as they open. This MUST happen in `beforetoggle`: the browser reads the popover type after that event, whereas changing the type of an already open popover closes it. `beforetoggle` does not bubble, so delegate with a capturing listener:
+
+```js
+// The `popover` property reports the state the browser actually uses: "manual" when `hint` is unsupported.
+const probe = document.createElement("div");
+probe.popover = "hint";
+if (probe.popover !== "hint") {
+  document.addEventListener("beforetoggle", ({ target, newState }) => {
+    const toggletip = target.getAttribute("popover") === "hint"
+      && document.querySelector(`[popovertarget="${CSS.escape(target.id)}"]`);
+    if (newState === "open" && toggletip) {
+      target.popover = "auto";
+    }
+  }, true);
+}
+```
 
 {{ FEATURE("anchor-positioning", "popover-fallbacks") }}
