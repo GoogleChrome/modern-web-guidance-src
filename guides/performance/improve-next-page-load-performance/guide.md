@@ -119,7 +119,7 @@ This example shows a rule set that prefetches all links eagerly, and then goes f
 
 ## Best Practices
 
-- **DO** use speculation rules to prefetch and prerender pages that the user is likely to visit next.
+- **DO** default to `prefetch` with `"eagerness": "moderate"` on pages that the user is likely to visit next. Treat `prerender` as a later-stage opt-in after accounting for analytics and resource implications.
 - **DO** use speculation rules for static sites, where the content is not likely to change often, and where pages are cheaper to produce—especially if cached at the edge.
 - **DO** take more care when using speculation rules for dynamic pages, where the content is more likely to change often, may become out of date, and where pages are more expensive to produce.
 - **DO** prefer document rules over list rules, as they are more flexible, allow the same rule to be shared across multiple pages, and can be used to prefetch and prerender pages that are not known in advance.
