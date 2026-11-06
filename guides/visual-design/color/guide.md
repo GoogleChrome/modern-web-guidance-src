@@ -11,8 +11,6 @@ web-feature-ids:
   - oklab
   - lab
   - relative-color
-  - text-shadow
-  - gradients
 ---
 
 # Color
