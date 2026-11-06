@@ -237,6 +237,17 @@ Scrolling regions are keyboard-reachable in current browsers because the checkbo
 
 {{ BASELINE_STATUS("subgrid") }}
 
+Without subgrid, give each label the same fixed column widths so rows still align:
+
+```css
+@supports not (grid-template-columns: subgrid) {
+  .options label {
+    grid-template-columns: 1.25rem 1fr 6rem; /* checkbox, name, secondary column */
+    column-gap: 0.75rem;
+  }
+}
+```
+
 {{ FEATURE_FALLBACKS("accent-color") }}
 
 ### `:indeterminate`
