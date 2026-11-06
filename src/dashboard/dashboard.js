@@ -370,10 +370,13 @@ async function loadDashboardData(testId) {
             try { targetGuide = decodeURIComponent(targetGuide); } catch {
             }
             const targetTask = params.get('task');
-            setTimeout(() => {
+            setTimeout(async () => {
+                try { await renderGridIdle(); } catch { return; }
                 const accordionEl = (targetTask && document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"][data-task="${CSS.escape(targetTask)}"]`))
                     || document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"]`);
                 if (accordionEl) {
+                    const catSection = accordionEl.closest('.eval-category-section.collapsed');
+                    if (catSection) /** @type {HTMLElement | null} */ ($('.eval-category-header', catSection))?.click();
                     accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                     if (!accordionEl.classList.contains('open')) {
                         const header = $('.task-accordion-header', accordionEl);
@@ -1247,15 +1250,15 @@ async function renderGridOnce(data, testId) {
     }
 
     sortedScenarios = filteredScenarios.map(item => item.scenarioName);
-    const cacheKeyMode = `${currentMetricMode}|${currentTaskSort === 'default' ? 'grouped' : 'flat'}`;
-    if (accordionCache.data !== data || accordionCache.mode !== cacheKeyMode || accordionCache.testId !== testId) {
+    if (accordionCache.data !== data || accordionCache.mode !== currentMetricMode || accordionCache.testId !== testId) {
         accordionCache.data = data;
-        accordionCache.mode = cacheKeyMode;
+        accordionCache.mode = currentMetricMode;
         accordionCache.testId = testId;
         accordionCache.nodes = new Map();
     }
     if (!guideGrid) return;
     guideGrid.classList.toggle('is-a11y-mode', currentMetricMode === 'a11y');
+    guideGrid.classList.toggle('is-sorted-flat', currentTaskSort !== 'default');
     guideGrid.replaceChildren();
     guideGrid.append(buildEvalsTableHeader());
 
@@ -1361,9 +1364,7 @@ function buildAccordion(item, testId) {
     const featureChipHtml = primaryFeatureId && primaryFeatureId !== guide
         ? `<span class="feature-chip">${escapeHtml(primaryFeatureId)}</span>`
         : '';
-    const rowCategoryHtml = currentTaskSort !== 'default'
-        ? `<span class="row-category-tag">${escapeHtml(categoryLabel)}</span>`
-        : '';
+    const rowCategoryHtml = `<span class="row-category-tag">${escapeHtml(categoryLabel)}</span>`;
     const a11yColHtml = currentMetricMode === 'a11y' ? '' : (
         a11yCheckCount > 0
             ? `<div class="task-a11y-col"><span class="visually-hidden">Accessibility checks: ${a11yCheckCount} checks, unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%, change </span><span class="metric-before">${a11yCheckCount} ${a11yCheckCount === 1 ? 'check' : 'checks'}</span><span class="metric-after ${a11yUplift !== null && a11yUplift > 0 ? 'positive' : a11yUplift !== null && a11yUplift < 0 ? 'negative' : ''}">${a11yUplift !== null ? `${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp` : '—'}</span></div>`

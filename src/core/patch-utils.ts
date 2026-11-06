@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createTwoFilesPatch } from 'diff';
+import { gitExec } from './git-utils.ts';
 
 const MAX_BUFFER = 50 * 1024 * 1024; // 50MB buffer to handle large diffs/assets
 
@@ -70,7 +71,11 @@ export function applyPatchSync(targetDir: string, patchPath: string): PatchResul
     return { success: true };
   } catch (patchErr: any) {
     try {
-      execSync(`git apply --whitespace=nowarn --unsafe-paths "${absPatchPath}"`, { cwd: absTargetDir, stdio: 'pipe', maxBuffer: MAX_BUFFER });
+      gitExec(['apply', '--whitespace=nowarn', '--unsafe-paths', absPatchPath], {
+        cwd: absTargetDir,
+        stdio: 'pipe',
+        maxBuffer: MAX_BUFFER,
+      });
       return { success: true };
     } catch (gitErr: any) {
       const errorMsg = patchErr?.stderr?.toString() || gitErr?.stderr?.toString() || patchErr?.message || gitErr?.message || 'Unknown error applying patch';
@@ -89,16 +94,32 @@ export function capturePatchFromGit(
   relativeSubdir?: string
 ): { success: boolean; diff: string } {
   try {
-    const relFlag = relativeSubdir ? ` --relative="${relativeSubdir}"` : '';
-    const targetPath = relativeSubdir ? `"${relativeSubdir}"` : '.';
-    const excludeSpecs = EXCLUDED_PATCH_PATHSPECS.map((spec) => `"${spec}"`).join(' ');
+    const targetPath = relativeSubdir || '.';
 
     // Stage untracked files with intent-to-add so git diff includes them
-    execSync(`git add -N --ignore-removal ${targetPath}`, { cwd: workDir, stdio: 'ignore' });
+    gitExec(['add', '-N', '--ignore-removal', '--', targetPath], {
+      cwd: workDir,
+      isolated: true,
+      stdio: 'ignore',
+    });
 
     // Diff against the initial root commit to include any commits made by the agent
-    const rootCommit = execSync('git rev-list --max-parents=0 HEAD', { cwd: workDir, encoding: 'utf8', maxBuffer: MAX_BUFFER }).trim();
-    const diff = execSync(`git diff ${rootCommit}${relFlag} -- ${targetPath} ${excludeSpecs}`, { cwd: workDir, encoding: 'utf8', maxBuffer: MAX_BUFFER });
+    const rootCommit = gitExec(['rev-list', '--max-parents=0', 'HEAD'], {
+      cwd: workDir,
+      isolated: true,
+      maxBuffer: MAX_BUFFER,
+    }).trim();
+    const diff = gitExec(
+      [
+        'diff',
+        rootCommit,
+        ...(relativeSubdir ? [`--relative=${relativeSubdir}`] : []),
+        '--',
+        targetPath,
+        ...EXCLUDED_PATCH_PATHSPECS,
+      ],
+      { cwd: workDir, isolated: true, maxBuffer: MAX_BUFFER }
+    );
 
     if (!diff.trim()) {
       return { success: false, diff: '' };
@@ -119,10 +140,12 @@ export function capturePatchFromGit(
  */
 export function initGitRepo(workDir: string): void {
   try {
-    execSync('git init && git config user.name "AI" && git config user.email "ai@example.com" && git add . && git commit --allow-empty -m "init"', {
-      cwd: workDir,
-      stdio: 'ignore'
-    });
+    const opts = { cwd: workDir, isolated: true, stdio: 'ignore' as const };
+    gitExec(['init', '-q'], opts);
+    gitExec(['config', 'user.name', 'AI'], opts);
+    gitExec(['config', 'user.email', 'ai@example.com'], opts);
+    gitExec(['add', '.'], opts);
+    gitExec(['commit', '-q', '--allow-empty', '-m', 'init'], opts);
   } catch (err) {
     console.warn(`Failed to initialize git in workDir ${workDir}: ${err}`);
   }
