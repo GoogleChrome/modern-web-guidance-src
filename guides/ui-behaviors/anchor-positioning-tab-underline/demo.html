@@ -32,7 +32,7 @@
         }
       }
 
-      ul li.active {
+      ul li:has([aria-current="page"]) {
         anchor-name: --active;
         color: red;
         @supports not (position-anchor: auto){
@@ -47,6 +47,10 @@
         line-height: 1.5;
         padding-inline: 0.2em;
         display: block;
+      }
+
+      ul li a:hover {
+        color: red;
       }
 
       body {
@@ -74,7 +78,7 @@
     <p class="instructions">Click on any of the tabs below to see the red underline transition smoothly to the new active position.</p>
     <nav>
       <ul>
-        <li class="active"><a href="#" aria-current="page">Home</a></li>
+        <li><a href="#" aria-current="page">Home</a></li>
         <li><a href="#">About</a></li>
         <li><a href="#">Projects</a></li>
         <li><a href="#">Blog</a></li>
@@ -86,10 +90,7 @@
       listItems.forEach(li => {
         li.addEventListener('click', (e) => {
           e.preventDefault();
-          document.querySelector('li.active')?.classList.remove('active');
-          li.classList.add('active');
-          // Screen readers announce the current page from aria-current, not
-          // from the underline, so move it with the visual state.
+          // The underline follows aria-current, which screen readers announce
           document.querySelector('nav [aria-current="page"]')?.removeAttribute('aria-current');
           li.querySelector('a').setAttribute('aria-current', 'page');
         });
